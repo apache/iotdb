@@ -67,7 +67,9 @@ class StudentTOutput(DistributionOutput):
         base_loc = self.loc_proj(inputs).squeeze(-1)
         base_scale = F.softplus(self.scale_proj(inputs)).clamp_min(eps).squeeze(-1)
 
-        base_dist = torch.distributions.StudentT(df, base_loc, base_scale, validate_args=False)
+        base_dist = torch.distributions.StudentT(
+            df, base_loc, base_scale, validate_args=False
+        )
 
         if loc is not None and scale is not None:
             return AffineTransformed(base_dist, loc=loc, scale=scale)
@@ -88,10 +90,14 @@ class MixtureOfStudentTsOutput(DistributionOutput):
     def forward(self, inputs, loc=None, scale=None):
         df = 2.0 + F.softplus(self.df(inputs)).clamp_min(torch.finfo(inputs.dtype).eps)
         component_loc = self.loc_proj(inputs)
-        component_scale = F.softplus(self.scale_proj(inputs)).clamp_min(torch.finfo(inputs.dtype).eps)
+        component_scale = F.softplus(self.scale_proj(inputs)).clamp_min(
+            torch.finfo(inputs.dtype).eps
+        )
         logits = self.mixture_weights(inputs)
         probs = F.softmax(logits, dim=-1)
-        components = torch.distributions.StudentT(df, component_loc, component_scale, validate_args=False)
+        components = torch.distributions.StudentT(
+            df, component_loc, component_scale, validate_args=False
+        )
         mixture_distribution = torch.distributions.Categorical(probs=probs)
 
         return torch.distributions.MixtureSameFamily(mixture_distribution, components)

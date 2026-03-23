@@ -67,7 +67,9 @@ class TotoConfig(PretrainedConfig):
             "student_t_mixture"
         ]
         # k_components=5 is the default used by Datadog/Toto-Open-Base-1.0
-        self.output_distribution_kwargs = output_distribution_kwargs or {"k_components": 5}
+        self.output_distribution_kwargs = output_distribution_kwargs or {
+            "k_components": 5
+        }
         self.spacewise_first = spacewise_first
         self.use_memory_efficient_attention = use_memory_efficient_attention
         self.stabilize_with_global = stabilize_with_global

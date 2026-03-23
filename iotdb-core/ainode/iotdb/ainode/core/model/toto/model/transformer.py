@@ -131,7 +131,12 @@ class TransformerLayer(torch.nn.Module):
         kv_cache: Optional[KVCache] = None,
     ) -> Float[torch.Tensor, "batch variate seq_len embed_dim"]:
         pre_norm_1 = self.norm1(inputs)
-        hidden_state = inputs + self.attention(layer_idx, pre_norm_1, attention_mask, kv_cache).contiguous()
+        hidden_state = (
+            inputs
+            + self.attention(
+                layer_idx, pre_norm_1, attention_mask, kv_cache
+            ).contiguous()
+        )
 
         pre_norm_2 = self.norm2(hidden_state)
         return hidden_state + self.mlp(pre_norm_2)
@@ -153,7 +158,9 @@ class Transformer(torch.nn.Module):
     ):
         super().__init__()
 
-        assert embed_dim % num_heads == 0, "Embedding dimension must be divisible by number of heads."
+        assert (
+            embed_dim % num_heads == 0
+        ), "Embedding dimension must be divisible by number of heads."
 
         self.rotary_emb = TimeAwareRotaryEmbedding(
             embed_dim // num_heads,
@@ -161,7 +168,9 @@ class Transformer(torch.nn.Module):
             cache_if_possible=True,
             seq_before_head_dim=use_memory_efficient_attention,
         )
-        attention_axes = self._get_layer_types(num_layers, spacewise_every_n_layers, spacewise_first)
+        attention_axes = self._get_layer_types(
+            num_layers, spacewise_every_n_layers, spacewise_first
+        )
 
         self.use_memory_efficient_attention = use_memory_efficient_attention
         self.fusion = fusion
@@ -199,9 +208,17 @@ class Transformer(torch.nn.Module):
 
         if self.use_memory_efficient_attention:
             mask = self._pad_to_multiple(mask)
-        mask = mask.float().masked_fill(~mask, float("-inf")).masked_fill(mask, 0.0).to(dtype)
+        mask = (
+            mask.float()
+            .masked_fill(~mask, float("-inf"))
+            .masked_fill(mask, 0.0)
+            .to(dtype)
+        )
 
-        mask = rearrange(mask, "batch seq_len variate1 variate2 -> (batch seq_len) 1 variate1 variate2")
+        mask = rearrange(
+            mask,
+            "batch seq_len variate1 variate2 -> (batch seq_len) 1 variate1 variate2",
+        )
         return mask.expand(-1, num_heads, -1, -1).contiguous()
 
     def _pad_to_multiple(
@@ -214,7 +231,11 @@ class Transformer(torch.nn.Module):
         if pad_amount > 0:
             new_size = tensor.shape[-1] + pad_amount
             if causal:
-                full_mask = torch.tril(torch.ones((new_size, new_size), dtype=tensor.dtype, device=tensor.device))
+                full_mask = torch.tril(
+                    torch.ones(
+                        (new_size, new_size), dtype=tensor.dtype, device=tensor.device
+                    )
+                )
                 full_mask[: tensor.shape[-1], : tensor.shape[-1]] = tensor
                 tensor = full_mask
             else:
@@ -245,14 +266,20 @@ class Transformer(torch.nn.Module):
         inputs: Float[torch.Tensor, "batch variate seq_len embed_dim"],
         id_mask: Float[torch.Tensor, "batch #variate seq_len"],
         kv_cache: Optional[KVCache] = None,
-        variate_label_embeds: Optional[Float[torch.Tensor, "batch variate 1 embed_dim"]] = None,
+        variate_label_embeds: Optional[
+            Float[torch.Tensor, "batch variate 1 embed_dim"]
+        ] = None,
     ) -> Float[torch.Tensor, "batch variate seq_len embed_dim"]:
 
         if self.fusion is not None and variate_label_embeds is not None:
             should_apply_fusion = True
             if kv_cache is not None:
                 kv_len_tensor = kv_cache.current_len(0)
-                kv_len = int(kv_len_tensor) if isinstance(kv_len_tensor, torch.Tensor) else kv_len_tensor
+                kv_len = (
+                    int(kv_len_tensor)
+                    if isinstance(kv_len_tensor, torch.Tensor)
+                    else kv_len_tensor
+                )
                 should_apply_fusion = kv_len == 0
             if should_apply_fusion:
                 inputs = self.fusion(inputs, variate_label_embeds=variate_label_embeds)
@@ -281,7 +308,11 @@ class Transformer(torch.nn.Module):
             inputs = layer(
                 layer_idx,
                 inputs,
-                (timewise_attention_mask if layer.attention_axis == AttentionAxis.TIME else spacewise_attention_mask),
+                (
+                    timewise_attention_mask
+                    if layer.attention_axis == AttentionAxis.TIME
+                    else spacewise_attention_mask
+                ),
                 kv_cache,
             )
         return inputs

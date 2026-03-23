@@ -78,8 +78,14 @@ class StdMeanScaler(Scaler):
                 )
                 high_precision_data = data.to(torch.float32)
 
-            denominator = weights.sum(self.dim, keepdim=self.keepdim).clamp_min(1.0).to(high_precision_data.dtype)
-            means = (high_precision_data * weights).sum(self.dim, keepdim=self.keepdim) / denominator
+            denominator = (
+                weights.sum(self.dim, keepdim=self.keepdim)
+                .clamp_min(1.0)
+                .to(high_precision_data.dtype)
+            )
+            means = (high_precision_data * weights).sum(
+                self.dim, keepdim=self.keepdim
+            ) / denominator
             means = torch.nan_to_num(means)
 
             variance = (((high_precision_data - means) * weights) ** 2).sum(
@@ -136,7 +142,9 @@ def compute_causal_statistics(
             shifted_means[..., 1:] = causal_means[..., :-1]
 
             delta = high_precision_data - shifted_means
-            increment = delta * (high_precision_data - causal_means) * high_precision_weights
+            increment = (
+                delta * (high_precision_data - causal_means) * high_precision_weights
+            )
             m_2 = torch.cumsum(increment, dim=dim)
 
             if use_bessel_correction:
@@ -157,13 +165,17 @@ def compute_causal_statistics(
                 scale_factor_min = 10.0 ** (-scale_factor_exponent)
                 scale_factor_max = 10.0**scale_factor_exponent
 
-                global_denominator = (weights * padding_mask).sum(dim, keepdim=True).clamp_min(1.0)
-                global_means = (weighted_data).sum(dim, keepdim=True) / global_denominator
-                global_means = torch.nan_to_num(global_means)
-
-                global_variance = (((high_precision_data - global_means) * weights * padding_mask) ** 2).sum(
+                global_denominator = (
+                    (weights * padding_mask).sum(dim, keepdim=True).clamp_min(1.0)
+                )
+                global_means = (weighted_data).sum(
                     dim, keepdim=True
                 ) / global_denominator
+                global_means = torch.nan_to_num(global_means)
+
+                global_variance = (
+                    ((high_precision_data - global_means) * weights * padding_mask) ** 2
+                ).sum(dim, keepdim=True) / global_denominator
                 global_scale = torch.sqrt(global_variance + minimum_scale)
 
                 expanded_global_scale = global_scale.expand_as(causal_scale)
@@ -172,7 +184,10 @@ def compute_causal_statistics(
 
                 causal_scale = torch.clamp(
                     causal_scale,
-                    min=torch.max(torch.tensor(minimum_scale, device=causal_scale.device), min_allowed_scale),
+                    min=torch.max(
+                        torch.tensor(minimum_scale, device=causal_scale.device),
+                        min_allowed_scale,
+                    ),
                     max=max_allowed_scale,
                 )
 
@@ -211,7 +226,9 @@ class CausalStdMeanScaler(Scaler):
         prefix_length: int | None = None,
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         assert data.shape == weights.shape, "data and weights must have same shape"
-        assert len(data.shape) == 3, "Input data must have shape [batch, variates, time_steps]"
+        assert (
+            len(data.shape) == 3
+        ), "Input data must have shape [batch, variates, time_steps]"
 
         causal_means, causal_scale = compute_causal_statistics(
             data,
@@ -241,7 +258,9 @@ class CausalPatchStdMeanScaler(Scaler):
         scale_factor_exponent: float = 10.0,
     ) -> None:
         super().__init__()
-        assert dim == -1, "CausalPatchStdMeanScaler only supports dim=-1 (last dimension)"
+        assert (
+            dim == -1
+        ), "CausalPatchStdMeanScaler only supports dim=-1 (last dimension)"
         self.dim = dim
         self.patch_size = patch_size
         self.minimum_scale = minimum_scale
@@ -257,7 +276,9 @@ class CausalPatchStdMeanScaler(Scaler):
         prefix_length: int | None = None,
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         assert data.shape == weights.shape, "data and weights must have same shape"
-        assert len(data.shape) == 3, "Input data must have shape [batch, variates, time_steps]"
+        assert (
+            len(data.shape) == 3
+        ), "Input data must have shape [batch, variates, time_steps]"
 
         with torch.no_grad():
             time_steps = data.shape[-1]
@@ -283,8 +304,12 @@ class CausalPatchStdMeanScaler(Scaler):
             patch_stats_means = means_unfolded[..., -1]
             patch_stats_scales = scales_unfolded[..., -1]
 
-            patch_means = repeat(patch_stats_means, "b v p -> b v (p s)", s=self.patch_size)
-            patch_scales = repeat(patch_stats_scales, "b v p -> b v (p s)", s=self.patch_size)
+            patch_means = repeat(
+                patch_stats_means, "b v p -> b v (p s)", s=self.patch_size
+            )
+            patch_scales = repeat(
+                patch_stats_scales, "b v p -> b v (p s)", s=self.patch_size
+            )
 
             scaled_data = (data - patch_means) / patch_scales
 

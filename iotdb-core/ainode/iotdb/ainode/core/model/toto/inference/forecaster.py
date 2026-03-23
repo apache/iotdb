@@ -26,8 +26,7 @@ import numpy as np
 import torch
 from einops import rearrange, repeat
 from jaxtyping import Bool, Float, Int
-from torch.distributions import Distribution
-from torch.distributions import TransformedDistribution
+from torch.distributions import Distribution, TransformedDistribution
 from torch.distributions.transforms import AffineTransform
 
 from ..data.util.dataset import (
@@ -62,9 +61,13 @@ class AffineTransformed(TransformedDistribution):
 @dataclass(frozen=True)
 class Forecast:
     mean: Float[torch.Tensor, "batch variate future_time_steps"]
-    samples: Float[torch.Tensor, "batch variate future_time_steps samples"] | None = None
+    samples: Float[torch.Tensor, "batch variate future_time_steps samples"] | None = (
+        None
+    )
 
-    def quantile(self, q: float | torch.Tensor) -> Float[torch.Tensor, "batch variate future_time_steps"]:
+    def quantile(
+        self, q: float | torch.Tensor
+    ) -> Float[torch.Tensor, "batch variate future_time_steps"]:
         assert self.samples is not None, "samples must be provided to compute quantiles"
         assert isinstance(q, (float, torch.Tensor)), "q must be a float or a tensor"
         if isinstance(q, float):
@@ -77,7 +80,9 @@ class Forecast:
 
     @property
     def std(self) -> Float[torch.Tensor, "batch variate future_time_steps"]:
-        assert self.samples is not None, "samples must be provided to compute standard deviation"
+        assert (
+            self.samples is not None
+        ), "samples must be provided to compute standard deviation"
         return self.samples.std(dim=-1)
 
 
@@ -100,14 +105,19 @@ class TotoForecaster:
         num_samples: int | None = None,
         samples_per_batch: int = 10,
         use_kv_cache: bool = True,
-        future_exogenous_variables: Float[torch.Tensor, "batch exogenous_variables future_time_steps"] | None = None,
+        future_exogenous_variables: (
+            Float[torch.Tensor, "batch exogenous_variables future_time_steps"] | None
+        ) = None,
     ) -> Forecast:
         if len(inputs.series.shape) == 2:
             batch = cast(MaskedTimeseries, torch.utils.data.default_collate([inputs]))
         else:
             batch = inputs
 
-        if future_exogenous_variables is not None and len(future_exogenous_variables.shape) == 2:
+        if (
+            future_exogenous_variables is not None
+            and len(future_exogenous_variables.shape) == 2
+        ):
             future_exogenous_variables = future_exogenous_variables.unsqueeze(0)
 
         series = pad_array(batch.series, self.model.patch_embed.stride)
@@ -115,9 +125,13 @@ class TotoForecaster:
         id_mask = batch.id_mask
         if id_mask is not None:
             id_mask = pad_id_mask(batch.id_mask, self.model.patch_embed.stride)
-        timestamp_seconds = pad_array(batch.timestamp_seconds, self.model.patch_embed.stride)
-        time_interval_seconds: Int[torch.Tensor, "batch variate series_len"] = torch.as_tensor(
-            batch.time_interval_seconds, device=series.device, dtype=torch.int
+        timestamp_seconds = pad_array(
+            batch.timestamp_seconds, self.model.patch_embed.stride
+        )
+        time_interval_seconds: Int[torch.Tensor, "batch variate series_len"] = (
+            torch.as_tensor(
+                batch.time_interval_seconds, device=series.device, dtype=torch.int
+            )
         )
 
         if num_samples is not None:
@@ -176,24 +190,35 @@ class TotoForecaster:
         prediction_length: int,
         timestamp_seconds: Int[torch.Tensor, "batch variate time_steps"],
         time_interval_seconds: Int[torch.Tensor, "batch variate"],
-        input_padding_mask: Bool[torch.Tensor, "batch variate time_steps"] | None = None,
+        input_padding_mask: (
+            Bool[torch.Tensor, "batch variate time_steps"] | None
+        ) = None,
         id_mask: Float[torch.Tensor, "batch #variate time_steps"] | None = None,
         use_kv_cache: bool = False,
         future_exogenous_variables=None,
         num_exogenous_variables: int = 0,
     ) -> Float[torch.Tensor, "batch variate time_steps"]:
         if input_padding_mask is None:
-            input_padding_mask = torch.ones_like(inputs, dtype=torch.bool, device=inputs.device)
+            input_padding_mask = torch.ones_like(
+                inputs, dtype=torch.bool, device=inputs.device
+            )
         if id_mask is None:
             id_mask = torch.zeros_like(inputs, dtype=torch.int, device=inputs.device)
 
         if future_exogenous_variables is not None:
-            self.assert_ev_compatibility(inputs, future_exogenous_variables, prediction_length, num_exogenous_variables)
+            self.assert_ev_compatibility(
+                inputs,
+                future_exogenous_variables,
+                prediction_length,
+                num_exogenous_variables,
+            )
 
         patch_size = self.model.patch_embed.stride
         rounded_steps = int(np.ceil(prediction_length / patch_size) * patch_size)
         if rounded_steps > prediction_length and future_exogenous_variables is not None:
-            future_exogenous_variables = self.round_ft_ev(future_exogenous_variables, rounded_steps)
+            future_exogenous_variables = self.round_ft_ev(
+                future_exogenous_variables, rounded_steps
+            )
         start_index = inputs.shape[-1]
         end_index = start_index + prediction_length
 
@@ -235,14 +260,18 @@ class TotoForecaster:
 
             if future_exogenous_variables is not None:
                 start, stop = idx * patch_size, (idx + 1) * patch_size
-                samples[:, -num_exogenous_variables:] = future_exogenous_variables[:, :, start:stop]
+                samples[:, -num_exogenous_variables:] = future_exogenous_variables[
+                    :, :, start:stop
+                ]
 
             inputs = torch.cat([inputs, samples], dim=-1)
             id_mask = torch.cat([id_mask, dummy_id_mask], dim=-1)
             input_padding_mask = torch.cat([input_padding_mask, dummy_padding], dim=-1)
             for _ in range(patch_size):
                 next_timestamp = timestamp_seconds[:, :, -1] + time_interval_seconds
-                timestamp_seconds = torch.cat([timestamp_seconds, next_timestamp.unsqueeze(-1)], dim=-1)
+                timestamp_seconds = torch.cat(
+                    [timestamp_seconds, next_timestamp.unsqueeze(-1)], dim=-1
+                )
 
         return inputs.detach()[:, :, start_index:end_index]
 
@@ -254,7 +283,9 @@ class TotoForecaster:
         num_samples: int,
         timestamp_seconds: Int[torch.Tensor, "batch variate time_steps"],
         time_interval_seconds: Int[torch.Tensor, "batch variate"],
-        input_padding_mask: Bool[torch.Tensor, "batch variate time_steps"] | None = None,
+        input_padding_mask: (
+            Bool[torch.Tensor, "batch variate time_steps"] | None
+        ) = None,
         id_mask: Float[torch.Tensor, "batch #variate time_steps"] | None = None,
         sampling_batch_size: int = 10,
         use_kv_cache: bool = False,
@@ -262,25 +293,40 @@ class TotoForecaster:
         num_exogenous_variables: int = 0,
     ) -> Float[torch.Tensor, "batch variate time_steps samples"]:
         if input_padding_mask is None:
-            input_padding_mask = torch.ones_like(inputs, dtype=torch.bool, device=inputs.device)
+            input_padding_mask = torch.ones_like(
+                inputs, dtype=torch.bool, device=inputs.device
+            )
         if id_mask is None:
             id_mask = torch.zeros_like(inputs, dtype=torch.int, device=inputs.device)
 
         if future_exogenous_variables is not None:
-            self.assert_ev_compatibility(inputs, future_exogenous_variables, prediction_length, num_exogenous_variables)
+            self.assert_ev_compatibility(
+                inputs,
+                future_exogenous_variables,
+                prediction_length,
+                num_exogenous_variables,
+            )
 
-        assert num_samples % sampling_batch_size == 0, "num_samples must be divisible by sampling_batch_size"
+        assert (
+            num_samples % sampling_batch_size == 0
+        ), "num_samples must be divisible by sampling_batch_size"
         num_batches = num_samples // sampling_batch_size
 
         patch_size = self.model.patch_embed.patch_size
         rounded_steps = int(np.ceil(prediction_length / patch_size) * patch_size)
         if rounded_steps > prediction_length and future_exogenous_variables is not None:
-            future_exogenous_variables = self.round_ft_ev(future_exogenous_variables, rounded_steps)
+            future_exogenous_variables = self.round_ft_ev(
+                future_exogenous_variables, rounded_steps
+            )
         start_index = inputs.shape[-1]
         end_index = start_index + prediction_length
 
         dummy_padding = torch.ones(
-            (input_padding_mask.shape[0] * sampling_batch_size, input_padding_mask.shape[1], patch_size),
+            (
+                input_padding_mask.shape[0] * sampling_batch_size,
+                input_padding_mask.shape[1],
+                patch_size,
+            ),
             dtype=torch.bool,
             device=inputs.device,
         )
@@ -290,17 +336,37 @@ class TotoForecaster:
             sampling_batch_size=sampling_batch_size,
             patch_size=patch_size,
         )
-        inputs = repeat(inputs, "batch variates seq_len -> (sampling_batch_size batch) variates seq_len", sampling_batch_size=sampling_batch_size)
+        inputs = repeat(
+            inputs,
+            "batch variates seq_len -> (sampling_batch_size batch) variates seq_len",
+            sampling_batch_size=sampling_batch_size,
+        )
         if future_exogenous_variables is not None:
             future_exogenous_variables = repeat(
                 future_exogenous_variables,
                 "batch exogenous_variables future_time_steps -> (sampling_batch_size batch) exogenous_variables future_time_steps",
                 sampling_batch_size=sampling_batch_size,
             )
-        input_padding_mask = repeat(input_padding_mask, "batch variates seq_len -> (sampling_batch_size batch) variates seq_len", sampling_batch_size=sampling_batch_size)
-        id_mask = repeat(id_mask, "batch variates seq_len -> (sampling_batch_size batch) variates seq_len", sampling_batch_size=sampling_batch_size)
-        timestamp_seconds = repeat(timestamp_seconds, "batch variates seq_len -> (sampling_batch_size batch) variates seq_len", sampling_batch_size=sampling_batch_size)
-        time_interval_seconds = repeat(time_interval_seconds, "batch variates -> (sampling_batch_size batch) variates", sampling_batch_size=sampling_batch_size)
+        input_padding_mask = repeat(
+            input_padding_mask,
+            "batch variates seq_len -> (sampling_batch_size batch) variates seq_len",
+            sampling_batch_size=sampling_batch_size,
+        )
+        id_mask = repeat(
+            id_mask,
+            "batch variates seq_len -> (sampling_batch_size batch) variates seq_len",
+            sampling_batch_size=sampling_batch_size,
+        )
+        timestamp_seconds = repeat(
+            timestamp_seconds,
+            "batch variates seq_len -> (sampling_batch_size batch) variates seq_len",
+            sampling_batch_size=sampling_batch_size,
+        )
+        time_interval_seconds = repeat(
+            time_interval_seconds,
+            "batch variates -> (sampling_batch_size batch) variates",
+            sampling_batch_size=sampling_batch_size,
+        )
 
         all_samples = []
         if use_kv_cache:
@@ -340,13 +406,21 @@ class TotoForecaster:
 
                 if future_exogenous_variables is not None:
                     start, stop = idx * patch_size, (idx + 1) * patch_size
-                    samples[:, -num_exogenous_variables:] = future_exogenous_variables[:, :, start:stop]
+                    samples[:, -num_exogenous_variables:] = future_exogenous_variables[
+                        :, :, start:stop
+                    ]
                 batch_inputs = torch.cat([batch_inputs, samples], dim=-1)
                 batch_id_mask = torch.cat([batch_id_mask, dummy_id_mask], dim=-1)
-                batch_input_padding_mask = torch.cat([batch_input_padding_mask, dummy_padding], dim=-1)
+                batch_input_padding_mask = torch.cat(
+                    [batch_input_padding_mask, dummy_padding], dim=-1
+                )
                 for _ in range(patch_size):
-                    next_timestamp = batch_timestamp_seconds[:, :, -1] + time_interval_seconds
-                    batch_timestamp_seconds = torch.cat([batch_timestamp_seconds, next_timestamp.unsqueeze(-1)], dim=-1)
+                    next_timestamp = (
+                        batch_timestamp_seconds[:, :, -1] + time_interval_seconds
+                    )
+                    batch_timestamp_seconds = torch.cat(
+                        [batch_timestamp_seconds, next_timestamp.unsqueeze(-1)], dim=-1
+                    )
             all_samples.append(batch_inputs)
             if kv_cache is not None:
                 kv_cache.reset()
@@ -361,7 +435,9 @@ class TotoForecaster:
         return unfolded_outputs[:, :, start_index:end_index, :]
 
     @staticmethod
-    def create_affine_transformed(base_distr: Distribution, loc: torch.Tensor, scale: torch.Tensor) -> Distribution:
+    def create_affine_transformed(
+        base_distr: Distribution, loc: torch.Tensor, scale: torch.Tensor
+    ) -> Distribution:
         base_shape = base_distr.mean.shape
         base_time_dim = base_shape[-1]
         loc_time_dim = loc.shape[-1]
@@ -369,4 +445,8 @@ class TotoForecaster:
         if loc_time_dim == 1:
             return AffineTransformed(base_distr, loc=loc, scale=scale)
 
-        return AffineTransformed(base_distr, loc=loc[:, :, -base_time_dim:], scale=scale[:, :, -base_time_dim:])
+        return AffineTransformed(
+            base_distr,
+            loc=loc[:, :, -base_time_dim:],
+            scale=scale[:, :, -base_time_dim:],
+        )

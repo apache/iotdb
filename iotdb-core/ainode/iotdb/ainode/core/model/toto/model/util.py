@@ -59,13 +59,18 @@ class RMSNorm(torch.nn.Module):
         super(RMSNorm, self).__init__()
         self.eps = eps
         if include_weight:
-            self.scale: Optional[torch.nn.Parameter] = torch.nn.Parameter(torch.ones(dim))
+            self.scale: Optional[torch.nn.Parameter] = torch.nn.Parameter(
+                torch.ones(dim)
+            )
         else:
             self.scale = None
 
     def forward(self, x: torch.Tensor):
         if (
-            ((not self.training) or (self.scale is not None and not self.scale.requires_grad))
+            (
+                (not self.training)
+                or (self.scale is not None and not self.scale.requires_grad)
+            )
             and XFORMERS_RMSNORM_AVAILABLE
             and _is_triton_available()
         ):
@@ -75,7 +80,9 @@ class RMSNorm(torch.nn.Module):
         return x_normed if self.scale is None else x_normed * self.scale
 
     def increment_and_forward_(self, x: torch.Tensor, y: torch.Tensor):
-        if (not self.training) or (self.scale is not None and not self.scale.requires_grad):
+        if (not self.training) or (
+            self.scale is not None and not self.scale.requires_grad
+        ):
             return rms_norm_add(x, y, self.scale, self.eps)
         return self.forward(x + y)
 
@@ -85,8 +92,12 @@ def make_batched_block_mask(t: torch.Tensor) -> torch.Tensor:
     return unsqueezed == unsqueezed.transpose(-1, -2)
 
 
-K: TypeAlias = Float[torch.Tensor, "batch_size_X_num_variates num_heads seq_len head_dim"]
-V: TypeAlias = Float[torch.Tensor, "batch_size_X_num_variates num_heads seq_len head_dim"]
+K: TypeAlias = Float[
+    torch.Tensor, "batch_size_X_num_variates num_heads seq_len head_dim"
+]
+V: TypeAlias = Float[
+    torch.Tensor, "batch_size_X_num_variates num_heads seq_len head_dim"
+]
 KV: TypeAlias = tuple[K, V]
 
 
@@ -109,26 +120,42 @@ class KVCache:
     use_memory_efficient_attention: bool = True
 
     _keys: Union[
-        Float[torch.Tensor, "time_layer_count batch_size_X_num_variates max_seq_len num_heads head_dim"],
-        Float[torch.Tensor, "time_layer_count batch_size_X_num_variates num_heads max_seq_len head_dim"],
+        Float[
+            torch.Tensor,
+            "time_layer_count batch_size_X_num_variates max_seq_len num_heads head_dim",
+        ],
+        Float[
+            torch.Tensor,
+            "time_layer_count batch_size_X_num_variates num_heads max_seq_len head_dim",
+        ],
     ] = field(init=False)
 
     _values: Union[
-        Float[torch.Tensor, "time_layer_count batch_size_X_num_variates max_seq_len num_heads head_dim"],
-        Float[torch.Tensor, "time_layer_count batch_size_X_num_variates num_heads max_seq_len head_dim"],
+        Float[
+            torch.Tensor,
+            "time_layer_count batch_size_X_num_variates max_seq_len num_heads head_dim",
+        ],
+        Float[
+            torch.Tensor,
+            "time_layer_count batch_size_X_num_variates num_heads max_seq_len head_dim",
+        ],
     ] = field(init=False)
 
     _current_idx: Int[torch.Tensor, "time_layer_count"] = field(init=False)
     _layer_cache_map: Int[torch.Tensor, "num_layers"] = field(init=False)
 
     def __post_init__(self):
-        assert self.embed_dim % self.num_heads == 0, "embed_dim must be divisible by num_heads"
+        assert (
+            self.embed_dim % self.num_heads == 0
+        ), "embed_dim must be divisible by num_heads"
         head_dim = self.embed_dim // self.num_heads
 
         time_layer_indices = [
             i
             for i in range(self.num_layers)
-            if isinstance(self.transformer_layers[i].attention, TimeWiseMultiheadAttention)
+            if isinstance(
+                self.transformer_layers[i].attention, TimeWiseMultiheadAttention
+            )
         ]
 
         time_layer_count = max(1, len(time_layer_indices))
@@ -150,8 +177,12 @@ class KVCache:
             )
         self._keys = torch.zeros(shape, device=self.device, dtype=self.dtype)
         self._values = torch.zeros_like(self._keys)
-        self._current_idx = torch.zeros(time_layer_count, device=self.device, dtype=torch.int)
-        self._layer_cache_map = torch.zeros((self.num_layers,), dtype=torch.int, device=self.device)
+        self._current_idx = torch.zeros(
+            time_layer_count, device=self.device, dtype=torch.int
+        )
+        self._layer_cache_map = torch.zeros(
+            (self.num_layers,), dtype=torch.int, device=self.device
+        )
         for cache_idx, layer_idx in enumerate(time_layer_indices):
             self._layer_cache_map[layer_idx] = int(cache_idx)
 
@@ -160,12 +191,22 @@ class KVCache:
         end_idx = int(self._current_idx[cache_idx].item())
 
         if self.use_memory_efficient_attention:
-            return self._keys[cache_idx, :, :end_idx, :, :], self._values[cache_idx, :, :end_idx, :, :]
+            return (
+                self._keys[cache_idx, :, :end_idx, :, :],
+                self._values[cache_idx, :, :end_idx, :, :],
+            )
         else:
-            return self._keys[cache_idx, :, :, :end_idx, :], self._values[cache_idx, :, :, :end_idx, :]
+            return (
+                self._keys[cache_idx, :, :, :end_idx, :],
+                self._values[cache_idx, :, :, :end_idx, :],
+            )
 
     def current_len(self, cache_idx: int) -> int:
-        return int(self._current_idx[cache_idx].item()) if self._current_idx.numel() > 0 else 0
+        return (
+            int(self._current_idx[cache_idx].item())
+            if self._current_idx.numel() > 0
+            else 0
+        )
 
     def seq_len(self, layer_idx: int) -> int:
         cache_idx = int(self._layer_cache_map[layer_idx].item())
@@ -191,9 +232,9 @@ class KVCache:
             end_idx = start_idx + keys.shape[1]
         else:
             end_idx = start_idx + keys.shape[2]
-        assert end_idx <= self.max_seq_len, (
-            f"max_seq_len exceeded {end_idx} > {self.max_seq_len}, keys.shape: {keys.shape}"
-        )
+        assert (
+            end_idx <= self.max_seq_len
+        ), f"max_seq_len exceeded {end_idx} > {self.max_seq_len}, keys.shape: {keys.shape}"
 
         if self.use_memory_efficient_attention:
             self._keys[cache_idx, :, start_idx:end_idx, :, :] = keys

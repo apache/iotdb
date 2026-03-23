@@ -37,7 +37,9 @@ class Fusion(torch.nn.Module):
     def forward(
         self,
         embeddings: Float[torch.Tensor, "batch variate seq_len embed_dim"],
-        variate_label_embeds: Optional[Float[torch.Tensor, "batch variate 1 embed_dim"]] = None,
+        variate_label_embeds: Optional[
+            Float[torch.Tensor, "batch variate 1 embed_dim"]
+        ] = None,
     ) -> Float[torch.Tensor, "batch variate new_seq_len embed_dim"]:
 
         if variate_label_embeds is None:
@@ -46,6 +48,11 @@ class Fusion(torch.nn.Module):
         processed_embeddings = F.normalize(variate_label_embeds, p=2, dim=-1)
 
         return torch.cat(
-            [processed_embeddings.to(dtype=embeddings.dtype, device=embeddings.device, non_blocking=True), embeddings],
+            [
+                processed_embeddings.to(
+                    dtype=embeddings.dtype, device=embeddings.device, non_blocking=True
+                ),
+                embeddings,
+            ],
             dim=2,
         )

@@ -69,7 +69,9 @@ class BaseMultiheadAttention(torch.nn.Module):
         super().__init__()
         self.embed_dim = embed_dim
         self.num_heads = num_heads
-        assert embed_dim % num_heads == 0, "Embedding dimension must be divisible by number of heads."
+        assert (
+            embed_dim % num_heads == 0
+        ), "Embedding dimension must be divisible by number of heads."
         self.head_dim = embed_dim // num_heads
         self.rotary_emb = rotary_emb
 
@@ -82,8 +84,13 @@ class BaseMultiheadAttention(torch.nn.Module):
             not XFORMERS_AVAILABLE and self.use_memory_efficient_attention
         ), "XFORMERS_AVAILABLE is False, so use_memory_efficient_attention must be False"
 
-        if not hasattr(self, "attention_axis") or self.attention_axis not in (AttentionAxis.TIME, AttentionAxis.SPACE):
-            raise ValueError("Child class must define attention_axis as AttentionAxis.TIME or AttentionAxis.SPACE.")
+        if not hasattr(self, "attention_axis") or self.attention_axis not in (
+            AttentionAxis.TIME,
+            AttentionAxis.SPACE,
+        ):
+            raise ValueError(
+                "Child class must define attention_axis as AttentionAxis.TIME or AttentionAxis.SPACE."
+            )
 
     def rearrange_inputs(
         self, inputs: Float[torch.Tensor, "batch variate seq_len embed_dim"]
@@ -96,24 +103,40 @@ class BaseMultiheadAttention(torch.nn.Module):
         return rearrange(inputs, pattern)
 
     def get_qkv(self, inputs: torch.Tensor) -> tuple[torch.Tensor, ...]:
-        if self.attention_axis == AttentionAxis.TIME and self.use_memory_efficient_attention:
+        if (
+            self.attention_axis == AttentionAxis.TIME
+            and self.use_memory_efficient_attention
+        ):
             pattern = "batch_X_variate seq_len (qkv head_dim n_heads) -> qkv batch_X_variate seq_len n_heads head_dim"
-        elif self.attention_axis == AttentionAxis.TIME and not self.use_memory_efficient_attention:
+        elif (
+            self.attention_axis == AttentionAxis.TIME
+            and not self.use_memory_efficient_attention
+        ):
             pattern = "batch_X_variate seq_len (qkv head_dim n_heads) -> qkv batch_X_variate n_heads seq_len head_dim"
-        elif self.attention_axis == AttentionAxis.SPACE and self.use_memory_efficient_attention:
+        elif (
+            self.attention_axis == AttentionAxis.SPACE
+            and self.use_memory_efficient_attention
+        ):
             pattern = "batch_X_seq_len variate (qkv head_dim n_heads) -> qkv batch_X_seq_len variate n_heads head_dim"
-        elif self.attention_axis == AttentionAxis.SPACE and not self.use_memory_efficient_attention:
+        elif (
+            self.attention_axis == AttentionAxis.SPACE
+            and not self.use_memory_efficient_attention
+        ):
             pattern = "batch_X_seq_len variate (qkv head_dim n_heads) -> qkv batch_X_seq_len n_heads variate head_dim"
 
         qkv = self.wQKV(inputs.contiguous())
-        return rearrange(qkv, pattern, qkv=3, head_dim=self.head_dim, n_heads=self.num_heads).unbind(dim=0)
+        return rearrange(
+            qkv, pattern, qkv=3, head_dim=self.head_dim, n_heads=self.num_heads
+        ).unbind(dim=0)
 
     def positional_embedding(self, q, k, v, kv_cache, layer_idx):
         seq_pos_offset = 0
         if self.rotary_emb is not None and self.attention_axis == AttentionAxis.TIME:
             if kv_cache is not None:
                 seq_pos_offset = kv_cache.seq_len(layer_idx)
-            q, k = self.rotary_emb.rotate_queries_and_keys(q, k, seq_pos_offset=seq_pos_offset)
+            q, k = self.rotary_emb.rotate_queries_and_keys(
+                q, k, seq_pos_offset=seq_pos_offset
+            )
 
         if kv_cache is not None and self.attention_axis == AttentionAxis.TIME:
             kv_cache.append(layer_idx, (k, v))
@@ -128,53 +151,89 @@ class BaseMultiheadAttention(torch.nn.Module):
     def rearrange_output(
         self, output: torch.Tensor, batch: int, variate: int, seq_len: int
     ) -> Float[torch.Tensor, "batch variate seq_len embed_dim"]:
-        if self.attention_axis == AttentionAxis.TIME and self.use_memory_efficient_attention:
+        if (
+            self.attention_axis == AttentionAxis.TIME
+            and self.use_memory_efficient_attention
+        ):
             pattern = "(batch variate) seq_len n_heads head_dim -> batch variate seq_len (n_heads head_dim)"
-        elif self.attention_axis == AttentionAxis.TIME and not self.use_memory_efficient_attention:
+        elif (
+            self.attention_axis == AttentionAxis.TIME
+            and not self.use_memory_efficient_attention
+        ):
             pattern = "(batch variate) n_heads seq_len head_dim -> batch variate seq_len (n_heads head_dim)"
-        elif self.attention_axis == AttentionAxis.SPACE and self.use_memory_efficient_attention:
+        elif (
+            self.attention_axis == AttentionAxis.SPACE
+            and self.use_memory_efficient_attention
+        ):
             pattern = "(batch seq_len) variate n_heads head_dim -> batch variate seq_len (n_heads head_dim)"
-        elif self.attention_axis == AttentionAxis.SPACE and not self.use_memory_efficient_attention:
+        elif (
+            self.attention_axis == AttentionAxis.SPACE
+            and not self.use_memory_efficient_attention
+        ):
             pattern = "(batch seq_len) n_heads variate head_dim -> batch variate seq_len (n_heads head_dim)"
 
         return rearrange(output, pattern, batch=batch, variate=variate, seq_len=seq_len)
 
-    def run_attention(self, attention_mask, q, k, v, seq_pos_offset, dropout, seq_len, variate):
+    def run_attention(
+        self, attention_mask, q, k, v, seq_pos_offset, dropout, seq_len, variate
+    ):
         q_dim_start, q_dim_end = seq_pos_offset, seq_pos_offset + seq_len
-        kv_dim_start, kv_dim_end = 0, v.shape[1] if self.use_memory_efficient_attention else v.shape[2]
-        if self.attention_axis == AttentionAxis.TIME and self.use_memory_efficient_attention:
+        kv_dim_start, kv_dim_end = 0, (
+            v.shape[1] if self.use_memory_efficient_attention else v.shape[2]
+        )
+        if (
+            self.attention_axis == AttentionAxis.TIME
+            and self.use_memory_efficient_attention
+        ):
             attention_mask = (
                 attention_mask[..., q_dim_start:q_dim_end, kv_dim_start:kv_dim_end]
                 if torch.is_tensor(attention_mask)
                 else LowerTriangularMask() if seq_pos_offset == 0 else None
             )
-            return memory_efficient_attention(q, k, v, attn_bias=attention_mask, p=dropout)
-        elif self.attention_axis == AttentionAxis.TIME and not self.use_memory_efficient_attention:
+            return memory_efficient_attention(
+                q, k, v, attn_bias=attention_mask, p=dropout
+            )
+        elif (
+            self.attention_axis == AttentionAxis.TIME
+            and not self.use_memory_efficient_attention
+        ):
             attention_mask = (
                 attention_mask[..., q_dim_start:q_dim_end, kv_dim_start:kv_dim_end]
                 if torch.is_tensor(attention_mask)
                 else None
             )
             return scaled_dot_product_attention(
-                q, k, v,
+                q,
+                k,
+                v,
                 attn_mask=attention_mask,
                 dropout_p=dropout,
                 is_causal=(attention_mask is None and seq_pos_offset == 0),
             )
-        elif self.attention_axis == AttentionAxis.SPACE and self.use_memory_efficient_attention:
+        elif (
+            self.attention_axis == AttentionAxis.SPACE
+            and self.use_memory_efficient_attention
+        ):
             attention_mask = (
                 attention_mask[..., kv_dim_start:kv_dim_end, kv_dim_start:kv_dim_end]
                 if torch.is_tensor(attention_mask)
                 else None
             )
-            return memory_efficient_attention(q, k, v, attn_bias=attention_mask, p=dropout)
-        elif self.attention_axis == AttentionAxis.SPACE and not self.use_memory_efficient_attention:
+            return memory_efficient_attention(
+                q, k, v, attn_bias=attention_mask, p=dropout
+            )
+        elif (
+            self.attention_axis == AttentionAxis.SPACE
+            and not self.use_memory_efficient_attention
+        ):
             attention_mask = (
                 attention_mask[..., kv_dim_start:kv_dim_end, kv_dim_start:kv_dim_end]
                 if torch.is_tensor(attention_mask)
                 else None
             )
-            return scaled_dot_product_attention(q, k, v, attn_mask=attention_mask, dropout_p=dropout, is_causal=False)
+            return scaled_dot_product_attention(
+                q, k, v, attn_mask=attention_mask, dropout_p=dropout, is_causal=False
+            )
 
     def forward(
         self,
@@ -194,9 +253,13 @@ class BaseMultiheadAttention(torch.nn.Module):
         rearranged_inputs = self.rearrange_inputs(inputs)
         q, k, v = self.get_qkv(rearranged_inputs)
 
-        q, k, v, seq_pos_offset = self.positional_embedding(q, k, v, kv_cache, layer_idx)
+        q, k, v, seq_pos_offset = self.positional_embedding(
+            q, k, v, kv_cache, layer_idx
+        )
 
-        output = self.run_attention(attention_mask, q, k, v, seq_pos_offset, dropout, seq_len, variate)
+        output = self.run_attention(
+            attention_mask, q, k, v, seq_pos_offset, dropout, seq_len, variate
+        )
 
         output = self.rearrange_output(output, batch_size, variate, seq_len)
         return self.wO(output)

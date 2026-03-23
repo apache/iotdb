@@ -105,8 +105,12 @@ class TotoBackbone(torch.nn.Module):
         )
         self.unembed = torch.nn.Linear(embed_dim, embed_dim * patch_size)
 
-        output_distribution_classes_ = [DISTRIBUTION_CLASSES_LOOKUP[c] for c in output_distribution_classes]
-        self.output_distribution = output_distribution_classes_[0](embed_dim, **(output_distribution_kwargs or {}))
+        output_distribution_classes_ = [
+            DISTRIBUTION_CLASSES_LOOKUP[c] for c in output_distribution_classes
+        ]
+        self.output_distribution = output_distribution_classes_[0](
+            embed_dim, **(output_distribution_kwargs or {})
+        )
 
     def allocate_kv_cache(
         self,
@@ -152,9 +156,13 @@ class TotoBackbone(torch.nn.Module):
         if kv_cache is not None:
             kv_cache_len_tensor = kv_cache.current_len(0)
             kv_cache_len = (
-                int(kv_cache_len_tensor) if isinstance(kv_cache_len_tensor, torch.Tensor) else kv_cache_len_tensor
+                int(kv_cache_len_tensor)
+                if isinstance(kv_cache_len_tensor, torch.Tensor)
+                else kv_cache_len_tensor
             )
-            prefix_len = max(0, self.patch_embed.stride * (kv_cache_len - self.num_prepended_tokens))
+            prefix_len = max(
+                0, self.patch_embed.stride * (kv_cache_len - self.num_prepended_tokens)
+            )
 
             scaled_inputs = scaled_inputs[:, :, prefix_len:]
 
@@ -167,18 +175,27 @@ class TotoBackbone(torch.nn.Module):
 
         embeddings, reduced_id_mask = self.patch_embed(scaled_inputs, id_mask)
 
-        variate_label_embeds = self.build_variate_label_embeds(num_exogenous_variables, embeddings)
+        variate_label_embeds = self.build_variate_label_embeds(
+            num_exogenous_variables, embeddings
+        )
 
         original_seq_len = embeddings.shape[2]
-        transformed = self.transformer(embeddings, reduced_id_mask, kv_cache, variate_label_embeds=variate_label_embeds)
+        transformed = self.transformer(
+            embeddings,
+            reduced_id_mask,
+            kv_cache,
+            variate_label_embeds=variate_label_embeds,
+        )
         added_tokens = transformed.shape[2] - original_seq_len
         if added_tokens > 0:
             transformed = transformed[:, :, added_tokens:]
 
-        flattened: Float[torch.Tensor, "batch variates new_seq_len embed_dim"] = rearrange(
-            self.unembed(transformed),
-            "batch variates seq_len (patch_size embed_dim) -> batch variates (seq_len patch_size) embed_dim",
-            embed_dim=self.embed_dim,
+        flattened: Float[torch.Tensor, "batch variates new_seq_len embed_dim"] = (
+            rearrange(
+                self.unembed(transformed),
+                "batch variates seq_len (patch_size embed_dim) -> batch variates (seq_len patch_size) embed_dim",
+                embed_dim=self.embed_dim,
+            )
         )
         return flattened, loc, scale
 
@@ -227,13 +244,15 @@ class TotoBackbone(torch.nn.Module):
 
         batch_size, num_variates, _, _ = embeddings.shape
 
-        target_variate_label = repeat(self.target_variate_label, "d -> b v 1 d", b=batch_size, v=num_variates).to(
-            device=embeddings.device, dtype=embeddings.dtype
+        target_variate_label = repeat(
+            self.target_variate_label, "d -> b v 1 d", b=batch_size, v=num_variates
+        ).to(device=embeddings.device, dtype=embeddings.dtype)
+        exogenous_variate_label = repeat(
+            self.exogenous_variate_label, "d -> b v 1 d", b=batch_size, v=num_variates
+        ).to(device=embeddings.device, dtype=embeddings.dtype)
+        exog_mask = torch.zeros(
+            1, num_variates, 1, 1, dtype=torch.bool, device=embeddings.device
         )
-        exogenous_variate_label = repeat(self.exogenous_variate_label, "d -> b v 1 d", b=batch_size, v=num_variates).to(
-            device=embeddings.device, dtype=embeddings.dtype
-        )
-        exog_mask = torch.zeros(1, num_variates, 1, 1, dtype=torch.bool, device=embeddings.device)
         if num_exogenous_variables > 0:
             exog_mask[:, -num_exogenous_variables:] = True
         return torch.where(exog_mask, exogenous_variate_label, target_variate_label)

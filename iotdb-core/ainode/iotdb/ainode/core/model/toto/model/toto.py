@@ -93,7 +93,9 @@ class Toto(torch.nn.Module):
         if os.path.exists(safetensors_file):
             model_state = safetorch.load_file(safetensors_file, device=map_location)
         else:
-            raise FileNotFoundError(f"Model checkpoint not found at: {safetensors_file}")
+            raise FileNotFoundError(
+                f"Model checkpoint not found at: {safetensors_file}"
+            )
 
         config_file = os.path.join(checkpoint_path, "config.json")
         config = {}
@@ -104,10 +106,14 @@ class Toto(torch.nn.Module):
         config.update(model_kwargs)
 
         remapped_state_dict = cls._map_state_dict_keys(
-            model_state, XFORMERS_SWIGLU_AVAILABLE and not config.get("pre_xformers_checkpoint", False)
+            model_state,
+            XFORMERS_SWIGLU_AVAILABLE
+            and not config.get("pre_xformers_checkpoint", False),
         )
 
-        if not XFORMERS_AVAILABLE and config.get("use_memory_efficient_attention", True):
+        if not XFORMERS_AVAILABLE and config.get(
+            "use_memory_efficient_attention", True
+        ):
             config["use_memory_efficient_attention"] = False
 
         instance = cls(**config)
