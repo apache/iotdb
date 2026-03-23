@@ -2831,6 +2831,88 @@ public class DataRegion implements IDataRegionForQuery {
         .forEach(unsealedResource::add);
   }
 
+  private DeleteMaterializationBarrierContext beginDeleteMaterializationBarrierIfNecessary(
+      final boolean shouldUseBarrier) {
+    if (!shouldUseBarrier) {
+      return null;
+    }
+
+    return new DeleteMaterializationBarrierContext(
+        dataRegionId.getId(),
+        PipeTsFileDeletionBarrier.getInstance().beginDeletion(dataRegionId.getId()));
+  }
+
+  private Set<String> collectImpactedTsFilePaths(
+      final Collection<TsFileResource> sealedTsFiles, final ModEntry deletion) {
+    return sealedTsFiles.stream()
+        .filter(resource -> !canSkipDelete(resource, deletion))
+        .map(TsFileResource::getTsFilePath)
+        .collect(Collectors.toSet());
+  }
+
+  private void resolveDeleteMaterializationTargets(
+      final DeleteMaterializationBarrierContext barrierContext,
+      final Collection<String> tsFilePaths) {
+    if (Objects.isNull(barrierContext) || barrierContext.resolved) {
+      return;
+    }
+
+    barrierContext.tsFilePaths.addAll(tsFilePaths);
+    PipeTsFileDeletionBarrier.getInstance()
+        .resolveDeletionTargets(
+            barrierContext.regionId, barrierContext.deleteSeq, barrierContext.tsFilePaths);
+    barrierContext.resolved = true;
+  }
+
+  private void awaitSnapshotsBeforeMaterializing(
+      final DeleteMaterializationBarrierContext barrierContext,
+      final Collection<TsFileResource> sealedTsFiles,
+      final ModEntry deletion)
+      throws InterruptedException {
+    if (Objects.isNull(barrierContext)) {
+      return;
+    }
+
+    final PipeTsFileDeletionBarrier barrier = PipeTsFileDeletionBarrier.getInstance();
+    for (final TsFileResource sealedTsFile : sealedTsFiles) {
+      if (!canSkipDelete(sealedTsFile, deletion)) {
+        barrier.awaitSnapshotsBeforeMaterialization(
+            sealedTsFile.getTsFilePath(), barrierContext.deleteSeq);
+      }
+    }
+  }
+
+  private void finishDeleteMaterializationBarrier(
+      final DeleteMaterializationBarrierContext barrierContext) {
+    if (Objects.isNull(barrierContext) || barrierContext.finished) {
+      return;
+    }
+
+    if (!barrierContext.resolved) {
+      PipeTsFileDeletionBarrier.getInstance()
+          .resolveDeletionTargets(
+              barrierContext.regionId, barrierContext.deleteSeq, Collections.emptySet());
+      barrierContext.resolved = true;
+    }
+
+    PipeTsFileDeletionBarrier.getInstance()
+        .finishDeletion(barrierContext.deleteSeq, barrierContext.tsFilePaths);
+    barrierContext.finished = true;
+  }
+
+  private static class DeleteMaterializationBarrierContext {
+    private final int regionId;
+    private final long deleteSeq;
+    private final Set<String> tsFilePaths = new HashSet<>();
+    private boolean resolved = false;
+    private boolean finished = false;
+
+    private DeleteMaterializationBarrierContext(final int regionId, final long deleteSeq) {
+      this.regionId = regionId;
+      this.deleteSeq = deleteSeq;
+    }
+  }
+
   public void deleteByDevice(final MeasurementPath pattern, final DeleteDataNode node)
       throws IOException {
     if (SettleService.getINSTANCE().getFilesToBeSettledCount().get() != 0) {
@@ -2864,6 +2946,9 @@ public class DataRegion implements IDataRegionForQuery {
       }
 
       ModEntry deletion = new TreeDeletionEntry(pattern, startTime, endTime);
+      final DeleteMaterializationBarrierContext barrierContext =
+          beginDeleteMaterializationBarrierIfNecessary(
+              DeletionResource.isDeleteNodeGeneratedInLocalByIoTV2(node));
 
       List<TsFileResource> sealedTsFileResource = new ArrayList<>();
       List<TsFileResource> unsealedTsFileResource = new ArrayList<>();
@@ -2871,17 +2956,8 @@ public class DataRegion implements IDataRegionForQuery {
       // deviceMatchInfo is used for filter the matched deviceId in TsFileResource
       // deviceMatchInfo contains the DeviceId means this device matched the pattern
       deleteDataInUnsealedFiles(unsealedTsFileResource, deletion, sealedTsFileResource);
-
-      // Prevent a TsFile event from being pinned/transferred before this deletion is materialized
-      // to its corresponding mod files.
-      final Set<String> tsFilePathsPendingDeletion =
-          DeletionResource.isDeleteNodeGeneratedInLocalByIoTV2(node)
-              ? sealedTsFileResource.stream()
-                  .filter(resource -> !canSkipDelete(resource, deletion))
-                  .map(TsFileResource::getTsFilePath)
-                  .collect(Collectors.toSet())
-              : Collections.emptySet();
-      PipeTsFileDeletionBarrier.getInstance().registerPendingDeletion(tsFilePathsPendingDeletion);
+      resolveDeleteMaterializationTargets(
+          barrierContext, collectImpactedTsFilePaths(sealedTsFileResource, deletion));
       try {
         // capture deleteDataNode and wait it to be persisted to DAL.
         final DeletionResource deletionResource =
@@ -2894,11 +2970,15 @@ public class DataRegion implements IDataRegionForQuery {
         writeUnlock();
         hasReleasedLock = true;
 
+        awaitSnapshotsBeforeMaterializing(barrierContext, sealedTsFileResource, deletion);
         deleteDataInSealedFiles(sealedTsFileResource, deletion);
       } finally {
-        PipeTsFileDeletionBarrier.getInstance().releasePendingDeletion(tsFilePathsPendingDeletion);
+        finishDeleteMaterializationBarrier(barrierContext);
       }
     } catch (Exception e) {
+      if (e instanceof InterruptedException) {
+        Thread.currentThread().interrupt();
+      }
       throw new IOException(e);
     } finally {
       if (!hasReleasedLock) {
@@ -2975,6 +3055,9 @@ public class DataRegion implements IDataRegionForQuery {
         }
       }
 
+      final DeleteMaterializationBarrierContext barrierContext =
+          beginDeleteMaterializationBarrierIfNecessary(
+              DeletionResource.isDeleteNodeGeneratedInLocalByIoTV2(node));
       List<List<TsFileResource>> sealedTsFileResourceLists = new ArrayList<>(modEntries.size());
       for (TableDeletionEntry modEntry : modEntries) {
         List<TsFileResource> sealedTsFileResource = new ArrayList<>();
@@ -2990,18 +3073,12 @@ public class DataRegion implements IDataRegionForQuery {
         sealedTsFileResourceLists.add(sealedTsFileResource);
       }
 
-      final Set<String> tsFilePathsPendingDeletion = new HashSet<>();
-      if (DeletionResource.isDeleteNodeGeneratedInLocalByIoTV2(node)) {
-        for (int i = 0; i < modEntries.size(); i++) {
-          final TableDeletionEntry modEntry = modEntries.get(i);
-          tsFilePathsPendingDeletion.addAll(
-              sealedTsFileResourceLists.get(i).stream()
-                  .filter(resource -> !canSkipDelete(resource, modEntry))
-                  .map(TsFileResource::getTsFilePath)
-                  .collect(Collectors.toSet()));
-        }
+      final Set<String> impactedTsFilePaths = new HashSet<>();
+      for (int i = 0; i < modEntries.size(); i++) {
+        impactedTsFilePaths.addAll(
+            collectImpactedTsFilePaths(sealedTsFileResourceLists.get(i), modEntries.get(i)));
       }
-      PipeTsFileDeletionBarrier.getInstance().registerPendingDeletion(tsFilePathsPendingDeletion);
+      resolveDeleteMaterializationTargets(barrierContext, impactedTsFilePaths);
       try {
         // capture deleteDataNode and wait it to be persisted to DAL.
         final DeletionResource deletionResource =
@@ -3016,12 +3093,17 @@ public class DataRegion implements IDataRegionForQuery {
         hasReleasedLock = true;
 
         for (int i = 0; i < modEntries.size(); i++) {
+          awaitSnapshotsBeforeMaterializing(
+              barrierContext, sealedTsFileResourceLists.get(i), modEntries.get(i));
           deleteDataInSealedFiles(sealedTsFileResourceLists.get(i), modEntries.get(i));
         }
       } finally {
-        PipeTsFileDeletionBarrier.getInstance().releasePendingDeletion(tsFilePathsPendingDeletion);
+        finishDeleteMaterializationBarrier(barrierContext);
       }
     } catch (Exception e) {
+      if (e instanceof InterruptedException) {
+        Thread.currentThread().interrupt();
+      }
       throw new IOException(e);
     } finally {
       if (!hasReleasedLock) {
@@ -3060,18 +3142,15 @@ public class DataRegion implements IDataRegionForQuery {
         }
       }
       TreeDeletionEntry deletion = new TreeDeletionEntry(pathToDelete, startTime, endTime);
+      final DeleteMaterializationBarrierContext barrierContext =
+          beginDeleteMaterializationBarrierIfNecessary(
+              DeletionResource.isDeleteNodeGeneratedInLocalByIoTV2(node));
       List<TsFileResource> sealedTsFileResource = new ArrayList<>();
       List<TsFileResource> unsealedTsFileResource = new ArrayList<>();
       getTwoKindsOfTsFiles(sealedTsFileResource, unsealedTsFileResource, startTime, endTime);
       deleteDataDirectlyInFile(unsealedTsFileResource, deletion);
-      final Set<String> tsFilePathsPendingDeletion =
-          DeletionResource.isDeleteNodeGeneratedInLocalByIoTV2(node)
-              ? sealedTsFileResource.stream()
-                  .filter(resource -> !canSkipDelete(resource, deletion))
-                  .map(TsFileResource::getTsFilePath)
-                  .collect(Collectors.toSet())
-              : Collections.emptySet();
-      PipeTsFileDeletionBarrier.getInstance().registerPendingDeletion(tsFilePathsPendingDeletion);
+      resolveDeleteMaterializationTargets(
+          barrierContext, collectImpactedTsFilePaths(sealedTsFileResource, deletion));
       try {
         // capture deleteDataNode and wait it to be persisted to DAL.
         final DeletionResource deletionResource =
@@ -3083,11 +3162,15 @@ public class DataRegion implements IDataRegionForQuery {
         }
         writeUnlock();
         releasedLock = true;
+        awaitSnapshotsBeforeMaterializing(barrierContext, sealedTsFileResource, deletion);
         deleteDataDirectlyInFile(sealedTsFileResource, deletion);
       } finally {
-        PipeTsFileDeletionBarrier.getInstance().releasePendingDeletion(tsFilePathsPendingDeletion);
+        finishDeleteMaterializationBarrier(barrierContext);
       }
     } catch (Exception e) {
+      if (e instanceof InterruptedException) {
+        Thread.currentThread().interrupt();
+      }
       throw new IOException(e);
     } finally {
       if (!releasedLock) {
