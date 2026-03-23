@@ -47,6 +47,7 @@ class TotoConfig(PretrainedConfig):
         spacewise_every_n_layers: int = 3,
         scaler_cls: str = "per_variate_causal",
         output_distribution_classes: Optional[List[str]] = None,
+        output_distribution_kwargs: Optional[dict] = None,
         spacewise_first: bool = True,
         use_memory_efficient_attention: bool = True,
         stabilize_with_global: bool = True,
@@ -65,6 +66,8 @@ class TotoConfig(PretrainedConfig):
         self.output_distribution_classes = output_distribution_classes or [
             "student_t_mixture"
         ]
+        # k_components=5 is the default used by Datadog/Toto-Open-Base-1.0
+        self.output_distribution_kwargs = output_distribution_kwargs or {"k_components": 5}
         self.spacewise_first = spacewise_first
         self.use_memory_efficient_attention = use_memory_efficient_attention
         self.stabilize_with_global = stabilize_with_global

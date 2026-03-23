@@ -296,4 +296,8 @@ scaler_types = {
     "<class 'model.scaler.StdMeanScaler'>": StdMeanScaler,
     "<class 'model.scaler.CausalStdMeanScaler'>": CausalStdMeanScaler,
     "<class 'model.scaler.CausalPatchStdMeanScaler'>": CausalPatchStdMeanScaler,
+    # Short aliases used in config.json
+    "per_variate": StdMeanScaler,
+    "per_variate_causal": CausalStdMeanScaler,
+    "per_variate_causal_patch": CausalPatchStdMeanScaler,
 }

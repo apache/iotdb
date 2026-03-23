@@ -73,6 +73,7 @@ class TotoForPrediction(TotoPreTrainedModel):
             spacewise_every_n_layers=config.spacewise_every_n_layers,
             scaler_cls=config.scaler_cls,
             output_distribution_classes=config.output_distribution_classes,
+            output_distribution_kwargs=config.output_distribution_kwargs,
             spacewise_first=config.spacewise_first,
             use_memory_efficient_attention=config.use_memory_efficient_attention,
             stabilize_with_global=config.stabilize_with_global,

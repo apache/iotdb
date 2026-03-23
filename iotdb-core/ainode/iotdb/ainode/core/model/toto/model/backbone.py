@@ -76,7 +76,10 @@ class TotoBackbone(torch.nn.Module):
         self.target_variate_label: Optional[torch.nn.Parameter] = None
         self.exogenous_variate_label: Optional[torch.nn.Parameter] = None
 
-        if scaler_cls == "<class 'model.scaler.CausalPatchStdMeanScaler'>":
+        if scaler_cls in (
+            "<class 'model.scaler.CausalPatchStdMeanScaler'>",
+            "per_variate_causal_patch",
+        ):
             self.scaler = scaler_types[scaler_cls](
                 patch_size=patch_size,
                 stabilize_with_global=stabilize_with_global,
