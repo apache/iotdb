@@ -423,7 +423,7 @@ def install_dependencies(venv_python, venv_dir, script_dir):
         [str(poetry_exe), "lock"],
         cwd=str(script_dir),
         env=venv_env,
-        check=True,
+        check=False,
         capture_output=True,
         text=True,
     )
@@ -431,6 +431,9 @@ def install_dependencies(venv_python, venv_dir, script_dir):
         print(result.stdout)
     if result.stderr:
         print(result.stderr)
+    if result.returncode != 0:
+        print(f"ERROR: poetry lock failed with exit code {result.returncode}")
+        sys.exit(1)
     verify_poetry_env()  # Verify after lock
 
     accelerator = detect_accelerator()
