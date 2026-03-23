@@ -51,7 +51,7 @@ jobs:
           # 确保日志目录存在
           mkdir -p integration-test/target/cluster-logs
           
-          local -i attempt=1
+          attempt=1
           
           while true; do
             echo "===================================================="
