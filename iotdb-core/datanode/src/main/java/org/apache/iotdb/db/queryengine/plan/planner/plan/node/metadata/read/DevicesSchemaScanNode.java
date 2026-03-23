@@ -40,7 +40,7 @@ import java.util.stream.Collectors;
 
 public class DevicesSchemaScanNode extends SchemaQueryScanNode {
 
-  private final boolean hasSgCol;
+  private final boolean hasDbCol;
   private final SchemaFilter schemaFilter;
 
   public DevicesSchemaScanNode(
@@ -49,16 +49,16 @@ public class DevicesSchemaScanNode extends SchemaQueryScanNode {
       long limit,
       long offset,
       boolean isPrefixPath,
-      boolean hasSgCol,
+      boolean hasDbCol,
       SchemaFilter schemaFilter,
       PathPatternTree scope) {
     super(id, path, limit, offset, isPrefixPath, scope);
-    this.hasSgCol = hasSgCol;
+    this.hasDbCol = hasDbCol;
     this.schemaFilter = schemaFilter;
   }
 
-  public boolean isHasSgCol() {
-    return hasSgCol;
+  public boolean isHasDbCol() {
+    return hasDbCol;
   }
 
   public SchemaFilter getSchemaFilter() {
@@ -73,13 +73,13 @@ public class DevicesSchemaScanNode extends SchemaQueryScanNode {
   @Override
   public PlanNode clone() {
     return new DevicesSchemaScanNode(
-        getPlanNodeId(), path, limit, offset, isPrefixPath, hasSgCol, schemaFilter, scope);
+        getPlanNodeId(), path, limit, offset, isPrefixPath, hasDbCol, schemaFilter, scope);
   }
 
   @Override
   public List<String> getOutputColumnNames() {
-    if (hasSgCol) {
-      return ColumnHeaderConstant.showDevicesWithSgColumnHeaders.stream()
+    if (hasDbCol) {
+      return ColumnHeaderConstant.showDevicesWithDbColumnHeaders.stream()
           .map(ColumnHeader::getColumnName)
           .collect(Collectors.toList());
     }
@@ -96,7 +96,7 @@ public class DevicesSchemaScanNode extends SchemaQueryScanNode {
     ReadWriteIOUtils.write(limit, byteBuffer);
     ReadWriteIOUtils.write(offset, byteBuffer);
     ReadWriteIOUtils.write(isPrefixPath, byteBuffer);
-    ReadWriteIOUtils.write(hasSgCol, byteBuffer);
+    ReadWriteIOUtils.write(hasDbCol, byteBuffer);
     SchemaFilter.serialize(schemaFilter, byteBuffer);
   }
 
@@ -108,7 +108,7 @@ public class DevicesSchemaScanNode extends SchemaQueryScanNode {
     ReadWriteIOUtils.write(limit, stream);
     ReadWriteIOUtils.write(offset, stream);
     ReadWriteIOUtils.write(isPrefixPath, stream);
-    ReadWriteIOUtils.write(hasSgCol, stream);
+    ReadWriteIOUtils.write(hasDbCol, stream);
     SchemaFilter.serialize(schemaFilter, stream);
   }
 
@@ -143,12 +143,12 @@ public class DevicesSchemaScanNode extends SchemaQueryScanNode {
       return false;
     }
     DevicesSchemaScanNode that = (DevicesSchemaScanNode) o;
-    return hasSgCol == that.hasSgCol && Objects.equals(schemaFilter, that.schemaFilter);
+    return hasDbCol == that.hasDbCol && Objects.equals(schemaFilter, that.schemaFilter);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), hasSgCol, schemaFilter);
+    return Objects.hash(super.hashCode(), hasDbCol, schemaFilter);
   }
 
   @Override

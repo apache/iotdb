@@ -34,6 +34,7 @@ struct TSStatus {
   3: optional list<TSStatus> subStatus
   4: optional TEndPoint redirectNode
   5: optional bool needRetry
+  6: optional binary responseData
 }
 
 enum TConsensusGroupType {

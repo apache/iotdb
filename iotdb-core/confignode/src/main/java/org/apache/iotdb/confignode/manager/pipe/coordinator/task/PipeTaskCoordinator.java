@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.manager.pipe.coordinator.task;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
 import org.apache.iotdb.confignode.consensus.request.read.pipe.task.ShowPipePlanV2;
 import org.apache.iotdb.confignode.consensus.response.pipe.task.PipeTableResp;
 import org.apache.iotdb.confignode.manager.ConfigManager;
@@ -42,6 +43,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class PipeTaskCoordinator {
@@ -85,19 +87,9 @@ public class PipeTaskCoordinator {
   /**
    * Unlock the pipe task coordinator. Calling this method will clear the pipe task info holder,
    * which means that the holder will be null after calling this method.
-   *
-   * @return {@code true} if successfully unlocked, {@code false} if current thread is not holding
-   *     the lock.
    */
-  public boolean unlock() {
-    try {
-      pipeTaskCoordinatorLock.unlock();
-      return true;
-    } catch (IllegalMonitorStateException ignored) {
-      // This is thrown if unlock() is called without lock() called first.
-      LOGGER.warn("This thread is not holding the lock.");
-      return false;
-    }
+  public void unlock() {
+    pipeTaskCoordinatorLock.unlock();
   }
 
   public boolean isLocked() {
@@ -253,6 +245,10 @@ public class PipeTaskCoordinator {
 
   public boolean hasAnyPipe() {
     return !pipeTaskInfo.isEmpty();
+  }
+
+  public Map<String, PipeStatus> getConsensusPipeStatusMap() {
+    return pipeTaskInfo.getConsensusPipeStatusMap();
   }
 
   /** Caller should ensure that the method is called in the write lock of {@link #pipeTaskInfo}. */

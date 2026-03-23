@@ -177,9 +177,9 @@ public class PipeCompactedTsFileInsertionEvent extends PipeTsFileInsertionEvent 
   }
 
   @Override
-  public boolean equalsInPipeConsensus(final Object o) {
+  public boolean equalsInIoTConsensusV2(final Object o) {
     throw new UnsupportedOperationException(
-        "PipeCompactedTsFileInsertionEvent does not support equalsInPipeConsensus.");
+        "PipeCompactedTsFileInsertionEvent does not support equalsInIoTConsensusV2.");
   }
 
   @Override

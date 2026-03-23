@@ -68,20 +68,20 @@
         <strongConsistencyClusterMode.dataRegionReplicaNumber>3</strongConsistencyClusterMode.dataRegionReplicaNumber>
         <strongConsistencyClusterMode.schemaRegionConsensus>Ratis</strongConsistencyClusterMode.schemaRegionConsensus>
         <strongConsistencyClusterMode.schemaRegionReplicaNumber>3</strongConsistencyClusterMode.schemaRegionReplicaNumber>
-        <pipeConsensusBatchMode.configNodeConsensus>Ratis</pipeConsensusBatchMode.configNodeConsensus>
-        <pipeConsensusBatchMode.configNodeNumber>1</pipeConsensusBatchMode.configNodeNumber>
-        <pipeConsensusBatchMode.dataNodeNumber>3</pipeConsensusBatchMode.dataNodeNumber>
-        <pipeConsensusBatchMode.dataRegionConsensus>IoTV2</pipeConsensusBatchMode.dataRegionConsensus>
-        <pipeConsensusBatchMode.dataRegionReplicaNumber>2</pipeConsensusBatchMode.dataRegionReplicaNumber>
-        <pipeConsensusBatchMode.schemaRegionConsensus>Ratis</pipeConsensusBatchMode.schemaRegionConsensus>
-        <pipeConsensusBatchMode.schemaRegionReplicaNumber>3</pipeConsensusBatchMode.schemaRegionReplicaNumber>
-        <pipeConsensusStreamMode.configNodeConsensus>Ratis</pipeConsensusStreamMode.configNodeConsensus>
-        <pipeConsensusStreamMode.configNodeNumber>1</pipeConsensusStreamMode.configNodeNumber>
-        <pipeConsensusStreamMode.dataNodeNumber>3</pipeConsensusStreamMode.dataNodeNumber>
-        <pipeConsensusStreamMode.dataRegionConsensus>IoTV2</pipeConsensusStreamMode.dataRegionConsensus>
-        <pipeConsensusStreamMode.dataRegionReplicaNumber>2</pipeConsensusStreamMode.dataRegionReplicaNumber>
-        <pipeConsensusStreamMode.schemaRegionConsensus>Ratis</pipeConsensusStreamMode.schemaRegionConsensus>
-        <pipeConsensusStreamMode.schemaRegionReplicaNumber>3</pipeConsensusStreamMode.schemaRegionReplicaNumber>
+        <iotConsensusV2BatchMode.configNodeConsensus>Ratis</iotConsensusV2BatchMode.configNodeConsensus>
+        <iotConsensusV2BatchMode.configNodeNumber>1</iotConsensusV2BatchMode.configNodeNumber>
+        <iotConsensusV2BatchMode.dataNodeNumber>3</iotConsensusV2BatchMode.dataNodeNumber>
+        <iotConsensusV2BatchMode.dataRegionConsensus>IoTV2</iotConsensusV2BatchMode.dataRegionConsensus>
+        <iotConsensusV2BatchMode.dataRegionReplicaNumber>2</iotConsensusV2BatchMode.dataRegionReplicaNumber>
+        <iotConsensusV2BatchMode.schemaRegionConsensus>Ratis</iotConsensusV2BatchMode.schemaRegionConsensus>
+        <iotConsensusV2BatchMode.schemaRegionReplicaNumber>3</iotConsensusV2BatchMode.schemaRegionReplicaNumber>
+        <iotConsensusV2StreamMode.configNodeConsensus>Ratis</iotConsensusV2StreamMode.configNodeConsensus>
+        <iotConsensusV2StreamMode.configNodeNumber>1</iotConsensusV2StreamMode.configNodeNumber>
+        <iotConsensusV2StreamMode.dataNodeNumber>3</iotConsensusV2StreamMode.dataNodeNumber>
+        <iotConsensusV2StreamMode.dataRegionConsensus>IoTV2</iotConsensusV2StreamMode.dataRegionConsensus>
+        <iotConsensusV2StreamMode.dataRegionReplicaNumber>2</iotConsensusV2StreamMode.dataRegionReplicaNumber>
+        <iotConsensusV2StreamMode.schemaRegionConsensus>Ratis</iotConsensusV2StreamMode.schemaRegionConsensus>
+        <iotConsensusV2StreamMode.schemaRegionReplicaNumber>3</iotConsensusV2StreamMode.schemaRegionReplicaNumber>
     </properties>
     <dependencies>
         <dependency>
@@ -92,6 +92,11 @@
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-session</artifactId>
+            <version>2.0.7-SNAPSHOT</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>iotdb-subscription</artifactId>
             <version>2.0.7-SNAPSHOT</version>
         </dependency>
         <dependency>
@@ -351,20 +356,20 @@
                                 <strongConsistencyClusterMode.dataRegionConsensus>${strongConsistencyClusterMode.dataRegionConsensus}</strongConsistencyClusterMode.dataRegionConsensus>
                                 <strongConsistencyClusterMode.schemaRegionReplicaNumber>${strongConsistencyClusterMode.schemaRegionReplicaNumber}</strongConsistencyClusterMode.schemaRegionReplicaNumber>
                                 <strongConsistencyClusterMode.dataRegionReplicaNumber>${strongConsistencyClusterMode.dataRegionReplicaNumber}</strongConsistencyClusterMode.dataRegionReplicaNumber>
-                                <pipeConsensusBatchMode.configNodeNumber>${pipeConsensusBatchMode.configNodeNumber}</pipeConsensusBatchMode.configNodeNumber>
-                                <pipeConsensusBatchMode.dataNodeNumber>${pipeConsensusBatchMode.dataNodeNumber}</pipeConsensusBatchMode.dataNodeNumber>
-                                <pipeConsensusBatchMode.configNodeConsensus>${pipeConsensusBatchMode.configNodeConsensus}</pipeConsensusBatchMode.configNodeConsensus>
-                                <pipeConsensusBatchMode.schemaRegionConsensus>${pipeConsensusBatchMode.schemaRegionConsensus}</pipeConsensusBatchMode.schemaRegionConsensus>
-                                <pipeConsensusBatchMode.dataRegionConsensus>${pipeConsensusBatchMode.dataRegionConsensus}</pipeConsensusBatchMode.dataRegionConsensus>
-                                <pipeConsensusBatchMode.schemaRegionReplicaNumber>${pipeConsensusBatchMode.schemaRegionReplicaNumber}</pipeConsensusBatchMode.schemaRegionReplicaNumber>
-                                <pipeConsensusBatchMode.dataRegionReplicaNumber>${pipeConsensusBatchMode.dataRegionReplicaNumber}</pipeConsensusBatchMode.dataRegionReplicaNumber>
-                                <pipeConsensusStreamMode.configNodeNumber>${pipeConsensusStreamMode.configNodeNumber}</pipeConsensusStreamMode.configNodeNumber>
-                                <pipeConsensusStreamMode.dataNodeNumber>${pipeConsensusStreamMode.dataNodeNumber}</pipeConsensusStreamMode.dataNodeNumber>
-                                <pipeConsensusStreamMode.configNodeConsensus>${pipeConsensusStreamMode.configNodeConsensus}</pipeConsensusStreamMode.configNodeConsensus>
-                                <pipeConsensusStreamMode.schemaRegionConsensus>${pipeConsensusStreamMode.schemaRegionConsensus}</pipeConsensusStreamMode.schemaRegionConsensus>
-                                <pipeConsensusStreamMode.dataRegionConsensus>${pipeConsensusStreamMode.dataRegionConsensus}</pipeConsensusStreamMode.dataRegionConsensus>
-                                <pipeConsensusStreamMode.schemaRegionReplicaNumber>${pipeConsensusStreamMode.schemaRegionReplicaNumber}</pipeConsensusStreamMode.schemaRegionReplicaNumber>
-                                <pipeConsensusStreamMode.dataRegionReplicaNumber>${pipeConsensusStreamMode.dataRegionReplicaNumber}</pipeConsensusStreamMode.dataRegionReplicaNumber>
+                                <iotConsensusV2BatchMode.configNodeNumber>${iotConsensusV2BatchMode.configNodeNumber}</iotConsensusV2BatchMode.configNodeNumber>
+                                <iotConsensusV2BatchMode.dataNodeNumber>${iotConsensusV2BatchMode.dataNodeNumber}</iotConsensusV2BatchMode.dataNodeNumber>
+                                <iotConsensusV2BatchMode.configNodeConsensus>${iotConsensusV2BatchMode.configNodeConsensus}</iotConsensusV2BatchMode.configNodeConsensus>
+                                <iotConsensusV2BatchMode.schemaRegionConsensus>${iotConsensusV2BatchMode.schemaRegionConsensus}</iotConsensusV2BatchMode.schemaRegionConsensus>
+                                <iotConsensusV2BatchMode.dataRegionConsensus>${iotConsensusV2BatchMode.dataRegionConsensus}</iotConsensusV2BatchMode.dataRegionConsensus>
+                                <iotConsensusV2BatchMode.schemaRegionReplicaNumber>${iotConsensusV2BatchMode.schemaRegionReplicaNumber}</iotConsensusV2BatchMode.schemaRegionReplicaNumber>
+                                <iotConsensusV2BatchMode.dataRegionReplicaNumber>${iotConsensusV2BatchMode.dataRegionReplicaNumber}</iotConsensusV2BatchMode.dataRegionReplicaNumber>
+                                <iotConsensusV2StreamMode.configNodeNumber>${iotConsensusV2StreamMode.configNodeNumber}</iotConsensusV2StreamMode.configNodeNumber>
+                                <iotConsensusV2StreamMode.dataNodeNumber>${iotConsensusV2StreamMode.dataNodeNumber}</iotConsensusV2StreamMode.dataNodeNumber>
+                                <iotConsensusV2StreamMode.configNodeConsensus>${iotConsensusV2StreamMode.configNodeConsensus}</iotConsensusV2StreamMode.configNodeConsensus>
+                                <iotConsensusV2StreamMode.schemaRegionConsensus>${iotConsensusV2StreamMode.schemaRegionConsensus}</iotConsensusV2StreamMode.schemaRegionConsensus>
+                                <iotConsensusV2StreamMode.dataRegionConsensus>${iotConsensusV2StreamMode.dataRegionConsensus}</iotConsensusV2StreamMode.dataRegionConsensus>
+                                <iotConsensusV2StreamMode.schemaRegionReplicaNumber>${iotConsensusV2StreamMode.schemaRegionReplicaNumber}</iotConsensusV2StreamMode.schemaRegionReplicaNumber>
+                                <iotConsensusV2StreamMode.dataRegionReplicaNumber>${iotConsensusV2StreamMode.dataRegionReplicaNumber}</iotConsensusV2StreamMode.dataRegionReplicaNumber>
                             </systemPropertyVariables>
                             <summaryFile>target/failsafe-reports/failsafe-summary-IT.xml</summaryFile>
                         </configuration>

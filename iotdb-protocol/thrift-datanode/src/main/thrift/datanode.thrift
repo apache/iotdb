@@ -679,6 +679,36 @@ struct TAuditLogReq {
 }
 
 /**
+* BEGIN: Data Partition Table Integrity Check Structures
+**/
+
+struct TGetEarliestTimeslotsResp {
+  1: required common.TSStatus status
+  2: optional map<string, i64> databaseToEarliestTimeslot
+}
+
+struct TGenerateDataPartitionTableReq {
+  1: required set<string> databases
+}
+
+struct TGenerateDataPartitionTableResp {
+  1: required common.TSStatus status
+  2: required i32 errorCode
+  3: optional string message
+}
+
+struct TGenerateDataPartitionTableHeartbeatResp {
+  1: required common.TSStatus status
+  2: required i32 errorCode
+  3: optional string message
+  4: optional list<binary> databaseScopedDataPartitionTables
+}
+
+/**
+* END: Data Partition Table Integrity Check Structures
+**/
+
+/**
 * BEGIN: Used for EXPLAIN ANALYZE
 **/
 struct TOperatorStatistics{
@@ -751,6 +781,11 @@ struct TQueryStatistics {
   47: i64 loadChunkActualIOSize
 
   48: i64 chunkWithMetadataErrorsCount
+
+  49: i64 timeSeriesIndexFilteredRows
+  50: i64 chunkIndexFilteredRows
+  51: i64 pageIndexFilteredRows
+  52: i64 rowScanFilteredRows
 }
 
 
@@ -1276,6 +1311,30 @@ service IDataNodeRPCService {
    * Write an audit log entry to the DataNode's AuditEventLogger
    */
   common.TSStatus writeAuditLog(TAuditLogReq req);
+
+  /**
+  * BEGIN: Data Partition Table Integrity Check
+  **/
+
+  /**
+   * Get earliest timeslot information from DataNode
+   * Returns map of database name to earliest timeslot id
+   */
+  TGetEarliestTimeslotsResp getEarliestTimeslots()
+
+  /**
+   * Request DataNode to generate DataPartitionTable by scanning tsfile resources
+   */
+  TGenerateDataPartitionTableResp generateDataPartitionTable(TGenerateDataPartitionTableReq req)
+
+  /**
+   * Check the status of DataPartitionTable generation task
+   */
+  TGenerateDataPartitionTableHeartbeatResp generateDataPartitionTableHeartbeat()
+
+  /**
+  * END: Data Partition Table Integrity Check
+  **/
 }
 
 service MPPDataExchangeService {

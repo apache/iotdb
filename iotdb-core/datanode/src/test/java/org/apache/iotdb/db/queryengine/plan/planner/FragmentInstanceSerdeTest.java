@@ -77,6 +77,7 @@ public class FragmentInstanceSerdeTest {
             QueryType.READ,
             config.getQueryTimeoutThreshold(),
             sessionInfo,
+            false,
             false);
     // test FI with StorageExecutor
     TRegionReplicaSet regionReplicaSet =
@@ -120,6 +121,7 @@ public class FragmentInstanceSerdeTest {
             QueryType.READ,
             config.getQueryTimeoutThreshold(),
             sessionInfo,
+            false,
             false);
     TRegionReplicaSet regionReplicaSet =
         new TRegionReplicaSet(

@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.execution.operator.process.function.part
 import org.apache.tsfile.block.column.Column;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 /** Used to manage the slices of the partition. It is all in memory now. */
@@ -97,6 +98,14 @@ public class PartitionCache {
         && passThroughIndex < getSliceOffset(sliceIndex) + slices.get(sliceIndex).getSize();
   }
 
+  public List<Slice> getSlices() {
+    return Collections.unmodifiableList(slices);
+  }
+
+  public boolean isEmpty() {
+    return slices.isEmpty();
+  }
+
   public long getEstimatedSize() {
     return estimatedSize;
   }
@@ -104,6 +113,7 @@ public class PartitionCache {
   public void clear() {
     slices.clear();
     startOffsets.clear();
+    estimatedSize = 0;
   }
 
   public void close() {

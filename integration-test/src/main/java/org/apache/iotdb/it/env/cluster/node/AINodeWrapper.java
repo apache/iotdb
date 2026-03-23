@@ -38,6 +38,7 @@ import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.AI_NODE_NAME;
@@ -52,7 +53,8 @@ public class AINodeWrapper extends AbstractNodeWrapper {
   private final String seedConfigNode;
   private final int clusterIngressPort;
 
-  private static final String SCRIPT_FILE = "start-ainode.sh";
+  private static final String START_SCRIPT_FILE = "start-ainode.sh";
+  private static final String STOP_SCRIPT_FILE = "stop-ainode.sh";
 
   private static final String SHELL_COMMAND = "bash";
 
@@ -165,8 +167,8 @@ public class AINodeWrapper extends AbstractNodeWrapper {
       // start AINode
       List<String> startCommand = new ArrayList<>();
       startCommand.add(SHELL_COMMAND);
-      startCommand.add(filePrefix + File.separator + SCRIPT_PATH + File.separator + SCRIPT_FILE);
-      startCommand.add("-r");
+      startCommand.add(
+          filePrefix + File.separator + SCRIPT_PATH + File.separator + START_SCRIPT_FILE);
 
       ProcessBuilder processBuilder =
           new ProcessBuilder(startCommand)
@@ -177,6 +179,48 @@ public class AINodeWrapper extends AbstractNodeWrapper {
     } catch (Exception e) {
       throw new AssertionError("Start AI Node failed. " + e + Paths.get(""));
     }
+  }
+
+  @Override
+  public void stop() {
+    if (this.instance == null) {
+      return;
+    }
+    try {
+      // stop AINode
+      File stdoutFile = new File(getLogPath());
+      String filePrefix = getNodePath();
+      List<String> stopCommand = new ArrayList<>();
+      stopCommand.add(SHELL_COMMAND);
+      stopCommand.add(
+          filePrefix + File.separator + SCRIPT_PATH + File.separator + STOP_SCRIPT_FILE);
+      ProcessBuilder processBuilder =
+          new ProcessBuilder(stopCommand)
+              .redirectOutput(ProcessBuilder.Redirect.appendTo(stdoutFile))
+              .redirectError(ProcessBuilder.Redirect.appendTo(stdoutFile));
+      Process stopProcess = processBuilder.inheritIO().start();
+      if (!stopProcess.waitFor(20, TimeUnit.SECONDS)) {
+        logger.warn("Node {} does not exit within 20s, killing it", getId());
+        if (!this.instance.destroyForcibly().waitFor(10, TimeUnit.SECONDS)) {
+          logger.error("Cannot forcibly stop node {}", getId());
+        }
+      }
+      int exitCode = stopProcess.exitValue();
+      if (exitCode != 0) {
+        logger.warn("Node {}'s stop script exited with code {}", getId(), exitCode);
+      }
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      logger.error("Waiting node to shutdown error.", e);
+    } catch (IOException e) {
+      logger.error("Waiting node to shutdown error.", e);
+    }
+    logger.info("In test {} {} stopped.", getTestLogDirName(), getId());
+  }
+
+  @Override
+  public void stopForcibly() {
+    this.stop();
   }
 
   @Override

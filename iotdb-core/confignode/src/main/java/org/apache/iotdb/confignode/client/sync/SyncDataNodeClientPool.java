@@ -32,6 +32,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TCleanDataNodeCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreatePeerReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateSchemaRegionReq;
+import org.apache.iotdb.mpp.rpc.thrift.TGenerateDataPartitionTableReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidatePermissionCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TKillQueryInstanceReq;
@@ -139,6 +140,15 @@ public class SyncDataNodeClientPool {
     actionMapBuilder.put(
         CnToDnSyncRequestType.SHOW_APPLIED_CONFIGURATIONS,
         (req, client) -> client.showAppliedConfigurations());
+    actionMapBuilder.put(
+        CnToDnSyncRequestType.COLLECT_EARLIEST_TIMESLOTS,
+        (req, client) -> client.getEarliestTimeslots());
+    actionMapBuilder.put(
+        CnToDnSyncRequestType.GENERATE_DATA_PARTITION_TABLE,
+        (req, client) -> client.generateDataPartitionTable((TGenerateDataPartitionTableReq) req));
+    actionMapBuilder.put(
+        CnToDnSyncRequestType.GENERATE_DATA_PARTITION_TABLE_HEART_BEAT,
+        (req, client) -> client.generateDataPartitionTableHeartbeat());
     actionMap = actionMapBuilder.build();
   }
 

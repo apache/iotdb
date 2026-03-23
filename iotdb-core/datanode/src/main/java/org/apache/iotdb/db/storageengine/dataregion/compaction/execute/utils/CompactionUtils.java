@@ -24,12 +24,17 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.queryengine.common.schematree.DeviceSchemaInfo;
+import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
+import org.apache.iotdb.db.queryengine.plan.analyze.schema.ClusterSchemaFetcher;
+import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
@@ -56,6 +61,7 @@ import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.tsfile.read.common.TimeRange;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.writer.TsFileIOWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -85,7 +91,14 @@ public class CompactionUtils {
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
   private static final String SYSTEM = "system";
 
+  private static ISchemaFetcher schemaFetcherForTest = null;
+
   private CompactionUtils() {}
+
+  @TestOnly
+  public static void setSchemaFetcher(ISchemaFetcher schemaFetcher) {
+    CompactionUtils.schemaFetcherForTest = schemaFetcher;
+  }
 
   /**
    * Update the targetResource. Move tmp target file to target file and serialize
@@ -347,22 +360,22 @@ public class CompactionUtils {
     for (TsFileResource targetResource : targetResources) {
       // Initial value
       targetResource.setGeneratedByPipe(true);
-      targetResource.setGeneratedByPipeConsensus(true);
+      targetResource.setGeneratedByIoTConsensusV2(true);
       for (TsFileResource unseqResource : unseqResources) {
         targetResource.updateProgressIndex(unseqResource.getMaxProgressIndex());
         targetResource.setGeneratedByPipe(
             unseqResource.isGeneratedByPipe() && targetResource.isGeneratedByPipe());
-        targetResource.setGeneratedByPipeConsensus(
-            unseqResource.isGeneratedByPipeConsensus()
-                && targetResource.isGeneratedByPipeConsensus());
+        targetResource.setGeneratedByIoTConsensusV2(
+            unseqResource.isGeneratedByIoTConsensusV2()
+                && targetResource.isGeneratedByIoTConsensusV2());
       }
       for (TsFileResource seqResource : seqResources) {
         targetResource.updateProgressIndex(seqResource.getMaxProgressIndex());
         targetResource.setGeneratedByPipe(
             seqResource.isGeneratedByPipe() && targetResource.isGeneratedByPipe());
-        targetResource.setGeneratedByPipeConsensus(
-            seqResource.isGeneratedByPipeConsensus()
-                && targetResource.isGeneratedByPipeConsensus());
+        targetResource.setGeneratedByIoTConsensusV2(
+            seqResource.isGeneratedByIoTConsensusV2()
+                && targetResource.isGeneratedByIoTConsensusV2());
       }
     }
   }
@@ -535,7 +548,7 @@ public class CompactionUtils {
           continue;
         }
       }
-      TsTable tsTable = DataNodeTableCache.getInstance().getTable(databaseName, tableName);
+      TsTable tsTable = DataNodeTableCache.getInstance().getTable(databaseName, tableName, false);
       if (tsTable == null) {
         continue;
       }
@@ -639,5 +652,30 @@ public class CompactionUtils {
       rateLimiter.acquire(Integer.MAX_VALUE);
     }
     rateLimiter.acquire((int) size);
+  }
+
+  public static List<IMeasurementSchema> getLatestMeasurementSchemasForTreeModel(
+      IDeviceID deviceID, List<String> measurements) {
+    if (measurements.isEmpty()) {
+      return Collections.emptyList();
+    }
+    ISchemaFetcher schemaFetcher =
+        schemaFetcherForTest == null ? ClusterSchemaFetcher.getInstance() : schemaFetcherForTest;
+    PartialPath devicePath;
+    PathPatternTree patternTree = new PathPatternTree();
+    try {
+      devicePath = CompactionPathUtils.getPath(deviceID);
+      for (String measurement : measurements) {
+        patternTree.appendFullPath(devicePath, measurement);
+      }
+    } catch (IllegalPathException e) {
+      throw new RuntimeException(e);
+    }
+    ISchemaTree schemaTree = schemaFetcher.fetchSchema(patternTree, false, null, true);
+    DeviceSchemaInfo deviceSchemaInfo = schemaTree.searchDeviceSchemaInfo(devicePath, measurements);
+    if (deviceSchemaInfo == null) {
+      return Collections.nCopies(measurements.size(), null);
+    }
+    return deviceSchemaInfo.getMeasurementSchemaList();
   }
 }

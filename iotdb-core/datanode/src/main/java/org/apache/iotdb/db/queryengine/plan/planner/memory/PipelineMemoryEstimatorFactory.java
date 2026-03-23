@@ -43,6 +43,7 @@ public class PipelineMemoryEstimatorFactory {
       case IDENTITY_SINK:
       case SCHEMA_FETCH_MERGE:
       case LAST_QUERY_COLLECT:
+      case TREE_COLLECT:
         return true;
       default:
         return false;
