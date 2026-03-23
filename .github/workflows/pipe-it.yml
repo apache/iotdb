@@ -70,6 +70,7 @@ jobs:
               -DConfigNodeMaxHeapSize=256 \
               -DDataNodeMaxHeapSize=1024 \
               -DDataNodeMaxDirectMemorySize=768 \
+              -Dsurefire.failIfNoSpecifiedTests=false \
               -DClusterConfigurations=${{ matrix.cluster1 }},${{ matrix.cluster2 }} \
               -pl integration-test \
               -am \
