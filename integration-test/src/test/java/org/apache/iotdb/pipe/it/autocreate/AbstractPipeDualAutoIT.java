@@ -37,8 +37,8 @@ abstract class AbstractPipeDualAutoIT {
     senderEnv = MultiEnvFactory.getEnv(0);
     receiverEnv = MultiEnvFactory.getEnv(1);
     setupConfig();
-    senderEnv.initClusterEnvironment(1, 1);
-    receiverEnv.initClusterEnvironment(1, 1);
+    senderEnv.initClusterEnvironment();
+    receiverEnv.initClusterEnvironment();
   }
 
   protected void setupConfig() {
@@ -50,8 +50,6 @@ abstract class AbstractPipeDualAutoIT {
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setPipeMemoryManagementEnabled(false)
         .setIsPipeEnableMemoryCheck(false)
-        .setSchemaReplicationFactor(1)
-        .setDataReplicationFactor(1)
         .setPipeAutoSplitFullEnabled(false);
     receiverEnv
         .getConfig()
@@ -60,8 +58,6 @@ abstract class AbstractPipeDualAutoIT {
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setPipeMemoryManagementEnabled(false)
-        .setSchemaReplicationFactor(1)
-        .setDataReplicationFactor(1)
         .setIsPipeEnableMemoryCheck(false)
         .setPipeAutoSplitFullEnabled(false);
 
