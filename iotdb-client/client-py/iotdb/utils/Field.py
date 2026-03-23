@@ -58,6 +58,7 @@ class Field(object):
                 output.get_data_type() == TSDataType.TEXT
                 or output.get_data_type() == TSDataType.STRING
                 or output.get_data_type() == TSDataType.BLOB
+                or output.get_data_type() == TSDataType.OBJECT
             ):
                 output.set_binary_value(field.get_binary_value())
             else:
@@ -154,6 +155,7 @@ class Field(object):
             self.__data_type != TSDataType.TEXT
             and self.__data_type != TSDataType.STRING
             and self.__data_type != TSDataType.BLOB
+            and self.__data_type != TSDataType.OBJECT
             or self.value is None
             or self.value is pd.NA
         ):
@@ -188,8 +190,8 @@ class Field(object):
         # TEXT, STRING
         if self.__data_type == 5 or self.__data_type == 11:
             return self.value.decode("utf-8")
-        # BLOB
-        elif self.__data_type == 10:
+        # BLOB, OBJECT (raw bytes; display as hex for readability)
+        elif self.__data_type == 10 or self.__data_type == 12:
             return str(hex(int.from_bytes(self.value, byteorder="big")))
         # TIMESTAMP
         elif self.__data_type == 8:
@@ -226,7 +228,7 @@ class Field(object):
             return parse_int_to_date(self.value)
         elif data_type == 5 or data_type == 11:
             return self.value.decode("utf-8")
-        elif data_type == 10:
+        elif data_type == 10 or data_type == 12:
             return self.value
         else:
             raise RuntimeError("Unsupported data type:" + str(data_type))

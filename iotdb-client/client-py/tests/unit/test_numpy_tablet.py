@@ -61,6 +61,27 @@ def test_numpy_tablet_serialization():
     assert tablet_.get_binary_values() == np_tablet_.get_binary_values()
 
 
+def test_object_column_tablet_matches_numpy_tablet():
+    measurements_ = ["obj"]
+    data_types_ = [TSDataType.OBJECT]
+    values_ = [[b"\x01\x02"], [b"ab"], [b""]]
+    timestamps_ = [1, 2, 3]
+    tablet_ = Tablet(
+        "root.sg_test_object.d1", measurements_, data_types_, values_, timestamps_
+    )
+    np_values_ = [np.array([b"\x01\x02", b"ab", b""], dtype=object)]
+    np_timestamps_ = np.array([1, 2, 3], dtype=">i8")
+    np_tablet_ = NumpyTablet(
+        "root.sg_test_object.d1",
+        measurements_,
+        data_types_,
+        np_values_,
+        np_timestamps_,
+    )
+    assert tablet_.get_binary_timestamps() == np_tablet_.get_binary_timestamps()
+    assert tablet_.get_binary_values() == np_tablet_.get_binary_values()
+
+
 def test_numpy_tablet_with_none_serialization():
 
     measurements_ = ["s_01", "s_02", "s_03", "s_04", "s_05", "s_06"]

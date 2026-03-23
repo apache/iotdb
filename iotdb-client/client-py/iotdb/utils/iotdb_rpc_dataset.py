@@ -35,6 +35,15 @@ logger = logging.getLogger("IoTDB")
 TIMESTAMP_STR = "Time"
 
 
+def _column_type_to_tsdata_type(raw):
+    """Resolve Thrift column type (name, ordinal int, or TSDataType) to TSDataType."""
+    if isinstance(raw, TSDataType):
+        return raw
+    if isinstance(raw, int):
+        return TSDataType(raw)
+    return TSDataType[raw]
+
+
 class IoTDBRpcDataSet(object):
 
     def __init__(
@@ -96,7 +105,7 @@ class IoTDBRpcDataSet(object):
         self.__data_type_for_tsblock_column = [None] * ts_block_column_size
         for i in range(len(column_name_list)):
             name = column_name_list[i]
-            column_type = TSDataType[column_type_list[i]]
+            column_type = _column_type_to_tsdata_type(column_type_list[i])
             self.__column_name_list.append(name)
             self.__column_type_list.append(column_type)
             tsblock_column_index = column_index_2_tsblock_column_index_list[
@@ -332,8 +341,8 @@ class IoTDBRpcDataSet(object):
                     continue
                 data_type = self.__data_type_for_tsblock_column[location]
                 column_array = column_arrays[location]
-                # BOOLEAN, INT32, INT64, FLOAT, DOUBLE, BLOB
-                if data_type in (0, 1, 2, 3, 4, 10):
+                # BOOLEAN, INT32, INT64, FLOAT, DOUBLE, BLOB, OBJECT
+                if data_type in (0, 1, 2, 3, 4, 10, 12):
                     data_array = column_array
                     if (
                         data_type != 10
@@ -376,11 +385,12 @@ class IoTDBRpcDataSet(object):
                         tmp_array = np.full(
                             array_length, np.nan, dtype=data_type.np_dtype()
                         )
-                    # TEXT, STRING, BLOB, DATE, TIMESTAMP
+                    # TEXT, STRING, BLOB, OBJECT, DATE, TIMESTAMP
                     elif (
                         data_type == 5
                         or data_type == 11
                         or data_type == 10
+                        or data_type == 12
                         or data_type == 9
                         or data_type == 8
                     ):

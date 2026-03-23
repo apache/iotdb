@@ -78,8 +78,13 @@ class NumpyTablet(object):
         if timestamps.dtype != TSDataType.INT64.np_dtype():
             timestamps = timestamps.astype(TSDataType.INT64.np_dtype())
         for i in range(len(values)):
-            if values[i].dtype != data_types[i].np_dtype():
-                values[i] = values[i].astype(data_types[i].np_dtype())
+            dt = data_types[i]
+            if dt in (TSDataType.BLOB, TSDataType.OBJECT) and values[i].dtype == np.dtype(
+                object
+            ):
+                continue
+            if values[i].dtype != dt.np_dtype():
+                values[i] = values[i].astype(dt.np_dtype())
 
         self.__values = values
         self.__timestamps = timestamps
@@ -141,8 +146,8 @@ class NumpyTablet(object):
                 or data_type == 8
             ):
                 bs = value.tobytes()
-            # TEXT, STRING, BLOB
-            elif data_type == 5 or data_type == 11 or data_type == 10:
+            # TEXT, STRING, BLOB, OBJECT
+            elif data_type in (5, 10, 11, 12):
                 format_str_list = [">"]
                 values_tobe_packed = []
                 for str_list in value:

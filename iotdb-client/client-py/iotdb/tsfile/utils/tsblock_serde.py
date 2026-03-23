@@ -73,7 +73,7 @@ def read_from_buffer(buffer, size):
 def read_column_types(buffer, value_column_count):
     data_types = np.frombuffer(buffer, dtype=np.uint8, count=value_column_count)
     new_buffer = buffer[value_column_count:]
-    if not np.all(np.isin(data_types, (0, 1, 2, 3, 4, 5, 8, 9, 10, 11))):
+    if not np.all(np.isin(data_types, (0, 1, 2, 3, 4, 5, 8, 9, 10, 11, 12))):
         raise Exception("Invalid data type encountered: " + str(data_types))
     return data_types, new_buffer
 
@@ -190,8 +190,9 @@ def deserialize_from_boolean_array(buffer, size):
 
 
 def read_binary_column(buffer, data_type, position_count):
-    if data_type != 5:
-        raise Exception("Invalid data type: " + data_type)
+    # TEXT, BLOB, STRING, OBJECT: length-prefixed binary values
+    if data_type not in (5, 10, 11, 12):
+        raise Exception("Invalid data type: " + str(data_type))
     null_indicators, buffer = deserialize_null_indicators(buffer, position_count)
 
     if null_indicators is None:
@@ -229,7 +230,7 @@ def read_run_length_column(buffer, data_type, position_count):
 
 
 def repeat(column, data_type, position_count):
-    if data_type in (0, 5):
+    if data_type in (0, 5, 10, 11, 12):
         if column.size == 1:
             return np.full(
                 position_count, column[0], dtype=(bool if data_type == 0 else object)
