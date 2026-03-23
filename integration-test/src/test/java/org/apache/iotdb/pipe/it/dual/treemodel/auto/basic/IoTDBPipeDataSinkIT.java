@@ -531,7 +531,7 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualTreeModelAutoIT {
           Arrays.asList(
               "create timeSeries root.vehicle.d0.s1 double",
               "create timeSeries root.vehicle.d0.s2 float",
-              "insert into root.vehicle.d0(time, s1, s2) values (2, 1, 'abc')"),
+              "insert into root.vehicle.d0(time, s1, s2) values (2, 1, 'abc'), (3, 1, 2)"),
           null);
     } catch (final Exception e) {
       Assert.assertEquals(
@@ -542,7 +542,7 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualTreeModelAutoIT {
     TestUtils.assertDataEventuallyOnEnv(
         receiverEnv,
         "select * from root.vehicle.**",
-        "Time,root.vehicle.d0.s1,",
-        Collections.singleton("2,1.0,"));
+        "Time,root.vehicle.d0.s1,root.vehicle.d0.s2,",
+        new HashSet<>(Arrays.asList("2,1.0,null,", "3,1.0,2.0,")));
   }
 }
