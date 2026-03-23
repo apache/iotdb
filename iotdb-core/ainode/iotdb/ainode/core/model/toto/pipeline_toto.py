@@ -23,36 +23,35 @@ import torch
 
 from iotdb.ainode.core.inference.pipeline.basic_pipeline import ForecastPipeline
 
+from .data.util.dataset import MaskedTimeseries
+from .inference.forecaster import TotoForecaster
+
 logger = logging.getLogger(__name__)
-
-_TOTO_INSTALL_MSG = (
-    "toto-ts is required to use the Toto model but is not installed.\n"
-    "Install it with:  pip install toto-ts\n"
-    "Note: toto-ts pins specific versions of torch, numpy, and transformers "
-    "that may conflict with other AINode dependencies. Install in a separate "
-    "environment if needed."
-)
-
-
-def _import_toto():
-    try:
-        from toto.data.util.dataset import MaskedTimeseries
-        from toto.inference.forecaster import TotoForecaster
-
-        return MaskedTimeseries, TotoForecaster
-    except ImportError as e:
-        raise ImportError(_TOTO_INSTALL_MSG) from e
 
 
 class TotoPipeline(ForecastPipeline):
+    """
+    Inference pipeline for the Toto time series foundation model.
+
+    Converts raw input tensors into ``MaskedTimeseries`` objects and delegates
+    autoregressive decoding to ``TotoForecaster``.  The forecaster is created
+    lazily on the first call to ``forecast()`` so that pipeline construction
+    does not require a live model (useful during import / registration time).
+    """
+
     def __init__(self, model_info, **model_kwargs):
         super().__init__(model_info, **model_kwargs)
-        _, TotoForecaster = _import_toto()
-        self.forecaster = TotoForecaster(self.model.backbone)
+        # Forecaster is created lazily to avoid issues at construction time.
+        self._forecaster: TotoForecaster | None = None
+
+    def _get_forecaster(self) -> TotoForecaster:
+        """Return the cached forecaster, creating it on first call."""
+        if self._forecaster is None:
+            self._forecaster = TotoForecaster(self.model.backbone)
+        return self._forecaster
 
     def preprocess(self, inputs, **infer_kwargs):
         super().preprocess(inputs, **infer_kwargs)
-        MaskedTimeseries, _ = _import_toto()
         processed_inputs = []
 
         for item in inputs:
@@ -102,6 +101,8 @@ class TotoPipeline(ForecastPipeline):
         num_samples = infer_kwargs.get("num_samples", None)
         samples_per_batch = infer_kwargs.get("samples_per_batch", 10)
 
+        forecaster = self._get_forecaster()
+
         outputs = []
         for masked_ts in inputs:
             masked_ts = masked_ts._replace(
@@ -113,15 +114,14 @@ class TotoPipeline(ForecastPipeline):
                     self.model.device
                 ),
             )
-            result = self.forecaster.forecast(
+            result = forecaster.forecast(
                 masked_ts,
                 prediction_length=output_length,
                 num_samples=num_samples,
                 samples_per_batch=samples_per_batch,
             )
             mean = result.mean
-            if mean.ndim == 3:
-                mean = mean.mean(dim=0)
+            # Remove batch dimension if present (batch=1 squeeze).
             if mean.ndim == 3 and mean.shape[0] == 1:
                 mean = mean.squeeze(0)
             outputs.append(mean)

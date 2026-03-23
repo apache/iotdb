@@ -438,11 +438,10 @@ def install_dependencies(venv_python, venv_dir, script_dir):
 
     print("Running poetry install...")
     subprocess.run(
-        [str(poetry_exe), "lock"],
+        [str(poetry_exe), "install", "--no-root"],
         cwd=str(script_dir),
         env=venv_env,
         check=True,
-        capture_output=True,
         text=True,
     )
     verify_poetry_env()  # Verify before install
