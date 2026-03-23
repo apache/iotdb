@@ -311,7 +311,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
               receiverEnv.getDataNodeWrapperList().get(0).getIpAndPortString()));
       fail("Shall fail if password is wrong.");
     } catch (final SQLException e) {
-      Assert.assertEquals("801: Failed to check password for pipe a2b.", e.getMessage());
+      Assert.assertEquals("801: Failed to check password for pipe a2b, useEncryptedPassword: false", e.getMessage());
     }
 
     // Use current session, user is root
@@ -538,7 +538,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
               receiverEnv.getDataNodeWrapperList().get(0).getIpAndPortString()));
       fail();
     } catch (final Exception e) {
-      Assert.assertEquals("801: Failed to check password for pipe a2b.", e.getMessage());
+      Assert.assertEquals("801: Failed to check password for pipe a2b, useEncryptedPassword: false", e.getMessage());
     }
 
     try {
@@ -546,7 +546,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
           "create pipe a2b ('sink'='write-back-sink', 'user'='thulab', 'password'='passwd')");
       fail();
     } catch (final Exception e) {
-      Assert.assertEquals("801: Failed to check password for pipe a2b.", e.getMessage());
+      Assert.assertEquals("801: Failed to check password for pipe a2b", e.getMessage());
     }
 
     statement.execute(
