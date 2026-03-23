@@ -79,9 +79,9 @@ class NumpyTablet(object):
             timestamps = timestamps.astype(TSDataType.INT64.np_dtype())
         for i in range(len(values)):
             dt = data_types[i]
-            if dt in (TSDataType.BLOB, TSDataType.OBJECT) and values[i].dtype == np.dtype(
-                object
-            ):
+            if dt in (TSDataType.BLOB, TSDataType.OBJECT) and values[
+                i
+            ].dtype == np.dtype(object):
                 continue
             if values[i].dtype != dt.np_dtype():
                 values[i] = values[i].astype(dt.np_dtype())

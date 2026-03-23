@@ -83,15 +83,18 @@ def test_object_type_tablet_read_write():
             for i, row in enumerate(rows):
                 f = row.get_fields()[0]
                 assert f.get_data_type() == TSDataType.OBJECT
-                assert f.get_binary_value() == [
-                    payloads[0],
-                    payloads[1],
-                    payloads[2],
-                    b"\xaa\xbb",
-                    b"\xcc",
-                    b"\xde\xad",
-                    b"\xbe\xef",
-                ][i]
+                assert (
+                    f.get_binary_value()
+                    == [
+                        payloads[0],
+                        payloads[1],
+                        payloads[2],
+                        b"\xaa\xbb",
+                        b"\xcc",
+                        b"\xde\xad",
+                        b"\xbe\xef",
+                    ][i]
+                )
                 assert f.get_object_value(TSDataType.OBJECT) == f.get_binary_value()
 
         session.close()
