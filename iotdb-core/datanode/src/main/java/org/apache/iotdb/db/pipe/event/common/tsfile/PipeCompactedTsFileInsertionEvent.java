@@ -53,6 +53,8 @@ public class PipeCompactedTsFileInsertionEvent extends PipeTsFileInsertionEvent 
         anyOfOriginalEvents.getTreeModelDatabaseName(),
         tsFileResource,
         null,
+        null,
+        true,
         bindIsWithMod(originalEvents),
         bindIsLoaded(originalEvents),
         bindIsGeneratedByHistoricalExtractor(originalEvents),

@@ -107,6 +107,8 @@ public class PipeTsFileInsertionEventTest {
               "db",
               resource,
               null,
+              null,
+              true,
               true,
               false,
               false,
@@ -132,6 +134,8 @@ public class PipeTsFileInsertionEventTest {
               "root.db",
               resource,
               null,
+              null,
+              true,
               true,
               false,
               false,
@@ -182,6 +186,8 @@ public class PipeTsFileInsertionEventTest {
               "root.db",
               resource,
               null,
+              null,
+              true,
               true,
               false,
               false,
@@ -240,6 +246,180 @@ public class PipeTsFileInsertionEventTest {
   }
 
   @Test
+  public void testShallowCopyKeepsPinnedModSnapshotAfterSourceModDisappears() throws Exception {
+    final File tsFile =
+        new File(
+            TsFileNameGenerator.generateNewTsFilePath(
+                TestConstant.BASE_OUTPUT_PATH + IoTDBConstant.SEQUENCE_FOLDER_NAME, 1, 1, 1, 4));
+    PipeTsFileInsertionEvent originalEvent = null;
+    PipeTsFileInsertionEvent copiedEvent = null;
+    try {
+      Assert.assertTrue(tsFile.getParentFile().mkdirs() || tsFile.getParentFile().exists());
+      Assert.assertTrue(tsFile.createNewFile() || tsFile.exists());
+
+      final TsFileResource resource = new TsFileResource(tsFile);
+      resource.setStatus(TsFileResourceStatus.NORMAL);
+      resource
+          .getExclusiveModFile()
+          .write(new TreeDeletionEntry(new MeasurementPath("root.db.d1.s1"), 0, 1));
+      final File originalModFile = resource.getExclusiveModFile().getFile();
+      Assert.assertTrue(originalModFile.exists());
+
+      originalEvent =
+          new PipeTsFileInsertionEvent(
+              false,
+              "root.db",
+              resource,
+              null,
+              null,
+              true,
+              true,
+              false,
+              false,
+              null,
+              null,
+              1L,
+              null,
+              buildUnionPattern(true, Collections.singletonList(new IoTDBTreePattern(true, null))),
+              new TablePattern(false, null, null),
+              null,
+              null,
+              null,
+              true,
+              Long.MIN_VALUE,
+              Long.MAX_VALUE);
+      Assert.assertTrue(originalEvent.increaseReferenceCount("assigner"));
+
+      final File assignerPinnedModFile = originalEvent.getModFile();
+      Assert.assertNotNull(assignerPinnedModFile);
+      Assert.assertNotEquals(
+          originalModFile.getAbsolutePath(), assignerPinnedModFile.getAbsolutePath());
+
+      Assert.assertTrue(originalModFile.delete());
+      Assert.assertFalse(originalModFile.exists());
+
+      copiedEvent =
+          originalEvent.shallowCopySelfAndBindPipeTaskMetaForProgressReport(
+              "testPipeCopy",
+              2L,
+              null,
+              buildUnionPattern(true, Collections.singletonList(new IoTDBTreePattern(true, null))),
+              new TablePattern(false, null, null),
+              null,
+              null,
+              null,
+              true,
+              Long.MIN_VALUE,
+              Long.MAX_VALUE);
+
+      Assert.assertTrue(copiedEvent.isWithMod());
+      Assert.assertEquals(
+          assignerPinnedModFile.getAbsolutePath(), copiedEvent.getModFile().getAbsolutePath());
+
+      Assert.assertTrue(copiedEvent.increaseReferenceCount("source"));
+      final File pipePinnedModFile = copiedEvent.getModFile();
+      Assert.assertNotNull(pipePinnedModFile);
+      Assert.assertTrue(pipePinnedModFile.exists());
+      Assert.assertNotEquals(originalModFile.getAbsolutePath(), pipePinnedModFile.getAbsolutePath());
+    } finally {
+      if (copiedEvent != null) {
+        copiedEvent.clearReferenceCount("source");
+        copiedEvent.close();
+      }
+      if (originalEvent != null) {
+        originalEvent.clearReferenceCount("assigner");
+        originalEvent.close();
+      }
+      FileUtils.deleteFileOrDirectory(new File(TestConstant.BASE_OUTPUT_PATH));
+    }
+  }
+
+  @Test
+  public void testPinnedEventDoesNotAdoptFutureModFile() throws Exception {
+    final File tsFile =
+        new File(
+            TsFileNameGenerator.generateNewTsFilePath(
+                TestConstant.BASE_OUTPUT_PATH + IoTDBConstant.SEQUENCE_FOLDER_NAME, 1, 1, 1, 5));
+    PipeTsFileInsertionEvent originalEvent = null;
+    PipeTsFileInsertionEvent copiedEvent = null;
+    try {
+      Assert.assertTrue(tsFile.getParentFile().mkdirs() || tsFile.getParentFile().exists());
+      Assert.assertTrue(tsFile.createNewFile() || tsFile.exists());
+
+      final TsFileResource resource = new TsFileResource(tsFile);
+      resource.setStatus(TsFileResourceStatus.NORMAL);
+
+      originalEvent =
+          new PipeTsFileInsertionEvent(
+              false,
+              "root.db",
+              resource,
+              null,
+              null,
+              true,
+              true,
+              false,
+              false,
+              null,
+              "testPipe",
+              1L,
+              null,
+              buildUnionPattern(true, Collections.singletonList(new IoTDBTreePattern(true, null))),
+              new TablePattern(false, null, null),
+              null,
+              null,
+              null,
+              true,
+              Long.MIN_VALUE,
+              Long.MAX_VALUE);
+
+      Assert.assertFalse(originalEvent.isWithMod());
+      Assert.assertTrue(originalEvent.increaseReferenceCount("assigner"));
+      Assert.assertFalse(originalEvent.isWithMod());
+      Assert.assertNull(originalEvent.getModFile());
+
+      resource
+          .getExclusiveModFile()
+          .write(new TreeDeletionEntry(new MeasurementPath("root.db.d1.s1"), 0, 1));
+      Assert.assertTrue(resource.getExclusiveModFile().getFile().exists());
+
+      Assert.assertFalse(originalEvent.isWithMod());
+      Assert.assertNull(originalEvent.getModFile());
+
+      copiedEvent =
+          originalEvent.shallowCopySelfAndBindPipeTaskMetaForProgressReport(
+              "testPipeCopy",
+              2L,
+              null,
+              buildUnionPattern(true, Collections.singletonList(new IoTDBTreePattern(true, null))),
+              new TablePattern(false, null, null),
+              null,
+              null,
+              null,
+              true,
+              Long.MIN_VALUE,
+              Long.MAX_VALUE);
+
+      Assert.assertFalse(copiedEvent.isWithMod());
+      Assert.assertNull(copiedEvent.getModFile());
+
+      Assert.assertTrue(copiedEvent.increaseReferenceCount("source"));
+      Assert.assertFalse(copiedEvent.isWithMod());
+      Assert.assertNull(copiedEvent.getModFile());
+    } finally {
+      if (copiedEvent != null) {
+        copiedEvent.clearReferenceCount("source");
+        copiedEvent.close();
+      }
+      if (originalEvent != null) {
+        originalEvent.clearReferenceCount("assigner");
+        originalEvent.close();
+      }
+      FileUtils.deleteFileOrDirectory(new File(TestConstant.BASE_OUTPUT_PATH));
+    }
+  }
+
+  @Test
   public void testPinnedModFilePathIsStableAfterIncreaseReferenceCount() throws Exception {
     final File tsFile =
         new File(
@@ -259,6 +439,8 @@ public class PipeTsFileInsertionEventTest {
               "root.db",
               resource,
               null,
+              null,
+              true,
               true,
               false,
               false,
@@ -328,6 +510,8 @@ public class PipeTsFileInsertionEventTest {
               "root.db",
               resource,
               null,
+              null,
+              true,
               true,
               false,
               false,
@@ -377,7 +561,8 @@ public class PipeTsFileInsertionEventTest {
       Assert.assertTrue(increased.get());
       Assert.assertTrue(event.isWithMod());
       Assert.assertNotNull(event.getModFile());
-      Assert.assertNotEquals(originalModFile.getAbsolutePath(), event.getModFile().getAbsolutePath());
+      Assert.assertNotEquals(
+          originalModFile.getAbsolutePath(), event.getModFile().getAbsolutePath());
     } finally {
       // Ensure the singleton barrier is not leaked into other tests.
       if (tsFilePath != null) {

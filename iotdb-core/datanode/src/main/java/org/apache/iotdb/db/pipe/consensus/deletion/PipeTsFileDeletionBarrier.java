@@ -154,4 +154,3 @@ public class PipeTsFileDeletionBarrier {
     // empty constructor
   }
 }
-

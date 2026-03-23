@@ -19,9 +19,23 @@
 另外，之前分支上做的两类修复仍然是有价值的，但它们不是根因闭环：
 
 - `PipeTsFileInsertionEvent` 动态 refresh mod，可避免把 mod 是否存在永久冻结在构造时；
-- pinned mod path 稳定化，可避免 reference tracking 与实际传输文件不一致。
+- pinned mod path 稳定化，可避免 reference tracking 与实际传输文件不一致；
+- 更关键的是，第一次 pin 完成后必须冻结 snapshot，后续不能再从 live resource 吸收“未来才出现”的 mod。
 
 但仅靠 refresh 仍然不够，因为 tsfile 可能已经更早被 pin 住；此时再 refresh，也改不了已经固定下来的传输快照。最终根修复需要把“delete 的 sealed-file materialization”与“tsfile 的第一次 pin”串起来。
+
+在把 barrier 补上之后，又进一步发现一个 residual window：
+
+1. realtime 原始 event 在 assigner 第一次 pin 后，`tsFile` 已经变成 pipe 目录里的 hardlink；
+2. 但后续 `shallowCopy` 给各个 pipe source 创建副本时，旧代码并没有继承已经 pin 好的 `modFile`；
+3. 这些副本仍然会重新读取 live `resource.getExclusiveModFile()`；
+4. 如果此时 source mod 已经被 compaction / settle / replace 删除或替换，副本仍然可能丢 mod。
+
+因此最终修复除了 delete barrier 之外，还要保证：
+
+- 首次 snapshot/pin 在资源锁保护下完成；
+- 第一次 pin 完成后，事件的 mod snapshot 立即冻结；
+- `shallowCopy` 继承已经 pin 好的 mod snapshot 状态，而不是回头读取 live resource。
 
 ---
 
@@ -244,13 +258,17 @@ delete 路径里，本地 IoTV2 删除会经历：
 
 - `/Users/pengjunzhi/Code/iotdb-11/iotdb-core/datanode/src/main/java/org/apache/iotdb/db/pipe/event/common/tsfile/PipeTsFileInsertionEvent.java`
 
-这部分是分支上已有修复，仍然保留：
+这部分是分支上已有修复，但最终语义已经收敛为“pin 前可刷新，pin 后冻结”：
 
-1. `refreshModFileState()` 在使用前重新读取 `resource.anyModFileExists()`；
-2. 当 `referenceCount > 0` 时，不再用原始 `resource.getExclusiveModFile()` 覆盖已经 pinned 的 `modFile`；
-3. 如果 mod 是 pin 后才出现，则按当前逻辑 best-effort 地 lazy pin，并保持 pinned path 稳定。
+1. 在第一次 pin 之前，`refreshModFileState()` 仍然会读取 live `resource.anyModFileExists()`，因此 event 创建后、pin 前晚到的 `.mods` 仍可被观察到；
+2. 一旦第一次 pin 完成，`PipeTsFileInsertionEvent` 会立刻冻结 mod snapshot，不再回头读取 live `resource.getExclusiveModFile()`；
+3. 已经 pin 好的 `modFile` 路径会保持稳定，不会再被后续 refresh 覆盖。
 
-这一步解决的是“晚到 mod 可见性 + pinned mod path 正确性”。
+这一步解决的是三件事：
+
+- pin 前的晚到 mod 可见性；
+- pinned mod path 正确性；
+- 防止旧 tsfile event 在 pin 之后误吸收未来 delete 产生的 mod。
 
 ### 6.2 根修复：给 sealed tsfile 的 delete materialization 增加 barrier
 
@@ -278,7 +296,35 @@ delete 路径里，本地 IoTV2 删除会经历：
 - `/Users/pengjunzhi/Code/iotdb-11/iotdb-core/datanode/src/main/java/org/apache/iotdb/db/storageengine/dataregion/DataRegion.java`
 - `/Users/pengjunzhi/Code/iotdb-11/iotdb-core/datanode/src/main/java/org/apache/iotdb/db/pipe/event/common/tsfile/PipeTsFileInsertionEvent.java`
 
-### 6.3 为什么这个 barrier 才是根因闭环
+### 6.3 补齐剩余窗口：首次 snapshot 加锁，shallow copy 继承 frozen snapshot
+
+在补上 barrier 之后，还需要再解决一个很隐蔽的 realtime-only 问题：
+
+1. 原始 realtime `PipeTsFileInsertionEvent` 在 assigner 的第一次 `increaseReferenceCount()` 时，会把 tsfile/mod snapshot 到 common pipe 目录；
+2. 随后 assigner 会对 event 做 `shallowCopy`，为每个 pipe source 生成副本；
+3. 旧代码里，`shallowCopy` 只继承了已经 pin 好的 `tsFile`，却没有继承“mod snapshot 已冻结”这个状态；
+4. 当原始 event 已经 pin 到有 mod 时，副本可能丢掉已 pin 的 `modFile`，重新读取 live `resource.getExclusiveModFile()`；
+5. 当原始 event 已经 pin 到“无 mod”时，副本也可能重新看见未来才出现的 mod；
+6. 如果此时源 `.mods` 已被 compaction / settle / replace 删除或替换，副本还可能再次丢 mod。
+
+本次补充修复做了两件事：
+
+1. `PipeTsFileInsertionEvent` 的第一次 snapshot/pin 改为在 `TsFileResource.readLock()` 下完成；
+2. 若需要 pin live exclusive mod，则在同一阶段持有对应 `ModificationFile.writeLock()` 复制 mod；
+3. 第一次 pin 完成后，event 会把“mod snapshot 是否还允许从 live resource refresh”切成 false，从而冻结 snapshot；
+4. `shallowCopy` 会直接继承这份 frozen snapshot 状态，包括：
+   - 已经 pin 好的 `modFile` 路径；
+   - 以及“已经确认当前 snapshot 没有 mod”这个空快照状态；
+5. 后续 pipe source 副本再做第一次 pin 时，会基于这份 frozen snapshot 继续复制，而不是回头读 live resource。
+
+这样可以避免：
+
+- 首次 snapshot 过程中，source tsfile 被 compaction/remove 删除；
+- 原始 event 已经拿到 pinned snapshot，但 shallow copy 仍然回头依赖 live mod；
+- 原始 event 已经 pin 到“无 mod”快照，但 shallow copy 又错误吸收未来 mod；
+- source mod 被 merge/replace 后，pipe 副本看不到已经 pin 好的 mod。
+
+### 6.4 为什么这套组合修复才是当前闭环
 
 它把系统收敛到两个都安全的分支：
 
@@ -308,6 +354,8 @@ delete 路径里，本地 IoTV2 删除会经历：
 本次新增：
 
 - `testIncreaseReferenceCountWaitsForPendingDeletionBarrier`
+- `testShallowCopyKeepsPinnedModSnapshotAfterSourceModDisappears`
+- `testPinnedEventDoesNotAdoptFutureModFile`
 
 覆盖点：
 
@@ -317,10 +365,12 @@ delete 路径里，本地 IoTV2 删除会经历：
 4. 阻塞期间创建 mod 文件；
 5. 释放 barrier 后，断言事件成功完成 pin，并且能观察到 mod。
 
-分支上原有的 late-created mod 可见性测试也继续保留，因此现在覆盖了两类行为：
+分支上原有的 late-created mod 可见性测试也继续保留，因此现在覆盖了三类行为：
 
 - mod 在 event 创建后、pin 前出现
 - delete 先占住 barrier，tsfile 的第一次 pin 必须等待
+- 原始 event 已经 pin 了 mod snapshot 后，即使 source mod 消失，shallow copy 仍然沿用 pinned snapshot
+- 原始 event 已经 pin 到“无 mod”快照后，即使未来真的出现 mod，旧事件及其 shallow copy 也不会再吸收它
 
 ---
 
@@ -330,7 +380,7 @@ delete 路径里，本地 IoTV2 删除会经历：
 
 ```bash
 ./mvnw -pl iotdb-core/datanode -am \
-  -Dtest=org.apache.iotdb.db.pipe.event.PipeTsFileInsertionEventTest \
+  -Dtest=org.apache.iotdb.db.pipe.event.PipeTsFileInsertionEventTest,org.apache.iotdb.db.pipe.event.TsFileInsertionEventParserTest \
   -Dsurefire.failIfNoSpecifiedTests=false -DfailIfNoTests=false \
   test -DskipITs
 ```
