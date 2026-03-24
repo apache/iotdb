@@ -79,7 +79,7 @@ public class IoTDBRestServiceIT {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
-  private String getAuthorization(String username, String password) {
+  public static String getAuthorization(String username, String password) {
     return Base64.getEncoder()
         .encodeToString((username + ":" + password).getBytes(StandardCharsets.UTF_8));
   }
@@ -129,7 +129,7 @@ public class IoTDBRestServiceIT {
     }
   }
 
-  private HttpPost getHttpPost(String url) {
+  public static HttpPost getHttpPost(String url) {
     HttpPost httpPost = new HttpPost(url);
     httpPost.addHeader("Content-type", "application/json; charset=utf-8");
     httpPost.setHeader("Accept", "application/json");
