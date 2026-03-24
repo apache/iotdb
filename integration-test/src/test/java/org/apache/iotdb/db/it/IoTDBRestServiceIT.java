@@ -27,7 +27,6 @@ import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.itbase.category.RemoteIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
-import org.apache.iotdb.itbase.exception.InconsistentDataException;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.JsonObject;
@@ -59,8 +58,10 @@ import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.consensus.ConsensusFactory.IOT_CONSENSUS;
+import static org.apache.iotdb.consensus.ConsensusFactory.RATIS_CONSENSUS;
 import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.COLUMN_TTL;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -251,13 +252,15 @@ public class IoTDBRestServiceIT {
   }
 
   @Test
-  public void errorInsertRecords() throws SQLException {
+  public void errorInsertRecords() throws SQLException, InterruptedException {
     SimpleEnv simpleEnv = new SimpleEnv();
     simpleEnv
         .getConfig()
         .getCommonConfig()
+        .setSchemaRegionConsensusProtocolClass(RATIS_CONSENSUS)
+        .setSchemaReplicationFactor(3)
         .setDataRegionConsensusProtocolClass(IOT_CONSENSUS)
-        .setDataReplicationFactor(3);
+        .setDataReplicationFactor(2);
     simpleEnv.getConfig().getDataNodeConfig().setEnableRestService(true);
     simpleEnv.initClusterEnvironment(1, 3);
 
@@ -307,15 +310,12 @@ public class IoTDBRestServiceIT {
         fail(e.getMessage());
       }
     }
+    TimeUnit.SECONDS.sleep(5);
 
     try {
-      for (int d = 0; d < 3; d++) {
-        DataNodeWrapper dataNodeWrapper = simpleEnv.getDataNodeWrapper(d);
+      for (DataNodeWrapper dataNodeWrapper : simpleEnv.getDataNodeWrapperList()) {
         dataNodeWrapper.stop();
-
-        try (Connection connectionAfterNodeDown =
-                simpleEnv.getConnectionWithSpecifiedDataNode(
-                    simpleEnv.getDataNodeWrapper(d == 2 ? 0 : d + 1));
+        try (Connection connectionAfterNodeDown = simpleEnv.getAvailableConnection();
             Statement statementAfterNodeDown = connectionAfterNodeDown.createStatement()) {
           int count = 0;
           try (ResultSet resultSet =
@@ -334,9 +334,8 @@ public class IoTDBRestServiceIT {
           assertEquals(3, count);
         }
         dataNodeWrapper.start();
+        TimeUnit.SECONDS.sleep(1);
       }
-    } catch (InconsistentDataException e) {
-      // ignore
     } catch (SQLException e) {
       if (!e.getMessage().contains("Maybe server is down")) {
         throw e;
