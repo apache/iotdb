@@ -41,6 +41,11 @@ jobs:
       - name: Run Test in Loop
         run: |
           attempt=1
+
+            mvn clean package \
+              -P with-integration-tests,MultiClusterIT2DualTreeManual \
+              -DskipTests -DskipUTs -ntp
+
           while true; do
             echo "--- Attempt $attempt ---"
 
