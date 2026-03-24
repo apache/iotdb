@@ -53,7 +53,7 @@ jobs:
               -DDataNodeMaxDirectMemorySize=768 \
               -DClusterConfigurations=${{ matrix.cluster1 }},${{ matrix.cluster2 }} \
               -pl integration-test -am -PMultiClusterIT2DualTreeManual \
-              -Dsurefire.failIfNoSpecifiedTests=false
+              -Dsurefire.failIfNoSpecifiedTests=false \
               -DskipUTs \
               -ntp > ~/run-tests-$attempt.log 2>&1
 
