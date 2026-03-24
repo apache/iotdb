@@ -253,6 +253,7 @@ public class StatementConstructionHandler {
                   entry.getValue()));
           // markFailedMeasurement will set datatype and measurements null
           // setting them back in order to pass the schema validation
+          statement.getDataTypes()[index] = dataType;
           statement.getMeasurements()[index] = measurement;
         }
       }
