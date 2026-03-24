@@ -49,7 +49,7 @@ jobs:
           while true; do
             echo "--- Attempt $attempt ---"
 
-            mvn clean verify \
+            mvn verify \
               -P with-integration-tests \
               -Dtest=IoTDBPipePermissionIT#testIllegalPassword \
               -DintegrationTest.forkCount=1 \
