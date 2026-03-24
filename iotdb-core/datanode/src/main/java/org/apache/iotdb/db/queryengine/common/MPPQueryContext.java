@@ -404,6 +404,9 @@ public class MPPQueryContext {
   }
 
   public String getClientHostName() {
+    if (session == null || session.getCliHostname() == null) {
+      return "UNKNOWN";
+    }
     return session.getCliHostname();
   }
 }

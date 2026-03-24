@@ -196,6 +196,7 @@ public class ColumnHeaderConstant {
   public static final String QUERY_ID = "QueryId";
   public static final String ELAPSED_TIME = "ElapsedTime";
   public static final String STATEMENT = "Statement";
+  public static final String WAIT_TIME_IN_SERVER = "WaitTimeInServer";
   public static final String CLIENT_IP = "ClientIp";
   public static final String TIMEOUT = "Timeout";
 
@@ -498,11 +499,12 @@ public class ColumnHeaderConstant {
 
   public static final List<ColumnHeader> showQueriesColumnHeaders =
       ImmutableList.of(
-          new ColumnHeader(QUERY_ID, TSDataType.STRING),
+          new ColumnHeader(QUERY_ID, TSDataType.TEXT),
           new ColumnHeader(DATA_NODE_ID, TSDataType.INT32),
           new ColumnHeader(ELAPSED_TIME, TSDataType.FLOAT),
-          new ColumnHeader(STATEMENT, TSDataType.STRING),
-          new ColumnHeader(CLIENT_IP, TSDataType.STRING),
+          new ColumnHeader(STATEMENT, TSDataType.TEXT),
+          new ColumnHeader(WAIT_TIME_IN_SERVER, TSDataType.FLOAT),
+          new ColumnHeader(CLIENT_IP, TSDataType.TEXT),
           new ColumnHeader(TIMEOUT, TSDataType.INT64));
 
   public static final List<ColumnHeader> showSpaceQuotaColumnHeaders =
