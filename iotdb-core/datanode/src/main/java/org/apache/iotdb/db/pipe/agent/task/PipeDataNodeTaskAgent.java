@@ -601,7 +601,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     return isHistoryEnable
         && isRealtimeEnable
         && DataRegionListeningFilter.parseInsertionDeletionListeningOptionPair(parameters)
-            .getRight();
+            .getLeft();
   }
 
   @Override
