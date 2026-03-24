@@ -415,13 +415,13 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
     if (isTableModel) {
       sourceNameList = new ArrayList<>(tablet.getRowSize());
       for (int i = 0; i < tablet.getRowSize(); ++i) {
-        final StringBuilder idBuilder = new StringBuilder(sink.getDatabaseName());
+        final StringBuilder tagBuilder = new StringBuilder(sink.getDatabaseName());
         for (final Object segment : tablet.getDeviceID(i).getSegments()) {
-          idBuilder
+          tagBuilder
               .append(TsFileConstant.PATH_SEPARATOR)
               .append(Objects.isNull(segment) ? sink.getPlaceHolder4NullTag() : segment);
         }
-        sourceNameList.add(idBuilder.toString());
+        sourceNameList.add(tagBuilder.toString());
       }
     }
 
