@@ -48,7 +48,6 @@ jobs:
             mvn clean verify \
               -P with-integration-tests \
               -Dtest=IoTDBPipePermissionIT#testIllegalPassword \
-              -DintegrationTest.forkCount=1 \
               -DConfigNodeMaxHeapSize=256 \
               -DDataNodeMaxHeapSize=1024 \
               -DDataNodeMaxDirectMemorySize=768 \
