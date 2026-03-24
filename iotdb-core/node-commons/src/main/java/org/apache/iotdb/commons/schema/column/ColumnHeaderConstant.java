@@ -212,6 +212,8 @@ public class ColumnHeaderConstant {
   public static final String QUERY_ID = "QueryId";
   public static final String ELAPSED_TIME = "ElapsedTime";
   public static final String STATEMENT = "Statement";
+  public static final String CLIENT_IP_TREE_MODEL = "ClientIp";
+  public static final String TIMEOUT = "Timeout";
 
   // column names for show idle connection
   public static final String DATANODE_ID = "datanode_id";
@@ -645,10 +647,12 @@ public class ColumnHeaderConstant {
 
   public static final List<ColumnHeader> showQueriesColumnHeaders =
       ImmutableList.of(
-          new ColumnHeader(QUERY_ID, TSDataType.TEXT),
+          new ColumnHeader(QUERY_ID, TSDataType.STRING),
           new ColumnHeader(DATA_NODE_ID, TSDataType.INT32),
           new ColumnHeader(ELAPSED_TIME, TSDataType.FLOAT),
-          new ColumnHeader(STATEMENT, TSDataType.TEXT));
+          new ColumnHeader(STATEMENT, TSDataType.STRING),
+          new ColumnHeader(CLIENT_IP_TREE_MODEL, TSDataType.STRING),
+          new ColumnHeader(TIMEOUT, TSDataType.INT64));
 
   public static final List<ColumnHeader> showDiskUsageColumnHeaders =
       ImmutableList.of(

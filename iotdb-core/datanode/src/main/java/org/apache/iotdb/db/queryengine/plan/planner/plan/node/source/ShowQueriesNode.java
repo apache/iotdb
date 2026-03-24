@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.source;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
-import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
+import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
@@ -33,15 +33,16 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
+
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.showQueriesColumnHeaders;
 
 public class ShowQueriesNode extends VirtualSourceNode {
 
   public static final List<String> SHOW_QUERIES_HEADER_COLUMNS =
-      ImmutableList.of(
-          ColumnHeaderConstant.QUERY_ID,
-          ColumnHeaderConstant.DATA_NODE_ID,
-          ColumnHeaderConstant.ELAPSED_TIME,
-          ColumnHeaderConstant.STATEMENT);
+      showQueriesColumnHeaders.stream()
+          .map(ColumnHeader::getColumnName)
+          .collect(Collectors.toList());
 
   private final String allowedUsername;
 

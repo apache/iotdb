@@ -1877,6 +1877,11 @@ public class MergeTreeSortOperatorTest {
     }
 
     @Override
+    public long getTimeout() {
+      return  60_000L;
+    }
+
+    @Override
     public Optional<ByteBuffer> getByteBufferBatchResult() {
       return Optional.empty();
     }

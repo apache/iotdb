@@ -70,6 +70,8 @@ public interface IQueryExecution {
    */
   long getTotalExecutionTime();
 
+  long getTimeout();
+
   Optional<String> getExecuteSQL();
 
   String getStatementType();
