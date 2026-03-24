@@ -284,8 +284,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
               new DateTime());
 
       if (Objects.isNull(sink.getValueName())) {
-        measurementNode =
-            addNode(name, currentFolder, folderNode, utcTimestamp, value, currentQuality, type);
+        measurementNode = addNode(name, currentFolder, folderNode, dataValue, type);
         if (Objects.isNull(measurementNode.getValue())
             || Objects.isNull(measurementNode.getValue().getSourceTime())
             || measurementNode.getValue().getSourceTime().getUtcTime() < utcTimestamp) {
@@ -297,16 +296,15 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
         dataType = type;
       }
     }
-    final UaVariableNode valueNode =
-        addNode(
-            segments[segments.length - 1],
-            currentFolder,
-            folderNode,
-            timestamp,
-            value,
-            currentQuality,
-            dataType);
-    if (Objects.nonNull(valueNode)) {
+    if (Objects.nonNull(value)) {
+      final UaVariableNode valueNode =
+          addNode(
+              segments[segments.length - 1],
+              currentFolder,
+              folderNode,
+              new DataValue(
+                  new Variant(value), currentQuality, new DateTime(timestamp), new DateTime()),
+              dataType);
       if (Objects.isNull(valueNode.getValue())
           || Objects.isNull(valueNode.getValue().getSourceTime())
           || valueNode.getValue().getSourceTime().getUtcTime() < timestamp) {
@@ -321,15 +319,10 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
       final String nodeName,
       final String currentFolder,
       final UaNode folderNode,
-      final long utcTimestamp,
-      final Object value,
-      final StatusCode currentQuality,
+      final DataValue dataValue,
       final TSDataType type) {
     final NodeId nodeId = newNodeId(currentFolder + nodeName);
     final UaVariableNode measurementNode;
-    final DataValue dataValue =
-        new DataValue(
-            new Variant(value), currentQuality, new DateTime(utcTimestamp), new DateTime());
 
     if (!getNodeManager().containsNode(nodeId)) {
       measurementNode =
