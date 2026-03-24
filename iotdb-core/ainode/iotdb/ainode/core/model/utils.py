@@ -23,7 +23,7 @@ import shutil
 import sys
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Dict, Optional, Tuple, Type
+from typing import Any, Dict, Optional, Tuple, Type
 
 from huggingface_hub import PyTorchModelHubMixin, snapshot_download
 from transformers import (
