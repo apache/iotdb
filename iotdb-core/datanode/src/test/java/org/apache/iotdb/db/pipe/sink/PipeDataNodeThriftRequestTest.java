@@ -374,10 +374,8 @@ public class PipeDataNodeThriftRequestTest {
 
   @Test
   public void testPipeTransferTabletBatchReqV2() throws IOException {
-    final List<ByteBuffer> binaryBuffers = new ArrayList<>();
     final List<ByteBuffer> insertNodeBuffers = new ArrayList<>();
     final List<ByteBuffer> tabletBuffers = new ArrayList<>();
-    final List<String> binaryDataBase = new ArrayList<>();
     final List<String> insertDataBase = new ArrayList<>();
     final List<String> tabletDataBase = new ArrayList<>();
 
@@ -395,11 +393,6 @@ public class PipeDataNodeThriftRequestTest {
     // InsertNode buffer
     insertNodeBuffers.add(node.serializeToByteBuffer());
     insertDataBase.add("test");
-
-    // Binary buffer
-    // Not do real test here since "serializeToWal" needs private inner class of walBuffer
-    binaryBuffers.add(ByteBuffer.wrap(new byte[] {'a', 'b'}));
-    binaryDataBase.add("test");
 
     // Raw buffer
     List<IMeasurementSchema> schemaList = new ArrayList<>();
@@ -439,10 +432,8 @@ public class PipeDataNodeThriftRequestTest {
 
     final PipeTransferTabletBatchReqV2 req =
         PipeTransferTabletBatchReqV2.toTPipeTransferReq(
-            binaryBuffers,
             insertNodeBuffers,
             tabletBuffers,
-            binaryDataBase,
             insertDataBase,
             tabletDataBase);
 
