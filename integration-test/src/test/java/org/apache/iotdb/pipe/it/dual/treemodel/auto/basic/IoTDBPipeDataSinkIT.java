@@ -542,7 +542,11 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualTreeModelAutoIT {
 
     HttpPost httpPost =
         getHttpPost(
-            "http://" + senderEnv.getDataNodeWrapper(0).getIp() + ":" + "/rest/v2/insertRecords");
+            "http://"
+                + senderEnv.getDataNodeWrapper(0).getIp()
+                + ":"
+                + senderEnv.getDataNodeWrapper(0).getRestServicePort()
+                + "/rest/v2/insertRecords");
     String json =
         "{\"timestamps\":[1635232113960,1635232151960,1635232143960,1635232143960],\"measurements_list\":[[\"s33\",\"s44\"],[\"s55\",\"s66\"],[\"s77\",\"s88\"],[\"s771\",\"s881\"]],\"data_types_list\":[[\"INT32\",\"INT64\"],[\"FLOAT\",\"DOUBLE\"],[\"FLOAT\",\"DOUBLE\"],[\"BOOLEAN\",\"TEXT\"]],\"values_list\":[[1,false],[2.1,2],[4,6],[false,\"cccccc\"]],\"is_aligned\":false,\"devices\":[\"root.s1\",\"root.s1\",\"root.s1\",\"root.s3\"]}";
     httpPost.setEntity(new StringEntity(json, Charset.defaultCharset()));
