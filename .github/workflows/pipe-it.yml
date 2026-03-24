@@ -42,9 +42,9 @@ jobs:
         run: |
           attempt=1
 
-            mvn clean package \
-              -P with-integration-tests,MultiClusterIT2DualTreeManual \
-              -DskipTests -DskipUTs -ntp
+          mvn clean package \
+            -P with-integration-tests,MultiClusterIT2DualTreeManual \
+            -DskipTests -DskipUTs -ntp
 
           while true; do
             echo "--- Attempt $attempt ---"
