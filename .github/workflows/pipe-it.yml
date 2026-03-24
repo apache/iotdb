@@ -38,31 +38,23 @@ jobs:
           path: ~/.m2
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
 
-      # ===== 关键修复 1/2：只在最开始做一次全量构建，生成 template-node =====
-      - name: Build Once and Generate Template
-        run: |
-          mvn clean package \
-            -P with-integration-tests,MultiClusterIT2DualTreeManual \
-            -pl integration-test -am \
-            -DskipTests -ntp
-
-      # ===== 关键修复 2/2：循环里绝对不 clean，直接跑 test =====
       - name: Run Test in Loop
         run: |
           attempt=1
           while true; do
             echo "--- Attempt $attempt ---"
-          
-            # 注意：这里没有 clean，用的是 test 而不是 verify，速度更快
-            mvn test \
-              -P with-integration-tests,MultiClusterIT2DualTreeManual \
+
+            mvn clean verify \
+              -P with-integration-tests \
               -Dtest=IoTDBPipePermissionIT#testIllegalPassword \
               -DintegrationTest.forkCount=1 \
               -DConfigNodeMaxHeapSize=256 \
               -DDataNodeMaxHeapSize=1024 \
               -DDataNodeMaxDirectMemorySize=768 \
               -DClusterConfigurations=${{ matrix.cluster1 }},${{ matrix.cluster2 }} \
-              -pl integration-test -ntp
+              -pl integration-test -am -PMultiClusterIT2DualTreeManual \
+              -DskipUTs \
+              -ntp > ~/run-tests-$attempt.log 2>&1
 
             if [ $? -ne 0 ]; then
               echo "FAILED at $attempt"
