@@ -227,6 +227,7 @@ public class ColumnHeaderConstant {
   public static final String DATA_NODE_ID_TABLE_MODEL = "datanode_id";
   public static final String START_TIME_TABLE_MODEL = "start_time";
   public static final String ELAPSED_TIME_TABLE_MODEL = "elapsed_time";
+  public static final String TIMEOUT_TABLE_MODEL = "timeout";
 
   // column names for current_queries and queries_costs_histogram
   public static final String STATE_TABLE_MODEL = "state";

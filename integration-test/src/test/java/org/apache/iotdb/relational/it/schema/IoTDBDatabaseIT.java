@@ -464,7 +464,9 @@ public class IoTDBDatabaseIT {
                   "datanode_id,INT32,ATTRIBUTE,",
                   "elapsed_time,FLOAT,ATTRIBUTE,",
                   "statement,STRING,ATTRIBUTE,",
-                  "user,STRING,ATTRIBUTE,")));
+                  "user,STRING,ATTRIBUTE,",
+                  "client_ip,STRING,ATTRIBUTE,",
+                  "timeout,INT64,ATTRIBUTE,")));
       TestUtils.assertResultSetEqual(
           statement.executeQuery("desc pipes"),
           "ColumnName,DataType,Category,",
@@ -683,6 +685,8 @@ public class IoTDBDatabaseIT {
                   "information_schema,queries,elapsed_time,FLOAT,ATTRIBUTE,USING,null,",
                   "information_schema,queries,statement,STRING,ATTRIBUTE,USING,null,",
                   "information_schema,queries,user,STRING,ATTRIBUTE,USING,null,",
+                  "information_schema,queries,client_ip,STRING,ATTRIBUTE,USING,null,",
+                  "information_schema,queries,timeout,INT64,ATTRIBUTE,USING,null,",
                   "test,test,time,TIMESTAMP,TIME,USING,null,",
                   "test,test,a,STRING,TAG,USING,null,",
                   "test,test,b,STRING,ATTRIBUTE,USING,null,",

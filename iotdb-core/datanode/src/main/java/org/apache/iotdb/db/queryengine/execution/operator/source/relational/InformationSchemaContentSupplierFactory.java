@@ -283,6 +283,8 @@ public class InformationSchemaContentSupplierFactory {
         columnBuilders[4].writeBinary(
             BytesUtils.valueOf(queryExecution.getExecuteSQL().orElse("UNKNOWN")));
         columnBuilders[5].writeBinary(BytesUtils.valueOf(queryExecution.getUser()));
+        columnBuilders[6].writeBinary(BytesUtils.valueOf(queryExecution.getClientHostname()));
+        columnBuilders[7].writeLong(queryExecution.getTimeout());
         resultBuilder.declarePosition();
       }
       nextConsumedIndex++;
