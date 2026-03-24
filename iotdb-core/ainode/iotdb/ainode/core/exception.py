@@ -15,12 +15,6 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-import re
-
-from iotdb.ainode.core.model.model_constants import (
-    CONFIG_YAML,
-    MODEL_PT,
-)
 
 
 class _BaseException(Exception):
