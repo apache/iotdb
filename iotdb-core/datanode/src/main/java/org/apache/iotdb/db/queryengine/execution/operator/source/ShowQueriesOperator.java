@@ -140,6 +140,8 @@ public class ShowQueriesOperator implements SourceOperator {
             (float) (currTime - queryExecution.getStartExecutionTime()) / 1000);
         columnBuilders[3].writeBinary(
             BytesUtils.valueOf(queryExecution.getExecuteSQL().orElse("UNKNOWN")));
+        columnBuilders[4].writeBinary(BytesUtils.valueOf(queryExecution.getClientHostname()));
+        columnBuilders[5].writeLong(queryExecution.getTimeout());
         builder.declarePosition();
       }
     }

@@ -64,7 +64,7 @@ public class DeletionLoader implements ILoader {
               .executeForTreeModel(
                   statement,
                   queryId,
-                  new SessionInfo(0, AuthorityChecker.SUPER_USER, ZoneId.systemDefault()),
+                  new SessionInfo(0, AuthorityChecker.SUPER_USER, ZoneId.systemDefault(), ""),
                   "",
                   PARTITION_FETCHER,
                   SCHEMA_FETCHER,

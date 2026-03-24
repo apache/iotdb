@@ -402,4 +402,8 @@ public class MPPQueryContext {
   public void setUserQuery(boolean userQuery) {
     this.userQuery = userQuery;
   }
+
+  public String getClientHostName() {
+    return session.getCliHostname();
+  }
 }

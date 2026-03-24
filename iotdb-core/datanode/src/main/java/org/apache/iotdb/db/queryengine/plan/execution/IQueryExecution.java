@@ -66,6 +66,10 @@ public interface IQueryExecution {
    */
   long getTotalExecutionTime();
 
+  String getClientHostname();
+
+  long getTimeout();
+
   Optional<String> getExecuteSQL();
 
   String getStatementType();
