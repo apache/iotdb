@@ -20,12 +20,14 @@ package org.apache.iotdb.db.it;
 
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.env.cluster.env.SimpleEnv;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.itbase.category.RemoteIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
+import org.apache.iotdb.itbase.exception.InconsistentDataException;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.JsonObject;
@@ -48,11 +50,17 @@ import org.junit.runner.RunWith;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 
+import static org.apache.iotdb.consensus.ConsensusFactory.IOT_CONSENSUS;
 import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.COLUMN_TTL;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -239,6 +247,102 @@ public class IoTDBRestServiceIT {
         e.printStackTrace();
         fail(e.getMessage());
       }
+    }
+  }
+
+  @Test
+  public void errorInsertRecords() throws SQLException {
+    SimpleEnv simpleEnv = new SimpleEnv();
+    simpleEnv
+        .getConfig()
+        .getCommonConfig()
+        .setDataRegionConsensusProtocolClass(IOT_CONSENSUS)
+        .setDataReplicationFactor(3);
+    simpleEnv.getConfig().getDataNodeConfig().setEnableRestService(true);
+    simpleEnv.initClusterEnvironment(1, 3);
+
+    CloseableHttpResponse response = null;
+    CloseableHttpClient httpClient = HttpClientBuilder.create().build();
+    try {
+      HttpPost httpPost =
+          getHttpPost(
+              "http://"
+                  + simpleEnv.getDataNodeWrapper(0).getIp()
+                  + ":"
+                  + simpleEnv.getDataNodeWrapper(0).getRestServicePort()
+                  + "/rest/v2/insertRecords");
+      String json =
+          "{\"timestamps\":[1635232113960,1635232151960,1635232143960,1635232143960],\"measurements_list\":[[\"s33\",\"s44\"],[\"s55\",\"s66\"],[\"s77\",\"s88\"],[\"s771\",\"s881\"]],\"data_types_list\":[[\"INT32\",\"INT64\"],[\"FLOAT\",\"DOUBLE\"],[\"FLOAT\",\"DOUBLE\"],[\"BOOLEAN\",\"TEXT\"]],\"values_list\":[[1,false],[2.1,2],[4,6],[false,\"cccccc\"]],\"is_aligned\":false,\"devices\":[\"root.s1\",\"root.s1\",\"root.s1\",\"root.s3\"]}";
+      httpPost.setEntity(new StringEntity(json, Charset.defaultCharset()));
+      for (int i = 0; i < 30; i++) {
+        try {
+          response = httpClient.execute(httpPost);
+          break;
+        } catch (Exception e) {
+          if (i == 29) {
+            throw e;
+          }
+          try {
+            Thread.sleep(1000);
+          } catch (InterruptedException ex) {
+            throw new RuntimeException(ex);
+          }
+        }
+      }
+
+      HttpEntity responseEntity = response.getEntity();
+      String message = EntityUtils.toString(responseEntity, "utf-8");
+      JsonObject result = JsonParser.parseString(message).getAsJsonObject();
+      assertEquals(507, Integer.parseInt(result.get("code").toString()));
+    } catch (IOException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    } finally {
+      try {
+        if (response != null) {
+          response.close();
+        }
+      } catch (IOException e) {
+        e.printStackTrace();
+        fail(e.getMessage());
+      }
+    }
+
+    try {
+      for (int d = 0; d < 3; d++) {
+        DataNodeWrapper dataNodeWrapper = simpleEnv.getDataNodeWrapper(d);
+        dataNodeWrapper.stop();
+
+        try (Connection connectionAfterNodeDown =
+                simpleEnv.getConnectionWithSpecifiedDataNode(
+                    simpleEnv.getDataNodeWrapper(d == 2 ? 0 : d + 1));
+            Statement statementAfterNodeDown = connectionAfterNodeDown.createStatement()) {
+          int count = 0;
+          try (ResultSet resultSet =
+              statementAfterNodeDown.executeQuery(
+                  "select s88, s77, s66, s55, s44, s33 from root.s1")) {
+            ResultSetMetaData metaData = resultSet.getMetaData();
+            while (resultSet.next()) {
+              StringBuilder row = new StringBuilder();
+              for (int i = 0; i < metaData.getColumnCount(); i++) {
+                row.append(resultSet.getString(i + 1)).append(",");
+              }
+              System.out.println(row);
+              count++;
+            }
+          }
+          assertEquals(3, count);
+        }
+        dataNodeWrapper.start();
+      }
+    } catch (InconsistentDataException e) {
+      // ignore
+    } catch (SQLException e) {
+      if (!e.getMessage().contains("Maybe server is down")) {
+        throw e;
+      }
+    } finally {
+      simpleEnv.cleanClusterEnvironment();
     }
   }
 
