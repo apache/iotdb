@@ -532,7 +532,9 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualAutoIT {
 
     HttpPost httpPost =
         getHttpPost(
-            "http://127.0.0.1:"
+            "http://"
+                + senderEnv.getDataNodeWrapper(0).getIp()
+                + ":"
                 + senderEnv.getDataNodeWrapper(0).getRestServicePort()
                 + "/rest/v2/insertRecords");
     String json =
@@ -556,12 +558,12 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualAutoIT {
 
     TestUtils.assertDataEventuallyOnEnv(
         receiverEnv,
-        "select * from root.s1",
-        "Time,root.s1.s88,root.s1.s77,root.s1.s66,root.s1.s55,root.s1.s44,root.s1.s33,",
+        "select s88, s77, s66, s55, s44, s33 from root.s1",
+        "Time,root.s1.s88,root.s1.s77,root.s1.s66,root.s1.s55,root.s1.s33,",
         new HashSet<>(
             Arrays.asList(
-                "1635232113960,null,null,null,null,null,1,",
-                "1635232151960,null,null,2.0,2.1,null,null,",
-                "1635232143960,6.0,4.0,null,null,null,null,")));
+                "1635232113960,null,null,null,null,1,",
+                "1635232151960,null,null,2.0,2.1,null,",
+                "1635232143960,6.0,4.0,null,null,null,")));
   }
 }
