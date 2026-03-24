@@ -42,14 +42,10 @@ jobs:
         run: |
           attempt=1
 
-          mvn clean package \
-            -P with-integration-tests,MultiClusterIT2DualTreeManual \
-            -DskipTests -DskipUTs -ntp
-
           while true; do
             echo "--- Attempt $attempt ---"
 
-            mvn verify \
+            mvn clean verify \
               -P with-integration-tests \
               -Dtest=IoTDBPipePermissionIT#testIllegalPassword \
               -DintegrationTest.forkCount=1 \
