@@ -189,8 +189,8 @@ class Tablet(object):
                         values_tobe_packed.append(0)
                         self.__mark_none_value(bitmaps, i, j)
                         has_none = True
-            # TEXT, STRING, BLOB
-            elif data_type == 5 or data_type == 11 or data_type == 10:
+            # TEXT, STRING, BLOB, OBJECT
+            elif data_type == 5 or data_type == 11 or data_type == 10 or data_type == 12:
                 for j in range(self.__row_number):
                     if self.__values[j][i] is not None:
                         if isinstance(self.__values[j][i], str):
@@ -203,7 +203,7 @@ class Tablet(object):
                         values_tobe_packed.append(len(value_bytes))
                         values_tobe_packed.append(value_bytes)
                     else:
-                        value_bytes = bytes("", "utf-8")
+                        value_bytes = b""
                         format_str_list.append("i")
                         format_str_list.append(str(len(value_bytes)))
                         format_str_list.append("s")

@@ -1680,6 +1680,18 @@ class Session(object):
                 values_tobe_packed.append(b"\x0b")
                 values_tobe_packed.append(len(value_bytes))
                 values_tobe_packed.append(value_bytes)
+            # OBJECT
+            elif data_type == 12:
+                if isinstance(value, str):
+                    value_bytes = bytes(value, "utf-8")
+                else:
+                    value_bytes = value
+                format_str_list.append("ci")
+                format_str_list.append(str(len(value_bytes)))
+                format_str_list.append("s")
+                values_tobe_packed.append(b"\x0c")
+                values_tobe_packed.append(len(value_bytes))
+                values_tobe_packed.append(value_bytes)
             else:
                 raise RuntimeError("Unsupported data type:" + str(data_type))
         format_str = "".join(format_str_list)

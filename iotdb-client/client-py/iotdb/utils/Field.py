@@ -24,6 +24,25 @@ import numpy as np
 import pandas as pd
 
 
+def parse_object_byte_array_to_string(value: bytes) -> str:
+    if value is None:
+        return "None"
+    if len(value) < 8:
+        object_size = 0
+    else:
+        # tsfile BytesUtils.bytesToLong builds an unsigned long from bytes.
+        # Using signed=False keeps it consistent for non-negative object sizes.
+        object_size = int.from_bytes(value[:8], byteorder="big", signed=False)
+
+    if object_size < 1024:
+        return "(Object) {} B".format(object_size)
+    if object_size < 1048576:  # 1024^2
+        return "(Object) {:.2f} KB".format(object_size / 1024.0)
+    if object_size < 1073741824:  # 1024^3
+        return "(Object) {:.2f} MB".format(object_size / 1048576.0)
+    return "(Object) {:.2f} GB".format(object_size / 1073741824.0)
+
+
 class Field(object):
     def __init__(self, data_type, value=None, timezone=None, precision=None):
         """
@@ -58,6 +77,7 @@ class Field(object):
                 output.get_data_type() == TSDataType.TEXT
                 or output.get_data_type() == TSDataType.STRING
                 or output.get_data_type() == TSDataType.BLOB
+                or output.get_data_type() == TSDataType.OBJECT
             ):
                 output.set_binary_value(field.get_binary_value())
             else:
@@ -154,6 +174,7 @@ class Field(object):
             self.__data_type != TSDataType.TEXT
             and self.__data_type != TSDataType.STRING
             and self.__data_type != TSDataType.BLOB
+            and self.__data_type != TSDataType.OBJECT
             or self.value is None
             or self.value is pd.NA
         ):
@@ -188,6 +209,9 @@ class Field(object):
         # TEXT, STRING
         if self.__data_type == 5 or self.__data_type == 11:
             return self.value.decode("utf-8")
+        # OBJECT
+        elif self.__data_type == 12:
+            return parse_object_byte_array_to_string(self.value)
         # BLOB
         elif self.__data_type == 10:
             return str(hex(int.from_bytes(self.value, byteorder="big")))
@@ -228,6 +252,8 @@ class Field(object):
             return self.value.decode("utf-8")
         elif data_type == 10:
             return self.value
+        elif data_type == 12:
+            return parse_object_byte_array_to_string(self.value)
         else:
             raise RuntimeError("Unsupported data type:" + str(data_type))
 
