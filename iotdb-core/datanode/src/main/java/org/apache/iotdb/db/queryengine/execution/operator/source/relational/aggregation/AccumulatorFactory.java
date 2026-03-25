@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.db.queryengine.execution.aggregation.CentralMomentAccumulator;
 import org.apache.iotdb.db.queryengine.execution.aggregation.CorrelationAccumulator;
+import org.apache.iotdb.db.queryengine.execution.aggregation.CovarianceAccumulator;
 import org.apache.iotdb.db.queryengine.execution.aggregation.RegressionAccumulator;
 import org.apache.iotdb.db.queryengine.execution.aggregation.VarianceAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.BinaryGroupedApproxMostFrequentAccumulator;
@@ -38,6 +39,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggr
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedCountAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedCountAllAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedCountIfAccumulator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedCovarianceAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedExtremeAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedFirstAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedFirstByAccumulator;
@@ -268,15 +270,15 @@ public class AccumulatorFactory {
             inputDataTypes.get(1),
             CorrelationAccumulator.CorrelationType.CORR);
       case COVAR_POP:
-        return new GroupedCorrelationAccumulator(
+        return new GroupedCovarianceAccumulator(
             inputDataTypes.get(0),
             inputDataTypes.get(1),
-            CorrelationAccumulator.CorrelationType.COVAR_POP);
+            CovarianceAccumulator.CovarianceType.COVAR_POP);
       case COVAR_SAMP:
-        return new GroupedCorrelationAccumulator(
+        return new GroupedCovarianceAccumulator(
             inputDataTypes.get(0),
             inputDataTypes.get(1),
-            CorrelationAccumulator.CorrelationType.COVAR_SAMP);
+            CovarianceAccumulator.CovarianceType.COVAR_SAMP);
       case REGR_SLOPE:
         return new GroupedRegressionAccumulator(
             inputDataTypes.get(0),
@@ -368,15 +370,15 @@ public class AccumulatorFactory {
             inputDataTypes.get(1),
             CorrelationAccumulator.CorrelationType.CORR);
       case COVAR_POP:
-        return new TableCorrelationAccumulator(
+        return new TableCovarianceAccumulator(
             inputDataTypes.get(0),
             inputDataTypes.get(1),
-            CorrelationAccumulator.CorrelationType.COVAR_POP);
+            CovarianceAccumulator.CovarianceType.COVAR_POP);
       case COVAR_SAMP:
-        return new TableCorrelationAccumulator(
+        return new TableCovarianceAccumulator(
             inputDataTypes.get(0),
             inputDataTypes.get(1),
-            CorrelationAccumulator.CorrelationType.COVAR_SAMP);
+            CovarianceAccumulator.CovarianceType.COVAR_SAMP);
       case REGR_SLOPE:
         return new TableRegressionAccumulator(
             inputDataTypes.get(0),

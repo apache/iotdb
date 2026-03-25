@@ -96,14 +96,14 @@ public class AccumulatorFactory {
             CorrelationAccumulator.CorrelationType.CORR);
       case COVAR_POP:
         checkState(inputDataTypes.size() == 2, "Wrong inputDataTypes size.");
-        return new CorrelationAccumulator(
+        return new CovarianceAccumulator(
             new TSDataType[] {inputDataTypes.get(0), inputDataTypes.get(1)},
-            CorrelationAccumulator.CorrelationType.COVAR_POP);
+            CovarianceAccumulator.CovarianceType.COVAR_POP);
       case COVAR_SAMP:
         checkState(inputDataTypes.size() == 2, "Wrong inputDataTypes size.");
-        return new CorrelationAccumulator(
+        return new CovarianceAccumulator(
             new TSDataType[] {inputDataTypes.get(0), inputDataTypes.get(1)},
-            CorrelationAccumulator.CorrelationType.COVAR_SAMP);
+            CovarianceAccumulator.CovarianceType.COVAR_SAMP);
       case REGR_SLOPE:
         checkState(inputDataTypes.size() == 2, "Wrong inputDataTypes size.");
         return new RegressionAccumulator(
