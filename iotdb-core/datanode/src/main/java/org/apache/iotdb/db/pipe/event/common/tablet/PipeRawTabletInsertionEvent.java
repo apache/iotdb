@@ -84,6 +84,15 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent
     // Allocate empty memory block, will be resized later.
     this.allocatedMemoryBlock =
         PipeDataNodeResourceManager.memory().forceAllocateForTabletWithRetry(0);
+
+    if (needToReport) {
+      addOnCommittedHook(
+          () -> {
+            if (shouldReportOnCommit) {
+              eliminateProgressIndex();
+            }
+          });
+    }
   }
 
   public PipeRawTabletInsertionEvent(
