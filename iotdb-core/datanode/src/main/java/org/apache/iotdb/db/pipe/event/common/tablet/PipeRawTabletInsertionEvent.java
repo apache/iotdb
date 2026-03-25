@@ -84,18 +84,7 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent
     // Allocate empty memory block, will be resized later.
     this.allocatedMemoryBlock =
         PipeDataNodeResourceManager.memory().forceAllocateForTabletWithRetry(0);
-
-    triggerAddHook();
   }
-
-  private void triggerAddHook() {
-    if (shouldReportOnCommit && needToReport && sourceEvent instanceof PipeTsFileInsertionEvent) {
-      final PipeTsFileInsertionEvent event = ((PipeTsFileInsertionEvent) sourceEvent);
-      addOnCommittedHook(event::eliminateProgressIndex);
-    }
-  }
-
-
 
   public PipeRawTabletInsertionEvent(
       final Tablet tablet,
@@ -264,7 +253,6 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent
           });
     }
     this.needToReport = true;
-    triggerAddHook();
   }
 
   // This getter is reserved for user-defined plugins
