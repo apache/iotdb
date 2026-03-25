@@ -24,14 +24,11 @@ import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertio
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTabletBatchReq;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
-import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALPipeException;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -40,22 +37,13 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 
 public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeTabletEventBatch.class);
-
-  private final List<ByteBuffer> binaryBuffers = new ArrayList<>();
   private final List<ByteBuffer> insertNodeBuffers = new ArrayList<>();
   private final List<ByteBuffer> tabletBuffers = new ArrayList<>();
 
   // Used to rate limit when transferring data
   private final Map<Pair<String, Long>, Long> pipe2BytesAccumulated = new HashMap<>();
-
-  PipeTabletEventPlainBatch(final int maxDelayInMs, final long requestMaxBatchSizeInBytes) {
-    super(maxDelayInMs, requestMaxBatchSizeInBytes, null);
-  }
 
   PipeTabletEventPlainBatch(
       final int maxDelayInMs,
@@ -65,8 +53,7 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
   }
 
   @Override
-  protected boolean constructBatch(final TabletInsertionEvent event)
-      throws WALPipeException, IOException {
+  protected boolean constructBatch(final TabletInsertionEvent event) throws IOException {
     final int bufferSize = buildTabletInsertionBuffer(event);
     totalBufferSize += bufferSize;
     pipe2BytesAccumulated.compute(
@@ -81,7 +68,6 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
   public synchronized void onSuccess() {
     super.onSuccess();
 
-    binaryBuffers.clear();
     insertNodeBuffers.clear();
     tabletBuffers.clear();
 
@@ -89,8 +75,7 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
   }
 
   public PipeTransferTabletBatchReq toTPipeTransferReq() throws IOException {
-    return PipeTransferTabletBatchReq.toTPipeTransferReq(
-        binaryBuffers, insertNodeBuffers, tabletBuffers);
+    return PipeTransferTabletBatchReq.toTPipeTransferReq(insertNodeBuffers, tabletBuffers);
   }
 
   public Map<Pair<String, Long>, Long> deepCopyPipeName2BytesAccumulated() {
@@ -101,8 +86,7 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
     return pipe2BytesAccumulated;
   }
 
-  private int buildTabletInsertionBuffer(final TabletInsertionEvent event)
-      throws IOException, WALPipeException {
+  private int buildTabletInsertionBuffer(final TabletInsertionEvent event) throws IOException {
     final ByteBuffer buffer;
     if (event instanceof PipeInsertNodeTabletInsertionEvent) {
       final PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent =
@@ -110,13 +94,8 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
       // Read the bytebuffer from the wal file and transfer it directly without serializing or
       // deserializing if possible
       final InsertNode insertNode = pipeInsertNodeTabletInsertionEvent.getInsertNode();
-      if (Objects.isNull(insertNode)) {
-        buffer = pipeInsertNodeTabletInsertionEvent.getByteBuffer();
-        binaryBuffers.add(buffer);
-      } else {
-        buffer = insertNode.serializeToByteBuffer();
-        insertNodeBuffers.add(buffer);
-      }
+      buffer = insertNode.serializeToByteBuffer();
+      insertNodeBuffers.add(buffer);
     } else {
       final PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent =
           (PipeRawTabletInsertionEvent) event;

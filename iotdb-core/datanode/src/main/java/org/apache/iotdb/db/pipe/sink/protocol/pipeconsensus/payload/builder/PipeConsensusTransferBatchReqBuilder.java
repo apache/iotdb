@@ -28,7 +28,6 @@ import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertio
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.db.pipe.sink.protocol.pipeconsensus.payload.request.PipeConsensusTabletBatchReq;
-import org.apache.iotdb.db.pipe.sink.protocol.pipeconsensus.payload.request.PipeConsensusTabletBinaryReq;
 import org.apache.iotdb.db.pipe.sink.protocol.pipeconsensus.payload.request.PipeConsensusTabletInsertNodeReq;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALPipeException;
@@ -199,17 +198,10 @@ public abstract class PipeConsensusTransferBatchReqBuilder implements AutoClosea
     final InsertNode insertNode = pipeInsertNodeTabletInsertionEvent.getInsertNode();
     // PipeConsensus will transfer binary data to TPipeConsensusTransferReq
     final ProgressIndex progressIndex = pipeInsertNodeTabletInsertionEvent.getProgressIndex();
-    if (Objects.isNull(insertNode)) {
-      buffer = pipeInsertNodeTabletInsertionEvent.getByteBuffer();
-      batchReqs.add(
-          PipeConsensusTabletBinaryReq.toTPipeConsensusTransferReq(
-              buffer, commitId, consensusGroupId, progressIndex, thisDataNodeId));
-    } else {
-      buffer = insertNode.serializeToByteBuffer();
-      batchReqs.add(
-          PipeConsensusTabletInsertNodeReq.toTPipeConsensusTransferReq(
-              insertNode, commitId, consensusGroupId, progressIndex, thisDataNodeId));
-    }
+    buffer = insertNode.serializeToByteBuffer();
+    batchReqs.add(
+        PipeConsensusTabletInsertNodeReq.toTPipeConsensusTransferReq(
+            insertNode, commitId, consensusGroupId, progressIndex, thisDataNodeId));
 
     return buffer.limit();
   }
