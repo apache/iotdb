@@ -25,8 +25,8 @@ if [ ! -d "$SYSTEMD_DIR" ]; then
     exit 1  # Exit with an error status
 fi
 
-if [ -z "$JAVA_HOME" ]; then
-    echo "JAVA_HOME is not set. Please set the JAVA_HOME environment variable."
+if ! java --version >/dev/null 2>&1; then
+    echo "java command is not available. Please install Java or ensure it is in PATH."
     exit 1
 fi
 
@@ -45,7 +45,6 @@ LimitNOFILE=65536
 Type=simple
 User=root
 Group=root
-Environment=JAVA_HOME=$JAVA_HOME
 ExecStart=$TIMECHODB_SBIN_HOME/start-datanode.sh
 ExecStop=$TIMECHODB_SBIN_HOME/stop-datanode.sh
 Restart=on-failure
