@@ -21,6 +21,8 @@ package org.apache.iotdb.commons.pipe.datastructure.interval;
 
 import javax.annotation.concurrent.NotThreadSafe;
 
+import java.util.Iterator;
+import java.util.Objects;
 import java.util.TreeSet;
 
 @NotThreadSafe
@@ -68,8 +70,43 @@ public class IntervalManager<T extends Interval<T>> {
     return false;
   }
 
+  public Iterator<Long> iterator() {
+    return new Iterator<Long>() {
+      private final Iterator<T> iterator = intervals.iterator();
+      private T currentInterval;
+      private long nextNum;
+
+      @Override
+      public boolean hasNext() {
+        return Objects.nonNull(currentInterval) || iterator.hasNext();
+      }
+
+      @Override
+      public Long next() {
+        if (Objects.isNull(currentInterval)) {
+          currentInterval = iterator.next();
+          nextNum = currentInterval.start;
+        }
+        final long result = nextNum++;
+        if (nextNum > currentInterval.end) {
+          if (iterator.hasNext()) {
+            currentInterval = iterator.next();
+            nextNum = currentInterval.start;
+          } else {
+            currentInterval = null;
+          }
+        }
+        return result;
+      }
+    };
+  }
+
   public int size() {
     return intervals.size();
+  }
+
+  public boolean isEmpty() {
+    return intervals.isEmpty();
   }
 
   @Override
