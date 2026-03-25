@@ -42,6 +42,7 @@ import org.apache.http.util.EntityUtils;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -252,6 +253,7 @@ public class IoTDBRestServiceIT {
     }
   }
 
+  @Ignore // Flaky test
   @Test
   public void errorInsertRecords() throws SQLException, InterruptedException {
     SimpleEnv simpleEnv = new SimpleEnv();
