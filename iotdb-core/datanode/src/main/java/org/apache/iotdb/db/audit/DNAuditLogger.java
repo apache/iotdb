@@ -378,7 +378,6 @@ public class DNAuditLogger extends AbstractAuditLogger {
     session.setClientVersion(IoTDBConstant.ClientVersion.V_1_0);
     session.setDatabaseName(SystemConstant.AUDIT_DATABASE);
     session.setSqlDialect(IClientSession.SqlDialect.TABLE);
-    SESSION_MANAGER.registerSession(session);
     return session;
   }
 
@@ -471,48 +470,44 @@ public class DNAuditLogger extends AbstractAuditLogger {
         }
         setTtl();
         IClientSession session = createInternalAuditSession(DNAuditLogger.class.getSimpleName());
-        try {
-          if (ensureAuditDatabaseInTableModel(session, AUDIT_LOG_PREFIX)) {
-            return;
-          }
-          String createViewSql =
-              String.format(
-                  "CREATE VIEW __audit.audit_log (\n"
-                      + "    %s STRING TAG,\n"
-                      + "    %s STRING TAG,\n"
-                      + "    %s STRING FIELD,\n"
-                      + "    %s STRING FIELD,\n"
-                      + "    %s STRING FIELD,\n"
-                      + "    %s STRING FIELD,\n"
-                      + "    %s STRING FIELD,\n"
-                      + "    %s STRING FIELD,\n"
-                      + "    %s BOOLEAN FIELD,\n"
-                      + "    %s STRING FIELD,\n"
-                      + "    %s STRING FIELD,\n"
-                      + "    %s STRING FIELD\n"
-                      + ") AS root.__audit.log.**",
-                  AUDIT_LOG_NODE_ID,
-                  AUDIT_LOG_USER_ID,
-                  AUDIT_LOG_USERNAME,
-                  AUDIT_LOG_CLI_HOSTNAME,
-                  AUDIT_LOG_AUDIT_EVENT_TYPE,
-                  AUDIT_LOG_OPERATION_TYPE,
-                  AUDIT_LOG_PRIVILEGE_TYPE,
-                  AUDIT_LOG_PRIVILEGE_LEVEL,
-                  AUDIT_LOG_RESULT,
-                  AUDIT_LOG_DATABASE,
-                  AUDIT_LOG_SQL_STRING,
-                  AUDIT_LOG_LOG);
-          if (executeCreateView(
-              session,
-              createViewSql,
-              AUDIT_LOG_PREFIX,
-              "Create view for audit log successfully",
-              "Failed to create view for audit log, because")) {
-            tableViewIsInitialized.set(true);
-          }
-        } finally {
-          SESSION_MANAGER.removeCurrSession();
+        if (ensureAuditDatabaseInTableModel(session, AUDIT_LOG_PREFIX)) {
+          return;
+        }
+        String createViewSql =
+            String.format(
+                "CREATE VIEW __audit.audit_log (\n"
+                    + "    %s STRING TAG,\n"
+                    + "    %s STRING TAG,\n"
+                    + "    %s STRING FIELD,\n"
+                    + "    %s STRING FIELD,\n"
+                    + "    %s STRING FIELD,\n"
+                    + "    %s STRING FIELD,\n"
+                    + "    %s STRING FIELD,\n"
+                    + "    %s STRING FIELD,\n"
+                    + "    %s BOOLEAN FIELD,\n"
+                    + "    %s STRING FIELD,\n"
+                    + "    %s STRING FIELD,\n"
+                    + "    %s STRING FIELD\n"
+                    + ") AS root.__audit.log.**",
+                AUDIT_LOG_NODE_ID,
+                AUDIT_LOG_USER_ID,
+                AUDIT_LOG_USERNAME,
+                AUDIT_LOG_CLI_HOSTNAME,
+                AUDIT_LOG_AUDIT_EVENT_TYPE,
+                AUDIT_LOG_OPERATION_TYPE,
+                AUDIT_LOG_PRIVILEGE_TYPE,
+                AUDIT_LOG_PRIVILEGE_LEVEL,
+                AUDIT_LOG_RESULT,
+                AUDIT_LOG_DATABASE,
+                AUDIT_LOG_SQL_STRING,
+                AUDIT_LOG_LOG);
+        if (executeCreateView(
+            session,
+            createViewSql,
+            AUDIT_LOG_PREFIX,
+            "Create view for audit log successfully",
+            "Failed to create view for audit log, because")) {
+          tableViewIsInitialized.set(true);
         }
       }
     }
@@ -614,26 +609,20 @@ public class DNAuditLogger extends AbstractAuditLogger {
     IClientSession session =
         createInternalAuditSession(DNAuditLogger.class.getSimpleName() + "LoginHistory");
 
-    try {
+    if (ensureAuditDatabaseInTableModel(session, "LOGIN_HISTORY")) {
+      return;
+    }
 
-      if (ensureAuditDatabaseInTableModel(session, "LOGIN_HISTORY")) {
-        return;
-      }
+    String createViewSql = buildCreateViewSql();
 
-      String createViewSql = buildCreateViewSql();
+    if (executeCreateView(
+        session,
+        createViewSql,
+        "LOGIN_HISTORY",
+        "Create view for login history successfully",
+        "Failed to create view for login history:")) {
 
-      if (executeCreateView(
-          session,
-          createViewSql,
-          "LOGIN_HISTORY",
-          "Create view for login history successfully",
-          "Failed to create view for login history:")) {
-
-        loginHistoryViewIsInitialized.set(true);
-      }
-
-    } finally {
-      SESSION_MANAGER.removeCurrSession();
+      loginHistoryViewIsInitialized.set(true);
     }
   }
 
