@@ -78,6 +78,13 @@ public class InformationSchema {
         new AttributeColumnSchema(ColumnHeaderConstant.STATEMENT_TABLE_MODEL, TSDataType.STRING));
     queriesTable.addColumnSchema(
         new AttributeColumnSchema(ColumnHeaderConstant.USER_TABLE_MODEL, TSDataType.STRING));
+    queriesTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.WAIT_TIME_IN_SERVER_TABLE_MODEL, TSDataType.FLOAT));
+    queriesTable.addColumnSchema(
+        new AttributeColumnSchema(ColumnHeaderConstant.CLIENT_IP, TSDataType.STRING));
+    queriesTable.addColumnSchema(
+        new AttributeColumnSchema(ColumnHeaderConstant.TIMEOUT_TABLE_MODEL, TSDataType.INT64));
     schemaTables.put(QUERIES, queriesTable);
 
     final TsTable databaseTable = new TsTable(DATABASES);

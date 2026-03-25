@@ -70,6 +70,8 @@ public interface IQueryExecution {
    */
   long getTotalExecutionTime();
 
+  long getTimeout();
+
   Optional<String> getExecuteSQL();
 
   String getStatementType();
@@ -78,6 +80,7 @@ public interface IQueryExecution {
 
   String getUser();
 
+  /** return ip for a thrift-based client, client-id for MQTT/REST client */
   String getClientHostname();
 
   boolean isDebug();

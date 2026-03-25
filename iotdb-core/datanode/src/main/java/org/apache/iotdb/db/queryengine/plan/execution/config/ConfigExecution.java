@@ -335,6 +335,11 @@ public class ConfigExecution implements IQueryExecution {
   }
 
   @Override
+  public long getTimeout() {
+    return context.getTimeOut();
+  }
+
+  @Override
   public Optional<String> getExecuteSQL() {
     return Optional.ofNullable(context.getSql());
   }
