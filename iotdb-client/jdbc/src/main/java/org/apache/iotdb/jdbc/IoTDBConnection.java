@@ -636,7 +636,8 @@ public class IoTDBConnection implements Connection {
                 params.getJdbcUriString(), e.getMessage()),
             e);
       }
-      if (e.getMessage().contains("Connection reset")) {
+      if (e.getMessage().contains("Connection reset")
+          || e.getMessage().contains("Socket is closed by peer")) {
         throw new SQLException(
             String.format(
                 "There are not enough connection resources available: %s", e.getMessage()),
