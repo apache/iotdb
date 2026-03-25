@@ -253,8 +253,7 @@ public class PipeDataNodeThriftRequestTest {
     }
 
     final PipeTransferTabletBatchReq req =
-        PipeTransferTabletBatchReq.toTPipeTransferReq(
-            binaryBuffers, insertNodeBuffers, tabletBuffers);
+        PipeTransferTabletBatchReq.toTPipeTransferReq(insertNodeBuffers, tabletBuffers);
 
     final PipeTransferTabletBatchReq deserializedReq =
         PipeTransferTabletBatchReq.fromTPipeTransferReq(req);

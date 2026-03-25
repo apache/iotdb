@@ -22,12 +22,10 @@ package org.apache.iotdb.db.pipe.sink.protocol.writeback;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
-import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTabletBinaryReq;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTabletInsertNodeReq;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTabletRawReq;
 import org.apache.iotdb.db.protocol.session.SessionManager;
@@ -53,7 +51,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.ZoneId;
-import java.util.Objects;
 
 public class WriteBackSink implements PipeConnector {
 
@@ -125,23 +122,13 @@ public class WriteBackSink implements PipeConnector {
 
   private void doTransfer(
       final PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent)
-      throws PipeException, WALPipeException {
+      throws PipeException {
     final TSStatus status;
 
     final InsertNode insertNode = pipeInsertNodeTabletInsertionEvent.getInsertNode();
-    if (Objects.isNull(insertNode)) {
-      status =
-          PipeDataNodeAgent.receiver()
-              .thrift()
-              .receive(
-                  PipeTransferTabletBinaryReq.toTPipeTransferReq(
-                      pipeInsertNodeTabletInsertionEvent.getByteBuffer()))
-              .getStatus();
-    } else {
-      final InsertBaseStatement statement =
-          PipeTransferTabletInsertNodeReq.toTPipeTransferRawReq(insertNode).constructStatement();
-      status = statement.isEmpty() ? RpcUtils.SUCCESS_STATUS : executeStatement(statement);
-    }
+    final InsertBaseStatement statement =
+        PipeTransferTabletInsertNodeReq.toTPipeTransferRawReq(insertNode).constructStatement();
+    status = statement.isEmpty() ? RpcUtils.SUCCESS_STATUS : executeStatement(statement);
 
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new PipeException(

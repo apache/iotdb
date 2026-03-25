@@ -48,7 +48,6 @@ import org.apache.iotdb.db.pipe.sink.protocol.pipeconsensus.handler.PipeConsensu
 import org.apache.iotdb.db.pipe.sink.protocol.pipeconsensus.handler.PipeConsensusTabletInsertNodeEventHandler;
 import org.apache.iotdb.db.pipe.sink.protocol.pipeconsensus.handler.PipeConsensusTsFileInsertionEventHandler;
 import org.apache.iotdb.db.pipe.sink.protocol.pipeconsensus.payload.builder.PipeConsensusAsyncBatchReqBuilder;
-import org.apache.iotdb.db.pipe.sink.protocol.pipeconsensus.payload.request.PipeConsensusTabletBinaryReq;
 import org.apache.iotdb.db.pipe.sink.protocol.pipeconsensus.payload.request.PipeConsensusTabletInsertNodeReq;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
@@ -64,7 +63,6 @@ import org.slf4j.LoggerFactory;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.Iterator;
-import java.util.Objects;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -280,15 +278,8 @@ public class PipeConsensusAsyncSink extends IoTDBSink implements ConsensusPipeSi
       final InsertNode insertNode = pipeInsertNodeTabletInsertionEvent.getInsertNode();
       final ProgressIndex progressIndex = pipeInsertNodeTabletInsertionEvent.getProgressIndex();
       final TPipeConsensusTransferReq pipeConsensusTransferReq =
-          Objects.isNull(insertNode)
-              ? PipeConsensusTabletBinaryReq.toTPipeConsensusTransferReq(
-                  pipeInsertNodeTabletInsertionEvent.getByteBuffer(),
-                  tCommitId,
-                  tConsensusGroupId,
-                  progressIndex,
-                  thisDataNodeId)
-              : PipeConsensusTabletInsertNodeReq.toTPipeConsensusTransferReq(
-                  insertNode, tCommitId, tConsensusGroupId, progressIndex, thisDataNodeId);
+          PipeConsensusTabletInsertNodeReq.toTPipeConsensusTransferReq(
+              insertNode, tCommitId, tConsensusGroupId, progressIndex, thisDataNodeId);
       final PipeConsensusTabletInsertNodeEventHandler pipeConsensusInsertNodeReqHandler =
           new PipeConsensusTabletInsertNodeEventHandler(
               pipeInsertNodeTabletInsertionEvent,

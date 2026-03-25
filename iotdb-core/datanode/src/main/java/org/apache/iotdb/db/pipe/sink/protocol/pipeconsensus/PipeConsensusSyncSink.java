@@ -38,7 +38,6 @@ import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.sink.protocol.pipeconsensus.payload.builder.PipeConsensusSyncBatchReqBuilder;
-import org.apache.iotdb.db.pipe.sink.protocol.pipeconsensus.payload.request.PipeConsensusTabletBinaryReq;
 import org.apache.iotdb.db.pipe.sink.protocol.pipeconsensus.payload.request.PipeConsensusTabletInsertNodeReq;
 import org.apache.iotdb.db.pipe.sink.protocol.pipeconsensus.payload.request.PipeConsensusTsFilePieceReq;
 import org.apache.iotdb.db.pipe.sink.protocol.pipeconsensus.payload.request.PipeConsensusTsFilePieceWithModReq;
@@ -255,21 +254,10 @@ public class PipeConsensusSyncSink extends IoTDBSink {
       insertNode = pipeInsertNodeTabletInsertionEvent.getInsertNode();
       progressIndex = pipeInsertNodeTabletInsertionEvent.getProgressIndex();
 
-      if (insertNode != null) {
-        resp =
-            syncPipeConsensusServiceClient.pipeConsensusTransfer(
-                PipeConsensusTabletInsertNodeReq.toTPipeConsensusTransferReq(
-                    insertNode, tCommitId, tConsensusGroupId, progressIndex, thisDataNodeId));
-      } else {
-        resp =
-            syncPipeConsensusServiceClient.pipeConsensusTransfer(
-                PipeConsensusTabletBinaryReq.toTPipeConsensusTransferReq(
-                    pipeInsertNodeTabletInsertionEvent.getByteBuffer(),
-                    tCommitId,
-                    tConsensusGroupId,
-                    progressIndex,
-                    thisDataNodeId));
-      }
+      resp =
+          syncPipeConsensusServiceClient.pipeConsensusTransfer(
+              PipeConsensusTabletInsertNodeReq.toTPipeConsensusTransferReq(
+                  insertNode, tCommitId, tConsensusGroupId, progressIndex, thisDataNodeId));
     } catch (final Exception e) {
       throw new PipeConnectionException(
           String.format(
