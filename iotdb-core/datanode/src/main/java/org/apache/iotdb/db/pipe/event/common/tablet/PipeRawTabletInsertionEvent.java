@@ -85,13 +85,17 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent
     this.allocatedMemoryBlock =
         PipeDataNodeResourceManager.memory().forceAllocateForTabletWithRetry(0);
 
-    addOnCommittedHook(
-        () -> {
-          if (shouldReportOnCommit) {
-            eliminateProgressIndex();
-          }
-        });
+    triggerAddHook();
   }
+
+  private void triggerAddHook() {
+    if (shouldReportOnCommit && needToReport && sourceEvent instanceof PipeTsFileInsertionEvent) {
+      final PipeTsFileInsertionEvent event = ((PipeTsFileInsertionEvent) sourceEvent);
+      addOnCommittedHook(event::eliminateProgressIndex);
+    }
+  }
+
+
 
   public PipeRawTabletInsertionEvent(
       final Tablet tablet,
@@ -181,14 +185,6 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent
     return true;
   }
 
-  protected void eliminateProgressIndex() {
-    if (needToReport) {
-      if (sourceEvent instanceof PipeTsFileInsertionEvent) {
-        ((PipeTsFileInsertionEvent) sourceEvent).eliminateProgressIndex();
-      }
-    }
-  }
-
   @Override
   public void bindProgressIndex(final ProgressIndex overridingProgressIndex) {
     // Normally not all events need to report progress, but if the overridingProgressIndex
@@ -254,6 +250,7 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent
 
   public void markAsNeedToReport() {
     this.needToReport = true;
+    triggerAddHook();
   }
 
   // This getter is reserved for user-defined plugins
