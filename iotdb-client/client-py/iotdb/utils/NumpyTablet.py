@@ -142,7 +142,9 @@ class NumpyTablet(object):
             ):
                 bs = value.tobytes()
             # TEXT, STRING, BLOB, OBJECT
-            elif data_type == 5 or data_type == 11 or data_type == 10 or data_type == 12:
+            elif (
+                data_type == 5 or data_type == 11 or data_type == 10 or data_type == 12
+            ):
                 format_str_list = [">"]
                 values_tobe_packed = []
                 for str_list in value:

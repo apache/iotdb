@@ -190,7 +190,9 @@ class Tablet(object):
                         self.__mark_none_value(bitmaps, i, j)
                         has_none = True
             # TEXT, STRING, BLOB, OBJECT
-            elif data_type == 5 or data_type == 11 or data_type == 10 or data_type == 12:
+            elif (
+                data_type == 5 or data_type == 11 or data_type == 10 or data_type == 12
+            ):
                 for j in range(self.__row_number):
                     if self.__values[j][i] is not None:
                         if isinstance(self.__values[j][i], str):
