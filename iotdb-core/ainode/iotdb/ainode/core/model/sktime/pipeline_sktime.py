@@ -33,7 +33,7 @@ class SktimePipeline(ForecastPipeline):
         model_kwargs.pop("device", None)  # sktime models run on CPU
         super().__init__(model_info, **model_kwargs)
 
-    def preprocess(
+    def _preprocess(
         self,
         inputs: list[dict[str, dict[str, torch.Tensor] | torch.Tensor]],
         **infer_kwargs,
@@ -48,8 +48,6 @@ class SktimePipeline(ForecastPipeline):
             list of pd.Series: Processed inputs for the model with each of shape [input_length, ].
         """
         model_id = self.model_info.model_id
-
-        inputs = super().preprocess(inputs, **infer_kwargs)
 
         # Here, we assume element in list has same history_length,
         # otherwise, the model cannot proceed
@@ -96,7 +94,7 @@ class SktimePipeline(ForecastPipeline):
 
         return outputs
 
-    def postprocess(self, outputs: np.ndarray, **infer_kwargs) -> list[torch.Tensor]:
+    def _postprocess(self, outputs: np.ndarray, **infer_kwargs) -> list[torch.Tensor]:
         """
         Postprocess the model's outputs.
 
@@ -111,5 +109,4 @@ class SktimePipeline(ForecastPipeline):
         # Transform outputs into a 2D-tensor: [batch_size, output_length]
         outputs = torch.from_numpy(outputs).float()
         outputs = [outputs[i].unsqueeze(0) for i in range(outputs.size(0))]
-        outputs = super().postprocess(outputs, **infer_kwargs)
         return outputs

@@ -75,10 +75,17 @@ def convert_tsblock_to_tensor(tsblock_data: bytes):
 # Convert DataFrame to TsBlock in binary, input shouldn't contain time column.
 # Maybe contain multiple value columns.
 def convert_tensor_to_tsblock(data_tensor: torch.Tensor):
-    data_frame = pd.DataFrame(data_tensor).T
-    data_shape = data_frame.shape
-    value_column_size = data_shape[1]
-    position_count = data_shape[0]
+    # Ensure the tensor is 2D with size [target_count, sequence_length]
+    if data_tensor.dim() == 0:
+        data_tensor = data_tensor.unsqueeze(0).unsqueeze(0)
+    elif data_tensor.dim() == 1:
+        data_tensor = data_tensor.unsqueeze(0)
+
+    # Transpose the tensor to [sequence_length, target_count]
+    data_frame = pd.DataFrame(data_tensor.cpu()).T
+    # sequence_length, target_count
+    position_count, value_column_size = data_frame.shape[0], data_frame.shape[1]
+
     keys = data_frame.keys()
 
     binary = value_column_size.to_bytes(4, byteorder="big")
