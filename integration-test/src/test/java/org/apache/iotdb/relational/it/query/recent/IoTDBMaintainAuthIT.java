@@ -174,6 +174,7 @@ public class IoTDBMaintainAuthIT {
           "elapsed_time",
           "statement",
           "user",
+          "wait_time_in_server",
           "client_ip",
           "timeout"
         };

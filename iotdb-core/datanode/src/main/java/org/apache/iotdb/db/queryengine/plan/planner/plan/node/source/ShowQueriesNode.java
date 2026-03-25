@@ -33,7 +33,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Objects;
-import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.showQueriesColumnHeaders;
 
@@ -42,7 +41,7 @@ public class ShowQueriesNode extends VirtualSourceNode {
   public static final List<String> SHOW_QUERIES_HEADER_COLUMNS =
       showQueriesColumnHeaders.stream()
           .map(ColumnHeader::getColumnName)
-          .collect(Collectors.toList());
+          .collect(ImmutableList.toImmutableList());
 
   private final String allowedUsername;
 

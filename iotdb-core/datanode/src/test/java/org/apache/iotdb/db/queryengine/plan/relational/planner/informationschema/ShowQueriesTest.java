@@ -37,6 +37,7 @@ import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.STATEM
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.TIMEOUT_TABLE_MODEL;
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.USER;
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.USER_TABLE_MODEL;
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.WAIT_TIME_IN_SERVER_TABLE_MODEL;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanAssert.assertPlan;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.collect;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.exchange;
@@ -67,6 +68,7 @@ public class ShowQueriesTest {
                     ELAPSED_TIME_TABLE_MODEL,
                     STATEMENT_TABLE_MODEL,
                     USER_TABLE_MODEL,
+                    WAIT_TIME_IN_SERVER_TABLE_MODEL,
                     CLIENT_IP,
                     TIMEOUT_TABLE_MODEL))));
 
@@ -147,6 +149,7 @@ public class ShowQueriesTest {
                         ELAPSED_TIME_TABLE_MODEL,
                         STATEMENT.toLowerCase(Locale.ENGLISH),
                         USER.toLowerCase(Locale.ENGLISH),
+                        WAIT_TIME_IN_SERVER_TABLE_MODEL,
                         CLIENT_IP,
                         TIMEOUT_TABLE_MODEL)))));
   }
