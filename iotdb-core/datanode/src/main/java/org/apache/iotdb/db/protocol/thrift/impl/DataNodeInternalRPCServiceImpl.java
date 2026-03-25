@@ -3377,6 +3377,9 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                 }
 
                 Set<Long> timePartitionIds = tsFileManager.getTimePartitions();
+                if (timePartitionIds.isEmpty()) {
+                  return;
+                }
                 final long earliestTimeSlotId = Collections.min(timePartitionIds);
                 earliestTimeslots.compute(
                     databaseName,
