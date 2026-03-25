@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.common;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
@@ -95,6 +96,7 @@ public class MPPQueryContext {
 
   private boolean userQuery = false;
 
+  @TestOnly
   public MPPQueryContext(QueryId queryId) {
     this.queryId = queryId;
     this.endPointBlackList = ConcurrentHashMap.newKeySet();
@@ -102,19 +104,14 @@ public class MPPQueryContext {
         new NotThreadSafeMemoryReservationManager(queryId, this.getClass().getName());
   }
 
-  // TODO too many callers just pass a null SessionInfo which should be forbidden
+  @TestOnly
   public MPPQueryContext(
       String sql,
       QueryId queryId,
       SessionInfo session,
       TEndPoint localDataBlockEndpoint,
       TEndPoint localInternalEndpoint) {
-    this(queryId);
-    this.sql = sql;
-    this.session = session;
-    this.localDataBlockEndpoint = localDataBlockEndpoint;
-    this.localInternalEndpoint = localInternalEndpoint;
-    this.initResultNodeContext();
+    this(sql, queryId, -1, session, localDataBlockEndpoint, localInternalEndpoint);
   }
 
   public MPPQueryContext(

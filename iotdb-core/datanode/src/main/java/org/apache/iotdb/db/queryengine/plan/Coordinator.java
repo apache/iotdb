@@ -267,12 +267,11 @@ public class Coordinator {
 
   public void cleanupQueryExecution(
       Long queryId, org.apache.thrift.TBase<?, ?> nativeApiRequest, Throwable t) {
-    IQueryExecution queryExecution = getQueryExecution(queryId);
+    IQueryExecution queryExecution = queryExecutionMap.remove(queryId);
     if (queryExecution != null) {
       try (SetThreadName threadName = new SetThreadName(queryExecution.getQueryId())) {
         LOGGER.debug("[CleanUpQuery]]");
         queryExecution.stopAndCleanup(t);
-        queryExecutionMap.remove(queryId);
         if (queryExecution.isQuery() && queryExecution.isUserQuery()) {
           long costTime = queryExecution.getTotalExecutionTime();
           // print slow query

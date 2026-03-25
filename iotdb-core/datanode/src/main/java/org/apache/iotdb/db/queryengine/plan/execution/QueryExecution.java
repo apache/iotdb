@@ -37,6 +37,7 @@ import org.apache.iotdb.db.queryengine.execution.exchange.source.ISourceHandle;
 import org.apache.iotdb.db.queryengine.execution.exchange.source.SourceHandle;
 import org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet;
 import org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet;
+import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.execution.memory.MemorySourceHandle;
@@ -104,8 +105,13 @@ public class QueryExecution implements IQueryExecution {
 
   private final AtomicBoolean stopped;
 
-  // cost time in ns
+  // cost time in ns of finished rpc
   private long totalExecutionTime = 0;
+
+  // -1 if previous rpc is finished and next client req hasn't come yet, unit is ns
+  // it will be updated in fetchResult rpc
+  // protected by synchronized(this)
+  private long startTimeOfCurrentRpc = System.nanoTime();
 
   private static final QueryExecutionMetricSet QUERY_EXECUTION_METRIC_SET =
       QueryExecutionMetricSet.getInstance();
@@ -129,16 +135,16 @@ public class QueryExecution implements IQueryExecution {
             if (!state.isDone()) {
               return;
             }
-            // TODO: (xingtanzjr) If the query is in abnormal state, the releaseResource() should be
-            // invoked
+            Throwable cause = null;
             if (state == QueryState.FAILED
                 || state == QueryState.ABORTED
                 || state == QueryState.CANCELED) {
               LOGGER.debug("[ReleaseQueryResource] state is: {}", state);
-              Throwable cause = stateMachine.getFailureException();
+              cause = stateMachine.getFailureException();
               releaseResource(cause);
             }
-            this.stop(null);
+            this.stop(cause);
+            this.cleanUpCoordinatorContextMapIfNeeded(cause);
           }
         });
     this.stopped = new AtomicBoolean(false);
@@ -324,12 +330,6 @@ public class QueryExecution implements IQueryExecution {
     }
   }
 
-  // Stop the query and clean up all the resources this query occupied
-  public void stopAndCleanup() {
-    stop(null);
-    releaseResource();
-  }
-
   @Override
   public void cancel() {
     stateMachine.transitionToCanceled(
@@ -338,27 +338,12 @@ public class QueryExecution implements IQueryExecution {
             .setMessage(KilledByOthersException.MESSAGE));
   }
 
-  /** Release the resources that current QueryExecution hold. */
-  private void releaseResource() {
-    // close ResultHandle to unblock client's getResult request
-    // Actually, we should not close the ResultHandle when the QueryExecution is Finished.
-    // There are only two scenarios where the ResultHandle should be closed:
-    //   1. The client fetch all the result and the ResultHandle is finished.
-    //   2. The client's connection is closed that all owned QueryExecution should be cleaned up
-    // If the QueryExecution's state is abnormal, we should also abort the resultHandle without
-    // waiting it to be finished.
-    if (resultHandle != null) {
-      resultHandle.close();
-      cleanUpResultHandle();
-    }
-  }
-
   private void cleanUpResultHandle() {
     // Result handle belongs to special fragment instance, so we need to deregister it alone
     // We don't need to deal with MemorySourceHandle because it doesn't register to memory pool
     // We don't need to deal with LocalSourceHandle because the SharedTsBlockQueue uses the upstream
     // FragmentInstanceId to register
-    if (resultHandleCleanUp.compareAndSet(false, true) && resultHandle instanceof SourceHandle) {
+    if (resultHandle instanceof SourceHandle) {
       TFragmentInstanceId fragmentInstanceId = resultHandle.getLocalFragmentInstanceId();
       MPPDataExchangeService.getInstance()
           .getMPPDataExchangeManager()
@@ -385,13 +370,26 @@ public class QueryExecution implements IQueryExecution {
     //   2. The client's connection is closed that all owned QueryExecution should be cleaned up
     // If the QueryExecution's state is abnormal, we should also abort the resultHandle without
     // waiting it to be finished.
-    if (resultHandle != null) {
+    if (resultHandle != null && resultHandleCleanUp.compareAndSet(false, true)) {
       if (t != null) {
         resultHandle.abort(t);
       } else {
         resultHandle.close();
       }
       cleanUpResultHandle();
+      resultHandle = null;
+    }
+  }
+
+  /**
+   * clear up Coordinator.queryExecutionMap by calling Coordinator.cleanupQueryExecution if the
+   * current rpc is finished. We need to make sure the cleanup logic is only called when client
+   * connection is not active, otherwise the finally code logic in ClientRPCServiceImpl will handle
+   * that
+   */
+  private synchronized void cleanUpCoordinatorContextMapIfNeeded(Throwable t) {
+    if (startTimeOfCurrentRpc == -1) {
+      Coordinator.getInstance().cleanupQueryExecution(context.getLocalQueryId(), null, t);
     }
   }
 
@@ -648,13 +646,22 @@ public class QueryExecution implements IQueryExecution {
   }
 
   @Override
-  public void recordExecutionTime(long executionTime) {
+  public synchronized void recordExecutionTime(long executionTime) {
     totalExecutionTime += executionTime;
+    // recordExecutionTime is called after current rpc finished, so we need to set
+    // startTimeOfCurrentRpc to -1
+    this.startTimeOfCurrentRpc = -1;
   }
 
   @Override
-  public long getTotalExecutionTime() {
-    return totalExecutionTime;
+  public synchronized void updateCurrentRpcStartTime(long startTime) {
+    this.startTimeOfCurrentRpc = startTime;
+  }
+
+  @Override
+  public synchronized long getTotalExecutionTime() {
+    return totalExecutionTime
+        + (startTimeOfCurrentRpc == -1 ? 0 : System.nanoTime() - startTimeOfCurrentRpc);
   }
 
   @Override

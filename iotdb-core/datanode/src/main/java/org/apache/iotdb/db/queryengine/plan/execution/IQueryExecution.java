@@ -33,8 +33,6 @@ public interface IQueryExecution {
 
   void stop(Throwable t);
 
-  void stopAndCleanup();
-
   void stopAndCleanup(Throwable t);
 
   void cancel();
@@ -60,6 +58,14 @@ public interface IQueryExecution {
   long getStartExecutionTime();
 
   void recordExecutionTime(long executionTime);
+
+  /**
+   * update current rpc start time, which is used to calculate rpc execution time and update total
+   * execution time
+   *
+   * @param startTime start time of current rpc, time unit is ns
+   */
+  void updateCurrentRpcStartTime(long startTime);
 
   /**
    * @return cost time in ns
