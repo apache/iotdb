@@ -71,15 +71,22 @@ public class AINodeModelManageIT {
   public void userDefinedModelManagementTestInTree() throws SQLException, InterruptedException {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TREE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
-      registerUserDefinedModel(statement);
-      callInferenceTest(
-          statement, new FakeModelInfo("user_chronos", "custom_t5", "user_defined", "active"));
-      dropUserDefinedModel(statement);
+      // Test transformers model (chronos2) in tree.
+      AINodeTestUtils.FakeModelInfo modelInfo =
+          new FakeModelInfo("user_chronos", "custom_t5", "user_defined", "active");
+      registerUserDefinedModel(statement, modelInfo, "file:///data/chronos2");
+      callInferenceTest(statement, modelInfo);
+      dropUserDefinedModel(statement, modelInfo.getModelId());
       errorTest(
           statement,
           "create model origin_chronos using uri \"file:///data/chronos2_origin\"",
           "1505: 't5' is already used by a Transformers config, pick another name.");
       statement.execute("drop model origin_chronos");
+
+      // Test PytorchModelHubMixin model (mantis) in tree.
+      modelInfo = new FakeModelInfo("user_mantis", "custom_mantis", "user_defined", "active");
+      registerUserDefinedModel(statement, modelInfo, "file:///data/mantis");
+      dropUserDefinedModel(statement, modelInfo.getModelId());
     }
   }
 
@@ -87,23 +94,35 @@ public class AINodeModelManageIT {
   public void userDefinedModelManagementTestInTable() throws SQLException, InterruptedException {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
-      registerUserDefinedModel(statement);
-      forecastTableFunctionTest(
-          statement, new FakeModelInfo("user_chronos", "custom_t5", "user_defined", "active"));
-      dropUserDefinedModel(statement);
+      // Test transformers model (chronos2) in table.
+      AINodeTestUtils.FakeModelInfo modelInfo =
+          new FakeModelInfo("user_chronos", "custom_t5", "user_defined", "active");
+      registerUserDefinedModel(statement, modelInfo, "file:///data/chronos2");
+      forecastTableFunctionTest(statement, modelInfo);
+      dropUserDefinedModel(statement, modelInfo.getModelId());
       errorTest(
           statement,
           "create model origin_chronos using uri \"file:///data/chronos2_origin\"",
           "1505: 't5' is already used by a Transformers config, pick another name.");
       statement.execute("drop model origin_chronos");
+
+      // Test PytorchModelHubMixin model (mantis) in table.
+      modelInfo = new FakeModelInfo("user_mantis", "custom_mantis", "user_defined", "active");
+      registerUserDefinedModel(statement, modelInfo, "file:///data/mantis");
+      dropUserDefinedModel(statement, modelInfo.getModelId());
     }
   }
 
-  private void registerUserDefinedModel(Statement statement)
+  public static void registerUserDefinedModel(
+      Statement statement, AINodeTestUtils.FakeModelInfo modelInfo, String uri)
       throws SQLException, InterruptedException {
+    String modelId = modelInfo.getModelId();
+    String modelType = modelInfo.getModelType();
+    String category = modelInfo.getCategory();
+    final String CREATE_MODEL_TEMPLATE = "create model %s using uri \"%s\"";
     final String alterConfigSQL = "set configuration \"trusted_uri_pattern\"='.*'";
-    final String registerSql = "create model user_chronos using uri \"file:///data/chronos2\"";
-    final String showSql = "SHOW MODELS user_chronos";
+    final String registerSql = String.format(CREATE_MODEL_TEMPLATE, modelId, uri);
+    final String showSql = String.format("SHOW MODELS %s", modelId);
     statement.execute(alterConfigSQL);
     statement.execute(registerSql);
     boolean loading = true;
@@ -112,13 +131,13 @@ public class AINodeModelManageIT {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         checkHeader(resultSetMetaData, "ModelId,ModelType,Category,State");
         while (resultSet.next()) {
-          String modelId = resultSet.getString(1);
-          String modelType = resultSet.getString(2);
-          String category = resultSet.getString(3);
+          String resultModelId = resultSet.getString(1);
+          String resultModelType = resultSet.getString(2);
+          String resultCategory = resultSet.getString(3);
           String state = resultSet.getString(4);
-          assertEquals("user_chronos", modelId);
-          assertEquals("custom_t5", modelType);
-          assertEquals("user_defined", category);
+          assertEquals(modelId, resultModelId);
+          assertEquals(modelType, resultModelType);
+          assertEquals(category, resultCategory);
           if (state.equals("active")) {
             loading = false;
           } else if (state.equals("loading")) {
@@ -136,9 +155,9 @@ public class AINodeModelManageIT {
     assertFalse(loading);
   }
 
-  private void dropUserDefinedModel(Statement statement) throws SQLException {
-    final String showSql = "SHOW MODELS user_chronos";
-    final String dropSql = "DROP MODEL user_chronos";
+  public static void dropUserDefinedModel(Statement statement, String modelId) throws SQLException {
+    final String showSql = String.format("SHOW MODELS %s", modelId);
+    final String dropSql = String.format("DROP MODEL %s", modelId);
     statement.execute(dropSql);
     try (ResultSet resultSet = statement.executeQuery(showSql)) {
       ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
