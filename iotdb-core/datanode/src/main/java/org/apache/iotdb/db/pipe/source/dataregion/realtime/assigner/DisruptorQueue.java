@@ -109,7 +109,7 @@ public class DisruptorQueue {
   private void mayPrintExceedingLog() {
     final long remainingCapacity = ringBuffer.remainingCapacity();
     final long bufferSize = ringBuffer.getBufferSize();
-    if ((double) remainingCapacity / bufferSize >= 0.5
+    if ((double) remainingCapacity / bufferSize <= 0.5
         && System.currentTimeMillis()
                 - PipeConfig.getInstance().getPipePeriodicalLogMinIntervalSeconds()
             >= lastLogTime) {
