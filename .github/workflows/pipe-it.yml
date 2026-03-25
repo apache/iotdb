@@ -79,7 +79,8 @@ jobs:
               -DskipUTs \
               -Dtest=IoTDBPipePermissionIT#testIllegalPassword \
               -Dsurefire.failIfNoSpecifiedTests=false \
-              -DintegrationTest.forkCount=1 -DConfigNodeMaxHeapSize=256 -DDataNodeMaxHeapSize=1024 -DDataNodeMaxDirectMemorySize=768 \
+              -DintegrationTest.forkCount=0 -DforkCount=0 \
+              -DConfigNodeMaxHeapSize=256 -DDataNodeMaxHeapSize=1024 -DDataNodeMaxDirectMemorySize=768 \
               -DClusterConfigurations=${{ matrix.cluster1 }},${{ matrix.cluster2 }} \
               -pl integration-test \
               -am -PMultiClusterIT2DualTreeManual \
