@@ -53,7 +53,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalIn
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.DeviceIDFactory;
-import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALPipeException;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
 import org.apache.iotdb.pipe.api.collector.TabletCollector;
@@ -69,7 +68,8 @@ import org.apache.tsfile.write.record.Tablet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.nio.ByteBuffer;
+import javax.annotation.Nonnull;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -159,16 +159,9 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
     this.allocatedMemoryBlock = new AtomicReference<>();
   }
 
+  @Nonnull
   public InsertNode getInsertNode() {
     return insertNode;
-  }
-
-  public ByteBuffer getByteBuffer() throws WALPipeException {
-    final InsertNode node = insertNode;
-    if (Objects.isNull(node)) {
-      throw new PipeException("InsertNode has been released");
-    }
-    return node.serializeToByteBuffer();
   }
 
   public String getDeviceId() {
@@ -399,9 +392,6 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
   public boolean mayEventPathsOverlappedWithPattern() {
     try {
       final InsertNode insertNode = getInsertNode();
-      if (Objects.isNull(insertNode)) {
-        return true;
-      }
 
       if (insertNode instanceof RelationalInsertRowNode
           || insertNode instanceof RelationalInsertTabletNode

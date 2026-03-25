@@ -51,12 +51,10 @@ import java.util.concurrent.atomic.AtomicLong;
 
 public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
 
-  private final List<ByteBuffer> binaryBuffers = new ArrayList<>();
   private final List<ByteBuffer> insertNodeBuffers = new ArrayList<>();
   private final List<ByteBuffer> tabletBuffers = new ArrayList<>();
 
   private static final String TREE_MODEL_DATABASE_PLACEHOLDER = null;
-  private final List<String> binaryDataBases = new ArrayList<>();
   private final List<String> insertNodeDataBases = new ArrayList<>();
   private final List<String> tabletDataBases = new ArrayList<>();
 
@@ -90,11 +88,9 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
   public synchronized void onSuccess() {
     super.onSuccess();
 
-    binaryBuffers.clear();
     insertNodeBuffers.clear();
     tabletBuffers.clear();
 
-    binaryDataBases.clear();
     insertNodeDataBases.clear();
     tabletDataBases.clear();
     tableModelTabletMap.clear();
@@ -142,12 +138,7 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
     tableModelTabletMap.clear();
 
     return PipeTransferTabletBatchReqV2.toTPipeTransferReq(
-        binaryBuffers,
-        insertNodeBuffers,
-        tabletBuffers,
-        binaryDataBases,
-        insertNodeDataBases,
-        tabletDataBases);
+        insertNodeBuffers, tabletBuffers, insertNodeDataBases, tabletDataBases);
   }
 
   public Map<Pair<String, Long>, Long> deepCopyPipeName2BytesAccumulated() {
