@@ -16,17 +16,14 @@
 # under the License.
 #
 
-import logging
-import warnings
-
 import torch
 
 from iotdb.ainode.core.inference.pipeline.basic_pipeline import ForecastPipeline
+from iotdb.ainode.core.log import Logger
+from iotdb.ainode.core.model.toto.data.util.dataset import MaskedTimeseries
+from iotdb.ainode.core.model.toto.inference.forecaster import TotoForecaster
 
-from .data.util.dataset import MaskedTimeseries
-from .inference.forecaster import TotoForecaster
-
-logger = logging.getLogger(__name__)
+logger = Logger()
 
 
 class TotoPipeline(ForecastPipeline):
@@ -51,9 +48,30 @@ class TotoPipeline(ForecastPipeline):
         return self._forecaster
 
     def preprocess(self, inputs, **infer_kwargs):
-        super().preprocess(inputs, **infer_kwargs)
-        processed_inputs = []
+        """
+        Preprocess input data for Toto.
 
+        Delegates to the base class for input validation, then converts each
+        validated input dict into a ``MaskedTimeseries`` named-tuple that the
+        ``TotoForecaster`` expects.
+
+        Parameters
+        ----------
+        inputs : list of dict
+            A list of dictionaries containing input data. Each dictionary contains:
+            - 'targets': A tensor (1D or 2D) of shape (input_length,) or (target_count, input_length).
+
+        infer_kwargs: Additional keyword arguments for inference, such as:
+            - `output_length`(int): Prediction length.
+
+        Returns
+        -------
+        list of MaskedTimeseries
+            Processed inputs compatible with Toto's forecaster.
+        """
+        inputs = super().preprocess(inputs, **infer_kwargs)
+
+        processed_inputs = []
         for item in inputs:
             targets = item["targets"]
             if targets.ndim == 1:
@@ -63,10 +81,8 @@ class TotoPipeline(ForecastPipeline):
             device = targets.device
 
             if "past_covariates" in item or "future_covariates" in item:
-                warnings.warn(
-                    "TotoPipeline does not support covariates; they will be ignored.",
-                    UserWarning,
-                    stacklevel=2,
+                logger.warning(
+                    "TotoPipeline does not support covariates; they will be ignored."
                 )
 
             padding_mask = ~torch.isnan(targets)
@@ -96,7 +112,7 @@ class TotoPipeline(ForecastPipeline):
 
         return processed_inputs
 
-    def forecast(self, inputs, **infer_kwargs):
+    def forecast(self, inputs, **infer_kwargs) -> list[torch.Tensor]:
         output_length = infer_kwargs.get("output_length", 96)
         num_samples = infer_kwargs.get("num_samples", None)
         samples_per_batch = infer_kwargs.get("samples_per_batch", 10)
@@ -127,5 +143,5 @@ class TotoPipeline(ForecastPipeline):
             outputs.append(mean)
         return outputs
 
-    def postprocess(self, outputs, **infer_kwargs):
+    def postprocess(self, outputs, **infer_kwargs) -> list[torch.Tensor]:
         return super().postprocess(outputs, **infer_kwargs)

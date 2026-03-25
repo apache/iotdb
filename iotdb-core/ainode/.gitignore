@@ -21,6 +21,3 @@ poetry.lock
 /dist/
 /build/
 
-# Un-ignore toto source data/ package (Python source, not data files)
-!iotdb/ainode/core/model/toto/data/
-!iotdb/ainode/core/model/toto/data/**
