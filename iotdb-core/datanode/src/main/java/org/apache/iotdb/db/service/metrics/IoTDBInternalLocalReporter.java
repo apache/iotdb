@@ -88,7 +88,7 @@ public class IoTDBInternalLocalReporter extends IoTDBInternalReporter {
   public IoTDBInternalLocalReporter() {
     partitionFetcher = ClusterPartitionFetcher.getInstance();
     schemaFetcher = ClusterSchemaFetcher.getInstance();
-    sessionInfo = new SessionInfo(0, AuthorityChecker.SUPER_USER, ZoneId.systemDefault());
+    sessionInfo = new SessionInfo(0, AuthorityChecker.SUPER_USER, ZoneId.systemDefault(), "");
 
     IClientManager<ConfigRegionId, ConfigNodeClient> configNodeClientManager =
         ConfigNodeClientManager.getInstance();

@@ -450,7 +450,7 @@ public class LimitOffsetPushDownTest {
         new MPPQueryContext(
             "",
             new QueryId("test_query"),
-            new SessionInfo(-1L, "", ZoneId.systemDefault()),
+            new SessionInfo(-1L, "", ZoneId.systemDefault(), ""),
             new TEndPoint(),
             new TEndPoint());
     Analyzer analyzer =

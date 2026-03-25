@@ -151,7 +151,7 @@ public class IoTDBLegacyPipeReceiverAgent {
               .executeForTreeModel(
                   statement,
                   queryId,
-                  new SessionInfo(0, AuthorityChecker.SUPER_USER, ZoneId.systemDefault()),
+                  new SessionInfo(0, AuthorityChecker.SUPER_USER, ZoneId.systemDefault(), ""),
                   "",
                   partitionFetcher,
                   schemaFetcher,
