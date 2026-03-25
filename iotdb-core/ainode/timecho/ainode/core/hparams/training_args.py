@@ -1,6 +1,10 @@
 from dataclasses import asdict, dataclass, field
 from typing import List, Literal, Optional
 
+from iotdb.ainode.core.manager.device_manager import DeviceManager
+
+BACKEND = DeviceManager()
+
 
 @dataclass
 class TrainingArguments:
@@ -242,14 +246,11 @@ class TrainingArguments:
         # Auto-detect world_size from available GPUs when DDP is enabled
         # but world_size is left at default (1).
         if self.ddp and self.world_size <= 1:
-            import torch
-
             if self.gpu_ids:
                 self.world_size = len(self.gpu_ids)
-            elif torch.cuda.is_available():
-                self.world_size = torch.cuda.device_count()
             else:
-                self.world_size = 1
+                self.gpu_ids = BACKEND.device_ids()
+                self.world_size = len(BACKEND.device_ids())
 
     @property
     def effective_batch_size(self) -> int:
