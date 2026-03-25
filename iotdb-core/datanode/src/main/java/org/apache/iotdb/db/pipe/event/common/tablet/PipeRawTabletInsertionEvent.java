@@ -185,6 +185,12 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent
     return true;
   }
 
+  protected void eliminateProgressIndex() {
+    if (sourceEvent instanceof PipeTsFileInsertionEvent) {
+      ((PipeTsFileInsertionEvent) sourceEvent).eliminateProgressIndex();
+    }
+  }
+
   @Override
   public void bindProgressIndex(final ProgressIndex overridingProgressIndex) {
     // Normally not all events need to report progress, but if the overridingProgressIndex
@@ -249,6 +255,14 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent
   }
 
   public void markAsNeedToReport() {
+    if (!needToReport) {
+      addOnCommittedHook(
+          () -> {
+            if (shouldReportOnCommit) {
+              eliminateProgressIndex();
+            }
+          });
+    }
     this.needToReport = true;
     triggerAddHook();
   }
@@ -265,6 +279,11 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent
 
   public EnrichedEvent getSourceEvent() {
     return sourceEvent;
+  }
+
+  @Override
+  public boolean isShouldReportOnCommit() {
+    return shouldReportOnCommit && needToReport;
   }
 
   /////////////////////////// TabletInsertionEvent ///////////////////////////
