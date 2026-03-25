@@ -66,6 +66,11 @@ public interface IQueryExecution {
    */
   long getTotalExecutionTime();
 
+  /** return ip for a thrift-based client, client-id for MQTT/REST client */
+  String getClientHostname();
+
+  long getTimeout();
+
   Optional<String> getExecuteSQL();
 
   String getStatementType();

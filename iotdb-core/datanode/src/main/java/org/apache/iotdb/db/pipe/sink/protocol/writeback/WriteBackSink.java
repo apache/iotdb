@@ -187,7 +187,7 @@ public class WriteBackSink implements PipeConnector {
         .executeForTreeModel(
             new PipeEnrichedStatement(statement),
             SessionManager.getInstance().requestQueryId(),
-            new SessionInfo(0, AuthorityChecker.SUPER_USER, ZoneId.systemDefault()),
+            new SessionInfo(0, AuthorityChecker.SUPER_USER, ZoneId.systemDefault(), ""),
             "",
             ClusterPartitionFetcher.getInstance(),
             ClusterSchemaFetcher.getInstance(),

@@ -208,7 +208,7 @@ public class FragmentInstanceContext extends QueryContext {
       FragmentInstanceId id, FragmentInstanceStateMachine stateMachine) {
     FragmentInstanceContext instanceContext =
         new FragmentInstanceContext(
-            id, stateMachine, new SessionInfo(1, "test", ZoneId.systemDefault()));
+            id, stateMachine, new SessionInfo(1, "test", ZoneId.systemDefault(), ""));
     instanceContext.initialize();
     instanceContext.start();
     return instanceContext;
@@ -223,7 +223,7 @@ public class FragmentInstanceContext extends QueryContext {
         new FragmentInstanceContext(
             id,
             stateMachine,
-            new SessionInfo(1, "test", ZoneId.systemDefault()),
+            new SessionInfo(1, "test", ZoneId.systemDefault(), ""),
             memoryReservationManager);
     instanceContext.initialize();
     instanceContext.start();
