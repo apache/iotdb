@@ -441,6 +441,14 @@ public abstract class AbstractEnv implements BaseEnv {
   }
 
   @Override
+  public Connection getAvailableConnection(String username, String password) throws SQLException {
+    return new ClusterTestConnection(
+        getWriteConnection(null, username, password),
+        getOneAvailableReadConnection(null, username, password),
+        this);
+  }
+
+  @Override
   public Connection getConnection(
       final DataNodeWrapper dataNodeWrapper, final String username, final String password)
       throws SQLException {
@@ -654,6 +662,23 @@ public abstract class AbstractEnv implements BaseEnv {
         });
 
     return readConnRequestDelegate.requestAll();
+  }
+
+  protected List<NodeConnection> getOneAvailableReadConnection(
+      final Constant.Version version, final String username, final String password)
+      throws SQLException {
+    final List<DataNodeWrapper> dataNodeWrapperListCopy = new ArrayList<>(dataNodeWrapperList);
+    Collections.shuffle(dataNodeWrapperListCopy);
+    SQLException lastException = null;
+    for (final DataNodeWrapper dataNode : dataNodeWrapperListCopy) {
+      try {
+        return getReadConnections(version, dataNode, username, password);
+      } catch (final SQLException e) {
+        lastException = e;
+      }
+    }
+    logger.error("Failed to get connection from any DataNode, last exception is ", lastException);
+    throw lastException;
   }
 
   // use this to avoid some runtimeExceptions when try to get jdbc connections.

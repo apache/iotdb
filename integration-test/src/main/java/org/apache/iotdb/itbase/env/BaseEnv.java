@@ -120,6 +120,12 @@ public interface BaseEnv {
   Connection getConnection(DataNodeWrapper dataNodeWrapper, String username, String password)
       throws SQLException;
 
+  default Connection getAvailableConnection() throws SQLException {
+    return getAvailableConnection(SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD);
+  }
+
+  Connection getAvailableConnection(String username, String password) throws SQLException;
+
   default Connection getWriteOnlyConnectionWithSpecifiedDataNode(DataNodeWrapper dataNode)
       throws SQLException {
     return getWriteOnlyConnectionWithSpecifiedDataNode(

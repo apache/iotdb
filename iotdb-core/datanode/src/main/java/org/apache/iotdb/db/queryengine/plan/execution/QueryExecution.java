@@ -665,6 +665,16 @@ public class QueryExecution implements IQueryExecution {
   }
 
   @Override
+  public String getClientHostname() {
+    return context.getClientHostName();
+  }
+
+  @Override
+  public long getTimeout() {
+    return context.getTimeOut();
+  }
+
+  @Override
   public Optional<String> getExecuteSQL() {
     return Optional.ofNullable(context.getSql());
   }

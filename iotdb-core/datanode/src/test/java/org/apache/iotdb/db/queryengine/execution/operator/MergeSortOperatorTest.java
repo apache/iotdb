@@ -1839,6 +1839,16 @@ public class MergeSortOperatorTest {
     }
 
     @Override
+    public String getClientHostname() {
+      return "";
+    }
+
+    @Override
+    public long getTimeout() {
+      return 60_000L;
+    }
+
+    @Override
     public Optional<ByteBuffer> getByteBufferBatchResult() {
       return Optional.empty();
     }
