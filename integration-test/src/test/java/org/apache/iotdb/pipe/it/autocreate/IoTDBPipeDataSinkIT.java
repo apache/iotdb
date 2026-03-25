@@ -28,11 +28,16 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2AutoCreateSchema;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.entity.StringEntity;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClientBuilder;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
+import java.nio.charset.Charset;
 import java.sql.Connection;
 import java.sql.Statement;
 import java.util.Arrays;
@@ -42,11 +47,20 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.function.Consumer;
 
+import static org.apache.iotdb.db.it.IoTDBRestServiceIT.getHttpPost;
+
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2AutoCreateSchema.class})
 public class IoTDBPipeDataSinkIT extends AbstractPipeDualAutoIT {
+
+  @Override
+  protected void setupConfig() {
+    super.setupConfig();
+    senderEnv.getConfig().getDataNodeConfig().setEnableRestService(true);
+  }
+
   @Test
-  public void testThriftConnectorWithRealtimeFirstDisabled() throws Exception {
+  public void testThriftSinkWithRealtimeFirstDisabled() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
     final String receiverIp = receiverDataNode.getIp();
@@ -196,7 +210,7 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualAutoIT {
   }
 
   @Test
-  public void testLegacyConnector() throws Exception {
+  public void testLegacySink() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
     final String receiverIp = receiverDataNode.getIp();
@@ -502,5 +516,54 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualAutoIT {
           "Time,root.vehicle.d0.s1,",
           Collections.unmodifiableSet(new HashSet<>(Arrays.asList("1,1.0,", "2,1.0,"))));
     }
+  }
+
+  @Test
+  public void testSpecialPartialInsert() throws Exception {
+    try (final Connection connection = senderEnv.getConnection();
+        final Statement statement = connection.createStatement()) {
+      statement.execute(
+          String.format(
+              "create pipe a2b with sink ('node-urls'='%s')",
+              receiverEnv.getDataNodeWrapperList().get(0).getIpAndPortString()));
+    }
+
+    CloseableHttpClient httpClient = HttpClientBuilder.create().build();
+
+    HttpPost httpPost =
+        getHttpPost(
+            "http://"
+                + senderEnv.getDataNodeWrapper(0).getIp()
+                + ":"
+                + senderEnv.getDataNodeWrapper(0).getRestServicePort()
+                + "/rest/v2/insertRecords");
+    String json =
+        "{\"timestamps\":[1635232113960,1635232151960,1635232143960,1635232143960],\"measurements_list\":[[\"s33\",\"s44\"],[\"s55\",\"s66\"],[\"s77\",\"s88\"],[\"s771\",\"s881\"]],\"data_types_list\":[[\"INT32\",\"INT64\"],[\"FLOAT\",\"DOUBLE\"],[\"FLOAT\",\"DOUBLE\"],[\"BOOLEAN\",\"TEXT\"]],\"values_list\":[[1,false],[2.1,2],[4,6],[false,\"cccccc\"]],\"is_aligned\":false,\"devices\":[\"root.s1\",\"root.s1\",\"root.s1\",\"root.s3\"]}";
+    httpPost.setEntity(new StringEntity(json, Charset.defaultCharset()));
+    for (int i = 0; i < 30; i++) {
+      try {
+        httpClient.execute(httpPost);
+        break;
+      } catch (final Exception e) {
+        if (i == 29) {
+          throw e;
+        }
+        try {
+          Thread.sleep(1000);
+        } catch (InterruptedException ex) {
+          throw new RuntimeException(ex);
+        }
+      }
+    }
+
+    TestUtils.assertDataEventuallyOnEnv(
+        receiverEnv,
+        "select s88, s77, s66, s55, s44, s33 from root.s1",
+        "Time,root.s1.s88,root.s1.s77,root.s1.s66,root.s1.s55,root.s1.s33,",
+        new HashSet<>(
+            Arrays.asList(
+                "1635232113960,null,null,null,null,1,",
+                "1635232151960,null,null,2.0,2.1,null,",
+                "1635232143960,6.0,4.0,null,null,null,")));
   }
 }
