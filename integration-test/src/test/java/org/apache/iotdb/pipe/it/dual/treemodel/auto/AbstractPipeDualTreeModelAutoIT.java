@@ -60,8 +60,7 @@ public abstract class AbstractPipeDualTreeModelAutoIT {
         .setPipeMemoryManagementEnabled(false)
         .setDataReplicationFactor(1)
         .setSchemaReplicationFactor(1)
-        .setIsPipeEnableMemoryCheck(false)
-        .setPipeAutoSplitFullEnabled(false);
+        .setIsPipeEnableMemoryCheck(false);
     senderEnv.getConfig().getDataNodeConfig().setDataNodeMemoryProportion("3:3:1:1:3:1");
     receiverEnv
         .getConfig()
@@ -72,8 +71,7 @@ public abstract class AbstractPipeDualTreeModelAutoIT {
         .setPipeMemoryManagementEnabled(false)
         .setDataReplicationFactor(1)
         .setSchemaReplicationFactor(1)
-        .setIsPipeEnableMemoryCheck(false)
-        .setPipeAutoSplitFullEnabled(false);
+        .setIsPipeEnableMemoryCheck(false);
     receiverEnv.getConfig().getDataNodeConfig().setDataNodeMemoryProportion("3:3:1:1:9:1");
 
     // 10 min, assert that the operations will not time out
