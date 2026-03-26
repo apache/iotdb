@@ -608,13 +608,13 @@ public class TableMetadataImpl implements Metadata {
                   "Error size of input expressions. expression: %s, actual size: %s, expected size: [2].",
                   functionName.toUpperCase(), argumentTypes.size()));
         }
-        if (!isSupportedMathNumericType(argumentTypes.get(0))) {
+        if (!isNumericType(argumentTypes.get(0))) {
           throw new SemanticException(
               String.format(
                   "Aggregate functions [%s] only support numeric data types [INT32, INT64, FLOAT, DOUBLE, TIMESTAMP]",
                   functionName.toUpperCase()));
         }
-        if (!isSupportedMathNumericType(argumentTypes.get(1))) {
+        if (!isNumericType(argumentTypes.get(1))) {
           throw new SemanticException(
               String.format(
                   "Aggregate functions [%s] only support numeric data types [INT32, INT64, FLOAT, DOUBLE, TIMESTAMP]",
@@ -629,7 +629,7 @@ public class TableMetadataImpl implements Metadata {
                   "Error size of input expressions. expression: %s, actual size: %s, expected size: [1].",
                   functionName.toUpperCase(), argumentTypes.size()));
         }
-        if (!isSupportedMathNumericType(argumentTypes.get(0))) {
+        if (!isNumericType(argumentTypes.get(0))) {
           throw new SemanticException(
               String.format(
                   "Aggregate functions [%s] only support numeric data types [INT32, INT64, FLOAT, DOUBLE, TIMESTAMP]",
@@ -1017,11 +1017,7 @@ public class TableMetadataImpl implements Metadata {
   }
 
   public static boolean isSupportedMathNumericType(Type type) {
-    return DOUBLE.equals(type)
-        || FLOAT.equals(type)
-        || INT32.equals(type)
-        || INT64.equals(type)
-        || TIMESTAMP.equals(type);
+    return DOUBLE.equals(type) || FLOAT.equals(type) || INT32.equals(type) || INT64.equals(type);
   }
 
   public static boolean isNumericType(Type type) {
