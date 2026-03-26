@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.query.QueryTimeoutRuntimeException;
 import org.apache.iotdb.db.queryengine.common.DataNodeEndPoints;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
@@ -241,7 +242,6 @@ public class Coordinator {
     return queryExecutionMap.size();
   }
 
-  // TODO: (xingtanzjr) need to redo once we have a concrete policy for the threadPool management
   private ExecutorService getQueryExecutor() {
     int coordinatorReadExecutorSize = CONFIG.getCoordinatorReadExecutorSize();
     return IoTDBThreadPoolFactory.newFixedThreadPool(
@@ -254,7 +254,6 @@ public class Coordinator {
         coordinatorWriteExecutorSize, ThreadName.MPP_COORDINATOR_WRITE_EXECUTOR.getName());
   }
 
-  // TODO: (xingtanzjr) need to redo once we have a concrete policy for the threadPool management
   private ScheduledExecutorService getScheduledExecutor() {
     return IoTDBThreadPoolFactory.newScheduledThreadPool(
         COORDINATOR_SCHEDULED_EXECUTOR_SIZE,
@@ -267,12 +266,11 @@ public class Coordinator {
 
   public void cleanupQueryExecution(
       Long queryId, org.apache.thrift.TBase<?, ?> nativeApiRequest, Throwable t) {
-    IQueryExecution queryExecution = getQueryExecution(queryId);
+    IQueryExecution queryExecution = queryExecutionMap.remove(queryId);
     if (queryExecution != null) {
       try (SetThreadName threadName = new SetThreadName(queryExecution.getQueryId())) {
         LOGGER.debug("[CleanUpQuery]]");
         queryExecution.stopAndCleanup(t);
-        queryExecutionMap.remove(queryId);
         if (queryExecution.isQuery() && queryExecution.isUserQuery()) {
           long costTime = queryExecution.getTotalExecutionTime();
           // print slow query
@@ -298,6 +296,35 @@ public class Coordinator {
         }
       }
     }
+  }
+
+  /**
+   * We need to reclaim resources from queries that have exceeded their timeout by more than one
+   * minute. This indicates that the associated clients have failed to perform proper resource
+   * cleanup.
+   */
+  public void cleanUpStaleQueries() {
+    long currentTime = System.currentTimeMillis();
+    queryExecutionMap.forEach(
+        (queryId, queryExecution) -> {
+          if (queryExecution.isActive()) {
+            return;
+          }
+          long timeout = queryExecution.getTimeout();
+          long queryStartTime = queryExecution.getStartExecutionTime();
+          long executeTime = currentTime - queryStartTime;
+          if (timeout > 0 && executeTime - 60_000L > timeout) {
+            LOGGER.warn(
+                "Cleaning up stale query with id {}, which has been running for {} ms, timeout duration is: {}ms",
+                queryId,
+                executeTime,
+                timeout);
+            cleanupQueryExecution(
+                queryId,
+                null,
+                new QueryTimeoutRuntimeException(queryStartTime, currentTime, timeout));
+          }
+        });
   }
 
   public void cleanupQueryExecution(Long queryId) {
