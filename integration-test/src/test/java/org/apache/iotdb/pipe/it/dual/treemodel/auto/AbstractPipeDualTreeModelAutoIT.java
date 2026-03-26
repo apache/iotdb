@@ -25,7 +25,6 @@ import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.MultiEnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
-import org.apache.iotdb.it.env.remote.env.RemoteServerEnv;
 import org.apache.iotdb.itbase.env.BaseEnv;
 
 import org.awaitility.Awaitility;
