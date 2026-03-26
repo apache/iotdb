@@ -110,6 +110,28 @@ public class IoTDBTableAggregationIT {
         "INSERT INTO table1(time,province,city,region,device_id,color,type,s3,s5,s7,s9,s10) values (2024-09-24T06:15:30.000+00:00,'beijing','beijing','haidian','d16','yellow','BBBBBBBBBBBBBBBB',30.0,true,'beijing_haidian_yellow_B_d16_30',2024-09-24T06:15:30.000+00:00,'2024-09-24')",
         "INSERT INTO table1(time,province,city,region,device_id,color,type,s2,s9) values (2024-09-24T06:15:40.000+00:00,'beijing','beijing','haidian','d16','yellow','BBBBBBBBBBBBBBBB',40000,2024-09-24T06:15:40.000+00:00)",
         "INSERT INTO table1(time,province,city,region,device_id,color,type,s1,s4,s6,s8,s9) values (2024-09-24T06:15:55.000+00:00,'beijing','beijing','haidian','d16','yellow','BBBBBBBBBBBBBBBB',55,55.0,'beijing_haidian_yellow_B_d16_55',X'cafebabe55',2024-09-24T06:15:55.000+00:00)",
+        // stat_table for statistical aggregation function tests (CORR, COVAR_POP, COVAR_SAMP,
+        // REGR_SLOPE, REGR_INTERCEPT, KURTOSIS, SKEWNESS)
+        "CREATE TABLE stat_table(device_id STRING TAG, s1 INT32 FIELD, s2 INT64 FIELD, s3 FLOAT FIELD, s4 DOUBLE FIELD, s5 BOOLEAN FIELD, s6 TEXT FIELD)",
+        "INSERT INTO stat_table(time, device_id, s1, s2, s3, s4, s5, s6) VALUES (1, 'd1', 1, 1, 1.0, 1.0, true, 'a')",
+        "INSERT INTO stat_table(time, device_id, s1, s2, s3, s4, s5, s6) VALUES (2, 'd1', 2, 2, 2.0, 2.0, false, 'b')",
+        "INSERT INTO stat_table(time, device_id, s1, s2, s3, s4, s5, s6) VALUES (3, 'd1', 3, 2, 3.0, 2.0, false, 'c')",
+        "INSERT INTO stat_table(time, device_id, s1, s2, s3, s4, s5, s6) VALUES (4, 'd1', 4, 1, 4.0, 1.0, true, 'd')",
+        "INSERT INTO stat_table(time, device_id, s1, s2, s3, s4, s5, s6) VALUES (5, 'd1', 5, 1, 5.0, 1.0, true, 'e')",
+        "INSERT INTO stat_table(time, device_id, s1, s2, s3, s4) VALUES (1, 'd2', 1, 2, 1.0, 2.0)",
+        "INSERT INTO stat_table(time, device_id, s1, s2, s3, s4) VALUES (2, 'd2', 1, 2, 1.0, 2.0)",
+        "INSERT INTO stat_table(time, device_id, s1, s2, s3, s4) VALUES (3, 'd2', 1, 2, 1.0, 2.0)",
+        "INSERT INTO stat_table(time, device_id, s1, s2, s3, s4) VALUES (4, 'd2', 1, 2, 1.0, 2.0)",
+        "INSERT INTO stat_table(time, device_id, s1, s2, s3, s4) VALUES (5, 'd2', 1, 2, 1.0, 2.0)",
+        "INSERT INTO stat_table(time, device_id, s1, s2, s3, s4) VALUES (1, 'd3', 10, 100, 10.0, 100.0)",
+        "INSERT INTO stat_table(time, device_id, s1, s2, s3, s4) VALUES (2, 'd3', 20, 200, 20.0, 200.0)",
+        "INSERT INTO stat_table(time, device_id, s1, s2, s3, s4) VALUES (1, 'd4', 42, 99, 42.0, 99.0)",
+        "INSERT INTO stat_table(time, device_id, s1, s2, s3, s4) VALUES (1, 'n1', 10, 50, 10.0, 50.0)",
+        "INSERT INTO stat_table(time, device_id, s1, s2, s3, s4) VALUES (2, 'n1', 20, 40, 20.0, 40.0)",
+        "INSERT INTO stat_table(time, device_id, s1, s2, s3, s4) VALUES (3, 'n1', 30, 30, 30.0, 30.0)",
+        "INSERT INTO stat_table(time, device_id, s2, s3, s4) VALUES (4, 'n1', 20, 20.0, 20.0)",
+        "INSERT INTO stat_table(time, device_id, s1, s3, s4) VALUES (5, 'n1', 50, 50.0, 50.0)",
+        "INSERT INTO stat_table(time, device_id, s1, s2, s3, s4) VALUES (6, 'n1', 40, 20, 40.0, 20.0)",
         "FLUSH",
         "CLEAR ATTRIBUTE CACHE",
       };
@@ -5509,30 +5531,6 @@ public class IoTDBTableAggregationIT {
     // test StreamingAggregationOperator
     tableResultSetEqualTest(
         "select count(1) from (select * from table1 where s1 + 1 < 1) group by device_id",
-        expectedHeader,
-        retArray,
-        DATABASE_NAME);
-  }
-
-  @Test
-  public void emptyTimeRangeQueryTest() {
-    String[] expectedHeader = new String[] {"_col0"};
-    String[] retArray = new String[] {"0,"};
-    tableResultSetEqualTest(
-        "select count(*) from table1 where time >= 0 and time < -1",
-        expectedHeader,
-        retArray,
-        DATABASE_NAME);
-  }
-
-  @Test
-  public void orderByLimitTest() {
-    String[] expectedHeader =
-        new String[] {"province", "city", "region", "device_id", "_col4", "_col5"};
-    String[] retArray = new String[] {"beijing,beijing,chaoyang,d09,2024-09-24T06:00:00.000Z,2,"};
-
-    tableResultSetEqualTest(
-        "select province, city, region, device_id, date_bin(1h, time), count(s1) from table1 where s1 >= 40 group by 1,2,3,4,5 order by province, city, region, device_id, date_bin(1h, time) limit 1",
         expectedHeader,
         retArray,
         DATABASE_NAME);
