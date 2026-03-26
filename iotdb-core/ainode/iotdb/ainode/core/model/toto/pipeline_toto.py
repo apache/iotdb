@@ -47,13 +47,12 @@ class TotoPipeline(ForecastPipeline):
             self._forecaster = TotoForecaster(self.model.backbone)
         return self._forecaster
 
-    def preprocess(self, inputs, **infer_kwargs):
+    def _preprocess(self, inputs, **infer_kwargs):
         """
         Preprocess input data for Toto.
 
-        Delegates to the base class for input validation, then converts each
-        validated input dict into a ``MaskedTimeseries`` named-tuple that the
-        ``TotoForecaster`` expects.
+        Converts each input dict into a ``MaskedTimeseries`` named-tuple that
+        the ``TotoForecaster`` expects.
 
         Parameters
         ----------
@@ -69,8 +68,6 @@ class TotoPipeline(ForecastPipeline):
         list of MaskedTimeseries
             Processed inputs compatible with Toto's forecaster.
         """
-        inputs = super().preprocess(inputs, **infer_kwargs)
-
         processed_inputs = []
         for item in inputs:
             targets = item["targets"]
@@ -143,5 +140,5 @@ class TotoPipeline(ForecastPipeline):
             outputs.append(mean)
         return outputs
 
-    def postprocess(self, outputs, **infer_kwargs) -> list[torch.Tensor]:
-        return super().postprocess(outputs, **infer_kwargs)
+    def _postprocess(self, outputs, **infer_kwargs) -> list[torch.Tensor]:
+        return outputs
