@@ -52,7 +52,11 @@ public class MPPQueryContext {
   private long localQueryId;
   private SessionInfo session;
   private QueryType queryType = QueryType.READ;
+
+  /** the max executing time of query in ms. Unit: millisecond */
   private long timeOut;
+
+  // time unit is ms
   private long startTime;
 
   private TEndPoint localDataBlockEndpoint;
@@ -179,10 +183,12 @@ public class MPPQueryContext {
     return queryType;
   }
 
+  /** the max executing time of query in ms. Unit: millisecond */
   public long getTimeOut() {
     return timeOut;
   }
 
+  /** the max executing time of query in ms. Unit: millisecond */
   public void setTimeOut(long timeOut) {
     this.timeOut = timeOut;
   }

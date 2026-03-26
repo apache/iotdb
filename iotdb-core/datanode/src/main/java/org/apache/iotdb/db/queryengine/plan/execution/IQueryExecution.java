@@ -55,8 +55,12 @@ public interface IQueryExecution {
 
   String getQueryId();
 
+  // time unit is ms
   long getStartExecutionTime();
 
+  /**
+   * @param executionTime time unit should be ns
+   */
   void recordExecutionTime(long executionTime);
 
   /**
@@ -75,6 +79,7 @@ public interface IQueryExecution {
   /** return ip for a thrift-based client, client-id for MQTT/REST client */
   String getClientHostname();
 
+  /** the max executing time of query in ms. Unit: millisecond */
   long getTimeout();
 
   Optional<String> getExecuteSQL();

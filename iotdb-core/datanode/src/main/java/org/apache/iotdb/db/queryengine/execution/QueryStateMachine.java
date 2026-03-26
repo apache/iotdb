@@ -107,10 +107,10 @@ public class QueryStateMachine {
     transitionToDoneState(CANCELED);
   }
 
-  public void transitionToCanceled(Throwable throwable, TSStatus failureStatus) {
+  public boolean transitionToCanceled(Throwable throwable, TSStatus failureStatus) {
     this.failureStatus.compareAndSet(null, failureStatus);
     this.failureException.compareAndSet(null, throwable);
-    transitionToDoneState(CANCELED);
+    return transitionToDoneState(CANCELED);
   }
 
   public void transitionToAborted() {

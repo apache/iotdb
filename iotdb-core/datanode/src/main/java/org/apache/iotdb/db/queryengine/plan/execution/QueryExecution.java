@@ -142,9 +142,10 @@ public class QueryExecution implements IQueryExecution {
               LOGGER.debug("[ReleaseQueryResource] state is: {}", state);
               cause = stateMachine.getFailureException();
               releaseResource(cause);
+
+              this.cleanUpCoordinatorContextMapIfNeeded(cause);
             }
             this.stop(cause);
-            this.cleanUpCoordinatorContextMapIfNeeded(cause);
           }
         });
     this.stopped = new AtomicBoolean(false);
@@ -332,10 +333,19 @@ public class QueryExecution implements IQueryExecution {
 
   @Override
   public void cancel() {
-    stateMachine.transitionToCanceled(
-        new KilledByOthersException(),
-        new TSStatus(TSStatusCode.QUERY_WAS_KILLED.getStatusCode())
-            .setMessage(KilledByOthersException.MESSAGE));
+    Throwable cause = new KilledByOthersException();
+    boolean cancelled =
+        stateMachine.transitionToCanceled(
+            cause,
+            new TSStatus(TSStatusCode.QUERY_WAS_KILLED.getStatusCode())
+                .setMessage(KilledByOthersException.MESSAGE));
+    if (!cancelled) {
+      // cancel failed, means this query has already in a done state, we can do nothing to change
+      // the state but clean up the resource if needed
+      // we don't need to do cleanUpCoordinatorContextMapIfNeeded if cancel succeed, because it will
+      // be called in callback logic in QueryStateMachine of this QueryExecution
+      this.cleanUpCoordinatorContextMapIfNeeded(cause);
+    }
   }
 
   private void cleanUpResultHandle() {
@@ -377,7 +387,6 @@ public class QueryExecution implements IQueryExecution {
         resultHandle.close();
       }
       cleanUpResultHandle();
-      resultHandle = null;
     }
   }
 
