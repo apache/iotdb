@@ -85,12 +85,14 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent
     this.allocatedMemoryBlock =
         PipeDataNodeResourceManager.memory().forceAllocateForTabletWithRetry(0);
 
-    addOnCommittedHook(
-        () -> {
-          if (shouldReportOnCommit) {
-            eliminateProgressIndex();
-          }
-        });
+    if (needToReport) {
+      addOnCommittedHook(
+          () -> {
+            if (shouldReportOnCommit) {
+              eliminateProgressIndex();
+            }
+          });
+    }
   }
 
   public PipeRawTabletInsertionEvent(
@@ -182,10 +184,8 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent
   }
 
   protected void eliminateProgressIndex() {
-    if (needToReport) {
-      if (sourceEvent instanceof PipeTsFileInsertionEvent) {
-        ((PipeTsFileInsertionEvent) sourceEvent).eliminateProgressIndex();
-      }
+    if (sourceEvent instanceof PipeTsFileInsertionEvent) {
+      ((PipeTsFileInsertionEvent) sourceEvent).eliminateProgressIndex();
     }
   }
 
@@ -253,6 +253,14 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent
   }
 
   public void markAsNeedToReport() {
+    if (!needToReport) {
+      addOnCommittedHook(
+          () -> {
+            if (shouldReportOnCommit) {
+              eliminateProgressIndex();
+            }
+          });
+    }
     this.needToReport = true;
   }
 
@@ -268,6 +276,11 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent
 
   public EnrichedEvent getSourceEvent() {
     return sourceEvent;
+  }
+
+  @Override
+  public boolean isShouldReportOnCommit() {
+    return shouldReportOnCommit && needToReport;
   }
 
   /////////////////////////// TabletInsertionEvent ///////////////////////////

@@ -376,6 +376,17 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
   }
 
   @Override
+  public boolean shouldParseTime() {
+    if (!isTimeParsed
+        && Objects.nonNull(resource)
+        && startTime <= resource.getFileStartTime()
+        && resource.getFileEndTime() <= endTime) {
+      isTimeParsed = true;
+    }
+    return !isTimeParsed;
+  }
+
+  @Override
   public boolean mayEventPathsOverlappedWithPattern() {
     if (Objects.isNull(resource) || !resource.isClosed()) {
       return true;
