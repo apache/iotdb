@@ -22,8 +22,10 @@ package org.apache.iotdb.pipe.it.dual.treemodel.auto;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.it.utils.TestUtils;
+import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.MultiEnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
+import org.apache.iotdb.it.env.remote.env.RemoteServerEnv;
 import org.apache.iotdb.itbase.env.BaseEnv;
 
 import org.awaitility.Awaitility;
@@ -41,9 +43,9 @@ public abstract class AbstractPipeDualTreeModelAutoIT {
 
   @Before
   public void setUp() {
-    MultiEnvFactory.createEnv(2);
-    senderEnv = MultiEnvFactory.getEnv(0);
-    receiverEnv = MultiEnvFactory.getEnv(1);
+    MultiEnvFactory.createEnv(1);
+    senderEnv = EnvFactory.getEnv();
+    receiverEnv = MultiEnvFactory.getEnv(0);
     setupConfig();
     senderEnv.initClusterEnvironment(1, 1);
     receiverEnv.initClusterEnvironment(1, 1);
