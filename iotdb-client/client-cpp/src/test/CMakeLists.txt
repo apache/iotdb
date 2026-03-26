@@ -22,7 +22,10 @@ SET(CMAKE_CXX_STANDARD 11)
 SET(CMAKE_CXX_STANDARD_REQUIRED ON)
 SET(TARGET_NAME session_tests)
 SET(TARGET_NAME_RELATIONAL session_relational_tests)
-SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wall -g -O2")
+IF(NOT MSVC)
+    # Keep GCC/Clang style flags off on MSVC to avoid invalid-option build errors.
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -g -O2")
+ENDIF()
 ENABLE_TESTING()
 
 # =========================

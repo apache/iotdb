@@ -77,8 +77,8 @@ static TsStatus setError(TsStatus code, const std::exception& e) {
 }
 
 static TsStatus handleException(const std::exception& e) {
-    const std::string msg = e.what();
-    // Try to classify exception type
+#if defined(_CPPRTTI) || defined(__GXX_RTTI)
+    // Try to classify exception type (requires RTTI enabled).
     if (dynamic_cast<const IoTDBConnectionException*>(&e)) {
         return setError(TS_ERR_CONNECTION, e);
     }
@@ -87,6 +87,7 @@ static TsStatus handleException(const std::exception& e) {
         dynamic_cast<const BatchExecutionException*>(&e)) {
         return setError(TS_ERR_EXECUTION, e);
     }
+#endif
     return setError(TS_ERR_UNKNOWN, e);
 }
 
@@ -95,6 +96,8 @@ extern "C" {
 const char* ts_get_last_error(void) {
     return g_lastError.c_str();
 }
+
+}  /* extern "C" */
 
 /* ============================================================
  *  Helpers — convert C arrays to C++ vectors
@@ -212,6 +215,8 @@ static void freeCharPtrVec(std::vector<char*>& vec, const TSDataType_C* types, i
 /* ============================================================
  *  Session Lifecycle  —  Tree Model
  * ============================================================ */
+
+extern "C" {
 
 CSession* ts_session_new(const char* host, int rpcPort,
                           const char* username, const char* password) {
