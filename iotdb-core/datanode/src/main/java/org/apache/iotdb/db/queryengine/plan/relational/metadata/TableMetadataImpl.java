@@ -1194,18 +1194,21 @@ public class TableMetadataImpl implements Metadata {
                   functionName));
         }
 
-        // Validate percentage and weight parameters
-        boolean hasInvalidTypes =
-            (argumentSize == 2 && !isDecimalType(argumentTypes.get(1)))
-                || (argumentSize == 3
-                    && (!isIntegerNumber(argumentTypes.get(1))
-                        || !isDecimalType(argumentTypes.get(2))));
-
-        if (hasInvalidTypes) {
+        Type percentageType = argumentTypes.get(argumentSize - 1);
+        if (!isDecimalType(percentageType)) {
           throw new SemanticException(
               String.format(
-                  "Aggregation functions [%s] should have weight as integer type and percentage as decimal type",
+                  "Aggregation functions [%s] should have percentage as decimal type",
                   functionName));
+        }
+        if (argumentSize == 3) {
+          Type weightType = argumentTypes.get(1);
+          if (!INT32.equals(weightType) && !isUnknownType(weightType)) {
+            throw new SemanticException(
+                String.format(
+                    "Aggregation functions [%s] do not support weight as %s type",
+                    functionName, weightType.getDisplayName()));
+          }
         }
 
         break;

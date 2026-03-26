@@ -4352,6 +4352,12 @@ public class IoTDBTableAggregationIT {
           "2024-09-24T06:15:55.000Z,shanghai,55,null,",
         },
         DATABASE_NAME);
+
+    tableResultSetEqualTest(
+        "select approx_percentile(s1,null,0.5) from table1",
+        new String[] {"_col0"},
+        new String[] {"null,"},
+        DATABASE_NAME);
   }
 
   @Test
@@ -4431,6 +4437,14 @@ public class IoTDBTableAggregationIT {
     tableAssertTestFail(
         "select approx_percentile(s5,0.5) from table1",
         "701: Aggregation functions [approx_percentile] should have value column as numeric type [INT32, INT64, FLOAT, DOUBLE, TIMESTAMP]",
+        DATABASE_NAME);
+    tableAssertTestFail(
+        "select approx_percentile(s1,-1,0.5) from table1",
+        "701: weight must be >= 1, was -1",
+        DATABASE_NAME);
+    tableAssertTestFail(
+        "select approx_percentile(s1,s2,0.5) from table1",
+        "701: Aggregation functions [approx_percentile] do not support weight as INT64 type",
         DATABASE_NAME);
   }
 
