@@ -198,7 +198,66 @@ public class CentralMomentAccumulator implements Accumulator {
 
   @Override
   public void removeIntermediate(Column[] input) {
-    throw new UnsupportedOperationException();
+    checkArgument(input.length == 1, "Input of CentralMoment should be 1");
+    if (input[0].isNull(0)) {
+      return;
+    }
+
+    byte[] bytes = input[0].getBinary(0).getValues();
+    ByteBuffer buffer = ByteBuffer.wrap(bytes);
+
+    long nB = buffer.getLong();
+    if (nB == 0) {
+      return;
+    }
+    checkArgument(count >= nB, "CentralMoment state count is smaller than removed state count");
+
+    if (count == nB) {
+      reset();
+      return;
+    }
+
+    double meanB = buffer.getDouble();
+    double m2B = buffer.getDouble();
+    double m3B = buffer.getDouble();
+    double m4B = buffer.getDouble();
+
+    long nTotal = count;
+    long nA = nTotal - nB;
+
+    double meanA = ((double) nTotal * mean - (double) nB * meanB) / nA;
+
+    double delta = meanB - meanA;
+    double delta2 = delta * delta;
+    double delta3 = delta * delta2;
+    double delta4 = delta2 * delta2;
+
+    double m2A = m2 - m2B - delta2 * nA * nB / nTotal;
+    double m3A =
+        m3
+            - m3B
+            - delta3 * nA * nB * (nA - nB) / ((double) nTotal * nTotal)
+            - 3.0 * delta * (nA * m2B - nB * m2A) / nTotal;
+
+    double m4A =
+        m4
+            - m4B
+            - delta4
+                * nA
+                * nB
+                * ((double) nA * nA - (double) nA * nB + (double) nB * nB)
+                / ((double) nTotal * nTotal * nTotal)
+            - 6.0
+                * delta2
+                * ((double) nA * nA * m2B + (double) nB * nB * m2A)
+                / ((double) nTotal * nTotal)
+            - 4.0 * delta * (nA * m3B - nB * m3A) / nTotal;
+
+    count = nA;
+    mean = meanA;
+    m2 = m2A;
+    m3 = m3A;
+    m4 = m4A;
   }
 
   @Override
