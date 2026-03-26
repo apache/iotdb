@@ -38,6 +38,7 @@ import org.apache.iotdb.db.queryengine.execution.schedule.DriverScheduler;
 import org.apache.iotdb.db.queryengine.execution.schedule.IDriverScheduler;
 import org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet;
 import org.apache.iotdb.db.queryengine.metric.QueryRelatedResourceMetricSet;
+import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.plan.planner.PipelineDriverFactory;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
@@ -435,6 +436,7 @@ public class FragmentInstanceManager {
                             + "ms, and now is in flushing state"));
           }
         });
+    Coordinator.getInstance().cleanUpStaleQueries();
   }
 
   public ExecutorService getIntoOperationExecutor() {
