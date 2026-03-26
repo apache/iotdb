@@ -611,13 +611,15 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualTreeModelAutoIT {
         senderEnv,
         Arrays.asList(
             "delete timeseries root.sg_nonAligned.非对齐序列带有encoding和压缩方式.s1",
-            "create pipe test with source ('source.realtime.mode'='stream','inclusion'='data','path'='root.sg_nonAligned.非对齐序列带有encoding和压缩方式.**','source.realtime.enable'='true','mods.enable'='true') with sink ('sink'='iotdb-thrift-sink', 'sink.node-urls'='192.168.130.19:6667')"));
+            String.format(
+                "create pipe test with source ('source.realtime.mode'='stream','inclusion'='data','path'='root.sg_nonAligned.非对齐序列带有encoding和压缩方式.**','source.realtime.enable'='true','mods.enable'='true') with sink ('sink'='iotdb-thrift-sink', 'sink.node-urls'='%s')",
+                receiverEnv.getDataNodeWrapperList().get(0).getIpAndPortString())));
 
     TestUtils.assertDataEventuallyOnEnv(
         receiverEnv,
         "count timeseries root.sg_nonAligned.非对齐序列带有encoding和压缩方式.*",
         "count(timeseries),",
         Collections.singleton("4,"),
-        20);
+        30);
   }
 }
