@@ -1802,6 +1802,11 @@ public class MergeSortOperatorTest {
     public void updateCurrentRpcStartTime(long startTime) {}
 
     @Override
+    public boolean isActive() {
+      return true;
+    }
+
+    @Override
     public long getTotalExecutionTime() {
       return 0;
     }

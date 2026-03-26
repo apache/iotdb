@@ -307,14 +307,18 @@ public class Coordinator {
     long currentTime = System.currentTimeMillis();
     queryExecutionMap.forEach(
         (queryId, queryExecution) -> {
+          if (queryExecution.isActive()) {
+            return;
+          }
           long timeout = queryExecution.getTimeout();
           long queryStartTime = queryExecution.getStartExecutionTime();
           long executeTime = currentTime - queryStartTime;
-          if (timeout > 0 && executeTime > timeout + 60_000L) {
+          if (timeout > 0 && executeTime - 60_000L > timeout) {
             LOGGER.warn(
-                "Cleaning up stale query with id {}, which has been running for {} ms",
+                "Cleaning up stale query with id {}, which has been running for {} ms, timeout duration is: {}ms",
                 queryId,
-                executeTime);
+                executeTime,
+                timeout);
             cleanupQueryExecution(
                 queryId,
                 null,

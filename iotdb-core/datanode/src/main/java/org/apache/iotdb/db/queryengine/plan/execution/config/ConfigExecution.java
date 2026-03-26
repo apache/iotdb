@@ -256,6 +256,11 @@ public class ConfigExecution implements IQueryExecution {
   }
 
   @Override
+  public boolean isActive() {
+    return startTimeOfCurrentRpc == -1;
+  }
+
+  @Override
   public long getTotalExecutionTime() {
     return totalExecutionTime
         + (startTimeOfCurrentRpc == -1 ? 0 : System.nanoTime() - startTimeOfCurrentRpc);

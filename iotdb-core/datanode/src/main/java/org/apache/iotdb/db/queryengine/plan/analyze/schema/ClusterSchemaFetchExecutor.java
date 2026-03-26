@@ -277,6 +277,9 @@ class ClusterSchemaFetchExecutor {
               parseFetchedData(column.getBinary(i), result, deserializer, databaseSet, context);
             }
           }
+        } else {
+          throw new RuntimeException(
+              String.format("Fetch Schema failed, because queryExecution is null for %s", queryId));
         }
 
         result.setDatabases(databaseSet);

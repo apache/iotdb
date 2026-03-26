@@ -397,9 +397,21 @@ public class QueryExecution implements IQueryExecution {
    * ClientRPCServiceImpl is responsible for performing the cleanup.
    */
   private synchronized void cleanUpCoordinatorContextMapIfNeeded(Throwable t) {
-    if (startTimeOfCurrentRpc == -1) {
+    if (isActive()) {
       Coordinator.getInstance().cleanupQueryExecution(context.getLocalQueryId(), null, t);
     }
+  }
+
+  /**
+   * Check if there is an active RPC for this query. If {@code startTimeOfCurrentRpc == -1}, it
+   * means there is no active RPC, otherwise there is an active RPC. An active RPC means that the
+   * client is still fetching results and the QueryExecution should not be cleaned up until the RPC
+   * finishes. On the other hand, if there is no active RPC, it means that the client has finished
+   * fetching results or has not started fetching results yet, and the QueryExecution can be safely
+   * cleaned up.
+   */
+  public synchronized boolean isActive() {
+    return startTimeOfCurrentRpc == -1;
   }
 
   /**
