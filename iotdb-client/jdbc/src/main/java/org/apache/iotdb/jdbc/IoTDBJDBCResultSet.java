@@ -231,8 +231,15 @@ public class IoTDBJDBCResultSet implements ResultSet {
   }
 
   @Override
-  public int findColumn(String columnName) {
-    return ioTDBRpcDataSet.findColumn(columnName);
+  public int findColumn(String columnName) throws SQLException {
+    if (isClosed()) {
+      throw new SQLException("ResultSet is closed");
+    }
+    try {
+      return ioTDBRpcDataSet.findColumn(columnName);
+    } catch (NullPointerException e) {
+      throw new SQLException("Column '" + columnName + "' not found");
+    }
   }
 
   @Override
