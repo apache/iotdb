@@ -14,6 +14,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped;
 
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.AggregationMask;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.approximate.TDigest;
 
@@ -36,6 +37,12 @@ public class GroupedApproxPercentileWithWeightAccumulator
 
     if (mask.isSelectAll()) {
       for (int i = 0; i < positionCount; i++) {
+        if (weightColumn.isNull(i)) {
+          continue;
+        }
+        if (weightColumn.getInt(i) < 1) {
+          throw new SemanticException("weight must be >= 1, was " + weightColumn.getInt(i));
+        }
         int groupId = groupIds[i];
         TDigest tDigest = array.get(groupId);
         if (!valueColumn.isNull(i)) {
@@ -48,6 +55,12 @@ public class GroupedApproxPercentileWithWeightAccumulator
       int groupId;
       for (int i = 0; i < positionCount; i++) {
         position = selectedPositions[i];
+        if (weightColumn.isNull(position)) {
+          continue;
+        }
+        if (weightColumn.getInt(position) < 1) {
+          throw new SemanticException("weight must be >= 1, was " + weightColumn.getInt(position));
+        }
         groupId = groupIds[position];
         TDigest tDigest = array.get(groupId);
         if (!valueColumn.isNull(position)) {
@@ -66,6 +79,12 @@ public class GroupedApproxPercentileWithWeightAccumulator
 
     if (mask.isSelectAll()) {
       for (int i = 0; i < positionCount; i++) {
+        if (weightColumn.isNull(i)) {
+          continue;
+        }
+        if (weightColumn.getInt(i) < 1) {
+          throw new SemanticException("weight must be >= 1, was " + weightColumn.getInt(i));
+        }
         int groupId = groupIds[i];
         TDigest tDigest = array.get(groupId);
         if (!valueColumn.isNull(i)) {
@@ -78,6 +97,12 @@ public class GroupedApproxPercentileWithWeightAccumulator
       int groupId;
       for (int i = 0; i < positionCount; i++) {
         position = selectedPositions[i];
+        if (weightColumn.isNull(position)) {
+          continue;
+        }
+        if (weightColumn.getInt(position) < 1) {
+          throw new SemanticException("weight must be >= 1, was " + weightColumn.getInt(position));
+        }
         groupId = groupIds[position];
         TDigest tDigest = array.get(groupId);
         if (!valueColumn.isNull(position)) {
@@ -96,6 +121,12 @@ public class GroupedApproxPercentileWithWeightAccumulator
 
     if (mask.isSelectAll()) {
       for (int i = 0; i < positionCount; i++) {
+        if (weightColumn.isNull(i)) {
+          continue;
+        }
+        if (weightColumn.getInt(i) < 1) {
+          throw new SemanticException("weight must be >= 1, was " + weightColumn.getInt(i));
+        }
         int groupId = groupIds[i];
         TDigest tDigest = array.get(groupId);
         if (!valueColumn.isNull(i)) {
@@ -108,6 +139,12 @@ public class GroupedApproxPercentileWithWeightAccumulator
       int groupId;
       for (int i = 0; i < positionCount; i++) {
         position = selectedPositions[i];
+        if (weightColumn.isNull(position)) {
+          continue;
+        }
+        if (weightColumn.getInt(position) < 1) {
+          throw new SemanticException("weight must be >= 1, was " + weightColumn.getInt(position));
+        }
         groupId = groupIds[position];
         TDigest tDigest = array.get(groupId);
         if (!valueColumn.isNull(position)) {
@@ -126,6 +163,12 @@ public class GroupedApproxPercentileWithWeightAccumulator
 
     if (mask.isSelectAll()) {
       for (int i = 0; i < positionCount; i++) {
+        if (weightColumn.isNull(i)) {
+          continue;
+        }
+        if (weightColumn.getInt(i) < 1) {
+          throw new SemanticException("weight must be >= 1, was " + weightColumn.getInt(i));
+        }
         int groupId = groupIds[i];
         TDigest tDigest = array.get(groupId);
         if (!valueColumn.isNull(i)) {
@@ -138,6 +181,12 @@ public class GroupedApproxPercentileWithWeightAccumulator
       int groupId;
       for (int i = 0; i < positionCount; i++) {
         position = selectedPositions[i];
+        if (weightColumn.isNull(position)) {
+          continue;
+        }
+        if (weightColumn.getInt(position) < 1) {
+          throw new SemanticException("weight must be >= 1, was " + weightColumn.getInt(position));
+        }
         groupId = groupIds[position];
         TDigest tDigest = array.get(groupId);
         if (!valueColumn.isNull(position)) {
