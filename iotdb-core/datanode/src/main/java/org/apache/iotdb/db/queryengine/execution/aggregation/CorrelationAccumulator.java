@@ -187,8 +187,49 @@ public class CorrelationAccumulator implements Accumulator {
 
   @Override
   public void removeIntermediate(Column[] input) {
+    checkArgument(input.length == 1, "Input of Correlation should be 1");
+    if (input[0].isNull(0)) {
+      return;
+    }
 
-    throw new UnsupportedOperationException("Remove not implemented for Correlation");
+    byte[] bytes = input[0].getBinary(0).getValues();
+    ByteBuffer buffer = ByteBuffer.wrap(bytes);
+
+    long otherCount = buffer.getLong();
+    if (otherCount == 0) {
+      return;
+    }
+    checkArgument(
+        count >= otherCount, "Correlation state count is smaller than removed state count");
+
+    if (count == otherCount) {
+      reset();
+      return;
+    }
+
+    double otherMeanX = buffer.getDouble();
+    double otherMeanY = buffer.getDouble();
+    double otherM2X = buffer.getDouble();
+    double otherM2Y = buffer.getDouble();
+    double otherC2 = buffer.getDouble();
+
+    long totalCount = count;
+    long newCount = totalCount - otherCount;
+
+    double newMeanX = (totalCount * meanX - otherCount * otherMeanX) / newCount;
+    double newMeanY = (totalCount * meanY - otherCount * otherMeanY) / newCount;
+
+    double deltaX = otherMeanX - newMeanX;
+    double deltaY = otherMeanY - newMeanY;
+    double correction = ((double) newCount * otherCount) / totalCount;
+
+    c2 = c2 - otherC2 - deltaX * deltaY * correction;
+    m2X = m2X - otherM2X - deltaX * deltaX * correction;
+    m2Y = m2Y - otherM2Y - deltaY * deltaY * correction;
+
+    meanX = newMeanX;
+    meanY = newMeanY;
+    count = newCount;
   }
 
   @Override
