@@ -1790,13 +1790,28 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
   @Override
   public Node visitExplain(RelationalSqlParser.ExplainContext ctx) {
-    return new Explain(getLocation(ctx), (Statement) visit(ctx.query()));
+    Statement innerStatement;
+    if (ctx.query() != null) {
+      innerStatement = (Statement) visit(ctx.query());
+    } else if (ctx.executeStatement() != null) {
+      innerStatement = (Statement) visit(ctx.executeStatement());
+    } else {
+      innerStatement = (Statement) visit(ctx.executeImmediateStatement());
+    }
+    return new Explain(getLocation(ctx), innerStatement);
   }
 
   @Override
   public Node visitExplainAnalyze(RelationalSqlParser.ExplainAnalyzeContext ctx) {
-    return new ExplainAnalyze(
-        getLocation(ctx), ctx.VERBOSE() != null, (Statement) visit(ctx.query()));
+    Statement innerStatement;
+    if (ctx.query() != null) {
+      innerStatement = (Statement) visit(ctx.query());
+    } else if (ctx.executeStatement() != null) {
+      innerStatement = (Statement) visit(ctx.executeStatement());
+    } else {
+      innerStatement = (Statement) visit(ctx.executeImmediateStatement());
+    }
+    return new ExplainAnalyze(getLocation(ctx), ctx.VERBOSE() != null, innerStatement);
   }
 
   // ********************** author expressions ********************

@@ -80,6 +80,7 @@ public class FragmentInstance implements IConsensusRequest {
   private boolean isExplainAnalyze = false;
 
   private final boolean debug;
+  private final boolean verbose;
 
   // We can add some more params for a specific FragmentInstance
   // So that we can make different FragmentInstance owns different data range.
@@ -91,7 +92,8 @@ public class FragmentInstance implements IConsensusRequest {
       QueryType type,
       long timeOut,
       SessionInfo sessionInfo,
-      boolean debug) {
+      boolean debug,
+      boolean verbose) {
     this.fragment = fragment;
     this.globalTimePredicate = globalTimePredicate;
     this.id = id;
@@ -100,6 +102,7 @@ public class FragmentInstance implements IConsensusRequest {
     this.isRoot = false;
     this.sessionInfo = sessionInfo;
     this.debug = debug;
+    this.verbose = verbose;
   }
 
   public FragmentInstance(
@@ -111,8 +114,9 @@ public class FragmentInstance implements IConsensusRequest {
       SessionInfo sessionInfo,
       boolean isExplainAnalyze,
       boolean debug,
-      boolean isRoot) {
-    this(fragment, id, globalTimePredicate, type, timeOut, sessionInfo, debug);
+      boolean isRoot,
+      boolean verbose) {
+    this(fragment, id, globalTimePredicate, type, timeOut, sessionInfo, debug, verbose);
     this.isRoot = isRoot;
     this.isExplainAnalyze = isExplainAnalyze;
   }
@@ -125,8 +129,9 @@ public class FragmentInstance implements IConsensusRequest {
       SessionInfo sessionInfo,
       boolean isExplainAnalyze,
       boolean debug,
-      boolean isRoot) {
-    this(fragment, id, null, type, timeOut, sessionInfo, debug);
+      boolean isRoot,
+      boolean verbose) {
+    this(fragment, id, null, type, timeOut, sessionInfo, debug, verbose);
     this.isRoot = isRoot;
     this.isExplainAnalyze = isExplainAnalyze;
   }
@@ -139,8 +144,9 @@ public class FragmentInstance implements IConsensusRequest {
       long timeOut,
       SessionInfo sessionInfo,
       int dataNodeFINum,
-      boolean debug) {
-    this(fragment, id, globalTimePredicate, type, timeOut, sessionInfo, debug);
+      boolean debug,
+      boolean verbose) {
+    this(fragment, id, globalTimePredicate, type, timeOut, sessionInfo, debug, verbose);
     this.dataNodeFINum = dataNodeFINum;
   }
 
@@ -211,6 +217,10 @@ public class FragmentInstance implements IConsensusRequest {
     return debug;
   }
 
+  public boolean isVerbose() {
+    return verbose;
+  }
+
   public String toString() {
     StringBuilder ret = new StringBuilder();
     ret.append(String.format("FragmentInstance-%s:", getId()));
@@ -241,6 +251,7 @@ public class FragmentInstance implements IConsensusRequest {
     QueryType queryType = QueryType.values()[ReadWriteIOUtils.readInt(buffer)];
     int dataNodeFINum = ReadWriteIOUtils.readInt(buffer);
     boolean debug = ReadWriteIOUtils.readBool(buffer);
+    boolean verbose = ReadWriteIOUtils.readBool(buffer);
     FragmentInstance fragmentInstance =
         new FragmentInstance(
             planFragment,
@@ -250,7 +261,8 @@ public class FragmentInstance implements IConsensusRequest {
             timeOut,
             sessionInfo,
             dataNodeFINum,
-            debug);
+            debug,
+            verbose);
     boolean hasHostDataNode = ReadWriteIOUtils.readBool(buffer);
     fragmentInstance.hostDataNode =
         hasHostDataNode ? ThriftCommonsSerDeUtils.deserializeTDataNodeLocation(buffer) : null;
@@ -275,6 +287,7 @@ public class FragmentInstance implements IConsensusRequest {
       ReadWriteIOUtils.write(type.ordinal(), outputStream);
       ReadWriteIOUtils.write(dataNodeFINum, outputStream);
       ReadWriteIOUtils.write(debug, outputStream);
+      ReadWriteIOUtils.write(verbose, outputStream);
       ReadWriteIOUtils.write(hostDataNode != null, outputStream);
       if (hostDataNode != null) {
         ThriftCommonsSerDeUtils.serializeTDataNodeLocation(hostDataNode, outputStream);

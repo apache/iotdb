@@ -184,7 +184,8 @@ public class TableModelQueryFragmentPlanner extends AbstractFragmentParallelPlan
             queryContext.getSession(),
             queryContext.isExplainAnalyze(),
             queryContext.isDebug(),
-            fragment.isRoot());
+            fragment.isRoot(),
+            queryContext.isVerbose());
 
     selectExecutorAndHost(
         fragment,

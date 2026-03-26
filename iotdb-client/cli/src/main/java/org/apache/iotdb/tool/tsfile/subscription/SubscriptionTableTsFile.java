@@ -151,7 +151,7 @@ public class SubscriptionTableTsFile extends AbstractSubscriptionTsFile {
                 try {
                   for (final SubscriptionMessage message :
                       consumer.poll(Constants.POLL_MESSAGE_TIMEOUT)) {
-                    final SubscriptionTsFileHandler handler = message.getTsFileHandler();
+                    final SubscriptionTsFileHandler handler = message.getTsFile();
                     ioTPrinter.println(handler.getFile().getName());
                     try {
                       handler.moveFile(

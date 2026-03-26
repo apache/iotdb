@@ -1139,6 +1139,17 @@ public class IoTDBDescriptor {
     // update trusted_uri_pattern
     loadTrustedUriPattern(properties);
 
+    conf.setPartitionTableRecoverWorkerNum(
+        Integer.parseInt(
+            properties.getProperty(
+                "partition_table_recover_worker_num",
+                String.valueOf(conf.getPartitionTableRecoverWorkerNum()))));
+    conf.setPartitionTableRecoverMaxReadMBsPerSecond(
+        Integer.parseInt(
+            properties.getProperty(
+                "partition_table_recover_max_read_megabytes_per_second",
+                String.valueOf(conf.getPartitionTableRecoverMaxReadMBsPerSecond()))));
+
     conf.setIncludeNullValueInWriteThroughputMetric(
         Boolean.parseBoolean(
             properties.getProperty(
@@ -1189,6 +1200,16 @@ public class IoTDBDescriptor {
                     "delay_analyzer_confidence_level")));
     if (delayAnalyzerConfidenceLevel > 0 && delayAnalyzerConfidenceLevel <= 1) {
       conf.setDelayAnalyzerConfidenceLevel(delayAnalyzerConfidenceLevel);
+    }
+
+    // max sub-task num for information table scan
+    int maxSubTaskNumForInformationTableScan =
+        Integer.parseInt(
+            properties.getProperty(
+                "max_sub_task_num_for_information_table_scan",
+                Integer.toString(conf.getMaxSubTaskNumForInformationTableScan())));
+    if (maxSubTaskNumForInformationTableScan > 0) {
+      conf.setMaxSubTaskNumForInformationTableScan(maxSubTaskNumForInformationTableScan);
     }
   }
 
@@ -2252,6 +2273,16 @@ public class IoTDBDescriptor {
                   "max_rows_in_cte_buffer", Integer.toString(conf.getMaxRowsInCteBuffer())));
       if (maxRowsInCteBuffer > 0) {
         conf.setMaxRowsInCteBuffer(maxRowsInCteBuffer);
+      }
+
+      // max sub-task num for information table scan
+      int maxSubTaskNumForInformationTableScan =
+          Integer.parseInt(
+              properties.getProperty(
+                  "max_sub_task_num_for_information_table_scan",
+                  Integer.toString(conf.getMaxSubTaskNumForInformationTableScan())));
+      if (maxSubTaskNumForInformationTableScan > 0) {
+        conf.setMaxSubTaskNumForInformationTableScan(maxSubTaskNumForInformationTableScan);
       }
 
     } catch (Exception e) {

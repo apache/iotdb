@@ -423,6 +423,7 @@ public class ReadOnlyMemChunk {
         deletionList,
         floatPrecision,
         encoding,
-        MAX_NUMBER_OF_POINTS_IN_PAGE);
+        MAX_NUMBER_OF_POINTS_IN_PAGE,
+        context);
   }
 }

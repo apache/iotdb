@@ -584,21 +584,6 @@ enable_swagger=false
 # Datatype: int
 rest_query_default_row_size_limit=10000
 
-# the expiration time of the user login information cache (in seconds)
-# effectiveMode: restart
-# Datatype: int
-cache_expire_in_seconds=28800
-
-# maximum number of users can be stored in the user login cache.
-# effectiveMode: restart
-# Datatype: int
-cache_max_num=100
-
-# init capacity of users can be stored in the user login cache.
-# effectiveMode: restart
-# Datatype: int
-cache_init_num=10
-
 # Is client authentication required
 # effectiveMode: restart
 # Datatype: boolean
@@ -742,6 +727,24 @@ failure_detector_phi_acceptable_pause_in_ms=10000
 # Datatype: double(percentage)
 disk_space_warning_threshold=0.05
 
+# Purpose: for data partition repair
+# The number of threads used for parallel scanning in the partition table recovery
+# effectiveMode: restart
+# Datatype: Integer
+partition_table_recover_worker_num=10
+
+# Purpose: for data partition repair
+# Limit the number of bytes read per second from a file, the unit is MB
+# effectiveMode: restart
+# Datatype: Integer
+partition_table_recover_max_read_megabytes_per_second=10
+
+# Purpose: for data partition repair
+# Set a timeout to wait for all datanodes complete startup, the unit is ms
+# effectiveMode: restart
+# Datatype: Integer
+partition_table_recover_wait_all_dn_up_timeout_ms=60000
+
 ####################
 ### Memory Control Configuration
 ####################
@@ -831,6 +834,11 @@ io_task_queue_size_for_flushing=10
 # effectiveMode: hot_reload
 # Datatype: bool
 enable_query_memory_estimation=true
+
+# max sub task num on a DataNode for InformationTableScan
+# effectiveMode: hot_reload
+# Datatype: int
+max_sub_task_num_for_information_table_scan=4
 
 ####################
 ### Schema Engine Configuration
@@ -1743,15 +1751,9 @@ compressor=LZ4
 ####################
 
 # which class to serve for authorization. By default, it is LocalFileAuthorizer.
-# Another choice is org.apache.iotdb.commons.auth.authorizer.OpenIdAuthorizer
 # effectiveMode: restart
 # Privilege: SECURITY
 authorizer_provider_class=org.apache.iotdb.commons.auth.authorizer.LocalFileAuthorizer
-
-# If OpenIdAuthorizer is enabled, then openID_url must be set.
-# effectiveMode: restart
-# Privilege: SECURITY
-openID_url=
 
 # encryption provider class
 # effectiveMode: first_start

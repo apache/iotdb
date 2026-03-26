@@ -32,7 +32,6 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.event.common.statement.PipeStatementInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
-import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTabletBinaryReqV2;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTabletInsertNodeReqV2;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTabletRawReqV2;
 import org.apache.iotdb.db.protocol.session.IClientSession;
@@ -271,16 +270,9 @@ public class WriteBackSink implements PipeConnector {
             : TREE_MODEL_DATABASE_NAME_IDENTIFIER;
 
     final InsertBaseStatement insertBaseStatement;
-    if (Objects.isNull(insertNode)) {
-      insertBaseStatement =
-          PipeTransferTabletBinaryReqV2.toTPipeTransferReq(
-                  pipeInsertNodeTabletInsertionEvent.getByteBuffer(), dataBaseName)
-              .constructStatement();
-    } else {
-      insertBaseStatement =
-          PipeTransferTabletInsertNodeReqV2.toTabletInsertNodeReq(insertNode, dataBaseName)
-              .constructStatement();
-    }
+    insertBaseStatement =
+        PipeTransferTabletInsertNodeReqV2.toTabletInsertNodeReq(insertNode, dataBaseName)
+            .constructStatement();
 
     final TSStatus status =
         insertBaseStatement.isWriteToTable()

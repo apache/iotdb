@@ -166,9 +166,10 @@ public class FragmentInstanceContext extends QueryContext {
       FragmentInstanceId id,
       FragmentInstanceStateMachine stateMachine,
       SessionInfo sessionInfo,
-      boolean debug) {
+      boolean debug,
+      boolean isVerbose) {
     FragmentInstanceContext instanceContext =
-        new FragmentInstanceContext(id, stateMachine, sessionInfo, debug);
+        new FragmentInstanceContext(id, stateMachine, sessionInfo, debug, isVerbose);
     instanceContext.initialize();
     instanceContext.start();
     return instanceContext;
@@ -181,9 +182,11 @@ public class FragmentInstanceContext extends QueryContext {
       SessionInfo sessionInfo,
       IDataRegionForQuery dataRegion,
       Filter timeFilter,
-      boolean debug) {
+      boolean debug,
+      boolean isVerbose) {
     FragmentInstanceContext instanceContext =
-        new FragmentInstanceContext(id, stateMachine, sessionInfo, dataRegion, timeFilter, debug);
+        new FragmentInstanceContext(
+            id, stateMachine, sessionInfo, dataRegion, timeFilter, debug, isVerbose);
     instanceContext.initialize();
     instanceContext.start();
     return instanceContext;
@@ -196,7 +199,8 @@ public class FragmentInstanceContext extends QueryContext {
       IDataRegionForQuery dataRegion,
       TimePredicate globalTimePredicate,
       Map<QueryId, DataNodeQueryContext> dataNodeQueryContextMap,
-      boolean debug) {
+      boolean debug,
+      boolean isVerbose) {
     FragmentInstanceContext instanceContext =
         new FragmentInstanceContext(
             id,
@@ -205,14 +209,15 @@ public class FragmentInstanceContext extends QueryContext {
             dataRegion,
             globalTimePredicate,
             dataNodeQueryContextMap,
-            debug);
+            debug,
+            isVerbose);
     instanceContext.initialize();
     instanceContext.start();
     return instanceContext;
   }
 
   public static FragmentInstanceContext createFragmentInstanceContextForCompaction(long queryId) {
-    return new FragmentInstanceContext(queryId, null, null, null, false);
+    return new FragmentInstanceContext(queryId, null, null, null, false, false);
   }
 
   public void setQueryDataSourceType(QueryDataSourceType queryDataSourceType) {
@@ -227,6 +232,7 @@ public class FragmentInstanceContext extends QueryContext {
             id,
             stateMachine,
             new SessionInfo(1, new UserEntity(666, "test", "127.0.0.1"), ZoneId.systemDefault()),
+            false,
             false);
     instanceContext.initialize();
     instanceContext.start();
@@ -244,6 +250,7 @@ public class FragmentInstanceContext extends QueryContext {
             stateMachine,
             new SessionInfo(1, new UserEntity(666, "test", "127.0.0.1"), ZoneId.systemDefault()),
             memoryReservationManager,
+            false,
             false);
     instanceContext.initialize();
     instanceContext.start();
@@ -257,8 +264,9 @@ public class FragmentInstanceContext extends QueryContext {
       IDataRegionForQuery dataRegion,
       TimePredicate globalTimePredicate,
       Map<QueryId, DataNodeQueryContext> dataNodeQueryContextMap,
-      boolean debug) {
-    super(debug);
+      boolean debug,
+      boolean verbose) {
+    super(debug, verbose);
     this.id = id;
     this.stateMachine = stateMachine;
     this.executionEndTime.set(END_TIME_INITIAL_VALUE);
@@ -279,8 +287,9 @@ public class FragmentInstanceContext extends QueryContext {
       FragmentInstanceId id,
       FragmentInstanceStateMachine stateMachine,
       SessionInfo sessionInfo,
-      boolean debug) {
-    super(debug);
+      boolean debug,
+      boolean verbose) {
+    super(debug, verbose);
     this.id = id;
     this.stateMachine = stateMachine;
     this.executionEndTime.set(END_TIME_INITIAL_VALUE);
@@ -296,8 +305,9 @@ public class FragmentInstanceContext extends QueryContext {
       FragmentInstanceStateMachine stateMachine,
       SessionInfo sessionInfo,
       MemoryReservationManager memoryReservationManager,
-      boolean debug) {
-    super(debug);
+      boolean debug,
+      boolean verbose) {
+    super(debug, verbose);
     this.id = id;
     this.stateMachine = stateMachine;
     this.executionEndTime.set(END_TIME_INITIAL_VALUE);
@@ -313,8 +323,9 @@ public class FragmentInstanceContext extends QueryContext {
       SessionInfo sessionInfo,
       IDataRegionForQuery dataRegion,
       Filter globalTimeFilter,
-      boolean debug) {
-    super(debug);
+      boolean debug,
+      boolean verbose) {
+    super(debug, verbose);
     this.id = id;
     this.stateMachine = stateMachine;
     this.executionEndTime.set(END_TIME_INITIAL_VALUE);
@@ -337,8 +348,9 @@ public class FragmentInstanceContext extends QueryContext {
       MemoryReservationManager memoryReservationManager,
       Filter timeFilter,
       DataRegion dataRegion,
-      boolean debug) {
-    super(debug);
+      boolean debug,
+      boolean verbose) {
+    super(debug, verbose);
     this.queryId = queryId;
     this.id = null;
     this.stateMachine = null;

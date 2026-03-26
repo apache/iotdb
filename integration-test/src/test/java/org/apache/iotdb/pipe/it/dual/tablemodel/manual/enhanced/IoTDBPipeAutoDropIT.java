@@ -103,7 +103,6 @@ public class IoTDBPipeAutoDropIT extends AbstractPipeTableModelDualManualIT {
         };
 
     // Create an ordinary full sync pipe
-    // The database & table name will be converted to lower case
     final String sql =
         String.format("create pipe a2b ('node-urls'='%s')", receiverDataNode.getIpAndPortString());
     try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);

@@ -348,7 +348,8 @@ public class LoadTsFileScheduler implements IScheduler {
             queryContext.getQueryType(),
             queryContext.getTimeOut() - (System.currentTimeMillis() - queryContext.getStartTime()),
             queryContext.getSession(),
-            queryContext.isDebug());
+            queryContext.isDebug(),
+            queryContext.isVerbose());
     instance.setExecutorAndHost(new StorageExecutor(replicaSet));
     Future<FragInstanceDispatchResult> dispatchResultFuture =
         dispatcher.dispatch(null, Collections.singletonList(instance));
@@ -502,7 +503,8 @@ public class LoadTsFileScheduler implements IScheduler {
               queryContext.getTimeOut()
                   - (System.currentTimeMillis() - queryContext.getStartTime()),
               queryContext.getSession(),
-              queryContext.isDebug());
+              queryContext.isDebug(),
+              queryContext.isVerbose());
       instance.setExecutorAndHost(new StorageExecutor(node.getLocalRegionReplicaSet()));
       dispatcher.dispatchLocally(instance);
     } catch (FragmentInstanceDispatchException e) {
