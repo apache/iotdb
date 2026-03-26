@@ -620,6 +620,7 @@ public class PipeConfig {
 
     LOGGER.info("PipeAirGapReceiverEnabled: {}", getPipeAirGapReceiverEnabled());
     LOGGER.info("PipeAirGapReceiverPort: {}", getPipeAirGapReceiverPort());
+    LOGGER.info("PipeAirGapSinkTabletTimeoutMs: {}", getPipeAirGapSinkTabletTimeoutMs());
 
     LOGGER.info(
         "PipeReceiverLoginPeriodicVerificationIntervalMs: {}",
