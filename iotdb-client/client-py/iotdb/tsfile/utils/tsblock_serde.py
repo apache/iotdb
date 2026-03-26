@@ -17,6 +17,7 @@
 #
 
 import numpy as np
+from iotdb.utils.IoTDBConstants import TSDataType
 
 # Serialized tsBlock:
 #    +-------------+---------------+---------+------------+-----------+----------+
@@ -24,6 +25,26 @@ import numpy as np
 #    +-------------+---------------+---------+------------+-----------+----------+
 #    | int32       | list[byte]    | int32   | list[byte] |  bytes    | byte     |
 #    +-------------+---------------+---------+------------+-----------+----------+
+
+VALID_TS_DATA_TYPES = (
+    TSDataType.BOOLEAN,
+    TSDataType.INT32,
+    TSDataType.INT64,
+    TSDataType.FLOAT,
+    TSDataType.DOUBLE,
+    TSDataType.TEXT,
+    TSDataType.TIMESTAMP,
+    TSDataType.DATE,
+    TSDataType.BLOB,
+    TSDataType.STRING,
+    TSDataType.OBJECT,
+)
+BINARY_TS_DATA_TYPES = (
+    TSDataType.TEXT,
+    TSDataType.BLOB,
+    TSDataType.STRING,
+    TSDataType.OBJECT,
+)
 
 
 def deserialize(buffer):
@@ -73,7 +94,7 @@ def read_from_buffer(buffer, size):
 def read_column_types(buffer, value_column_count):
     data_types = np.frombuffer(buffer, dtype=np.uint8, count=value_column_count)
     new_buffer = buffer[value_column_count:]
-    if not np.all(np.isin(data_types, (0, 1, 2, 3, 4, 5, 8, 9, 10, 11, 12))):
+    if not np.all(np.isin(data_types, VALID_TS_DATA_TYPES)):
         raise Exception("Invalid data type encountered: " + str(data_types))
     return data_types, new_buffer
 
@@ -113,9 +134,9 @@ def read_int64_column(buffer, data_type, position_count):
     else:
         size = np.count_nonzero(~null_indicators)
 
-    if data_type == 2:
+    if data_type == TSDataType.INT64:
         dtype = ">i8"
-    elif data_type == 4:
+    elif data_type == TSDataType.DOUBLE:
         dtype = ">f8"
     else:
         raise Exception("Invalid data type: " + str(data_type))
@@ -139,9 +160,9 @@ def read_int32_column(buffer, data_type, position_count):
     else:
         size = np.count_nonzero(~null_indicators)
 
-    if (data_type == 1) or (data_type == 9):
+    if (data_type == TSDataType.INT32) or (data_type == TSDataType.DATE):
         dtype = ">i4"
-    elif data_type == 3:
+    elif data_type == TSDataType.FLOAT:
         dtype = ">f4"
     else:
         raise Exception("Invalid data type: " + str(data_type))
@@ -159,8 +180,8 @@ def read_int32_column(buffer, data_type, position_count):
 
 
 def read_byte_column(buffer, data_type, position_count):
-    if data_type != 0:
-        raise Exception("Invalid data type: " + data_type)
+    if data_type != TSDataType.BOOLEAN:
+        raise Exception("Invalid data type: " + str(data_type))
     null_indicators, buffer = deserialize_null_indicators(buffer, position_count)
     res, buffer = deserialize_from_boolean_array(buffer, position_count)
     return res, null_indicators, buffer
@@ -190,8 +211,8 @@ def deserialize_from_boolean_array(buffer, size):
 
 
 def read_binary_column(buffer, data_type, position_count):
-    if data_type not in (5, 10, 11, 12):
-        raise Exception("Invalid data type: " + data_type)
+    if data_type not in BINARY_TS_DATA_TYPES:
+        raise Exception("Invalid data type: " + str(data_type))
     null_indicators, buffer = deserialize_null_indicators(buffer, position_count)
 
     if null_indicators is None:
@@ -229,10 +250,18 @@ def read_run_length_column(buffer, data_type, position_count):
 
 
 def repeat(column, data_type, position_count):
-    if data_type in (0, 5, 10, 11, 12):
+    if data_type in (
+        TSDataType.BOOLEAN,
+        TSDataType.TEXT,
+        TSDataType.BLOB,
+        TSDataType.STRING,
+        TSDataType.OBJECT,
+    ):
         if column.size == 1:
             return np.full(
-                position_count, column[0], dtype=(bool if data_type == 0 else object)
+                position_count,
+                column[0],
+                dtype=(bool if data_type == TSDataType.BOOLEAN else object),
             )
         else:
             return np.array(column * position_count, dtype=object)
