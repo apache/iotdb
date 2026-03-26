@@ -830,16 +830,19 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
 
       final TSStatus result =
           executeStatementWithPermissionCheckAndRetryOnDataTypeMismatch(statement);
-      if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-          || result.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+      final int code = result.getCode();
+      if (code == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+          || code == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
         return result;
       } else {
-        PipeLogger.log(
-            LOGGER::warn,
-            "Receiver id = %s: Failure status encountered while executing statement %s: %s",
-            receiverId.get(),
-            statement.getPipeLoggingString(),
-            result);
+        if (code != TSStatusCode.OUT_OF_TTL.getStatusCode()) {
+          PipeLogger.log(
+              LOGGER::warn,
+              "Receiver id = %s: Failure status encountered while executing statement %s: %s",
+              receiverId.get(),
+              statement.getPipeLoggingString(),
+              result);
+        }
         return STATEMENT_STATUS_VISITOR.process(statement, result);
       }
     } catch (final Exception e) {
