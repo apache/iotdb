@@ -686,7 +686,7 @@ public class StorageEngine implements IService {
           noExistDB.forEach(database -> sb.append(database).append(","));
           return RpcUtils.getStatus(
               TSStatusCode.DATABASE_NOT_EXIST,
-              "Database " + sb.subSequence(0, sb.length() - 1) + " does not exist");
+              "Database " + sb.subSequence(0, sb.length() - 1) + " does not exist on local");
         }
       }
       for (String databaseName : req.storageGroups) {
