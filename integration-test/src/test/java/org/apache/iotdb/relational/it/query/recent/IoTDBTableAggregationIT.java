@@ -4358,6 +4358,12 @@ public class IoTDBTableAggregationIT {
         new String[] {"_col0"},
         new String[] {"null,"},
         DATABASE_NAME);
+
+    tableResultSetEqualTest(
+        "select 1 as g, approx_percentile(s1,null,0.5) from table1 group by 1",
+        new String[] {"g", "_col1"},
+        new String[] {"1,null,"},
+        DATABASE_NAME);
   }
 
   @Test
@@ -4444,6 +4450,10 @@ public class IoTDBTableAggregationIT {
         DATABASE_NAME);
     tableAssertTestFail(
         "select approx_percentile(s1,s2,0.5) from table1",
+        "701: Aggregation functions [approx_percentile] do not support weight as INT64 type",
+        DATABASE_NAME);
+    tableAssertTestFail(
+        "select 1 as g, approx_percentile(s1,s2,0.5) from table1 group by 1",
         "701: Aggregation functions [approx_percentile] do not support weight as INT64 type",
         DATABASE_NAME);
   }
