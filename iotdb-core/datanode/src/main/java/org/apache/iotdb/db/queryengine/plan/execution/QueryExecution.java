@@ -111,7 +111,7 @@ public class QueryExecution implements IQueryExecution {
   // -1 if previous rpc is finished and next client req hasn't come yet, unit is ns
   // it will be updated in fetchResult rpc
   // protected by synchronized(this)
-  private long startTimeOfCurrentRpc = System.nanoTime();
+  private volatile long startTimeOfCurrentRpc = System.nanoTime();
 
   private static final QueryExecutionMetricSet QUERY_EXECUTION_METRIC_SET =
       QueryExecutionMetricSet.getInstance();
@@ -391,10 +391,10 @@ public class QueryExecution implements IQueryExecution {
   }
 
   /**
-   * clear up Coordinator.queryExecutionMap by calling Coordinator.cleanupQueryExecution if the
-   * current rpc is finished. We need to make sure the cleanup logic is only called when client
-   * connection is not active, otherwise the finally code logic in ClientRPCServiceImpl will handle
-   * that
+   * Clear up Coordinator.queryExecutionMap by calling Coordinator.cleanupQueryExecution if there is
+   * no RPC in progress for this query (that is, the current RPC has finished and {@code
+   * startTimeOfCurrentRpc == -1}). In cases where an RPC is still active, the finally block in
+   * ClientRPCServiceImpl is responsible for performing the cleanup.
    */
   private synchronized void cleanUpCoordinatorContextMapIfNeeded(Throwable t) {
     if (startTimeOfCurrentRpc == -1) {

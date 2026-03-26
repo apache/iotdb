@@ -76,7 +76,7 @@ public class ConfigExecution implements IQueryExecution {
   // it will be updated in fetchResult rpc
   // currently, ConfigExecution will return result is just one call, so this field is not used. But
   // we will keep it for future use when ConfigExecution may return result in multiple calls
-  private long startTimeOfCurrentRpc = System.nanoTime();
+  private volatile long startTimeOfCurrentRpc = System.nanoTime();
 
   public ConfigExecution(
       MPPQueryContext context,

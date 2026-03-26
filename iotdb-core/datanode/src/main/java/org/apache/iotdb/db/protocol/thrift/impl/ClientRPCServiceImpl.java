@@ -1712,7 +1712,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         resp.setHasResultSet(hasResultSet);
         resp.setQueryDataSet(result);
         resp.setIsAlign(true);
-        resp.setMoreData(finished);
+        resp.setMoreData(!finished);
         return resp;
       }
     } catch (Exception e) {

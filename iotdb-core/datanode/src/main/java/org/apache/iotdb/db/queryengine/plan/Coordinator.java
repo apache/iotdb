@@ -299,7 +299,7 @@ public class Coordinator {
   }
 
   /**
-   * cWe need to reclaim resources from queries that have exceeded their timeout by more than one
+   * We need to reclaim resources from queries that have exceeded their timeout by more than one
    * minute. This indicates that the associated clients have failed to perform proper resource
    * cleanup.
    */
