@@ -1264,8 +1264,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       }
     } else {
       try {
-        StorageEngine.getInstance().operateFlush(tFlushReq);
-        tsStatus = RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+        tsStatus = StorageEngine.getInstance().operateFlush(tFlushReq, true);
       } catch (final Exception e) {
         tsStatus = RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
       }
