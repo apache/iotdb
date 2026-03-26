@@ -193,7 +193,7 @@ public class IoTDBFlushQueryIT {
             "FLUSH root.noexist.nodatagroup1,root.notExistGroup1,root.notExistGroup2 on local");
       } catch (SQLException sqe) {
         String expectedMsg =
-            "500: Database root.notExistGroup1,root.notExistGroup2 does not exist on local";
+            "500: Database root.noexist.nodatagroup1,root.notExistGroup1,root.notExistGroup2 does not exist on local";
         sqe.printStackTrace();
         assertTrue(sqe.getMessage().contains(expectedMsg));
       }
