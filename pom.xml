@@ -410,6 +410,16 @@
                 <artifactId>checker-qual</artifactId>
                 <version>${checker-qual.version}</version>
             </dependency>
+            <dependency>
+                <groupId>org.eclipse.milo</groupId>
+                <artifactId>stack-client</artifactId>
+                <version>${milo.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.eclipse.milo</groupId>
+                <artifactId>sdk-client</artifactId>
+                <version>${milo.version}</version>
+            </dependency>
             <!-- TODO: Deprecated: Use Airline 2 or Picocli instead -->
             <dependency>
                 <groupId>io.airlift</groupId>
