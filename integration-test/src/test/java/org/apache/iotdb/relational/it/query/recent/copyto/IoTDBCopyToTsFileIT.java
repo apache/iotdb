@@ -234,7 +234,7 @@ public class IoTDBCopyToTsFileIT {
         EnvFactory.getEnv().getTableSessionConnectionWithDB(DATABASE_NAME)) {
       SessionDataSet sessionDataSet =
           session.executeQueryStatement(
-              "copy (select time, tag2, s1, tag1, s2 from table1) to '4.tsfile' (memory_threshold 1000000)'");
+              "copy (select time, tag2, s1, tag1, s2 from table1) to '4.tsfile' (memory_threshold 1000000)");
       SessionDataSet.DataIterator iterator = sessionDataSet.iterator();
       while (iterator.next()) {
         targetFilePath = iterator.getString(1);
@@ -259,12 +259,12 @@ public class IoTDBCopyToTsFileIT {
           Assert.assertEquals(2, allTimeseriesMetadata.size());
           List<TimeseriesMetadata> timeseriesMetadataList =
               allTimeseriesMetadata.get(new StringArrayDeviceID("table1", "t1_1", "t2"));
-          Assert.assertEquals(2, timeseriesMetadataList.size());
+          Assert.assertEquals(3, timeseriesMetadataList.size());
           Assert.assertEquals(1, timeseriesMetadataList.get(0).getStatistics().getStartTime());
           Assert.assertEquals(3, timeseriesMetadataList.get(0).getStatistics().getEndTime());
           timeseriesMetadataList =
               allTimeseriesMetadata.get(new StringArrayDeviceID("table1", "t1_2", "t2"));
-          Assert.assertEquals(2, timeseriesMetadataList.size());
+          Assert.assertEquals(3, timeseriesMetadataList.size());
           Assert.assertEquals(1, timeseriesMetadataList.get(0).getStatistics().getStartTime());
           Assert.assertEquals(3, timeseriesMetadataList.get(0).getStatistics().getEndTime());
         }
