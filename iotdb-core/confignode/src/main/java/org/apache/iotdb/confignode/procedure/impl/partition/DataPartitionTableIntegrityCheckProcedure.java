@@ -38,6 +38,7 @@ import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.state.DataPartitionTableIntegrityCheckProcedureState;
+import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.mpp.rpc.thrift.TGenerateDataPartitionTableHeartbeatResp;
 import org.apache.iotdb.mpp.rpc.thrift.TGenerateDataPartitionTableReq;
@@ -90,6 +91,9 @@ public class DataPartitionTableIntegrityCheckProcedure
   // how long to check all datanode are alive, the unit is ms
   private static final long CHECK_ALL_DATANODE_IS_ALIVE_INTERVAL = 10000;
 
+  // how long to roll back the next state, the unit is ms
+  private static final long ROLL_BACK_NEXT_STATE_INTERVAL = 60000;
+
   NodeManager dataNodeManager;
   private List<TDataNodeConfiguration> allDataNodes = new ArrayList<>();
 
@@ -113,9 +117,9 @@ public class DataPartitionTableIntegrityCheckProcedure
    */
   private Map<String, DataPartitionTable> finalDataPartitionTables;
 
-  private static Set<TDataNodeConfiguration> skipDataNodes =
+  private Set<TDataNodeConfiguration> skipDataNodes =
       Collections.newSetFromMap(new ConcurrentHashMap<>());
-  private static Set<TDataNodeConfiguration> failedDataNodes =
+  private Set<TDataNodeConfiguration> failedDataNodes =
       Collections.newSetFromMap(new ConcurrentHashMap<>());
 
   // ============Need serialize END=============/
@@ -176,6 +180,12 @@ public class DataPartitionTableIntegrityCheckProcedure
         dataPartitionTables.clear();
         break;
       case MERGE_PARTITION_TABLES:
+        finalDataPartitionTables.clear();
+        break;
+      case WRITE_PARTITION_TABLE_TO_CONSENSUS:
+        allDataNodes.clear();
+        earliestTimeslots.clear();
+        dataPartitionTables.clear();
         finalDataPartitionTables.clear();
         break;
       default:
@@ -276,7 +286,8 @@ public class DataPartitionTableIntegrityCheckProcedure
     }
 
     if (failedDataNodes.size() == allDataNodes.size()) {
-      setNextState(DataPartitionTableIntegrityCheckProcedureState.COLLECT_EARLIEST_TIMESLOTS);
+      delayRollbackNextState(
+          DataPartitionTableIntegrityCheckProcedureState.COLLECT_EARLIEST_TIMESLOTS);
     } else {
       setNextState(DataPartitionTableIntegrityCheckProcedureState.ANALYZE_MISSING_PARTITIONS);
     }
@@ -439,7 +450,8 @@ public class DataPartitionTableIntegrityCheckProcedure
     }
 
     if (failedDataNodes.size() == allDataNodes.size()) {
-      setNextState(DataPartitionTableIntegrityCheckProcedureState.COLLECT_EARLIEST_TIMESLOTS);
+      delayRollbackNextState(
+          DataPartitionTableIntegrityCheckProcedureState.COLLECT_EARLIEST_TIMESLOTS);
       return Flow.HAS_MORE_STATE;
     }
 
@@ -524,7 +536,8 @@ public class DataPartitionTableIntegrityCheckProcedure
     // Don't find any one data partition table generation task on all registered DataNodes, go back
     // to the REQUEST_PARTITION_TABLES step and re-execute
     if (failedDataNodes.size() == allDataNodes.size()) {
-      setNextState(DataPartitionTableIntegrityCheckProcedureState.REQUEST_PARTITION_TABLES);
+      delayRollbackNextState(
+          DataPartitionTableIntegrityCheckProcedureState.REQUEST_PARTITION_TABLES);
       return Flow.HAS_MORE_STATE;
     }
 
@@ -554,7 +567,8 @@ public class DataPartitionTableIntegrityCheckProcedure
     if (dataPartitionTables.isEmpty()) {
       LOG.error(
           "[DataPartitionIntegrity] No DataPartitionTables to merge, dataPartitionTables is empty");
-      setNextState(DataPartitionTableIntegrityCheckProcedureState.COLLECT_EARLIEST_TIMESLOTS);
+      delayRollbackNextState(
+          DataPartitionTableIntegrityCheckProcedureState.COLLECT_EARLIEST_TIMESLOTS);
       return Flow.HAS_MORE_STATE;
     }
 
@@ -675,7 +689,8 @@ public class DataPartitionTableIntegrityCheckProcedure
     if (!failedDataNodes.isEmpty()) {
       allDataNodes.removeAll(failedDataNodes);
       skipDataNodes = new HashSet<>(allDataNodes);
-      setNextState(DataPartitionTableIntegrityCheckProcedureState.COLLECT_EARLIEST_TIMESLOTS);
+      delayRollbackNextState(
+          DataPartitionTableIntegrityCheckProcedureState.COLLECT_EARLIEST_TIMESLOTS);
       return Flow.HAS_MORE_STATE;
     } else {
       skipDataNodes.clear();
@@ -683,8 +698,19 @@ public class DataPartitionTableIntegrityCheckProcedure
     }
   }
 
+  /** Delay to jump to next state, avoid write raft logs frequently when exception occur */
+  private void delayRollbackNextState(DataPartitionTableIntegrityCheckProcedureState state) {
+    sleep(
+        ROLL_BACK_NEXT_STATE_INTERVAL,
+        String.format(
+            "[DataPartitionIntegrity] Error waiting for roll back the %s state due to thread interruption.",
+            state));
+    setNextState(state);
+  }
+
   @Override
   public void serialize(final DataOutputStream stream) throws IOException {
+    stream.writeShort(ProcedureType.DATA_PARTITION_TABLE_INTEGRITY_CHECK_PROCEDURE.getTypeCode());
     super.serialize(stream);
 
     // Serialize earliestTimeslots
@@ -950,5 +976,55 @@ public class DataPartitionTableIntegrityCheckProcedure
     }
 
     return result;
+  }
+
+  public Map<String, Long> getEarliestTimeslots() {
+    return earliestTimeslots;
+  }
+
+  public Map<Integer, List<DatabaseScopedDataPartitionTable>> getDataPartitionTables() {
+    return dataPartitionTables;
+  }
+
+  public Set<String> getDatabasesWithLostDataPartition() {
+    return databasesWithLostDataPartition;
+  }
+
+  public Map<String, DataPartitionTable> getFinalDataPartitionTables() {
+    return finalDataPartitionTables;
+  }
+
+  public Set<TDataNodeConfiguration> getSkipDataNodes() {
+    return skipDataNodes;
+  }
+
+  public Set<TDataNodeConfiguration> getFailedDataNodes() {
+    return failedDataNodes;
+  }
+
+  public void setEarliestTimeslots(Map<String, Long> earliestTimeslots) {
+    this.earliestTimeslots = earliestTimeslots;
+  }
+
+  public void setDataPartitionTables(
+      Map<Integer, List<DatabaseScopedDataPartitionTable>> dataPartitionTables) {
+    this.dataPartitionTables = dataPartitionTables;
+  }
+
+  public void setDatabasesWithLostDataPartition(Set<String> databasesWithLostDataPartition) {
+    this.databasesWithLostDataPartition = databasesWithLostDataPartition;
+  }
+
+  public void setFinalDataPartitionTables(
+      Map<String, DataPartitionTable> finalDataPartitionTables) {
+    this.finalDataPartitionTables = finalDataPartitionTables;
+  }
+
+  public void setSkipDataNodes(Set<TDataNodeConfiguration> skipDataNodes) {
+    this.skipDataNodes = skipDataNodes;
+  }
+
+  public void setFailedDataNodes(Set<TDataNodeConfiguration> failedDataNodes) {
+    this.failedDataNodes = failedDataNodes;
   }
 }

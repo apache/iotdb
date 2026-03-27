@@ -2437,7 +2437,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TSStatus flush(TFlushReq req) throws TException {
     try {
-      storageEngine.operateFlush(req);
+      storageEngine.operateFlush(req, false);
     } catch (Exception e) {
       return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
     }
@@ -3381,6 +3381,9 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                 }
 
                 Set<Long> timePartitionIds = tsFileManager.getTimePartitions();
+                if (timePartitionIds.isEmpty()) {
+                  return;
+                }
                 final long earliestTimeSlotId = Collections.min(timePartitionIds);
                 earliestTimeslots.compute(
                     databaseName,

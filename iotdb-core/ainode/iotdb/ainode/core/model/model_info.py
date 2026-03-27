@@ -160,4 +160,17 @@ BUILTIN_HF_TRANSFORMERS_MODEL_MAP = {
         },
         transformers_registered=True,
     ),
+    "toto": ModelInfo(
+        model_id="toto",
+        category=ModelCategory.BUILTIN,
+        state=ModelStates.INACTIVE,
+        model_type="toto",
+        pipeline_cls="pipeline_toto.TotoPipeline",
+        repo_id="Datadog/Toto-Open-Base-1.0",
+        auto_map={
+            "AutoConfig": "configuration_toto.TotoConfig",
+            "AutoModelForCausalLM": "modeling_toto.TotoForPrediction",
+        },
+        transformers_registered=True,
+    ),
 }

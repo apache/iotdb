@@ -212,6 +212,9 @@ public class ColumnHeaderConstant {
   public static final String QUERY_ID = "QueryId";
   public static final String ELAPSED_TIME = "ElapsedTime";
   public static final String STATEMENT = "Statement";
+  public static final String WAIT_TIME_IN_SERVER = "WaitTimeInServer";
+  public static final String CLIENT_IP_TREE_MODEL = "ClientIp";
+  public static final String TIMEOUT = "Timeout";
 
   // column names for show idle connection
   public static final String DATANODE_ID = "datanode_id";
@@ -225,6 +228,8 @@ public class ColumnHeaderConstant {
   public static final String DATA_NODE_ID_TABLE_MODEL = "datanode_id";
   public static final String START_TIME_TABLE_MODEL = "start_time";
   public static final String ELAPSED_TIME_TABLE_MODEL = "elapsed_time";
+  public static final String WAIT_TIME_IN_SERVER_TABLE_MODEL = "wait_time_in_server";
+  public static final String TIMEOUT_TABLE_MODEL = "timeout";
 
   // column names for current_queries and queries_costs_histogram
   public static final String STATE_TABLE_MODEL = "state";
@@ -645,10 +650,13 @@ public class ColumnHeaderConstant {
 
   public static final List<ColumnHeader> showQueriesColumnHeaders =
       ImmutableList.of(
-          new ColumnHeader(QUERY_ID, TSDataType.TEXT),
+          new ColumnHeader(QUERY_ID, TSDataType.STRING),
           new ColumnHeader(DATA_NODE_ID, TSDataType.INT32),
           new ColumnHeader(ELAPSED_TIME, TSDataType.FLOAT),
-          new ColumnHeader(STATEMENT, TSDataType.TEXT));
+          new ColumnHeader(STATEMENT, TSDataType.STRING),
+          new ColumnHeader(WAIT_TIME_IN_SERVER, TSDataType.FLOAT),
+          new ColumnHeader(CLIENT_IP_TREE_MODEL, TSDataType.STRING),
+          new ColumnHeader(TIMEOUT, TSDataType.INT64));
 
   public static final List<ColumnHeader> showDiskUsageColumnHeaders =
       ImmutableList.of(
