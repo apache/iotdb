@@ -243,6 +243,12 @@ public class PipeTsFileResourceManager {
         } catch (final Exception e) {
           e.printStackTrace();
         }
+      } else {
+        LOGGER.warn(
+            "Grass, public map {}, pipe map: {}, file path: {}",
+            hardlinkOrCopiedFileToTsFilePublicResourceMap,
+            hardlinkOrCopiedFileToPipeTsFileResourceMap,
+            filePath);
       }
     } finally {
       segmentLock.unlock(hardlinkOrCopiedFile);
@@ -377,14 +383,20 @@ public class PipeTsFileResourceManager {
     }
   }
 
-  public void unpinTsFileResource(final TsFileResource resource, final @Nullable String pipeName)
+  public void unpinTsFileResource(
+      final TsFileResource resource,
+      final boolean shouldTransferModFile,
+      final @Nullable String pipeName)
       throws IOException {
-    final File pinnedFile = getHardlinkOrCopiedFileInPipeDir(resource.getTsFile(), pipeName);
-    decreaseFileReference(pinnedFile, pipeName);
+    decreaseFileReference(
+        getHardlinkOrCopiedFileInPipeDir(resource.getTsFile(), pipeName), pipeName);
 
-    LOGGER.info("Grass mod: {}", resource.sharedModFileExists());
-    if (resource.sharedModFileExists()) {
-      decreaseFileReference(resource.getSharedModFile().getFile(), pipeName);
+    LOGGER.info("Good mod: {}", resource.exclusiveModFileExists());
+    if (shouldTransferModFile && resource.exclusiveModFileExists()) {
+      decreaseFileReference(
+          getHardlinkOrCopiedFileInPipeDir(resource.getExclusiveModFile().getFile(), pipeName),
+          pipeName);
+      LOGGER.info("Decreased mod: {}", resource.getExclusiveModFile().getFile());
     }
   }
 

@@ -904,7 +904,8 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
       return isReferenceCountIncreased ? event : null;
     } finally {
       try {
-        PipeDataNodeResourceManager.tsfile().unpinTsFileResource(resource, pipeName);
+        PipeDataNodeResourceManager.tsfile()
+            .unpinTsFileResource(resource, shouldTransferModFile, pipeName);
       } catch (final IOException e) {
         LOGGER.warn(
             "Pipe {}@{}: failed to unpin TsFileResource after creating event, original path: {}",
@@ -989,7 +990,8 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
             if (resource instanceof TsFileResource) {
               try {
                 PipeDataNodeResourceManager.tsfile()
-                    .unpinTsFileResource((TsFileResource) resource, pipeName);
+                    .unpinTsFileResource(
+                        (TsFileResource) resource, shouldTransferModFile, pipeName);
               } catch (final IOException e) {
                 LOGGER.warn(
                     "Pipe {}@{}: failed to unpin TsFileResource after dropping pipe, original path: {}",
