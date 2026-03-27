@@ -353,6 +353,11 @@ public class ColumnHeaderConstant {
   public static final String SIZE_IN_BYTES_TABLE_MODEL = "size_in_bytes";
   public static final String TIME_PARTITION_TABLE_MODEL = "time_partition";
 
+  public static final String ROW_COUNT = "row_count";
+  public static final String DEVICE_COUNT = "device_count";
+  public static final String TIME_COLUMN = "time_column";
+  public static final String TAG_COLUMNS = "tag_columns";
+
   public static final List<ColumnHeader> lastQueryColumnHeaders =
       ImmutableList.of(
           new ColumnHeader(TIMESERIES, TSDataType.TEXT),
@@ -789,4 +794,14 @@ public class ColumnHeaderConstant {
           new ColumnHeader(SHOW_CONFIGURATIONS_VALUE, TSDataType.TEXT),
           new ColumnHeader(SHOW_CONFIGURATIONS_DEFAULT_VALUE, TSDataType.TEXT),
           new ColumnHeader(SHOW_CONFIGURATIONS_DESCRIPTION, TSDataType.TEXT));
+
+  public static final List<ColumnHeader> COPY_TO_TSFILE_COLUMN_HEADERS =
+      ImmutableList.of(
+          new ColumnHeader(PATH.toLowerCase(), TSDataType.TEXT),
+          new ColumnHeader(ROW_COUNT, TSDataType.INT64),
+          new ColumnHeader(DEVICE_COUNT, TSDataType.INT64),
+          new ColumnHeader(SIZE_IN_BYTES_TABLE_MODEL, TSDataType.INT64),
+          new ColumnHeader(TABLE_NAME_TABLE_MODEL, TSDataType.STRING),
+          new ColumnHeader(TIME_COLUMN, TSDataType.STRING),
+          new ColumnHeader(TAG_COLUMNS, TSDataType.STRING));
 }

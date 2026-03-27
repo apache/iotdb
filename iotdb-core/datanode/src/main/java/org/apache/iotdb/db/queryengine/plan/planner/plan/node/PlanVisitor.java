@@ -751,6 +751,11 @@ public abstract class PlanVisitor<R, C> {
     return visitSingleChildProcess(node, context);
   }
 
+  public R visitCopyTo(
+      org.apache.iotdb.db.queryengine.plan.relational.planner.node.CopyToNode node, C context) {
+    return visitSingleChildProcess(node, context);
+  }
+
   public R visitOutput(
       org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode node, C context) {
     return visitSingleChildProcess(node, context);

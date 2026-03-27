@@ -159,6 +159,20 @@ public class TsTable {
     }
   }
 
+  public String getTimeColumnName() {
+    readWriteLock.readLock().lock();
+    try {
+      for (Map.Entry<String, TsTableColumnSchema> entry : columnSchemaMap.entrySet()) {
+        if (entry.getValue().getColumnCategory() == TsTableColumnCategory.TIME) {
+          return entry.getKey();
+        }
+      }
+    } finally {
+      readWriteLock.readLock().unlock();
+    }
+    return null;
+  }
+
   public int getTagColumnOrdinal(final String columnName) {
     readWriteLock.readLock().lock();
     try {
