@@ -126,7 +126,7 @@ public class TemporaryQueryDataFileService implements IService {
     try {
       FileUtils.deleteDirectory(SystemFileFactory.INSTANCE.getFile(TEMPORARY_FILE_DIR));
     } catch (IOException e) {
-      logger.warn("Failed to delete temp dir {}: {}", TEMPORARY_FILE_DIR, e);
+      logger.warn("Failed to delete temp dir {}.", TEMPORARY_FILE_DIR, e);
     }
   }
 
