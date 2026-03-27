@@ -1827,6 +1827,14 @@ public class MergeTreeSortOperatorTest {
     public void recordExecutionTime(long executionTime) {}
 
     @Override
+    public void updateCurrentRpcStartTime(long startTime) {}
+
+    @Override
+    public boolean isActive() {
+      return true;
+    }
+
+    @Override
     public long getTotalExecutionTime() {
       return 0;
     }
@@ -1856,9 +1864,6 @@ public class MergeTreeSortOperatorTest {
 
     @Override
     public void stop(Throwable t) {}
-
-    @Override
-    public void stopAndCleanup() {}
 
     @Override
     public void stopAndCleanup(Throwable t) {}
