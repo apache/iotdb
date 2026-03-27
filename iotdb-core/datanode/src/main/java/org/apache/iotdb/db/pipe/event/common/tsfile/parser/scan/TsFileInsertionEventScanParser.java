@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.path.MeasurementPath;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
@@ -683,7 +684,9 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
         tsFileSequenceReader.position(nextMarkerOffset);
         return true;
       } else if (chunkHeader.getMeasurementID().equals("s1")) {
-        LOGGER.warn("s1 not filtered, currentModifications: {}", currentModifications);
+        LOGGER.warn(
+            "s1 not filtered, currentModifications: {}",
+            currentModifications.getDeviceOverlapped(new PartialPath("root.**")));
       }
     }
 
