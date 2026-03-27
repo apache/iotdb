@@ -267,7 +267,6 @@ public class IoTDBRestServiceIT {
                 + i
                 + "],\"measurements_list\":[[\"s33\",\"s44\"]],\"data_types_list\":[[\"INT32\",\"INT64\"]],\"values_list\":[[1,false]],\"is_aligned\":false,\"devices\":[\"root.s1\"]}";
         httpPost.setEntity(new StringEntity(json, Charset.defaultCharset()));
-        response = httpClient.execute(httpPost);
         for (int j = 0; j < 30; j++) {
           try {
             response = httpClient.execute(httpPost);
