@@ -32,6 +32,7 @@ import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -42,6 +43,9 @@ import java.util.Map;
 import java.util.Set;
 
 public class CopyToTsFileOptions implements CopyToOptions {
+
+  private static final long SHALLOW_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(CopyToTsFileOptions.class);
 
   private static final String DEFAULT_TABLE_NAME = "default";
 
@@ -213,19 +217,24 @@ public class CopyToTsFileOptions implements CopyToOptions {
         +
 
         // TIME COLUMN
-        "\nTIME COLUMN "
+        "\nTIME "
         + targetTimeColumn
         +
 
         // TAG COLUMNS
-        "\nTAG COLUMNS ("
+        "\nTAGS ("
         + String.join(", ", targetTagColumns)
         + ")"
         +
 
         // MEMORY
-        "\nMEMORY "
+        "\nMEMORY_THRESHOLD "
         + targetMemoryThreshold
         + ")";
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return SHALLOW_SIZE + RamUsageEstimator.sizeOfHashSet(targetTagColumns);
   }
 }

@@ -853,6 +853,7 @@ public class StatementAnalyzer {
 
     @Override
     protected Scope visitCopyTo(CopyTo node, Optional<Scope> context) {
+      accessControl.checkUserGlobalSysPrivilege(queryContext);
       Scope innerQueryScope = visitQuery((Query) node.getQueryStatement(), context);
       analysis.setScope(node, innerQueryScope);
       return innerQueryScope;

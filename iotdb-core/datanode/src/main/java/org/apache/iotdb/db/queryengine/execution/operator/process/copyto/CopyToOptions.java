@@ -25,10 +25,12 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.copyto.tsfile.
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.RelationPlan;
 
+import org.apache.tsfile.utils.Accountable;
+
 import java.util.List;
 import java.util.Set;
 
-public interface CopyToOptions {
+public interface CopyToOptions extends Accountable {
 
   void infer(Analysis analysis, RelationPlan queryRelationPlan, List<ColumnHeader> columnHeaders);
 

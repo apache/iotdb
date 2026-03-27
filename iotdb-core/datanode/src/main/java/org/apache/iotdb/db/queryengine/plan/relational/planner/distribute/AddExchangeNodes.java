@@ -27,6 +27,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceSourceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CollectNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CopyToNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CteScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExplainAnalyzeNode;
@@ -133,6 +134,28 @@ public class AddExchangeNodes
   public PlanNode visitExplainAnalyze(
       ExplainAnalyzeNode node, TableDistributedPlanGenerator.PlanContext context) {
     ExplainAnalyzeNode newNode = (ExplainAnalyzeNode) node.clone();
+
+    PlanNode child = newNode.getChild();
+    child = child.accept(this, context);
+
+    ExchangeNode exchangeNode = new ExchangeNode(queryContext.getQueryId().genPlanNodeId());
+    exchangeNode.setChild(child);
+    context.nodeDistributionMap.put(
+        exchangeNode.getPlanNodeId(),
+        new NodeDistribution(DIFFERENT_FROM_ALL_CHILDREN, DataPartition.NOT_ASSIGNED));
+    exchangeNode.setOutputSymbols(child.getOutputSymbols());
+    newNode.setChild(exchangeNode);
+
+    context.nodeDistributionMap.put(
+        newNode.getPlanNodeId(),
+        new NodeDistribution(DIFFERENT_FROM_ALL_CHILDREN, DataPartition.NOT_ASSIGNED));
+    context.hasExchangeNode = true;
+    return newNode;
+  }
+
+  @Override
+  public PlanNode visitCopyTo(CopyToNode node, TableDistributedPlanGenerator.PlanContext context) {
+    CopyToNode newNode = (CopyToNode) node.clone();
 
     PlanNode child = newNode.getChild();
     child = child.accept(this, context);

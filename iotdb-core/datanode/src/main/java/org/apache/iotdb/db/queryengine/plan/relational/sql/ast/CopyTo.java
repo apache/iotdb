@@ -105,6 +105,8 @@ public class CopyTo extends Statement {
     long size = INSTANCE_SIZE;
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
     size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(queryStatement);
+    size += RamUsageEstimator.sizeOf(targetFileName);
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(options);
     return size;
   }
 }
