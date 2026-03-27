@@ -38,6 +38,7 @@ import org.apache.iotdb.db.pipe.event.common.tsfile.parser.util.ModsOperationUti
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
@@ -688,7 +689,8 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
         LOGGER.warn(
             "s1 not filtered, currentModifications: {}, modFile: {}",
             currentModifications.getDeviceOverlapped(new PartialPath("root.**")),
-            ((PipeTsFileInsertionEvent) sourceEvent).getModFile());
+            new ModificationFile(((PipeTsFileInsertionEvent) sourceEvent).getModFile(), false)
+                .getAllMods());
       }
     }
 
