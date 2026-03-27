@@ -32,6 +32,7 @@ class TSDataType(IntEnum):
     DATE = 9
     BLOB = 10
     STRING = 11
+    OBJECT = 12
 
     def np_dtype(self):
         return {
@@ -44,6 +45,7 @@ class TSDataType(IntEnum):
             TSDataType.TIMESTAMP: np.dtype(">i8"),
             TSDataType.DATE: date,
             TSDataType.BLOB: bytes,
+            TSDataType.OBJECT: bytes,
             TSDataType.STRING: str,
         }[self]
 

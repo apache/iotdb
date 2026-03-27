@@ -346,6 +346,9 @@ class IoTDBRpcDataSet(object):
                 # TEXT, STRING
                 elif data_type in (5, 11):
                     data_array = np.array([x.decode("utf-8") for x in column_array])
+                # OBJECT (kept as bytes; Field will format it later)
+                elif data_type == 12:
+                    data_array = column_array
                 # TIMESTAMP
                 elif data_type == 8:
                     data_array = pd.Series(
@@ -381,6 +384,7 @@ class IoTDBRpcDataSet(object):
                         data_type == 5
                         or data_type == 11
                         or data_type == 10
+                        or data_type == 12
                         or data_type == 9
                         or data_type == 8
                     ):
