@@ -40,9 +40,8 @@ public interface IAuthorizer extends SnapshotProcessor {
    *
    * @param username The username of the user.
    * @param password The password of the user.
-   * @return True if such user exists and the given password is correct, else return false.
    */
-  boolean login(String username, String password, final boolean useEncryptedPassword)
+  void login(String username, String password, final boolean useEncryptedPassword)
       throws AuthException;
 
   /**

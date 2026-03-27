@@ -64,11 +64,13 @@ public class BasicAuthorityCache implements IAuthorCache {
       AuthorityChecker.setSuperUser(user.getName());
     }
     userCache.put(userName, user);
+    LOGGER.info("Put user cache, user: {}", user);
   }
 
   @Override
   public void putRoleCache(String roleName, Role role) {
     roleCache.put(roleName, role);
+    LOGGER.info("Put role cache, role: {}", role);
   }
 
   /**
@@ -85,8 +87,10 @@ public class BasicAuthorityCache implements IAuthorCache {
         Set<String> roleSet = userCache.getIfPresent(userName).getRoleSet();
         if (!roleSet.isEmpty()) {
           roleCache.invalidateAll(roleSet);
+          LOGGER.info("Invalidated cache for roles {}", roleSet);
         }
         userCache.invalidate(userName);
+        LOGGER.info("Invalidated cache for user {}", userName);
       }
       if (userCache.getIfPresent(userName) != null) {
         LOGGER.error("datanode cache initialization failed");
@@ -96,6 +100,7 @@ public class BasicAuthorityCache implements IAuthorCache {
     if (roleName != null) {
       if (roleCache.getIfPresent(roleName) != null) {
         roleCache.invalidate(roleName);
+        LOGGER.info("Invalidated cache for role {}", roleName);
       }
       if (roleCache.getIfPresent(roleName) != null) {
         LOGGER.error("datanode cache initialization failed");
@@ -109,5 +114,6 @@ public class BasicAuthorityCache implements IAuthorCache {
   public void invalidAllCache() {
     userCache.invalidateAll();
     roleCache.invalidateAll();
+    LOGGER.info("Invalidated all users and roles cache.");
   }
 }
