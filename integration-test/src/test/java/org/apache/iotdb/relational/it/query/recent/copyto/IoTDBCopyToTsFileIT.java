@@ -228,13 +228,58 @@ public class IoTDBCopyToTsFileIT {
   }
 
   @Test
+  public void testCopySelectSpecifiedColumns2()
+      throws IoTDBConnectionException, StatementExecutionException, IOException {
+    try (ITableSession session =
+        EnvFactory.getEnv().getTableSessionConnectionWithDB(DATABASE_NAME)) {
+      SessionDataSet sessionDataSet =
+          session.executeQueryStatement(
+              "copy (select time, tag2, s1, tag1, s2 from table1) to '4.tsfile' (memory_threshold 1000000)'");
+      SessionDataSet.DataIterator iterator = sessionDataSet.iterator();
+      while (iterator.next()) {
+        targetFilePath = iterator.getString(1);
+        int rowCount = iterator.getInt(2);
+        int deviceCount = iterator.getInt(3);
+        long sizeInBytes = iterator.getLong(4);
+        String tableName = iterator.getString(5);
+        String timeColumn = iterator.getString(6);
+        String tagColumns = iterator.getString(7);
+
+        Assert.assertTrue(new File(targetFilePath).exists());
+        Assert.assertEquals(6, rowCount);
+        Assert.assertEquals(2, deviceCount);
+        Assert.assertTrue(sizeInBytes > 0);
+        Assert.assertEquals("table1", tableName);
+        Assert.assertEquals("time", timeColumn);
+        Assert.assertEquals("[tag1, tag2]", tagColumns);
+
+        try (TsFileSequenceReader reader = new TsFileSequenceReader(targetFilePath)) {
+          Map<IDeviceID, List<TimeseriesMetadata>> allTimeseriesMetadata =
+              reader.getAllTimeseriesMetadata(false);
+          Assert.assertEquals(2, allTimeseriesMetadata.size());
+          List<TimeseriesMetadata> timeseriesMetadataList =
+              allTimeseriesMetadata.get(new StringArrayDeviceID("table1", "t1_1", "t2"));
+          Assert.assertEquals(2, timeseriesMetadataList.size());
+          Assert.assertEquals(1, timeseriesMetadataList.get(0).getStatistics().getStartTime());
+          Assert.assertEquals(3, timeseriesMetadataList.get(0).getStatistics().getEndTime());
+          timeseriesMetadataList =
+              allTimeseriesMetadata.get(new StringArrayDeviceID("table1", "t1_2", "t2"));
+          Assert.assertEquals(2, timeseriesMetadataList.size());
+          Assert.assertEquals(1, timeseriesMetadataList.get(0).getStatistics().getStartTime());
+          Assert.assertEquals(3, timeseriesMetadataList.get(0).getStatistics().getEndTime());
+        }
+      }
+    }
+  }
+
+  @Test
   public void testCopyWithSpecifiedTag()
       throws IoTDBConnectionException, StatementExecutionException, IOException {
     try (ITableSession session =
         EnvFactory.getEnv().getTableSessionConnectionWithDB(DATABASE_NAME)) {
       SessionDataSet sessionDataSet =
           session.executeQueryStatement(
-              "copy table1(time,tag1,tag2,s1) to '4.tsfile' with (tags(tag2,tag1), memory_threshold 1000000)");
+              "copy table1(time,tag1,tag2,s1) to '5.tsfile' with (tags(tag2,tag1), memory_threshold 1000000)");
       SessionDataSet.DataIterator iterator = sessionDataSet.iterator();
       while (iterator.next()) {
         targetFilePath = iterator.getString(1);

@@ -119,8 +119,11 @@ public class TableCopyToOperator implements ProcessOperator {
     if (parent != null && !parent.exists() && !parent.mkdirs()) {
       throw new IOException("Failed to create directories: " + parent);
     }
-    if (!file.createNewFile()) {
+    if (file.exists()) {
       throw new IOException("Target file already exists: " + file.getAbsolutePath());
+    }
+    if (!file.createNewFile()) {
+      throw new IOException("Failed to create file: " + file.getAbsolutePath());
     }
 
     return file;
