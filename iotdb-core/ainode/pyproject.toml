@@ -117,6 +117,7 @@ setuptools = ">=75.3.0"
 joblib = ">=1.4.2"
 urllib3 = "2.6.3"
 jaxtyping = ">=0.2.24"
+rotary-embedding-torch = ">=0.8.0"
 
 [tool.poetry.scripts]
 ainode = "iotdb.ainode.core.script:main"
