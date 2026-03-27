@@ -84,6 +84,9 @@ public class PipeTsFileResource implements AutoCloseable {
     boolean successful = false;
     try {
       successful = Files.deleteIfExists(hardlinkOrCopiedFile.toPath());
+      if (!hardlinkOrCopiedFile.getPath().endsWith(".tsFile")) {
+        LOGGER.info("deleted file {}.", hardlinkOrCopiedFile);
+      }
     } catch (final Exception e) {
       LOGGER.error(
           "PipeTsFileResource: Failed to delete tsfile {} when closing, because {}. Please MANUALLY delete it.",

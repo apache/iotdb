@@ -116,6 +116,9 @@ public class PipeTsFileResourceManager {
               ? FileUtils.createHardLink(source, hardlinkOrCopiedFile)
               : FileUtils.copyFile(source, hardlinkOrCopiedFile);
 
+      if (!isTsFile) {
+        LOGGER.info("Copied file {} to {}.", sourceFile, hardlinkOrCopiedFile);
+      }
       // If the file is not a hardlink or copied file, and there is no related hardlink or copied
       // file in pipe dir, create a hardlink or copy it to pipe dir, maintain a reference count for
       // the hardlink or copied file, and return the hardlink or copied file.
