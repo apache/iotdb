@@ -60,10 +60,10 @@ public class IoTDBTestRunner extends BlockJUnit4ClassRunner {
     if (EnvType.getSystemEnvType() != EnvType.MultiCluster) {
       EnvFactory.getEnv().setTestMethodName(description.getMethodName());
       EnvFactory.getEnv().setIsExternalServiceRelatedTest(isExternalServiceRelatedTest());
-    } else {
-      MultiEnvFactory.setTestMethodName(description.getMethodName());
-      MultiEnvFactory.setIsExternalServiceRelatedTest(isExternalServiceRelatedTest());
     }
+    MultiEnvFactory.setTestMethodName(description.getMethodName());
+    MultiEnvFactory.setIsExternalServiceRelatedTest(isExternalServiceRelatedTest());
+
     if (Thread.currentThread().getName().equals("main")) {
       Thread.currentThread().setName("main-" + description.getMethodName());
     }

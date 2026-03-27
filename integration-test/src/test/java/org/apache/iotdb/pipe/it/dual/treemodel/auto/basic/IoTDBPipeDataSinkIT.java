@@ -25,6 +25,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
+import org.apache.iotdb.itbase.category.ExternalServiceImplLocalStandaloneIT;
 import org.apache.iotdb.itbase.category.MultiClusterIT2DualTreeAutoBasic;
 import org.apache.iotdb.pipe.it.dual.treemodel.auto.AbstractPipeDualTreeModelAutoIT;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -52,7 +53,7 @@ import java.util.function.Consumer;
 import static org.apache.iotdb.db.it.IoTDBRestServiceIT.getHttpPost;
 
 @RunWith(IoTDBTestRunner.class)
-@Category({MultiClusterIT2DualTreeAutoBasic.class})
+@Category({MultiClusterIT2DualTreeAutoBasic.class, ExternalServiceImplLocalStandaloneIT.class})
 public class IoTDBPipeDataSinkIT extends AbstractPipeDualTreeModelAutoIT {
 
   @Override
