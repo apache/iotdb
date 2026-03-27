@@ -687,10 +687,11 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
         return true;
       } else if (chunkHeader.getMeasurementID().equals("s1")) {
         LOGGER.warn(
-            "s1 not filtered, currentModifications: {}, modFile: {}",
+            "s1 not filtered, currentModifications: {}, modFile: {}, file path: {}",
             currentModifications.getDeviceOverlapped(new PartialPath("root.**")),
             new ModificationFile(((PipeTsFileInsertionEvent) sourceEvent).getModFile(), false)
-                .getAllMods());
+                .getAllMods(),
+            tsFileSequenceReader.getFileName());
       }
     }
 

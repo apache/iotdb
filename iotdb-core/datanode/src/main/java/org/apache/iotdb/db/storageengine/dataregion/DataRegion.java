@@ -3433,9 +3433,10 @@ public class DataRegion implements IDataRegionForQuery {
       }
     }
     logger.info(
-        "[Deletion] Deletion {} is written into {} mod files",
+        "[Deletion] Deletion {} is written into {} mod files, file path: {}",
         deletion,
-        involvedModificationFiles.size());
+        involvedModificationFiles.size(),
+        involvedModificationFiles);
   }
 
   private boolean isFileFullyMatchedByTime(
