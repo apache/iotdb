@@ -76,6 +76,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedDeque;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -1622,5 +1623,72 @@ public class SessionPoolTest {
     }
 
     return Collections.singletonList(tsBlock);
+  }
+
+  // Regression test for graceful shutdown
+  @Test(timeout = 5000)
+  public void testCloseNotifiesWaitingThreads() throws Exception {
+    SessionPool pool =
+        new SessionPool.Builder()
+            .host("localhost")
+            .port(6667)
+            .user("root")
+            .password("root")
+            .maxSize(1)
+            .waitToGetSessionTimeoutInMs(10000)
+            // notifyAll()
+            .build();
+
+    try {
+      Session mockSession = Mockito.mock(Session.class);
+      ConcurrentLinkedDeque<ISession> queue =
+          (ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(pool, "queue");
+      queue.push(mockSession);
+      Whitebox.setInternalState(pool, "size", 1);
+
+      ISession occupiedSession = (ISession) Whitebox.invokeMethod(pool, "getSession");
+      assertEquals(mockSession, occupiedSession);
+      assertEquals(0, queue.size());
+
+      final Exception[] caughtException = {null};
+
+      Thread waiterThread =
+          new Thread(
+              () -> {
+                try {
+                  Whitebox.invokeMethod(pool, "getSession");
+                } catch (Exception e) {
+                  caughtException[0] = e;
+                }
+              });
+      waiterThread.start();
+
+      Thread.sleep(100);
+
+      long closeStartTime = System.currentTimeMillis();
+      pool.close();
+      long closeEndTime = System.currentTimeMillis();
+
+      waiterThread.join(1000);
+
+      assertNotNull("Waiter thread should have caught an exception", caughtException[0]);
+      assertTrue(
+          "Exception should be IoTDBConnectionException",
+          caughtException[0] instanceof IoTDBConnectionException);
+      assertTrue(
+          "Exception message should indicate pool is closed",
+          caughtException[0].getMessage().contains("closed"));
+
+      long closeDuration = closeEndTime - closeStartTime;
+      assertTrue(
+          "close() should complete quickly, but took " + closeDuration + "ms",
+          closeDuration < 1000);
+
+    } finally {
+      try {
+        pool.close();
+      } catch (Exception e) {
+      }
+    }
   }
 }
