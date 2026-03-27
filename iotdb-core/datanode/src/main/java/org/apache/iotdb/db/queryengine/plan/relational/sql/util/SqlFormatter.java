@@ -654,6 +654,8 @@ public final class SqlFormatter {
       builder.append('\'');
       builder.append(node.getTargetFileName());
       builder.append('\'');
+      builder.append("\n");
+      builder.append(node.getOptions().toString());
       return null;
     }
 

@@ -199,4 +199,35 @@ public class CopyToTsFileOptions implements CopyToOptions {
   public long getTargetMemoryThreshold() {
     return targetMemoryThreshold;
   }
+
+  @Override
+  public String toString() {
+    return "("
+        +
+        // FORMAT
+        "\nFORMAT "
+        + getFormat().name()
+        +
+
+        // TABLE
+        "\nTABLE "
+        + targetTableName
+        +
+
+        // TIME COLUMN
+        "\nTIME COLUMN "
+        + targetTimeColumn
+        +
+
+        // TAG COLUMNS
+        "\nTAG COLUMNS ("
+        + String.join(", ", targetTagColumns)
+        + ")"
+        +
+
+        // MEMORY
+        "\nMEMORY "
+        + targetMemoryThreshold
+        + ")";
+  }
 }

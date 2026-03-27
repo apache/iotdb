@@ -79,7 +79,8 @@ public class IoTDBCopyToTsFileIT {
   }
 
   @Test
-  public void testCopyTable() throws IoTDBConnectionException, StatementExecutionException, IOException {
+  public void testCopyTable()
+      throws IoTDBConnectionException, StatementExecutionException, IOException {
     try (ITableSession session =
         EnvFactory.getEnv().getTableSessionConnectionWithDB(DATABASE_NAME)) {
       SessionDataSet sessionDataSet = session.executeQueryStatement("copy table1 to '1.tsfile'");
@@ -121,10 +122,12 @@ public class IoTDBCopyToTsFileIT {
   }
 
   @Test
-  public void testCopySelectAllColumns() throws IoTDBConnectionException, StatementExecutionException, IOException {
+  public void testCopySelectAllColumns()
+      throws IoTDBConnectionException, StatementExecutionException, IOException {
     try (ITableSession session =
-             EnvFactory.getEnv().getTableSessionConnectionWithDB(DATABASE_NAME)) {
-      SessionDataSet sessionDataSet = session.executeQueryStatement("copy (select * from table1) to '2.tsfile'");
+        EnvFactory.getEnv().getTableSessionConnectionWithDB(DATABASE_NAME)) {
+      SessionDataSet sessionDataSet =
+          session.executeQueryStatement("copy (select * from table1) to '2.tsfile'");
       SessionDataSet.DataIterator iterator = sessionDataSet.iterator();
       while (iterator.next()) {
         String path = iterator.getString(1);
@@ -163,10 +166,12 @@ public class IoTDBCopyToTsFileIT {
   }
 
   @Test
-  public void testCopySelectSpecifiedColumns() throws IoTDBConnectionException, StatementExecutionException, IOException {
+  public void testCopySelectSpecifiedColumns()
+      throws IoTDBConnectionException, StatementExecutionException, IOException {
     try (ITableSession session =
-             EnvFactory.getEnv().getTableSessionConnectionWithDB(DATABASE_NAME)) {
-      SessionDataSet sessionDataSet = session.executeQueryStatement("copy table1(time,tag2,tag1,s1) to '3.tsfile'");
+        EnvFactory.getEnv().getTableSessionConnectionWithDB(DATABASE_NAME)) {
+      SessionDataSet sessionDataSet =
+          session.executeQueryStatement("copy table1(time,tag2,tag1,s1) to '3.tsfile'");
       SessionDataSet.DataIterator iterator = sessionDataSet.iterator();
       while (iterator.next()) {
         String path = iterator.getString(1);
@@ -205,10 +210,13 @@ public class IoTDBCopyToTsFileIT {
   }
 
   @Test
-  public void testCopyWithSpecifiedTag() throws IoTDBConnectionException, StatementExecutionException, IOException {
+  public void testCopyWithSpecifiedTag()
+      throws IoTDBConnectionException, StatementExecutionException, IOException {
     try (ITableSession session =
-             EnvFactory.getEnv().getTableSessionConnectionWithDB(DATABASE_NAME)) {
-      SessionDataSet sessionDataSet = session.executeQueryStatement("copy table1(time,tag1,tag2,s1) to '4.tsfile' with (tags(tag2,tag1))");
+        EnvFactory.getEnv().getTableSessionConnectionWithDB(DATABASE_NAME)) {
+      SessionDataSet sessionDataSet =
+          session.executeQueryStatement(
+              "copy table1(time,tag1,tag2,s1) to '4.tsfile' with (tags(tag2,tag1))");
       SessionDataSet.DataIterator iterator = sessionDataSet.iterator();
       while (iterator.next()) {
         String path = iterator.getString(1);
@@ -247,10 +255,13 @@ public class IoTDBCopyToTsFileIT {
   }
 
   @Test
-  public void testCopyWithSpecifiedTagAndTime() throws IoTDBConnectionException, StatementExecutionException, IOException {
+  public void testCopyWithSpecifiedTagAndTime()
+      throws IoTDBConnectionException, StatementExecutionException, IOException {
     try (ITableSession session =
-             EnvFactory.getEnv().getTableSessionConnectionWithDB(DATABASE_NAME)) {
-      SessionDataSet sessionDataSet = session.executeQueryStatement("copy (select time as t, s1, tag2 as renamed_tag2, tag1 as renamed_tag1 from table1) to '6.tsfile' with (TIME t, tags(renamed_tag1,renamed_tag2))");
+        EnvFactory.getEnv().getTableSessionConnectionWithDB(DATABASE_NAME)) {
+      SessionDataSet sessionDataSet =
+          session.executeQueryStatement(
+              "copy (select time as t, s1, tag2 as renamed_tag2, tag1 as renamed_tag1 from table1) to '6.tsfile' with (TIME t, tags(renamed_tag1,renamed_tag2))");
       SessionDataSet.DataIterator iterator = sessionDataSet.iterator();
       while (iterator.next()) {
         String path = iterator.getString(1);
@@ -289,10 +300,13 @@ public class IoTDBCopyToTsFileIT {
   }
 
   @Test
-  public void testAutoGenerateTimeColumn() throws IoTDBConnectionException, StatementExecutionException, IOException {
+  public void testAutoGenerateTimeColumn()
+      throws IoTDBConnectionException, StatementExecutionException, IOException {
     try (ITableSession session =
-             EnvFactory.getEnv().getTableSessionConnectionWithDB(DATABASE_NAME)) {
-      SessionDataSet sessionDataSet = session.executeQueryStatement("copy (select time as t, tag1, tag2, s1, s2 from table1) to '7.tsfile'");
+        EnvFactory.getEnv().getTableSessionConnectionWithDB(DATABASE_NAME)) {
+      SessionDataSet sessionDataSet =
+          session.executeQueryStatement(
+              "copy (select time as t, tag1, tag2, s1, s2 from table1) to '7.tsfile'");
       SessionDataSet.DataIterator iterator = sessionDataSet.iterator();
       while (iterator.next()) {
         String path = iterator.getString(1);
@@ -331,10 +345,13 @@ public class IoTDBCopyToTsFileIT {
   }
 
   @Test
-  public void testAutoGenerateTimeColumnWithoutTag() throws IoTDBConnectionException, StatementExecutionException, IOException {
+  public void testAutoGenerateTimeColumnWithoutTag()
+      throws IoTDBConnectionException, StatementExecutionException, IOException {
     try (ITableSession session =
-             EnvFactory.getEnv().getTableSessionConnectionWithDB(DATABASE_NAME)) {
-      SessionDataSet sessionDataSet = session.executeQueryStatement("copy (select time as t, tag1 as tag1_field, tag2 as tag2_field, s1, s2 from table1) to '8.tsfile'");
+        EnvFactory.getEnv().getTableSessionConnectionWithDB(DATABASE_NAME)) {
+      SessionDataSet sessionDataSet =
+          session.executeQueryStatement(
+              "copy (select time as t, tag1 as tag1_field, tag2 as tag2_field, s1, s2 from table1) to '8.tsfile'");
       SessionDataSet.DataIterator iterator = sessionDataSet.iterator();
       while (iterator.next()) {
         String path = iterator.getString(1);
@@ -368,11 +385,14 @@ public class IoTDBCopyToTsFileIT {
   }
 
   @Test
-  public void testMultiTable() throws IoTDBConnectionException, StatementExecutionException, IOException {
+  public void testMultiTable()
+      throws IoTDBConnectionException, StatementExecutionException, IOException {
     try (ITableSession session =
-             EnvFactory.getEnv().getTableSessionConnectionWithDB(DATABASE_NAME)) {
+        EnvFactory.getEnv().getTableSessionConnectionWithDB(DATABASE_NAME)) {
 
-      SessionDataSet sessionDataSet = session.executeQueryStatement("copy (select table1.time as time1, table1.tag1 as tag1_1, table1.tag2 as tag2_1, table1.s1 as s1_1, table1.s2 as s2_1, table2.s1 as s1_2, table2.s2 as s2_2 from table1 inner join table2 on table1.time = table2.time) to '9.tsfile'");
+      SessionDataSet sessionDataSet =
+          session.executeQueryStatement(
+              "copy (select table1.time as time1, table1.tag1 as tag1_1, table1.tag2 as tag2_1, table1.s1 as s1_1, table1.s2 as s2_1, table2.s1 as s1_2, table2.s2 as s2_2 from table1 inner join table2 on table1.time = table2.time) to '9.tsfile'");
       SessionDataSet.DataIterator iterator = sessionDataSet.iterator();
       while (iterator.next()) {
         String path = iterator.getString(1);
