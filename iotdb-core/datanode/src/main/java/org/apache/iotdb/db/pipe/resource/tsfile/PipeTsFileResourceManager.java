@@ -236,8 +236,13 @@ public class PipeTsFileResourceManager {
         if (resource.decreaseReferenceCount()) {
           getResourceMap(pipeName).remove(filePath);
         }
-        LOGGER.info(
-            "Decreased for file {}, reference count: {}", filePath, resource.getReferenceCount());
+        try {
+          LOGGER.info(
+              "Decreased for file {}, reference count: {}", filePath, resource.getReferenceCount());
+          throw new RuntimeException();
+        } catch (final Exception e) {
+          e.printStackTrace();
+        }
       }
     } finally {
       segmentLock.unlock(hardlinkOrCopiedFile);
