@@ -140,8 +140,6 @@ public class CopyToTsFileOptions implements CopyToOptions {
     }
   }
 
-  private void inferTime() {}
-
   @Override
   public void check(List<ColumnHeader> columnHeaders) {
     if (generateNewTimeColumn && targetTagColumns.isEmpty()) {
