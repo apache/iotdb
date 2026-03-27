@@ -134,10 +134,7 @@ public class PipeTsFileResourceManager {
       segmentLock.unlock(hardlinkOrCopiedFile);
     }
     increasePublicReference(resultFile, pipeName, isTsFile);
-    if (!isTsFile) {
-      LOGGER.info(
-          "Increased for file {}, source file: {}, reference count: {}", file, sourceFile, 1);
-    }
+    LOGGER.info("Increased for file {}, source file: {}, reference count: {}", file, sourceFile, 1);
     return resultFile;
   }
 
@@ -149,9 +146,14 @@ public class PipeTsFileResourceManager {
       final PipeTsFileResource resource = getResourceMap(pipeName).get(path);
       if (resource != null) {
         resource.increaseReferenceCount();
-        if (!isTsFile) {
+        try {
           LOGGER.info(
               "Increased for file {}, reference count: {}", file, resource.getReferenceCount());
+          throw new RuntimeException();
+        } catch (final Exception e) {
+          if (!isTsFile) {
+            e.printStackTrace();
+          }
         }
       } else {
         return false;
