@@ -2419,6 +2419,9 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
   @Override
   public Node visitGroupBy(RelationalSqlParser.GroupByContext ctx) {
+    if (ctx.ALL() != null && ctx.groupingElement().isEmpty()) {
+      return new GroupBy(getLocation(ctx), true);
+    }
     return new GroupBy(
         getLocation(ctx),
         isDistinct(ctx.setQuantifier()),
