@@ -29,8 +29,6 @@ import javax.annotation.Nullable;
 import java.util.List;
 import java.util.Objects;
 
-import static com.google.common.base.MoreObjects.toStringHelper;
-
 public class CopyTo extends Statement {
 
   private static final long INSTANCE_SIZE = RamUsageEstimator.shallowSizeOfInstance(CopyTo.class);
@@ -76,25 +74,30 @@ public class CopyTo extends Statement {
   }
 
   @Override
-  public int hashCode() {
-    return Objects.hash(queryStatement);
+  public boolean equals(Object o) {
+    if (o == null || getClass() != o.getClass()) return false;
+    CopyTo copyTo = (CopyTo) o;
+    return Objects.equals(queryStatement, copyTo.queryStatement)
+        && Objects.equals(targetFileName, copyTo.targetFileName)
+        && Objects.equals(options, copyTo.options);
   }
 
   @Override
-  public boolean equals(Object obj) {
-    if (this == obj) {
-      return true;
-    }
-    if ((obj == null) || (getClass() != obj.getClass())) {
-      return false;
-    }
-    CopyTo o = (CopyTo) obj;
-    return Objects.equals(queryStatement, o.queryStatement);
+  public int hashCode() {
+    return Objects.hash(queryStatement, targetFileName, options);
   }
 
   @Override
   public String toString() {
-    return toStringHelper(this).add("statement", queryStatement).toString();
+    return "CopyTo{"
+        + "queryStatement="
+        + queryStatement
+        + ", targetFileName='"
+        + targetFileName
+        + '\''
+        + ", options="
+        + options
+        + '}';
   }
 
   @Override

@@ -243,8 +243,6 @@ public class Analysis implements IAnalysis {
 
   private DatasetHeader respDatasetHeader;
 
-  private DatasetHeader copyToChildQueryNodeRespDatasetHeader;
-
   private boolean finishQueryAfterAnalyze;
 
   // indicate if value filter exists in query
@@ -973,15 +971,6 @@ public class Analysis implements IAnalysis {
 
   public void setRespDatasetHeader(DatasetHeader respDatasetHeader) {
     this.respDatasetHeader = respDatasetHeader;
-  }
-
-  public DatasetHeader getCopyToChildNodeRespDatasetHeader() {
-    return this.copyToChildQueryNodeRespDatasetHeader;
-  }
-
-  public void setCopyToChildQueryNodeRespDatasetHeader(
-      DatasetHeader copyToChildQueryNodeRespDatasetHeader) {
-    this.copyToChildQueryNodeRespDatasetHeader = copyToChildQueryNodeRespDatasetHeader;
   }
 
   @Override

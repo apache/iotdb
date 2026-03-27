@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.execution.operator.process.copyto;
 
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.execution.operator.process.copyto.tsfile.CopyToTsFileOptions;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.RelationPlan;
@@ -71,6 +72,9 @@ public interface CopyToOptions {
     }
 
     public Builder withMemoryThreshold(long memoryThreshold) {
+      if (memoryThreshold <= 0) {
+        throw new SemanticException("The memory threshold must be greater than 0.");
+      }
       this.memoryThreshold = memoryThreshold;
       return this;
     }
@@ -80,7 +84,10 @@ public interface CopyToOptions {
         case TSFILE:
         default:
           return new CopyToTsFileOptions(
-              targetTableName, targetTimeColumn, targetTagColumns, memoryThreshold);
+              targetTableName,
+              targetTimeColumn,
+              targetTagColumns,
+              memoryThreshold != 0 ? memoryThreshold : 32 * 1024 * 1024);
       }
     }
   }
