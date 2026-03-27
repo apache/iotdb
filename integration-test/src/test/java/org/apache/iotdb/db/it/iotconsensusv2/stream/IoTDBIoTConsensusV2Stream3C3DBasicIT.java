@@ -49,4 +49,10 @@ public class IoTDBIoTConsensusV2Stream3C3DBasicIT extends IoTDBIoTConsensusV23C3
   public void test3C3DWriteFlushAndQuery() throws Exception {
     super.test3C3DWriteFlushAndQuery();
   }
+
+  @Override
+  @Test
+  public void testDeleteTimeSeriesReplicaConsistency() throws Exception {
+    super.testDeleteTimeSeriesReplicaConsistency();
+  }
 }
