@@ -527,7 +527,8 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
               "-XX:MaxDirectMemorySize=" + jvmConfig.getMaxDirectMemorySize() + "m",
               "-Djdk.nio.maxCachedBufferSize=262144",
               "-D" + IoTDBConstant.INTEGRATION_TEST_KILL_POINTS + "=" + killPoints.toString(),
-              "-Dsun.jnu.encoding=UTF-8 -Dfile.encoding=UTF-8",
+              "-Dsun.jnu.encoding=UTF-8",
+              "-Dfile.encoding=UTF-8",
               "-cp",
               server_node_lib_path));
       addStartCmdParams(startCmd);

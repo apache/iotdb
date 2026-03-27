@@ -2433,7 +2433,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TSStatus flush(TFlushReq req) throws TException {
     try {
-      storageEngine.operateFlush(req);
+      storageEngine.operateFlush(req, false);
     } catch (Exception e) {
       return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
     }
