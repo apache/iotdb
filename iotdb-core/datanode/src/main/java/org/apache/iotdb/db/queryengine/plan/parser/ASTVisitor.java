@@ -4092,7 +4092,9 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       String dataTypeString = ctx.dataType.getText().toUpperCase();
       try {
         dataType = TSDataType.valueOf(dataTypeString);
-        if (TSDataType.UNKNOWN.equals(dataType) || TSDataType.VECTOR.equals(dataType)) {
+        if (TSDataType.UNKNOWN.equals(dataType)
+            || TSDataType.VECTOR.equals(dataType)
+            || TSDataType.OBJECT.equals(dataType)) {
           throw new SemanticException(String.format(UNSUPPORTED_DATATYPE_MSG, dataTypeString));
         }
       } catch (Exception e) {
