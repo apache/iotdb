@@ -163,10 +163,11 @@ public abstract class PipeAbstractSinkSubtask extends PipeReportableSubtask {
    * @return {@code true} if the {@link PipeSubtask} should be stopped, {@code false} otherwise
    */
   private boolean onPipeConnectionException(final Throwable throwable) {
-    LOGGER.warn(
-        "PipeConnectionException occurred, {} retries to handshake with the target system.",
-        outputPipeSink.getClass().getName(),
-        throwable);
+    PipeLogger.log(
+        LOGGER::warn,
+        throwable,
+        "PipeConnectionException occurred, %s retries to handshake with the target system.",
+        outputPipeSink.getClass().getName());
 
     int retry = 0;
     while (retry < MAX_RETRY_TIMES) {
