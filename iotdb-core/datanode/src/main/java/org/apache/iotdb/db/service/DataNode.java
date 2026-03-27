@@ -765,6 +765,15 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     }
   }
 
+  private void cleanupSortTmpDir() {
+    String sortTmpDir = config.getSortTmpDir();
+    File tmpDir = new File(sortTmpDir);
+    if (tmpDir.exists()) {
+      FileUtils.deleteFileOrDirectory(tmpDir, true);
+      logger.info("Cleaned up stale sort temp directory: {}", sortTmpDir);
+    }
+  }
+
   private void prepareResources() throws StartupException {
     prepareUDFResources();
     prepareTriggerResources();
@@ -818,6 +827,9 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     logger.info("Setting up IoTDB DataNode...");
     registerManager.register(new JMXService());
     JMXService.registerMBean(getInstance(), mbeanName);
+
+    // Clean up stale sort temp files left from previous runs
+    cleanupSortTmpDir();
 
     // Get resources for trigger,udf,pipe...
     prepareResources();
