@@ -134,6 +134,10 @@ public class PipeTsFileResourceManager {
       segmentLock.unlock(hardlinkOrCopiedFile);
     }
     increasePublicReference(resultFile, pipeName, isTsFile);
+    if (!isTsFile) {
+      LOGGER.info(
+          "Increased for file {}, source file: {}, reference count: {}", file, sourceFile, 1);
+    }
     return resultFile;
   }
 
@@ -145,6 +149,10 @@ public class PipeTsFileResourceManager {
       final PipeTsFileResource resource = getResourceMap(pipeName).get(path);
       if (resource != null) {
         resource.increaseReferenceCount();
+        if (!isTsFile) {
+          LOGGER.info(
+              "Increased for file {}, reference count: {}", file, resource.getReferenceCount());
+        }
       } else {
         return false;
       }
@@ -222,8 +230,12 @@ public class PipeTsFileResourceManager {
     try {
       final String filePath = hardlinkOrCopiedFile.getPath();
       final PipeTsFileResource resource = getResourceMap(pipeName).get(filePath);
-      if (resource != null && resource.decreaseReferenceCount()) {
-        getResourceMap(pipeName).remove(filePath);
+      if (resource != null) {
+        if (resource.decreaseReferenceCount()) {
+          getResourceMap(pipeName).remove(filePath);
+        }
+        LOGGER.info(
+            "Decreased for file {}, reference count: {}", filePath, resource.getReferenceCount());
       }
     } finally {
       segmentLock.unlock(hardlinkOrCopiedFile);
