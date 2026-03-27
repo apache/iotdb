@@ -73,14 +73,18 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.Pr
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneTableFunctionProcessorSourceColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneTableScanColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneTopKColumns;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneTopKRankingColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneUnionColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneUnionSourceColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneWindowColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PushDownFilterIntoWindow;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PushDownLimitIntoWindow;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PushFilterIntoRowNumber;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PushLimitThroughOffset;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PushLimitThroughProject;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PushLimitThroughUnion;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PushPredicateThroughProjectIntoRowNumber;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PushPredicateThroughProjectIntoWindow;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PushProjectionThroughUnion;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PushTopKThroughUnion;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.RemoveDuplicateConditions;
@@ -153,6 +157,7 @@ public class LogicalOptimizeFactory {
             new PruneTableFunctionProcessorSourceColumns(),
             new PruneTableScanColumns(plannerContext.getMetadata()),
             new PruneTopKColumns(),
+            new PruneTopKRankingColumns(),
             new PruneWindowColumns(),
             new PruneJoinColumns(),
             new PruneJoinChildrenColumns(),
@@ -375,9 +380,14 @@ public class LogicalOptimizeFactory {
             ImmutableSet.<Rule<?>>builder()
                 .add(new PushDownLimitIntoWindow())
                 .add(new PushDownFilterIntoWindow(plannerContext))
+                .add(new PushPredicateThroughProjectIntoWindow(plannerContext))
                 .add(new ReplaceWindowWithRowNumber(metadata))
+                .add(new PushFilterIntoRowNumber())
+                .add(new PushPredicateThroughProjectIntoRowNumber())
                 .addAll(GatherAndMergeWindows.rules())
                 .build()),
+        inlineProjectionLimitFiltersOptimizer,
+        columnPruningOptimizer,
         new TransformAggregationToStreamable(),
         new PushAggregationIntoTableScan(),
         new TransformSortToStreamSort(),
