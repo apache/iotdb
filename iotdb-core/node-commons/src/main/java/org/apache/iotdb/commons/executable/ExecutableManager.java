@@ -81,7 +81,6 @@ public class ExecutableManager {
 
   private void downloadExecutables(List<String> uris, long requestId)
       throws IOException, URISyntaxException {
-    // TODO: para download
     try {
       for (String uriString : uris) {
         final URL url = new URI(uriString).toURL();
