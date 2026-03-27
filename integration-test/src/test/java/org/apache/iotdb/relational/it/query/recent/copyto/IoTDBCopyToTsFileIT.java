@@ -32,6 +32,7 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.tsfile.read.TsFileSequenceReader;
+import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -41,6 +42,7 @@ import org.junit.runner.RunWith;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.List;
 import java.util.Map;
 
@@ -67,10 +69,23 @@ public class IoTDBCopyToTsFileIT {
         "insert into table2(time, tag1, tag2, s1, s2) values (1, 't1_1', 't2', 1, 1)",
       };
 
+  private String targetFilePath = null;
+
   @BeforeClass
   public static void setUp() throws Exception {
     EnvFactory.getEnv().initClusterEnvironment();
     prepareTableData(createSqls);
+  }
+
+  @After
+  public void tearDownAfterTest() {
+    if (targetFilePath != null) {
+      try {
+        Files.deleteIfExists(new File(targetFilePath).toPath());
+      } catch (Exception ignored) {
+      }
+      targetFilePath = null;
+    }
   }
 
   @AfterClass
@@ -83,10 +98,11 @@ public class IoTDBCopyToTsFileIT {
       throws IoTDBConnectionException, StatementExecutionException, IOException {
     try (ITableSession session =
         EnvFactory.getEnv().getTableSessionConnectionWithDB(DATABASE_NAME)) {
-      SessionDataSet sessionDataSet = session.executeQueryStatement("copy table1 to '1.tsfile'");
+      SessionDataSet sessionDataSet =
+          session.executeQueryStatement("copy table1 to '1.tsfile' (memory_threshold 1000000)");
       SessionDataSet.DataIterator iterator = sessionDataSet.iterator();
       while (iterator.next()) {
-        String path = iterator.getString(1);
+        targetFilePath = iterator.getString(1);
         int rowCount = iterator.getInt(2);
         int deviceCount = iterator.getInt(3);
         long sizeInBytes = iterator.getLong(4);
@@ -94,7 +110,7 @@ public class IoTDBCopyToTsFileIT {
         String timeColumn = iterator.getString(6);
         String tagColumns = iterator.getString(7);
 
-        Assert.assertTrue(new File(path).exists());
+        Assert.assertTrue(new File(targetFilePath).exists());
         Assert.assertEquals(6, rowCount);
         Assert.assertEquals(2, deviceCount);
         Assert.assertTrue(sizeInBytes > 0);
@@ -102,7 +118,7 @@ public class IoTDBCopyToTsFileIT {
         Assert.assertEquals("time", timeColumn);
         Assert.assertEquals("[tag1, tag2]", tagColumns);
 
-        try (TsFileSequenceReader reader = new TsFileSequenceReader(path)) {
+        try (TsFileSequenceReader reader = new TsFileSequenceReader(targetFilePath)) {
           Map<IDeviceID, List<TimeseriesMetadata>> allTimeseriesMetadata =
               reader.getAllTimeseriesMetadata(false);
           Assert.assertEquals(2, allTimeseriesMetadata.size());
@@ -127,10 +143,11 @@ public class IoTDBCopyToTsFileIT {
     try (ITableSession session =
         EnvFactory.getEnv().getTableSessionConnectionWithDB(DATABASE_NAME)) {
       SessionDataSet sessionDataSet =
-          session.executeQueryStatement("copy (select * from table1) to '2.tsfile'");
+          session.executeQueryStatement(
+              "copy (select * from table1) to '2.tsfile' (memory_threshold 1000000)");
       SessionDataSet.DataIterator iterator = sessionDataSet.iterator();
       while (iterator.next()) {
-        String path = iterator.getString(1);
+        targetFilePath = iterator.getString(1);
         int rowCount = iterator.getInt(2);
         int deviceCount = iterator.getInt(3);
         long sizeInBytes = iterator.getLong(4);
@@ -138,7 +155,7 @@ public class IoTDBCopyToTsFileIT {
         String timeColumn = iterator.getString(6);
         String tagColumns = iterator.getString(7);
 
-        Assert.assertTrue(new File(path).exists());
+        Assert.assertTrue(new File(targetFilePath).exists());
         Assert.assertEquals(6, rowCount);
         Assert.assertEquals(2, deviceCount);
         Assert.assertTrue(sizeInBytes > 0);
@@ -146,7 +163,7 @@ public class IoTDBCopyToTsFileIT {
         Assert.assertEquals("time", timeColumn);
         Assert.assertEquals("[tag1, tag2]", tagColumns);
 
-        try (TsFileSequenceReader reader = new TsFileSequenceReader(path)) {
+        try (TsFileSequenceReader reader = new TsFileSequenceReader(targetFilePath)) {
           Map<IDeviceID, List<TimeseriesMetadata>> allTimeseriesMetadata =
               reader.getAllTimeseriesMetadata(false);
           Assert.assertEquals(2, allTimeseriesMetadata.size());
@@ -171,10 +188,11 @@ public class IoTDBCopyToTsFileIT {
     try (ITableSession session =
         EnvFactory.getEnv().getTableSessionConnectionWithDB(DATABASE_NAME)) {
       SessionDataSet sessionDataSet =
-          session.executeQueryStatement("copy table1(time,tag2,tag1,s1) to '3.tsfile'");
+          session.executeQueryStatement(
+              "copy table1(time,tag2,tag1,s1) to '3.tsfile (memory_threshold 1000000)'");
       SessionDataSet.DataIterator iterator = sessionDataSet.iterator();
       while (iterator.next()) {
-        String path = iterator.getString(1);
+        targetFilePath = iterator.getString(1);
         int rowCount = iterator.getInt(2);
         int deviceCount = iterator.getInt(3);
         long sizeInBytes = iterator.getLong(4);
@@ -182,7 +200,7 @@ public class IoTDBCopyToTsFileIT {
         String timeColumn = iterator.getString(6);
         String tagColumns = iterator.getString(7);
 
-        Assert.assertTrue(new File(path).exists());
+        Assert.assertTrue(new File(targetFilePath).exists());
         Assert.assertEquals(6, rowCount);
         Assert.assertEquals(2, deviceCount);
         Assert.assertTrue(sizeInBytes > 0);
@@ -190,7 +208,7 @@ public class IoTDBCopyToTsFileIT {
         Assert.assertEquals("time", timeColumn);
         Assert.assertEquals("[tag1, tag2]", tagColumns);
 
-        try (TsFileSequenceReader reader = new TsFileSequenceReader(path)) {
+        try (TsFileSequenceReader reader = new TsFileSequenceReader(targetFilePath)) {
           Map<IDeviceID, List<TimeseriesMetadata>> allTimeseriesMetadata =
               reader.getAllTimeseriesMetadata(false);
           Assert.assertEquals(2, allTimeseriesMetadata.size());
@@ -216,10 +234,10 @@ public class IoTDBCopyToTsFileIT {
         EnvFactory.getEnv().getTableSessionConnectionWithDB(DATABASE_NAME)) {
       SessionDataSet sessionDataSet =
           session.executeQueryStatement(
-              "copy table1(time,tag1,tag2,s1) to '4.tsfile' with (tags(tag2,tag1))");
+              "copy table1(time,tag1,tag2,s1) to '4.tsfile' with (tags(tag2,tag1), memory_threshold 1000000)");
       SessionDataSet.DataIterator iterator = sessionDataSet.iterator();
       while (iterator.next()) {
-        String path = iterator.getString(1);
+        targetFilePath = iterator.getString(1);
         int rowCount = iterator.getInt(2);
         int deviceCount = iterator.getInt(3);
         long sizeInBytes = iterator.getLong(4);
@@ -227,7 +245,7 @@ public class IoTDBCopyToTsFileIT {
         String timeColumn = iterator.getString(6);
         String tagColumns = iterator.getString(7);
 
-        Assert.assertTrue(new File(path).exists());
+        Assert.assertTrue(new File(targetFilePath).exists());
         Assert.assertEquals(6, rowCount);
         Assert.assertEquals(2, deviceCount);
         Assert.assertTrue(sizeInBytes > 0);
@@ -235,7 +253,7 @@ public class IoTDBCopyToTsFileIT {
         Assert.assertEquals("time", timeColumn);
         Assert.assertEquals("[tag2, tag1]", tagColumns);
 
-        try (TsFileSequenceReader reader = new TsFileSequenceReader(path)) {
+        try (TsFileSequenceReader reader = new TsFileSequenceReader(targetFilePath)) {
           Map<IDeviceID, List<TimeseriesMetadata>> allTimeseriesMetadata =
               reader.getAllTimeseriesMetadata(false);
           Assert.assertEquals(2, allTimeseriesMetadata.size());
@@ -261,10 +279,10 @@ public class IoTDBCopyToTsFileIT {
         EnvFactory.getEnv().getTableSessionConnectionWithDB(DATABASE_NAME)) {
       SessionDataSet sessionDataSet =
           session.executeQueryStatement(
-              "copy (select time as t, s1, tag2 as renamed_tag2, tag1 as renamed_tag1 from table1) to '6.tsfile' with (TIME t, tags(renamed_tag1,renamed_tag2))");
+              "copy (select time as t, s1, tag2 as renamed_tag2, tag1 as renamed_tag1 from table1) to '6.tsfile' with (TIME t, tags(renamed_tag1,renamed_tag2),  memory_threshold 1000000)");
       SessionDataSet.DataIterator iterator = sessionDataSet.iterator();
       while (iterator.next()) {
-        String path = iterator.getString(1);
+        targetFilePath = iterator.getString(1);
         int rowCount = iterator.getInt(2);
         int deviceCount = iterator.getInt(3);
         long sizeInBytes = iterator.getLong(4);
@@ -272,7 +290,7 @@ public class IoTDBCopyToTsFileIT {
         String timeColumn = iterator.getString(6);
         String tagColumns = iterator.getString(7);
 
-        Assert.assertTrue(new File(path).exists());
+        Assert.assertTrue(new File(targetFilePath).exists());
         Assert.assertEquals(6, rowCount);
         Assert.assertEquals(2, deviceCount);
         Assert.assertTrue(sizeInBytes > 0);
@@ -280,7 +298,7 @@ public class IoTDBCopyToTsFileIT {
         Assert.assertEquals("t", timeColumn);
         Assert.assertEquals("[renamed_tag1, renamed_tag2]", tagColumns);
 
-        try (TsFileSequenceReader reader = new TsFileSequenceReader(path)) {
+        try (TsFileSequenceReader reader = new TsFileSequenceReader(targetFilePath)) {
           Map<IDeviceID, List<TimeseriesMetadata>> allTimeseriesMetadata =
               reader.getAllTimeseriesMetadata(false);
           Assert.assertEquals(2, allTimeseriesMetadata.size());
@@ -306,10 +324,10 @@ public class IoTDBCopyToTsFileIT {
         EnvFactory.getEnv().getTableSessionConnectionWithDB(DATABASE_NAME)) {
       SessionDataSet sessionDataSet =
           session.executeQueryStatement(
-              "copy (select time as t, tag1, tag2, s1, s2 from table1) to '7.tsfile'");
+              "copy (select time as t, tag1, tag2, s1, s2 from table1) to '7.tsfile' (memory_threshold 1000000)");
       SessionDataSet.DataIterator iterator = sessionDataSet.iterator();
       while (iterator.next()) {
-        String path = iterator.getString(1);
+        targetFilePath = iterator.getString(1);
         int rowCount = iterator.getInt(2);
         int deviceCount = iterator.getInt(3);
         long sizeInBytes = iterator.getLong(4);
@@ -317,7 +335,7 @@ public class IoTDBCopyToTsFileIT {
         String timeColumn = iterator.getString(6);
         String tagColumns = iterator.getString(7);
 
-        Assert.assertTrue(new File(path).exists());
+        Assert.assertTrue(new File(targetFilePath).exists());
         Assert.assertEquals(6, rowCount);
         Assert.assertEquals(2, deviceCount);
         Assert.assertTrue(sizeInBytes > 0);
@@ -325,7 +343,7 @@ public class IoTDBCopyToTsFileIT {
         Assert.assertEquals("time(auto_gen)", timeColumn);
         Assert.assertEquals("[tag1, tag2]", tagColumns);
 
-        try (TsFileSequenceReader reader = new TsFileSequenceReader(path)) {
+        try (TsFileSequenceReader reader = new TsFileSequenceReader(targetFilePath)) {
           Map<IDeviceID, List<TimeseriesMetadata>> allTimeseriesMetadata =
               reader.getAllTimeseriesMetadata(false);
           Assert.assertEquals(2, allTimeseriesMetadata.size());
@@ -351,10 +369,10 @@ public class IoTDBCopyToTsFileIT {
         EnvFactory.getEnv().getTableSessionConnectionWithDB(DATABASE_NAME)) {
       SessionDataSet sessionDataSet =
           session.executeQueryStatement(
-              "copy (select time as t, tag1 as tag1_field, tag2 as tag2_field, s1, s2 from table1) to '8.tsfile'");
+              "copy (select time as t, tag1 as tag1_field, tag2 as tag2_field, s1, s2 from table1) to '8.tsfile' (memory_threshold 1000000)");
       SessionDataSet.DataIterator iterator = sessionDataSet.iterator();
       while (iterator.next()) {
-        String path = iterator.getString(1);
+        targetFilePath = iterator.getString(1);
         int rowCount = iterator.getInt(2);
         int deviceCount = iterator.getInt(3);
         long sizeInBytes = iterator.getLong(4);
@@ -362,7 +380,7 @@ public class IoTDBCopyToTsFileIT {
         String timeColumn = iterator.getString(6);
         String tagColumns = iterator.getString(7);
 
-        Assert.assertTrue(new File(path).exists());
+        Assert.assertTrue(new File(targetFilePath).exists());
         Assert.assertEquals(6, rowCount);
         Assert.assertEquals(1, deviceCount);
         Assert.assertTrue(sizeInBytes > 0);
@@ -370,7 +388,7 @@ public class IoTDBCopyToTsFileIT {
         Assert.assertEquals("time(auto_gen)", timeColumn);
         Assert.assertEquals("[]", tagColumns);
 
-        try (TsFileSequenceReader reader = new TsFileSequenceReader(path)) {
+        try (TsFileSequenceReader reader = new TsFileSequenceReader(targetFilePath)) {
           Map<IDeviceID, List<TimeseriesMetadata>> allTimeseriesMetadata =
               reader.getAllTimeseriesMetadata(false);
           Assert.assertEquals(1, allTimeseriesMetadata.size());
@@ -392,10 +410,10 @@ public class IoTDBCopyToTsFileIT {
 
       SessionDataSet sessionDataSet =
           session.executeQueryStatement(
-              "copy (select table1.time as time1, table1.tag1 as tag1_1, table1.tag2 as tag2_1, table1.s1 as s1_1, table1.s2 as s2_1, table2.s1 as s1_2, table2.s2 as s2_2 from table1 inner join table2 on table1.time = table2.time) to '9.tsfile'");
+              "copy (select table1.time as time1, table1.tag1 as tag1_1, table1.tag2 as tag2_1, table1.s1 as s1_1, table1.s2 as s2_1, table2.s1 as s1_2, table2.s2 as s2_2 from table1 inner join table2 on table1.time = table2.time) to '9.tsfile' (memory_threshold 1000000)");
       SessionDataSet.DataIterator iterator = sessionDataSet.iterator();
       while (iterator.next()) {
-        String path = iterator.getString(1);
+        targetFilePath = iterator.getString(1);
         int rowCount = iterator.getInt(2);
         int deviceCount = iterator.getInt(3);
         long sizeInBytes = iterator.getLong(4);
@@ -403,7 +421,7 @@ public class IoTDBCopyToTsFileIT {
         String timeColumn = iterator.getString(6);
         String tagColumns = iterator.getString(7);
 
-        Assert.assertTrue(new File(path).exists());
+        Assert.assertTrue(new File(targetFilePath).exists());
         Assert.assertEquals(2, rowCount);
         Assert.assertEquals(1, deviceCount);
         Assert.assertTrue(sizeInBytes > 0);
@@ -411,7 +429,7 @@ public class IoTDBCopyToTsFileIT {
         Assert.assertEquals("time(auto_gen)", timeColumn);
         Assert.assertEquals("[]", tagColumns);
 
-        try (TsFileSequenceReader reader = new TsFileSequenceReader(path)) {
+        try (TsFileSequenceReader reader = new TsFileSequenceReader(targetFilePath)) {
           Map<IDeviceID, List<TimeseriesMetadata>> allTimeseriesMetadata =
               reader.getAllTimeseriesMetadata(false);
           Assert.assertEquals(1, allTimeseriesMetadata.size());

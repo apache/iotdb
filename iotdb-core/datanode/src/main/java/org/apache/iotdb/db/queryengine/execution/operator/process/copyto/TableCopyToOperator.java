@@ -37,7 +37,6 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 public class TableCopyToOperator implements ProcessOperator {
   private static final long INSTANCE_SIZE =
@@ -77,26 +76,18 @@ public class TableCopyToOperator implements ProcessOperator {
 
   @Override
   public TsBlock next() throws Exception {
-    long startTime = System.nanoTime();
-    long maxRuntime = operatorContext.getMaxRunTime().roundTo(TimeUnit.NANOSECONDS);
     IFormatCopyToWriter formatWriter = getWriter();
-    do {
-      if (!childOperator.hasNext()) {
-        isFinished = true;
-        break;
-      }
-      TsBlock tsBlock = childOperator.next();
-      if (tsBlock == null || tsBlock.isEmpty()) {
-        continue;
-      }
-      hasData = true;
-      formatWriter.write(tsBlock);
-    } while (System.nanoTime() - startTime < maxRuntime && !isFinished);
-
-    if (isFinished) {
+    if (!childOperator.hasNext()) {
+      isFinished = true;
       formatWriter.seal();
       return formatWriter.buildResultTsBlock();
     }
+    TsBlock tsBlock = childOperator.next();
+    if (tsBlock == null || tsBlock.isEmpty()) {
+      return null;
+    }
+    hasData = true;
+    formatWriter.write(tsBlock);
     return null;
   }
 
