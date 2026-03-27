@@ -981,11 +981,11 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TSStatus flush(final TFlushReq req) throws TException {
     if (req.storageGroups != null) {
-      final List<String> noExistSg =
+      final List<String> noExistDB =
           configManager.getPartitionManager().filterUnExistDatabases(req.storageGroups);
-      if (!noExistSg.isEmpty()) {
+      if (!noExistDB.isEmpty()) {
         final StringBuilder sb = new StringBuilder();
-        noExistSg.forEach(storageGroup -> sb.append(storageGroup).append(","));
+        noExistDB.forEach(database -> sb.append(database).append(","));
         return RpcUtils.getStatus(
             TSStatusCode.DATABASE_NOT_EXIST,
             "Database " + sb.subSequence(0, sb.length() - 1) + " does not exist");
