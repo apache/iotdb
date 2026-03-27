@@ -354,6 +354,8 @@ public class ColumnHeaderConstant {
   public static final String SHOW_CONFIGURATIONS_DEFAULT_VALUE = "default_value";
   public static final String SHOW_CONFIGURATIONS_DESCRIPTION = "description";
 
+  public static final String COLUMN_NAME_DUCKDB = "column_name";
+  public static final String COLUMN_TYPE_DUCKDB = "column_type";
   public static final String SIZE_IN_BYTES = "SizeInBytes";
   public static final String SIZE_IN_BYTES_TABLE_MODEL = "size_in_bytes";
   public static final String TIME_PARTITION_TABLE_MODEL = "time_partition";
@@ -728,14 +730,14 @@ public class ColumnHeaderConstant {
 
   public static final List<ColumnHeader> describeTableColumnHeaders =
       ImmutableList.of(
-          new ColumnHeader(COLUMN_NAME, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_DATA_TYPE, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_NAME_DUCKDB, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_TYPE_DUCKDB, TSDataType.TEXT),
           new ColumnHeader(COLUMN_CATEGORY, TSDataType.TEXT));
 
   public static final List<ColumnHeader> describeTableDetailsColumnHeaders =
       ImmutableList.of(
-          new ColumnHeader(COLUMN_NAME, TSDataType.TEXT),
-          new ColumnHeader(COLUMN_DATA_TYPE, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_NAME_DUCKDB, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_TYPE_DUCKDB, TSDataType.TEXT),
           new ColumnHeader(COLUMN_CATEGORY, TSDataType.TEXT),
           new ColumnHeader(STATUS, TSDataType.TEXT),
           new ColumnHeader(COMMENT, TSDataType.TEXT));
