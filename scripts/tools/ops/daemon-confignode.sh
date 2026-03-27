@@ -32,6 +32,7 @@ fi
 
 FILE_NAME=$SYSTEMD_DIR/timechodb-confignode.service
 
+if [ -z "$JAVA_HOME" ]; then
 cat > "$FILE_NAME" <<EOF
 [Unit]
 Description=timechodb-confignode
@@ -45,6 +46,8 @@ LimitNOFILE=65536
 Type=simple
 User=root
 Group=root
+Environment=JAVA_HOME=$JAVA_HOME
+Environment=PATH=$JAVA_HOME/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 ExecStart=$TIMECHODB_SBIN_HOME/start-confignode.sh
 ExecStop=$TIMECHODB_SBIN_HOME/stop-confignode.sh
 Restart=on-failure
@@ -57,6 +60,34 @@ RestartPreventExitStatus=SIGKILL
 [Install]
 WantedBy=multi-user.target
 EOF
+else
+cat > "$FILE_NAME" <<EOF
+[Unit]
+Description=iotdb-confignode
+Documentation=https://iotdb.apache.org/
+After=network.target
+
+[Service]
+StandardOutput=null
+StandardError=null
+LimitNOFILE=65536
+Type=simple
+User=root
+Group=root
+Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+ExecStart=$IOTDB_SBIN_HOME/start-confignode.sh
+ExecStop=$IOTDB_SBIN_HOME/stop-confignode.sh
+Restart=on-failure
+SuccessExitStatus=143
+RestartSec=5
+StartLimitInterval=600s
+StartLimitBurst=3
+RestartPreventExitStatus=SIGKILL
+
+[Install]
+WantedBy=multi-user.target
+EOF
+fi
 
 echo "Daemon service of TimechoDB ConfigNode has been successfully registered."
 
