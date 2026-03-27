@@ -621,7 +621,7 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualTreeModelAutoIT {
           "count timeseries root.sg_nonAligned.非对齐序列带有encoding和压缩方式.*",
           "count(timeseries),",
           Collections.singleton("4,"),
-          30);
+          10);
     } finally {
       TestUtils.executeNonQueries(
           senderEnv,

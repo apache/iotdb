@@ -65,6 +65,8 @@ import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -79,6 +81,8 @@ import java.util.Objects;
 
 public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
 
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(TsFileInsertionEventScanParser.class);
   private final long startTime;
   private final long endTime;
   private final Filter filter;
@@ -678,6 +682,8 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
               currentModifications)) {
         tsFileSequenceReader.position(nextMarkerOffset);
         return true;
+      } else if (chunkHeader.getMeasurementID().equals("s1")) {
+        LOGGER.warn("s1 not filtered, currentModifications: {}", currentModifications);
       }
     }
 
