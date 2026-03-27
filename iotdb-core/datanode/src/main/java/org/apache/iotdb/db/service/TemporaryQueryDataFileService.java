@@ -33,6 +33,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -59,10 +60,9 @@ public class TemporaryQueryDataFileService implements IService {
 
   public String register(SerializationRecorder recorder) throws IOException {
     String queryId = recorder.getQueryId();
-    if (!recorders.containsKey(queryId)) {
-      recorders.put(queryId, new ArrayList<>());
-    }
-    recorders.get(queryId).add(recorder);
+    recorders
+        .computeIfAbsent(queryId, k -> Collections.synchronizedList(new ArrayList<>()))
+        .add(recorder);
 
     String dirName = getDirName(queryId);
     makeDirIfNecessary(dirName);
@@ -109,6 +109,11 @@ public class TemporaryQueryDataFileService implements IService {
   @Override
   public void start() throws StartupException {
     try {
+      // Clean up stale temp directories left from previous runs (e.g., after a crash)
+      File tmpDir = SystemFileFactory.INSTANCE.getFile(TEMPORARY_FILE_DIR);
+      if (tmpDir.exists()) {
+        FileUtils.deleteDirectory(tmpDir);
+      }
       makeDirIfNecessary(TEMPORARY_FILE_DIR);
     } catch (IOException e) {
       throw new StartupException(e);
@@ -117,8 +122,11 @@ public class TemporaryQueryDataFileService implements IService {
 
   @Override
   public void stop() {
-    for (Object queryId : recorders.keySet().toArray()) {
-      deregister((String) queryId);
+    recorders.clear();
+    try {
+      FileUtils.deleteDirectory(SystemFileFactory.INSTANCE.getFile(TEMPORARY_FILE_DIR));
+    } catch (IOException e) {
+      logger.warn("Failed to delete temp dir {}.", TEMPORARY_FILE_DIR, e);
     }
   }
 
