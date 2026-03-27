@@ -56,6 +56,7 @@ import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.COLUMN_TTL;
 import static org.junit.Assert.assertEquals;
@@ -267,6 +268,21 @@ public class IoTDBRestServiceIT {
                 + "],\"measurements_list\":[[\"s33\",\"s44\"]],\"data_types_list\":[[\"INT32\",\"INT64\"]],\"values_list\":[[1,false]],\"is_aligned\":false,\"devices\":[\"root.s1\"]}";
         httpPost.setEntity(new StringEntity(json, Charset.defaultCharset()));
         response = httpClient.execute(httpPost);
+        for (int j = 0; j < 30; j++) {
+          try {
+            response = httpClient.execute(httpPost);
+            break;
+          } catch (Exception e) {
+            if (i == 29) {
+              throw e;
+            }
+            try {
+              TimeUnit.SECONDS.sleep(1);
+            } catch (InterruptedException ex) {
+              throw new RuntimeException(ex);
+            }
+          }
+        }
         HttpEntity responseEntity = response.getEntity();
         String message = EntityUtils.toString(responseEntity, "utf-8");
         JsonObject result = JsonParser.parseString(message).getAsJsonObject();
