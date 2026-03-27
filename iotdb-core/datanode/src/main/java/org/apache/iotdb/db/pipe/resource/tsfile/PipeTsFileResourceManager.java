@@ -382,6 +382,7 @@ public class PipeTsFileResourceManager {
     final File pinnedFile = getHardlinkOrCopiedFileInPipeDir(resource.getTsFile(), pipeName);
     decreaseFileReference(pinnedFile, pipeName);
 
+    LOGGER.info("Grass mod: {}", resource.sharedModFileExists());
     if (resource.sharedModFileExists()) {
       decreaseFileReference(resource.getSharedModFile().getFile(), pipeName);
     }
