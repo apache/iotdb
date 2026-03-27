@@ -1875,6 +1875,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (ctx.timeRange() != null) {
       parseTimeRangeForGroupByTime(ctx.timeRange(), groupByTimeComponent);
       groupByTimeComponent.setLeftCRightO(ctx.timeRange().LS_BRACKET() != null);
+      groupByTimeComponent.setRightClosed(ctx.timeRange().RS_BRACKET() != null);
     }
 
     // Parse time interval
