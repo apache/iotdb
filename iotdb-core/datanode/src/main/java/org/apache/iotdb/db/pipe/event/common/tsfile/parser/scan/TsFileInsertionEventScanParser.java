@@ -32,6 +32,7 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileInsertionEventParser;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.util.ModsOperationUtil;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
@@ -685,8 +686,9 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
         return true;
       } else if (chunkHeader.getMeasurementID().equals("s1")) {
         LOGGER.warn(
-            "s1 not filtered, currentModifications: {}",
-            currentModifications.getDeviceOverlapped(new PartialPath("root.**")));
+            "s1 not filtered, currentModifications: {}, modFile: {}",
+            currentModifications.getDeviceOverlapped(new PartialPath("root.**")),
+            ((PipeTsFileInsertionEvent) sourceEvent).getModFile());
       }
     }
 
