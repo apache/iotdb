@@ -32,7 +32,7 @@
 [![IoTDB Website](https://img.shields.io/website-up-down-green-red/https/shields.io.svg?label=iotdb-website)](https://iotdb.apache.org/)
 [![Maven Central](https://img.shields.io/maven-central/v/org.apache.iotdb/iotdb-parent.svg)](https://central.sonatype.com/artifact/org.apache.iotdb/iotdb-parent)
 [![Gitpod Ready-to-Code](https://img.shields.io/badge/Gitpod-Ready--to--Code-blue?logo=gitpod)](https://gitpod.io/#https://github.com/apache/iotdb)
-[![Slack Status](https://img.shields.io/badge/slack-join_chat-white.svg?logo=slack&style=social)](https://join.slack.com/t/apacheiotdb/shared_invite/zt-qvso1nj8-7715TpySZtZqmyG5qXQwpg)
+[![Slack Status](https://img.shields.io/badge/slack-join_chat-white.svg?logo=slack&style=social)](https://join.slack.com/t/apacheiotdb/shared_invite/zt-3sh0ws7xf-JjVayYQt_RSUUHJ~iJOiSA)
 
 # Overview
 
@@ -540,6 +540,6 @@ see [Frequent Questions when Compiling the Source Code](https://iotdb.apache.org
 
 ### Slack
 
-* [Slack channel](https://join.slack.com/t/apacheiotdb/shared_invite/zt-qvso1nj8-7715TpySZtZqmyG5qXQwpg)
+* [Slack channel](https://join.slack.com/t/apacheiotdb/shared_invite/zt-3sh0ws7xf-JjVayYQt_RSUUHJ~iJOiSA)
 
 see [Join the community](https://github.com/apache/iotdb/issues/1995) for more!
