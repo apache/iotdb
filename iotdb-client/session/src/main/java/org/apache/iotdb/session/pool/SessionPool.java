@@ -788,7 +788,7 @@ public class SessionPool implements ISessionPool {
     occupied.put(session, session);
   }
 
-/** close all connections in the pool and unblocks any waiting threads*/
+  /** Closes all connections in the pool and unblocks any waiting threads. */
   @Override
   public synchronized void close() {
     for (ISession session : queue) {

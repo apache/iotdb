@@ -74,6 +74,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
@@ -1636,7 +1638,6 @@ public class SessionPoolTest {
             .password("root")
             .maxSize(1)
             .waitToGetSessionTimeoutInMs(10000)
-            // notifyAll()
             .build();
 
     try {
@@ -1651,11 +1652,13 @@ public class SessionPoolTest {
       assertEquals(0, queue.size());
 
       final Exception[] caughtException = {null};
+      CountDownLatch latch = new CountDownLatch(1);
 
       Thread waiterThread =
           new Thread(
               () -> {
                 try {
+                  latch.countDown();
                   Whitebox.invokeMethod(pool, "getSession");
                 } catch (Exception e) {
                   caughtException[0] = e;
@@ -1663,13 +1666,14 @@ public class SessionPoolTest {
               });
       waiterThread.start();
 
-      Thread.sleep(100);
+      assertTrue("Waiter thread should have started", latch.await(10, TimeUnit.SECONDS));
+      // Give it a moment to enter the wait(1000) block in getSession()
+      Thread.sleep(200);
 
-      long closeStartTime = System.currentTimeMillis();
       pool.close();
-      long closeEndTime = System.currentTimeMillis();
 
-      waiterThread.join(1000);
+      waiterThread.join(500);
+      assertTrue("Waiter thread should be unblocked quickly", !waiterThread.isAlive());
 
       assertNotNull("Waiter thread should have caught an exception", caughtException[0]);
       assertTrue(
@@ -1679,15 +1683,11 @@ public class SessionPoolTest {
           "Exception message should indicate pool is closed",
           caughtException[0].getMessage().contains("closed"));
 
-      long closeDuration = closeEndTime - closeStartTime;
-      assertTrue(
-          "close() should complete quickly, but took " + closeDuration + "ms",
-          closeDuration < 1000);
-
     } finally {
       try {
         pool.close();
       } catch (Exception e) {
+        // ignore
       }
     }
   }
