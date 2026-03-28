@@ -794,21 +794,25 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     final List<MeasurementPath> pathList =
         PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree()))
             .getAllPathPatterns(true);
-    return executeInternalSchemaTask(
-        req.getDataRegionIdList(),
-        consensusGroupId ->
-            new RegionWriteExecutor()
-                .execute(
-                    new DataRegionId(consensusGroupId.getId()),
-                    // Now the deletion plan may be re-collected here by pipe, resulting multiple
-                    // transfer to delete time series plan. Now just ignore.
-                    req.isSetIsGeneratedByPipe() && req.isIsGeneratedByPipe()
-                        ? new PipeEnrichedDeleteDataNode(
-                            new DeleteDataNode(
+    final TSStatus status =
+        executeInternalSchemaTask(
+            req.getDataRegionIdList(),
+            consensusGroupId ->
+                new RegionWriteExecutor()
+                    .execute(
+                        new DataRegionId(consensusGroupId.getId()),
+                        // Now the deletion plan may be re-collected here by pipe, resulting
+                        // multiple
+                        // transfer to delete time series plan. Now just ignore.
+                        req.isSetIsGeneratedByPipe() && req.isIsGeneratedByPipe()
+                            ? new PipeEnrichedDeleteDataNode(
+                                new DeleteDataNode(
+                                    new PlanNodeId(""), pathList, Long.MIN_VALUE, Long.MAX_VALUE))
+                            : new DeleteDataNode(
                                 new PlanNodeId(""), pathList, Long.MIN_VALUE, Long.MAX_VALUE))
-                        : new DeleteDataNode(
-                            new PlanNodeId(""), pathList, Long.MIN_VALUE, Long.MAX_VALUE))
-                .getStatus());
+                    .getStatus());
+    LOGGER.info("Successfully executed delete data for delete schema");
+    return status;
   }
 
   @Override

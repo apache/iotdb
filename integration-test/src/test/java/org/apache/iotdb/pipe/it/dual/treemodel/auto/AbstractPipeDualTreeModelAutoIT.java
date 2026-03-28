@@ -22,6 +22,7 @@ package org.apache.iotdb.pipe.it.dual.treemodel.auto;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.it.utils.TestUtils;
+import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.MultiEnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.itbase.env.BaseEnv;
@@ -41,12 +42,12 @@ public abstract class AbstractPipeDualTreeModelAutoIT {
 
   @Before
   public void setUp() {
-    MultiEnvFactory.createEnv(2);
-    senderEnv = MultiEnvFactory.getEnv(0);
-    receiverEnv = MultiEnvFactory.getEnv(1);
+    MultiEnvFactory.createEnv(1);
+    senderEnv = EnvFactory.getEnv();
+    receiverEnv = MultiEnvFactory.getEnv(0);
     setupConfig();
-    senderEnv.initClusterEnvironment();
-    receiverEnv.initClusterEnvironment();
+    senderEnv.initClusterEnvironment(1, 1);
+    receiverEnv.initClusterEnvironment(1, 1);
   }
 
   protected void setupConfig() {
@@ -58,8 +59,9 @@ public abstract class AbstractPipeDualTreeModelAutoIT {
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setEnforceStrongPassword(false)
         .setPipeMemoryManagementEnabled(false)
-        .setIsPipeEnableMemoryCheck(false)
-        .setPipeAutoSplitFullEnabled(false);
+        .setDataReplicationFactor(1)
+        .setSchemaReplicationFactor(1)
+        .setIsPipeEnableMemoryCheck(false);
     senderEnv.getConfig().getDataNodeConfig().setDataNodeMemoryProportion("3:3:1:1:3:1");
     receiverEnv
         .getConfig()
@@ -68,8 +70,9 @@ public abstract class AbstractPipeDualTreeModelAutoIT {
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setPipeMemoryManagementEnabled(false)
-        .setIsPipeEnableMemoryCheck(false)
-        .setPipeAutoSplitFullEnabled(false);
+        .setDataReplicationFactor(1)
+        .setSchemaReplicationFactor(1)
+        .setIsPipeEnableMemoryCheck(false);
     receiverEnv.getConfig().getDataNodeConfig().setDataNodeMemoryProportion("3:3:1:1:9:1");
 
     // 10 min, assert that the operations will not time out

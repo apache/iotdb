@@ -116,6 +116,9 @@ public class PipeTsFileResourceManager {
               ? FileUtils.createHardLink(source, hardlinkOrCopiedFile)
               : FileUtils.copyFile(source, hardlinkOrCopiedFile);
 
+      if (!isTsFile) {
+        LOGGER.info("Copied file {} to {}.", sourceFile, hardlinkOrCopiedFile);
+      }
       // If the file is not a hardlink or copied file, and there is no related hardlink or copied
       // file in pipe dir, create a hardlink or copy it to pipe dir, maintain a reference count for
       // the hardlink or copied file, and return the hardlink or copied file.
@@ -131,6 +134,7 @@ public class PipeTsFileResourceManager {
       segmentLock.unlock(hardlinkOrCopiedFile);
     }
     increasePublicReference(resultFile, pipeName, isTsFile);
+    LOGGER.info("Increased for file {}, source file: {}, reference count: {}", file, sourceFile, 1);
     return resultFile;
   }
 
@@ -142,6 +146,15 @@ public class PipeTsFileResourceManager {
       final PipeTsFileResource resource = getResourceMap(pipeName).get(path);
       if (resource != null) {
         resource.increaseReferenceCount();
+        try {
+          LOGGER.info(
+              "Increased for file {}, reference count: {}", file, resource.getReferenceCount());
+          throw new RuntimeException();
+        } catch (final Exception e) {
+          if (!isTsFile) {
+            e.printStackTrace();
+          }
+        }
       } else {
         return false;
       }
@@ -219,8 +232,23 @@ public class PipeTsFileResourceManager {
     try {
       final String filePath = hardlinkOrCopiedFile.getPath();
       final PipeTsFileResource resource = getResourceMap(pipeName).get(filePath);
-      if (resource != null && resource.decreaseReferenceCount()) {
-        getResourceMap(pipeName).remove(filePath);
+      if (resource != null) {
+        if (resource.decreaseReferenceCount()) {
+          getResourceMap(pipeName).remove(filePath);
+        }
+        try {
+          LOGGER.info(
+              "Decreased for file {}, reference count: {}", filePath, resource.getReferenceCount());
+          throw new RuntimeException();
+        } catch (final Exception e) {
+          e.printStackTrace();
+        }
+      } else {
+        LOGGER.warn(
+            "Grass, public map {}, pipe map: {}, file path: {}",
+            hardlinkOrCopiedFileToTsFilePublicResourceMap,
+            hardlinkOrCopiedFileToPipeTsFileResourceMap,
+            filePath);
       }
     } finally {
       segmentLock.unlock(hardlinkOrCopiedFile);
@@ -355,13 +383,20 @@ public class PipeTsFileResourceManager {
     }
   }
 
-  public void unpinTsFileResource(final TsFileResource resource, final @Nullable String pipeName)
+  public void unpinTsFileResource(
+      final TsFileResource resource,
+      final boolean shouldTransferModFile,
+      final @Nullable String pipeName)
       throws IOException {
-    final File pinnedFile = getHardlinkOrCopiedFileInPipeDir(resource.getTsFile(), pipeName);
-    decreaseFileReference(pinnedFile, pipeName);
+    decreaseFileReference(
+        getHardlinkOrCopiedFileInPipeDir(resource.getTsFile(), pipeName), pipeName);
 
-    if (resource.sharedModFileExists()) {
-      decreaseFileReference(resource.getSharedModFile().getFile(), pipeName);
+    LOGGER.info("Good mod: {}", resource.exclusiveModFileExists());
+    if (shouldTransferModFile && resource.exclusiveModFileExists()) {
+      decreaseFileReference(
+          getHardlinkOrCopiedFileInPipeDir(resource.getExclusiveModFile().getFile(), pipeName),
+          pipeName);
+      LOGGER.info("Decreased mod: {}", resource.getExclusiveModFile().getFile());
     }
   }
 
