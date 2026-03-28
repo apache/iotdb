@@ -136,6 +136,11 @@ public class PrefixTreePattern extends TreePattern {
   }
 
   @Override
+  public boolean overlapWithDevice(final IDeviceID device) {
+    return mayOverlapWithDevice(device);
+  }
+
+  @Override
   public boolean matchesMeasurement(final IDeviceID device, String measurement) {
     final String deviceStr = device.toString();
     // We assume that the device is already matched.

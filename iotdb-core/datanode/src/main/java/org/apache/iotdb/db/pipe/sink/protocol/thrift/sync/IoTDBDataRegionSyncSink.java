@@ -40,7 +40,6 @@ import org.apache.iotdb.db.pipe.sink.payload.evolvable.batch.PipeTabletEventPlai
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.batch.PipeTabletEventTsFileBatch;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.batch.PipeTransferBatchReqBuilder;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferPlanNodeReq;
-import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTabletBinaryReqV2;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTabletInsertNodeReqV2;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTabletRawReqV2;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTsFilePieceReq;
@@ -381,17 +380,11 @@ public class IoTDBDataRegionSyncSink extends IoTDBDataNodeSyncSink {
       final InsertNode insertNode = pipeInsertNodeTabletInsertionEvent.getInsertNode();
       final TPipeTransferReq req =
           compressIfNeeded(
-              insertNode != null
-                  ? PipeTransferTabletInsertNodeReqV2.toTPipeTransferReq(
-                      insertNode,
-                      pipeInsertNodeTabletInsertionEvent.isTableModelEvent()
-                          ? pipeInsertNodeTabletInsertionEvent.getTableModelDatabaseName()
-                          : null)
-                  : PipeTransferTabletBinaryReqV2.toTPipeTransferReq(
-                      pipeInsertNodeTabletInsertionEvent.getByteBuffer(),
-                      pipeInsertNodeTabletInsertionEvent.isTableModelEvent()
-                          ? pipeInsertNodeTabletInsertionEvent.getTableModelDatabaseName()
-                          : null));
+              PipeTransferTabletInsertNodeReqV2.toTPipeTransferReq(
+                  insertNode,
+                  pipeInsertNodeTabletInsertionEvent.isTableModelEvent()
+                      ? pipeInsertNodeTabletInsertionEvent.getTableModelDatabaseName()
+                      : null));
       rateLimitIfNeeded(
           pipeInsertNodeTabletInsertionEvent.getPipeName(),
           pipeInsertNodeTabletInsertionEvent.getCreationTime(),

@@ -88,12 +88,12 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
 
   protected final boolean isLoaded;
   protected final boolean isGeneratedByPipe;
-  protected final boolean isGeneratedByPipeConsensus;
+  protected final boolean isGeneratedByIoTConsensusV2;
   protected final boolean isGeneratedByHistoricalExtractor;
   private final AtomicBoolean isClosed;
   private final AtomicReference<TsFileInsertionEventParser> eventParser;
 
-  // The point count of the TsFile. Used for metrics on PipeConsensus' receiver side.
+  // The point count of the TsFile. Used for metrics on IoTConsensusV2' receiver side.
   // May be updated after it is flushed. Should be negative if not set.
   protected long flushPointCount = TsFileProcessor.FLUSH_POINT_COUNT_NOT_SET;
 
@@ -182,7 +182,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
 
     this.isLoaded = isLoaded;
     this.isGeneratedByPipe = resource.isGeneratedByPipe();
-    this.isGeneratedByPipeConsensus = resource.isGeneratedByPipeConsensus();
+    this.isGeneratedByIoTConsensusV2 = resource.isGeneratedByIoTConsensusV2();
     this.isGeneratedByHistoricalExtractor = isGeneratedByHistoricalExtractor;
     this.tableNames = tableNames;
 
@@ -298,8 +298,8 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   }
 
   /**
-   * Only used for metrics on PipeConsensus' receiver side. If the event is recovered after data
-   * node's restart, the flushPointCount can be not set. It's totally fine for the PipeConsensus'
+   * Only used for metrics on IoTConsensusV2' receiver side. If the event is recovered after data
+   * node's restart, the flushPointCount can be not set. It's totally fine for the IoTConsensusV2'
    * receiver side. The receiver side will count the actual point count from the TsFile.
    *
    * <p>If you want to get the actual point count with no risk, you can call {@link
@@ -562,6 +562,17 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   }
 
   @Override
+  public boolean shouldParseTime() {
+    if (!isTimeParsed
+        && Objects.nonNull(resource)
+        && startTime <= resource.getFileStartTime()
+        && resource.getFileEndTime() <= endTime) {
+      isTimeParsed = true;
+    }
+    return !isTimeParsed;
+  }
+
+  @Override
   public boolean mayEventPathsOverlappedWithPattern() {
     if (Objects.isNull(resource) || !resource.isClosed() || isTableModelEvent()) {
       return true;
@@ -743,9 +754,9 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         waitTimeSeconds);
   }
 
-  /** The method is used to prevent circular replication in PipeConsensus */
-  public boolean isGeneratedByPipeConsensus() {
-    return isGeneratedByPipeConsensus;
+  /** The method is used to prevent circular replication in IoTConsensusV2 */
+  public boolean isGeneratedByIoTConsensusV2() {
+    return isGeneratedByIoTConsensusV2;
   }
 
   public boolean isGeneratedByHistoricalExtractor() {

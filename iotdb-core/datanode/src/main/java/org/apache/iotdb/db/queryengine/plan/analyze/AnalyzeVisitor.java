@@ -137,6 +137,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.ShowLogicalV
 import org.apache.iotdb.db.queryengine.plan.statement.pipe.PipeEnrichedStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ExplainAnalyzeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ExplainStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowDiskUsageStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowVersionStatement;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
@@ -253,6 +254,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       ExplainAnalyzeStatement explainAnalyzeStatement, MPPQueryContext context) {
     Analysis analysis = visitQuery(explainAnalyzeStatement.getQueryStatement(), context);
     context.setExplainType(ExplainType.EXPLAIN_ANALYZE);
+    context.setVerbose(explainAnalyzeStatement.isVerbose());
     analysis.setRealStatement(explainAnalyzeStatement);
     analysis.setRespDatasetHeader(
         new DatasetHeader(
@@ -3652,29 +3654,94 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     analysis.setSourceExpressions(sourceExpressions);
     sourceExpressions.forEach(expression -> analyzeExpressionType(analysis, expression));
 
-    analyzeWhere(analysis, showQueriesStatement);
+    if (!analyzeWhereForShowStatements(
+        analysis,
+        showQueriesStatement.getWhereCondition(),
+        ColumnHeaderConstant.showQueriesColumnHeaders)) {
+      showQueriesStatement.setWhereCondition(null);
+    }
 
     analysis.setMergeOrderParameter(new OrderByParameter(showQueriesStatement.getSortItemList()));
 
     return analysis;
   }
 
-  private void analyzeWhere(Analysis analysis, ShowQueriesStatement showQueriesStatement) {
-    WhereCondition whereCondition = showQueriesStatement.getWhereCondition();
-    if (whereCondition == null) {
-      return;
+  @Override
+  public Analysis visitShowDiskUsage(
+      ShowDiskUsageStatement showDiskUsageStatement, MPPQueryContext context) {
+    Analysis analysis = new Analysis();
+    analysis.setRealStatement(showDiskUsageStatement);
+    analysis.setRespDatasetHeader(DatasetHeaderFactory.getShowDiskUsageHeader());
+    analysis.setVirtualSource(true);
+
+    List<TDataNodeLocation> allReadableDataNodeLocations = getReadableDataNodeLocations();
+    if (allReadableDataNodeLocations.isEmpty()) {
+      throw new StatementAnalyzeException("no Running DataNodes");
+    }
+    analysis.setReadableDataNodeLocations(allReadableDataNodeLocations);
+
+    Set<Expression> sourceExpressions = new HashSet<>();
+    for (ColumnHeader columnHeader : analysis.getRespDatasetHeader().getColumnHeaders()) {
+      sourceExpressions.add(
+          TimeSeriesOperand.constructColumnHeaderExpression(
+              columnHeader.getColumnName(), columnHeader.getColumnType()));
+    }
+    analysis.setSourceExpressions(sourceExpressions);
+    sourceExpressions.forEach(expression -> analyzeExpressionType(analysis, expression));
+
+    if (!analyzeWhereForShowStatements(
+        analysis,
+        showDiskUsageStatement.getWhereCondition(),
+        ColumnHeaderConstant.showDiskUsageColumnHeaders)) {
+      showDiskUsageStatement.setWhereCondition(null);
     }
 
-    Expression whereExpression =
-        ExpressionAnalyzer.bindTypeForTimeSeriesOperand(
-            whereCondition.getPredicate(), ColumnHeaderConstant.showQueriesColumnHeaders);
+    analysis.setMergeOrderParameter(new OrderByParameter(showDiskUsageStatement.getSortItemList()));
 
-    TSDataType outputType = analyzeExpressionType(analysis, whereExpression);
+    return analysis;
+  }
+
+  /**
+   * Analyze the WHERE clause and extract value filter predicates.
+   *
+   * <p>The predicate will be simplified and checked for type correctness. If the predicate does not
+   * contain a value filter or simplifies to TRUE, the WHERE clause will be ignored.
+   *
+   * @param analysis analysis context
+   * @param whereCondition WHERE clause
+   * @param statementColumnHeaders column headers used for type binding
+   * @return true if the WHERE clause contains a valid value filter, otherwise false
+   * @throws SemanticException if the predicate type is not BOOLEAN
+   */
+  private boolean analyzeWhereForShowStatements(
+      Analysis analysis, WhereCondition whereCondition, List<ColumnHeader> statementColumnHeaders) {
+    if (whereCondition == null) {
+      return true;
+    }
+
+    Expression predicate =
+        ExpressionAnalyzer.bindTypeForTimeSeriesOperand(
+            whereCondition.getPredicate(), statementColumnHeaders);
+    Pair<Expression, Boolean> resultPair =
+        PredicateUtils.extractGlobalTimePredicate(predicate, true, true);
+    boolean hasValueFilter = resultPair.getRight();
+
+    predicate = PredicateUtils.simplifyPredicate(predicate);
+
+    // set where condition to null if predicate is true or don't have value filter
+    if (!hasValueFilter || predicate.equals(ConstantOperand.TRUE)) {
+      return false;
+    } else {
+      whereCondition.setPredicate(predicate);
+    }
+    TSDataType outputType = analyzeExpressionType(analysis, predicate);
     if (outputType != TSDataType.BOOLEAN) {
       throw new SemanticException(String.format(WHERE_WRONG_TYPE_ERROR_MSG, outputType));
     }
 
-    analysis.setWhereExpression(whereExpression);
+    analysis.setWhereExpression(predicate);
+    analysis.setHasValueFilter(true);
+    return true;
   }
 
   // Region view

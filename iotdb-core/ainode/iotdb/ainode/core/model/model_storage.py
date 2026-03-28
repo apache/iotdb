@@ -21,10 +21,15 @@ import json
 import os
 import shutil
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, Optional
 
-from huggingface_hub import hf_hub_download
-from transformers import AutoConfig, AutoModelForCausalLM
+from huggingface_hub import PyTorchModelHubMixin, hf_hub_download
+from transformers import (
+    AutoConfig,
+    AutoModelForCausalLM,
+    PretrainedConfig,
+    PreTrainedModel,
+)
 
 from iotdb.ainode.core.config import AINodeDescriptor
 from iotdb.ainode.core.constant import TSStatusCode
@@ -35,8 +40,8 @@ from iotdb.ainode.core.exception import (
 )
 from iotdb.ainode.core.log import Logger
 from iotdb.ainode.core.model.model_constants import (
-    MODEL_CONFIG_FILE_IN_JSON,
-    MODEL_WEIGHTS_FILE_IN_SAFETENSORS,
+    CONFIG_JSON,
+    MODEL_SAFETENSORS,
     ModelCategory,
     ModelStates,
     UriType,
@@ -148,14 +153,15 @@ class ModelStorage:
             """Returns: True if the model is existed or downloaded successfully, False otherwise."""
             model_info = BUILTIN_HF_TRANSFORMERS_MODEL_MAP[model_id]
             repo_id = model_info.repo_id
-            weights_path = os.path.join(model_dir, MODEL_WEIGHTS_FILE_IN_SAFETENSORS)
-            config_path = os.path.join(model_dir, MODEL_CONFIG_FILE_IN_JSON)
-            if model_info.download_weights:
+            weights_path = os.path.join(model_dir, MODEL_SAFETENSORS)
+            config_path = os.path.join(model_dir, CONFIG_JSON)
+
+            if getattr(model_info, "download_weights", True):
                 if not os.path.exists(weights_path):
                     try:
                         hf_hub_download(
                             repo_id=repo_id,
-                            filename=MODEL_WEIGHTS_FILE_IN_SAFETENSORS,
+                            filename=MODEL_SAFETENSORS,
                             local_dir=model_dir,
                         )
                     except Exception as e:
@@ -163,7 +169,6 @@ class ModelStorage:
                             f"Failed to download model weights from HuggingFace: {e}"
                         )
                         return False
-
             else:
                 logger.info(
                     f"Skipping weight download for {model_id} due to configuration."
@@ -172,7 +177,7 @@ class ModelStorage:
                 try:
                     hf_hub_download(
                         repo_id=repo_id,
-                        filename=MODEL_CONFIG_FILE_IN_JSON,
+                        filename=CONFIG_JSON,
                         local_dir=model_dir,
                     )
                 except Exception as e:
@@ -198,7 +203,7 @@ class ModelStorage:
                         self._models_dir,
                         ModelCategory.BUILTIN.value,
                         model_id,
-                        MODEL_CONFIG_FILE_IN_JSON,
+                        CONFIG_JSON,
                     )
                     if os.path.exists(config_path):
                         with open(config_path, "r", encoding="utf-8") as f:
@@ -225,15 +230,17 @@ class ModelStorage:
 
     def _process_user_defined_model_directory(self, model_dir: str, model_id: str):
         """Handling the discovery logic for a user-defined model directory."""
-        config_path = os.path.join(model_dir, MODEL_CONFIG_FILE_IN_JSON)
+        config_path = os.path.join(model_dir, CONFIG_JSON)
         model_type = ""
         auto_map = {}
         pipeline_cls = ""
+        hub_mixin_cls = ""
         if os.path.exists(config_path):
             config = load_model_config_in_json(config_path)
             model_type = config.get("model_type", "")
             auto_map = config.get("auto_map", None)
             pipeline_cls = config.get("pipeline_cls", "")
+            hub_mixin_cls = config.get("hub_mixin_cls", "")
         model_info = ModelInfo(
             model_id=model_id,
             model_type=model_type,
@@ -241,6 +248,7 @@ class ModelStorage:
             state=ModelStates.ACTIVE,
             pipeline_cls=pipeline_cls,
             auto_map=auto_map,
+            hub_mixin_cls=hub_mixin_cls,
             transformers_registered=False,  # Lazy registration
         )
         with self._lock_pool.get_lock(model_id).write_lock():
@@ -291,6 +299,7 @@ class ModelStorage:
         model_type = config.get("model_type", "")
         auto_map = config.get("auto_map")
         pipeline_cls = config.get("pipeline_cls", "")
+        hub_mixin_cls = config.get("hub_mixin_cls", "")
 
         with self._lock_pool.get_lock(model_id).write_lock():
             model_info = ModelInfo(
@@ -300,6 +309,7 @@ class ModelStorage:
                 state=ModelStates.ACTIVE,
                 pipeline_cls=pipeline_cls,
                 auto_map=auto_map,
+                hub_mixin_cls=hub_mixin_cls,
                 transformers_registered=False,  # Register later
             )
             self._models[ModelCategory.USER_DEFINED.value][model_id] = model_info
@@ -315,6 +325,17 @@ class ModelStorage:
                         f"Failed to register Transformers model {model_id}, because {e}"
                     )
                     raise e
+            elif hub_mixin_cls:
+                # PyTorchModelHubMixin model: immediately register
+                try:
+                    if self._register_hub_mixin_model(model_info):
+                        model_info.transformers_registered = True
+                except Exception as e:
+                    model_info.state = ModelStates.INACTIVE
+                    logger.error(
+                        f"Failed to register HubMixin model {model_id}, because {e}"
+                    )
+                    raise e
             else:
                 # Other type models: only log
                 self._register_other_model(model_info)
@@ -328,6 +349,7 @@ class ModelStorage:
             True if registration is successful
         Raises:
             Exception: Transformers internal exception if registration fails
+            ValueError: If class is invalid
         """
         auto_map = model_info.auto_map
         if not auto_map:
@@ -345,6 +367,14 @@ class ModelStorage:
                 config_class = import_class_from_path(
                     model_info.model_id, auto_config_path
                 )
+                # Validate config_class is a subclass of PretrainedConfig
+                if not (
+                    isinstance(config_class, type)
+                    and issubclass(config_class, PretrainedConfig)
+                ):
+                    raise ValueError(
+                        f"AutoConfig class '{auto_config_path}' must be a subclass of PretrainedConfig"
+                    )
                 AutoConfig.register(model_info.model_type, config_class)
                 logger.info(
                     f"Registered AutoConfig: {model_info.model_type} -> {auto_config_path}"
@@ -353,6 +383,14 @@ class ModelStorage:
                 model_class = import_class_from_path(
                     model_info.model_id, auto_model_path
                 )
+                # Validate model_class is a subclass of PreTrainedModel
+                if not (
+                    isinstance(model_class, type)
+                    and issubclass(model_class, PreTrainedModel)
+                ):
+                    raise ValueError(
+                        f"AutoModelForCausalLM class '{auto_model_path}' must be a subclass of PreTrainedModel"
+                    )
                 AutoModelForCausalLM.register(config_class, model_class)
                 logger.info(
                     f"Registered AutoModelForCausalLM: {config_class.__name__} -> {auto_model_path}"
@@ -361,6 +399,48 @@ class ModelStorage:
         except Exception as e:
             logger.warning(
                 f"Failed to register Transformers model {model_info.model_id}: {e}. Model may still work via auto_map, but ensure module path is correct."
+            )
+            raise e
+
+    def _register_hub_mixin_model(self, model_info: ModelInfo) -> bool:
+        """
+        Register PyTorchModelHubMixin model (internal method).
+        For now, just validate the class.
+
+        Returns:
+            True if registration is successful
+        Raises:
+            ValueError: If class is invalid
+            Exception: For other errors
+        """
+        hub_mixin_cls = model_info.hub_mixin_cls
+        if not hub_mixin_cls:
+            return False
+
+        try:
+            model_path = os.path.join(
+                self._models_dir, model_info.category.value, model_info.model_id
+            )
+            module_parent = str(Path(model_path).parent.absolute())
+            with temporary_sys_path(module_parent):
+                model_class = import_class_from_path(model_info.model_id, hub_mixin_cls)
+
+                # Validate that the class inherits from PyTorchModelHubMixin
+                if not issubclass(model_class, PyTorchModelHubMixin):
+                    raise ValueError(
+                        f"Class '{model_class}' does not inherit from "
+                        "PyTorchModelHubMixin."
+                    )
+
+                logger.info(
+                    f"Registered PyTorchModelHubMixin model: "
+                    f"{model_info.model_id} -> {hub_mixin_cls}"
+                )
+            return True
+
+        except Exception as e:
+            logger.warning(
+                f"Failed to register PyTorchModelHubMixin model {model_info.model_id}: {e}."
             )
             raise e
 
@@ -533,7 +613,7 @@ class ModelStorage:
                 return self._models[category.value].get(model_id)
         else:
             # Category not specified, need to traverse all dictionaries, use global lock
-            with self._lock_pool.get_lock("").read_lock():
+            with self._lock_pool.get_lock(model_id).read_lock():
                 for category_dict in self._models.values():
                     if model_id in category_dict:
                         return category_dict[model_id]

@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.pipe.config.constant;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 
 import com.github.luben.zstd.Zstd;
@@ -55,6 +56,13 @@ public class PipeSinkConstant {
   public static final String SINK_IOTDB_PARALLEL_TASKS_KEY = "sink.parallel.tasks";
   public static final int CONNECTOR_IOTDB_PARALLEL_TASKS_DEFAULT_VALUE =
       PipeConfig.getInstance().getPipeSubtaskExecutorMaxThreadNum();
+  public static final Set<String> SINGLE_THREAD_DEFAULT_SINK =
+      new HashSet<>(
+          Arrays.asList(
+              BuiltinPipePlugin.OPC_UA_SINK.getPipePluginName(),
+              BuiltinPipePlugin.OPC_UA_CONNECTOR.getPipePluginName(),
+              BuiltinPipePlugin.OPC_DA_SINK.getPipePluginName(),
+              BuiltinPipePlugin.OPC_DA_CONNECTOR.getPipePluginName()));
 
   public static final String CONNECTOR_REALTIME_FIRST_KEY = "connector.realtime-first";
   public static final String SINK_REALTIME_FIRST_KEY = "sink.realtime-first";

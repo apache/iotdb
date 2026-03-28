@@ -31,7 +31,6 @@ import io.airlift.units.Duration;
 import org.apache.tsfile.utils.Accountable;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
@@ -64,7 +63,7 @@ public class OperatorContext implements Accountable {
 
   // SpecifiedInfo is used to record some custom information for the operator,
   // which will be shown in the result of EXPLAIN ANALYZE to analyze the query.
-  private Map<String, String> specifiedInfo = null;
+  private final Map<String, Object> specifiedInfo = new ConcurrentHashMap<>();
   private long output = 0;
   private long estimatedMemorySize;
 
@@ -112,7 +111,12 @@ public class OperatorContext implements Accountable {
     return driverContext.getFragmentInstanceContext();
   }
 
-  public Duration getMaxRunTime() {
+  public static Duration getMaxRunTime() {
+    return maxRunTime;
+  }
+
+  @TestOnly
+  public Duration getMaxRunTimeForTest() {
     return maxRunTime;
   }
 
@@ -169,15 +173,11 @@ public class OperatorContext implements Accountable {
   }
 
   public void recordSpecifiedInfo(String key, String value) {
-    if (specifiedInfo == null) {
-      // explain analyze operator fetching and current operator updating may be concurrently
-      specifiedInfo = new ConcurrentHashMap<>();
-    }
     specifiedInfo.put(key, value);
   }
 
-  public Map<String, String> getSpecifiedInfo() {
-    return specifiedInfo == null ? new HashMap<>() : specifiedInfo;
+  public Map<String, Object> getSpecifiedInfo() {
+    return specifiedInfo;
   }
 
   @Override

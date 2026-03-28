@@ -32,6 +32,7 @@ class ModelInfo:
         repo_id: str = "",
         download_weights: bool = True,
         auto_map: Optional[Dict] = None,
+        hub_mixin_cls: Optional[str] = None,
         transformers_registered: bool = False,
     ):
         self.model_id = model_id
@@ -42,6 +43,7 @@ class ModelInfo:
         self.repo_id = repo_id
         self.download_weights = download_weights
         self.auto_map = auto_map  # If exists, indicates it's a Transformers model
+        self.hub_mixin_cls = hub_mixin_cls
         self.transformers_registered = (
             transformers_registered  # Internal flag: whether registered to Transformers
         )
@@ -50,7 +52,8 @@ class ModelInfo:
         return (
             f"ModelInfo(model_id={self.model_id}, model_type={self.model_type}, "
             f"category={self.category.value}, state={self.state.value}, "
-            f"has_auto_map={self.auto_map is not None})"
+            f"has_auto_map={self.auto_map is not None}), "
+            f"has_hub_mix_in_cls={self.hub_mixin_cls is not None})"
         )
 
 
@@ -146,6 +149,7 @@ BUILTIN_HF_TRANSFORMERS_MODEL_MAP = {
             "AutoConfig": "config.Chronos2CoreConfig",
             "AutoModelForCausalLM": "model.Chronos2Model",
         },
+        transformers_registered=True,
     ),
     "moirai2": ModelInfo(
         model_id="moirai2",
@@ -157,6 +161,19 @@ BUILTIN_HF_TRANSFORMERS_MODEL_MAP = {
         auto_map={
             "AutoConfig": "configuration_moirai2.Moirai2Config",
             "AutoModelForCausalLM": "modeling_moirai2.Moirai2ForPrediction",
+        },
+        transformers_registered=True,
+    ),
+    "toto": ModelInfo(
+        model_id="toto",
+        category=ModelCategory.BUILTIN,
+        state=ModelStates.INACTIVE,
+        model_type="toto",
+        pipeline_cls="pipeline_toto.TotoPipeline",
+        repo_id="Datadog/Toto-Open-Base-1.0",
+        auto_map={
+            "AutoConfig": "configuration_toto.TotoConfig",
+            "AutoModelForCausalLM": "modeling_toto.TotoForPrediction",
         },
         transformers_registered=True,
     ),

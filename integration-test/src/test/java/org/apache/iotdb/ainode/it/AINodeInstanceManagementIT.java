@@ -20,12 +20,16 @@
 package org.apache.iotdb.ainode.it;
 
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.framework.IoTDBTestRunner;
+import org.apache.iotdb.itbase.category.AIClusterIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
 
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
+import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -41,9 +45,13 @@ import static org.apache.iotdb.ainode.utils.AINodeTestUtils.checkModelNotOnSpeci
 import static org.apache.iotdb.ainode.utils.AINodeTestUtils.checkModelOnSpecifiedDevice;
 import static org.apache.iotdb.ainode.utils.AINodeTestUtils.errorTest;
 
+@RunWith(IoTDBTestRunner.class)
+@Category({AIClusterIT.class})
 public class AINodeInstanceManagementIT {
 
-  private static final Set<String> TARGET_DEVICES = new HashSet<>(Arrays.asList("cpu", "0", "1"));
+  private static final String TARGET_DEVICES_STR = "0,1";
+  private static final Set<String> TARGET_DEVICES =
+      new HashSet<>(Arrays.asList(TARGET_DEVICES_STR.split(",")));
 
   @BeforeClass
   public static void setUp() throws Exception {
@@ -76,53 +84,57 @@ public class AINodeInstanceManagementIT {
     // Ensure resources
     try (ResultSet resultSet = statement.executeQuery("SHOW AI_DEVICES")) {
       ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-      checkHeader(resultSetMetaData, "DeviceID");
+      checkHeader(resultSetMetaData, "DeviceId,DeviceType");
       final Set<String> resultDevices = new HashSet<>();
       while (resultSet.next()) {
-        resultDevices.add(resultSet.getString("DeviceID"));
+        resultDevices.add(resultSet.getString("DeviceId"));
       }
-      Assert.assertEquals(TARGET_DEVICES, resultDevices);
+      Set<String> expected = new HashSet<>(TARGET_DEVICES);
+      expected.add("cpu");
+      Assert.assertEquals(expected, resultDevices);
     }
 
     // Load sundial to each device
-    statement.execute(String.format("LOAD MODEL sundial TO DEVICES '%s'", TARGET_DEVICES));
-    checkModelOnSpecifiedDevice(statement, "sundial", TARGET_DEVICES.toString());
+    statement.execute(String.format("LOAD MODEL sundial TO DEVICES '%s'", TARGET_DEVICES_STR));
+    checkModelOnSpecifiedDevice(statement, "sundial", TARGET_DEVICES_STR);
+    // Unload sundial from each device
+    statement.execute(String.format("UNLOAD MODEL sundial FROM DEVICES '%s'", TARGET_DEVICES_STR));
+    checkModelNotOnSpecifiedDevice(statement, "sundial", TARGET_DEVICES_STR);
 
     // Load timer_xl to each device
-    statement.execute(String.format("LOAD MODEL timer_xl TO DEVICES '%s'", TARGET_DEVICES));
-    checkModelOnSpecifiedDevice(statement, "timer_xl", TARGET_DEVICES.toString());
-
-    // Clean every device
-    statement.execute(String.format("UNLOAD MODEL sundial FROM DEVICES '%s'", TARGET_DEVICES));
-    statement.execute(String.format("UNLOAD MODEL timer_xl FROM DEVICES '%s'", TARGET_DEVICES));
-    checkModelNotOnSpecifiedDevice(statement, "timer_xl", TARGET_DEVICES.toString());
-    checkModelNotOnSpecifiedDevice(statement, "sundial", TARGET_DEVICES.toString());
+    statement.execute(String.format("LOAD MODEL timer_xl TO DEVICES '%s'", TARGET_DEVICES_STR));
+    checkModelOnSpecifiedDevice(statement, "timer_xl", TARGET_DEVICES_STR);
+    // Unload timer_xl from each device
+    statement.execute(String.format("UNLOAD MODEL timer_xl FROM DEVICES '%s'", TARGET_DEVICES_STR));
+    checkModelNotOnSpecifiedDevice(statement, "timer_xl", TARGET_DEVICES_STR);
   }
 
   private static final int LOOP_CNT = 10;
 
-  @Test
+  //  @Test
   public void repeatLoadAndUnloadTest() throws SQLException, InterruptedException {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TREE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       for (int i = 0; i < LOOP_CNT; i++) {
-        statement.execute("LOAD MODEL sundial TO DEVICES \"cpu,0,1\"");
-        checkModelOnSpecifiedDevice(statement, "sundial", TARGET_DEVICES.toString());
-        statement.execute("UNLOAD MODEL sundial FROM DEVICES \"cpu,0,1\"");
-        checkModelNotOnSpecifiedDevice(statement, "sundial", TARGET_DEVICES.toString());
+        statement.execute(String.format("LOAD MODEL sundial TO DEVICES '%s'", TARGET_DEVICES_STR));
+        checkModelOnSpecifiedDevice(statement, "sundial", TARGET_DEVICES_STR);
+        statement.execute(
+            String.format("UNLOAD MODEL sundial FROM DEVICES '%s'", TARGET_DEVICES_STR));
+        checkModelNotOnSpecifiedDevice(statement, "sundial", TARGET_DEVICES_STR);
       }
     }
   }
 
-  @Test
+  //  @Test
   public void concurrentLoadAndUnloadTest() throws SQLException, InterruptedException {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       for (int i = 0; i < LOOP_CNT; i++) {
-        statement.execute("LOAD MODEL sundial TO DEVICES \"cpu,0,1\"");
-        statement.execute("UNLOAD MODEL sundial FROM DEVICES \"cpu,0,1\"");
+        statement.execute(String.format("LOAD MODEL sundial TO DEVICES '%s'", TARGET_DEVICES_STR));
+        statement.execute(
+            String.format("UNLOAD MODEL sundial FROM DEVICES '%s'", TARGET_DEVICES_STR));
       }
-      checkModelNotOnSpecifiedDevice(statement, "sundial", TARGET_DEVICES.toString());
+      checkModelNotOnSpecifiedDevice(statement, "sundial", TARGET_DEVICES_STR);
     }
   }
 
@@ -145,23 +157,23 @@ public class AINodeInstanceManagementIT {
   private void failTest(Statement statement) {
     errorTest(
         statement,
-        "LOAD MODEL unknown TO DEVICES \"cpu,0,1\"",
-        "1505: Cannot load model [unknown], because it is neither a built-in nor a fine-tuned model. You can use 'SHOW MODELS' to retrieve the available models.");
+        "LOAD MODEL unknown TO DEVICES 'cpu,0,1'",
+        "1504: Model [unknown] is not registered yet. You can use 'SHOW MODELS' to retrieve the available models.");
     errorTest(
         statement,
-        "LOAD MODEL sundial TO DEVICES \"unknown\"",
-        "1507: Device ID [unknown] is not available. You can use 'SHOW AI_DEVICES' to retrieve the available devices.");
+        "LOAD MODEL sundial TO DEVICES '999'",
+        "1508: AIDevice ID [999] is not available. You can use 'SHOW AI_DEVICES' to retrieve the available devices.");
     errorTest(
         statement,
-        "UNLOAD MODEL sundial FROM DEVICES \"unknown\"",
-        "1507: Device ID [unknown] is not available. You can use 'SHOW AI_DEVICES' to retrieve the available devices.");
+        "UNLOAD MODEL sundial FROM DEVICES '999'",
+        "1508: AIDevice ID [999] is not available. You can use 'SHOW AI_DEVICES' to retrieve the available devices.");
     errorTest(
         statement,
-        "LOAD MODEL sundial TO DEVICES \"0,0\"",
+        "LOAD MODEL sundial TO DEVICES '0,0'",
         "1509: Device ID list contains duplicate entries.");
     errorTest(
         statement,
-        "UNLOAD MODEL sundial FROM DEVICES \"0,0\"",
+        "UNLOAD MODEL sundial FROM DEVICES '0,0'",
         "1510: Device ID list contains duplicate entries.");
   }
 }

@@ -72,6 +72,7 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
       originReaderAndChunkMetadataList;
 
   public BatchedReadChunkAlignedSeriesCompactionExecutor(
+      String database,
       IDeviceID device,
       TsFileResource targetResource,
       LinkedList<Pair<TsFileSequenceReader, List<AbstractAlignedChunkMetadata>>>
@@ -80,7 +81,14 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
       CompactionTaskSummary summary,
       boolean ignoreAllNullRows)
       throws IOException {
-    super(device, targetResource, readerAndChunkMetadataList, writer, summary, ignoreAllNullRows);
+    super(
+        database,
+        device,
+        targetResource,
+        readerAndChunkMetadataList,
+        writer,
+        summary,
+        ignoreAllNullRows);
     this.originReaderAndChunkMetadataList = readerAndChunkMetadataList;
     this.batchColumnSelection =
         new AlignedSeriesBatchCompactionUtils.BatchColumnSelection(schemaList, batchSize);

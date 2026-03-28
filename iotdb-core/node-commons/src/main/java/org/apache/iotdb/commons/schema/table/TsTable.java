@@ -70,7 +70,6 @@ public class TsTable {
 
   private final Map<String, TsTableColumnSchema> columnSchemaMap = new LinkedHashMap<>();
   private final Map<String, Integer> tagColumnIndexMap = new HashMap<>();
-  private final Map<String, Integer> idColumnIndexMap = new HashMap<>();
 
   private final ReadWriteLock readWriteLock = new ReentrantReadWriteLock();
 
@@ -108,7 +107,7 @@ public class TsTable {
   public TsTable(TsTable origin) {
     this.tableName = origin.tableName;
     origin.columnSchemaMap.forEach((col, schema) -> this.columnSchemaMap.put(col, schema.copy()));
-    this.idColumnIndexMap.putAll(origin.idColumnIndexMap);
+    this.tagColumnIndexMap.putAll(origin.tagColumnIndexMap);
     this.props = origin.props == null ? null : new HashMap<>(origin.props);
     this.ttlValue = origin.ttlValue;
     this.tagNums = origin.tagNums;

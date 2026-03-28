@@ -23,17 +23,31 @@ import shutil
 import sys
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Dict, Tuple
+from typing import Any, Dict, Optional, Tuple, Type
 
-from huggingface_hub import snapshot_download
+from huggingface_hub import PyTorchModelHubMixin, snapshot_download
+from transformers import (
+    AutoConfig,
+    AutoModelForCausalLM,
+    AutoModelForNextSentencePrediction,
+    AutoModelForSeq2SeqLM,
+    AutoModelForSequenceClassification,
+    AutoModelForTimeSeriesPrediction,
+    AutoModelForTokenClassification,
+    PretrainedConfig,
+    PreTrainedModel,
+)
 
+from iotdb.ainode.core.config import AINodeDescriptor
 from iotdb.ainode.core.exception import InvalidModelUriException
 from iotdb.ainode.core.log import Logger
 from iotdb.ainode.core.model.model_constants import (
-    MODEL_CONFIG_FILE_IN_JSON,
-    MODEL_WEIGHTS_FILE_IN_SAFETENSORS,
+    CONFIG_JSON,
+    MODEL_SAFETENSORS,
+    ModelCategory,
     UriType,
 )
+from iotdb.ainode.core.model.model_info import ModelInfo
 
 logger = Logger()
 
@@ -69,11 +83,95 @@ def load_model_config_in_json(config_path: str) -> Dict:
         return json.load(f)
 
 
+def get_model_path(model_info: ModelInfo) -> str:
+    return os.path.join(
+        os.getcwd(),
+        AINodeDescriptor().get_config().get_ain_models_dir(),
+        model_info.category.value,
+        model_info.model_id,
+    )
+
+
+def get_model_and_config_by_native_code(
+    model_info: ModelInfo,
+) -> Tuple[
+    Optional[Type[PreTrainedModel | PyTorchModelHubMixin]], Optional[PretrainedConfig]
+]:
+    """
+    Return model_class and config_instance (optionally) from the model's native code.
+    """
+
+    # Try to get model str and config str.
+    config_str = None
+    if model_info.auto_map:
+        config_str = model_info.auto_map.get("AutoConfig", "")
+        model_str = model_info.auto_map.get("AutoModelForCausalLM", "")
+        if not config_str or not model_str:
+            return None, None
+    elif model_info.hub_mixin_cls:
+        model_str = model_info.hub_mixin_cls
+    else:
+        return None, None
+
+    model_path = get_model_path(model_info)
+
+    # Try to import model and config class.
+    config_class, config_instance = None, None
+    model_class = None
+    if model_info.category == ModelCategory.BUILTIN:
+        module_name = (
+            AINodeDescriptor().get_config().get_ain_models_builtin_dir()
+            + "."
+            + model_info.model_id
+        )
+        if config_str:
+            # For Transformer models
+            config_class = import_class_from_path(module_name, config_str)
+            config_instance = config_class.from_pretrained(model_path)
+        model_class = import_class_from_path(module_name, model_str)
+    else:
+        module_parent = str(Path(model_path).parent.absolute())
+        with temporary_sys_path(module_parent):
+            if config_str:
+                # For Transformer models
+                config_class = import_class_from_path(model_info.model_id, config_str)
+                config_instance = config_class.from_pretrained(model_path)
+            model_class = import_class_from_path(model_info.model_id, model_str)
+
+    return model_class, config_instance
+
+
+def get_model_and_config_by_auto_class(model_path: str) -> Tuple[type, Any]:
+    """Return model_class and config_instance from Huggingface Transformers's AutoClass."""
+    config_instance = AutoConfig.from_pretrained(model_path)
+
+    if type(config_instance) in AutoModelForTimeSeriesPrediction._model_mapping.keys():
+        model_class = AutoModelForTimeSeriesPrediction
+    elif (
+        type(config_instance)
+        in AutoModelForNextSentencePrediction._model_mapping.keys()
+    ):
+        model_class = AutoModelForNextSentencePrediction
+    elif type(config_instance) in AutoModelForSeq2SeqLM._model_mapping.keys():
+        model_class = AutoModelForSeq2SeqLM
+    elif (
+        type(config_instance)
+        in AutoModelForSequenceClassification._model_mapping.keys()
+    ):
+        model_class = AutoModelForSequenceClassification
+    elif type(config_instance) in AutoModelForTokenClassification._model_mapping.keys():
+        model_class = AutoModelForTokenClassification
+    else:
+        model_class = AutoModelForCausalLM
+
+    return model_class, config_instance
+
+
 def validate_model_files(model_dir: str) -> Tuple[str, str]:
     """Validate model files exist, return config and weights file paths"""
 
-    config_path = os.path.join(model_dir, MODEL_CONFIG_FILE_IN_JSON)
-    weights_path = os.path.join(model_dir, MODEL_WEIGHTS_FILE_IN_SAFETENSORS)
+    config_path = os.path.join(model_dir, CONFIG_JSON)
+    weights_path = os.path.join(model_dir, MODEL_SAFETENSORS)
 
     if not os.path.exists(config_path):
         raise InvalidModelUriException(
@@ -116,9 +214,9 @@ def _fetch_model_from_local(source_path: str, storage_path: str):
     if not source_dir.is_dir():
         raise InvalidModelUriException(f"Source path is not a directory: {source_path}")
     storage_dir = Path(storage_path)
-    for file in source_dir.iterdir():
-        if file.is_file():
-            shutil.copy2(file, storage_dir / file.name)
+    if storage_dir.exists():
+        shutil.rmtree(storage_dir)
+    shutil.copytree(source_dir, storage_dir)
 
 
 def _fetch_model_from_hf_repo(repo_id: str, storage_path: str):

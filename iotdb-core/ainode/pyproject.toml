@@ -79,7 +79,7 @@ exclude = [
 python = ">=3.11.0,<3.12.0"
 
 # ---- DL / HF stack ----
-torch = "^2.8.0,<2.9.0"
+torch = "^2.9.0,<2.10.0"
 torchmetrics = "^1.8.0"
 transformers = "==4.56.2"
 tokenizers = ">=0.22.0,<=0.23.0"
@@ -111,12 +111,13 @@ hf_xet = ">=1.1.9"
 
 # ---- Tooling ----
 pyinstaller = "6.16.0"
-black = "25.1.0"
+black = ">=26.3.1"
 isort = "6.0.1"
 setuptools = ">=75.3.0"
 joblib = ">=1.4.2"
 urllib3 = "2.6.3"
 jaxtyping = ">=0.2.24"
+rotary-embedding-torch = ">=0.8.0"
 
 [tool.poetry.scripts]
 ainode = "iotdb.ainode.core.script:main"

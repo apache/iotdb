@@ -39,6 +39,7 @@ import static org.apache.iotdb.SessionExample.printDataSet;
 public class TableModelSessionExample {
 
   private static final String LOCAL_URL = "127.0.0.1:6667";
+  private static final String SHOW_TABLES = "SHOW TABLES";
 
   public static void main(String[] args) {
 
@@ -63,7 +64,7 @@ public class TableModelSessionExample {
           "create table table2(region_id STRING TAG, plant_id STRING TAG, color STRING ATTRIBUTE, temperature FLOAT FIELD, speed DOUBLE FIELD) with (TTL=6600000)");
 
       // show tables from current database
-      try (SessionDataSet dataSet = session.executeQueryStatement("SHOW TABLES")) {
+      try (SessionDataSet dataSet = session.executeQueryStatement(SHOW_TABLES)) {
         System.out.println(dataSet.getColumnNames());
         while (dataSet.hasNext()) {
           System.out.println(dataSet.next());
@@ -140,7 +141,7 @@ public class TableModelSessionExample {
             .build()) {
 
       // show tables from current database
-      try (SessionDataSet dataSet = session.executeQueryStatement("SHOW TABLES")) {
+      try (SessionDataSet dataSet = session.executeQueryStatement(SHOW_TABLES)) {
         printDataSet(dataSet);
       }
 
@@ -149,7 +150,7 @@ public class TableModelSessionExample {
 
       // show tables by specifying another database
       // using SHOW tables FROM
-      try (SessionDataSet dataSet = session.executeQueryStatement("SHOW TABLES")) {
+      try (SessionDataSet dataSet = session.executeQueryStatement(SHOW_TABLES)) {
         printDataSet(dataSet);
       }
 

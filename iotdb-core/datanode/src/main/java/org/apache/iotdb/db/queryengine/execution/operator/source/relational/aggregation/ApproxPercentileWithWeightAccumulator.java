@@ -14,6 +14,8 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation;
 
+import org.apache.iotdb.db.exception.sql.SemanticException;
+
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.enums.TSDataType;
 
@@ -32,6 +34,12 @@ public class ApproxPercentileWithWeightAccumulator extends AbstractApproxPercent
 
     if (mask.isSelectAll()) {
       for (int i = 0; i < valueColumn.getPositionCount(); i++) {
+        if (weightColumn.isNull(i)) {
+          continue;
+        }
+        if (weightColumn.getInt(i) < 1) {
+          throw new SemanticException("weight must be >= 1, was " + weightColumn.getInt(i));
+        }
         if (!valueColumn.isNull(i)) {
           tDigest.add(valueColumn.getInt(i), weightColumn.getInt(i));
         }
@@ -41,6 +49,12 @@ public class ApproxPercentileWithWeightAccumulator extends AbstractApproxPercent
       int position;
       for (int i = 0; i < positionCount; i++) {
         position = selectedPositions[i];
+        if (weightColumn.isNull(position)) {
+          continue;
+        }
+        if (weightColumn.getInt(position) < 1) {
+          throw new SemanticException("weight must be >= 1, was " + weightColumn.getInt(position));
+        }
         if (!valueColumn.isNull(position)) {
           tDigest.add(valueColumn.getInt(position), weightColumn.getInt(position));
         }
@@ -57,6 +71,12 @@ public class ApproxPercentileWithWeightAccumulator extends AbstractApproxPercent
 
     if (mask.isSelectAll()) {
       for (int i = 0; i < valueColumn.getPositionCount(); i++) {
+        if (weightColumn.isNull(i)) {
+          continue;
+        }
+        if (weightColumn.getInt(i) < 1) {
+          throw new SemanticException("weight must be >= 1, was " + weightColumn.getInt(i));
+        }
         if (!valueColumn.isNull(i)) {
           tDigest.add(toDoubleExact(valueColumn.getLong(i)), weightColumn.getInt(i));
         }
@@ -66,6 +86,12 @@ public class ApproxPercentileWithWeightAccumulator extends AbstractApproxPercent
       int position;
       for (int i = 0; i < positionCount; i++) {
         position = selectedPositions[i];
+        if (weightColumn.isNull(position)) {
+          continue;
+        }
+        if (weightColumn.getInt(position) < 1) {
+          throw new SemanticException("weight must be >= 1, was " + weightColumn.getInt(position));
+        }
         if (!valueColumn.isNull(position)) {
           tDigest.add(toDoubleExact(valueColumn.getLong(position)), weightColumn.getInt(position));
         }
@@ -82,6 +108,12 @@ public class ApproxPercentileWithWeightAccumulator extends AbstractApproxPercent
 
     if (mask.isSelectAll()) {
       for (int i = 0; i < valueColumn.getPositionCount(); i++) {
+        if (weightColumn.isNull(i)) {
+          continue;
+        }
+        if (weightColumn.getInt(i) < 1) {
+          throw new SemanticException("weight must be >= 1, was " + weightColumn.getInt(i));
+        }
         if (!valueColumn.isNull(i)) {
           tDigest.add(valueColumn.getFloat(i), weightColumn.getInt(i));
         }
@@ -91,6 +123,12 @@ public class ApproxPercentileWithWeightAccumulator extends AbstractApproxPercent
       int position;
       for (int i = 0; i < positionCount; i++) {
         position = selectedPositions[i];
+        if (weightColumn.isNull(position)) {
+          continue;
+        }
+        if (weightColumn.getInt(position) < 1) {
+          throw new SemanticException("weight must be >= 1, was " + weightColumn.getInt(position));
+        }
         if (!valueColumn.isNull(position)) {
           tDigest.add(valueColumn.getFloat(position), weightColumn.getInt(position));
         }
@@ -107,6 +145,12 @@ public class ApproxPercentileWithWeightAccumulator extends AbstractApproxPercent
 
     if (mask.isSelectAll()) {
       for (int i = 0; i < valueColumn.getPositionCount(); i++) {
+        if (weightColumn.isNull(i)) {
+          continue;
+        }
+        if (weightColumn.getInt(i) < 1) {
+          throw new SemanticException("weight must be >= 1, was " + weightColumn.getInt(i));
+        }
         if (!valueColumn.isNull(i)) {
           tDigest.add(valueColumn.getDouble(i), weightColumn.getInt(i));
         }
@@ -116,6 +160,12 @@ public class ApproxPercentileWithWeightAccumulator extends AbstractApproxPercent
       int position;
       for (int i = 0; i < positionCount; i++) {
         position = selectedPositions[i];
+        if (weightColumn.isNull(position)) {
+          continue;
+        }
+        if (weightColumn.getInt(position) < 1) {
+          throw new SemanticException("weight must be >= 1, was " + weightColumn.getInt(position));
+        }
         if (!valueColumn.isNull(position)) {
           tDigest.add(valueColumn.getDouble(position), weightColumn.getInt(position));
         }

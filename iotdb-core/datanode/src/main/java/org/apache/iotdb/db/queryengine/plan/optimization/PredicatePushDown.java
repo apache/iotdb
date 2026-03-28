@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.optimization;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
@@ -29,6 +30,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer;
 import org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils;
 import org.apache.iotdb.db.queryengine.plan.analyze.TemplatedInfo;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
+import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
@@ -43,6 +45,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.LeftO
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesScanSourceNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.ShowDiskUsageNode;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
@@ -52,7 +55,9 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
@@ -62,7 +67,11 @@ public class PredicatePushDown implements PlanOptimizer {
 
   @Override
   public PlanNode optimize(PlanNode plan, Analysis analysis, MPPQueryContext context) {
-    if (analysis.getTreeStatement().getType() != StatementType.QUERY) {
+    StatementType statementType = analysis.getTreeStatement().getType();
+    if (statementType == StatementType.SHOW_DISK_USAGE) {
+      return plan.accept(new Rewriter(), new RewriterContext(analysis, context, false));
+    }
+    if (statementType != StatementType.QUERY) {
       return plan;
     }
     QueryStatement queryStatement = analysis.getQueryStatement();
@@ -338,6 +347,53 @@ public class PredicatePushDown implements PlanOptimizer {
         return planFilter(
             node, PredicateUtils.combineConjuncts(cannotPushDownConjuncts), context, true);
       }
+    }
+
+    @Override
+    public PlanNode visitShowDiskUsage(ShowDiskUsageNode node, RewriterContext context) {
+      if (context.hasNotInheritedPredicate()) {
+        return node;
+      }
+      Expression inheritedPredicate = context.getInheritedPredicate();
+
+      List<Expression> conjuncts = PredicateUtils.extractConjuncts(inheritedPredicate);
+      List<Expression> canPushDownConjuncts = new ArrayList<>();
+      List<Expression> cannotPushDownConjuncts = new ArrayList<>();
+      for (Expression conjunct : conjuncts) {
+
+        if (PredicateUtils.predicateCanPushDownToSource(conjunct)
+            && !extractSymbolsFromExpression(conjunct)
+                .contains(ColumnHeaderConstant.SIZE_IN_BYTES)) {
+          canPushDownConjuncts.add(conjunct);
+        } else {
+          cannotPushDownConjuncts.add(conjunct);
+        }
+      }
+
+      if (canPushDownConjuncts.isEmpty()) {
+        // cannot push down
+        return node;
+      }
+
+      node.setPushDownPredicate(PredicateUtils.combineConjuncts(canPushDownConjuncts));
+      context.setEnablePushDown(true);
+
+      if (cannotPushDownConjuncts.isEmpty()) {
+        // all conjuncts can be push down
+        PlanNode resultNode = planTransform(node, context);
+        resultNode = planProject(resultNode, context);
+        return resultNode;
+      } else {
+        return planFilter(
+            node, PredicateUtils.combineConjuncts(cannotPushDownConjuncts), context, true);
+      }
+    }
+
+    private Set<String> extractSymbolsFromExpression(Expression expression) {
+      List<Expression> sourceExpressions = ExpressionAnalyzer.searchSourceExpressions(expression);
+      return sourceExpressions.stream()
+          .map(e -> ((TimeSeriesOperand) e).getPath().toString())
+          .collect(Collectors.toSet());
     }
 
     private PlanNode planTransform(PlanNode resultNode, RewriterContext context) {

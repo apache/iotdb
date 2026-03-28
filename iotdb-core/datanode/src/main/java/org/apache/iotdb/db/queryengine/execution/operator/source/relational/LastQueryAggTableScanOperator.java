@@ -136,7 +136,6 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
   public TsBlock next() throws Exception {
     long maxRuntime = operatorContext.getMaxRunTime().roundTo(TimeUnit.NANOSECONDS);
     long start = System.nanoTime();
-
     if (retainedTsBlock != null) {
       return getResultFromRetainedTsBlock();
     }
@@ -156,7 +155,7 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
   }
 
   /** Main process logic, calc the last aggregation results of current device. */
-  private void processCurrentDevice() {
+  private void processCurrentDevice() throws Exception {
     if (currentHitCacheIndex < hitCachesIndexes.size()
         && outputDeviceIndex == hitCachesIndexes.get(currentHitCacheIndex)) {
       currentDeviceEntry = cachedDeviceEntries.get(currentHitCacheIndex);

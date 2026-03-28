@@ -37,7 +37,6 @@ import org.apache.iotdb.commons.pipe.agent.task.PipeTaskAgent;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
-import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeType;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
@@ -46,7 +45,6 @@ import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.consensus.exception.ConsensusException;
-import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeName;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
@@ -75,7 +73,6 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import com.google.common.collect.ImmutableMap;
 import org.apache.thrift.TException;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
@@ -102,7 +99,6 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_END_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_HISTORY_ENABLE_DEFAULT_VALUE;
@@ -588,7 +584,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     }
   }
 
-  public boolean isFullSync(final PipeParameters parameters) {
+  public boolean isFullSync(final PipeParameters parameters) throws IllegalPathException {
     if (isSnapshotMode(parameters)) {
       return false;
     }
@@ -602,7 +598,10 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
             Arrays.asList(EXTRACTOR_REALTIME_ENABLE_KEY, SOURCE_REALTIME_ENABLE_KEY),
             EXTRACTOR_REALTIME_ENABLE_DEFAULT_VALUE);
 
-    return isHistoryEnable && isRealtimeEnable;
+    return isHistoryEnable
+        && isRealtimeEnable
+        && DataRegionListeningFilter.parseInsertionDeletionListeningOptionPair(parameters)
+            .getLeft();
   }
 
   @Override
@@ -668,23 +667,6 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
           .getConsensusGroupId2TaskMetaMap()
           .get(consensusGroupId)
           .getProgressIndex();
-    } finally {
-      releaseReadLock();
-    }
-  }
-
-  public Map<ConsensusPipeName, PipeStatus> getAllConsensusPipe() {
-    if (!tryReadLockWithTimeOut(10)) {
-      throw new PipeException("Failed to get all consensus pipe.");
-    }
-
-    try {
-      return StreamSupport.stream(pipeMetaKeeper.getPipeMetaList().spliterator(), false)
-          .filter(pipeMeta -> PipeType.CONSENSUS.equals(pipeMeta.getStaticMeta().getPipeType()))
-          .collect(
-              ImmutableMap.toImmutableMap(
-                  pipeMeta -> new ConsensusPipeName(pipeMeta.getStaticMeta().getPipeName()),
-                  pipeMeta -> pipeMeta.getRuntimeMeta().getStatus().get()));
     } finally {
       releaseReadLock();
     }

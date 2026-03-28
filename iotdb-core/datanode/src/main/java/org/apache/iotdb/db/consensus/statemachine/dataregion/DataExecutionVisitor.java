@@ -96,21 +96,21 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
   }
 
   @Override
-  public TSStatus visitInsertTablet(InsertTabletNode node, DataRegion dataRegion) {
+  public TSStatus visitInsertTablet(final InsertTabletNode node, final DataRegion dataRegion) {
     try {
       dataRegion.insertTablet(node);
       dataRegion.insertSeparatorToWAL();
       return StatusUtils.OK;
-    } catch (OutOfTTLException e) {
-      LOGGER.warn("Error in executing plan node: {}, caused by {}", node, e.getMessage());
+    } catch (final OutOfTTLException e) {
+      LOGGER.debug("Error in executing plan node: {}, caused by {}", node, e.getMessage());
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
-    } catch (WriteProcessRejectException e) {
+    } catch (final WriteProcessRejectException e) {
       LOGGER.warn("Reject in executing plan node: {}, caused by {}", node, e.getMessage());
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
-    } catch (WriteProcessException e) {
+    } catch (final WriteProcessException e) {
       LOGGER.error("Error in executing plan node: {}", node, e);
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
-    } catch (BatchProcessException e) {
+    } catch (final BatchProcessException e) {
       LOGGER.warn(
           "Batch failure in executing a InsertTabletNode. device: {}, startTime: {}, measurements: {}, failing status: {}",
           node.getTargetPath(),
@@ -119,7 +119,7 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
           e.getFailingStatus());
       // For each error
       TSStatus firstStatus = null;
-      for (TSStatus status : e.getFailingStatus()) {
+      for (final TSStatus status : e.getFailingStatus()) {
         if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           firstStatus = status;
         }

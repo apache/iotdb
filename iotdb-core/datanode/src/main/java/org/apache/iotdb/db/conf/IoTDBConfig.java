@@ -398,6 +398,24 @@ public class IoTDBConfig {
   /** The interval to check whether unsequence memtables need flushing. Unit: ms */
   private long unseqMemtableFlushCheckInterval = 30 * 1000L;
 
+  /**
+   * Whether to enable delay analyzer for tracking data arrival delays and calculating safe
+   * watermark
+   */
+  private boolean enableDelayAnalyzer = false;
+
+  /** Default window size for delay analyzer, empirical value: 10000 sample points */
+  private int delayAnalyzerWindowSize = 10000;
+
+  /** Minimum window size for delay analyzer validation */
+  private int delayAnalyzerMinWindowSize = 1000;
+
+  /** Maximum window size for delay analyzer validation */
+  private int delayAnalyzerMaxWindowSize = 100000;
+
+  /** Default confidence level for delay analyzer: 99% */
+  private double delayAnalyzerConfidenceLevel = 0.99;
+
   /** The sort algorithm used in TVList */
   private TVListSortAlgorithm tvListSortAlgorithm = TVListSortAlgorithm.TIM;
 
@@ -1218,6 +1236,13 @@ public class IoTDBConfig {
           Collections.singletonMap("root.__audit", new EncryptParameter("UNENCRYPTED", null)));
 
   private long maxObjectSizeInByte = 4 * 1024 * 1024 * 1024L;
+
+  private int maxSubTaskNumForInformationTableScan = 4;
+
+  /* Need use these parameters when repair data partition table */
+  private int partitionTableRecoverWorkerNum = 10;
+  // Rate limit set to 10 MB/s
+  private int partitionTableRecoverMaxReadMBsPerSecond = 10;
 
   IoTDBConfig() {}
 
@@ -2216,6 +2241,46 @@ public class IoTDBConfig {
 
   public void setUnseqMemtableFlushCheckInterval(long unseqMemtableFlushCheckInterval) {
     this.unseqMemtableFlushCheckInterval = unseqMemtableFlushCheckInterval;
+  }
+
+  public boolean isEnableDelayAnalyzer() {
+    return enableDelayAnalyzer;
+  }
+
+  public void setEnableDelayAnalyzer(boolean enableDelayAnalyzer) {
+    this.enableDelayAnalyzer = enableDelayAnalyzer;
+  }
+
+  public int getDelayAnalyzerWindowSize() {
+    return delayAnalyzerWindowSize;
+  }
+
+  public void setDelayAnalyzerWindowSize(int delayAnalyzerWindowSize) {
+    this.delayAnalyzerWindowSize = delayAnalyzerWindowSize;
+  }
+
+  public int getDelayAnalyzerMinWindowSize() {
+    return delayAnalyzerMinWindowSize;
+  }
+
+  public void setDelayAnalyzerMinWindowSize(int delayAnalyzerMinWindowSize) {
+    this.delayAnalyzerMinWindowSize = delayAnalyzerMinWindowSize;
+  }
+
+  public int getDelayAnalyzerMaxWindowSize() {
+    return delayAnalyzerMaxWindowSize;
+  }
+
+  public void setDelayAnalyzerMaxWindowSize(int delayAnalyzerMaxWindowSize) {
+    this.delayAnalyzerMaxWindowSize = delayAnalyzerMaxWindowSize;
+  }
+
+  public double getDelayAnalyzerConfidenceLevel() {
+    return delayAnalyzerConfidenceLevel;
+  }
+
+  public void setDelayAnalyzerConfidenceLevel(double delayAnalyzerConfidenceLevel) {
+    this.delayAnalyzerConfidenceLevel = delayAnalyzerConfidenceLevel;
   }
 
   public TVListSortAlgorithm getTvListSortAlgorithm() {
@@ -4366,5 +4431,30 @@ public class IoTDBConfig {
 
   public void setMaxObjectSizeInByte(long maxObjectSizeInByte) {
     this.maxObjectSizeInByte = maxObjectSizeInByte;
+  }
+
+  public int getMaxSubTaskNumForInformationTableScan() {
+    return maxSubTaskNumForInformationTableScan;
+  }
+
+  public void setMaxSubTaskNumForInformationTableScan(int maxSubTaskNumForInformationTableScan) {
+    this.maxSubTaskNumForInformationTableScan = maxSubTaskNumForInformationTableScan;
+  }
+
+  public int getPartitionTableRecoverWorkerNum() {
+    return partitionTableRecoverWorkerNum;
+  }
+
+  public void setPartitionTableRecoverWorkerNum(int partitionTableRecoverWorkerNum) {
+    this.partitionTableRecoverWorkerNum = partitionTableRecoverWorkerNum;
+  }
+
+  public int getPartitionTableRecoverMaxReadMBsPerSecond() {
+    return partitionTableRecoverMaxReadMBsPerSecond;
+  }
+
+  public void setPartitionTableRecoverMaxReadMBsPerSecond(
+      int partitionTableRecoverMaxReadMBsPerSecond) {
+    this.partitionTableRecoverMaxReadMBsPerSecond = partitionTableRecoverMaxReadMBsPerSecond;
   }
 }

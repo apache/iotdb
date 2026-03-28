@@ -679,7 +679,6 @@ showQueriesStatement
         limitOffsetClause
     ;
 
-
 killQueryStatement
     : KILL (QUERY queryId=string | ALL QUERIES)
     ;
@@ -912,8 +911,8 @@ deallocateStatement
 // ------------------------------------------- Query Statement ---------------------------------------------------------
 queryStatement
     : query                                                        #statementDefault
-    | EXPLAIN query                                                #explain
-    | EXPLAIN ANALYZE VERBOSE? query                               #explainAnalyze
+    | EXPLAIN (query | executeStatement | executeImmediateStatement) #explain
+    | EXPLAIN ANALYZE VERBOSE? (query | executeStatement | executeImmediateStatement) #explainAnalyze
     ;
 
 query

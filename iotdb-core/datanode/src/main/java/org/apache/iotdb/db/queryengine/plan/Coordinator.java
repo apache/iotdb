@@ -35,6 +35,7 @@ import org.apache.iotdb.commons.memory.MemoryBlockType;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.query.QueryTimeoutRuntimeException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.PreparedStatementInfo;
@@ -86,6 +87,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropModel;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Execute;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExecuteImmediate;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Explain;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExplainAnalyze;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExtendRegion;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Flush;
@@ -440,7 +443,8 @@ public class Coordinator {
       ExplainType explainType,
       long timeOut,
       boolean userQuery,
-      boolean debug) {
+      boolean debug,
+      boolean isVerbose) {
     return execution(
         queryId,
         session,
@@ -451,6 +455,7 @@ public class Coordinator {
           queryContext.setInnerTriggeredQuery(true);
           queryContext.setCteQueries(cteQueries);
           queryContext.setExplainType(explainType);
+          queryContext.setVerbose(isVerbose);
           return createQueryExecutionForTableModel(
               statement,
               sqlParser,
@@ -687,38 +692,58 @@ public class Coordinator {
     List<Expression> parameters = Collections.emptyList();
     Map<NodeRef<Parameter>, Expression> parameterLookup = Collections.emptyMap();
 
-    if (statement instanceof Execute) {
-      Execute executeStatement = (Execute) statement;
+    // Unwrap Explain/ExplainAnalyze to check for inner Execute/ExecuteImmediate
+    org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement innerStatement = statement;
+    if (statement instanceof Explain) {
+      innerStatement = ((Explain) statement).getStatement();
+    } else if (statement instanceof ExplainAnalyze) {
+      innerStatement = ((ExplainAnalyze) statement).getStatement();
+    }
+
+    if (innerStatement instanceof Execute) {
+      Execute executeStatement = (Execute) innerStatement;
       String statementName = executeStatement.getStatementName().getValue();
 
-      // Get prepared statement from session (contains cached AST)
       PreparedStatementInfo preparedInfo = clientSession.getPreparedStatement(statementName);
       if (preparedInfo == null) {
         throw new SemanticException(
             String.format("Prepared statement '%s' does not exist", statementName));
       }
 
-      // Use cached AST
-      statementToUse = preparedInfo.getSql();
-
-      // Bind parameters: create parameterLookup map
-      // Note: bindParameters() internally validates parameter count
+      org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement resolvedSql =
+          preparedInfo.getSql();
       parameterLookup =
-          ParameterExtractor.bindParameters(statementToUse, executeStatement.getParameters());
+          ParameterExtractor.bindParameters(resolvedSql, executeStatement.getParameters());
       parameters = new ArrayList<>(executeStatement.getParameters());
 
-    } else if (statement instanceof ExecuteImmediate) {
-      ExecuteImmediate executeImmediateStatement = (ExecuteImmediate) statement;
+      if (statement instanceof Explain) {
+        statementToUse = new Explain(resolvedSql);
+      } else if (statement instanceof ExplainAnalyze) {
+        statementToUse = new ExplainAnalyze(resolvedSql, ((ExplainAnalyze) statement).isVerbose());
+      } else {
+        statementToUse = resolvedSql;
+      }
 
-      // EXECUTE IMMEDIATE needs to parse SQL first
+    } else if (innerStatement instanceof ExecuteImmediate) {
+      ExecuteImmediate executeImmediateStatement = (ExecuteImmediate) innerStatement;
+
       String sql = executeImmediateStatement.getSqlString();
       List<Literal> literalParameters = executeImmediateStatement.getParameters();
 
-      statementToUse = sqlParser.createStatement(sql, clientSession.getZoneId(), clientSession);
+      org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement resolvedSql =
+          sqlParser.createStatement(sql, clientSession.getZoneId(), clientSession);
 
       if (!literalParameters.isEmpty()) {
-        parameterLookup = ParameterExtractor.bindParameters(statementToUse, literalParameters);
+        parameterLookup = ParameterExtractor.bindParameters(resolvedSql, literalParameters);
         parameters = new ArrayList<>(literalParameters);
+      }
+
+      if (statement instanceof Explain) {
+        statementToUse = new Explain(resolvedSql);
+      } else if (statement instanceof ExplainAnalyze) {
+        statementToUse = new ExplainAnalyze(resolvedSql, ((ExplainAnalyze) statement).isVerbose());
+      } else {
+        statementToUse = resolvedSql;
       }
     }
 
@@ -781,7 +806,7 @@ public class Coordinator {
   }
 
   public void cleanupQueryExecution(Long queryId, Supplier<String> contentSupplier, Throwable t) {
-    IQueryExecution queryExecution = getQueryExecution(queryId);
+    IQueryExecution queryExecution = queryExecutionMap.remove(queryId);
     if (queryExecution != null) {
       cleanupQueryExecutionInternal(queryId, queryExecution, contentSupplier, t);
     }
@@ -789,7 +814,7 @@ public class Coordinator {
 
   public void cleanupQueryExecution(
       Long queryId, org.apache.thrift.TBase<?, ?> nativeApiRequest, Throwable t) {
-    IQueryExecution queryExecution = getQueryExecution(queryId);
+    IQueryExecution queryExecution = queryExecutionMap.remove(queryId);
     if (queryExecution != null) {
       Supplier<String> contentSupplier =
           new ContentOfQuerySupplier(nativeApiRequest, queryExecution);
@@ -872,6 +897,35 @@ public class Coordinator {
         SAMPLED_QUERIES_LOGGER.info(queryRequest);
       }
     }
+  }
+
+  /**
+   * We need to reclaim resources from queries that have exceeded their timeout by more than one
+   * minute. This indicates that the associated clients have failed to perform proper resource
+   * cleanup.
+   */
+  public void cleanUpStaleQueries() {
+    long currentTime = System.currentTimeMillis();
+    queryExecutionMap.forEach(
+        (queryId, queryExecution) -> {
+          if (queryExecution.isActive()) {
+            return;
+          }
+          long timeout = queryExecution.getTimeout();
+          long queryStartTime = queryExecution.getStartExecutionTime();
+          long executeTime = currentTime - queryStartTime;
+          if (timeout > 0 && executeTime - 60_000L > timeout) {
+            LOGGER.warn(
+                "Cleaning up stale query with id {}, which has been running for {} ms, timeout duration is: {}ms",
+                queryId,
+                executeTime,
+                timeout);
+            cleanupQueryExecution(
+                queryId,
+                (org.apache.thrift.TBase<?, ?>) null,
+                new QueryTimeoutRuntimeException(queryStartTime, currentTime, timeout));
+          }
+        });
   }
 
   public void cleanupQueryExecution(Long queryId) {
