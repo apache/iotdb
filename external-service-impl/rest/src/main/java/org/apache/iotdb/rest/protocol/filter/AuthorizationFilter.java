@@ -39,6 +39,7 @@ import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.ext.Provider;
 
 import java.io.IOException;
+import java.time.DateTimeException;
 import java.time.ZoneId;
 import java.util.Base64;
 import java.util.UUID;
@@ -88,6 +89,12 @@ public class AuthorizationFilter implements ContainerRequestFilter, ContainerRes
     if (user == null) {
       return;
     }
+
+    ZoneId zoneId = parseTimeZone(containerRequestContext);
+    if (zoneId == null) {
+      return;
+    }
+
     String sessionid = UUID.randomUUID().toString();
     if (SESSION_MANAGER.getCurrSession() == null) {
       RestClientSession restClientSession = new RestClientSession(sessionid);
@@ -97,7 +104,7 @@ public class AuthorizationFilter implements ContainerRequestFilter, ContainerRes
           SESSION_MANAGER.getCurrSession(),
           user.getUserId(),
           user.getUsername(),
-          ZoneId.systemDefault(),
+          zoneId,
           IoTDBConstant.ClientVersion.V_1_0);
     }
     BasicSecurityContext basicSecurityContext =
@@ -145,6 +152,33 @@ public class AuthorizationFilter implements ContainerRequestFilter, ContainerRes
       return null;
     }
     return user;
+  }
+
+  /**
+   * Parses the X-TimeZone header from the request.
+   *
+   * @param requestContext the incoming HTTP request
+   * @return the parsed ZoneId, or {@code null} if the header is invalid (the request is aborted)
+   */
+  private ZoneId parseTimeZone(ContainerRequestContext requestContext) {
+    String timeZoneHeader = requestContext.getHeaderString("X-TimeZone");
+    if (timeZoneHeader == null || timeZoneHeader.isEmpty()) {
+      return ZoneId.systemDefault();
+    }
+    try {
+      return ZoneId.of(timeZoneHeader);
+    } catch (DateTimeException e) {
+      Response resp =
+          Response.status(Status.BAD_REQUEST)
+              .type(MediaType.APPLICATION_JSON)
+              .entity(
+                  new ExecutionStatus()
+                      .code(TSStatusCode.ILLEGAL_PARAMETER.getStatusCode())
+                      .message("Invalid time zone: " + timeZoneHeader))
+              .build();
+      requestContext.abortWith(resp);
+      return null;
+    }
   }
 
   @Override

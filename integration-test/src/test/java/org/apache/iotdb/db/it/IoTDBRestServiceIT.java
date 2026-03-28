@@ -26,6 +26,7 @@ import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.itbase.category.RemoteIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.JsonObject;
@@ -52,6 +53,8 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
@@ -2353,5 +2356,131 @@ public class IoTDBRestServiceIT {
         fail(e.getMessage());
       }
     }
+  }
+
+  @Test
+  public void testQueryWithValidTimeZoneHeaderV2() {
+    CloseableHttpClient httpClient = HttpClientBuilder.create().build();
+    try {
+      HttpPost insertPost = getHttpPost("http://127.0.0.1:" + port + "/rest/v2/insertTablet");
+      String insertJson =
+          "{\"timestamps\":[1774713387626],\"measurements\":[\"s3\"],\"data_types\":[\"INT32\"],\"values\":[[11]],\"is_aligned\":false,\"device\":\"root.sg25\"}";
+      insertPost.setEntity(new StringEntity(insertJson, Charset.defaultCharset()));
+      try (CloseableHttpResponse resp = executeWithRetry(insertPost, httpClient)) {
+        assertEquals(200, resp.getStatusLine().getStatusCode());
+      }
+      HttpPost httpPost = getHttpPost("http://127.0.0.1:" + port + "/rest/v2/query");
+      httpPost.setHeader("X-TimeZone", "Europe/Warsaw");
+      String sql =
+          "{\"sql\":\"SELECT count(s3) FROM root.sg25 GROUP BY ([2026-03-28T00:00:00, 2026-03-29T00:00:00), 1d)\"}";
+      httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
+      CloseableHttpResponse response = httpClient.execute(httpPost);
+      assertEquals(200, response.getStatusLine().getStatusCode());
+      String message = EntityUtils.toString(response.getEntity(), "utf-8");
+      JsonObject result = JsonParser.parseString(message).getAsJsonObject();
+      assertTrue(result.has("timestamps"));
+      assertTrue(result.getAsJsonArray("timestamps").size() > 0);
+      long expectedTimestamp =
+          ZonedDateTime.of(2026, 3, 28, 0, 0, 0, 0, ZoneId.of("Europe/Warsaw"))
+              .toInstant()
+              .toEpochMilli();
+      assertEquals(expectedTimestamp, result.getAsJsonArray("timestamps").get(0).getAsLong());
+    } catch (IOException e) {
+      fail(e.getMessage());
+    } finally {
+      try {
+        httpClient.close();
+      } catch (IOException e) {
+      }
+    }
+  }
+
+  @Test
+  public void testNonQueryWithValidTimeZoneHeaderV2() throws Exception {
+    CloseableHttpClient httpClient = HttpClientBuilder.create().build();
+    try {
+      nonQueryWithTimeZone(
+          httpClient,
+          "{\"sql\":\"CREATE TIMESERIES root.sg.d1.s1 WITH DATATYPE=INT32\"}",
+          "Europe/Warsaw");
+      nonQueryWithTimeZone(
+          httpClient,
+          "{\"sql\":\"INSERT INTO root.sg.d1(time, s1) VALUES (2026-03-28T00:00:00, 123)\"}",
+          "Europe/Warsaw");
+
+      HttpPost queryPost = getHttpPost("http://127.0.0.1:" + port + "/rest/v2/query");
+      queryPost.setEntity(
+          new StringEntity("{\"sql\":\"SELECT s1 FROM root.sg.d1\"}", StandardCharsets.UTF_8));
+      try (CloseableHttpResponse resp = httpClient.execute(queryPost)) {
+        String message = EntityUtils.toString(resp.getEntity(), StandardCharsets.UTF_8);
+        JsonObject result = JsonParser.parseString(message).getAsJsonObject();
+        long expected =
+            ZonedDateTime.of(2026, 3, 28, 0, 0, 0, 0, ZoneId.of("Europe/Warsaw"))
+                .toInstant()
+                .toEpochMilli();
+        assertEquals(expected, result.getAsJsonArray("timestamps").get(0).getAsLong());
+      }
+    } finally {
+      try {
+        httpClient.close();
+      } catch (IOException e) {
+      }
+    }
+  }
+
+  @Test
+  public void testQueryWithInvalidTimeZoneHeaderV2() {
+    CloseableHttpClient httpClient = HttpClientBuilder.create().build();
+    try {
+      HttpPost httpPost = getHttpPost("http://127.0.0.1:" + port + "/rest/v2/query");
+      httpPost.setHeader("X-TimeZone", "Invalid/Zone");
+      String sql = "{\"sql\":\"SELECT s3 FROM root.sg25\"}";
+      httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
+      CloseableHttpResponse response = executeWithRetry(httpPost, httpClient);
+      assertEquals(400, response.getStatusLine().getStatusCode());
+      String message = EntityUtils.toString(response.getEntity(), "utf-8");
+      JsonObject result = JsonParser.parseString(message).getAsJsonObject();
+      assertEquals(TSStatusCode.ILLEGAL_PARAMETER.getStatusCode(), result.get("code").getAsInt());
+      assertTrue(result.get("message").getAsString().contains("Invalid time zone"));
+    } catch (IOException e) {
+      fail(e.getMessage());
+    } finally {
+      try {
+        httpClient.close();
+      } catch (IOException e) {
+      }
+    }
+  }
+
+  private void nonQueryWithTimeZone(CloseableHttpClient httpClient, String json, String timeZone) {
+    HttpPost httpPost = getHttpPost("http://127.0.0.1:" + port + "/rest/v2/nonQuery");
+    httpPost.setHeader("X-TimeZone", timeZone);
+    httpPost.setEntity(new StringEntity(json, StandardCharsets.UTF_8));
+    try (CloseableHttpResponse response = executeWithRetry(httpPost, httpClient)) {
+      String message = EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
+      JsonObject result = JsonParser.parseString(message).getAsJsonObject();
+      assertEquals(200, result.get("code").getAsInt());
+    } catch (IOException e) {
+      fail(e.getMessage());
+    }
+  }
+
+  private CloseableHttpResponse executeWithRetry(HttpPost httpPost, CloseableHttpClient httpClient)
+      throws IOException {
+    CloseableHttpResponse response = null;
+    for (int i = 0; i < 30; i++) {
+      try {
+        response = httpClient.execute(httpPost);
+        break;
+      } catch (Exception e) {
+        if (i == 29) throw e;
+        try {
+          Thread.sleep(1000);
+        } catch (InterruptedException ex) {
+          throw new RuntimeException(ex);
+        }
+      }
+    }
+    return response;
   }
 }
