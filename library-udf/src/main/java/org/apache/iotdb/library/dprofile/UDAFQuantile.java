@@ -86,38 +86,26 @@ public class UDAFQuantile implements UDTF {
       case DOUBLE:
         collector.putDouble(0, res);
         break;
-      case TIMESTAMP:
-      case DATE:
-      case TEXT:
-      case STRING:
-      case BLOB:
-      case BOOLEAN:
       default:
         break;
     }
   }
 
-  private long dataToLong(Object data) {
-    long result;
+  private long dataToLong(double res) {
     switch (dataType) {
       case INT32:
-        return (int) data;
+        return (int) res;
       case FLOAT:
-        result = Float.floatToIntBits((float) data);
-        return (float) data >= 0f ? result : result ^ Long.MAX_VALUE;
+        float f = (float) res;
+        long flBits = Float.floatToIntBits(f);
+        return f >= 0f ? flBits : flBits ^ Long.MAX_VALUE;
       case INT64:
-        return (long) data;
+        return (long) res;
       case DOUBLE:
-        result = Double.doubleToLongBits((double) data);
-        return (double) data >= 0d ? result : result ^ Long.MAX_VALUE;
-      case BLOB:
-      case BOOLEAN:
-      case STRING:
-      case TEXT:
-      case DATE:
-      case TIMESTAMP:
+        long d = Double.doubleToLongBits(res);
+        return res >= 0d ? d : d ^ Long.MAX_VALUE;
       default:
-        return (long) data;
+        return (long) res;
     }
   }
 
@@ -131,12 +119,6 @@ public class UDAFQuantile implements UDTF {
         return Double.longBitsToDouble(result);
       case INT64:
       case INT32:
-      case DATE:
-      case TEXT:
-      case STRING:
-      case BOOLEAN:
-      case BLOB:
-      case TIMESTAMP:
       default:
         return (result);
     }
