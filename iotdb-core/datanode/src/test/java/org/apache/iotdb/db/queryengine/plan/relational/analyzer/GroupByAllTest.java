@@ -156,6 +156,64 @@ public class GroupByAllTest {
         aggNode != null && !aggNode.getGroupingKeys().isEmpty());
   }
 
+  // ---- mixed aggregate and non-aggregate sub-expressions ----
+
+  @Test
+  public void groupByAllMixedExpressionTest() {
+    // SELECT s1 + avg(s2) FROM table1 GROUP BY ALL
+    // should be equivalent to GROUP BY s1
+    PlanTester planTester = new PlanTester();
+    LogicalQueryPlan plan =
+        planTester.createPlan("SELECT s1 + avg(s2) FROM table1 GROUP BY ALL");
+
+    PlanNode root = plan.getRootNode();
+    AggregationNode aggNode = findNode(root, AggregationNode.class);
+    assertTrue(
+        "Expected AggregationNode with s1 as grouping key for s1 + avg(s2)",
+        aggNode != null
+            && aggNode.getGroupingKeys().stream()
+                .anyMatch(s -> s.getName().equals("s1")));
+  }
+
+  @Test
+  public void groupByAllMixedExpressionMultipleColumnsTest() {
+    // SELECT s1 + s3 + avg(s2) FROM table1 GROUP BY ALL
+    // should be equivalent to GROUP BY s1, s3
+    PlanTester planTester = new PlanTester();
+    LogicalQueryPlan plan =
+        planTester.createPlan("SELECT s1 + s3 + avg(s2) FROM table1 GROUP BY ALL");
+
+    PlanNode root = plan.getRootNode();
+    AggregationNode aggNode = findNode(root, AggregationNode.class);
+    assertTrue(
+        "Expected AggregationNode with s1 and s3 as grouping keys",
+        aggNode != null
+            && aggNode.getGroupingKeys().size() >= 2
+            && aggNode.getGroupingKeys().stream()
+                .map(s -> s.getName())
+                .collect(java.util.stream.Collectors.toSet())
+                .containsAll(ImmutableSet.of("s1", "s3")));
+  }
+
+  @Test
+  public void groupByAllMixedWithPureColumnTest() {
+    // SELECT s1, s3 + avg(s2) FROM table1 GROUP BY ALL
+    // should be equivalent to GROUP BY s1, s3
+    PlanTester planTester = new PlanTester();
+    LogicalQueryPlan plan =
+        planTester.createPlan("SELECT s1, s3 + avg(s2) FROM table1 GROUP BY ALL");
+
+    PlanNode root = plan.getRootNode();
+    AggregationNode aggNode = findNode(root, AggregationNode.class);
+    assertTrue(
+        "Expected AggregationNode with s1 and s3 as grouping keys",
+        aggNode != null
+            && aggNode.getGroupingKeys().stream()
+                .map(s -> s.getName())
+                .collect(java.util.stream.Collectors.toSet())
+                .containsAll(ImmutableSet.of("s1", "s3")));
+  }
+
   // ---- global aggregation (all SELECT items are aggregates) ----
 
   @Test

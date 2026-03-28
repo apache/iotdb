@@ -2738,6 +2738,23 @@ public class StatementAnalyzer {
         List<FunctionCall> windowFunctions =
             extractWindowFunctions(ImmutableList.of(outputExpression));
         if (!aggregates.isEmpty() || !windowFunctions.isEmpty()) {
+          // Extract non-aggregate sub-expressions (column references outside aggregate
+          // boundaries).
+          // e.g. in `s1 + avg(s2)`, extract `s1` as a grouping key.
+          List<Expression> nonAggColumns =
+              ExpressionTreeUtils.extractNonAggregateColumnReferences(outputExpression);
+          for (Expression colRef : nonAggColumns) {
+            analyzeExpression(colRef, scope);
+            ResolvedField field =
+                analysis.getColumnReferenceFields().get(NodeRef.of(colRef));
+            if (field != null) {
+              sets.add(ImmutableList.of(ImmutableSet.of(field.getFieldId())));
+            } else {
+              complexExpressions.add(colRef);
+            }
+            gapFillGroupingExpressions.add(colRef);
+            groupingExpressions.add(colRef);
+          }
           continue;
         }
 
