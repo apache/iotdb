@@ -32,7 +32,7 @@
 [![Language grade: Java](https://img.shields.io/lgtm/grade/java/g/apache/iotdb.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/apache/iotdb/context:java)
 [![IoTDB Website](https://img.shields.io/website-up-down-green-red/https/shields.io.svg?label=iotdb-website)](https://iotdb.apache.org/)
 [![Maven Central](https://img.shields.io/maven-central/v/org.apache.iotdb/iotdb-parent.svg)](https://central.sonatype.com/artifact/org.apache.iotdb/iotdb-parent)
-[![Slack Status](https://img.shields.io/badge/slack-join_chat-white.svg?logo=slack&style=social)](https://join.slack.com/t/apacheiotdb/shared_invite/zt-qvso1nj8-7715TpySZtZqmyG5qXQwpg)
+[![Slack Status](https://img.shields.io/badge/slack-join_chat-white.svg?logo=slack&style=social)](https://join.slack.com/t/apacheiotdb/shared_invite/zt-3sh0ws7xf-JjVayYQt_RSUUHJ~iJOiSA)
 
 # 简介
 IoTDB (Internet of Things Database) 是一款[时序数据库管理系统](https://www.timecho.com/archives/48)，可以为用户提供数据收集、存储和分析等服务。IoTDB由于其轻量级架构、高性能和高可用的特性，以及与 Hadoop 和 Spark 生态的无缝集成，满足了工业 IoT 领域中海量数据存储、高吞吐量数据写入和复杂数据查询分析的需求。
@@ -397,6 +397,6 @@ server 可以使用 "ctrl-C" 或者执行下面的脚本:
 
 ### Slack
 
-* https://join.slack.com/t/apacheiotdb/shared_invite/zt-qvso1nj8-7715TpySZtZqmyG5qXQwpg
+* https://join.slack.com/t/apacheiotdb/shared_invite/zt-3sh0ws7xf-JjVayYQt_RSUUHJ~iJOiSA
 
 获取更多内容，请查看 [加入社区](https://github.com/apache/iotdb/issues/1995) 
