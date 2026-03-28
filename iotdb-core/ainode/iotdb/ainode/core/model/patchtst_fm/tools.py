@@ -1,3 +1,22 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+
 import os
 import random
 import time
@@ -42,7 +61,9 @@ def compute_remaining_time(start_time, current_step, max_steps):
     remaining_steps = max_steps - current_step
     remaining_time = elapsed_time * remaining_steps / current_step
     second_per_step = elapsed_time / current_step
-    return f"{to_hms(elapsed_time)}<{to_hms(remaining_time)} ({second_per_step:.2f}s/step)"
+    return (
+        f"{to_hms(elapsed_time)}<{to_hms(remaining_time)} ({second_per_step:.2f}s/step)"
+    )
 
 
 class Timer:
@@ -206,7 +227,9 @@ class CSVLogger:
         os.makedirs(f"{self.fig_dir}/VAL")
 
     def log_scalar(self, tag: str, value: float, step: int):
-        self.scalar_data.append({"timestamp": datetime.now(), "step": step, "tag": tag, "value": value})
+        self.scalar_data.append(
+            {"timestamp": datetime.now(), "step": step, "tag": tag, "value": value}
+        )
 
     def save(self):
         # Save to CSV

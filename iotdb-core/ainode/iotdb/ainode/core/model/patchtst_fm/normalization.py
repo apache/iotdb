@@ -1,3 +1,22 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+
 import torch
 import torch.nn as nn
 
@@ -44,9 +63,13 @@ class RevIN(nn.Module):
         else:
             mask = mask.bool()
             unmask = (~mask).float()
-            count = unmask.sum(dim=self.dim, keepdim=True).clamp(min=1)  # avoid division by zero
+            count = unmask.sum(dim=self.dim, keepdim=True).clamp(
+                min=1
+            )  # avoid division by zero
             x_mean = (x * unmask).sum(dim=self.dim, keepdim=True) / count
-            x_std = (((x - x_mean) * unmask) ** 2).sum(dim=self.dim, keepdim=True) / count
+            x_std = (((x - x_mean) * unmask) ** 2).sum(
+                dim=self.dim, keepdim=True
+            ) / count
             x_std = x_std.sqrt()
             x_std = torch.where(x_std > self.std_min, x_std, torch.ones_like(x_std))
             self.mean = x_mean
@@ -71,7 +94,9 @@ class CausalRevIN(nn.Module):
         return self.transform(x)
 
     def transform(self, x):
-        return torch.clamp((x - self.mean) / self.std, min=-self.max_val, max=self.max_val)
+        return torch.clamp(
+            (x - self.mean) / self.std, min=-self.max_val, max=self.max_val
+        )
 
     def inverse_transform(self, x):
         if x.ndim == 2:
@@ -92,8 +117,12 @@ class CausalRevIN(nn.Module):
             n = torch.arange(1, x.shape[1] + 1, device=x.device)
         self.mean = (torch.cumsum(x, dim=1) / n).detach()
         mask = 1 - mask.float() if mask is not None else 1
-        self.std = torch.sqrt(torch.cumsum(((x - self.mean) * mask) ** 2, 1) / n).detach()
-        self.std = torch.where(self.std > self.std_min, self.std, torch.ones_like(self.std))
+        self.std = torch.sqrt(
+            torch.cumsum(((x - self.mean) * mask) ** 2, 1) / n
+        ).detach()
+        self.std = torch.where(
+            self.std > self.std_min, self.std, torch.ones_like(self.std)
+        )
 
     def set_statistics(self, mean, std):
         self.mean = mean

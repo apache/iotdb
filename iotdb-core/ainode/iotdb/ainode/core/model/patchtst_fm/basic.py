@@ -1,3 +1,22 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+
 from typing import Optional, Type
 
 import torch
@@ -107,10 +126,16 @@ class Attention(nn.Module):
         self.proj = nn.Linear(dim, dim, bias=proj_bias)
         self.proj_drop = nn.Dropout(proj_drop)
 
-    def forward(self, x: torch.Tensor, attn_mask: torch.Tensor | None = None) -> torch.Tensor:
+    def forward(
+        self, x: torch.Tensor, attn_mask: torch.Tensor | None = None
+    ) -> torch.Tensor:
         if x.ndim == 3:
             B, N, C = x.shape
-            qkv = self.qkv(x).reshape(B, N, 3, self.num_heads, self.head_dim).permute(2, 0, 3, 1, 4)
+            qkv = (
+                self.qkv(x)
+                .reshape(B, N, 3, self.num_heads, self.head_dim)
+                .permute(2, 0, 3, 1, 4)
+            )
             q, k, v = qkv.unbind(0)  # (B, num_heads, N, head_dim)
             q, k = self.q_norm(q), self.k_norm(k)
             x = F.scaled_dot_product_attention(
@@ -123,7 +148,11 @@ class Attention(nn.Module):
             x = x.transpose(1, 2).reshape(B, N, C)
         elif x.ndim == 4:
             B, M, N, C = x.shape
-            qkv = self.qkv(x).reshape(B, M, N, 3, self.num_heads, self.head_dim).permute(3, 0, 4, 1, 2, 5)
+            qkv = (
+                self.qkv(x)
+                .reshape(B, M, N, 3, self.num_heads, self.head_dim)
+                .permute(3, 0, 4, 1, 2, 5)
+            )
             q, k, v = qkv.unbind(0)  # (B, num_heads, M, N, head_dim)
             q, k = self.q_norm(q), self.k_norm(k)
             # print('q', q.shape, 'k', k.shape, 'v', v.shape, 'attn_mask', attn_mask.shape if attn_mask is not None else "None")
@@ -163,7 +192,9 @@ class CrossAttention(nn.Module):
         self.head_dim = q_dim // num_heads
 
         self.q = nn.Linear(q_dim, q_dim, bias=qkv_bias)
-        self.kv = nn.Linear(kv_dim, 2 * q_dim, bias=qkv_bias)  # produce k and v in the SAME head dim as q
+        self.kv = nn.Linear(
+            kv_dim, 2 * q_dim, bias=qkv_bias
+        )  # produce k and v in the SAME head dim as q
         self.q_norm = norm_layer(self.head_dim) if qk_norm else nn.Identity()
         self.k_norm = norm_layer(self.head_dim) if qk_norm else nn.Identity()
 
@@ -175,14 +206,24 @@ class CrossAttention(nn.Module):
         self,
         x: torch.Tensor,  # (B, Nq, q_dim)
         m: torch.Tensor,  # (B, Nk, kv_dim)
-        attn_mask: Optional[torch.Tensor] = None,  # broadcastable to (B, num_heads, Nq, Nk) or (Nq, Nk)
+        attn_mask: Optional[
+            torch.Tensor
+        ] = None,  # broadcastable to (B, num_heads, Nq, Nk) or (Nq, Nk)
         is_causal: bool = False,
     ) -> torch.Tensor:
         if x.ndim == 3:
             B, Nq, Cq = x.shape
             _, Nk, _ = m.shape
-            q = self.q(x).reshape(B, Nq, self.num_heads, self.head_dim).permute(0, 2, 1, 3)  # (B, H, Nq, Hd)
-            kv = self.kv(m).reshape(B, Nk, 2, self.num_heads, self.head_dim).permute(2, 0, 3, 1, 4)
+            q = (
+                self.q(x)
+                .reshape(B, Nq, self.num_heads, self.head_dim)
+                .permute(0, 2, 1, 3)
+            )  # (B, H, Nq, Hd)
+            kv = (
+                self.kv(m)
+                .reshape(B, Nk, 2, self.num_heads, self.head_dim)
+                .permute(2, 0, 3, 1, 4)
+            )
             k, v = kv.unbind(0)  # (B, H, Nk, Hd)
             q, k = self.q_norm(q), self.k_norm(k)
             x = F.scaled_dot_product_attention(
@@ -197,8 +238,16 @@ class CrossAttention(nn.Module):
         elif x.ndim == 4:
             B, M, Nq, Cq = x.shape
             _, Nk, _ = m.shape
-            q = self.q(x).reshape(B, M, Nq, self.num_heads, self.head_dim).permute(0, 3, 1, 2, 4)  # (B, H, M, Nq, Hd)
-            kv = self.kv(m).reshape(B, Nk, 2, self.num_heads, self.head_dim).permute(2, 0, 3, 1, 4)
+            q = (
+                self.q(x)
+                .reshape(B, M, Nq, self.num_heads, self.head_dim)
+                .permute(0, 3, 1, 2, 4)
+            )  # (B, H, M, Nq, Hd)
+            kv = (
+                self.kv(m)
+                .reshape(B, Nk, 2, self.num_heads, self.head_dim)
+                .permute(2, 0, 3, 1, 4)
+            )
             k, v = kv.unbind(0)  # (B, H, Nk, Hd)
             q, k = self.q_norm(q), self.k_norm(k)
             x = F.scaled_dot_product_attention(
@@ -234,10 +283,14 @@ class TransformerBlock(nn.Module):
         super().__init__()
         self.norm_first = norm_first
         self.norm1 = norm_layer(d_model, elementwise_affine=True, eps=1e-6)
-        self.attn = Attention(d_model, num_heads, qkv_bias=True, attn_drop=dropout, proj_drop=dropout)
+        self.attn = Attention(
+            d_model, num_heads, qkv_bias=True, attn_drop=dropout, proj_drop=dropout
+        )
         self.norm2 = norm_layer(d_model, elementwise_affine=True, eps=1e-6)
         if mlp_type == "swiglu":
-            self.mlp = SwiGLU(d_model, d_model, hidden_dim=int(mlp_ratio * d_model), dropout=dropout)
+            self.mlp = SwiGLU(
+                d_model, d_model, hidden_dim=int(mlp_ratio * d_model), dropout=dropout
+            )
         elif mlp_type == "mlp":
             self.mlp = MLP(
                 in_dim=d_model,
@@ -285,7 +338,9 @@ class TransformerBlockCrossAttention(nn.Module):
         )
         self.norm2 = norm_layer(d_model, elementwise_affine=True, eps=1e-6)
         if mlp_type == "swiglu":
-            self.mlp = SwiGLU(d_model, d_model, hidden_dim=int(mlp_ratio * d_model), dropout=dropout)
+            self.mlp = SwiGLU(
+                d_model, d_model, hidden_dim=int(mlp_ratio * d_model), dropout=dropout
+            )
         elif mlp_type == "mlp":
             self.mlp = MLP(
                 in_dim=d_model,

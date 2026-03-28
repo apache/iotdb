@@ -49,44 +49,44 @@ import static org.junit.Assert.fail;
 
 public class AINodeTestUtils {
 
-  public static final Map<String, FakeModelInfo> BUILTIN_LTSM_MAP =
-      Stream.of(
-              new AbstractMap.SimpleEntry<>(
-                  "sundial", new FakeModelInfo("sundial", "sundial", "builtin", "active")),
-              new AbstractMap.SimpleEntry<>(
-                  "timer_xl", new FakeModelInfo("timer_xl", "timer", "builtin", "active")),
-              new AbstractMap.SimpleEntry<>(
-                  "chronos2", new FakeModelInfo("chronos2", "t5", "builtin", "active")),
-              new AbstractMap.SimpleEntry<>(
-                  "moirai2", new FakeModelInfo("moirai2", "moirai", "builtin", "active")))
-          .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+  public static final Map<String, FakeModelInfo> BUILTIN_LTSM_MAP = Stream.of(
+      new AbstractMap.SimpleEntry<>(
+          "sundial", new FakeModelInfo("sundial", "sundial", "builtin", "active")),
+      new AbstractMap.SimpleEntry<>(
+          "timer_xl", new FakeModelInfo("timer_xl", "timer", "builtin", "active")),
+      new AbstractMap.SimpleEntry<>(
+          "chronos2", new FakeModelInfo("chronos2", "t5", "builtin", "active")),
+      new AbstractMap.SimpleEntry<>(
+          "moirai2", new FakeModelInfo("moirai2", "moirai", "builtin", "active")),
+      new AbstractMap.SimpleEntry<>(
+          "patchtst_fm", new FakeModelInfo("patchtst_fm", "patchtst_fm", "builtin", "active")))
+      .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
   public static final Map<String, FakeModelInfo> BUILTIN_MODEL_MAP;
 
   static {
-    Map<String, FakeModelInfo> tmp =
-        Stream.of(
-                new AbstractMap.SimpleEntry<>(
-                    "arima", new FakeModelInfo("arima", "sktime", "builtin", "active")),
-                new AbstractMap.SimpleEntry<>(
-                    "holtwinters", new FakeModelInfo("holtwinters", "sktime", "builtin", "active")),
-                new AbstractMap.SimpleEntry<>(
-                    "exponential_smoothing",
-                    new FakeModelInfo("exponential_smoothing", "sktime", "builtin", "active")),
-                new AbstractMap.SimpleEntry<>(
-                    "naive_forecaster",
-                    new FakeModelInfo("naive_forecaster", "sktime", "builtin", "active")),
-                new AbstractMap.SimpleEntry<>(
-                    "stl_forecaster",
-                    new FakeModelInfo("stl_forecaster", "sktime", "builtin", "active")),
-                new AbstractMap.SimpleEntry<>(
-                    "gaussian_hmm",
-                    new FakeModelInfo("gaussian_hmm", "sktime", "builtin", "active")),
-                new AbstractMap.SimpleEntry<>(
-                    "gmm_hmm", new FakeModelInfo("gmm_hmm", "sktime", "builtin", "active")),
-                new AbstractMap.SimpleEntry<>(
-                    "stray", new FakeModelInfo("stray", "sktime", "builtin", "active")))
-            .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+    Map<String, FakeModelInfo> tmp = Stream.of(
+        new AbstractMap.SimpleEntry<>(
+            "arima", new FakeModelInfo("arima", "sktime", "builtin", "active")),
+        new AbstractMap.SimpleEntry<>(
+            "holtwinters", new FakeModelInfo("holtwinters", "sktime", "builtin", "active")),
+        new AbstractMap.SimpleEntry<>(
+            "exponential_smoothing",
+            new FakeModelInfo("exponential_smoothing", "sktime", "builtin", "active")),
+        new AbstractMap.SimpleEntry<>(
+            "naive_forecaster",
+            new FakeModelInfo("naive_forecaster", "sktime", "builtin", "active")),
+        new AbstractMap.SimpleEntry<>(
+            "stl_forecaster",
+            new FakeModelInfo("stl_forecaster", "sktime", "builtin", "active")),
+        new AbstractMap.SimpleEntry<>(
+            "gaussian_hmm",
+            new FakeModelInfo("gaussian_hmm", "sktime", "builtin", "active")),
+        new AbstractMap.SimpleEntry<>(
+            "gmm_hmm", new FakeModelInfo("gmm_hmm", "sktime", "builtin", "active")),
+        new AbstractMap.SimpleEntry<>(
+            "stray", new FakeModelInfo("stray", "sktime", "builtin", "active")))
+        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
     tmp.putAll(BUILTIN_LTSM_MAP);
     BUILTIN_MODEL_MAP = Collections.unmodifiableMap(tmp);
   }
@@ -115,36 +115,35 @@ public class AINodeTestUtils {
     AtomicBoolean allPass = new AtomicBoolean(true);
     Thread[] threads = new Thread[threadCnt];
     for (int i = 0; i < threadCnt; i++) {
-      threads[i] =
-          new Thread(
-              () -> {
-                try {
-                  for (int j = 0; j < loop; j++) {
-                    try (ResultSet resultSet = statement.executeQuery(sql)) {
-                      int outputCnt = 0;
-                      while (resultSet.next()) {
-                        outputCnt++;
-                      }
-                      if (expectedOutputLength != outputCnt) {
-                        allPass.set(false);
-                        fail(
-                            "Output count mismatch for SQL: "
-                                + sql
-                                + ". Expected: "
-                                + expectedOutputLength
-                                + ", but got: "
-                                + outputCnt);
-                      }
-                    } catch (SQLException e) {
-                      allPass.set(false);
-                      fail(e.getMessage());
-                    }
+      threads[i] = new Thread(
+          () -> {
+            try {
+              for (int j = 0; j < loop; j++) {
+                try (ResultSet resultSet = statement.executeQuery(sql)) {
+                  int outputCnt = 0;
+                  while (resultSet.next()) {
+                    outputCnt++;
                   }
-                } catch (Exception e) {
+                  if (expectedOutputLength != outputCnt) {
+                    allPass.set(false);
+                    fail(
+                        "Output count mismatch for SQL: "
+                            + sql
+                            + ". Expected: "
+                            + expectedOutputLength
+                            + ", but got: "
+                            + outputCnt);
+                  }
+                } catch (SQLException e) {
                   allPass.set(false);
                   fail(e.getMessage());
                 }
-              });
+              }
+            } catch (Exception e) {
+              allPass.set(false);
+              fail(e.getMessage());
+            }
+          });
       threads[i].start();
     }
     for (Thread thread : threads) {
@@ -162,8 +161,7 @@ public class AINodeTestUtils {
     LOGGER.info("Checking model: {} on target devices: {}", modelId, targetDevices);
     for (int retry = 0; retry < 200; retry++) {
       Set<String> foundDevices = new HashSet<>();
-      try (final ResultSet resultSet =
-          statement.executeQuery(String.format("SHOW LOADED MODELS '%s'", device))) {
+      try (final ResultSet resultSet = statement.executeQuery(String.format("SHOW LOADED MODELS '%s'", device))) {
         while (resultSet.next()) {
           String deviceId = resultSet.getString("DeviceId");
           String loadedModelId = resultSet.getString("ModelId");
@@ -191,8 +189,7 @@ public class AINodeTestUtils {
     LOGGER.info("Checking model: {} not on target devices: {}", modelId, targetDevices);
     for (int retry = 0; retry < 50; retry++) {
       Set<String> foundDevices = new HashSet<>();
-      try (final ResultSet resultSet =
-          statement.executeQuery(String.format("SHOW LOADED MODELS '%s'", device))) {
+      try (final ResultSet resultSet = statement.executeQuery(String.format("SHOW LOADED MODELS '%s'", device))) {
         while (resultSet.next()) {
           String deviceId = resultSet.getString("DeviceId");
           String loadedModelId = resultSet.getString("ModelId");
@@ -213,16 +210,18 @@ public class AINodeTestUtils {
     fail("Model " + modelId + " is still loaded on device " + device);
   }
 
-  private static final String[] WRITE_SQL_IN_TREE =
-      new String[] {
-        "CREATE DATABASE root.AI",
-        "CREATE TIMESERIES root.AI.s0 WITH DATATYPE=FLOAT, ENCODING=RLE",
-        "CREATE TIMESERIES root.AI.s1 WITH DATATYPE=DOUBLE, ENCODING=RLE",
-        "CREATE TIMESERIES root.AI.s2 WITH DATATYPE=INT32, ENCODING=RLE",
-        "CREATE TIMESERIES root.AI.s3 WITH DATATYPE=INT64, ENCODING=RLE",
-      };
+  private static final String[] WRITE_SQL_IN_TREE = new String[] {
+      "CREATE DATABASE root.AI",
+      "CREATE TIMESERIES root.AI.s0 WITH DATATYPE=FLOAT, ENCODING=RLE",
+      "CREATE TIMESERIES root.AI.s1 WITH DATATYPE=DOUBLE, ENCODING=RLE",
+      "CREATE TIMESERIES root.AI.s2 WITH DATATYPE=INT32, ENCODING=RLE",
+      "CREATE TIMESERIES root.AI.s3 WITH DATATYPE=INT64, ENCODING=RLE",
+  };
 
-  /** Prepare root.AI(s0 FLOAT, s1 DOUBLE, s2 INT32, s3 INT64) with 5760 rows of data in tree. */
+  /**
+   * Prepare root.AI(s0 FLOAT, s1 DOUBLE, s2 INT32, s3 INT64) with 5760 rows of
+   * data in tree.
+   */
   public static void prepareDataInTree() throws SQLException {
     prepareData(WRITE_SQL_IN_TREE);
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TREE_SQL_DIALECT);
@@ -236,7 +235,10 @@ public class AINodeTestUtils {
     }
   }
 
-  /** Prepare db.AI(s0 FLOAT, s1 DOUBLE, s2 INT32, s3 INT64) with 5760 rows of data in table. */
+  /**
+   * Prepare db.AI(s0 FLOAT, s1 DOUBLE, s2 INT32, s3 INT64) with 5760 rows of data
+   * in table.
+   */
   public static void prepareDataInTable() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {

@@ -1,5 +1,23 @@
 # Copyright contributors to the TSFM project
 #
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
 """PatchTST-FM model implementation"""
 
 import math
@@ -20,7 +38,6 @@ from .basic import (
 from .configuration_patchtst_fm import PatchTSTFMConfig
 from .normalization import RevIN
 from .tools import count_parameters
-
 
 logger = logging.get_logger(__name__)
 
@@ -91,8 +108,12 @@ class PatchTSTFMModel(PatchTSTFMPreTrainedModel):
         super().__init__(config)
         self.config = config
         self.quantile_levels = config.quantile_levels
-        self.pos_embed = LearnedPositionalEmbedding(d_model=config.d_model, max_len=config.n_patch, type="add")
-        assert config.d_model % config.n_head == 0, "[QuantileDecoder] d_model must be divisible by n_head"
+        self.pos_embed = LearnedPositionalEmbedding(
+            d_model=config.d_model, max_len=config.n_patch, type="add"
+        )
+        assert (
+            config.d_model % config.n_head == 0
+        ), "[QuantileDecoder] d_model must be divisible by n_head"
 
         self.blocks = nn.ModuleList(
             [
@@ -106,8 +127,12 @@ class PatchTSTFMModel(PatchTSTFMPreTrainedModel):
                 for _ in range(config.n_layer)
             ]
         )
-        self.in_layer = ResidualBlock(config.d_patch * 2, config.d_model, config.d_model)
-        self.out_layer = ResidualBlock(config.d_model, config.d_patch * (config.num_quantile + 1), config.d_model)
+        self.in_layer = ResidualBlock(
+            config.d_patch * 2, config.d_model, config.d_model
+        )
+        self.out_layer = ResidualBlock(
+            config.d_model, config.d_patch * (config.num_quantile + 1), config.d_model
+        )
 
         self.norm_fn = RevIN(dim=-1, std_min=1e-5, use_sinh=True)
 
@@ -153,9 +178,16 @@ class PatchTSTFMModel(PatchTSTFMPreTrainedModel):
 
         x_patch = x_input.reshape(B, self.config.n_patch, self.config.d_patch)
         mask_patch = ts_mask.reshape(B, self.config.n_patch, self.config.d_patch)
-        pad_patch_mask = pad_mask.reshape(B, self.config.n_patch, self.config.d_patch).float().mean(dim=-1).gt(0.9)
+        pad_patch_mask = (
+            pad_mask.reshape(B, self.config.n_patch, self.config.d_patch)
+            .float()
+            .mean(dim=-1)
+            .gt(0.9)
+        )
 
-        q_pred, q_raw = self.decode(x=x_patch, mask=mask_patch.float(), t_pad_mask=pad_patch_mask)
+        q_pred, q_raw = self.decode(
+            x=x_patch, mask=mask_patch.float(), t_pad_mask=pad_patch_mask
+        )
         q_pred = q_pred.permute(0, 2, 3, 1)
 
         B, N, D, Q = q_pred.shape
@@ -184,7 +216,9 @@ class PatchTSTFMModel(PatchTSTFMPreTrainedModel):
         for block in self.blocks:
             x = block(x, pad_attn_mask)
         x = self.out_layer(x)
-        q_raw = x.reshape(B, N, self.config.num_quantile + 1, self.config.d_patch).permute(0, 2, 1, 3)
+        q_raw = x.reshape(
+            B, N, self.config.num_quantile + 1, self.config.d_patch
+        ).permute(0, 2, 1, 3)
         q = q_raw[:, 0, :, :].unsqueeze(1) + torch.cumsum(
             F.softplus(q_raw[:, 1:, :, :]) / self.config.num_quantile, dim=1
         )
@@ -227,10 +261,16 @@ class PatchTSTFMForPretraining(PatchTSTFMPreTrainedModel):
 
         if return_loss:
             x_target = x_target.unsqueeze(-1)
-            quantiles = torch.tensor(self.backbone.quantile_levels, device=x_target.device).view(1, 1, -1)
-            loss = 2 * torch.abs((x_target - q_pred) * ((x_target <= q_pred).float() - quantiles))
+            quantiles = torch.tensor(
+                self.backbone.quantile_levels, device=x_target.device
+            ).view(1, 1, -1)
+            loss = 2 * torch.abs(
+                (x_target - q_pred) * ((x_target <= q_pred).float() - quantiles)
+            )
             loss = loss * loss_mask.unsqueeze(-1)
-            loss = loss.sum(dim=1) / torch.clamp(loss_mask.sum(dim=1, keepdim=True), min=1)
+            loss = loss.sum(dim=1) / torch.clamp(
+                loss_mask.sum(dim=1, keepdim=True), min=1
+            )
             loss = loss.sum(dim=-1).mean() / math.sqrt(self.config.num_quantile)
         else:
             loss = None
@@ -239,7 +279,9 @@ class PatchTSTFMForPretraining(PatchTSTFMPreTrainedModel):
         x_pred = self.backbone.norm_fn.inverse_transform(x_pred)
 
         return PatchTSTFMPretrainingOutput(
-            quantile_predictions=x_pred, loss=loss, hidden_states=model_outputs.hidden_states
+            quantile_predictions=x_pred,
+            loss=loss,
+            hidden_states=model_outputs.hidden_states,
         )
 
 
@@ -262,7 +304,9 @@ class PatchTSTFMForPrediction(PatchTSTFMPreTrainedModel):
         return_loss: bool = True,
         return_dict: Optional[bool] = None,
     ):
-        forecast_len = prediction_length if prediction_length else self.config.prediction_length
+        forecast_len = (
+            prediction_length if prediction_length else self.config.prediction_length
+        )
 
         cl = self.config.context_length
         ul = -1
@@ -283,9 +327,13 @@ class PatchTSTFMForPrediction(PatchTSTFMPreTrainedModel):
         forecast_samples = torch.stack(forecast_samples, dim=0)[:, :, :forecast_len]
 
         if quantile_levels is not None:
-            quantile_indices = [self.backbone.quantile_levels.index(q) for q in quantile_levels]
+            quantile_indices = [
+                self.backbone.quantile_levels.index(q) for q in quantile_levels
+            ]
             forecast_samples = forecast_samples[:, quantile_indices, :]
-        return PatchTSTFMPredictionOutput(quantile_predictions=forecast_samples, hidden_states=hidden_states)
+        return PatchTSTFMPredictionOutput(
+            quantile_predictions=forecast_samples, hidden_states=hidden_states
+        )
 
     def forecast_single_step(
         self,
@@ -343,10 +391,18 @@ class PatchTSTFMForPrediction(PatchTSTFMPreTrainedModel):
                         value=x_in.nanmean().item(),
                     )
                 )
-                pred_mask.append(F.pad(pred_mask_i, (left_pad, 0), mode="constant", value=0.0))
-                pad_mask.append(F.pad(pad_mask_i, (left_pad, 0), mode="constant", value=1.0))
-                miss_mask.append(F.pad(miss_mask_i, (left_pad, 0), mode="constant", value=0.0))
-                time_index.append(F.pad(time_index_i, (left_pad, 0), mode="constant", value=-1))
+                pred_mask.append(
+                    F.pad(pred_mask_i, (left_pad, 0), mode="constant", value=0.0)
+                )
+                pad_mask.append(
+                    F.pad(pad_mask_i, (left_pad, 0), mode="constant", value=1.0)
+                )
+                miss_mask.append(
+                    F.pad(miss_mask_i, (left_pad, 0), mode="constant", value=0.0)
+                )
+                time_index.append(
+                    F.pad(time_index_i, (left_pad, 0), mode="constant", value=-1)
+                )
                 ts_ends.append(torch.tensor([left_pad, left_pad + sample_len]).float())
                 sample_lengths.append(sample_len)
             else:  # subsample
@@ -400,7 +456,11 @@ class PatchTSTFMForPrediction(PatchTSTFMPreTrainedModel):
             if torch.cuda.is_available() and torch.cuda.get_device_capability()[0] >= 8
             else torch.float16
         )
-        device = "cuda" if torch.cuda.is_available() else "mps" if torch.mps.is_available() else "cpu"
+        device = (
+            "cuda"
+            if torch.cuda.is_available()
+            else "mps" if torch.mps.is_available() else "cpu"
+        )
 
         with torch.autocast(device_type=device, dtype=precision, enabled=True):
             model_output = self.backbone(
@@ -421,6 +481,8 @@ class PatchTSTFMForPrediction(PatchTSTFMPreTrainedModel):
             if sample_lengths[i] <= self.config.context_length:
                 x_pred = outputs[i][:, int(ts_ends[i][0]) : int(ts_ends[i][1])]
             else:
-                x_pred = F.interpolate(outputs[i].unsqueeze(1), size=sample_lengths[i], mode="linear").squeeze(1)
+                x_pred = F.interpolate(
+                    outputs[i].unsqueeze(1), size=sample_lengths[i], mode="linear"
+                ).squeeze(1)
             x_preds.append(x_pred[:, -forecast_len[i] :])
         return x_preds, model_output.hidden_states
