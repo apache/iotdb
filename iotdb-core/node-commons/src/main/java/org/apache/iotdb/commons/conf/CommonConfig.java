@@ -400,7 +400,6 @@ public class CommonConfig {
   private int subscriptionConsensusCommitPersistInterval = 100;
   private boolean subscriptionConsensusCommitFsyncEnabled = false;
 
-  private boolean subscriptionConsensusExclusiveConsumption = false;
   private long subscriptionConsensusConsumerEvictionTimeoutMs = 60_000;
 
   private boolean subscriptionConsensusLagBasedPriority = true;
@@ -412,6 +411,8 @@ public class CommonConfig {
   private boolean subscriptionConsensusWatermarkEnabled = true;
 
   private long subscriptionConsensusWatermarkIntervalMs = 1000;
+
+  private long subscriptionConsensusIdleSafeHlcIntervalMs = 1_000;
 
   /** Whether to use persistent schema mode. */
   private String schemaEngineMode = "Memory";
@@ -2561,15 +2562,6 @@ public class CommonConfig {
     this.subscriptionConsensusCommitFsyncEnabled = subscriptionConsensusCommitFsyncEnabled;
   }
 
-  public boolean isSubscriptionConsensusExclusiveConsumption() {
-    return subscriptionConsensusExclusiveConsumption;
-  }
-
-  public void setSubscriptionConsensusExclusiveConsumption(
-      final boolean subscriptionConsensusExclusiveConsumption) {
-    this.subscriptionConsensusExclusiveConsumption = subscriptionConsensusExclusiveConsumption;
-  }
-
   public long getSubscriptionConsensusConsumerEvictionTimeoutMs() {
     return subscriptionConsensusConsumerEvictionTimeoutMs;
   }
@@ -2624,6 +2616,15 @@ public class CommonConfig {
   public void setSubscriptionConsensusWatermarkIntervalMs(
       final long subscriptionConsensusWatermarkIntervalMs) {
     this.subscriptionConsensusWatermarkIntervalMs = subscriptionConsensusWatermarkIntervalMs;
+  }
+
+  public long getSubscriptionConsensusIdleSafeHlcIntervalMs() {
+    return subscriptionConsensusIdleSafeHlcIntervalMs;
+  }
+
+  public void setSubscriptionConsensusIdleSafeHlcIntervalMs(
+      final long subscriptionConsensusIdleSafeHlcIntervalMs) {
+    this.subscriptionConsensusIdleSafeHlcIntervalMs = subscriptionConsensusIdleSafeHlcIntervalMs;
   }
 
   public void setSubscriptionConsensusBatchMaxTabletCount(

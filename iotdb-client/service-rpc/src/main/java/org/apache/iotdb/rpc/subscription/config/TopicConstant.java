@@ -40,6 +40,12 @@ public class TopicConstant {
   public static final String MODE_SNAPSHOT_VALUE = "snapshot";
   public static final String MODE_DEFAULT_VALUE = MODE_LIVE_VALUE;
 
+  public static final String ORDER_MODE_KEY = "order-mode";
+  public static final String ORDER_MODE_LEADER_ONLY_VALUE = "leader-only";
+  public static final String ORDER_MODE_MULTI_WRITER_VALUE = "multi-writer";
+  public static final String ORDER_MODE_PER_WRITER_VALUE = "per-writer";
+  public static final String ORDER_MODE_DEFAULT_VALUE = ORDER_MODE_LEADER_ONLY_VALUE;
+
   public static final String FORMAT_KEY = "format";
   public static final String FORMAT_SESSION_DATA_SETS_HANDLER_VALUE = "SessionDataSetsHandler";
   public static final String FORMAT_TS_FILE_HANDLER_VALUE = "TsFileHandler";

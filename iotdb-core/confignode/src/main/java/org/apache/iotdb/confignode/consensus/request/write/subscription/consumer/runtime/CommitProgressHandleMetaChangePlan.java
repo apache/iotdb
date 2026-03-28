@@ -30,58 +30,60 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
-/**
- * Consensus plan for handling commit progress meta changes. Carries a map of commit progress
- * entries collected from DataNodes.
- */
+/** Consensus plan for handling per-region commit progress meta changes. */
 public class CommitProgressHandleMetaChangePlan extends ConfigPhysicalPlan {
 
-  private Map<String, Long> commitProgressMap = new HashMap<>();
+  private Map<String, ByteBuffer> regionProgressMap = new HashMap<>();
 
   public CommitProgressHandleMetaChangePlan() {
     super(ConfigPhysicalPlanType.CommitProgressHandleMetaChange);
   }
 
-  public CommitProgressHandleMetaChangePlan(final Map<String, Long> commitProgressMap) {
+  public CommitProgressHandleMetaChangePlan(final Map<String, ByteBuffer> regionProgressMap) {
     super(ConfigPhysicalPlanType.CommitProgressHandleMetaChange);
-    this.commitProgressMap = commitProgressMap;
+    this.regionProgressMap = regionProgressMap;
   }
 
-  public Map<String, Long> getCommitProgressMap() {
-    return commitProgressMap;
+  public Map<String, ByteBuffer> getRegionProgressMap() {
+    return regionProgressMap;
   }
 
   @Override
-  protected void serializeImpl(DataOutputStream stream) throws IOException {
+  protected void serializeImpl(final DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());
-    stream.writeInt(commitProgressMap.size());
-    for (Map.Entry<String, Long> entry : commitProgressMap.entrySet()) {
+    stream.writeInt(regionProgressMap.size());
+    for (final Map.Entry<String, ByteBuffer> entry : regionProgressMap.entrySet()) {
       final byte[] keyBytes = entry.getKey().getBytes("UTF-8");
+      final ByteBuffer valueBuffer = entry.getValue().asReadOnlyBuffer();
+      valueBuffer.rewind();
+      final byte[] valueBytes = new byte[valueBuffer.remaining()];
+      valueBuffer.get(valueBytes);
       stream.writeInt(keyBytes.length);
       stream.write(keyBytes);
-      stream.writeLong(entry.getValue());
+      stream.writeInt(valueBytes.length);
+      stream.write(valueBytes);
     }
   }
 
   @Override
-  protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    commitProgressMap = CommitProgressKeeper.deserializeFromBuffer(buffer);
+  protected void deserializeImpl(final ByteBuffer buffer) throws IOException {
+    regionProgressMap = CommitProgressKeeper.deserializeRegionProgressFromBuffer(buffer);
   }
 
   @Override
-  public boolean equals(Object obj) {
+  public boolean equals(final Object obj) {
     if (this == obj) {
       return true;
     }
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    CommitProgressHandleMetaChangePlan that = (CommitProgressHandleMetaChangePlan) obj;
-    return Objects.equals(this.commitProgressMap, that.commitProgressMap);
+    final CommitProgressHandleMetaChangePlan that = (CommitProgressHandleMetaChangePlan) obj;
+    return Objects.equals(this.regionProgressMap, that.regionProgressMap);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(commitProgressMap);
+    return Objects.hash(regionProgressMap);
   }
 }

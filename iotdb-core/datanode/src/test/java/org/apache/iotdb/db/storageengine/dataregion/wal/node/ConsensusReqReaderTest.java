@@ -251,6 +251,24 @@ public class ConsensusReqReaderTest {
   }
 
   @Test
+  public void testReqIteratorCarriesWriterMetadata() throws Exception {
+    final InsertRowNode insertRowNode = getInsertRowNode(devicePath);
+    insertRowNode.setSearchIndex(1).setPhysicalTime(123456789L).setNodeId(7).setWriterEpoch(3L);
+    walNode.log(0, insertRowNode);
+    walNode.rollWALFile();
+    walNode.rollWALFile();
+
+    final ConsensusReqReader.ReqIterator iterator = walNode.getReqIterator(1);
+    Assert.assertTrue(iterator.hasNext());
+    final IndexedConsensusRequest request = iterator.next();
+
+    Assert.assertEquals(1L, request.getSearchIndex());
+    Assert.assertEquals(123456789L, request.getPhysicalTime());
+    Assert.assertEquals(7, request.getNodeId());
+    Assert.assertEquals(3L, request.getWriterEpoch());
+  }
+
+  @Test
   public void scenario01TestGetReqIterator03() throws Exception {
     simulateFileScenario01();
     ConsensusReqReader.ReqIterator iterator = walNode.getReqIterator(5);

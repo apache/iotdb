@@ -117,7 +117,7 @@ public class ConsensusSubscriptionPrefetchingQueueMetrics implements IMetricSet 
         Tag.NAME.toString(),
         queue.getPrefetchingQueueId());
     metricService.createAutoGauge(
-        Metric.SUBSCRIPTION_CONSENSUS_EPOCH_CHANGE.toString(),
+        Metric.SUBSCRIPTION_CONSENSUS_ROUTING_EPOCH_CHANGE.toString(),
         MetricLevel.IMPORTANT,
         queue,
         ConsensusPrefetchingQueue::getEpochChangeCount,
@@ -192,7 +192,7 @@ public class ConsensusSubscriptionPrefetchingQueueMetrics implements IMetricSet 
         queue.getPrefetchingQueueId());
     metricService.remove(
         MetricType.AUTO_GAUGE,
-        Metric.SUBSCRIPTION_CONSENSUS_EPOCH_CHANGE.toString(),
+        Metric.SUBSCRIPTION_CONSENSUS_ROUTING_EPOCH_CHANGE.toString(),
         Tag.NAME.toString(),
         queue.getPrefetchingQueueId());
     metricService.remove(

@@ -44,6 +44,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TSubscribeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsubscribeReq;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.rpc.subscription.config.TopicConfig;
+import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 
 import org.apache.thrift.annotation.Nullable;
@@ -56,7 +58,9 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -162,6 +166,8 @@ public class SubscriptionInfo implements SnapshotProcessor {
 
   private boolean checkBeforeCreateTopicInternal(TCreateTopicReq createTopicReq)
       throws SubscriptionException {
+    validateTopicConfig(new TopicConfig(safeTopicAttributes(createTopicReq.getTopicAttributes())));
+
     if (!isTopicExisted(createTopicReq.getTopicName())) {
       return true;
     }
@@ -256,6 +262,8 @@ public class SubscriptionInfo implements SnapshotProcessor {
   }
 
   private void checkBeforeAlteringTopicInternal(TopicMeta topicMeta) throws SubscriptionException {
+    validateTopicConfig(topicMeta.getConfig());
+
     if (isTopicExisted(topicMeta.getTopicName())) {
       return;
     }
@@ -263,6 +271,28 @@ public class SubscriptionInfo implements SnapshotProcessor {
     final String exceptionMessage =
         String.format(
             "Failed to alter topic %s, the topic is not existed", topicMeta.getTopicName());
+    LOGGER.warn(exceptionMessage);
+    throw new SubscriptionException(exceptionMessage);
+  }
+
+  private Map<String, String> safeTopicAttributes(@Nullable final Map<String, String> attributes) {
+    return Objects.nonNull(attributes) ? attributes : Collections.emptyMap();
+  }
+
+  private void validateTopicConfig(final TopicConfig topicConfig) throws SubscriptionException {
+    final String orderMode = topicConfig.getOrderMode();
+    if (TopicConfig.isValidOrderMode(orderMode)) {
+      return;
+    }
+
+    final String exceptionMessage =
+        String.format(
+            "Failed to create or alter topic, unsupported %s=%s, expected one of [%s, %s, %s]",
+            TopicConstant.ORDER_MODE_KEY,
+            orderMode,
+            TopicConstant.ORDER_MODE_LEADER_ONLY_VALUE,
+            TopicConstant.ORDER_MODE_MULTI_WRITER_VALUE,
+            TopicConstant.ORDER_MODE_PER_WRITER_VALUE);
     LOGGER.warn(exceptionMessage);
     throw new SubscriptionException(exceptionMessage);
   }
@@ -575,7 +605,7 @@ public class SubscriptionInfo implements SnapshotProcessor {
     acquireWriteLock();
     try {
       LOGGER.info("Handling commit progress meta changes ...");
-      commitProgressKeeper.replaceAll(plan.getCommitProgressMap());
+      commitProgressKeeper.replaceAll(plan.getRegionProgressMap());
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } finally {
       releaseWriteLock();

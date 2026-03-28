@@ -33,7 +33,7 @@ import java.util.Map;
 
 public class SubscriptionPollRequest {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionPollResponse.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionPollRequest.class);
 
   private final transient short requestType;
 
@@ -45,11 +45,10 @@ public class SubscriptionPollRequest {
   private final transient long maxBytes;
 
   /**
-   * Per-region last consumed progress. Key: regionId (String). Value: [epoch, syncIndex]. Used by
-   * Consumer-Guided Positioning: consumer sends its last consumed (epoch, syncIndex) per region so
-   * the server can position the WAL reader precisely after leader migration.
+   * Per-topic writer-based progress used by the new consensus subscription model. This preserves
+   * topic boundaries while allowing the consumer to provide a recovery hint on reconnect.
    */
-  private final transient Map<String, long[]> lastConsumedByRegion;
+  private final transient Map<String, TopicProgress> progressByTopic;
 
   public SubscriptionPollRequest(
       final short requestType,
@@ -64,13 +63,12 @@ public class SubscriptionPollRequest {
       final SubscriptionPollPayload payload,
       final long timeoutMs,
       final long maxBytes,
-      final Map<String, long[]> lastConsumedByRegion) {
+      final Map<String, TopicProgress> progressByTopic) {
     this.requestType = requestType;
     this.payload = payload;
     this.timeoutMs = timeoutMs;
     this.maxBytes = maxBytes;
-    this.lastConsumedByRegion =
-        lastConsumedByRegion != null ? lastConsumedByRegion : Collections.emptyMap();
+    this.progressByTopic = progressByTopic != null ? progressByTopic : Collections.emptyMap();
   }
 
   public short getRequestType() {
@@ -89,8 +87,8 @@ public class SubscriptionPollRequest {
     return maxBytes;
   }
 
-  public Map<String, long[]> getLastConsumedByRegion() {
-    return lastConsumedByRegion;
+  public Map<String, TopicProgress> getProgressByTopic() {
+    return progressByTopic;
   }
 
   //////////////////////////// serialization ////////////////////////////
@@ -108,12 +106,10 @@ public class SubscriptionPollRequest {
     payload.serialize(stream);
     ReadWriteIOUtils.write(timeoutMs, stream);
     ReadWriteIOUtils.write(maxBytes, stream);
-    // V2 extension: lastConsumedByRegion map (backward compatible — old server ignores extra bytes)
-    ReadWriteIOUtils.write(lastConsumedByRegion.size(), stream);
-    for (final Map.Entry<String, long[]> entry : lastConsumedByRegion.entrySet()) {
+    ReadWriteIOUtils.write(progressByTopic.size(), stream);
+    for (final Map.Entry<String, TopicProgress> entry : progressByTopic.entrySet()) {
       ReadWriteIOUtils.write(entry.getKey(), stream);
-      ReadWriteIOUtils.write(entry.getValue()[0], stream); // epoch
-      ReadWriteIOUtils.write(entry.getValue()[1], stream); // syncIndex
+      entry.getValue().serialize(stream);
     }
   }
 
@@ -142,23 +138,19 @@ public class SubscriptionPollRequest {
     final long timeoutMs = ReadWriteIOUtils.readLong(buffer);
     final long maxBytes = ReadWriteIOUtils.readLong(buffer);
 
-    // V2 extension: lastConsumedByRegion (backward compatible — old client sends no extra bytes)
-    Map<String, long[]> lastConsumedByRegion = Collections.emptyMap();
+    Map<String, TopicProgress> progressByTopic = Collections.emptyMap();
     if (buffer.hasRemaining()) {
       final int mapSize = ReadWriteIOUtils.readInt(buffer);
       if (mapSize > 0) {
-        lastConsumedByRegion = new HashMap<>(mapSize);
+        progressByTopic = new HashMap<>(mapSize);
         for (int i = 0; i < mapSize; i++) {
-          final String regionId = ReadWriteIOUtils.readString(buffer);
-          final long epoch = ReadWriteIOUtils.readLong(buffer);
-          final long syncIndex = ReadWriteIOUtils.readLong(buffer);
-          lastConsumedByRegion.put(regionId, new long[] {epoch, syncIndex});
+          progressByTopic.put(
+              ReadWriteIOUtils.readString(buffer), TopicProgress.deserialize(buffer));
         }
       }
     }
 
-    return new SubscriptionPollRequest(
-        requestType, payload, timeoutMs, maxBytes, lastConsumedByRegion);
+    return new SubscriptionPollRequest(requestType, payload, timeoutMs, maxBytes, progressByTopic);
   }
 
   /////////////////////////////// object ///////////////////////////////
@@ -166,15 +158,15 @@ public class SubscriptionPollRequest {
   @Override
   public String toString() {
     return "SubscriptionPollRequest{requestType="
-        + SubscriptionPollRequestType.valueOf(requestType).toString()
+        + SubscriptionPollRequestType.valueOf(requestType)
         + ", payload="
         + payload
         + ", timeoutMs="
         + timeoutMs
         + ", maxBytes="
         + maxBytes
-        + ", lastConsumedByRegion.size="
-        + lastConsumedByRegion.size()
+        + ", progressByTopic.size="
+        + progressByTopic.size()
         + "}";
   }
 }

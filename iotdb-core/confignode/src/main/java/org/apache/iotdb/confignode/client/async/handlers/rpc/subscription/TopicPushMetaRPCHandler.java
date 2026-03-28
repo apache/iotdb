@@ -48,23 +48,19 @@ public class TopicPushMetaRPCHandler extends DataNodeAsyncRequestRPCHandler<TPus
 
   @Override
   public void onComplete(TPushTopicMetaResp response) {
-    // Put response
     responseMap.put(requestId, response);
 
     if (response.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      LOGGER.info("Successfully {} on DataNode: {}", requestType, formattedTargetLocation);
+      LOGGER.debug("Successfully {} on DataNode: {}", requestType, formattedTargetLocation);
     } else {
-      LOGGER.error(
+      LOGGER.warn(
           "Failed to {} on DataNode: {}, response: {}",
           requestType,
           formattedTargetLocation,
           response);
     }
 
-    // Always remove to avoid retrying
     nodeLocationMap.remove(requestId);
-
-    // Always CountDown
     countDownLatch.countDown();
   }
 
@@ -77,13 +73,12 @@ public class TopicPushMetaRPCHandler extends DataNodeAsyncRequestRPCHandler<TPus
             + formattedTargetLocation
             + ", exception: "
             + e.getMessage();
-    LOGGER.error(errorMsg, e);
+    LOGGER.warn(errorMsg);
 
     responseMap.put(
         requestId,
         new TPushTopicMetaResp(RpcUtils.getStatus(TSStatusCode.TOPIC_PUSH_META_ERROR, errorMsg)));
 
-    // Always CountDown
     countDownLatch.countDown();
   }
 }

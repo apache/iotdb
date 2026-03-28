@@ -92,6 +92,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushSingleConsumerGroupMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushSinglePipeMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushSingleTopicMetaReq;
+import org.apache.iotdb.mpp.rpc.thrift.TPushSubscriptionRuntimeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushTopicMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
@@ -231,6 +232,11 @@ public class CnToDnInternalServiceAsyncRequestManager
         (req, client, handler) ->
             client.pullCommitProgress(
                 (TPullCommitProgressReq) req, (PullCommitProgressRPCHandler) handler));
+    actionMapBuilder.put(
+        CnToDnAsyncRequestType.SUBSCRIPTION_PUSH_RUNTIME,
+        (req, client, handler) ->
+            client.pushSubscriptionRuntime(
+                (TPushSubscriptionRuntimeReq) req, (DataNodeTSStatusRPCHandler) handler));
     actionMapBuilder.put(
         CnToDnAsyncRequestType.PIPE_HEARTBEAT,
         (req, client, handler) ->

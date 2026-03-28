@@ -32,14 +32,21 @@ import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.mpp.rpc.thrift.TPullCommitProgressResp;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
+import org.apache.iotdb.rpc.subscription.payload.poll.RegionProgress;
+import org.apache.iotdb.rpc.subscription.payload.poll.WriterId;
+import org.apache.iotdb.rpc.subscription.payload.poll.WriterProgress;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -102,9 +109,9 @@ public class CommitProgressSyncProcedure extends AbstractOperateSubscriptionProc
     final Map<Integer, TPullCommitProgressResp> respMap = env.pullCommitProgressFromDataNodes();
 
     // 2. Merge all DataNode responses with existing progress using Math::max
-    final Map<String, Long> existingProgress =
-        subscriptionInfo.get().getCommitProgressKeeper().getAllProgress();
-    final Map<String, Long> mergedProgress = new HashMap<>(existingProgress);
+    final Map<String, RegionProgress> mergedRegionProgress =
+        deserializeRegionProgressMap(
+            subscriptionInfo.get().getCommitProgressKeeper().getAllRegionProgress());
 
     for (Map.Entry<Integer, TPullCommitProgressResp> entry : respMap.entrySet()) {
       final TPullCommitProgressResp resp = entry.getValue();
@@ -115,9 +122,17 @@ public class CommitProgressSyncProcedure extends AbstractOperateSubscriptionProc
             resp.getStatus());
         continue;
       }
-      if (resp.isSetCommitProgress()) {
-        for (Map.Entry<String, Long> progressEntry : resp.getCommitProgress().entrySet()) {
-          mergedProgress.merge(progressEntry.getKey(), progressEntry.getValue(), Math::max);
+      if (resp.isSetCommitRegionProgress()) {
+        for (final Map.Entry<String, ByteBuffer> progressEntry :
+            resp.getCommitRegionProgress().entrySet()) {
+          final RegionProgress incomingProgress =
+              deserializeRegionProgress(progressEntry.getKey(), progressEntry.getValue());
+          if (Objects.nonNull(incomingProgress)) {
+            mergedRegionProgress.merge(
+                progressEntry.getKey(),
+                incomingProgress,
+                CommitProgressSyncProcedure::mergeRegionProgress);
+          }
         }
       }
     }
@@ -128,7 +143,9 @@ public class CommitProgressSyncProcedure extends AbstractOperateSubscriptionProc
       response =
           env.getConfigManager()
               .getConsensusManager()
-              .write(new CommitProgressHandleMetaChangePlan(mergedProgress));
+              .write(
+                  new CommitProgressHandleMetaChangePlan(
+                      serializeRegionProgressMap(mergedRegionProgress)));
     } catch (ConsensusException e) {
       LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
       response = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
@@ -174,5 +191,126 @@ public class CommitProgressSyncProcedure extends AbstractOperateSubscriptionProc
   @Override
   public int hashCode() {
     return 0;
+  }
+
+  private static Map<String, RegionProgress> deserializeRegionProgressMap(
+      final Map<String, ByteBuffer> serializedRegionProgressMap) {
+    final Map<String, RegionProgress> result = new HashMap<>();
+    for (final Map.Entry<String, ByteBuffer> entry : serializedRegionProgressMap.entrySet()) {
+      final RegionProgress regionProgress =
+          deserializeRegionProgress(entry.getKey(), entry.getValue());
+      if (Objects.nonNull(regionProgress)) {
+        result.put(entry.getKey(), regionProgress);
+      }
+    }
+    return result;
+  }
+
+  private static Map<String, ByteBuffer> serializeRegionProgressMap(
+      final Map<String, RegionProgress> regionProgressMap) {
+    final Map<String, ByteBuffer> result = new HashMap<>();
+    for (final Map.Entry<String, RegionProgress> entry : regionProgressMap.entrySet()) {
+      final ByteBuffer serialized = serializeRegionProgress(entry.getValue());
+      if (Objects.nonNull(serialized)) {
+        result.put(entry.getKey(), serialized);
+      }
+    }
+    return result;
+  }
+
+  private static RegionProgress deserializeRegionProgress(
+      final String key, final ByteBuffer buffer) {
+    if (Objects.isNull(buffer)) {
+      return null;
+    }
+    final ByteBuffer duplicate = buffer.slice();
+    try {
+      return RegionProgress.deserialize(duplicate);
+    } catch (final RuntimeException e) {
+      LOGGER.warn(
+          "CommitProgressSyncProcedure: failed to deserialize region progress, key={}, summary={}",
+          key,
+          summarizeRegionProgressPayload(buffer),
+          e);
+      throw e;
+    }
+  }
+
+  private static String summarizeRegionProgressPayload(final ByteBuffer buffer) {
+    if (Objects.isNull(buffer)) {
+      return "null";
+    }
+    final int position = buffer.position();
+    final int limit = buffer.limit();
+    final int capacity = buffer.capacity();
+    final ByteBuffer duplicate = buffer.slice();
+    final int remaining = duplicate.remaining();
+    final String firstIntSummary;
+    if (remaining >= Integer.BYTES) {
+      final int firstInt = duplicate.getInt();
+      firstIntSummary = firstInt + "(0x" + String.format("%08x", firstInt) + ")";
+      duplicate.position(0);
+    } else {
+      firstIntSummary = "n/a";
+    }
+    final int sampleLength = Math.min(16, remaining);
+    final byte[] sample = new byte[sampleLength];
+    duplicate.get(sample, 0, sampleLength);
+    return "pos="
+        + position
+        + ", limit="
+        + limit
+        + ", capacity="
+        + capacity
+        + ", remaining="
+        + remaining
+        + ", firstInt="
+        + firstIntSummary
+        + ", firstBytes="
+        + bytesToHex(sample);
+  }
+
+  private static String bytesToHex(final byte[] bytes) {
+    if (Objects.isNull(bytes) || bytes.length == 0) {
+      return "<empty>";
+    }
+    final StringBuilder builder = new StringBuilder(bytes.length * 2);
+    for (final byte b : bytes) {
+      builder.append(String.format("%02x", b));
+    }
+    return builder.toString();
+  }
+
+  private static ByteBuffer serializeRegionProgress(final RegionProgress regionProgress) {
+    try (final ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        final DataOutputStream dos = new DataOutputStream(baos)) {
+      regionProgress.serialize(dos);
+      dos.flush();
+      return ByteBuffer.wrap(baos.toByteArray()).asReadOnlyBuffer();
+    } catch (final IOException e) {
+      throw new RuntimeException("Failed to serialize region progress " + regionProgress, e);
+    }
+  }
+
+  private static RegionProgress mergeRegionProgress(
+      final RegionProgress left, final RegionProgress right) {
+    final Map<WriterId, WriterProgress> merged = new LinkedHashMap<>(left.getWriterPositions());
+    for (final Map.Entry<WriterId, WriterProgress> entry : right.getWriterPositions().entrySet()) {
+      merged.merge(
+          entry.getKey(),
+          entry.getValue(),
+          (oldProgress, newProgress) ->
+              compareWriterProgress(newProgress, oldProgress) > 0 ? newProgress : oldProgress);
+    }
+    return new RegionProgress(merged);
+  }
+
+  private static int compareWriterProgress(
+      final WriterProgress leftProgress, final WriterProgress rightProgress) {
+    int cmp = Long.compare(leftProgress.getPhysicalTime(), rightProgress.getPhysicalTime());
+    if (cmp != 0) {
+      return cmp;
+    }
+    return Long.compare(leftProgress.getLocalSeq(), rightProgress.getLocalSeq());
   }
 }

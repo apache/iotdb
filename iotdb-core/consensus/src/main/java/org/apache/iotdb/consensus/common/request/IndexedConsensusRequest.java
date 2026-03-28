@@ -21,7 +21,6 @@ package org.apache.iotdb.consensus.common.request;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicLong;
@@ -36,6 +35,15 @@ public class IndexedConsensusRequest implements IConsensusRequest {
 
   /** routing epoch from ConfigNode broadcast for ordered consensus subscription */
   private long epoch = 0;
+
+  /** Millisecond physical time used as the first ordering key in the new subscription progress. */
+  private long physicalTime = 0;
+
+  /** Writer node id used as the second ordering key across multiple writers. */
+  private int nodeId = -1;
+
+  /** Writer-local lifecycle id. */
+  private long writerEpoch = 0;
 
   private final List<IConsensusRequest> requests;
   private final List<ByteBuffer> serializedRequests;
@@ -91,6 +99,16 @@ public class IndexedConsensusRequest implements IConsensusRequest {
     return syncIndex;
   }
 
+  /**
+   * Returns the writer-local sequence used by the new subscription progress model.
+   *
+   * <p>For locally generated requests this is the request searchIndex. For replicated requests this
+   * is the source leader's propagated localSeq carried in syncIndex.
+   */
+  public long getProgressLocalSeq() {
+    return syncIndex >= 0 ? syncIndex : searchIndex;
+  }
+
   public long getEpoch() {
     return epoch;
   }
@@ -98,6 +116,37 @@ public class IndexedConsensusRequest implements IConsensusRequest {
   public IndexedConsensusRequest setEpoch(long epoch) {
     this.epoch = epoch;
     return this;
+  }
+
+  public long getPhysicalTime() {
+    return physicalTime;
+  }
+
+  public IndexedConsensusRequest setPhysicalTime(long physicalTime) {
+    this.physicalTime = physicalTime;
+    return this;
+  }
+
+  public int getNodeId() {
+    return nodeId;
+  }
+
+  public IndexedConsensusRequest setNodeId(int nodeId) {
+    this.nodeId = nodeId;
+    return this;
+  }
+
+  public long getWriterEpoch() {
+    return writerEpoch;
+  }
+
+  public IndexedConsensusRequest setWriterEpoch(long writerEpoch) {
+    this.writerEpoch = writerEpoch;
+    return this;
+  }
+
+  public long getLocalSeq() {
+    return searchIndex;
   }
 
   @Override
@@ -123,25 +172,5 @@ public class IndexedConsensusRequest implements IConsensusRequest {
 
   public long decRef() {
     return referenceCnt.getAndDecrement();
-  }
-
-  /**
-   * Creates a SYNC_COMPLETE marker indicating that the given epoch has finished all writes. Encoded
-   * with empty requests list (normal entries always have ≥1 request).
-   *
-   * @param completedEpoch the epoch that has completed
-   * @param maxSearchIndex the searchIndex at the time of epoch completion
-   */
-  public static IndexedConsensusRequest createSyncCompleteMarker(
-      long completedEpoch, long maxSearchIndex) {
-    IndexedConsensusRequest marker =
-        new IndexedConsensusRequest(maxSearchIndex, Collections.emptyList());
-    marker.setEpoch(completedEpoch);
-    return marker;
-  }
-
-  /** Returns true if this request is a SYNC_COMPLETE marker (empty requests list). */
-  public boolean isSyncCompleteMarker() {
-    return requests.isEmpty();
   }
 }

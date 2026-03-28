@@ -100,9 +100,6 @@ public class SubscriptionPollResponse {
         case TERMINATION:
           payload = new TerminationPayload().deserialize(buffer);
           break;
-        case EPOCH_CHANGE:
-          payload = new EpochChangePayload().deserialize(buffer);
-          break;
         case WATERMARK:
           payload = new WatermarkPayload().deserialize(buffer);
           break;

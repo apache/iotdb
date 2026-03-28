@@ -21,8 +21,11 @@ package org.apache.iotdb;
 
 import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
+import org.apache.iotdb.rpc.subscription.payload.poll.RegionProgress;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
-import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionRegionPosition;
+import org.apache.iotdb.rpc.subscription.payload.poll.TopicProgress;
+import org.apache.iotdb.rpc.subscription.payload.poll.WriterId;
+import org.apache.iotdb.rpc.subscription.payload.poll.WriterProgress;
 import org.apache.iotdb.session.TableSessionBuilder;
 import org.apache.iotdb.session.subscription.ISubscriptionTableSession;
 import org.apache.iotdb.session.subscription.SubscriptionTableSessionBuilder;
@@ -455,6 +458,12 @@ public class ConsensusSubscriptionTableTest {
     }
   }
 
+  private static void assertEquals(String msg, long expected, long actual) {
+    if (expected != actual) {
+      throw new AssertionError(msg + ": expected=" + expected + ", actual=" + actual);
+    }
+  }
+
   private static void assertEquals(String msg, String expected, String actual) {
     if (expected == null ? actual != null : !expected.equals(actual)) {
       throw new AssertionError(msg + ": expected=" + expected + ", actual=" + actual);
@@ -471,6 +480,19 @@ public class ConsensusSubscriptionTableTest {
     if (actual < min) {
       throw new AssertionError(msg + ": expected at least " + min + ", actual=" + actual);
     }
+  }
+
+  private static int countWriterFrontiers(TopicProgress topicProgress) {
+    int writerCount = 0;
+    if (topicProgress == null || topicProgress.getRegionProgress() == null) {
+      return 0;
+    }
+    for (Map.Entry<String, RegionProgress> entry : topicProgress.getRegionProgress().entrySet()) {
+      if (entry.getValue() != null && entry.getValue().getWriterPositions() != null) {
+        writerCount += entry.getValue().getWriterPositions().size();
+      }
+    }
+    return writerCount;
   }
 
   private static int countRows(SubscriptionMessage message) {
@@ -508,7 +530,7 @@ public class ConsensusSubscriptionTableTest {
 
   private static void testProcessorWatermarkAndMetadata() throws Exception {
     testProcessorFramework();
-    testSerializationV2Fields();
+    testWriterProgressFields();
   }
 
   // ======================================================================
@@ -671,9 +693,10 @@ public class ConsensusSubscriptionTableTest {
       }
 
       assertAtLeast("First consumer should commit some rows before restart", 1, committedRows);
-      Map<String, SubscriptionRegionPosition> checkpoint =
-          new HashMap<>(consumer1.committedPositions(topicName));
-      assertTrue("Committed checkpoint should not be empty", !checkpoint.isEmpty());
+      TopicProgress checkpoint = consumer1.committedPositions(topicName);
+      assertTrue(
+          "Committed checkpoint should not be empty",
+          checkpoint.getRegionProgress() != null && !checkpoint.getRegionProgress().isEmpty());
       int remainingRows = totalRows - committedRows;
       assertAtLeast("Restart scenario should leave rows after the first commit", 1, remainingRows);
 
@@ -1572,14 +1595,14 @@ public class ConsensusSubscriptionTableTest {
           "seek(future) should yield at most 1 row (race tolerance)", futurePoll.totalRows <= 1);
 
       // ------------------------------------------------------------------
-      // Step 7: seek(regionPositions) — seek by per-region consensus ordering key
+      // Step 7: seek(topicProgress) — seek by per-region writer progress
       // ------------------------------------------------------------------
       System.out.println(
           "  Step 7: seekToBeginning first, then poll to collect per-region positions");
       consumer.seekToBeginning(topicName);
       Thread.sleep(2000);
 
-      List<Map<String, SubscriptionRegionPosition>> positionSnapshots = new ArrayList<>();
+      List<TopicProgress> positionSnapshots = new ArrayList<>();
       List<Integer> rowsPerMsg = new ArrayList<>();
       int totalRowsCollected = 0;
       consecutiveEmpty = 0;
@@ -1604,7 +1627,7 @@ public class ConsensusSubscriptionTableTest {
           consumer.commitSync(msg);
           rowsPerMsg.add(msgRows);
           totalRowsCollected += msgRows;
-          positionSnapshots.add(new HashMap<>(consumer.committedPositions(topicName)));
+          positionSnapshots.add(consumer.committedPositions(topicName));
         }
       }
       System.out.println(
@@ -1616,10 +1639,16 @@ public class ConsensusSubscriptionTableTest {
 
       if (positionSnapshots.size() >= 2) {
         int midIdx = positionSnapshots.size() / 2;
-        Map<String, SubscriptionRegionPosition> seekPositions = positionSnapshots.get(midIdx);
+        TopicProgress seekPositions = positionSnapshots.get(midIdx);
+        int writerFrontierCount = countWriterFrontiers(seekPositions);
+        assertTrue(
+            "committed TopicProgress should contain at least one writer frontier",
+            writerFrontierCount > 0);
         System.out.println(
-            "  seekAfter(regionPositions.size="
-                + seekPositions.size()
+            "  seekAfter(topicProgress.regionCount="
+                + seekPositions.getRegionProgress().size()
+                + ", writerFrontierCount="
+                + writerFrontierCount
                 + ") [msg "
                 + midIdx
                 + "/"
@@ -1636,18 +1665,18 @@ public class ConsensusSubscriptionTableTest {
 
         PollResult afterSeekEpoch = pollUntilComplete(consumer, expectedFromMid, 60);
         System.out.println(
-            "  After seekAfter(regionPositions): "
+            "  After seekAfter(topicProgress): "
                 + afterSeekEpoch.totalRows
                 + " rows (expected ~"
                 + expectedFromMid
                 + ")");
         assertAtLeast(
-            "seekAfter(regionPositions) should deliver at least half the tail data",
+            "seekAfter(topicProgress) should deliver at least half the tail data",
             expectedFromMid / 2,
             afterSeekEpoch.totalRows);
       } else {
         System.out.println(
-            "  SKIP seekAfter(regionPositions) sub-test: only "
+            "  SKIP seekAfter(topicProgress) sub-test: only "
                 + positionSnapshots.size()
                 + " messages");
       }
@@ -2000,12 +2029,13 @@ public class ConsensusSubscriptionTableTest {
    * Verifies:
    *
    * <ul>
-   *   <li>SubscriptionCommitContext.getRegionId() is non-null and non-empty
-   *   <li>SubscriptionCommitContext.getEpoch() is >= 0
-   *   <li>SubscriptionCommitContext.getDataNodeId() is > 0
+   *   <li>SubscriptionCommitContext.getWriterId() is non-null for consensus messages
+   *   <li>SubscriptionCommitContext.getWriterProgress() is non-null for consensus messages
+   *   <li>SubscriptionCommitContext.getWriterId().getRegionId() stays aligned with the region
+   *   <li>These writer-progress fields survive the serialize/deserialize round-trip through RPC
    * </ul>
    */
-  private static void testSerializationV2Fields() throws Exception {
+  private static void testWriterProgressFields() throws Exception {
     String database = nextDatabase();
     String topicName = nextTopic();
     String consumerGroupId = nextConsumerGroup();
@@ -2039,11 +2069,11 @@ public class ConsensusSubscriptionTableTest {
       }
       Thread.sleep(2000);
 
-      // Step 3: Poll and check V2 fields in SubscriptionCommitContext
-      System.out.println("  Step 3: Polling and verifying V2 fields in CommitContext");
+      // Step 3: Poll and check writer-progress fields in SubscriptionCommitContext
+      System.out.println("  Step 3: Polling and verifying writer-progress fields in CommitContext");
       int totalRows = 0;
       int messagesChecked = 0;
-      boolean foundRegionId = false;
+      boolean foundWriterProgress = false;
 
       for (int attempt = 0; attempt < 30; attempt++) {
         List<SubscriptionMessage> msgs = consumer.poll(Duration.ofMillis(2000));
@@ -2057,18 +2087,25 @@ public class ConsensusSubscriptionTableTest {
           SubscriptionCommitContext ctx = msg.getCommitContext();
           messagesChecked++;
 
-          // Check V2 fields
+          // Check writer-progress fields and their compatibility projections
           String regionId = ctx.getRegionId();
-          long epoch = ctx.getEpoch();
           int dataNodeId = ctx.getDataNodeId();
+          WriterId writerId = ctx.getWriterId();
+          WriterProgress writerProgress = ctx.getWriterProgress();
+          long physicalTime =
+              writerProgress != null ? writerProgress.getPhysicalTime() : Long.MIN_VALUE;
 
           System.out.println(
               "    Message "
                   + messagesChecked
                   + ": regionId="
                   + regionId
-                  + ", epoch="
-                  + epoch
+                  + ", physicalTime="
+                  + physicalTime
+                  + ", writerId="
+                  + writerId
+                  + ", writerProgress="
+                  + writerProgress
                   + ", dataNodeId="
                   + dataNodeId
                   + ", topicName="
@@ -2079,9 +2116,17 @@ public class ConsensusSubscriptionTableTest {
           assertTrue(
               "regionId should be non-null for consensus message",
               regionId != null && !regionId.isEmpty());
-          foundRegionId = true;
+          assertTrue("writerId should be non-null for consensus message", writerId != null);
+          assertTrue(
+              "writerProgress should be non-null for consensus message", writerProgress != null);
+          assertEquals("regionId should match writerId.regionId", writerId.getRegionId(), regionId);
+          assertEquals(
+              "physicalTime should mirror writerProgress.physicalTime",
+              writerProgress.getPhysicalTime(),
+              physicalTime);
+          foundWriterProgress = true;
 
-          assertTrue("epoch should be >= 0, got " + epoch, epoch >= 0);
+          assertTrue("physicalTime should be >= 0, got " + physicalTime, physicalTime >= 0);
 
           assertTrue("dataNodeId should be > 0, got " + dataNodeId, dataNodeId > 0);
 
@@ -2100,11 +2145,13 @@ public class ConsensusSubscriptionTableTest {
               + messagesChecked
               + " messages, "
               + totalRows
-              + " rows. foundRegionId="
-              + foundRegionId);
+              + " rows. foundWriterProgress="
+              + foundWriterProgress);
       assertAtLeast("Should have received data rows", 1, totalRows);
-      assertTrue("Should have found non-empty regionId in at least one message", foundRegionId);
-      System.out.println("  testSerializationV2Fields passed!");
+      assertTrue(
+          "Should have found writer-progress metadata in at least one message",
+          foundWriterProgress);
+      System.out.println("  testWriterProgressFields passed!");
     } finally {
       cleanup(consumer, topicName, database);
     }

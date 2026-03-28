@@ -26,7 +26,6 @@ import java.util.Map;
 public enum SubscriptionMessageType {
   SESSION_DATA_SETS_HANDLER((short) 0),
   TS_FILE_HANDLER((short) 1),
-  EPOCH_SENTINEL((short) 2),
   WATERMARK((short) 3),
   ;
 

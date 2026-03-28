@@ -88,6 +88,8 @@ public class SubscriptionTopicAgent {
     final String topicName = metaFromCoordinator.getTopicName();
     topicMetaKeeper.removeTopicMeta(topicName);
     topicMetaKeeper.addTopicMeta(topicName, metaFromCoordinator);
+    SubscriptionAgent.broker()
+        .refreshConsensusQueueOrderMode(topicName, metaFromCoordinator.getConfig().getOrderMode());
   }
 
   public TPushTopicMetaRespExceptionMessage handleTopicMetaChanges(
@@ -165,6 +167,15 @@ public class SubscriptionTopicAgent {
           .getTopicMeta(topicName)
           .getConfig()
           .getStringOrDefault(TopicConstant.MODE_KEY, TopicConstant.MODE_DEFAULT_VALUE);
+    } finally {
+      releaseReadLock();
+    }
+  }
+
+  public String getTopicOrderMode(final String topicName) {
+    acquireReadLock();
+    try {
+      return topicMetaKeeper.getTopicMeta(topicName).getConfig().getOrderMode();
     } finally {
       releaseReadLock();
     }

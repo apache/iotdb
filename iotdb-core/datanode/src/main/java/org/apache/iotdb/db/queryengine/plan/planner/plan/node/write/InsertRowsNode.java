@@ -137,9 +137,23 @@ public class InsertRowsNode extends InsertNode implements WALEntryValue {
   }
 
   @Override
-  public SearchNode setEpoch(long epoch) {
-    this.epoch = epoch;
-    insertRowNodeList.forEach(plan -> plan.setEpoch(epoch));
+  public SearchNode setPhysicalTime(long physicalTime) {
+    this.physicalTime = physicalTime;
+    insertRowNodeList.forEach(plan -> plan.setPhysicalTime(physicalTime));
+    return this;
+  }
+
+  @Override
+  public SearchNode setNodeId(int nodeId) {
+    this.nodeId = nodeId;
+    insertRowNodeList.forEach(plan -> plan.setNodeId(nodeId));
+    return this;
+  }
+
+  @Override
+  public SearchNode setWriterEpoch(long writerEpoch) {
+    this.writerEpoch = writerEpoch;
+    insertRowNodeList.forEach(plan -> plan.setWriterEpoch(writerEpoch));
     return this;
   }
 
@@ -301,7 +315,9 @@ public class InsertRowsNode extends InsertNode implements WALEntryValue {
       } else {
         tmpNode = new InsertRowsNode(this.getPlanNodeId());
         tmpNode.setDataRegionReplicaSet(dataRegionReplicaSet);
-        tmpNode.setEpoch(getEpoch());
+        tmpNode.setPhysicalTime(getPhysicalTime());
+        tmpNode.setNodeId(getNodeId());
+        tmpNode.setWriterEpoch(getWriterEpoch());
         tmpNode.setSyncIndex(getSyncIndex());
         tmpNode.addOneInsertRowNode(insertRowNode, i);
         splitMap.put(dataRegionReplicaSet, tmpNode);

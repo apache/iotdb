@@ -451,11 +451,6 @@ public class CommonDescriptor {
             properties.getProperty(
                 "subscription_consensus_commit_fsync_enabled",
                 String.valueOf(config.isSubscriptionConsensusCommitFsyncEnabled()))));
-    config.setSubscriptionConsensusExclusiveConsumption(
-        Boolean.parseBoolean(
-            properties.getProperty(
-                "subscription_consensus_exclusive_consumption",
-                String.valueOf(config.isSubscriptionConsensusExclusiveConsumption()))));
     config.setSubscriptionConsensusConsumerEvictionTimeoutMs(
         Long.parseLong(
             properties.getProperty(
@@ -481,6 +476,11 @@ public class CommonDescriptor {
             properties.getProperty(
                 "subscription_consensus_watermark_interval_ms",
                 String.valueOf(config.getSubscriptionConsensusWatermarkIntervalMs()))));
+    config.setSubscriptionConsensusIdleSafeHlcIntervalMs(
+        Long.parseLong(
+            properties.getProperty(
+                "subscription_consensus_idle_safe_hlc_interval_ms",
+                String.valueOf(config.getSubscriptionConsensusIdleSafeHlcIntervalMs()))));
   }
 
   public void loadRetryProperties(TrimProperties properties) throws IOException {

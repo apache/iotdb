@@ -143,9 +143,23 @@ public class InsertMultiTabletsNode extends InsertNode {
   }
 
   @Override
-  public SearchNode setEpoch(long epoch) {
-    this.epoch = epoch;
-    insertTabletNodeList.forEach(plan -> plan.setEpoch(epoch));
+  public SearchNode setPhysicalTime(long physicalTime) {
+    this.physicalTime = physicalTime;
+    insertTabletNodeList.forEach(plan -> plan.setPhysicalTime(physicalTime));
+    return this;
+  }
+
+  @Override
+  public SearchNode setNodeId(int nodeId) {
+    this.nodeId = nodeId;
+    insertTabletNodeList.forEach(plan -> plan.setNodeId(nodeId));
+    return this;
+  }
+
+  @Override
+  public SearchNode setWriterEpoch(long writerEpoch) {
+    this.writerEpoch = writerEpoch;
+    insertTabletNodeList.forEach(plan -> plan.setWriterEpoch(writerEpoch));
     return this;
   }
 
@@ -170,7 +184,9 @@ public class InsertMultiTabletsNode extends InsertNode {
         } else {
           tmpNode = new InsertMultiTabletsNode(this.getPlanNodeId());
           tmpNode.setDataRegionReplicaSet(dataRegionReplicaSet);
-          tmpNode.setEpoch(getEpoch());
+          tmpNode.setPhysicalTime(getPhysicalTime());
+          tmpNode.setNodeId(getNodeId());
+          tmpNode.setWriterEpoch(getWriterEpoch());
           tmpNode.setSyncIndex(getSyncIndex());
           tmpNode.addInsertTabletNode((InsertTabletNode) subNode, i);
           splitMap.put(dataRegionReplicaSet, tmpNode);

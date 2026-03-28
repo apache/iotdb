@@ -71,12 +71,16 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogEntriesRe
               .collect(Collectors.toList());
 
       String messages = String.join(", ", retryStatusMessages);
-      logger.warn(
-          "Can not send {} to peer {} for {} times because {}",
-          batch,
-          thread.getPeer(),
-          ++retryCount,
-          messages);
+      if (++retryCount == 1) {
+        logger.warn("Can not send {} to peer {} because {}", batch, thread.getPeer(), messages);
+      } else {
+        logger.debug(
+            "Can not send {} to peer {} for {} times because {}",
+            batch,
+            thread.getPeer(),
+            retryCount,
+            messages);
+      }
       sleepCorrespondingTimeAndRetryAsynchronous();
     } else {
       if (logger.isDebugEnabled()) {
@@ -105,14 +109,19 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogEntriesRe
   public void onError(Exception exception) {
     ++retryCount;
     Throwable rootCause = ExceptionUtils.getRootCause(exception);
-    logger.warn(
-        "Can not send {} to peer for {} times {} because {}",
-        batch,
-        thread.getPeer(),
-        retryCount,
-        rootCause.toString());
+    final Throwable actualCause = rootCause == null ? exception : rootCause;
+    if (retryCount == 1) {
+      logger.warn("Can not send {} to peer {} because {}", batch, thread.getPeer(), actualCause);
+    } else {
+      logger.debug(
+          "Can not send {} to peer for {} times {} because {}",
+          batch,
+          thread.getPeer(),
+          retryCount,
+          actualCause.toString());
+    }
     // skip TApplicationException caused by follower
-    if (rootCause instanceof TApplicationException) {
+    if (actualCause instanceof TApplicationException) {
       completeBatch(batch);
       logger.warn("Skip retrying this Batch {} because of TApplicationException.", batch);
       logDispatcherThreadMetrics.recordSyncLogTimePerRequest(System.nanoTime() - createTime);

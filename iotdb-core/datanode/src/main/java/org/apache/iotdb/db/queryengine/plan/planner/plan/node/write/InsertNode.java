@@ -110,6 +110,10 @@ public abstract class InsertNode extends SearchNode {
             .collect(Collectors.toList());
     InsertNode result = mergeInsertNode(insertNodes);
     result.setSearchIndex(insertNodes.get(0).getSearchIndex());
+    result.setPhysicalTime(insertNodes.get(0).getPhysicalTime());
+    result.setNodeId(insertNodes.get(0).getNodeId());
+    result.setWriterEpoch(insertNodes.get(0).getWriterEpoch());
+    result.setSyncIndex(insertNodes.get(0).getSyncIndex());
     result.setTargetPath(insertNodes.get(0).getTargetPath());
     return result;
   }

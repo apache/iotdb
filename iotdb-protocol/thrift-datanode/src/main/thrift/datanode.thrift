@@ -602,7 +602,7 @@ struct TPullCommitProgressReq {
 
 struct TPullCommitProgressResp {
   1: required common.TSStatus status
-  2: optional map<string, i64> commitProgress
+  2: optional map<string, binary> commitRegionProgress
 }
 
 struct TSyncSubscriptionProgressReq {
@@ -611,6 +611,18 @@ struct TSyncSubscriptionProgressReq {
   3: required string regionId
   4: required i64 epoch
   5: required i64 syncIndex
+  6: optional i32 writerNodeId
+  7: optional i64 writerEpoch
+}
+struct TSubscriptionRuntimeStateEntry {
+  1: required common.TConsensusGroupId regionId
+  2: required i64 runtimeVersion
+  3: required i32 preferredWriterNodeId
+  4: required bool active
+  5: required list<i32> activeWriterNodeIds
+}
+struct TPushSubscriptionRuntimeReq {
+  1: required list<TSubscriptionRuntimeStateEntry> runtimeStates
 }
 
 struct TConstructViewSchemaBlackListReq {
@@ -1201,6 +1213,10 @@ service IDataNodeRPCService {
   * Sync subscription committed progress from Leader to Follower (fire-and-forget)
   */
   common.TSStatus syncSubscriptionProgress(TSyncSubscriptionProgressReq req)
+ /**
+  * Push subscription runtime state to DataNodes.
+  */
+  common.TSStatus pushSubscriptionRuntime(TPushSubscriptionRuntimeReq req)
 
   /**
   * ConfigNode will ask DataNode for pipe meta in every few seconds
@@ -1318,3 +1334,4 @@ service MPPDataExchangeService {
   /** Empty rpc, only for connection test */
   common.TSStatus testConnectionEmptyRPC()
 }
+

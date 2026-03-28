@@ -154,7 +154,9 @@ public class DataRegionStateMachine extends BaseStateMachine {
       PlanNode planNode = getPlanNode(req);
       if (planNode instanceof SearchNode) {
         ((SearchNode) planNode).setSearchIndex(indexedRequest.getSearchIndex());
-        ((SearchNode) planNode).setEpoch(indexedRequest.getEpoch());
+        ((SearchNode) planNode).setPhysicalTime(indexedRequest.getPhysicalTime());
+        ((SearchNode) planNode).setNodeId(indexedRequest.getNodeId());
+        ((SearchNode) planNode).setWriterEpoch(indexedRequest.getWriterEpoch());
         ((SearchNode) planNode).setSyncIndex(indexedRequest.getSyncIndex());
         searchNodes.add((SearchNode) planNode);
       } else {

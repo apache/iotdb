@@ -207,7 +207,7 @@ public enum Metric {
   SUBSCRIPTION_EVENT_TRANSFER("subscription_event_transfer"),
   SUBSCRIPTION_CONSENSUS_LAG("subscription_consensus_lag"),
   SUBSCRIPTION_CONSENSUS_WAL_GAP("subscription_consensus_wal_gap"),
-  SUBSCRIPTION_CONSENSUS_EPOCH_CHANGE("subscription_consensus_epoch_change"),
+  SUBSCRIPTION_CONSENSUS_ROUTING_EPOCH_CHANGE("subscription_consensus_routing_epoch_change"),
   SUBSCRIPTION_CONSENSUS_WATERMARK("subscription_consensus_watermark"),
   // load related
   ACTIVE_LOADING_FILES_NUMBER("active_loading_files_number"),

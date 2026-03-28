@@ -126,19 +126,6 @@ public class WatermarkProcessor implements SubscriptionMessageProcessor {
         continue; // Do not buffer system events
       }
 
-      // EPOCH_SENTINEL signals that a leader has finished its epoch.
-      // Remove the old leader's region key so it no longer anchors the watermark.
-      if (message.getMessageType() == SubscriptionMessageType.EPOCH_SENTINEL.getType()) {
-        final String oldKey =
-            "region-"
-                + message.getCommitContext().getDataNodeId()
-                + "-"
-                + message.getCommitContext().getRegionId();
-        latestPerSource.remove(oldKey);
-        lastAdvancedTimeMs.remove(oldKey);
-        continue;
-      }
-
       final long maxTs = extractMaxTimestamp(message);
       final long estimatedSize = message.estimateSize();
       buffer.add(new TimestampedMessage(message, maxTs, estimatedSize));

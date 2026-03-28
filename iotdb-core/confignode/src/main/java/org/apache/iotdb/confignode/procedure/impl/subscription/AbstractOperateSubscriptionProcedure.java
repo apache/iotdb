@@ -224,6 +224,7 @@ public abstract class AbstractOperateSubscriptionProcedure
             getCycles() + 1,
             RETRY_THRESHOLD,
             e);
+        setNextState(getCurrentState());
         // Wait 3s for next retry
         TimeUnit.MILLISECONDS.sleep(3000L);
       } else {
@@ -239,6 +240,7 @@ public abstract class AbstractOperateSubscriptionProcedure
                 String.format(
                     "ProcedureId %s: Fail to %s because %s",
                     getProcId(), getOperation().name(), e.getMessage())));
+        return Flow.NO_MORE_STATE;
       }
     }
 

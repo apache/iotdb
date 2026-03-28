@@ -97,6 +97,72 @@ public class PipeEnrichedDeleteDataNode extends AbstractDeleteDataNode {
   }
 
   @Override
+  public SearchNode setSearchIndex(final long searchIndex) {
+    deleteDataNode.setSearchIndex(searchIndex);
+    return this;
+  }
+
+  @Override
+  public long getSearchIndex() {
+    return deleteDataNode.getSearchIndex();
+  }
+
+  @Override
+  public long getRoutingEpoch() {
+    return deleteDataNode.getRoutingEpoch();
+  }
+
+  @Override
+  public SearchNode setRoutingEpoch(final long routingEpoch) {
+    deleteDataNode.setRoutingEpoch(routingEpoch);
+    return this;
+  }
+
+  @Override
+  public long getPhysicalTime() {
+    return deleteDataNode.getPhysicalTime();
+  }
+
+  @Override
+  public SearchNode setPhysicalTime(final long physicalTime) {
+    deleteDataNode.setPhysicalTime(physicalTime);
+    return this;
+  }
+
+  @Override
+  public int getNodeId() {
+    return deleteDataNode.getNodeId();
+  }
+
+  @Override
+  public SearchNode setNodeId(final int nodeId) {
+    deleteDataNode.setNodeId(nodeId);
+    return this;
+  }
+
+  @Override
+  public long getWriterEpoch() {
+    return deleteDataNode.getWriterEpoch();
+  }
+
+  @Override
+  public SearchNode setWriterEpoch(final long writerEpoch) {
+    deleteDataNode.setWriterEpoch(writerEpoch);
+    return this;
+  }
+
+  @Override
+  public long getSyncIndex() {
+    return deleteDataNode.getSyncIndex();
+  }
+
+  @Override
+  public SearchNode setSyncIndex(final long syncIndex) {
+    deleteDataNode.setSyncIndex(syncIndex);
+    return this;
+  }
+
+  @Override
   public List<PlanNode> getChildren() {
     return deleteDataNode.getChildren();
   }

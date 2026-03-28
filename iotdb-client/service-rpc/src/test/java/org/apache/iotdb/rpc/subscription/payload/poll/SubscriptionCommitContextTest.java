@@ -44,7 +44,7 @@ public class SubscriptionCommitContextTest {
     assertEquals(3L, context.getCommitId());
     assertEquals(0L, context.getSeekGeneration());
     assertEquals("", context.getRegionId());
-    assertEquals(0L, context.getEpoch());
+    assertEquals(0L, context.getPhysicalTime());
   }
 
   @Test
@@ -58,9 +58,27 @@ public class SubscriptionCommitContextTest {
     assertEquals(original, parsed);
   }
 
+  @Test
+  public void testDeserializeV3() throws IOException {
+    final WriterId writerId = new WriterId("region", 7, 8L);
+    final WriterProgress writerProgress = new WriterProgress(9L, 10L);
+    final SubscriptionCommitContext original =
+        new SubscriptionCommitContext(1, 2, "topic", "group", 3L, writerId, writerProgress);
+
+    final ByteBuffer buffer = SubscriptionCommitContext.serialize(original);
+    final SubscriptionCommitContext parsed = SubscriptionCommitContext.deserialize(buffer);
+
+    assertEquals(original, parsed);
+    assertEquals(writerId, parsed.getWriterId());
+    assertEquals(writerProgress, parsed.getWriterProgress());
+    assertEquals("region", parsed.getRegionId());
+    assertEquals(9L, parsed.getPhysicalTime());
+    assertEquals(10L, parsed.getLocalSeq());
+  }
+
   @Test(expected = IllegalArgumentException.class)
   public void testDeserializeUnsupportedVersion() throws IOException {
-    final ByteBuffer buffer = buildV1BufferWithVersion((byte) 3, 1, 2, "topic", "group", 3L);
+    final ByteBuffer buffer = buildV1BufferWithVersion((byte) 4, 1, 2, "topic", "group", 3L);
     SubscriptionCommitContext.deserialize(buffer);
   }
 

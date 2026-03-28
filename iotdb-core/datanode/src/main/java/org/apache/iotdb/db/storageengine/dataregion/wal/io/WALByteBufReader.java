@@ -89,20 +89,44 @@ public class WALByteBufReader implements Closeable {
     return metaData.getFirstSearchIndex();
   }
 
-  /** Returns the epoch of the current entry (last returned by next()). V3 only. */
+  /** Returns a compatibility epoch view of the current entry, mirrored from physicalTime. */
   public long getCurrentEntryEpoch() {
-    List<Long> epochs = metaData.getEpochs();
-    if (currentEntryIndex >= 0 && currentEntryIndex < epochs.size()) {
-      return epochs.get(currentEntryIndex);
+    return getCurrentEntryPhysicalTime();
+  }
+
+  /** Returns a compatibility syncIndex view of the current entry, mirrored from localSeq. */
+  public long getCurrentEntrySyncIndex() {
+    return getCurrentEntryLocalSeq();
+  }
+
+  public long getCurrentEntryPhysicalTime() {
+    List<Long> physicalTimes = metaData.getPhysicalTimes();
+    if (currentEntryIndex >= 0 && currentEntryIndex < physicalTimes.size()) {
+      return physicalTimes.get(currentEntryIndex);
     }
     return 0L;
   }
 
-  /** Returns the syncIndex of the current entry (last returned by next()). V3 only. */
-  public long getCurrentEntrySyncIndex() {
-    List<Long> syncIndices = metaData.getSyncIndices();
-    if (currentEntryIndex >= 0 && currentEntryIndex < syncIndices.size()) {
-      return syncIndices.get(currentEntryIndex);
+  public int getCurrentEntryNodeId() {
+    List<Short> nodeIds = metaData.getNodeIds();
+    if (currentEntryIndex >= 0 && currentEntryIndex < nodeIds.size()) {
+      return nodeIds.get(currentEntryIndex);
+    }
+    return -1;
+  }
+
+  public long getCurrentEntryWriterEpoch() {
+    List<Short> writerEpochs = metaData.getWriterEpochs();
+    if (currentEntryIndex >= 0 && currentEntryIndex < writerEpochs.size()) {
+      return writerEpochs.get(currentEntryIndex);
+    }
+    return 0L;
+  }
+
+  public long getCurrentEntryLocalSeq() {
+    List<Long> localSeqs = metaData.getLocalSeqs();
+    if (currentEntryIndex >= 0 && currentEntryIndex < localSeqs.size()) {
+      return localSeqs.get(currentEntryIndex);
     }
     return metaData.getFirstSearchIndex() + currentEntryIndex;
   }

@@ -38,7 +38,9 @@ import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.db.subscription.broker.SubscriptionPrefetchingQueue;
+import org.apache.iotdb.db.subscription.broker.consensus.ConsensusSubscriptionSetupHandler;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
+import org.apache.iotdb.db.subscription.metric.ConsensusSubscriptionPrefetchingQueueMetrics;
 import org.apache.iotdb.db.subscription.metric.SubscriptionPrefetchingQueueMetrics;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -54,6 +56,8 @@ import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollRequest;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollRequestType;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
+import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType;
+import org.apache.iotdb.rpc.subscription.payload.poll.TopicProgress;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeCloseReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeCommitReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeHandshakeReq;
@@ -87,6 +91,7 @@ import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -455,7 +460,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
                   consumerConfig,
                   (PollPayload) request.getPayload(),
                   maxBytes,
-                  request.getLastConsumedByRegion());
+                  request.getProgressByTopic());
           break;
         case POLL_FILE:
           events =
@@ -519,17 +524,33 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
                     }
                     totalSize.getAndAdd(size);
 
-                    SubscriptionPrefetchingQueueMetrics.getInstance()
-                        .mark(
-                            SubscriptionPrefetchingQueue.generatePrefetchingQueueId(
-                                commitContext.getConsumerGroupId(), commitContext.getTopicName()),
-                            size);
+                    final String queueId =
+                        SubscriptionPrefetchingQueue.generatePrefetchingQueueId(
+                            commitContext.getConsumerGroupId(), commitContext.getTopicName());
+                    if (ConsensusSubscriptionSetupHandler.isConsensusBasedTopic(
+                        commitContext.getTopicName())) {
+                      ConsensusSubscriptionPrefetchingQueueMetrics.getInstance()
+                          .mark(queueId, size);
+                    } else {
+                      SubscriptionPrefetchingQueueMetrics.getInstance().mark(queueId, size);
+                    }
                     event.invalidateCurrentResponseByteBuffer();
-                    LOGGER.info(
-                        "Subscription: consumer {} poll {} successfully with request: {}",
-                        consumerConfig,
-                        response,
-                        req.getRequest());
+                    if (response.getResponseType()
+                            == SubscriptionPollResponseType.WATERMARK.getType()
+                        || response.getResponseType()
+                            == SubscriptionPollResponseType.TABLETS.getType()) {
+                      LOGGER.debug(
+                          "Subscription: consumer {} poll {} successfully with request: {}",
+                          consumerConfig,
+                          response,
+                          req.getRequest());
+                    } else {
+                      LOGGER.info(
+                          "Subscription: consumer {} poll {} successfully with request: {}",
+                          consumerConfig,
+                          response,
+                          req.getRequest());
+                    }
                     return byteBuffer;
                   } catch (final Exception e) {
                     final boolean isOutdated =
@@ -570,7 +591,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
       final ConsumerConfig consumerConfig,
       final PollPayload messagePayload,
       final long maxBytes,
-      final Map<String, long[]> lastConsumedByRegion) {
+      final Map<String, TopicProgress> progressByTopic) {
     final Set<String> subscribedTopicNames =
         SubscriptionAgent.consumer()
             .getTopicNamesSubscribedByConsumer(
@@ -582,8 +603,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
 
     // filter unsubscribed topics
     topicNames.removeIf((topicName) -> !subscribedTopicNames.contains(topicName));
-    return SubscriptionAgent.broker()
-        .poll(consumerConfig, topicNames, maxBytes, lastConsumedByRegion);
+    return SubscriptionAgent.broker().poll(consumerConfig, topicNames, maxBytes, progressByTopic);
   }
 
   private List<SubscriptionEvent> handlePipeSubscribePollTsFileRequest(
@@ -630,20 +650,88 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
 
     if (Objects.equals(successfulCommitContexts.size(), commitContexts.size())) {
       LOGGER.info(
-          "Subscription: consumer {} commit (nack: {}) successfully, commit contexts: {}",
+          "Subscription: consumer {} commit (nack: {}) successfully, summary: {}",
           consumerConfig,
           nack,
-          commitContexts);
+          summarizeCommitContexts(commitContexts));
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug(
+            "Subscription: consumer {} commit (nack: {}) full commit contexts: {}",
+            consumerConfig,
+            nack,
+            commitContexts);
+      }
     } else {
       LOGGER.warn(
-          "Subscription: consumer {} commit (nack: {}) partially successful, commit contexts: {}, successful commit contexts: {}",
+          "Subscription: consumer {} commit (nack: {}) partially successful, requested summary: {}, successful summary: {}",
           consumerConfig,
           nack,
-          commitContexts,
-          successfulCommitContexts);
+          summarizeCommitContexts(commitContexts),
+          summarizeCommitContexts(successfulCommitContexts));
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug(
+            "Subscription: consumer {} commit (nack: {}) full requested commit contexts: {}, full successful commit contexts: {}",
+            consumerConfig,
+            nack,
+            commitContexts,
+            successfulCommitContexts);
+      }
     }
 
     return PipeSubscribeCommitResp.toTPipeSubscribeResp(RpcUtils.SUCCESS_STATUS);
+  }
+
+  private static String summarizeCommitContexts(
+      final List<SubscriptionCommitContext> commitContexts) {
+    if (Objects.isNull(commitContexts) || commitContexts.isEmpty()) {
+      return "count=0";
+    }
+
+    long minLocalSeq = Long.MAX_VALUE;
+    long maxLocalSeq = Long.MIN_VALUE;
+    long minPhysicalTime = Long.MAX_VALUE;
+    long maxPhysicalTime = Long.MIN_VALUE;
+    final Set<String> regionIds = new LinkedHashSet<>();
+    final Set<String> topicNames = new LinkedHashSet<>();
+
+    for (final SubscriptionCommitContext commitContext : commitContexts) {
+      if (Objects.isNull(commitContext)) {
+        continue;
+      }
+      topicNames.add(commitContext.getTopicName());
+      regionIds.add(commitContext.getRegionId());
+
+      final long localSeq = commitContext.getLocalSeq();
+      minLocalSeq = Math.min(minLocalSeq, localSeq);
+      maxLocalSeq = Math.max(maxLocalSeq, localSeq);
+
+      final long physicalTime = commitContext.getPhysicalTime();
+      minPhysicalTime = Math.min(minPhysicalTime, physicalTime);
+      maxPhysicalTime = Math.max(maxPhysicalTime, physicalTime);
+    }
+
+    return String.format(
+        "count=%d, topics=%s, regions=%s, localSeqRange=%s, physicalTimeRange=%s",
+        commitContexts.size(),
+        summarizeStringSet(topicNames, 2),
+        summarizeStringSet(regionIds, 4),
+        minLocalSeq == Long.MAX_VALUE ? "N/A" : "[" + minLocalSeq + ", " + maxLocalSeq + "]",
+        minPhysicalTime == Long.MAX_VALUE
+            ? "N/A"
+            : "[" + minPhysicalTime + ", " + maxPhysicalTime + "]");
+  }
+
+  private static String summarizeStringSet(final Set<String> values, final int maxDisplayCount) {
+    if (Objects.isNull(values) || values.isEmpty()) {
+      return "[]";
+    }
+
+    final List<String> displayValues =
+        values.stream().limit(maxDisplayCount).collect(Collectors.toList());
+    if (values.size() <= maxDisplayCount) {
+      return displayValues.toString();
+    }
+    return displayValues + "...(" + values.size() + " total)";
   }
 
   private TPipeSubscribeResp handlePipeSubscribeClose(final PipeSubscribeCloseReq req) {
@@ -699,22 +787,22 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     final String topicName = req.getTopicName();
     final short seekType = req.getSeekType();
 
-    if (seekType == PipeSubscribeSeekReq.SEEK_TO_REGION_POSITIONS) {
+    if (seekType == PipeSubscribeSeekReq.SEEK_TO_TOPIC_PROGRESS) {
       SubscriptionAgent.broker()
-          .seekToRegionPositions(consumerConfig, topicName, req.getRegionPositions());
+          .seekToTopicProgress(consumerConfig, topicName, req.getTopicProgress());
       LOGGER.info(
-          "Subscription: consumer {} seek topic {} to regionPositions(size={})",
+          "Subscription: consumer {} seek topic {} to topicProgress(regionCount={})",
           consumerConfig,
           topicName,
-          req.getRegionPositions().size());
-    } else if (seekType == PipeSubscribeSeekReq.SEEK_AFTER_REGION_POSITIONS) {
+          req.getTopicProgress().getRegionProgress().size());
+    } else if (seekType == PipeSubscribeSeekReq.SEEK_AFTER_TOPIC_PROGRESS) {
       SubscriptionAgent.broker()
-          .seekAfterRegionPositions(consumerConfig, topicName, req.getRegionPositions());
+          .seekAfterTopicProgress(consumerConfig, topicName, req.getTopicProgress());
       LOGGER.info(
-          "Subscription: consumer {} seekAfter topic {} to regionPositions(size={})",
+          "Subscription: consumer {} seekAfter topic {} to topicProgress(regionCount={})",
           consumerConfig,
           topicName,
-          req.getRegionPositions().size());
+          req.getTopicProgress().getRegionProgress().size());
     } else {
       SubscriptionAgent.broker().seek(consumerConfig, topicName, seekType, req.getTimestamp());
       LOGGER.info(

@@ -256,6 +256,9 @@ import org.apache.iotdb.db.schemaengine.template.TemplateAlterOperationType;
 import org.apache.iotdb.db.schemaengine.template.alter.TemplateAlterOperationUtil;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.rpc.subscription.payload.poll.RegionProgress;
+import org.apache.iotdb.rpc.subscription.payload.poll.WriterId;
+import org.apache.iotdb.rpc.subscription.payload.poll.WriterProgress;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
@@ -266,6 +269,8 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
@@ -278,8 +283,10 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -2523,18 +2530,68 @@ public class ConfigManager implements IManager {
             + req.getRegionId()
             + "##"
             + req.getDataNodeId();
-    final Long committedSearchIndex =
+    final String keyPrefix =
+        req.getConsumerGroupId() + "##" + req.getTopicName() + "##" + req.getRegionId() + "##";
+    final org.apache.iotdb.commons.subscription.meta.consumer.CommitProgressKeeper keeper =
         subscriptionManager
             .getSubscriptionCoordinator()
             .getSubscriptionInfo()
-            .getCommitProgressKeeper()
-            .getProgress(key);
+            .getCommitProgressKeeper();
+    final Map<WriterId, WriterProgress> mergedWriterPositions = new LinkedHashMap<>();
+
+    for (final Map.Entry<String, ByteBuffer> entry : keeper.getAllRegionProgress().entrySet()) {
+      if (!entry.getKey().startsWith(keyPrefix)) {
+        continue;
+      }
+      final RegionProgress regionProgress = deserializeRegionProgress(entry.getValue());
+      if (Objects.isNull(regionProgress)) {
+        continue;
+      }
+      for (final Map.Entry<WriterId, WriterProgress> writerEntry :
+          regionProgress.getWriterPositions().entrySet()) {
+        mergedWriterPositions.merge(
+            writerEntry.getKey(),
+            writerEntry.getValue(),
+            (oldProgress, newProgress) ->
+                compareWriterProgress(newProgress, oldProgress) > 0 ? newProgress : oldProgress);
+      }
+    }
     final TGetCommitProgressResp resp =
         new TGetCommitProgressResp(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
-    if (committedSearchIndex != null) {
-      resp.setCommittedSearchIndex(committedSearchIndex);
+    if (!mergedWriterPositions.isEmpty()) {
+      resp.setCommittedRegionProgress(
+          serializeRegionProgress(new RegionProgress(mergedWriterPositions)));
     }
     return resp;
+  }
+
+  private static RegionProgress deserializeRegionProgress(final ByteBuffer buffer) {
+    if (Objects.isNull(buffer)) {
+      return null;
+    }
+    final ByteBuffer duplicate = buffer.asReadOnlyBuffer();
+    duplicate.rewind();
+    return RegionProgress.deserialize(duplicate);
+  }
+
+  private static ByteBuffer serializeRegionProgress(final RegionProgress regionProgress) {
+    try (final ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        final DataOutputStream dos = new DataOutputStream(baos)) {
+      regionProgress.serialize(dos);
+      dos.flush();
+      return ByteBuffer.wrap(baos.toByteArray()).asReadOnlyBuffer();
+    } catch (final IOException e) {
+      throw new RuntimeException("Failed to serialize region progress " + regionProgress, e);
+    }
+  }
+
+  private static int compareWriterProgress(
+      final WriterProgress leftProgress, final WriterProgress rightProgress) {
+    int cmp = Long.compare(leftProgress.getPhysicalTime(), rightProgress.getPhysicalTime());
+    if (cmp != 0) {
+      return cmp;
+    }
+    return Long.compare(leftProgress.getLocalSeq(), rightProgress.getLocalSeq());
   }
 
   @Override

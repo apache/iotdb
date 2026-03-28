@@ -59,14 +59,6 @@ public class SubscriptionMessage implements Comparable<SubscriptionMessage> {
     this.watermarkTimestamp = Long.MIN_VALUE;
   }
 
-  /** Sentinel message carrying epoch boundary information. No handler needed. */
-  public SubscriptionMessage(final SubscriptionCommitContext commitContext) {
-    this.commitContext = commitContext;
-    this.messageType = SubscriptionMessageType.EPOCH_SENTINEL.getType();
-    this.handler = null;
-    this.watermarkTimestamp = Long.MIN_VALUE;
-  }
-
   /** Watermark message carrying server-side timestamp progress for a region. */
   public SubscriptionMessage(
       final SubscriptionCommitContext commitContext, final long watermarkTimestamp) {

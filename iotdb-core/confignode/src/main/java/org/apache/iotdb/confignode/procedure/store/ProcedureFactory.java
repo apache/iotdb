@@ -73,6 +73,7 @@ import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.CreateCo
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.DropConsumerProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.runtime.CommitProgressSyncProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.runtime.ConsumerGroupMetaSyncProcedure;
+import org.apache.iotdb.confignode.procedure.impl.subscription.runtime.SubscriptionHandleLeaderChangeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.subscription.CreateSubscriptionProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.subscription.DropSubscriptionProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.topic.AlterTopicProcedure;
@@ -399,6 +400,9 @@ public class ProcedureFactory implements IProcedureFactory {
       case COMMIT_PROGRESS_SYNC_PROCEDURE:
         procedure = new CommitProgressSyncProcedure();
         break;
+      case SUBSCRIPTION_HANDLE_LEADER_CHANGE_PROCEDURE:
+        procedure = new SubscriptionHandleLeaderChangeProcedure();
+        break;
       case CREATE_MANY_DATABASES_PROCEDURE:
         procedure = new CreateManyDatabasesProcedure();
         break;
@@ -546,6 +550,8 @@ public class ProcedureFactory implements IProcedureFactory {
       return ProcedureType.CONSUMER_GROUP_META_SYNC_PROCEDURE;
     } else if (procedure instanceof CommitProgressSyncProcedure) {
       return ProcedureType.COMMIT_PROGRESS_SYNC_PROCEDURE;
+    } else if (procedure instanceof SubscriptionHandleLeaderChangeProcedure) {
+      return ProcedureType.SUBSCRIPTION_HANDLE_LEADER_CHANGE_PROCEDURE;
     } else if (procedure instanceof DeleteLogicalViewProcedure) {
       return ProcedureType.DELETE_LOGICAL_VIEW_PROCEDURE;
     } else if (procedure instanceof AlterLogicalViewProcedure) {

@@ -21,7 +21,7 @@ package org.apache.iotdb.session.subscription.consumer.base;
 
 import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
-import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionRegionPosition;
+import org.apache.iotdb.rpc.subscription.payload.poll.TopicProgress;
 import org.apache.iotdb.session.subscription.consumer.AsyncCommitCallback;
 import org.apache.iotdb.session.subscription.payload.PollResult;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
@@ -224,10 +224,6 @@ public abstract class AbstractSubscriptionPullConsumer extends AbstractSubscript
       for (final SubscriptionMessageProcessor processor : processors) {
         processed = processor.process(processed);
       }
-
-      // Check for unavailable DataNodes and release buffered messages
-      // from EpochOrderingProcessors tracking those nodes
-      releaseBuffersForUnavailableNodes(processed);
     }
 
     // Update watermark timestamp before stripping watermark events
@@ -244,8 +240,7 @@ public abstract class AbstractSubscriptionPullConsumer extends AbstractSubscript
     processed.removeIf(
         m -> {
           final short type = m.getMessageType();
-          return type == SubscriptionMessageType.EPOCH_SENTINEL.getType()
-              || type == SubscriptionMessageType.WATERMARK.getType();
+          return type == SubscriptionMessageType.WATERMARK.getType();
         });
 
     if (processed.isEmpty()) {
@@ -268,23 +263,6 @@ public abstract class AbstractSubscriptionPullConsumer extends AbstractSubscript
   }
 
   /////////////////////////////// processor ///////////////////////////////
-
-  /**
-   * Checks available DataNodes and releases buffered messages from any {@link
-   * EpochOrderingProcessor} that is tracking a now-unavailable DataNode. This handles the scenario
-   * where the old leader crashes and can never send the expected sentinel.
-   */
-  private void releaseBuffersForUnavailableNodes(final List<SubscriptionMessage> output) {
-    final Set<Integer> availableIds = getAvailableDataNodeIds();
-    for (final SubscriptionMessageProcessor processor : processors) {
-      if (processor instanceof EpochOrderingProcessor) {
-        final EpochOrderingProcessor eop = (EpochOrderingProcessor) processor;
-        if (eop.getBufferedCount() > 0) {
-          eop.releaseBufferedForUnavailableNodes(availableIds, output);
-        }
-      }
-    }
-  }
 
   /**
    * Adds a message processor to the pipeline. Processors are applied in order on each poll() call.
@@ -389,20 +367,18 @@ public abstract class AbstractSubscriptionPullConsumer extends AbstractSubscript
   }
 
   @Override
-  public void seek(
-      final String topicName, final Map<String, SubscriptionRegionPosition> regionPositions)
+  public void seek(final String topicName, final TopicProgress topicProgress)
       throws SubscriptionException {
-    super.seek(topicName, regionPositions);
+    super.seek(topicName, topicProgress);
     if (autoCommit) {
       uncommittedMessages.clear();
     }
   }
 
   @Override
-  public void seekAfter(
-      final String topicName, final Map<String, SubscriptionRegionPosition> regionPositions)
+  public void seekAfter(final String topicName, final TopicProgress topicProgress)
       throws SubscriptionException {
-    super.seekAfter(topicName, regionPositions);
+    super.seekAfter(topicName, topicProgress);
     if (autoCommit) {
       uncommittedMessages.clear();
     }
@@ -444,8 +420,19 @@ public abstract class AbstractSubscriptionPullConsumer extends AbstractSubscript
       for (final Map.Entry<Long, Set<SubscriptionMessage>> entry :
           uncommittedMessages.headMap(index).entrySet()) {
         try {
-          ack(entry.getValue());
-          uncommittedMessages.remove(entry.getKey());
+          final Set<SubscriptionMessage> removableMessages =
+              ackWithPartialProgress(entry.getValue());
+          if (removableMessages.isEmpty()) {
+            continue;
+          }
+          if (removableMessages.size() == entry.getValue().size()) {
+            uncommittedMessages.remove(entry.getKey());
+            continue;
+          }
+          entry.getValue().removeAll(removableMessages);
+          if (entry.getValue().isEmpty()) {
+            uncommittedMessages.remove(entry.getKey());
+          }
         } catch (final Exception e) {
           LOGGER.warn("something unexpected happened when auto commit messages...", e);
         }
@@ -456,8 +443,18 @@ public abstract class AbstractSubscriptionPullConsumer extends AbstractSubscript
   private void commitAllUncommittedMessages() {
     for (final Map.Entry<Long, Set<SubscriptionMessage>> entry : uncommittedMessages.entrySet()) {
       try {
-        ack(entry.getValue());
-        uncommittedMessages.remove(entry.getKey());
+        final Set<SubscriptionMessage> removableMessages = ackWithPartialProgress(entry.getValue());
+        if (removableMessages.isEmpty()) {
+          continue;
+        }
+        if (removableMessages.size() == entry.getValue().size()) {
+          uncommittedMessages.remove(entry.getKey());
+          continue;
+        }
+        entry.getValue().removeAll(removableMessages);
+        if (entry.getValue().isEmpty()) {
+          uncommittedMessages.remove(entry.getKey());
+        }
       } catch (final Exception e) {
         LOGGER.warn("something unexpected happened when commit messages during close", e);
       }

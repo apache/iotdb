@@ -32,7 +32,7 @@ public class CommitProgressKeeper {
 
   private static final String KEY_SEPARATOR = "##";
 
-  private final Map<String, Long> progressMap = new ConcurrentHashMap<>();
+  private final Map<String, ByteBuffer> regionProgressMap = new ConcurrentHashMap<>();
 
   public CommitProgressKeeper() {}
 
@@ -50,107 +50,143 @@ public class CommitProgressKeeper {
         + dataNodeId;
   }
 
-  public void updateProgress(final String key, final long committedSearchIndex) {
-    progressMap.merge(key, committedSearchIndex, Math::max);
+  public void updateRegionProgress(final String key, final ByteBuffer committedRegionProgress) {
+    if (Objects.isNull(committedRegionProgress)) {
+      return;
+    }
+    regionProgressMap.put(key, copyBuffer(committedRegionProgress));
   }
 
-  public Long getProgress(final String key) {
-    return progressMap.get(key);
+  public ByteBuffer getRegionProgress(final String key) {
+    final ByteBuffer buffer = regionProgressMap.get(key);
+    return Objects.nonNull(buffer) ? copyBuffer(buffer) : null;
   }
 
-  public Map<String, Long> getAllProgress() {
-    return new HashMap<>(progressMap);
+  public Map<String, ByteBuffer> getAllRegionProgress() {
+    final Map<String, ByteBuffer> result = new HashMap<>(regionProgressMap.size());
+    regionProgressMap.forEach((key, value) -> result.put(key, copyBuffer(value)));
+    return result;
   }
 
-  public void replaceAll(final Map<String, Long> newProgressMap) {
-    progressMap.clear();
-    for (final Map.Entry<String, Long> entry : newProgressMap.entrySet()) {
-      progressMap.merge(entry.getKey(), entry.getValue(), Math::max);
+  public void replaceAll(final Map<String, ByteBuffer> newRegionProgressMap) {
+    regionProgressMap.clear();
+    if (Objects.nonNull(newRegionProgressMap)) {
+      for (final Map.Entry<String, ByteBuffer> entry : newRegionProgressMap.entrySet()) {
+        if (Objects.nonNull(entry.getValue())) {
+          regionProgressMap.put(entry.getKey(), copyBuffer(entry.getValue()));
+        }
+      }
     }
   }
 
   public boolean isEmpty() {
-    return progressMap.isEmpty();
+    return regionProgressMap.isEmpty();
   }
 
   public void processTakeSnapshot(final FileOutputStream fileOutputStream) throws IOException {
-    final int size = progressMap.size();
-    fileOutputStream.write(ByteBuffer.allocate(4).putInt(size).array());
-    for (final Map.Entry<String, Long> entry : progressMap.entrySet()) {
+    final int regionSize = regionProgressMap.size();
+    fileOutputStream.write(ByteBuffer.allocate(4).putInt(regionSize).array());
+    for (final Map.Entry<String, ByteBuffer> entry : regionProgressMap.entrySet()) {
       final byte[] keyBytes = entry.getKey().getBytes("UTF-8");
-      final ByteBuffer buffer = ByteBuffer.allocate(4 + keyBytes.length + 8);
+      final ByteBuffer progressBuffer = copyBuffer(entry.getValue());
+      final byte[] progressBytes = new byte[progressBuffer.remaining()];
+      progressBuffer.get(progressBytes);
+      final ByteBuffer buffer = ByteBuffer.allocate(4 + keyBytes.length + 4 + progressBytes.length);
       buffer.putInt(keyBytes.length);
       buffer.put(keyBytes);
-      buffer.putLong(entry.getValue());
+      buffer.putInt(progressBytes.length);
+      buffer.put(progressBytes);
       fileOutputStream.write(buffer.array());
     }
   }
 
   public void processLoadSnapshot(final FileInputStream fileInputStream) throws IOException {
-    progressMap.clear();
+    regionProgressMap.clear();
     final byte[] sizeBytes = new byte[4];
     if (fileInputStream.read(sizeBytes) != 4) {
       return;
     }
-    final int size = ByteBuffer.wrap(sizeBytes).getInt();
-    for (int i = 0; i < size; i++) {
+    final int regionSize = ByteBuffer.wrap(sizeBytes).getInt();
+    for (int i = 0; i < regionSize; i++) {
       final byte[] keyLenBytes = new byte[4];
       if (fileInputStream.read(keyLenBytes) != 4) {
-        throw new IOException("Unexpected EOF reading commit progress key length");
+        throw new IOException("Unexpected EOF reading region progress key length");
       }
       final int keyLen = ByteBuffer.wrap(keyLenBytes).getInt();
       final byte[] keyBytes = new byte[keyLen];
       if (fileInputStream.read(keyBytes) != keyLen) {
-        throw new IOException("Unexpected EOF reading commit progress key");
+        throw new IOException("Unexpected EOF reading region progress key");
       }
       final String key = new String(keyBytes, "UTF-8");
-      final byte[] valueBytes = new byte[8];
-      if (fileInputStream.read(valueBytes) != 8) {
-        throw new IOException("Unexpected EOF reading commit progress value");
+      final byte[] valueLenBytes = new byte[4];
+      if (fileInputStream.read(valueLenBytes) != 4) {
+        throw new IOException("Unexpected EOF reading region progress value length");
       }
-      final long value = ByteBuffer.wrap(valueBytes).getLong();
-      progressMap.put(key, value);
+      final int valueLen = ByteBuffer.wrap(valueLenBytes).getInt();
+      final byte[] valueBytes = new byte[valueLen];
+      if (fileInputStream.read(valueBytes) != valueLen) {
+        throw new IOException("Unexpected EOF reading region progress value");
+      }
+      regionProgressMap.put(key, ByteBuffer.wrap(valueBytes).asReadOnlyBuffer());
     }
   }
 
   public void serializeToStream(final java.io.DataOutputStream stream) throws IOException {
-    stream.writeInt(progressMap.size());
-    for (final Map.Entry<String, Long> entry : progressMap.entrySet()) {
+    stream.writeInt(regionProgressMap.size());
+    for (final Map.Entry<String, ByteBuffer> entry : regionProgressMap.entrySet()) {
       final byte[] keyBytes = entry.getKey().getBytes("UTF-8");
+      final ByteBuffer progressBuffer = copyBuffer(entry.getValue());
+      final byte[] progressBytes = new byte[progressBuffer.remaining()];
+      progressBuffer.get(progressBytes);
       stream.writeInt(keyBytes.length);
       stream.write(keyBytes);
-      stream.writeLong(entry.getValue());
+      stream.writeInt(progressBytes.length);
+      stream.write(progressBytes);
     }
   }
 
-  public static Map<String, Long> deserializeFromBuffer(final ByteBuffer buffer) {
+  public static Map<String, ByteBuffer> deserializeRegionProgressFromBuffer(
+      final ByteBuffer buffer) {
+    if (!buffer.hasRemaining()) {
+      return new HashMap<>();
+    }
     final int size = buffer.getInt();
-    final Map<String, Long> result = new HashMap<>(size);
+    final Map<String, ByteBuffer> result = new HashMap<>(size);
     for (int i = 0; i < size; i++) {
       final int keyLen = buffer.getInt();
       final byte[] keyBytes = new byte[keyLen];
       buffer.get(keyBytes);
       final String key = new String(keyBytes, java.nio.charset.StandardCharsets.UTF_8);
-      final long value = buffer.getLong();
-      result.put(key, value);
+      final int valueLen = buffer.getInt();
+      final byte[] valueBytes = new byte[valueLen];
+      buffer.get(valueBytes);
+      result.put(key, ByteBuffer.wrap(valueBytes).asReadOnlyBuffer());
     }
     return result;
   }
 
+  private static ByteBuffer copyBuffer(final ByteBuffer buffer) {
+    final ByteBuffer duplicate = buffer.asReadOnlyBuffer();
+    duplicate.rewind();
+    final byte[] bytes = new byte[duplicate.remaining()];
+    duplicate.get(bytes);
+    return ByteBuffer.wrap(bytes).asReadOnlyBuffer();
+  }
+
   @Override
-  public boolean equals(Object o) {
+  public boolean equals(final Object o) {
     if (this == o) {
       return true;
     }
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    CommitProgressKeeper that = (CommitProgressKeeper) o;
-    return Objects.equals(this.progressMap, that.progressMap);
+    final CommitProgressKeeper that = (CommitProgressKeeper) o;
+    return Objects.equals(this.regionProgressMap, that.regionProgressMap);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(progressMap);
+    return Objects.hash(regionProgressMap);
   }
 }

@@ -40,10 +40,13 @@ import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.rpc.subscription.config.TopicConfig;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
+import org.apache.iotdb.rpc.subscription.payload.poll.RegionProgress;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -69,8 +72,26 @@ public class ConsensusSubscriptionSetupHandler {
    * Per-region current epoch value. Uses the routing-broadcast timestamp from ConfigNode, ensuring
    * all DataNodes derive the same epoch for the same routing change without local persistence.
    */
-  private static final ConcurrentHashMap<TConsensusGroupId, Long> regionEpoch =
+  private static final ConcurrentHashMap<TConsensusGroupId, Long> regionRuntimeVersion =
       new ConcurrentHashMap<>();
+
+  /** Per-region active writer node IDs for subscription runtime control. */
+  private static final ConcurrentHashMap<TConsensusGroupId, Set<Integer>>
+      regionActiveWriterNodeIds = new ConcurrentHashMap<>();
+
+  static RegionProgress resolveFallbackCommittedRegionProgress(
+      final ConsensusSubscriptionCommitManager commitManager,
+      final String consumerGroupId,
+      final String topicName,
+      final ConsensusGroupId groupId) {
+    commitManager.getOrCreateState(consumerGroupId, topicName, groupId);
+    final RegionProgress committedRegionProgress =
+        commitManager.getCommittedRegionProgress(consumerGroupId, topicName, groupId);
+    return committedRegionProgress != null
+            && !committedRegionProgress.getWriterPositions().isEmpty()
+        ? committedRegionProgress
+        : null;
+  }
 
   private ConsensusSubscriptionSetupHandler() {
     // utility class
@@ -160,50 +181,60 @@ public class ConsensusSubscriptionSetupHandler {
           final String actualDbName = topicConfig.isTableTopic() ? dbTableModel : null;
           final ConsensusLogToTabletConverter converter = buildConverter(topicConfig, actualDbName);
 
-          // Recover from persisted global consensus progress when available. The queue will
-          // translate (epoch, syncIndex) back to the local WAL searchIndex on first poll.
-          final ConsensusSubscriptionCommitManager.ConsensusSubscriptionCommitState commitState =
-              commitManager.getOrCreateState(consumerGroupId, topicName, groupId);
+          // Recover from global consensus progress when available. The queue will translate
+          // (epoch, syncIndex) back to the local WAL searchIndex on first poll.
+          final RegionProgress committedRegionProgress =
+              resolveFallbackCommittedRegionProgress(
+                  commitManager, consumerGroupId, topicName, groupId);
           final boolean hasLocalPersistedState =
               commitManager.hasPersistedState(consumerGroupId, topicName, groupId);
-          final long committedEpoch = hasLocalPersistedState ? commitState.getCommittedEpoch() : 0L;
-          final long committedSyncIndex =
-              hasLocalPersistedState ? commitState.getCommittedSyncIndex() : -1L;
           final long tailStartSearchIndex = serverImpl.getSearchIndex() + 1;
-          final long initialEpoch =
-              regionEpoch.getOrDefault(groupId.convertToTConsensusGroupId(), 0L);
+          final long initialRuntimeVersion =
+              regionRuntimeVersion.getOrDefault(groupId.convertToTConsensusGroupId(), 0L);
           final boolean initialActive =
               lastKnownPreferredWriter.getOrDefault(groupId.convertToTConsensusGroupId(), -1)
                   == IOTDB_CONFIG.getDataNodeId();
+          final Set<Integer> initialActiveWriterNodeIds =
+              regionActiveWriterNodeIds.getOrDefault(
+                  groupId.convertToTConsensusGroupId(),
+                  initialActive
+                      ? Collections.singleton(IOTDB_CONFIG.getDataNodeId())
+                      : Collections.emptySet());
+          final ConsensusRegionRuntimeState initialRuntimeState =
+              new ConsensusRegionRuntimeState(
+                  initialRuntimeVersion,
+                  lastKnownPreferredWriter.getOrDefault(groupId.convertToTConsensusGroupId(), -1),
+                  initialActive,
+                  initialActiveWriterNodeIds);
 
           LOGGER.info(
               "Auto-binding consensus queue for topic [{}] in group [{}] to new region {} "
                   + "(database={}, tailStartSearchIndex={}, hasLocalPersistedState={}, "
-                  + "committedEpoch={}, committedSyncIndex={}, initialEpoch={}, initialActive={})",
+                  + "committedRegionProgress={}, initialRuntimeVersion={}, initialActive={})",
               topicName,
               consumerGroupId,
               groupId,
               dbTableModel,
               tailStartSearchIndex,
               hasLocalPersistedState,
-              committedEpoch,
-              committedSyncIndex,
-              initialEpoch,
+              committedRegionProgress,
+              initialRuntimeVersion,
               initialActive);
 
           SubscriptionAgent.broker()
               .bindConsensusPrefetchingQueue(
                   consumerGroupId,
                   topicName,
+                  topicConfig.getOrderMode(),
                   groupId,
                   serverImpl,
                   converter,
                   commitManager,
-                  committedEpoch,
-                  committedSyncIndex,
+                  committedRegionProgress,
                   tailStartSearchIndex,
-                  initialEpoch,
+                  initialRuntimeVersion,
                   initialActive);
+          SubscriptionAgent.broker().applyRuntimeStateForRegion(groupId, initialRuntimeState);
         } catch (final Exception e) {
           LOGGER.error(
               "Failed to auto-bind topic [{}] in group [{}] to new region {}",
@@ -225,6 +256,9 @@ public class ConsensusSubscriptionSetupHandler {
     if (!(groupId instanceof DataRegionId)) {
       return;
     }
+    lastKnownPreferredWriter.remove(groupId.convertToTConsensusGroupId());
+    regionRuntimeVersion.remove(groupId.convertToTConsensusGroupId());
+    regionActiveWriterNodeIds.remove(groupId.convertToTConsensusGroupId());
     LOGGER.info(
         "DataRegion {} being removed, unbinding all consensus subscription queues", groupId);
     try {
@@ -327,9 +361,10 @@ public class ConsensusSubscriptionSetupHandler {
 
     // Build the converter based on topic config (path pattern, time range, tree/table model)
     LOGGER.info(
-        "Setting up consensus queue for topic [{}]: isTableTopic={}, config={}",
+        "Setting up consensus queue for topic [{}]: isTableTopic={}, orderMode={}, config={}",
         topicName,
         topicConfig.isTableTopic(),
+        topicConfig.getOrderMode(),
         topicConfig.getAttribute());
 
     // For table topics, extract the database filter from topic config
@@ -383,50 +418,62 @@ public class ConsensusSubscriptionSetupHandler {
       final String actualDbName = topicConfig.isTableTopic() ? dbTableModel : null;
       final ConsensusLogToTabletConverter converter = buildConverter(topicConfig, actualDbName);
 
-      // Recover from persisted global consensus progress when available. The queue will
-      // translate (epoch, syncIndex) back to the local WAL searchIndex on first poll.
-      final ConsensusSubscriptionCommitManager.ConsensusSubscriptionCommitState commitState =
-          commitManager.getOrCreateState(consumerGroupId, topicName, groupId);
+      // Recover from global consensus progress when available. The queue will translate
+      // (epoch, syncIndex) back to the local WAL searchIndex on first poll.
+      final RegionProgress committedRegionProgress =
+          resolveFallbackCommittedRegionProgress(
+              commitManager, consumerGroupId, topicName, groupId);
       final boolean hasLocalPersistedState =
           commitManager.hasPersistedState(consumerGroupId, topicName, groupId);
-      final long committedEpoch = hasLocalPersistedState ? commitState.getCommittedEpoch() : 0L;
-      final long committedSyncIndex =
-          hasLocalPersistedState ? commitState.getCommittedSyncIndex() : -1L;
       final long tailStartSearchIndex = serverImpl.getSearchIndex() + 1;
-      final long initialEpoch = regionEpoch.getOrDefault(groupId.convertToTConsensusGroupId(), 0L);
+      final long initialRuntimeVersion =
+          regionRuntimeVersion.getOrDefault(groupId.convertToTConsensusGroupId(), 0L);
       final boolean initialActive =
           lastKnownPreferredWriter.getOrDefault(groupId.convertToTConsensusGroupId(), -1)
               == myNodeId;
+      final Set<Integer> initialActiveWriterNodeIds =
+          regionActiveWriterNodeIds.getOrDefault(
+              groupId.convertToTConsensusGroupId(),
+              initialActive
+                  ? Collections.singleton(IOTDB_CONFIG.getDataNodeId())
+                  : Collections.emptySet());
+      final ConsensusRegionRuntimeState initialRuntimeState =
+          new ConsensusRegionRuntimeState(
+              initialRuntimeVersion,
+              lastKnownPreferredWriter.getOrDefault(groupId.convertToTConsensusGroupId(), -1),
+              initialActive,
+              initialActiveWriterNodeIds);
 
       LOGGER.info(
           "Binding consensus prefetching queue for topic [{}] in consumer group [{}] "
               + "to data region consensus group [{}] (database={}, tailStartSearchIndex={}, "
-              + "hasLocalPersistedState={}, committedEpoch={}, committedSyncIndex={}, "
-              + "initialEpoch={}, initialActive={})",
+              + "hasLocalPersistedState={}, committedRegionProgress={}, "
+              + "initialRuntimeVersion={}, initialActive={})",
           topicName,
           consumerGroupId,
           groupId,
           dbTableModel,
           tailStartSearchIndex,
           hasLocalPersistedState,
-          committedEpoch,
-          committedSyncIndex,
-          initialEpoch,
+          committedRegionProgress,
+          initialRuntimeVersion,
           initialActive);
 
       SubscriptionAgent.broker()
           .bindConsensusPrefetchingQueue(
               consumerGroupId,
               topicName,
+              topicConfig.getOrderMode(),
               groupId,
               serverImpl,
               converter,
               commitManager,
-              committedEpoch,
-              committedSyncIndex,
+              committedRegionProgress,
               tailStartSearchIndex,
-              initialEpoch,
+              initialRuntimeVersion,
               initialActive);
+
+      SubscriptionAgent.broker().applyRuntimeStateForRegion(groupId, initialRuntimeState);
 
       bound = true;
     }
@@ -511,6 +558,38 @@ public class ConsensusSubscriptionSetupHandler {
     setupConsensusSubscriptions(consumerGroupId, newTopicNames);
   }
 
+  public static void applyRuntimeState(
+      final TConsensusGroupId groupId, final ConsensusRegionRuntimeState runtimeState) {
+    if (!SubscriptionConfig.getInstance().isSubscriptionConsensusEpochOrderingEnabled()) {
+      return;
+    }
+    final int newPreferredNodeId = runtimeState.getPreferredWriterNodeId();
+    final Integer oldPreferredBoxed = lastKnownPreferredWriter.put(groupId, newPreferredNodeId);
+    final int oldPreferredNodeId = (oldPreferredBoxed != null) ? oldPreferredBoxed : -1;
+    final ConsensusGroupId regionId = ConsensusGroupId.Factory.createFromTConsensusGroupId(groupId);
+    final long oldRuntimeVersion = regionRuntimeVersion.getOrDefault(groupId, 0L);
+    if (runtimeState.getRuntimeVersion() < oldRuntimeVersion) {
+      LOGGER.info(
+          "ConsensusSubscriptionSetupHandler: ignore stale runtime state for region {}, incomingRuntimeVersion={}, currentRuntimeVersion={}, runtimeState={}",
+          regionId,
+          runtimeState.getRuntimeVersion(),
+          oldRuntimeVersion,
+          runtimeState);
+      return;
+    }
+    regionRuntimeVersion.put(groupId, runtimeState.getRuntimeVersion());
+    regionActiveWriterNodeIds.put(groupId, runtimeState.getActiveWriterNodeIds());
+    LOGGER.info(
+        "ConsensusSubscriptionSetupHandler: applying runtime state for region {}, preferred writer {} -> {}, runtimeVersion {} -> {}, runtimeState={}",
+        regionId,
+        oldPreferredNodeId,
+        newPreferredNodeId,
+        oldRuntimeVersion,
+        runtimeState.getRuntimeVersion(),
+        runtimeState);
+    SubscriptionAgent.broker().applyRuntimeStateForRegion(regionId, runtimeState);
+  }
+
   public static void onRegionRouteChanged(
       final Map<TConsensusGroupId, TRegionReplicaSet> newMap, final long routingTimestamp) {
     if (!SubscriptionConfig.getInstance().isSubscriptionConsensusEpochOrderingEnabled()) {
@@ -528,79 +607,40 @@ public class ConsensusSubscriptionSetupHandler {
       final int oldPreferredNodeId = (oldPreferredBoxed != null) ? oldPreferredBoxed : -1;
 
       if (oldPreferredNodeId == newPreferredNodeId) {
-        continue; // no leader change for this region
+        continue;
       }
 
       final ConsensusGroupId regionId =
           ConsensusGroupId.Factory.createFromTConsensusGroupId(groupId);
-      final long oldEpoch = regionEpoch.getOrDefault(groupId, 0L);
-      final long newEpoch = routingTimestamp;
-      regionEpoch.put(groupId, newEpoch);
+      final long oldRuntimeVersion = regionRuntimeVersion.getOrDefault(groupId, 0L);
+      final long newRuntimeVersion = Math.max(routingTimestamp, oldRuntimeVersion);
+      regionRuntimeVersion.put(groupId, newRuntimeVersion);
+
+      final LinkedHashSet<Integer> activeWriterNodeIds =
+          new LinkedHashSet<>(
+              regionActiveWriterNodeIds.getOrDefault(groupId, Collections.emptySet()));
+      activeWriterNodeIds.add(newPreferredNodeId);
+      final Set<Integer> runtimeActiveWriterNodeIds =
+          Collections.unmodifiableSet(activeWriterNodeIds);
+      regionActiveWriterNodeIds.put(groupId, runtimeActiveWriterNodeIds);
+
+      final ConsensusRegionRuntimeState runtimeState =
+          new ConsensusRegionRuntimeState(
+              newRuntimeVersion,
+              newPreferredNodeId,
+              newPreferredNodeId == myNodeId,
+              runtimeActiveWriterNodeIds);
 
       LOGGER.info(
-          "ConsensusSubscriptionSetupHandler: region {} preferred writer changed {} -> {}, "
-              + "epoch {} -> {}",
+          "ConsensusSubscriptionSetupHandler: region {} preferred writer changed {} -> {}, runtimeVersion {} -> {}, runtimeState={} (route hint)",
           regionId,
           oldPreferredNodeId,
           newPreferredNodeId,
-          oldEpoch,
-          newEpoch);
+          oldRuntimeVersion,
+          newRuntimeVersion,
+          runtimeState);
 
-      if (oldPreferredNodeId == myNodeId) {
-        // This node was the old preferred writer: inject epoch sentinel, then update epoch.
-        // Order matters: sentinel marks the end of oldEpoch; subsequent in-flight writes
-        // that slip past the sentinel will carry newEpoch, avoiding a stale-epoch tail that
-        // would cause the consumer-side EpochOrderingProcessor to enter unnecessary BUFFERING.
-        try {
-          SubscriptionAgent.broker().onOldLeaderRegionChanged(regionId, oldEpoch);
-          SubscriptionAgent.broker().onNewLeaderRegionChanged(regionId, newEpoch);
-        } catch (final Exception e) {
-          LOGGER.warn(
-              "Failed to inject epoch sentinel / update epoch for region {} (oldLeader={})",
-              regionId,
-              myNodeId,
-              e);
-        }
-        // Deactivate queues on old leader: stop serving subscription data
-        SubscriptionAgent.broker().setActiveForRegion(regionId, false);
-        // Notify LogDispatcher to send SYNC_COMPLETE marker to Followers so they can
-        // release buffered events of the completed epoch without waiting for timeout.
-        try {
-          final IConsensus consensus = DataRegionConsensusImpl.getInstance();
-          if (consensus instanceof IoTConsensus) {
-            final IoTConsensusServerImpl serverImpl = ((IoTConsensus) consensus).getImpl(regionId);
-            if (serverImpl != null) {
-              serverImpl.setCurrentEpochWithSyncComplete(newEpoch);
-            }
-          }
-        } catch (final Exception e) {
-          LOGGER.warn(
-              "Failed to send SYNC_COMPLETE for region {} (oldLeader={})", regionId, myNodeId, e);
-        }
-      }
-
-      if (newPreferredNodeId == myNodeId) {
-        // This node is the new preferred writer: update epoch on queues and consensus server
-        try {
-          SubscriptionAgent.broker().onNewLeaderRegionChanged(regionId, newEpoch);
-        } catch (final Exception e) {
-          LOGGER.warn("Failed to set epoch for region {} (newLeader={})", regionId, myNodeId, e);
-        }
-        // Activate queues on new leader: start serving subscription data
-        SubscriptionAgent.broker().setActiveForRegion(regionId, true);
-        try {
-          final IConsensus consensus = DataRegionConsensusImpl.getInstance();
-          if (consensus instanceof IoTConsensus) {
-            final IoTConsensusServerImpl serverImpl = ((IoTConsensus) consensus).getImpl(regionId);
-            if (serverImpl != null) {
-              serverImpl.setCurrentEpoch(newEpoch);
-            }
-          }
-        } catch (final Exception e) {
-          LOGGER.warn(
-              "Failed to set consensus epoch for region {} (newLeader={})", regionId, myNodeId, e);
-        }
-      }
+      SubscriptionAgent.broker().applyRuntimeStateForRegion(regionId, runtimeState);
     }
   }
 

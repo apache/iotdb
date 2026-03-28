@@ -398,6 +398,10 @@ public class DeleteDataNode extends AbstractDeleteDataNode {
             pathList,
             firstOne.getDeleteStartTime(),
             firstOne.getDeleteEndTime())
-        .setSearchIndex(firstOne.searchIndex);
+        .setSearchIndex(firstOne.searchIndex)
+        .setPhysicalTime(firstOne.getPhysicalTime())
+        .setNodeId(firstOne.getNodeId())
+        .setWriterEpoch(firstOne.getWriterEpoch())
+        .setSyncIndex(firstOne.getSyncIndex());
   }
 }

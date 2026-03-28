@@ -82,11 +82,18 @@ public class IoTConsensusDataRegionStateMachine extends DataRegionStateMachine {
       result = grabPlanNode(indexedRequest);
     } else if (request instanceof BatchIndexedConsensusRequest) {
       BatchIndexedConsensusRequest batchRequest = (BatchIndexedConsensusRequest) request;
+      final IndexedConsensusRequest lastIndexedRequest =
+          batchRequest.getRequests().isEmpty()
+              ? null
+              : batchRequest.getRequests().get(batchRequest.getRequests().size() - 1);
       DeserializedBatchIndexedConsensusRequest deserializedRequest =
           new DeserializedBatchIndexedConsensusRequest(
               batchRequest.getStartSyncIndex(),
               batchRequest.getEndSyncIndex(),
-              batchRequest.getRequests().size());
+              batchRequest.getRequests().size(),
+              batchRequest.getSourcePeerId(),
+              lastIndexedRequest != null ? lastIndexedRequest.getWriterEpoch() : 0L,
+              lastIndexedRequest != null ? lastIndexedRequest.getPhysicalTime() : 0L);
       for (IndexedConsensusRequest indexedRequest : batchRequest.getRequests()) {
         final PlanNode planNode = grabPlanNode(indexedRequest);
         if (planNode instanceof ComparableConsensusRequest) {

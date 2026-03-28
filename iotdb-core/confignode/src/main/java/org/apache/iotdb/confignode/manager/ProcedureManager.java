@@ -115,6 +115,7 @@ import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.CreateCo
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.DropConsumerProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.runtime.CommitProgressSyncProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.runtime.ConsumerGroupMetaSyncProcedure;
+import org.apache.iotdb.confignode.procedure.impl.subscription.runtime.SubscriptionHandleLeaderChangeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.subscription.CreateSubscriptionProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.subscription.DropSubscriptionProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.topic.CreateTopicProcedure;
@@ -1652,6 +1653,21 @@ public class ProcedureManager {
       LOGGER.info("PipeHandleLeaderChangeProcedure was submitted, procedureId: {}.", procedureId);
     } catch (Exception e) {
       LOGGER.warn("PipeHandleLeaderChangeProcedure was failed to submit.", e);
+    }
+  }
+
+  public void subscriptionHandleLeaderChange(
+      Map<TConsensusGroupId, Pair<Integer, Integer>> regionGroupToOldAndNewLeaderPairMap,
+      long runtimeVersion) {
+    try {
+      final long procedureId =
+          executor.submitProcedure(
+              new SubscriptionHandleLeaderChangeProcedure(
+                  regionGroupToOldAndNewLeaderPairMap, runtimeVersion));
+      LOGGER.info(
+          "SubscriptionHandleLeaderChangeProcedure was submitted, procedureId: {}.", procedureId);
+    } catch (Exception e) {
+      LOGGER.warn("SubscriptionHandleLeaderChangeProcedure was failed to submit.", e);
     }
   }
 

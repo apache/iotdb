@@ -162,7 +162,7 @@ public class SubscriptionEvent implements Comparable<SubscriptionEvent> {
   }
 
   public boolean isCommitted() {
-    if (commitContext.getCommitId() == INVALID_COMMIT_ID) {
+    if (commitContext.getLocalSeq() == INVALID_COMMIT_ID) {
       // event with invalid commit id is committed
       return true;
     }
@@ -170,7 +170,7 @@ public class SubscriptionEvent implements Comparable<SubscriptionEvent> {
   }
 
   public boolean isCommittable() {
-    if (commitContext.getCommitId() == INVALID_COMMIT_ID) {
+    if (commitContext.getLocalSeq() == INVALID_COMMIT_ID) {
       // event with invalid commit id is uncommittable
       return false;
     }

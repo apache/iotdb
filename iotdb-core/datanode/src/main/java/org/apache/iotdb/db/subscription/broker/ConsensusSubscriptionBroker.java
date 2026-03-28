@@ -24,10 +24,12 @@ import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.consensus.iot.IoTConsensusServerImpl;
 import org.apache.iotdb.db.subscription.broker.consensus.ConsensusLogToTabletConverter;
 import org.apache.iotdb.db.subscription.broker.consensus.ConsensusPrefetchingQueue;
+import org.apache.iotdb.db.subscription.broker.consensus.ConsensusRegionRuntimeState;
 import org.apache.iotdb.db.subscription.broker.consensus.ConsensusSubscriptionCommitManager;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
+import org.apache.iotdb.rpc.subscription.payload.poll.RegionProgress;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
-import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionRegionPosition;
+import org.apache.iotdb.rpc.subscription.payload.poll.TopicProgress;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeSeekReq;
 
 import org.slf4j.Logger;
@@ -36,6 +38,8 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -58,10 +62,13 @@ public class ConsensusSubscriptionBroker implements ISubscriptionBroker {
   /** Maps topic name to a list of ConsensusPrefetchingQueues, one per data region. */
   private final Map<String, List<ConsensusPrefetchingQueue>> topicNameToConsensusPrefetchingQueues;
 
-  /** Round-robin counter for fair region polling. */
+  /** Round-robin counter for fair polling among region queues already assigned to this consumer. */
   private final AtomicInteger pollRoundRobinIndex = new AtomicInteger(0);
 
   private final Map<String, ConcurrentHashMap<String, Long>> topicConsumerLastPollMs =
+      new ConcurrentHashMap<>();
+
+  private final Map<String, TopicOwnershipSnapshot> topicOwnershipSnapshots =
       new ConcurrentHashMap<>();
 
   public ConsensusSubscriptionBroker(final String brokerId) {
@@ -95,7 +102,7 @@ public class ConsensusSubscriptionBroker implements ISubscriptionBroker {
       final String consumerId,
       final Set<String> topicNames,
       final long maxBytes,
-      final Map<String, long[]> lastConsumedByRegion) {
+      final Map<String, TopicProgress> progressByTopic) {
     LOGGER.debug(
         "ConsensusSubscriptionBroker [{}]: poll called, consumerId={}, topicNames={}, "
             + "queueCount={}, maxBytes={}",
@@ -109,9 +116,6 @@ public class ConsensusSubscriptionBroker implements ISubscriptionBroker {
     final List<SubscriptionEvent> eventsToNack = new ArrayList<>();
     long totalSize = 0;
 
-    final boolean exclusiveMode =
-        SubscriptionConfig.getInstance().isSubscriptionConsensusExclusiveConsumption();
-
     for (final String topicName : topicNames) {
       final List<ConsensusPrefetchingQueue> queues =
           topicNameToConsensusPrefetchingQueues.get(topicName);
@@ -119,63 +123,30 @@ public class ConsensusSubscriptionBroker implements ISubscriptionBroker {
         continue;
       }
 
-      // In exclusive mode: track consumer activity and compute assignment
-      List<String> sortedConsumers = null;
-      if (exclusiveMode) {
-        final ConcurrentHashMap<String, Long> consumerTimestamps =
-            topicConsumerLastPollMs.computeIfAbsent(topicName, k -> new ConcurrentHashMap<>());
-        consumerTimestamps.put(consumerId, System.currentTimeMillis());
-        evictInactiveConsumers(consumerTimestamps);
-        sortedConsumers = new ArrayList<>(consumerTimestamps.keySet());
-        Collections.sort(sortedConsumers);
+      final TopicOwnershipSnapshot ownershipSnapshot =
+          refreshAndGetTopicOwnership(topicName, queues, consumerId);
+      final List<ConsensusPrefetchingQueue> assignedQueues =
+          getAssignedQueues(queues, consumerId, ownershipSnapshot);
+      if (assignedQueues.isEmpty()) {
+        continue;
       }
 
-      // Build the iteration order for region queues
-      final int queueSize = queues.size();
-      final int[] pollOrder = new int[queueSize];
+      final List<ConsensusPrefetchingQueue> pollQueues =
+          buildPollOrderForAssignedQueues(assignedQueues, topicName);
 
-      if (SubscriptionConfig.getInstance().isSubscriptionConsensusLagBasedPriority()
-          && queueSize > 1) {
-        // Lag-based priority: sort queues by lag descending so the most-behind region is polled
-        // first.
-        final List<int[]> lagIndexPairs = new ArrayList<>(queueSize);
-        for (int i = 0; i < queueSize; i++) {
-          final ConsensusPrefetchingQueue q = queues.get(i);
-          lagIndexPairs.add(
-              new int[] {i, q.isClosed() ? -1 : (int) Math.min(q.getLag(), Integer.MAX_VALUE)});
-        }
-        lagIndexPairs.sort((a, b) -> Integer.compare(b[1], a[1])); // descending by lag
-        for (int i = 0; i < queueSize; i++) {
-          pollOrder[i] = lagIndexPairs.get(i)[0];
-        }
-      } else {
-        // Round-robin offset for fairness
-        final int startOffset = pollRoundRobinIndex.getAndIncrement() % queueSize;
-        for (int i = 0; i < queueSize; i++) {
-          pollOrder[i] = (startOffset + i) % queueSize;
-        }
-      }
-
-      for (int i = 0; i < queueSize; i++) {
-        final ConsensusPrefetchingQueue consensusQueue = queues.get(pollOrder[i]);
+      for (final ConsensusPrefetchingQueue consensusQueue : pollQueues) {
         if (consensusQueue.isClosed()) {
           continue;
         }
 
-        // In exclusive mode, skip regions not assigned to this consumer
-        if (exclusiveMode && sortedConsumers != null && !sortedConsumers.isEmpty()) {
-          final int ownerIdx =
-              Math.abs(consensusQueue.getConsensusGroupId().hashCode()) % sortedConsumers.size();
-          if (!consumerId.equals(sortedConsumers.get(ownerIdx))) {
-            continue;
-          }
-        }
-
-        // Extract per-region lastConsumed for Consumer-Guided Positioning
         final String regionIdStr = consensusQueue.getConsensusGroupId().toString();
-        final long[] regionLastConsumed = lastConsumedByRegion.get(regionIdStr);
+        final TopicProgress topicProgress = progressByTopic.get(topicName);
+        final RegionProgress regionProgress =
+            Objects.nonNull(topicProgress)
+                ? topicProgress.getRegionProgress().get(regionIdStr)
+                : null;
 
-        final SubscriptionEvent event = consensusQueue.poll(consumerId, regionLastConsumed);
+        final SubscriptionEvent event = consensusQueue.poll(consumerId, regionProgress);
         if (Objects.isNull(event)) {
           continue;
         }
@@ -231,15 +202,16 @@ public class ConsensusSubscriptionBroker implements ISubscriptionBroker {
       return Collections.emptyList();
     }
 
-    // Try each region queue until one returns a match
-    for (final ConsensusPrefetchingQueue consensusQueue : queues) {
-      if (consensusQueue.isClosed()) {
-        continue;
-      }
-      final SubscriptionEvent event = consensusQueue.pollTablets(consumerId, commitContext, offset);
-      if (Objects.nonNull(event)) {
-        return Collections.singletonList(event);
-      }
+    final ConsensusPrefetchingQueue assignedQueue =
+        getAssignedQueueForConsumer(
+            queues, topicName, consumerId, commitContext.getRegionId(), "pollTablets");
+    if (Objects.isNull(assignedQueue)) {
+      return Collections.emptyList();
+    }
+
+    final SubscriptionEvent event = assignedQueue.pollTablets(consumerId, commitContext, offset);
+    if (Objects.nonNull(event)) {
+      return Collections.singletonList(event);
     }
     return Collections.emptyList();
   }
@@ -264,27 +236,20 @@ public class ConsensusSubscriptionBroker implements ISubscriptionBroker {
         continue;
       }
 
-      // Route directly to the correct region queue using regionId from commitContext (O(1)).
-      final String regionId = commitContext.getRegionId();
+      final ConsensusPrefetchingQueue assignedQueue =
+          getAssignedQueueForConsumer(
+              queues, topicName, consumerId, commitContext.getRegionId(), nack ? "nack" : "ack");
       boolean handled = false;
-      for (final ConsensusPrefetchingQueue consensusQueue : queues) {
-        if (consensusQueue.isClosed()) {
-          continue;
-        }
-        if (!regionId.isEmpty()
-            && !regionId.equals(consensusQueue.getConsensusGroupId().toString())) {
-          continue; // skip queues for other regions
-        }
+      if (Objects.nonNull(assignedQueue)) {
         final boolean success;
         if (!nack) {
-          success = consensusQueue.ackSilent(consumerId, commitContext);
+          success = assignedQueue.ackSilent(consumerId, commitContext);
         } else {
-          success = consensusQueue.nackSilent(consumerId, commitContext);
+          success = assignedQueue.nackSilent(consumerId, commitContext);
         }
         if (success) {
           successfulCommitContexts.add(commitContext);
           handled = true;
-          break;
         }
       }
       if (!handled) {
@@ -356,55 +321,62 @@ public class ConsensusSubscriptionBroker implements ISubscriptionBroker {
     }
   }
 
-  public void seek(
-      final String topicName, final Map<String, SubscriptionRegionPosition> regionPositions) {
-    final Map<String, SubscriptionRegionPosition> safePositions =
-        regionPositions != null ? regionPositions : Collections.emptyMap();
+  public void seek(final String topicName, final TopicProgress topicProgress) {
+    final TopicProgress safeProgress =
+        topicProgress != null ? topicProgress : new TopicProgress(Collections.emptyMap());
     final List<ConsensusPrefetchingQueue> queues =
         topicNameToConsensusPrefetchingQueues.get(topicName);
     if (Objects.isNull(queues) || queues.isEmpty()) {
       LOGGER.warn(
-          "ConsensusSubscriptionBroker [{}]: no queues for topic [{}] to seek(regionPositions)",
+          "ConsensusSubscriptionBroker [{}]: no queues for topic [{}] to seek(topicProgress)",
           brokerId,
           topicName);
       return;
     }
     for (final ConsensusPrefetchingQueue queue : queues) {
-      if (!queue.isClosed()) {
-        final SubscriptionRegionPosition position =
-            safePositions.get(queue.getConsensusGroupId().toString());
-        if (Objects.nonNull(position)) {
-          queue.seekToEpochSyncIndex(position.getEpoch(), position.getSyncIndex());
-        } else {
-          queue.seekToEnd();
-        }
+      if (queue.isClosed()) {
+        continue;
       }
+      final RegionProgress regionProgress =
+          safeProgress.getRegionProgress().get(queue.getConsensusGroupId().toString());
+      seekQueueToRegionProgress(queue, regionProgress, false);
     }
   }
 
-  public void seekAfter(
-      final String topicName, final Map<String, SubscriptionRegionPosition> regionPositions) {
-    final Map<String, SubscriptionRegionPosition> safePositions =
-        regionPositions != null ? regionPositions : Collections.emptyMap();
+  public void seekAfter(final String topicName, final TopicProgress topicProgress) {
+    final TopicProgress safeProgress =
+        topicProgress != null ? topicProgress : new TopicProgress(Collections.emptyMap());
     final List<ConsensusPrefetchingQueue> queues =
         topicNameToConsensusPrefetchingQueues.get(topicName);
     if (Objects.isNull(queues) || queues.isEmpty()) {
       LOGGER.warn(
-          "ConsensusSubscriptionBroker [{}]: no queues for topic [{}] to seekAfter(regionPositions)",
+          "ConsensusSubscriptionBroker [{}]: no queues for topic [{}] to seekAfter(topicProgress)",
           brokerId,
           topicName);
       return;
     }
     for (final ConsensusPrefetchingQueue queue : queues) {
-      if (!queue.isClosed()) {
-        final SubscriptionRegionPosition position =
-            safePositions.get(queue.getConsensusGroupId().toString());
-        if (Objects.nonNull(position)) {
-          queue.seekAfterEpochSyncIndex(position.getEpoch(), position.getSyncIndex());
-        } else {
-          queue.seekToEnd();
-        }
+      if (queue.isClosed()) {
+        continue;
       }
+      final RegionProgress regionProgress =
+          safeProgress.getRegionProgress().get(queue.getConsensusGroupId().toString());
+      seekQueueToRegionProgress(queue, regionProgress, true);
+    }
+  }
+
+  private void seekQueueToRegionProgress(
+      final ConsensusPrefetchingQueue queue,
+      final RegionProgress regionProgress,
+      final boolean seekAfter) {
+    if (Objects.isNull(regionProgress) || regionProgress.getWriterPositions().isEmpty()) {
+      queue.seekToEnd();
+      return;
+    }
+    if (seekAfter) {
+      queue.seekAfterRegionProgress(regionProgress);
+    } else {
+      queue.seekToRegionProgress(regionProgress);
     }
   }
 
@@ -458,6 +430,123 @@ public class ConsensusSubscriptionBroker implements ISubscriptionBroker {
     return lagMap;
   }
 
+  private TopicOwnershipSnapshot refreshAndGetTopicOwnership(
+      final String topicName,
+      final List<ConsensusPrefetchingQueue> queues,
+      final String consumerId) {
+    final ConcurrentHashMap<String, Long> consumerTimestamps =
+        topicConsumerLastPollMs.computeIfAbsent(topicName, ignored -> new ConcurrentHashMap<>());
+    consumerTimestamps.put(consumerId, System.currentTimeMillis());
+    evictInactiveConsumers(consumerTimestamps);
+    final List<String> sortedConsumers = new ArrayList<>(consumerTimestamps.keySet());
+    Collections.sort(sortedConsumers);
+
+    final List<String> activeRegionIds =
+        queues.stream()
+            .filter(q -> !q.isClosed())
+            .map(q -> q.getConsensusGroupId().toString())
+            .sorted()
+            .collect(Collectors.toList());
+
+    final TopicOwnershipSnapshot existingSnapshot = topicOwnershipSnapshots.get(topicName);
+    if (Objects.nonNull(existingSnapshot)
+        && existingSnapshot.hasSameConsumers(sortedConsumers)
+        && existingSnapshot.hasSameRegions(activeRegionIds)) {
+      return existingSnapshot;
+    }
+
+    final TopicOwnershipSnapshot refreshedSnapshot =
+        TopicOwnershipSnapshot.create(sortedConsumers, activeRegionIds);
+    topicOwnershipSnapshots.put(topicName, refreshedSnapshot);
+    LOGGER.debug(
+        "ConsensusSubscriptionBroker [{}]: refreshed ownership for topic [{}], consumers={}, regions={}, generation={}",
+        brokerId,
+        topicName,
+        sortedConsumers,
+        activeRegionIds,
+        refreshedSnapshot.getGeneration());
+    return refreshedSnapshot;
+  }
+
+  private List<ConsensusPrefetchingQueue> getAssignedQueues(
+      final List<ConsensusPrefetchingQueue> queues,
+      final String consumerId,
+      final TopicOwnershipSnapshot ownershipSnapshot) {
+    if (Objects.isNull(ownershipSnapshot) || ownershipSnapshot.isEmpty()) {
+      return Collections.emptyList();
+    }
+    final List<ConsensusPrefetchingQueue> assignedQueues = new ArrayList<>();
+    for (final ConsensusPrefetchingQueue queue : queues) {
+      if (queue.isClosed()) {
+        continue;
+      }
+      if (consumerId.equals(
+          ownershipSnapshot.getOwnerConsumerId(queue.getConsensusGroupId().toString()))) {
+        assignedQueues.add(queue);
+      }
+    }
+    return assignedQueues;
+  }
+
+  private List<ConsensusPrefetchingQueue> buildPollOrderForAssignedQueues(
+      final List<ConsensusPrefetchingQueue> assignedQueues, final String topicName) {
+    if (assignedQueues.size() <= 1) {
+      return assignedQueues;
+    }
+    final List<ConsensusPrefetchingQueue> pollQueues = new ArrayList<>(assignedQueues);
+    if (SubscriptionConfig.getInstance().isSubscriptionConsensusLagBasedPriority()) {
+      pollQueues.sort(
+          Comparator.comparingLong(ConsensusPrefetchingQueue::getLag)
+              .reversed()
+              .thenComparing(q -> q.getConsensusGroupId().toString()));
+      return pollQueues;
+    }
+
+    final int startOffset = Math.floorMod(pollRoundRobinIndex.getAndIncrement(), pollQueues.size());
+    final List<ConsensusPrefetchingQueue> orderedQueues = new ArrayList<>(pollQueues.size());
+    for (int i = 0; i < pollQueues.size(); i++) {
+      orderedQueues.add(pollQueues.get((startOffset + i) % pollQueues.size()));
+    }
+    LOGGER.debug(
+        "ConsensusSubscriptionBroker [{}]: stable ownership poll order for topic [{}], assignedQueueCount={}",
+        brokerId,
+        topicName,
+        orderedQueues.size());
+    return orderedQueues;
+  }
+
+  private ConsensusPrefetchingQueue getAssignedQueueForConsumer(
+      final List<ConsensusPrefetchingQueue> queues,
+      final String topicName,
+      final String consumerId,
+      final String regionId,
+      final String action) {
+    final TopicOwnershipSnapshot ownershipSnapshot =
+        refreshAndGetTopicOwnership(topicName, queues, consumerId);
+    for (final ConsensusPrefetchingQueue queue : queues) {
+      if (queue.isClosed()) {
+        continue;
+      }
+      if (!regionId.isEmpty() && !regionId.equals(queue.getConsensusGroupId().toString())) {
+        continue;
+      }
+      if (consumerId.equals(
+          ownershipSnapshot.getOwnerConsumerId(queue.getConsensusGroupId().toString()))) {
+        return queue;
+      }
+      LOGGER.debug(
+          "ConsensusSubscriptionBroker [{}]: consumer [{}] skipped {} on topic [{}], region [{}] is currently owned by [{}]",
+          brokerId,
+          consumerId,
+          action,
+          topicName,
+          queue.getConsensusGroupId(),
+          ownershipSnapshot.getOwnerConsumerId(queue.getConsensusGroupId().toString()));
+      return null;
+    }
+    return null;
+  }
+
   /** Evicts consumers that have not polled within the configured eviction timeout. */
   private void evictInactiveConsumers(final ConcurrentHashMap<String, Long> consumerTimestamps) {
     final long now = System.currentTimeMillis();
@@ -470,12 +559,12 @@ public class ConsensusSubscriptionBroker implements ISubscriptionBroker {
 
   public void bindConsensusPrefetchingQueue(
       final String topicName,
+      final String orderMode,
       final ConsensusGroupId consensusGroupId,
       final IoTConsensusServerImpl serverImpl,
       final ConsensusLogToTabletConverter converter,
       final ConsensusSubscriptionCommitManager commitManager,
-      final long fallbackCommittedEpoch,
-      final long fallbackCommittedSyncIndex,
+      final RegionProgress fallbackCommittedRegionProgress,
       final long tailStartSearchIndex,
       final long initialEpoch,
       final boolean initialActive) {
@@ -502,29 +591,40 @@ public class ConsensusSubscriptionBroker implements ISubscriptionBroker {
         new ConsensusPrefetchingQueue(
             brokerId,
             topicName,
+            orderMode,
             consensusGroupId,
             serverImpl,
             converter,
             commitManager,
-            fallbackCommittedEpoch,
-            fallbackCommittedSyncIndex,
+            fallbackCommittedRegionProgress,
             tailStartSearchIndex,
             initialEpoch,
             initialActive);
     queues.add(consensusQueue);
     LOGGER.info(
         "Subscription: create consensus prefetching queue bound to topic [{}] for consumer group [{}], "
-            + "consensusGroupId={}, fallbackCommittedEpoch={}, fallbackCommittedSyncIndex={}, "
+            + "consensusGroupId={}, fallbackCommittedRegionProgress={}, "
             + "tailStartSearchIndex={}, initialEpoch={}, initialActive={}, totalRegionQueues={}",
         topicName,
         brokerId,
         consensusGroupId,
-        fallbackCommittedEpoch,
-        fallbackCommittedSyncIndex,
+        fallbackCommittedRegionProgress,
         tailStartSearchIndex,
         initialEpoch,
         initialActive,
         queues.size());
+  }
+
+  public void refreshConsensusQueueOrderMode(final String topicName, final String orderMode) {
+    final List<ConsensusPrefetchingQueue> queues =
+        topicNameToConsensusPrefetchingQueues.get(topicName);
+    if (Objects.isNull(queues) || queues.isEmpty()) {
+      return;
+    }
+
+    for (final ConsensusPrefetchingQueue queue : queues) {
+      queue.setOrderMode(orderMode);
+    }
   }
 
   public void unbindConsensusPrefetchingQueue(final String topicName) {
@@ -542,6 +642,8 @@ public class ConsensusSubscriptionBroker implements ISubscriptionBroker {
       q.close();
     }
     topicNameToConsensusPrefetchingQueues.remove(topicName);
+    topicConsumerLastPollMs.remove(topicName);
+    topicOwnershipSnapshots.remove(topicName);
     LOGGER.info(
         "Subscription: drop all {} consensus prefetching queue(s) bound to topic [{}] for consumer group [{}]",
         queues.size(),
@@ -572,41 +674,13 @@ public class ConsensusSubscriptionBroker implements ISubscriptionBroker {
       closedCount += beforeSize - queues.size();
       if (queues.isEmpty()) {
         topicNameToConsensusPrefetchingQueues.remove(entry.getKey(), queues);
+        topicConsumerLastPollMs.remove(entry.getKey());
+        topicOwnershipSnapshots.remove(entry.getKey());
+      } else {
+        topicOwnershipSnapshots.remove(entry.getKey());
       }
     }
     return closedCount;
-  }
-
-  /**
-   * Called when this DataNode loses write-leader status for {@code regionId}. Sets the epoch
-   * boundary on every queue bound to that region so the prefetch loop will inject an EPOCH_CHANGE
-   * sentinel to signal that this epoch's data is complete.
-   */
-  public void injectEpochSentinelForRegion(
-      final ConsensusGroupId regionId, final long endingEpoch) {
-    for (final List<ConsensusPrefetchingQueue> queues :
-        topicNameToConsensusPrefetchingQueues.values()) {
-      for (final ConsensusPrefetchingQueue q : queues) {
-        if (regionId.equals(q.getConsensusGroupId())) {
-          q.injectEpochSentinel(endingEpoch);
-        }
-      }
-    }
-  }
-
-  /**
-   * Called when this DataNode gains preferred-writer status for {@code regionId}. Sets the epoch
-   * counter on every queue bound to that region so new messages carry the new epoch number.
-   */
-  public void setEpochForRegion(final ConsensusGroupId regionId, final long newEpoch) {
-    for (final List<ConsensusPrefetchingQueue> queues :
-        topicNameToConsensusPrefetchingQueues.values()) {
-      for (final ConsensusPrefetchingQueue q : queues) {
-        if (regionId.equals(q.getConsensusGroupId())) {
-          q.setEpoch(newEpoch);
-        }
-      }
-    }
   }
 
   /**
@@ -625,6 +699,32 @@ public class ConsensusSubscriptionBroker implements ISubscriptionBroker {
     }
   }
 
+  public void setActiveWritersForRegion(
+      final ConsensusGroupId regionId, final Set<Integer> activeWriterNodeIds) {
+    final Set<Integer> normalizedActiveWriterNodeIds =
+        Collections.unmodifiableSet(new LinkedHashSet<>(activeWriterNodeIds));
+    for (final List<ConsensusPrefetchingQueue> queues :
+        topicNameToConsensusPrefetchingQueues.values()) {
+      for (final ConsensusPrefetchingQueue q : queues) {
+        if (regionId.equals(q.getConsensusGroupId())) {
+          q.setActiveWriterNodeIds(normalizedActiveWriterNodeIds);
+        }
+      }
+    }
+  }
+
+  public void applyRuntimeStateForRegion(
+      final ConsensusGroupId regionId, final ConsensusRegionRuntimeState runtimeState) {
+    for (final List<ConsensusPrefetchingQueue> queues :
+        topicNameToConsensusPrefetchingQueues.values()) {
+      for (final ConsensusPrefetchingQueue q : queues) {
+        if (regionId.equals(q.getConsensusGroupId())) {
+          q.applyRuntimeState(runtimeState);
+        }
+      }
+    }
+  }
+
   @Override
   public void removeQueue(final String topicName) {
     final List<ConsensusPrefetchingQueue> queues =
@@ -635,6 +735,65 @@ public class ConsensusSubscriptionBroker implements ISubscriptionBroker {
           topicName,
           brokerId);
       unbindConsensusPrefetchingQueue(topicName);
+    }
+  }
+
+  private static final class TopicOwnershipSnapshot {
+
+    private final List<String> activeConsumers;
+    private final List<String> activeRegionIds;
+    private final Map<String, String> ownerByRegionId;
+    private final int generation;
+
+    private TopicOwnershipSnapshot(
+        final List<String> activeConsumers,
+        final List<String> activeRegionIds,
+        final Map<String, String> ownerByRegionId,
+        final int generation) {
+      this.activeConsumers = activeConsumers;
+      this.activeRegionIds = activeRegionIds;
+      this.ownerByRegionId = ownerByRegionId;
+      this.generation = generation;
+    }
+
+    private static TopicOwnershipSnapshot create(
+        final List<String> activeConsumers, final List<String> activeRegionIds) {
+      if (activeConsumers.isEmpty() || activeRegionIds.isEmpty()) {
+        return new TopicOwnershipSnapshot(
+            Collections.emptyList(), Collections.emptyList(), Collections.emptyMap(), 0);
+      }
+
+      final Map<String, String> ownerByRegionId = new ConcurrentHashMap<>();
+      final int consumerCount = activeConsumers.size();
+      for (final String regionId : activeRegionIds) {
+        final int ownerIdx = Math.floorMod(regionId.hashCode(), consumerCount);
+        ownerByRegionId.put(regionId, activeConsumers.get(ownerIdx));
+      }
+      return new TopicOwnershipSnapshot(
+          Collections.unmodifiableList(new ArrayList<>(activeConsumers)),
+          Collections.unmodifiableList(new ArrayList<>(activeRegionIds)),
+          Collections.unmodifiableMap(ownerByRegionId),
+          ownerByRegionId.hashCode());
+    }
+
+    private boolean isEmpty() {
+      return activeConsumers.isEmpty() || activeRegionIds.isEmpty();
+    }
+
+    private boolean hasSameConsumers(final List<String> consumers) {
+      return activeConsumers.equals(consumers);
+    }
+
+    private boolean hasSameRegions(final List<String> regionIds) {
+      return activeRegionIds.equals(regionIds);
+    }
+
+    private String getOwnerConsumerId(final String regionId) {
+      return ownerByRegionId.get(regionId);
+    }
+
+    private int getGeneration() {
+      return generation;
     }
   }
 }

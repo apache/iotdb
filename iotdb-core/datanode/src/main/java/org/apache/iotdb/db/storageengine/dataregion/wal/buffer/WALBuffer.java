@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.ContinuousSameSearchIndexSeparatorNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.ObjectNode;
@@ -327,27 +328,44 @@ public class WALBuffer extends AbstractWALBuffer {
         walEntry.getWalFlushListener().fail(e);
         return;
       }
-      // parse search index, epoch, and syncIndex
+      // parse search index and writer-progress metadata
       long searchIndex = DEFAULT_SEARCH_INDEX;
-      long epoch = 0;
       long syncIndex = DEFAULT_SEARCH_INDEX;
-      if (walEntry.getType().needSearch()) {
+      long physicalTime = 0;
+      int nodeId = -1;
+      long writerEpoch = 0;
+      if (walEntry.getType() == WALEntryType.CONTINUOUS_SAME_SEARCH_INDEX_SEPARATOR_NODE) {
+        final ContinuousSameSearchIndexSeparatorNode separatorNode =
+            (ContinuousSameSearchIndexSeparatorNode) walEntry.getValue();
+        syncIndex = separatorNode.getSyncIndex();
+        physicalTime = separatorNode.getPhysicalTime();
+        nodeId = separatorNode.getNodeId();
+        writerEpoch = separatorNode.getWriterEpoch();
+      } else if (walEntry.getType().needSearch()) {
         if (walEntry.getType() == WALEntryType.DELETE_DATA_NODE) {
           searchIndex = ((DeleteDataNode) walEntry.getValue()).getSearchIndex();
-          epoch = ((DeleteDataNode) walEntry.getValue()).getEpoch();
           syncIndex = ((DeleteDataNode) walEntry.getValue()).getSyncIndex();
+          physicalTime = ((DeleteDataNode) walEntry.getValue()).getPhysicalTime();
+          nodeId = ((DeleteDataNode) walEntry.getValue()).getNodeId();
+          writerEpoch = ((DeleteDataNode) walEntry.getValue()).getWriterEpoch();
         } else if (walEntry.getType() == WALEntryType.RELATIONAL_DELETE_DATA_NODE) {
           searchIndex = ((RelationalDeleteDataNode) walEntry.getValue()).getSearchIndex();
-          epoch = ((RelationalDeleteDataNode) walEntry.getValue()).getEpoch();
           syncIndex = ((RelationalDeleteDataNode) walEntry.getValue()).getSyncIndex();
+          physicalTime = ((RelationalDeleteDataNode) walEntry.getValue()).getPhysicalTime();
+          nodeId = ((RelationalDeleteDataNode) walEntry.getValue()).getNodeId();
+          writerEpoch = ((RelationalDeleteDataNode) walEntry.getValue()).getWriterEpoch();
         } else if (walEntry.getType() == WALEntryType.OBJECT_FILE_NODE) {
           searchIndex = ((ObjectNode) walEntry.getValue()).getSearchIndex();
-          epoch = ((ObjectNode) walEntry.getValue()).getEpoch();
           syncIndex = ((ObjectNode) walEntry.getValue()).getSyncIndex();
+          physicalTime = ((ObjectNode) walEntry.getValue()).getPhysicalTime();
+          nodeId = ((ObjectNode) walEntry.getValue()).getNodeId();
+          writerEpoch = ((ObjectNode) walEntry.getValue()).getWriterEpoch();
         } else {
           searchIndex = ((InsertNode) walEntry.getValue()).getSearchIndex();
-          epoch = ((InsertNode) walEntry.getValue()).getEpoch();
           syncIndex = ((InsertNode) walEntry.getValue()).getSyncIndex();
+          physicalTime = ((InsertNode) walEntry.getValue()).getPhysicalTime();
+          nodeId = ((InsertNode) walEntry.getValue()).getNodeId();
+          writerEpoch = ((InsertNode) walEntry.getValue()).getWriterEpoch();
         }
         if (searchIndex != DEFAULT_SEARCH_INDEX) {
           currentSearchIndex = searchIndex;
@@ -357,9 +375,17 @@ public class WALBuffer extends AbstractWALBuffer {
       // For Leader writes: syncIndex stays -1, use searchIndex as the ordering key
       // For Follower writes: searchIndex is -1, syncIndex carries source's searchIndex
       long effectiveSyncIndex = (syncIndex >= 0) ? syncIndex : searchIndex;
+      long effectiveLocalSeq = (syncIndex >= 0) ? syncIndex : searchIndex;
       // update related info
       totalSize += size;
-      info.metaData.add(size, searchIndex, walEntry.getMemTableId(), epoch, effectiveSyncIndex);
+      info.metaData.add(
+          size,
+          searchIndex,
+          walEntry.getMemTableId(),
+          physicalTime,
+          nodeId,
+          writerEpoch,
+          effectiveLocalSeq);
       info.memTableId2WalDiskUsage.compute(
           walEntry.getMemTableId(), (k, v) -> v == null ? size : v + size);
       info.fsyncListeners.add(walEntry.getWalFlushListener());

@@ -107,9 +107,23 @@ public class InsertRowsOfOneDeviceNode extends InsertNode {
   }
 
   @Override
-  public SearchNode setEpoch(long epoch) {
-    this.epoch = epoch;
-    insertRowNodeList.forEach(plan -> plan.setEpoch(epoch));
+  public SearchNode setPhysicalTime(long physicalTime) {
+    this.physicalTime = physicalTime;
+    insertRowNodeList.forEach(plan -> plan.setPhysicalTime(physicalTime));
+    return this;
+  }
+
+  @Override
+  public SearchNode setNodeId(int nodeId) {
+    this.nodeId = nodeId;
+    insertRowNodeList.forEach(plan -> plan.setNodeId(nodeId));
+    return this;
+  }
+
+  @Override
+  public SearchNode setWriterEpoch(long writerEpoch) {
+    this.writerEpoch = writerEpoch;
+    insertRowNodeList.forEach(plan -> plan.setWriterEpoch(writerEpoch));
     return this;
   }
 

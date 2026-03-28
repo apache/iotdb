@@ -1070,7 +1070,7 @@ struct TGetCommitProgressReq {
 
 struct TGetCommitProgressResp {
     1: required common.TSStatus status
-    2: optional i64 committedSearchIndex
+    2: optional binary committedRegionProgress
 }
 
 // ====================================================
@@ -2070,4 +2070,3 @@ service IConfigNodeRPCService {
 
   common.TSStatus createTableView(TCreateTableViewReq req)
 }
-

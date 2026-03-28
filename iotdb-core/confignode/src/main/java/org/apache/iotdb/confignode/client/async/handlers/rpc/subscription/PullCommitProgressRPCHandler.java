@@ -51,6 +51,7 @@ public class PullCommitProgressRPCHandler
     responseMap.put(requestId, response);
 
     if (response.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      logSuspiciousRegionProgressPayloads(response);
       LOGGER.info("Successfully {} on DataNode: {}", requestType, formattedTargetLocation);
     } else {
       LOGGER.error(
@@ -81,5 +82,78 @@ public class PullCommitProgressRPCHandler
             RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, errorMsg)));
 
     countDownLatch.countDown();
+  }
+
+  private void logSuspiciousRegionProgressPayloads(final TPullCommitProgressResp response) {
+    if (response == null || !response.isSetCommitRegionProgress()) {
+      return;
+    }
+    for (final Map.Entry<String, java.nio.ByteBuffer> entry :
+        response.getCommitRegionProgress().entrySet()) {
+      if (isSuspiciousRegionProgressPayload(entry.getValue())) {
+        LOGGER.warn(
+            "PULL_COMMIT_PROGRESS confignode recv suspicious payload from DataNode {}, key={}, summary={}",
+            formattedTargetLocation,
+            entry.getKey(),
+            summarizeRegionProgressPayload(entry.getValue()));
+      }
+    }
+  }
+
+  private boolean isSuspiciousRegionProgressPayload(final java.nio.ByteBuffer buffer) {
+    if (buffer == null) {
+      return true;
+    }
+    final java.nio.ByteBuffer duplicate = buffer.slice();
+    if (duplicate.remaining() < Integer.BYTES) {
+      return true;
+    }
+    final int firstInt = duplicate.getInt();
+    return firstInt < 0 || firstInt > 1_000_000;
+  }
+
+  private String summarizeRegionProgressPayload(final java.nio.ByteBuffer buffer) {
+    if (buffer == null) {
+      return "null";
+    }
+    final int position = buffer.position();
+    final int limit = buffer.limit();
+    final int capacity = buffer.capacity();
+    final java.nio.ByteBuffer duplicate = buffer.slice();
+    final int remaining = duplicate.remaining();
+    final String firstIntSummary;
+    if (remaining >= Integer.BYTES) {
+      final int firstInt = duplicate.getInt();
+      firstIntSummary = firstInt + "(0x" + String.format("%08x", firstInt) + ")";
+      duplicate.position(0);
+    } else {
+      firstIntSummary = "n/a";
+    }
+    final int sampleLength = Math.min(16, remaining);
+    final byte[] sample = new byte[sampleLength];
+    duplicate.get(sample, 0, sampleLength);
+    return "pos="
+        + position
+        + ", limit="
+        + limit
+        + ", capacity="
+        + capacity
+        + ", remaining="
+        + remaining
+        + ", firstInt="
+        + firstIntSummary
+        + ", firstBytes="
+        + bytesToHex(sample);
+  }
+
+  private String bytesToHex(final byte[] bytes) {
+    if (bytes == null || bytes.length == 0) {
+      return "<empty>";
+    }
+    final StringBuilder builder = new StringBuilder(bytes.length * 2);
+    for (final byte b : bytes) {
+      builder.append(String.format("%02x", b));
+    }
+    return builder.toString();
   }
 }

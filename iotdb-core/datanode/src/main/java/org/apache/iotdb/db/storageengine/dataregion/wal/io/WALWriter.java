@@ -34,7 +34,7 @@ public class WALWriter extends LogWriter {
   private WALFileStatus walFileStatus = WALFileStatus.CONTAINS_NONE_SEARCH_INDEX;
   // wal files' metadata
   protected final WALMetaData metaData = new WALMetaData();
-  // By default is V3 for consensus subscription support
+  // By default is V3 for writer-progress metadata support.
   private WALFileVersion version = WALFileVersion.V3;
 
   public WALWriter(File logFile) throws IOException {

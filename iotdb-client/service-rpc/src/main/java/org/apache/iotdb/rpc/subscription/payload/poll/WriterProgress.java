@@ -24,42 +24,54 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
-/**
- * Payload for {@link SubscriptionPollResponseType#EPOCH_CHANGE}.
- *
- * <p>Delivered by the old write-leader DataNode when it loses preferred-writer status for a region.
- * Signals that all data for the ending epoch has been dispatched. The client-side {@code
- * EpochOrderingProcessor} uses this to advance its epoch tracking and release buffered messages
- * from the next epoch.
- */
-public class EpochChangePayload implements SubscriptionPollPayload {
+public class WriterProgress {
 
-  private transient long endingEpoch;
+  private final long physicalTime;
+  private final long localSeq;
 
-  public EpochChangePayload() {}
-
-  public EpochChangePayload(final long endingEpoch) {
-    this.endingEpoch = endingEpoch;
+  public WriterProgress(final long physicalTime, final long localSeq) {
+    this.physicalTime = physicalTime;
+    this.localSeq = localSeq;
   }
 
-  public long getEndingEpoch() {
-    return endingEpoch;
+  public long getPhysicalTime() {
+    return physicalTime;
   }
 
-  @Override
+  public long getLocalSeq() {
+    return localSeq;
+  }
+
   public void serialize(final DataOutputStream stream) throws IOException {
-    ReadWriteIOUtils.write(endingEpoch, stream);
+    ReadWriteIOUtils.write(physicalTime, stream);
+    ReadWriteIOUtils.write(localSeq, stream);
+  }
+
+  public static WriterProgress deserialize(final ByteBuffer buffer) {
+    return new WriterProgress(ReadWriteIOUtils.readLong(buffer), ReadWriteIOUtils.readLong(buffer));
   }
 
   @Override
-  public SubscriptionPollPayload deserialize(final ByteBuffer buffer) {
-    endingEpoch = ReadWriteIOUtils.readLong(buffer);
-    return this;
+  public boolean equals(final Object obj) {
+    if (this == obj) {
+      return true;
+    }
+    if (!(obj instanceof WriterProgress)) {
+      return false;
+    }
+    final WriterProgress that = (WriterProgress) obj;
+    return physicalTime == that.physicalTime && localSeq == that.localSeq;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(physicalTime, localSeq);
   }
 
   @Override
   public String toString() {
-    return "EpochChangePayload{endingEpoch=" + endingEpoch + '}';
+    return "WriterProgress{" + "physicalTime=" + physicalTime + ", localSeq=" + localSeq + '}';
   }
 }

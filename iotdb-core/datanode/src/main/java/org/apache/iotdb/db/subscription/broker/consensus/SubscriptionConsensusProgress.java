@@ -31,67 +31,50 @@ import java.util.concurrent.atomic.AtomicLong;
  * Tracks consensus subscription consumption progress for a single (consumerGroup, topic, region)
  * combination.
  *
- * <p>Progress is tracked using (epoch, syncIndex) instead of local searchIndex, ensuring
- * consistency across leader migrations. The syncIndex is the original writer's searchIndex, which
- * is identical across all replicas for the same write operation.
+ * <p>Progress is tracked using (physicalTime, localSeq). The local sequence is the original
+ * writer's searchIndex, which is identical across all replicas for the same write operation.
  *
  * <ul>
- *   <li><b>epoch</b>: The epoch of the latest committed entry.
- *   <li><b>syncIndex</b>: The syncIndex (original writer's searchIndex) of the latest committed
- *       entry within that epoch.
+ *   <li><b>physicalTime</b>: The physical time of the latest committed entry.
+ *   <li><b>localSeq</b>: The local sequence (original writer's searchIndex) of the latest committed
+ *       entry.
  *   <li><b>commitIndex</b>: Monotonically increasing count of committed events. Used for
  *       persistence throttling and diagnostics.
  * </ul>
  */
 public class SubscriptionConsensusProgress {
 
-  private final AtomicLong epoch;
+  private final AtomicLong physicalTime;
 
-  private final AtomicLong syncIndex;
+  private final AtomicLong localSeq;
 
   private final AtomicLong commitIndex;
 
   public SubscriptionConsensusProgress() {
-    this(0L, 0L, 0L);
+    this(0L, -1L, 0L);
   }
 
   public SubscriptionConsensusProgress(
-      final long epoch, final long syncIndex, final long commitIndex) {
-    this.epoch = new AtomicLong(epoch);
-    this.syncIndex = new AtomicLong(syncIndex);
+      final long physicalTime, final long localSeq, final long commitIndex) {
+    this.physicalTime = new AtomicLong(physicalTime);
+    this.localSeq = new AtomicLong(localSeq);
     this.commitIndex = new AtomicLong(commitIndex);
   }
 
-  public long getEpoch() {
-    return epoch.get();
+  public long getPhysicalTime() {
+    return physicalTime.get();
   }
 
-  public void setEpoch(final long epoch) {
-    this.epoch.set(epoch);
+  public void setPhysicalTime(final long physicalTime) {
+    this.physicalTime.set(physicalTime);
   }
 
-  public long getSyncIndex() {
-    return syncIndex.get();
+  public long getLocalSeq() {
+    return localSeq.get();
   }
 
-  public void setSyncIndex(final long syncIndex) {
-    this.syncIndex.set(syncIndex);
-  }
-
-  /**
-   * @deprecated Use {@link #getSyncIndex()} instead. Kept for backward compatibility.
-   */
-  @Deprecated
-  public long getSearchIndex() {
-    return syncIndex.get();
-  }
-
-  /**
-   * @deprecated Use {@link #setSyncIndex(long)} instead. Kept for backward compatibility.
-   */
-  @Deprecated
-  public void setSearchIndex(final long searchIndex) {
-    this.syncIndex.set(searchIndex);
+  public void setLocalSeq(final long localSeq) {
+    this.localSeq.set(localSeq);
   }
 
   public long getCommitIndex() {
@@ -107,16 +90,16 @@ public class SubscriptionConsensusProgress {
   }
 
   public void serialize(final DataOutputStream stream) throws IOException {
-    ReadWriteIOUtils.write(epoch.get(), stream);
-    ReadWriteIOUtils.write(syncIndex.get(), stream);
+    ReadWriteIOUtils.write(physicalTime.get(), stream);
+    ReadWriteIOUtils.write(localSeq.get(), stream);
     ReadWriteIOUtils.write(commitIndex.get(), stream);
   }
 
   public static SubscriptionConsensusProgress deserialize(final ByteBuffer buffer) {
-    final long epoch = ReadWriteIOUtils.readLong(buffer);
-    final long syncIndex = ReadWriteIOUtils.readLong(buffer);
+    final long physicalTime = ReadWriteIOUtils.readLong(buffer);
+    final long localSeq = ReadWriteIOUtils.readLong(buffer);
     final long commitIndex = ReadWriteIOUtils.readLong(buffer);
-    return new SubscriptionConsensusProgress(epoch, syncIndex, commitIndex);
+    return new SubscriptionConsensusProgress(physicalTime, localSeq, commitIndex);
   }
 
   @Override
@@ -128,23 +111,23 @@ public class SubscriptionConsensusProgress {
       return false;
     }
     final SubscriptionConsensusProgress that = (SubscriptionConsensusProgress) o;
-    return epoch.get() == that.epoch.get()
-        && syncIndex.get() == that.syncIndex.get()
+    return physicalTime.get() == that.physicalTime.get()
+        && localSeq.get() == that.localSeq.get()
         && commitIndex.get() == that.commitIndex.get();
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(epoch.get(), syncIndex.get(), commitIndex.get());
+    return Objects.hash(physicalTime.get(), localSeq.get(), commitIndex.get());
   }
 
   @Override
   public String toString() {
     return "SubscriptionConsensusProgress{"
-        + "epoch="
-        + epoch.get()
-        + ", syncIndex="
-        + syncIndex.get()
+        + "physicalTime="
+        + physicalTime.get()
+        + ", localSeq="
+        + localSeq.get()
         + ", commitIndex="
         + commitIndex.get()
         + '}';

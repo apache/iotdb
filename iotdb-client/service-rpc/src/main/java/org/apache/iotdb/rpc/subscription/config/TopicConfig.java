@@ -35,6 +35,16 @@ import java.util.stream.Collectors;
 
 public class TopicConfig extends PipeParameters {
 
+  private static final Set<String> ORDER_MODE_VALUE_SET;
+
+  static {
+    final Set<String> orderModes = new HashSet<>(3);
+    orderModes.add(TopicConstant.ORDER_MODE_LEADER_ONLY_VALUE);
+    orderModes.add(TopicConstant.ORDER_MODE_MULTI_WRITER_VALUE);
+    orderModes.add(TopicConstant.ORDER_MODE_PER_WRITER_VALUE);
+    ORDER_MODE_VALUE_SET = Collections.unmodifiableSet(orderModes);
+  }
+
   public TopicConfig() {
     super(Collections.emptyMap());
   }
@@ -93,6 +103,22 @@ public class TopicConfig extends PipeParameters {
   public boolean isTableTopic() {
     return SQL_DIALECT_TABLE_VALUE.equalsIgnoreCase(
         attributes.getOrDefault(SQL_DIALECT_KEY, SQL_DIALECT_TREE_VALUE));
+  }
+
+  public String getOrderMode() {
+    return normalizeOrderMode(
+        attributes.getOrDefault(
+            TopicConstant.ORDER_MODE_KEY, TopicConstant.ORDER_MODE_DEFAULT_VALUE));
+  }
+
+  public static boolean isValidOrderMode(final String orderMode) {
+    return ORDER_MODE_VALUE_SET.contains(normalizeOrderMode(orderMode));
+  }
+
+  public static String normalizeOrderMode(final String orderMode) {
+    return orderMode == null
+        ? TopicConstant.ORDER_MODE_DEFAULT_VALUE
+        : orderMode.trim().toLowerCase();
   }
 
   /////////////////////////////// extractor attributes mapping ///////////////////////////////

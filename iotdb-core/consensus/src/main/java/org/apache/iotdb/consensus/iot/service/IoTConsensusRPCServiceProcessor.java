@@ -48,6 +48,8 @@ import org.apache.iotdb.consensus.iot.thrift.TSendSnapshotFragmentReq;
 import org.apache.iotdb.consensus.iot.thrift.TSendSnapshotFragmentRes;
 import org.apache.iotdb.consensus.iot.thrift.TSyncLogEntriesReq;
 import org.apache.iotdb.consensus.iot.thrift.TSyncLogEntriesRes;
+import org.apache.iotdb.consensus.iot.thrift.TSyncSafeHlcReq;
+import org.apache.iotdb.consensus.iot.thrift.TSyncSafeHlcRes;
 import org.apache.iotdb.consensus.iot.thrift.TTriggerSnapshotLoadReq;
 import org.apache.iotdb.consensus.iot.thrift.TTriggerSnapshotLoadRes;
 import org.apache.iotdb.consensus.iot.thrift.TWaitReleaseAllRegionRelatedResourceReq;
@@ -107,30 +109,25 @@ public class IoTConsensusRPCServiceProcessor implements IoTConsensusIService.Ifa
     }
     BatchIndexedConsensusRequest logEntriesInThisBatch =
         new BatchIndexedConsensusRequest(req.peerId);
+    final int sourceNodeId = req.peerId;
     // We use synchronized to ensure atomicity of executing multiple logs
     for (TLogEntry entry : req.getLogEntries()) {
-      // Detect SYNC_COMPLETE marker: empty data list (normal entries always have ≥1 buffer)
-      if (entry.getData().isEmpty()) {
-        long epoch = entry.isSetEpoch() ? entry.getEpoch() : 0L;
-        impl.onEpochSyncComplete(epoch, entry.getSearchIndex());
-        continue;
-      }
       long epoch = entry.isSetEpoch() ? entry.getEpoch() : 0L;
+      long physicalTime = entry.isSetPhysicalTime() ? entry.getPhysicalTime() : 0L;
+      long writerEpoch = entry.isSetWriterEpoch() ? entry.getWriterEpoch() : 0L;
       logEntriesInThisBatch.add(
           impl.buildIndexedConsensusRequestForRemoteRequest(
               entry.getSearchIndex(),
               epoch,
+              physicalTime,
+              sourceNodeId,
+              writerEpoch,
               entry.getData().stream()
                   .map(
                       entry.isFromWAL()
                           ? IoTConsensusRequest::new
                           : ByteBufferConsensusRequest::new)
                   .collect(Collectors.toList())));
-    }
-    // If all entries were SYNC_COMPLETE markers, skip deserialize/syncLog
-    if (logEntriesInThisBatch.getRequests().isEmpty()) {
-      return new TSyncLogEntriesRes(
-          Collections.singletonList(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())));
     }
     long buildRequestTime = System.nanoTime();
     IConsensusRequest deserializedRequest =
@@ -144,6 +141,28 @@ public class IoTConsensusRPCServiceProcessor implements IoTConsensusIService.Ifa
         writeStatus.subStatus);
     return new TSyncLogEntriesRes(writeStatus.subStatus)
         .setReceiverMemSize(deserializedRequest.getMemorySize());
+  }
+
+  @Override
+  public TSyncSafeHlcRes syncSafeHlc(final TSyncSafeHlcReq req) {
+    final ConsensusGroupId groupId =
+        ConsensusGroupId.Factory.createFromTConsensusGroupId(req.getConsensusGroupId());
+    final IoTConsensusServerImpl impl = consensus.getImpl(groupId);
+    if (impl == null) {
+      final String message =
+          String.format("unexpected consensusGroupId %s for TSyncSafeHlcReq", groupId);
+      LOGGER.error(message);
+      final TSStatus status = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+      status.setMessage(message);
+      return new TSyncSafeHlcRes().setStatus(status);
+    }
+    impl.observeRemoteSafeHlc(
+        req.getWriterNodeId(),
+        req.getWriterEpoch(),
+        req.getSafePhysicalTime(),
+        req.getBarrierLocalSeq());
+    return new TSyncSafeHlcRes()
+        .setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
   }
 
   @Override

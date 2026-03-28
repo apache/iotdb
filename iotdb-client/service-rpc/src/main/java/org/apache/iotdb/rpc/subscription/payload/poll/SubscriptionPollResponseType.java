@@ -35,13 +35,6 @@ public enum SubscriptionPollResponseType {
   TERMINATION((short) 5),
 
   /**
-   * Sent by a DataNode that has lost write-leader status for a region, after delivering all
-   * pre-routing-change data. Carries the node ID of the new write leader so the consumer can
-   * release the new leader from its epoch-waiting hold and begin polling it.
-   */
-  EPOCH_CHANGE((short) 6),
-
-  /**
    * Periodic timestamp-progress signal from the server-side {@code ConsensusPrefetchingQueue}.
    * Carries the maximum data timestamp observed so far for a region, enabling client-side watermark
    * computation even when a region is idle (no new data).

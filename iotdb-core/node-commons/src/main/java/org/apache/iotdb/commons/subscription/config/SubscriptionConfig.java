@@ -162,10 +162,6 @@ public class SubscriptionConfig {
     return COMMON_CONFIG.isSubscriptionConsensusCommitFsyncEnabled();
   }
 
-  public boolean isSubscriptionConsensusExclusiveConsumption() {
-    return COMMON_CONFIG.isSubscriptionConsensusExclusiveConsumption();
-  }
-
   public long getSubscriptionConsensusConsumerEvictionTimeoutMs() {
     return COMMON_CONFIG.getSubscriptionConsensusConsumerEvictionTimeoutMs();
   }
@@ -187,6 +183,10 @@ public class SubscriptionConfig {
       return -1;
     }
     return COMMON_CONFIG.getSubscriptionConsensusWatermarkIntervalMs();
+  }
+
+  public long getSubscriptionConsensusIdleSafeHlcIntervalMs() {
+    return COMMON_CONFIG.getSubscriptionConsensusIdleSafeHlcIntervalMs();
   }
 
   /////////////////////////////// Utils ///////////////////////////////
@@ -271,6 +271,9 @@ public class SubscriptionConfig {
     LOGGER.info(
         "SubscriptionConsensusBatchMaxWalEntries: {}",
         getSubscriptionConsensusBatchMaxWalEntries());
+    LOGGER.info(
+        "SubscriptionConsensusIdleSafeHlcIntervalMs: {}",
+        getSubscriptionConsensusIdleSafeHlcIntervalMs());
   }
 
   /////////////////////////////// Singleton ///////////////////////////////

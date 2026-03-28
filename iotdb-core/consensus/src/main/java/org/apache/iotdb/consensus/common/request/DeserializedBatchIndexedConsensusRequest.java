@@ -28,13 +28,24 @@ public class DeserializedBatchIndexedConsensusRequest
     implements IConsensusRequest, Comparable<DeserializedBatchIndexedConsensusRequest> {
   private final long startSyncIndex;
   private final long endSyncIndex;
+  private final int writerNodeId;
+  private final long writerEpoch;
+  private final long endPhysicalTime;
   private final List<IConsensusRequest> insertNodes;
   private long memorySize;
 
   public DeserializedBatchIndexedConsensusRequest(
-      long startSyncIndex, long endSyncIndex, int size) {
+      long startSyncIndex,
+      long endSyncIndex,
+      int size,
+      int writerNodeId,
+      long writerEpoch,
+      long endPhysicalTime) {
     this.startSyncIndex = startSyncIndex;
     this.endSyncIndex = endSyncIndex;
+    this.writerNodeId = writerNodeId;
+    this.writerEpoch = writerEpoch;
+    this.endPhysicalTime = endPhysicalTime;
     // use arraylist here because we know the number of requests
     this.insertNodes = new ArrayList<>(size);
   }
@@ -45,6 +56,18 @@ public class DeserializedBatchIndexedConsensusRequest
 
   public long getEndSyncIndex() {
     return endSyncIndex;
+  }
+
+  public int getWriterNodeId() {
+    return writerNodeId;
+  }
+
+  public long getWriterEpoch() {
+    return writerEpoch;
+  }
+
+  public long getEndPhysicalTime() {
+    return endPhysicalTime;
   }
 
   public List<IConsensusRequest> getInsertNodes() {
@@ -72,12 +95,16 @@ public class DeserializedBatchIndexedConsensusRequest
     DeserializedBatchIndexedConsensusRequest request = (DeserializedBatchIndexedConsensusRequest) o;
     return startSyncIndex == request.startSyncIndex
         && endSyncIndex == request.endSyncIndex
+        && writerNodeId == request.writerNodeId
+        && writerEpoch == request.writerEpoch
+        && endPhysicalTime == request.endPhysicalTime
         && Objects.equals(insertNodes, request.insertNodes);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(startSyncIndex, endSyncIndex, insertNodes);
+    return Objects.hash(
+        startSyncIndex, endSyncIndex, writerNodeId, writerEpoch, endPhysicalTime, insertNodes);
   }
 
   @Override

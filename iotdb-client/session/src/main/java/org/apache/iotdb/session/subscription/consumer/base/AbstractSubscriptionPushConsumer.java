@@ -194,8 +194,7 @@ public abstract class AbstractSubscriptionPushConsumer extends AbstractSubscript
         messages.removeIf(
             m -> {
               final short type = m.getMessageType();
-              return type == SubscriptionMessageType.EPOCH_SENTINEL.getType()
-                  || type == SubscriptionMessageType.WATERMARK.getType();
+              return type == SubscriptionMessageType.WATERMARK.getType();
             });
         if (messages.isEmpty()) {
           LOGGER.info(

@@ -37,7 +37,7 @@ import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollRequest;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollRequestType;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
-import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionRegionPosition;
+import org.apache.iotdb.rpc.subscription.payload.poll.TopicProgress;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeCloseReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeCommitReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeHandshakeReq;
@@ -347,17 +347,14 @@ public abstract class AbstractSubscriptionProvider {
     verifyPipeSubscribeSuccess(resp.status);
   }
 
-  void seekToRegionPositions(
-      final String topicName, final Map<String, SubscriptionRegionPosition> regionPositions)
+  void seekToTopicProgress(final String topicName, final TopicProgress topicProgress)
       throws SubscriptionException {
     final PipeSubscribeSeekReq req;
     try {
-      req =
-          PipeSubscribeSeekReq.toTPipeSubscribeReq(
-              topicName, PipeSubscribeSeekReq.SEEK_TO_REGION_POSITIONS, 0, regionPositions);
+      req = PipeSubscribeSeekReq.toTPipeSubscribeReq(topicName, topicProgress);
     } catch (final IOException e) {
       LOGGER.warn(
-          "IOException occurred when SubscriptionProvider {} serialize seek(regionPositions) for topic {}",
+          "IOException occurred when SubscriptionProvider {} serialize seek(topicProgress) for topic {}",
           this,
           topicName,
           e);
@@ -368,7 +365,7 @@ public abstract class AbstractSubscriptionProvider {
       resp = getSessionConnection().pipeSubscribe(req);
     } catch (final TException | IoTDBConnectionException e) {
       LOGGER.warn(
-          "TException/IoTDBConnectionException occurred when SubscriptionProvider {} seek(regionPositions) for topic {}, set SubscriptionProvider unavailable",
+          "TException/IoTDBConnectionException occurred when SubscriptionProvider {} seek(topicProgress) for topic {}, set SubscriptionProvider unavailable",
           this,
           topicName,
           e);
@@ -378,15 +375,14 @@ public abstract class AbstractSubscriptionProvider {
     verifyPipeSubscribeSuccess(resp.status);
   }
 
-  void seekAfterRegionPositions(
-      final String topicName, final Map<String, SubscriptionRegionPosition> regionPositions)
+  void seekAfterTopicProgress(final String topicName, final TopicProgress topicProgress)
       throws SubscriptionException {
     final PipeSubscribeSeekReq req;
     try {
-      req = PipeSubscribeSeekReq.toTPipeSubscribeSeekAfterReq(topicName, regionPositions);
+      req = PipeSubscribeSeekReq.toTPipeSubscribeSeekAfterReq(topicName, topicProgress);
     } catch (final IOException e) {
       LOGGER.warn(
-          "IOException occurred when SubscriptionProvider {} serialize seekAfter(regionPositions) for topic {}",
+          "IOException occurred when SubscriptionProvider {} serialize seekAfter(topicProgress) for topic {}",
           this,
           topicName,
           e);
@@ -397,7 +393,7 @@ public abstract class AbstractSubscriptionProvider {
       resp = getSessionConnection().pipeSubscribe(req);
     } catch (final TException | IoTDBConnectionException e) {
       LOGGER.warn(
-          "TException/IoTDBConnectionException occurred when SubscriptionProvider {} seekAfter(regionPositions) for topic {}, set SubscriptionProvider unavailable",
+          "TException/IoTDBConnectionException occurred when SubscriptionProvider {} seekAfter(topicProgress) for topic {}, set SubscriptionProvider unavailable",
           this,
           topicName,
           e);
@@ -415,7 +411,7 @@ public abstract class AbstractSubscriptionProvider {
   List<SubscriptionPollResponse> poll(
       final Set<String> topicNames,
       final long timeoutMs,
-      final Map<String, long[]> lastConsumedByRegion)
+      final Map<String, TopicProgress> progressByTopic)
       throws SubscriptionException {
     return poll(
         new SubscriptionPollRequest(
@@ -423,7 +419,7 @@ public abstract class AbstractSubscriptionProvider {
             new PollPayload(topicNames),
             timeoutMs,
             session.getThriftMaxFrameSize(),
-            lastConsumedByRegion));
+            progressByTopic));
   }
 
   List<SubscriptionPollResponse> pollFile(

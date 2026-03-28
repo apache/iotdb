@@ -81,12 +81,15 @@ import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPushSingleConsumerGroupMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushSinglePipeMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushSingleTopicMetaReq;
+import org.apache.iotdb.mpp.rpc.thrift.TPushSubscriptionRuntimeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushTopicMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushTopicMetaResp;
+import org.apache.iotdb.mpp.rpc.thrift.TSubscriptionRuntimeStateEntry;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -95,8 +98,10 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
@@ -864,6 +869,69 @@ public class ConfigNodeProcedureEnv {
             clientHandler,
             PipeConfig.getInstance().getPipeMetaSyncerSyncIntervalMinutes() * 60 * 1000 * 2 / 3);
     return clientHandler.getResponseMap();
+  }
+
+  public Map<Integer, TSStatus> pushSubscriptionRuntimeStatesToDataNodes(
+      final Map<TConsensusGroupId, Pair<Integer, Integer>> regionGroupToOldAndNewLeaderPairMap,
+      final long runtimeVersion) {
+    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+        configManager.getNodeManager().getRegisteredDataNodeLocations();
+    final Map<TConsensusGroupId, TRegionReplicaSet> dataRegionReplicaSetMap =
+        getPartitionManager().getAllReplicaSetsMap(TConsensusGroupType.DataRegion);
+    final Set<Integer> readableDataNodeIds =
+        getLoadManager().filterDataNodeThroughStatus(NodeStatus::isReadable).stream()
+            .collect(Collectors.toSet());
+    final DataNodeAsyncRequestContext<TPushSubscriptionRuntimeReq, TSStatus> clientHandler =
+        new DataNodeAsyncRequestContext<>(CnToDnAsyncRequestType.SUBSCRIPTION_PUSH_RUNTIME);
+
+    dataNodeLocationMap.forEach(
+        (dataNodeId, dataNodeLocation) -> {
+          final List<TSubscriptionRuntimeStateEntry> runtimeStates = new ArrayList<>();
+          regionGroupToOldAndNewLeaderPairMap.forEach(
+              (regionId, leaderPair) -> {
+                final int oldLeaderNodeId = leaderPair.getLeft();
+                final int preferredWriterNodeId = leaderPair.getRight();
+                final LinkedHashSet<Integer> activeWriterNodeIds = new LinkedHashSet<>();
+                final TRegionReplicaSet replicaSet = dataRegionReplicaSetMap.get(regionId);
+                if (replicaSet != null) {
+                  replicaSet.getDataNodeLocations().stream()
+                      .map(TDataNodeLocation::getDataNodeId)
+                      .filter(readableDataNodeIds::contains)
+                      .forEach(activeWriterNodeIds::add);
+                }
+                if (activeWriterNodeIds.isEmpty()) {
+                  if (isRuntimeActiveWriterNode(preferredWriterNodeId)) {
+                    activeWriterNodeIds.add(preferredWriterNodeId);
+                  }
+                  if (oldLeaderNodeId != preferredWriterNodeId
+                      && isRuntimeActiveWriterNode(oldLeaderNodeId)) {
+                    activeWriterNodeIds.add(oldLeaderNodeId);
+                  }
+                }
+                runtimeStates.add(
+                    new TSubscriptionRuntimeStateEntry(
+                        regionId,
+                        runtimeVersion,
+                        preferredWriterNodeId,
+                        preferredWriterNodeId == dataNodeId,
+                        new ArrayList<>(activeWriterNodeIds)));
+              });
+          clientHandler.putNodeLocation(dataNodeId, dataNodeLocation);
+          clientHandler.putRequest(
+              dataNodeId, new TPushSubscriptionRuntimeReq().setRuntimeStates(runtimeStates));
+        });
+
+    CnToDnInternalServiceAsyncRequestManager.getInstance()
+        .sendAsyncRequestToNodeWithRetryAndTimeoutInMs(
+            clientHandler,
+            PipeConfig.getInstance().getPipeMetaSyncerSyncIntervalMinutes() * 60 * 1000 * 2 / 3);
+    return clientHandler.getResponseMap();
+  }
+
+  private boolean isRuntimeActiveWriterNode(final int dataNodeId) {
+    return dataNodeId >= 0
+        && getLoadManager().getNodeStatus(dataNodeId) != NodeStatus.Unknown
+        && getLoadManager().getNodeStatus(dataNodeId) != NodeStatus.Removing;
   }
 
   public LockQueue getNodeLock() {

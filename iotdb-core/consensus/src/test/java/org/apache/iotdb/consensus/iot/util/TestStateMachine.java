@@ -97,11 +97,18 @@ public class TestStateMachine implements IStateMachine, IStateMachine.EventApi {
   public IConsensusRequest deserializeRequest(IConsensusRequest request) {
     if (request instanceof BatchIndexedConsensusRequest) {
       BatchIndexedConsensusRequest consensusRequest = (BatchIndexedConsensusRequest) request;
+      final IndexedConsensusRequest lastIndexedRequest =
+          consensusRequest.getRequests().isEmpty()
+              ? null
+              : consensusRequest.getRequests().get(consensusRequest.getRequests().size() - 1);
       DeserializedBatchIndexedConsensusRequest result =
           new DeserializedBatchIndexedConsensusRequest(
               consensusRequest.getStartSyncIndex(),
               consensusRequest.getEndSyncIndex(),
-              consensusRequest.getRequests().size());
+              consensusRequest.getRequests().size(),
+              consensusRequest.getSourcePeerId(),
+              lastIndexedRequest != null ? lastIndexedRequest.getWriterEpoch() : 0L,
+              lastIndexedRequest != null ? lastIndexedRequest.getPhysicalTime() : 0L);
       for (IndexedConsensusRequest r : consensusRequest.getRequests()) {
         result.add(r);
       }

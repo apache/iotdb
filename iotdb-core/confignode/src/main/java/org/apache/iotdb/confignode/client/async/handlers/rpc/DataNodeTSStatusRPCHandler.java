@@ -48,22 +48,19 @@ public class DataNodeTSStatusRPCHandler extends DataNodeAsyncRequestRPCHandler<T
 
   @Override
   public void onComplete(TSStatus response) {
-    // Put response
     responseMap.put(requestId, response);
 
     if (response.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      // Remove only if success
       nodeLocationMap.remove(requestId);
       LOGGER.info("Successfully {} on DataNode: {}", requestType, formattedTargetLocation);
     } else {
-      LOGGER.error(
+      logFailure(
           "Failed to {} on DataNode: {}, response: {}",
           requestType,
           formattedTargetLocation,
           response);
     }
 
-    // Always CountDown
     countDownLatch.countDown();
   }
 
@@ -76,14 +73,21 @@ public class DataNodeTSStatusRPCHandler extends DataNodeAsyncRequestRPCHandler<T
             + formattedTargetLocation
             + ", exception: "
             + e.getMessage();
-    LOGGER.error(errorMsg);
+    logFailure(errorMsg);
 
     responseMap.put(
         requestId,
         new TSStatus(
             RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode(), errorMsg)));
 
-    // Always CountDown
     countDownLatch.countDown();
+  }
+
+  private void logFailure(final String format, final Object... args) {
+    if (requestType == CnToDnAsyncRequestType.SUBSCRIPTION_PUSH_RUNTIME) {
+      LOGGER.warn(format, args);
+    } else {
+      LOGGER.error(format, args);
+    }
   }
 }
