@@ -151,21 +151,28 @@ class ModelStorage:
 
         def _download_model_if_necessary() -> bool:
             """Returns: True if the model is existed or downloaded successfully, False otherwise."""
-            repo_id = BUILTIN_HF_TRANSFORMERS_MODEL_MAP[model_id].repo_id
+            model_info = BUILTIN_HF_TRANSFORMERS_MODEL_MAP[model_id]
+            repo_id = model_info.repo_id
             weights_path = os.path.join(model_dir, MODEL_SAFETENSORS)
             config_path = os.path.join(model_dir, CONFIG_JSON)
-            if not os.path.exists(weights_path):
-                try:
-                    hf_hub_download(
-                        repo_id=repo_id,
-                        filename=MODEL_SAFETENSORS,
-                        local_dir=model_dir,
-                    )
-                except Exception as e:
-                    logger.error(
-                        f"Failed to download model weights from HuggingFace: {e}"
-                    )
-                    return False
+
+            if getattr(model_info, "download_weights", True):
+                if not os.path.exists(weights_path):
+                    try:
+                        hf_hub_download(
+                            repo_id=repo_id,
+                            filename=MODEL_SAFETENSORS,
+                            local_dir=model_dir,
+                        )
+                    except Exception as e:
+                        logger.error(
+                            f"Failed to download model weights from HuggingFace: {e}"
+                        )
+                        return False
+            else:
+                logger.info(
+                    f"Skipping weight download for {model_id} due to configuration."
+                )
             if not os.path.exists(config_path):
                 try:
                     hf_hub_download(

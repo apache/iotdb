@@ -360,3 +360,13 @@ Project page: https://github.com/SalesforceAIResearch/uni2ts
 License: https://github.com/SalesforceAIResearch/uni2ts/blob/main/LICENSE.txt
 
 --------------------------------------------------------------------------------
+
+The following files include code modified from PatchTST project.
+
+./iotdb-core/ainode/iotdb/ainode/core/model/patchtst_fm/*
+
+PatchTST is open source software licensed under the Apache License 2.0
+Project page: https://github.com/ibm-research/patchtst
+License: https://github.com/ibm-research/patchtst/blob/main/LICENSE
+
+--------------------------------------------------------------------------------

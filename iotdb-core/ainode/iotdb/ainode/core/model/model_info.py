@@ -30,6 +30,7 @@ class ModelInfo:
         model_type: str = "",
         pipeline_cls: str = "",
         repo_id: str = "",
+        download_weights: bool = True,
         auto_map: Optional[Dict] = None,
         hub_mixin_cls: Optional[str] = None,
         transformers_registered: bool = False,
@@ -40,9 +41,12 @@ class ModelInfo:
         self.state = state
         self.pipeline_cls = pipeline_cls
         self.repo_id = repo_id
-        self.auto_map = auto_map
+        self.download_weights = download_weights
+        self.auto_map = auto_map  # If exists, indicates it's a Transformers model
         self.hub_mixin_cls = hub_mixin_cls
-        self.transformers_registered = transformers_registered
+        self.transformers_registered = (
+            transformers_registered  # Internal flag: whether registered to Transformers
+        )
 
     def __repr__(self):
         return (
@@ -170,6 +174,20 @@ BUILTIN_HF_TRANSFORMERS_MODEL_MAP = {
         auto_map={
             "AutoConfig": "configuration_toto.TotoConfig",
             "AutoModelForCausalLM": "modeling_toto.TotoForPrediction",
+        },
+        transformers_registered=True,
+    ),
+    "patchtst_fm": ModelInfo(
+        model_id="patchtst_fm",
+        category=ModelCategory.BUILTIN,
+        state=ModelStates.INACTIVE,
+        model_type="patchtst_fm",
+        pipeline_cls="pipeline_patchtst_fm.PatchTSTFMPipeline",
+        repo_id="ibm-research/patchtst-fm-r1",
+        download_weights=False,
+        auto_map={
+            "AutoConfig": "configuration_patchtst_fm.PatchTSTFMConfig",
+            "AutoModelForCausalLM": "modeling_patchtst_fm.PatchTSTFMForPrediction",
         },
         transformers_registered=True,
     ),
