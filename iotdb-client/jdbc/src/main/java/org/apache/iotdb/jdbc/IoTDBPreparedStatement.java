@@ -257,7 +257,15 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
 
   @Override
   public void setBlob(int parameterIndex, Blob x) throws SQLException {
-    throw new SQLException(Constant.PARAMETER_SUPPORTED);
+    if (x == null) {
+      setNull(parameterIndex, Types.BLOB);
+    } else {
+      try {
+        setBytes(parameterIndex, x.getBytes(1, (int) x.length()));
+      } catch (SQLException e) {
+        throw new SQLException("Failed to read Blob data: " + e.getMessage(), e);
+      }
+    }
   }
 
   @Override
