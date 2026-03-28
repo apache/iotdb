@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
+import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.ITableTimeRangeIterator;
 import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.TableDateBinTimeRangeIterator;
 import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.TableSingleTimeWindowIterator;
@@ -66,6 +67,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.TableSortOpera
 import org.apache.iotdb.db.queryengine.execution.operator.process.TableStreamSortOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TableTopKOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.ValuesOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.copyto.TableCopyToOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.IFill;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.ILinearFill;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.constant.BinaryConstantFill;
@@ -190,6 +192,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationT
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AlignedAggregationTreeDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AssignUniqueId;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CollectNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CopyToNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CteScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.EnforceSingleRowNode;
@@ -3471,6 +3474,31 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                 ExplainAnalyzeOperator.class.getSimpleName());
     return new ExplainAnalyzeOperator(
         operatorContext, operator, node.getQueryId(), node.isVerbose(), node.getTimeout());
+  }
+
+  @Override
+  public Operator visitCopyTo(CopyToNode node, LocalExecutionPlanContext context) {
+    PlanNode childNode = node.getChild();
+
+    DatasetHeader datasetHeader = node.getInnerQueryDatasetHeader();
+    datasetHeader.setTableColumnToTsBlockIndexMap(node.getInnerQueryOutputNode(), childNode);
+
+    Operator operator = childNode.accept(this, context);
+
+    OperatorContext operatorContext =
+        context
+            .getDriverContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                TableCopyToOperator.class.getSimpleName());
+    return new TableCopyToOperator(
+        operatorContext,
+        operator,
+        node.getTargetFilePath(),
+        node.getCopyToOptions(),
+        datasetHeader.getColumnHeaders(),
+        datasetHeader.getColumnIndex2TsBlockColumnIndexList());
   }
 
   @Override

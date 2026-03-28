@@ -35,6 +35,7 @@ import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.protocol.session.IClientSession;
+import org.apache.iotdb.db.queryengine.execution.operator.process.copyto.CopyToOptions;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AddColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AliasedRelation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AllColumns;
@@ -55,6 +56,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CoalesceExpressio
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ColumnDefinition;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Columns;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CopyTo;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDB;
@@ -248,6 +250,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WithQuery;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ZeroOrMoreQuantifier;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ZeroOrOneQuantifier;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.util.AstUtil;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.util.QueryUtil;
 import org.apache.iotdb.db.queryengine.plan.relational.type.AuthorRType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
@@ -290,6 +293,7 @@ import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -332,6 +336,8 @@ import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SkipTo.ski
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SkipTo.skipToFirst;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SkipTo.skipToLast;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SkipTo.skipToNextRow;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.util.QueryUtil.selectList;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.util.QueryUtil.table;
 import static org.apache.iotdb.db.utils.TimestampPrecisionUtils.currPrecision;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.APPROX_COUNT_DISTINCT;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.APPROX_MOST_FREQUENT;
@@ -2167,6 +2173,62 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
             grantOption,
             null);
       }
+    }
+  }
+
+  @Override
+  public Node visitCopyToStatement(RelationalSqlParser.CopyToStatementContext ctx) {
+    RelationalSqlParser.CopyToStatementOptionsContext optionsContext = ctx.copyToStatementOptions();
+    String targetFileName = parseStringLiteral(ctx.fileName.getText());
+    CopyToOptions.Builder copyToOptionsBuilder = new CopyToOptions.Builder();
+    if (optionsContext != null) {
+      for (RelationalSqlParser.CopyToStatementOptionContext context :
+          optionsContext.copyToStatementOption()) {
+        addCopyToOption(copyToOptionsBuilder, context);
+      }
+    }
+    Statement queryNode = null;
+    if (ctx.tableName != null) {
+      QualifiedName qualifiedName = getQualifiedName(ctx.tableName);
+      if (ctx.tableColumns != null) {
+        List<RelationalSqlParser.IdentifierContext> identifierList =
+            ctx.identifierList().identifier();
+        SelectItem[] selectItems = new SelectItem[identifierList.size()];
+        for (int i = 0; i < identifierList.size(); i++) {
+          Identifier identifier = (Identifier) visit(identifierList.get(i));
+          selectItems[i] = new SingleColumn(identifier, identifier);
+        }
+        queryNode = QueryUtil.simpleQuery(selectList(selectItems), table(qualifiedName));
+      } else {
+        queryNode = QueryUtil.simpleQuery(selectList(new AllColumns()), table(qualifiedName));
+      }
+    } else {
+      queryNode = (Statement) visit(ctx.query());
+    }
+    return new CopyTo(queryNode, targetFileName, copyToOptionsBuilder.build());
+  }
+
+  private void addCopyToOption(
+      CopyToOptions.Builder builder, RelationalSqlParser.CopyToStatementOptionContext context) {
+    if (context.FORMAT() != null) {
+      Identifier formatIdentifier = (Identifier) visit(context.identifier());
+      builder.withFormat(CopyToOptions.Format.valueOf(formatIdentifier.getValue().toUpperCase()));
+    } else if (context.TABLE() != null) {
+      Identifier targetTableIdentifier = (Identifier) visit(context.identifier());
+      builder.withTargetTableName(targetTableIdentifier.getValue());
+    } else if (context.TIME() != null) {
+      Identifier targetTimeColumnIdentifier = (Identifier) visit(context.identifier());
+      builder.withTargetTimeColumn(targetTimeColumnIdentifier.getValue());
+    } else if (context.TAGS() != null) {
+      List<RelationalSqlParser.IdentifierContext> identifierList =
+          context.identifierList().identifier();
+      Set<String> targetTagColumns = new LinkedHashSet<>(identifierList.size());
+      for (RelationalSqlParser.IdentifierContext identifierContext : identifierList) {
+        targetTagColumns.add(((Identifier) visit(identifierContext)).getValue());
+      }
+      builder.withTargetTagColumns(targetTagColumns);
+    } else if (context.MEMORY_THRESHOLD() != null) {
+      builder.withMemoryThreshold(parseLong(context.INTEGER_VALUE().getText()));
     }
   }
 
