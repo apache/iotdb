@@ -2595,6 +2595,12 @@ public class StatementAnalyzer {
     private Analysis.GroupingSetAnalysis analyzeGroupBy(
         QuerySpecification node, Scope scope, List<Expression> outputExpressions) {
       if (node.getGroupBy().isPresent()) {
+
+        // Handle GROUP BY ALL: infer grouping columns from SELECT expressions
+        if (node.getGroupBy().get().isAll()) {
+          return analyzeGroupByAll(node, scope, outputExpressions);
+        }
+
         ImmutableList.Builder<List<Set<FieldId>>> cubes = ImmutableList.builder();
         ImmutableList.Builder<List<Set<FieldId>>> rollups = ImmutableList.builder();
         ImmutableList.Builder<List<Set<FieldId>>> sets = ImmutableList.builder();
@@ -2716,6 +2722,86 @@ public class StatementAnalyzer {
       }
 
       return result;
+    }
+
+    private Analysis.GroupingSetAnalysis analyzeGroupByAll(
+        QuerySpecification node, Scope scope, List<Expression> outputExpressions) {
+      ImmutableList.Builder<List<Set<FieldId>>> sets = ImmutableList.builder();
+      ImmutableList.Builder<Expression> complexExpressions = ImmutableList.builder();
+      ImmutableList.Builder<Expression> groupingExpressions = ImmutableList.builder();
+      FunctionCall gapFillColumn = null;
+      ImmutableList.Builder<Expression> gapFillGroupingExpressions = ImmutableList.builder();
+
+      for (Expression outputExpression : outputExpressions) {
+        List<FunctionCall> aggregates =
+            extractAggregateFunctions(ImmutableList.of(outputExpression));
+        List<FunctionCall> windowFunctions =
+            extractWindowFunctions(ImmutableList.of(outputExpression));
+        if (!aggregates.isEmpty() || !windowFunctions.isEmpty()) {
+          // Extract non-aggregate sub-expressions (column references outside aggregate
+          // boundaries).
+          // e.g. in `s1 + avg(s2)`, extract `s1` as a grouping key.
+          List<Expression> nonAggColumns =
+              ExpressionTreeUtils.extractNonAggregateColumnReferences(outputExpression);
+          for (Expression colRef : nonAggColumns) {
+            analyzeExpression(colRef, scope);
+            ResolvedField field =
+                analysis.getColumnReferenceFields().get(NodeRef.of(colRef));
+            if (field != null) {
+              sets.add(ImmutableList.of(ImmutableSet.of(field.getFieldId())));
+            } else {
+              complexExpressions.add(colRef);
+            }
+            gapFillGroupingExpressions.add(colRef);
+            groupingExpressions.add(colRef);
+          }
+          continue;
+        }
+
+        analyzeExpression(outputExpression, scope);
+        ResolvedField field =
+            analysis.getColumnReferenceFields().get(NodeRef.of(outputExpression));
+        if (field != null) {
+          sets.add(ImmutableList.of(ImmutableSet.of(field.getFieldId())));
+        } else {
+          complexExpressions.add(outputExpression);
+        }
+
+        if (isDateBinGapFill(outputExpression)) {
+          if (gapFillColumn != null) {
+            throw new SemanticException("multiple date_bin_gapfill calls not allowed");
+          }
+          gapFillColumn = (FunctionCall) outputExpression;
+        } else {
+          gapFillGroupingExpressions.add(outputExpression);
+        }
+
+        groupingExpressions.add(outputExpression);
+      }
+
+      List<Expression> expressions = groupingExpressions.build();
+      for (Expression expression : expressions) {
+        Type type = analysis.getType(expression);
+        if (!type.isComparable()) {
+          throw new SemanticException(
+              String.format(
+                  "%s is not comparable, and therefore cannot be used in GROUP BY", type));
+        }
+      }
+
+      Analysis.GroupingSetAnalysis groupingSets =
+          new Analysis.GroupingSetAnalysis(
+              expressions,
+              ImmutableList.of(),
+              ImmutableList.of(),
+              sets.build(),
+              complexExpressions.build());
+      analysis.setGroupingSets(node, groupingSets);
+      if (gapFillColumn != null) {
+        analysis.setGapFill(node, gapFillColumn);
+        analysis.setGapFillGroupingKeys(node, gapFillGroupingExpressions.build());
+      }
+      return groupingSets;
     }
 
     private boolean isDateBinGapFill(Expression column) {
