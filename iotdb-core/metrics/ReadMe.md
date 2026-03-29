@@ -29,16 +29,11 @@ Metric Module
   - IoTDB Reporter
 
 - [1. Design](#1-design)
-- [2. Test Report](#2-test-report)
-  - [2.1. Test Environment](#21-test-environment)
-  - [2.2. Test Metrics](#22-test-metrics)
-  - [2.3. Test parameters](#23-test-parameters)
-  - [2.4. Test Result](#24-test-result)
-- [3. How to use?](#3-how-to-use)
-  - [3.1. Configuration](#31-configuration)
-  - [3.2. Use Guide in IoTDB Server Module](#32-use-guide-in-iotdb-server-module)
-- [4. How to implement your own metric framework?](#4-how-to-implement-your-own-metric-framework)
-- [5. Some docs](#5-some-docs)
+- [2. How to use?](#2-how-to-use)
+  - [2.1. Configuration](#21-configuration)
+  - [2.2. Use Guide in IoTDB Server Module](#22-use-guide-in-iotdb-server-module)
+- [3. How to implement your own metric framework?](#3-how-to-implement-your-own-metric-framework)
+- [4. Some docs](#4-some-docs)
 
 # 1. Design
 > The acquisition system consists of following four parts.
@@ -57,9 +52,9 @@ Metric Module
    3. Provide the ability to load metric sets.
    4. Provide the access of metricManager and CompositeReporter.
 
-# 3. How to use?
+# 2. How to use?
 
-## 3.1. Configuration
+## 2.1. Configuration
 Configure the metrics module through `iotdb-system.properties`. The main options supported by the current code are listed below.
 
 | properties | meaning | example |
@@ -71,7 +66,7 @@ Configure the metrics module through `iotdb-system.properties`. The main options
 
 More details, see the User Guide and the `iotdb-system.properties.template` file.
 
-## 3.2. Use Guide in IoTDB Server Module
+## 2.2. Use Guide in IoTDB Server Module
 1. `MetricService` is registered as an `IService` in both DataNode and ConfigNode modules. Enable it with `dn(cn)_enable_metric=true`.
 2. In server-side code you can use metrics through `MetricService.getInstance()`, for example:
 
@@ -81,7 +76,7 @@ MetricService.getInstance().count(1, "operation_count", MetricLevel.IMPORTANT, "
 
 3. If you want to bind or remove a metric set, use `addMetricSet(IMetricSet)` and `removeMetricSet(IMetricSet)`.
 
-# 4. How to implement your own metric framework?
+# 3. How to implement your own metric framework?
 1. Implement your metric types and an `AbstractMetricManager`.
    1. The built-in implementation provides Counter, AutoGauge, Gauge, Histogram, Rate and Timer.
 2. Implement your reporters.
@@ -94,6 +89,6 @@ MetricService.getInstance().count(1, "operation_count", MetricLevel.IMPORTANT, "
    1. `src/main/resources/META-INF/services/org.apache.iotdb.metrics.AbstractMetricManager`
    2. `src/main/resources/META-INF/services/org.apache.iotdb.metrics.reporter.JmxReporter`
 
-# 5. Some docs
+# 4. Some docs
 1. <a href = "https://iotdb.apache.org/UserGuide/latest/Tools-System/Monitor-Tool.html">Metric Tool</a>
 2. <a href = "https://iotdb.apache.org/zh/UserGuide/latest/Tools-System/Monitor-Tool.html">Metric Tool(zh)</a>
