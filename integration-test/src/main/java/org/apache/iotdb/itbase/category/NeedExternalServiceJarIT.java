@@ -19,4 +19,4 @@
 
 package org.apache.iotdb.itbase.category;
 
-public interface ExternalServiceImplClusterIT extends NeedExternalServiceJarIT {}
+public interface NeedExternalServiceJarIT {}

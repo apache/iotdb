@@ -22,8 +22,7 @@ package org.apache.iotdb.it.framework;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.EnvType;
 import org.apache.iotdb.it.env.MultiEnvFactory;
-import org.apache.iotdb.itbase.category.ExternalServiceImplClusterIT;
-import org.apache.iotdb.itbase.category.ExternalServiceImplLocalStandaloneIT;
+import org.apache.iotdb.itbase.category.NeedExternalServiceJarIT;
 
 import org.junit.experimental.categories.Category;
 import org.junit.runner.Description;
@@ -80,8 +79,7 @@ public class IoTDBTestRunner extends BlockJUnit4ClassRunner {
       return false;
     }
     for (Class<?> c : category.value()) {
-      if (ExternalServiceImplLocalStandaloneIT.class.isAssignableFrom(c)
-          || ExternalServiceImplClusterIT.class.isAssignableFrom(c)) {
+      if (NeedExternalServiceJarIT.class.isAssignableFrom(c)) {
         return true;
       }
     }
