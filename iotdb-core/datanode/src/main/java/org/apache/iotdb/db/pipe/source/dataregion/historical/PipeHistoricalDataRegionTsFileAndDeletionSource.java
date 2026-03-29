@@ -856,6 +856,8 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
             resource.getDatabaseName(),
             resource,
             null,
+            null,
+            true,
             shouldTransferModFile,
             false,
             true,

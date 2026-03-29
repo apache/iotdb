@@ -93,13 +93,19 @@ public class PipeDataRegionAssigner implements Closeable {
   }
 
   public void publishToAssign(final PipeRealtimeEvent event) {
+    final EnrichedEvent innerEvent = event.getEvent();
+    if (innerEvent instanceof PipeTsFileInsertionEvent
+        && DataRegionConsensusImpl.getInstance() instanceof IoTConsensusV2
+        && IoTConsensusV2Processor.isShouldReplicate(innerEvent)) {
+      ((PipeTsFileInsertionEvent) innerEvent).enableDelayModSnapshotUntilReplicateIndex();
+    }
+
     if (!event.increaseReferenceCount(PipeDataRegionAssigner.class.getName())) {
       LOGGER.warn(
           "The reference count of the realtime event {} cannot be increased, skipping it.", event);
       return;
     }
 
-    final EnrichedEvent innerEvent = event.getEvent();
     eventCounter.increaseEventCount(innerEvent);
     if (innerEvent instanceof PipeHeartbeatEvent) {
       ((PipeHeartbeatEvent) innerEvent).onPublished();
@@ -174,6 +180,12 @@ public class PipeDataRegionAssigner implements Closeable {
                       source.getRealtimeDataExtractionStartTime(),
                       source.getRealtimeDataExtractionEndTime());
               final EnrichedEvent innerEvent = copiedEvent.getEvent();
+              if (innerEvent instanceof PipeTsFileInsertionEvent) {
+                final PipeTsFileInsertionEvent tsFileInsertionEvent =
+                    (PipeTsFileInsertionEvent) innerEvent;
+                tsFileInsertionEvent.disableMod4NonTransferPipes(source.isShouldTransferModFile());
+              }
+
               // if using IoTV2, assign a replicateIndex for this realtime event
               if (DataRegionConsensusImpl.getInstance() instanceof IoTConsensusV2
                   && IoTConsensusV2Processor.isShouldReplicate(innerEvent)) {
@@ -185,12 +197,6 @@ public class PipeDataRegionAssigner implements Closeable {
                     source.getPipeName(),
                     innerEvent.getReplicateIndexForIoTV2(),
                     innerEvent);
-              }
-
-              if (innerEvent instanceof PipeTsFileInsertionEvent) {
-                final PipeTsFileInsertionEvent tsFileInsertionEvent =
-                    (PipeTsFileInsertionEvent) innerEvent;
-                tsFileInsertionEvent.disableMod4NonTransferPipes(source.isShouldTransferModFile());
               }
 
               if (innerEvent instanceof PipeDeleteDataNodeEvent) {

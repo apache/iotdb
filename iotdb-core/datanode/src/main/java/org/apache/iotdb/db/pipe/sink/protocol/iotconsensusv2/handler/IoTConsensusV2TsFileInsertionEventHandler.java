@@ -46,7 +46,6 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.Arrays;
-import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class IoTConsensusV2TsFileInsertionEventHandler
@@ -101,17 +100,14 @@ public class IoTConsensusV2TsFileInsertionEventHandler
 
     tsFile = event.getTsFile();
     modFile = event.getModFile();
-    transferMod = event.isWithMod();
+    transferMod = modFile != null;
     currentFile = transferMod ? modFile : tsFile;
 
     readFileBufferSize = PipeConfig.getInstance().getPipeSinkReadFileBufferSize();
     readBuffer = new byte[readFileBufferSize];
     position = 0;
 
-    reader =
-        Objects.nonNull(modFile)
-            ? new RandomAccessFile(modFile, "r")
-            : new RandomAccessFile(tsFile, "r");
+    reader = transferMod ? new RandomAccessFile(modFile, "r") : new RandomAccessFile(tsFile, "r");
 
     isSealSignalSent = new AtomicBoolean(false);
 
