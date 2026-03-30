@@ -65,6 +65,7 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualTreeModelAutoIT {
   protected void setupConfig() {
     super.setupConfig();
     senderEnv.getConfig().getDataNodeConfig().setEnableRestService(true);
+    senderEnv.getConfig().getCommonConfig().setPipeAutoSplitFullEnabled(true);
   }
 
   @Test
