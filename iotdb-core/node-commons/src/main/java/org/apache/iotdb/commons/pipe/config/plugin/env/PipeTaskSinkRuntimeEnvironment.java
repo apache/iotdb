@@ -19,8 +19,11 @@
 
 package org.apache.iotdb.commons.pipe.config.plugin.env;
 
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
+
 public class PipeTaskSinkRuntimeEnvironment extends PipeTaskRuntimeEnvironment {
   private String attributeSortedString;
+  private PipeParameters sourceParameters;
 
   public PipeTaskSinkRuntimeEnvironment(
       final String pipeName, final long creationTime, final int regionId) {
@@ -31,7 +34,15 @@ public class PipeTaskSinkRuntimeEnvironment extends PipeTaskRuntimeEnvironment {
     return attributeSortedString;
   }
 
-  public void setAttributeSortedString(String attributeSortedString) {
+  public void setAttributeSortedString(final String attributeSortedString) {
     this.attributeSortedString = attributeSortedString;
+  }
+
+  public PipeParameters getSourceParameters() {
+    return sourceParameters;
+  }
+
+  public void setSourceParameters(final PipeParameters sourceParameters) {
+    this.sourceParameters = sourceParameters;
   }
 }

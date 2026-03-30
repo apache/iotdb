@@ -65,6 +65,7 @@ public class PipeSinkSubtaskManager {
   public synchronized String register(
       final Supplier<? extends PipeSinkSubtaskExecutor> executorSupplier,
       final PipeParameters pipeSinkParameters,
+      final PipeParameters pipeSourceParameters,
       final PipeTaskSinkRuntimeEnvironment environment) {
     final String connectorKey =
         pipeSinkParameters
@@ -119,6 +120,7 @@ public class PipeSinkSubtaskManager {
       attributeSortedString = "schema_" + attributeSortedString;
     }
     environment.setAttributeSortedString(attributeSortedString);
+    environment.setSourceParameters(pipeSourceParameters);
 
     if (!attributeSortedString2SubtaskLifeCycleMap.containsKey(attributeSortedString)) {
       final PipeSinkSubtaskExecutor executor = executorSupplier.get();

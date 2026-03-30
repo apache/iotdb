@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.sink.protocol.opcua;
 
 import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskSinkRuntimeEnvironment;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
@@ -28,12 +29,17 @@ import org.apache.iotdb.db.pipe.sink.protocol.opcua.client.ClientRunner;
 import org.apache.iotdb.db.pipe.sink.protocol.opcua.client.IoTDBOpcUaClient;
 import org.apache.iotdb.db.pipe.sink.protocol.opcua.server.OpcUaNameSpace;
 import org.apache.iotdb.db.pipe.sink.protocol.opcua.server.OpcUaServerBuilder;
+import org.apache.iotdb.db.pipe.sink.protocol.writeback.WriteBackSink;
+import org.apache.iotdb.db.protocol.session.InternalClientSession;
+import org.apache.iotdb.db.protocol.session.SessionManager;
+import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.annotation.TableModel;
 import org.apache.iotdb.pipe.api.annotation.TreeModel;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
+import org.apache.iotdb.pipe.api.customizer.configuration.PipeRuntimeEnvironment;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -157,6 +163,11 @@ public class OpcUaSink implements PipeConnector {
 
   // Outer server
   private @Nullable IoTDBOpcUaClient client;
+  private boolean initialized;
+  private PipeTaskSinkRuntimeEnvironment environment;
+
+  // To avoid potential multi thread issue
+  private volatile boolean initializing;
 
   @Override
   public void validate(final PipeParameterValidator validator) throws Exception {
@@ -246,7 +257,7 @@ public class OpcUaSink implements PipeConnector {
 
     nodeUrl = parameters.getStringByKeys(CONNECTOR_OPC_UA_NODE_URL_KEY, SINK_OPC_UA_NODE_URL_KEY);
     if (Objects.isNull(nodeUrl)) {
-      customizeServer(parameters);
+      customizeServer(parameters, configuration.getRuntimeEnvironment());
     } else {
       if (PathUtils.isTableModelDatabase(databaseName)) {
         throw new PipeException(
@@ -256,7 +267,8 @@ public class OpcUaSink implements PipeConnector {
     }
   }
 
-  private void customizeServer(final PipeParameters parameters) {
+  private void customizeServer(
+      final PipeParameters parameters, final PipeRuntimeEnvironment environment) {
     final int tcpBindPort =
         parameters.getIntOrDefault(
             Arrays.asList(CONNECTOR_OPC_UA_TCP_BIND_PORT_KEY, SINK_OPC_UA_TCP_BIND_PORT_KEY),
@@ -352,6 +364,42 @@ public class OpcUaSink implements PipeConnector {
                   })
               .getRight();
       SERVER_KEY_TO_REFERENCE_COUNT_AND_NAME_SPACE_MAP.get(serverKey).getLeft().incrementAndGet();
+    }
+
+    if (environment instanceof PipeTaskSinkRuntimeEnvironment) {
+      this.environment = (PipeTaskSinkRuntimeEnvironment) environment;
+    }
+    initializeServer();
+  }
+
+  /**
+   * This function pushes the last data to opc server, to initialize first time or after restart.
+   * Note that the first fetch may not be ok, thus it will be triggered per heartbeat
+   */
+  private void initializeServer() {
+    if (initialized || initializing || Objects.isNull(environment)) {
+      return;
+    }
+    initializing = true;
+
+    InternalClientSession session = null;
+    try {
+      session =
+          new InternalClientSession(
+              String.format(
+                  "%s_%s_%s_%s_%s",
+                  WriteBackSink.class.getSimpleName(),
+                  environment.getPipeName(),
+                  environment.getCreationTime(),
+                  environment.getRegionId(),
+                  WriteBackSink.id.getAndIncrement()));
+      initialized = true;
+    } finally {
+      initializing = false;
+      if (Objects.nonNull(session)) {
+        SessionManager.getInstance()
+            .closeSession(session, Coordinator.getInstance()::cleanupQueryExecution, false);
+      }
     }
   }
 
@@ -460,7 +508,7 @@ public class OpcUaSink implements PipeConnector {
 
   @Override
   public void heartbeat() throws Exception {
-    // Server side, do nothing
+    initializeServer();
   }
 
   @Override

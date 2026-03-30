@@ -35,20 +35,23 @@ public class PipeTaskSinkStage extends PipeTaskStage {
   protected final String pipeName;
   protected final long creationTime;
   protected final PipeParameters pipeSinkParameters;
+  protected final PipeParameters pipeSourceParameters;
   protected final int regionId;
   protected final Supplier<? extends PipeSinkSubtaskExecutor> executor;
 
   protected String connectorSubtaskId;
 
   public PipeTaskSinkStage(
-      String pipeName,
-      long creationTime,
-      PipeParameters pipeSinkParameters,
-      int regionId,
-      Supplier<? extends PipeSinkSubtaskExecutor> executor) {
+      final String pipeName,
+      final long creationTime,
+      final PipeParameters pipeSinkParameters,
+      final PipeParameters pipeSourceParameters,
+      final int regionId,
+      final Supplier<? extends PipeSinkSubtaskExecutor> executor) {
     this.pipeName = pipeName;
     this.creationTime = creationTime;
     this.pipeSinkParameters = pipeSinkParameters;
+    this.pipeSourceParameters = pipeSourceParameters;
     this.regionId = regionId;
     this.executor = executor;
 
@@ -61,6 +64,7 @@ public class PipeTaskSinkStage extends PipeTaskStage {
             .register(
                 executor,
                 pipeSinkParameters,
+                pipeSourceParameters,
                 new PipeTaskSinkRuntimeEnvironment(pipeName, creationTime, regionId));
   }
 

@@ -36,7 +36,7 @@ public class SubscriptionTaskSinkStage extends PipeTaskSinkStage {
       final PipeParameters pipeSinkParameters,
       final int regionId,
       final PipeSinkSubtaskExecutor executor) {
-    super(pipeName, creationTime, pipeSinkParameters, regionId, () -> executor);
+    super(pipeName, creationTime, pipeSinkParameters, null, regionId, () -> executor);
   }
 
   @Override

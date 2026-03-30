@@ -113,6 +113,7 @@ public class PipeDataNodeTaskBuilder {
               pipeStaticMeta.getPipeName(),
               pipeStaticMeta.getCreationTime(),
               sinkParameters,
+              sourceParameters,
               regionId,
               pipeType.equals(PipeType.USER)
                   ? PipeSubtaskExecutorManager.getInstance().getConnectorExecutorSupplier()
