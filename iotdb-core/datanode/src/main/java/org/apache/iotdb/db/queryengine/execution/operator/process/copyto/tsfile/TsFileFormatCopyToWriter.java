@@ -40,12 +40,14 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 public class TsFileFormatCopyToWriter implements IFormatCopyToWriter {
+  private static final String AUTO_GEN_MARK = "(auto_gen)";
   private final File targetFile;
   private final String targetTableName;
   private final String targetTimeColumn;
@@ -67,26 +69,28 @@ public class TsFileFormatCopyToWriter implements IFormatCopyToWriter {
     this.generateNewTimeColumn = copyToOptions.isGenerateNewTimeColumn();
     targetTagColumns = copyToOptions.getTargetTagColumns();
 
-    ColumnHeader[] columnHeadersMatchChildTsBlock =
-        getColumnHeadersMatchTsBlock(innerQueryDatasetHeader, columnIndex2TsBlockColumnIndex);
     List<ColumnSchema> columnSchemas =
-        new ArrayList<>(columnHeadersMatchChildTsBlock.length + (generateNewTimeColumn ? 1 : 0));
-    Map<String, Integer> columnNameIndexMapInDatasetHeader = new HashMap<>();
-    for (int i = 0; i < columnHeadersMatchChildTsBlock.length; i++) {
-      columnNameIndexMapInDatasetHeader.put(columnHeadersMatchChildTsBlock[i].getColumnName(), i);
+        new ArrayList<>(innerQueryDatasetHeader.size() + (generateNewTimeColumn ? 1 : 0));
+    Map<String, Integer> columnName2TsBlockIndexMap = new HashMap<>();
+    Map<String, ColumnHeader> columnHeaderMap = new HashMap<>();
+    for (int i = 0; i < innerQueryDatasetHeader.size(); i++) {
+      ColumnHeader columnHeader = innerQueryDatasetHeader.get(i);
+      columnName2TsBlockIndexMap.put(
+          columnHeader.getColumnName(), columnIndex2TsBlockColumnIndex[i]);
+      columnHeaderMap.put(columnHeader.getColumnName(), columnHeader);
     }
     // add time column
     columnSchemas.add(
         new ColumnSchema(targetTimeColumn, TSDataType.TIMESTAMP, ColumnCategory.TIME));
     int timeColumnIdxInQueryTsBlock =
-        generateNewTimeColumn ? -1 : columnNameIndexMapInDatasetHeader.get(targetTimeColumn);
+        generateNewTimeColumn ? -1 : columnName2TsBlockIndexMap.get(targetTimeColumn);
 
     // add tag columns
     int[] tagColumnIndexesInTsBlock = new int[targetTagColumns.size()];
     int arrIdx = 0;
     for (String targetTagColumn : targetTagColumns) {
-      int tagIdx = columnNameIndexMapInDatasetHeader.get(targetTagColumn);
-      ColumnHeader tagColumnHeader = columnHeadersMatchChildTsBlock[tagIdx];
+      int tagIdx = columnName2TsBlockIndexMap.get(targetTagColumn);
+      ColumnHeader tagColumnHeader = columnHeaderMap.get(targetTagColumn);
       columnSchemas.add(
           new ColumnSchema(
               tagColumnHeader.getColumnName(),
@@ -96,24 +100,21 @@ public class TsFileFormatCopyToWriter implements IFormatCopyToWriter {
     }
     // add field columns
     int fieldColumnCount =
-        columnHeadersMatchChildTsBlock.length
+        innerQueryDatasetHeader.size()
             - tagColumnIndexesInTsBlock.length
             - (generateNewTimeColumn ? 0 : 1);
     int[] fieldColumnIndexesInQueryTsBlock = new int[fieldColumnCount];
     IMeasurementSchema[] fieldColumnSchemas = new IMeasurementSchema[fieldColumnCount];
     arrIdx = 0;
-    for (int i = 0; i < columnHeadersMatchChildTsBlock.length; i++) {
-      ColumnHeader columnHeader = columnHeadersMatchChildTsBlock[i];
-      if (targetTagColumns.contains(columnHeader.getColumnName())
-          || columnHeader.getColumnName().equals(targetTimeColumn)) {
+    for (ColumnHeader columnHeader : innerQueryDatasetHeader) {
+      String columnName = columnHeader.getColumnName();
+      if (targetTagColumns.contains(columnName) || columnName.equals(targetTimeColumn)) {
         continue;
       }
       columnSchemas.add(
-          new ColumnSchema(
-              columnHeader.getColumnName(), columnHeader.getColumnType(), ColumnCategory.FIELD));
-      fieldColumnSchemas[arrIdx] =
-          new MeasurementSchema(columnHeader.getColumnName(), columnHeader.getColumnType());
-      fieldColumnIndexesInQueryTsBlock[arrIdx] = i;
+          new ColumnSchema(columnName, columnHeader.getColumnType(), ColumnCategory.FIELD));
+      fieldColumnSchemas[arrIdx] = new MeasurementSchema(columnName, columnHeader.getColumnType());
+      fieldColumnIndexesInQueryTsBlock[arrIdx] = columnName2TsBlockIndexMap.get(columnName);
       arrIdx++;
     }
 
@@ -134,7 +135,12 @@ public class TsFileFormatCopyToWriter implements IFormatCopyToWriter {
 
   private ColumnHeader[] getColumnHeadersMatchTsBlock(
       List<ColumnHeader> queryOutputColumnHeaders, int[] columnIndex2TsBlockColumnIndexList) {
-    ColumnHeader[] columnHeadersMatchTsBlock = new ColumnHeader[queryOutputColumnHeaders.size()];
+    Set<Integer> tsBlockIndexSet = new HashSet<>();
+    for (int tsBlockIndex : columnIndex2TsBlockColumnIndexList) {
+      tsBlockIndexSet.add(tsBlockIndex);
+    }
+
+    ColumnHeader[] columnHeadersMatchTsBlock = new ColumnHeader[tsBlockIndexSet.size()];
     for (int i = 0; i < columnIndex2TsBlockColumnIndexList.length; i++) {
       int tsBlockIndex = columnIndex2TsBlockColumnIndexList[i];
       columnHeadersMatchTsBlock[tsBlockIndex] = queryOutputColumnHeaders.get(i);
@@ -178,7 +184,7 @@ public class TsFileFormatCopyToWriter implements IFormatCopyToWriter {
         new Binary(targetTableName, TSFileConfig.STRING_CHARSET));
     builder.getValueColumnBuilders()[5].writeBinary(
         new Binary(
-            targetTimeColumn + (generateNewTimeColumn ? "(auto_gen)" : ""),
+            targetTimeColumn + (generateNewTimeColumn ? AUTO_GEN_MARK : ""),
             TSFileConfig.STRING_CHARSET));
     builder.getValueColumnBuilders()[6].writeBinary(
         new Binary(targetTagColumns.toString(), TSFileConfig.STRING_CHARSET));

@@ -78,8 +78,8 @@ public class TableCopyToOperator implements ProcessOperator {
   public TsBlock next() throws Exception {
     IFormatCopyToWriter formatWriter = getWriter();
     if (!childOperator.hasNext()) {
-      isFinished = true;
       formatWriter.seal();
+      isFinished = true;
       return formatWriter.buildResultTsBlock();
     }
     TsBlock tsBlock = childOperator.next();

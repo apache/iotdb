@@ -395,6 +395,7 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
       Map<Symbol, Symbol> mapping = new HashMap<>(rewrittenSource.getMappings());
       SymbolMapper mapper = symbolMapper(mapping);
       List<Symbol> newChildPermittedOutputs = mapper.map(node.getChildPermittedOutputs());
+      List<Symbol> newInnerQueryOutputSymbols = mapper.map(node.getInnerQueryOutputSymbols());
       return new PlanAndMappings(
           new CopyToNode(
               node.getPlanNodeId(),
@@ -403,7 +404,7 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
               node.getCopyToOptions(),
               newChildPermittedOutputs,
               node.getInnerQueryDatasetHeader(),
-              node.getInnerQueryOutputSymbols()),
+              newInnerQueryOutputSymbols),
           mapping);
     }
 

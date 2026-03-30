@@ -2197,7 +2197,19 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       CopyToOptions.Builder builder, RelationalSqlParser.CopyToStatementOptionContext context) {
     if (context.FORMAT() != null) {
       Identifier formatIdentifier = (Identifier) visit(context.identifier());
-      builder.withFormat(CopyToOptions.Format.valueOf(formatIdentifier.getValue().toUpperCase()));
+      String formatText = formatIdentifier.getValue().toUpperCase();
+      try {
+        builder.withFormat(CopyToOptions.Format.valueOf(formatText));
+      } catch (IllegalArgumentException e) {
+        String supportedFormats =
+            Arrays.stream(CopyToOptions.Format.values())
+                .map(Enum::name)
+                .collect(Collectors.joining(", "));
+        throw new SemanticException(
+            String.format(
+                "Unsupported COPY TO format '%s'. Supported formats: %s",
+                formatIdentifier.getValue(), supportedFormats));
+      }
     } else if (context.TABLE() != null) {
       Identifier targetTableIdentifier = (Identifier) visit(context.identifier());
       builder.withTargetTableName(targetTableIdentifier.getValue());

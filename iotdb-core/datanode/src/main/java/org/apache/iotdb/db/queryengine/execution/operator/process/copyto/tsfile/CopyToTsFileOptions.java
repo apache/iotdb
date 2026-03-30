@@ -27,6 +27,7 @@ import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.execution.operator.process.copyto.CopyToOptions;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.RelationPlan;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
@@ -41,6 +42,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public class CopyToTsFileOptions implements CopyToOptions {
 
@@ -48,6 +50,10 @@ public class CopyToTsFileOptions implements CopyToOptions {
       RamUsageEstimator.shallowSizeOfInstance(CopyToTsFileOptions.class);
 
   private static final String DEFAULT_TABLE_NAME = "default";
+  private static final List<Symbol> OUTPUT_SYMBOLS =
+      ColumnHeaderConstant.COPY_TO_TSFILE_COLUMN_HEADERS.stream()
+          .map(column -> new Symbol(column.getColumnName()))
+          .collect(Collectors.toList());
 
   private String targetTableName;
   private String targetTimeColumn;
@@ -179,6 +185,18 @@ public class CopyToTsFileOptions implements CopyToOptions {
 
   public List<ColumnHeader> getRespColumnHeaders() {
     return ColumnHeaderConstant.COPY_TO_TSFILE_COLUMN_HEADERS;
+  }
+
+  @Override
+  public List<Symbol> getOutputSymbols() {
+    return OUTPUT_SYMBOLS;
+  }
+
+  @Override
+  public List<String> getOutputColumnNames() {
+    return ColumnHeaderConstant.COPY_TO_TSFILE_COLUMN_HEADERS.stream()
+        .map(ColumnHeader::getColumnName)
+        .collect(Collectors.toList());
   }
 
   @Override

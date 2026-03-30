@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.node;
 
-import org.apache.iotdb.commons.schema.column.ColumnHeader;
-import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.execution.operator.process.copyto.CopyToOptions;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
@@ -33,7 +31,6 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
-import java.util.stream.Collectors;
 
 public class CopyToNode extends SingleChildProcessNode {
 
@@ -99,16 +96,12 @@ public class CopyToNode extends SingleChildProcessNode {
 
   @Override
   public List<Symbol> getOutputSymbols() {
-    return ColumnHeaderConstant.COPY_TO_TSFILE_COLUMN_HEADERS.stream()
-        .map(column -> new Symbol(column.getColumnName()))
-        .collect(Collectors.toList());
+    return copyToOptions.getOutputSymbols();
   }
 
   @Override
   public List<String> getOutputColumnNames() {
-    return ColumnHeaderConstant.COPY_TO_TSFILE_COLUMN_HEADERS.stream()
-        .map(ColumnHeader::getColumnName)
-        .collect(Collectors.toList());
+    return copyToOptions.getOutputColumnNames();
   }
 
   @Override

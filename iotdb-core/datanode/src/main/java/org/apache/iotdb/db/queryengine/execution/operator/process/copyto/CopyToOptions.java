@@ -24,6 +24,7 @@ import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.execution.operator.process.copyto.tsfile.CopyToTsFileOptions;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.RelationPlan;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 
 import org.apache.tsfile.utils.Accountable;
 
@@ -73,6 +74,10 @@ public interface CopyToOptions extends Accountable {
    */
   List<ColumnHeader> getRespColumnHeaders();
 
+  List<Symbol> getOutputSymbols();
+
+  List<String> getOutputColumnNames();
+
   /**
    * Returns the target output format.
    *
@@ -100,7 +105,7 @@ public interface CopyToOptions extends Accountable {
     private String targetTableName = null;
     private String targetTimeColumn = null;
     private Set<String> targetTagColumns = null;
-    private long memoryThreshold = 0;
+    private long memoryThreshold = 32 * 1024 * 1024;
 
     public Builder withFormat(CopyToOptions.Format format) {
       this.format = format;
@@ -135,10 +140,7 @@ public interface CopyToOptions extends Accountable {
         case TSFILE:
         default:
           return new CopyToTsFileOptions(
-              targetTableName,
-              targetTimeColumn,
-              targetTagColumns,
-              memoryThreshold != 0 ? memoryThreshold : 32 * 1024 * 1024);
+              targetTableName, targetTimeColumn, targetTagColumns, memoryThreshold);
       }
     }
   }

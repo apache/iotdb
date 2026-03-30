@@ -39,6 +39,8 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -52,6 +54,7 @@ import static org.apache.iotdb.db.it.utils.TestUtils.prepareTableData;
 @Category({TableLocalStandaloneIT.class, TableClusterIT.class})
 public class IoTDBCopyToTsFileIT {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBCopyToTsFileIT.class);
   private static final String DATABASE_NAME = "test_db";
 
   protected static final String[] createSqls =
@@ -82,7 +85,8 @@ public class IoTDBCopyToTsFileIT {
     if (targetFilePath != null) {
       try {
         Files.deleteIfExists(new File(targetFilePath).toPath());
-      } catch (Exception ignored) {
+      } catch (Exception e) {
+        LOGGER.error("Failed to delete {}", targetFilePath, e);
       }
       targetFilePath = null;
     }
@@ -103,8 +107,8 @@ public class IoTDBCopyToTsFileIT {
       SessionDataSet.DataIterator iterator = sessionDataSet.iterator();
       while (iterator.next()) {
         targetFilePath = iterator.getString(1);
-        int rowCount = iterator.getInt(2);
-        int deviceCount = iterator.getInt(3);
+        long rowCount = iterator.getLong(2);
+        long deviceCount = iterator.getLong(3);
         long sizeInBytes = iterator.getLong(4);
         String tableName = iterator.getString(5);
         String timeColumn = iterator.getString(6);
@@ -148,8 +152,8 @@ public class IoTDBCopyToTsFileIT {
       SessionDataSet.DataIterator iterator = sessionDataSet.iterator();
       while (iterator.next()) {
         targetFilePath = iterator.getString(1);
-        int rowCount = iterator.getInt(2);
-        int deviceCount = iterator.getInt(3);
+        long rowCount = iterator.getLong(2);
+        long deviceCount = iterator.getLong(3);
         long sizeInBytes = iterator.getLong(4);
         String tableName = iterator.getString(5);
         String timeColumn = iterator.getString(6);
@@ -193,8 +197,8 @@ public class IoTDBCopyToTsFileIT {
       SessionDataSet.DataIterator iterator = sessionDataSet.iterator();
       while (iterator.next()) {
         targetFilePath = iterator.getString(1);
-        int rowCount = iterator.getInt(2);
-        int deviceCount = iterator.getInt(3);
+        long rowCount = iterator.getLong(2);
+        long deviceCount = iterator.getLong(3);
         long sizeInBytes = iterator.getLong(4);
         String tableName = iterator.getString(5);
         String timeColumn = iterator.getString(6);
@@ -238,8 +242,8 @@ public class IoTDBCopyToTsFileIT {
       SessionDataSet.DataIterator iterator = sessionDataSet.iterator();
       while (iterator.next()) {
         targetFilePath = iterator.getString(1);
-        int rowCount = iterator.getInt(2);
-        int deviceCount = iterator.getInt(3);
+        long rowCount = iterator.getLong(2);
+        long deviceCount = iterator.getLong(3);
         long sizeInBytes = iterator.getLong(4);
         String tableName = iterator.getString(5);
         String timeColumn = iterator.getString(6);
@@ -283,8 +287,8 @@ public class IoTDBCopyToTsFileIT {
       SessionDataSet.DataIterator iterator = sessionDataSet.iterator();
       while (iterator.next()) {
         targetFilePath = iterator.getString(1);
-        int rowCount = iterator.getInt(2);
-        int deviceCount = iterator.getInt(3);
+        long rowCount = iterator.getLong(2);
+        long deviceCount = iterator.getLong(3);
         long sizeInBytes = iterator.getLong(4);
         String tableName = iterator.getString(5);
         String timeColumn = iterator.getString(6);
@@ -328,8 +332,8 @@ public class IoTDBCopyToTsFileIT {
       SessionDataSet.DataIterator iterator = sessionDataSet.iterator();
       while (iterator.next()) {
         targetFilePath = iterator.getString(1);
-        int rowCount = iterator.getInt(2);
-        int deviceCount = iterator.getInt(3);
+        long rowCount = iterator.getLong(2);
+        long deviceCount = iterator.getLong(3);
         long sizeInBytes = iterator.getLong(4);
         String tableName = iterator.getString(5);
         String timeColumn = iterator.getString(6);
@@ -373,8 +377,8 @@ public class IoTDBCopyToTsFileIT {
       SessionDataSet.DataIterator iterator = sessionDataSet.iterator();
       while (iterator.next()) {
         targetFilePath = iterator.getString(1);
-        int rowCount = iterator.getInt(2);
-        int deviceCount = iterator.getInt(3);
+        long rowCount = iterator.getLong(2);
+        long deviceCount = iterator.getLong(3);
         long sizeInBytes = iterator.getLong(4);
         String tableName = iterator.getString(5);
         String timeColumn = iterator.getString(6);
@@ -418,8 +422,8 @@ public class IoTDBCopyToTsFileIT {
       SessionDataSet.DataIterator iterator = sessionDataSet.iterator();
       while (iterator.next()) {
         targetFilePath = iterator.getString(1);
-        int rowCount = iterator.getInt(2);
-        int deviceCount = iterator.getInt(3);
+        long rowCount = iterator.getLong(2);
+        long deviceCount = iterator.getLong(3);
         long sizeInBytes = iterator.getLong(4);
         String tableName = iterator.getString(5);
         String timeColumn = iterator.getString(6);
@@ -459,8 +463,8 @@ public class IoTDBCopyToTsFileIT {
       SessionDataSet.DataIterator iterator = sessionDataSet.iterator();
       while (iterator.next()) {
         targetFilePath = iterator.getString(1);
-        int rowCount = iterator.getInt(2);
-        int deviceCount = iterator.getInt(3);
+        long rowCount = iterator.getLong(2);
+        long deviceCount = iterator.getLong(3);
         long sizeInBytes = iterator.getLong(4);
         String tableName = iterator.getString(5);
         String timeColumn = iterator.getString(6);
@@ -483,6 +487,93 @@ public class IoTDBCopyToTsFileIT {
           Assert.assertEquals(8, timeseriesMetadataList.size());
           Assert.assertEquals(0, timeseriesMetadataList.get(0).getStatistics().getStartTime());
           Assert.assertEquals(1, timeseriesMetadataList.get(0).getStatistics().getEndTime());
+        }
+      }
+    }
+  }
+
+  @Test
+  public void testMultiTable2()
+      throws IoTDBConnectionException, StatementExecutionException, IOException {
+    try (ITableSession session =
+        EnvFactory.getEnv().getTableSessionConnectionWithDB(DATABASE_NAME)) {
+
+      SessionDataSet sessionDataSet =
+          session.executeQueryStatement(
+              "copy (select table1.time as time1, table1.tag1 as tag1_1, table1.tag2 as tag2_1, table1.s1 as s1_1, table1.s2 as s2_1, table2.s1 as s1_2, table2.s2 as s2_2, table2.time time2 from table1 inner join table2 on table1.time = table2.time) to '10.tsfile' (memory_threshold 1000000)");
+      SessionDataSet.DataIterator iterator = sessionDataSet.iterator();
+      while (iterator.next()) {
+        targetFilePath = iterator.getString(1);
+        long rowCount = iterator.getLong(2);
+        long deviceCount = iterator.getLong(3);
+        long sizeInBytes = iterator.getLong(4);
+        String tableName = iterator.getString(5);
+        String timeColumn = iterator.getString(6);
+        String tagColumns = iterator.getString(7);
+
+        Assert.assertTrue(new File(targetFilePath).exists());
+        Assert.assertEquals(2, rowCount);
+        Assert.assertEquals(1, deviceCount);
+        Assert.assertTrue(sizeInBytes > 0);
+        Assert.assertEquals("default", tableName);
+        Assert.assertEquals("time(auto_gen)", timeColumn);
+        Assert.assertEquals("[]", tagColumns);
+
+        try (TsFileSequenceReader reader = new TsFileSequenceReader(targetFilePath)) {
+          Map<IDeviceID, List<TimeseriesMetadata>> allTimeseriesMetadata =
+              reader.getAllTimeseriesMetadata(false);
+          Assert.assertEquals(1, allTimeseriesMetadata.size());
+          List<TimeseriesMetadata> timeseriesMetadataList =
+              allTimeseriesMetadata.get(new StringArrayDeviceID("default"));
+          Assert.assertEquals(9, timeseriesMetadataList.size());
+          Assert.assertEquals(0, timeseriesMetadataList.get(0).getStatistics().getStartTime());
+          Assert.assertEquals(1, timeseriesMetadataList.get(0).getStatistics().getEndTime());
+        }
+      }
+    }
+  }
+
+  @Test
+  public void testUseSameColumn()
+      throws IoTDBConnectionException, StatementExecutionException, IOException {
+    try (ITableSession session =
+        EnvFactory.getEnv().getTableSessionConnectionWithDB(DATABASE_NAME)) {
+
+      SessionDataSet sessionDataSet =
+          session.executeQueryStatement(
+              "copy (select time, tag2, tag1, s1, s1 as s2 from table1) to '11.tsfile' (tags (tag1,tag2), memory_threshold 1000000)");
+      SessionDataSet.DataIterator iterator = sessionDataSet.iterator();
+      while (iterator.next()) {
+        targetFilePath = iterator.getString(1);
+        long rowCount = iterator.getLong(2);
+        long deviceCount = iterator.getLong(3);
+        long sizeInBytes = iterator.getLong(4);
+        String tableName = iterator.getString(5);
+        String timeColumn = iterator.getString(6);
+        String tagColumns = iterator.getString(7);
+
+        Assert.assertTrue(new File(targetFilePath).exists());
+        Assert.assertEquals(6, rowCount);
+        Assert.assertEquals(2, deviceCount);
+        Assert.assertTrue(sizeInBytes > 0);
+        Assert.assertEquals("table1", tableName);
+        Assert.assertEquals("time", timeColumn);
+        Assert.assertEquals("[tag1, tag2]", tagColumns);
+
+        try (TsFileSequenceReader reader = new TsFileSequenceReader(targetFilePath)) {
+          Map<IDeviceID, List<TimeseriesMetadata>> allTimeseriesMetadata =
+              reader.getAllTimeseriesMetadata(false);
+          Assert.assertEquals(2, allTimeseriesMetadata.size());
+          List<TimeseriesMetadata> timeseriesMetadataList =
+              allTimeseriesMetadata.get(new StringArrayDeviceID("table1", "t1_1", "t2"));
+          Assert.assertEquals(3, timeseriesMetadataList.size());
+          Assert.assertEquals(1, timeseriesMetadataList.get(0).getStatistics().getStartTime());
+          Assert.assertEquals(3, timeseriesMetadataList.get(0).getStatistics().getEndTime());
+          timeseriesMetadataList =
+              allTimeseriesMetadata.get(new StringArrayDeviceID("table1", "t1_2", "t2"));
+          Assert.assertEquals(3, timeseriesMetadataList.size());
+          Assert.assertEquals(1, timeseriesMetadataList.get(0).getStatistics().getStartTime());
+          Assert.assertEquals(3, timeseriesMetadataList.get(0).getStatistics().getEndTime());
         }
       }
     }

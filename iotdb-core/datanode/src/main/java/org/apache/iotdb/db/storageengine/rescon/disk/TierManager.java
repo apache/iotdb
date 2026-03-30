@@ -248,6 +248,13 @@ public class TierManager {
   }
 
   public String getNextFolderForCopyToTargetFile() throws DiskSpaceInsufficientException {
+    if (copyToFolderManager == null) {
+      throw new DiskSpaceInsufficientException(
+          "copyToFolderManager is not initialized. This usually indicates that folder "
+              + "initialization in TierManager.initFolders() failed due to insufficient disk "
+              + "space. Please check disk space and related configuration before retrying the "
+              + "copy-to-target operation.");
+    }
     return copyToFolderManager.getNextFolder();
   }
 
