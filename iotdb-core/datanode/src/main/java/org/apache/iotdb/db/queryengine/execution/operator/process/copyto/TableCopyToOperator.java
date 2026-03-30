@@ -47,7 +47,7 @@ public class TableCopyToOperator implements ProcessOperator {
   private final String targetFilePath;
   private final CopyToOptions options;
   private final List<ColumnHeader> innerQueryColumnHeaders;
-  private final List<Integer> columnIndex2TsBlockColumnIndexList;
+  private final int[] columnIndex2TsBlockColumnIndex;
 
   private IFormatCopyToWriter writer;
   private File targetFile;
@@ -60,13 +60,13 @@ public class TableCopyToOperator implements ProcessOperator {
       String targetFilePath,
       CopyToOptions options,
       List<ColumnHeader> innerQueryColumnHeaders,
-      List<Integer> columnIndex2TsBlockColumnIndexList) {
+      int[] columnIndex2TsBlockColumnIndex) {
     this.operatorContext = operatorContext;
     this.childOperator = child;
     this.targetFilePath = targetFilePath;
     this.options = options;
     this.innerQueryColumnHeaders = innerQueryColumnHeaders;
-    this.columnIndex2TsBlockColumnIndexList = columnIndex2TsBlockColumnIndexList;
+    this.columnIndex2TsBlockColumnIndex = columnIndex2TsBlockColumnIndex;
   }
 
   @Override
@@ -104,7 +104,7 @@ public class TableCopyToOperator implements ProcessOperator {
                 this.targetFile,
                 (CopyToTsFileOptions) options,
                 innerQueryColumnHeaders,
-                columnIndex2TsBlockColumnIndexList);
+                columnIndex2TsBlockColumnIndex);
     }
     return writer;
   }
@@ -180,8 +180,7 @@ public class TableCopyToOperator implements ProcessOperator {
         + RamUsageEstimator.sizeOf(targetFilePath)
         + RamUsageEstimator.sizeOfObject(innerQueryColumnHeaders)
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
-        + MemoryEstimationHelper.getEstimatedSizeOfIntegerArrayList(
-            columnIndex2TsBlockColumnIndexList)
+        + RamUsageEstimator.sizeOf(columnIndex2TsBlockColumnIndex)
         + options.estimatedMaxRamBytesInWrite()
         + childOperator.ramBytesUsed();
   }

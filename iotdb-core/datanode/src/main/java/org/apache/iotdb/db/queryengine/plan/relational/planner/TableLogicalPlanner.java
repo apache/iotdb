@@ -655,7 +655,7 @@ public class TableLogicalPlanner {
             getChildPermittedOutputs(
                 analysis, statement.getQueryStatement(), innerQueryRelationPlan),
             innerQueryRespDatasetHeader,
-            outputNode);
+            outputNode.getOutputSymbols());
     return new RelationPlan(
         newRoot,
         innerQueryRelationPlan.getScope(),

@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.queryengine.common.header;
 
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
 
@@ -91,11 +90,7 @@ public class DatasetHeader {
   }
 
   public void setTableColumnToTsBlockIndexMap(OutputNode outputNode) {
-    setTableColumnToTsBlockIndexMap(outputNode, outputNode.getChild());
-  }
-
-  public void setTableColumnToTsBlockIndexMap(OutputNode outputNode, PlanNode outputNodeChild) {
-    List<Symbol> childOutputSymbols = outputNodeChild.getOutputSymbols();
+    List<Symbol> childOutputSymbols = outputNode.getChild().getOutputSymbols();
     Map<Symbol, Integer> outputSymbolsIndexMap = new HashMap<>(childOutputSymbols.size());
     for (int i = 0; i < childOutputSymbols.size(); i++) {
       outputSymbolsIndexMap.put(childOutputSymbols.get(i), i);

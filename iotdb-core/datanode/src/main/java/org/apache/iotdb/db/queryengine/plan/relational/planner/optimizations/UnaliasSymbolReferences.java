@@ -403,7 +403,7 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
               node.getCopyToOptions(),
               newChildPermittedOutputs,
               node.getInnerQueryDatasetHeader(),
-              node.getInnerQueryOutputNode()),
+              node.getInnerQueryOutputSymbols()),
           mapping);
     }
 

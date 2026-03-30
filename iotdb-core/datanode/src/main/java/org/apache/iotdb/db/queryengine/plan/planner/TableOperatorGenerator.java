@@ -31,7 +31,6 @@ import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
-import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.ITableTimeRangeIterator;
 import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.TableDateBinTimeRangeIterator;
 import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.TableSingleTimeWindowIterator;
@@ -3480,8 +3479,17 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
   public Operator visitCopyTo(CopyToNode node, LocalExecutionPlanContext context) {
     PlanNode childNode = node.getChild();
 
-    DatasetHeader datasetHeader = node.getInnerQueryDatasetHeader();
-    datasetHeader.setTableColumnToTsBlockIndexMap(node.getInnerQueryOutputNode(), childNode);
+    List<Symbol> innerQueryOutputSymbols = node.getInnerQueryOutputSymbols();
+    List<Symbol> childOutputSymbols = childNode.getOutputSymbols();
+    Map<Symbol, Integer> childOutputSymbolsIndexMap = new HashMap<>(childOutputSymbols.size());
+    for (int i = 0; i < childOutputSymbols.size(); i++) {
+      childOutputSymbolsIndexMap.put(childOutputSymbols.get(i), i);
+    }
+    int[] columnIndex2TsBlockColumnIndexList = new int[innerQueryOutputSymbols.size()];
+    for (int i = 0; i < innerQueryOutputSymbols.size(); i++) {
+      int index = childOutputSymbolsIndexMap.get(innerQueryOutputSymbols.get(i));
+      columnIndex2TsBlockColumnIndexList[i] = index;
+    }
 
     Operator operator = childNode.accept(this, context);
 
@@ -3497,8 +3505,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
         operator,
         node.getTargetFilePath(),
         node.getCopyToOptions(),
-        datasetHeader.getColumnHeaders(),
-        datasetHeader.getColumnIndex2TsBlockColumnIndexList());
+        node.getInnerQueryDatasetHeader().getColumnHeaders(),
+        columnIndex2TsBlockColumnIndexList);
   }
 
   @Override
