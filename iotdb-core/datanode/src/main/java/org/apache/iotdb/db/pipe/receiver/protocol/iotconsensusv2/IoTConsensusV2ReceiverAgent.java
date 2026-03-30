@@ -243,7 +243,7 @@ public class IoTConsensusV2ReceiverAgent implements ConsensusPipeReceiver {
                 ConsensusPipeName consensusPipeName = receiverEntry.getKey();
                 AtomicReference<IoTConsensusV2Receiver> receiverReference =
                     receiverEntry.getValue();
-                if (receiverReference != null) {
+                if (receiverReference != null && receiverReference.get() != null) {
                   receiverReference.get().handleExit();
                   receiverReference.set(null);
                 }
