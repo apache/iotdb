@@ -1042,8 +1042,7 @@ public class Session implements ISession {
   @Override
   public SessionDataSet executeLastDataQuery(List<String> paths)
       throws StatementExecutionException, IoTDBConnectionException {
-    long time = 0L;
-    return executeLastDataQuery(paths, time, queryTimeoutInMs);
+    return executeLastDataQuery(paths, Long.MIN_VALUE, queryTimeoutInMs);
   }
 
   @Override
