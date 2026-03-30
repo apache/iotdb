@@ -504,6 +504,41 @@ TEST_CASE("Test insertTablet multi datatype", "[testInsertTabletMultiDatatype]")
     REQUIRE(count == 100);
 }
 
+TEST_CASE("Test boolean column via DataIterator", "[testBooleanColumnDataIterator]") {
+    CaseReporter cr("testBooleanColumnDataIterator");
+    string deviceId = "root.test.d1";
+    string timeseries = "root.test.d1.s1";
+
+    if (session->checkTimeseriesExists(timeseries)) {
+        session->deleteTimeseries(timeseries);
+    }
+    session->createTimeseries(timeseries, TSDataType::BOOLEAN, TSEncoding::PLAIN, CompressionType::SNAPPY);
+
+    // Insert boolean values: even timestamps get true, odd get false
+    vector<string> measurements = {"s1"};
+    vector<TSDataType::TSDataType> types = {TSDataType::BOOLEAN};
+    for (int64_t time = 0; time < 10; time++) {
+        bool val = (time % 2 == 0);
+        vector<char*> values = {(char*)&val};
+        session->insertRecord(deviceId, time, measurements, types, values);
+    }
+
+    unique_ptr<SessionDataSet> sessionDataSet = session->executeQueryStatement("select s1 from root.test.d1");
+    auto dataIter = sessionDataSet->getIterator();
+    sessionDataSet->setFetchSize(1024);
+    int count = 0;
+    while (dataIter.next()) {
+        bool expected = (count % 2 == 0);
+        // Column 1 is Time, column 2 is s1
+        REQUIRE(dataIter.getBooleanByIndex(2).value() == expected);
+        // Accessing time column (index 1) as boolean should throw
+        REQUIRE_THROWS_AS(dataIter.getBooleanByIndex(1), IoTDBException);
+        count++;
+    }
+    REQUIRE(count == 10);
+    session->deleteTimeseries(timeseries);
+}
+
 TEST_CASE("Test Last query ", "[testLastQuery]") {
     CaseReporter cr("testLastQuery");
     prepareTimeseries();
