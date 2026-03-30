@@ -63,7 +63,7 @@ class OpcUaKeyStoreLoader {
     LOGGER.info("Loading KeyStore at {}", serverKeyStore);
 
     if (serverKeyStore.exists()) {
-      try (InputStream is = Files.newInputStream(serverKeyStore.toPath())){
+      try (InputStream is = Files.newInputStream(serverKeyStore.toPath())) {
         keyStore.load(is, password);
       } catch (final IOException e) {
         LOGGER.warn("Load keyStore failed, the existing keyStore may be stale, re-constructing...");
