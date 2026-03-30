@@ -193,7 +193,7 @@ public class PipeDeleteDataNodeEvent extends EnrichedEvent implements Serializab
   @Override
   public void deserializeFromByteBuffer(final ByteBuffer buffer) {
     isGeneratedByPipe = ReadWriteIOUtils.readBool(buffer);
-    deleteDataNode = (DeleteDataNode) PlanNodeType.deserialize(buffer);
+    deleteDataNode = (AbstractDeleteDataNode) PlanNodeType.deserialize(buffer);
     progressIndex = deleteDataNode.getProgressIndex();
   }
 
