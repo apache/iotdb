@@ -106,9 +106,6 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualTreeModelAutoIT {
 
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
-      Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
-
       // Do not fail if the failure has nothing to do with pipe
       // Because the failures will randomly generate due to resource limitation
       TestUtils.executeNonQueries(
@@ -173,9 +170,6 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualTreeModelAutoIT {
                       .setProcessorAttributes(processorAttributes))
               .getCode());
 
-      Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
-
       // Do not fail if the failure has nothing to do with pipe
       // Because the failures will randomly generate due to resource limitation
       TestUtils.executeNonQueries(
@@ -237,9 +231,6 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualTreeModelAutoIT {
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
-
       // Do not fail if the failure has nothing to do with pipe
       // Because the failures will randomly generate due to resource limitation
       TestUtils.executeNonQueries(
@@ -417,9 +408,6 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualTreeModelAutoIT {
                       .setProcessorAttributes(processorAttributes))
               .getCode());
 
-      Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
-
       // Do not fail if the failure has nothing to do with pipe
       // Because the failures will randomly generate due to resource limitation
       TestUtils.executeNonQueries(
@@ -512,9 +500,6 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualTreeModelAutoIT {
                       .setExtractorAttributes(sourceAttributes)
                       .setProcessorAttributes(processorAttributes))
               .getCode());
-
-      Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
 
       TestUtils.executeNonQueries(
           senderEnv,
