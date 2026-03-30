@@ -40,7 +40,7 @@ public class PipeRealtimeDataRegionLogSource extends PipeRealtimeDataRegionSourc
       LoggerFactory.getLogger(PipeRealtimeDataRegionLogSource.class);
 
   @Override
-  protected void doExtract(PipeRealtimeEvent event) {
+  protected void doExtract(final PipeRealtimeEvent event) {
     final Event eventToExtract = event.getEvent();
 
     if (eventToExtract instanceof TabletInsertionEvent) {
@@ -51,7 +51,7 @@ public class PipeRealtimeDataRegionLogSource extends PipeRealtimeDataRegionSourc
     } else if (eventToExtract instanceof PipeHeartbeatEvent) {
       extractHeartbeat(event);
     } else if (eventToExtract instanceof PipeDeleteDataNodeEvent) {
-      extractDirectly(event);
+      pendingQueue.offer(event);
     } else {
       throw new UnsupportedOperationException(
           String.format(
@@ -60,27 +60,12 @@ public class PipeRealtimeDataRegionLogSource extends PipeRealtimeDataRegionSourc
     }
   }
 
-  private void extractTabletInsertion(PipeRealtimeEvent event) {
+  private void extractTabletInsertion(final PipeRealtimeEvent event) {
     event.getTsFileEpoch().migrateState(this, state -> TsFileEpoch.State.USING_TABLET);
-
-    if (!pendingQueue.waitedOffer(event)) {
-      // this would not happen, but just in case.
-      // pendingQueue is unbounded, so it should never reach capacity.
-      final String errorMessage =
-          String.format(
-              "extract: pending queue of PipeRealtimeDataRegionLogExtractor %s "
-                  + "has reached capacity, discard tablet event %s, current state %s",
-              this, event, event.getTsFileEpoch().getState(this));
-      LOGGER.error(errorMessage);
-      PipeDataNodeAgent.runtime()
-          .report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
-
-      // ignore this event.
-      event.decreaseReferenceCount(PipeRealtimeDataRegionLogSource.class.getName(), false);
-    }
+    pendingQueue.offer(event);
   }
 
-  private void extractTsFileInsertion(PipeRealtimeEvent event) {
+  private void extractTsFileInsertion(final PipeRealtimeEvent event) {
     final PipeTsFileInsertionEvent tsFileInsertionEvent =
         (PipeTsFileInsertionEvent) event.getEvent();
     if (!(tsFileInsertionEvent.isLoaded())) {
@@ -91,22 +76,7 @@ public class PipeRealtimeDataRegionLogSource extends PipeRealtimeDataRegionSourc
     }
 
     event.getTsFileEpoch().migrateState(this, state -> TsFileEpoch.State.USING_TSFILE);
-
-    if (!pendingQueue.waitedOffer(event)) {
-      // this would not happen, but just in case.
-      // pendingQueue is unbounded, so it should never reach capacity.
-      final String errorMessage =
-          String.format(
-              "extract: pending queue of PipeRealtimeDataRegionLogExtractor %s "
-                  + "has reached capacity, discard loaded tsFile event %s, current state %s",
-              this, event, event.getTsFileEpoch().getState(this));
-      LOGGER.error(errorMessage);
-      PipeDataNodeAgent.runtime()
-          .report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
-
-      // ignore this event.
-      event.decreaseReferenceCount(PipeRealtimeDataRegionLogSource.class.getName(), false);
-    }
+    pendingQueue.offer(event);
   }
 
   @Override

@@ -423,21 +423,7 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
       return;
     }
 
-    if (!pendingQueue.waitedOffer(event)) {
-      // This would not happen, but just in case.
-      // pendingQueue is unbounded, so it should never reach capacity.
-      LOGGER.error(
-          "extract: pending queue of PipeRealtimeDataRegionHybridExtractor {} "
-              + "has reached capacity, discard heartbeat event {}",
-          this,
-          event);
-
-      // Do not report exception since the PipeHeartbeatEvent doesn't affect
-      // the correction of pipe progress.
-
-      // Ignore this event.
-      event.decreaseReferenceCount(PipeRealtimeDataRegionSource.class.getName(), false);
-    }
+    pendingQueue.offer(event);
   }
 
   protected void extractProgressReportEvent(final PipeRealtimeEvent event) {
@@ -449,24 +435,7 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
               .updateToMinimumEqualOrIsAfterProgressIndex(event.getProgressIndex()));
       return;
     }
-    extractDirectly(event);
-  }
-
-  protected void extractDirectly(final PipeRealtimeEvent event) {
-    if (!pendingQueue.waitedOffer(event)) {
-      // This would not happen, but just in case.
-      // Pending is unbounded, so it should never reach capacity.
-      final String errorMessage =
-          String.format(
-              "extract: pending queue of %s %s " + "has reached capacity, discard event %s",
-              this.getClass().getSimpleName(), this, event);
-      LOGGER.error(errorMessage);
-      PipeDataNodeAgent.runtime()
-          .report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
-
-      // Ignore the event.
-      event.decreaseReferenceCount(PipeRealtimeDataRegionSource.class.getName(), false);
-    }
+    pendingQueue.offer(event);
   }
 
   protected void maySkipIndex4Event(final PipeRealtimeEvent event) {
