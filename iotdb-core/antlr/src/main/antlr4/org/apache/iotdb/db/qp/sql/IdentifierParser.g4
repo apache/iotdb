@@ -182,6 +182,8 @@ keyWords
     | PIPESINKTYPE
     | PIPEPLUGIN
     | PIPEPLUGINS
+    | POINT
+    | POINTS
     | POLICY
     | PREVIOUS
     | PREVIOUSUNTILLAST
