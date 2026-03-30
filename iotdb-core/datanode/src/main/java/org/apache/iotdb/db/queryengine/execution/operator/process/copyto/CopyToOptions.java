@@ -74,8 +74,18 @@ public interface CopyToOptions extends Accountable {
    */
   List<ColumnHeader> getRespColumnHeaders();
 
+  /**
+   * Returns the output symbols that represent the columns in the COPY TO result.
+   *
+   * @return list of symbols for the output columns
+   */
   List<Symbol> getOutputSymbols();
 
+  /**
+   * Returns the output column names for the result.
+   *
+   * @return list of column names
+   */
   List<String> getOutputColumnNames();
 
   /**
