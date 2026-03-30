@@ -118,6 +118,10 @@ public class ExternalRPCService extends ThriftService implements ExternalRPCServ
     return getBindPort();
   }
 
+  public IClientRPCServiceWithHandler getImpl() {
+    return impl;
+  }
+
   private static class RPCServiceHolder {
 
     private static final ExternalRPCService INSTANCE = new ExternalRPCService();
