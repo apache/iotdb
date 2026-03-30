@@ -35,8 +35,10 @@ import org.slf4j.LoggerFactory;
 
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -90,14 +92,15 @@ public class WebSocketConnectorServer extends WebSocketServer {
       final PriorityBlockingQueue<EventWaitingForTransfer> eventTransferQueue =
           eventsWaitingForTransfer.remove(pipeName);
       while (!eventTransferQueue.isEmpty()) {
-        eventTransferQueue.forEach(
+        final List<EventWaitingForTransfer> eventWrappers = new ArrayList<>(eventTransferQueue);
+        eventTransferQueue.clear();
+        eventWrappers.forEach(
             (eventWrapper) -> {
               if (eventWrapper.event instanceof EnrichedEvent) {
                 ((EnrichedEvent) eventWrapper.event)
                     .decreaseReferenceCount(WebSocketConnectorServer.class.getName(), false);
               }
             });
-        eventTransferQueue.clear();
         synchronized (eventTransferQueue) {
           eventTransferQueue.notifyAll();
         }
