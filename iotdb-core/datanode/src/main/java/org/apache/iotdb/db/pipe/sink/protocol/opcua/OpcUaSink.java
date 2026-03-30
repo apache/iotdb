@@ -50,8 +50,8 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
-
 import org.apache.iotdb.service.rpc.thrift.TSLastDataQueryReq;
+
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.record.Tablet;
@@ -402,7 +402,12 @@ public class OpcUaSink implements PipeConnector {
 
     try {
       initializeSession();
-      clientRPCServiceImpl.executeLastDataQueryV2(new TSLastDataQueryReq(session.getId(), Collections.emptyList(), ));
+      clientRPCServiceImpl.executeLastDataQueryV2(
+          new TSLastDataQueryReq(
+              session.getId(),
+              Collections.emptyList(),
+              Long.MIN_VALUE,
+              SESSION_MANAGER.requestStatementId(session)));
 
       initialized = true;
       if (Objects.nonNull(session)) {
