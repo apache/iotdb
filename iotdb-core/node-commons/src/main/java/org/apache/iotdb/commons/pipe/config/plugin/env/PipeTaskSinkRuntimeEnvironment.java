@@ -21,9 +21,15 @@ package org.apache.iotdb.commons.pipe.config.plugin.env;
 
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
 public class PipeTaskSinkRuntimeEnvironment extends PipeTaskRuntimeEnvironment {
   private String attributeSortedString;
   private PipeParameters sourceParameters;
+
+  // For reused sinks, this can be used to share information
+  private final Map<String, Object> publicParameters = new ConcurrentHashMap<>();
 
   public PipeTaskSinkRuntimeEnvironment(
       final String pipeName, final long creationTime, final int regionId) {
@@ -44,5 +50,9 @@ public class PipeTaskSinkRuntimeEnvironment extends PipeTaskRuntimeEnvironment {
 
   public void setSourceParameters(final PipeParameters sourceParameters) {
     this.sourceParameters = sourceParameters;
+  }
+
+  public Map<String, Object> getPublicParameters() {
+    return publicParameters;
   }
 }
