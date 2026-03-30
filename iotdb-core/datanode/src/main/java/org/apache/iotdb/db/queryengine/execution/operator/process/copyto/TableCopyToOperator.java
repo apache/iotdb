@@ -160,8 +160,9 @@ public class TableCopyToOperator implements ProcessOperator {
   @Override
   public long calculateMaxPeekMemory() {
     return Math.max(
-        childOperator.calculateMaxPeekMemory(),
-        calculateMaxReturnSize() + calculateRetainedSizeAfterCallingNext());
+            childOperator.calculateMaxPeekMemory(),
+            calculateMaxReturnSize() + calculateRetainedSizeAfterCallingNext())
+        + options.estimatedMaxRamBytesInWrite();
   }
 
   @Override
@@ -181,7 +182,6 @@ public class TableCopyToOperator implements ProcessOperator {
         + RamUsageEstimator.sizeOfObject(innerQueryColumnHeaders)
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
         + RamUsageEstimator.sizeOf(columnIndex2TsBlockColumnIndex)
-        + options.estimatedMaxRamBytesInWrite()
         + childOperator.ramBytesUsed();
   }
 }
