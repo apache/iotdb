@@ -388,7 +388,7 @@ class IoTDBRpcDataSet(object):
                         or data_type == 10
                         or data_type == 9
                     ):
-                        tmp_array = np.full(total_length, None, dtype=data_array.dtype)
+                        tmp_array = np.full(total_length, None)
 
                     bitmap_buffer = self.__query_data_set.bitmapList[location]
                     buffer = _to_bitbuffer(bitmap_buffer)
