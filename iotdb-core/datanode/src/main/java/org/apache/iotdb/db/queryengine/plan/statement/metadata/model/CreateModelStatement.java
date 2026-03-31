@@ -34,6 +34,8 @@ public class CreateModelStatement extends Statement implements IConfigStatement 
 
   private String uri;
 
+  private String existingModelId = null;
+
   public CreateModelStatement() {
     // do nothing
   }
@@ -52,6 +54,14 @@ public class CreateModelStatement extends Statement implements IConfigStatement 
 
   public void setModelId(String modelId) {
     this.modelId = modelId;
+  }
+
+  public String getExistingModelId() {
+    return existingModelId;
+  }
+
+  public void setExistingModelId(String existingModelId) {
+    this.existingModelId = existingModelId;
   }
 
   @Override

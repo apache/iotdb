@@ -1610,6 +1610,9 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     CreateModelStatement createModelStatement = new CreateModelStatement();
     createModelStatement.setModelId(parseIdentifier(modelId));
     createModelStatement.setUri(parseAndValidateURI(ctx.uriClause()));
+    if (ctx.existingModelId != null) {
+      createModelStatement.setExistingModelId(ctx.existingModelId.getText());
+    }
     return createModelStatement;
   }
 

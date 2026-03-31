@@ -34,7 +34,6 @@ from iotdb.ainode.core.model.model_constants import (
     MODEL_PT,
     MODEL_WEIGHT_FILES,
     TRAINING_STATE,
-    ModelCategory,
 )
 from iotdb.ainode.core.model.model_info import ModelInfo
 from iotdb.ainode.core.model.sktime.modeling_sktime import create_sktime_model
@@ -75,12 +74,9 @@ def _load_transformers_model(model_info: ModelInfo, **model_kwargs):
     train_from_scratch = model_kwargs.get("train_from_scratch", False)
 
     model_path = get_model_path(model_info)
-    is_finetuned = (
-        model_info.category == ModelCategory.FINE_TUNED
-        and model_info.base_model_id is not None
-    )
+    has_base_model = model_info.base_model_id
 
-    if is_finetuned:
+    if has_base_model:
         model_class, config_instance = get_model_and_config_by_base_model(model_info)
     else:
         model_class, config_instance = get_model_and_config_by_native_code(model_info)
@@ -94,7 +90,7 @@ def _load_transformers_model(model_info: ModelInfo, **model_kwargs):
         )
     else:
         weights_path = model_path
-        if is_finetuned and not has_base_weights(model_path):
+        if has_base_model and not has_base_weights(model_path):
             base_model_path = search_model_path(model_info.base_model_id)
             if base_model_path is not None:
                 weights_path = base_model_path
@@ -110,7 +106,7 @@ def _load_transformers_model(model_info: ModelInfo, **model_kwargs):
         )
 
     # Apply adapter if present (DualWeaver / LoRA / etc.)
-    if is_finetuned:
+    if has_base_model:
         model = _apply_adapter(model, model_path)
 
     return BACKEND.move_model(model, device_map)

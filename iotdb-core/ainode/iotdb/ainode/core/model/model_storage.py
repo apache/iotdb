@@ -59,6 +59,7 @@ from iotdb.ainode.core.model.utils import (
     import_class_from_path,
     load_model_config_in_json,
     parse_uri_type,
+    save_model_config_to_json,
     temporary_sys_path,
     validate_model_files,
 )
@@ -160,6 +161,8 @@ class ModelStorage:
         def _download_model_if_necessary() -> bool:
             """Returns: True if the model is existed or downloaded successfully, False otherwise."""
             repo_id = BUILTIN_HF_TRANSFORMERS_MODEL_MAP[model_id].repo_id
+            if repo_id == "":
+                return False
             weights_path = os.path.join(model_dir, MODEL_SAFETENSORS)
             config_path = os.path.join(model_dir, CONFIG_JSON)
             if not os.path.exists(weights_path):
@@ -222,7 +225,11 @@ class ModelStorage:
                     self._models[ModelCategory.BUILTIN.value][
                         model_id
                     ].state = ModelStates.INACTIVE
-                    logger.warning(f"Failed to download model {model_id}.")
+                    if (
+                        self._models[ModelCategory.BUILTIN.value][model_id].repo_id
+                        != ""
+                    ):
+                        logger.warning(f"Failed to download model {model_id}.")
             except Exception as e:
                 logger.error(f"Error in download callback for model {model_id}: {e}")
                 self._models[ModelCategory.BUILTIN.value][
@@ -242,6 +249,7 @@ class ModelStorage:
             auto_map = config.get("auto_map", None)
             pipeline_cls = config.get("pipeline_cls", "")
             hub_mixin_cls = config.get("hub_mixin_cls", "")
+            base_model_id = config.get("base_model_id", "")
         model_info = ModelInfo(
             model_id=model_id,
             model_type=model_type,
@@ -250,6 +258,7 @@ class ModelStorage:
             pipeline_cls=pipeline_cls,
             auto_map=auto_map,
             hub_mixin_cls=hub_mixin_cls,
+            base_model_id=base_model_id,
             transformers_registered=False,  # Lazy registration
         )
         with self._lock_pool.get_lock(model_id).write_lock():
@@ -291,7 +300,7 @@ class ModelStorage:
 
     # ==================== Registration Methods ====================
 
-    def register_model(self, model_id: str, uri: str):
+    def register_model(self, model_id: str, uri: str, existing_model_id: str):
         """
         Register a user-defined model from a given URI.
         Args:
@@ -327,6 +336,11 @@ class ModelStorage:
         config = load_model_config_in_json(config_path)
         model_type = config.get("model_type", "")
         auto_map = config.get("auto_map")
+        if existing_model_id is not None:
+            with self._lock_pool.get_lock(existing_model_id).read_lock():
+                auto_map = self._models[ModelCategory.BUILTIN.value][
+                    existing_model_id
+                ].auto_map
         pipeline_cls = config.get("pipeline_cls", "")
         hub_mixin_cls = config.get("hub_mixin_cls", "")
 
@@ -339,6 +353,7 @@ class ModelStorage:
                 pipeline_cls=pipeline_cls,
                 auto_map=auto_map,
                 hub_mixin_cls=hub_mixin_cls,
+                base_model_id=existing_model_id,
                 transformers_registered=False,  # Register later
             )
             self._models[ModelCategory.USER_DEFINED.value][model_id] = model_info
@@ -368,7 +383,11 @@ class ModelStorage:
             else:
                 # Other type models: only log
                 self._register_other_model(model_info)
-
+        if existing_model_id:
+            # Override key configs from the base model
+            config["base_model_id"] = existing_model_id
+            config["auto_map"] = auto_map
+            save_model_config_to_json(config_path, config)
         logger.info(f"Successfully registered model {model_id} from URI: {uri}")
 
     def _register_transformers_model(self, model_info: ModelInfo) -> bool:
@@ -380,6 +399,9 @@ class ModelStorage:
             Exception: Transformers internal exception if registration fails
             ValueError: If class is invalid
         """
+        if model_info.base_model_id is not None:
+            # The base model should already been registered
+            return True
         auto_map = model_info.auto_map
         if not auto_map:
             return False
@@ -498,7 +520,10 @@ class ModelStorage:
                 return None
 
             # If already registered, return directly
-            if model_info.transformers_registered:
+            if (
+                model_info.transformers_registered
+                or model_info.base_model_id is not None
+            ):
                 return model_info
 
             # If no auto_map, not a Transformers model, mark as registered (avoid duplicate checks)

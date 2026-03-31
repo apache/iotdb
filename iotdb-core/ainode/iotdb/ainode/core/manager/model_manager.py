@@ -53,7 +53,9 @@ class ModelManager:
         req: TRegisterModelReq,
     ) -> TRegisterModelResp:
         try:
-            self._model_storage.register_model(model_id=req.modelId, uri=req.uri)
+            self._model_storage.register_model(
+                model_id=req.modelId, uri=req.uri, existing_model_id=req.existingModelId
+            )
             return TRegisterModelResp(get_status(TSStatusCode.SUCCESS_STATUS))
         except ModelExistedException as e:
             return TRegisterModelResp(

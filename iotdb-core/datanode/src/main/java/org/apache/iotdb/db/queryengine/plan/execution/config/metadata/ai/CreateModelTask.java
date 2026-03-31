@@ -29,15 +29,20 @@ public class CreateModelTask implements IConfigTask {
 
   private final String modelId;
   private final String uri;
+  private String existingModelId = null;
 
   public CreateModelTask(String modelId, String uri) {
     this.modelId = modelId;
     this.uri = uri;
   }
 
+  public void setExistingModelId(String existingModelId) {
+    this.existingModelId = existingModelId;
+  }
+
   @Override
   public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    return configTaskExecutor.createModel(modelId, uri);
+    return configTaskExecutor.createModel(modelId, uri, existingModelId);
   }
 }

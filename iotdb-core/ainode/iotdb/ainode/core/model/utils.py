@@ -87,6 +87,11 @@ def load_model_config_in_json(config_path: str) -> Dict:
         return json.load(f)
 
 
+def save_model_config_to_json(config_path: str, data: Dict[str, Any]):
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(data, f, default=str)
+
+
 def get_model_path(model_info: ModelInfo) -> str:
     return os.path.join(
         os.getcwd(),
@@ -193,7 +198,7 @@ def get_model_and_config_by_base_model(model_info: ModelInfo) -> Tuple[type, Any
     the fine-tuned directory (which may carry modified hyperparameters
     such as ``output_token_lens``).
     """
-    finetuned_path = get_model_path(model_info)
+    config_path = get_model_path(model_info)
     base_model_id = model_info.base_model_id
 
     config_str = (model_info.auto_map or {}).get("AutoConfig", "")
@@ -224,7 +229,7 @@ def get_model_and_config_by_base_model(model_info: ModelInfo) -> Tuple[type, Any
                 model_class = import_class_from_path(base_model_id, model_str)
 
     # Load config from the fine-tuned directory (may have adjusted params)
-    config_instance = config_class.from_pretrained(finetuned_path)
+    config_instance = config_class.from_pretrained(config_path)
     return model_class, config_instance
 
 

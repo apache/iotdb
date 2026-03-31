@@ -471,7 +471,7 @@ public interface IConfigTaskExecutor {
   SettableFuture<ConfigTaskResult> showCurrentTimestamp();
 
   // =============================== AI =========================================
-  SettableFuture<ConfigTaskResult> createModel(String modelId, String uri);
+  SettableFuture<ConfigTaskResult> createModel(String modelId, String uri, String existingModelId);
 
   SettableFuture<ConfigTaskResult> dropModel(String modelId);
 

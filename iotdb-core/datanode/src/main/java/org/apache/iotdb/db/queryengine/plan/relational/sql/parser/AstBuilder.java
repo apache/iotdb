@@ -3860,7 +3860,11 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       return createTraining;
     }
     String uri = ((Identifier) visit(ctx.uriClause().uri)).getValue();
-    return new CreateModel(modelId, uri);
+    CreateModel result = new CreateModel(modelId, uri);
+    if (ctx.existingModelId != null) {
+      result.setExistingModelId(ctx.existingModelId.getText());
+    }
+    return result;
   }
 
   @Override

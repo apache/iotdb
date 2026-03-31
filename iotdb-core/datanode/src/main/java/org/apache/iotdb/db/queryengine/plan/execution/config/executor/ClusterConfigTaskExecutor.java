@@ -3904,11 +3904,15 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> createModel(String modelId, String uri) {
+  public SettableFuture<ConfigTaskResult> createModel(
+      String modelId, String uri, String existingModelId) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try (final AINodeClient client =
         AI_NODE_CLIENT_MANAGER.borrowClient(AINodeClientManager.AINODE_ID_PLACEHOLDER)) {
       final TRegisterModelReq req = new TRegisterModelReq(modelId, uri);
+      if (existingModelId != null) {
+        req.setExistingModelId(existingModelId);
+      }
       final TRegisterModelResp resp = client.registerModel(req);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != resp.getStatus().getCode()) {
         future.setException(new IoTDBException(resp.getStatus()));

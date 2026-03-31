@@ -1677,7 +1677,11 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     String uri = node.getUri();
     if (uri != null && ExecutableManager.isUriTrusted(uri)) {
       // user specified uri and that uri is trusted
-      return new CreateModelTask(node.getModelId(), uri);
+      CreateModelTask task = new CreateModelTask(node.getModelId(), uri);
+      if (node.getExistingModelId() != null) {
+        task.setExistingModelId(node.getExistingModelId());
+      }
+      return task;
     }
     // user specified uri and that uri is not trusted
     throw new SemanticException(getUnTrustedUriErrorMsg(uri));

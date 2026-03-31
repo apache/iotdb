@@ -44,13 +44,19 @@ def load_pipeline(model_info: ModelInfo, device: torch.device, **model_kwargs):
             + model_info.model_id
         )
         pipeline_cls = import_class_from_path(module_name, model_info.pipeline_cls)
-    elif model_info.category == ModelCategory.FINE_TUNED:
+    elif model_info.base_model_id is not None:
         module_name = (
             AINodeDescriptor().get_config().get_ain_models_builtin_dir()
             + "."
             + model_info.base_model_id
         )
-        pipeline_cls = import_class_from_path(module_name, model_info.pipeline_cls)
+        if model_info.pipeline_cls != "":
+            pipeline_cls = import_class_from_path(module_name, model_info.pipeline_cls)
+        else:
+            base_model_info = MODEL_MANAGER.get_model_info(model_info.base_model_id)
+            pipeline_cls = import_class_from_path(
+                module_name, base_model_info.pipeline_cls
+            )
     else:
         model_path = os.path.join(
             os.getcwd(),

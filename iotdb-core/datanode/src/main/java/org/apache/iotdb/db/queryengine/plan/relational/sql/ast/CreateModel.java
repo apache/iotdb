@@ -30,6 +30,7 @@ public class CreateModel extends Statement {
 
   private final String modelId;
   private final String uri;
+  private String existingModelId = null;
 
   public CreateModel(String modelId, String uri) {
     super(null);
@@ -43,6 +44,14 @@ public class CreateModel extends Statement {
 
   public String getUri() {
     return uri;
+  }
+
+  public String getExistingModelId() {
+    return existingModelId;
+  }
+
+  public void setExistingModelId(String existingModelId) {
+    this.existingModelId = existingModelId;
   }
 
   @Override
@@ -80,6 +89,7 @@ public class CreateModel extends Statement {
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
     size += RamUsageEstimator.sizeOf(modelId);
     size += RamUsageEstimator.sizeOf(uri);
+    size += RamUsageEstimator.sizeOf(existingModelId);
     return size;
   }
 }

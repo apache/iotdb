@@ -940,7 +940,11 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
     String uri = createModelStatement.getUri();
     if (uri != null && isUriTrusted(uri)) {
       // user specified uri and that uri is trusted
-      return new CreateModelTask(createModelStatement.getModelId(), uri);
+      CreateModelTask task = new CreateModelTask(createModelStatement.getModelId(), uri);
+      if (createModelStatement.getExistingModelId() != null) {
+        task.setExistingModelId(createModelStatement.getExistingModelId());
+      }
+      return task;
     } else {
       // user specified uri and that uri is not trusted
       throw new SemanticException(getUnTrustedUriErrorMsg(uri));
