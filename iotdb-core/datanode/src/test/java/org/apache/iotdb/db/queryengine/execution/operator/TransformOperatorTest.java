@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.queryengine.execution.operator;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.udf.service.UDFClassLoaderManager;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.NodeRef;
@@ -56,6 +55,7 @@ import java.util.Map;
 import java.util.Optional;
 
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
+import static org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand.constructColumnHeaderExpression;
 
 public class TransformOperatorTest {
 
@@ -238,8 +238,7 @@ public class TransformOperatorTest {
             }
           };
 
-      TimeSeriesOperand s1 =
-          new TimeSeriesOperand(new PartialPath("root.sg.d1.s1"), TSDataType.INT64);
+      TimeSeriesOperand s1 = constructColumnHeaderExpression("root.sg.d1.s1", TSDataType.INT64);
       Map<String, List<InputLocation>> inputLocations =
           ImmutableMap.of(s1.getExpressionString(), ImmutableList.of(new InputLocation(0, 0)));
       Map<NodeRef<Expression>, TSDataType> expressionTypes = new HashMap<>();
