@@ -338,7 +338,8 @@ public class MemoryPool {
                 return reservedMemory - bytes;
               });
     } catch (NullPointerException e) {
-      throw new IllegalArgumentException("RelatedMemoryReserved can't be null when freeing memory");
+      throw new IllegalArgumentException(
+          "RelatedMemoryReserved can't be null when freeing memory", e);
     }
 
     memoryBlock.release(bytes);

@@ -178,13 +178,7 @@ public class IoTDBUncorrelatedInPredicateSubqueryIT {
         new String[] {
           "d01,5,", "d03,5,", "d05,5,", "d07,5,", "d09,5,", "d11,5,", "d13,5,", "d15,5,"
         };
-    for (String measurement : NUMERIC_MEASUREMENTS) {
-      tableResultSetEqualTest(
-          String.format(sql, measurement, measurement, measurement, measurement),
-          expectedHeader,
-          retArray,
-          DATABASE_NAME);
-    }
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
 
     // Test case: having s not in (subquery)
     sql =
@@ -194,26 +188,14 @@ public class IoTDBUncorrelatedInPredicateSubqueryIT {
         new String[] {
           "d01,5,", "d03,5,", "d05,5,", "d07,5,", "d09,5,", "d11,5,", "d13,5,", "d15,5,"
         };
-    for (String measurement : NUMERIC_MEASUREMENTS) {
-      tableResultSetEqualTest(
-          String.format(sql, measurement, measurement, measurement, measurement),
-          expectedHeader,
-          retArray,
-          DATABASE_NAME);
-    }
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
 
     // Test case: having s in (subquery), subquery returns empty set
     sql =
         "SELECT device_id, count(*) from table1 group by device_id having count(*) + 25 in (SELECT cast(s1 as INT64) from table3 where device_id = 'd010')";
     expectedHeader = new String[] {"device_id", "_col1"};
     retArray = new String[] {};
-    for (String measurement : NUMERIC_MEASUREMENTS) {
-      tableResultSetEqualTest(
-          String.format(sql, measurement, measurement, measurement, measurement),
-          expectedHeader,
-          retArray,
-          DATABASE_NAME);
-    }
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
 
     // Test case: having s not in (subquery), subquery returns empty set, should return all rows
     sql =
@@ -223,13 +205,7 @@ public class IoTDBUncorrelatedInPredicateSubqueryIT {
         new String[] {
           "d01,5,", "d03,5,", "d05,5,", "d07,5,", "d09,5,", "d11,5,", "d13,5,", "d15,5,"
         };
-    for (String measurement : NUMERIC_MEASUREMENTS) {
-      tableResultSetEqualTest(
-          String.format(sql, measurement, measurement, measurement, measurement),
-          expectedHeader,
-          retArray,
-          DATABASE_NAME);
-    }
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
   }
 
   @Test
