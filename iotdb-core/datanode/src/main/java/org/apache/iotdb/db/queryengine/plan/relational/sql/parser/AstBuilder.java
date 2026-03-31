@@ -2392,6 +2392,45 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   @Override
+  public Node visitFromFirstQuerySpecification(
+      RelationalSqlParser.FromFirstQuerySpecificationContext ctx) {
+    Optional<Relation> from = Optional.empty();
+    List<SelectItem> selectItems = visit(ctx.selectItem(), SelectItem.class);
+
+    List<Relation> relations = visit(ctx.relation(), Relation.class);
+    if (!relations.isEmpty()) {
+      // synthesize implicit join nodes
+      Iterator<Relation> iterator = relations.iterator();
+      Relation relation = iterator.next();
+
+      while (iterator.hasNext()) {
+        relation = new Join(getLocation(ctx), Join.Type.IMPLICIT, relation, iterator.next());
+      }
+
+      from = Optional.of(relation);
+    }
+    if (selectItems.isEmpty()) {
+      selectItems = ImmutableList.of(new AllColumns(getLocation(ctx), ImmutableList.of()));
+    }
+
+    NodeLocation selectLocation =
+        ctx.SELECT() != null ? getLocation(ctx.SELECT()) : getLocation(ctx);
+
+    return new QuerySpecification(
+        getLocation(ctx),
+        new Select(selectLocation, isDistinct(ctx.setQuantifier()), selectItems),
+        from,
+        visitIfPresent(ctx.where, Expression.class),
+        visitIfPresent(ctx.groupBy(), GroupBy.class),
+        visitIfPresent(ctx.having, Expression.class),
+        Optional.empty(),
+        visit(ctx.windowDefinition(), WindowDefinition.class),
+        Optional.empty(),
+        Optional.empty(),
+        Optional.empty());
+  }
+
+  @Override
   public Node visitSelectSingle(RelationalSqlParser.SelectSingleContext ctx) {
     if (ctx.identifier() != null) {
       return new SingleColumn(

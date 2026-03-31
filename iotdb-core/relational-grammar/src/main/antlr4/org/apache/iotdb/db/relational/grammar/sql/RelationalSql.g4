@@ -996,6 +996,7 @@ queryPrimary
     | TABLE qualifiedName                  #table
     | VALUES expression (',' expression)*  #inlineTable
     | '(' queryNoWith ')'                  #subquery
+    | fromFirstQuerySpecification          #fromFirstQueryPrimary
     ;
 
 sortItem
@@ -1005,6 +1006,15 @@ sortItem
 querySpecification
     : SELECT setQuantifier? selectItem (',' selectItem)*
       (FROM relation (',' relation)*)?
+      (WHERE where=booleanExpression)?
+      (GROUP BY groupBy)?
+      (HAVING having=booleanExpression)?
+      (WINDOW windowDefinition (',' windowDefinition)*)?
+    ;
+
+fromFirstQuerySpecification
+    : FROM relation (',' relation)*
+      (SELECT setQuantifier? selectItem (',' selectItem)*)?
       (WHERE where=booleanExpression)?
       (GROUP BY groupBy)?
       (HAVING having=booleanExpression)?
