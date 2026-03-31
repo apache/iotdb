@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational;
 
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.LastAccumulator;
+import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.LastByAccumulator;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.LastByDescAccumulator;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.LastDescAccumulator;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.TableAggregator;
@@ -319,12 +320,14 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
 
   private void buildResultUseLastValuesCache() {
     TimeValuePair[] currentHitResult = lastValuesCacheResults.get(currentHitCacheIndex);
-    // if it is EMPTY_PRIMITIVE_TYPE, means there is no data in device
+    // if it is PLACEHOLDER_NO_VALUE, means there is no data in device
     TsPrimitiveType timeLastValue = currentHitResult[currentHitResult.length - 1].getValue();
     // when there is no data, no need to append result if the query is GROUP BY or output of
     // aggregator is partial (final operator will produce NULL result)
     if (timeLastValue == PLACEHOLDER_NO_VALUE
-        && (groupingKeySize != 0 || tableAggregators.get(0).getStep().isOutputPartial())) {
+        && (groupingKeySize != 0
+            || tableAggregators.get(0).getStep().isOutputPartial()
+            || shouldSkipEmptyLastByResult(currentHitResult))) {
       outputDeviceIndex++;
       currentHitCacheIndex++;
       return;
@@ -710,7 +713,9 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
 
   @Override
   protected void updateResultTsBlock() {
-    appendAggregationResult();
+    if (!shouldSkipEmptyLastByResult()) {
+      appendAggregationResult();
+    }
 
     if (needUpdateCache && timeIterator.hasCachedTimeRange()) {
       if (lastRowCacheResults != null) {
@@ -725,6 +730,38 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
 
     // after appendAggregationResult invoked, aggregators must be cleared
     resetTableAggregators();
+  }
+
+  private boolean shouldSkipEmptyLastByResult() {
+    if (groupingKeySize != 0 || tableAggregators.isEmpty()) {
+      return false;
+    }
+    for (TableAggregator aggregator : tableAggregators) {
+      if (!(aggregator.getAccumulator() instanceof LastByAccumulator)) {
+        return false;
+      }
+      if (((LastByAccumulator) aggregator.getAccumulator()).hasInitResult()) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private boolean shouldSkipEmptyLastByResult(TimeValuePair[] currentHitResult) {
+    if (groupingKeySize != 0 || tableAggregators.isEmpty()) {
+      return false;
+    }
+    for (TableAggregator aggregator : tableAggregators) {
+      if (!(aggregator.getAccumulator() instanceof LastByAccumulator)) {
+        return false;
+      }
+    }
+    for (TimeValuePair timeValuePair : currentHitResult) {
+      if (timeValuePair.getValue() != PLACEHOLDER_NO_VALUE) {
+        return false;
+      }
+    }
+    return true;
   }
 
   @Override
