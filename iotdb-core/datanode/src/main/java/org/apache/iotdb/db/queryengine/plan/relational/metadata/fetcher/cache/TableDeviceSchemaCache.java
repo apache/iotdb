@@ -37,8 +37,8 @@ import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.im
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegion;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
-
 import org.apache.iotdb.rpc.subscription.annotation.TableModel;
+
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.StringArrayDeviceID;
