@@ -339,6 +339,7 @@ public class TTLCache {
   public void clear() {
     ttlCacheTree.removeAllChildren();
     ttlCacheTree.addChild(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD, Long.MAX_VALUE);
+    ttlCount = 1;
   }
 
   static class CacheNode {
