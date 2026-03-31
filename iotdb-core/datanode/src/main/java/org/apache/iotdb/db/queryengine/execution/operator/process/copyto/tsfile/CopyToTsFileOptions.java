@@ -21,20 +21,20 @@ package org.apache.iotdb.db.queryengine.execution.operator.process.copyto.tsfile
 
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
-import org.apache.iotdb.commons.schema.table.TsTable;
-import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.execution.operator.process.copyto.CopyToOptions;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.RelationPlan;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
-import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.type.TypeFactory;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -84,58 +84,59 @@ public class CopyToTsFileOptions implements CopyToOptions {
   @Override
   public void infer(
       Analysis analysis, RelationPlan queryRelationPlan, List<ColumnHeader> columnHeaders) {
-    List<Identifier> tables = queryRelationPlan.getScope().getTables();
-    TsTable onlyOneQueriedTable = null;
+    Collection<TableSchema> tables = analysis.getTables();
+    TableSchema onlyOneQueriedTable = null;
     if (tables != null && tables.size() == 1) {
-      onlyOneQueriedTable =
-          DataNodeTableCache.getInstance()
-              .getTable(analysis.getDatabaseName(), tables.get(0).toString(), false);
+      onlyOneQueriedTable = tables.iterator().next();
     }
     if (targetTableName == null) {
       targetTableName =
           onlyOneQueriedTable == null ? DEFAULT_TABLE_NAME : onlyOneQueriedTable.getTableName();
     }
     if (onlyOneQueriedTable != null) {
-      if (targetTimeColumn == null || targetTagColumns == null) {
-        inferTimeAndTags(onlyOneQueriedTable, columnHeaders);
-      }
+      inferTimeAndTagsWithTable(onlyOneQueriedTable, columnHeaders);
     }
     if (targetTimeColumn == null) {
-      generateNewTimeColumn = true;
-      targetTimeColumn = SqlConstant.TABLE_TIME_COLUMN_NAME;
+      boolean foundTimeColumn = inferTimeWithoutTable(columnHeaders);
+      if (foundTimeColumn) {
+        generateNewTimeColumn = true;
+        targetTimeColumn = SqlConstant.TABLE_TIME_COLUMN_NAME;
+      }
     }
     if (targetTagColumns == null) {
       targetTagColumns = Collections.emptySet();
     }
   }
 
-  private void inferTimeAndTags(TsTable tsTable, List<ColumnHeader> columnHeaders) {
+  private void inferTimeAndTagsWithTable(
+      TableSchema tableSchema, List<ColumnHeader> columnHeaders) {
     Map<String, ColumnHeader> columnName2ColumnHeaderMapInDataset = new HashMap<>();
     for (ColumnHeader columnHeader : columnHeaders) {
       columnName2ColumnHeaderMapInDataset.put(columnHeader.getColumnName(), columnHeader);
     }
     if (targetTagColumns == null) {
       boolean canMatchAllTags = true;
-      List<TsTableColumnSchema> tagColumnsInTsTable = tsTable.getTagColumnSchemaList();
-      for (TsTableColumnSchema tsTableColumnSchema : tagColumnsInTsTable) {
-        String columnName = tsTableColumnSchema.getColumnName();
+      List<ColumnSchema> tagColumnsInTsTable = tableSchema.getTagColumns();
+      for (ColumnSchema tsTableColumnSchema : tagColumnsInTsTable) {
+        String columnName = tsTableColumnSchema.getName();
         ColumnHeader columnHeaderInDataset = columnName2ColumnHeaderMapInDataset.get(columnName);
         if (columnHeaderInDataset == null
-            || columnHeaderInDataset.getColumnType() != tsTableColumnSchema.getDataType()) {
+            || TypeFactory.getType(columnHeaderInDataset.getColumnType())
+                != tsTableColumnSchema.getType()) {
           canMatchAllTags = false;
           break;
         }
       }
       if (canMatchAllTags) {
         this.targetTagColumns = new LinkedHashSet<>(tagColumnsInTsTable.size());
-        for (TsTableColumnSchema tagColumn : tagColumnsInTsTable) {
-          targetTagColumns.add(tagColumn.getColumnName());
+        for (ColumnSchema tagColumn : tagColumnsInTsTable) {
+          targetTagColumns.add(tagColumn.getName());
         }
       }
     }
 
     if (targetTimeColumn == null) {
-      String timeColumnInTsTable = tsTable.getTimeColumnName();
+      String timeColumnInTsTable = tableSchema.getTimeColumnName();
       if (timeColumnInTsTable != null) {
         ColumnHeader timeColumnHeader =
             columnName2ColumnHeaderMapInDataset.get(timeColumnInTsTable);
@@ -148,6 +149,16 @@ public class CopyToTsFileOptions implements CopyToOptions {
         this.targetTimeColumn = SqlConstant.TABLE_TIME_COLUMN_NAME;
       }
     }
+  }
+
+  private boolean inferTimeWithoutTable(List<ColumnHeader> columnHeaders) {
+    for (ColumnHeader columnHeader : columnHeaders) {
+      if (columnHeader.getColumnName().equals(SqlConstant.TABLE_TIME_COLUMN_NAME)) {
+        this.targetTimeColumn = columnHeader.getColumnName();
+        return false;
+      }
+    }
+    return true;
   }
 
   @Override

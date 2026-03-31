@@ -40,7 +40,6 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -131,21 +130,6 @@ public class TsFileFormatCopyToWriter implements IFormatCopyToWriter {
                     tagColumnIndexesInTsBlock,
                     fieldColumnIndexesInQueryTsBlock,
                     fieldColumnSchemas));
-  }
-
-  private ColumnHeader[] getColumnHeadersMatchTsBlock(
-      List<ColumnHeader> queryOutputColumnHeaders, int[] columnIndex2TsBlockColumnIndexList) {
-    Set<Integer> tsBlockIndexSet = new HashSet<>();
-    for (int tsBlockIndex : columnIndex2TsBlockColumnIndexList) {
-      tsBlockIndexSet.add(tsBlockIndex);
-    }
-
-    ColumnHeader[] columnHeadersMatchTsBlock = new ColumnHeader[tsBlockIndexSet.size()];
-    for (int i = 0; i < columnIndex2TsBlockColumnIndexList.length; i++) {
-      int tsBlockIndex = columnIndex2TsBlockColumnIndexList[i];
-      columnHeadersMatchTsBlock[tsBlockIndex] = queryOutputColumnHeaders.get(i);
-    }
-    return columnHeadersMatchTsBlock;
   }
 
   @Override
