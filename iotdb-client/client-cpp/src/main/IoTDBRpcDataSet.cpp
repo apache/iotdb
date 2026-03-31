@@ -189,7 +189,7 @@ bool IoTDBRpcDataSet::fetchResults() {
     client_->fetchResultsV2(resp, req);
     RpcUtils::verifySuccess(resp.status);
     moreData_ = resp.moreData;
-    if (!resp.hasResultSet || !moreData_) {
+    if (!resp.hasResultSet) {
         close();
     }
     else {
