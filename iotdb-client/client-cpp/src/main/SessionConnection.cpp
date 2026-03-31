@@ -209,7 +209,7 @@ std::unique_ptr<SessionDataSet> SessionConnection::executeQueryStatement(const s
     return std::unique_ptr<SessionDataSet>(new SessionDataSet(sql, resp.columns, resp.dataTypeList,
                                                               resp.columnNameIndexMap, resp.queryId, statementId,
                                                               client, sessionId, resp.queryResult, resp.ignoreTimeStamp,
-                                                              connectionTimeoutInMs, resp.moreData, fetchSize, zoneId,
+                                                              timeoutInMs, resp.moreData, fetchSize, zoneId,
                                                               timeFactor, resp.columnIndex2TsBlockColumnIndexList));
 }
 
