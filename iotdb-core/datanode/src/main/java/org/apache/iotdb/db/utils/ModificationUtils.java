@@ -145,6 +145,7 @@ public class ModificationUtils {
         for (TimeRange range : valueChunkMetadata.getDeleteIntervalList()) {
           if (range.contains(valueChunkMetadata.getStartTime(), valueChunkMetadata.getEndTime())) {
             valueChunkMetadataList.set(i, null);
+            modified = true;
             currentRemoved = true;
             break;
           } else {
