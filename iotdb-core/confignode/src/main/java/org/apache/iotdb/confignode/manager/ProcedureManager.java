@@ -388,7 +388,7 @@ public class ProcedureManager {
         this.executor.submitProcedure(procedure);
       }
     }
-    return waitingProcedureFinished(procedure);
+    return waitingProcedureFinished(procedure, PROCEDURE_WAIT_TIME_OUT << 1);
   }
 
   public TSStatus deleteLogicalView(TDeleteLogicalViewReq req) {
