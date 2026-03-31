@@ -82,6 +82,7 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.trigger.api.enums.TriggerEvent;
 
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -420,7 +421,12 @@ public class RegionWriteExecutor {
       final ISchemaRegion schemaRegion =
           schemaEngine.getSchemaRegion((SchemaRegionId) context.getRegionId());
       final RegionExecutionResult result =
-          checkQuotaBeforeCreatingTimeSeries(schemaRegion, node.getPath().getDevicePath(), 1);
+          checkQuotaAndTypeBeforeCreatingTimeSeries(
+              schemaRegion,
+              node.getPath().getDevicePath(),
+              1,
+              Collections.singletonList(node.getPath().getMeasurement()),
+              Collections.singletonList(node.getDataType()));
       if (result != null) {
         return result;
       }
@@ -475,8 +481,12 @@ public class RegionWriteExecutor {
       final ISchemaRegion schemaRegion =
           schemaEngine.getSchemaRegion((SchemaRegionId) context.getRegionId());
       final RegionExecutionResult result =
-          checkQuotaBeforeCreatingTimeSeries(
-              schemaRegion, node.getDevicePath(), node.getMeasurements().size());
+          checkQuotaAndTypeBeforeCreatingTimeSeries(
+              schemaRegion,
+              node.getDevicePath(),
+              node.getMeasurements().size(),
+              node.getMeasurements(),
+              node.getDataTypes());
       if (result != null) {
         return result;
       }
@@ -533,8 +543,12 @@ public class RegionWriteExecutor {
       for (final Map.Entry<PartialPath, MeasurementGroup> entry :
           node.getMeasurementGroupMap().entrySet()) {
         result =
-            checkQuotaBeforeCreatingTimeSeries(
-                schemaRegion, entry.getKey(), entry.getValue().getMeasurements().size());
+            checkQuotaAndTypeBeforeCreatingTimeSeries(
+                schemaRegion,
+                entry.getKey(),
+                entry.getValue().getMeasurements().size(),
+                entry.getValue().getMeasurements(),
+                entry.getValue().getDataTypes());
         if (result != null) {
           return result;
         }
@@ -649,8 +663,12 @@ public class RegionWriteExecutor {
       final ISchemaRegion schemaRegion =
           schemaEngine.getSchemaRegion((SchemaRegionId) context.getRegionId());
       final RegionExecutionResult result =
-          checkQuotaBeforeCreatingTimeSeries(
-              schemaRegion, node.getDevicePath(), node.getMeasurementGroup().size());
+          checkQuotaAndTypeBeforeCreatingTimeSeries(
+              schemaRegion,
+              node.getDevicePath(),
+              node.getMeasurementGroup().size(),
+              node.getMeasurementGroup().getMeasurements(),
+              node.getMeasurementGroup().getDataTypes());
       if (result != null) {
         return result;
       }
@@ -736,8 +754,12 @@ public class RegionWriteExecutor {
       for (final Map.Entry<PartialPath, Pair<Boolean, MeasurementGroup>> deviceEntry :
           node.getDeviceMap().entrySet()) {
         result =
-            checkQuotaBeforeCreatingTimeSeries(
-                schemaRegion, deviceEntry.getKey(), deviceEntry.getValue().getRight().size());
+            checkQuotaAndTypeBeforeCreatingTimeSeries(
+                schemaRegion,
+                deviceEntry.getKey(),
+                deviceEntry.getValue().getRight().size(),
+                deviceEntry.getValue().getRight().getMeasurements(),
+                deviceEntry.getValue().getRight().getDataTypes());
         if (result != null) {
           return result;
         }
@@ -823,8 +845,22 @@ public class RegionWriteExecutor {
      *
      * @return null if the quota is not exceeded, otherwise return the execution result.
      */
-    private RegionExecutionResult checkQuotaBeforeCreatingTimeSeries(
-        final ISchemaRegion schemaRegion, final PartialPath path, final int size) {
+    private RegionExecutionResult checkQuotaAndTypeBeforeCreatingTimeSeries(
+        final ISchemaRegion schemaRegion,
+        final PartialPath path,
+        final int size,
+        final List<String> measurements,
+        final List<TSDataType> dataTypes) {
+      for (int i = 0; i < measurements.size(); ++i) {
+        if (dataTypes.get(i) == TSDataType.OBJECT) {
+          final String errorStr =
+              "The object type series "
+                  + path.concatAsMeasurementPath(measurements.get(i))
+                  + " is not supported.";
+          return RegionExecutionResult.create(
+              false, errorStr, RpcUtils.getStatus(TSStatusCode.METADATA_ERROR, errorStr));
+        }
+      }
       try {
         schemaRegion.checkSchemaQuota(path, size);
       } catch (final SchemaQuotaExceededException e) {
@@ -949,8 +985,12 @@ public class RegionWriteExecutor {
         ISchemaRegion schemaRegion =
             schemaEngine.getSchemaRegion((SchemaRegionId) context.getRegionId());
         RegionExecutionResult result =
-            checkQuotaBeforeCreatingTimeSeries(
-                schemaRegion, node.getActivatePath(), templateSetInfo.left.getMeasurementNumber());
+            checkQuotaAndTypeBeforeCreatingTimeSeries(
+                schemaRegion,
+                node.getActivatePath(),
+                templateSetInfo.left.getMeasurementNumber(),
+                Collections.emptyList(),
+                Collections.emptyList());
         if (result == null) {
           return receivedFromPipe
               ? super.visitPipeEnrichedWritePlanNode(new PipeEnrichedWritePlanNode(node), context)
@@ -992,8 +1032,12 @@ public class RegionWriteExecutor {
                 false, message, RpcUtils.getStatus(TSStatusCode.METADATA_ERROR, message));
           }
           RegionExecutionResult result =
-              checkQuotaBeforeCreatingTimeSeries(
-                  schemaRegion, devicePath, templateSetInfo.left.getMeasurementNumber());
+              checkQuotaAndTypeBeforeCreatingTimeSeries(
+                  schemaRegion,
+                  devicePath,
+                  templateSetInfo.left.getMeasurementNumber(),
+                  Collections.emptyList(),
+                  Collections.emptyList());
           if (result != null) {
             return result;
           }
@@ -1039,8 +1083,12 @@ public class RegionWriteExecutor {
                 false, message, RpcUtils.getStatus(TSStatusCode.METADATA_ERROR, message));
           }
           RegionExecutionResult result =
-              checkQuotaBeforeCreatingTimeSeries(
-                  schemaRegion, entry.getKey(), templateSetInfo.left.getMeasurementNumber());
+              checkQuotaAndTypeBeforeCreatingTimeSeries(
+                  schemaRegion,
+                  entry.getKey(),
+                  templateSetInfo.left.getMeasurementNumber(),
+                  Collections.emptyList(),
+                  Collections.emptyList());
           if (result != null) {
             return result;
           }
