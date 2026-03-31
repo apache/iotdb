@@ -475,16 +475,6 @@ public class CommonConfig {
     this.encryptDecryptProviderParameter = encryptDecryptProviderParameter;
   }
 
-  public void setUserEncryptTokenHint(String userEncryptTokenHint) {
-    if (userEncryptTokenHint != null && !userEncryptTokenHint.isEmpty()) {
-      this.userEncryptTokenHint = userEncryptTokenHint;
-    }
-  }
-
-  public String getUserEncryptTokenHint() {
-    return userEncryptTokenHint;
-  }
-
   public String getAuthorizerProvider() {
     return authorizerProvider;
   }
