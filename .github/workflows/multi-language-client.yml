@@ -120,7 +120,7 @@ jobs:
           cd iotdb-client 
           git clone https://github.com/apache/iotdb-client-go.git 
           cd iotdb-client-go
-          git checkout rc/1.3.3
+          git checkout dev/1.3
           make e2e_test_for_parent_git_repo e2e_test_clean_for_parent_git_repo
 
   python:
@@ -128,7 +128,7 @@ jobs:
       fail-fast: false
       max-parallel: 15
       matrix:
-        python: [ '3.6', '3.x' ]
+        python: [ '3.x' ]
     runs-on: ${{ (matrix.python == '3.6' && 'ubuntu-20.04') || 'ubuntu-latest' }}
 
     steps:
