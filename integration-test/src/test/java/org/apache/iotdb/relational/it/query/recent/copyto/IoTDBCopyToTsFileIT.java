@@ -578,4 +578,90 @@ public class IoTDBCopyToTsFileIT {
       }
     }
   }
+
+  @Test
+  public void testSpecifiedDatabaseTable()
+      throws IoTDBConnectionException, StatementExecutionException, IOException {
+    try (ITableSession session =
+        EnvFactory.getEnv().getTableSessionConnectionWithDB(DATABASE_NAME)) {
+
+      SessionDataSet sessionDataSet =
+          session.executeQueryStatement("copy test_db.table1 to '12.tsfile'");
+      SessionDataSet.DataIterator iterator = sessionDataSet.iterator();
+      while (iterator.next()) {
+        targetFilePath = iterator.getString(1);
+        long rowCount = iterator.getLong(2);
+        long deviceCount = iterator.getLong(3);
+        long sizeInBytes = iterator.getLong(4);
+        String tableName = iterator.getString(5);
+        String timeColumn = iterator.getString(6);
+        String tagColumns = iterator.getString(7);
+
+        Assert.assertTrue(new File(targetFilePath).exists());
+        Assert.assertEquals(6, rowCount);
+        Assert.assertEquals(2, deviceCount);
+        Assert.assertTrue(sizeInBytes > 0);
+        Assert.assertEquals("table1", tableName);
+        Assert.assertEquals("time", timeColumn);
+        Assert.assertEquals("[tag1, tag2]", tagColumns);
+
+        try (TsFileSequenceReader reader = new TsFileSequenceReader(targetFilePath)) {
+          Map<IDeviceID, List<TimeseriesMetadata>> allTimeseriesMetadata =
+              reader.getAllTimeseriesMetadata(false);
+          Assert.assertEquals(2, allTimeseriesMetadata.size());
+          List<TimeseriesMetadata> timeseriesMetadataList =
+              allTimeseriesMetadata.get(new StringArrayDeviceID("table1", "t1_1", "t2"));
+          Assert.assertEquals(3, timeseriesMetadataList.size());
+          Assert.assertEquals(1, timeseriesMetadataList.get(0).getStatistics().getStartTime());
+          Assert.assertEquals(3, timeseriesMetadataList.get(0).getStatistics().getEndTime());
+          timeseriesMetadataList =
+              allTimeseriesMetadata.get(new StringArrayDeviceID("table1", "t1_2", "t2"));
+          Assert.assertEquals(3, timeseriesMetadataList.size());
+          Assert.assertEquals(1, timeseriesMetadataList.get(0).getStatistics().getStartTime());
+          Assert.assertEquals(3, timeseriesMetadataList.get(0).getStatistics().getEndTime());
+        }
+      }
+    }
+  }
+
+  @Test
+  public void testFindTimeColumn()
+      throws IoTDBConnectionException, StatementExecutionException, IOException {
+    try (ITableSession session =
+        EnvFactory.getEnv().getTableSessionConnectionWithDB(DATABASE_NAME)) {
+
+      SessionDataSet sessionDataSet =
+          session.executeQueryStatement(
+              "copy (select time, table1.s1 as s1_1, table2.s1 as s1_2 from table1 join table2 using(time) limit 1) to '13.tsfile'");
+      SessionDataSet.DataIterator iterator = sessionDataSet.iterator();
+      while (iterator.next()) {
+        targetFilePath = iterator.getString(1);
+        long rowCount = iterator.getLong(2);
+        long deviceCount = iterator.getLong(3);
+        long sizeInBytes = iterator.getLong(4);
+        String tableName = iterator.getString(5);
+        String timeColumn = iterator.getString(6);
+        String tagColumns = iterator.getString(7);
+
+        Assert.assertTrue(new File(targetFilePath).exists());
+        Assert.assertEquals(1, rowCount);
+        Assert.assertEquals(1, deviceCount);
+        Assert.assertTrue(sizeInBytes > 0);
+        Assert.assertEquals("default", tableName);
+        Assert.assertEquals("time", timeColumn);
+        Assert.assertEquals("[]", tagColumns);
+
+        try (TsFileSequenceReader reader = new TsFileSequenceReader(targetFilePath)) {
+          Map<IDeviceID, List<TimeseriesMetadata>> allTimeseriesMetadata =
+              reader.getAllTimeseriesMetadata(false);
+          Assert.assertEquals(1, allTimeseriesMetadata.size());
+          List<TimeseriesMetadata> timeseriesMetadataList =
+              allTimeseriesMetadata.get(new StringArrayDeviceID("default"));
+          Assert.assertEquals(3, timeseriesMetadataList.size());
+          Assert.assertEquals(1, timeseriesMetadataList.get(0).getStatistics().getStartTime());
+          Assert.assertEquals(1, timeseriesMetadataList.get(0).getStatistics().getEndTime());
+        }
+      }
+    }
+  }
 }
