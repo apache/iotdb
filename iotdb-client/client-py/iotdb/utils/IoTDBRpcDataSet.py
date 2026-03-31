@@ -212,7 +212,10 @@ class IoTDBRpcDataSet(object):
                 data_array = np.array(data_array, dtype=object)
             else:
                 raise RuntimeError("unsupported data type {}.".format(data_type))
-            if data_array.dtype.byteorder == ">":
+            if (
+                isinstance(data_array.dtype, np.dtype)
+                and data_array.dtype.byteorder == ">"
+            ):
                 data_array = data_array.byteswap().view(
                     data_array.dtype.newbyteorder("<")
                 )
@@ -355,7 +358,10 @@ class IoTDBRpcDataSet(object):
                     data_array = pd.Series(data_array).apply(parse_int_to_date)
                 else:
                     raise RuntimeError("unsupported data type {}.".format(data_type))
-                if data_array.dtype.byteorder == ">":
+                if (
+                    isinstance(data_array.dtype, np.dtype)
+                    and data_array.dtype.byteorder == ">"
+                ):
                     data_array = data_array.byteswap().view(
                         data_array.dtype.newbyteorder("<")
                     )
