@@ -110,6 +110,9 @@ public class CopyToTsFileOptions implements CopyToOptions {
 
   private void inferTimeAndTagsWithTable(
       TableSchema tableSchema, List<ColumnHeader> columnHeaders) {
+    if (targetTimeColumn != null && targetTagColumns != null) {
+      return;
+    }
     Map<String, ColumnHeader> columnName2ColumnHeaderMapInDataset = new HashMap<>();
     for (ColumnHeader columnHeader : columnHeaders) {
       columnName2ColumnHeaderMapInDataset.put(columnHeader.getColumnName(), columnHeader);
