@@ -92,8 +92,11 @@ public class WebSocketConnectorServer extends WebSocketServer {
       final PriorityBlockingQueue<EventWaitingForTransfer> eventTransferQueue =
           eventsWaitingForTransfer.remove(pipeName);
       while (!eventTransferQueue.isEmpty()) {
-        final List<EventWaitingForTransfer> eventWrappers = new ArrayList<>(eventTransferQueue);
-        eventTransferQueue.clear();
+        final List<EventWaitingForTransfer> eventWrappers;
+        synchronized (eventTransferQueue) {
+          eventWrappers = new ArrayList<>(eventTransferQueue);
+          eventTransferQueue.clear();
+        }
         eventWrappers.forEach(
             (eventWrapper) -> {
               if (eventWrapper.event instanceof EnrichedEvent) {
@@ -273,8 +276,10 @@ public class WebSocketConnectorServer extends WebSocketServer {
 
     LOGGER.warn(
         "The tablet of commitId: {} can't be parsed by client, it will be retried later.", eventId);
-    eventTransferQueue.put(
-        new EventWaitingForTransfer(eventId, eventWrapper.connector, eventWrapper.event));
+    synchronized (eventTransferQueue) {
+      eventTransferQueue.put(
+          new EventWaitingForTransfer(eventId, eventWrapper.connector, eventWrapper.event));
+    }
   }
 
   @Override
@@ -324,7 +329,9 @@ public class WebSocketConnectorServer extends WebSocketServer {
       }
     }
 
-    queue.put(new EventWaitingForTransfer(eventIdGenerator.incrementAndGet(), connector, event));
+    synchronized (queue) {
+      queue.put(new EventWaitingForTransfer(eventIdGenerator.incrementAndGet(), connector, event));
+    }
   }
 
   private class TransferThread extends Thread {
@@ -350,8 +357,9 @@ public class WebSocketConnectorServer extends WebSocketServer {
           }
 
           try {
-            final EventWaitingForTransfer queueElement = queue.take();
+            EventWaitingForTransfer queueElement;
             synchronized (queue) {
+              queueElement = queue.take();
               queue.notifyAll();
             }
             transfer(pipeName, queueElement);
