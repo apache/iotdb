@@ -213,6 +213,7 @@ bool IoTDBRpcDataSet::fetchResults() {
     TSFetchResultsResp resp;
     client_->fetchResultsV2(resp, req);
     RpcUtils::verifySuccess(resp.status);
+    moreData_ = resp.moreData;
     if (!resp.hasResultSet) {
         close();
     }
