@@ -119,7 +119,9 @@ class OpcUaKeyStoreLoader {
       final PublicKey serverPublicKey = serverCertificate.getPublicKey();
       serverKeyPair = new KeyPair(serverPublicKey, (PrivateKey) serverPrivateKey);
     } else {
-      throw new Exception("Invalid keyStore");
+      throw new Exception(
+          "Invalid keyStore, the serverPrivateKey is "
+              + (serverPrivateKey != null ? serverPrivateKey.getClass().getSimpleName() : "null"));
     }
 
     return this;
