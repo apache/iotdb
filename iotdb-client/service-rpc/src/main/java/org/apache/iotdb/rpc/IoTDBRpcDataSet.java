@@ -328,9 +328,16 @@ public class IoTDBRpcDataSet {
     return getBooleanByTsBlockColumnIndex(getTsBlockColumnIndexForColumnName(columnName));
   }
 
+  // Note: tsBlockColumnIndex < 0 indicates the time pseudo-column in tree model.
+  // Only getLong, getString and getObject support reading the time column directly.
+  // The other strictly-typed getters throw StatementExecutionException to prevent
+  // ArrayIndexOutOfBoundsException from TsBlock.getColumn with a negative index.
   private boolean getBooleanByTsBlockColumnIndex(int tsBlockColumnIndex)
       throws StatementExecutionException {
     checkRecord();
+    if (tsBlockColumnIndex < 0) {
+      throw new StatementExecutionException("Cannot read boolean from time column");
+    }
     if (!isNull(tsBlockColumnIndex, tsBlockIndex)) {
       lastReadWasNull = false;
       return curTsBlock.getColumn(tsBlockColumnIndex).getBoolean(tsBlockIndex);
@@ -351,6 +358,9 @@ public class IoTDBRpcDataSet {
   private double getDoubleByTsBlockColumnIndex(int tsBlockColumnIndex)
       throws StatementExecutionException {
     checkRecord();
+    if (tsBlockColumnIndex < 0) {
+      throw new StatementExecutionException("Cannot read double from time column");
+    }
     if (!isNull(tsBlockColumnIndex, tsBlockIndex)) {
       lastReadWasNull = false;
       return curTsBlock.getColumn(tsBlockColumnIndex).getDouble(tsBlockIndex);
@@ -371,6 +381,9 @@ public class IoTDBRpcDataSet {
   private float getFloatByTsBlockColumnIndex(int tsBlockColumnIndex)
       throws StatementExecutionException {
     checkRecord();
+    if (tsBlockColumnIndex < 0) {
+      throw new StatementExecutionException("Cannot read float from time column");
+    }
     if (!isNull(tsBlockColumnIndex, tsBlockIndex)) {
       lastReadWasNull = false;
       return curTsBlock.getColumn(tsBlockColumnIndex).getFloat(tsBlockIndex);
@@ -391,6 +404,9 @@ public class IoTDBRpcDataSet {
   private int getIntByTsBlockColumnIndex(int tsBlockColumnIndex)
       throws StatementExecutionException {
     checkRecord();
+    if (tsBlockColumnIndex < 0) {
+      throw new StatementExecutionException("Cannot read int32 from time column");
+    }
     if (!isNull(tsBlockColumnIndex, tsBlockIndex)) {
       lastReadWasNull = false;
       TSDataType type = curTsBlock.getColumn(tsBlockColumnIndex).getDataType();
@@ -449,6 +465,9 @@ public class IoTDBRpcDataSet {
   private Binary getBinaryTsBlockColumnIndex(int tsBlockColumnIndex)
       throws StatementExecutionException {
     checkRecord();
+    if (tsBlockColumnIndex < 0) {
+      throw new StatementExecutionException("Cannot read binary from time column");
+    }
     if (!isNull(tsBlockColumnIndex, tsBlockIndex)) {
       lastReadWasNull = false;
       return curTsBlock.getColumn(tsBlockColumnIndex).getBinary(tsBlockIndex);
