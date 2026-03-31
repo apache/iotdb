@@ -358,8 +358,8 @@ public class WebSocketConnectorServer extends WebSocketServer {
 
           try {
             EventWaitingForTransfer queueElement;
+            queueElement = queue.take();
             synchronized (queue) {
-              queueElement = queue.take();
               queue.notifyAll();
             }
             transfer(pipeName, queueElement);
