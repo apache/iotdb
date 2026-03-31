@@ -101,6 +101,7 @@ public class ConfigTableNode implements IConfigMNode {
   @Override
   public void setName(final String name) {
     tableNodeInfo.setName(name);
+    this.fullPath = null;
   }
 
   @Override
