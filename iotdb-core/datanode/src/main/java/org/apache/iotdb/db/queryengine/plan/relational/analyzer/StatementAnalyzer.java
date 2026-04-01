@@ -80,6 +80,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateView;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Delete;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DeleteDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DereferenceExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DescribeQuery;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DescribeTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropDB;
@@ -466,6 +467,12 @@ public class StatementAnalyzer {
     @Override
     protected Scope visitDescribeTable(DescribeTable node, Optional<Scope> context) {
       throw new SemanticException("Describe Table statement is not supported yet.");
+    }
+
+    @Override
+    protected Scope visitDescribeQuery(final DescribeQuery node, final Optional<Scope> context) {
+      analysis.setFinishQueryAfterAnalyze();
+      return visitQuery(node.getQuery(), context);
     }
 
     @Override

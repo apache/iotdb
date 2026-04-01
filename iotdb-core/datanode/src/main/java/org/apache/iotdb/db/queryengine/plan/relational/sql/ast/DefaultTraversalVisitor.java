@@ -93,6 +93,12 @@ public abstract class DefaultTraversalVisitor<C> extends AstVisitor<Void, C> {
   }
 
   @Override
+  protected Void visitDescribeQuery(final DescribeQuery node, final C context) {
+    process(node.getQuery(), context);
+    return null;
+  }
+
+  @Override
   protected Void visitWith(With node, C context) {
     for (WithQuery query : node.getQueries()) {
       process(query, context);

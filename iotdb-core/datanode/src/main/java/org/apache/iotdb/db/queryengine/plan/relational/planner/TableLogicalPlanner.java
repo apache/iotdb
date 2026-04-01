@@ -103,7 +103,7 @@ import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.LOGI
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.LOGICAL_PLAN_OPTIMIZE;
 import static org.apache.iotdb.db.queryengine.plan.relational.metadata.MetadataUtil.createQualifiedObjectName;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.QueryPlanner.visibleFields;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode.COLUMN_NAME_PREFIX;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode.buildFallbackColumnName;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDevice.COUNT_DEVICE_HEADER_STRING;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDevice.getDeviceColumnHeaderList;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager.getTSDataType;
@@ -341,12 +341,8 @@ public class TableLogicalPlanner {
 
         if (name == null) {
           String originColumnName = field.getOriginColumnName().orElse(null);
-          StringBuilder stringBuilder = new StringBuilder(COLUMN_NAME_PREFIX).append(columnNumber);
           // process of expr with Column, we record originColumnName in Field when analyze
-          if (originColumnName != null) {
-            stringBuilder.append('_').append(originColumnName);
-          }
-          name = stringBuilder.toString();
+          name = buildFallbackColumnName(columnNumber, originColumnName);
         }
 
         names.add(name);

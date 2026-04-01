@@ -48,6 +48,15 @@ public class OutputNode extends SingleChildProcessNode {
 
   public static final String COLUMN_NAME_PREFIX = "_col";
 
+  public static String buildFallbackColumnName(
+      final int columnNumber, final String originColumnName) {
+    final StringBuilder builderName = new StringBuilder(COLUMN_NAME_PREFIX).append(columnNumber);
+    if (originColumnName != null) {
+      builderName.append('_').append(originColumnName);
+    }
+    return builderName.toString();
+  }
+
   public OutputNode(
       PlanNodeId id, PlanNode child, List<String> columnNames, List<Symbol> outputSymbols) {
     super(id, child);

@@ -53,6 +53,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.describeQueryColumnHeaders;
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.describeTableColumnHeaders;
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.describeTableDetailsColumnHeaders;
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.showDBColumnHeaders;
@@ -430,6 +431,96 @@ public class IoTDBTableIT {
           assertEquals(columnNames[cnt], resultSet.getString(1));
           assertEquals(dataTypes[cnt], resultSet.getString(2));
           assertEquals(categories[cnt], resultSet.getString(3));
+          cnt++;
+        }
+        assertEquals(columnNames.length, cnt);
+      }
+
+      columnNames = new String[] {"region_id", "_col1"};
+      dataTypes = new String[] {"STRING", "FLOAT"};
+      try (final ResultSet resultSet =
+          statement.executeQuery(
+              "describe select region_id, max(temperature) from test1.table1 group by region_id")) {
+        int cnt = 0;
+        ResultSetMetaData metaData = resultSet.getMetaData();
+        assertEquals(describeQueryColumnHeaders.size(), metaData.getColumnCount());
+        for (int i = 0; i < describeQueryColumnHeaders.size(); i++) {
+          assertEquals(
+              describeQueryColumnHeaders.get(i).getColumnName(), metaData.getColumnName(i + 1));
+        }
+        while (resultSet.next()) {
+          assertEquals(columnNames[cnt], resultSet.getString(1));
+          assertEquals(dataTypes[cnt], resultSet.getString(2));
+          cnt++;
+        }
+        assertEquals(columnNames.length, cnt);
+      }
+
+      // describe query: last + group by
+      columnNames = new String[] {"last_time", "last_temp"};
+      dataTypes = new String[] {"TIMESTAMP", "FLOAT"};
+      try (final ResultSet resultSet =
+          statement.executeQuery(
+              "describe select last(time) as last_time, last(temperature) as last_temp "
+                  + "from test1.table1")) {
+        int cnt = 0;
+        ResultSetMetaData metaData = resultSet.getMetaData();
+        assertEquals(describeQueryColumnHeaders.size(), metaData.getColumnCount());
+        for (int i = 0; i < describeQueryColumnHeaders.size(); i++) {
+          assertEquals(
+              describeQueryColumnHeaders.get(i).getColumnName(), metaData.getColumnName(i + 1));
+        }
+        while (resultSet.next()) {
+          assertEquals(columnNames[cnt], resultSet.getString(1));
+          assertEquals(dataTypes[cnt], resultSet.getString(2));
+          cnt++;
+        }
+        assertEquals(columnNames.length, cnt);
+      }
+
+      // describe query: date_bin + group by + aggregate
+      columnNames = new String[] {"bucket", "region_id", "max_t"};
+      dataTypes = new String[] {"TIMESTAMP", "STRING", "FLOAT"};
+      try (final ResultSet resultSet =
+          statement.executeQuery(
+              "describe select date_bin(5s, time) as bucket, region_id, max(temperature) as max_t "
+                  + "from test1.table1 group by 1, 2")) {
+        int cnt = 0;
+        ResultSetMetaData metaData = resultSet.getMetaData();
+        assertEquals(describeQueryColumnHeaders.size(), metaData.getColumnCount());
+        for (int i = 0; i < describeQueryColumnHeaders.size(); i++) {
+          assertEquals(
+              describeQueryColumnHeaders.get(i).getColumnName(), metaData.getColumnName(i + 1));
+        }
+        while (resultSet.next()) {
+          assertEquals(columnNames[cnt], resultSet.getString(1));
+          assertEquals(dataTypes[cnt], resultSet.getString(2));
+          cnt++;
+        }
+        assertEquals(columnNames.length, cnt);
+      }
+
+      // describe query: raw row scan (no aggregation)
+      columnNames =
+          new String[] {
+            "time", "region_id", "plant_id", "device_id", "model", "temperature", "humidity"
+          };
+      dataTypes =
+          new String[] {"TIMESTAMP", "STRING", "STRING", "STRING", "STRING", "FLOAT", "DOUBLE"};
+      try (final ResultSet resultSet =
+          statement.executeQuery(
+              "describe select time, region_id, plant_id, device_id, model, temperature, humidity "
+                  + "from test1.table1 where region_id = 'r1'")) {
+        int cnt = 0;
+        ResultSetMetaData metaData = resultSet.getMetaData();
+        assertEquals(describeQueryColumnHeaders.size(), metaData.getColumnCount());
+        for (int i = 0; i < describeQueryColumnHeaders.size(); i++) {
+          assertEquals(
+              describeQueryColumnHeaders.get(i).getColumnName(), metaData.getColumnName(i + 1));
+        }
+        while (resultSet.next()) {
+          assertEquals(columnNames[cnt], resultSet.getString(1));
+          assertEquals(dataTypes[cnt], resultSet.getString(2));
           cnt++;
         }
         assertEquals(columnNames.length, cnt);

@@ -732,6 +732,11 @@ public class ColumnHeaderConstant {
           new ColumnHeader(COLUMN_DATA_TYPE, TSDataType.TEXT),
           new ColumnHeader(COLUMN_CATEGORY, TSDataType.TEXT));
 
+  public static final List<ColumnHeader> describeQueryColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(COLUMN_NAME, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_DATA_TYPE, TSDataType.TEXT));
+
   public static final List<ColumnHeader> describeTableDetailsColumnHeaders =
       ImmutableList.of(
           new ColumnHeader(COLUMN_NAME, TSDataType.TEXT),
