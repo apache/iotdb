@@ -83,14 +83,14 @@ public class LoadTsFileConfigurator {
 
   public static void validateDatabaseLevelParam(final String databaseLevel) {
     try {
-      int level = Integer.parseInt(databaseLevel);
+      final int level = Integer.parseInt(databaseLevel);
       if (level < DATABASE_LEVEL_MIN_VALUE) {
         throw new SemanticException(
             String.format(
                 "Given database level %d is less than the minimum value %d, please input a valid database level.",
                 level, DATABASE_LEVEL_MIN_VALUE));
       }
-    } catch (Exception e) {
+    } catch (final NumberFormatException e) {
       throw new SemanticException(
           String.format(
               "Given database level %s is not a valid integer, please input a valid database level.",
