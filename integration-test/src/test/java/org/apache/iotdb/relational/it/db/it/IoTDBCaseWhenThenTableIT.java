@@ -89,6 +89,16 @@ public class IoTDBCaseWhenThenTableIT {
   }
 
   @Test
+  public void testIfWithCastedDefaultType() {
+    String[] retArray = new String[] {"0,", "0,", "2,", "3,"};
+    tableResultSetEqualTest(
+        "select if(s2 > 1, s2, cast(0 as int64)) from table3 limit 4",
+        expectedHeader,
+        retArray,
+        DATABASE);
+  }
+
+  @Test
   public void testKind1Basic() {
     String[] retArray = new String[] {"99,", "9999,", "9999,", "999,"};
     tableResultSetEqualTest(
