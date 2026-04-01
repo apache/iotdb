@@ -23,7 +23,6 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.authorizer.BasicAuthorizer;
 import org.apache.iotdb.commons.auth.authorizer.IAuthorizer;
-import org.apache.iotdb.commons.auth.authorizer.OpenIdAuthorizer;
 import org.apache.iotdb.commons.auth.entity.PathPrivilege;
 import org.apache.iotdb.commons.auth.entity.PriPrivilegeType;
 import org.apache.iotdb.commons.auth.entity.Role;
@@ -96,14 +95,7 @@ public class AuthorInfo implements SnapshotProcessor {
       status = authorizer.login(username, password);
       if (status) {
         // Bring this user's permission information back to the datanode for caching
-        if (authorizer instanceof OpenIdAuthorizer) {
-          username = ((OpenIdAuthorizer) authorizer).getIoTDBUserName(username);
-          result = getUserPermissionInfo(username);
-          result.getUserInfo().setIsOpenIdUser(true);
-        } else {
-          result = getUserPermissionInfo(username);
-        }
-
+        result = getUserPermissionInfo(username);
         result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Login successfully"));
       } else {
         result = AuthUtils.generateEmptyPermissionInfoResp();

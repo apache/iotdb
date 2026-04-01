@@ -53,9 +53,6 @@ public class CommonConfig {
   public static final String SYSTEM_CONFIG_TEMPLATE_NAME = "iotdb-system.properties.template";
   private static final Logger logger = LoggerFactory.getLogger(CommonConfig.class);
 
-  // Open ID Secret
-  private String openIdProviderUrl = "";
-
   // The authorizer provider class which extends BasicAuthorizer
   private String authorizerProvider =
       "org.apache.iotdb.commons.auth.authorizer.LocalFileAuthorizer";
@@ -476,14 +473,6 @@ public class CommonConfig {
 
   public void setEncryptDecryptProviderParameter(String encryptDecryptProviderParameter) {
     this.encryptDecryptProviderParameter = encryptDecryptProviderParameter;
-  }
-
-  public String getOpenIdProviderUrl() {
-    return openIdProviderUrl;
-  }
-
-  public void setOpenIdProviderUrl(String openIdProviderUrl) {
-    this.openIdProviderUrl = openIdProviderUrl;
   }
 
   public String getAuthorizerProvider() {
