@@ -328,8 +328,17 @@ public abstract class PipePattern {
     final List<PipePattern> sortedPatterns = new ArrayList<>(patterns);
     sortedPatterns.sort(
         (o1, o2) -> {
-          final PartialPath p1 = o1.getBaseInclusionPaths().get(0);
-          final PartialPath p2 = o2.getBaseInclusionPaths().get(0);
+          final List<PartialPath> p1List = o1.getBaseInclusionPaths();
+          final List<PartialPath> p2List = o2.getBaseInclusionPaths();
+
+          if (p1List.isEmpty()) {
+            return p2List.isEmpty() ? 1 : -1;
+          }
+
+          // We can only approximate comparison here since TreePattern represents multiple paths.
+          // We use the first inclusion path as a representative.
+          final PartialPath p1 = p1List.get(0);
+          final PartialPath p2 = p2List.get(0);
 
           final int lenCompare = Integer.compare(p1.getNodeLength(), p2.getNodeLength());
           if (lenCompare != 0) {

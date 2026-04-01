@@ -722,7 +722,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
               MESSAGE_PIPE_NOT_ENOUGH_MEMORY,
               needMemory,
               freeMemorySizeInBytes,
-              freeMemorySizeInBytes,
+              reservedMemorySizeInBytes,
               PipeMemoryManager.getTotalMemorySizeInBytes());
       LOGGER.warn(message);
       throw new PipeException(message);
