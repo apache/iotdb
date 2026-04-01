@@ -34,6 +34,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTopic;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateView;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Delete;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DescribeTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropFunction;
@@ -1709,6 +1710,13 @@ public final class SqlFormatter {
           builder.append(",\n");
         }
       }
+    }
+
+    @Override
+    protected Void visitDescribeTable(DescribeTable node, Integer indent) {
+      builder.append("DESCRIBE ");
+      builder.append(node.getTable().toString());
+      return null;
     }
 
     @Override

@@ -25,6 +25,7 @@ import org.apache.iotdb.db.queryengine.transformation.datastructure.iterator.TVL
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.block.column.TimeColumn;
 import org.apache.tsfile.utils.Binary;
 
 import java.io.IOException;
@@ -183,16 +184,16 @@ public class ElasticSerializableTVList {
         consumed = total;
         if (begin == 0) {
           // No need to copy if the columns do not split
-          insertedTimeColumn = timeColumn;
+          insertedTimeColumn = ensureTimeColumn(timeColumn);
           insertedValueColumn = valueColumn;
         } else {
-          insertedTimeColumn = timeColumn.getRegionCopy(begin, consumed);
+          insertedTimeColumn = ensureTimeColumn(timeColumn.getRegionCopy(begin, consumed));
           insertedValueColumn = valueColumn.getRegionCopy(begin, consumed);
         }
       } else {
         consumed = internalTVListCapacity - pointCount % internalTVListCapacity;
         // Construct sub-regions
-        insertedTimeColumn = timeColumn.getRegionCopy(begin, consumed);
+        insertedTimeColumn = ensureTimeColumn(timeColumn.getRegionCopy(begin, consumed));
         insertedValueColumn = valueColumn.getRegionCopy(begin, consumed);
       }
 
@@ -283,5 +284,16 @@ public class ElasticSerializableTVList {
       putKey(targetIndex);
       return internalTVList.get(targetIndex);
     }
+  }
+
+  private Column ensureTimeColumn(Column column) {
+    if (column instanceof TimeColumn) {
+      return column;
+    }
+    long[] times = new long[column.getPositionCount()];
+    for (int i = 0; i < times.length; i++) {
+      times[i] = column.getLong(i);
+    }
+    return new TimeColumn(column.getPositionCount(), times);
   }
 }

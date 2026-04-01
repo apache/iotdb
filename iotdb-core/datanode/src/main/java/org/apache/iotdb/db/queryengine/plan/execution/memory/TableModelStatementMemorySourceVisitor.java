@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -34,16 +34,21 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.TableD
 import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.TableDistributedPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDevice;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DescribeQuery;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Explain;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
 
+import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -128,6 +133,50 @@ public class TableModelStatementMemorySourceVisitor
       final CountDevice node, final TableModelStatementMemorySourceContext context) {
     return new StatementMemorySource(
         node.getTsBlock(context.getAnalysis()), node.getDataSetHeader());
+  }
+
+  @Override
+  public StatementMemorySource visitDescribeQuery(
+      final DescribeQuery node, final TableModelStatementMemorySourceContext context) {
+
+    List<ColumnHeader> columnHeaders = new ArrayList<>();
+    // Jackie's requested lowercase headers
+    columnHeaders.add(new ColumnHeader("column_name", TSDataType.TEXT));
+    columnHeaders.add(new ColumnHeader("column_type", TSDataType.TEXT));
+
+    DatasetHeader datasetHeader = new DatasetHeader(columnHeaders, true);
+
+    List<String> columnNames = new ArrayList<>();
+    List<String> columnTypes = new ArrayList<>();
+
+    context
+        .getAnalysis()
+        .getOutputDescriptor()
+        .getVisibleFields()
+        .forEach(
+            field -> {
+              columnNames.add(field.getName().orElse("unknown"));
+              columnTypes.add(field.getType().toString());
+            });
+
+    TsBlockBuilder builder = new TsBlockBuilder(Arrays.asList(TSDataType.TEXT, TSDataType.TEXT));
+
+    for (int i = 0; i < columnNames.size(); i++) {
+      builder.getTimeColumnBuilder().writeLong(0);
+
+      // Jackie's Fix: No more long paths, just simple class names
+      builder
+          .getColumnBuilder(0)
+          .writeBinary(new Binary(columnNames.get(i), TSFileConfig.STRING_CHARSET));
+
+      builder
+          .getColumnBuilder(1)
+          .writeBinary(new Binary(columnTypes.get(i), TSFileConfig.STRING_CHARSET));
+
+      builder.declarePosition();
+    }
+
+    return new StatementMemorySource(builder.build(), datasetHeader);
   }
 
   private List<String> mergeExplainResults(

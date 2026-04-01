@@ -257,6 +257,7 @@ public class Analysis implements IAnalysis {
   private boolean emptyDataSource = false;
 
   private boolean isQuery = false;
+  private boolean isDescribe = false;
 
   // SqlParser is needed during query planning phase for executing uncorrelated scalar subqueries
   // in advance (predicate folding). The planner needs to parse and execute these subqueries
@@ -1550,6 +1551,14 @@ public class Analysis implements IAnalysis {
 
   public void setInsert(Insert insert) {
     this.insert = insert;
+  }
+
+  public void setDescribe(boolean isDescribe) {
+    this.isDescribe = isDescribe;
+  }
+
+  public boolean isDescribe() {
+    return isDescribe;
   }
 
   public Insert getInsert() {

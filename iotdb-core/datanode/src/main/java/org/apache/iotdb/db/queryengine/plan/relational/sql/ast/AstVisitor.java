@@ -445,7 +445,7 @@ public abstract class AstVisitor<R, C> {
     return visitStatement(node, context);
   }
 
-  protected R visitDescribeTable(DescribeTable node, C context) {
+  protected R visitDescribeQuery(DescribeQuery node, C context) {
     return visitStatement(node, context);
   }
 
@@ -543,6 +543,11 @@ public abstract class AstVisitor<R, C> {
 
   protected R visitGroupBy(GroupBy node, C context) {
     return visitNode(node, context);
+  }
+
+  protected R visitDescribeTable(
+      org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DescribeTable node, C context) {
+    return visitStatement(node, context);
   }
 
   protected R visitGroupingElement(GroupingElement node, C context) {
