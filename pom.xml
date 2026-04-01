@@ -204,7 +204,6 @@
         <thrift.version>0.14.1</thrift.version>
         <xz.version>1.9</xz.version>
         <zstd-jni.version>1.5.6-3</zstd-jni.version>
-<<<<<<< HEAD
         <!-- 签名证书默认配置（可用 -D 参数覆盖）。生产请改为安全位置及强密码 -->
         <keystore>${maven.multiModuleProjectDirectory}/distribution/src/security/test-signatures/code-signing.jks</keystore>
         <storepass/>
