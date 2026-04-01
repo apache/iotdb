@@ -20,18 +20,21 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.List;
 import java.util.Objects;
 
 public class RemoveRegion extends Statement {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(RemoveRegion.class);
 
-  private final int regionId;
+  private final List<Integer> regionIds;
   private final int dataNodeId;
 
-  public RemoveRegion(int regionId, int dataNodeId) {
+  public RemoveRegion(List<Integer> regionId, int dataNodeId) {
     super(null);
-    this.regionId = regionId;
+    this.regionIds = regionId;
     this.dataNodeId = dataNodeId;
   }
 
@@ -42,7 +45,7 @@ public class RemoveRegion extends Statement {
 
   @Override
   public int hashCode() {
-    return Objects.hash(RemoveRegion.class, regionId, dataNodeId);
+    return Objects.hash(RemoveRegion.class, regionIds, dataNodeId);
   }
 
   @Override
@@ -54,12 +57,12 @@ public class RemoveRegion extends Statement {
       return false;
     }
     RemoveRegion another = (RemoveRegion) obj;
-    return regionId == another.regionId && dataNodeId == another.dataNodeId;
+    return regionIds.equals(another.regionIds) && dataNodeId == another.dataNodeId;
   }
 
   @Override
   public String toString() {
-    return String.format("remove region %d from %d", regionId, dataNodeId);
+    return String.format("remove region %s from %d", regionIds, dataNodeId);
   }
 
   @Override
@@ -67,11 +70,19 @@ public class RemoveRegion extends Statement {
     return visitor.visitRemoveRegion(this, context);
   }
 
-  public int getRegionId() {
-    return regionId;
+  public List<Integer> getRegionIds() {
+    return regionIds;
   }
 
   public int getDataNodeId() {
     return dataNodeId;
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfIntegerList(regionIds);
+    return size;
   }
 }

@@ -37,6 +37,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.exe
 import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFileWriter;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
+import org.apache.tsfile.encrypt.EncryptUtils;
 import org.apache.tsfile.exception.write.PageException;
 import org.apache.tsfile.file.metadata.AbstractAlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
@@ -71,6 +72,7 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
       originReaderAndChunkMetadataList;
 
   public BatchedReadChunkAlignedSeriesCompactionExecutor(
+      String database,
       IDeviceID device,
       TsFileResource targetResource,
       LinkedList<Pair<TsFileSequenceReader, List<AbstractAlignedChunkMetadata>>>
@@ -79,7 +81,14 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
       CompactionTaskSummary summary,
       boolean ignoreAllNullRows)
       throws IOException {
-    super(device, targetResource, readerAndChunkMetadataList, writer, summary, ignoreAllNullRows);
+    super(
+        database,
+        device,
+        targetResource,
+        readerAndChunkMetadataList,
+        writer,
+        summary,
+        ignoreAllNullRows);
     this.originReaderAndChunkMetadataList = readerAndChunkMetadataList;
     this.batchColumnSelection =
         new AlignedSeriesBatchCompactionUtils.BatchColumnSelection(schemaList, batchSize);
@@ -209,7 +218,8 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
 
     @Override
     protected AlignedChunkWriterImpl constructAlignedChunkWriter() {
-      return new FirstBatchCompactionAlignedChunkWriter(timeSchema, schemaList);
+      return new FirstBatchCompactionAlignedChunkWriter(
+          timeSchema, schemaList, EncryptUtils.getEncryptParameter(writer.getEncryptParameter()));
     }
 
     @Override
@@ -326,7 +336,10 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
       this.flushController = new FollowingBatchReadChunkAlignedSeriesCompactionFlushController();
       this.chunkWriter =
           new FollowingBatchCompactionAlignedChunkWriter(
-              timeSchema, schemaList, batchCompactionPlan.getCompactChunkPlan(0));
+              timeSchema,
+              schemaList,
+              batchCompactionPlan.getCompactChunkPlan(0),
+              EncryptUtils.getEncryptParameter(writer.getEncryptParameter()));
     }
 
     @Override

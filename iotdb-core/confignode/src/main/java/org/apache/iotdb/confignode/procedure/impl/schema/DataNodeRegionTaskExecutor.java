@@ -22,11 +22,13 @@ package org.apache.iotdb.confignode.procedure.impl.schema;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -35,6 +37,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.BiFunction;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.confignode.procedure.impl.schema.DataNodeRegionGroupUtil.getAllReplicaDataNodeRegionGroupMap;
 import static org.apache.iotdb.confignode.procedure.impl.schema.DataNodeRegionGroupUtil.getLeaderDataNodeRegionGroupMap;
@@ -48,7 +51,7 @@ public abstract class DataNodeRegionTaskExecutor<Q, R> {
   protected final CnToDnAsyncRequestType dataNodeRequestType;
   protected final BiFunction<TDataNodeLocation, List<TConsensusGroupId>, Q>
       dataNodeRequestGenerator;
-
+  protected final Map<TDataNodeLocation, TSStatus> failureMap = new HashMap<>();
   private boolean isInterrupted = false;
 
   protected DataNodeRegionTaskExecutor(
@@ -229,4 +232,16 @@ public abstract class DataNodeRegionTaskExecutor<Q, R> {
    */
   protected abstract void onAllReplicasetFailure(
       final TConsensusGroupId consensusGroupId, final Set<TDataNodeLocation> dataNodeLocationSet);
+
+  protected String printFailureMap() {
+    return failureMap.entrySet().stream()
+        .collect(
+            Collectors.toMap(
+                entry -> "DataNodeId: " + entry.getKey().getDataNodeId(),
+                entry ->
+                    entry.getValue().getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()
+                        ? entry.getValue().getSubStatus()
+                        : entry.getValue()))
+        .toString();
+  }
 }

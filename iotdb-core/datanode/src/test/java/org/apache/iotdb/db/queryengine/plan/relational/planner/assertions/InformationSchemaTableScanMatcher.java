@@ -31,7 +31,7 @@ import java.util.Optional;
 import java.util.Set;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
-import static com.google.gson.internal.$Gson$Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.MatchResult.NO_MATCH;
 
 public class InformationSchemaTableScanMatcher extends TableScanMatcher {

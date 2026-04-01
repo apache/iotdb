@@ -130,6 +130,13 @@ public class MemChunkReader implements IChunkReader, IPointReader {
   }
 
   @Override
+  public void markDataTypeModifiedAndCannotUseStatistics() {
+    for (IPageReader pageReader : this.pageReaderList) {
+      pageReader.setModified(true);
+    }
+  }
+
+  @Override
   public List<IPageReader> loadPageReaderList() {
     return this.pageReaderList;
   }

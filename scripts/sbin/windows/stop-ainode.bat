@@ -35,27 +35,27 @@ shift
 goto initial
 
 :done
-for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^ain_inference_rpc_port"
+for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^ain_rpc_port"
 %IOTDB_AINODE_HOME%\conf\iotdb-ainode.properties') do (
-  set ain_inference_rpc_port=%%i
+  set ain_rpc_port=%%i
 )
 
-echo Check whether the rpc_port is used..., port is %ain_inference_rpc_port%
+echo Check whether the rpc_port is used..., port is %ain_rpc_port%
 
-for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "ain_inference_rpc_address"
+for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "ain_rpc_address"
 %IOTDB_AINODE_HOME%\conf\iotdb-ainode.properties') do (
-  set ain_inference_rpc_address=%%i
+  set ain_rpc_address=%%i
 )
 
 if defined t (
-    for /f "tokens=2 delims=/" %%a in ("%t%") do set "ain_inference_rpc=%%a"
+    for /f "tokens=2 delims=/" %%a in ("%t%") do set "ain_rpc=%%a"
 ) else (
-    set ain_inference_rpc=%ain_inference_rpc_address%:%ain_inference_rpc_port%
+    set ain_rpc=%ain_rpc_address%:%ain_rpc_port%
 )
 
-echo Target AINode to be stopped: %ain_inference_rpc%
+echo Target AINode to be stopped: %ain_rpc%
 
-for /f "tokens=5" %%a in ('netstat /ano ^| findstr /r /c:"^ *TCP *%ain_inference_rpc%.*$"') do (
+for /f "tokens=5" %%a in ('netstat /ano ^| findstr /r /c:"^ *TCP *%ain_rpc%.*$"') do (
   taskkill /f /pid %%a
   echo Close AINode, PID: %%a
 )

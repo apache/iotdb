@@ -39,7 +39,10 @@ class IoTDBContainer(DockerContainer):
     @wait_container_is_ready()
     def _connect(self):
         session = Session(
-            self.get_container_host_ip(), self.get_exposed_port(6667), "root", "root"
+            self.get_container_host_ip(),
+            self.get_exposed_port(6667),
+            "root",
+            "root",
         )
         session.open(False)
         with session.execute_statement("SHOW CLUSTER") as session_data_set:

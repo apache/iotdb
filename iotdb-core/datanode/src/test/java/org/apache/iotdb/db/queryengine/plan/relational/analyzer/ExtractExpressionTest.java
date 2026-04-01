@@ -23,6 +23,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.PlanTester;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
 
 import com.google.common.collect.ImmutableMap;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.assertAnalyzeSemanticException;
@@ -31,8 +32,14 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.output;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.project;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.tableScan;
+import static org.apache.iotdb.db.utils.DateTimeUtils.initTimestampPrecision;
 
 public class ExtractExpressionTest {
+  @BeforeClass
+  public static void setUp() {
+    initTimestampPrecision();
+  }
+
   @Test
   public void pushDownTest() {
     PlanTester planTester = new PlanTester();
@@ -40,6 +47,16 @@ public class ExtractExpressionTest {
     assertPlan(
         planTester.createPlan("select * from table1 where extract(ms from time) > 5"),
         output(tableScan("testdb.table1")));
+    assertPlan(
+        planTester.createPlan("select * from table1 where extract(ms from time) between 1 and 2"),
+        output(tableScan("testdb.table1")));
+
+    assertPlan(
+        planTester.createPlan("select * from table2 where extract(ms from s4) > 5"),
+        output(tableScan("testdb.table2")));
+    assertPlan(
+        planTester.createPlan("select * from table2 where extract(ms from s4) between 1 and 2"),
+        output(tableScan("testdb.table2")));
   }
 
   @Test

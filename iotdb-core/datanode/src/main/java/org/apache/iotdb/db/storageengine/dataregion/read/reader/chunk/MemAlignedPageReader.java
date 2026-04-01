@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk;
 
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.metadata.AlignedPageMetadata;
+import org.apache.iotdb.db.utils.CommonUtils;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
@@ -35,12 +36,15 @@ import org.apache.tsfile.read.reader.IPageReader;
 import org.apache.tsfile.read.reader.series.PaginationController;
 import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.LongConsumer;
 import java.util.function.Supplier;
 
 import static org.apache.tsfile.read.reader.series.PaginationController.UNLIMITED_PAGINATION_CONTROLLER;
@@ -56,6 +60,9 @@ public class MemAlignedPageReader implements IPageReader {
 
   private Filter recordFilter;
   private PaginationController paginationController = UNLIMITED_PAGINATION_CONTROLLER;
+
+  // data type is modified in query and statistics cannot be used
+  private boolean modified;
 
   private TsBlockBuilder builder;
 
@@ -84,7 +91,7 @@ public class MemAlignedPageReader implements IPageReader {
 
     BatchData batchData = BatchDataFactory.createBatchData(TSDataType.VECTOR, ascending, false);
 
-    boolean[] satisfyInfo = buildSatisfyInfoArray();
+    boolean[] satisfyInfo = buildSatisfyInfoArray(null);
 
     for (int rowIndex = 0; rowIndex < tsBlock.getPositionCount(); rowIndex++) {
       if (satisfyInfo[rowIndex]) {
@@ -103,28 +110,43 @@ public class MemAlignedPageReader implements IPageReader {
 
   @Override
   public TsBlock getAllSatisfiedData() {
+    return getAllSatisfiedData(null);
+  }
+
+  @Override
+  public TsBlock getAllSatisfiedData(LongConsumer filterRowsRecorder) {
     getTsBlock();
 
     builder.reset();
 
-    boolean[] satisfyInfo = buildSatisfyInfoArray();
+    boolean[] satisfyInfo = buildSatisfyInfoArray(filterRowsRecorder);
 
     // build time column
     int readEndIndex = buildTimeColumn(satisfyInfo);
 
     // build value column
     buildValueColumns(satisfyInfo, readEndIndex);
-
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug("[memAlignedPageReader] TsBlock:{}", CommonUtils.toString(tsBlock));
+    }
     return builder.build();
   }
 
-  private boolean[] buildSatisfyInfoArray() {
+  private static final Logger LOGGER = LoggerFactory.getLogger(MemAlignedPageReader.class);
+
+  private boolean[] buildSatisfyInfoArray(LongConsumer filterRowsRecorder) {
     if (recordFilter == null || recordFilter.allSatisfy(this)) {
       boolean[] satisfyInfo = new boolean[tsBlock.getPositionCount()];
       Arrays.fill(satisfyInfo, true);
       return satisfyInfo;
     }
-    return recordFilter.satisfyTsBlock(tsBlock);
+    if (filterRowsRecorder == null) {
+      return recordFilter.satisfyTsBlock(tsBlock);
+    } else {
+      boolean[] selection = new boolean[tsBlock.getPositionCount()];
+      Arrays.fill(selection, true);
+      return recordFilter.satisfyTsBlock(selection, tsBlock, filterRowsRecorder);
+    }
   }
 
   private int buildTimeColumn(boolean[] satisfyInfo) {
@@ -207,7 +229,12 @@ public class MemAlignedPageReader implements IPageReader {
 
   @Override
   public boolean isModified() {
-    return false;
+    return modified;
+  }
+
+  @Override
+  public void setModified(boolean modified) {
+    this.modified = modified;
   }
 
   @Override
@@ -290,6 +317,7 @@ public class MemAlignedPageReader implements IPageReader {
             break;
           case TEXT:
           case BLOB:
+          case OBJECT:
           case STRING:
             for (int i = 0; i < tsBlock.getPositionCount(); i++) {
               valueStatistics[column].update(

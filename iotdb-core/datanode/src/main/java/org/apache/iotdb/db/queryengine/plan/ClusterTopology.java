@@ -32,7 +32,6 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -150,25 +149,30 @@ public class ClusterTopology {
       final Map<Integer, TDataNodeLocation> dataNodes, Map<Integer, Set<Integer>> latestTopology) {
     if (!latestTopology.equals(topologyMap.get())) {
       LOGGER.info("[Topology] latest view from config-node: {}", latestTopology);
+      for (int fromId : dataNodes.keySet()) {
+        for (int toId : dataNodes.keySet()) {
+          boolean originReachable =
+              latestTopology.getOrDefault(fromId, Collections.emptySet()).contains(toId);
+          boolean newReachable =
+              latestTopology.getOrDefault(fromId, Collections.emptySet()).contains(toId);
+          if (originReachable != newReachable) {
+            LOGGER.info(
+                "[Topology] Topology of DataNode {} is now {} to DataNode {}",
+                fromId,
+                newReachable ? "reachable" : "unreachable",
+                toId);
+          }
+        }
+      }
+      this.topologyMap.set(latestTopology);
     }
     this.dataNodes.set(dataNodes);
-    this.topologyMap.set(latestTopology);
     if (latestTopology.get(myself) == null || latestTopology.get(myself).isEmpty()) {
       // latest topology doesn't include this node information.
       // This mostly happens when this node just starts and haven't report connection details.
       this.isPartitioned.set(false);
     } else {
-      this.isPartitioned.set(latestTopology.get(myself).size() != latestTopology.keySet().size());
-    }
-    if (isPartitioned.get() && LOGGER.isDebugEnabled()) {
-      final Set<Integer> allDataLocations = new HashSet<>(latestTopology.keySet());
-      allDataLocations.removeAll(latestTopology.get(myself));
-      final String partitioned =
-          allDataLocations.stream()
-              .collect(
-                  StringBuilder::new, (sb, id) -> sb.append(",").append(id), StringBuilder::append)
-              .toString();
-      LOGGER.debug("This DataNode {} is partitioned with [{}]", myself, partitioned);
+      this.isPartitioned.set(latestTopology.get(myself).size() != latestTopology.size());
     }
   }
 

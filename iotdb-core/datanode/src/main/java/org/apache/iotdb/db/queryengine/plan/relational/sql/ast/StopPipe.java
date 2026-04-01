@@ -19,12 +19,15 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.tsfile.utils.RamUsageEstimator;
+
 import java.util.Objects;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Objects.requireNonNull;
 
 public class StopPipe extends PipeStatement {
+  private static final long INSTANCE_SIZE = RamUsageEstimator.shallowSizeOfInstance(StopPipe.class);
 
   private final String pipeName;
 
@@ -61,5 +64,13 @@ public class StopPipe extends PipeStatement {
   @Override
   public String toString() {
     return toStringHelper(this).add("pipeName", pipeName).toString();
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += RamUsageEstimator.sizeOf(pipeName);
+    return size;
   }
 }

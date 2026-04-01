@@ -248,6 +248,11 @@ public class TableDeviceSchemaCacheTest {
     Assert.assertNull(
         cache.getDeviceAttribute(
             database1, convertTagValuesToDeviceID(table2, new String[] {"hebei", "p_1", "d_1"})));
+
+    Assert.assertTrue(cache.getMemoryUsage() > 0);
+
+    cache.invalidateAll();
+    Assert.assertEquals(0, cache.getMemoryUsage());
   }
 
   @Test
@@ -502,6 +507,10 @@ public class TableDeviceSchemaCacheTest {
           TableDeviceLastCache.EMPTY_PRIMITIVE_TYPE, new TsPrimitiveType.TsInt(3),
         },
         result.get().getRight());
+
+    cache.invalidateLastCache();
+    cache.invalidateLastCache();
+    Assert.assertTrue(cache.getMemoryUsage() > 0);
   }
 
   @Test

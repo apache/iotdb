@@ -63,7 +63,7 @@ Then, you can see the output `iotdb-jdbc-1.3.2-SNAPSHOT-jar-with-dependencies.ja
        | Driver Class        | org.apache.iotdb.jdbc.IoTDBDriver                         | org.apache.iotdb.jdbc.IoTDBDriver                                                                                  |
        | JDBC driver file(s) | The path of IoTDB JDBC jar-with-dependencies              | C:\Users\13361\Documents\GitHub\iotdb\iotdb-client\jdbc\target\iotdb-jdbc-1.3.2-SNAPSHOT-jar-with-dependencies.jar |
        | User name           | IoTDB's user name                                         | root                                                                                                               |
-       | User password       | IoTDB's password                                          | root                                                                                                               |
+       | User password       | IoTDB's password                                          | root                                                                                                         |
        
        ![ODBC_CONNECTION.png](https://alioss.timecho.com/upload/ODBC_CONNECTION.png)
        

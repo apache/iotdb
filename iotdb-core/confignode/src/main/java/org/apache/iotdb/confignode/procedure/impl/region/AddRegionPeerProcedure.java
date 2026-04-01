@@ -94,6 +94,11 @@ public class AddRegionPeerProcedure extends RegionOperationProcedure<AddRegionPe
           if (status.getCode() != SUCCESS_STATUS.getStatusCode()) {
             return warnAndRollBackAndNoMoreState(env, handler, "CREATE_NEW_REGION_PEER fail");
           }
+          setNextState(AddRegionPeerState.CREATE_CONSENSUS_PIPES);
+          break;
+        case CREATE_CONSENSUS_PIPES:
+          handler.createConsensusPipesForAddPeer(regionId, targetDataNode);
+          setKillPoint(state);
           setNextState(AddRegionPeerState.DO_ADD_REGION_PEER);
           break;
         case DO_ADD_REGION_PEER:
@@ -112,7 +117,7 @@ public class AddRegionPeerProcedure extends RegionOperationProcedure<AddRegionPe
           TRegionMigrateResult result = handler.waitTaskFinish(this.getProcId(), coordinator);
           switch (result.getTaskStatus()) {
             case TASK_NOT_EXIST:
-              // coordinator crashed and lost its task table
+            // coordinator crashed and lost its task table
             case FAIL:
               // maybe some DataNode crash
               return warnAndRollBackAndNoMoreState(

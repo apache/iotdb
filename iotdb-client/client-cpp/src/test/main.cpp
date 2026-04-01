@@ -21,8 +21,19 @@
 
 #include <catch.hpp>
 #include "Session.h"
+#include "SessionBuilder.h"
 
-std::shared_ptr<Session> session = std::make_shared<Session>("127.0.0.1", 6667, "root", "root");
+auto builder = std::unique_ptr<SessionBuilder>(new SessionBuilder());
+std::shared_ptr<Session> session =
+    std::shared_ptr<Session>(
+        builder
+        ->host("127.0.0.1")
+        ->rpcPort(6667)
+        ->username("root")
+        ->password("root")
+        ->useSSL(false)
+        ->build()
+    );
 
 struct SessionListener : Catch::TestEventListenerBase {
 

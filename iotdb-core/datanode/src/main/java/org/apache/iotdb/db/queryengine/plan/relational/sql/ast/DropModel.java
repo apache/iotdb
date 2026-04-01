@@ -19,10 +19,14 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.tsfile.utils.RamUsageEstimator;
+
 import java.util.List;
 import java.util.Objects;
 
 public class DropModel extends Statement {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(DropModel.class);
 
   private final String modelId;
 
@@ -60,5 +64,13 @@ public class DropModel extends Statement {
   @Override
   public String toString() {
     return "DropModel{" + "modelId='" + modelId + '\'' + '}';
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += RamUsageEstimator.sizeOf(modelId);
+    return size;
   }
 }

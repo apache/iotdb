@@ -20,12 +20,16 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import javax.annotation.Nullable;
 
 import java.util.List;
 
 public class ShowCurrentSqlDialect extends Statement {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(ShowCurrentSqlDialect.class);
 
   public ShowCurrentSqlDialect(@Nullable NodeLocation location) {
     super(location);
@@ -62,5 +66,12 @@ public class ShowCurrentSqlDialect extends Statement {
   @Override
   public String toString() {
     return "SHOW CURRENT_SQL_DIALECT";
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    return size;
   }
 }

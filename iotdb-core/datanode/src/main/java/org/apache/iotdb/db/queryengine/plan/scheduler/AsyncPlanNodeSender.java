@@ -128,12 +128,14 @@ public class AsyncPlanNodeSender {
                   RpcUtils.getStatus(
                       TSStatusCode.WRITE_PROCESS_ERROR, entry.getValue().getMessage())));
         } else {
-          LOGGER.warn(
-              "dispatch write failed. status: {}, code: {}, message: {}, node {}",
-              entry.getValue().status,
-              TSStatusCode.representOf(status.code),
-              entry.getValue().message,
-              instances.get(entry.getKey()).getHostDataNode().getInternalEndPoint());
+          if (status.code != TSStatusCode.OUT_OF_TTL.getStatusCode()) {
+            LOGGER.warn(
+                "dispatch write failed. status: {}, code: {}, message: {}, node {}",
+                entry.getValue().status,
+                TSStatusCode.representOf(status.code),
+                entry.getValue().message,
+                instances.get(entry.getKey()).getHostDataNode().getInternalEndPoint());
+          }
           failureFragmentInstanceWithStatusList.add(
               new FailedFragmentInstanceWithStatus(instance, status));
         }

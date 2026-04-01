@@ -117,8 +117,18 @@ public interface BaseEnv {
         SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD, TREE_SQL_DIALECT);
   }
 
+  default Connection getAvailableConnection() throws SQLException {
+    return getAvailableConnection(
+        SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD, TREE_SQL_DIALECT);
+  }
+
   default Connection getTableConnection() throws SQLException {
     return getConnection(
+        SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD, TABLE_SQL_DIALECT);
+  }
+
+  default Connection getAvailableTableConnection() throws SQLException {
+    return getAvailableConnection(
         SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD, TABLE_SQL_DIALECT);
   }
 
@@ -155,6 +165,9 @@ public interface BaseEnv {
   }
 
   Connection getConnection(String username, String password, String sqlDialect) throws SQLException;
+
+  Connection getAvailableConnection(String username, String password, String sqlDialect)
+      throws SQLException;
 
   default Connection getWriteOnlyConnectionWithSpecifiedDataNode(DataNodeWrapper dataNode)
       throws SQLException {

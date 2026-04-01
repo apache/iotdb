@@ -43,6 +43,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.Sin
 import org.apache.iotdb.db.queryengine.execution.operator.source.SeriesScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.ShowQueriesOperator;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
+import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -1617,9 +1618,9 @@ public class MergeTreeSortOperatorTest {
                   new FakeQueryExecution(1, "20221229_000000_00001_2", "sql1_node2")));
 
       ShowQueriesOperator showQueriesOperator1 =
-          new ShowQueriesOperator(operatorContexts.get(0), planNodeId0, coordinator1);
+          new ShowQueriesOperator(operatorContexts.get(0), planNodeId0, coordinator1, null);
       ShowQueriesOperator showQueriesOperator2 =
-          new ShowQueriesOperator(operatorContexts.get(1), planNodeId1, coordinator2);
+          new ShowQueriesOperator(operatorContexts.get(1), planNodeId1, coordinator2, null);
       TreeSortOperator treeSortOperator1 =
           new TreeSortOperator(
               operatorContexts.get(2), showQueriesOperator1, dataTypes, "", comparator);
@@ -1826,6 +1827,14 @@ public class MergeTreeSortOperatorTest {
     public void recordExecutionTime(long executionTime) {}
 
     @Override
+    public void updateCurrentRpcStartTime(long startTime) {}
+
+    @Override
+    public boolean isActive() {
+      return true;
+    }
+
+    @Override
     public long getTotalExecutionTime() {
       return 0;
     }
@@ -1857,9 +1866,6 @@ public class MergeTreeSortOperatorTest {
     public void stop(Throwable t) {}
 
     @Override
-    public void stopAndCleanup() {}
-
-    @Override
     public void stopAndCleanup(Throwable t) {}
 
     @Override
@@ -1873,6 +1879,11 @@ public class MergeTreeSortOperatorTest {
     @Override
     public Optional<TsBlock> getBatchResult() {
       return Optional.empty();
+    }
+
+    @Override
+    public long getTimeout() {
+      return 60_000L;
     }
 
     @Override
@@ -1897,11 +1908,26 @@ public class MergeTreeSortOperatorTest {
 
     @Override
     public boolean isQuery() {
-      return false;
+      return true;
+    }
+
+    @Override
+    public QueryType getQueryType() {
+      return QueryType.READ;
     }
 
     @Override
     public boolean isUserQuery() {
+      return false;
+    }
+
+    @Override
+    public String getClientHostname() {
+      return SessionConfig.DEFAULT_HOST;
+    }
+
+    @Override
+    public boolean isDebug() {
       return false;
     }
   }

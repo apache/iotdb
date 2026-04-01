@@ -21,9 +21,9 @@ package org.apache.iotdb.db.queryengine.plan.analyze.schema;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
-import org.apache.iotdb.db.schemaengine.template.Template;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
@@ -48,7 +48,10 @@ public interface ISchemaFetcher {
    * @return the matched timeseries schema organized as tree structure logically
    */
   ISchemaTree fetchSchema(
-      PathPatternTree patternTree, boolean withTemplate, MPPQueryContext context);
+      PathPatternTree patternTree,
+      boolean withTemplate,
+      MPPQueryContext context,
+      boolean canSeeAuditDB);
 
   /**
    * Fetch all the schema by the given patternTree in device level
@@ -56,7 +59,10 @@ public interface ISchemaFetcher {
    * @return schemaTree without measurement nodes
    */
   ISchemaTree fetchRawSchemaInDeviceLevel(
-      PathPatternTree patternTree, PathPatternTree authorityScope, MPPQueryContext context);
+      PathPatternTree patternTree,
+      PathPatternTree authorityScope,
+      MPPQueryContext context,
+      boolean canSeeAuditDB);
 
   /**
    * Fetch all the schema by the given patternTree in device level
@@ -64,7 +70,10 @@ public interface ISchemaFetcher {
    * @return schemaTree without measurement nodes
    */
   ISchemaTree fetchRawSchemaInMeasurementLevel(
-      PathPatternTree patternTree, PathPatternTree authorityScope, MPPQueryContext context);
+      PathPatternTree patternTree,
+      PathPatternTree authorityScope,
+      MPPQueryContext context,
+      boolean canSeeAuditDB);
 
   /**
    * Fetch all the schema with tags of existing timeseries matched by the given patternTree
@@ -73,7 +82,10 @@ public interface ISchemaFetcher {
    * @return the matched timeseries schema organized as tree structure logically
    */
   ISchemaTree fetchSchemaWithTags(
-      PathPatternTree patternTree, boolean withTemplate, MPPQueryContext context);
+      PathPatternTree patternTree,
+      boolean withTemplate,
+      MPPQueryContext context,
+      boolean canSeeAuditDB);
 
   /**
    * Fetch and compute the schema of target timeseries, with device and measurement defined in given

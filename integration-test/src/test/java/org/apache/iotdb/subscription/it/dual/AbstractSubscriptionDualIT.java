@@ -47,9 +47,7 @@ public abstract class AbstractSubscriptionDualIT extends AbstractSubscriptionIT 
   }
 
   protected void setUpConfig() {
-    // enable subscription
-    senderEnv.getConfig().getCommonConfig().setSubscriptionEnabled(true);
-    receiverEnv.getConfig().getCommonConfig().setSubscriptionEnabled(true);
+    senderEnv.getConfig().getDataNodeConfig().setDataNodeMemoryProportion("3:3:1:1:3:1");
 
     // enable auto create schema
     senderEnv.getConfig().getCommonConfig().setAutoCreateSchemaEnabled(true);
@@ -59,8 +57,16 @@ public abstract class AbstractSubscriptionDualIT extends AbstractSubscriptionIT 
     senderEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
     receiverEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
 
-    senderEnv.getConfig().getCommonConfig().setIsPipeEnableMemoryCheck(false);
-    receiverEnv.getConfig().getCommonConfig().setIsPipeEnableMemoryCheck(false);
+    senderEnv
+        .getConfig()
+        .getCommonConfig()
+        .setPipeMemoryManagementEnabled(false)
+        .setIsPipeEnableMemoryCheck(false);
+    receiverEnv
+        .getConfig()
+        .getCommonConfig()
+        .setPipeMemoryManagementEnabled(false)
+        .setIsPipeEnableMemoryCheck(false);
   }
 
   @Override

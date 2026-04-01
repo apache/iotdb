@@ -39,6 +39,7 @@ import org.apache.iotdb.db.storageengine.dataregion.flush.FlushManager;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.QueryResourceManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndexCacheRecorder;
+import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageIndex.TableDiskUsageIndex;
 import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.recover.WALRecoverManager;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
@@ -51,10 +52,10 @@ import org.apache.iotdb.rpc.TConfigurationConst;
 import org.apache.iotdb.rpc.TSocketWrapper;
 import org.apache.iotdb.udf.api.exception.UDFManagementException;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.thrift.TConfiguration;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
+import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.tsfile.utils.FilePathUtils;
 import org.slf4j.Logger;
@@ -84,7 +85,7 @@ public class EnvironmentUtils {
   private static final TierManager tierManager = TierManager.getInstance();
 
   public static long TEST_QUERY_JOB_ID = 1;
-  public static QueryContext TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
+  public static QueryContext TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID, false);
   public static FragmentInstanceContext TEST_QUERY_FI_CONTEXT =
       FragmentInstanceContext.createFragmentInstanceContextForCompaction(TEST_QUERY_JOB_ID);
 
@@ -228,6 +229,7 @@ public class EnvironmentUtils {
       cleanDir(path);
     }
     FileTimeIndexCacheRecorder.getInstance().close();
+    TableDiskUsageIndex.getInstance().close();
     // delete system info
     cleanDir(config.getSystemDir());
     // delete query
@@ -278,7 +280,7 @@ public class EnvironmentUtils {
     }
 
     TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId();
-    TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
+    TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID, false);
   }
 
   private static void createAllDir() {

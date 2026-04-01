@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.event.common.tablet.parser;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
@@ -26,6 +27,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNod
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
+import org.apache.iotdb.pipe.api.collector.TabletCollector;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 
 import org.apache.tsfile.enums.ColumnCategory;
@@ -39,7 +41,6 @@ import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
-import org.checkerframework.checker.nullness.qual.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -190,7 +191,7 @@ public abstract class TabletInsertionEventParser {
     }
   }
 
-  protected void parse(final InsertTabletNode insertTabletNode) {
+  protected void parse(final InsertTabletNode insertTabletNode) throws IllegalPathException {
     final int originColumnSize = insertTabletNode.getMeasurements().length;
     final Integer[] originColumnIndex2FilteredColumnIndexMapperList = new Integer[originColumnSize];
 
@@ -426,12 +427,12 @@ public abstract class TabletInsertionEventParser {
   }
 
   private static Object filterValueColumnsByRowIndexList(
-      @NonNull final TSDataType type,
-      @NonNull final Object originValueColumn,
-      @NonNull final List<Integer> rowIndexList,
+      final TSDataType type,
+      final Object originValueColumn,
+      final List<Integer> rowIndexList,
       final boolean isSingleOriginValueColumn,
-      @NonNull final BitMap originNullValueColumnBitmap,
-      @NonNull final BitMap nullValueColumnBitmap /* output parameters */) {
+      final BitMap originNullValueColumnBitmap,
+      final BitMap nullValueColumnBitmap /* output parameters */) {
     switch (type) {
       case INT32:
         {
@@ -636,6 +637,9 @@ public abstract class TabletInsertionEventParser {
 
   public abstract List<TabletInsertionEvent> processTablet(
       final BiConsumer<Tablet, RowCollector> consumer);
+
+  public abstract List<TabletInsertionEvent> processTabletWithCollect(
+      final BiConsumer<Tablet, TabletCollector> consumer);
 
   public abstract Tablet convertToTablet();
 }

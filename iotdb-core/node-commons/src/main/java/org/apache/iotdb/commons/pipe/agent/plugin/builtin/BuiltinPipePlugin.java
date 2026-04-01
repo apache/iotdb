@@ -19,21 +19,6 @@
 
 package org.apache.iotdb.commons.pipe.agent.plugin.builtin;
 
-import org.apache.iotdb.commons.pipe.agent.plugin.builtin.connector.donothing.DoNothingConnector;
-import org.apache.iotdb.commons.pipe.agent.plugin.builtin.connector.iotdb.airgap.IoTDBAirGapConnector;
-import org.apache.iotdb.commons.pipe.agent.plugin.builtin.connector.iotdb.consensus.PipeConsensusAsyncConnector;
-import org.apache.iotdb.commons.pipe.agent.plugin.builtin.connector.iotdb.thrift.IoTDBLegacyPipeConnector;
-import org.apache.iotdb.commons.pipe.agent.plugin.builtin.connector.iotdb.thrift.IoTDBThriftAsyncConnector;
-import org.apache.iotdb.commons.pipe.agent.plugin.builtin.connector.iotdb.thrift.IoTDBThriftConnector;
-import org.apache.iotdb.commons.pipe.agent.plugin.builtin.connector.iotdb.thrift.IoTDBThriftSslConnector;
-import org.apache.iotdb.commons.pipe.agent.plugin.builtin.connector.iotdb.thrift.IoTDBThriftSyncConnector;
-import org.apache.iotdb.commons.pipe.agent.plugin.builtin.connector.opcda.OpcDaConnector;
-import org.apache.iotdb.commons.pipe.agent.plugin.builtin.connector.opcua.OpcUaConnector;
-import org.apache.iotdb.commons.pipe.agent.plugin.builtin.connector.websocket.WebSocketConnector;
-import org.apache.iotdb.commons.pipe.agent.plugin.builtin.connector.writeback.WriteBackConnector;
-import org.apache.iotdb.commons.pipe.agent.plugin.builtin.extractor.donothing.DoNothingExtractor;
-import org.apache.iotdb.commons.pipe.agent.plugin.builtin.extractor.iotdb.IoTDBExtractor;
-import org.apache.iotdb.commons.pipe.agent.plugin.builtin.extractor.mqtt.MQTTExtractor;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.processor.aggregate.AggregateProcessor;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.processor.aggregate.StandardStatisticsProcessor;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.processor.aggregate.TumblingWindowingProcessor;
@@ -41,10 +26,24 @@ import org.apache.iotdb.commons.pipe.agent.plugin.builtin.processor.donothing.Do
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.processor.downsampling.ChangingValueSamplingProcessor;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.processor.downsampling.SwingingDoorTrendingSamplingProcessor;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.processor.downsampling.TumblingTimeSamplingProcessor;
-import org.apache.iotdb.commons.pipe.agent.plugin.builtin.processor.pipeconsensus.PipeConsensusProcessor;
+import org.apache.iotdb.commons.pipe.agent.plugin.builtin.processor.iotconsensusv2.IoTConsensusV2Processor;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.processor.schemachange.RenameDatabaseProcessor;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.processor.throwing.ThrowingExceptionProcessor;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.processor.twostage.TwoStageCountProcessor;
+import org.apache.iotdb.commons.pipe.agent.plugin.builtin.sink.donothing.DoNothingSink;
+import org.apache.iotdb.commons.pipe.agent.plugin.builtin.sink.iotdb.airgap.IoTDBAirGapSink;
+import org.apache.iotdb.commons.pipe.agent.plugin.builtin.sink.iotdb.consensus.IoTConsensusV2AsyncSink;
+import org.apache.iotdb.commons.pipe.agent.plugin.builtin.sink.iotdb.thrift.IoTDBLegacyPipeSink;
+import org.apache.iotdb.commons.pipe.agent.plugin.builtin.sink.iotdb.thrift.IoTDBThriftAsyncSink;
+import org.apache.iotdb.commons.pipe.agent.plugin.builtin.sink.iotdb.thrift.IoTDBThriftSink;
+import org.apache.iotdb.commons.pipe.agent.plugin.builtin.sink.iotdb.thrift.IoTDBThriftSslSink;
+import org.apache.iotdb.commons.pipe.agent.plugin.builtin.sink.iotdb.thrift.IoTDBThriftSyncSink;
+import org.apache.iotdb.commons.pipe.agent.plugin.builtin.sink.opcda.OpcDaSink;
+import org.apache.iotdb.commons.pipe.agent.plugin.builtin.sink.opcua.OpcUaSink;
+import org.apache.iotdb.commons.pipe.agent.plugin.builtin.sink.websocket.WebSocketSink;
+import org.apache.iotdb.commons.pipe.agent.plugin.builtin.sink.writeback.WriteBackSink;
+import org.apache.iotdb.commons.pipe.agent.plugin.builtin.source.donothing.DoNothingSource;
+import org.apache.iotdb.commons.pipe.agent.plugin.builtin.source.iotdb.IoTDBSource;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -54,13 +53,11 @@ import java.util.Set;
 public enum BuiltinPipePlugin {
 
   // extractors
-  DO_NOTHING_EXTRACTOR("do-nothing-extractor", DoNothingExtractor.class),
-  IOTDB_EXTRACTOR("iotdb-extractor", IoTDBExtractor.class),
-  MQTT_EXTRACTOR("mqtt-extractor", MQTTExtractor.class),
+  DO_NOTHING_EXTRACTOR("do-nothing-extractor", DoNothingSource.class),
+  IOTDB_EXTRACTOR("iotdb-extractor", IoTDBSource.class),
 
-  DO_NOTHING_SOURCE("do-nothing-source", DoNothingExtractor.class),
-  IOTDB_SOURCE("iotdb-source", IoTDBExtractor.class),
-  MQTT_SOURCE("mqtt-source", MQTTExtractor.class),
+  DO_NOTHING_SOURCE("do-nothing-source", DoNothingSource.class),
+  IOTDB_SOURCE("iotdb-source", IoTDBSource.class),
 
   // processors
   DO_NOTHING_PROCESSOR("do-nothing-processor", DoNothingProcessor.class),
@@ -76,38 +73,38 @@ public enum BuiltinPipePlugin {
   // Hidden-processors, which are plugins of the processors
   STANDARD_STATISTICS_PROCESSOR("standard-statistics-processor", StandardStatisticsProcessor.class),
   TUMBLING_WINDOWING_PROCESSOR("tumbling-windowing-processor", TumblingWindowingProcessor.class),
-  PIPE_CONSENSUS_PROCESSOR("pipe-consensus-processor", PipeConsensusProcessor.class),
+  IOT_CONSENSUS_V2_PROCESSOR("iot-consensus-v2-processor", IoTConsensusV2Processor.class),
   RENAME_DATABASE_PROCESSOR("rename-database-processor", RenameDatabaseProcessor.class),
 
   // connectors
-  DO_NOTHING_CONNECTOR("do-nothing-connector", DoNothingConnector.class),
-  IOTDB_THRIFT_CONNECTOR("iotdb-thrift-connector", IoTDBThriftConnector.class),
-  IOTDB_THRIFT_SSL_CONNECTOR("iotdb-thrift-ssl-connector", IoTDBThriftSslConnector.class),
-  IOTDB_THRIFT_SYNC_CONNECTOR("iotdb-thrift-sync-connector", IoTDBThriftSyncConnector.class),
-  IOTDB_THRIFT_ASYNC_CONNECTOR("iotdb-thrift-async-connector", IoTDBThriftAsyncConnector.class),
-  IOTDB_LEGACY_PIPE_CONNECTOR("iotdb-legacy-pipe-connector", IoTDBLegacyPipeConnector.class),
-  IOTDB_AIR_GAP_CONNECTOR("iotdb-air-gap-connector", IoTDBAirGapConnector.class),
-  PIPE_CONSENSUS_ASYNC_CONNECTOR(
-      "pipe-consensus-async-connector", PipeConsensusAsyncConnector.class),
+  DO_NOTHING_CONNECTOR("do-nothing-connector", DoNothingSink.class),
+  IOTDB_THRIFT_CONNECTOR("iotdb-thrift-connector", IoTDBThriftSink.class),
+  IOTDB_THRIFT_SSL_CONNECTOR("iotdb-thrift-ssl-connector", IoTDBThriftSslSink.class),
+  IOTDB_THRIFT_SYNC_CONNECTOR("iotdb-thrift-sync-connector", IoTDBThriftSyncSink.class),
+  IOTDB_THRIFT_ASYNC_CONNECTOR("iotdb-thrift-async-connector", IoTDBThriftAsyncSink.class),
+  IOTDB_LEGACY_PIPE_CONNECTOR("iotdb-legacy-pipe-connector", IoTDBLegacyPipeSink.class),
+  IOTDB_AIR_GAP_CONNECTOR("iotdb-air-gap-connector", IoTDBAirGapSink.class),
+  IOT_CONSENSUS_V2_ASYNC_CONNECTOR(
+      "iot-consensus-v2-async-connector", IoTConsensusV2AsyncSink.class),
 
-  WEBSOCKET_CONNECTOR("websocket-connector", WebSocketConnector.class),
-  OPC_UA_CONNECTOR("opc-ua-connector", OpcUaConnector.class),
-  OPC_DA_CONNECTOR("opc-da-connector", OpcDaConnector.class),
-  WRITE_BACK_CONNECTOR("write-back-connector", WriteBackConnector.class),
+  WEBSOCKET_CONNECTOR("websocket-connector", WebSocketSink.class),
+  OPC_UA_CONNECTOR("opc-ua-connector", OpcUaSink.class),
+  OPC_DA_CONNECTOR("opc-da-connector", OpcDaSink.class),
+  WRITE_BACK_CONNECTOR("write-back-connector", WriteBackSink.class),
 
-  DO_NOTHING_SINK("do-nothing-sink", DoNothingConnector.class),
-  IOTDB_THRIFT_SINK("iotdb-thrift-sink", IoTDBThriftConnector.class),
-  IOTDB_THRIFT_SSL_SINK("iotdb-thrift-ssl-sink", IoTDBThriftSslConnector.class),
-  IOTDB_THRIFT_SYNC_SINK("iotdb-thrift-sync-sink", IoTDBThriftSyncConnector.class),
-  IOTDB_THRIFT_ASYNC_SINK("iotdb-thrift-async-sink", IoTDBThriftAsyncConnector.class),
-  IOTDB_LEGACY_PIPE_SINK("iotdb-legacy-pipe-sink", IoTDBLegacyPipeConnector.class),
-  IOTDB_AIR_GAP_SINK("iotdb-air-gap-sink", IoTDBAirGapConnector.class),
-  WEBSOCKET_SINK("websocket-sink", WebSocketConnector.class),
-  OPC_UA_SINK("opc-ua-sink", OpcUaConnector.class),
-  OPC_DA_SINK("opc-da-sink", OpcDaConnector.class),
-  WRITE_BACK_SINK("write-back-sink", WriteBackConnector.class),
-  SUBSCRIPTION_SINK("subscription-sink", DoNothingConnector.class),
-  PIPE_CONSENSUS_ASYNC_SINK("pipe-consensus-async-sink", PipeConsensusAsyncConnector.class),
+  DO_NOTHING_SINK("do-nothing-sink", DoNothingSink.class),
+  IOTDB_THRIFT_SINK("iotdb-thrift-sink", IoTDBThriftSink.class),
+  IOTDB_THRIFT_SSL_SINK("iotdb-thrift-ssl-sink", IoTDBThriftSslSink.class),
+  IOTDB_THRIFT_SYNC_SINK("iotdb-thrift-sync-sink", IoTDBThriftSyncSink.class),
+  IOTDB_THRIFT_ASYNC_SINK("iotdb-thrift-async-sink", IoTDBThriftAsyncSink.class),
+  IOTDB_LEGACY_PIPE_SINK("iotdb-legacy-pipe-sink", IoTDBLegacyPipeSink.class),
+  IOTDB_AIR_GAP_SINK("iotdb-air-gap-sink", IoTDBAirGapSink.class),
+  WEBSOCKET_SINK("websocket-sink", WebSocketSink.class),
+  OPC_UA_SINK("opc-ua-sink", OpcUaSink.class),
+  OPC_DA_SINK("opc-da-sink", OpcDaSink.class),
+  WRITE_BACK_SINK("write-back-sink", WriteBackSink.class),
+  SUBSCRIPTION_SINK("subscription-sink", DoNothingSink.class),
+  IOT_CONSENSUS_V2_ASYNC_SINK("iot-consensus-v2-async-sink", IoTConsensusV2AsyncSink.class),
   ;
 
   private final String pipePluginName;
@@ -160,7 +157,7 @@ public enum BuiltinPipePlugin {
                   COUNT_POINT_PROCESSOR.getPipePluginName().toUpperCase(),
                   STANDARD_STATISTICS_PROCESSOR.getPipePluginName().toUpperCase(),
                   TUMBLING_WINDOWING_PROCESSOR.getPipePluginName().toUpperCase(),
-                  PIPE_CONSENSUS_PROCESSOR.getPipePluginName().toUpperCase(),
+                  IOT_CONSENSUS_V2_PROCESSOR.getPipePluginName().toUpperCase(),
                   RENAME_DATABASE_PROCESSOR.getPipePluginName().toUpperCase(),
                   // Connectors
                   DO_NOTHING_CONNECTOR.getPipePluginName().toUpperCase(),
@@ -174,7 +171,7 @@ public enum BuiltinPipePlugin {
                   OPC_UA_CONNECTOR.getPipePluginName().toUpperCase(),
                   OPC_DA_CONNECTOR.getPipePluginName().toUpperCase(),
                   WRITE_BACK_CONNECTOR.getPipePluginName().toUpperCase(),
-                  PIPE_CONSENSUS_ASYNC_CONNECTOR.getPipePluginName().toUpperCase(),
+                  IOT_CONSENSUS_V2_ASYNC_CONNECTOR.getPipePluginName().toUpperCase(),
                   // Sinks
                   IOTDB_THRIFT_SYNC_SINK.getPipePluginName().toUpperCase(),
                   IOTDB_THRIFT_ASYNC_SINK.getPipePluginName().toUpperCase(),
@@ -183,5 +180,5 @@ public enum BuiltinPipePlugin {
                   OPC_UA_SINK.getPipePluginName().toUpperCase(),
                   OPC_DA_SINK.getPipePluginName().toUpperCase(),
                   SUBSCRIPTION_SINK.getPipePluginName().toUpperCase(),
-                  PIPE_CONSENSUS_ASYNC_SINK.getPipePluginName().toUpperCase())));
+                  IOT_CONSENSUS_V2_ASYNC_SINK.getPipePluginName().toUpperCase())));
 }

@@ -31,10 +31,10 @@ import java.time.ZoneId;
 import java.util.function.Function;
 
 import static java.time.temporal.ChronoField.ALIGNED_WEEK_OF_YEAR;
-import static org.apache.iotdb.db.utils.DateTimeUtils.EXTRACT_TIMESTAMP_MS_PART;
-import static org.apache.iotdb.db.utils.DateTimeUtils.EXTRACT_TIMESTAMP_NS_PART;
-import static org.apache.iotdb.db.utils.DateTimeUtils.EXTRACT_TIMESTAMP_US_PART;
 import static org.apache.iotdb.db.utils.DateTimeUtils.convertToZonedDateTime;
+import static org.apache.iotdb.db.utils.DateTimeUtils.getExtractTimestampMsPartFunction;
+import static org.apache.iotdb.db.utils.DateTimeUtils.getExtractTimestampNsPartFunction;
+import static org.apache.iotdb.db.utils.DateTimeUtils.getExtractTimestampUsPartFunction;
 
 public class ExtractTransformer extends UnaryColumnTransformer {
   private final Function<Long, Long> evaluateFunction;
@@ -72,11 +72,11 @@ public class ExtractTransformer extends UnaryColumnTransformer {
       case SECOND:
         return timestamp -> (long) convertToZonedDateTime(timestamp, zoneId).getSecond();
       case MS:
-        return EXTRACT_TIMESTAMP_MS_PART;
+        return getExtractTimestampMsPartFunction();
       case US:
-        return EXTRACT_TIMESTAMP_US_PART;
+        return getExtractTimestampUsPartFunction();
       case NS:
-        return EXTRACT_TIMESTAMP_NS_PART;
+        return getExtractTimestampNsPartFunction();
       default:
         throw new UnsupportedOperationException("Unexpected extract field: " + field);
     }

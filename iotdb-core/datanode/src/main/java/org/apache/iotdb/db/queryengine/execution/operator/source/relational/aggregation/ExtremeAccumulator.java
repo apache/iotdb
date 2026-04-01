@@ -68,6 +68,7 @@ public class ExtremeAccumulator implements TableAccumulator {
       case TEXT:
       case STRING:
       case BLOB:
+      case OBJECT:
       case BOOLEAN:
       case DATE:
       case TIMESTAMP:
@@ -100,6 +101,7 @@ public class ExtremeAccumulator implements TableAccumulator {
         case TEXT:
         case STRING:
         case BLOB:
+        case OBJECT:
         case BOOLEAN:
         case DATE:
         case TIMESTAMP:
@@ -118,24 +120,25 @@ public class ExtremeAccumulator implements TableAccumulator {
 
     switch (seriesDataType) {
       case INT32:
-        updateIntResult((int) statistics[0].getMaxValue());
-        updateIntResult((int) statistics[0].getMinValue());
+        updateIntResult(((Number) statistics[0].getMaxValue()).intValue());
+        updateIntResult(((Number) statistics[0].getMinValue()).intValue());
         break;
       case INT64:
-        updateLongResult((long) statistics[0].getMaxValue());
-        updateLongResult((long) statistics[0].getMinValue());
+        updateLongResult(((Number) statistics[0].getMaxValue()).longValue());
+        updateLongResult(((Number) statistics[0].getMinValue()).longValue());
         break;
       case FLOAT:
-        updateFloatResult((float) statistics[0].getMaxValue());
-        updateFloatResult((float) statistics[0].getMinValue());
+        updateFloatResult(((Number) statistics[0].getMaxValue()).floatValue());
+        updateFloatResult(((Number) statistics[0].getMinValue()).floatValue());
         break;
       case DOUBLE:
-        updateDoubleResult((double) statistics[0].getMaxValue());
-        updateDoubleResult((double) statistics[0].getMinValue());
+        updateDoubleResult(((Number) statistics[0].getMaxValue()).doubleValue());
+        updateDoubleResult(((Number) statistics[0].getMinValue()).doubleValue());
         break;
       case TEXT:
       case STRING:
       case BLOB:
+      case OBJECT:
       case BOOLEAN:
       case DATE:
       case TIMESTAMP:
@@ -168,6 +171,7 @@ public class ExtremeAccumulator implements TableAccumulator {
       case TEXT:
       case STRING:
       case BLOB:
+      case OBJECT:
       case BOOLEAN:
       case DATE:
       case TIMESTAMP:
@@ -200,6 +204,7 @@ public class ExtremeAccumulator implements TableAccumulator {
       case TEXT:
       case STRING:
       case BLOB:
+      case OBJECT:
       case BOOLEAN:
       case DATE:
       case TIMESTAMP:

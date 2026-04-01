@@ -19,13 +19,14 @@
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.source;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
-import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
+import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -33,17 +34,21 @@ import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Objects;
 
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.showQueriesColumnHeaders;
+
 public class ShowQueriesNode extends VirtualSourceNode {
 
   public static final List<String> SHOW_QUERIES_HEADER_COLUMNS =
-      ImmutableList.of(
-          ColumnHeaderConstant.QUERY_ID,
-          ColumnHeaderConstant.DATA_NODE_ID,
-          ColumnHeaderConstant.ELAPSED_TIME,
-          ColumnHeaderConstant.STATEMENT);
+      showQueriesColumnHeaders.stream()
+          .map(ColumnHeader::getColumnName)
+          .collect(ImmutableList.toImmutableList());
 
-  public ShowQueriesNode(PlanNodeId id, TDataNodeLocation dataNodeLocation) {
+  private final String allowedUsername;
+
+  public ShowQueriesNode(
+      PlanNodeId id, TDataNodeLocation dataNodeLocation, String allowedUsername) {
     super(id, dataNodeLocation);
+    this.allowedUsername = allowedUsername;
   }
 
   @Override
@@ -63,7 +68,11 @@ public class ShowQueriesNode extends VirtualSourceNode {
 
   @Override
   public PlanNode clone() {
-    return new ShowQueriesNode(getPlanNodeId(), getDataNodeLocation());
+    return new ShowQueriesNode(getPlanNodeId(), getDataNodeLocation(), allowedUsername);
+  }
+
+  public String getAllowedUsername() {
+    return allowedUsername;
   }
 
   @Override
@@ -86,16 +95,19 @@ public class ShowQueriesNode extends VirtualSourceNode {
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.SHOW_QUERIES.serialize(byteBuffer);
+    ReadWriteIOUtils.write(this.allowedUsername, byteBuffer);
   }
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
     PlanNodeType.SHOW_QUERIES.serialize(stream);
+    ReadWriteIOUtils.write(this.allowedUsername, stream);
   }
 
   public static ShowQueriesNode deserialize(ByteBuffer byteBuffer) {
+    String allowedUsername = ReadWriteIOUtils.readString(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new ShowQueriesNode(planNodeId, null);
+    return new ShowQueriesNode(planNodeId, null, allowedUsername);
   }
 
   @Override

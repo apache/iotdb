@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.schema.filter.SchemaFilterType;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterVisitor;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -31,6 +32,9 @@ import java.nio.ByteBuffer;
 import java.util.Objects;
 
 public class DataTypeFilter extends SchemaFilter {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(DataTypeFilter.class);
 
   private final TSDataType dataType;
 
@@ -81,5 +85,10 @@ public class DataTypeFilter extends SchemaFilter {
   @Override
   public int hashCode() {
     return Objects.hash(dataType);
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE;
   }
 }

@@ -96,6 +96,7 @@ public abstract class GroupedMaxMinByBaseAccumulator implements GroupedAccumulat
         break;
       case TEXT:
       case BLOB:
+      case OBJECT:
       case STRING:
         xBinaryValues = new BinaryBigArray();
         break;
@@ -124,6 +125,7 @@ public abstract class GroupedMaxMinByBaseAccumulator implements GroupedAccumulat
         break;
       case TEXT:
       case BLOB:
+      case OBJECT:
       case STRING:
         yBinaryValues = new BinaryBigArray();
         break;
@@ -157,6 +159,7 @@ public abstract class GroupedMaxMinByBaseAccumulator implements GroupedAccumulat
       case TEXT:
       case STRING:
       case BLOB:
+      case OBJECT:
         valuesSize += xBinaryValues.sizeOf();
         break;
       case BOOLEAN:
@@ -185,6 +188,7 @@ public abstract class GroupedMaxMinByBaseAccumulator implements GroupedAccumulat
       case TEXT:
       case STRING:
       case BLOB:
+      case OBJECT:
         valuesSize += yBinaryValues.sizeOf();
         break;
       case BOOLEAN:
@@ -220,6 +224,7 @@ public abstract class GroupedMaxMinByBaseAccumulator implements GroupedAccumulat
       case TEXT:
       case STRING:
       case BLOB:
+      case OBJECT:
         xBinaryValues.ensureCapacity(groupCount);
         break;
       case BOOLEAN:
@@ -247,6 +252,7 @@ public abstract class GroupedMaxMinByBaseAccumulator implements GroupedAccumulat
       case TEXT:
       case STRING:
       case BLOB:
+      case OBJECT:
         yBinaryValues.ensureCapacity(groupCount);
         break;
       case BOOLEAN:
@@ -282,6 +288,7 @@ public abstract class GroupedMaxMinByBaseAccumulator implements GroupedAccumulat
         break;
       case TEXT:
       case BLOB:
+      case OBJECT:
       case STRING:
         xBinaryValues.reset();
         break;
@@ -310,6 +317,7 @@ public abstract class GroupedMaxMinByBaseAccumulator implements GroupedAccumulat
         break;
       case TEXT:
       case BLOB:
+      case OBJECT:
       case STRING:
         yBinaryValues.reset();
         break;
@@ -341,6 +349,7 @@ public abstract class GroupedMaxMinByBaseAccumulator implements GroupedAccumulat
         return;
       case TEXT:
       case BLOB:
+      case OBJECT:
       case STRING:
         addBinaryInput(groupIds, arguments, mask);
         return;
@@ -596,6 +605,7 @@ public abstract class GroupedMaxMinByBaseAccumulator implements GroupedAccumulat
       case TEXT:
       case STRING:
       case BLOB:
+      case OBJECT:
         columnBuilder.writeBinary(xBinaryValues.get(groupId));
         break;
       case BOOLEAN:
@@ -630,6 +640,7 @@ public abstract class GroupedMaxMinByBaseAccumulator implements GroupedAccumulat
         case TEXT:
         case STRING:
         case BLOB:
+        case OBJECT:
           xBinaryValues.set(groupId, xColumn.getBinary(xIndex));
           break;
         case BOOLEAN:
@@ -692,6 +703,7 @@ public abstract class GroupedMaxMinByBaseAccumulator implements GroupedAccumulat
       case TEXT:
       case STRING:
       case BLOB:
+      case OBJECT:
         byte[] values =
             isX ? xBinaryValues.get(groupId).getValues() : yBinaryValues.get(groupId).getValues();
         intToBytes(values.length, bytes, offset);
@@ -725,6 +737,7 @@ public abstract class GroupedMaxMinByBaseAccumulator implements GroupedAccumulat
         return Double.BYTES;
       case TEXT:
       case BLOB:
+      case OBJECT:
       case STRING:
         return Integer.BYTES
             + (isX
@@ -774,6 +787,7 @@ public abstract class GroupedMaxMinByBaseAccumulator implements GroupedAccumulat
       case STRING:
       case TEXT:
       case BLOB:
+      case OBJECT:
         int length = BytesUtils.bytesToInt(bytes, offset);
         offset += Integer.BYTES;
         Binary binaryMaxVal = new Binary(BytesUtils.subBytes(bytes, offset, length));
@@ -818,6 +832,7 @@ public abstract class GroupedMaxMinByBaseAccumulator implements GroupedAccumulat
         case TEXT:
         case STRING:
         case BLOB:
+        case OBJECT:
           int length = BytesUtils.bytesToInt(bytes, offset);
           offset += Integer.BYTES;
           columnBuilder.writeBinary(new Binary(BytesUtils.subBytes(bytes, offset, length)));

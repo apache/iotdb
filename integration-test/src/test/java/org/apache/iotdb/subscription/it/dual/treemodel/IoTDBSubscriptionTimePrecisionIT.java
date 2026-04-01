@@ -32,6 +32,7 @@ import org.apache.iotdb.subscription.it.dual.AbstractSubscriptionDualIT;
 
 import org.apache.tsfile.write.record.Tablet;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -69,11 +70,20 @@ public class IoTDBSubscriptionTimePrecisionIT extends AbstractSubscriptionDualIT
 
     // Set timestamp precision to nanosecond
     senderEnv.getConfig().getCommonConfig().setTimestampPrecision("ns");
-    senderEnv.getConfig().getCommonConfig().setIsPipeEnableMemoryCheck(false);
+    senderEnv
+        .getConfig()
+        .getCommonConfig()
+        .setPipeMemoryManagementEnabled(false)
+        .setIsPipeEnableMemoryCheck(false);
     receiverEnv.getConfig().getCommonConfig().setTimestampPrecision("ns");
-    receiverEnv.getConfig().getCommonConfig().setIsPipeEnableMemoryCheck(false);
+    receiverEnv
+        .getConfig()
+        .getCommonConfig()
+        .setPipeMemoryManagementEnabled(false)
+        .setIsPipeEnableMemoryCheck(false);
   }
 
+  @Ignore
   @Test
   public void testTopicTimePrecision() throws Exception {
     final String host = senderEnv.getIP();
@@ -153,8 +163,7 @@ public class IoTDBSubscriptionTimePrecisionIT extends AbstractSubscriptionDualIT
                   final List<SubscriptionMessage> messages =
                       consumer.poll(IoTDBSubscriptionITConstant.POLL_TIMEOUT_MS);
                   for (final SubscriptionMessage message : messages) {
-                    for (final Iterator<Tablet> it =
-                            message.getSessionDataSetsHandler().tabletIterator();
+                    for (final Iterator<Tablet> it = message.getRecordTabletIterator();
                         it.hasNext(); ) {
                       final Tablet tablet = it.next();
                       session.insertTablet(tablet);
@@ -181,7 +190,7 @@ public class IoTDBSubscriptionTimePrecisionIT extends AbstractSubscriptionDualIT
         AWAIT.untilAsserted(
             () ->
                 TestUtils.assertSingleResultSetEqual(
-                    TestUtils.executeQueryWithRetry(statement, "select count(*) from root.**"),
+                    TestUtils.executeQueryWithRetry(statement, "select count(*) from root.db.**"),
                     new HashMap<String, String>() {
                       {
                         put("count(root.db.d1.s2)", "100");

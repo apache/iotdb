@@ -78,7 +78,7 @@ public abstract class AbstractProcedureScheduler implements ProcedureScheduler {
 
   @Override
   public void addFront(final Procedure procedure) {
-    if (procedure.isSuccess()) {
+    if (procedure != null && procedure.isSuccess()) {
       LOG.warn("Don't add a successful procedure back to the scheduler, it will be ignored");
       return;
     }

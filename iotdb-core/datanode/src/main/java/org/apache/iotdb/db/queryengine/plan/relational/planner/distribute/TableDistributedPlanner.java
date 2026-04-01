@@ -23,13 +23,13 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.DownStreamChannelLocation;
-import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.planner.distribution.NodeDistribution;
 import org.apache.iotdb.db.queryengine.plan.planner.distribution.WriteFragmentParallelPlanner;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.SubPlan;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanGraphPrinter;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
@@ -102,6 +102,14 @@ public class TableDistributedPlanner {
     TableDistributedPlanGenerator.PlanContext planContext =
         new TableDistributedPlanGenerator.PlanContext();
     PlanNode outputNodeWithExchange = generateDistributedPlanWithOptimize(planContext);
+    List<String> planText = null;
+    if (mppQueryContext.isExplain() && mppQueryContext.isInnerTriggeredQuery()) {
+      planText =
+          outputNodeWithExchange.accept(
+              new PlanGraphPrinter(),
+              new PlanGraphPrinter.GraphContext(
+                  mppQueryContext.getTypeProvider().getTemplatedInfo()));
+    }
 
     if (analysis.isQuery()) {
       analysis
@@ -111,7 +119,13 @@ public class TableDistributedPlanner {
 
     adjustUpStream(outputNodeWithExchange, planContext);
 
-    return generateDistributedPlan(outputNodeWithExchange, planContext.nodeDistributionMap);
+    DistributedQueryPlan distributedPlan =
+        generateDistributedPlan(outputNodeWithExchange, planContext.nodeDistributionMap);
+    if (planText != null) {
+      distributedPlan.addPlanText(planText);
+    }
+
+    return distributedPlan;
   }
 
   public PlanNode generateDistributedPlanWithOptimize(
@@ -165,7 +179,7 @@ public class TableDistributedPlanner {
 
     // generate fragment instances
     List<FragmentInstance> fragmentInstances =
-        mppQueryContext.getQueryType() == QueryType.READ
+        mppQueryContext.isQuery()
             ? new TableModelQueryFragmentPlanner(
                     subPlan, analysis, mppQueryContext, nodeDistributionMap)
                 .parallelPlan()
@@ -174,7 +188,7 @@ public class TableDistributedPlanner {
                 .parallelPlan();
 
     // only execute this step for READ operation
-    if (mppQueryContext.getQueryType() == QueryType.READ) {
+    if (mppQueryContext.isQuery()) {
       setSinkForRootInstance(subPlan, fragmentInstances);
     }
 

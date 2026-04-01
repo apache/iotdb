@@ -50,8 +50,16 @@ public class IoTDBSystemPermissionIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
+    EnvFactory.getEnv().getConfig().getCommonConfig().setEnforceStrongPassword(false);
     EnvFactory.getEnv().initClusterEnvironment();
-    createUser("test", "test123");
+    createUser("test1", "test123123456");
+    createUser("test2", "test123123456");
+    createUser("test3", "test123123456");
+    createUser("test4", "test123123456");
+    createUser("test5", "test123123456");
+    createUser("test6", "test123123456");
+    createUser("test7", "test123123456");
+    createUser("test8", "test123123456");
     executeNonQuery("create database root.test1");
   }
 
@@ -61,27 +69,22 @@ public class IoTDBSystemPermissionIT {
   }
 
   @Test
-  public void showVersionTest() {
-    executeQuery("show version", "test", "test123");
-  }
-
-  @Test
   public void manageDataBaseTest() {
     assertNonQueryTestFail(
         "create database root.test2",
-        "803: No permissions for this operation, please add privilege MANAGE_DATABASE",
-        "test",
-        "test123");
+        "803: No permissions for this operation, please add privilege SYSTEM",
+        "test1",
+        "test123123456");
     assertNonQueryTestFail(
         "drop database root.test1",
-        "803: No permissions for this operation, please add privilege MANAGE_DATABASE",
-        "test",
-        "test123");
+        "803: No permissions for this operation, please add privilege SYSTEM",
+        "test1",
+        "test123123456");
 
-    grantUserSystemPrivileges("test", PrivilegeType.MANAGE_DATABASE);
+    grantUserSystemPrivileges("test1", PrivilegeType.SYSTEM);
 
-    executeNonQuery("create database root.test2", "test", "test123");
-    executeNonQuery("drop database root.test1, root.test2", "test", "test123");
+    executeNonQuery("create database root.test2", "test1", "test123123456");
+    executeNonQuery("drop database root.test1, root.test2", "test1", "test123123456");
   }
 
   @Test
@@ -90,58 +93,54 @@ public class IoTDBSystemPermissionIT {
         String.format(
             "create stateless trigger testTrigger before insert on root.test.stateless.* as '%s' using URI '%s'",
             TRIGGER_FILE_TIMES_COUNTER, TRIGGER_JAR_PREFIX + "TriggerFireTimesCounter.jar"),
-        "803: No permissions for this operation, please add privilege USE_TRIGGER",
-        "test",
-        "test123");
+        "803: No permissions for this operation, please add privilege SYSTEM",
+        "test2",
+        "test123123456");
     assertNonQueryTestFail(
         "drop trigger testTrigger",
-        "803: No permissions for this operation, please add privilege USE_TRIGGER",
-        "test",
-        "test123");
+        "803: No permissions for this operation, please add privilege SYSTEM",
+        "test2",
+        "test123123456");
     assertTestFail(
         "show triggers",
-        "803: No permissions for this operation, please add privilege USE_TRIGGER",
-        "test",
-        "test123");
+        "803: No permissions for this operation, please add privilege SYSTEM",
+        "test2",
+        "test123123456");
 
-    grantUserSystemPrivileges("test", PrivilegeType.USE_TRIGGER);
+    grantUserSystemPrivileges("test2", PrivilegeType.SYSTEM);
 
     executeNonQuery(
         String.format(
             "create stateless trigger testTrigger before insert on root.test.stateless.* as '%s' using URI '%s'",
             TRIGGER_FILE_TIMES_COUNTER, TRIGGER_JAR_PREFIX + "TriggerFireTimesCounter.jar"),
-        "test",
-        "test123");
-    executeNonQuery("drop trigger testTrigger", "test", "test123");
-    executeQuery("show triggers", "test", "test123");
+        "test2",
+        "test123123456");
+    executeNonQuery("drop trigger testTrigger", "test2", "test123123456");
+    executeQuery("show triggers", "test2", "test123123456");
   }
 
   @Test
   public void manageUdfTest() {
     assertNonQueryTestFail(
         "create function counter as 'org.apache.iotdb.db.query.udf.example.Counter'",
-        "803: No permissions for this operation, please add privilege USE_UDF",
-        "test",
-        "test123");
+        "803: No permissions for this operation, please add privilege SYSTEM",
+        "test3",
+        "test123123456");
     assertNonQueryTestFail(
         "drop function counter",
-        "803: No permissions for this operation, please add privilege USE_UDF",
-        "test",
-        "test123");
-    assertTestFail(
-        "show functions",
-        "803: No permissions for this operation, please add privilege USE_UDF",
-        "test",
-        "test123");
+        "803: No permissions for this operation, please add privilege SYSTEM",
+        "test3",
+        "test123123456");
+    executeQuery("show functions", "test3", "test123123456");
 
-    grantUserSystemPrivileges("test", PrivilegeType.USE_UDF);
+    grantUserSystemPrivileges("test3", PrivilegeType.SYSTEM);
 
     executeNonQuery(
         "create function counter as 'org.apache.iotdb.db.query.udf.example.Counter'",
-        "test",
-        "test123");
-    executeNonQuery("drop function counter", "test", "test123");
-    executeQuery("show functions", "test", "test123");
+        "test3",
+        "test123123456");
+    executeNonQuery("drop function counter", "test3", "test123123456");
+    executeQuery("show functions", "test3", "test123123456");
   }
 
   @Test
@@ -156,21 +155,21 @@ public class IoTDBSystemPermissionIT {
             + "    FROM root.sg.d\n"
             + "    GROUP BY(10m)\n"
             + "END",
-        "803: No permissions for this operation, please add privilege USE_CQ",
-        "test",
-        "test123");
+        "803: No permissions for this operation, please add privilege SYSTEM",
+        "test5",
+        "test123123456");
     assertNonQueryTestFail(
         "drop CQ testCQ",
-        "803: No permissions for this operation, please add privilege USE_CQ",
-        "test",
-        "test123");
+        "803: No permissions for this operation, please add privilege SYSTEM",
+        "test5",
+        "test123123456");
     assertTestFail(
         "show CQs",
-        "803: No permissions for this operation, please add privilege USE_CQ",
-        "test",
-        "test123");
+        "803: No permissions for this operation, please add privilege SYSTEM",
+        "test5",
+        "test123123456");
 
-    grantUserSystemPrivileges("test", PrivilegeType.USE_CQ);
+    grantUserSystemPrivileges("test5", PrivilegeType.SYSTEM);
 
     executeNonQuery(
         "CREATE CQ testCQ\n"
@@ -182,10 +181,10 @@ public class IoTDBSystemPermissionIT {
             + "    FROM root.sg.d\n"
             + "    GROUP BY(10m)\n"
             + "END",
-        "test",
-        "test123");
-    executeNonQuery("drop CQ testCQ", "test", "test123");
-    executeQuery("show CQs", "test", "test123");
+        "test5",
+        "test123123456");
+    executeNonQuery("drop CQ testCQ", "test5", "test123123456");
+    executeQuery("show CQs", "test5", "test123123456");
   }
 
   // We test pipe permission in IoTDBPipeLifeCycleIT because a fake or self receiver
@@ -193,59 +192,80 @@ public class IoTDBSystemPermissionIT {
 
   @Test
   public void maintainOperationsTest() {
+    executeQuery("show queries", "test6", "test123123456");
+    executeQuery("show version", "test6", "test123123456");
     assertNonQueryTestFail(
-        "show queries",
-        "803: No permissions for this operation, please add privilege MAINTAIN",
-        "test",
-        "test123");
-    assertNonQueryTestFail(
-        "kill query 'test'",
-        "803: No permissions for this operation, please add privilege MAINTAIN",
-        "test",
-        "test123");
-    assertNonQueryTestFail(
-        "show cluster",
-        "803: No permissions for this operation, please add privilege MAINTAIN",
-        "test",
-        "test123");
-    assertNonQueryTestFail(
-        "show cluster details",
-        "803: No permissions for this operation, please add privilege MAINTAIN",
-        "test",
-        "test123");
-
-    grantUserSystemPrivileges("test", PrivilegeType.MAINTAIN);
-
-    executeNonQuery("show queries", "test", "test123");
-    assertNonQueryTestFail(
-        "kill query 'test'",
-        "701: Please ensure your input <queryId> is correct",
-        "test",
-        "test123");
-    executeNonQuery("show cluster", "test", "test123");
-    executeNonQuery("show cluster details", "test", "test123");
+        "kill query '20250918_015728_00003_1'", "714: No such query", "test6", "test123123456");
+    assertNonQueriesTestFail(
+        new String[] {
+          "show variables",
+          "flush",
+          "clear cache",
+          "set system to readonly",
+          "set system to running",
+          "set configuration 'enable_seq_space_compaction'='true'",
+          "start repair data",
+          "stop repair data",
+        },
+        "803: No permissions for this operation, please add privilege SYSTEM",
+        "test6",
+        "test123123456");
+    grantUserSystemPrivileges("test6", PrivilegeType.SYSTEM);
+    executeNonQuery("flush", "test6", "test123123456");
+    executeNonQuery("clear cache", "test6", "test123123456");
+    executeNonQuery("set system to readonly", "test6", "test123123456");
+    executeNonQuery("set system to running", "test6", "test123123456");
+    executeNonQuery(
+        "set configuration 'enable_seq_space_compaction'='true'", "test6", "test123123456");
+    executeNonQuery("start repair data", "test6", "test123123456");
+    executeNonQuery("stop repair data", "test6", "test123123456");
+    executeQuery("show queries", "test6", "test123123456");
   }
 
   @Test
-  public void adminOperationsTest() {
-    assertNonQueryTestFail(
-        "flush", "803: Only the admin user can perform this operation", "test", "test123");
-    assertNonQueryTestFail(
-        "clear cache", "803: Only the admin user can perform this operation", "test", "test123");
-    assertNonQueryTestFail(
-        "set system to readonly",
-        "803: Only the admin user can perform this operation",
-        "test",
-        "test123");
-    assertNonQueryTestFail(
-        "set system to running",
-        "803: Only the admin user can perform this operation",
-        "test",
-        "test123");
+  public void clusterManagemantOperationsTest() {
+    assertNonQueriesTestFail(
+        new String[] {
+          "show confignodes",
+          "show datanodes",
+          "show ainodes",
+          "show regions",
+          "remove datanode 1",
+          "remove confignode 0",
+          "reconstruct region 0 on 1",
+          "extend region 0 to 1",
+          "migrate region 1 from 1 to 2",
+          "remove region 1 from 1",
+          "show cluster",
+          "show cluster details",
+        },
+        "803: No permissions for this operation, please add privilege SYSTEM",
+        "test7",
+        "test123123456");
     assertNonQueryTestFail(
         "load configuration",
         "803: Only the admin user can perform this operation",
-        "test",
-        "test123");
+        "test7",
+        "test123123456");
+    grantUserSystemPrivileges("test7", PrivilegeType.SYSTEM);
+
+    executeQuery("show confignodes", "test7", "test123123456");
+    executeQuery("show datanodes", "test7", "test123123456");
+    executeQuery("show ainodes", "test7", "test123123456");
+    executeQuery("show regions", "test7", "test123123456");
+    executeQuery("show cluster", "test7", "test123123456");
+    executeQuery("show cluster details", "test7", "test123123456");
+    assertNonQueryTestFail(
+        "load configuration",
+        "803: Only the admin user can perform this operation",
+        "test7",
+        "test123123456");
+  }
+
+  private void assertNonQueriesTestFail(
+      String[] sqls, String msg, String username, String password) {
+    for (String sql : sqls) {
+      assertNonQueryTestFail(sql, msg, username, password);
+    }
   }
 }

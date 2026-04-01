@@ -1,5 +1,5 @@
 Apache IoTDB
-Copyright 2018-2024 The Apache Software Foundation.
+Copyright 2018-2025 The Apache Software Foundation.
 
 This product includes software developed at
 The Apache Software Foundation (http://www.apache.org/).
@@ -14,6 +14,15 @@ IoTDB project uses 4 Chinese Patents:
 
 According to the Apache 2.0 License. The owner of the patents, Tsinghua University,
 grant the users the right to the use of patent under the requirement of Apache 2.0 License.
+
+============================================================================
+
+This product includes source code derived from the DataDog/toto project:
+
+  Toto – Timeseries-Optimized Transformer for Observability
+  Copyright 2025 Datadog, Inc.
+  Licensed under the Apache License, Version 2.0
+  https://github.com/DataDog/toto
 
 ============================================================================
 

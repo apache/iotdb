@@ -45,23 +45,25 @@ jobs:
       fail-fast: false
       max-parallel: 15
       matrix:
-        os: [ubuntu-22.04, ubuntu-24.04, windows-2022, macos-latest]
+        os: [ubuntu-22.04, ubuntu-24.04, windows-2022, windows-latest, windows-2025-vs2026, macos-latest]
     runs-on: ${{ matrix.os}}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Install CPP Dependencies (Ubuntu)
         if: runner.os == 'Linux'
         shell: bash
         run: |
           sudo apt-get update
           sudo apt-get install libboost-all-dev
+          sudo apt-get install openssl libssl-dev
       - name: Install CPP Dependencies (Mac)
         # remove some xcode to release disk space
         if: runner.os == 'macOS'
         shell: bash
         run: |
           brew install boost
+          brew install openssl
           sudo rm -rf /Applications/Xcode_14.3.1.app
           sudo rm -rf /Applications/Xcode_15.0.1.app
           sudo rm -rf /Applications/Xcode_15.1.app
@@ -74,8 +76,13 @@ jobs:
           choco install boost-msvc-14.3
           $boost_path = (Get-ChildItem -Path 'C:\local\' -Filter 'boost_*').FullName
           echo $boost_path >> $env:GITHUB_PATH
+          
+          choco install openssl
+          $sslPath = (Get-ChildItem 'C:\Program Files\OpenSSL*' -Directory | Select-Object -First 1).FullName
+          echo "$sslPath\bin" >> $env:GITHUB_PATH
+          echo "OPENSSL_ROOT_DIR=$sslPath" >> $env:GITHUB_ENV
       - name: Cache Maven packages
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.m2
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
@@ -89,14 +96,14 @@ jobs:
         # Explicitly using "install" instead of package in order to be sure we're using libs built on this machine
         # (was causing problems on windows, but could cause problem on linux, when updating the thrift module)
         run: |
-          if [[ "$RUNNER_OS" == "Linux" ]]; then
-            ./mvnw clean verify -P with-cpp -pl iotdb-client/client-cpp,example/client-cpp-example -am -Diotdb-tools-thrift.version=0.14.1.1-glibc223-SNAPSHOT
+          if [[ "${{ matrix.os }}" == "windows-2025-vs2026" ]]; then
+            ./mvnw clean verify -P with-cpp -pl iotdb-client/client-cpp,example/client-cpp-example -am -Dcmake.generator="Visual Studio 18 2026"
           else
             ./mvnw clean verify -P with-cpp -pl iotdb-client/client-cpp,example/client-cpp-example -am
           fi
       - name: Upload Artifact
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: cpp-IT-${{ runner.os }}
           path: distribution/target/apache-iotdb-*-all-bin/apache-iotdb-*-all-bin/logs
@@ -106,12 +113,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           token: ${{secrets.GITHUB_TOKEN}}
           submodules: recursive
       - name: Cache Maven packages
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.m2
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
@@ -135,18 +142,18 @@ jobs:
     runs-on: ${{ 'ubuntu-latest' }}
 
     steps:
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python }}
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Cache Maven packages
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.m2
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2-
       - name: Cache pip packages
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.cache/pip
           key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}

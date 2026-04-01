@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import javax.annotation.Nullable;
 
@@ -30,6 +31,8 @@ import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Objects.requireNonNull;
 
 public class Update extends AbstractTraverseDevice {
+  private static final long INSTANCE_SIZE = RamUsageEstimator.shallowSizeOfInstance(Update.class);
+
   private List<UpdateAssignment> assignments;
 
   public Update(
@@ -79,5 +82,13 @@ public class Update extends AbstractTraverseDevice {
     return toStringHelper(this).add("assignments", assignments).omitNullValues()
         + " - "
         + super.toStringContent();
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += ramBytesUsedForCommonFields();
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeList(assignments);
+    return size;
   }
 }

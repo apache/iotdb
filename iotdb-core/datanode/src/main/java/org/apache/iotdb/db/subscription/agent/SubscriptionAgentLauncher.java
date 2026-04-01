@@ -95,7 +95,7 @@ class SubscriptionAgentLauncher {
             MAX_RETRY_TIMES,
             e);
         try {
-          Thread.sleep(
+          SubscriptionAgentLauncher.class.wait(
               retry * SubscriptionConfig.getInstance().getSubscriptionLaunchRetryIntervalMs());
         } catch (final InterruptedException interruptedException) {
           LOGGER.info(
@@ -154,7 +154,7 @@ class SubscriptionAgentLauncher {
             MAX_RETRY_TIMES,
             e);
         try {
-          Thread.sleep(
+          SubscriptionAgentLauncher.class.wait(
               retry * SubscriptionConfig.getInstance().getSubscriptionLaunchRetryIntervalMs());
         } catch (final InterruptedException interruptedException) {
           LOGGER.info(

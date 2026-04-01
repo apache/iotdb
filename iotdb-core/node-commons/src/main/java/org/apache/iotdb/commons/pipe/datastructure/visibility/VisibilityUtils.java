@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.commons.pipe.datastructure.visibility;
 
-import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
+import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.pipe.api.annotation.TableModel;
 import org.apache.iotdb.pipe.api.annotation.TreeModel;
@@ -90,9 +90,9 @@ public class VisibilityUtils {
     final boolean isDoubleLiving =
         extractorParameters.getBooleanOrDefault(
             Arrays.asList(
-                PipeExtractorConstant.EXTRACTOR_MODE_DOUBLE_LIVING_KEY,
-                PipeExtractorConstant.SOURCE_MODE_DOUBLE_LIVING_KEY),
-            PipeExtractorConstant.EXTRACTOR_MODE_DOUBLE_LIVING_DEFAULT_VALUE);
+                PipeSourceConstant.EXTRACTOR_MODE_DOUBLE_LIVING_KEY,
+                PipeSourceConstant.SOURCE_MODE_DOUBLE_LIVING_KEY),
+            PipeSourceConstant.EXTRACTOR_MODE_DOUBLE_LIVING_DEFAULT_VALUE);
     if (isDoubleLiving) {
       return Visibility.BOTH;
     }
@@ -104,13 +104,13 @@ public class VisibilityUtils {
             .equals(SystemConstant.SQL_DIALECT_TREE_VALUE);
     final Boolean _isCaptureTree =
         extractorParameters.getBooleanByKeys(
-            PipeExtractorConstant.EXTRACTOR_CAPTURE_TREE_KEY,
-            PipeExtractorConstant.SOURCE_CAPTURE_TREE_KEY);
+            PipeSourceConstant.EXTRACTOR_CAPTURE_TREE_KEY,
+            PipeSourceConstant.SOURCE_CAPTURE_TREE_KEY);
     final boolean isCaptureTree = Objects.nonNull(_isCaptureTree) ? _isCaptureTree : isTreeDialect;
     final Boolean _isCaptureTable =
         extractorParameters.getBooleanByKeys(
-            PipeExtractorConstant.EXTRACTOR_CAPTURE_TABLE_KEY,
-            PipeExtractorConstant.SOURCE_CAPTURE_TABLE_KEY);
+            PipeSourceConstant.EXTRACTOR_CAPTURE_TABLE_KEY,
+            PipeSourceConstant.SOURCE_CAPTURE_TABLE_KEY);
     final boolean isCaptureTable =
         Objects.nonNull(_isCaptureTable) ? _isCaptureTable : !isTreeDialect;
 

@@ -64,6 +64,7 @@ public class UDTFEqualSizeBucketM4Sample extends UDTFEqualSizeBucketSample {
       case STRING:
       case TEXT:
       case BLOB:
+      case OBJECT:
       default:
         // This will not happen
         throw new UDFInputSeriesDataTypeNotValidException(

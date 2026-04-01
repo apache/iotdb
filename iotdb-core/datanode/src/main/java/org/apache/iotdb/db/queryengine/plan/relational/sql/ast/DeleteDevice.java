@@ -47,6 +47,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import org.apache.tsfile.read.common.type.TypeFactory;
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -65,6 +66,8 @@ import java.util.stream.Collectors;
 import static com.google.common.base.MoreObjects.toStringHelper;
 
 public class DeleteDevice extends AbstractTraverseDevice {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(DeleteDevice.class);
 
   // Used for data deletion
   private List<TableDeletionEntry> modEntries;
@@ -75,13 +78,12 @@ public class DeleteDevice extends AbstractTraverseDevice {
   }
 
   @Override
-  public boolean parseRawExpression(
+  public boolean parseWhere(
       final Map<String, List<DeviceEntry>> entries,
       final TsTable tableInstance,
       final List<String> attributeColumns,
       final MPPQueryContext context) {
-    return mayDeleteDevice =
-        super.parseRawExpression(entries, tableInstance, attributeColumns, context);
+    return mayDeleteDevice = super.parseWhere(entries, tableInstance, attributeColumns, context);
   }
 
   public boolean isMayDeleteDevice() {
@@ -227,7 +229,8 @@ public class DeleteDevice extends AbstractTraverseDevice {
                     ImmutableList.of(),
                     0,
                     mockTypeProvider,
-                    metadata))
+                    metadata,
+                    null))
             : null;
 
     return new DeviceBlackListConstructor(
@@ -249,5 +252,18 @@ public class DeleteDevice extends AbstractTraverseDevice {
   @Override
   public String toString() {
     return toStringHelper(this) + " - " + super.toStringContent();
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += ramBytesUsedForCommonFields();
+    if (modEntries != null) {
+      size += RamUsageEstimator.shallowSizeOf(modEntries);
+      for (TableDeletionEntry entry : modEntries) {
+        size += entry == null ? 0L : entry.ramBytesUsed();
+      }
+    }
+    return size;
   }
 }

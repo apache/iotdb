@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.receiver.transform.statement;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -53,7 +54,7 @@ public class PipeConvertedInsertRowStatement extends InsertRowStatement {
     measurements = insertRowStatement.getMeasurements();
     dataTypes = insertRowStatement.getDataTypes();
     columnCategories = insertRowStatement.getColumnCategories();
-    idColumnIndices = insertRowStatement.getIdColumnIndices();
+    tagColumnIndices = insertRowStatement.getTagColumnIndices();
     attrColumnIndices = insertRowStatement.getAttrColumnIndices();
     writeToTable = insertRowStatement.isWriteToTable();
     databaseName = insertRowStatement.getDatabaseName().orElse(null);
@@ -91,8 +92,9 @@ public class PipeConvertedInsertRowStatement extends InsertRowStatement {
 
   @Override
   protected boolean checkAndCastDataType(int columnIndex, TSDataType dataType) {
-    LOGGER.info(
-        "Pipe: Inserting row to {}.{}. Casting type from {} to {}.",
+    PipeLogger.log(
+        LOGGER::info,
+        "Pipe: Inserting row to %s.%s. Casting type from %s to %s.",
         devicePath,
         measurements[columnIndex],
         dataTypes[columnIndex],
@@ -127,9 +129,10 @@ public class PipeConvertedInsertRowStatement extends InsertRowStatement {
       try {
         values[i] = ValueConverter.parse(values[i].toString(), dataTypes[i]);
       } catch (Exception e) {
-        LOGGER.warn(
-            "data type of {}.{} is not consistent, "
-                + "registered type {}, inserting timestamp {}, value {}",
+        PipeLogger.log(
+            LOGGER::warn,
+            "data type of %s.%s is not consistent, "
+                + "registered type %s, inserting timestamp %s, value %s",
             devicePath,
             measurements[i],
             dataTypes[i],

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
@@ -63,6 +64,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExistsPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Extract;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FieldReference;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FloatLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FrameBound;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GenericLiteral;
@@ -154,12 +156,18 @@ import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WindowFram
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WindowFrame.Type.ROWS;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignatureTranslator.toTypeSignature;
 import static org.apache.iotdb.db.queryengine.plan.relational.utils.NodeUtils.getSortItemsFromOrderBy;
+import static org.apache.iotdb.db.utils.constant.SqlConstant.FIRST_AGGREGATION;
+import static org.apache.iotdb.db.utils.constant.SqlConstant.FIRST_BY_AGGREGATION;
+import static org.apache.iotdb.db.utils.constant.SqlConstant.LAST_AGGREGATION;
+import static org.apache.iotdb.db.utils.constant.SqlConstant.LAST_BY_AGGREGATION;
 import static org.apache.tsfile.read.common.type.BlobType.BLOB;
 import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
 import static org.apache.tsfile.read.common.type.DoubleType.DOUBLE;
+import static org.apache.tsfile.read.common.type.FloatType.FLOAT;
 import static org.apache.tsfile.read.common.type.IntType.INT32;
 import static org.apache.tsfile.read.common.type.LongType.INT64;
 import static org.apache.tsfile.read.common.type.StringType.STRING;
+import static org.apache.tsfile.read.common.type.TimestampType.TIMESTAMP;
 import static org.apache.tsfile.read.common.type.UnknownType.UNKNOWN;
 
 public class ExpressionAnalyzer {
@@ -949,6 +957,12 @@ public class ExpressionAnalyzer {
     }
 
     @Override
+    protected Type visitFloatLiteral(
+        FloatLiteral node, StackableAstVisitorContext<Context> context) {
+      return setExpressionType(node, FLOAT);
+    }
+
+    @Override
     protected Type visitDecimalLiteral(
         DecimalLiteral node, StackableAstVisitorContext<Context> context) {
       throw new SemanticException("DecimalLiteral is not supported yet.");
@@ -1051,6 +1065,38 @@ public class ExpressionAnalyzer {
         throw new SemanticException("DISTINCT is not supported for non-aggregation functions");
       }
 
+      int argumentsNum = node.getArguments().size();
+      RelationType relationType = context.getContext().getScope().getRelationType();
+      // Syntactic sugar: first(s1) => first(s1,time), first_by(s1,s2) => first_by(s1,s2,time)
+      // So do last and last_by.
+      switch (functionName.toLowerCase()) {
+        case FIRST_AGGREGATION:
+        case LAST_AGGREGATION:
+          if (argumentsNum == 1) {
+            addTimeArgument(node.getArguments(), getActualTimeFieldName(relationType));
+          } else if (argumentsNum == 2) {
+            if (!checkArgumentIsTimestamp(
+                node.getArguments().get(1), (List<Field>) relationType.getVisibleFields())) {
+              throw new SemanticException(
+                  String.format(
+                      "The second argument of %s function must be actual time name", functionName));
+            }
+          }
+          break;
+        case FIRST_BY_AGGREGATION:
+        case LAST_BY_AGGREGATION:
+          if (argumentsNum == 2) {
+            addTimeArgument(node.getArguments(), getActualTimeFieldName(relationType));
+          } else if (argumentsNum == 3) {
+            if (!checkArgumentIsTimestamp(
+                node.getArguments().get(2), (List<Field>) relationType.getVisibleFields())) {
+              throw new SemanticException(
+                  String.format(
+                      "The third argument of %s function must be actual time name", functionName));
+            }
+          }
+      }
+
       List<Type> argumentTypes = getCallArgumentTypes(node.getArguments(), context);
 
       if (node.getArguments().size() > 127) {
@@ -1130,6 +1176,65 @@ public class ExpressionAnalyzer {
       }
 
       return argumentTypesBuilder.build();
+    }
+
+    private void addTimeArgument(List<Expression> arguments, String actualTimeField) {
+
+      if (arguments.get(0) instanceof DereferenceExpression) {
+        arguments.add(
+            new DereferenceExpression(
+                ((DereferenceExpression) arguments.get(0)).getBase(),
+                new Identifier(actualTimeField.toLowerCase(Locale.ENGLISH))));
+      } else {
+        arguments.add(new Identifier(actualTimeField.toLowerCase(Locale.ENGLISH)));
+      }
+    }
+
+    private boolean checkArgumentIsTimestamp(Expression argument, List<Field> visibleFields) {
+
+      String argumentName =
+          (argument instanceof DereferenceExpression)
+              ? ((DereferenceExpression) argument)
+                  .getField()
+                  .orElseThrow(() -> new SemanticException("the input field does not exist"))
+                  .toString()
+              : argument.toString();
+
+      for (Field field : visibleFields) {
+        if (field
+            .getName()
+            .orElseThrow(() -> new SemanticException("the field in table does not have a name"))
+            .equalsIgnoreCase(argumentName)) {
+          return field.getType() == TIMESTAMP;
+        }
+      }
+      // should never reach here
+      throw new SemanticException("the input argument does not exist");
+    }
+
+    /** Retrieves the effective time column name from the relation's visible fields. */
+    private String getActualTimeFieldName(RelationType relation) {
+
+      // Priority 1: Try to find a column explicitly marked as TIME category
+      Optional<String> timeColumn =
+          relation.getVisibleFields().stream()
+              .filter(field -> field.getColumnCategory() == TsTableColumnCategory.TIME)
+              .findFirst()
+              .flatMap(Field::getName);
+
+      if (timeColumn.isPresent()) {
+        return timeColumn.get();
+      }
+
+      // Priority 2: Fallback to the first TIMESTAMP column (e.g., for system schema compatibility)
+      return relation.getVisibleFields().stream()
+          .filter(field -> field.getType() == TIMESTAMP)
+          .findFirst()
+          .flatMap(Field::getName)
+          .orElseThrow(
+              () ->
+                  new SemanticException(
+                      "Missing valid time column. The table must contain either a column with the TIME category or at least one TIMESTAMP column."));
     }
 
     private Type analyzeMatchNumber(
@@ -1717,12 +1822,12 @@ public class ExpressionAnalyzer {
       return subqueryType;
     }
 
-    private Type analyzeSubquery(
-        SubqueryExpression node, StackableAstVisitorContext<Context> context) {
+    private Type analyzeSubquery(SubqueryExpression node, StackableAstVisitorContext<Context> ctx) {
       StatementAnalyzer analyzer =
-          statementAnalyzerFactory.apply(node, context.getContext().getCorrelationSupport());
-      Scope subqueryScope = Scope.builder().withParent(context.getContext().getScope()).build();
+          statementAnalyzerFactory.apply(node, ctx.getContext().getCorrelationSupport());
+      Scope subqueryScope = Scope.builder().withParent(ctx.getContext().getScope()).build();
       Scope queryScope = analyzer.analyze(node.getQuery(), subqueryScope);
+      context.addSubQueryTables(node.getQuery(), queryScope.getTables());
 
       ImmutableList.Builder<RowType.Field> fields = ImmutableList.builder();
       for (int i = 0; i < queryScope.getRelationType().getAllFieldCount(); i++) {

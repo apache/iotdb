@@ -38,6 +38,7 @@ import org.apache.iotdb.db.queryengine.execution.schedule.DriverScheduler;
 import org.apache.iotdb.db.queryengine.execution.schedule.IDriverScheduler;
 import org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet;
 import org.apache.iotdb.db.queryengine.metric.QueryRelatedResourceMetricSet;
+import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.plan.planner.PipelineDriverFactory;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
@@ -159,7 +160,9 @@ public class FragmentInstanceManager {
                                 instance.getSessionInfo(),
                                 dataRegion,
                                 instance.getGlobalTimePredicate(),
-                                dataNodeQueryContextMap));
+                                dataNodeQueryContextMap,
+                                instance.isDebug(),
+                                instance.isVerbose()));
 
                 try {
                   List<PipelineDriverFactory> driverFactories =
@@ -205,6 +208,7 @@ public class FragmentInstanceManager {
                   } else if (t instanceof UDFTypeMismatchException) {
                     stateMachine.failed(new SemanticException(t.getMessage()));
                   } else if (t instanceof UDFException) {
+                    logger.warn("Exception happened when executing UDTF: ", t);
                     stateMachine.failed(
                         new IoTDBRuntimeException(
                             t.getMessage(), TSStatusCode.EXECUTE_UDF_ERROR.getStatusCode(), true));
@@ -268,7 +272,11 @@ public class FragmentInstanceManager {
                       instanceId,
                       fragmentInstanceId ->
                           createFragmentInstanceContext(
-                              fragmentInstanceId, stateMachine, instance.getSessionInfo()));
+                              fragmentInstanceId,
+                              stateMachine,
+                              instance.getSessionInfo(),
+                              instance.isDebug(),
+                              instance.isVerbose()));
 
               try {
                 List<PipelineDriverFactory> driverFactories =
@@ -428,6 +436,7 @@ public class FragmentInstanceManager {
                             + "ms, and now is in flushing state"));
           }
         });
+    Coordinator.getInstance().cleanUpStaleQueries();
   }
 
   public ExecutorService getIntoOperationExecutor() {

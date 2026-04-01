@@ -19,12 +19,10 @@
 
 package org.apache.iotdb.db.pipe.event;
 
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.PrefixTreePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
-import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileInsertionEventParser;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.query.TsFileInsertionEventQueryParser;
@@ -36,7 +34,6 @@ import org.apache.iotdb.pipe.api.access.Row;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.exception.write.WriteProcessException;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.TsFileSequenceReader;
@@ -97,14 +94,14 @@ public class TsFileInsertionEventParserTest {
   }
 
   @Test
-  public void testQueryContainer() throws Exception {
+  public void testQueryParser() throws Exception {
     final long startTime = System.currentTimeMillis();
     testToTabletInsertionEvents(true);
     System.out.println(System.currentTimeMillis() - startTime);
   }
 
   @Test
-  public void testScanContainer() throws Exception {
+  public void testScanParser() throws Exception {
     final long startTime = System.currentTimeMillis();
     testToTabletInsertionEvents(false);
     System.out.println(System.currentTimeMillis() - startTime);
@@ -487,7 +484,7 @@ public class TsFileInsertionEventParserTest {
     testTsFilePointNum(nonalignedTsFile, notExistPattern, startTime, endTime, isQuery, 0);
   }
 
-  private void testMixedTsFileWithEmptyChunk(final boolean isQuery) throws IOException {
+  private void testMixedTsFileWithEmptyChunk(final boolean isQuery) throws Exception {
     final File tsFile = new File("0-0-1-0.tsfile");
     resource = new TsFileResource(tsFile);
     resource.updatePlanIndexes(0);
@@ -524,8 +521,7 @@ public class TsFileInsertionEventParserTest {
     resource = null;
   }
 
-  private void testPartialNullValue(final boolean isQuery)
-      throws IOException, WriteProcessException, IllegalPathException {
+  private void testPartialNullValue(final boolean isQuery) throws Exception {
     alignedTsFile = new File("0-0-2-0.tsfile");
 
     final List<IMeasurementSchema> schemaList = new ArrayList<>();
@@ -568,7 +564,10 @@ public class TsFileInsertionEventParserTest {
             false,
             false,
             null,
+            null,
             0,
+            null,
+            null,
             null,
             null,
             null,
@@ -581,7 +580,7 @@ public class TsFileInsertionEventParserTest {
             ? new TsFileInsertionEventQueryParser(
                 tsFile, pattern, startTime, endTime, tsFileInsertionEvent)
             : new TsFileInsertionEventScanParser(
-                tsFile, pattern, startTime, endTime, null, tsFileInsertionEvent)) {
+                tsFile, pattern, startTime, endTime, null, tsFileInsertionEvent, false)) {
       final AtomicInteger count1 = new AtomicInteger(0);
       final AtomicInteger count2 = new AtomicInteger(0);
       final AtomicInteger count3 = new AtomicInteger(0);
@@ -614,18 +613,15 @@ public class TsFileInsertionEventParserTest {
                                       })
                                   .forEach(
                                       tabletInsertionEvent2 ->
-                                          tabletInsertionEvent2.processTablet(
-                                              (tablet, rowCollector) ->
-                                                  new PipeRawTabletInsertionEvent(tablet, false)
-                                                      .processRowByRow(
-                                                          (row, collector) -> {
-                                                            try {
-                                                              rowCollector.collectRow(row);
-                                                              count3.addAndGet(getNonNullSize(row));
-                                                            } catch (final IOException e) {
-                                                              throw new RuntimeException(e);
-                                                            }
-                                                          })))));
+                                          tabletInsertionEvent2.processTabletWithCollect(
+                                              (tablet, collector) -> {
+                                                try {
+                                                  collector.collectTablet(tablet);
+                                                  count3.addAndGet(getNonNullSize(tablet));
+                                                } catch (final IOException e) {
+                                                  throw new RuntimeException(e);
+                                                }
+                                              }))));
 
       Assert.assertEquals(expectedCount, count1.get());
       Assert.assertEquals(expectedCount, count2.get());
@@ -641,6 +637,18 @@ public class TsFileInsertionEventParserTest {
     for (int i = 0; i < row.size(); ++i) {
       if (!row.isNull(i)) {
         ++count;
+      }
+    }
+    return count;
+  }
+
+  private int getNonNullSize(final Tablet tablet) {
+    int count = 0;
+    for (int i = 0; i < tablet.getRowSize(); ++i) {
+      for (int j = 0; j < tablet.getSchemas().size(); ++j) {
+        if (!tablet.isNull(i, j)) {
+          ++count;
+        }
       }
     }
     return count;

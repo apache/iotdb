@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -30,6 +31,8 @@ import java.util.Objects;
 import static com.google.common.base.MoreObjects.toStringHelper;
 
 public class SetTableComment extends Statement {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(SetTableComment.class);
   private final QualifiedName tableName;
   private final boolean ifExists;
   @Nullable private final String comment;
@@ -103,5 +106,14 @@ public class SetTableComment extends Statement {
         .add("comment", comment)
         .add("view", view)
         .toString();
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += tableName == null ? 0L : tableName.ramBytesUsed();
+    size += RamUsageEstimator.sizeOf(comment);
+    return size;
   }
 }

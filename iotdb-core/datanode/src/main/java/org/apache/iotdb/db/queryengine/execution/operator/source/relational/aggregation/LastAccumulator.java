@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.execution.operator.source.relational.agg
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.statistics.DateStatistics;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.common.block.column.BinaryColumn;
 import org.apache.tsfile.read.common.block.column.BinaryColumnBuilder;
@@ -32,8 +33,10 @@ import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 
+import java.nio.charset.StandardCharsets;
+
 import static com.google.common.base.Preconditions.checkArgument;
-import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.Utils.serializeTimeValue;
+import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.Utils.serializeTimeValueWithNull;
 
 public class LastAccumulator implements TableAccumulator {
 
@@ -43,20 +46,15 @@ public class LastAccumulator implements TableAccumulator {
   protected TsPrimitiveType lastValue;
   protected long maxTime = Long.MIN_VALUE;
   protected boolean initResult = false;
-  protected boolean isTimeColumn = false;
+  protected boolean initNullTimeValue = false;
 
-  public LastAccumulator(TSDataType seriesDataType, boolean isTimeColumn) {
+  public LastAccumulator(TSDataType seriesDataType) {
     this.seriesDataType = seriesDataType;
-    this.isTimeColumn = isTimeColumn;
-    lastValue = TsPrimitiveType.getByType(seriesDataType);
+    this.lastValue = TsPrimitiveType.getByType(seriesDataType);
   }
 
   public boolean hasInitResult() {
     return this.initResult;
-  }
-
-  public boolean isTimeColumn() {
-    return this.isTimeColumn;
   }
 
   public long getMaxTime() {
@@ -74,7 +72,7 @@ public class LastAccumulator implements TableAccumulator {
 
   @Override
   public TableAccumulator copy() {
-    return new LastAccumulator(seriesDataType, isTimeColumn);
+    return new LastAccumulator(seriesDataType);
   }
 
   @Override
@@ -98,6 +96,7 @@ public class LastAccumulator implements TableAccumulator {
       case TEXT:
       case STRING:
       case BLOB:
+      case OBJECT:
         addBinaryInput(arguments[0], arguments[1], mask);
         return;
       case BOOLEAN:
@@ -124,38 +123,64 @@ public class LastAccumulator implements TableAccumulator {
 
       byte[] bytes = argument.getBinary(i).getValues();
       long time = BytesUtils.bytesToLongFromOffset(bytes, Long.BYTES, 0);
-      int offset = Long.BYTES;
+      boolean isOrderTimeNull = BytesUtils.bytesToBool(bytes, Long.BYTES);
+      int offset = Long.BYTES + 1;
 
       switch (seriesDataType) {
         case INT32:
         case DATE:
           int intVal = BytesUtils.bytesToInt(bytes, offset);
-          updateIntLastValue(intVal, time);
+          if (!isOrderTimeNull) {
+            updateIntLastValue(intVal, time);
+          } else {
+            updateIntNullTimeValue(intVal);
+          }
           break;
         case INT64:
         case TIMESTAMP:
           long longVal = BytesUtils.bytesToLongFromOffset(bytes, Long.BYTES, offset);
-          updateLongLastValue(longVal, time);
+          if (!isOrderTimeNull) {
+            updateLongLastValue(longVal, time);
+          } else {
+            updateLongNullTimeValue(longVal);
+          }
           break;
         case FLOAT:
           float floatVal = BytesUtils.bytesToFloat(bytes, offset);
-          updateFloatLastValue(floatVal, time);
+          if (!isOrderTimeNull) {
+            updateFloatLastValue(floatVal, time);
+          } else {
+            updateFloatNullTimeValue(floatVal);
+          }
           break;
         case DOUBLE:
           double doubleVal = BytesUtils.bytesToDouble(bytes, offset);
-          updateDoubleLastValue(doubleVal, time);
+          if (!isOrderTimeNull) {
+            updateDoubleLastValue(doubleVal, time);
+          } else {
+            updateDoubleNullTimeValue(doubleVal);
+          }
           break;
         case TEXT:
         case BLOB:
+        case OBJECT:
         case STRING:
           int length = BytesUtils.bytesToInt(bytes, offset);
           offset += Integer.BYTES;
           Binary binaryVal = new Binary(BytesUtils.subBytes(bytes, offset, length));
-          updateBinaryLastValue(binaryVal, time);
+          if (!isOrderTimeNull) {
+            updateBinaryLastValue(binaryVal, time);
+          } else {
+            updateBinaryNullTimeValue(binaryVal);
+          }
           break;
         case BOOLEAN:
           boolean boolVal = BytesUtils.bytesToBool(bytes, offset);
-          updateBooleanLastValue(boolVal, time);
+          if (!isOrderTimeNull) {
+            updateBooleanLastValue(boolVal, time);
+          } else {
+            updateBooleanNullTimeValue(boolVal);
+          }
           break;
         default:
           throw new UnSupportedDataTypeException(
@@ -170,45 +195,53 @@ public class LastAccumulator implements TableAccumulator {
         columnBuilder instanceof BinaryColumnBuilder,
         "intermediate input and output of LAST should be BinaryColumn");
 
-    if (!initResult) {
-      columnBuilder.appendNull();
-    } else {
-      columnBuilder.writeBinary(new Binary(serializeTimeValue(seriesDataType, maxTime, lastValue)));
+    if (initResult || initNullTimeValue) {
+      // if the initResult is activated, the result must carry a not null time
+      boolean isOrderTimeNull = !initResult;
+      columnBuilder.writeBinary(
+          new Binary(
+              serializeTimeValueWithNull(seriesDataType, maxTime, isOrderTimeNull, lastValue)));
+      return;
     }
+    columnBuilder.appendNull();
   }
 
   @Override
   public void evaluateFinal(ColumnBuilder columnBuilder) {
-    if (!initResult) {
+
+    // all the values are the null
+    if (!initResult && !initNullTimeValue) {
       columnBuilder.appendNull();
-    } else {
-      switch (seriesDataType) {
-        case INT32:
-        case DATE:
-          columnBuilder.writeInt(lastValue.getInt());
-          break;
-        case INT64:
-        case TIMESTAMP:
-          columnBuilder.writeLong(lastValue.getLong());
-          break;
-        case FLOAT:
-          columnBuilder.writeFloat(lastValue.getFloat());
-          break;
-        case DOUBLE:
-          columnBuilder.writeDouble(lastValue.getDouble());
-          break;
-        case TEXT:
-        case BLOB:
-        case STRING:
-          columnBuilder.writeBinary(lastValue.getBinary());
-          break;
-        case BOOLEAN:
-          columnBuilder.writeBoolean(lastValue.getBoolean());
-          break;
-        default:
-          throw new UnSupportedDataTypeException(
-              String.format("Unsupported data type in LAST aggregation: %s", seriesDataType));
-      }
+      return;
+    }
+
+    switch (seriesDataType) {
+      case INT32:
+      case DATE:
+        columnBuilder.writeInt(lastValue.getInt());
+        break;
+      case INT64:
+      case TIMESTAMP:
+        columnBuilder.writeLong(lastValue.getLong());
+        break;
+      case FLOAT:
+        columnBuilder.writeFloat(lastValue.getFloat());
+        break;
+      case DOUBLE:
+        columnBuilder.writeDouble(lastValue.getDouble());
+        break;
+      case TEXT:
+      case BLOB:
+      case OBJECT:
+      case STRING:
+        columnBuilder.writeBinary(lastValue.getBinary());
+        break;
+      case BOOLEAN:
+        columnBuilder.writeBoolean(lastValue.getBoolean());
+        break;
+      default:
+        throw new UnSupportedDataTypeException(
+            String.format("Unsupported data type in LAST aggregation: %s", seriesDataType));
     }
   }
 
@@ -226,22 +259,42 @@ public class LastAccumulator implements TableAccumulator {
     switch (seriesDataType) {
       case INT32:
       case DATE:
-        updateIntLastValue((int) statistics[0].getLastValue(), statistics[0].getEndTime());
+        updateIntLastValue(
+            ((Number) statistics[0].getLastValue()).intValue(), statistics[0].getEndTime());
         break;
       case INT64:
       case TIMESTAMP:
-        updateLongLastValue((long) statistics[0].getLastValue(), statistics[0].getEndTime());
+        updateLongLastValue(
+            ((Number) statistics[0].getLastValue()).longValue(), statistics[0].getEndTime());
         break;
       case FLOAT:
-        updateFloatLastValue((float) statistics[0].getLastValue(), statistics[0].getEndTime());
+        updateFloatLastValue(
+            ((Number) statistics[0].getLastValue()).floatValue(), statistics[0].getEndTime());
         break;
       case DOUBLE:
-        updateDoubleLastValue((double) statistics[0].getLastValue(), statistics[0].getEndTime());
+        updateDoubleLastValue(
+            ((Number) statistics[0].getLastValue()).doubleValue(), statistics[0].getEndTime());
         break;
       case TEXT:
       case BLOB:
+      case OBJECT:
       case STRING:
-        updateBinaryLastValue((Binary) statistics[0].getLastValue(), statistics[0].getEndTime());
+        if (statistics[0] instanceof DateStatistics) {
+          updateBinaryLastValue(
+              new Binary(
+                  TSDataType.getDateStringValue((Integer) statistics[0].getLastValue()),
+                  StandardCharsets.UTF_8),
+              statistics[0].getEndTime());
+        } else {
+          if (statistics[0].getLastValue() instanceof Binary) {
+            updateBinaryLastValue(
+                (Binary) statistics[0].getLastValue(), statistics[0].getEndTime());
+          } else {
+            updateBinaryLastValue(
+                new Binary(String.valueOf(statistics[0].getLastValue()), StandardCharsets.UTF_8),
+                statistics[0].getEndTime());
+          }
+        }
         break;
       case BOOLEAN:
         updateBooleanLastValue((boolean) statistics[0].getLastValue(), statistics[0].getEndTime());
@@ -255,180 +308,230 @@ public class LastAccumulator implements TableAccumulator {
   @Override
   public void reset() {
     initResult = false;
+    this.initNullTimeValue = false;
     this.maxTime = Long.MIN_VALUE;
     this.lastValue.reset();
   }
 
-  protected void addIntInput(Column valueColumn, Column timeColumn, AggregationMask mask) {
-    int positionCount = mask.getSelectedPositionCount();
+  private boolean checkAndUpdateLastTime(long curTime) {
+    if (!initResult || curTime > maxTime) {
+      initResult = true;
+      maxTime = curTime;
+      return true;
+    }
+    return false;
+  }
 
-    if (mask.isSelectAll()) {
-      for (int i = 0; i < positionCount; i++) {
-        if (!valueColumn.isNull(i)) {
-          updateIntLastValue(valueColumn.getInt(i), timeColumn.getLong(i));
-        }
+  private boolean checkAndUpdateNullTime() {
+    if (!initResult && !initNullTimeValue) {
+      initNullTimeValue = true;
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * Updates the accumulator, prioritizing values with valid timestamps over those with null
+   * timestamps.
+   */
+  protected void addIntInput(Column valueColumn, Column timeColumn, AggregationMask mask) {
+    int selectPositionCount = mask.getSelectedPositionCount();
+
+    boolean isSelectAll = mask.isSelectAll();
+    int[] selectedPositions = isSelectAll ? null : mask.getSelectedPositions();
+
+    for (int i = 0; i < selectPositionCount; i++) {
+      int position = isSelectAll ? i : selectedPositions[i];
+      if (valueColumn.isNull(position)) {
+        continue;
       }
-    } else {
-      int[] selectedPositions = mask.getSelectedPositions();
-      int position;
-      for (int i = 0; i < positionCount; i++) {
-        position = selectedPositions[i];
-        if (!valueColumn.isNull(position)) {
-          updateIntLastValue(valueColumn.getInt(position), timeColumn.getLong(position));
-        }
+
+      // Check if the time is null
+      if (!timeColumn.isNull(position)) {
+        // Case A: Time is not null. Attempt to update the value with the minimum time.
+        updateIntLastValue(valueColumn.getInt(position), timeColumn.getLong(position));
+      } else {
+        // Case B: Time is NULL, the nullTimeValue should only be assigned once
+        updateIntNullTimeValue(valueColumn.getInt(position));
       }
     }
   }
 
   protected void updateIntLastValue(int value, long curTime) {
-    initResult = true;
-    if (curTime > maxTime) {
-      maxTime = curTime;
+    if (checkAndUpdateLastTime(curTime)) {
       lastValue.setInt(value);
     }
   }
 
-  protected void addLongInput(Column valueColumn, Column timeColumn, AggregationMask mask) {
-    int positionCount = mask.getSelectedPositionCount();
+  protected void updateIntNullTimeValue(int value) {
+    if (checkAndUpdateNullTime()) {
+      lastValue.setInt(value);
+    }
+  }
 
-    if (mask.isSelectAll()) {
-      for (int i = 0; i < positionCount; i++) {
-        if (!valueColumn.isNull(i)) {
-          updateLongLastValue(valueColumn.getLong(i), timeColumn.getLong(i));
-        }
+  /**
+   * Updates the accumulator, prioritizing values with valid timestamps over those with null
+   * timestamps.
+   */
+  protected void addLongInput(Column valueColumn, Column timeColumn, AggregationMask mask) {
+    int selectPositionCount = mask.getSelectedPositionCount();
+
+    boolean isSelectAll = mask.isSelectAll();
+    int[] selectedPositions = isSelectAll ? null : mask.getSelectedPositions();
+
+    for (int i = 0; i < selectPositionCount; i++) {
+      int position = isSelectAll ? i : selectedPositions[i];
+      if (valueColumn.isNull(position)) {
+        continue;
       }
-    } else {
-      int[] selectedPositions = mask.getSelectedPositions();
-      int position;
-      for (int i = 0; i < positionCount; i++) {
-        position = selectedPositions[i];
-        if (!valueColumn.isNull(position)) {
-          updateLongLastValue(valueColumn.getLong(position), timeColumn.getLong(position));
-        }
+
+      // Check if the time is null
+      if (!timeColumn.isNull(position)) {
+        // Case A: Time is not null. Attempt to update the value with the minimum time.
+        updateLongLastValue(valueColumn.getLong(position), timeColumn.getLong(position));
+      } else {
+        // Case B: Time is NULL, the nullTimeValue should only be assigned once
+        updateLongNullTimeValue(valueColumn.getLong(position));
       }
     }
   }
 
   protected void updateLongLastValue(long value, long curTime) {
-    initResult = true;
-    if (curTime > maxTime) {
-      maxTime = curTime;
+    if (checkAndUpdateLastTime(curTime)) {
+      lastValue.setLong(value);
+    }
+  }
+
+  protected void updateLongNullTimeValue(long value) {
+    if (checkAndUpdateNullTime()) {
       lastValue.setLong(value);
     }
   }
 
   protected void addFloatInput(Column valueColumn, Column timeColumn, AggregationMask mask) {
-    int positionCount = mask.getSelectedPositionCount();
+    int selectPositionCount = mask.getSelectedPositionCount();
 
-    if (mask.isSelectAll()) {
-      for (int i = 0; i < positionCount; i++) {
-        if (!valueColumn.isNull(i)) {
-          updateFloatLastValue(valueColumn.getFloat(i), timeColumn.getLong(i));
-        }
+    boolean isSelectAll = mask.isSelectAll();
+    int[] selectedPositions = isSelectAll ? null : mask.getSelectedPositions();
+
+    for (int i = 0; i < selectPositionCount; i++) {
+      int position = isSelectAll ? i : selectedPositions[i];
+      if (valueColumn.isNull(position)) {
+        continue;
       }
-    } else {
-      int[] selectedPositions = mask.getSelectedPositions();
-      int position;
-      for (int i = 0; i < positionCount; i++) {
-        position = selectedPositions[i];
-        if (!valueColumn.isNull(position)) {
-          updateFloatLastValue(valueColumn.getFloat(position), timeColumn.getLong(position));
-        }
+
+      if (!timeColumn.isNull(position)) {
+        updateFloatLastValue(valueColumn.getFloat(position), timeColumn.getLong(position));
+      } else {
+        updateFloatNullTimeValue(valueColumn.getFloat(position));
       }
     }
   }
 
   protected void updateFloatLastValue(float value, long curTime) {
-    initResult = true;
-    if (curTime > maxTime) {
-      maxTime = curTime;
+    if (checkAndUpdateLastTime(curTime)) {
+      lastValue.setFloat(value);
+    }
+  }
+
+  protected void updateFloatNullTimeValue(float value) {
+    if (checkAndUpdateNullTime()) {
       lastValue.setFloat(value);
     }
   }
 
   protected void addDoubleInput(Column valueColumn, Column timeColumn, AggregationMask mask) {
-    int positionCount = mask.getSelectedPositionCount();
+    int selectPositionCount = mask.getSelectedPositionCount();
 
-    if (mask.isSelectAll()) {
-      for (int i = 0; i < positionCount; i++) {
-        if (!valueColumn.isNull(i)) {
-          updateDoubleLastValue(valueColumn.getDouble(i), timeColumn.getLong(i));
-        }
+    boolean isSelectAll = mask.isSelectAll();
+    int[] selectedPositions = isSelectAll ? null : mask.getSelectedPositions();
+
+    for (int i = 0; i < selectPositionCount; i++) {
+      int position = isSelectAll ? i : selectedPositions[i];
+      if (valueColumn.isNull(position)) {
+        continue;
       }
-    } else {
-      int[] selectedPositions = mask.getSelectedPositions();
-      int position;
-      for (int i = 0; i < positionCount; i++) {
-        position = selectedPositions[i];
-        if (!valueColumn.isNull(position)) {
-          updateDoubleLastValue(valueColumn.getDouble(position), timeColumn.getLong(position));
-        }
+
+      if (!timeColumn.isNull(position)) {
+        updateDoubleLastValue(valueColumn.getDouble(position), timeColumn.getLong(position));
+      } else {
+        updateDoubleNullTimeValue(valueColumn.getDouble(position));
       }
     }
   }
 
   protected void updateDoubleLastValue(double value, long curTime) {
-    initResult = true;
-    if (curTime > maxTime) {
-      maxTime = curTime;
+    if (checkAndUpdateLastTime(curTime)) {
+      lastValue.setDouble(value);
+    }
+  }
+
+  protected void updateDoubleNullTimeValue(double value) {
+    if (checkAndUpdateNullTime()) {
       lastValue.setDouble(value);
     }
   }
 
   protected void addBinaryInput(Column valueColumn, Column timeColumn, AggregationMask mask) {
-    int positionCount = mask.getSelectedPositionCount();
+    int selectPositionCount = mask.getSelectedPositionCount();
 
-    if (mask.isSelectAll()) {
-      for (int i = 0; i < positionCount; i++) {
-        if (!valueColumn.isNull(i)) {
-          updateBinaryLastValue(valueColumn.getBinary(i), timeColumn.getLong(i));
-        }
+    boolean isSelectAll = mask.isSelectAll();
+    int[] selectedPositions = isSelectAll ? null : mask.getSelectedPositions();
+
+    for (int i = 0; i < selectPositionCount; i++) {
+      int position = isSelectAll ? i : selectedPositions[i];
+      if (valueColumn.isNull(position)) {
+        continue;
       }
-    } else {
-      int[] selectedPositions = mask.getSelectedPositions();
-      int position;
-      for (int i = 0; i < positionCount; i++) {
-        position = selectedPositions[i];
-        if (!valueColumn.isNull(position)) {
-          updateBinaryLastValue(valueColumn.getBinary(position), timeColumn.getLong(position));
-        }
+
+      if (!timeColumn.isNull(position)) {
+        updateBinaryLastValue(valueColumn.getBinary(position), timeColumn.getLong(position));
+      } else {
+        updateBinaryNullTimeValue(valueColumn.getBinary(position));
       }
     }
   }
 
   protected void updateBinaryLastValue(Binary value, long curTime) {
-    initResult = true;
-    if (curTime > maxTime) {
-      maxTime = curTime;
+    if (checkAndUpdateLastTime(curTime)) {
+      lastValue.setBinary(value);
+    }
+  }
+
+  protected void updateBinaryNullTimeValue(Binary value) {
+    if (checkAndUpdateNullTime()) {
       lastValue.setBinary(value);
     }
   }
 
   protected void addBooleanInput(Column valueColumn, Column timeColumn, AggregationMask mask) {
-    int positionCount = mask.getSelectedPositionCount();
+    int selectPositionCount = mask.getSelectedPositionCount();
 
-    if (mask.isSelectAll()) {
-      for (int i = 0; i < positionCount; i++) {
-        if (!valueColumn.isNull(i)) {
-          updateBooleanLastValue(valueColumn.getBoolean(i), timeColumn.getLong(i));
-        }
+    boolean isSelectAll = mask.isSelectAll();
+    int[] selectedPositions = isSelectAll ? null : mask.getSelectedPositions();
+
+    for (int i = 0; i < selectPositionCount; i++) {
+      int position = isSelectAll ? i : selectedPositions[i];
+      if (valueColumn.isNull(position)) {
+        continue;
       }
-    } else {
-      int[] selectedPositions = mask.getSelectedPositions();
-      int position;
-      for (int i = 0; i < positionCount; i++) {
-        position = selectedPositions[i];
-        if (!valueColumn.isNull(position)) {
-          updateBooleanLastValue(valueColumn.getBoolean(position), timeColumn.getLong(position));
-        }
+
+      if (!timeColumn.isNull(position)) {
+        updateBooleanLastValue(valueColumn.getBoolean(position), timeColumn.getLong(position));
+      } else {
+        updateBooleanNullTimeValue(valueColumn.getBoolean(position));
       }
     }
   }
 
   protected void updateBooleanLastValue(boolean value, long curTime) {
-    initResult = true;
-    if (curTime > maxTime) {
-      maxTime = curTime;
+    if (checkAndUpdateLastTime(curTime)) {
+      lastValue.setBoolean(value);
+    }
+  }
+
+  protected void updateBooleanNullTimeValue(boolean value) {
+    if (checkAndUpdateNullTime()) {
       lastValue.setBoolean(value);
     }
   }

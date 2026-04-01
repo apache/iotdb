@@ -19,10 +19,12 @@
 
 package org.apache.iotdb.db.it;
 
+import org.apache.iotdb.db.queryengine.plan.parser.ASTVisitor;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
+import org.apache.iotdb.jdbc.IoTDBSQLException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.AfterClass;
@@ -399,6 +401,31 @@ public class IoTDBDeletionIT {
   }
 
   @Test
+  public void testDeleteDataAfterInsertFailed() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("create timeseries root.dd.wf01.wt01.status with datatype=BOOLEAN;");
+      statement.execute(
+          "INSERT INTO root.dd.wf01.wt01(Time,status) VALUES (2022-10-11 10:20:50,'rr');");
+    } catch (SQLException e) {
+      assertEquals(507, e.getErrorCode());
+    }
+
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("DELETE FROM root.dd.wf01.wt01.status");
+
+      try (ResultSet resultSet = statement.executeQuery("select ** from root.dd")) {
+        int cnt = 0;
+        while (resultSet.next()) {
+          cnt++;
+        }
+        Assert.assertEquals(0, cnt);
+      }
+    }
+  }
+
+  @Test
   public void testDelSeriesWithSpecialSymbol() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -464,6 +491,25 @@ public class IoTDBDeletionIT {
         }
         Assert.assertEquals(1, cnt);
       }
+    }
+  }
+
+  @Test
+  public void testDeleteByRangeComparison() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("CREATE DATABASE root.test");
+      statement.execute("CREATE ALIGNED TIMESERIES root.test.g_0.d2(s_0 int32)");
+      statement.execute("INSERT INTO root.test.g_0.d_2(time,s_0) VALUES(1, 1)");
+
+      try {
+        statement.execute("DELETE FROM root.test.g_0.d_2.s_0 WHERE time > 4 AND time < 0");
+      } catch (IoTDBSQLException e) {
+        Assert.assertEquals(
+            e.getErrorCode() + ": " + ASTVisitor.DELETE_RANGE_COMPARISON_ERROR_MSG, e.getMessage());
+      }
+
+      statement.execute("DROP DATABASE root.test");
     }
   }
 

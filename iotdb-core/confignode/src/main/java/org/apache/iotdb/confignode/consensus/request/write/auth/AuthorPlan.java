@@ -31,6 +31,12 @@ public abstract class AuthorPlan extends ConfigPhysicalReadPlan {
   protected String newPassword;
   protected String userName;
   protected boolean grantOpt;
+  protected int maxSessionPerUser;
+  protected int minSessionPerUser;
+  protected String newUsername = "";
+
+  // Used for read plans or some write plans whose type name ends with 'V2'
+  protected long executedByUserId;
 
   public AuthorPlan(final ConfigPhysicalPlanType type) {
     super(type);
@@ -44,13 +50,17 @@ public abstract class AuthorPlan extends ConfigPhysicalReadPlan {
       String roleName,
       String password,
       String newPassword,
-      boolean grantOpt) {
+      boolean grantOpt,
+      int MaxSessionPerUser,
+      int MinSessionPerUser) {
     super(type);
     this.userName = userName;
     this.roleName = roleName;
     this.password = password;
     this.newPassword = newPassword;
     this.grantOpt = grantOpt;
+    this.maxSessionPerUser = MaxSessionPerUser;
+    this.minSessionPerUser = MinSessionPerUser;
   }
 
   public ConfigPhysicalPlanType getAuthorType() {
@@ -67,6 +77,22 @@ public abstract class AuthorPlan extends ConfigPhysicalReadPlan {
 
   public String getPassword() {
     return password;
+  }
+
+  public int getMaxSessionPerUser() {
+    return maxSessionPerUser;
+  }
+
+  public void setMaxSessionPerUser(final int maxSessionPerUser) {
+    this.maxSessionPerUser = maxSessionPerUser;
+  }
+
+  public int getMinSessionPerUser() {
+    return minSessionPerUser;
+  }
+
+  public void setMinSessionPerUser(final int minSessionPerUser) {
+    this.maxSessionPerUser = minSessionPerUser;
   }
 
   public void setPassword(final String password) {
@@ -97,6 +123,18 @@ public abstract class AuthorPlan extends ConfigPhysicalReadPlan {
     this.userName = userName;
   }
 
+  public String getNewUsername() {
+    return newUsername;
+  }
+
+  public long getExecutedByUserId() {
+    return executedByUserId;
+  }
+
+  public void setExecutedByUserId(long executedByUserId) {
+    this.executedByUserId = executedByUserId;
+  }
+
   @Override
   public boolean equals(Object o) {
     if (this == o) {
@@ -111,12 +149,14 @@ public abstract class AuthorPlan extends ConfigPhysicalReadPlan {
         && Objects.equals(roleName, that.roleName)
         && Objects.equals(password, that.password)
         && Objects.equals(newPassword, that.newPassword)
-        && grantOpt == that.grantOpt;
+        && grantOpt == that.grantOpt
+        && Objects.equals(newUsername, that.newUsername);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.getType(), userName, roleName, password, newPassword, grantOpt);
+    return Objects.hash(
+        super.getType(), userName, roleName, password, newPassword, grantOpt, newUsername);
   }
 
   @Override
@@ -129,6 +169,8 @@ public abstract class AuthorPlan extends ConfigPhysicalReadPlan {
         + roleName
         + ", grant option:"
         + grantOpt
+        + ", new username:"
+        + newUsername
         + "]";
   }
 }

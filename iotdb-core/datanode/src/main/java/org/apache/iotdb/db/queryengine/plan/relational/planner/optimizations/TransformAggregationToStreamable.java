@@ -33,6 +33,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MergeSortNod
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionProcessorNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.UnionNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValueFillNode;
 
 import com.google.common.collect.ImmutableList;
@@ -142,6 +143,11 @@ public class TransformAggregationToStreamable implements PlanOptimizer {
         return ImmutableList.of();
       }
       return node.getChild().accept(this, context);
+    }
+
+    @Override
+    public List<Symbol> visitUnion(UnionNode node, GroupContext context) {
+      return ImmutableList.of();
     }
 
     @Override

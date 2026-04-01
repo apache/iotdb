@@ -41,7 +41,7 @@ public class JVMCommonUtils {
 
   private static final int CPUS = Runtime.getRuntime().availableProcessors();
 
-  private static final double diskSpaceWarningThreshold =
+  private static double diskSpaceWarningThreshold =
       CommonDescriptor.getInstance().getConfig().getDiskSpaceWarningThreshold();
 
   /**
@@ -122,5 +122,10 @@ public class JVMCommonUtils {
 
   public static int getMaxExecutorPoolSize() {
     return MAX_EXECUTOR_POOL_SIZE;
+  }
+
+  @TestOnly
+  public static void setDiskSpaceWarningThreshold(double threshold) {
+    diskSpaceWarningThreshold = threshold;
   }
 }

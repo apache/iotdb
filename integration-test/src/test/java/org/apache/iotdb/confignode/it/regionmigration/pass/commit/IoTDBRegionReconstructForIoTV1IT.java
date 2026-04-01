@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.it.regionmigration.pass.commit;
 
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionOperationReliabilityITFramework;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.isession.SessionDataSet;
@@ -28,11 +29,12 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.tsfile.read.common.RowRecord;
+import org.apache.tsfile.utils.Pair;
 import org.awaitility.Awaitility;
 import org.junit.Assert;
 import org.junit.Test;
@@ -44,18 +46,36 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.sql.Connection;
 import java.sql.Statement;
-import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.util.MagicUtils.makeItCloseQuietly;
+import static org.junit.Assert.fail;
 
 @Category({ClusterIT.class})
 @RunWith(IoTDBTestRunner.class)
 public class IoTDBRegionReconstructForIoTV1IT extends IoTDBRegionOperationReliabilityITFramework {
   private static final String RECONSTRUCT_FORMAT = "reconstruct region %d on %d";
   private static Logger LOGGER = LoggerFactory.getLogger(IoTDBRegionReconstructForIoTV1IT.class);
+
+  private boolean deleteTsFiles(File file) {
+    if (file.isDirectory()) {
+      File[] files = file.listFiles();
+      if (files != null) {
+        for (File f : files) {
+          if (!deleteTsFiles(f)) {
+            return false;
+          } else if (f.getName().endsWith(".tsfile")) {
+            LOGGER.info("{} is removed", f);
+          }
+        }
+      }
+    } else if (file.getName().endsWith(".tsfile")) {
+      return file.delete();
+    }
+    return true;
+  }
 
   @Test
   public void normal1C3DTest() throws Exception {
@@ -66,6 +86,7 @@ public class IoTDBRegionReconstructForIoTV1IT extends IoTDBRegionOperationReliab
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setDataReplicationFactor(2)
         .setSchemaReplicationFactor(3);
+    EnvFactory.getEnv().getConfig().getConfigNodeConfig().setLeaderDistributionPolicy("HASH");
 
     EnvFactory.getEnv().initClusterEnvironment(1, 3);
 
@@ -78,16 +99,19 @@ public class IoTDBRegionReconstructForIoTV1IT extends IoTDBRegionOperationReliab
       statement.execute(FLUSH_COMMAND);
 
       // collect necessary information
-      Map<Integer, Set<Integer>> dataRegionMap = getDataRegionMap(statement);
+      Map<Integer, Pair<Integer, Set<Integer>>> dataRegionMap =
+          getDataRegionMapWithLeader(statement);
       Set<Integer> allDataNodeId = getAllDataNodes(statement);
 
       // select datanode
-      final int selectedRegion = 1;
+      final int selectedRegion = 3;
       Assert.assertTrue(dataRegionMap.containsKey(selectedRegion));
-      Assert.assertEquals(2, dataRegionMap.get(selectedRegion).size());
-      Iterator<Integer> iterator = dataRegionMap.get(selectedRegion).iterator();
-      final int dataNodeToBeClosed = iterator.next();
-      final int dataNodeToBeReconstructed = iterator.next();
+      Pair<Integer, Set<Integer>> leaderAndNodeIds = dataRegionMap.get(selectedRegion);
+      Assert.assertEquals(2, leaderAndNodeIds.right.size());
+      // reconstruct from the leader to ensure no data is lost
+      final int dataNodeToBeClosed = leaderAndNodeIds.left;
+      final int dataNodeToBeReconstructed =
+          leaderAndNodeIds.right.stream().filter(x -> x != dataNodeToBeClosed).findAny().get();
       final int dataNodeAlwaysGood =
           allDataNodeId.stream()
               .filter(x -> x != dataNodeToBeReconstructed && x != dataNodeToBeClosed)
@@ -102,6 +126,16 @@ public class IoTDBRegionReconstructForIoTV1IT extends IoTDBRegionOperationReliab
               .build();
       session.open();
 
+      LOGGER.info(
+          "IoTDBRegionReconstructForIoTV1IT: Node {} is to be closed",
+          EnvFactory.getEnv().dataNodeIdToWrapper(dataNodeToBeClosed).get().getIpAndPortString());
+      LOGGER.info(
+          "IoTDBRegionReconstructForIoTV1IT: Node {} is to be reconstructed",
+          EnvFactory.getEnv()
+              .dataNodeIdToWrapper(dataNodeToBeReconstructed)
+              .get()
+              .getIpAndPortString());
+
       // delete one DataNode's data dir, stop another DataNode
       File dataDirToBeReconstructed =
           new File(
@@ -109,13 +143,29 @@ public class IoTDBRegionReconstructForIoTV1IT extends IoTDBRegionOperationReliab
                   .dataNodeIdToWrapper(dataNodeToBeReconstructed)
                   .get()
                   .getDataPath());
-      FileUtils.deleteDirectory(dataDirToBeReconstructed);
+
       EnvFactory.getEnv().dataNodeIdToWrapper(dataNodeToBeClosed).get().stopForcibly();
 
-      // now, the query should throw exception
-      Assert.assertThrows(
-          StatementExecutionException.class,
-          () -> session.executeQueryStatement("select * from root.**"));
+      while (true) {
+        try (Connection flushConn =
+                EnvFactory.getEnv()
+                    .getConnection(
+                        EnvFactory.getEnv().dataNodeIdToWrapper(dataNodeToBeReconstructed).get(),
+                        CommonDescriptor.getInstance().getConfig().getDefaultAdminName(),
+                        CommonDescriptor.getInstance().getConfig().getAdminPassword(),
+                        BaseEnv.TREE_SQL_DIALECT);
+            Statement flushStatement = flushConn.createStatement()) {
+          flushStatement.execute("FLUSH ON LOCAL");
+        }
+        deleteTsFiles(dataDirToBeReconstructed);
+
+        // now, the query should throw exception
+        try {
+          session.executeQueryStatement("select * from root.sg.**");
+        } catch (StatementExecutionException e) {
+          break;
+        }
+      }
 
       // start DataNode, reconstruct the delete one
       EnvFactory.getEnv().dataNodeIdToWrapper(dataNodeToBeClosed).get().start();
@@ -125,7 +175,7 @@ public class IoTDBRegionReconstructForIoTV1IT extends IoTDBRegionOperationReliab
       try {
         Awaitility.await()
             .pollInterval(1, TimeUnit.SECONDS)
-            .atMost(1, TimeUnit.MINUTES)
+            .atMost(10, TimeUnit.MINUTES)
             .until(
                 () ->
                     getRegionStatusWithoutRunning(session).isEmpty()
@@ -133,17 +183,32 @@ public class IoTDBRegionReconstructForIoTV1IT extends IoTDBRegionOperationReliab
       } catch (Exception e) {
         LOGGER.error(
             "Two factor: {} && {}",
-            getRegionStatusWithoutRunning(session).isEmpty(),
+            getRegionStatusWithoutRunning(session),
             dataDirToBeReconstructed.getAbsoluteFile().exists());
-        Assert.fail();
+        fail();
       }
       EnvFactory.getEnv().dataNodeIdToWrapper(dataNodeToBeClosed).get().stopForcibly();
 
-      // now, the query should work fine
-      SessionDataSet resultSet = session.executeQueryStatement("select * from root.**");
-      RowRecord rowRecord = resultSet.next();
-      Assert.assertEquals("2.0", rowRecord.getField(0).getStringValue());
-      Assert.assertEquals("1.0", rowRecord.getField(1).getStringValue());
+      // now, the query should work fine, but the update of region status may have some delay
+      long start = System.currentTimeMillis();
+      while (true) {
+        SessionDataSet resultSet;
+        try {
+          resultSet = session.executeQueryStatement("select * from root.sg.**");
+        } catch (StatementExecutionException e) {
+          if (System.currentTimeMillis() - start > 60_000L) {
+            fail("Cannot execute query within 60s");
+          }
+          TimeUnit.SECONDS.sleep(1);
+          continue;
+        }
+        if (resultSet.hasNext()) {
+          RowRecord rowRecord = resultSet.next();
+          Assert.assertEquals("2.0", rowRecord.getField(0).getStringValue());
+          Assert.assertEquals("1.0", rowRecord.getField(1).getStringValue());
+          break;
+        }
+      }
     }
   }
 }

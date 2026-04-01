@@ -26,18 +26,14 @@
 
 class TableSession {
 private:
-    Session* session_;
+    std::shared_ptr<Session> session_;
     string getDatabase();
 public:
-    TableSession(Session* session) {
+    TableSession(std::shared_ptr<Session> session) {
         this->session_ = session;
     }
-    ~TableSession() {
-        if (session_) {
-            delete session_;
-            session_ = nullptr;
-        }
-    }
+    ~TableSession() {}
+
     void insert(Tablet& tablet, bool sorted = false);
     void executeNonQueryStatement(const std::string& sql);
     unique_ptr<SessionDataSet> executeQueryStatement(const std::string& sql);

@@ -21,12 +21,9 @@ package org.apache.iotdb.db.queryengine.plan.analyze;
 
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.db.exception.sql.SemanticException;
-import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
-import org.apache.iotdb.db.utils.TypeInferenceUtils;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Pair;
@@ -37,7 +34,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 
-import static com.google.common.base.Preconditions.checkState;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.DOUBLE_COLONS;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.LEVELED_PATH_TEMPLATE_PATTERN;
 import static org.apache.iotdb.db.queryengine.plan.parser.ASTVisitor.parseNodeString;
@@ -134,48 +130,14 @@ public class SelectIntoUtils {
 
   public static List<Pair<String, PartialPath>> bindTypeForSourceTargetPathPairList(
       List<Pair<String, PartialPath>> sourceTargetPathPairList,
-      Map<String, TSDataType> sourceToDataTypeMap,
-      ISchemaTree targetSchemaTree) {
+      Map<String, TSDataType> sourceToDataTypeMap) {
     List<Pair<String, PartialPath>> sourceTypeBoundTargetPathPairList = new ArrayList<>();
     for (Pair<String, PartialPath> sourceTargetPathPair : sourceTargetPathPairList) {
       String sourceColumn = sourceTargetPathPair.left;
       TSDataType sourceColumnType = sourceToDataTypeMap.get(sourceColumn);
-
       MeasurementPath targetPathWithSchema;
       PartialPath targetPath = sourceTargetPathPair.right;
-      List<MeasurementPath> actualTargetPaths =
-          targetSchemaTree.searchMeasurementPaths(targetPath).left;
-      if (actualTargetPaths.isEmpty()) {
-        targetPathWithSchema = new MeasurementPath(targetPath, sourceColumnType);
-      } else {
-        checkState(actualTargetPaths.size() == 1);
-        MeasurementPath actualTargetPath = actualTargetPaths.get(0);
-        if (actualTargetPath.getMeasurementSchema().isLogicalView()) {
-          LogicalViewSchema viewSchema =
-              (LogicalViewSchema) actualTargetPath.getMeasurementSchema();
-          if (viewSchema.isWritable()) {
-            MeasurementPath viewSourceSeriesPath =
-                targetSchemaTree
-                    .searchMeasurementPaths(viewSchema.getSourcePathIfWritable())
-                    .left
-                    .get(0);
-            actualTargetPath =
-                new MeasurementPath(targetPath, viewSourceSeriesPath.getSeriesType());
-            actualTargetPath.setUnderAlignedEntity(viewSourceSeriesPath.isUnderAlignedEntity());
-          } else {
-            throw new SemanticException(
-                String.format("View %s doesn't support data insertion.", targetPath));
-          }
-        }
-        if (!TypeInferenceUtils.canAutoCast(sourceColumnType, actualTargetPath.getSeriesType())) {
-          throw new SemanticException(
-              String.format(
-                  "The data type of target path (%s[%s]) is not compatible with the data type of source column (%s[%s]).",
-                  targetPath, actualTargetPath.getSeriesType(), sourceColumn, sourceColumnType));
-        }
-        // no need to check alignment, because the interface is common
-        targetPathWithSchema = actualTargetPath;
-      }
+      targetPathWithSchema = new MeasurementPath(targetPath, sourceColumnType);
       sourceTypeBoundTargetPathPairList.add(new Pair<>(sourceColumn, targetPathWithSchema));
     }
     return sourceTypeBoundTargetPathPairList;

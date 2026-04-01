@@ -33,6 +33,7 @@ import org.junit.runners.Parameterized;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
@@ -84,7 +85,7 @@ public class IoTDBTagIT extends AbstractSchemaIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute(sql);
-      ResultSet resultSet = statement.executeQuery("show timeseries");
+      ResultSet resultSet = statement.executeQuery("show timeseries root.turbine.**");
       int count = 0;
       try {
         while (resultSet.next()) {
@@ -137,7 +138,7 @@ public class IoTDBTagIT extends AbstractSchemaIT {
         Statement statement = connection.createStatement()) {
       statement.execute(sql1);
       statement.execute(sql2);
-      ResultSet resultSet = statement.executeQuery("show timeseries");
+      ResultSet resultSet = statement.executeQuery("show timeseries root.turbine.**");
       int count = 0;
       try {
         while (resultSet.next()) {
@@ -191,7 +192,7 @@ public class IoTDBTagIT extends AbstractSchemaIT {
         Statement statement = connection.createStatement()) {
       statement.execute(sql1);
       statement.execute(sql2);
-      ResultSet resultSet = statement.executeQuery("show timeseries");
+      ResultSet resultSet = statement.executeQuery("show timeseries root.turbine.**");
       int count = 0;
       try {
         while (resultSet.next()) {
@@ -426,7 +427,7 @@ public class IoTDBTagIT extends AbstractSchemaIT {
       statement.execute(sql1);
       statement.execute(sql2);
       int count = 0;
-      try (ResultSet resultSet = statement.executeQuery("show timeseries")) {
+      try (ResultSet resultSet = statement.executeQuery("show timeseries root.turbine.**")) {
         while (resultSet.next()) {
           String ans =
               resultSet.getString(ColumnHeaderConstant.TIMESERIES)
@@ -453,7 +454,7 @@ public class IoTDBTagIT extends AbstractSchemaIT {
 
       statement.execute("delete timeseries root.turbine.d7.s2");
       count = 0;
-      try (ResultSet resultSet = statement.executeQuery("show timeseries")) {
+      try (ResultSet resultSet = statement.executeQuery("show timeseries  root.turbine.**")) {
         while (resultSet.next()) {
           String ans =
               resultSet.getString(ColumnHeaderConstant.TIMESERIES)
@@ -509,7 +510,7 @@ public class IoTDBTagIT extends AbstractSchemaIT {
       statement.execute(sql1);
       statement.execute(sql2);
       int count = 0;
-      try (ResultSet resultSet = statement.executeQuery("show timeseries")) {
+      try (ResultSet resultSet = statement.executeQuery("show timeseries root.turbine.**")) {
         while (resultSet.next()) {
           String ans =
               resultSet.getString(ColumnHeaderConstant.TIMESERIES)
@@ -536,7 +537,7 @@ public class IoTDBTagIT extends AbstractSchemaIT {
 
       statement.execute("delete timeseries root.turbine.d7.status");
       count = 0;
-      try (ResultSet resultSet = statement.executeQuery("show timeseries")) {
+      try (ResultSet resultSet = statement.executeQuery("show timeseries  root.turbine.**")) {
         while (resultSet.next()) {
           String ans =
               resultSet.getString(ColumnHeaderConstant.TIMESERIES)
@@ -569,25 +570,26 @@ public class IoTDBTagIT extends AbstractSchemaIT {
   @Test
   public void queryWithWhereTest1() {
     List<String> ret1 =
-        Arrays.asList(
-            "root.turbine.d0.s0,temperature,root.turbine,FLOAT,RLE,SNAPPY,{\"description\":\"turbine "
-                + "this is a test1\",\"unit\":\"f\"},{\"H_Alarm\":\"100\",\"M_Alarm\":\"50\"}",
-            "root.turbine.d0.s1,power,root.turbine,FLOAT,RLE,SNAPPY,{\"description\":\"turbine this "
-                + "is a test2\",\"unit\":\"kw\"},{\"H_Alarm\":\"99.9\",\"M_Alarm\":\"44.4\"}",
-            "root.turbine.d1.s0,status,root.turbine,INT32,RLE,LZ4,{\"description\":\"turbine this "
-                + "is a test3\"},{\"H_Alarm\":\"9\",\"M_Alarm\":\"5\"}",
-            "root.turbine.d2.s0,temperature,root.turbine,FLOAT,RLE,SNAPPY,{\"description\":\"turbine "
-                + "d2 this is a test1\",\"unit\":\"f\"},{\"MinValue\":\"1\",\"MaxValue\":\"100\"}",
-            "root.turbine.d2.s1,power,root.turbine,FLOAT,RLE,SNAPPY,{\"description\":\"turbine d2 this"
-                + " is a test2\",\"unit\":\"kw\"},{\"MinValue\":\"44.4\",\"MaxValue\":\"99.9\"}",
-            "root.turbine.d2.s3,status,root.turbine,INT32,RLE,LZ4,{\"description\":\"turbine d2 "
-                + "this is a test3\"},{\"MinValue\":\"5\",\"MaxValue\":\"9\"}",
-            "root.ln.d0.s0,temperature,root.ln,FLOAT,RLE,SNAPPY,{\"description\":\"ln this is a "
-                + "test1\",\"unit\":\"c\"},{\"H_Alarm\":\"1000\",\"M_Alarm\":\"500\"}",
-            "root.ln.d0.s1,power,root.ln,FLOAT,RLE,SNAPPY,{\"description\":\"ln this is a "
-                + "test2\",\"unit\":\"w\"},{\"H_Alarm\":\"9.9\",\"M_Alarm\":\"4.4\"}",
-            "root.ln.d1.s0,status,root.ln,INT32,RLE,LZ4,{\"description\":\"ln this is a test3\"},"
-                + "{\"H_Alarm\":\"90\",\"M_Alarm\":\"50\"}");
+        new ArrayList<>(
+            Arrays.asList(
+                "root.turbine.d0.s0,temperature,root.turbine,FLOAT,RLE,SNAPPY,{\"description\":\"turbine "
+                    + "this is a test1\",\"unit\":\"f\"},{\"H_Alarm\":\"100\",\"M_Alarm\":\"50\"}",
+                "root.turbine.d0.s1,power,root.turbine,FLOAT,RLE,SNAPPY,{\"description\":\"turbine this "
+                    + "is a test2\",\"unit\":\"kw\"},{\"H_Alarm\":\"99.9\",\"M_Alarm\":\"44.4\"}",
+                "root.turbine.d1.s0,status,root.turbine,INT32,RLE,LZ4,{\"description\":\"turbine this "
+                    + "is a test3\"},{\"H_Alarm\":\"9\",\"M_Alarm\":\"5\"}",
+                "root.turbine.d2.s0,temperature,root.turbine,FLOAT,RLE,SNAPPY,{\"description\":\"turbine "
+                    + "d2 this is a test1\",\"unit\":\"f\"},{\"MinValue\":\"1\",\"MaxValue\":\"100\"}",
+                "root.turbine.d2.s1,power,root.turbine,FLOAT,RLE,SNAPPY,{\"description\":\"turbine d2 this"
+                    + " is a test2\",\"unit\":\"kw\"},{\"MinValue\":\"44.4\",\"MaxValue\":\"99.9\"}",
+                "root.turbine.d2.s3,status,root.turbine,INT32,RLE,LZ4,{\"description\":\"turbine d2 "
+                    + "this is a test3\"},{\"MinValue\":\"5\",\"MaxValue\":\"9\"}",
+                "root.ln.d0.s0,temperature,root.ln,FLOAT,RLE,SNAPPY,{\"description\":\"ln this is a "
+                    + "test1\",\"unit\":\"c\"},{\"H_Alarm\":\"1000\",\"M_Alarm\":\"500\"}",
+                "root.ln.d0.s1,power,root.ln,FLOAT,RLE,SNAPPY,{\"description\":\"ln this is a "
+                    + "test2\",\"unit\":\"w\"},{\"H_Alarm\":\"9.9\",\"M_Alarm\":\"4.4\"}",
+                "root.ln.d1.s0,status,root.ln,INT32,RLE,LZ4,{\"description\":\"ln this is a test3\"},"
+                    + "{\"H_Alarm\":\"90\",\"M_Alarm\":\"50\"}"));
 
     Set<String> ret2 = new HashSet<>();
     ret2.add(
@@ -651,10 +653,9 @@ public class IoTDBTagIT extends AbstractSchemaIT {
                   + ","
                   + resultSet.getString(ColumnHeaderConstant.ATTRIBUTES);
 
-          assertTrue(ret1.contains(ans));
-          count++;
+          ret1.remove(ans);
         }
-        assertEquals(ret1.size(), count);
+        assertEquals(0, ret1.size());
       }
 
       count = 0;
@@ -1072,7 +1073,7 @@ public class IoTDBTagIT extends AbstractSchemaIT {
   }
 
   @Test
-  public void deleteStorageGroupTest() {
+  public void deleteDatabaseTest() {
     List<String> ret =
         Collections.singletonList(
             "root.turbine.d1.s1,temperature,root.turbine,FLOAT,RLE,SNAPPY,"
@@ -1086,7 +1087,7 @@ public class IoTDBTagIT extends AbstractSchemaIT {
         Statement statement = connection.createStatement()) {
       statement.execute(sql);
       int count = 0;
-      try (ResultSet resultSet = statement.executeQuery("show timeseries")) {
+      try (ResultSet resultSet = statement.executeQuery("show timeseries root.turbine.**")) {
         while (resultSet.next()) {
           String ans =
               resultSet.getString(ColumnHeaderConstant.TIMESERIES)

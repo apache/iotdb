@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.it.utils;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
@@ -30,6 +31,7 @@ import org.apache.tsfile.read.common.Path;
 import org.apache.tsfile.write.TsFileWriter;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -223,6 +225,32 @@ public class TsFileGenerator implements AutoCloseable {
 
   private void generateTEXT(final Tablet tablet, final int column, final int row) {
     tablet.addValue(row, column, String.format("test point %d", random.nextInt()));
+  }
+
+  public void generateDeletion(final String device) throws IOException, IllegalPathException {
+    try (final ModificationFile modificationFile =
+        new ModificationFile(ModificationFile.getExclusiveMods(tsFile), false)) {
+      modificationFile.write(
+          new TreeDeletionEntry(
+              new MeasurementPath(device, IoTDBConstant.ONE_LEVEL_PATH_WILDCARD),
+              Long.MIN_VALUE,
+              Long.MAX_VALUE));
+      device2TimeSet.remove(device);
+      device2MeasurementSchema.remove(device);
+    }
+  }
+
+  public void generateDeletion(final String device, final MeasurementSchema measurement)
+      throws IOException, IllegalPathException {
+    try (final ModificationFile modificationFile =
+        new ModificationFile(ModificationFile.getExclusiveMods(tsFile), false)) {
+      modificationFile.write(
+          new TreeDeletionEntry(
+              new MeasurementPath(device, measurement.getMeasurementName()),
+              Long.MIN_VALUE,
+              Long.MAX_VALUE));
+      device2MeasurementSchema.get(device).remove(measurement);
+    }
   }
 
   public void generateDeletion(final String device, final int number)

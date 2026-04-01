@@ -22,9 +22,9 @@ package org.apache.iotdb.db.pipe.receiver.transform.converter;
 import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
 
-import org.apache.commons.lang3.StringUtils;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.external.commons.lang3.StringUtils;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.DateUtils;
 
@@ -624,7 +624,7 @@ public class ValueConverter {
   }
 
   public static Binary convertDateToText(final int value) {
-    return parseText(Integer.toString(value));
+    return parseText(DateUtils.parseIntToLocalDate(value).toString());
   }
 
   public static long convertDateToTimestamp(final int value) {
@@ -639,11 +639,11 @@ public class ValueConverter {
   }
 
   public static Binary convertDateToBlob(final int value) {
-    return parseBlob(Integer.toString(value));
+    return parseBlob(DateUtils.parseIntToLocalDate(value).toString());
   }
 
   public static Binary convertDateToString(final int value) {
-    return parseString(Integer.toString(value));
+    return parseString(DateUtils.parseIntToLocalDate(value).toString());
   }
 
   ///////////// BLOB //////////////

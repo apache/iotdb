@@ -35,9 +35,9 @@ import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
-import org.apache.commons.lang3.ObjectUtils;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.thrift.TException;
+import org.apache.tsfile.external.commons.lang3.ObjectUtils;
+import org.apache.tsfile.external.commons.lang3.StringUtils;
 import org.jline.reader.LineReader;
 
 import java.io.File;
@@ -207,9 +207,7 @@ public class ExportData extends AbstractDataTool {
       }
     } else {
       ioTPrinter.println(
-          String.format(
-              "Invalid args: Required values for option '%s' not provided",
-              Constants.FILE_TYPE_NAME));
+          String.format(Constants.REQUIRED_ARGS_ERROR_MSG, Constants.FILE_TYPE_NAME));
       System.exit(Constants.CODE_ERROR);
     }
     int exitCode = Constants.CODE_OK;
@@ -240,7 +238,10 @@ public class ExportData extends AbstractDataTool {
           exportData.exportBySql(values[i], i);
         }
       } else {
-        exportData.exportBySql(queryCommand, 0);
+        String[] values = queryCommand.trim().split(";");
+        for (int i = 0; i < values.length; i++) {
+          exportData.exportBySql(values[i], i);
+        }
       }
     } catch (IOException e) {
       ioTPrinter.println("Failed to operate on file, because " + e.getMessage());
@@ -269,6 +270,10 @@ public class ExportData extends AbstractDataTool {
     String timeoutString = commandLine.getOptionValue(Constants.TIMEOUT_ARGS);
     if (timeoutString != null) {
       timeout = Long.parseLong(timeoutString);
+    }
+    String rpcMaxFrameSizeString = commandLine.getOptionValue(Constants.RPC_MAX_FRAME_SIZE_ARGS);
+    if (rpcMaxFrameSizeString != null) {
+      rpcMaxFrameSize = Integer.parseInt(rpcMaxFrameSizeString);
     }
     if (needDataTypePrinted == null) {
       needDataTypePrinted = true;

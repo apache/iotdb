@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -32,6 +33,8 @@ import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Objects.requireNonNull;
 
 public class SortItem extends Node {
+
+  private static final long INSTANCE_SIZE = RamUsageEstimator.shallowSizeOfInstance(SortItem.class);
 
   public enum Ordering {
     ASCENDING,
@@ -142,5 +145,13 @@ public class SortItem extends Node {
 
     ordering = Ordering.values()[ReadWriteIOUtils.readByte(byteBuffer)];
     nullOrdering = NullOrdering.values()[ReadWriteIOUtils.readByte(byteBuffer)];
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(sortKey);
+    return size;
   }
 }

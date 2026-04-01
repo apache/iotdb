@@ -50,7 +50,15 @@ public enum OperationType {
   CREATE_SCHEMA_TEMPLATE("createSchemaTemplate"),
   CHECK_AUTHORITY("checkAuthority"),
   EXECUTE_NON_QUERY_PLAN("executeNonQueryPlan"),
-  QUERY_LATENCY("queryLatency");
+  SELECT_INTO("selectInto"),
+  QUERY_LATENCY("queryLatency"),
+  WRITE_AUDIT_LOG("writeAuditLog"),
+  PREPARE_STATEMENT("prepareStatement"),
+  EXECUTE_PREPARED_STATEMENT("executePreparedStatement"),
+  DEALLOCATE_PREPARED_STATEMENT("deallocatePreparedStatement"),
+  GET_EARLIEST_TIMESLOTS("getEarliestTimeslots"),
+  GENERATE_DATA_PARTITION_TABLE("generateDataPartitionTable"),
+  CHECK_DATA_PARTITION_TABLE_STATUS("checkDataPartitionTableStatus");
   private final String name;
 
   OperationType(String name) {

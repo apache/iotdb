@@ -23,13 +23,11 @@ import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
-import org.apache.iotdb.db.pipe.extractor.dataregion.IoTDBDataRegionExtractor;
-import org.apache.iotdb.db.pipe.extractor.schemaregion.IoTDBSchemaRegionExtractor;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
+import org.apache.iotdb.db.pipe.source.dataregion.IoTDBDataRegionSource;
+import org.apache.iotdb.db.pipe.source.schemaregion.IoTDBSchemaRegionSource;
 import org.apache.iotdb.metrics.AbstractMetricService;
-import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
-import org.apache.iotdb.metrics.type.Histogram;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
@@ -53,28 +51,11 @@ public class PipeDataNodeSinglePipeMetrics implements IMetricSet {
   public final Map<String, PipeDataNodeRemainingEventAndTimeOperator>
       remainingEventAndTimeOperatorMap = new ConcurrentHashMap<>();
 
-  private static Histogram PIPE_DATANODE_INSERTNODE_TRANSFER_TIME_HISTOGRAM =
-      DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
-  private static Histogram PIPE_DATANODE_TSFILE_TRANSFER_TIME_HISTOGRAM =
-      DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
-
   //////////////////////////// bindTo & unbindFrom (metric framework) ////////////////////////////
 
   @Override
   public void bindTo(final AbstractMetricService metricService) {
     this.metricService = metricService;
-    PIPE_DATANODE_INSERTNODE_TRANSFER_TIME_HISTOGRAM =
-        metricService.getOrCreateHistogram(
-            Metric.PIPE_DATANODE_EVENT_TRANSFER.toString(),
-            MetricLevel.IMPORTANT,
-            Tag.NAME.toString(),
-            "insert_node");
-    PIPE_DATANODE_TSFILE_TRANSFER_TIME_HISTOGRAM =
-        metricService.getOrCreateHistogram(
-            Metric.PIPE_DATANODE_EVENT_TRANSFER.toString(),
-            MetricLevel.IMPORTANT,
-            Tag.NAME.toString(),
-            "tsfile");
     ImmutableSet.copyOf(remainingEventAndTimeOperatorMap.keySet()).forEach(this::createMetrics);
   }
 
@@ -89,7 +70,7 @@ public class PipeDataNodeSinglePipeMetrics implements IMetricSet {
         Metric.PIPE_DATANODE_REMAINING_EVENT_COUNT.toString(),
         MetricLevel.IMPORTANT,
         operator,
-        PipeDataNodeRemainingEventAndTimeOperator::getRemainingEvents,
+        PipeDataNodeRemainingEventAndTimeOperator::getRemainingNonHeartbeatEvents,
         Tag.NAME.toString(),
         operator.getPipeName(),
         Tag.CREATION_TIME.toString(),
@@ -155,17 +136,6 @@ public class PipeDataNodeSinglePipeMetrics implements IMetricSet {
       LOGGER.warn(
           "Failed to unbind from pipe remaining event and time metrics, RemainingEventAndTimeOperator map not empty");
     }
-    metricService.remove(
-        MetricType.HISTOGRAM,
-        Metric.PIPE_DATANODE_EVENT_TRANSFER.toString(),
-        Tag.NAME.toString(),
-        "insert_node");
-
-    metricService.remove(
-        MetricType.HISTOGRAM,
-        Metric.PIPE_DATANODE_EVENT_TRANSFER.toString(),
-        Tag.NAME.toString(),
-        "tsfile");
   }
 
   private void removeMetrics(final String pipeID) {
@@ -225,29 +195,29 @@ public class PipeDataNodeSinglePipeMetrics implements IMetricSet {
 
   //////////////////////////// register & deregister (pipe integration) ////////////////////////////
 
-  public void register(final IoTDBDataRegionExtractor extractor) {
+  public void register(final IoTDBDataRegionSource source) {
     // The metric is global thus the regionId is omitted
-    final String pipeID = extractor.getPipeName() + "_" + extractor.getCreationTime();
+    final String pipeID = source.getPipeName() + "_" + source.getCreationTime();
     remainingEventAndTimeOperatorMap.computeIfAbsent(
         pipeID,
         k ->
             new PipeDataNodeRemainingEventAndTimeOperator(
-                extractor.getPipeName(), extractor.getCreationTime()));
+                source.getPipeName(), source.getCreationTime()));
     if (Objects.nonNull(metricService)) {
       createMetrics(pipeID);
     }
   }
 
-  public void register(final IoTDBSchemaRegionExtractor extractor) {
+  public void register(final IoTDBSchemaRegionSource source) {
     // The metric is global thus the regionId is omitted
-    final String pipeID = extractor.getPipeName() + "_" + extractor.getCreationTime();
+    final String pipeID = source.getPipeName() + "_" + source.getCreationTime();
     remainingEventAndTimeOperatorMap
         .computeIfAbsent(
             pipeID,
             k ->
                 new PipeDataNodeRemainingEventAndTimeOperator(
-                    extractor.getPipeName(), extractor.getCreationTime()))
-        .register(extractor);
+                    source.getPipeName(), source.getCreationTime()))
+        .register(source);
     if (Objects.nonNull(metricService)) {
       createMetrics(pipeID);
     }
@@ -263,14 +233,28 @@ public class PipeDataNodeSinglePipeMetrics implements IMetricSet {
 
   public void decreaseInsertNodeEventCount(
       final String pipeName, final long creationTime, final long transferTime) {
-    PipeDataNodeRemainingEventAndTimeOperator operator =
+    final PipeDataNodeRemainingEventAndTimeOperator operator =
         remainingEventAndTimeOperatorMap.computeIfAbsent(
             pipeName + "_" + creationTime,
             k -> new PipeDataNodeRemainingEventAndTimeOperator(pipeName, creationTime));
+
     operator.decreaseInsertNodeEventCount();
 
-    operator.getInsertNodeTransferTimer().update(transferTime, TimeUnit.NANOSECONDS);
-    PIPE_DATANODE_INSERTNODE_TRANSFER_TIME_HISTOGRAM.update(transferTime);
+    if (transferTime > 0) {
+      operator.getInsertNodeTransferTimer().update(transferTime, TimeUnit.NANOSECONDS);
+    }
+  }
+
+  public void updateInsertNodeTransferTimer(
+      final String pipeName, final long creationTime, final long transferTime) {
+    if (transferTime > 0) {
+      remainingEventAndTimeOperatorMap
+          .computeIfAbsent(
+              pipeName + "_" + creationTime,
+              k -> new PipeDataNodeRemainingEventAndTimeOperator(pipeName, creationTime))
+          .getInsertNodeTransferTimer()
+          .update(transferTime, TimeUnit.NANOSECONDS);
+    }
   }
 
   public void increaseRawTabletEventCount(final String pipeName, final long creationTime) {
@@ -305,8 +289,22 @@ public class PipeDataNodeSinglePipeMetrics implements IMetricSet {
             k -> new PipeDataNodeRemainingEventAndTimeOperator(pipeName, creationTime));
 
     operator.decreaseTsFileEventCount();
-    operator.getTsFileTransferTimer().update(transferTime, TimeUnit.NANOSECONDS);
-    PIPE_DATANODE_TSFILE_TRANSFER_TIME_HISTOGRAM.update(transferTime);
+
+    if (transferTime > 0) {
+      operator.getTsFileTransferTimer().update(transferTime, TimeUnit.NANOSECONDS);
+    }
+  }
+
+  public void updateTsFileTransferTimer(
+      final String pipeName, final long creationTime, final long transferTime) {
+    if (transferTime > 0) {
+      remainingEventAndTimeOperatorMap
+          .computeIfAbsent(
+              pipeName + "_" + creationTime,
+              k -> new PipeDataNodeRemainingEventAndTimeOperator(pipeName, creationTime))
+          .getTsFileTransferTimer()
+          .update(transferTime, TimeUnit.NANOSECONDS);
+    }
   }
 
   public void increaseHeartbeatEventCount(final String pipeName, final long creationTime) {
@@ -399,23 +397,23 @@ public class PipeDataNodeSinglePipeMetrics implements IMetricSet {
         remainingEventAndTimeOperatorMap.computeIfAbsent(
             pipeName + "_" + creationTime,
             k -> new PipeDataNodeRemainingEventAndTimeOperator(pipeName, creationTime));
-    return new Pair<>(operator.getRemainingEvents(), operator.getRemainingTime());
+    return new Pair<>(operator.getRemainingNonHeartbeatEvents(), operator.getRemainingTime());
   }
 
   //////////////////////////// singleton ////////////////////////////
 
-  private static class PipeDataNodeRemainingEventAndTimeMetricsHolder {
+  private static class PipeDataNodeSinglePipeMetricsHolder {
 
     private static final PipeDataNodeSinglePipeMetrics INSTANCE =
         new PipeDataNodeSinglePipeMetrics();
 
-    private PipeDataNodeRemainingEventAndTimeMetricsHolder() {
+    private PipeDataNodeSinglePipeMetricsHolder() {
       // Empty constructor
     }
   }
 
   public static PipeDataNodeSinglePipeMetrics getInstance() {
-    return PipeDataNodeRemainingEventAndTimeMetricsHolder.INSTANCE;
+    return PipeDataNodeSinglePipeMetricsHolder.INSTANCE;
   }
 
   private PipeDataNodeSinglePipeMetrics() {

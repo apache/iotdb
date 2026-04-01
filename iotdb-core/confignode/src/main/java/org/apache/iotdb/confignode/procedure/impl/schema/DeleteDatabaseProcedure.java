@@ -37,7 +37,7 @@ import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionDelete
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
-import org.apache.iotdb.confignode.procedure.state.schema.DeleteStorageGroupState;
+import org.apache.iotdb.confignode.procedure.state.schema.DeleteDatabaseState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.consensus.exception.ConsensusException;
@@ -57,7 +57,7 @@ import java.util.Map;
 import java.util.Objects;
 
 public class DeleteDatabaseProcedure
-    extends StateMachineProcedure<ConfigNodeProcedureEnv, DeleteStorageGroupState> {
+    extends StateMachineProcedure<ConfigNodeProcedureEnv, DeleteDatabaseState> {
   private static final Logger LOG = LoggerFactory.getLogger(DeleteDatabaseProcedure.class);
   private static final int RETRY_THRESHOLD = 5;
 
@@ -82,8 +82,7 @@ public class DeleteDatabaseProcedure
   }
 
   @Override
-  protected Flow executeFromState(
-      final ConfigNodeProcedureEnv env, final DeleteStorageGroupState state)
+  protected Flow executeFromState(final ConfigNodeProcedureEnv env, final DeleteDatabaseState state)
       throws InterruptedException {
     if (deleteDatabaseSchema == null) {
       return Flow.NO_MORE_STATE;
@@ -95,14 +94,14 @@ public class DeleteDatabaseProcedure
               "[DeleteDatabaseProcedure] Pre delete database: {}", deleteDatabaseSchema.getName());
           env.preDeleteDatabase(
               PreDeleteDatabasePlan.PreDeleteType.EXECUTE, deleteDatabaseSchema.getName());
-          setNextState(DeleteStorageGroupState.INVALIDATE_CACHE);
+          setNextState(DeleteDatabaseState.INVALIDATE_CACHE);
           break;
         case INVALIDATE_CACHE:
           LOG.info(
               "[DeleteDatabaseProcedure] Invalidate cache of database: {}",
               deleteDatabaseSchema.getName());
           if (env.invalidateCache(deleteDatabaseSchema.getName())) {
-            setNextState(DeleteStorageGroupState.DELETE_DATABASE_SCHEMA);
+            setNextState(DeleteDatabaseState.DELETE_DATABASE_SCHEMA);
           } else {
             setFailure(new ProcedureException("[DeleteDatabaseProcedure] Invalidate cache failed"));
           }
@@ -240,8 +239,7 @@ public class DeleteDatabaseProcedure
   }
 
   @Override
-  protected void rollbackState(
-      final ConfigNodeProcedureEnv env, final DeleteStorageGroupState state)
+  protected void rollbackState(final ConfigNodeProcedureEnv env, final DeleteDatabaseState state)
       throws IOException, InterruptedException {
     switch (state) {
       case PRE_DELETE_DATABASE:
@@ -257,7 +255,7 @@ public class DeleteDatabaseProcedure
   }
 
   @Override
-  protected boolean isRollbackSupported(final DeleteStorageGroupState state) {
+  protected boolean isRollbackSupported(final DeleteDatabaseState state) {
     switch (state) {
       case PRE_DELETE_DATABASE:
       case INVALIDATE_CACHE:
@@ -268,18 +266,18 @@ public class DeleteDatabaseProcedure
   }
 
   @Override
-  protected DeleteStorageGroupState getState(final int stateId) {
-    return DeleteStorageGroupState.values()[stateId];
+  protected DeleteDatabaseState getState(final int stateId) {
+    return DeleteDatabaseState.values()[stateId];
   }
 
   @Override
-  protected int getStateId(final DeleteStorageGroupState deleteStorageGroupState) {
-    return deleteStorageGroupState.ordinal();
+  protected int getStateId(final DeleteDatabaseState deleteDatabaseState) {
+    return deleteDatabaseState.ordinal();
   }
 
   @Override
-  protected DeleteStorageGroupState getInitialState() {
-    return DeleteStorageGroupState.PRE_DELETE_DATABASE;
+  protected DeleteDatabaseState getInitialState() {
+    return DeleteDatabaseState.PRE_DELETE_DATABASE;
   }
 
   public String getDatabase() {

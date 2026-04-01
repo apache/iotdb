@@ -166,7 +166,8 @@ public class IoTDBQueryDemoIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      ResultSet resultSet = statement.executeQuery("select * from root.** where time>10");
+      ResultSet resultSet =
+          statement.executeQuery("select * from root.ln.**,root.sgcc.** where time>10");
       ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
       List<Integer> actualIndexToExpectedIndexList =
           checkHeader(
@@ -224,7 +225,8 @@ public class IoTDBQueryDemoIT {
       Assert.assertEquals(4, statement.getFetchSize());
 
       ResultSet resultSet =
-          statement.executeQuery("select * from root.** where time>10 limit 5 offset 3");
+          statement.executeQuery(
+              "select * from root.ln.**,root.sgcc.** where time>10 limit 5 offset 3");
       ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
       List<Integer> actualIndexToExpectedIndexList =
           checkHeader(
@@ -261,7 +263,9 @@ public class IoTDBQueryDemoIT {
       // test 1: fetchSize > limitNumber
       statement.setFetchSize(10000);
       Assert.assertEquals(10000, statement.getFetchSize());
-      resultSet = statement.executeQuery("select * from root.** where time>10 limit 5 offset 3");
+      resultSet =
+          statement.executeQuery(
+              "select * from root.ln.**,root.sgcc.** where time>10 limit 5 offset 3");
 
       resultSetMetaData = resultSet.getMetaData();
       actualIndexToExpectedIndexList =
@@ -321,7 +325,7 @@ public class IoTDBQueryDemoIT {
       Assert.assertEquals(4, statement.getFetchSize());
       ResultSet resultSet =
           statement.executeQuery(
-              "select * from root.** where time in (1509465780000, 1509465840000, 1509465900000, 1509465960000, 1509466020000)");
+              "select * from root.ln.**,root.sgcc.** where time in (1509465780000, 1509465840000, 1509465900000, 1509465960000, 1509466020000)");
       ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
       List<Integer> actualIndexToExpectedIndexList =
           checkHeader(
@@ -365,7 +369,7 @@ public class IoTDBQueryDemoIT {
           };
       resultSet =
           statement.executeQuery(
-              "select * from root.** where time not in (1509465780000, 1509465840000, 1509465900000, 1509465960000, 1509466020000)");
+              "select * from root.ln.**,root.sgcc.** where time not in (1509465780000, 1509465840000, 1509465900000, 1509465960000, 1509466020000)");
 
       resultSetMetaData = resultSet.getMetaData();
       actualIndexToExpectedIndexList =
@@ -409,7 +413,7 @@ public class IoTDBQueryDemoIT {
 
       resultSet =
           statement.executeQuery(
-              "select * from root.** where root.ln.wf01.wt01.temperature in (20.18, 20.71, 22.58)");
+              "select * from root.ln.**,root.sgcc.** where root.ln.wf01.wt01.temperature in (20.18, 20.71, 22.58)");
 
       resultSetMetaData = resultSet.getMetaData();
       actualIndexToExpectedIndexList =

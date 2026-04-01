@@ -103,7 +103,7 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
     this.schemaRegionConsensusPort = portList[4];
     this.mqttPort = portList[5];
     this.pipeAirGapReceiverPort = portList[6];
-    this.restServicePort = portList[10] + 6000;
+    this.restServicePort = portList[7];
     this.defaultNodePropertiesFile =
         EnvUtils.getFilePathFromSysVar(DEFAULT_DATA_NODE_PROPERTIES, clusterIndex);
     this.defaultCommonPropertiesFile =
@@ -157,8 +157,20 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
     return getNodePath() + File.separator + "data";
   }
 
+  public String getDataNodeDir() {
+    return getDataDir() + File.separator + "datanode";
+  }
+
   public String getWalDir() {
-    return getDataDir() + File.separator + "datanode" + File.separator + "wal";
+    return getDataNodeDir() + File.separator + "wal";
+  }
+
+  public String getSystemDir() {
+    return getDataNodeDir() + File.separator + "system";
+  }
+
+  public String getDataNodeObjectDir() {
+    return getDataNodeDir() + File.separator + "data" + File.separator + "object";
   }
 
   @Override

@@ -32,7 +32,8 @@ identifier
 // List of keywords, new keywords that can be used as identifiers should be added into this list. For example, 'not' is an identifier but can not be used as an identifier in node name.
 
 keyWords
-    : ADD
+    : ACCOUNT
+    | ADD
     | AFTER
     | ALIAS
     | ALIGN
@@ -46,6 +47,7 @@ keyWords
     | AS
     | ASC
     | ATTRIBUTES
+    | AVAILABLE
     | BEFORE
     | BEGIN
     | BETWEEN
@@ -97,6 +99,7 @@ keyWords
     | DEVICES
     | DISABLE
     | DISCARD
+    | DISK_USAGE
     | DROP
     | ELAPSEDTIME
     | ELSE
@@ -113,6 +116,7 @@ keyWords
     | FIRST
     | FLUSH
     | FOR
+    | FORCEDLY
     | FROM
     | FULL
     | FUNCTION
@@ -209,14 +213,18 @@ keyWords
     | SCHEMA
     | SCHEMA_REPLICATION_FACTOR
     | SCHEMA_REGION_GROUP_NUM
+    | SECURITY
     | SELECT
     | SERIESSLOTID
+    | SERVICE
+    | SERVICES
     | SESSION
     | SET
     | SETTLE
     | SGLEVEL
     | SHOW
     | SINK
+    | SIZEINBYTES
     | SLIMIT
     | SOFFSET
     | SOURCE
@@ -260,10 +268,12 @@ keyWords
     | TTL
     | UNLINK
     | UNLOAD
+    | UNLOCK
     | UNSET
     | UPDATE
     | UPSERT
     | URI
+    | URLS
     | USED
     | USER
     | USING

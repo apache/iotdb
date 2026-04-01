@@ -22,35 +22,32 @@ package org.apache.iotdb.confignode.manager.pipe.coordinator.task;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.concurrent.BlockingDeque;
-import java.util.concurrent.LinkedBlockingDeque;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * {@link PipeTaskCoordinatorLock} is a cross thread lock for pipe task coordinator. It is used to
+ * {@link PipeTaskCoordinatorLock} is a cross-thread lock for pipe task coordinator. It is used to
  * ensure that only one thread can execute the pipe task coordinator at the same time.
+ *
+ * <p>Uses {@link Semaphore} instead of {@link java.util.concurrent.locks.ReentrantLock} to support
+ * cross-thread acquire/release, which is required by the procedure recovery mechanism: locks may be
+ * acquired on the StateMachineUpdater thread during {@code restoreLock()} and released on a
+ * ProcedureCoreWorker thread after execution.
  */
 public class PipeTaskCoordinatorLock {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTaskCoordinatorLock.class);
 
-  private final BlockingDeque<Long> deque = new LinkedBlockingDeque<>(1);
-  private final AtomicLong idGenerator = new AtomicLong(0);
+  private final Semaphore semaphore = new Semaphore(1);
 
   public void lock() {
+    LOGGER.debug(
+        "PipeTaskCoordinator lock waiting for thread {}", Thread.currentThread().getName());
     try {
-      final long id = idGenerator.incrementAndGet();
-      LOGGER.info(
-          "PipeTaskCoordinator lock (id: {}) waiting for thread {}",
-          id,
-          Thread.currentThread().getName());
-      deque.put(id);
-      LOGGER.info(
-          "PipeTaskCoordinator lock (id: {}) acquired by thread {}",
-          id,
-          Thread.currentThread().getName());
-    } catch (InterruptedException e) {
+      semaphore.acquire();
+      LOGGER.debug(
+          "PipeTaskCoordinator lock acquired by thread {}", Thread.currentThread().getName());
+    } catch (final InterruptedException e) {
       Thread.currentThread().interrupt();
       LOGGER.error(
           "Interrupted while waiting for PipeTaskCoordinator lock, current thread: {}",
@@ -60,21 +57,15 @@ public class PipeTaskCoordinatorLock {
 
   public boolean tryLock() {
     try {
-      final long id = idGenerator.incrementAndGet();
-      LOGGER.info(
-          "PipeTaskCoordinator lock (id: {}) waiting for thread {}",
-          id,
-          Thread.currentThread().getName());
-      if (deque.offer(id, 10, TimeUnit.SECONDS)) {
-        LOGGER.info(
-            "PipeTaskCoordinator lock (id: {}) acquired by thread {}",
-            id,
-            Thread.currentThread().getName());
+      LOGGER.debug(
+          "PipeTaskCoordinator lock waiting for thread {}", Thread.currentThread().getName());
+      if (semaphore.tryAcquire(10, TimeUnit.SECONDS)) {
+        LOGGER.debug(
+            "PipeTaskCoordinator lock acquired by thread {}", Thread.currentThread().getName());
         return true;
       } else {
         LOGGER.info(
-            "PipeTaskCoordinator lock (id: {}) failed to acquire by thread {} because of timeout",
-            id,
+            "PipeTaskCoordinator lock failed to acquire by thread {} because of timeout",
             Thread.currentThread().getName());
         return false;
       }
@@ -88,20 +79,12 @@ public class PipeTaskCoordinatorLock {
   }
 
   public void unlock() {
-    final Long id = deque.poll();
-    if (id == null) {
-      LOGGER.error(
-          "PipeTaskCoordinator lock released by thread {} but the lock is not acquired by any thread",
-          Thread.currentThread().getName());
-    } else {
-      LOGGER.info(
-          "PipeTaskCoordinator lock (id: {}) released by thread {}",
-          id,
-          Thread.currentThread().getName());
-    }
+    semaphore.release();
+    LOGGER.debug(
+        "PipeTaskCoordinator lock released by thread {}", Thread.currentThread().getName());
   }
 
   public boolean isLocked() {
-    return !deque.isEmpty();
+    return semaphore.availablePermits() == 0;
   }
 }

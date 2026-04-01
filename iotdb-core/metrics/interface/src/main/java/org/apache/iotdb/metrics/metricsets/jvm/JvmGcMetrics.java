@@ -74,22 +74,22 @@ public class JvmGcMetrics implements IMetricSet, AutoCloseable {
 
   private static boolean isPartiallyConcurrentGC(GarbageCollectorMXBean gc) {
     switch (gc.getName()) {
-        // First two are from the 'serial' collector which are not concurrent, obviously.
+      // First two are from the 'serial' collector which are not concurrent, obviously.
       case "Copy":
       case "MarkSweepCompact":
-        // The following 4 GCs do not contain concurrent execution phase.
+      // The following 4 GCs do not contain concurrent execution phase.
       case "PS MarkSweep":
       case "PS Scavenge":
       case "G1 Young Generation":
       case "ParNew":
         return false;
 
-        // The following 2 GCs' execution process consists of concurrent phase, which means they can
-        // run simultaneously with the user thread in some phases.
+      // The following 2 GCs' execution process consists of concurrent phase, which means they can
+      // run simultaneously with the user thread in some phases.
 
-        // Concurrent mark and concurrent sweep
+      // Concurrent mark and concurrent sweep
       case "ConcurrentMarkSweep":
-        // Concurrent mark
+      // Concurrent mark
       case "G1 Old Generation":
         return true;
       default:

@@ -30,7 +30,7 @@ import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
 import org.apache.iotdb.session.subscription.payload.SubscriptionTsFileHandler;
 import org.apache.iotdb.tool.common.Constants;
 
-import org.apache.commons.lang3.StringUtils;
+import org.apache.tsfile.external.commons.lang3.StringUtils;
 
 import java.io.File;
 import java.io.IOException;
@@ -147,7 +147,7 @@ public class SubscriptionTreeTsFile extends AbstractSubscriptionTsFile {
                 try {
                   for (final SubscriptionMessage message :
                       consumer.poll(Constants.POLL_MESSAGE_TIMEOUT)) {
-                    final SubscriptionTsFileHandler handler = message.getTsFileHandler();
+                    final SubscriptionTsFileHandler handler = message.getTsFile();
                     ioTPrinter.println(handler.getFile().getName());
                     try {
                       handler.moveFile(

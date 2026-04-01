@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.pipe.processor.twostage.exchange.receiver;
 
-import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.IoTDBConnectorRequestVersion;
 import org.apache.iotdb.commons.pipe.receiver.IoTDBReceiver;
+import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.IoTDBSinkRequestVersion;
 import org.apache.iotdb.db.pipe.processor.twostage.combiner.PipeCombineHandlerManager;
 import org.apache.iotdb.db.pipe.processor.twostage.exchange.payload.CombineRequest;
 import org.apache.iotdb.db.pipe.processor.twostage.exchange.payload.FetchCombineResultRequest;
@@ -38,8 +38,8 @@ public class TwoStageAggregateReceiver implements IoTDBReceiver {
   private static final Logger LOGGER = LoggerFactory.getLogger(TwoStageAggregateReceiver.class);
 
   @Override
-  public IoTDBConnectorRequestVersion getVersion() {
-    return IoTDBConnectorRequestVersion.VERSION_2;
+  public IoTDBSinkRequestVersion getVersion() {
+    return IoTDBSinkRequestVersion.VERSION_2;
   }
 
   @Override

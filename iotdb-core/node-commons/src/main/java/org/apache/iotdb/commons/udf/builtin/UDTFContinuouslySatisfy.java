@@ -103,6 +103,7 @@ public abstract class UDTFContinuouslySatisfy implements UDTF {
       case TEXT:
       case STRING:
       case BLOB:
+      case OBJECT:
       case TIMESTAMP:
       case DATE:
       default:
@@ -230,6 +231,7 @@ public abstract class UDTFContinuouslySatisfy implements UDTF {
       case DATE:
       case STRING:
       case BLOB:
+      case OBJECT:
       case TEXT:
       default:
         // This will not happen.

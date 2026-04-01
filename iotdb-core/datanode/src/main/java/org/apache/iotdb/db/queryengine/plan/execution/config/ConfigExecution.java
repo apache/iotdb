@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.execution.config;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -112,6 +113,12 @@ public class ConfigExecution implements IQueryExecution {
   private final StatementType statementType;
   private long totalExecutionTime;
 
+  // -1 if previous rpc is finished and next client req hasn't come yet, unit is ns
+  // it will be updated in fetchResult rpc
+  // currently, ConfigExecution will return result is just one call, so this field is not used. But
+  // we will keep it for future use when ConfigExecution may return result in multiple calls
+  private volatile long startTimeOfCurrentRpc = System.nanoTime();
+
   public ConfigExecution(
       MPPQueryContext context,
       StatementType statementType,
@@ -161,40 +168,63 @@ public class ConfigExecution implements IQueryExecution {
 
   private void fail(final Throwable cause) {
     int errorCode = TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode();
+    TSStatus status = null;
     if (cause instanceof IoTDBException) {
-      errorCode = ((IoTDBException) cause).getErrorCode();
+      if (Objects.nonNull(((IoTDBException) cause).getStatus())) {
+        status = ((IoTDBException) cause).getStatus();
+        errorCode = status.getCode();
+      } else {
+        errorCode = ((IoTDBException) cause).getErrorCode();
+      }
     } else if (cause instanceof IoTDBRuntimeException) {
-      errorCode = ((IoTDBRuntimeException) cause).getErrorCode();
+      if (Objects.nonNull(((IoTDBRuntimeException) cause).getStatus())) {
+        status = ((IoTDBRuntimeException) cause).getStatus();
+        errorCode = status.getCode();
+      } else {
+        errorCode = ((IoTDBRuntimeException) cause).getErrorCode();
+      }
     }
-    if (!userExceptionCodes.contains(errorCode)) {
-      LOGGER.warn(
-          "Failures happened during running ConfigExecution when executing {}.",
-          Objects.nonNull(task) ? task.getClass().getSimpleName() : null,
-          cause);
-    } else {
+    if ((Objects.nonNull(status) && isUserException(status))
+        || userExceptionCodes.contains(errorCode)) {
       LOGGER.info(
           "Failures happened during running ConfigExecution when executing {}, message: {}, status: {}",
           Objects.nonNull(task) ? task.getClass().getSimpleName() : null,
           cause.getMessage(),
           errorCode);
+    } else {
+      LOGGER.warn(
+          "Failures happened during running ConfigExecution when executing {}.",
+          Objects.nonNull(task) ? task.getClass().getSimpleName() : null,
+          cause);
     }
     stateMachine.transitionToFailed(cause);
-    final ConfigTaskResult result =
-        cause instanceof StatementExecutionException
-            ? new ConfigTaskResult(
-                TSStatusCode.representOf(((StatementExecutionException) cause).getStatusCode()))
-            : new ConfigTaskResult(TSStatusCode.representOf(errorCode));
+    final ConfigTaskResult result;
+    if (Objects.nonNull(status)) {
+      result = new ConfigTaskResult(status);
+    } else {
+      result =
+          cause instanceof StatementExecutionException
+              ? new ConfigTaskResult(
+                  TSStatusCode.representOf(((StatementExecutionException) cause).getStatusCode()))
+              : new ConfigTaskResult(TSStatusCode.representOf(errorCode));
+    }
 
     taskFuture.set(result);
   }
 
-  @Override
-  public void stop(Throwable t) {
-    // do nothing
+  private boolean isUserException(final TSStatus status) {
+    if (status.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
+      return status.getSubStatus().stream()
+          .allMatch(
+              s ->
+                  s.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+                      || userExceptionCodes.contains(s.getCode()));
+    }
+    return userExceptionCodes.contains(status.getCode());
   }
 
   @Override
-  public void stopAndCleanup() {
+  public void stop(Throwable t) {
     // do nothing
   }
 
@@ -211,14 +241,17 @@ public class ConfigExecution implements IQueryExecution {
   @Override
   public ExecutionResult getStatus() {
     try {
-      ConfigTaskResult taskResult = taskFuture.get();
-      TSStatusCode statusCode = taskResult.getStatusCode();
+      final ConfigTaskResult taskResult = taskFuture.get();
       resultSet = taskResult.getResultSet();
       datasetHeader = taskResult.getResultSetHeader();
-      String message =
+      if (Objects.nonNull(taskResult.getStatus())) {
+        return new ExecutionResult(context.getQueryId(), taskResult.getStatus());
+      }
+      final TSStatusCode statusCode = taskResult.getStatusCode();
+      final String message =
           statusCode == TSStatusCode.SUCCESS_STATUS ? "" : stateMachine.getFailureMessage();
       return new ExecutionResult(context.getQueryId(), RpcUtils.getStatus(statusCode, message));
-    } catch (InterruptedException | ExecutionException e) {
+    } catch (final InterruptedException | ExecutionException e) {
       if (e instanceof InterruptedException) {
         Thread.currentThread().interrupt();
       }
@@ -269,7 +302,12 @@ public class ConfigExecution implements IQueryExecution {
 
   @Override
   public boolean isQuery() {
-    return context.getQueryType() == QueryType.READ;
+    return context.getQueryType() != QueryType.WRITE;
+  }
+
+  @Override
+  public QueryType getQueryType() {
+    return context.getQueryType();
   }
 
   @Override
@@ -290,11 +328,30 @@ public class ConfigExecution implements IQueryExecution {
   @Override
   public void recordExecutionTime(long executionTime) {
     totalExecutionTime += executionTime;
+    // recordExecutionTime is called after current rpc finished, so we need to set
+    // startTimeOfCurrentRpc to -1
+    this.startTimeOfCurrentRpc = -1;
+  }
+
+  @Override
+  public void updateCurrentRpcStartTime(long startTime) {
+    this.startTimeOfCurrentRpc = startTime;
+  }
+
+  @Override
+  public boolean isActive() {
+    return startTimeOfCurrentRpc == -1;
   }
 
   @Override
   public long getTotalExecutionTime() {
-    return totalExecutionTime;
+    return totalExecutionTime
+        + (startTimeOfCurrentRpc == -1 ? 0 : System.nanoTime() - startTimeOfCurrentRpc);
+  }
+
+  @Override
+  public long getTimeout() {
+    return context.getTimeOut();
   }
 
   @Override
@@ -315,5 +372,15 @@ public class ConfigExecution implements IQueryExecution {
   @Override
   public String getUser() {
     return context.getSession().getUserName();
+  }
+
+  @Override
+  public String getClientHostname() {
+    return context.getCliHostname();
+  }
+
+  @Override
+  public boolean isDebug() {
+    return context.isDebug();
   }
 }

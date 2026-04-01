@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 
+import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -31,7 +32,6 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -40,7 +40,7 @@ import static java.util.Map.Entry.comparingByValue;
 /** Allocate Region through Greedy and CopySet Algorithm. */
 public class GreedyCopySetRegionGroupAllocator implements IRegionGroupAllocator {
 
-  private static final Random RANDOM = new Random();
+  private static final SecureRandom RANDOM = new SecureRandom();
   private static final int GCR_MAX_OPTIMAL_PLAN_NUM = 10;
 
   private int replicationFactor;

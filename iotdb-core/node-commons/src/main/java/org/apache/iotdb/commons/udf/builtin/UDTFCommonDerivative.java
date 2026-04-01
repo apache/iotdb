@@ -61,6 +61,7 @@ public class UDTFCommonDerivative extends UDTFDerivative {
       case TEXT:
       case STRING:
       case BLOB:
+      case OBJECT:
       default:
         // This will not happen.
         throw new UDFInputSeriesDataTypeNotValidException(

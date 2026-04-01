@@ -131,4 +131,16 @@ public class MppDataNodeConfig extends MppBaseConfig implements DataNodeConfig {
     setProperty("delete_wal_files_period_in_ms", String.valueOf(deleteWalFilesPeriodInMs));
     return this;
   }
+
+  @Override
+  public DataNodeConfig setDataNodeMemoryProportion(String dataNodeMemoryProportion) {
+    setProperty("datanode_memory_proportion", dataNodeMemoryProportion);
+    return this;
+  }
+
+  @Override
+  public DataNodeConfig setQueryCostStatWindow(int queryCostStatWindow) {
+    setProperty("query_cost_stat_window", String.valueOf(queryCostStatWindow));
+    return this;
+  }
 }

@@ -28,7 +28,7 @@ import org.apache.iotdb.db.exception.runtime.MemoryLeakException;
 import com.google.common.util.concurrent.AbstractFuture;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
-import org.apache.commons.lang3.Validate;
+import org.apache.tsfile.external.commons.lang3.Validate;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -338,7 +338,8 @@ public class MemoryPool {
                 return reservedMemory - bytes;
               });
     } catch (NullPointerException e) {
-      throw new IllegalArgumentException("RelatedMemoryReserved can't be null when freeing memory");
+      throw new IllegalArgumentException(
+          "RelatedMemoryReserved can't be null when freeing memory", e);
     }
 
     memoryBlock.release(bytes);

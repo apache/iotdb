@@ -22,12 +22,13 @@ package org.apache.iotdb.db.metadata.cache;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.SchemaCacheEntry;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TreeDeviceSchemaCacheManager;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
-import org.apache.iotdb.db.schemaengine.template.Template;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -197,10 +198,10 @@ public class TreeDeviceSchemaCacheManagerTest {
 
     final TimeValuePair tv1 = new TimeValuePair(1, new TsPrimitiveType.TsInt(1));
 
-    treeDeviceSchemaCacheManager.updateLastCache(
-        database, new MeasurementPath(device.concatNode("s1"), s1), false);
-    treeDeviceSchemaCacheManager.updateLastCache(
-        database, new MeasurementPath(device.concatNode("s3"), s3), false);
+    treeDeviceSchemaCacheManager.declareLastCache(
+        database, new MeasurementPath(device.concatNode("s1"), s1));
+    treeDeviceSchemaCacheManager.declareLastCache(
+        database, new MeasurementPath(device.concatNode("s3"), s3));
 
     // Simulate "s1" revert when the query has failed in calculation
     treeDeviceSchemaCacheManager.updateLastCacheIfExists(
@@ -213,8 +214,8 @@ public class TreeDeviceSchemaCacheManagerTest {
         },
         false,
         new MeasurementSchema[] {s1});
-    treeDeviceSchemaCacheManager.updateLastCache(
-        database, new MeasurementPath(device.concatNode("s1"), s1), true);
+    treeDeviceSchemaCacheManager.invalidateLastCache(
+        database, new MeasurementPath(device.concatNode("s1"), s1));
 
     // "s2" shall be null since the "null" timeValuePair has not been put
     treeDeviceSchemaCacheManager.updateLastCacheIfExists(
@@ -264,6 +265,11 @@ public class TreeDeviceSchemaCacheManagerTest {
     Assert.assertEquals(
         new TimeValuePair(2, new TsPrimitiveType.TsInt(2)),
         treeDeviceSchemaCacheManager.getLastCache(new MeasurementPath("root.db.d.s3")));
+
+    Assert.assertTrue(TableDeviceSchemaCache.getInstance().getMemoryUsage() > 0);
+
+    treeDeviceSchemaCacheManager.cleanUp();
+    Assert.assertEquals(0, TableDeviceSchemaCache.getInstance().getMemoryUsage());
   }
 
   @Test
@@ -294,12 +300,11 @@ public class TreeDeviceSchemaCacheManagerTest {
         new MeasurementPath("root.sg1.d3.s1", TSDataType.FLOAT));
     treeDeviceSchemaCacheManager.put(clusterSchemaTree);
     final ClusterSchemaTree d1Tree =
-        treeDeviceSchemaCacheManager.getMatchedSchemaWithTemplate(new PartialPath("root.sg1.d1"));
+        treeDeviceSchemaCacheManager.getMatchedTemplateSchema(new PartialPath("root.sg1.d1"));
     final ClusterSchemaTree d2Tree =
-        treeDeviceSchemaCacheManager.getMatchedSchemaWithTemplate(new PartialPath("root.sg1.d2"));
+        treeDeviceSchemaCacheManager.getMatchedTemplateSchema(new PartialPath("root.sg1.d2"));
     final ClusterSchemaTree d3Tree =
-        treeDeviceSchemaCacheManager.getMatchedSchemaWithoutTemplate(
-            new MeasurementPath("root.sg1.d3.s1"));
+        treeDeviceSchemaCacheManager.getMatchedNormalSchema(new MeasurementPath("root.sg1.d3.s1"));
     List<MeasurementPath> measurementPaths = d1Tree.searchMeasurementPaths(ALL_MATCH_PATTERN).left;
     Assert.assertEquals(2, measurementPaths.size());
     for (final MeasurementPath measurementPath : measurementPaths) {
@@ -318,5 +323,13 @@ public class TreeDeviceSchemaCacheManagerTest {
     Assert.assertEquals(1, measurementPaths.size());
     Assert.assertEquals(TSDataType.FLOAT, measurementPaths.get(0).getMeasurementSchema().getType());
     Assert.assertEquals("root.sg1.d3.s1", measurementPaths.get(0).getFullPath());
+
+    treeDeviceSchemaCacheManager.invalidateLastCache(new MeasurementPath("root.sg1.**"));
+    treeDeviceSchemaCacheManager.invalidateDatabaseLastCache("root.sg1");
+    TableDeviceSchemaCache.getInstance().invalidateTreeSchema();
+    Assert.assertTrue(TableDeviceSchemaCache.getInstance().getMemoryUsage() > 0);
+
+    TableDeviceSchemaCache.getInstance().invalidateAll();
+    Assert.assertEquals(0, TableDeviceSchemaCache.getInstance().getMemoryUsage());
   }
 }

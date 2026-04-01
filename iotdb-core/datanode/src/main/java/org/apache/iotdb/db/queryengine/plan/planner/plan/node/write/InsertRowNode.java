@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
+import org.apache.iotdb.db.exception.DataTypeInconsistentException;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -31,6 +32,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TreeDeviceSchemaCacheManager;
+import org.apache.iotdb.db.storageengine.dataregion.memtable.AbstractMemTable;
+import org.apache.iotdb.db.storageengine.dataregion.memtable.IWritableMemChunkGroup;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
@@ -158,6 +161,10 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
         + time
         + ", values="
         + Arrays.toString(values)
+        + ", measurements="
+        + Arrays.toString(measurements)
+        + ", dataTypes="
+        + Arrays.toString(dataTypes)
         + '}';
   }
 
@@ -367,6 +374,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
           case TEXT:
           case STRING:
           case BLOB:
+          case OBJECT:
             ReadWriteIOUtils.write((Binary) values[i], buffer);
             break;
           default:
@@ -426,6 +434,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
           case TEXT:
           case STRING:
           case BLOB:
+          case OBJECT:
             ReadWriteIOUtils.write((Binary) values[i], stream);
             break;
           default:
@@ -520,6 +529,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
         case TEXT:
         case STRING:
         case BLOB:
+        case OBJECT:
           values[i] = ReadWriteIOUtils.readBinary(buffer);
           break;
         default:
@@ -589,6 +599,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
         case TEXT:
         case STRING:
         case BLOB:
+        case OBJECT:
           size += ReadWriteIOUtils.sizeToWrite((Binary) values[i]);
           break;
         default:
@@ -668,6 +679,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
         case TEXT:
         case BLOB:
         case STRING:
+        case OBJECT:
           WALWriteUtils.write((Binary) values[i], buffer);
           break;
         default:
@@ -759,6 +771,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
         case TEXT:
         case STRING:
         case BLOB:
+        case OBJECT:
           values[i] = ReadWriteIOUtils.readBinary(stream);
           break;
         default:
@@ -849,6 +862,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
         case TEXT:
         case STRING:
         case BLOB:
+        case OBJECT:
           values[i] = ReadWriteIOUtils.readBinary(buffer);
           break;
         default:
@@ -889,7 +903,9 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
   }
 
   public TimeValuePair composeTimeValuePair(int columnIndex) {
-    if (columnIndex >= values.length || Objects.isNull(dataTypes[columnIndex])) {
+    if (columnIndex >= values.length
+        || Objects.isNull(dataTypes[columnIndex])
+        || dataTypes[columnIndex] == TSDataType.OBJECT) {
       return null;
     }
     Object value = values[columnIndex];
@@ -912,5 +928,13 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
             timeValuePairs,
             isAligned,
             measurementSchemas);
+  }
+
+  @Override
+  public void checkDataType(AbstractMemTable memTable) throws DataTypeInconsistentException {
+    IWritableMemChunkGroup writableMemChunkGroup = memTable.getWritableMemChunkGroup(getDeviceID());
+    if (writableMemChunkGroup != null) {
+      writableMemChunkGroup.checkDataType(this);
+    }
   }
 }

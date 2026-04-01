@@ -20,13 +20,21 @@
 package org.apache.iotdb.db.pipe.event;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.PrefixTreePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.db.auth.AuthorityChecker;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.parser.TabletInsertionEventTreePatternParser;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode;
+import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Binary;
@@ -40,6 +48,9 @@ import org.junit.Test;
 
 import java.time.LocalDate;
 import java.util.Arrays;
+import java.util.Collections;
+
+import static org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern.buildUnionPattern;
 
 public class PipeTabletInsertionEventTest {
 
@@ -264,7 +275,7 @@ public class PipeTabletInsertionEventTest {
   }
 
   @Test
-  public void convertToTabletForTest() {
+  public void convertToTabletForTest() throws Exception {
     TabletInsertionEventTreePatternParser container1 =
         new TabletInsertionEventTreePatternParser(insertRowNode, new PrefixTreePattern(pattern));
     Tablet tablet1 = container1.convertToTablet();
@@ -295,7 +306,7 @@ public class PipeTabletInsertionEventTest {
   }
 
   @Test
-  public void convertToAlignedTabletForTest() {
+  public void convertToAlignedTabletForTest() throws Exception {
     TabletInsertionEventTreePatternParser container1 =
         new TabletInsertionEventTreePatternParser(
             insertRowNodeAligned, new PrefixTreePattern(pattern));
@@ -328,13 +339,14 @@ public class PipeTabletInsertionEventTest {
   }
 
   @Test
-  public void convertToTabletWithFilteredRowsForTest() {
+  public void convertToTabletWithFilteredRowsForTest() throws Exception {
     TabletInsertionEventTreePatternParser container1 =
         new TabletInsertionEventTreePatternParser(
             null,
             new PipeRawTabletInsertionEvent(tabletForInsertRowNode, 111L, 113L),
             insertRowNode,
-            new PrefixTreePattern(pattern));
+            new PrefixTreePattern(pattern),
+            null);
     Tablet tablet1 = container1.convertToTablet();
     Assert.assertEquals(0, tablet1.getRowSize());
     boolean isAligned1 = container1.isAligned();
@@ -345,7 +357,8 @@ public class PipeTabletInsertionEventTest {
             null,
             new PipeRawTabletInsertionEvent(tabletForInsertRowNode, 110L, 110L),
             insertRowNode,
-            new PrefixTreePattern(pattern));
+            new PrefixTreePattern(pattern),
+            null);
     Tablet tablet2 = container2.convertToTablet();
     Assert.assertEquals(1, tablet2.getRowSize());
     boolean isAligned2 = container2.isAligned();
@@ -356,7 +369,8 @@ public class PipeTabletInsertionEventTest {
             null,
             new PipeRawTabletInsertionEvent(tabletForInsertTabletNode, 111L, 113L),
             insertTabletNode,
-            new PrefixTreePattern(pattern));
+            new PrefixTreePattern(pattern),
+            null);
     Tablet tablet3 = container3.convertToTablet();
     Assert.assertEquals(3, tablet3.getRowSize());
     boolean isAligned3 = container3.isAligned();
@@ -367,7 +381,8 @@ public class PipeTabletInsertionEventTest {
             null,
             new PipeRawTabletInsertionEvent(tabletForInsertTabletNode, Long.MIN_VALUE, 109L),
             insertTabletNode,
-            new PrefixTreePattern(pattern));
+            new PrefixTreePattern(pattern),
+            null);
     Tablet tablet4 = container4.convertToTablet();
     Assert.assertEquals(0, tablet4.getRowSize());
     boolean isAligned4 = container4.isAligned();
@@ -393,5 +408,67 @@ public class PipeTabletInsertionEventTest {
     Assert.assertFalse(event.mayEventTimeOverlappedWithTimeRange());
     event = new PipeRawTabletInsertionEvent(tabletForInsertTabletNode, 115L, Long.MAX_VALUE);
     Assert.assertFalse(event.mayEventTimeOverlappedWithTimeRange());
+  }
+
+  @Test
+  public void testAuthCheck() {
+    PipeInsertNodeTabletInsertionEvent event;
+
+    event =
+        new PipeInsertNodeTabletInsertionEvent(
+            false,
+            "root.db",
+            insertRowNode,
+            null,
+            0,
+            null,
+            buildUnionPattern(false, Collections.singletonList(new IoTDBTreePattern(false, null))),
+            new TablePattern(true, null, null),
+            "0",
+            "user",
+            "localhost",
+            false,
+            Long.MIN_VALUE,
+            Long.MAX_VALUE);
+    final AccessControl oldControl = AuthorityChecker.getAccessControl();
+    try {
+      AuthorityChecker.setAccessControl(new PipeTsFileInsertionEventTest.TestAccessControl());
+      Assert.assertThrows(AccessDeniedException.class, event::throwIfNoPrivilege);
+
+      event =
+          new PipeInsertNodeTabletInsertionEvent(
+              true,
+              "db",
+              new RelationalInsertRowNode(
+                  new PlanNodeId("plan node 1"),
+                  new PartialPath("tb", false),
+                  false,
+                  new String[] {"s1", "s4"},
+                  new TSDataType[] {TSDataType.DOUBLE, TSDataType.BOOLEAN},
+                  2000L,
+                  new Object[] {2.0, false},
+                  false,
+                  new TsTableColumnCategory[] {
+                    TsTableColumnCategory.TAG,
+                    TsTableColumnCategory.ATTRIBUTE,
+                    TsTableColumnCategory.FIELD
+                  }),
+              null,
+              0,
+              null,
+              buildUnionPattern(
+                  false, Collections.singletonList(new IoTDBTreePattern(false, null))),
+              new TablePattern(true, null, null),
+              "0",
+              "user",
+              "localhost",
+              false,
+              Long.MIN_VALUE,
+              Long.MAX_VALUE);
+      Assert.assertThrows(AccessDeniedException.class, event::throwIfNoPrivilege);
+    } finally {
+      AuthorityChecker.setAccessControl(oldControl);
+      event.close();
+    }
   }
 }

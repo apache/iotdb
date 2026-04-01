@@ -21,9 +21,9 @@ package org.apache.iotdb.db.queryengine.execution.schedule;
 
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
+import org.apache.iotdb.commons.utils.ErrorHandlingCommonUtils;
 import org.apache.iotdb.db.queryengine.execution.schedule.queue.IndexedBlockingQueue;
 import org.apache.iotdb.db.queryengine.execution.schedule.task.DriverTask;
-import org.apache.iotdb.db.utils.ErrorHandlingUtils;
 import org.apache.iotdb.db.utils.SetThreadName;
 
 import org.slf4j.Logger;
@@ -82,7 +82,7 @@ public abstract class AbstractDriverThread extends Thread implements Closeable {
           // reset the thread name here
           try (SetThreadName driverTaskName =
               new SetThreadName(next.getDriver().getDriverTaskId().getFullId())) {
-            Throwable rootCause = ErrorHandlingUtils.getRootCause(e);
+            Throwable rootCause = ErrorHandlingCommonUtils.getRootCause(e);
             if (rootCause instanceof IoTDBRuntimeException) {
               next.setAbortCause(rootCause);
             } else if (rootCause instanceof IoTDBException) {

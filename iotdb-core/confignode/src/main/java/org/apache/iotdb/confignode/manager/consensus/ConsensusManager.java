@@ -141,6 +141,11 @@ public class ConsensusManager {
                       .setConsensusGroupType(TConsensusGroupType.ConfigRegion)
                       .setRatisConfig(
                           RatisConfig.newBuilder()
+                              .setUtils(
+                                  RatisConfig.Utils.newBuilder()
+                                      .setTransferLeaderTimeoutMs(
+                                          CONF.getRatisTransferLeaderTimeoutMs())
+                                      .build())
                               .setLeaderLogAppender(
                                   RatisConfig.LeaderLogAppender.newBuilder()
                                       .setBufferByteLimit(
@@ -169,6 +174,11 @@ public class ConsensusManager {
                                               CONF.getConfigNodeRatisGrpcFlowControlWindow()))
                                       .setLeaderOutstandingAppendsMax(
                                           CONF.getConfigNodeRatisGrpcLeaderOutstandingAppendsMax())
+                                      .setEnableSSL(COMMON_CONF.isEnableInternalSSL())
+                                      .setSslKeyStorePath(COMMON_CONF.getKeyStorePath())
+                                      .setSslKeyStorePassword(COMMON_CONF.getKeyStorePwd())
+                                      .setSslTrustStorePath(COMMON_CONF.getTrustStorePath())
+                                      .setSslTrustStorePassword(COMMON_CONF.getTrustStorePwd())
                                       .build())
                               .setRpc(
                                   RatisConfig.Rpc.newBuilder()

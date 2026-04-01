@@ -100,6 +100,11 @@ public class QueryDataSource implements IQueryDataSource {
     return unseqResources;
   }
 
+  public boolean isEmpty() {
+    return (seqResources == null || seqResources.isEmpty())
+        && (unseqResources == null || unseqResources.isEmpty());
+  }
+
   @Override
   public IQueryDataSource clone() {
     QueryDataSource queryDataSource =

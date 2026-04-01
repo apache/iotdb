@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import javax.annotation.Nullable;
 
@@ -34,6 +35,9 @@ import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Objects.requireNonNull;
 
 public class ColumnDefinition extends Node {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(ColumnDefinition.class);
 
   private final Identifier name;
   private final DataType type;
@@ -129,5 +133,16 @@ public class ColumnDefinition extends Node {
         .add("charsetName", charsetName)
         .add("comment", comment)
         .toString();
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(name);
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(type);
+    size += RamUsageEstimator.sizeOf(charsetName);
+    size += RamUsageEstimator.sizeOf(comment);
+    return size;
   }
 }

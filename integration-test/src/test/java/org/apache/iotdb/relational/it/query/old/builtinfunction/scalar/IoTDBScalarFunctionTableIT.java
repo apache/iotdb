@@ -1370,63 +1370,56 @@ public class IoTDBScalarFunctionTableIT {
     tableAssertTestFail(
         "select s1,Length(s1,1) from lengthTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function length only accepts one argument and it must be text or string data type.",
+            + ": Scalar function length only accepts one argument and it must be text or string or blob or object data type.",
         DATABASE_NAME);
 
     // case 2: wrong data type
     tableAssertTestFail(
         "select s1,Length(s2) from lengthTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function length only accepts one argument and it must be text or string data type.",
+            + ": Scalar function length only accepts one argument and it must be text or string or blob or object data type.",
         DATABASE_NAME);
 
     // case 3: wrong data type
     tableAssertTestFail(
         "select s1,Length(s3) from lengthTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function length only accepts one argument and it must be text or string data type.",
+            + ": Scalar function length only accepts one argument and it must be text or string or blob or object data type.",
         DATABASE_NAME);
 
     // case 4: wrong data type
     tableAssertTestFail(
         "select s1,Length(s4) from lengthTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function length only accepts one argument and it must be text or string data type.",
+            + ": Scalar function length only accepts one argument and it must be text or string or blob or object data type.",
         DATABASE_NAME);
 
     // case 5: wrong data type
     tableAssertTestFail(
         "select s1,Length(s5) from lengthTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function length only accepts one argument and it must be text or string data type.",
+            + ": Scalar function length only accepts one argument and it must be text or string or blob or object data type.",
         DATABASE_NAME);
 
     // case 6: wrong data type
     tableAssertTestFail(
         "select s1,Length(s6) from lengthTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function length only accepts one argument and it must be text or string data type.",
+            + ": Scalar function length only accepts one argument and it must be text or string or blob or object data type.",
         DATABASE_NAME);
 
     // case 7: wrong data type
     tableAssertTestFail(
         "select s1,Length(s7) from lengthTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function length only accepts one argument and it must be text or string data type.",
+            + ": Scalar function length only accepts one argument and it must be text or string or blob or object data type.",
         DATABASE_NAME);
 
     // case 8: wrong data type
     tableAssertTestFail(
         "select s1,Length(s8) from lengthTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function length only accepts one argument and it must be text or string data type.",
-        DATABASE_NAME);
-
-    // case 9: wrong data type
-    tableAssertTestFail(
-        "select s1,Length(s10) from lengthTable",
-        TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function length only accepts one argument and it must be text or string data type.",
+            + ": Scalar function length only accepts one argument and it must be text or string or blob or object data type.",
         DATABASE_NAME);
   }
 

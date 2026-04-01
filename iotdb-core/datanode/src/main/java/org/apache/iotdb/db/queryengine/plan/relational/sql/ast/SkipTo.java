@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.List;
 import java.util.Objects;
@@ -34,6 +35,8 @@ import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SkipTo.Pos
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SkipTo.Position.PAST_LAST;
 
 public class SkipTo extends Node {
+  private static final long INSTANCE_SIZE = RamUsageEstimator.shallowSizeOfInstance(SkipTo.class);
+
   private final Position position;
   private final Optional<Identifier> identifier;
 
@@ -129,5 +132,14 @@ public class SkipTo extends Node {
     }
 
     return position == ((SkipTo) other).position;
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += AstMemoryEstimationHelper.OPTIONAL_INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(identifier.orElse(null));
+    return size;
   }
 }

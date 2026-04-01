@@ -22,11 +22,14 @@ package org.apache.iotdb.db.queryengine.execution.aggregation;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.statistics.DateStatistics;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
+
+import java.nio.charset.StandardCharsets;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
@@ -63,6 +66,7 @@ public class LastValueAccumulator implements Accumulator {
       case TEXT:
       case STRING:
       case BLOB:
+      case OBJECT:
         addBinaryInput(columns, bitMap);
         return;
       case BOOLEAN:
@@ -99,6 +103,7 @@ public class LastValueAccumulator implements Accumulator {
       case TEXT:
       case BLOB:
       case STRING:
+      case OBJECT:
         updateBinaryLastValue(partialResult[0].getBinary(0), partialResult[1].getLong(0));
         break;
       case BOOLEAN:
@@ -118,22 +123,41 @@ public class LastValueAccumulator implements Accumulator {
     switch (seriesDataType) {
       case INT32:
       case DATE:
-        updateIntLastValue((int) statistics.getLastValue(), statistics.getEndTime());
+        updateIntLastValue(
+            ((Number) statistics.getLastValue()).intValue(), statistics.getEndTime());
         break;
       case INT64:
       case TIMESTAMP:
-        updateLongLastValue((long) statistics.getLastValue(), statistics.getEndTime());
+        updateLongLastValue(
+            ((Number) statistics.getLastValue()).longValue(), statistics.getEndTime());
         break;
       case FLOAT:
-        updateFloatLastValue((float) statistics.getLastValue(), statistics.getEndTime());
+        updateFloatLastValue(
+            ((Number) statistics.getLastValue()).floatValue(), statistics.getEndTime());
         break;
       case DOUBLE:
-        updateDoubleLastValue((double) statistics.getLastValue(), statistics.getEndTime());
+        updateDoubleLastValue(
+            ((Number) statistics.getLastValue()).doubleValue(), statistics.getEndTime());
         break;
       case TEXT:
       case BLOB:
       case STRING:
-        updateBinaryLastValue((Binary) statistics.getLastValue(), statistics.getEndTime());
+      case OBJECT:
+        if (statistics instanceof DateStatistics) {
+          updateBinaryLastValue(
+              new Binary(
+                  TSDataType.getDateStringValue((Integer) statistics.getLastValue()),
+                  StandardCharsets.UTF_8),
+              statistics.getEndTime());
+        } else {
+          if (statistics.getLastValue() instanceof Binary) {
+            updateBinaryLastValue((Binary) statistics.getLastValue(), statistics.getEndTime());
+          } else {
+            updateBinaryLastValue(
+                new Binary(String.valueOf(statistics.getLastValue()), StandardCharsets.UTF_8),
+                statistics.getEndTime());
+          }
+        }
         break;
       case BOOLEAN:
         updateBooleanLastValue((boolean) statistics.getLastValue(), statistics.getEndTime());
@@ -168,6 +192,7 @@ public class LastValueAccumulator implements Accumulator {
         case TEXT:
         case BLOB:
         case STRING:
+        case OBJECT:
           lastValue.setBinary(finalResult.getBinary(0));
           break;
         case BOOLEAN:
@@ -207,6 +232,7 @@ public class LastValueAccumulator implements Accumulator {
       case TEXT:
       case BLOB:
       case STRING:
+      case OBJECT:
         columnBuilders[0].writeBinary(lastValue.getBinary());
         break;
       case BOOLEAN:
@@ -243,6 +269,7 @@ public class LastValueAccumulator implements Accumulator {
       case TEXT:
       case BLOB:
       case STRING:
+      case OBJECT:
         columnBuilder.writeBinary(lastValue.getBinary());
         break;
       case BOOLEAN:

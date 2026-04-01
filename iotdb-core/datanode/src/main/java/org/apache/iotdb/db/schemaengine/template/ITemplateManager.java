@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.CreateSchemaTemplateStatement;
 
 import org.apache.tsfile.utils.Pair;
@@ -77,4 +78,6 @@ public interface ITemplateManager {
   Pair<Template, List<PartialPath>> getAllPathsSetTemplate(String templateName);
 
   Map<Integer, Template> checkAllRelatedTemplate(PartialPath pathPattern);
+
+  List<Template> getAllRelatedTemplates(PathPatternTree scope);
 }

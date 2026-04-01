@@ -40,7 +40,7 @@ public class ExtendRegionTask implements IConfigTask {
 
   public ExtendRegionTask(ExtendRegion extendRegion) {
     this.statement =
-        new ExtendRegionStatement(extendRegion.getRegionId(), extendRegion.getDataNodeId());
+        new ExtendRegionStatement(extendRegion.getRegionIds(), extendRegion.getDataNodeId());
     this.model = Model.TABLE;
   }
 

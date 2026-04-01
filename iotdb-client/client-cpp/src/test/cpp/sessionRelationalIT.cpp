@@ -19,6 +19,7 @@
 
 #include "catch.hpp"
 #include "TableSession.h"
+#include "TableSessionBuilder.h"
 #include <math.h>
 
 using namespace std;
@@ -65,6 +66,29 @@ TEST_CASE("Create table success", "[createTable]") {
         }
     }
     REQUIRE(tableExist == true);
+}
+
+TEST_CASE("Test TableSession builder with nodeUrls", "[SessionBuilderInit]") {
+    CaseReporter cr("TableSessionInitWithNodeUrls");
+
+    std::vector<std::string> nodeUrls = {"127.0.0.1:6667"};
+    auto builder = std::unique_ptr<TableSessionBuilder>(new TableSessionBuilder());
+    std::shared_ptr<TableSession> session =
+        std::shared_ptr<TableSession>(
+            builder
+            ->username("root")
+            ->password("root")
+            ->nodeUrls(nodeUrls)
+            ->build()
+        );
+    session->open();
+
+    session->executeNonQueryStatement("DROP DATABASE IF EXISTS db1");
+    session->executeNonQueryStatement("CREATE DATABASE db1");
+    session->executeNonQueryStatement("DROP DATABASE IF EXISTS db2");
+    session->executeNonQueryStatement("CREATE DATABASE db2");
+
+    session->close();
 }
 
 TEST_CASE("Test insertRelationalTablet", "[testInsertRelationalTablet]") {
@@ -199,7 +223,7 @@ TEST_CASE("Test RelationalTabletTsblockRead", "[testRelationalTabletTsblockRead]
             REQUIRE_FALSE(dataIter.getFloatByIndex(5).is_initialized());
             REQUIRE_FALSE(dataIter.getDoubleByIndex(6).is_initialized());
             REQUIRE_FALSE(dataIter.getStringByIndex(7).is_initialized());
-            REQUIRE_FALSE(dataIter.getLongByIndex(8).is_initialized());
+            REQUIRE_FALSE(dataIter.getTimestampByIndex(8).is_initialized());
             REQUIRE_FALSE(dataIter.getDateByIndex(9).is_initialized());
             REQUIRE_FALSE(dataIter.getStringByIndex(10).is_initialized());
             REQUIRE_FALSE(dataIter.getStringByIndex(11).is_initialized());
@@ -211,7 +235,7 @@ TEST_CASE("Test RelationalTabletTsblockRead", "[testRelationalTabletTsblockRead]
             REQUIRE(fabs(dataIter.getFloatByIndex(5).value() - rowNum * 1.1f) < 0.1f);
             REQUIRE(fabs(dataIter.getDoubleByIndex(6).value() - rowNum * 1.1f) < 0.1);
             REQUIRE(dataIter.getStringByIndex(7).value() == "text_" + to_string(rowNum));
-            REQUIRE(dataIter.getLongByIndex(8).value() == static_cast<int64_t>(timestamp));
+            REQUIRE(dataIter.getTimestampByIndex(8).value() == static_cast<int64_t>(timestamp));
             REQUIRE(dataIter.getDateByIndex(9).value() == boost::gregorian::date(2025, 5, 15));
             REQUIRE(dataIter.getStringByIndex(10).value() == "blob_" + to_string(rowNum));
             REQUIRE(dataIter.getStringByIndex(11).value() == "string_" + to_string(rowNum));

@@ -54,8 +54,7 @@ public abstract class IndexedBlockingReserveQueue<E extends IDIndexedAccessible>
     if (element == null) {
       throw new NullPointerException("pushed element is null");
     }
-    Preconditions.checkState(
-        size + reservedSize < capacity, "The system can't allow more query tasks.");
+    Preconditions.checkState(size + reservedSize < capacity, TOO_MANY_CONCURRENT_QUERIES_ERROR_MSG);
     pushToQueue(element);
     size++;
     this.notifyAll();

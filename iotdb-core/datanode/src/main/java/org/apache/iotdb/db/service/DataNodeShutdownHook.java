@@ -20,6 +20,10 @@
 package org.apache.iotdb.db.service;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.commons.audit.AuditEventType;
+import org.apache.iotdb.commons.audit.AuditLogFields;
+import org.apache.iotdb.commons.audit.AuditLogOperation;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.concurrent.ThreadName;
@@ -27,6 +31,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.exception.ConsensusException;
+import org.apache.iotdb.db.audit.DNAuditLogger;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
@@ -43,6 +48,7 @@ import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
+import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -89,6 +95,20 @@ public class DataNodeShutdownHook extends Thread {
   @Override
   public void run() {
     logger.info("DataNode exiting...");
+    AuditLogFields fields =
+        new AuditLogFields(
+            -1,
+            null,
+            null,
+            AuditEventType.DN_SHUTDOWN,
+            AuditLogOperation.CONTROL,
+            PrivilegeType.SYSTEM,
+            true,
+            null,
+            null);
+    String logMessage = String.format("DataNode %s exiting...", nodeLocation);
+    DNAuditLogger.getInstance().log(fields, () -> logMessage);
+
     startWatcher();
     // Stop external rpc service firstly.
     ExternalRPCService.getInstance().stop();
@@ -154,7 +174,10 @@ public class DataNodeShutdownHook extends Thread {
     // Persist progress index before shutdown to accurate recovery after restart
     PipeDataNodeAgent.task().persistAllProgressIndex();
     // Shutdown all consensus pipe's receiver
-    PipeDataNodeAgent.receiver().pipeConsensus().closeReceiverExecutor();
+    PipeDataNodeAgent.receiver().iotConsensusV2().closeReceiverExecutor();
+
+    // set encryption key to 16-byte zero.
+    TSFileDescriptor.getInstance().getConfig().setEncryptKey(new byte[16]);
 
     // Actually stop all services started by the DataNode.
     // If we don't call this, services like the RestService are not stopped and I can't re-start
@@ -183,7 +206,7 @@ public class DataNodeShutdownHook extends Thread {
         .forEach(
             id -> {
               try {
-                DataRegionConsensusImpl.getInstance().triggerSnapshot(id, false);
+                DataRegionConsensusImpl.getInstance().triggerSnapshot(id, true);
               } catch (ConsensusException e) {
                 logger.warn(
                     "Something wrong happened while calling consensus layer's "

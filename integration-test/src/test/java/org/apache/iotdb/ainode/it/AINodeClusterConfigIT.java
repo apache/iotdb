@@ -107,7 +107,4 @@ public class AINodeClusterConfigIT {
     }
     Assert.fail("The target AINode is not removed successfully after all retries.");
   }
-
-  // TODO: We might need to add remove unknown test in the future, but current infrastructure is too
-  // hard to implement it.
 }

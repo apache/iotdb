@@ -3,7 +3,7 @@ name: Daily UT
 on:
   schedule:
     # Run at UTC 19:00 every day (CST 03:00 AM)
-    - cron: '0 19 * * *'
+    - cron: "0 19 * * *"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -20,27 +20,29 @@ jobs:
       fail-fast: false
       max-parallel: 15
       matrix:
-        java: [ 8 ]
-        os: [ ubuntu-latest, windows-latest ]
-        it_task: [ 'others', 'datanode' ]
+        java: [8]
+        os: [ubuntu-latest, windows-latest]
+        it_task: ["others", "datanode"]
         include:
           - java: 17
             os: macos-latest
-            it_task: 'datanode'
+            it_task: "datanode"
           - java: 17
             os: macos-latest
-            it_task: 'others'
+            it_task: "others"
     runs-on: ${{ matrix.os }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Set up JDK ${{ matrix.java }}
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: corretto
           java-version: ${{ matrix.java }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Cache Maven packages
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.m2
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}

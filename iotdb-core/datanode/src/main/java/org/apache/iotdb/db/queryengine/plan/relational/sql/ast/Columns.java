@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import javax.annotation.Nonnull;
 
@@ -31,6 +32,8 @@ import java.util.Objects;
 import static java.util.Objects.requireNonNull;
 
 public final class Columns extends Expression {
+  private static final long INSTANCE_SIZE = RamUsageEstimator.shallowSizeOfInstance(Columns.class);
+
   private final String pattern;
 
   public Columns(@Nonnull NodeLocation location, String pattern) {
@@ -92,5 +95,13 @@ public final class Columns extends Expression {
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
     throw new UnsupportedOperationException("Columns should be expanded in Analyze stage");
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += RamUsageEstimator.sizeOf(pattern);
+    return size;
   }
 }

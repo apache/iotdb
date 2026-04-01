@@ -233,14 +233,12 @@ public class AuthorStatementTest {
   @Test
   public void testGrantStatement() {
     // System privileges
+    checkGrantPrivileges(true, Collections.singletonList(PrivilegeType.SECURITY), "", true, false);
+    checkGrantPrivileges(true, Collections.singletonList(PrivilegeType.SECURITY), "", false, false);
     checkGrantPrivileges(
-        true, Collections.singletonList(PrivilegeType.MANAGE_USER), "", true, false);
+        true, Arrays.asList(PrivilegeType.SYSTEM, PrivilegeType.SECURITY), "", true, false);
     checkGrantPrivileges(
-        true, Collections.singletonList(PrivilegeType.MANAGE_ROLE), "", false, false);
-    checkGrantPrivileges(
-        true, Arrays.asList(PrivilegeType.MANAGE_USER, PrivilegeType.MANAGE_ROLE), "", true, false);
-    checkGrantPrivileges(
-        true, Collections.singletonList(PrivilegeType.MANAGE_USER), "ANY", true, true);
+        true, Collections.singletonList(PrivilegeType.SECURITY), "ANY", true, true);
 
     // Illegal privilege
     checkGrantPrivileges(
@@ -295,22 +293,17 @@ public class AuthorStatementTest {
   @Test
   public void testRevokeStatement() {
     // System privileges
+    checkRevokePrivileges(true, Collections.singletonList(PrivilegeType.SECURITY), "", true, false);
     checkRevokePrivileges(
-        true, Collections.singletonList(PrivilegeType.MANAGE_USER), "", true, false);
+        true, Collections.singletonList(PrivilegeType.SECURITY), "", false, false);
     checkRevokePrivileges(
-        true, Collections.singletonList(PrivilegeType.MANAGE_ROLE), "", false, false);
+        true, Arrays.asList(PrivilegeType.SYSTEM, PrivilegeType.SECURITY), "", false, false);
     checkRevokePrivileges(
-        true,
-        Arrays.asList(PrivilegeType.MANAGE_USER, PrivilegeType.MANAGE_ROLE),
-        "",
-        false,
-        false);
-    checkRevokePrivileges(
-        true, Arrays.asList(PrivilegeType.MANAGE_USER, PrivilegeType.MANAGE_ROLE), "", true, false);
+        true, Arrays.asList(PrivilegeType.SYSTEM, PrivilegeType.SECURITY), "", true, false);
 
     // Illegal privileges combination
     checkRevokePrivileges(
-        true, Arrays.asList(PrivilegeType.MANAGE_USER, PrivilegeType.ALTER), "", false, true);
+        true, Arrays.asList(PrivilegeType.SECURITY, PrivilegeType.ALTER), "", false, true);
 
     // Relational privileges
     checkRevokePrivileges(
@@ -331,7 +324,7 @@ public class AuthorStatementTest {
 
     checkRevokePrivileges(
         true,
-        Arrays.asList(PrivilegeType.SELECT, PrivilegeType.MANAGE_USER),
+        Arrays.asList(PrivilegeType.SELECT, PrivilegeType.SECURITY),
         "testdb.testtb",
         false,
         true);

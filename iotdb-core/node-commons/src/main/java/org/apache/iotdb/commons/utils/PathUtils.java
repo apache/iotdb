@@ -113,7 +113,8 @@ public class PathUtils {
     }
     List<String> res = new ArrayList<>();
     for (String measurement : measurements) {
-      if (measurement == null) {
+      if (measurement == null || measurement.isEmpty()) {
+        res.add(null);
         continue;
       }
       res.add(checkAndReturnSingleMeasurement(measurement));

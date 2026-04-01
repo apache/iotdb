@@ -193,6 +193,7 @@ public class ThriftConnection {
         }
       } catch (TException e) {
         LOGGER.warn("Closing Session-{} with {} failed.", sessionId, endPoint);
+      } finally {
         if (transport.isOpen()) {
           transport.close();
         }

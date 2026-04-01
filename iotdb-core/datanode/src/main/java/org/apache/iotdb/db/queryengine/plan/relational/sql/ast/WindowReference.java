@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -31,6 +32,9 @@ import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Objects.requireNonNull;
 
 public class WindowReference extends Node implements Window {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(WindowReference.class);
+
   private final Identifier name;
 
   public WindowReference(NodeLocation location, Identifier name) {
@@ -92,5 +96,13 @@ public class WindowReference extends Node implements Window {
   public WindowReference(ByteBuffer byteBuffer) {
     super(null);
     this.name = new Identifier(byteBuffer);
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(name);
+    return size;
   }
 }

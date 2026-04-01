@@ -91,10 +91,11 @@ public class Cli extends AbstractCli {
       port = checkRequiredArg(ctx, PORT_ARGS, PORT_NAME, commandLine, false, port);
       username = checkRequiredArg(ctx, USERNAME_ARGS, USERNAME_NAME, commandLine, true, null);
     } catch (ArgsErrorException e) {
-      ctx.getPrinter().println(IOTDB_ERROR_PREFIX + "Input params error because" + e.getMessage());
+      ctx.getPrinter()
+          .println(IOTDB_ERROR_PREFIX + ": Input params error because " + e.getMessage());
       ctx.exit(CODE_ERROR);
     } catch (Exception e) {
-      ctx.getPrinter().println(IOTDB_ERROR_PREFIX + "Exit cli with error " + e.getMessage());
+      ctx.getPrinter().println(IOTDB_ERROR_PREFIX + ": Exit cli with error: " + e.getMessage());
       ctx.exit(CODE_ERROR);
     }
     LineReader lineReader = JlineUtils.getLineReader(ctx, username, host, port);
@@ -158,16 +159,18 @@ public class Cli extends AbstractCli {
   private static void serve(CliContext ctx) {
     try {
       useSsl = commandLine.getOptionValue(USE_SSL_ARGS);
-      trustStore = commandLine.getOptionValue(TRUST_STORE_ARGS);
-      trustStorePwd = commandLine.getOptionValue(TRUST_STORE_PWD_ARGS);
+      if (Boolean.parseBoolean(useSsl)) {
+        trustStore = ctx.getLineReader().readLine("please input your trust_store:", '\0');
+        trustStorePwd = ctx.getLineReader().readLine("please input your trust_store_pwd:", '\0');
+      }
       password = commandLine.getOptionValue(PW_ARGS);
+      if (password == null) {
+        password = ctx.getLineReader().readLine("please input your password:", '\0');
+      }
       constructProperties();
       if (hasExecuteSQL && password != null) {
         ctx.getLineReader().getVariables().put(LineReader.DISABLE_HISTORY, Boolean.TRUE);
         executeSql(ctx);
-      }
-      if (password == null) {
-        password = ctx.getLineReader().readLine("please input your password:", '\0');
       }
       receiveCommands(ctx);
     } catch (Exception e) {
@@ -183,11 +186,11 @@ public class Cli extends AbstractCli {
       connection.setQueryTimeout(queryTimeout);
       properties = connection.getServerProperties();
       timestampPrecision = properties.getTimestampPrecision();
-      AGGREGRATE_TIME_LIST.addAll(properties.getSupportedTimeAggregationOperations());
       processCommand(ctx, execute, connection);
       ctx.exit(lastProcessStatus);
     } catch (SQLException e) {
-      ctx.getPrinter().println(IOTDB_ERROR_PREFIX + "Can't execute sql because" + e.getMessage());
+      ctx.getPrinter()
+          .println(IOTDB_ERROR_PREFIX + ": Can't execute sql because " + e.getMessage());
       ctx.exit(CODE_ERROR);
     }
   }
@@ -198,7 +201,6 @@ public class Cli extends AbstractCli {
             DriverManager.getConnection(Config.IOTDB_URL_PREFIX + host + ":" + port + "/", info)) {
       connection.setQueryTimeout(queryTimeout);
       properties = connection.getServerProperties();
-      AGGREGRATE_TIME_LIST.addAll(properties.getSupportedTimeAggregationOperations());
       timestampPrecision = properties.getTimestampPrecision();
 
       echoStarting(ctx);

@@ -49,4 +49,8 @@ public interface DataNodeConfig {
   DataNodeConfig setWalThrottleSize(long walThrottleSize);
 
   DataNodeConfig setDeleteWalFilesPeriodInMs(long deleteWalFilesPeriodInMs);
+
+  DataNodeConfig setDataNodeMemoryProportion(String dataNodeMemoryProportion);
+
+  DataNodeConfig setQueryCostStatWindow(int queryCostStatWindow);
 }

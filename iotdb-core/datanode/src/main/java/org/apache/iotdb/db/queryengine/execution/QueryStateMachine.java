@@ -33,6 +33,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.commons.utils.ErrorHandlingCommonUtils.getRootCause;
 import static org.apache.iotdb.db.queryengine.execution.QueryState.ABORTED;
 import static org.apache.iotdb.db.queryengine.execution.QueryState.CANCELED;
 import static org.apache.iotdb.db.queryengine.execution.QueryState.DISPATCHING;
@@ -42,7 +43,6 @@ import static org.apache.iotdb.db.queryengine.execution.QueryState.PENDING_RETRY
 import static org.apache.iotdb.db.queryengine.execution.QueryState.PLANNED;
 import static org.apache.iotdb.db.queryengine.execution.QueryState.QUEUED;
 import static org.apache.iotdb.db.queryengine.execution.QueryState.RUNNING;
-import static org.apache.iotdb.db.utils.ErrorHandlingUtils.getRootCause;
 
 /**
  * State machine for a {@link QueryExecution}. It stores the states for the {@link QueryExecution}.
@@ -107,10 +107,10 @@ public class QueryStateMachine {
     transitionToDoneState(CANCELED);
   }
 
-  public void transitionToCanceled(Throwable throwable, TSStatus failureStatus) {
+  public boolean transitionToCanceled(Throwable throwable, TSStatus failureStatus) {
     this.failureStatus.compareAndSet(null, failureStatus);
     this.failureException.compareAndSet(null, throwable);
-    transitionToDoneState(CANCELED);
+    return transitionToDoneState(CANCELED);
   }
 
   public void transitionToAborted() {
@@ -149,7 +149,7 @@ public class QueryStateMachine {
   public Throwable getFailureException() {
     Throwable throwable = failureException.get();
     if (throwable == null) {
-      return new IoTDBException(getFailureStatus().getMessage(), getFailureStatus().code);
+      return new IoTDBException(getFailureStatus());
     } else {
       return throwable;
     }

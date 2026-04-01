@@ -32,8 +32,10 @@ import org.apache.iotdb.mpp.rpc.thrift.TCleanDataNodeCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreatePeerReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateSchemaRegionReq;
+import org.apache.iotdb.mpp.rpc.thrift.TGenerateDataPartitionTableReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidatePermissionCacheReq;
+import org.apache.iotdb.mpp.rpc.thrift.TKillQueryInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TMaintainPeerReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeResp;
@@ -111,7 +113,7 @@ public class SyncDataNodeClientPool {
         (req, client) -> client.setSystemStatus((String) req));
     actionMapBuilder.put(
         CnToDnSyncRequestType.KILL_QUERY_INSTANCE,
-        (req, client) -> client.killQueryInstance((String) req));
+        (req, client) -> client.killQueryInstance((TKillQueryInstanceReq) req));
     actionMapBuilder.put(
         CnToDnSyncRequestType.UPDATE_TEMPLATE,
         (req, client) -> client.updateTemplate((TUpdateTemplateReq) req));
@@ -135,6 +137,18 @@ public class SyncDataNodeClientPool {
         (req, client) -> client.resetPeerList((TResetPeerListReq) req));
     actionMapBuilder.put(
         CnToDnSyncRequestType.SHOW_CONFIGURATION, (req, client) -> client.showConfiguration());
+    actionMapBuilder.put(
+        CnToDnSyncRequestType.SHOW_APPLIED_CONFIGURATIONS,
+        (req, client) -> client.showAppliedConfigurations());
+    actionMapBuilder.put(
+        CnToDnSyncRequestType.COLLECT_EARLIEST_TIMESLOTS,
+        (req, client) -> client.getEarliestTimeslots());
+    actionMapBuilder.put(
+        CnToDnSyncRequestType.GENERATE_DATA_PARTITION_TABLE,
+        (req, client) -> client.generateDataPartitionTable((TGenerateDataPartitionTableReq) req));
+    actionMapBuilder.put(
+        CnToDnSyncRequestType.GENERATE_DATA_PARTITION_TABLE_HEART_BEAT,
+        (req, client) -> client.generateDataPartitionTableHeartbeat());
     actionMap = actionMapBuilder.build();
   }
 

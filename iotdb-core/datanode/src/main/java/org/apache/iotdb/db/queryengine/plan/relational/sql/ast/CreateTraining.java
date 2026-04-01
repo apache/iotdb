@@ -19,11 +19,15 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.tsfile.utils.RamUsageEstimator;
+
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
 public class CreateTraining extends Statement {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(CreateTraining.class);
 
   private final String modelId;
   private final String targetSql;
@@ -103,5 +107,16 @@ public class CreateTraining extends Statement {
         + existingModelId
         + '\''
         + '}';
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += RamUsageEstimator.sizeOf(modelId);
+    size += RamUsageEstimator.sizeOf(targetSql);
+    size += RamUsageEstimator.sizeOf(existingModelId);
+    size += RamUsageEstimator.sizeOfMap(parameters);
+    return size;
   }
 }

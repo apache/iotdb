@@ -19,9 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher;
 
-import org.apache.iotdb.commons.exception.IoTDBException;
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
@@ -52,8 +51,6 @@ public class TableDeviceSchemaValidator {
   private final SqlParser relationSqlParser = new SqlParser();
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TableDeviceSchemaValidator.class);
-
-  private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private final Coordinator coordinator = Coordinator.getInstance();
 
@@ -245,12 +242,16 @@ public class TableDeviceSchemaValidator {
             LocalExecutionPlanner.getInstance().metadata,
             // Never timeout for write statement
             Long.MAX_VALUE,
+            false,
             false);
     if (executionResult.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      throw new RuntimeException(
-          new IoTDBException(
-              executionResult.status.getMessage(), executionResult.status.getCode()));
+      throw new IoTDBRuntimeException(
+          executionResult.status.getMessage(), executionResult.status.getCode());
     }
+  }
+
+  public static void checkObject4DeviceId(final Object[] deviceId) {
+    throw new SemanticException("The object type column is not supported.");
   }
 
   private static class ValidateResult {

@@ -50,26 +50,7 @@ public abstract class BlockingPendingQueue<E extends Event> {
     this.eventCounter = eventCounter;
   }
 
-  public boolean waitedOffer(final E event) {
-    checkBeforeOffer(event);
-    try {
-      final boolean offered =
-          pendingQueue.offer(
-              event,
-              PIPE_CONFIG.getPipeSubtaskExecutorPendingQueueMaxBlockingTimeMs(),
-              TimeUnit.MILLISECONDS);
-      if (offered) {
-        eventCounter.increaseEventCount(event);
-      }
-      return offered;
-    } catch (final InterruptedException e) {
-      LOGGER.info("pending queue offer is interrupted.", e);
-      Thread.currentThread().interrupt();
-      return false;
-    }
-  }
-
-  public boolean directOffer(final E event) {
+  public boolean offer(final E event) {
     checkBeforeOffer(event);
     final boolean offered = pendingQueue.offer(event);
     if (offered) {

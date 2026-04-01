@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.binaryallocator.config.AllocatorConfig;
 import org.apache.iotdb.commons.binaryallocator.utils.SizeClasses;
 
 import org.apache.tsfile.utils.PooledBinary;
+import org.awaitility.Awaitility;
 import org.junit.Test;
 
 import java.util.Collections;
@@ -102,7 +103,7 @@ public class BinaryAllocatorTest {
   }
 
   @Test
-  public void testEviction() throws InterruptedException {
+  public void testEviction() {
     AllocatorConfig config = new AllocatorConfig();
     config.arenaNum = 1;
     config.minAllocateSize = config.maxAllocateSize = 4096;
@@ -112,9 +113,10 @@ public class BinaryAllocatorTest {
 
     PooledBinary binary = binaryAllocator.allocateBinary(4096, false);
     binaryAllocator.deallocateBinary(binary);
-    assertEquals(binaryAllocator.getTotalUsedMemory(), 4096);
-    Thread.sleep(200);
-    assertEquals(binaryAllocator.getTotalUsedMemory(), 0);
+    assertEquals(4096, binaryAllocator.getTotalUsedMemory());
+    Awaitility.await()
+        .atMost(20, TimeUnit.SECONDS)
+        .until(() -> binaryAllocator.getTotalUsedMemory() == 0);
   }
 
   @Test

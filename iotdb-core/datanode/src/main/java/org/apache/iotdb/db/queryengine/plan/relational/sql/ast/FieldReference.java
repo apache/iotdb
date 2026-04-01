@@ -20,12 +20,16 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.List;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
 public class FieldReference extends Expression {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(FieldReference.class);
 
   private final int fieldIndex;
 
@@ -76,5 +80,12 @@ public class FieldReference extends Expression {
     }
 
     return fieldIndex == ((FieldReference) other).fieldIndex;
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    return size;
   }
 }

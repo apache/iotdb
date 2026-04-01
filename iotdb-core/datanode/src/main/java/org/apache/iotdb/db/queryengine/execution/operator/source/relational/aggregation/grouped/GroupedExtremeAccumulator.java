@@ -62,6 +62,7 @@ public class GroupedExtremeAccumulator implements GroupedAccumulator {
       case TEXT:
       case STRING:
       case BLOB:
+      case OBJECT:
       case BOOLEAN:
       case DATE:
       case TIMESTAMP:
@@ -92,6 +93,7 @@ public class GroupedExtremeAccumulator implements GroupedAccumulator {
       case TEXT:
       case STRING:
       case BLOB:
+      case OBJECT:
         break;
       case BOOLEAN:
         break;
@@ -124,6 +126,7 @@ public class GroupedExtremeAccumulator implements GroupedAccumulator {
       case TEXT:
       case STRING:
       case BLOB:
+      case OBJECT:
       case BOOLEAN:
       default:
         throw new UnSupportedDataTypeException(
@@ -150,6 +153,7 @@ public class GroupedExtremeAccumulator implements GroupedAccumulator {
       case TEXT:
       case STRING:
       case BLOB:
+      case OBJECT:
       case BOOLEAN:
       case DATE:
       case TIMESTAMP:
@@ -183,6 +187,7 @@ public class GroupedExtremeAccumulator implements GroupedAccumulator {
         case TEXT:
         case STRING:
         case BLOB:
+        case OBJECT:
         case BOOLEAN:
         case DATE:
         case TIMESTAMP:
@@ -214,6 +219,7 @@ public class GroupedExtremeAccumulator implements GroupedAccumulator {
         case TEXT:
         case STRING:
         case BLOB:
+        case OBJECT:
         case BOOLEAN:
         case DATE:
         case TIMESTAMP:
@@ -245,6 +251,7 @@ public class GroupedExtremeAccumulator implements GroupedAccumulator {
         case TEXT:
         case STRING:
         case BLOB:
+        case OBJECT:
         case BOOLEAN:
         case DATE:
         case TIMESTAMP:
@@ -277,6 +284,7 @@ public class GroupedExtremeAccumulator implements GroupedAccumulator {
       case TEXT:
       case STRING:
       case BLOB:
+      case OBJECT:
       case BOOLEAN:
       case DATE:
       case TIMESTAMP:

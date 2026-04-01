@@ -71,6 +71,7 @@ public abstract class UDTFValueTrend implements UDTF {
       case STRING:
       case DATE:
       case BLOB:
+      case OBJECT:
       default:
         // This will not happen.
         throw new UDFInputSeriesDataTypeNotValidException(

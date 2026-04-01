@@ -73,6 +73,7 @@ public class AvgAccumulator implements TableAccumulator {
         return;
       case TEXT:
       case BLOB:
+      case OBJECT:
       case STRING:
       case BOOLEAN:
       case DATE:
@@ -101,6 +102,7 @@ public class AvgAccumulator implements TableAccumulator {
         return;
       case TEXT:
       case BLOB:
+      case OBJECT:
       case STRING:
       case BOOLEAN:
       case DATE:

@@ -29,8 +29,10 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.GroupRe
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTreeDeviceViewScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AlignedAggregationTreeDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AssignUniqueId;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CollectNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CteScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.EnforceSingleRowNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode;
@@ -42,17 +44,21 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MarkDistinctNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MergeSortNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.NonAlignedAggregationTreeDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OffsetNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.RowNumberNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SemiJoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.StreamSortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionProcessorNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKRankingNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeAlignedDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeNonAlignedDeviceViewScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.UnionNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.WindowNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DataType;
@@ -148,14 +154,18 @@ public final class PlanMatchPattern {
 
   public static PlanMatchPattern infoSchemaTableScan(
       String expectedTableName, Optional<Integer> dataNodeId, List<String> outputSymbols) {
-    return node(InformationSchemaTableScanNode.class)
-        .with(
-            new InformationSchemaTableScanMatcher(
-                expectedTableName,
-                Optional.empty(),
-                outputSymbols,
-                Collections.emptySet(),
-                dataNodeId));
+    PlanMatchPattern pattern =
+        node(InformationSchemaTableScanNode.class)
+            .with(
+                new InformationSchemaTableScanMatcher(
+                    expectedTableName,
+                    Optional.empty(),
+                    outputSymbols,
+                    Collections.emptySet(),
+                    dataNodeId));
+    outputSymbols.forEach(
+        symbol -> pattern.withAlias(symbol, new ColumnReference(expectedTableName, symbol)));
+    return pattern;
   }
 
   public static PlanMatchPattern treeDeviceViewTableScan(
@@ -217,9 +227,36 @@ public final class PlanMatchPattern {
   }
 
   public static PlanMatchPattern tableScan(
+      String expectedTableName,
+      List<String> outputSymbols,
+      Set<String> assignmentsKeys,
+      Expression pushDownPredicate) {
+    PlanMatchPattern pattern =
+        node(DeviceTableScanNode.class)
+            .with(
+                new DeviceTableScanMatcher(
+                    expectedTableName,
+                    Optional.empty(),
+                    outputSymbols,
+                    assignmentsKeys,
+                    pushDownPredicate));
+    outputSymbols.forEach(
+        symbol -> pattern.withAlias(symbol, new ColumnReference(expectedTableName, symbol)));
+    return pattern;
+  }
+
+  public static PlanMatchPattern tableScan(
       String expectedTableName, Map<String, String> columnReferences) {
     PlanMatchPattern result = tableScan(expectedTableName);
     return result.addColumnReferences(expectedTableName, columnReferences);
+  }
+
+  public static PlanMatchPattern cteScan(String expectedCteName, List<String> outputSymbols) {
+    PlanMatchPattern pattern =
+        node(CteScanNode.class).with(new CteScanMatcher(expectedCteName, outputSymbols));
+    outputSymbols.forEach(
+        symbol -> pattern.withAlias(symbol, new ColumnReference(expectedCteName, symbol)));
+    return pattern;
   }
 
   public static PlanMatchPattern tableFunctionProcessor(
@@ -394,6 +431,38 @@ public final class PlanMatchPattern {
     return result;
   }
 
+  public static PlanMatchPattern aggregationTreeDeviceViewTableScan(
+      GroupingSetDescriptor groupingSets,
+      List<String> preGroupedSymbols,
+      Optional<Symbol> groupId,
+      AggregationNode.Step step,
+      String expectedTableName,
+      List<String> outputSymbols,
+      Set<String> assignmentsKeys,
+      boolean aligned) {
+    PlanMatchPattern result =
+        aligned
+            ? node(AlignedAggregationTreeDeviceViewScanNode.class)
+            : node(NonAlignedAggregationTreeDeviceViewScanNode.class);
+
+    result.with(
+        new AggregationDeviceTableScanMatcher(
+            groupingSets,
+            preGroupedSymbols,
+            ImmutableList.of(),
+            groupId,
+            step,
+            expectedTableName,
+            Optional.empty(),
+            outputSymbols,
+            assignmentsKeys));
+
+    outputSymbols.forEach(
+        outputSymbol ->
+            result.withAlias(outputSymbol, new ColumnReference(expectedTableName, outputSymbol)));
+    return result;
+  }
+
   // Attention: Now we only pass aliases according to outputSymbols, but we don't verify the output
   // column if exists in Table and their order because there maybe partial Agg-result.
   public static PlanMatchPattern aggregationTableScan(
@@ -430,6 +499,20 @@ public final class PlanMatchPattern {
 
   public static PlanMatchPattern window(PlanMatchPattern source) {
     return node(WindowNode.class, source);
+  }
+
+  public static PlanMatchPattern window(
+      List<String> partitionKeys, List<Ordering> orderings, PlanMatchPattern source) {
+    return node(WindowNode.class, source)
+        .with(new WindowFunctionMatcher(new Specification(partitionKeys, orderings)));
+  }
+
+  public static PlanMatchPattern topKRanking(PlanMatchPattern source) {
+    return node(TopKRankingNode.class, source);
+  }
+
+  public static PlanMatchPattern rowNumber(PlanMatchPattern source) {
+    return node(RowNumberNode.class, source);
   }
 
   public static PlanMatchPattern markDistinct(
@@ -768,6 +851,10 @@ public final class PlanMatchPattern {
     return node(ExchangeNode.class).with(new ExchangeNodeMatcher());
   }
 
+  public static PlanMatchPattern union(PlanMatchPattern... sources) {
+    return node(UnionNode.class, sources);
+  }
+
   public static PlanMatchPattern enforceSingleRow(PlanMatchPattern source) {
     return node(EnforceSingleRowNode.class, source);
   }
@@ -1103,6 +1190,28 @@ public final class PlanMatchPattern {
       }
 
       return result;
+    }
+  }
+
+  public static class Specification {
+    private final List<String> partitionKeys;
+    private final List<Ordering> ordering;
+
+    private Specification(List<String> partitionKeys, List<Ordering> ordering) {
+      this.partitionKeys = partitionKeys;
+      this.ordering = ordering;
+    }
+
+    public List<String> getPartitionKeys() {
+      return partitionKeys;
+    }
+
+    public List<Ordering> getOrdering() {
+      return ordering;
+    }
+
+    public String toString() {
+      return partitionKeys.toString() + " " + ordering.toString();
     }
   }
 }

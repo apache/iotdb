@@ -107,7 +107,15 @@ public class TsFileNameGenerator {
                     + virtualStorageGroup
                     + File.separator
                     + timePartitionId;
-            fsFactory.getFile(tsFileDir).mkdirs();
+            File targetDir = fsFactory.getFile(tsFileDir);
+            if (!targetDir.exists()) {
+              if (!targetDir.mkdirs() && !targetDir.exists()) {
+                throw new IOException(
+                    "Directory creation failed: "
+                        + tsFileDir
+                        + " (Permission denied or parent not writable)");
+              }
+            }
             return tsFileDir
                 + File.separator
                 + generateNewTsFileName(

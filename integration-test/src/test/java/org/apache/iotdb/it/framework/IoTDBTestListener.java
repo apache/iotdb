@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.it.framework;
 
-import org.apache.commons.io.FileUtils;
+import org.apache.tsfile.external.commons.io.FileUtils;
 import org.junit.runner.Result;
 import org.junit.runner.notification.RunListener;
 

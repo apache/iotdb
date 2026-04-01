@@ -27,6 +27,7 @@ import org.apache.commons.pool2.PooledObject;
 import org.apache.commons.pool2.impl.DefaultPooledObject;
 import org.apache.ratis.client.RaftClient;
 import org.apache.ratis.client.RaftClientRpc;
+import org.apache.ratis.conf.Parameters;
 import org.apache.ratis.conf.RaftProperties;
 import org.apache.ratis.protocol.RaftGroup;
 import org.apache.ratis.protocol.exceptions.LeaderSteppingDownException;
@@ -89,16 +90,19 @@ class RatisClient implements AutoCloseable {
     private final RaftProperties raftProperties;
     private final RaftClientRpc clientRpc;
     private final RatisConfig.Client config;
+    private final Parameters parameters;
 
     public Factory(
         ClientManager<RaftGroup, RatisClient> clientManager,
         RaftProperties raftProperties,
         RaftClientRpc clientRpc,
-        RatisConfig.Client config) {
+        RatisConfig.Client config,
+        Parameters parameters) {
       super(clientManager);
       this.raftProperties = raftProperties;
       this.clientRpc = clientRpc;
       this.config = config;
+      this.parameters = parameters;
     }
 
     @Override
@@ -116,6 +120,7 @@ class RatisClient implements AutoCloseable {
                   .setRaftGroup(group)
                   .setRetryPolicy(new RatisRetryPolicy(config))
                   .setClientRpc(clientRpc)
+                  .setParameters(parameters)
                   .build(),
               clientManager));
     }
@@ -131,16 +136,19 @@ class RatisClient implements AutoCloseable {
     private final RaftProperties raftProperties;
     private final RaftClientRpc clientRpc;
     private final RatisConfig.Client config;
+    private final Parameters parameters;
 
     public EndlessRetryFactory(
         ClientManager<RaftGroup, RatisClient> clientManager,
         RaftProperties raftProperties,
         RaftClientRpc clientRpc,
-        RatisConfig.Client config) {
+        RatisConfig.Client config,
+        Parameters parameters) {
       super(clientManager);
       this.raftProperties = raftProperties;
       this.clientRpc = clientRpc;
       this.config = config;
+      this.parameters = parameters;
     }
 
     @Override
@@ -157,6 +165,7 @@ class RatisClient implements AutoCloseable {
                   .setProperties(raftProperties)
                   .setRaftGroup(group)
                   .setRetryPolicy(new RatisEndlessRetryPolicy(config))
+                  .setParameters(parameters)
                   .setClientRpc(clientRpc)
                   .build(),
               clientManager));

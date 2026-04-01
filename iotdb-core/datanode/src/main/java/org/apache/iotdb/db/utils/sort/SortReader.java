@@ -39,6 +39,9 @@ public interface SortReader {
    */
   boolean hasNext() throws IoTDBException;
 
+  /** Release the memory resource (managed by {@link SortBufferManager}) of reader. */
+  void releaseMemory();
+
   /**
    * Close the sortReader and release resources.
    *

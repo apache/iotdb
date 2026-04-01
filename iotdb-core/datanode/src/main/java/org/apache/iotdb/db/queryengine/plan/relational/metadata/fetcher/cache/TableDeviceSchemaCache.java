@@ -112,7 +112,7 @@ public class TableDeviceSchemaCache {
     memoryBlock =
         memoryConfig
             .getSchemaCacheMemoryManager()
-            .exactAllocate("TableDeviceSchemaCache", MemoryBlockType.STATIC);
+            .exactAllocate(DataNodeMemoryConfig.SCHEMA_CACHE, MemoryBlockType.STATIC);
     dualKeyCache =
         new DualKeyCacheBuilder<TableId, IDeviceID, TableDeviceCacheEntry>()
             .cacheEvictionPolicy(
@@ -150,7 +150,7 @@ public class TableDeviceSchemaCache {
     try {
       // Avoid stale table
       if (Objects.isNull(
-          DataNodeTableCache.getInstance().getTable(database, deviceId.getTableName()))) {
+          DataNodeTableCache.getInstance().getTable(database, deviceId.getTableName(), false))) {
         return;
       }
       dualKeyCache.update(
@@ -235,7 +235,7 @@ public class TableDeviceSchemaCache {
     try {
       // Avoid stale table
       if (Objects.isNull(
-          DataNodeTableCache.getInstance().getTable(database, deviceId.getTableName()))) {
+          DataNodeTableCache.getInstance().getTable(database, deviceId.getTableName(), false))) {
         return;
       }
       dualKeyCache.update(
@@ -315,7 +315,7 @@ public class TableDeviceSchemaCache {
 
   /**
    * Get the last {@link TimeValuePair}s of given measurements, the measurements shall never be
-   * "time".
+   * "time". If you want to get the last of "time", use "" to represent.
    *
    * @param database the device's database, without "root", {@code null} for tree model
    * @param deviceId {@link IDeviceID}
@@ -456,7 +456,7 @@ public class TableDeviceSchemaCache {
     final ToIntFunction<TableDeviceCacheEntry> updateFunction =
         PathPatternUtil.hasWildcard(measurement)
             ? entry -> -entry.invalidateLastCache()
-            : entry -> -entry.invalidateLastCache(measurement, false);
+            : entry -> -entry.invalidateLastCache(measurement);
 
     if (!devicePath.hasWildcard()) {
       final IDeviceID deviceID = devicePath.getIDeviceID();
@@ -543,7 +543,7 @@ public class TableDeviceSchemaCache {
     return dualKeyCache.stats().requestCount();
   }
 
-  long getMemoryUsage() {
+  public long getMemoryUsage() {
     return dualKeyCache.stats().memoryUsage();
   }
 
@@ -679,7 +679,7 @@ public class TableDeviceSchemaCache {
       final ToIntFunction<TableDeviceCacheEntry> updateFunction =
           isAttributeColumn
               ? entry -> -entry.invalidateAttributeColumn(columnName)
-              : entry -> -entry.invalidateLastCache(columnName, true);
+              : entry -> -entry.invalidateLastCache(columnName);
       dualKeyCache.update(new TableId(null, tableName), deviceID -> true, updateFunction);
     } finally {
       readWriteLock.writeLock().unlock();

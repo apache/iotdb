@@ -482,7 +482,7 @@ public class IoTDBEncodingIT {
         }
       }
 
-      ResultSet resultSet = statement.executeQuery("SHOW TIMESERIES");
+      ResultSet resultSet = statement.executeQuery("SHOW TIMESERIES root.db1.**");
 
       while (resultSet.next()) {
         seriesCnt--;
@@ -518,7 +518,7 @@ public class IoTDBEncodingIT {
         }
       }
 
-      ResultSet resultSet = statement.executeQuery("SHOW TIMESERIES");
+      ResultSet resultSet = statement.executeQuery("SHOW TIMESERIES root.db1.**");
       assertFalse(resultSet.next());
     }
   }

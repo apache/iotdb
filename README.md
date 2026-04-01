@@ -28,11 +28,11 @@
 ![](https://github-size-badge.herokuapp.com/apache/iotdb.svg)
 ![](https://img.shields.io/github/downloads/apache/iotdb/total.svg)
 ![](https://img.shields.io/badge/platform-win%20%7C%20macos%20%7C%20linux-yellow.svg)
-![](https://img.shields.io/badge/java--language-1.8%20%7C%2011%20%7C%2017-blue.svg)
+![](https://img.shields.io/badge/java--language-1.8+-blue.svg)
 [![IoTDB Website](https://img.shields.io/website-up-down-green-red/https/shields.io.svg?label=iotdb-website)](https://iotdb.apache.org/)
-[![Maven Version](https://maven-badges.herokuapp.com/maven-central/org.apache.iotdb/iotdb-parent/badge.svg)](http://search.maven.org/#search|gav|1|g:"org.apache.iotdb")
+[![Maven Central](https://img.shields.io/maven-central/v/org.apache.iotdb/iotdb-parent.svg)](https://central.sonatype.com/artifact/org.apache.iotdb/iotdb-parent)
 [![Gitpod Ready-to-Code](https://img.shields.io/badge/Gitpod-Ready--to--Code-blue?logo=gitpod)](https://gitpod.io/#https://github.com/apache/iotdb)
-[![Slack Status](https://img.shields.io/badge/slack-join_chat-white.svg?logo=slack&style=social)](https://join.slack.com/t/apacheiotdb/shared_invite/zt-qvso1nj8-7715TpySZtZqmyG5qXQwpg)
+[![Slack Status](https://img.shields.io/badge/slack-join_chat-white.svg?logo=slack&style=social)](https://join.slack.com/t/apacheiotdb/shared_invite/zt-3sh0ws7xf-JjVayYQt_RSUUHJ~iJOiSA)
 
 # Overview
 
@@ -83,13 +83,13 @@ For the latest information about IoTDB, please visit [IoTDB official website](ht
 
 # Quick Start
 
-This short guide will walk you through the basic process of using IoTDB. For a more detailed introduction, please visit our website's [User Guide](https://iotdb.apache.org/UserGuide/Master/QuickStart/QuickStart.html).
+This short guide will walk you through the basic process of using IoTDB. For a more detailed introduction, please visit our website's [User Guide](https://iotdb.apache.org/UserGuide/latest/QuickStart/QuickStart.html).
 
 ## Prerequisites
 
 To use IoTDB, you need to have:
 
-1. Java >= 1.8 (1.8, 11 to 17 are verified. Please make sure the environment path has been set accordingly).
+1. Java >= 1.8 (1.8 to 25 are verified. Please make sure the environment path has been set accordingly).
 2. Maven >= 3.6 (If you want to compile and install IoTDB from source code).
 3. Set the max open files num as 65535 to avoid the "too many open files" error.
 4. (Optional) Set the somaxconn as 65535 to avoid "connection reset" error when the system is under high load.
@@ -100,6 +100,29 @@ To use IoTDB, you need to have:
     # FreeBSD or Darwin
     > sudo sysctl -w kern.ipc.somaxconn=65535
     ```
+
+> ⚠️ **Important: System Resource Limits**
+>
+> IoTDB requires sufficient system resource limits to start correctly.
+> If these limits are not configured, IoTDB may fail to start or emit warnings such as
+> `"too many open files"` or `"connection reset"` in the logs.
+>
+> **Linux / macOS**
+> ```bash
+> ulimit -n 65535
+> sudo sysctl -w net.core.somaxconn=65535
+> ```
+>
+> **Docker Users**
+> When running IoTDB in Docker, these limits must be applied on the **host machine**
+> or explicitly passed to the container:
+> ```bash
+> docker run --ulimit nofile=65535:65535 ...
+> ```
+>
+> **Windows Users**
+> These commands are not applicable on Windows.
+> Please follow the Windows installation steps below and ensure sufficient system resources.
 ### Linux
 
 (This guide is based on an installation of Ubuntu 22.04.)
@@ -220,7 +243,7 @@ IoTDB provides three installation methods, you can refer to the following sugges
 * Using Docker：The path to the dockerfile is [here](https://github.com/apache/iotdb/tree/master/docker/src/main).
 
 
-Here in the Quick Start, we give a brief introduction of using source code to install IoTDB. For further information, please refer to [User Guide](https://iotdb.apache.org/UserGuide/Master/QuickStart/QuickStart.html).
+Here in the Quick Start, we give a brief introduction of using source code to install IoTDB. For further information, please refer to [User Guide](https://iotdb.apache.org/UserGuide/latest/QuickStart/QuickStart.html).
 
 ## Build from source
 
@@ -307,10 +330,10 @@ you run `mvn package` successfully.**
 Configuration files are under the "conf" folder.
 
   * environment config module (`datanode-env.bat`, `datanode-env.sh`),
-  * system config module (`iotdb-datanode.properties`)
+  * system config module (`iotdb-system.properties`)
   * log config module (`logback.xml`).
 
-For more information, please see [Config Manual](https://iotdb.apache.org/UserGuide/Master/Reference/DataNode-Config-Manual.html).
+For more information, please see [Config Manual](https://iotdb.apache.org/UserGuide/latest/Reference/DataNode-Config-Manual.html).
 
 ## Start
 
@@ -334,9 +357,9 @@ Users can start 1C1D IoTDB by the start-standalone script under the sbin folder.
 
 IoTDB offers different ways to interact with server, here we introduce the basic steps of using Cli tool to insert and query data.
 
-After installing IoTDB, there is a default user 'root', its default password is also 'root'. Users can use this
+After installing IoTDB, there is a default user 'root', its default password is 'root'. Users can use this
 default user to login Cli to use IoTDB. The start-up script of Cli is the start-cli script in the folder sbin. When executing the script, user should assign
-IP, PORT, USER_NAME and PASSWORD. The default parameters are "-h 127.0.0.1 -p 6667 -u root -pw -root".
+IP, PORT, USER_NAME and PASSWORD. The default parameters are "-h 127.0.0.1 -p 6667 -u root -pw root".
 
 Here is the command for starting the Cli:
 
@@ -482,7 +505,7 @@ or
 IoTDB> exit
 ```
 
-For more information about the commands supported by IoTDB SQL, please see [User Guide](https://iotdb.apache.org/UserGuide/Master/QuickStart/QuickStart.html).
+For more information about the commands supported by IoTDB SQL, please see [User Guide](https://iotdb.apache.org/UserGuide/latest/QuickStart/QuickStart.html).
 
 ### Stop IoTDB
 
@@ -496,12 +519,14 @@ The server can be stopped with "ctrl-C" or the following script:
 > sbin\stop-standalone.bat
 ```
 
-# The use of CSV Import and Export Tool
+# The use of Data Import and Export Tool
 
-see [The use of CSV Import and Export Tool](https://iotdb.apache.org/UserGuide/latest/Tools-System/Import-Export-Tool.html)
+see [The use of Data Import Tool](https://iotdb.apache.org/UserGuide/latest/Tools-System/Data-Import-Tool.html)
+see [The use of Data Export Tool](https://iotdb.apache.org/UserGuide/latest/Tools-System/Data-Export-Tool.html)
+
 
 # Frequent Questions for Compiling
-see [Frequent Questions when Compiling the Source Code](https://iotdb.apache.org/Development/ContributeGuide.html#_Frequent-Questions-when-Compiling-the-Source-Code)
+see [Frequent Questions when Compiling the Source Code](https://iotdb.apache.org/Community/Development-Guide.html#frequently-asked-questions)
 
 # Contact Us
 
@@ -515,6 +540,6 @@ see [Frequent Questions when Compiling the Source Code](https://iotdb.apache.org
 
 ### Slack
 
-* [Slack channel](https://join.slack.com/t/apacheiotdb/shared_invite/zt-qvso1nj8-7715TpySZtZqmyG5qXQwpg)
+* [Slack channel](https://join.slack.com/t/apacheiotdb/shared_invite/zt-3sh0ws7xf-JjVayYQt_RSUUHJ~iJOiSA)
 
 see [Join the community](https://github.com/apache/iotdb/issues/1995) for more!

@@ -164,6 +164,9 @@ public abstract class Expression extends Node {
       case 32:
         expression = new Extract(byteBuffer);
         break;
+      case 33:
+        expression = new FloatLiteral(byteBuffer);
+        break;
       default:
         throw new IllegalArgumentException("Invalid expression type: " + type);
     }

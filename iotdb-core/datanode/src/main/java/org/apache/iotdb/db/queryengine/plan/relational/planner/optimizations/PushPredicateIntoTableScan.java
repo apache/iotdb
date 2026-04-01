@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
+import org.apache.iotdb.commons.schema.table.InformationSchema;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.SemanticException;
@@ -56,17 +57,21 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationN
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AssignUniqueId;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SemiJoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceViewScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.UnionNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullLiteral;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StringLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 
@@ -98,6 +103,8 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
 import static com.google.common.collect.ImmutableMap.toImmutableMap;
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.STATE_TABLE_MODEL;
+import static org.apache.iotdb.commons.schema.table.InformationSchema.CURRENT_QUERIES;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.ATTRIBUTE;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.FIELD;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.TIME;
@@ -440,12 +447,23 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
     }
 
     @Override
+    public PlanNode visitInformationSchemaTableScan(
+        InformationSchemaTableScanNode node, RewriteContext context) {
+      if (TRUE_LITERAL.equals(context.inheritedPredicate)) {
+        return node;
+      }
+
+      // push down for information schema tables
+      return combineFilterAndScan(node, context.inheritedPredicate);
+    }
+
+    @Override
     public PlanNode visitDeviceTableScan(
         DeviceTableScanNode tableScanNode, RewriteContext context) {
 
       // no predicate, just scan all matched deviceEntries
       if (TRUE_LITERAL.equals(context.inheritedPredicate)) {
-        getDeviceEntriesWithDataPartitions(tableScanNode, Collections.emptyList(), null);
+        getDeviceEntriesWithDataPartitions(tableScanNode, Collections.emptyList());
         return tableScanNode;
       }
 
@@ -453,8 +471,12 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
       return combineFilterAndScan(tableScanNode, context.inheritedPredicate);
     }
 
-    public PlanNode combineFilterAndScan(DeviceTableScanNode tableScanNode, Expression predicate) {
-      SplitExpression splitExpression = splitPredicate(tableScanNode, predicate);
+    public PlanNode combineFilterAndScan(TableScanNode tableScanNode, Expression predicate) {
+      SplitExpression splitExpression =
+          tableScanNode instanceof InformationSchemaTableScanNode
+              ? splitPredicateForInformationSchemaTable(
+                  (InformationSchemaTableScanNode) tableScanNode, predicate)
+              : splitPredicate((DeviceTableScanNode) tableScanNode, predicate);
 
       // exist expressions can push down to scan operator
       if (!splitExpression.getExpressionsCanPushDown().isEmpty()) {
@@ -467,10 +489,11 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
         // extract global time filter and set it to DeviceTableScanNode
         Pair<Expression, Boolean> resultPair =
             extractGlobalTimeFilter(pushDownPredicate, splitExpression.getTimeColumnName());
-        if (resultPair.left != null) {
-          tableScanNode.setTimePredicate(resultPair.left);
+        Boolean hasValueFilter = resultPair.getRight();
+        if (tableScanNode instanceof DeviceTableScanNode && resultPair.left != null) {
+          ((DeviceTableScanNode) tableScanNode).setTimePredicate(resultPair.left);
         }
-        if (Boolean.TRUE.equals(resultPair.right)) {
+        if (Boolean.TRUE.equals(hasValueFilter)) {
           if (pushDownPredicate instanceof LogicalExpression
               && ((LogicalExpression) pushDownPredicate).getTerms().size() == 1) {
             tableScanNode.setPushDownPredicate(
@@ -484,10 +507,10 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
       }
 
       // do index scan after expressionCanPushDown is processed
-      getDeviceEntriesWithDataPartitions(
-          tableScanNode,
-          splitExpression.getMetadataExpressions(),
-          splitExpression.getTimeColumnName());
+      if (tableScanNode instanceof DeviceTableScanNode) {
+        getDeviceEntriesWithDataPartitions(
+            (DeviceTableScanNode) tableScanNode, splitExpression.getMetadataExpressions());
+      }
 
       // exist expressions can not push down to scan operator
       if (!splitExpression.getExpressionsCannotPushDown().isEmpty()) {
@@ -503,18 +526,113 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
       return tableScanNode;
     }
 
+    interface InformationSchemaTablePredicatePushDownChecker {
+      boolean canPushDown(Expression expression);
+    }
+
+    private SplitExpression splitPredicateForInformationSchemaTable(
+        InformationSchemaTableScanNode tableScanNode, Expression predicate) {
+      String informationSchemaTable = tableScanNode.getQualifiedObjectName().getObjectName();
+      InformationSchemaTablePredicatePushDownChecker checker;
+      switch (informationSchemaTable) {
+        case CURRENT_QUERIES:
+          checker =
+              new InformationSchemaTablePredicatePushDownChecker() {
+                // predicate like state = 'xxx' can be push down
+                // Note: the optimizer CanonicalizeExpressionRewriter will ensure the predicate like
+                // 'xxx' =
+                // state will be canonicalized to state = 'xxx'
+                boolean hasExpressionPushDown = false;
+
+                @Override
+                public boolean canPushDown(Expression expression) {
+                  if (isStateComparedWithConstant(expression) && !hasExpressionPushDown) {
+                    // if there are more than one state = 'xxx' terms, only add first to push-down
+                    // candidate
+                    hasExpressionPushDown = true;
+                    return true;
+                  }
+                  return false;
+                }
+
+                private boolean isStateComparedWithConstant(Expression expression) {
+                  if (!(expression instanceof ComparisonExpression)) {
+                    return false;
+                  }
+
+                  ComparisonExpression comparisonExpression = (ComparisonExpression) expression;
+
+                  if (ComparisonExpression.Operator.EQUAL != comparisonExpression.getOperator()) {
+                    return false;
+                  }
+
+                  if (!(comparisonExpression.getLeft() instanceof SymbolReference)
+                      || !STATE_TABLE_MODEL.equals(
+                          ((SymbolReference) comparisonExpression.getLeft()).getName())) {
+                    return false;
+                  }
+
+                  return comparisonExpression.getRight() instanceof StringLiteral;
+                }
+              };
+          break;
+        default:
+          checker =
+              new InformationSchemaTablePredicatePushDownChecker() {
+                final Set<String> columnsThatSupportPushDownPredicate =
+                    InformationSchema.getColumnsSupportPushDownPredicate(informationSchemaTable);
+
+                @Override
+                public boolean canPushDown(Expression expression) {
+                  return PredicateCombineIntoTableScanChecker.check(
+                      columnsThatSupportPushDownPredicate, expression);
+                }
+              };
+      }
+      return splitPredicateForInformationSchemaTable(predicate, checker);
+    }
+
+    private SplitExpression splitPredicateForInformationSchemaTable(
+        Expression predicate, InformationSchemaTablePredicatePushDownChecker checker) {
+      List<Expression> expressionsCanPushDown = new ArrayList<>();
+      List<Expression> expressionsCannotPushDown = new ArrayList<>();
+      if (predicate instanceof LogicalExpression
+          && ((LogicalExpression) predicate).getOperator() == LogicalExpression.Operator.AND) {
+
+        for (Expression expression : ((LogicalExpression) predicate).getTerms()) {
+          if (checker.canPushDown(expression)) {
+            expressionsCanPushDown.add(expression);
+          } else {
+            expressionsCannotPushDown.add(expression);
+          }
+        }
+
+        return new SplitExpression(
+            Collections.emptyList(), expressionsCanPushDown, expressionsCannotPushDown, null);
+      }
+
+      if (checker.canPushDown(predicate)) {
+        expressionsCanPushDown.add(predicate);
+      } else {
+        expressionsCannotPushDown.add(predicate);
+      }
+
+      return new SplitExpression(
+          Collections.emptyList(), expressionsCanPushDown, expressionsCannotPushDown, null);
+    }
+
     private SplitExpression splitPredicate(DeviceTableScanNode node, Expression predicate) {
       Set<String> idOrAttributeColumnNames = new HashSet<>(node.getAssignments().size());
-      Set<String> measurementColumnNames = new HashSet<>(node.getAssignments().size());
+      Set<String> timeOrMeasurementColumnNames = new HashSet<>(node.getAssignments().size());
       String timeColumnName = null;
       for (Map.Entry<Symbol, ColumnSchema> entry : node.getAssignments().entrySet()) {
         Symbol columnSymbol = entry.getKey();
         ColumnSchema columnSchema = entry.getValue();
         if (TIME.equals(columnSchema.getColumnCategory())) {
-          measurementColumnNames.add(columnSymbol.getName());
+          timeOrMeasurementColumnNames.add(columnSymbol.getName());
           timeColumnName = columnSymbol.getName();
         } else if (FIELD.equals(columnSchema.getColumnCategory())) {
-          measurementColumnNames.add(columnSymbol.getName());
+          timeOrMeasurementColumnNames.add(columnSymbol.getName());
         } else {
           idOrAttributeColumnNames.add(columnSymbol.getName());
         }
@@ -531,7 +649,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
           if (PredicatePushIntoMetadataChecker.check(idOrAttributeColumnNames, expression)) {
             metadataExpressions.add(expression);
           } else if (PredicateCombineIntoTableScanChecker.check(
-              measurementColumnNames, timeColumnName, expression)) {
+              timeOrMeasurementColumnNames, expression)) {
             expressionsCanPushDown.add(expression);
           } else {
             expressionsCannotPushDown.add(expression);
@@ -545,7 +663,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
       if (PredicatePushIntoMetadataChecker.check(idOrAttributeColumnNames, predicate)) {
         metadataExpressions.add(predicate);
       } else if (PredicateCombineIntoTableScanChecker.check(
-          measurementColumnNames, timeColumnName, predicate)) {
+          timeOrMeasurementColumnNames, predicate)) {
         expressionsCanPushDown.add(predicate);
       } else {
         expressionsCannotPushDown.add(predicate);
@@ -556,9 +674,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
     }
 
     private void getDeviceEntriesWithDataPartitions(
-        final DeviceTableScanNode tableScanNode,
-        final List<Expression> metadataExpressions,
-        String timeColumnName) {
+        final DeviceTableScanNode tableScanNode, final List<Expression> metadataExpressions) {
 
       final List<String> attributeColumns = new ArrayList<>();
       int attributeIndex = 0;
@@ -585,7 +701,10 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
               attributeColumns,
               queryContext);
       if (deviceEntriesMap.size() > 1) {
-        throw new SemanticException("Tree device view with multiple databases is unsupported yet.");
+        throw new SemanticException(
+            "Tree device view with multiple databases("
+                + deviceEntriesMap.keySet()
+                + ") is unsupported yet.");
       }
       final String deviceDatabase =
           !deviceEntriesMap.isEmpty() ? deviceEntriesMap.keySet().iterator().next() : null;
@@ -1154,6 +1273,32 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
     @Override
     public PlanNode visitRelationalInsertTablet(
         RelationalInsertTabletNode node, RewriteContext context) {
+      return node;
+    }
+
+    @Override
+    public PlanNode visitUnion(UnionNode node, RewriteContext context) {
+      boolean modified = false;
+      ImmutableList.Builder<PlanNode> builder = ImmutableList.builder();
+      for (int i = 0; i < node.getChildren().size(); i++) {
+        Expression sourcePredicate =
+            inlineSymbols(node.sourceSymbolMap(i), context.inheritedPredicate);
+        PlanNode child = node.getChildren().get(i);
+        PlanNode rewritten = child.accept(this, new RewriteContext(sourcePredicate));
+        if (rewritten != child) {
+          modified = true;
+        }
+        builder.add(rewritten);
+      }
+
+      if (modified) {
+        return new UnionNode(
+            node.getPlanNodeId(),
+            builder.build(),
+            node.getSymbolMapping(),
+            node.getOutputSymbols());
+      }
+
       return node;
     }
 

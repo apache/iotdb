@@ -26,12 +26,12 @@ import org.apache.iotdb.db.pipe.metric.overview.PipeResourceMetrics;
 import org.apache.iotdb.db.pipe.metric.overview.PipeTsFileToTabletsMetrics;
 import org.apache.iotdb.db.pipe.metric.processor.PipeProcessorMetrics;
 import org.apache.iotdb.db.pipe.metric.receiver.PipeDataNodeReceiverMetrics;
-import org.apache.iotdb.db.pipe.metric.schema.PipeSchemaRegionConnectorMetrics;
-import org.apache.iotdb.db.pipe.metric.schema.PipeSchemaRegionExtractorMetrics;
 import org.apache.iotdb.db.pipe.metric.schema.PipeSchemaRegionListenerMetrics;
-import org.apache.iotdb.db.pipe.metric.sink.PipeDataRegionConnectorMetrics;
+import org.apache.iotdb.db.pipe.metric.schema.PipeSchemaRegionSinkMetrics;
+import org.apache.iotdb.db.pipe.metric.schema.PipeSchemaRegionSourceMetrics;
+import org.apache.iotdb.db.pipe.metric.sink.PipeDataRegionSinkMetrics;
 import org.apache.iotdb.db.pipe.metric.source.PipeAssignerMetrics;
-import org.apache.iotdb.db.pipe.metric.source.PipeDataRegionExtractorMetrics;
+import org.apache.iotdb.db.pipe.metric.source.PipeDataRegionSourceMetrics;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 
@@ -42,15 +42,15 @@ public class PipeDataNodeMetrics implements IMetricSet {
   @Override
   public void bindTo(final AbstractMetricService metricService) {
     PipeAssignerMetrics.getInstance().bindTo(metricService);
-    PipeDataRegionExtractorMetrics.getInstance().bindTo(metricService);
+    PipeDataRegionSourceMetrics.getInstance().bindTo(metricService);
     PipeProcessorMetrics.getInstance().bindTo(metricService);
-    PipeDataRegionConnectorMetrics.getInstance().bindTo(metricService);
+    PipeDataRegionSinkMetrics.getInstance().bindTo(metricService);
     PipeHeartbeatEventMetrics.getInstance().bindTo(metricService);
     PipeResourceMetrics.getInstance().bindTo(metricService);
     PipeEventCommitMetrics.getInstance().bindTo(metricService);
     PipeSchemaRegionListenerMetrics.getInstance().bindTo(metricService);
-    PipeSchemaRegionExtractorMetrics.getInstance().bindTo(metricService);
-    PipeSchemaRegionConnectorMetrics.getInstance().bindTo(metricService);
+    PipeSchemaRegionSourceMetrics.getInstance().bindTo(metricService);
+    PipeSchemaRegionSinkMetrics.getInstance().bindTo(metricService);
     PipeDataNodeSinglePipeMetrics.getInstance().bindTo(metricService);
     PipeDataNodeReceiverMetrics.getInstance().bindTo(metricService);
     PipeTsFileToTabletsMetrics.getInstance().bindTo(metricService);
@@ -59,15 +59,15 @@ public class PipeDataNodeMetrics implements IMetricSet {
   @Override
   public void unbindFrom(final AbstractMetricService metricService) {
     PipeAssignerMetrics.getInstance().unbindFrom(metricService);
-    PipeDataRegionExtractorMetrics.getInstance().unbindFrom(metricService);
+    PipeDataRegionSourceMetrics.getInstance().unbindFrom(metricService);
     PipeProcessorMetrics.getInstance().unbindFrom(metricService);
-    PipeDataRegionConnectorMetrics.getInstance().unbindFrom(metricService);
+    PipeDataRegionSinkMetrics.getInstance().unbindFrom(metricService);
     PipeHeartbeatEventMetrics.getInstance().unbindFrom(metricService);
     PipeResourceMetrics.getInstance().unbindFrom(metricService);
     PipeEventCommitMetrics.getInstance().unbindFrom(metricService);
     PipeSchemaRegionListenerMetrics.getInstance().unbindFrom(metricService);
-    PipeSchemaRegionExtractorMetrics.getInstance().unbindFrom(metricService);
-    PipeSchemaRegionConnectorMetrics.getInstance().unbindFrom(metricService);
+    PipeSchemaRegionSourceMetrics.getInstance().unbindFrom(metricService);
+    PipeSchemaRegionSinkMetrics.getInstance().unbindFrom(metricService);
     PipeDataNodeSinglePipeMetrics.getInstance().unbindFrom(metricService);
     PipeDataNodeReceiverMetrics.getInstance().unbindFrom(metricService);
     PipeTsFileToTabletsMetrics.getInstance().unbindFrom(metricService);

@@ -26,7 +26,7 @@ import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
-import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.assigner.PipeTsFileEpochProgressIndexKeeper;
+import org.apache.iotdb.db.pipe.source.dataregion.realtime.assigner.PipeTsFileEpochProgressIndexKeeper;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
@@ -38,7 +38,7 @@ import java.util.stream.Collectors;
 
 public class PipeCompactedTsFileInsertionEvent extends PipeTsFileInsertionEvent {
 
-  private final String dataRegionId;
+  private final int dataRegionId;
   private final Set<String> originFilePaths;
   private final List<Long> commitIds;
 
@@ -56,17 +56,21 @@ public class PipeCompactedTsFileInsertionEvent extends PipeTsFileInsertionEvent 
         bindIsWithMod(originalEvents),
         bindIsLoaded(originalEvents),
         bindIsGeneratedByHistoricalExtractor(originalEvents),
+        // The table name shall not be used anymore when compacted
+        null,
         committerKey.getPipeName(),
         committerKey.getCreationTime(),
         anyOfOriginalEvents.getPipeTaskMeta(),
         anyOfOriginalEvents.getTreePattern(),
         anyOfOriginalEvents.getTablePattern(),
+        anyOfOriginalEvents.getUserId(),
         anyOfOriginalEvents.getUserName(),
+        anyOfOriginalEvents.getCliHostname(),
         anyOfOriginalEvents.isSkipIfNoPrivileges(),
         anyOfOriginalEvents.getStartTime(),
         anyOfOriginalEvents.getEndTime());
 
-    this.dataRegionId = String.valueOf(committerKey.getRegionId());
+    this.dataRegionId = committerKey.getRegionId();
     this.originFilePaths =
         originalEvents.stream()
             .map(PipeTsFileInsertionEvent::getTsFile)
@@ -173,9 +177,9 @@ public class PipeCompactedTsFileInsertionEvent extends PipeTsFileInsertionEvent 
   }
 
   @Override
-  public boolean equalsInPipeConsensus(final Object o) {
+  public boolean equalsInIoTConsensusV2(final Object o) {
     throw new UnsupportedOperationException(
-        "PipeCompactedTsFileInsertionEvent does not support equalsInPipeConsensus.");
+        "PipeCompactedTsFileInsertionEvent does not support equalsInIoTConsensusV2.");
   }
 
   @Override
@@ -198,6 +202,8 @@ public class PipeCompactedTsFileInsertionEvent extends PipeTsFileInsertionEvent 
           PipeCompactedTsFileInsertionEvent.this.creationTime,
           PipeCompactedTsFileInsertionEvent.this.pipeTaskMeta,
           null, // PipePattern is not needed for dummy event
+          null,
+          null,
           null,
           null,
           true,
@@ -234,7 +240,9 @@ public class PipeCompactedTsFileInsertionEvent extends PipeTsFileInsertionEvent 
         final PipeTaskMeta pipeTaskMeta,
         final TreePattern treePattern,
         final TablePattern tablePattern,
+        final String userId,
         final String userName,
+        final String cliHostname,
         final boolean skipIfNoPrivileges,
         final long startTime,
         final long endTime) {

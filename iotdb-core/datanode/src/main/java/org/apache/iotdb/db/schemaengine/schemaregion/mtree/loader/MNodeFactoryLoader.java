@@ -24,21 +24,18 @@ import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
 import org.apache.iotdb.commons.schema.node.utils.MNodeFactory;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.IMemMNode;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.factory.MemMNodeFactory;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
-
-import org.reflections.Reflections;
-import org.reflections.util.ConfigurationBuilder;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.factory.CacheMNodeFactory;
 
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashSet;
 import java.util.Set;
 
 @SuppressWarnings({"squid:S6548", "squid:3077"})
 public class MNodeFactoryLoader {
 
-  private final List<String> scanPackages = new ArrayList<>();
   private String env;
 
   @SuppressWarnings("java:S3077")
@@ -47,14 +44,17 @@ public class MNodeFactoryLoader {
   @SuppressWarnings("java:S3077")
   private volatile IMNodeFactory<IMemMNode> memMNodeIMNodeFactory;
 
+  private Set<Class<?>> nodeFactorySet;
+
   private MNodeFactoryLoader() {
-    addScanPackage("org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.factory");
-    addScanPackage("org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.factory");
+    nodeFactorySet = new HashSet<>();
+    addNodeFactory(MemMNodeFactory.class);
+    addNodeFactory(CacheMNodeFactory.class);
     setEnv(SchemaConstant.DEFAULT_MNODE_FACTORY_ENV);
   }
 
-  public void addScanPackage(String scanPackage) {
-    scanPackages.add(scanPackage);
+  public void addNodeFactory(Class<?> clazz) {
+    nodeFactorySet.add(clazz);
   }
 
   public void setEnv(String env) {
@@ -87,10 +87,7 @@ public class MNodeFactoryLoader {
 
   @SuppressWarnings("squid:S3740")
   private IMNodeFactory loadMNodeFactory(Class<?> nodeType) {
-    Reflections reflections =
-        new Reflections(
-            new ConfigurationBuilder().forPackages(scanPackages.toArray(new String[0])));
-    Set<Class<?>> nodeFactorySet = reflections.getTypesAnnotatedWith(MNodeFactory.class);
+
     for (Class<?> nodeFactory : nodeFactorySet) {
       if (isGenericMatch(nodeFactory, nodeType) && isEnvMatch(nodeFactory, env)) {
         try {

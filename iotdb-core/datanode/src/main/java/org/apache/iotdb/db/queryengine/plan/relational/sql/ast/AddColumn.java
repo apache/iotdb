@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.tsfile.utils.RamUsageEstimator;
+
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
@@ -27,6 +29,8 @@ import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Objects.requireNonNull;
 
 public class AddColumn extends Statement {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(AddColumn.class);
 
   private final QualifiedName tableName;
   private final ColumnDefinition column;
@@ -111,5 +115,14 @@ public class AddColumn extends Statement {
         .add("columnIfNotExists", columnIfNotExists)
         .add("view", view)
         .toString();
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += tableName == null ? 0L : tableName.ramBytesUsed();
+    size += column == null ? 0L : column.ramBytesUsed();
+    return size;
   }
 }

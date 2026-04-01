@@ -22,7 +22,7 @@ package org.apache.iotdb.db.pipe.metric.overview;
 import org.apache.iotdb.commons.enums.PipeRateAverage;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.metric.PipeRemainingOperator;
-import org.apache.iotdb.db.pipe.extractor.schemaregion.IoTDBSchemaRegionExtractor;
+import org.apache.iotdb.db.pipe.source.schemaregion.IoTDBSchemaRegionSource;
 import org.apache.iotdb.metrics.core.IoTDBMetricManager;
 import org.apache.iotdb.metrics.core.type.IoTDBHistogram;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
@@ -43,7 +43,7 @@ import java.util.concurrent.atomic.AtomicReference;
 public class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
 
   // Calculate from schema region extractors directly for it requires less computation
-  private final Set<IoTDBSchemaRegionExtractor> schemaRegionExtractors =
+  private final Set<IoTDBSchemaRegionSource> schemaRegionSources =
       Collections.newSetFromMap(new ConcurrentHashMap<>());
 
   private final AtomicInteger insertNodeEventCount = new AtomicInteger(0);
@@ -105,8 +105,8 @@ public class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOper
         tsfileEventCount.get()
             + rawTabletEventCount.get()
             + insertNodeEventCount.get()
-            + schemaRegionExtractors.stream()
-                .map(IoTDBSchemaRegionExtractor::getUnTransferredEventCount)
+            + schemaRegionSources.stream()
+                .map(IoTDBSchemaRegionSource::getUnTransferredEventCount)
                 .reduce(Long::sum)
                 .orElse(0L);
 
@@ -116,21 +116,8 @@ public class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOper
     return remainingEvents >= 0 ? remainingEvents : 0;
   }
 
-  long getRemainingEvents() {
-    final long remainingEvents =
-        tsfileEventCount.get()
-            + rawTabletEventCount.get()
-            + insertNodeEventCount.get()
-            + heartbeatEventCount.get()
-            + schemaRegionExtractors.stream()
-                .map(IoTDBSchemaRegionExtractor::getUnTransferredEventCount)
-                .reduce(Long::sum)
-                .orElse(0L);
-
-    // There are cases where the indicator is negative. For example, after the Pipe is restarted,
-    // the Processor SubTask is still collecting Events, resulting in a negative count. This
-    // situation cannot be avoided because the Pipe may be restarted internally.
-    return remainingEvents >= 0 ? remainingEvents : 0;
+  public int getInsertNodeEventCount() {
+    return insertNodeEventCount.get();
   }
 
   /**
@@ -170,8 +157,8 @@ public class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOper
     }
 
     final long totalSchemaRegionWriteEventCount =
-        schemaRegionExtractors.stream()
-            .map(IoTDBSchemaRegionExtractor::getUnTransferredEventCount)
+        schemaRegionSources.stream()
+            .map(IoTDBSchemaRegionSource::getUnTransferredEventCount)
             .reduce(Long::sum)
             .orElse(0L);
 
@@ -205,8 +192,8 @@ public class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOper
 
   //////////////////////////// Register & deregister (pipe integration) ////////////////////////////
 
-  void register(final IoTDBSchemaRegionExtractor extractor) {
-    schemaRegionExtractors.add(extractor);
+  void register(final IoTDBSchemaRegionSource source) {
+    schemaRegionSources.add(source);
   }
 
   //////////////////////////// Rate ////////////////////////////

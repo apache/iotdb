@@ -44,7 +44,13 @@ import org.apache.thrift.transport.TTransportFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.net.InetSocketAddress;
+import java.nio.file.AccessDeniedException;
+import java.security.KeyStore;
+import java.security.cert.X509Certificate;
+import java.util.Enumeration;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -98,6 +104,7 @@ public abstract class AbstractThriftServiceThread extends Thread {
         "{}: close TThreadPoolServer and TServerSocket for {}",
         IoTDBConstant.GLOBAL_DB_NAME,
         serviceName);
+    logger.error("failed to start, because ", e.getCause());
     throw new RPCServiceException(
         String.format(
             "%s: failed to start %s, because ", IoTDBConstant.GLOBAL_DB_NAME, serviceName),
@@ -153,7 +160,7 @@ public abstract class AbstractThriftServiceThread extends Thread {
     }
   }
 
-  /** For sync ThriftServiceThread */
+  /** Synced ThriftServiceThread with ssl enabled */
   @SuppressWarnings("squid:S107")
   protected AbstractThriftServiceThread(
       TProcessor processor,
@@ -167,6 +174,8 @@ public abstract class AbstractThriftServiceThread extends Thread {
       boolean compress,
       String keyStorePath,
       String keyStorePwd,
+      String trustStorePath,
+      String trustStorePwd,
       int clientTimeout,
       TTransportFactory transportFactory) {
     this.transportFactory = transportFactory;
@@ -174,10 +183,15 @@ public abstract class AbstractThriftServiceThread extends Thread {
     this.serviceName = serviceName;
 
     try {
+      validateCertificate(keyStorePath, keyStorePwd);
       TSSLTransportFactory.TSSLTransportParameters params =
           new TSSLTransportFactory.TSSLTransportParameters();
       params.setKeyStore(keyStorePath, keyStorePwd);
-      params.requireClientAuth(false);
+      if (trustStorePath != null && !trustStorePath.isEmpty()) {
+        validateCertificate(trustStorePath, trustStorePwd);
+        params.setTrustStore(trustStorePath, trustStorePwd);
+        params.requireClientAuth(true);
+      }
       InetSocketAddress socketAddress = new InetSocketAddress(bindAddress, port);
       serverTransport =
           TSSLTransportFactory.getServerSocket(
@@ -189,6 +203,41 @@ public abstract class AbstractThriftServiceThread extends Thread {
     } catch (TTransportException e) {
       catchFailedInitialization(e);
     }
+  }
+
+  private static void validateCertificate(String keyStorePath, String keystorePassword)
+      throws TTransportException {
+    try {
+      KeyStore keystore = KeyStore.getInstance("JKS");
+      try (FileInputStream fis = new FileInputStream(keyStorePath)) {
+        keystore.load(fis, keystorePassword.toCharArray());
+      }
+
+      Enumeration<String> aliases = keystore.aliases();
+      while (aliases.hasMoreElements()) {
+        String currentAlias = aliases.nextElement();
+        checkCertificate(keystore, currentAlias);
+      }
+    } catch (AccessDeniedException e) {
+      throw new TTransportException("Failed to load keystore or truststore file");
+    } catch (FileNotFoundException e) {
+      throw new TTransportException("keystore or truststore file not found");
+    } catch (Exception e) {
+      throw new TTransportException(e);
+    }
+  }
+
+  private static void checkCertificate(KeyStore keystore, String alias) throws Exception {
+    if (!keystore.containsAlias(alias)) {
+      return;
+    }
+
+    X509Certificate cert = (X509Certificate) keystore.getCertificate(alias);
+    if (cert == null) {
+      return;
+    }
+
+    cert.checkValidity();
   }
 
   @SuppressWarnings("squid:S107")
@@ -271,14 +320,21 @@ public abstract class AbstractThriftServiceThread extends Thread {
 
   @SuppressWarnings("java:S2259")
   private TServerTransport openTransport(String bindAddress, int port) throws TTransportException {
-    // bind any address
-    return new TServerSocket(new InetSocketAddress(port));
+    if (bindAddress == null) {
+      // bind any address
+      return new TServerSocket(new InetSocketAddress(port));
+    }
+    return new TServerSocket(new InetSocketAddress(bindAddress, port));
   }
 
   private TServerTransport openNonblockingTransport(
       String bindAddress, int port, int connectionTimeoutInMS) throws TTransportException {
-    // bind any address
-    return new TNonblockingServerSocket(new InetSocketAddress(port), connectionTimeoutInMS);
+    if (bindAddress == null) {
+      // bind any address
+      return new TNonblockingServerSocket(new InetSocketAddress(port), connectionTimeoutInMS);
+    }
+    return new TNonblockingServerSocket(
+        new InetSocketAddress(bindAddress, port), connectionTimeoutInMS);
   }
 
   public void setThreadStopLatch(CountDownLatch threadStopLatch) {

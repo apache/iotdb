@@ -32,6 +32,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
+import org.apache.iotdb.db.utils.EncryptDBUtils;
 
 import java.io.File;
 import java.io.IOException;
@@ -72,7 +73,8 @@ public class RepairUnsortedFileCompactionTask extends InnerSpaceCompactionTask {
         tsFileManager,
         Collections.singletonList(sourceFile),
         sequence,
-        new RepairUnsortedFileCompactionPerformer(),
+        new RepairUnsortedFileCompactionPerformer(
+            EncryptDBUtils.getFirstEncryptParamFromDatabase(tsFileManager.getStorageGroupName())),
         serialId);
     this.sourceFile = sourceFile;
     if (this.sourceFile.getTsFileRepairStatus() != TsFileRepairStatus.NEED_TO_REPAIR_BY_MOVE) {
@@ -93,7 +95,8 @@ public class RepairUnsortedFileCompactionTask extends InnerSpaceCompactionTask {
         tsFileManager,
         Collections.singletonList(sourceFile),
         sequence,
-        new RepairUnsortedFileCompactionPerformer(),
+        new RepairUnsortedFileCompactionPerformer(
+            EncryptDBUtils.getFirstEncryptParamFromDatabase(tsFileManager.getStorageGroupName())),
         serialId);
     this.sourceFile = sourceFile;
     if (this.sourceFile.getTsFileRepairStatus() != TsFileRepairStatus.NEED_TO_REPAIR_BY_MOVE) {

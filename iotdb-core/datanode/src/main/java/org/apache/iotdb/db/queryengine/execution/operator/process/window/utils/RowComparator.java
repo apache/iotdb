@@ -99,6 +99,7 @@ public class RowComparator {
       case STRING:
       case TEXT:
       case BLOB:
+      case OBJECT:
         Binary bin1 = column.getBinary(offset1);
         Binary bin2 = column.getBinary(offset2);
         if (!bin1.equals(bin2)) {
@@ -178,6 +179,7 @@ public class RowComparator {
       case TEXT:
       case STRING:
       case BLOB:
+      case OBJECT:
         Binary bin1 = column.getBinary(offset1);
         Binary bin2 = column.getBinary(offset2);
         if (!bin1.equals(bin2)) {
@@ -242,6 +244,7 @@ public class RowComparator {
         case TEXT:
         case STRING:
         case BLOB:
+        case OBJECT:
           Binary bin1 = column1.getBinary(offset1);
           Binary bin2 = column2.getBinary(offset2);
           if (!bin1.equals(bin2)) {

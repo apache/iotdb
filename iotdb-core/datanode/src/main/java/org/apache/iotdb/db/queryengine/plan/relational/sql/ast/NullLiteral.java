@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.tsfile.utils.RamUsageEstimator;
+
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -26,6 +28,9 @@ import java.nio.ByteBuffer;
 import static java.util.Objects.requireNonNull;
 
 public class NullLiteral extends Literal {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(NullLiteral.class);
 
   public NullLiteral() {
     super(null);
@@ -77,5 +82,11 @@ public class NullLiteral extends Literal {
   @Override
   public Object getTsValue() {
     return null;
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE
+        + AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
   }
 }

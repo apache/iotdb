@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.load.limiter;
 
-import org.apache.iotdb.commons.pipe.connector.limiter.GlobalRateLimiter;
+import org.apache.iotdb.commons.pipe.sink.limiter.GlobalRateLimiter;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileCostMetricsSet;

@@ -20,7 +20,8 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import com.google.common.collect.ImmutableList;
-import org.apache.commons.lang3.Validate;
+import org.apache.tsfile.external.commons.lang3.Validate;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import javax.annotation.Nullable;
@@ -36,6 +37,9 @@ import java.util.Optional;
 import static java.util.Objects.requireNonNull;
 
 public class SimpleCaseExpression extends Expression {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(SimpleCaseExpression.class);
 
   private final Expression operand;
   private final List<WhenClause> whenClauses;
@@ -163,5 +167,15 @@ public class SimpleCaseExpression extends Expression {
       Expression.serialize(expression, stream);
     }
     Expression.serialize(getDefaultValue().orElse(new NullLiteral()), stream);
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operand);
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeList(whenClauses);
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(defaultValue);
+    return size;
   }
 }

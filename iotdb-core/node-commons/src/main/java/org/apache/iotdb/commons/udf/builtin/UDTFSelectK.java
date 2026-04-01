@@ -107,6 +107,7 @@ public abstract class UDTFSelectK implements UDTF {
         transformString(row.getTime(), row.getString(0));
         break;
       case BLOB:
+      case OBJECT:
       case BOOLEAN:
       default:
         // This will not happen.
@@ -180,6 +181,7 @@ public abstract class UDTFSelectK implements UDTF {
         }
         break;
       case BLOB:
+      case OBJECT:
       case BOOLEAN:
       default:
         // This will not happen.

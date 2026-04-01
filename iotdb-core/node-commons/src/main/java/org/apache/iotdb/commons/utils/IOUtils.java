@@ -25,10 +25,12 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 
 import com.google.common.base.Supplier;
+import com.google.common.util.concurrent.RateLimiter;
 
 import java.io.DataInputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.Map;
@@ -90,6 +92,36 @@ public class IOUtils {
     encodingBuffer.clear();
     encodingBuffer.putInt(i);
     outputStream.write(encodingBuffer.array(), 0, Integer.BYTES);
+  }
+
+  /**
+   * Write a long (8-byte) into the given stream.
+   *
+   * @param outputStream the destination to insert.
+   * @param i the long value to be written.
+   * @param encodingBufferLocal a ThreadLocal buffer may be passed to avoid frequent memory
+   *     allocations. A null may also be passed to use a local buffer.
+   * @throws IOException when an exception raised during operating the stream.
+   */
+  public static void writeLong(
+      OutputStream outputStream, long i, ThreadLocal<ByteBuffer> encodingBufferLocal)
+      throws IOException {
+
+    ByteBuffer encodingBuffer;
+    if (encodingBufferLocal != null) {
+      encodingBuffer = encodingBufferLocal.get();
+      if (encodingBuffer == null) {
+        // 8 bytes is exactly what we need for a long
+        encodingBuffer = ByteBuffer.allocate(8);
+        encodingBufferLocal.set(encodingBuffer);
+      }
+    } else {
+      encodingBuffer = ByteBuffer.allocate(8);
+    }
+
+    encodingBuffer.clear();
+    encodingBuffer.putLong(i);
+    outputStream.write(encodingBuffer.array(), 0, Long.BYTES);
   }
 
   /**
@@ -258,5 +290,38 @@ public class IOUtils {
       }
     }
     return Optional.empty();
+  }
+
+  public static class RatelimitedInputStream extends InputStream {
+    private RateLimiter rateLimiter;
+    private InputStream inner;
+
+    public RatelimitedInputStream(InputStream inner, RateLimiter limiter) {
+      this.inner = inner;
+      this.rateLimiter = limiter;
+    }
+
+    @Override
+    public int read() throws IOException {
+      rateLimiter.acquire(1);
+      return inner.read();
+    }
+
+    @Override
+    public int read(byte[] b) throws IOException {
+      rateLimiter.acquire(b.length);
+      return inner.read(b);
+    }
+
+    @Override
+    public int read(byte[] b, int off, int len) throws IOException {
+      rateLimiter.acquire(len);
+      return inner.read(b, off, len);
+    }
+
+    @Override
+    public void close() throws IOException {
+      inner.close();
+    }
   }
 }

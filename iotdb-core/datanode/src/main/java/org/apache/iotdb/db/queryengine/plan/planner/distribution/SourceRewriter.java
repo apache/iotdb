@@ -27,14 +27,17 @@ import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.SchemaConstant;
+import org.apache.iotdb.commons.schema.table.Audit;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
+import org.apache.iotdb.db.queryengine.plan.analyze.TemplatedInfo;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
-import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
+import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionType;
+import org.apache.iotdb.db.queryengine.plan.expression.visitor.ConcatDeviceVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.BaseSourceRewriter;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -103,7 +106,6 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
 
-import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.LAST_VALUE;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.commons.partition.DataPartition.NOT_ASSIGNED;
@@ -217,7 +219,7 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
                   analysis.getPartitionInfo(outputDevice, context.getPartitionTimeFilter()));
       if (regionReplicaSets.size() > 1 && !existDeviceCrossRegion) {
         existDeviceCrossRegion = true;
-        if (analysis.isDeviceViewSpecialProcess() && aggregationCannotUseMergeSort()) {
+        if (analysis.isDeviceViewSpecialProcess() && cannotUseAggMergeSort()) {
           return processSpecialDeviceView(node, context);
         }
       }
@@ -291,12 +293,28 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
                 : Collections.singletonList(newIdxSum++));
       }
 
+      boolean useTemplate = node.getDeviceToMeasurementIndexesMap() == null;
+      TemplatedInfo templatedInfo = context.queryContext.getTypeProvider().getTemplatedInfo();
       for (IDeviceID device : node.getDevices()) {
-        List<Integer> oldMeasurementIdxList = node.getDeviceToMeasurementIndexesMap().get(device);
+        List<Integer> oldMeasurementIdxList =
+            useTemplate
+                ? context
+                    .queryContext
+                    .getTypeProvider()
+                    .getTemplatedInfo()
+                    .getDeviceToMeasurementIndexes()
+                : node.getDeviceToMeasurementIndexesMap().get(device);
         List<Integer> newMeasurementIdxList = new ArrayList<>();
         oldMeasurementIdxList.forEach(
             idx -> newMeasurementIdxList.addAll(newMeasurementIdxMap.get(idx)));
-        node.getDeviceToMeasurementIndexesMap().put(device, newMeasurementIdxList);
+
+        if (useTemplate) {
+          templatedInfo.setDeviceToMeasurementIndexes(newMeasurementIdxList);
+          templatedInfo.setDeviceViewOutputNames(newPartialOutputColumns);
+          break;
+        } else {
+          node.getDeviceToMeasurementIndexesMap().put(device, newMeasurementIdxList);
+        }
       }
 
       for (PlanNode planNode : deviceViewNodeList) {
@@ -306,12 +324,19 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
 
         List<IDeviceID> devices = deviceViewNode.getDevices();
         for (int j = 0; j < devices.size(); j++) {
-          if (deviceViewNode.getChildren().get(j) instanceof ProjectNode) {
-            IDeviceID device = devices.get(j);
-
+          boolean childIsProject = deviceViewNode.getChildren().get(j) instanceof ProjectNode;
+          IDeviceID device = devices.get(j);
+          List<Integer> newMeasurementIdxList =
+              useTemplate
+                  ? templatedInfo.getDeviceToMeasurementIndexes()
+                  : deviceViewNode.getDeviceToMeasurementIndexesMap().get(device);
+          // If child is ProjectNode, we need to set new outputs;
+          // If child is not ProjectNode and input columns size of deviceViewNode is larger than
+          // child output columns size, we need to construct a ProjectNode.
+          if (childIsProject
+              || newMeasurementIdxList.size()
+                  > deviceViewNode.getChildren().get(j).getOutputColumnNames().size()) {
             // construct output column names for each child ProjectNode
-            List<Integer> newMeasurementIdxList =
-                deviceViewNode.getDeviceToMeasurementIndexesMap().get(device);
             List<String> newProjectOutputs =
                 newMeasurementIdxList.stream()
                     .map(
@@ -320,19 +345,33 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
                           FunctionExpression aggExpression =
                               actualPartialAggregations.get(measurementIdx);
 
-                          // construct new FunctionExpression with device for ProjectNode
-                          List<Expression> withDeviceExpressions =
-                              getWithDeviceExpressions(aggExpression, device.toString());
+                          List<Expression> inputs;
+                          if (!useTemplate) {
+                            // construct new FunctionExpression with device for ProjectNode
+                            inputs = getWithDeviceExpressions(aggExpression, device.toString());
+                          } else {
+                            // when use Template, the outputs of SeriesAggregationScanNode are
+                            // without device, so the ProjectNode needn't concat device
+                            inputs = aggExpression.getExpressions();
+                          }
                           aggExpression =
                               new FunctionExpression(
                                   aggExpression.getFunctionName(),
                                   aggExpression.getFunctionAttributes(),
-                                  withDeviceExpressions);
+                                  inputs);
                           return aggExpression.getExpressionString();
                         })
                     .collect(Collectors.toList());
-            ((ProjectNode) deviceViewNode.getChildren().get(j))
-                .setOutputColumnNames(newProjectOutputs);
+            if (childIsProject) {
+              ((ProjectNode) deviceViewNode.getChildren().get(j))
+                  .setOutputColumnNames(newProjectOutputs);
+            } else {
+              ProjectNode projectNode =
+                  new ProjectNode(
+                      context.queryContext.getQueryId().genPlanNodeId(), newProjectOutputs);
+              projectNode.setChild(deviceViewNode.getChildren().get(j));
+              deviceViewNode.getChildren().set(j, projectNode);
+            }
           }
         }
       }
@@ -371,26 +410,23 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
   }
 
   private static List<Expression> getWithDeviceExpressions(
-      FunctionExpression aggExpression, String device) {
+      Expression aggExpression, String device) {
     return aggExpression.getExpressions().stream()
         .map(
             // process each argument of FunctionExpression
             argument -> {
-              checkArgument(
-                  argument instanceof TimeSeriesOperand,
-                  "Argument of AggregationFunction should be TimeSeriesOperand here");
-              return new TimeSeriesOperand(
-                  new PartialPath(device, argument.getExpressionString(), false),
-                  ((TimeSeriesOperand) argument).getType());
+              return new ConcatDeviceVisitor().process(argument, device);
             })
         .collect(Collectors.toList());
   }
 
   /**
-   * aggregation align by device, and aggregation is `count_if` or `diff`, or aggregation used with
-   * group by parameter (session, variation, count), use the old aggregation logic
+   * 1. aggregation align by device, and aggregation is `count_if` or `diff`, or aggregation used
+   * with 2. group by parameter (session, variation, count), use the old aggregation logic 3.
+   * non-mappable UDTF, we just need to check UDTF in this method, because caller has already
+   * checked analysis.isDeviceViewSpecialProcess()
    */
-  private boolean aggregationCannotUseMergeSort() {
+  private boolean cannotUseAggMergeSort() {
     if (analysis.hasGroupByParameter()) {
       return true;
     }
@@ -398,7 +434,9 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
     for (Expression expression : analysis.getDeviceViewOutputExpressions()) {
       if (expression instanceof FunctionExpression) {
         String functionName = ((FunctionExpression) expression).getFunctionName();
-        if (COUNT_IF.equalsIgnoreCase(functionName) || DIFF.equalsIgnoreCase(functionName)) {
+        if (((FunctionExpression) expression).getFunctionType() == FunctionType.UDTF
+            || COUNT_IF.equalsIgnoreCase(functionName)
+            || DIFF.equalsIgnoreCase(functionName)) {
           return true;
         }
       }
@@ -609,6 +647,7 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
     SchemaQueryScanNode seed = (SchemaQueryScanNode) node.getChildren().get(0);
     List<PartialPath> pathPatternList = seed.getPathPatternList();
     Set<TRegionReplicaSet> regionsOfSystemDatabase = new HashSet<>();
+    Set<TRegionReplicaSet> regionsOfAuditDatabase = new HashSet<>();
     if (pathPatternList.size() == 1) {
       // the path pattern overlaps with all storageGroup or storageGroup.**
       TreeSet<TRegionReplicaSet> schemaRegions =
@@ -617,11 +656,16 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
           .getSchemaPartitionInfo()
           .getSchemaPartitionMap()
           .forEach(
-              (storageGroup, deviceGroup) -> {
-                if (storageGroup.equals(SchemaConstant.SYSTEM_DATABASE)) {
+              (database, deviceGroup) -> {
+                if (database.equals(SchemaConstant.SYSTEM_DATABASE)) {
                   deviceGroup.forEach(
                       (deviceGroupId, schemaRegionReplicaSet) ->
                           regionsOfSystemDatabase.add(schemaRegionReplicaSet));
+                } else if (database.equals(SchemaConstant.AUDIT_DATABASE)
+                    || database.equals(Audit.TABLE_MODEL_AUDIT_DATABASE)) {
+                  deviceGroup.forEach(
+                      (deviceGroupId, schemaRegionReplicaSet) ->
+                          regionsOfAuditDatabase.add(schemaRegionReplicaSet));
                 } else {
                   deviceGroup.forEach(
                       (deviceGroupId, schemaRegionReplicaSet) ->
@@ -637,6 +681,14 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
                   context.queryContext.getQueryId().genPlanNodeId(),
                   seed));
       regionsOfSystemDatabase.forEach(
+          region ->
+              addSchemaSourceNode(
+                  root,
+                  seed.getPath(),
+                  region,
+                  context.queryContext.getQueryId().genPlanNodeId(),
+                  seed));
+      regionsOfAuditDatabase.forEach(
           region ->
               addSchemaSourceNode(
                   root,
@@ -660,6 +712,10 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
                   deviceGroup.forEach(
                       (deviceGroupId, schemaRegionReplicaSet) ->
                           regionsOfSystemDatabase.add(schemaRegionReplicaSet));
+                } else if (storageGroup.equals(SchemaConstant.AUDIT_DATABASE)) {
+                  deviceGroup.forEach(
+                      (deviceGroupId, schemaRegionReplicaSet) ->
+                          regionsOfAuditDatabase.add(schemaRegionReplicaSet));
                 } else {
                   deviceGroup.forEach(
                       (deviceGroupId, schemaRegionReplicaSet) ->
@@ -688,6 +744,20 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
         List<PartialPath> filteredPathPatternList =
             filterPathPattern(patternTree, SchemaConstant.SYSTEM_DATABASE);
         regionsOfSystemDatabase.forEach(
+            region ->
+                addSchemaSourceNode(
+                    root,
+                    filteredPathPatternList.size() == 1
+                        ? filteredPathPatternList.get(0)
+                        : seed.getPath(),
+                    region,
+                    context.queryContext.getQueryId().genPlanNodeId(),
+                    seed));
+      }
+      if (!regionsOfAuditDatabase.isEmpty()) {
+        List<PartialPath> filteredPathPatternList =
+            filterPathPattern(patternTree, SchemaConstant.AUDIT_DATABASE);
+        regionsOfAuditDatabase.forEach(
             region ->
                 addSchemaSourceNode(
                     root,
@@ -1018,13 +1088,14 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
                 if (child instanceof LastQueryScanNode) {
                   // sort the measurements for LastQueryMergeOperator
                   LastQueryScanNode node = (LastQueryScanNode) child;
-                  ((LastQueryScanNode) child)
-                      .getIdxOfMeasurementSchemas()
+                  node.getIdxOfMeasurementSchemas()
                       .sort(
                           Comparator.comparing(
                               idx ->
                                   new Binary(
-                                      node.getMeasurementSchema(idx).getMeasurementName(),
+                                      node.getGlobalMeasurementSchemaList()
+                                          .get(idx)
+                                          .getMeasurementName(),
                                       TSFileConfig.STRING_CHARSET),
                               Comparator.naturalOrder()));
                 }

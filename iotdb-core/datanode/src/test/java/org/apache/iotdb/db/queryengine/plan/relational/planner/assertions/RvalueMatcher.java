@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.assertions;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 
 import java.util.Optional;
@@ -39,4 +40,11 @@ public interface RvalueMatcher {
    */
   Optional<Symbol> getAssignedSymbol(
       PlanNode node, SessionInfo sessionInfo, Metadata metadata, SymbolAliases symbolAliases);
+
+  /**
+   * Get the column symbol of the CTE. It should be found in CTE's table schema instead of metadata
+   */
+  default Optional<Symbol> getCteSymbol(TableSchema tableSchema) {
+    return Optional.empty();
+  }
 }

@@ -74,14 +74,14 @@ public class WALInputStream extends InputStream implements AutoCloseable {
   }
 
   private void getEndOffset() throws IOException {
-    if (channel.size() < WALFileVersion.V2.getVersionBytes().length + Integer.BYTES) {
-      // An broken file
-      endOffset = channel.size();
-      return;
-    }
-    ByteBuffer metadataSizeBuf = ByteBuffer.allocate(Integer.BYTES);
-    long position;
     try {
+      if (channel.size() < WALFileVersion.V2.getVersionBytes().length + Integer.BYTES) {
+        // An broken file
+        endOffset = channel.size();
+        return;
+      }
+      ByteBuffer metadataSizeBuf = ByteBuffer.allocate(Integer.BYTES);
+      long position;
       if (version == WALFileVersion.V2) {
         // New Version
         ByteBuffer magicStringBuffer = ByteBuffer.allocate(version.getVersionBytes().length);

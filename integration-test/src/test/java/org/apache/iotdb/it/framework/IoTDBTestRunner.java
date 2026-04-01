@@ -58,6 +58,9 @@ public class IoTDBTestRunner extends BlockJUnit4ClassRunner {
       EnvFactory.getEnv().setTestMethodName(description.getMethodName());
     }
     MultiEnvFactory.setTestMethodName(description.getMethodName());
+    if (Thread.currentThread().getName().equals("main")) {
+      Thread.currentThread().setName("main-" + description.getMethodName());
+    }
     super.runChild(method, notifier);
     final double timeCost = (System.currentTimeMillis() - currentTime) / 1000.0;
     final String testName = description.getClassName() + "." + description.getMethodName();

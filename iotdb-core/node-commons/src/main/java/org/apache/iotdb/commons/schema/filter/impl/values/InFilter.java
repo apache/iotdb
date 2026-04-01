@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.schema.filter.SchemaFilterType;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterVisitor;
 import org.apache.iotdb.commons.schema.filter.impl.multichildren.OrFilter;
 
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -38,6 +39,8 @@ import java.util.Set;
  * construct a new filter to avoid too deep stack and to ensure performance.
  */
 public class InFilter extends SchemaFilter {
+
+  private static final long INSTANCE_SIZE = RamUsageEstimator.shallowSizeOfInstance(InFilter.class);
 
   private final Set<String> values;
 
@@ -98,5 +101,10 @@ public class InFilter extends SchemaFilter {
   @Override
   public int hashCode() {
     return Objects.hash(values);
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE + RamUsageEstimator.sizeOfCollection(values);
   }
 }

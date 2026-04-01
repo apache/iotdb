@@ -25,8 +25,10 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.AlterEncodingCompressorNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableId;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.ConstructTableDevicesBlackListNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.CreateOrUpdateTableDeviceNode;
@@ -54,7 +56,6 @@ import org.apache.iotdb.db.schemaengine.schemaregion.write.req.IPreDeactivateTem
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.IRollbackPreDeactivateTemplatePlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.IAlterLogicalViewPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.ICreateLogicalViewPlan;
-import org.apache.iotdb.db.schemaengine.template.Template;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -145,7 +146,10 @@ public interface ISchemaRegion {
    * @param aliasList a list of alias that you want to check
    * @return returns a map contains index of the measurements or alias that threw the exception, and
    *     exception details. The exceptions describe whether the measurement or alias exists. For
-   *     example, a MeasurementAlreadyExistException means this measurement exists.
+   *     example, a MeasurementAlreadyExistException means this measurement exists. If there are
+   *     exceptions during check, this may return an empty map, then all the measurements will be
+   *     re-checked under consensus layer, which guarantees safety(Yet may cause unnecessary replay
+   *     of raft log)
    */
   Map<Integer, MetadataException> checkMeasurementExistence(
       final PartialPath devicePath,
@@ -207,6 +211,8 @@ public interface ISchemaRegion {
    * @throws MetadataException
    */
   void deleteTimeseriesInBlackList(final PathPatternTree patternTree) throws MetadataException;
+
+  void alterEncodingCompressor(final AlterEncodingCompressorNode node) throws MetadataException;
 
   // endregion
 
@@ -322,6 +328,16 @@ public interface ISchemaRegion {
    *     a tag/attribute named newKey
    */
   void renameTagOrAttributeKey(final String oldKey, final String newKey, final PartialPath fullPath)
+      throws MetadataException, IOException;
+
+  /**
+   * Set/change the data type of measurement
+   *
+   * @param newDataType the new data type
+   * @param fullPath timeseries
+   * @throws MetadataException write error or data type do not exist
+   */
+  void alterTimeSeriesDataType(final TSDataType newDataType, final PartialPath fullPath)
       throws MetadataException, IOException;
 
   // endregion

@@ -117,6 +117,7 @@ public class TablePrivilege {
     return privilege;
   }
 
+  @Override
   public boolean equals(Object o) {
     if (this == o) {
       return true;
@@ -130,10 +131,12 @@ public class TablePrivilege {
         && grantOption.equals(that.grantOption);
   }
 
+  @Override
   public int hashCode() {
     return Objects.hash(tableName, privileges, grantOption);
   }
 
+  @Override
   public String toString() {
     StringBuilder builder = new StringBuilder();
     builder.append(this.tableName).append("(");

@@ -33,7 +33,6 @@ import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType;
 
 import org.apache.tsfile.utils.Pair;
-import org.checkerframework.checker.nullness.qual.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -74,7 +73,7 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
     }
   }
 
-  public @NonNull SubscriptionEvent pollTsFileInternal(
+  public SubscriptionEvent pollTsFileInternal(
       final String consumerId,
       final SubscriptionCommitContext commitContext,
       final long writingOffset) {

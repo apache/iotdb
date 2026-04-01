@@ -78,6 +78,7 @@ public class ApproxCountDistinctAccumulator implements TableAccumulator {
       case TEXT:
       case STRING:
       case BLOB:
+      case OBJECT:
         addBinaryInput(arguments[0], mask, hll);
         return;
       case BOOLEAN:

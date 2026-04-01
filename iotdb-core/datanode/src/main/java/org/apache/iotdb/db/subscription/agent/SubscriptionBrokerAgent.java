@@ -22,7 +22,7 @@ package org.apache.iotdb.db.subscription.agent;
 import org.apache.iotdb.db.subscription.broker.SubscriptionBroker;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.db.subscription.resource.SubscriptionDataNodeResourceManager;
-import org.apache.iotdb.db.subscription.task.subtask.SubscriptionConnectorSubtask;
+import org.apache.iotdb.db.subscription.task.subtask.SubscriptionSinkSubtask;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConfig;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
@@ -181,7 +181,7 @@ public class SubscriptionBrokerAgent {
 
   /////////////////////////////// prefetching queue ///////////////////////////////
 
-  public void bindPrefetchingQueue(final SubscriptionConnectorSubtask subtask) {
+  public void bindPrefetchingQueue(final SubscriptionSinkSubtask subtask) {
     final String consumerGroupId = subtask.getConsumerGroupId();
     consumerGroupIdToSubscriptionBroker
         .compute(

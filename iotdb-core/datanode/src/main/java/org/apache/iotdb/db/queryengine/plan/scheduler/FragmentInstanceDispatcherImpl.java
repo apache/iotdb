@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
+import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
 import org.apache.iotdb.consensus.exception.RatisReadUnavailableException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -57,8 +58,8 @@ import org.apache.iotdb.mpp.rpc.thrift.TSendSinglePlanNodeResp;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.thrift.TException;
+import org.apache.tsfile.external.commons.lang3.exception.ExceptionUtils;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.Preconditions;
 import org.slf4j.Logger;
@@ -66,6 +67,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -124,7 +126,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
   @Override
   public Future<FragInstanceDispatchResult> dispatch(
       SubPlan root, List<FragmentInstance> instances) {
-    if (type == QueryType.READ) {
+    if (isQuery()) {
       return instances.size() == 1 || root == null
           ? dispatchRead(instances)
           : topologicalParallelDispatchRead(root, instances);
@@ -151,11 +153,16 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
             instances.get(next.getPlanFragment().getIndexInFragmentInstanceList());
         futures.add(asyncDispatchOneInstance(next, fragmentInstance, queue));
       }
+      FragInstanceDispatchResult failedResult = null;
       for (Future<FragInstanceDispatchResult> future : futures) {
+        // Make sure all executing tasks are finished to avoid concurrency issues
         FragInstanceDispatchResult result = future.get();
-        if (!result.isSuccessful()) {
-          return immediateFuture(result);
+        if (!result.isSuccessful() && failedResult == null) {
+          failedResult = result;
         }
+      }
+      if (failedResult != null) {
+        return immediateFuture(failedResult);
       }
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
@@ -284,6 +291,16 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
           dispatchWriteOnce(shouldDispatch);
 
       // 3. decide if we need retry (we may decide the retry condition instance-wise, if needed)
+      Iterator<FailedFragmentInstanceWithStatus> iterator = failedInstances.iterator();
+      while (iterator.hasNext()) {
+        FailedFragmentInstanceWithStatus failedFragmentInstanceWithStatus = iterator.next();
+        if (!RetryUtils.needRetryForWrite(
+            failedFragmentInstanceWithStatus.getFailureStatus().getCode())) {
+          dispatchFailures.add(failedFragmentInstanceWithStatus.getFailureStatus());
+          iterator.remove();
+        }
+      }
+
       final boolean shouldRetry =
           !failedInstances.isEmpty() && maxRetryDurationInNs > 0 && replicaNum > 1;
       if (!shouldRetry) {
@@ -311,7 +328,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
     if (dispatchFailures.isEmpty()) {
       return immediateFuture(new FragInstanceDispatchResult(true));
     }
-    if (instances.size() == 1) {
+    if (instances.size() == 1 || dispatchFailures.size() == 1) {
       return immediateFuture(new FragInstanceDispatchResult(dispatchFailures.get(0)));
     } else {
       List<TSStatus> failureStatusList = new ArrayList<>();
@@ -663,4 +680,8 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
 
   @Override
   public void abort() {}
+
+  private boolean isQuery() {
+    return type != QueryType.WRITE;
+  }
 }

@@ -37,6 +37,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.Cr
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.InsertionCrossCompactionTaskResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
+import org.apache.iotdb.db.utils.EncryptDBUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -124,7 +125,11 @@ public class CompactionScheduler {
   @TestOnly
   public static void scheduleCompaction(TsFileManager tsFileManager, long timePartition)
       throws InterruptedException {
-    scheduleCompaction(tsFileManager, timePartition, new CompactionScheduleContext());
+    scheduleCompaction(
+        tsFileManager,
+        timePartition,
+        new CompactionScheduleContext(
+            EncryptDBUtils.getFirstEncryptParamFromDatabase(tsFileManager.getStorageGroupName())));
   }
 
   public static int tryToSubmitInnerSpaceCompactionTask(

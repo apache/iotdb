@@ -125,7 +125,7 @@ public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTa
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setNextState(DropTableState.INVALIDATE_CACHE);
     } else {
-      setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
+      setFailure(new ProcedureException(new IoTDBException(status)));
     }
   }
 
@@ -201,7 +201,7 @@ public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTa
                     : new CommitDeleteTablePlan(database, tableName),
                 isGeneratedByPipe);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
+      setFailure(new ProcedureException(new IoTDBException(status)));
     }
   }
 

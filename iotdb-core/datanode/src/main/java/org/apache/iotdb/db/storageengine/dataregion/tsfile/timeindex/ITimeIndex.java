@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.load.PartitionViolationException;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
+import com.google.common.util.concurrent.RateLimiter;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -53,7 +54,8 @@ public interface ITimeIndex {
    * @param inputStream inputStream
    * @return TimeIndex
    */
-  ITimeIndex deserialize(InputStream inputStream) throws IOException;
+  ITimeIndex deserialize(InputStream inputStream, IDeviceID.Deserializer deserializer)
+      throws IOException;
 
   /**
    * deserialize from byte buffer
@@ -72,6 +74,13 @@ public interface ITimeIndex {
    * @return device names
    */
   Set<IDeviceID> getDevices(String tsFilePath, TsFileResource tsFileResource);
+
+  /**
+   * get devices in TimeIndex and limit files reading rate
+   *
+   * @return device names
+   */
+  Set<IDeviceID> getDevices(String tsFilePath, TsFileResource tsFileResource, RateLimiter limiter);
 
   /**
    * @return whether end time is empty (Long.MIN_VALUE)
@@ -218,11 +227,14 @@ public interface ITimeIndex {
    */
   byte getTimeIndexType();
 
-  static ITimeIndex createTimeIndex(InputStream inputStream) throws IOException {
+  static ITimeIndex createTimeIndex(InputStream inputStream, IDeviceID.Deserializer deserializer)
+      throws IOException {
     byte timeIndexType = ReadWriteIOUtils.readByte(inputStream);
     if (timeIndexType == -1) {
       throw new IOException("The end of stream has been reached");
     }
-    return TimeIndexLevel.valueOf(timeIndexType).getTimeIndex().deserialize(inputStream);
+    return TimeIndexLevel.valueOf(timeIndexType)
+        .getTimeIndex()
+        .deserialize(inputStream, deserializer);
   }
 }

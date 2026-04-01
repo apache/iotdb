@@ -19,8 +19,9 @@
 
 package org.apache.iotdb.db.pipe.agent.task.execution;
 
+import org.apache.iotdb.commons.consensus.iotv2.container.IoTV2GlobalComponentContainer;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
-import org.apache.iotdb.db.pipe.consensus.PipeConsensusSubtaskExecutor;
+import org.apache.iotdb.db.pipe.consensus.IoTConsensusV2SubtaskExecutor;
 import org.apache.iotdb.db.subscription.task.execution.SubscriptionSubtaskExecutor;
 
 import java.util.function.Supplier;
@@ -31,36 +32,38 @@ import java.util.function.Supplier;
  */
 public class PipeSubtaskExecutorManager {
   private final PipeProcessorSubtaskExecutor processorExecutor;
-  private final Supplier<PipeConnectorSubtaskExecutor> connectorExecutorSupplier;
+  private final Supplier<PipeSinkSubtaskExecutor> connectorExecutorSupplier;
   private final SubscriptionSubtaskExecutor subscriptionExecutor;
-  private final Supplier<PipeConsensusSubtaskExecutor> consensusExecutorSupplier;
 
   public PipeProcessorSubtaskExecutor getProcessorExecutor() {
     return processorExecutor;
   }
 
-  public Supplier<PipeConnectorSubtaskExecutor> getConnectorExecutorSupplier() {
+  public Supplier<PipeSinkSubtaskExecutor> getConnectorExecutorSupplier() {
     return connectorExecutorSupplier;
+  }
+
+  public IoTConsensusV2SubtaskExecutor getConsensusExecutor() {
+    return (IoTConsensusV2SubtaskExecutor)
+        IoTV2GlobalComponentContainer.getInstance().getConsensusExecutor();
   }
 
   public SubscriptionSubtaskExecutor getSubscriptionExecutor() {
     return subscriptionExecutor;
   }
 
-  public Supplier<PipeConsensusSubtaskExecutor> getConsensusExecutorSupplier() {
-    return consensusExecutorSupplier;
-  }
-
   /////////////////////////  Singleton Instance Holder  /////////////////////////
 
   private PipeSubtaskExecutorManager() {
     processorExecutor = new PipeProcessorSubtaskExecutor();
-    connectorExecutorSupplier = PipeConnectorSubtaskExecutor::new;
+    connectorExecutorSupplier = PipeSinkSubtaskExecutor::new;
     subscriptionExecutor =
         SubscriptionConfig.getInstance().getSubscriptionEnabled()
             ? new SubscriptionSubtaskExecutor()
             : null;
-    consensusExecutorSupplier = PipeConsensusSubtaskExecutor::new;
+    // IoTV2 uses global singleton executor pool.
+    IoTV2GlobalComponentContainer.getInstance()
+        .setConsensusExecutor(new IoTConsensusV2SubtaskExecutor());
   }
 
   private static class PipeTaskExecutorHolder {

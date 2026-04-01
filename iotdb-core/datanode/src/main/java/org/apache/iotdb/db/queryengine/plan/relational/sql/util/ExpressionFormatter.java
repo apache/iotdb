@@ -41,6 +41,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExistsPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Extract;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FieldReference;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FloatLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FrameBound;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GenericDataType;
@@ -233,6 +234,14 @@ public final class ExpressionFormatter {
           .orElseGet(() -> doubleFormatter.get().format(node.getValue()));
     }
 
+    // do not use doubleFormatter, to prevent from introducing the precision noise
+    @Override
+    protected String visitFloatLiteral(FloatLiteral node, Void context) {
+      return literalFormatter
+          .map(formatter -> formatter.apply(node))
+          .orElseGet(() -> String.valueOf(node.getValue()));
+    }
+
     @Override
     protected String visitDecimalLiteral(DecimalLiteral node, Void context) {
       return literalFormatter
@@ -398,9 +407,9 @@ public final class ExpressionFormatter {
       String value = process(node.getValue(), context);
 
       switch (node.getSign()) {
-          // Unary is ambiguous with respect to negative numbers. "-1" parses as a number, but
-          // "-(1)" parses as "unaryMinus(number)"
-          // The parentheses are needed to ensure the parsing roundtrips properly.
+        // Unary is ambiguous with respect to negative numbers. "-1" parses as a number, but
+        // "-(1)" parses as "unaryMinus(number)"
+        // The parentheses are needed to ensure the parsing roundtrips properly.
         case MINUS:
           return "-(" + value + ")";
         case PLUS:

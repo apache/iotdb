@@ -21,7 +21,6 @@ package org.apache.iotdb.db.queryengine.execution.operator.window;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.read.common.block.TsBlock;
-import org.apache.tsfile.read.common.block.column.TimeColumn;
 
 public class SessionWindow implements IWindow {
 
@@ -87,19 +86,19 @@ public class SessionWindow implements IWindow {
 
   @Override
   public boolean contains(Column column) {
-    TimeColumn timeColumn = (TimeColumn) column;
-
-    long minTime = Math.min(timeColumn.getStartTime(), timeColumn.getEndTime());
-    long maxTime = Math.max(timeColumn.getStartTime(), timeColumn.getEndTime());
+    long columnStartTime = column.getLong(0);
+    long columnEndTime = column.getLong(column.getPositionCount() - 1);
+    long minTime = Math.min(columnStartTime, columnEndTime);
+    long maxTime = Math.max(columnStartTime, columnEndTime);
 
     boolean contains =
-        Math.abs(column.getLong(0) - lastTsBlockTime) < timeInterval
+        Math.abs(columnStartTime - lastTsBlockTime) < timeInterval
             && maxTime - minTime <= timeInterval;
     if (contains) {
       if (!initializedTimeValue) {
         startTime = Long.MAX_VALUE;
         endTime = Long.MIN_VALUE;
-        lastTsBlockTime = column.getLong(0);
+        lastTsBlockTime = columnStartTime;
         timeValue = ascending ? maxTime : minTime;
         initializedTimeValue = true;
       }

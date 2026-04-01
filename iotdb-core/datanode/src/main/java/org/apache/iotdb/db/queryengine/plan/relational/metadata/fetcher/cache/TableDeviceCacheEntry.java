@@ -184,13 +184,13 @@ public class TableDeviceCacheEntry {
       final boolean isInvalidate,
       final boolean isTableModel) {
     int result =
-        lastCache.compareAndSet(null, new TableDeviceLastCache())
+        lastCache.compareAndSet(null, new TableDeviceLastCache(isTableModel))
             ? TableDeviceLastCache.INSTANCE_SIZE
             : 0;
     final TableDeviceLastCache cache = lastCache.get();
     result +=
         Objects.nonNull(cache)
-            ? cache.initOrInvalidate(database, tableName, measurements, isInvalidate, isTableModel)
+            ? cache.initOrInvalidate(database, tableName, measurements, isInvalidate)
             : 0;
     return Objects.nonNull(lastCache.get()) ? result : 0;
   }
@@ -207,9 +207,9 @@ public class TableDeviceCacheEntry {
     return tryUpdateLastCache(measurements, timeValuePairs, false);
   }
 
-  int invalidateLastCache(final String measurement, final boolean isTableModel) {
+  int invalidateLastCache(final String measurement) {
     final TableDeviceLastCache cache = lastCache.get();
-    final int result = Objects.nonNull(cache) ? cache.invalidate(measurement, isTableModel) : 0;
+    final int result = Objects.nonNull(cache) ? cache.invalidate(measurement) : 0;
     return Objects.nonNull(lastCache.get()) ? result : 0;
   }
 

@@ -51,31 +51,32 @@ public class IoTDBPipeMultiSchemaRegionIT extends AbstractPipeDualTreeModelManua
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               "create timeseries root.ln.wf01.GPS.status0 with datatype=BOOLEAN,encoding=PLAIN",
-              "create timeseries root.sg.wf01.GPS.status0 with datatype=BOOLEAN,encoding=PLAIN"))) {
-        return;
-      }
+              "create timeseries root.sg.wf01.GPS.status0 with datatype=BOOLEAN,encoding=PLAIN"),
+          null);
 
-      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> sourceAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
-      final Map<String, String> connectorAttributes = new HashMap<>();
+      final Map<String, String> sinkAttributes = new HashMap<>();
 
-      extractorAttributes.put("extractor.inclusion", "all");
-      extractorAttributes.put("extractor.inclusion.exclusion", "");
-      extractorAttributes.put("extractor.forwarding-pipe-requests", "false");
-      connectorAttributes.put("connector", "iotdb-thrift-connector");
-      connectorAttributes.put("connector.ip", receiverIp);
-      connectorAttributes.put("connector.port", Integer.toString(receiverPort));
-      connectorAttributes.put("connector.exception.conflict.resolve-strategy", "retry");
-      connectorAttributes.put("connector.exception.conflict.retry-max-time-seconds", "-1");
+      sourceAttributes.put("source.inclusion", "all");
+      sourceAttributes.put("source.inclusion.exclusion", "");
+      sourceAttributes.put("source.forwarding-pipe-requests", "false");
+      sourceAttributes.put("user", "root");
+
+      sinkAttributes.put("sink", "iotdb-thrift-sink");
+      sinkAttributes.put("sink.ip", receiverIp);
+      sinkAttributes.put("sink.port", Integer.toString(receiverPort));
+      sinkAttributes.put("sink.exception.conflict.resolve-strategy", "retry");
+      sinkAttributes.put("sink.exception.conflict.retry-max-time-seconds", "-1");
 
       final TSStatus status =
           client.createPipe(
-              new TCreatePipeReq("testPipe", connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
+              new TCreatePipeReq("testPipe", sinkAttributes)
+                  .setExtractorAttributes(sourceAttributes)
                   .setProcessorAttributes(processorAttributes));
 
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -84,15 +85,22 @@ public class IoTDBPipeMultiSchemaRegionIT extends AbstractPipeDualTreeModelManua
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
     }
 
-    if (!TestUtils.tryExecuteNonQueriesWithRetry(
+    TestUtils.executeNonQueries(
         senderEnv,
         Arrays.asList(
             "create timeseries root.ln.wf01.GPS.status1 with datatype=BOOLEAN,encoding=PLAIN",
-            "create timeseries root.sg.wf01.GPS.status1 with datatype=BOOLEAN,encoding=PLAIN"))) {
-      return;
-    }
+            "create timeseries root.sg.wf01.GPS.status1 with datatype=BOOLEAN,encoding=PLAIN"),
+        null);
 
     TestUtils.assertDataEventuallyOnEnv(
-        receiverEnv, "count timeseries", "count(timeseries),", Collections.singleton("4,"));
+        receiverEnv,
+        "count timeseries root.ln.**",
+        "count(timeseries),",
+        Collections.singleton("2,"));
+    TestUtils.assertDataEventuallyOnEnv(
+        receiverEnv,
+        "count timeseries root.sg.**",
+        "count(timeseries),",
+        Collections.singleton("2,"));
   }
 }

@@ -93,6 +93,8 @@ public class LoadCache {
   private final Map<TConsensusGroupId, RegionGroupCache> regionGroupCacheMap;
   // Map<NodeId, Map<RegionGroupId, RegionSize>>
   private final Map<Integer, Map<Integer, Long>> regionSizeMap;
+  // Map<NodeId, Map<RegionGroupId, RegionRawSize>>
+  private final Map<Integer, Map<Integer, Long>> regionRawSizeMap;
   // Map<RegionGroupId, ConsensusGroupCache>
   private final Map<TConsensusGroupId, ConsensusGroupCache> consensusGroupCacheMap;
   // Map<DataNodeId, confirmedConfigNodes>
@@ -105,6 +107,7 @@ public class LoadCache {
     this.heartbeatProcessingMap = new ConcurrentHashMap<>();
     this.regionGroupCacheMap = new ConcurrentHashMap<>();
     this.regionSizeMap = new ConcurrentHashMap<>();
+    this.regionRawSizeMap = new ConcurrentHashMap<>();
     this.consensusGroupCacheMap = new ConcurrentHashMap<>();
     this.confirmedConfigNodeMap = new ConcurrentHashMap<>();
     this.topologyGraph = new HashMap<>();
@@ -780,10 +783,25 @@ public class LoadCache {
 
   public void updateTopology(Map<Integer, Set<Integer>> latestTopology) {
     if (!latestTopology.equals(topologyGraph)) {
-      LOGGER.info("[Topology Service] Cluster topology changed, latest: {}", latestTopology);
+      LOGGER.info("[Topology] Cluster topology changed, latest: {}", latestTopology);
+      for (int fromId : latestTopology.keySet()) {
+        for (int toId : latestTopology.keySet()) {
+          boolean originReachable =
+              latestTopology.getOrDefault(fromId, Collections.emptySet()).contains(toId);
+          boolean newReachable =
+              latestTopology.getOrDefault(fromId, Collections.emptySet()).contains(toId);
+          if (originReachable != newReachable) {
+            LOGGER.info(
+                "[Topology] Topology of DataNode {} is now {} to DataNode {}",
+                fromId,
+                newReachable ? "reachable" : "unreachable",
+                toId);
+          }
+        }
+      }
+      topologyGraph = latestTopology;
+      topologyUpdated.set(true);
     }
-    topologyGraph = latestTopology;
-    topologyUpdated.set(true);
   }
 
   @Nullable
@@ -807,7 +825,15 @@ public class LoadCache {
     this.regionSizeMap.put(dataNodeId, regionSizeMap);
   }
 
+  public void updateRegionRawSizeMap(int dataNodeId, Map<Integer, Long> regionRawSizeMap) {
+    this.regionRawSizeMap.put(dataNodeId, regionRawSizeMap);
+  }
+
   public Map<Integer, Map<Integer, Long>> getRegionSizeMap() {
     return regionSizeMap;
+  }
+
+  public Map<Integer, Map<Integer, Long>> getRegionRawSizeMap() {
+    return regionRawSizeMap;
   }
 }

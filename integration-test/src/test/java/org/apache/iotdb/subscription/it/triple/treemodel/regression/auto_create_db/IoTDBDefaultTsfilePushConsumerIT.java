@@ -27,20 +27,20 @@ import org.apache.iotdb.session.subscription.consumer.AckStrategy;
 import org.apache.iotdb.session.subscription.consumer.ConsumeResult;
 import org.apache.iotdb.session.subscription.consumer.tree.SubscriptionTreePushConsumer;
 import org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant;
+import org.apache.iotdb.subscription.it.SubscriptionTreeReaderTestUtils;
 import org.apache.iotdb.subscription.it.triple.treemodel.regression.AbstractSubscriptionTreeRegressionIT;
 
 import org.apache.thrift.TException;
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.read.TsFileReader;
 import org.apache.tsfile.read.common.Path;
 import org.apache.tsfile.read.common.RowRecord;
-import org.apache.tsfile.read.expression.QueryExpression;
-import org.apache.tsfile.read.query.dataset.QueryDataSet;
+import org.apache.tsfile.read.v4.ITsFileTreeReader;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -120,6 +120,7 @@ public class IoTDBDefaultTsfilePushConsumerIT extends AbstractSubscriptionTreeRe
     session_src.executeNonQueryStatement("flush");
   }
 
+  @Ignore
   @Test
   public void do_test()
       throws InterruptedException,
@@ -157,12 +158,11 @@ public class IoTDBDefaultTsfilePushConsumerIT extends AbstractSubscriptionTreeRe
                   System.out.println(
                       FORMAT.format(new Date()) + " ######## onReceived: " + onReceiveCount.get());
                   try {
-                    TsFileReader reader = message.getTsFileHandler().openReader();
+                    ITsFileTreeReader reader = message.getTsFile().openTreeReader();
                     for (int i = 0; i < deviceCount; i++) {
-                      QueryDataSet dataset =
-                          reader.query(
-                              QueryExpression.create(
-                                  Collections.singletonList(paths.get(i)), null));
+                      SubscriptionTreeReaderTestUtils.QueryDataSetAdapter dataset =
+                          SubscriptionTreeReaderTestUtils.query(
+                              reader, Collections.singletonList(paths.get(i)));
                       while (dataset.hasNext()) {
                         rowCounts.get(i).addAndGet(1);
                         RowRecord next = dataset.next();

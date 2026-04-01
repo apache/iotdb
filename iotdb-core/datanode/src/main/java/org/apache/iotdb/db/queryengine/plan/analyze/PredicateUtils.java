@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.analyze;
 
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory;
 import org.apache.iotdb.db.queryengine.plan.expression.ExpressionType;
@@ -337,6 +338,12 @@ public class PredicateUtils {
     if (conjuncts.size() == 1) {
       return conjuncts.get(0);
     }
+
+    if (conjuncts.size() > 1000) {
+      throw new SemanticException(
+          "There are too many conjuncts (more than 1000) in predicate after rewriting, this may be caused by too many devices in query, try to use ALIGN BY DEVICE");
+    }
+
     return constructRightDeepTreeWithAnd(conjuncts);
   }
 

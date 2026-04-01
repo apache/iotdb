@@ -20,10 +20,13 @@ package org.apache.iotdb.db.storageengine.dataregion.modification;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
+import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate.IDPredicateType;
 import org.apache.iotdb.db.utils.ModificationUtils;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.TimeRange;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -32,6 +35,8 @@ import java.nio.ByteBuffer;
 import java.util.Objects;
 
 public class TableDeletionEntry extends ModEntry {
+  public static final long SHALLOW_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(TableDeletionEntry.class);
   private DeletionPredicate predicate;
 
   public TableDeletionEntry() {
@@ -132,6 +137,14 @@ public class TableDeletionEntry extends ModEntry {
     return predicate.getTableName();
   }
 
+  public boolean isDroppingTable() {
+    IDPredicate idPredicate = predicate.getIdPredicate();
+    return idPredicate.type == IDPredicateType.NOP
+        && predicate.getMeasurementNames().isEmpty()
+        && timeRange.getMin() == Long.MIN_VALUE
+        && timeRange.getMax() == Long.MAX_VALUE;
+  }
+
   @Override
   public boolean equals(Object o) {
     if (this == o) {
@@ -151,5 +164,12 @@ public class TableDeletionEntry extends ModEntry {
 
   public DeletionPredicate getPredicate() {
     return predicate;
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return SHALLOW_SIZE
+        + MemoryEstimationHelper.TIME_RANGE_INSTANCE_SIZE
+        + RamUsageEstimator.sizeOfObject(predicate);
   }
 }

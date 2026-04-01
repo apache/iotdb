@@ -19,11 +19,14 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.AlignedPageElement;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.ChunkMetadataElement;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.flushcontroller.AbstractCompactionFlushController;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.utils.EncryptDBUtils;
 
+import org.apache.tsfile.encrypt.EncryptParameter;
 import org.apache.tsfile.exception.write.PageException;
 import org.apache.tsfile.file.header.PageHeader;
 import org.apache.tsfile.file.metadata.AbstractAlignedChunkMetadata;
@@ -44,12 +47,23 @@ public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
   // Only used for fast compaction performer
   protected Map<TsFileResource, TsFileSequenceReader> readerMap;
 
+  @TestOnly
   public FastCrossCompactionWriter(
       List<TsFileResource> targetResources,
       List<TsFileResource> seqSourceResources,
       Map<TsFileResource, TsFileSequenceReader> readerMap)
       throws IOException {
-    super(targetResources, seqSourceResources);
+    super(targetResources, seqSourceResources, EncryptDBUtils.getDefaultFirstEncryptParam());
+    this.readerMap = readerMap;
+  }
+
+  public FastCrossCompactionWriter(
+      List<TsFileResource> targetResources,
+      List<TsFileResource> seqSourceResources,
+      Map<TsFileResource, TsFileSequenceReader> readerMap,
+      EncryptParameter encryptParameter)
+      throws IOException {
+    super(targetResources, seqSourceResources, encryptParameter);
     this.readerMap = readerMap;
   }
 

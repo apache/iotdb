@@ -26,11 +26,14 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.udf.api.relational.table.TableFunctionProcessorProvider;
 import org.apache.iotdb.udf.api.relational.table.processor.TableFunctionLeafProcessor;
 
+import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
 import java.util.List;
@@ -39,11 +42,13 @@ import static org.apache.iotdb.db.queryengine.execution.operator.source.relation
 
 // only one input source is supported now
 public class TableFunctionLeafOperator implements ProcessOperator {
+  private static final Logger LOGGER = LoggerFactory.getLogger(TableFunctionLeafOperator.class);
 
   private final OperatorContext operatorContext;
   private final TsBlockBuilder blockBuilder;
 
   private final TableFunctionLeafProcessor processor;
+  private volatile boolean init = false;
 
   public TableFunctionLeafOperator(
       OperatorContext operatorContext,
@@ -51,8 +56,16 @@ public class TableFunctionLeafOperator implements ProcessOperator {
       List<TSDataType> outputDataTypes) {
     this.operatorContext = operatorContext;
     this.processor = processorProvider.getSplitProcessor();
-    this.processor.beforeStart();
     this.blockBuilder = new TsBlockBuilder(outputDataTypes);
+  }
+
+  @Override
+  public ListenableFuture<?> isBlocked() {
+    if (!init) {
+      init = true;
+      processor.beforeStart();
+    }
+    return NOT_BLOCKED;
   }
 
   @Override
@@ -66,6 +79,7 @@ public class TableFunctionLeafOperator implements ProcessOperator {
     try {
       processor.process(columnBuilders);
     } catch (Exception e) {
+      LOGGER.warn("Exception happened when executing UDTF: ", e);
       throw new IoTDBRuntimeException(
           e.getMessage(), TSStatusCode.EXECUTE_UDF_ERROR.getStatusCode(), true);
     }
@@ -93,6 +107,7 @@ public class TableFunctionLeafOperator implements ProcessOperator {
     try {
       processor.beforeDestroy();
     } catch (Exception e) {
+      LOGGER.warn("Exception happened when executing UDTF: ", e);
       throw new IoTDBRuntimeException(
           e.getMessage(), TSStatusCode.EXECUTE_UDF_ERROR.getStatusCode(), true);
     }

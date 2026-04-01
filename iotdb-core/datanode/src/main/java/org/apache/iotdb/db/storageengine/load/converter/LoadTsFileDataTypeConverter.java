@@ -54,24 +54,31 @@ public class LoadTsFileDataTypeConverter {
 
   public static final LoadConvertedInsertTabletStatementTSStatusVisitor STATEMENT_STATUS_VISITOR =
       new LoadConvertedInsertTabletStatementTSStatusVisitor();
-  public static final LoadConvertedInsertTabletStatementExceptionVisitor
-      STATEMENT_EXCEPTION_VISITOR = new LoadConvertedInsertTabletStatementExceptionVisitor();
+  public static final LoadTreeConvertedInsertTabletStatementExceptionVisitor
+      TREE_STATEMENT_EXCEPTION_VISITOR =
+          new LoadTreeConvertedInsertTabletStatementExceptionVisitor();
+  public static final LoadTableConvertedInsertTabletStatementExceptionVisitor
+      TABLE_STATEMENT_EXCEPTION_VISITOR =
+          new LoadTableConvertedInsertTabletStatementExceptionVisitor();
 
   private final boolean isGeneratedByPipe;
   private final MPPQueryContext context;
 
   private final SqlParser relationalSqlParser = new SqlParser();
   private final LoadTableStatementDataTypeConvertExecutionVisitor
-      tableStatementDataTypeConvertExecutionVisitor =
-          new LoadTableStatementDataTypeConvertExecutionVisitor(this::executeForTableModel);
+      tableStatementDataTypeConvertExecutionVisitor;
   private final LoadTreeStatementDataTypeConvertExecutionVisitor
-      treeStatementDataTypeConvertExecutionVisitor =
-          new LoadTreeStatementDataTypeConvertExecutionVisitor(this::executeForTreeModel);
+      treeStatementDataTypeConvertExecutionVisitor;
 
   public LoadTsFileDataTypeConverter(
       final MPPQueryContext context, final boolean isGeneratedByPipe) {
     this.context = context;
     this.isGeneratedByPipe = isGeneratedByPipe;
+
+    tableStatementDataTypeConvertExecutionVisitor =
+        new LoadTableStatementDataTypeConvertExecutionVisitor(this::executeForTableModel);
+    treeStatementDataTypeConvertExecutionVisitor =
+        new LoadTreeStatementDataTypeConvertExecutionVisitor(this::executeForTreeModel);
   }
 
   public Optional<TSStatus> convertForTableModel(final LoadTsFile loadTsFileTableStatement) {
@@ -89,18 +96,24 @@ public class LoadTsFileDataTypeConverter {
   }
 
   private TSStatus executeForTableModel(final Statement statement, final String databaseName) {
-    final IClientSession session =
-        new InternalClientSession(
-            String.format(
-                "%s_%s",
-                LoadTsFileDataTypeConverter.class.getSimpleName(),
-                Thread.currentThread().getName()));
-    session.setUsername(AuthorityChecker.SUPER_USER);
-    session.setClientVersion(IoTDBConstant.ClientVersion.V_1_0);
-    session.setZoneId(ZoneId.systemDefault());
-    session.setSqlDialect(IClientSession.SqlDialect.TABLE);
+    final IClientSession session;
+    final boolean needToCreateSession = SESSION_MANAGER.getCurrSession() == null;
+    if (needToCreateSession) {
+      session =
+          new InternalClientSession(
+              String.format(
+                  "%s_%s",
+                  LoadTsFileDataTypeConverter.class.getSimpleName(),
+                  Thread.currentThread().getName()));
+      session.setUsername(AuthorityChecker.SUPER_USER);
+      session.setClientVersion(IoTDBConstant.ClientVersion.V_1_0);
+      session.setZoneId(ZoneId.systemDefault());
+      session.setSqlDialect(IClientSession.SqlDialect.TABLE);
 
-    SESSION_MANAGER.registerSession(session);
+      SESSION_MANAGER.registerSession(session);
+    } else {
+      session = SESSION_MANAGER.getCurrSession();
+    }
     try {
       return Coordinator.getInstance()
           .executeForTableModel(
@@ -114,7 +127,9 @@ public class LoadTsFileDataTypeConverter {
               IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold())
           .status;
     } finally {
-      SESSION_MANAGER.removeCurrSession();
+      if (needToCreateSession) {
+        SESSION_MANAGER.removeCurrSession();
+      }
     }
   }
 
@@ -134,17 +149,43 @@ public class LoadTsFileDataTypeConverter {
   }
 
   private TSStatus executeForTreeModel(final Statement statement) {
-    return Coordinator.getInstance()
-        .executeForTreeModel(
-            isGeneratedByPipe ? new PipeEnrichedStatement(statement) : statement,
-            SESSION_MANAGER.requestQueryId(),
-            SESSION_MANAGER.getSessionInfo(SESSION_MANAGER.getCurrSession()),
-            "",
-            ClusterPartitionFetcher.getInstance(),
-            ClusterSchemaFetcher.getInstance(),
-            IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold(),
-            false)
-        .status;
+    final IClientSession session;
+    final boolean needToCreateSession = SESSION_MANAGER.getCurrSession() == null;
+    if (needToCreateSession) {
+      session =
+          new InternalClientSession(
+              String.format(
+                  "%s_%s",
+                  LoadTsFileDataTypeConverter.class.getSimpleName(),
+                  Thread.currentThread().getName()));
+      session.setUsername(AuthorityChecker.SUPER_USER);
+      session.setClientVersion(IoTDBConstant.ClientVersion.V_1_0);
+      session.setZoneId(ZoneId.systemDefault());
+      session.setSqlDialect(IClientSession.SqlDialect.TREE);
+
+      SESSION_MANAGER.registerSession(session);
+    } else {
+      session = SESSION_MANAGER.getCurrSession();
+    }
+
+    try {
+      return Coordinator.getInstance()
+          .executeForTreeModel(
+              isGeneratedByPipe ? new PipeEnrichedStatement(statement) : statement,
+              SESSION_MANAGER.requestQueryId(),
+              SESSION_MANAGER.getSessionInfoOfTreeModel(session),
+              "",
+              ClusterPartitionFetcher.getInstance(),
+              ClusterSchemaFetcher.getInstance(),
+              IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold(),
+              false,
+              false)
+          .status;
+    } finally {
+      if (needToCreateSession) {
+        SESSION_MANAGER.removeCurrSession();
+      }
+    }
   }
 
   public boolean isSuccessful(final TSStatus status) {

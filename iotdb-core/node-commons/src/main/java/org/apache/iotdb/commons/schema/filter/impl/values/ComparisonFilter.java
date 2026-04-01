@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterType;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterVisitor;
 
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -33,6 +34,10 @@ import java.util.Objects;
 import static java.util.Objects.requireNonNull;
 
 public class ComparisonFilter extends SchemaFilter {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(ComparisonFilter.class);
+
   private final Operator operator;
   private final String value;
 
@@ -94,6 +99,11 @@ public class ComparisonFilter extends SchemaFilter {
   @Override
   public int hashCode() {
     return Objects.hash(operator, value);
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE + RamUsageEstimator.sizeOf(value);
   }
 
   public enum Operator {

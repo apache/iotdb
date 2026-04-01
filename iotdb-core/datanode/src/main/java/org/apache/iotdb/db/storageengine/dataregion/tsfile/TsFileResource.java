@@ -50,6 +50,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.PlainDevice
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.TimeIndexLevel;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
 
+import com.google.common.util.concurrent.RateLimiter;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.ITimeSeriesMetadata;
@@ -96,12 +97,12 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
 import static org.apache.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
 @SuppressWarnings("java:S1135") // ignore todos
-public class TsFileResource implements PersistentResource {
+public class TsFileResource implements PersistentResource, Cloneable {
 
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(TsFileResource.class)
           + RamUsageEstimator.shallowSizeOfInstance(TsFileRepairStatus.class)
-          + RamUsageEstimator.shallowSizeOfInstance(TsFileID.class);
+          + TsFileID.SHALLOW_SIZE;
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TsFileResource.class);
 
@@ -125,7 +126,9 @@ public class TsFileResource implements PersistentResource {
   protected TsFileResource next;
 
   /** time index */
-  private ITimeIndex timeIndex;
+  private volatile ITimeIndex timeIndex;
+
+  private final AtomicReference<Boolean> isEmpty = new AtomicReference<>();
 
   private Future<ModificationFile> exclusiveModFileFuture;
   // this future suggest when the async recovery ends
@@ -150,11 +153,11 @@ public class TsFileResource implements PersistentResource {
   /** used for check whether this file has internal unsorted data in compaction selection */
   private TsFileRepairStatus tsFileRepairStatus = TsFileRepairStatus.NORMAL;
 
-  private TsFileLock tsFileLock = new TsFileLock();
+  private final TsFileLock tsFileLock = new TsFileLock();
 
   private boolean isSeq;
 
-  private FSFactory fsFactory = FSFactoryProducer.getFSFactory();
+  private final FSFactory fsFactory = FSFactoryProducer.getFSFactory();
 
   private DataRegion.SettleTsFileCallBack settleTsFileCallBack;
 
@@ -196,8 +199,8 @@ public class TsFileResource implements PersistentResource {
 
   private final AtomicReference<ProgressIndex> maxProgressIndex = new AtomicReference<>();
 
-  /** used to prevent circular replication in PipeConsensus */
-  private volatile boolean isGeneratedByPipeConsensus = false;
+  /** used to prevent circular replication in IoTConsensusV2 */
+  private volatile boolean isGeneratedByIoTConsensusV2 = false;
 
   /** used to prevent circular replication in Pipe */
   private volatile boolean isGeneratedByPipe = false;
@@ -309,7 +312,7 @@ public class TsFileResource implements PersistentResource {
     }
 
     TsFileResourceBlockType.PIPE_MARK.serialize(outputStream);
-    ReadWriteIOUtils.write(isGeneratedByPipeConsensus, outputStream);
+    ReadWriteIOUtils.write(isGeneratedByIoTConsensusV2, outputStream);
     ReadWriteIOUtils.write(isGeneratedByPipe, outputStream);
   }
 
@@ -318,7 +321,8 @@ public class TsFileResource implements PersistentResource {
     try (InputStream inputStream = fsFactory.getBufferedInputStream(file + RESOURCE_SUFFIX)) {
       // The first byte is VERSION_NUMBER, second byte is timeIndexType.
       ReadWriteIOUtils.readByte(inputStream);
-      timeIndex = ITimeIndex.createTimeIndex(inputStream);
+      timeIndex =
+          ITimeIndex.createTimeIndex(inputStream, IDeviceID.Deserializer.DEFAULT_DESERIALIZER);
       maxPlanIndex = ReadWriteIOUtils.readLong(inputStream);
       minPlanIndex = ReadWriteIOUtils.readLong(inputStream);
 
@@ -343,7 +347,7 @@ public class TsFileResource implements PersistentResource {
             maxProgressIndex.set(ProgressIndexType.deserializeFrom(inputStream));
             break;
           case PIPE_MARK:
-            isGeneratedByPipeConsensus = ReadWriteIOUtils.readBoolean(inputStream);
+            isGeneratedByIoTConsensusV2 = ReadWriteIOUtils.readBoolean(inputStream);
             isGeneratedByPipe = ReadWriteIOUtils.readBoolean(inputStream);
             break;
           default:
@@ -674,7 +678,12 @@ public class TsFileResource implements PersistentResource {
     return timeIndex.getDevices(file.getPath(), this);
   }
 
-  public ArrayDeviceTimeIndex buildDeviceTimeIndex() throws IOException {
+  public Set<IDeviceID> getDevices(RateLimiter limiter) {
+    return timeIndex.getDevices(file.getPath(), this, limiter);
+  }
+
+  public ArrayDeviceTimeIndex buildDeviceTimeIndex(IDeviceID.Deserializer deserializer)
+      throws IOException {
     readLock();
     try {
       if (!resourceFileExists()) {
@@ -684,7 +693,8 @@ public class TsFileResource implements PersistentResource {
           FSFactoryProducer.getFSFactory()
               .getBufferedInputStream(file.getPath() + RESOURCE_SUFFIX)) {
         ReadWriteIOUtils.readByte(inputStream);
-        ITimeIndex timeIndexFromResourceFile = ITimeIndex.createTimeIndex(inputStream);
+        ITimeIndex timeIndexFromResourceFile =
+            ITimeIndex.createTimeIndex(inputStream, deserializer);
         if (!(timeIndexFromResourceFile instanceof ArrayDeviceTimeIndex)) {
           throw new IOException("cannot build DeviceTimeIndex from resource " + file.getPath());
         }
@@ -696,6 +706,10 @@ public class TsFileResource implements PersistentResource {
     } finally {
       readUnlock();
     }
+  }
+
+  public ArrayDeviceTimeIndex buildDeviceTimeIndex() throws IOException {
+    return buildDeviceTimeIndex(IDeviceID.Deserializer.DEFAULT_DESERIALIZER);
   }
 
   /**
@@ -752,12 +766,12 @@ public class TsFileResource implements PersistentResource {
     return processor;
   }
 
-  public boolean isGeneratedByPipeConsensus() {
-    return isGeneratedByPipeConsensus;
+  public boolean isGeneratedByIoTConsensusV2() {
+    return isGeneratedByIoTConsensusV2;
   }
 
-  public void setGeneratedByPipeConsensus(boolean generatedByPipeConsensus) {
-    isGeneratedByPipeConsensus = generatedByPipeConsensus;
+  public void setGeneratedByIoTConsensusV2(boolean generatedByIoTConsensusV2) {
+    isGeneratedByIoTConsensusV2 = generatedByIoTConsensusV2;
   }
 
   public boolean isGeneratedByPipe() {
@@ -833,6 +847,12 @@ public class TsFileResource implements PersistentResource {
    * file physically.
    */
   public boolean remove() {
+    // To release the memory occupied by pipe if held by it
+    // Note that pipe can safely handle the case that the time index does not exist
+    isEmpty();
+    if (getStatus() != TsFileResourceStatus.UNCLOSED) {
+      degradeTimeIndex();
+    }
     forceMarkDeleted();
     try {
       fsFactory.deleteIfExists(file);
@@ -1019,7 +1039,8 @@ public class TsFileResource implements PersistentResource {
             endTime);
         return false;
       }
-
+      // we cannot count the filtered rows in tsfile due to the lack of related info about the
+      // tsfile
       boolean res = timeFilter.satisfyStartEndTime(startTime, endTime);
       if (debug && !res) {
         DEBUG_LOGGER.info(
@@ -1059,7 +1080,8 @@ public class TsFileResource implements PersistentResource {
    *
    * @return TimeseriesMetadata or the first ValueTimeseriesMetadata in VectorTimeseriesMetadata
    */
-  public ITimeSeriesMetadata getTimeSeriesMetadata(IFullPath seriesPath) throws IOException {
+  public ITimeSeriesMetadata getTimeSeriesMetadata(IFullPath seriesPath, Filter globalTimeFilter)
+      throws IOException {
     try {
       return pathToTimeSeriesMetadataMap.computeIfAbsent(
           seriesPath,
@@ -1069,7 +1091,8 @@ public class TsFileResource implements PersistentResource {
                 return ResourceByPathUtils.getResourceInstance(seriesPath)
                     .generateTimeSeriesMetadata(
                         pathToReadOnlyMemChunkMap.get(seriesPath),
-                        pathToChunkMetadataListMap.get(seriesPath));
+                        pathToChunkMetadataListMap.get(seriesPath),
+                        globalTimeFilter);
               } catch (IOException e) {
                 throw new UncheckedIOException(e);
               }
@@ -1119,13 +1142,18 @@ public class TsFileResource implements PersistentResource {
    * @return resource map size
    */
   public long calculateRamSize() {
+    final ProgressIndex progressIndex = maxProgressIndex.get();
     if (timeIndex.getTimeIndexType() == ITimeIndex.FILE_TIME_INDEX_TYPE) {
-      return INSTANCE_SIZE + timeIndex.calculateRamSize();
+      return INSTANCE_SIZE
+          + timeIndex.calculateRamSize()
+          + (Objects.nonNull(progressIndex) ? progressIndex.ramBytesUsed() : 0);
     }
     if (deviceTimeIndexRamSize == 0) {
       deviceTimeIndexRamSize = timeIndex.calculateRamSize();
     }
-    return INSTANCE_SIZE + deviceTimeIndexRamSize;
+    return INSTANCE_SIZE
+        + deviceTimeIndexRamSize
+        + (Objects.nonNull(progressIndex) ? progressIndex.ramBytesUsed() : 0);
   }
 
   // used for compaction
@@ -1387,7 +1415,8 @@ public class TsFileResource implements PersistentResource {
     }
 
     if (!maxProgressIndex.compareAndSet(null, progressIndex)) {
-      maxProgressIndex.get().updateToMinimumEqualOrIsAfterProgressIndex(progressIndex);
+      maxProgressIndex.updateAndGet(
+          index -> index.updateToMinimumEqualOrIsAfterProgressIndex(progressIndex));
     }
   }
 
@@ -1418,7 +1447,9 @@ public class TsFileResource implements PersistentResource {
   }
 
   public boolean isEmpty() {
-    return getFileStartTime() == Long.MAX_VALUE && getFileEndTime() == Long.MIN_VALUE;
+    isEmpty.compareAndSet(
+        null, getFileStartTime() == Long.MAX_VALUE && getFileEndTime() == Long.MIN_VALUE);
+    return isEmpty.get();
   }
 
   public String getDatabaseName() {
@@ -1568,5 +1599,46 @@ public class TsFileResource implements PersistentResource {
 
   public void setLastValues(Map<IDeviceID, List<Pair<String, TimeValuePair>>> lastValues) {
     this.lastValues = lastValues;
+  }
+
+  public TsFileResource shallowClone() {
+    TsFileResource cloned = new TsFileResource();
+    cloned.file = this.file;
+    cloned.timeIndex = this.timeIndex;
+    cloned.maxPlanIndex = this.maxPlanIndex;
+    cloned.minPlanIndex = this.minPlanIndex;
+    cloned.exclusiveModFileFuture = this.exclusiveModFileFuture;
+    cloned.sharedModFilePathFuture = this.sharedModFilePathFuture;
+    cloned.modFileManagement = this.modFileManagement;
+    cloned.exclusiveModFile = this.exclusiveModFile;
+    cloned.sharedModFile = this.sharedModFile;
+    cloned.sharedModFileOffset = this.sharedModFileOffset;
+    cloned.compactionModFile = this.compactionModFile;
+    cloned.isSeq = this.isSeq;
+    cloned.tsFileRepairStatus = this.tsFileRepairStatus;
+    cloned.settleTsFileCallBack = this.settleTsFileCallBack;
+    cloned.deviceTimeIndexRamSize = this.deviceTimeIndexRamSize;
+    cloned.tsFileSize = this.tsFileSize;
+    cloned.processor = this.processor;
+    cloned.originTsFileResource = this.originTsFileResource;
+    cloned.isGeneratedByIoTConsensusV2 = this.isGeneratedByIoTConsensusV2;
+    cloned.isGeneratedByPipe = this.isGeneratedByPipe;
+    cloned.insertionCompactionCandidateStatus = this.insertionCompactionCandidateStatus;
+    cloned.tierLevel = this.tierLevel;
+    cloned.pathToChunkMetadataListMap = this.pathToChunkMetadataListMap;
+    cloned.pathToReadOnlyMemChunkMap = this.pathToReadOnlyMemChunkMap;
+    cloned.pathToTimeSeriesMetadataMap = this.pathToTimeSeriesMetadataMap;
+    cloned.lastValues = this.lastValues;
+    cloned.maxProgressIndex.set(this.maxProgressIndex.get());
+    cloned.atomicStatus.set(this.atomicStatus.get());
+    cloned.isEmpty.set(this.isEmpty.get());
+    cloned.tsFileID = this.tsFileID;
+    cloned.prev = null;
+    cloned.next = null;
+    return cloned;
+  }
+
+  public TsFileResource shallowCloneForNative() throws CloneNotSupportedException {
+    return (TsFileResource) clone();
   }
 }

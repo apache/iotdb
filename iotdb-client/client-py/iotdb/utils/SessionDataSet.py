@@ -16,6 +16,7 @@
 # under the License.
 #
 import logging
+from typing import Optional
 
 from iotdb.utils.Field import Field
 
@@ -142,6 +143,24 @@ class SessionDataSet(object):
 
     def close_operation_handle(self):
         self.iotdb_rpc_data_set.close()
+
+    def has_next_df(self) -> bool:
+        """
+        Evaluate if there are more DataFrames to be fetched.
+        :return: whether there are more DataFrames to be fetched
+        """
+        # Check if buffer has data or if there are more results to fetch
+        rpc_ds = self.iotdb_rpc_data_set
+        return rpc_ds._has_buffered_data() or rpc_ds._has_next_result_set()
+
+    def next_df(self) -> Optional[pd.DataFrame]:
+        """
+        Get the next DataFrame from the result set.
+        Each returned DataFrame contains exactly fetch_size rows,
+        except for the last DataFrame which may contain fewer rows.
+        :return: the next DataFrame, or None if no more data
+        """
+        return self.iotdb_rpc_data_set.next_dataframe()
 
     def todf(self) -> pd.DataFrame:
         return result_set_to_pandas(self)

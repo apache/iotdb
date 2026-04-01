@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task;
 
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
@@ -43,6 +44,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
+import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageIndex.TableDiskUsageIndex;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.exception.StopReadTsFileByInterruptException;
@@ -116,14 +118,14 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
   }
 
   protected static class InnerCompactionTaskFilesView {
-    protected List<TsFileResource> sortedAllSourceFilesInTask;
-    protected List<TsFileResource> sourceFilesInCompactionPerformer;
-    protected List<TsFileResource> skippedSourceFiles;
+    protected List<TsFileResource> sortedAllSourceFilesInTask = Collections.emptyList();
+    protected List<TsFileResource> sourceFilesInCompactionPerformer = Collections.emptyList();
+    protected List<TsFileResource> skippedSourceFiles = Collections.emptyList();
     protected boolean sequence;
-    protected List<TsFileResource> sourceFilesInLog;
-    protected List<TsFileResource> targetFilesInLog;
-    protected List<TsFileResource> targetFilesInPerformer;
-    protected List<TsFileResource> renamedTargetFiles;
+    protected List<TsFileResource> sourceFilesInLog = Collections.emptyList();
+    protected List<TsFileResource> targetFilesInLog = Collections.emptyList();
+    protected List<TsFileResource> targetFilesInPerformer = Collections.emptyList();
+    protected List<TsFileResource> renamedTargetFiles = Collections.emptyList();
 
     protected long selectedFileSize;
     protected int sumOfCompactionCount;
@@ -432,7 +434,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
 
     CompactionUtils.deleteSourceTsFileAndUpdateFileMetrics(
         filesView.sourceFilesInLog, filesView.sequence);
-
+    updateTableSizeCache();
     CompactionMetrics.getInstance().recordSummaryInfo(summary);
   }
 
@@ -456,6 +458,28 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
 
     CompactionUtils.combineModsInInnerCompaction(
         filesView.sourceFilesInCompactionPerformer, filesView.targetFilesInPerformer);
+  }
+
+  protected void updateTableSizeCache() {
+    if (!PathUtils.isTableModelDatabase(this.storageGroupName)) {
+      return;
+    }
+    for (int i = 0; i < filesView.renamedTargetFiles.size(); i++) {
+      TableDiskUsageIndex.getInstance()
+          .write(
+              this.storageGroupName,
+              filesView.skippedSourceFiles.get(i).getTsFileID(),
+              filesView.renamedTargetFiles.get(i).getTsFileID());
+    }
+    for (TsFileResource resource : filesView.targetFilesInPerformer) {
+      if (!resource.isDeleted()) {
+        TableDiskUsageIndex.getInstance()
+            .write(
+                this.storageGroupName,
+                resource.getTsFileID(),
+                summary.getTableSizeMapOfTargetResource(resource.getTsFileID()));
+      }
+    }
   }
 
   public void recover() {
@@ -656,6 +680,9 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
    * selected files to false.
    */
   protected void releaseAllLocks() {
+    if (isHoldingWriteLock == null) {
+      return;
+    }
     for (int i = 0; i < filesView.sourceFilesInLog.size(); ++i) {
       TsFileResource resource = filesView.sourceFilesInLog.get(i);
       if (isHoldingWriteLock[i]) {

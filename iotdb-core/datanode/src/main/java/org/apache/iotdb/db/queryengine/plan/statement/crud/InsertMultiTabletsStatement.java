@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement.crud;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -60,6 +61,7 @@ public class InsertMultiTabletsStatement extends InsertBaseStatement {
     this.insertTabletStatementList = insertTabletStatementList;
   }
 
+  @Override
   public List<PartialPath> getDevicePaths() {
     List<PartialPath> partialPaths = new ArrayList<>();
     for (InsertTabletStatement insertTabletStatement : insertTabletStatementList) {
@@ -161,6 +163,12 @@ public class InsertMultiTabletsStatement extends InsertBaseStatement {
     insertTabletStatementList.forEach(InsertTabletStatement::toLowerCase);
   }
 
+  @TableModel
+  @Override
+  public void toLowerCaseForDevicePath() {
+    insertTabletStatementList.forEach(InsertTabletStatement::toLowerCaseForDevicePath);
+  }
+
   @Override
   protected long calculateBytesUsed() {
     return INSTANCE_SIZE
@@ -198,5 +206,16 @@ public class InsertMultiTabletsStatement extends InsertBaseStatement {
   @Override
   protected void subRemoveAttributeColumns(List<Integer> columnsToKeep) {
     insertTabletStatementList.forEach(InsertBaseStatement::removeAttributeColumns);
+  }
+
+  @Override
+  public String toString() {
+    final int size = CommonDescriptor.getInstance().getConfig().getPathLogMaxSize();
+    return "InsertMultiTabletsStatement{"
+        + "insertTabletStatementList="
+        + (Objects.nonNull(insertTabletStatementList) && insertTabletStatementList.size() > size
+            ? "(Partial) " + insertTabletStatementList.subList(0, size)
+            : insertTabletStatementList)
+        + '}';
   }
 }

@@ -34,6 +34,7 @@ struct TSStatus {
   3: optional list<TSStatus> subStatus
   4: optional TEndPoint redirectNode
   5: optional bool needRetry
+  6: optional binary responseData
 }
 
 enum TConsensusGroupType {
@@ -261,6 +262,20 @@ struct TNodeLocations {
   2: optional list<TDataNodeLocation> dataNodeLocations
 }
 
+struct TExternalServiceListResp {
+  1: required TSStatus status
+  2: required list<TExternalServiceEntry> externalServiceInfos
+}
+
+
+struct TExternalServiceEntry {
+  1: required string serviceName
+  2: required string className
+  3: required byte state
+  4: required i32 dataNodeId
+  5: required byte serviceType
+}
+
 enum TAggregationType {
   COUNT,
   AVG,
@@ -294,6 +309,7 @@ enum TAggregationType {
   COUNT_ALL,
   APPROX_COUNT_DISTINCT,
   APPROX_MOST_FREQUENT,
+  APPROX_PERCENTILE,
   CORR,
   COVAR_POP,
   COVAR_SAMP,
@@ -311,6 +327,11 @@ struct TShowConfigurationTemplateResp {
 struct TShowConfigurationResp {
   1: required TSStatus status
   2: required string content
+}
+
+struct TShowAppliedConfigurationsResp {
+  1: required TSStatus status
+  2: optional map<string, string> data
 }
 
 // for AINode

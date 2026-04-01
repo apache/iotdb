@@ -143,7 +143,7 @@ public class DropPipePluginProcedure extends AbstractNodeProcedure<DropPipePlugi
       subscriptionInfo.validatePipePluginUsageByTopic(pluginName);
     } catch (PipeException e) {
       // if the pipe plugin is a built-in plugin, we should not drop it
-      LOGGER.warn(e.getMessage());
+      LOGGER.info(e.getMessage());
       pipePluginCoordinator.unlock();
       pipeTaskCoordinator.unlock();
       setFailure(new ProcedureException(e.getMessage()));

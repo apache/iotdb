@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.List;
 import java.util.Objects;
@@ -29,6 +30,9 @@ import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Objects.requireNonNull;
 
 public class QuerySpecification extends QueryBody {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(QuerySpecification.class);
 
   private final Select select;
   private final Optional<Relation> from;
@@ -184,5 +188,23 @@ public class QuerySpecification extends QueryBody {
   @Override
   public boolean shallowEquals(Node other) {
     return sameClass(this, other);
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(select);
+    size += 8 * AstMemoryEstimationHelper.OPTIONAL_INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(from.orElse(null));
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(where.orElse(null));
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(groupBy.orElse(null));
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(having.orElse(null));
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(fill.orElse(null));
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeList(windows);
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(orderBy.orElse(null));
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(offset.orElse(null));
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(limit.orElse(null));
+    return size;
   }
 }

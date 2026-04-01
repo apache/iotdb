@@ -41,7 +41,12 @@ public class VirtualDataRegion implements IDataRegionForQuery {
 
   private static final String VIRTUAL_DB_NAME = "root.__virtual";
 
+  private static final String VIRTUAL_DATA_REGION_ID = "virtual_data_region";
+
   public static final QueryDataSource EMPTY_QUERY_DATA_SOURCE =
+      new QueryDataSource(Collections.emptyList(), Collections.emptyList());
+
+  public static final QueryDataSource UNFINISHED_QUERY_DATA_SOURCE =
       new QueryDataSource(Collections.emptyList(), Collections.emptyList());
 
   private static final QueryDataSourceForRegionScan EMPTY_REGION_QUERY_DATA_SOURCE =
@@ -52,8 +57,9 @@ public class VirtualDataRegion implements IDataRegionForQuery {
   }
 
   @Override
-  public void readLock() {
-    // do nothing, because itself is thread-safe already
+  public boolean tryReadLock(long waitMillis) {
+    // do nothing, always return true
+    return true;
   }
 
   @Override
@@ -69,6 +75,19 @@ public class VirtualDataRegion implements IDataRegionForQuery {
       Filter globalTimeFilter,
       List<Long> timePartitions)
       throws QueryProcessException {
+    return query(
+        pathList, singleDeviceId, context, globalTimeFilter, timePartitions, Long.MAX_VALUE);
+  }
+
+  @Override
+  public QueryDataSource query(
+      List<IFullPath> pathList,
+      IDeviceID singleDeviceId,
+      QueryContext context,
+      Filter globalTimeFilter,
+      List<Long> timePartitions,
+      long waitForLockTimeInMs)
+      throws QueryProcessException {
     return EMPTY_QUERY_DATA_SOURCE;
   }
 
@@ -77,8 +96,8 @@ public class VirtualDataRegion implements IDataRegionForQuery {
       Map<IDeviceID, DeviceContext> devicePathsToContext,
       QueryContext queryContext,
       Filter globalTimeFilter,
-      List<Long> timePartitions)
-      throws QueryProcessException {
+      List<Long> timePartitions,
+      long waitForLockTimeInMs) {
     return EMPTY_REGION_QUERY_DATA_SOURCE;
   }
 
@@ -87,14 +106,19 @@ public class VirtualDataRegion implements IDataRegionForQuery {
       List<IFullPath> pathList,
       QueryContext queryContext,
       Filter globalTimeFilter,
-      List<Long> timePartitions)
-      throws QueryProcessException {
+      List<Long> timePartitions,
+      long waitForLockTimeInMs) {
     return EMPTY_REGION_QUERY_DATA_SOURCE;
   }
 
   @Override
   public String getDatabaseName() {
     return VIRTUAL_DB_NAME;
+  }
+
+  @Override
+  public String getDataRegionIdString() {
+    return VIRTUAL_DATA_REGION_ID;
   }
 
   private static class InstanceHolder {

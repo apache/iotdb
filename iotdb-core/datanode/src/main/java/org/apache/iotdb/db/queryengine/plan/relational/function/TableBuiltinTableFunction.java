@@ -25,7 +25,9 @@ import org.apache.iotdb.commons.udf.builtin.relational.tvf.HOPTableFunction;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.SessionTableFunction;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.TumbleTableFunction;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.VariationTableFunction;
+import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.ClassifyTableFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.ForecastTableFunction;
+import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.PatternMatchTableFunction;
 import org.apache.iotdb.udf.api.relational.TableFunction;
 
 import java.util.Arrays;
@@ -40,7 +42,9 @@ public enum TableBuiltinTableFunction {
   SESSION("session"),
   VARIATION("variation"),
   CAPACITY("capacity"),
-  FORECAST("forecast");
+  FORECAST("forecast"),
+  PATTERN_MATCH("pattern_match"),
+  CLASSIFY("classify");
 
   private final String functionName;
 
@@ -78,10 +82,14 @@ public enum TableBuiltinTableFunction {
         return new SessionTableFunction();
       case "variation":
         return new VariationTableFunction();
+      case "pattern_match":
+        return new PatternMatchTableFunction();
       case "capacity":
         return new CapacityTableFunction();
       case "forecast":
         return new ForecastTableFunction();
+      case "classify":
+        return new ClassifyTableFunction();
       default:
         throw new UnsupportedOperationException("Unsupported table function: " + functionName);
     }

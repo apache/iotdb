@@ -26,6 +26,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ColumnDefinition;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CopyTo;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipe;
@@ -644,6 +645,21 @@ public final class SqlFormatter {
     }
 
     @Override
+    protected Void visitCopyTo(CopyTo node, Integer context) {
+      builder.append("COPY\n");
+      builder.append("(\n");
+      process(node.getQueryStatement(), context);
+      builder.append("\n) ");
+      builder.append("TO ");
+      builder.append('\'');
+      builder.append(node.getTargetFileName());
+      builder.append('\'');
+      builder.append("\n");
+      builder.append(node.getOptions().toString());
+      return null;
+    }
+
+    @Override
     protected Void visitExplainAnalyze(ExplainAnalyze node, Integer indent) {
       builder.append("EXPLAIN ANALYZE");
       if (node.isVerbose()) {
@@ -1146,12 +1162,12 @@ public final class SqlFormatter {
       builder.append(node.getPipeName());
       builder.append(" \n");
 
-      if (!node.getExtractorAttributes().isEmpty()) {
+      if (!node.getSourceAttributes().isEmpty()) {
         builder
             .append("WITH SOURCE (")
             .append("\n")
             .append(
-                node.getExtractorAttributes().entrySet().stream()
+                node.getSourceAttributes().entrySet().stream()
                     .map(
                         entry ->
                             indentString(1)
@@ -1182,12 +1198,12 @@ public final class SqlFormatter {
             .append(")\n");
       }
 
-      if (!node.getConnectorAttributes().isEmpty()) {
+      if (!node.getSinkAttributes().isEmpty()) {
         builder
             .append("WITH SINK (")
             .append("\n")
             .append(
-                node.getConnectorAttributes().entrySet().stream()
+                node.getSinkAttributes().entrySet().stream()
                     .map(
                         entry ->
                             indentString(1)

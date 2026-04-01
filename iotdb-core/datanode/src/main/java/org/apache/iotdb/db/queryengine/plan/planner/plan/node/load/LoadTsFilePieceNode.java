@@ -34,7 +34,6 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.File;
@@ -152,7 +151,9 @@ public class LoadTsFilePieceNode extends WritePlanNode {
   }
 
   public static PlanNode deserialize(ByteBuffer buffer) {
-    InputStream stream = new ByteArrayInputStream(buffer.array());
+    buffer = buffer.duplicate();
+    buffer.position(0);
+    ByteBufferInputStream stream = new ByteBufferInputStream(buffer);
     try {
       ReadWriteIOUtils.readShort(stream); // read PlanNodeType
       final File tsFile = new File(ReadWriteIOUtils.readString(stream));
@@ -192,5 +193,42 @@ public class LoadTsFilePieceNode extends WritePlanNode {
   @Override
   public String toString() {
     return "LoadTsFilePieceNode{" + "tsFile=" + tsFile + ", dataSize=" + dataSize + '}';
+  }
+
+  public static class ByteBufferInputStream extends InputStream {
+    private final ByteBuffer buffer;
+
+    public ByteBufferInputStream(ByteBuffer buffer) {
+      this.buffer = buffer;
+    }
+
+    @Override
+    public int read() {
+      if (!buffer.hasRemaining()) {
+        return -1;
+      }
+      return buffer.get() & 0xFF;
+    }
+
+    @Override
+    public int read(byte[] b, int off, int len) {
+      if (!buffer.hasRemaining()) {
+        return -1;
+      }
+      int toRead = Math.min(len, buffer.remaining());
+      buffer.get(b, off, toRead);
+      return toRead;
+    }
+
+    public ByteBuffer read(int length) {
+      if (length < 0 || length > buffer.remaining()) {
+        throw new IllegalArgumentException("Invalid length for slicing: " + length);
+      }
+      ByteBuffer slicedBuffer = buffer.slice();
+      slicedBuffer.limit(length);
+
+      buffer.position(buffer.position() + length);
+      return slicedBuffer;
+    }
   }
 }

@@ -76,8 +76,6 @@ import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand;
 
 import org.apache.tsfile.utils.Pair;
 
-import javax.ws.rs.NotSupportedException;
-
 import java.util.ArrayList;
 import java.util.List;
 
@@ -90,15 +88,14 @@ public class TransformToExpressionVisitor extends ViewExpressionVisitor<Expressi
 
   @Override
   public Expression visitExpression(ViewExpression expression, Void context) {
-    throw new RuntimeException(
-        new NotSupportedException(
-            "visitExpression in TransformToExpressionVisitor is not supported."));
+    throw new UnsupportedOperationException(
+        "visitExpression in TransformToExpressionVisitor is not supported.");
   }
 
   // region leaf operand
   @Override
   public Expression visitLeafOperand(LeafViewOperand leafViewOperand, Void context) {
-    throw new RuntimeException(new NotSupportedException("Can not construct abstract class."));
+    throw new UnsupportedOperationException("Can not construct abstract class.");
   }
 
   @Override
@@ -131,7 +128,7 @@ public class TransformToExpressionVisitor extends ViewExpressionVisitor<Expressi
   // region Unary Expressions
   @Override
   public Expression visitUnaryExpression(UnaryViewExpression unaryViewExpression, Void context) {
-    throw new RuntimeException(new NotSupportedException("Can not construct abstract class."));
+    throw new UnsupportedOperationException("Can not construct abstract class.");
   }
 
   @Override
@@ -184,7 +181,7 @@ public class TransformToExpressionVisitor extends ViewExpressionVisitor<Expressi
   @Override
   // region Binary Expressions
   public Expression visitBinaryExpression(BinaryViewExpression binaryViewExpression, Void context) {
-    throw new RuntimeException(new NotSupportedException("Can not construct abstract class."));
+    throw new UnsupportedOperationException("Can not construct abstract class.");
   }
 
   private Pair<Expression, Expression> getExpressionsForBinaryExpression(
@@ -197,7 +194,7 @@ public class TransformToExpressionVisitor extends ViewExpressionVisitor<Expressi
   // region Binary : Arithmetic Binary Expression
   public Expression visitArithmeticBinaryExpression(
       ArithmeticBinaryViewExpression arithmeticBinaryExpression, Void context) {
-    throw new RuntimeException(new NotSupportedException("Can not construct abstract class."));
+    throw new UnsupportedOperationException("Can not construct abstract class.");
   }
 
   public Expression visitAdditionExpression(
@@ -236,7 +233,7 @@ public class TransformToExpressionVisitor extends ViewExpressionVisitor<Expressi
   // region Binary: Compare Binary Expression
   public Expression visitCompareBinaryExpression(
       CompareBinaryViewExpression compareBinaryExpression, Void context) {
-    throw new RuntimeException(new NotSupportedException("Can not construct abstract class."));
+    throw new UnsupportedOperationException("Can not construct abstract class.");
   }
 
   public Expression visitEqualToExpression(EqualToViewExpression equalToExpression, Void context) {
@@ -281,7 +278,7 @@ public class TransformToExpressionVisitor extends ViewExpressionVisitor<Expressi
   // region Binary : Logic Binary Expression
   public Expression visitLogicBinaryExpression(
       LogicBinaryViewExpression logicBinaryExpression, Void context) {
-    throw new RuntimeException(new NotSupportedException("Can not construct abstract class."));
+    throw new UnsupportedOperationException("Can not construct abstract class.");
   }
 
   public Expression visitLogicAndExpression(
@@ -302,7 +299,7 @@ public class TransformToExpressionVisitor extends ViewExpressionVisitor<Expressi
   // region Ternary Expressions
   public Expression visitTernaryExpression(
       TernaryViewExpression ternaryViewExpression, Void context) {
-    throw new RuntimeException(new NotSupportedException("Can not construct abstract class."));
+    throw new UnsupportedOperationException("Can not construct abstract class.");
   }
 
   public Expression visitBetweenExpression(

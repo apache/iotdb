@@ -67,6 +67,7 @@ public class SumAccumulator implements TableAccumulator {
         return;
       case TEXT:
       case BLOB:
+      case OBJECT:
       case STRING:
       case BOOLEAN:
       case DATE:
@@ -95,6 +96,7 @@ public class SumAccumulator implements TableAccumulator {
         return;
       case TEXT:
       case BLOB:
+      case OBJECT:
       case STRING:
       case BOOLEAN:
       case DATE:

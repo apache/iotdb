@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -33,6 +34,10 @@ import java.util.Optional;
 import static java.util.Objects.requireNonNull;
 
 public class FunctionCall extends Expression {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(FunctionCall.class);
+
   private final QualifiedName name;
   private final Optional<Window> window;
   private final boolean distinct;
@@ -331,5 +336,23 @@ public class FunctionCall extends Expression {
     } else {
       this.processingMode = Optional.empty();
     }
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += name == null ? 0L : name.ramBytesUsed();
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeList(arguments);
+    size += 3 * AstMemoryEstimationHelper.OPTIONAL_INSTANCE_SIZE;
+    if (window.isPresent()) {
+      Window windowValue = window.get();
+      if (windowValue instanceof Node) {
+        size += ((Node) windowValue).ramBytesUsed();
+      }
+    }
+    size +=
+        AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(processingMode.orElse(null));
+    return size;
   }
 }

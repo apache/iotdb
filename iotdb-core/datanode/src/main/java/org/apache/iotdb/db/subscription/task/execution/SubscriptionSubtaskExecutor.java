@@ -23,7 +23,7 @@ import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.pipe.agent.task.execution.PipeSubtaskExecutor;
 import org.apache.iotdb.commons.pipe.agent.task.execution.PipeSubtaskScheduler;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
-import org.apache.iotdb.db.pipe.agent.task.execution.PipeConnectorSubtaskExecutor;
+import org.apache.iotdb.db.pipe.agent.task.execution.PipeSinkSubtaskExecutor;
 import org.apache.iotdb.db.subscription.task.subtask.SubscriptionReceiverSubtask;
 
 import java.util.concurrent.ExecutionException;
@@ -33,7 +33,7 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
-public class SubscriptionSubtaskExecutor extends PipeConnectorSubtaskExecutor {
+public class SubscriptionSubtaskExecutor extends PipeSinkSubtaskExecutor {
   private static final AtomicInteger id = new AtomicInteger(0);
 
   private final AtomicLong submittedReceiverSubtasks = new AtomicLong(0);

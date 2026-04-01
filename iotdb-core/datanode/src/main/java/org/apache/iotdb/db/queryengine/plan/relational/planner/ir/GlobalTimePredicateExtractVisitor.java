@@ -45,6 +45,7 @@ import org.apache.tsfile.utils.Pair;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral.TRUE_LITERAL;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression.Operator.AND;
@@ -269,6 +270,11 @@ public class GlobalTimePredicateExtractVisitor
   public static boolean isTimeColumn(Expression e, String timeColumnName) {
     return e instanceof SymbolReference
         && ((SymbolReference) e).getName().equalsIgnoreCase(timeColumnName);
+  }
+
+  public static boolean isMeasurementColumn(Expression e, Set<String> measurementColumns) {
+    return e instanceof SymbolReference
+        && measurementColumns.contains(((SymbolReference) e).getName());
   }
 
   public static boolean isExtractTimeColumn(Expression e, String timeColumnName) {

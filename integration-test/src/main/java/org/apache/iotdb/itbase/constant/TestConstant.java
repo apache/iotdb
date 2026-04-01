@@ -196,13 +196,12 @@ public class TestConstant {
   }
 
   public static String getTestTsFilePath(
-      String logicalStorageGroupName,
-      long VirtualStorageGroupId,
+      String logicalDatabaseName,
+      long VirtualDatabaseId,
       long TimePartitionId,
       long tsFileVersion) {
     String filePath =
-        String.format(
-            TEST_TSFILE_PATH, logicalStorageGroupName, VirtualStorageGroupId, TimePartitionId);
+        String.format(TEST_TSFILE_PATH, logicalDatabaseName, VirtualDatabaseId, TimePartitionId);
     String fileName =
         System.currentTimeMillis()
             + FilePathUtils.FILE_NAME_SEPARATOR
@@ -212,11 +211,8 @@ public class TestConstant {
   }
 
   public static String getTestTsFileDir(
-      String logicalStorageGroupName, long VirtualStorageGroupId, long TimePartitionId) {
+      String logicalDatabaseName, long VirtualDatabaseId, long TimePartitionId) {
     return String.format(
-        TestConstant.TEST_TSFILE_PATH,
-        logicalStorageGroupName,
-        VirtualStorageGroupId,
-        TimePartitionId);
+        TestConstant.TEST_TSFILE_PATH, logicalDatabaseName, VirtualDatabaseId, TimePartitionId);
   }
 }

@@ -341,6 +341,7 @@ public abstract class AbstractCastFunctionColumnTransformer extends UnaryColumnT
         case TEXT:
         case STRING:
         case BLOB:
+        case OBJECT:
           returnType.writeBinary(columnBuilder, value);
           break;
         default:
@@ -391,6 +392,15 @@ public abstract class AbstractCastFunctionColumnTransformer extends UnaryColumnT
     } catch (DateTimeParseException | NumberFormatException e) {
       throw new SemanticException(
           String.format("Cannot cast %s to %s type", stringValue, returnType.getDisplayName()));
+    }
+  }
+
+  protected void castObject(ColumnBuilder columnBuilder, Binary value) {
+    String stringValue = BytesUtils.parseObjectByteArrayToString(value.getValues());
+    if (returnType.getTypeEnum() == TypeEnum.STRING) {
+      returnType.writeBinary(columnBuilder, BytesUtils.valueOf(String.valueOf(stringValue)));
+    } else {
+      throw new UnsupportedOperationException(String.format(ERROR_MSG, returnType.getTypeEnum()));
     }
   }
 }

@@ -87,9 +87,7 @@ public class QuotaInfo implements SnapshotProcessor {
           spaceQuota.setDiskSize(IoTDBConstant.DEFAULT_VALUE);
         }
       }
-      if (!spaceQuotaUsage.containsKey(database)) {
-        spaceQuotaUsage.put(database, new TSpaceQuota());
-      }
+      spaceQuotaUsage.computeIfAbsent(database, k -> new TSpaceQuota());
       spaceQuotaLimit.put(database, spaceQuota);
     }
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);

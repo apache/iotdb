@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.tsfile.utils.RamUsageEstimator;
+
 import javax.annotation.Nullable;
 
 import java.util.Objects;
@@ -26,6 +28,9 @@ import java.util.Objects;
 import static com.google.common.base.MoreObjects.toStringHelper;
 
 public class ShowPipes extends PipeStatement {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(ShowPipes.class);
 
   private final String pipeName;
   private final boolean hasWhereClause;
@@ -72,5 +77,13 @@ public class ShowPipes extends PipeStatement {
         .add("pipeName", pipeName)
         .add("hasWhereClause", hasWhereClause)
         .toString();
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += RamUsageEstimator.sizeOf(pipeName);
+    return size;
   }
 }

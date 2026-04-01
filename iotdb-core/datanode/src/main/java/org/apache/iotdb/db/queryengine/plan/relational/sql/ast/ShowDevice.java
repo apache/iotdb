@@ -30,11 +30,15 @@ import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.Objects;
 import java.util.stream.Collectors;
 
 public class ShowDevice extends AbstractQueryDeviceWithCache {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(ShowDevice.class);
+
   private static final String ALIGNED_HEADER = "__aligned";
   private static final String DATABASE_HEADER = "__database";
   private Offset offset;
@@ -138,5 +142,13 @@ public class ShowDevice extends AbstractQueryDeviceWithCache {
   @Override
   public String toString() {
     return "ShowDevice" + toStringContent();
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE
+        + ramBytesUsedForCommonFields()
+        + AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(offset)
+        + AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(limit);
   }
 }

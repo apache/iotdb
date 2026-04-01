@@ -20,9 +20,9 @@
 package org.apache.iotdb.db.pipe.agent.plugin.dataregion;
 
 import org.apache.iotdb.commons.pipe.agent.plugin.PipePluginAgent;
-import org.apache.iotdb.commons.pipe.agent.plugin.constructor.PipeConnectorConstructor;
-import org.apache.iotdb.commons.pipe.agent.plugin.constructor.PipeExtractorConstructor;
 import org.apache.iotdb.commons.pipe.agent.plugin.constructor.PipeProcessorConstructor;
+import org.apache.iotdb.commons.pipe.agent.plugin.constructor.PipeSinkConstructor;
+import org.apache.iotdb.commons.pipe.agent.plugin.constructor.PipeSourceConstructor;
 import org.apache.iotdb.commons.pipe.agent.plugin.meta.DataNodePipePluginMetaKeeper;
 import org.apache.iotdb.commons.pipe.agent.plugin.meta.PipePluginMetaKeeper;
 import org.apache.iotdb.commons.pipe.datastructure.visibility.Visibility;
@@ -42,10 +42,9 @@ public class PipeDataRegionPluginAgent extends PipePluginAgent {
   }
 
   @Override
-  protected PipeExtractorConstructor createPipeExtractorConstructor(
+  protected PipeSourceConstructor createPipeSourceConstructor(
       PipePluginMetaKeeper pipePluginMetaKeeper) {
-    return new PipeDataRegionExtractorConstructor(
-        (DataNodePipePluginMetaKeeper) pipePluginMetaKeeper);
+    return new PipeDataRegionSourceConstructor((DataNodePipePluginMetaKeeper) pipePluginMetaKeeper);
   }
 
   @Override
@@ -56,32 +55,31 @@ public class PipeDataRegionPluginAgent extends PipePluginAgent {
   }
 
   @Override
-  protected PipeConnectorConstructor createPipeConnectorConstructor(
+  protected PipeSinkConstructor createPipeSinkConstructor(
       PipePluginMetaKeeper pipePluginMetaKeeper) {
-    return new PipeDataRegionConnectorConstructor(
-        (DataNodePipePluginMetaKeeper) pipePluginMetaKeeper);
+    return new PipeDataRegionSinkConstructor((DataNodePipePluginMetaKeeper) pipePluginMetaKeeper);
   }
 
   @Override
   public void validate(
-      String pipeName,
-      Map<String, String> extractorAttributes,
-      Map<String, String> processorAttributes,
-      Map<String, String> connectorAttributes)
+      final String pipeName,
+      final Map<String, String> sourceAttributes,
+      final Map<String, String> processorAttributes,
+      final Map<String, String> sinkAttributes)
       throws Exception {
-    PipeExtractor temporaryExtractor = validateExtractor(extractorAttributes);
-    PipeProcessor temporaryProcessor = validateProcessor(processorAttributes);
-    PipeConnector temporaryConnector = validateConnector(pipeName, connectorAttributes);
+    final PipeExtractor temporaryExtractor = validateSource(pipeName, sourceAttributes);
+    final PipeProcessor temporaryProcessor = validateProcessor(processorAttributes);
+    final PipeConnector temporaryConnector = validateSink(pipeName, sinkAttributes);
 
     // validate visibility
     // TODO: validate visibility for schema region and config region
-    Visibility pipeVisibility =
-        VisibilityUtils.calculateFromExtractorParameters(new PipeParameters(extractorAttributes));
-    Visibility extractorVisibility =
+    final Visibility pipeVisibility =
+        VisibilityUtils.calculateFromExtractorParameters(new PipeParameters(sourceAttributes));
+    final Visibility extractorVisibility =
         VisibilityUtils.calculateFromPluginClass(temporaryExtractor.getClass());
-    Visibility processorVisibility =
+    final Visibility processorVisibility =
         VisibilityUtils.calculateFromPluginClass(temporaryProcessor.getClass());
-    Visibility connectorVisibility =
+    final Visibility connectorVisibility =
         VisibilityUtils.calculateFromPluginClass(temporaryConnector.getClass());
     if (!VisibilityUtils.isCompatible(
         pipeVisibility, extractorVisibility, processorVisibility, connectorVisibility)) {
@@ -90,13 +88,13 @@ public class PipeDataRegionPluginAgent extends PipePluginAgent {
               "The visibility of the pipe (%s, %s) is not compatible with the visibility of the extractor (%s, %s, %s), processor (%s, %s, %s), and connector (%s, %s, %s).",
               pipeName,
               pipeVisibility,
-              extractorAttributes,
+              sourceAttributes,
               temporaryExtractor.getClass().getName(),
               extractorVisibility,
               processorAttributes,
               temporaryProcessor.getClass().getName(),
               processorVisibility,
-              connectorAttributes,
+              sinkAttributes,
               temporaryConnector.getClass().getName(),
               connectorVisibility));
     }

@@ -28,7 +28,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis.GroupingSetAnalysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.FieldId;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.RelationType;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.GapFillStartAndEndTimeExtractVisitor;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.PredicateWithUncorrelatedScalarSubqueryReconstructor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.Aggregation;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
@@ -123,6 +125,9 @@ public class QueryPlanner {
   private final Optional<TranslationMap> outerContext;
   private final Map<NodeRef<Node>, RelationPlan> recursiveSubqueries;
 
+  private final PredicateWithUncorrelatedScalarSubqueryReconstructor
+      predicateWithUncorrelatedScalarSubqueryReconstructor;
+
   // private final Map<NodeRef<LambdaArgumentDeclaration>, Symbol> lambdaDeclarationToSymbolMap;
   // private final SubqueryPlanner subqueryPlanner;
 
@@ -132,13 +137,18 @@ public class QueryPlanner {
       MPPQueryContext queryContext,
       Optional<TranslationMap> outerContext,
       SessionInfo session,
-      Map<NodeRef<Node>, RelationPlan> recursiveSubqueries) {
+      Map<NodeRef<Node>, RelationPlan> recursiveSubqueries,
+      PredicateWithUncorrelatedScalarSubqueryReconstructor
+          predicateWithUncorrelatedScalarSubqueryReconstructor) {
     requireNonNull(analysis, "analysis is null");
     requireNonNull(symbolAllocator, "symbolAllocator is null");
     requireNonNull(queryContext, "queryContext is null");
     requireNonNull(outerContext, "outerContext is null");
     requireNonNull(session, "session is null");
     requireNonNull(recursiveSubqueries, "recursiveSubqueries is null");
+    requireNonNull(
+        predicateWithUncorrelatedScalarSubqueryReconstructor,
+        "predicateWithUncorrelatedScalarSubqueryReconstructor is null");
 
     this.analysis = analysis;
     this.symbolAllocator = symbolAllocator;
@@ -148,8 +158,16 @@ public class QueryPlanner {
     this.outerContext = outerContext;
     this.subqueryPlanner =
         new SubqueryPlanner(
-            analysis, symbolAllocator, queryContext, outerContext, session, recursiveSubqueries);
+            analysis,
+            symbolAllocator,
+            queryContext,
+            outerContext,
+            session,
+            recursiveSubqueries,
+            predicateWithUncorrelatedScalarSubqueryReconstructor);
     this.recursiveSubqueries = recursiveSubqueries;
+    this.predicateWithUncorrelatedScalarSubqueryReconstructor =
+        predicateWithUncorrelatedScalarSubqueryReconstructor;
   }
 
   public RelationPlan plan(Query query) {
@@ -295,6 +313,9 @@ public class QueryPlanner {
     builder = limit(builder, node.getLimit(), orderingScheme);
 
     builder = builder.appendProjections(outputs, symbolAllocator, queryContext);
+    for (Expression expr : expressions) {
+      predicateWithUncorrelatedScalarSubqueryReconstructor.clearShadowExpression(expr);
+    }
 
     return new RelationPlan(
         builder.getRoot(), analysis.getScope(node), computeOutputs(builder, outputs), outerContext);
@@ -349,6 +370,9 @@ public class QueryPlanner {
 
       subPlan = subqueryPlanner.handleSubqueries(subPlan, inputs, analysis.getSubqueries(node));
       subPlan = subPlan.appendProjections(inputs, symbolAllocator, queryContext);
+      for (Expression input : inputs) {
+        predicateWithUncorrelatedScalarSubqueryReconstructor.clearShadowExpression(input);
+      }
 
       // Add projection to coerce inputs to their site-specific types.
       // This is important because the same lexical expression may need to be coerced
@@ -733,7 +757,13 @@ public class QueryPlanner {
   private PlanBuilder planQueryBody(QueryBody queryBody) {
     RelationPlan relationPlan =
         new RelationPlanner(
-                analysis, symbolAllocator, queryContext, outerContext, session, recursiveSubqueries)
+                analysis,
+                symbolAllocator,
+                queryContext,
+                outerContext,
+                session,
+                recursiveSubqueries,
+                predicateWithUncorrelatedScalarSubqueryReconstructor)
             .process(queryBody, null);
 
     return newPlanBuilder(relationPlan, analysis);
@@ -748,7 +778,8 @@ public class QueryPlanner {
                   queryContext,
                   outerContext,
                   session,
-                  recursiveSubqueries)
+                  recursiveSubqueries,
+                  predicateWithUncorrelatedScalarSubqueryReconstructor)
               .process(node.getFrom().orElse(null), null);
       return newPlanBuilder(relationPlan, analysis);
     } else {
@@ -762,9 +793,12 @@ public class QueryPlanner {
     }
 
     subPlan = subqueryPlanner.handleSubqueries(subPlan, predicate, analysis.getSubqueries(node));
-    return subPlan.withNewRoot(
-        new FilterNode(
-            queryIdAllocator.genPlanNodeId(), subPlan.getRoot(), subPlan.rewrite(predicate)));
+    PlanBuilder planBuilder =
+        subPlan.withNewRoot(
+            new FilterNode(
+                queryIdAllocator.genPlanNodeId(), subPlan.getRoot(), subPlan.rewrite(predicate)));
+    predicateWithUncorrelatedScalarSubqueryReconstructor.clearShadowExpression(predicate);
+    return planBuilder;
   }
 
   private PlanBuilder aggregate(PlanBuilder subPlan, QuerySpecification node) {
@@ -800,6 +834,9 @@ public class QueryPlanner {
     List<Expression> inputs = inputBuilder.build();
     subPlan = subqueryPlanner.handleSubqueries(subPlan, inputs, analysis.getSubqueries(node));
     subPlan = subPlan.appendProjections(inputs, symbolAllocator, queryContext);
+    for (Expression input : inputs) {
+      predicateWithUncorrelatedScalarSubqueryReconstructor.clearShadowExpression(input);
+    }
 
     Function<Expression, Expression> rewrite = subPlan.getTranslations()::rewrite;
 
@@ -1098,6 +1135,49 @@ public class QueryPlanner {
             new ProjectNode(idAllocator.genPlanNodeId(), subPlan.getRoot(), assignments.build()));
 
     return new PlanAndMappings(subPlan, mappings);
+  }
+
+  public static NodeAndMappings coerce(
+      RelationPlan plan, List<Type> types, SymbolAllocator symbolAllocator, QueryId idAllocator) {
+    List<Symbol> visibleFields = visibleFields(plan);
+    checkArgument(visibleFields.size() == types.size());
+
+    Assignments.Builder assignments = Assignments.builder();
+    ImmutableList.Builder<Symbol> mappings = ImmutableList.builder();
+    for (int i = 0; i < types.size(); i++) {
+      Symbol input = visibleFields.get(i);
+      Type type = types.get(i);
+
+      if (!symbolAllocator.getTypes().getTableModelType(input).equals(type)) {
+        Symbol coerced = symbolAllocator.newSymbol(input.getName(), type);
+        assignments.put(coerced, new Cast(input.toSymbolReference(), toSqlType(type)));
+        mappings.add(coerced);
+      } else {
+        assignments.putIdentity(input);
+        mappings.add(input);
+      }
+    }
+
+    ProjectNode coerced =
+        new ProjectNode(idAllocator.genPlanNodeId(), plan.getRoot(), assignments.build());
+    return new NodeAndMappings(coerced, mappings.build());
+  }
+
+  public static List<Symbol> visibleFields(RelationPlan subPlan) {
+    RelationType descriptor = subPlan.getDescriptor();
+    return descriptor.getAllFields().stream()
+        .filter(field -> !field.isHidden())
+        .map(descriptor::indexOf)
+        .map(subPlan.getFieldMappings()::get)
+        .collect(toImmutableList());
+  }
+
+  public static NodeAndMappings pruneInvisibleFields(RelationPlan plan, QueryId idAllocator) {
+    List<Symbol> visibleFields = visibleFields(plan);
+    ProjectNode pruned =
+        new ProjectNode(
+            idAllocator.genPlanNodeId(), plan.getRoot(), Assignments.identity(visibleFields));
+    return new NodeAndMappings(pruned, visibleFields);
   }
 
   public static OrderingScheme translateOrderingScheme(

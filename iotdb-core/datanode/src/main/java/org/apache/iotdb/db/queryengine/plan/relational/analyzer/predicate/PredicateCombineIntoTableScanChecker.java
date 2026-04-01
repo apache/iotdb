@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BetweenPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Extract;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IfExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InListExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InPredicate;
@@ -41,23 +42,17 @@ import java.util.Set;
 
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicatePushIntoScanChecker.isLiteral;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicatePushIntoScanChecker.isSymbolReference;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.GlobalTimePredicateExtractVisitor.isExtractTimeColumn;
 
 public class PredicateCombineIntoTableScanChecker extends PredicateVisitor<Boolean, Void> {
 
-  private final Set<String> measurementColumns;
-  private final String timeColumnName;
+  private final Set<String> timeOrMeasurementColumns;
 
-  public static boolean check(
-      Set<String> measurementColumns, String timeColumnName, Expression expression) {
-    return new PredicateCombineIntoTableScanChecker(measurementColumns, timeColumnName)
-        .process(expression);
+  public static boolean check(Set<String> measurementColumns, Expression expression) {
+    return new PredicateCombineIntoTableScanChecker(measurementColumns).process(expression);
   }
 
-  public PredicateCombineIntoTableScanChecker(
-      Set<String> measurementColumns, String timeColumnName) {
-    this.measurementColumns = measurementColumns;
-    this.timeColumnName = timeColumnName;
+  public PredicateCombineIntoTableScanChecker(Set<String> timeOrMeasurementColumns) {
+    this.timeOrMeasurementColumns = timeOrMeasurementColumns;
   }
 
   @Override
@@ -77,7 +72,7 @@ public class PredicateCombineIntoTableScanChecker extends PredicateVisitor<Boole
 
   @Override
   protected Boolean visitInPredicate(InPredicate node, Void context) {
-    return isMeasurementColumn(node.getValue()) && isInListAllLiteral(node);
+    return isTimeOrMeasurementColumn(node.getValue()) && isInListAllLiteral(node);
   }
 
   public static Boolean isInListAllLiteral(InPredicate node) {
@@ -96,7 +91,7 @@ public class PredicateCombineIntoTableScanChecker extends PredicateVisitor<Boole
 
   @Override
   protected Boolean visitLikePredicate(LikePredicate node, Void context) {
-    return isMeasurementColumn(node.getValue())
+    return isTimeOrMeasurementColumn(node.getValue())
         && isLiteral(node.getPattern())
         && node.getEscape().map(PredicatePushIntoScanChecker::isLiteral).orElse(true);
   }
@@ -120,32 +115,32 @@ public class PredicateCombineIntoTableScanChecker extends PredicateVisitor<Boole
 
   @Override
   protected Boolean visitComparisonExpression(ComparisonExpression node, Void context) {
-    return (isMeasurementColumn(node.getLeft()) && isLiteral(node.getRight()))
-        || (isMeasurementColumn(node.getRight()) && isLiteral(node.getLeft()))
-        || (isExtractTimeColumn(node.getLeft(), timeColumnName) && isLiteral(node.getRight()))
-        || (isExtractTimeColumn(node.getRight(), timeColumnName) && isLiteral(node.getLeft()));
+    return (isTimeOrMeasurementColumn(node.getLeft()) && isLiteral(node.getRight()))
+        || (isTimeOrMeasurementColumn(node.getRight()) && isLiteral(node.getLeft()))
+        || (isExtractTimeOrMeasurementColumn(node.getLeft()) && isLiteral(node.getRight()))
+        || (isExtractTimeOrMeasurementColumn(node.getRight()) && isLiteral(node.getLeft()));
   }
 
   @Override
   protected Boolean visitBetweenPredicate(BetweenPredicate node, Void context) {
-    return (isMeasurementColumn(node.getValue())
+    return (isTimeOrMeasurementColumn(node.getValue())
             && isLiteral(node.getMin())
             && isLiteral(node.getMax()))
-        || (isExtractTimeColumn(node.getValue(), timeColumnName)
+        || (isExtractTimeOrMeasurementColumn(node.getValue())
             && isLiteral(node.getMin())
             && isLiteral(node.getMax()));
     // TODO After Constant-Folding introduced
     /*|| (isLiteral(node.getValue())
-        && isMeasurementColumn(node.getMin())
+        && isTimeOrMeasurementColumn(node.getMin())
         && isLiteral(node.getMax()))
     || (isLiteral(node.getValue())
         && isLiteral(node.getMin())
-        && isMeasurementColumn(node.getMax()));*/
+        && isTimeOrMeasurementColumn(node.getMax()));*/
   }
 
   @Override
   protected Boolean visitIsNotNullPredicate(IsNotNullPredicate node, Void context) {
-    return isMeasurementColumn(node.getValue());
+    return isTimeOrMeasurementColumn(node.getValue());
   }
 
   // expression below will be supported later
@@ -169,8 +164,15 @@ public class PredicateCombineIntoTableScanChecker extends PredicateVisitor<Boole
     return Boolean.FALSE;
   }
 
-  private boolean isMeasurementColumn(Expression expression) {
+  private boolean isTimeOrMeasurementColumn(Expression expression) {
     return isSymbolReference(expression)
-        && measurementColumns.contains(((SymbolReference) expression).getName());
+        && timeOrMeasurementColumns.contains(((SymbolReference) expression).getName());
+  }
+
+  private boolean isExtractTimeOrMeasurementColumn(Expression expression) {
+    return expression instanceof Extract
+        && ((Extract) expression).getExpression() instanceof SymbolReference
+        && timeOrMeasurementColumns.contains(
+            ((SymbolReference) ((Extract) expression).getExpression()).getName());
   }
 }

@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.constant.TestConstant;
 
-import org.apache.commons.io.FileUtils;
+import org.apache.tsfile.external.commons.io.FileUtils;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -59,7 +59,7 @@ public class LocalFileUserManagerTest {
   public void testIllegalInput() {
     // Password contains space
     try {
-      manager.createUser("username1", "password_ ", true);
+      manager.createUser("username1", "password_ 123456", true);
     } catch (AuthException e) {
       assertTrue(e.getMessage().contains("cannot contain spaces"));
     }

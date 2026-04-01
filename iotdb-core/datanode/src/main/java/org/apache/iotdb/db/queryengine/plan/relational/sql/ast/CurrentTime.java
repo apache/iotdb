@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import javax.annotation.Nullable;
 
@@ -30,6 +31,9 @@ import java.util.Optional;
 import static java.util.Objects.requireNonNull;
 
 public class CurrentTime extends Expression {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(CurrentTime.class);
+
   private final Function function;
 
   @Nullable private final Integer precision;
@@ -109,5 +113,15 @@ public class CurrentTime extends Expression {
 
     CurrentTime otherNode = (CurrentTime) other;
     return (function == otherNode.function) && Objects.equals(precision, otherNode.precision);
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    if (precision != null) {
+      size += Integer.BYTES;
+    }
+    return size;
   }
 }

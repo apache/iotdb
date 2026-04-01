@@ -62,13 +62,21 @@ public class IoTDBSessionReporter extends IoTDBReporter {
 
   public IoTDBSessionReporter(AbstractMetricManager metricManager) {
     this.metricManager = metricManager;
-    this.sessionPool =
-        new SessionPool(
-            ioTDBReporterConfig.getHost(),
-            ioTDBReporterConfig.getPort(),
-            ioTDBReporterConfig.getUsername(),
-            ioTDBReporterConfig.getPassword(),
-            ioTDBReporterConfig.getMaxConnectionNumber());
+    SessionPool.Builder sessionPoolBuilder =
+        new SessionPool.Builder()
+            .host(ioTDBReporterConfig.getHost())
+            .port(ioTDBReporterConfig.getPort())
+            .user(ioTDBReporterConfig.getUsername())
+            .password(ioTDBReporterConfig.getPassword())
+            .maxSize(ioTDBReporterConfig.getMaxConnectionNumber());
+    if (metricConfig.isEnableSSL()) {
+      sessionPoolBuilder =
+          sessionPoolBuilder
+              .useSSL(true)
+              .trustStore(metricConfig.getTrustStorePath())
+              .trustStorePwd(metricConfig.getTrustStorePassword());
+    }
+    this.sessionPool = sessionPoolBuilder.build();
     try (SessionDataSetWrapper result =
         this.sessionPool.executeQueryStatement(
             "SHOW DATABASES " + metricConfig.getInternalDatabase())) {

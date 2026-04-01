@@ -37,12 +37,20 @@ WS
 
 // Common Keywords
 
+ACCOUNT
+    : A C C O U N T
+    ;
+
 ADD
     : A D D
     ;
 
 AFTER
     : A F T E R
+    ;
+
+AI_DEVICES
+    : A I '_' D E V I C E S
     ;
 
 ALIAS
@@ -225,6 +233,10 @@ DATA
     : D A T A
     ;
 
+TYPE
+    : T Y P E
+    ;
+
 DATABASE
     : D A T A B A S E
     ;
@@ -244,6 +256,14 @@ DATANODEID
 DATANODES
 
     : D A T A N O D E S
+    ;
+
+AVAILABLE
+    : A V A I L A B L E
+    ;
+
+URLS
+    : U R L S
     ;
 
 DATASET
@@ -292,6 +312,10 @@ DISABLE
 
 DISCARD
     : D I S C A R D
+    ;
+
+DISK_USAGE
+    : D I S K '_' U S A G E
     ;
 
 DROP
@@ -361,6 +385,11 @@ FLUSH
 FOR
     : F O R
     ;
+
+FORCEDLY
+    : F O R C E D L Y
+    ;
+
 
 FROM
     : F R O M
@@ -476,6 +505,10 @@ LIST
 
 LOAD
     : L O A D
+    ;
+
+LOADED
+    : L O A D E D
     ;
 
 LOCAL
@@ -596,6 +629,10 @@ PATH
 
 PATHS
     : P A T H S
+    ;
+
+PERMITTED
+    : P E R M I T T E D
     ;
 
 PIPE
@@ -758,6 +795,14 @@ SERIESSLOTID
     : S E R I E S S L O T I D
     ;
 
+SERVICE
+    : S E R V I C E
+    ;
+
+SERVICES
+    : S E R V I C E S
+    ;
+
 SESSION
     : S E S S I O N
     ;
@@ -780,6 +825,10 @@ SHOW
 
 SINK
     : S I N K
+    ;
+
+SIZEINBYTES
+    : S I Z E I N B Y T E S
     ;
 
 SLIMIT
@@ -828,6 +877,10 @@ STATEMENT
 
 STOP
     : S T O P
+    ;
+
+STORAGE_PROPERTIES
+    : S T O R A G E '_' P R O P E R T I E S
     ;
 
 SUBSCRIPTION
@@ -952,6 +1005,10 @@ UNLINK
 
 UNLOAD
     : U N L O A D
+    ;
+
+UNLOCK
+    : U N L O C K
     ;
 
 UNSET
@@ -1130,6 +1187,14 @@ MAINTAIN
     : M A I N T A I N
     ;
 
+SECURITY
+    : S E C U R I T Y
+    ;
+
+AUDIT
+    : A U D I T
+    ;
+
 REPAIR
     : R E P A I R
     ;
@@ -1194,6 +1259,7 @@ OPERATOR_NOT : '!';
  * 4. Constructors Symbols
  */
 
+AT : '@';
 DOT : '.';
 COMMA : ',';
 SEMI: ';';

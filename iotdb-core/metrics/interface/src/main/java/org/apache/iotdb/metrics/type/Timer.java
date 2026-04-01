@@ -22,24 +22,28 @@ package org.apache.iotdb.metrics.type;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
+import static java.util.concurrent.TimeUnit.MICROSECONDS;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
+import static java.util.concurrent.TimeUnit.NANOSECONDS;
+
 public interface Timer extends IMetric {
 
   /** Update time of timer. */
   void update(long duration, TimeUnit unit);
 
   /** Update timer by millisecond. */
-  default void updateMillis(long durationMillis) {
-    update(durationMillis, TimeUnit.MILLISECONDS);
+  default void updateMillis(long duration) {
+    update(duration, MILLISECONDS);
   }
 
   /** Update timer by microseconds. */
-  default void updateMicros(long durationMicros) {
-    update(durationMicros, TimeUnit.MICROSECONDS);
+  default void updateMicros(long duration) {
+    update(duration, MICROSECONDS);
   }
 
   /** Update timer by nanoseconds. */
-  default void updateNanos(long durationNanos) {
-    update(durationNanos, TimeUnit.NANOSECONDS);
+  default void updateNanos(long duration) {
+    update(duration, NANOSECONDS);
   }
 
   /** Take snapshot of timer. */

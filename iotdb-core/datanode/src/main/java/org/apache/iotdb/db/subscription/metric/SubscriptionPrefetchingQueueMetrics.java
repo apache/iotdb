@@ -29,7 +29,6 @@ import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
 import com.google.common.collect.ImmutableSet;
-import org.checkerframework.checker.nullness.qual.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -72,7 +71,7 @@ public class SubscriptionPrefetchingQueueMetrics implements IMetricSet {
 
   //////////////////////////// register & deregister ////////////////////////////
 
-  public void register(@NonNull final SubscriptionPrefetchingQueue prefetchingQueue) {
+  public void register(final SubscriptionPrefetchingQueue prefetchingQueue) {
     final String id = prefetchingQueue.getPrefetchingQueueId();
     prefetchingQueueMap.putIfAbsent(id, prefetchingQueue);
     if (Objects.nonNull(metricService)) {
