@@ -220,7 +220,9 @@ public class PipeMemoryWeightUtil {
       totalSizeInBytes +=
           NUM_BYTES_ARRAY_HEADER + (long) NUM_BYTES_OBJECT_REF * measurementSchemas.size();
       for (IMeasurementSchema measurementSchema : measurementSchemas) {
-        InsertNodeMemoryEstimator.sizeOfMeasurementSchema((MeasurementSchema) measurementSchema);
+        totalSizeInBytes +=
+            InsertNodeMemoryEstimator.sizeOfMeasurementSchema(
+                (MeasurementSchema) measurementSchema);
       }
     }
 

@@ -155,18 +155,19 @@ public class PipeTreeModelTsFileBuilder extends PipeTsFileBuilder {
             e.getMessage(),
             e);
 
+        final File file = fileWriter.getIOWriter().getFile();
         try {
           fileWriter.close();
         } catch (final Exception closeException) {
           LOGGER.warn(
               "Batch id = {}: Failed to close the tsfile {} after failed to write tablets into, because {}",
               currentBatchId.get(),
-              fileWriter.getIOWriter().getFile().getPath(),
+              file.getPath(),
               closeException.getMessage(),
               closeException);
         } finally {
           // Add current writing file to the list and delete the file
-          sealedFiles.add(new Pair<>(null, fileWriter.getIOWriter().getFile()));
+          sealedFiles.add(new Pair<>(null, file));
         }
 
         for (final Pair<String, File> sealedFile : sealedFiles) {
@@ -176,7 +177,7 @@ public class PipeTreeModelTsFileBuilder extends PipeTsFileBuilder {
               currentBatchId.get(),
               deleteSuccess ? "Successfully" : "Failed to",
               sealedFile.right.getPath(),
-              fileWriter.getIOWriter().getFile().getPath(),
+              file.getPath(),
               deleteSuccess ? "" : "Maybe the tsfile needs to be deleted manually.");
         }
         sealedFiles.clear();
@@ -186,8 +187,8 @@ public class PipeTreeModelTsFileBuilder extends PipeTsFileBuilder {
         throw e;
       }
 
-      fileWriter.close();
       final File sealedFile = fileWriter.getIOWriter().getFile();
+      fileWriter.close();
       if (LOGGER.isDebugEnabled()) {
         LOGGER.debug(
             "Batch id = {}: Seal tsfile {} successfully.",

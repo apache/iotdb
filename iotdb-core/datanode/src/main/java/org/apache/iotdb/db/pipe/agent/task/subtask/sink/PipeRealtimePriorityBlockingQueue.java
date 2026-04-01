@@ -72,7 +72,7 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
   }
 
   @Override
-  public boolean directOffer(final Event event) {
+  public boolean offer(final Event event) {
     checkBeforeOffer(event);
 
     if (event instanceof TsFileInsertionEvent) {
@@ -85,18 +85,13 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
       ((EnrichedEvent) event).decreaseReferenceCount(PipeEventCollector.class.getName(), false);
       return false;
     } else {
-      return super.directOffer(event);
+      return super.offer(event);
     }
   }
 
   @Override
-  public boolean waitedOffer(final Event event) {
-    return directOffer(event);
-  }
-
-  @Override
   public boolean put(final Event event) {
-    directOffer(event);
+    offer(event);
     return true;
   }
 

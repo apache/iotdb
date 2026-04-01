@@ -477,7 +477,7 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
 
       while (true) {
         final TEndPoint targetNodeUrl = endPointList.get((int) (Math.random() * clientSize));
-        if (isUnhealthy(targetNodeUrl) && n <= clientSize) {
+        if (isUnhealthy(targetNodeUrl) && n < clientSize) {
           n++;
           continue;
         }
@@ -498,7 +498,7 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
       long n = 0;
       while (true) {
         for (final TEndPoint targetNodeUrl : endPointList) {
-          if (isUnhealthy(targetNodeUrl) && n <= clientSize) {
+          if (isUnhealthy(targetNodeUrl) && n < clientSize) {
             n++;
             continue;
           }

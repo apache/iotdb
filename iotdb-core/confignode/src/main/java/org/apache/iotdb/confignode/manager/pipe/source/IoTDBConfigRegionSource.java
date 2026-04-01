@@ -153,8 +153,10 @@ public class IoTDBConfigRegionSource extends IoTDBNonDataRegionSource {
   @Override
   public synchronized EnrichedEvent supply() throws Exception {
     final EnrichedEvent event = super.supply();
-    PipeEventCommitManager.getInstance()
-        .enrichWithCommitterKeyAndCommitId(event, creationTime, regionId);
+    if (Objects.nonNull(event)) {
+      PipeEventCommitManager.getInstance()
+          .enrichWithCommitterKeyAndCommitId(event, creationTime, regionId);
+    }
     return event;
   }
 

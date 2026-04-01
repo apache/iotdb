@@ -48,7 +48,7 @@ public class PipeRealtimeDataRegionTsFileSource extends PipeRealtimeDataRegionSo
     }
 
     if (event.getEvent() instanceof PipeDeleteDataNodeEvent) {
-      extractDirectly(event);
+      pendingQueue.offer(event);
       return;
     }
 
@@ -61,21 +61,7 @@ public class PipeRealtimeDataRegionTsFileSource extends PipeRealtimeDataRegionSo
       return;
     }
 
-    if (!pendingQueue.waitedOffer(event)) {
-      // This would not happen, but just in case.
-      // Pending is unbounded, so it should never reach capacity.
-      final String errorMessage =
-          String.format(
-              "extract: pending queue of PipeRealtimeDataRegionTsFileSource %s "
-                  + "has reached capacity, discard TsFile event %s, current state %s",
-              this, event, event.getTsFileEpoch().getState(this));
-      LOGGER.error(errorMessage);
-      PipeDataNodeAgent.runtime()
-          .report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
-
-      // Ignore the event.
-      event.decreaseReferenceCount(PipeRealtimeDataRegionTsFileSource.class.getName(), false);
-    }
+    pendingQueue.offer(event);
 
     PipeTsFileEpochProgressIndexAndFlushManager.getInstance()
         .markAsExtracted(dataRegionId, pipeName, event.getTsFileEpoch().getFilePath());

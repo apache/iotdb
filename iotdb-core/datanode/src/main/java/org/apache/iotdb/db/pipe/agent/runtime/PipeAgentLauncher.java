@@ -78,7 +78,7 @@ class PipeAgentLauncher {
         curList.add(uninstalledOrConflictedPipePluginMetaList.get(index + offset));
         offset++;
       }
-      index += (offset + 1);
+      index += offset;
       fetchAndSavePipePluginJars(curList);
     }
 
