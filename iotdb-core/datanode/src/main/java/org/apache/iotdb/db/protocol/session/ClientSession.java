@@ -21,6 +21,7 @@ package org.apache.iotdb.db.protocol.session;
 
 import org.apache.iotdb.service.rpc.thrift.TSConnectionType;
 
+import java.io.IOException;
 import java.net.Socket;
 import java.util.Map;
 import java.util.Set;
@@ -125,5 +126,10 @@ public class ClientSession extends IClientSession {
   @Override
   public Set<String> getPreparedStatementNames() {
     return preparedStatements.keySet();
+  }
+
+  @Override
+  public void disconnect() throws IOException {
+    clientSocket.close();
   }
 }

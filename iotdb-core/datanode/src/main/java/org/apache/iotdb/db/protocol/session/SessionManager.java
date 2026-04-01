@@ -76,13 +76,15 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
 import java.util.function.LongConsumer;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onNpeOrUnexpectedException;
 
 public class SessionManager implements SessionManagerMBean {
+  public static Supplier<SessionManager> sessionManagerSupplier = SessionManager::new;
   private static final Logger LOGGER = LoggerFactory.getLogger(SessionManager.class);
-  private static final DNAuditLogger AUDIT_LOGGER = DNAuditLogger.getInstance();
+  protected static final DNAuditLogger AUDIT_LOGGER = DNAuditLogger.getInstance();
 
   // When the client abnormally exits, we can still know who to disconnect
   /** currSession can be only used in client-thread model services. */
@@ -91,7 +93,7 @@ public class SessionManager implements SessionManagerMBean {
   private final ThreadLocal<Long> currSessionIdleTime = new ThreadLocal<>();
 
   // sessions does not contain MqttSessions..
-  private final Map<IClientSession, Object> sessions = new ConcurrentHashMap<>();
+  protected final Map<IClientSession, Object> sessions = new ConcurrentHashMap<>();
   // used for sessions.
   private final Object placeHolder = new Object();
 
@@ -423,36 +425,9 @@ public class SessionManager implements SessionManagerMBean {
   public boolean checkLogin(IClientSession session) {
     boolean isLoggedIn = session != null && session.isLogin();
 
-    int idleSessionTimeoutInMinutes =
-        IoTDBDescriptor.getInstance().getConfig().getIdleSessionTimeoutInMinutes();
     if (!isLoggedIn) {
       LOGGER.info("{}: Not login. ", IoTDBConstant.GLOBAL_DB_NAME);
-    } else if (idleSessionTimeoutInMinutes > 0) {
-      long idleInNanos = idleSessionTimeoutInMinutes * 60 * 1000 * 1000 * 1000L;
-      long idleDuration = System.nanoTime() - currSessionIdleTime.get();
-
-      if (idleDuration > idleInNanos) {
-        AUDIT_LOGGER.log(
-            new AuditLogFields(
-                session.getUserId(),
-                session.getUsername(),
-                session.getClientAddress(),
-                AuditEventType.CONNECTION_EVICTED,
-                AuditLogOperation.CONTROL,
-                false),
-            () ->
-                String.format(
-                    "User %s (ID=%d) connection evicted due to idle timeout. "
-                        + "No activity for %.1f minutes (exceeds threshold: %d minutes)",
-                    session.getUsername(),
-                    session.getUserId(),
-                    idleDuration / (60.0 * 1_000_000_000.0),
-                    idleSessionTimeoutInMinutes));
-        closeSession(session, Coordinator.getInstance()::cleanupQueryExecution);
-        return false;
-      }
     }
-
     return isLoggedIn;
   }
 
@@ -519,6 +494,12 @@ public class SessionManager implements SessionManagerMBean {
   /** get current session and update session idle time. */
   public IClientSession getCurrSessionAndUpdateIdleTime() {
     IClientSession clientSession = getCurrSession();
+    // avoid a session being cleaned during execution
+    // if the cleaner runs first, the login status will be set to false
+    // if this thread runs first, the cleaner will not clean the session
+    synchronized (clientSession) {
+      clientSession.setRunning(true);
+    }
     Long idleTime = currSessionIdleTime.get();
     if (idleTime == null) {
       currSessionIdleTime.set(System.nanoTime());
@@ -540,6 +521,7 @@ public class SessionManager implements SessionManagerMBean {
     IClientSession session = currSession.get();
     if (session != null) {
       session.setLastActiveTime(CommonDateTimeUtils.currentTime());
+      session.setRunning(false);
     }
   }
 
@@ -727,7 +709,7 @@ public class SessionManager implements SessionManagerMBean {
 
   private static class SessionManagerHelper {
 
-    private static final SessionManager INSTANCE = new SessionManager();
+    private static final SessionManager INSTANCE = sessionManagerSupplier.get();
 
     private SessionManagerHelper() {
       // empty constructor

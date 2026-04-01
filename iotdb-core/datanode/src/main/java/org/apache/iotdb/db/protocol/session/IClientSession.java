@@ -60,6 +60,8 @@ public abstract class IClientSession {
 
   private long lastActiveTime = CommonDateTimeUtils.currentTime();
 
+  private boolean running = false;
+
   public abstract String getClientAddress();
 
   public abstract int getClientPort();
@@ -192,6 +194,14 @@ public abstract class IClientSession {
     this.databaseName = databaseName;
   }
 
+  public boolean isRunning() {
+    return running;
+  }
+
+  public void setRunning(boolean running) {
+    this.running = running;
+  }
+
   /**
    * Add a prepared statement to this session.
    *
@@ -265,4 +275,6 @@ public abstract class IClientSession {
       }
     }
   }
+
+  public void disconnect() throws IOException {}
 }

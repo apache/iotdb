@@ -111,8 +111,6 @@ public class DNAuditLogger extends AbstractAuditLogger {
               IoTDBDescriptor.getInstance().getConfig().getInternalAddress()),
           ZoneId.systemDefault());
 
-  private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
-
   private static final IClientManager<ConfigRegionId, ConfigNodeClient> CONFIG_NODE_CLIENT_MANAGER =
       ConfigNodeClientManager.getInstance();
 
@@ -163,7 +161,7 @@ public class DNAuditLogger extends AbstractAuditLogger {
                   stmt.setInsertRowStatementList(batch);
                   return coordinator.executeForTreeModel(
                       stmt,
-                      SESSION_MANAGER.requestQueryId(),
+                      SessionManager.getInstance().requestQueryId(),
                       sessionInfo,
                       "",
                       ClusterPartitionFetcher.getInstance(),
@@ -360,7 +358,7 @@ public class DNAuditLogger extends AbstractAuditLogger {
     ExecutionResult result =
         coordinator.executeForTreeModel(
             statement,
-            SESSION_MANAGER.requestQueryId(),
+            SessionManager.getInstance().requestQueryId(),
             sessionInfo,
             "",
             ClusterPartitionFetcher.getInstance(),
@@ -392,8 +390,8 @@ public class DNAuditLogger extends AbstractAuditLogger {
                 stmt,
                 relationSqlParser,
                 session,
-                SESSION_MANAGER.requestQueryId(),
-                SESSION_MANAGER.getSessionInfoOfTableModel(session),
+                SessionManager.getInstance().requestQueryId(),
+                SessionManager.getInstance().getSessionInfoOfTableModel(session),
                 "",
                 metadata,
                 config.getQueryTimeoutThreshold(),
@@ -424,8 +422,8 @@ public class DNAuditLogger extends AbstractAuditLogger {
                 stmt,
                 relationSqlParser,
                 session,
-                SESSION_MANAGER.requestQueryId(),
-                SESSION_MANAGER.getSessionInfoOfTableModel(session),
+                SessionManager.getInstance().requestQueryId(),
+                SessionManager.getInstance().getSessionInfoOfTableModel(session),
                 "",
                 metadata,
                 config.getQueryTimeoutThreshold(),
@@ -672,7 +670,7 @@ public class DNAuditLogger extends AbstractAuditLogger {
               ZoneId.systemDefault());
       coordinator.executeForTreeModel(
           statement,
-          SESSION_MANAGER.requestQueryId(),
+          SessionManager.getInstance().requestQueryId(),
           sessionInfo,
           "",
           ClusterPartitionFetcher.getInstance(),

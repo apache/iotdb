@@ -28,6 +28,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TSystemConfigurationResp;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.plan.relational.security.ITableAuthCheckerImpl;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.loader.MNodeFactoryLoader;
 import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
@@ -37,6 +38,7 @@ import com.timecho.iotdb.auth.StrictTreeAccessCheckVisitor;
 import com.timecho.iotdb.commons.secret.SecretKey;
 import com.timecho.iotdb.commons.utils.OSUtils;
 import com.timecho.iotdb.dataregion.migration.MigrationTaskManager;
+import com.timecho.iotdb.db.protocol.session.TimechoSessionManager;
 import com.timecho.iotdb.rpc.IPFilter;
 import com.timecho.iotdb.schemaregion.EnterpriseSchemaConstant;
 import com.timecho.iotdb.schemaregion.mtree.EnterpriseCachedMNodeFactory;
@@ -62,12 +64,21 @@ public class DataNode extends org.apache.iotdb.db.service.DataNode {
     startUp(args, DataNode::new);
   }
 
-  protected static void startUp(String[] args, Supplier<DataNode> dataNodeSupplier) {
+  public static void prepare() {
+    SessionManager.sessionManagerSupplier = TimechoSessionManager::new;
+
     // set up environment for schema region
     MNodeFactoryLoader.getInstance().addNodeFactory(EnterpriseMemMNodeFactory.class);
     MNodeFactoryLoader.getInstance().addNodeFactory(EnterpriseCachedMNodeFactory.class);
     MNodeFactoryLoader.getInstance().setEnv(EnterpriseSchemaConstant.ENTERPRISE_MNODE_FACTORY_ENV);
 
+    // just to init the class
+    //noinspection ResultOfMethodCallIgnored
+    IPFilter.getAllowListPatterns();
+  }
+
+  protected static void startUp(String[] args, Supplier<DataNode> dataNodeSupplier) {
+    prepare();
     // set up environment for object storage
     TSFileDescriptor.getInstance()
         .getConfig()
@@ -78,9 +89,6 @@ public class DataNode extends org.apache.iotdb.db.service.DataNode {
     TSFileDescriptor.getInstance()
         .getConfig()
         .setObjectStorageTsFileOutput("com.timecho.iotdb.os.fileSystem.OSTsFileOutput");
-    // just to init the class
-    //noinspection ResultOfMethodCallIgnored
-    IPFilter.getAllowListPatterns();
 
     logger.info("IoTDB-DataNode environment variables: {}", IoTDBConfig.getEnvironmentVariables());
     logger.info("IoTDB-DataNode default charset is: {}", Charset.defaultCharset().displayName());

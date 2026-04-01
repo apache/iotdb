@@ -19,12 +19,15 @@
 package org.apache.iotdb.session.it;
 
 import org.apache.iotdb.isession.ISession;
+import org.apache.iotdb.isession.ITableSession;
+import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 
+import org.apache.tsfile.read.common.RowRecord;
 import org.awaitility.Awaitility;
 import org.junit.After;
 import org.junit.Before;
@@ -152,29 +155,48 @@ public class IoTDBActiveCloseConnectionIT {
 
   @Test
   public void testCloseOnInactive() throws Exception {
-    try (ISession session1 = EnvFactory.getEnv().getSessionConnection()) {
-      session1.executeNonQueryStatement("SET CONFIGURATION 'idle_session_timeout_in_minutes'='1'");
+    try (ITableSession session1 = EnvFactory.getEnv().getTableSessionConnection();
+        ITableSession session2 = EnvFactory.getEnv().getTableSessionConnection()) {
+      try {
+        session1.executeNonQueryStatement("SET CONFIGURATION idle_session_timeout_in_minutes='1'");
+      } catch (IoTDBConnectionException | StatementExecutionException e) {
+        // enable remote cluster
+        if (!e.getMessage().contains("Unable to find the configuration file")) {
+          throw e;
+        }
+      }
 
-      long waitTime = 90 * 1000;
+      long waitTime = 35 * 1000;
       Awaitility.await()
           .atMost(10, TimeUnit.MINUTES)
+          .pollDelay(waitTime, TimeUnit.MILLISECONDS)
+          .pollInterval(waitTime, TimeUnit.MILLISECONDS)
           .until(
               () -> {
-                Thread.sleep(waitTime);
-                try {
-                  session1.executeNonQueryStatement("FLUSH");
-                  return false;
-                } catch (StatementExecutionException e) {
-                  assertEquals(
-                      "802: Log in failed. Either you are not authorized or the session has timed out.",
-                      e.getMessage());
-                  return true;
+                try (SessionDataSet sessionDataSet =
+                    session2.executeQueryStatement(
+                        "SELECT * FROM information_schema.connections")) {
+
+                  System.out.println("Remaining connections:");
+                  int cnt = 0;
+                  while (sessionDataSet.hasNext()) {
+                    RowRecord next = sessionDataSet.next();
+                    cnt++;
+                    System.out.println(next.toString());
+                  }
+
+                  // 1 connection from session1 (NodeFetcher)
+                  // 2 connections from session2 (NodeFetcher and actual connection)
+                  // session1's actual connection should be disconnected
+                  return cnt == 3;
                 }
               });
-    }
-
-    try (ISession session1 = EnvFactory.getEnv().getSessionConnection()) {
-      session1.executeNonQueryStatement("flush");
+    } catch (Exception e) {
+      // closing an actively closed session will throw an exception because the socket is closed
+      if (!e.getMessage()
+          .contains("Error occurs when closing session at server. Maybe server is down")) {
+        throw e;
+      }
     }
   }
 }

@@ -22,13 +22,8 @@ package org.apache.iotdb.db;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TNodeResource;
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.loader.MNodeFactoryLoader;
 
 import com.timecho.iotdb.DataNode;
-import com.timecho.iotdb.rpc.IPFilter;
-import com.timecho.iotdb.schemaregion.EnterpriseSchemaConstant;
-import com.timecho.iotdb.schemaregion.mtree.EnterpriseCachedMNodeFactory;
-import com.timecho.iotdb.schemaregion.mtree.EnterpriseMemMNodeFactory;
 
 /** This class is used to run integration test using timecho-server without license. */
 public class HackTimechoServer extends DataNode {
@@ -36,14 +31,8 @@ public class HackTimechoServer extends DataNode {
   private static final long TOTAL_MEMORY_FOR_TEST = 8000000000L;
 
   public static void main(String[] args) {
-    // set up environment for schema region
-    MNodeFactoryLoader.getInstance().addNodeFactory(EnterpriseMemMNodeFactory.class);
-    MNodeFactoryLoader.getInstance().addNodeFactory(EnterpriseCachedMNodeFactory.class);
-    MNodeFactoryLoader.getInstance().setEnv(EnterpriseSchemaConstant.ENTERPRISE_MNODE_FACTORY_ENV);
+    DataNode.prepare();
 
-    // just to init class
-    //noinspection ResultOfMethodCallIgnored
-    IPFilter.getAllowListPatterns();
     HackTimechoServer hackTimechoServer = new HackTimechoServer();
     int returnCode = hackTimechoServer.run(args);
     if (returnCode != 0) {
