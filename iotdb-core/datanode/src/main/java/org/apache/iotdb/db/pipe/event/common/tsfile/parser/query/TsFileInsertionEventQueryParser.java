@@ -87,7 +87,7 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
       final long endTime,
       final PipeInsertionEvent sourceEvent)
       throws IOException, IllegalPathException {
-    this(null, 0, tsFile, pattern, startTime, endTime, null, sourceEvent, false);
+    this(null, 0, tsFile, pattern, startTime, endTime, null, sourceEvent, false, false);
   }
 
   public TsFileInsertionEventQueryParser(
@@ -99,7 +99,8 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
       final long endTime,
       final PipeTaskMeta pipeTaskMeta,
       final PipeInsertionEvent sourceEvent,
-      final boolean isWithMod)
+      final boolean isWithMod,
+      final boolean objectPathsOnly)
       throws IOException, IllegalPathException {
     this(
         pipeName,
@@ -113,7 +114,8 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
         null,
         false,
         null,
-        isWithMod);
+        isWithMod,
+        objectPathsOnly);
   }
 
   public TsFileInsertionEventQueryParser(
@@ -128,7 +130,8 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
       final IAuditEntity entity,
       final boolean skipIfNoPrivileges,
       final Map<IDeviceID, Boolean> deviceIsAlignedMap,
-      final boolean isWithMod)
+      final boolean isWithMod,
+      final boolean objectPathsOnly)
       throws IOException, IllegalPathException {
     super(
         pipeName,
@@ -140,7 +143,9 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
         pipeTaskMeta,
         entity,
         skipIfNoPrivileges,
-        sourceEvent);
+        sourceEvent,
+        null,
+        objectPathsOnly); // tsFileResource will be obtained from sourceEvent
 
     try {
       currentModifications =
@@ -368,9 +373,10 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
     final Map<IDeviceID, List<String>> result = new HashMap<>();
 
     for (final IDeviceID device : devices) {
-      tsFileSequenceReader
-          .readDeviceMetadata(device)
-          .values()
+      tsFileSequenceReader.readDeviceMetadata(device).values().stream()
+          .filter(
+              timeseriesMetadata ->
+                  !objectPathsOnly || timeseriesMetadata.getTsDataType() == TSDataType.OBJECT)
           .forEach(
               timeseriesMetadata ->
                   result
@@ -447,7 +453,7 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
 
                   final TabletInsertionEvent next;
                   if (!hasNext()) {
-                    next =
+                    final PipeRawTabletInsertionEvent event =
                         sourceEvent == null
                             ? new PipeRawTabletInsertionEvent(
                                 null,
@@ -473,9 +479,14 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
                                 pipeTaskMeta,
                                 sourceEvent,
                                 true);
+
+                    // Set tsFileResource and hasObjectData
+                    event.setTsFileResource(tsFileResource);
+                    event.setHasObject(hasObjectData);
+                    next = event;
                     close();
                   } else {
-                    next =
+                    final PipeRawTabletInsertionEvent event =
                         sourceEvent == null
                             ? new PipeRawTabletInsertionEvent(
                                 null,
@@ -501,6 +512,11 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
                                 pipeTaskMeta,
                                 sourceEvent,
                                 false);
+
+                    // Set tsFileResource and hasObjectData
+                    event.setTsFileResource(tsFileResource);
+                    event.setHasObject(hasObjectData);
+                    next = event;
                   }
                   return next;
                 }

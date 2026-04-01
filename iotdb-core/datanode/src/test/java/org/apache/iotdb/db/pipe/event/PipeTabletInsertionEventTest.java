@@ -429,7 +429,8 @@ public class PipeTabletInsertionEventTest {
             "localhost",
             false,
             Long.MIN_VALUE,
-            Long.MAX_VALUE);
+            Long.MAX_VALUE,
+            null);
     final AccessControl oldControl = AuthorityChecker.getAccessControl();
     try {
       AuthorityChecker.setAccessControl(new PipeTsFileInsertionEventTest.TestAccessControl());
@@ -464,7 +465,8 @@ public class PipeTabletInsertionEventTest {
               "localhost",
               false,
               Long.MIN_VALUE,
-              Long.MAX_VALUE);
+              Long.MAX_VALUE,
+              null);
       Assert.assertThrows(AccessDeniedException.class, event::throwIfNoPrivilege);
     } finally {
       AuthorityChecker.setAccessControl(oldControl);

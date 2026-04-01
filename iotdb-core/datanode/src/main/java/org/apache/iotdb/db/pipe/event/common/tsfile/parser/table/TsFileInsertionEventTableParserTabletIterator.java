@@ -80,6 +80,8 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
   private final PipeMemoryBlock allocatedMemoryBlockForChunkMeta;
   private final PipeMemoryBlock allocatedMemoryBlockForTableSchema;
 
+  private final boolean objectPathsOnly;
+
   // mods entry
   private final PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> modifications;
 
@@ -121,7 +123,8 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
       final PipeMemoryBlock allocatedMemoryBlockForTableSchema,
       final PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> modifications,
       final long startTime,
-      final long endTime)
+      final long endTime,
+      final boolean objectPathsOnly)
       throws IOException {
 
     this.startTime = startTime;
@@ -141,6 +144,8 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
     this.allocatedMemoryBlockForChunk = allocatedMemoryBlockForChunk;
     this.allocatedMemoryBlockForChunkMeta = allocatedMemoryBlockForChunkMeta;
     this.allocatedMemoryBlockForTableSchema = allocatedMemoryBlockForTableSchema;
+
+    this.objectPathsOnly = objectPathsOnly;
 
     long tableSchemaSize = fileMetadata.getBloomFilter().getRetainedSizeInBytes();
     for (Map.Entry<String, TableSchema> tableSchemaEntry : tableSchemaList) {
@@ -219,6 +224,11 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
                 while (iChunkMetadataIterator.hasNext()) {
                   IChunkMetadata iChunkMetadata = iChunkMetadataIterator.next();
                   if (iChunkMetadata == null) {
+                    iChunkMetadataIterator.remove();
+                    continue;
+                  }
+
+                  if (objectPathsOnly && iChunkMetadata.getDataType() != TSDataType.OBJECT) {
                     iChunkMetadataIterator.remove();
                     continue;
                   }
@@ -329,16 +339,29 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
                 .forceResize(allocatedMemoryBlockForTablet, rowCountAndMemorySize.getRight());
           }
 
-          tablet =
-              new Tablet(
-                  tableName,
-                  measurementList,
-                  dataTypeList,
-                  columnTypes,
-                  rowCountAndMemorySize.getLeft());
+          if (objectPathsOnly) {
+            tablet =
+                new Tablet(
+                    tableName,
+                    new ArrayList<>(measurementList.subList(deviceIdSize, measurementList.size())),
+                    new ArrayList<>(dataTypeList.subList(deviceIdSize, dataTypeList.size())),
+                    new ArrayList<>(columnTypes.subList(deviceIdSize, columnTypes.size())),
+                    rowCountAndMemorySize.getLeft());
+          } else {
+            tablet =
+                new Tablet(
+                    tableName,
+                    measurementList,
+                    dataTypeList,
+                    columnTypes,
+                    rowCountAndMemorySize.getLeft());
+          }
           tablet.initBitMaps();
-          tablet.addTimestamp(0, 0);
-          tablet.setRowSize(0);
+          if (rowCountAndMemorySize.getLeft() > 0) {
+            // Trigger the initBitMapsWithApiUsage function
+            tablet.addTimestamp(0, 0);
+            tablet.setRowSize(0);
+          }
           isFirstRow = false;
         }
         final int rowIndex = tablet.getRowSize();
@@ -347,7 +370,9 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
         }
 
         if (fillMeasurementValueColumns(batchData, tablet, rowIndex)) {
-          fillDeviceIdColumns(deviceID, tablet, rowIndex);
+          if (!objectPathsOnly) {
+            fillDeviceIdColumns(deviceID, tablet, rowIndex);
+          }
           tablet.addTimestamp(rowIndex, batchData.currentTime());
         }
       }
@@ -427,26 +452,38 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
 
     this.chunkReader = new TableChunkReader(timeChunk, valueChunkList, null);
     this.modsInfoList =
-        ModsOperationUtil.initializeMeasurementMods(deviceID, measurementList, modifications);
+        ModsOperationUtil.initializeMeasurementMods(
+            deviceID,
+            objectPathsOnly
+                ? new ArrayList<>(measurementList.subList(deviceIdSize, measurementList.size()))
+                : measurementList,
+            modifications);
   }
 
   private boolean fillMeasurementValueColumns(
       final BatchData data, final Tablet tablet, final int rowIndex) {
     final TsPrimitiveType[] primitiveTypes = data.getVector();
     boolean needFillTime = false;
-
-    for (int i = deviceIdSize, size = dataTypeList.size(); i < size; i++) {
-      final TsPrimitiveType primitiveType = primitiveTypes[i - deviceIdSize];
+    for (int i = objectPathsOnly ? 0 : deviceIdSize,
+            size = tablet.getSchemas().size(),
+            columnIndex = 0;
+        i < size;
+        i++, columnIndex++) {
+      final TSDataType columnType = tablet.getSchemas().get(i).getType();
+      final TsPrimitiveType primitiveType = primitiveTypes[columnIndex];
       if (primitiveType == null
           || ModsOperationUtil.isDelete(data.currentTime(), modsInfoList.get(i))) {
-        switch (dataTypeList.get(i)) {
+        switch (columnType) {
           case TEXT:
           case BLOB:
           case STRING:
             tablet.addValue(rowIndex, i, Binary.EMPTY_VALUE.getValues());
             break;
           case OBJECT:
-            ((Binary[]) tablet.getValues()[i])[rowIndex] = Binary.EMPTY_VALUE;
+            Binary[] binarys = (Binary[]) tablet.getValues()[i];
+            binarys[rowIndex] = Binary.EMPTY_VALUE;
+            break;
+          default:
             break;
         }
         tablet.getBitMaps()[i].mark(rowIndex);
@@ -454,7 +491,7 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
       }
       needFillTime = true;
 
-      switch (dataTypeList.get(i)) {
+      switch (columnType) {
         case BOOLEAN:
           tablet.addValue(rowIndex, i, primitiveType.getBoolean());
           break;

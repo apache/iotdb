@@ -39,6 +39,7 @@ import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeSinglePipeMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.db.pipe.resource.memory.PipeTabletMemoryBlock;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
 import org.apache.iotdb.pipe.api.collector.TabletCollector;
@@ -46,7 +47,11 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.write.record.Tablet;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.util.Collections;
+import java.util.Iterator;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -54,6 +59,8 @@ import java.util.function.BiConsumer;
 
 public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
     implements TabletInsertionEvent, ReferenceTrackableEvent, AutoCloseable {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeRawTabletInsertionEvent.class);
 
   // For better calculation
   private static final long INSTANCE_SIZE =
@@ -70,6 +77,13 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
   private TabletInsertionEventParser eventParser;
 
   private volatile ProgressIndex overridingProgressIndex;
+
+  // Object type: single flag — whether this structure contains Object type data (null = not yet
+  // determined)
+  private Boolean hasObjectData = null;
+
+  // TSFile resource, used for Object file management
+  private TsFileResource tsFileResource;
 
   private PipeRawTabletInsertionEvent(
       final Boolean isTableModelEvent,
@@ -256,19 +270,38 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
 
   @Override
   public boolean internallyIncreaseResourceReferenceCount(final String holderMessage) {
-    PipeDataNodeResourceManager.memory()
-        .forceResize(
-            allocatedMemoryBlock,
-            PipeMemoryWeightUtil.calculateTabletSizeInBytes(tablet) + INSTANCE_SIZE);
-    if (Objects.nonNull(pipeName)) {
-      PipeDataNodeSinglePipeMetrics.getInstance()
-          .increaseRawTabletEventCount(pipeName, creationTime);
+    try {
+      if (pipeName != null
+          && Objects.equals(hasObjectData, Boolean.TRUE)
+          && tsFileResource != null) {
+        // Only increase reference count, do not link files
+        PipeDataNodeResourceManager.object().increaseReference(tsFileResource, pipeName);
+      }
+
+      PipeDataNodeResourceManager.memory()
+          .forceResize(
+              allocatedMemoryBlock,
+              PipeMemoryWeightUtil.calculateTabletSizeInBytes(tablet) + INSTANCE_SIZE);
+      if (Objects.nonNull(pipeName)) {
+        PipeDataNodeSinglePipeMetrics.getInstance()
+            .increaseRawTabletEventCount(pipeName, creationTime);
+      }
+      return true;
+    } catch (final Exception e) {
+      LOGGER.warn(
+          "Failed to increase resource reference count for tablet event. Holder Message: {}",
+          holderMessage,
+          e);
+      return false;
     }
-    return true;
   }
 
   @Override
   public boolean internallyDecreaseResourceReferenceCount(final String holderMessage) {
+    if (pipeName != null && Objects.equals(hasObjectData, Boolean.TRUE) && tsFileResource != null) {
+      PipeDataNodeResourceManager.object().decreaseReference(tsFileResource, pipeName);
+    }
+
     if (Objects.nonNull(pipeName)) {
       PipeDataNodeSinglePipeMetrics.getInstance()
           .decreaseRawTabletEventCount(pipeName, creationTime);
@@ -344,26 +377,32 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
       final boolean skipIfNoPrivileges,
       final long startTime,
       final long endTime) {
-    return new PipeRawTabletInsertionEvent(
-        getRawIsTableModelEvent(),
-        getSourceDatabaseNameFromDataRegion(),
-        getRawTableModelDataBase(),
-        getRawTreeModelDataBase(),
-        tablet,
-        isAligned,
-        sourceEvent,
-        needToReport,
-        pipeName,
-        creationTime,
-        pipeTaskMeta,
-        treePattern,
-        tablePattern,
-        userId,
-        userName,
-        cliHostname,
-        skipIfNoPrivileges,
-        startTime,
-        endTime);
+    final PipeRawTabletInsertionEvent copiedEvent =
+        new PipeRawTabletInsertionEvent(
+            getRawIsTableModelEvent(),
+            getSourceDatabaseNameFromDataRegion(),
+            getRawTableModelDataBase(),
+            getRawTreeModelDataBase(),
+            tablet,
+            isAligned,
+            sourceEvent,
+            needToReport,
+            pipeName,
+            creationTime,
+            pipeTaskMeta,
+            treePattern,
+            tablePattern,
+            userId,
+            userName,
+            cliHostname,
+            skipIfNoPrivileges,
+            startTime,
+            endTime);
+
+    copiedEvent.setTsFileResource(this.tsFileResource);
+    copiedEvent.hasObjectData = this.hasObjectData;
+
+    return copiedEvent;
   }
 
   @Override
@@ -410,6 +449,74 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
 
   public EnrichedEvent getSourceEvent() {
     return sourceEvent;
+  }
+
+  @Override
+  public Iterator<String> objectPathIterator() {
+    return objectPaths().iterator();
+  }
+
+  public Iterable<String> objectPaths() {
+    final InsertNodeObjectPathIterator.ExtractContext context =
+        new InsertNodeObjectPathIterator.ExtractContext(
+            getTreePattern(),
+            getTablePattern(),
+            getStartTime(),
+            getEndTime(),
+            getRawIsTableModelEvent(),
+            getTableModelDatabaseName(),
+            buildEntityForPrivilege());
+    if (Boolean.FALSE.equals(hasObjectData)) {
+      return Collections.emptyList();
+    }
+    if (Boolean.TRUE.equals(hasObjectData)) {
+      return () -> new InsertNodeObjectPathIterator(tablet, context);
+    }
+
+    final InsertNodeObjectPathIterator it = new InsertNodeObjectPathIterator(tablet, context);
+
+    if (it.hasNext()) {
+      hasObjectData = Boolean.TRUE;
+      return () -> it;
+    } else {
+      hasObjectData = Boolean.FALSE;
+      return Collections.emptyList();
+    }
+  }
+
+  private UserEntity buildEntityForPrivilege() {
+    if (getUserId() == null || getUserName() == null) {
+      return null;
+    }
+    try {
+      return new UserEntity(Long.parseLong(getUserId()), getUserName(), getCliHostname());
+    } catch (NumberFormatException e) {
+      return null;
+    }
+  }
+
+  /////////////////////////// Object Related Methods ///////////////////////////
+
+  @Override
+  public void setHasObject(final Boolean hasObject) {
+    if (hasObject != null) {
+      this.hasObjectData = hasObject;
+    }
+  }
+
+  @Override
+  public boolean hasObjectData() {
+    return hasObjectData == null || hasObjectData;
+  }
+
+  @Override
+  public TsFileResource getTsFileResource() {
+    return tsFileResource;
+  }
+
+  @Override
+  public void setTsFileResource(final TsFileResource tsFileResource) {
+    this.tsFileResource = tsFileResource;
   }
 
   @Override
@@ -487,18 +594,25 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
   /////////////////////////// parsePatternOrTime ///////////////////////////
 
   public PipeRawTabletInsertionEvent parseEventWithPatternOrTime() throws IllegalPathException {
-    return new PipeRawTabletInsertionEvent(
-        getRawIsTableModelEvent(),
-        getSourceDatabaseNameFromDataRegion(),
-        getRawTableModelDataBase(),
-        getRawTreeModelDataBase(),
-        convertToTablet(),
-        isAligned,
-        pipeName,
-        creationTime,
-        pipeTaskMeta,
-        this,
-        needToReport);
+    final PipeRawTabletInsertionEvent event =
+        new PipeRawTabletInsertionEvent(
+            getRawIsTableModelEvent(),
+            getSourceDatabaseNameFromDataRegion(),
+            getRawTableModelDataBase(),
+            getRawTreeModelDataBase(),
+            convertToTablet(),
+            isAligned,
+            pipeName,
+            creationTime,
+            pipeTaskMeta,
+            this,
+            needToReport);
+
+    // Set tsFileResource
+    event.setTsFileResource(tsFileResource);
+    event.setHasObject(hasObjectData);
+
+    return event;
   }
 
   public boolean hasNoNeedParsingAndIsEmpty() {

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.sink.payload.evolvable.batch;
 
+import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
@@ -27,6 +28,7 @@ import org.apache.iotdb.db.pipe.sink.util.builder.PipeTreeModelTsFileBuilderV2;
 import org.apache.iotdb.db.pipe.sink.util.builder.PipeTsFileBuilder;
 import org.apache.iotdb.db.pipe.sink.util.sorter.PipeTableModelTabletEventSorter;
 import org.apache.iotdb.db.pipe.sink.util.sorter.PipeTreeModelTabletEventSorter;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 
 import org.apache.tsfile.exception.write.WriteProcessException;
@@ -40,6 +42,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -97,6 +100,9 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
               insertNodeTabletInsertionEvent.getCreationTime(),
               tablet,
               insertNodeTabletInsertionEvent.getTableModelDatabaseName());
+          linkTableModelObjectPaths(
+              (PipeInsertionEvent) event,
+              insertNodeTabletInsertionEvent.getTableModelDatabaseName());
         } else {
           // tree Model
           bufferTreeModelTablet(
@@ -104,6 +110,7 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
               insertNodeTabletInsertionEvent.getCreationTime(),
               tablet,
               insertNodeTabletInsertionEvent.isAligned(i));
+          linkTreeModelObjectPaths((PipeInsertionEvent) event);
         }
       }
     } else if (event instanceof PipeRawTabletInsertionEvent) {
@@ -120,6 +127,8 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
             rawTabletInsertionEvent.getCreationTime(),
             tablet,
             rawTabletInsertionEvent.getTableModelDatabaseName());
+        linkTableModelObjectPaths(
+            (PipeInsertionEvent) event, rawTabletInsertionEvent.getTableModelDatabaseName());
       } else {
         // tree Model
         bufferTreeModelTablet(
@@ -127,6 +136,7 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
             rawTabletInsertionEvent.getCreationTime(),
             tablet,
             rawTabletInsertionEvent.isAligned());
+        linkTreeModelObjectPaths((PipeInsertionEvent) event);
       }
     } else {
       LOGGER.warn(
@@ -145,10 +155,7 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
       final boolean isAligned) {
     new PipeTreeModelTabletEventSorter(tablet).deduplicateAndSortTimestampsIfNecessary();
 
-    // TODO: Currently, PipeTreeModelTsFileBuilderV2 still uses PipeTreeModelTsFileBuilder as a
-    // fallback builder, so memory table writing and storing temporary tablets require double the
-    // memory.
-    totalBufferSize += PipeMemoryWeightUtil.calculateTabletSizeInBytes(tablet) * 2;
+    totalBufferSize += PipeMemoryWeightUtil.calculateTabletSizeInBytes(tablet);
 
     pipeName2WeightMap.compute(
         new Pair<>(pipeName, creationTime),
@@ -161,16 +168,39 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
       final String pipeName, final long creationTime, final Tablet tablet, final String dataBase) {
     new PipeTableModelTabletEventSorter(tablet).sortAndDeduplicateByDevIdTimestamp();
 
-    // TODO: Currently, PipeTableModelTsFileBuilderV2 still uses PipeTableModelTsFileBuilder as a
-    // fallback builder, so memory table writing and storing temporary tablets require double the
-    // memory.
-    totalBufferSize += PipeMemoryWeightUtil.calculateTabletSizeInBytes(tablet) * 2;
+    totalBufferSize += PipeMemoryWeightUtil.calculateTabletSizeInBytes(tablet);
 
     pipeName2WeightMap.compute(
         new Pair<>(pipeName, creationTime),
         (pipe, weight) -> Objects.nonNull(weight) ? ++weight : 1);
 
     tableModeTsFileBuilder.bufferTableModelTablet(dataBase, tablet);
+  }
+
+  private void linkTableModelObjectPaths(PipeInsertionEvent event, String dataBase) {
+    Iterator<String> it = event.objectPathIterator();
+    if (it == null || !it.hasNext()) {
+      return;
+    }
+    final TsFileResource res = event.getTsFileResource();
+    String pipe = event.getPipeName();
+    if (res != null && pipe != null) {
+      ((PipeTableModelTsFileBuilderV2) tableModeTsFileBuilder)
+          .linkObjectPathsForDatabase(dataBase, it, res, pipe);
+    }
+  }
+
+  private void linkTreeModelObjectPaths(PipeInsertionEvent event) {
+    Iterator<String> it = event.objectPathIterator();
+    if (it == null || !it.hasNext()) {
+      return;
+    }
+    final TsFileResource res = event.getTsFileResource();
+    String pipe = event.getPipeName();
+    if (res != null && pipe != null) {
+      ((PipeTreeModelTsFileBuilderV2) treeModeTsFileBuilder)
+          .linkObjectPathsForTreeModel(it, res, pipe);
+    }
   }
 
   public Map<Pair<String, Long>, Double> deepCopyPipe2WeightMap() {
@@ -186,17 +216,17 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
    * Converts a Tablet to a TSFile and returns the generated TSFile along with its corresponding
    * database name.
    *
-   * @return a list of pairs containing the database name and the generated TSFile
+   * @return list of (database name, (tsFile, objectDir)); database is null for tree model
    * @throws IOException if an I/O error occurs during the conversion process
    * @throws WriteProcessException if an error occurs during the write process
    */
-  public synchronized List<Pair<String, File>> sealTsFiles()
+  public synchronized List<Pair<String, Pair<File, File>>> sealTsFiles()
       throws IOException, WriteProcessException {
     if (isClosed) {
       return Collections.emptyList();
     }
 
-    final List<Pair<String, File>> list = new ArrayList<>();
+    final List<Pair<String, Pair<File, File>>> list = new ArrayList<>();
     if (!treeModeTsFileBuilder.isEmpty()) {
       list.addAll(treeModeTsFileBuilder.convertTabletToTsFileWithDBInfo());
     }
@@ -209,7 +239,6 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
   @Override
   public synchronized void onSuccess() {
     super.onSuccess();
-
     pipeName2WeightMap.clear();
     tableModeTsFileBuilder.onSuccess();
     treeModeTsFileBuilder.onSuccess();

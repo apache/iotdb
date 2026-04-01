@@ -40,6 +40,7 @@ import org.apache.iotdb.commons.pipe.agent.plugin.builtin.sink.iotdb.thrift.IoTD
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.sink.iotdb.thrift.IoTDBThriftSyncSink;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.sink.opcda.OpcDaSink;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.sink.opcua.OpcUaSink;
+import org.apache.iotdb.commons.pipe.agent.plugin.builtin.sink.tsfile.PipeTsFileLocalSink;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.sink.websocket.WebSocketSink;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.sink.writeback.WriteBackSink;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.source.donothing.DoNothingSource;
@@ -105,6 +106,7 @@ public enum BuiltinPipePlugin {
   WRITE_BACK_SINK("write-back-sink", WriteBackSink.class),
   SUBSCRIPTION_SINK("subscription-sink", DoNothingSink.class),
   IOT_CONSENSUS_V2_ASYNC_SINK("iot-consensus-v2-async-sink", IoTConsensusV2AsyncSink.class),
+  TSFILE_LOCAL_SINK("tsfile-local-sink", PipeTsFileLocalSink.class),
   ;
 
   private final String pipePluginName;

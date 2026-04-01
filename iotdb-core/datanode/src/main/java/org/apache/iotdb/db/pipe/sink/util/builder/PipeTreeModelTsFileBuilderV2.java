@@ -20,11 +20,13 @@
 package org.apache.iotdb.db.pipe.sink.util.builder;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.storageengine.dataregion.flush.MemTableFlushTask;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.PrimitiveMemTable;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.WriteProcessException;
@@ -43,6 +45,7 @@ import java.io.IOException;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicLong;
@@ -51,19 +54,22 @@ public class PipeTreeModelTsFileBuilderV2 extends PipeTsFileBuilder {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTreeModelTsFileBuilderV2.class);
 
+  /** Prefix of the single temp dir for tree model Object files (suffix: batch ID). */
+  private static final String TREE_MODEL_OBJECT_CACHE_DIR_PREFIX =
+      "TreeModelTSFileBuilderObjectCache_";
+
   private static final PlanNodeId PLACEHOLDER_PLAN_NODE_ID =
       new PlanNodeId("PipeTreeModelTsFileBuilderV2");
 
   private final List<Tablet> tabletList = new ArrayList<>();
   private final List<Boolean> isTabletAlignedList = new ArrayList<>();
 
-  // TODO: remove me later if stable
-  private final PipeTreeModelTsFileBuilder fallbackBuilder;
+  /** Single temp dir for tree model Object files; renamed to TSFile object dir on seal. */
+  private File treeModelObjectTempDir;
 
   public PipeTreeModelTsFileBuilderV2(
       final AtomicLong currentBatchId, final AtomicLong tsFileIdGenerator) {
     super(currentBatchId, tsFileIdGenerator);
-    fallbackBuilder = new PipeTreeModelTsFileBuilder(currentBatchId, tsFileIdGenerator);
   }
 
   @Override
@@ -76,20 +82,40 @@ public class PipeTreeModelTsFileBuilderV2 extends PipeTsFileBuilder {
   public void bufferTreeModelTablet(final Tablet tablet, final Boolean isAligned) {
     tabletList.add(tablet);
     isTabletAlignedList.add(isAligned);
-    fallbackBuilder.bufferTreeModelTablet(tablet, isAligned);
+  }
+
+  /**
+   * Links Object paths into the tree model's single temp dir. Call when the event has object paths.
+   * At seal time the dir is renamed to the TSFile's object dir name.
+   */
+  public void linkObjectPathsForTreeModel(
+      final Iterator<String> pathIterator, final TsFileResource resource, final String pipeName) {
+    if (pathIterator == null || resource == null || pipeName == null) {
+      return;
+    }
+    if (treeModelObjectTempDir == null) {
+      final String dirName = TREE_MODEL_OBJECT_CACHE_DIR_PREFIX + currentBatchId.get();
+      treeModelObjectTempDir = new File(getBatchFileBaseDir(), dirName);
+      if (!treeModelObjectTempDir.exists() && !treeModelObjectTempDir.mkdirs()) {
+        LOGGER.warn("Failed to create tree model object temp dir");
+        return;
+      }
+    }
+    linkObjectEntriesToDir(treeModelObjectTempDir, resource, pathIterator, pipeName);
   }
 
   @Override
-  public List<Pair<String, File>> convertTabletToTsFileWithDBInfo()
+  @SuppressWarnings("java:S100")
+  public List<Pair<String, Pair<File, File>>> convertTabletToTsFileWithDBInfo()
       throws IOException, WriteProcessException {
     try {
       return writeTabletsToTsFiles();
-    } catch (final Exception e) {
+    } catch (final WriteProcessException e) {
       LOGGER.warn(
           "Exception occurred when PipeTreeModelTsFileBuilderV2 writing tablets to tsfile, use fallback tsfile builder: {}",
           e.getMessage(),
           e);
-      return fallbackBuilder.convertTabletToTsFileWithDBInfo();
+      throw e;
     }
   }
 
@@ -103,30 +129,34 @@ public class PipeTreeModelTsFileBuilderV2 extends PipeTsFileBuilder {
     super.onSuccess();
     tabletList.clear();
     isTabletAlignedList.clear();
-    fallbackBuilder.onSuccess();
+    treeModelObjectTempDir = null;
   }
 
   @Override
   public synchronized void close() {
     super.close();
+    if (treeModelObjectTempDir != null) {
+      FileUtils.deleteFileOrDirectory(treeModelObjectTempDir, true);
+      treeModelObjectTempDir = null;
+    }
     tabletList.clear();
     isTabletAlignedList.clear();
-    fallbackBuilder.close();
   }
 
-  private List<Pair<String, File>> writeTabletsToTsFiles() throws WriteProcessException {
+  private List<Pair<String, Pair<File, File>>> writeTabletsToTsFiles()
+      throws WriteProcessException {
     final IMemTable memTable = new PrimitiveMemTable(null, null);
-    final List<Pair<String, File>> sealedFiles = new ArrayList<>();
+    final List<Pair<String, Pair<File, File>>> sealedFiles = new ArrayList<>();
     try (final RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(createFile())) {
       writeTabletsIntoOneFile(memTable, writer);
-      sealedFiles.add(new Pair<>(null, writer.getFile()));
+      final File tsFile = writer.getFile();
+      sealedFiles.add(new Pair<>(null, new Pair<>(tsFile, treeModelObjectTempDir)));
     } catch (final Exception e) {
       LOGGER.warn(
           "Batch id = {}: Failed to write tablets into tsfile, because {}",
           currentBatchId.get(),
           e.getMessage(),
           e);
-      // TODO: handle ex
       throw new WriteProcessException(e);
     } finally {
       memTable.release();

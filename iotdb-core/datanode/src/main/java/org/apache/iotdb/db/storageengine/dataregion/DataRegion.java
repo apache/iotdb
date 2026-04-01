@@ -4046,6 +4046,7 @@ public class DataRegion implements IDataRegionForQuery {
                 objectNode.getFilePath().getDeviceID().getTableName(),
                 fileLength,
                 1);
+        PipeInsertionDataNodeListener.getInstance().listenToObjectNode(dataRegionId.getId());
       }
       getWALNode()
           .ifPresent(walNode -> walNode.log(TsFileProcessor.MEMTABLE_NOT_EXIST, objectNode));

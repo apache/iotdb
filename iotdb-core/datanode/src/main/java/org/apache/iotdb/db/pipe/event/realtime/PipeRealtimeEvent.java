@@ -24,11 +24,15 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.PipeRealtimeDataRegionSource;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.epoch.TsFileEpoch;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 
+import java.util.Collections;
+import java.util.Iterator;
 import java.util.Map;
 
 /**
@@ -233,6 +237,34 @@ public class PipeRealtimeEvent extends EnrichedEvent {
         skipIfNoPrivileges,
         startTime,
         endTime);
+  }
+
+  public Iterator<String> objectPathIterator() {
+    return event instanceof PipeInsertionEvent
+        ? ((PipeInsertionEvent) event).objectPathIterator()
+        : Collections.emptyIterator();
+  }
+
+  public void setHasObject(final Boolean hasObject) {
+    if (event instanceof PipeInsertionEvent) {
+      ((PipeInsertionEvent) event).setHasObject(hasObject);
+    }
+  }
+
+  public boolean hasObjectData() {
+    return event instanceof PipeInsertionEvent && ((PipeInsertionEvent) event).hasObjectData();
+  }
+
+  public TsFileResource getTsFileResource() {
+    return event instanceof PipeInsertionEvent
+        ? ((PipeInsertionEvent) event).getTsFileResource()
+        : null;
+  }
+
+  public void setTsFileResource(final TsFileResource tsFileResource) {
+    if (event instanceof PipeInsertionEvent) {
+      ((PipeInsertionEvent) event).setTsFileResource(tsFileResource);
+    }
   }
 
   @Override

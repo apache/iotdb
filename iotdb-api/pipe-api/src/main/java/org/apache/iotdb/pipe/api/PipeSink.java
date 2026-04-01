@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.pipe.api;
 
+import org.apache.iotdb.pipe.api.annotation.TableModel;
+import org.apache.iotdb.pipe.api.annotation.TreeModel;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeSinkRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
@@ -64,6 +66,8 @@ import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
  * called to create a new connection with the sink when the method {@link PipeSink#heartbeat()}
  * throws exceptions.
  */
+@TreeModel
+@TableModel
 public interface PipeSink extends PipeConnector {
 
   /**

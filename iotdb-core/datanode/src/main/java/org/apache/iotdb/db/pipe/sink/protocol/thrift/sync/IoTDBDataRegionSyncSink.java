@@ -331,15 +331,16 @@ public class IoTDBDataRegionSyncSink extends IoTDBDataNodeSyncSink {
 
   private void doTransfer(final PipeTabletEventTsFileBatch batchToTransfer)
       throws IOException, WriteProcessException {
-    final List<Pair<String, File>> dbTsFilePairs = batchToTransfer.sealTsFiles();
+    final List<Pair<String, Pair<File, File>>> dbTsFilePairs = batchToTransfer.sealTsFiles();
     final Map<Pair<String, Long>, Double> pipe2WeightMap = batchToTransfer.deepCopyPipe2WeightMap();
 
-    for (final Pair<String, File> dbTsFile : dbTsFilePairs) {
-      doTransfer(pipe2WeightMap, dbTsFile.right, null, dbTsFile.left);
+    for (final Pair<String, Pair<File, File>> dbTsFile : dbTsFilePairs) {
+      final File tsFile = dbTsFile.right.left;
+      doTransfer(pipe2WeightMap, tsFile, null, dbTsFile.left);
       try {
         RetryUtils.retryOnException(
             () -> {
-              FileUtils.delete(dbTsFile.right);
+              FileUtils.delete(tsFile);
               return null;
             });
       } catch (final NoSuchFileException e) {

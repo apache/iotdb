@@ -89,6 +89,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS)
+        .setWalMode("SYNC")
         .setDnConnectionTimeoutMs(600000)
         .setPipeMemoryManagementEnabled(false)
         .setIsPipeEnableMemoryCheck(false);

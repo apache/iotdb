@@ -67,6 +67,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -102,6 +103,10 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
 
   // This is set to check the tsFile paths by privilege
   private Map<IDeviceID, String[]> treeSchemaMap;
+
+  // Object type: single flag — whether this structure contains Object type data (null = not yet
+  // determined)
+  private volatile Boolean hasObjectData = null;
 
   public PipeTsFileInsertionEvent(
       final Boolean isTableModelEvent,
@@ -317,12 +322,67 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     return extractTime;
   }
 
+  /////////////////////////// Object Related Methods ///////////////////////////
+
+  @Override
+  public Iterator<String> objectPathIterator() {
+    return objectPaths().iterator();
+  }
+
+  /**
+   * Returns an iterable of all object paths from this TsFile (lazy, chains tablet events). Each
+   * call returns a fresh iterable. Use this to link or process paths one-by-one without building a
+   * full list.
+   */
+  public Iterable<String> objectPaths() {
+    if (Objects.equals(hasObjectData, Boolean.FALSE) || !getTsFileResource().isClosed()) {
+      return Collections.emptyList();
+    }
+    return () -> new TsFileObjectPathIterator(PipeTsFileInsertionEvent.this);
+  }
+
+  @Override
+  public void setHasObject(final Boolean hasObject) {
+    if (hasObject != null) {
+      this.hasObjectData = hasObject;
+    }
+  }
+
+  @Override
+  public boolean hasObjectData() {
+    return hasObjectData == null || hasObjectData;
+  }
+
+  public TsFileResource getResource() {
+    return getTsFileResource();
+  }
+
+  @Override
+  public TsFileResource getTsFileResource() {
+    return resource;
+  }
+
   /////////////////////////// EnrichedEvent ///////////////////////////
 
   @Override
   public boolean internallyIncreaseResourceReferenceCount(final String holderMessage) {
     extractTime = System.nanoTime();
     try {
+      if (Objects.nonNull(pipeName)) {
+        final Iterator<String> pathIterator = objectPathIterator();
+        final int linked =
+            PipeDataNodeResourceManager.object().linkObjectFiles(resource, pathIterator, pipeName);
+        if (linked > 0) {
+          if (hasObjectData == null) {
+            hasObjectData = true;
+          }
+          PipeDataNodeResourceManager.object().increaseReference(resource, pipeName);
+        } else if (hasObjectData == null) {
+          hasObjectData = false;
+        }
+
+        PipeDataNodeResourceManager.object().setTsFileClosed(resource, pipeName);
+      }
       tsFile = PipeDataNodeResourceManager.tsfile().increaseFileReference(tsFile, true, pipeName);
       if (isWithMod) {
         modFile =
@@ -347,6 +407,9 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   @Override
   public boolean internallyDecreaseResourceReferenceCount(final String holderMessage) {
     try {
+      if (pipeName != null && Boolean.TRUE.equals(hasObjectData)) {
+        PipeDataNodeResourceManager.object().decreaseReference(resource, pipeName);
+      }
       PipeDataNodeResourceManager.tsfile().decreaseFileReference(tsFile, pipeName);
       if (isWithMod) {
         PipeDataNodeResourceManager.tsfile().decreaseFileReference(modFile, pipeName);
@@ -418,26 +481,31 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
       final boolean skipIfNoPrivileges,
       final long startTime,
       final long endTime) {
-    return new PipeTsFileInsertionEvent(
-        getRawIsTableModelEvent(),
-        getSourceDatabaseNameFromDataRegion(),
-        resource,
-        tsFile,
-        isWithMod,
-        isLoaded,
-        isGeneratedByHistoricalExtractor,
-        tableNames,
-        pipeName,
-        creationTime,
-        pipeTaskMeta,
-        treePattern,
-        tablePattern,
-        userId,
-        userName,
-        cliHostname,
-        skipIfNoPrivileges,
-        startTime,
-        endTime);
+    final PipeTsFileInsertionEvent copiedEvent =
+        new PipeTsFileInsertionEvent(
+            getRawIsTableModelEvent(),
+            getSourceDatabaseNameFromDataRegion(),
+            resource,
+            tsFile,
+            isWithMod,
+            isLoaded,
+            isGeneratedByHistoricalExtractor,
+            tableNames,
+            pipeName,
+            creationTime,
+            pipeTaskMeta,
+            treePattern,
+            tablePattern,
+            userId,
+            userName,
+            cliHostname,
+            skipIfNoPrivileges,
+            startTime,
+            endTime);
+
+    copiedEvent.hasObjectData = this.hasObjectData;
+
+    return copiedEvent;
   }
 
   @Override
@@ -472,7 +540,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
               throw new AccessDeniedException(
                   String.format(
                       "No privilege for SELECT for user %s at table %s.%s",
-                      userName, tableModelDatabaseName, table));
+                      userName, getTableModelDatabaseName(), table));
             }
           }
         }
@@ -673,15 +741,31 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     }
   }
 
-  @Override
-  public Iterable<TabletInsertionEvent> toTabletInsertionEvents() throws PipeException {
+  Iterable<TabletInsertionEvent> toTabletInsertionEvents(final boolean objectPathsOnly)
+      throws PipeException {
     // 20 - 40 seconds for waiting
     // Can not be unlimited or will cause deadlock
-    return toTabletInsertionEvents((long) ((1 + Math.random()) * 20 * 1000));
+    return toTabletInsertionEvents(
+        ThreadLocalRandom.current().nextLong(20_000L, 40_001L), objectPathsOnly);
   }
 
-  public Iterable<TabletInsertionEvent> toTabletInsertionEvents(final long timeoutMs)
-      throws PipeException {
+  @Override
+  /** Converts this TsFile event into tablet events in normal parsing mode. */
+  public Iterable<TabletInsertionEvent> toTabletInsertionEvents() {
+    return toTabletInsertionEvents(false);
+  }
+
+  /**
+   * @param timeoutMs timeout in milliseconds when waiting for resources
+   * @param objectPathsOnly when true, only parse for Object-type data (paths); when false, parse
+   *     full tablet events
+   * @return iterable of {@link TabletInsertionEvent} parsed from this TsFile; empty if the file is
+   *     not yet closed (temporary TsFile skipped)
+   * @throws PipeException if waiting for resources times out, parsing fails, or the thread is
+   *     interrupted while waiting for TsFile close
+   */
+  public Iterable<TabletInsertionEvent> toTabletInsertionEvents(
+      final long timeoutMs, final boolean objectPathsOnly) throws PipeException {
     try {
       if (!waitForTsFileClose()) {
         LOGGER.warn(
@@ -689,7 +773,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         return Collections.emptyList();
       }
       waitForResourceEnough4Parsing(timeoutMs);
-      return initEventParser().toTabletInsertionEvents();
+      return initEventParser(objectPathsOnly).toTabletInsertionEvents();
     } catch (final Exception e) {
       close();
 
@@ -763,26 +847,18 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     return isGeneratedByHistoricalExtractor;
   }
 
-  private TsFileInsertionEventParser initEventParser() {
+  /**
+   * Initializes or reuses the internal TsFile parser instance.
+   *
+   * @param objectPathsOnly when true, only parse for Object-type data (paths); when false, parse
+   *     full tablet events
+   * @return lazily-created {@link TsFileInsertionEventParser} for this event (same instance on
+   *     subsequent calls)
+   * @throws PipeException if the parser cannot be constructed (e.g. TsFile read error)
+   */
+  private TsFileInsertionEventParser initEventParser(final boolean objectPathsOnly) {
     try {
-      eventParser.compareAndSet(
-          null,
-          new TsFileInsertionEventParserProvider(
-                  pipeName,
-                  creationTime,
-                  tsFile,
-                  treePattern,
-                  tablePattern,
-                  startTime,
-                  endTime,
-                  pipeTaskMeta,
-                  // Do not parse privilege if it should not be parsed
-                  // To avoid renaming of the tsFile database
-                  shouldParse4Privilege
-                      ? new UserEntity(Long.parseLong(userId), userName, cliHostname)
-                      : null,
-                  this)
-              .provide(isWithMod));
+      eventParser.compareAndSet(null, createParserProvider().provide(isWithMod, objectPathsOnly));
       return eventParser.get();
     } catch (final Exception e) {
       close();
@@ -791,6 +867,22 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
       LOGGER.warn(errorMsg, e);
       throw new PipeException(errorMsg, e);
     }
+  }
+
+  private TsFileInsertionEventParserProvider createParserProvider() {
+    return new TsFileInsertionEventParserProvider(
+        pipeName,
+        creationTime,
+        tsFile,
+        treePattern,
+        tablePattern,
+        startTime,
+        endTime,
+        pipeTaskMeta,
+        shouldParse4Privilege
+            ? new UserEntity(Long.parseLong(userId), userName, cliHostname)
+            : null,
+        this);
   }
 
   public long count(final boolean skipReportOnCommit) throws Exception {
@@ -863,6 +955,8 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         this.isReleased,
         this.referenceCount,
         this.pipeName,
+        this.resource,
+        this.hasObjectData,
         this.tsFile,
         this.isWithMod,
         this.modFile,
@@ -878,11 +972,15 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     private final File sharedModFile; // unused now
     private final AtomicReference<TsFileInsertionEventParser> eventParser;
     private final String pipeName;
+    private final TsFileResource resource;
+    private final Boolean hasObjectData;
 
     private PipeTsFileInsertionEventResource(
         final AtomicBoolean isReleased,
         final AtomicInteger referenceCount,
         final String pipeName,
+        final TsFileResource resource,
+        final Boolean hasObjectData,
         final File tsFile,
         final boolean isWithMod,
         final File modFile,
@@ -890,6 +988,8 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         final AtomicReference<TsFileInsertionEventParser> eventParser) {
       super(isReleased, referenceCount);
       this.pipeName = pipeName;
+      this.resource = resource;
+      this.hasObjectData = hasObjectData;
       this.tsFile = tsFile;
       this.isWithMod = isWithMod;
       this.modFile = modFile;
@@ -900,13 +1000,14 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     @Override
     protected void finalizeResource() {
       try {
-        // decrease reference count
+        if (hasObjectData != null && hasObjectData && resource != null && pipeName != null) {
+          PipeDataNodeResourceManager.object().decreaseReference(resource, pipeName);
+        }
         PipeDataNodeResourceManager.tsfile().decreaseFileReference(tsFile, pipeName);
         if (isWithMod) {
           PipeDataNodeResourceManager.tsfile().decreaseFileReference(modFile, pipeName);
         }
 
-        // close event parser
         eventParser.getAndUpdate(
             parser -> {
               if (Objects.nonNull(parser)) {

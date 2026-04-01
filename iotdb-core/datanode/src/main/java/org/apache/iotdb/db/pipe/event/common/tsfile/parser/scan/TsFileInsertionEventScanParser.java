@@ -58,6 +58,7 @@ import org.apache.tsfile.read.reader.IChunkReader;
 import org.apache.tsfile.read.reader.chunk.AlignedChunkReader;
 import org.apache.tsfile.read.reader.chunk.ChunkReader;
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.DateUtils;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.TsPrimitiveType;
@@ -114,7 +115,8 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
       final IAuditEntity entity,
       final boolean skipIfNoPrivileges,
       final PipeInsertionEvent sourceEvent,
-      final boolean isWithMod)
+      final boolean isWithMod,
+      final boolean objectPathsOnly)
       throws IOException, IllegalPathException {
     super(
         pipeName,
@@ -126,7 +128,9 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
         pipeTaskMeta,
         entity,
         skipIfNoPrivileges,
-        sourceEvent);
+        sourceEvent,
+        null,
+        objectPathsOnly);
 
     this.startTime = startTime;
     this.endTime = endTime;
@@ -170,7 +174,8 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
       final long endTime,
       final PipeTaskMeta pipeTaskMeta,
       final PipeInsertionEvent sourceEvent,
-      final boolean isWithMod)
+      final boolean isWithMod,
+      final boolean objectPathsOnly)
       throws IOException, IllegalPathException {
     this(
         null,
@@ -183,7 +188,8 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
         null,
         false,
         sourceEvent,
-        isWithMod);
+        isWithMod,
+        objectPathsOnly);
   }
 
   @Override
@@ -225,31 +231,38 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
                   recordTabletMetrics(tablet);
                   final boolean hasNext = hasNext();
                   try {
-                    return sourceEvent == null
-                        ? new PipeRawTabletInsertionEvent(
-                            null,
-                            null,
-                            null,
-                            null,
-                            tablet,
-                            isAligned,
-                            null,
-                            0,
-                            pipeTaskMeta,
-                            sourceEvent,
-                            !hasNext)
-                        : new PipeRawTabletInsertionEvent(
-                            sourceEvent.getRawIsTableModelEvent(),
-                            sourceEvent.getSourceDatabaseNameFromDataRegion(),
-                            sourceEvent.getRawTableModelDataBase(),
-                            sourceEvent.getRawTreeModelDataBase(),
-                            tablet,
-                            isAligned,
-                            sourceEvent.getPipeName(),
-                            sourceEvent.getCreationTime(),
-                            pipeTaskMeta,
-                            sourceEvent,
-                            !hasNext);
+                    final PipeRawTabletInsertionEvent event =
+                        sourceEvent == null
+                            ? new PipeRawTabletInsertionEvent(
+                                null,
+                                null,
+                                null,
+                                null,
+                                tablet,
+                                isAligned,
+                                null,
+                                0,
+                                pipeTaskMeta,
+                                sourceEvent,
+                                !hasNext)
+                            : new PipeRawTabletInsertionEvent(
+                                sourceEvent.getRawIsTableModelEvent(),
+                                sourceEvent.getSourceDatabaseNameFromDataRegion(),
+                                sourceEvent.getRawTableModelDataBase(),
+                                sourceEvent.getRawTreeModelDataBase(),
+                                tablet,
+                                isAligned,
+                                sourceEvent.getPipeName(),
+                                sourceEvent.getCreationTime(),
+                                pipeTaskMeta,
+                                sourceEvent,
+                                !hasNext);
+
+                    // Set tsFileResource and hasObjectData
+                    event.setTsFileResource(tsFileResource);
+                    event.setHasObject(hasObjectData);
+
+                    return event;
                   } finally {
                     if (!hasNext) {
                       close();
@@ -316,6 +329,11 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
                 new Tablet(
                     currentDevice.toString(), currentMeasurements, rowCountAndMemorySize.getLeft());
             tablet.initBitMaps();
+            if (rowCountAndMemorySize.getLeft() > 0) {
+              // Trigger the initBitMapsWithApiUsage function
+              tablet.addTimestamp(0, 0);
+              tablet.setRowSize(0);
+            }
             if (allocatedMemoryBlockForTablet.getMemoryUsageInBytes()
                 < rowCountAndMemorySize.getRight()) {
               PipeDataNodeResourceManager.memory()
@@ -343,6 +361,10 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
 
       if (tablet == null) {
         tablet = new Tablet(currentDevice.toString(), currentMeasurements, 1);
+        // Trigger the initBitMapsWithApiUsage function
+        tablet.addTimestamp(0, 0);
+        tablet.setRowSize(0);
+
         tablet.initBitMaps();
       }
 
@@ -382,21 +404,28 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
     boolean isNeedFillTime = false;
     if (data.getDataType() == TSDataType.VECTOR) {
       for (int i = 0; i < tablet.getSchemas().size(); ++i) {
+        final TSDataType columnType = tablet.getSchemas().get(i).getType();
         final TsPrimitiveType primitiveType = data.getVector()[i];
         if (Objects.isNull(primitiveType)
             || ModsOperationUtil.isDelete(data.currentTime(), modsInfos.get(i))) {
-          switch (tablet.getSchemas().get(i).getType()) {
+          switch (columnType) {
             case TEXT:
             case BLOB:
             case STRING:
               tablet.addValue(rowIndex, i, Binary.EMPTY_VALUE.getValues());
+              break;
+            case OBJECT:
+              ((Binary[]) tablet.getValues()[i])[rowIndex] = Binary.EMPTY_VALUE;
+              break;
+            default:
+              break;
           }
           tablet.getBitMaps()[i].mark(rowIndex);
           continue;
         }
 
         isNeedFillTime = true;
-        switch (tablet.getSchemas().get(i).getType()) {
+        switch (columnType) {
           case BOOLEAN:
             tablet.addValue(rowIndex, i, primitiveType.getBoolean());
             break;
@@ -420,6 +449,18 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
           case BLOB:
           case STRING:
             tablet.addValue(rowIndex, i, primitiveType.getBinary().getValues());
+            break;
+          case OBJECT:
+            final Binary parsedBinary = primitiveType.getBinary();
+            final Binary[] objectColumn = (Binary[]) tablet.getValues()[i];
+            objectColumn[rowIndex] =
+                (parsedBinary == null || parsedBinary.getValues() == null)
+                    ? Binary.EMPTY_VALUE
+                    : parsedBinary;
+            final BitMap[] objBitMaps = tablet.getBitMaps();
+            if (objBitMaps != null && objBitMaps[i] != null) {
+              objBitMaps[i].unmark(rowIndex);
+            }
             break;
           default:
             throw new UnSupportedDataTypeException("UnSupported" + primitiveType.getDataType());
@@ -456,6 +497,16 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
         case BLOB:
         case STRING:
           tablet.addValue(rowIndex, 0, data.getBinary().getValues());
+          break;
+        case OBJECT:
+          final Binary objBinary = data.getBinary();
+          final Binary[] objCol = (Binary[]) tablet.getValues()[0];
+          objCol[rowIndex] =
+              (objBinary == null || objBinary.getValues() == null) ? Binary.EMPTY_VALUE : objBinary;
+          final BitMap[] objBMs = tablet.getBitMaps();
+          if (objBMs != null && objBMs[0] != null) {
+            objBMs[0].unmark(rowIndex);
+          }
           break;
         default:
           throw new UnSupportedDataTypeException("UnSupported" + data.getDataType());
@@ -653,6 +704,11 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
     }
 
     if (!treePattern.matchesMeasurement(currentDevice, chunkHeader.getMeasurementID())) {
+      tsFileSequenceReader.position(nextMarkerOffset);
+      return true;
+    }
+
+    if (objectPathsOnly && chunkHeader.getDataType() != TSDataType.OBJECT) {
       tsFileSequenceReader.position(nextMarkerOffset);
       return true;
     }

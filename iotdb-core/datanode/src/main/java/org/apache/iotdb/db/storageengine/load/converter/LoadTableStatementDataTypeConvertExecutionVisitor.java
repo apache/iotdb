@@ -86,7 +86,8 @@ public class LoadTableStatementDataTypeConvertExecutionVisitor
               null,
               null,
               null,
-              true)) {
+              true,
+              false)) {
         for (final TabletInsertionEvent tabletInsertionEvent : parser.toTabletInsertionEvents()) {
           if (!(tabletInsertionEvent instanceof PipeRawTabletInsertionEvent)) {
             continue;

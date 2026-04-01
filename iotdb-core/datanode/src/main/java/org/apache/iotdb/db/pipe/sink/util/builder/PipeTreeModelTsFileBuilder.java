@@ -74,9 +74,18 @@ public class PipeTreeModelTsFileBuilder extends PipeTsFileBuilder {
   }
 
   @Override
-  public List<Pair<String, File>> convertTabletToTsFileWithDBInfo()
+  public List<Pair<String, Pair<File, File>>> convertTabletToTsFileWithDBInfo()
       throws IOException, WriteProcessException {
-    return writeTabletsToTsFiles();
+    return wrapTsFileOnly(writeTabletsToTsFiles());
+  }
+
+  private static List<Pair<String, Pair<File, File>>> wrapTsFileOnly(
+      final List<Pair<String, File>> dbAndTsFile) {
+    final List<Pair<String, Pair<File, File>>> out = new ArrayList<>();
+    for (final Pair<String, File> p : dbAndTsFile) {
+      out.add(new Pair<>(p.getLeft(), new Pair<>(p.getRight(), null)));
+    }
+    return out;
   }
 
   @Override

@@ -78,6 +78,7 @@
         <module>distribution</module>
         <module>example</module>
         <module>library-udf</module>
+        <module>library-pipe</module>
         <module>external-service-impl</module>
         <module>timecho-confignode</module>
         <module>timecho-server</module>

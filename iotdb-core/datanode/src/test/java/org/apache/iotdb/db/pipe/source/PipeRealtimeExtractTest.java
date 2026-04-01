@@ -36,6 +36,7 @@ import org.apache.iotdb.db.pipe.source.dataregion.realtime.listener.PipeInsertio
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -285,6 +286,7 @@ public class PipeRealtimeExtractTest {
 
             try {
               resource.close();
+              resource.setStatusForTest(TsFileResourceStatus.UNCLOSED);
             } catch (final IOException e) {
               e.printStackTrace();
               throw new RuntimeException(e);

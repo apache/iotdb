@@ -71,7 +71,7 @@ public abstract class AbstractPipeTableModelDualManualIT {
   }
 
   @After
-  public final void tearDown() {
+  public void tearDown() {
     senderEnv.cleanClusterEnvironment();
     receiverEnv.cleanClusterEnvironment();
   }

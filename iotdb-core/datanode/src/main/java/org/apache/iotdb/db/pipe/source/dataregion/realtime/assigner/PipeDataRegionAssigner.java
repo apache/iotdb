@@ -52,6 +52,7 @@ import org.slf4j.LoggerFactory;
 import java.io.Closeable;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class PipeDataRegionAssigner implements Closeable {
 
@@ -71,6 +72,9 @@ public class PipeDataRegionAssigner implements Closeable {
   private Boolean isTableModel;
 
   private final PipeEventCounter eventCounter = new PipeDataRegionEventCounter();
+
+  /** Track whether this data region has Object type write operations. */
+  public final AtomicBoolean hasObjectData = new AtomicBoolean(true);
 
   public int getDataRegionId() {
     return dataRegionId;
@@ -158,6 +162,18 @@ public class PipeDataRegionAssigner implements Closeable {
                 }
                 source.extract(PipeRealtimeEventFactory.createRealtimeEvent(reportEvent));
                 return;
+              }
+
+              EnrichedEvent rawEvent = event.getEvent();
+
+              boolean isHeartbeat = rawEvent instanceof PipeHeartbeatEvent;
+
+              boolean isLoadedTsFile =
+                  (rawEvent instanceof PipeTsFileInsertionEvent)
+                      && ((PipeTsFileInsertionEvent) rawEvent).isLoaded();
+
+              if (!isHeartbeat && !isLoadedTsFile) {
+                event.setHasObject(hasObjectData.get());
               }
 
               final PipeRealtimeEvent copiedEvent =

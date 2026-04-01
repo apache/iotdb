@@ -21,6 +21,8 @@ package org.apache.iotdb.db.pipe.sink.util.builder;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
+import org.apache.iotdb.db.pipe.event.common.util.PipeObjectPathUtil;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.rescon.disk.FolderManager;
 import org.apache.iotdb.db.storageengine.rescon.disk.strategy.DirectoryStrategyType;
 import org.apache.iotdb.pipe.api.exception.PipeException;
@@ -37,11 +39,14 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
+
+import static org.apache.iotdb.commons.utils.FileUtils.createHardLink;
 
 public abstract class PipeTsFileBuilder {
 
@@ -114,7 +119,13 @@ public abstract class PipeTsFileBuilder {
 
   public abstract void bufferTreeModelTablet(Tablet tablet, Boolean isAligned);
 
-  public abstract List<Pair<String, File>> convertTabletToTsFileWithDBInfo()
+  /**
+   * Converts buffered tablets to TsFiles with optional Object directories.
+   *
+   * @return list of (database name, (tsFile, objectDir)); database is null for tree model.
+   */
+  @SuppressWarnings("java:S100")
+  public abstract List<Pair<String, Pair<File, File>>> convertTabletToTsFileWithDBInfo()
       throws IOException, WriteProcessException;
 
   public abstract boolean isEmpty();
@@ -151,6 +162,11 @@ public abstract class PipeTsFileBuilder {
     }
   }
 
+  /** Returns the batch base directory so subclasses can create per-database object temp dirs. */
+  protected File getBatchFileBaseDir() {
+    return batchFileBaseDir;
+  }
+
   protected File createFile() throws IOException {
     return new File(
         batchFileBaseDir,
@@ -162,5 +178,55 @@ public abstract class PipeTsFileBuilder {
             + "_"
             + tsFileIdGenerator.getAndIncrement()
             + TsFileConstant.TSFILE_SUFFIX);
+  }
+
+  /**
+   * Links Object files into objectDir using path iterator and a single TsFileResource (e.g. paths
+   * from event.objectPathIterator()). Creates parent dirs as needed; skips missing/failed paths.
+   */
+  protected static void linkObjectEntriesToDir(
+      final File objectDir,
+      final TsFileResource resource,
+      final Iterator<String> pathIterator,
+      final String pipeName) {
+    if (objectDir == null || resource == null || pathIterator == null) {
+      return;
+    }
+    if (!objectDir.exists() && !objectDir.mkdirs()) {
+      LOGGER.warn("Failed to create object directory: {}", objectDir.getAbsolutePath());
+      return;
+    }
+    while (pathIterator.hasNext()) {
+      final String relativePath = pathIterator.next();
+      try {
+        linkOneObjectEntry(objectDir, resource, pipeName, relativePath);
+      } catch (final Exception e) {
+        LOGGER.warn("Failed to link object file {}: {}", relativePath, e.getMessage(), e);
+      }
+    }
+  }
+
+  private static void linkOneObjectEntry(
+      final File objectDir,
+      final TsFileResource resource,
+      final String pipeName,
+      final String relativePath)
+      throws IOException {
+    if (relativePath == null || relativePath.isEmpty()) {
+      return;
+    }
+    final File src = PipeObjectPathUtil.resolveLinkedObjectFile(resource, pipeName, relativePath);
+    if (src == null || !src.exists()) {
+      return;
+    }
+    final File dest = new File(objectDir, relativePath);
+    final File parent = dest.getParentFile();
+    if (parent != null && !parent.exists() && !parent.mkdirs()) {
+      LOGGER.warn("Failed to create parent for: {}", dest.getPath());
+      return;
+    }
+    if (!dest.exists()) {
+      createHardLink(src, dest);
+    }
   }
 }

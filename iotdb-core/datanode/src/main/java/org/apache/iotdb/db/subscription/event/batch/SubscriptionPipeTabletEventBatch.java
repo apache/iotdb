@@ -43,6 +43,7 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -339,11 +340,13 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
       final PipeTsFileInsertionEvent tsFileInsertionEvent =
           (PipeTsFileInsertionEvent) enrichedEvent;
       currentTsFileInsertionEvent = tsFileInsertionEvent;
+      final long remainingMs = SubscriptionAgent.receiver().remainingMs();
       currentTabletInsertionEventsIterator =
           tsFileInsertionEvent
               .toTabletInsertionEvents(
                   // disrupt parsing requests through the introduction of randomness
-                  (long) ((1 + Math.random()) * SubscriptionAgent.receiver().remainingMs()))
+                  ThreadLocalRandom.current().nextLong(remainingMs + 1L, remainingMs * 2 + 1L),
+                  false)
               .iterator();
       return next();
     } else if (enrichedEvent instanceof TabletInsertionEvent) {

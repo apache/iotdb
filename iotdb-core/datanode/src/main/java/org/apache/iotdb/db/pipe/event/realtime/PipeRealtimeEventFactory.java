@@ -50,7 +50,7 @@ public class PipeRealtimeEventFactory {
       final TsFileResource resource) {
     final PipeInsertNodeTabletInsertionEvent insertionEvent =
         new PipeInsertNodeTabletInsertionEvent(
-            isTableModel, databaseNameFromDataRegion, insertNode);
+            isTableModel, databaseNameFromDataRegion, insertNode, resource);
 
     return TS_FILE_EPOCH_MANAGER.bindPipeInsertNodeTabletInsertionEvent(
         insertionEvent, insertNode, resource);

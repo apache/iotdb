@@ -34,6 +34,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -54,13 +55,27 @@ public class PipeInsertionDataNodeListener {
   private final AtomicInteger listenToTsFileSourceCount = new AtomicInteger(0);
   private final AtomicInteger listenToInsertNodeSourceCount = new AtomicInteger(0);
 
+  // Independent tracking for Object type write operations
+  // This map has independent lifecycle from assigner
+  private final ConcurrentMap<Integer, AtomicBoolean> dataRegionId2HasObjectWrite =
+      new ConcurrentHashMap<>();
+
   //////////////////////////// start & stop ////////////////////////////
 
   public synchronized void startListenAndAssign(
       final int dataRegionId, final PipeRealtimeDataRegionSource source) {
-    dataRegionId2Assigner
-        .computeIfAbsent(dataRegionId, o -> new PipeDataRegionAssigner(dataRegionId))
-        .startAssignTo(source);
+    final PipeDataRegionAssigner assigner =
+        dataRegionId2Assigner.computeIfAbsent(
+            dataRegionId, k -> new PipeDataRegionAssigner(dataRegionId));
+    assigner.startAssignTo(source);
+
+    // Sync Object write flag from independent tracking to assigner
+    final AtomicBoolean hasObjectWrite = dataRegionId2HasObjectWrite.get(dataRegionId);
+    // Two checks ensure that the initialization of this variable will not cause concurrency issues.
+    assigner.hasObjectData.set(hasObjectWrite != null);
+    if (dataRegionId2HasObjectWrite.get(dataRegionId) != null) {
+      assigner.hasObjectData.set(true);
+    }
 
     if (source.isNeedListenToTsFile()) {
       listenToTsFileSourceCount.incrementAndGet();
@@ -115,6 +130,25 @@ public class PipeInsertionDataNodeListener {
     assigner.publishToAssign(
         PipeRealtimeEventFactory.createRealtimeEvent(
             assigner.isTableModel(), databaseName, tsFileResource, isLoaded));
+  }
+
+  /**
+   * Listen to Object type write operations. Mark that this data region has Object type write
+   * operations. Use independent map to track Object write even before assigner is created.
+   *
+   * @param dataRegionId the data region id
+   */
+  public void listenToObjectNode(final int dataRegionId) {
+    // Track Object write independently
+    dataRegionId2HasObjectWrite
+        .computeIfAbsent(dataRegionId, k -> new AtomicBoolean(false))
+        .set(true);
+
+    // Also mark assigner if it exists
+    final PipeDataRegionAssigner assigner = dataRegionId2Assigner.get(dataRegionId);
+    if (assigner != null) {
+      assigner.hasObjectData.set(true);
+    }
   }
 
   public void listenToInsertNode(

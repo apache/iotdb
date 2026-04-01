@@ -68,7 +68,8 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
       final PipeTaskMeta pipeTaskMeta,
       final IAuditEntity entity,
       final PipeInsertionEvent sourceEvent,
-      final boolean isWithMod)
+      final boolean isWithMod,
+      final boolean objectPathsOnly)
       throws IOException {
     super(
         pipeName,
@@ -80,7 +81,9 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
         pipeTaskMeta,
         entity,
         true,
-        sourceEvent);
+        sourceEvent,
+        null,
+        objectPathsOnly);
 
     this.isWithMod = isWithMod;
     try {
@@ -129,10 +132,21 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
       final PipeTaskMeta pipeTaskMeta,
       final IAuditEntity entity,
       final PipeInsertionEvent sourceEvent,
-      final boolean isWithMod)
+      final boolean isWithMod,
+      final boolean objectPathsOnly)
       throws IOException {
     this(
-        null, 0, tsFile, pattern, startTime, endTime, pipeTaskMeta, entity, sourceEvent, isWithMod);
+        null,
+        0,
+        tsFile,
+        pattern,
+        startTime,
+        endTime,
+        pipeTaskMeta,
+        entity,
+        sourceEvent,
+        isWithMod,
+        objectPathsOnly);
   }
 
   @Override
@@ -162,7 +176,8 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
                               allocatedMemoryBlockForTableSchemas,
                               currentModifications,
                               startTime,
-                              endTime);
+                              endTime,
+                              objectPathsOnly);
                     }
                     final boolean hasNext = tabletIterator.hasNext();
                     if (hasNext && !parseStartTimeRecorded) {
@@ -218,7 +233,7 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
 
                   final TabletInsertionEvent next;
                   if (!hasNext()) {
-                    next =
+                    final PipeRawTabletInsertionEvent event =
                         sourceEvent == null
                             ? new PipeRawTabletInsertionEvent(
                                 Boolean.TRUE,
@@ -244,9 +259,14 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
                                 pipeTaskMeta,
                                 sourceEvent,
                                 true);
+
+                    // Set tsFileResource and hasObjectData
+                    event.setTsFileResource(tsFileResource);
+                    event.setHasObject(hasObjectData);
+                    next = event;
                     close();
                   } else {
-                    next =
+                    final PipeRawTabletInsertionEvent event =
                         sourceEvent == null
                             ? new PipeRawTabletInsertionEvent(
                                 Boolean.TRUE,
@@ -272,6 +292,11 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
                                 pipeTaskMeta,
                                 sourceEvent,
                                 false);
+
+                    // Set tsFileResource and hasObjectData
+                    event.setTsFileResource(tsFileResource);
+                    event.setHasObject(hasObjectData);
+                    next = event;
                   }
                   return next;
                 }

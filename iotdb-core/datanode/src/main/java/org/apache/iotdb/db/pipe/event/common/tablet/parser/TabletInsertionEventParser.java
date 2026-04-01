@@ -561,6 +561,7 @@ public abstract class TabletInsertionEventParser {
       case TEXT:
       case BLOB:
       case STRING:
+      case OBJECT:
         {
           final Binary[] binaryValueColumns =
               isSingleOriginValueColumn

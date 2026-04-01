@@ -350,6 +350,34 @@ public class PipeSinkConstant {
   public static final String SINK_USE_EVENT_USER_NAME_KEY = "sink.use-event-user-name";
   public static final boolean CONNECTOR_USE_EVENT_USER_NAME_DEFAULT_VALUE = false;
 
+  // TsFile Sink
+  public static final String CONNECTOR_FILE_MODE_KEY = "connector.file-mode";
+  public static final String SINK_FILE_MODE_KEY = "sink.file-mode";
+  public static final String SINK_FILE_MODE_LOCAL_VALUE = "local";
+  public static final String SINK_FILE_MODE_SCP_VALUE = "scp";
+
+  public static final String CONNECTOR_LOCAL_TARGET_PATH_KEY = "connector.local.target-path";
+  public static final String SINK_LOCAL_TARGET_PATH_KEY = "sink.local.target-path";
+
+  public static final String CONNECTOR_SCP_HOST_KEY = "connector.scp.host";
+  public static final String SINK_SCP_HOST_KEY = "sink.scp.host";
+
+  public static final String CONNECTOR_SCP_PORT_KEY = "connector.scp.port";
+  public static final String SINK_SCP_PORT_KEY = "sink.scp.port";
+  public static final int SINK_SCP_PORT_DEFAULT_VALUE = 22;
+
+  public static final String CONNECTOR_SCP_USER_KEY = "connector.scp.user";
+  public static final String SINK_SCP_USER_KEY = "sink.scp.user";
+
+  public static final String CONNECTOR_SCP_PASSWORD_KEY = "connector.scp.password";
+  public static final String SINK_SCP_PASSWORD_KEY = "sink.scp.password";
+
+  public static final String CONNECTOR_SCP_REMOTE_PATH_KEY = "connector.scp.remote-path";
+  public static final String SINK_SCP_REMOTE_PATH_KEY = "sink.scp.remote-path";
+
+  // enable-send-tsfile-limit / rate-limit-bytes-per-second see CONNECTOR_ENABLE_SEND_TSFILE_LIMIT,
+  // SINK_ENABLE_SEND_TSFILE_LIMIT, CONNECTOR_RATE_LIMIT_KEY, SINK_RATE_LIMIT_KEY above
+
   private PipeSinkConstant() {
     throw new IllegalStateException("Utility class");
   }

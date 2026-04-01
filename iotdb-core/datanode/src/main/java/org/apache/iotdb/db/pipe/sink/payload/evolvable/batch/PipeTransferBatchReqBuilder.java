@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.sink.payload.evolvable.batch;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.pipe.sink.protocol.PipeBatchMetricsSettable;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.sink.client.IoTDBDataNodeCacheLeaderClientManager;
@@ -61,7 +62,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SIN
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_BATCH_SIZE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_LEADER_CACHE_ENABLE_KEY;
 
-public class PipeTransferBatchReqBuilder implements AutoCloseable {
+public class PipeTransferBatchReqBuilder implements AutoCloseable, PipeBatchMetricsSettable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTransferBatchReqBuilder.class);
 
@@ -234,24 +235,28 @@ public class PipeTransferBatchReqBuilder implements AutoCloseable {
     this.eventSizeHistogram.update(eventSize);
   }
 
+  @Override
   public void setTabletBatchSizeHistogram(Histogram tabletBatchSizeHistogram) {
     if (tabletBatchSizeHistogram != null) {
       this.tabletBatchSizeHistogram = tabletBatchSizeHistogram;
     }
   }
 
+  @Override
   public void setTsFileBatchSizeHistogram(Histogram tsFileBatchSizeHistogram) {
     if (tsFileBatchSizeHistogram != null) {
       this.tsFileBatchSizeHistogram = tsFileBatchSizeHistogram;
     }
   }
 
+  @Override
   public void setTabletBatchTimeIntervalHistogram(Histogram tabletBatchTimeIntervalHistogram) {
     if (tabletBatchTimeIntervalHistogram != null) {
       this.tabletBatchTimeIntervalHistogram = tabletBatchTimeIntervalHistogram;
     }
   }
 
+  @Override
   public void setTsFileBatchTimeIntervalHistogram(Histogram tsFileBatchTimeIntervalHistogram) {
     if (tsFileBatchTimeIntervalHistogram != null) {
       this.tsFileBatchTimeIntervalHistogram = tsFileBatchTimeIntervalHistogram;
@@ -259,6 +264,11 @@ public class PipeTransferBatchReqBuilder implements AutoCloseable {
   }
 
   public void setEventSizeHistogram(Histogram eventSizeHistogram) {
+    setBatchEventSizeHistogram(eventSizeHistogram);
+  }
+
+  @Override
+  public void setBatchEventSizeHistogram(Histogram eventSizeHistogram) {
     if (eventSizeHistogram != null) {
       this.eventSizeHistogram = eventSizeHistogram;
     }

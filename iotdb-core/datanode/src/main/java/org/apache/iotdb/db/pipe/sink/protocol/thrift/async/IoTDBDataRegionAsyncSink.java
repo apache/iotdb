@@ -243,14 +243,15 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
           new PipeTransferTabletBatchEventHandler((PipeTabletEventPlainBatch) batch, this));
     } else if (batch instanceof PipeTabletEventTsFileBatch) {
       final PipeTabletEventTsFileBatch tsFileBatch = (PipeTabletEventTsFileBatch) batch;
-      final List<Pair<String, File>> dbTsFilePairs = tsFileBatch.sealTsFiles();
+      final List<Pair<String, Pair<File, File>>> dbTsFilePairs = tsFileBatch.sealTsFiles();
       final Map<Pair<String, Long>, Double> pipe2WeightMap = tsFileBatch.deepCopyPipe2WeightMap();
       final List<EnrichedEvent> events = tsFileBatch.deepCopyEvents();
       final AtomicInteger eventsReferenceCount = new AtomicInteger(dbTsFilePairs.size());
       final AtomicBoolean eventsHadBeenAddedToRetryQueue = new AtomicBoolean(false);
 
       try {
-        for (final Pair<String, File> sealedFile : dbTsFilePairs) {
+        for (final Pair<String, Pair<File, File>> sealedFile : dbTsFilePairs) {
+          final File tsFile = sealedFile.right.left;
           transfer(
               new PipeTransferTsFileHandler(
                   this,
@@ -258,7 +259,7 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
                   events,
                   eventsReferenceCount,
                   eventsHadBeenAddedToRetryQueue,
-                  sealedFile.right,
+                  tsFile,
                   null,
                   false,
                   sealedFile.left));

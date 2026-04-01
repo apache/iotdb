@@ -134,6 +134,7 @@ public class PipeTableStatementDataTypeConvertExecutionVisitor
               null,
               null,
               null,
+              true,
               true)) {
         for (final TabletInsertionEvent tabletInsertionEvent : parser.toTabletInsertionEvents()) {
           if (!(tabletInsertionEvent instanceof PipeRawTabletInsertionEvent)) {

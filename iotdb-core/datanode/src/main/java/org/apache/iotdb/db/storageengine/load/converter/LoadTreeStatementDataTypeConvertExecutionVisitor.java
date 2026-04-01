@@ -97,7 +97,8 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitor
                 Long.MAX_VALUE,
                 null,
                 null,
-                true)) {
+                true,
+                false)) {
           for (final Pair<Tablet, Boolean> tabletWithIsAligned : parser.toTabletWithIsAligneds()) {
             final PipeTransferTabletRawReq tabletRawReq =
                 PipeTransferTabletRawReq.toTPipeTransferRawReq(

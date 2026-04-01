@@ -31,6 +31,7 @@ import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 
@@ -61,6 +62,12 @@ public abstract class TsFileInsertionEventParser implements AutoCloseable {
   protected final PipeTaskMeta pipeTaskMeta; // used to report progress
   protected final PipeInsertionEvent sourceEvent; // used to report progress
 
+  // TsFileResource, used for Object file management
+  protected final TsFileResource tsFileResource;
+  // Flag indicating whether Tablet has Object data, defaults to true to ensure scanning will be
+  // performed
+  protected boolean hasObjectData = true;
+
   // mods entry
   protected PipeMemoryBlock allocatedMemoryBlockForModifications;
   protected PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> currentModifications;
@@ -75,6 +82,13 @@ public abstract class TsFileInsertionEventParser implements AutoCloseable {
 
   protected Iterable<TabletInsertionEvent> tabletInsertionIterable;
 
+  /**
+   * When false, parses full tablet events with Object-type columns excluded (Object content is not
+   * part of regular tablet data). When true, parses only Object-type columns and returns their path
+   * data (used internally for object path extraction).
+   */
+  protected final boolean objectPathsOnly;
+
   protected TsFileInsertionEventParser(
       final String pipeName,
       final long creationTime,
@@ -85,7 +99,9 @@ public abstract class TsFileInsertionEventParser implements AutoCloseable {
       final PipeTaskMeta pipeTaskMeta,
       final IAuditEntity entity,
       final boolean skipIfNoPrivileges,
-      final PipeInsertionEvent sourceEvent) {
+      final PipeInsertionEvent sourceEvent,
+      final TsFileResource tsFileResource,
+      final boolean objectPathsOnly) {
     this.pipeName = pipeName;
     this.creationTime = creationTime;
     this.entity = entity;
@@ -103,10 +119,20 @@ public abstract class TsFileInsertionEventParser implements AutoCloseable {
     this.pipeTaskMeta = pipeTaskMeta;
     this.sourceEvent = sourceEvent;
 
+    // Get TsFileResource and hasObjectData from sourceEvent
+    TsFileResource resolvedTsFileResource = tsFileResource;
+    if (resolvedTsFileResource == null && sourceEvent != null) {
+      resolvedTsFileResource = sourceEvent.getTsFileResource();
+    }
+    this.tsFileResource = resolvedTsFileResource;
+    this.hasObjectData = sourceEvent == null || sourceEvent.hasObjectData();
+
     this.allocatedMemoryBlockForTablet =
         PipeDataNodeResourceManager.memory()
             .forceAllocateForTabletWithRetry(
                 PipeConfig.getInstance().getPipeDataStructureTabletSizeInBytes());
+
+    this.objectPathsOnly = objectPathsOnly;
   }
 
   /**

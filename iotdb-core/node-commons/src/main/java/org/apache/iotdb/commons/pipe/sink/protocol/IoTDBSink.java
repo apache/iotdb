@@ -148,7 +148,8 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SIN
 
 @TreeModel
 @TableModel
-public abstract class IoTDBSink implements PipeConnector {
+@SuppressWarnings("java:S100")
+public abstract class IoTDBSink implements PipeConnector, PipeBatchMetricsSettable {
 
   private static final String PARSE_URL_ERROR_FORMATTER =
       "Exception occurred while parsing node urls from target servers: {}";
@@ -649,23 +650,28 @@ public abstract class IoTDBSink implements PipeConnector {
     return receiverStatusHandler;
   }
 
+  @Override
   public void setTabletBatchSizeHistogram(Histogram tabletBatchSizeHistogram) {
     // do nothing by default
   }
 
+  @Override
   public void setTsFileBatchSizeHistogram(Histogram tsFileBatchSizeHistogram) {
     // do nothing by default
   }
 
+  @Override
   public void setTabletBatchTimeIntervalHistogram(Histogram tabletBatchTimeIntervalHistogram) {
     // do nothing by default
   }
 
+  @Override
   public void setTsFileBatchTimeIntervalHistogram(Histogram tsFileBatchTimeIntervalHistogram) {
     // do nothing by default
   }
 
-  public void setBatchEventSizeHistogram(Histogram tsFileBatchTimeIntervalHistogram) {
+  @Override
+  public void setBatchEventSizeHistogram(Histogram eventSizeHistogram) {
     // do nothing by default
   }
 }

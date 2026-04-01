@@ -80,7 +80,26 @@ public class TsFileInsertionEventParserProvider {
     this.sourceEvent = sourceEvent;
   }
 
+  /**
+   * Provides a parser for this TsFile with regular tablet parsing mode.
+   *
+   * @param isWithMod whether to load and apply TsFile modification files (.mods) when parsing
+   */
   public TsFileInsertionEventParser provide(final boolean isWithMod)
+      throws IOException, IllegalPathException {
+    return this.provide(isWithMod, false);
+  }
+
+  /**
+   * @param isWithMod whether to load and apply TsFile modification files (.mods) when parsing
+   * @param objectPathsOnly when true, only parse for Object-type data (paths); when false, parse
+   *     full tablet events
+   * @return a concrete {@link TsFileInsertionEventParser} for this TsFile (table or tree model;
+   *     scan- or query-based implementation chosen by memory and pattern)
+   * @throws IOException if the TsFile or mods cannot be opened or read
+   * @throws IllegalPathException if a path in the TsFile is illegal
+   */
+  public TsFileInsertionEventParser provide(final boolean isWithMod, final boolean objectPathsOnly)
       throws IOException, IllegalPathException {
     if (pipeName != null) {
       PipeTsFileToTabletsMetrics.getInstance()
@@ -98,7 +117,8 @@ public class TsFileInsertionEventParserProvider {
           pipeTaskMeta,
           entity,
           sourceEvent,
-          isWithMod);
+          isWithMod,
+          objectPathsOnly);
     }
 
     // Use scan container to save memory
@@ -116,7 +136,8 @@ public class TsFileInsertionEventParserProvider {
           entity,
           sourceEvent.isSkipIfNoPrivileges(),
           sourceEvent,
-          isWithMod);
+          isWithMod,
+          objectPathsOnly);
     }
 
     if (treePattern instanceof IoTDBTreePatternOperations
@@ -139,7 +160,8 @@ public class TsFileInsertionEventParserProvider {
           entity,
           sourceEvent.isSkipIfNoPrivileges(),
           null,
-          false);
+          isWithMod,
+          objectPathsOnly);
     }
 
     final Map<IDeviceID, Boolean> deviceIsAlignedMap =
@@ -158,7 +180,8 @@ public class TsFileInsertionEventParserProvider {
           entity,
           sourceEvent.isSkipIfNoPrivileges(),
           sourceEvent,
-          isWithMod);
+          isWithMod,
+          objectPathsOnly);
     }
 
     final int originalSize = deviceIsAlignedMap.size();
@@ -178,7 +201,8 @@ public class TsFileInsertionEventParserProvider {
             entity,
             sourceEvent.isSkipIfNoPrivileges(),
             sourceEvent,
-            isWithMod)
+            isWithMod,
+            objectPathsOnly)
         : new TsFileInsertionEventQueryParser(
             pipeName,
             creationTime,
@@ -191,7 +215,8 @@ public class TsFileInsertionEventParserProvider {
             entity,
             sourceEvent.isSkipIfNoPrivileges(),
             filteredDeviceIsAlignedMap,
-            isWithMod);
+            isWithMod,
+            objectPathsOnly);
   }
 
   private Map<IDeviceID, Boolean> filterDeviceIsAlignedMapByPattern(

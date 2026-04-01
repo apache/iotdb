@@ -53,6 +53,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalIn
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.DeviceIDFactory;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
 import org.apache.iotdb.pipe.api.collector.TabletCollector;
@@ -72,6 +73,7 @@ import javax.annotation.Nonnull;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -103,10 +105,17 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
 
   private long extractTime = 0;
 
+  // Object type: single flag — whether this structure contains Object type data (null = not yet
+  // determined)
+  private Boolean hasObjectData = null;
+
+  private TsFileResource tsFileResource;
+
   public PipeInsertNodeTabletInsertionEvent(
       final Boolean isTableModel,
       final String databaseNameFromDataRegion,
-      final InsertNode insertNode) {
+      final InsertNode insertNode,
+      final TsFileResource resource) {
     this(
         isTableModel,
         databaseNameFromDataRegion,
@@ -121,7 +130,8 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
         null,
         true,
         Long.MIN_VALUE,
-        Long.MAX_VALUE);
+        Long.MAX_VALUE,
+        resource);
   }
 
   public PipeInsertNodeTabletInsertionEvent(
@@ -138,7 +148,8 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
       final String cliHostname,
       final boolean skipIfNoPrivileges,
       final long startTime,
-      final long endTime) {
+      final long endTime,
+      final TsFileResource tsFileResource) {
     super(
         pipeName,
         creationTime,
@@ -157,6 +168,7 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
     this.progressIndex = insertNode.getProgressIndex();
 
     this.allocatedMemoryBlock = new AtomicReference<>();
+    this.tsFileResource = tsFileResource;
   }
 
   @Nonnull
@@ -177,6 +189,60 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
     return extractTime;
   }
 
+  private UserEntity buildEntityForPrivilege() {
+    if (getUserId() == null || getUserName() == null) {
+      return null;
+    }
+    try {
+      return new UserEntity(Long.parseLong(getUserId()), getUserName(), getCliHostname());
+    } catch (NumberFormatException e) {
+      return null;
+    }
+  }
+
+  /////////////////////////// Object Related Methods ///////////////////////////
+
+  @Override
+  public boolean hasObjectData() {
+    return hasObjectData == null || hasObjectData;
+  }
+
+  @Override
+  public void setHasObject(final Boolean hasObject) {
+    if (hasObject != null) {
+      this.hasObjectData = hasObject;
+    }
+  }
+
+  @Override
+  public TsFileResource getTsFileResource() {
+    return tsFileResource;
+  }
+
+  @Override
+  public void setTsFileResource(final TsFileResource tsFileResource) {
+    this.tsFileResource = tsFileResource;
+  }
+
+  @Override
+  public Iterator<String> objectPathIterator() {
+    return objectPaths().iterator();
+  }
+
+  public Iterable<String> objectPaths() {
+    final UserEntity entity = buildEntityForPrivilege();
+    final InsertNodeObjectPathIterator.ExtractContext context =
+        new InsertNodeObjectPathIterator.ExtractContext(
+            treePattern,
+            tablePattern,
+            startTime,
+            endTime,
+            isTableModelEvent(),
+            getTableModelDatabaseName(),
+            entity);
+    return () -> new InsertNodeObjectPathIterator(insertNode, hasObjectData, context);
+  }
+
   /////////////////////////// EnrichedEvent ///////////////////////////
 
   @Override
@@ -184,6 +250,18 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
     extractTime = System.nanoTime();
     try {
       if (Objects.nonNull(pipeName)) {
+        final Iterator<String> pathIterator = objectPaths().iterator();
+        final int linked =
+            PipeDataNodeResourceManager.object()
+                .linkObjectFiles(tsFileResource, pathIterator, pipeName);
+        if (linked > 0) {
+          if (hasObjectData == null) {
+            hasObjectData = true;
+          }
+          PipeDataNodeResourceManager.object().increaseReference(tsFileResource, pipeName);
+        } else {
+          hasObjectData = false;
+        }
         PipeDataNodeSinglePipeMetrics.getInstance()
             .increaseInsertNodeEventCount(pipeName, creationTime);
         PipeDataNodeAgent.task()
@@ -200,6 +278,10 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
   @Override
   public boolean internallyDecreaseResourceReferenceCount(final String holderMessage) {
     try {
+      if (pipeName != null && !Objects.equals(Boolean.FALSE, hasObjectData)) {
+        PipeDataNodeResourceManager.object().decreaseReference(tsFileResource, pipeName);
+      }
+
       // release the parsers' memory and close memory block
       if (eventParsers != null) {
         eventParsers.clear();
@@ -252,21 +334,27 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
     if (Objects.isNull(node)) {
       throw new PipeException("InsertNode has been released");
     }
-    return new PipeInsertNodeTabletInsertionEvent(
-        getRawIsTableModelEvent(),
-        getSourceDatabaseNameFromDataRegion(),
-        node,
-        pipeName,
-        creationTime,
-        pipeTaskMeta,
-        treePattern,
-        tablePattern,
-        userId,
-        userName,
-        cliHostname,
-        skipIfNoPrivileges,
-        startTime,
-        endTime);
+    final PipeInsertNodeTabletInsertionEvent copiedEvent =
+        new PipeInsertNodeTabletInsertionEvent(
+            getRawIsTableModelEvent(),
+            getSourceDatabaseNameFromDataRegion(),
+            node,
+            pipeName,
+            creationTime,
+            pipeTaskMeta,
+            treePattern,
+            tablePattern,
+            userId,
+            userName,
+            cliHostname,
+            skipIfNoPrivileges,
+            startTime,
+            endTime,
+            tsFileResource);
+
+    copiedEvent.hasObjectData = this.hasObjectData;
+
+    return copiedEvent;
   }
 
   @Override
@@ -564,19 +652,24 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
     final List<PipeRawTabletInsertionEvent> events =
         initEventParsers().stream()
             .map(
-                container ->
-                    new PipeRawTabletInsertionEvent(
-                        getRawIsTableModelEvent(),
-                        getSourceDatabaseNameFromDataRegion(),
-                        getRawTableModelDataBase(),
-                        getRawTreeModelDataBase(),
-                        container.convertToTablet(),
-                        container.isAligned(),
-                        pipeName,
-                        creationTime,
-                        pipeTaskMeta,
-                        this,
-                        false))
+                container -> {
+                  final PipeRawTabletInsertionEvent event =
+                      new PipeRawTabletInsertionEvent(
+                          getRawIsTableModelEvent(),
+                          getSourceDatabaseNameFromDataRegion(),
+                          getRawTableModelDataBase(),
+                          getRawTreeModelDataBase(),
+                          container.convertToTablet(),
+                          container.isAligned(),
+                          pipeName,
+                          creationTime,
+                          pipeTaskMeta,
+                          this,
+                          false);
+                  event.setHasObject(hasObjectData);
+                  event.setTsFileResource(tsFileResource);
+                  return event;
+                })
             .filter(event -> !event.hasNoNeedParsingAndIsEmpty())
             .collect(Collectors.toList());
 

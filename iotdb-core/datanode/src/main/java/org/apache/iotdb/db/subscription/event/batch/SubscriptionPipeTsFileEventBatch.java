@@ -95,16 +95,17 @@ public class SubscriptionPipeTsFileEventBatch extends SubscriptionPipeEventBatch
     }
 
     final List<SubscriptionEvent> events = new ArrayList<>();
-    final List<Pair<String, File>> dbTsFilePairs = batch.sealTsFiles();
+    final List<Pair<String, Pair<File, File>>> dbTsFilePairs = batch.sealTsFiles();
     final AtomicInteger ackReferenceCount = new AtomicInteger(dbTsFilePairs.size());
     final AtomicInteger cleanReferenceCount = new AtomicInteger(dbTsFilePairs.size());
-    for (final Pair<String, File> pair : dbTsFilePairs) {
+    for (final Pair<String, Pair<File, File>> pair : dbTsFilePairs) {
+      final File tsFile = pair.right.left;
       final SubscriptionCommitContext commitContext =
           prefetchingQueue.generateSubscriptionCommitContext();
       events.add(
           new SubscriptionEvent(
               new SubscriptionPipeTsFileBatchEvents(this, ackReferenceCount, cleanReferenceCount),
-              pair.right,
+              tsFile,
               pair.left,
               commitContext));
     }

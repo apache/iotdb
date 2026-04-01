@@ -25,8 +25,12 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import javax.validation.constraints.NotNull;
+
+import java.util.Collections;
+import java.util.Iterator;
 
 /**
  * The data model used to record the Event and the data model of the DataRegion corresponding to the
@@ -66,7 +70,7 @@ public abstract class PipeInsertionEvent extends EnrichedEvent {
       final TablePattern tablePattern,
       final String userId,
       final String userName,
-      final String clientHostname,
+      final String cliHostname,
       final boolean skipIfNoPrivileges,
       final long startTime,
       final long endTime,
@@ -82,7 +86,7 @@ public abstract class PipeInsertionEvent extends EnrichedEvent {
         tablePattern,
         userId,
         userName,
-        clientHostname,
+        cliHostname,
         skipIfNoPrivileges,
         startTime,
         endTime);
@@ -102,7 +106,7 @@ public abstract class PipeInsertionEvent extends EnrichedEvent {
       final TablePattern tablePattern,
       final String userId,
       final String userName,
-      final String clientHostname,
+      final String cliHostname,
       final boolean skipIfNoPrivileges,
       final long startTime,
       final long endTime,
@@ -116,7 +120,7 @@ public abstract class PipeInsertionEvent extends EnrichedEvent {
         tablePattern,
         userId,
         userName,
-        clientHostname,
+        cliHostname,
         skipIfNoPrivileges,
         startTime,
         endTime,
@@ -173,5 +177,63 @@ public abstract class PipeInsertionEvent extends EnrichedEvent {
 
   public boolean shouldParse4Privilege() {
     return shouldParse4Privilege;
+  }
+
+  /////////////////////////// Object-type data ///////////////////////////
+
+  /**
+   * Returns an iterator over object file paths (relative paths resolved by TierManager) for this
+   * event. Events that may contain Object-type data should override this and return a non-empty
+   * iterator. Callers can use this to link or process paths one-by-one without building a full
+   * list. Default implementation returns an empty iterator.
+   *
+   * @return iterator over object paths; never null
+   */
+  public Iterator<String> objectPathIterator() {
+    return Collections.emptyIterator();
+  }
+
+  /**
+   * Set whether the event has Object-type data manually. This can be used to manually mark Object
+   * data without scanning. Default implementation does nothing. Only events that may contain Object
+   * types need to override this.
+   *
+   * @param hasObject whether the event has Object-type data; {@code null} means leave the flag
+   *     unchanged (unknown / not yet determined)
+   */
+  public void setHasObject(final Boolean hasObject) {
+    // Default implementation does nothing
+  }
+
+  /**
+   * Check if the event contains any Object-type data. Default implementation returns false. Only
+   * events that may contain Object types need to override this.
+   *
+   * @return true if the event contains Object-type data, false otherwise
+   */
+  public boolean hasObjectData() {
+    return false;
+  }
+
+  /////////////////////////// TsFile resource (Object file linkage) ///////////////////////////
+
+  /**
+   * Get the TsFileResource associated with this event. Default implementation returns null. Only
+   * events that are associated with a TsFile need to override this.
+   *
+   * @return TsFileResource if this event is associated with a TsFile, null otherwise
+   */
+  public TsFileResource getTsFileResource() {
+    return null;
+  }
+
+  /**
+   * Set the TsFileResource for this event. Default implementation does nothing. Only events that
+   * need to store TsFileResource need to override this.
+   *
+   * @param tsFileResource the TsFileResource to set
+   */
+  public void setTsFileResource(final TsFileResource tsFileResource) {
+    // Default implementation does nothing
   }
 }

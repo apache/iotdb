@@ -276,6 +276,13 @@
             <!--We will integrate rest-jar-with-dependencies into lib by assembly plugin-->
             <scope>provided</scope>
         </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>tsfile-remote-sink</artifactId>
+            <version>${project.version}</version>
+            <!--We will integrate tsfile-remote-sink-jar-with-dependencies into lib by assembly plugin-->
+            <scope>provided</scope>
+        </dependency>
     </dependencies>
     <build>
         <plugins>

@@ -30,6 +30,7 @@ import org.apache.iotdb.db.pipe.sink.protocol.opcda.OpcDaSink;
 import org.apache.iotdb.db.pipe.sink.protocol.opcua.OpcUaSink;
 import org.apache.iotdb.db.pipe.sink.protocol.thrift.async.IoTDBDataRegionAsyncSink;
 import org.apache.iotdb.db.pipe.sink.protocol.thrift.sync.IoTDBDataRegionSyncSink;
+import org.apache.iotdb.db.pipe.sink.protocol.tsfile.PipeTsFileLocalSink;
 import org.apache.iotdb.db.pipe.sink.protocol.websocket.WebSocketSink;
 import org.apache.iotdb.db.pipe.sink.protocol.writeback.WriteBackSink;
 
@@ -97,5 +98,7 @@ class PipeDataRegionSinkConstructor extends PipeSinkConstructor {
     pluginConstructors.put(
         BuiltinPipePlugin.IOT_CONSENSUS_V2_ASYNC_SINK.getPipePluginName(),
         IoTConsensusV2AsyncSink::new);
+    pluginConstructors.put(
+        BuiltinPipePlugin.TSFILE_LOCAL_SINK.getPipePluginName(), PipeTsFileLocalSink::new);
   }
 }

@@ -76,13 +76,16 @@ public class PipeTableModelTsFileBuilder extends PipeTsFileBuilder {
   }
 
   @Override
-  public List<Pair<String, File>> convertTabletToTsFileWithDBInfo() throws IOException {
+  public List<Pair<String, Pair<File, File>>> convertTabletToTsFileWithDBInfo() throws IOException {
     if (dataBase2TabletList.isEmpty()) {
       return new ArrayList<>(0);
     }
-    final List<Pair<String, File>> pairList = new ArrayList<>();
+    final List<Pair<String, Pair<File, File>>> pairList = new ArrayList<>();
     for (Map.Entry<String, List<Tablet>> entry : dataBase2TabletList.entrySet()) {
-      pairList.addAll(writeTableModelTabletsToTsFiles(entry.getValue(), entry.getKey()));
+      for (final Pair<String, File> p :
+          writeTableModelTabletsToTsFiles(entry.getValue(), entry.getKey())) {
+        pairList.add(new Pair<>(p.getLeft(), new Pair<>(p.getRight(), null)));
+      }
     }
     return pairList;
   }

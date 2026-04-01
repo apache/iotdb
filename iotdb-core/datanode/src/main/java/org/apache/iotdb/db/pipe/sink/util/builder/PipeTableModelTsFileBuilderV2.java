@@ -21,11 +21,13 @@ package org.apache.iotdb.db.pipe.sink.util.builder;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.db.storageengine.dataregion.flush.MemTableFlushTask;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.PrimitiveMemTable;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
@@ -48,6 +50,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -60,23 +63,58 @@ public class PipeTableModelTsFileBuilderV2 extends PipeTsFileBuilder {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTableModelTsFileBuilderV2.class);
 
+  /** Prefix of per-database temp dir for table model Object files (suffix: database_BatchID). */
+  private static final String TABLE_MODEL_OBJECT_CACHE_DIR_PREFIX =
+      "TableModelTSFileBuilderObjectCache_";
+
   private static final PlanNodeId PLACEHOLDER_PLAN_NODE_ID =
       new PlanNodeId("PipeTableModelTsFileBuilderV2");
 
   private final Map<String, List<Tablet>> dataBase2TabletList = new HashMap<>();
 
-  // TODO: remove me later if stable
-  private final PipeTableModelTsFileBuilder fallbackBuilder;
+  /** Temp dir per database for Object files; renamed to TSFile-named object dir on seal. */
+  private final Map<String, File> dataBase2ObjectTempDir = new HashMap<>();
 
   public PipeTableModelTsFileBuilderV2(
       final AtomicLong currentBatchId, final AtomicLong tsFileIdGenerator) {
     super(currentBatchId, tsFileIdGenerator);
-    fallbackBuilder = new PipeTableModelTsFileBuilder(currentBatchId, tsFileIdGenerator);
   }
 
   @Override
   public void bufferTableModelTablet(String dataBase, Tablet tablet) {
     dataBase2TabletList.computeIfAbsent(dataBase, db -> new ArrayList<>()).add(tablet);
+  }
+
+  /**
+   * Links Object paths from the given iterator into the database's temp dir. Call this when the
+   * event has object paths (e.g. after buffering the tablet). At seal time the temp dir is renamed
+   * to the TSFile's object dir name.
+   */
+  public void linkObjectPathsForDatabase(
+      final String dataBase,
+      final Iterator<String> pathIterator,
+      final TsFileResource resource,
+      String pipeName) {
+    if (pathIterator == null || resource == null || pipeName == null) {
+      return;
+    }
+
+    File tempDir =
+        dataBase2ObjectTempDir.computeIfAbsent(
+            dataBase,
+            db -> {
+              final String dirName =
+                  TABLE_MODEL_OBJECT_CACHE_DIR_PREFIX + dataBase + "_" + currentBatchId.get();
+              File dir = new File(getBatchFileBaseDir(), dirName);
+              if (!dir.exists() && !dir.mkdirs()) {
+                LOGGER.warn("Failed to create object temp dir for database: {}", dataBase);
+                return null;
+              }
+              return dir;
+            });
+    if (tempDir != null) {
+      linkObjectEntriesToDir(tempDir, resource, pathIterator, pipeName);
+    }
   }
 
   @Override
@@ -86,22 +124,24 @@ public class PipeTableModelTsFileBuilderV2 extends PipeTsFileBuilder {
   }
 
   @Override
-  public List<Pair<String, File>> convertTabletToTsFileWithDBInfo() throws IOException {
+  @SuppressWarnings("java:S100")
+  public List<Pair<String, Pair<File, File>>> convertTabletToTsFileWithDBInfo()
+      throws IOException, WriteProcessException {
     if (dataBase2TabletList.isEmpty()) {
       return new ArrayList<>(0);
     }
     try {
-      final List<Pair<String, File>> pairList = new ArrayList<>();
+      final List<Pair<String, Pair<File, File>>> pairList = new ArrayList<>();
       for (final String dataBase : dataBase2TabletList.keySet()) {
         pairList.addAll(writeTabletsToTsFiles(dataBase));
       }
       return pairList;
-    } catch (final Exception e) {
+    } catch (final WriteProcessException e) {
       LOGGER.warn(
           "Exception occurred when PipeTableModelTsFileBuilderV2 writing tablets to tsfile, use fallback tsfile builder: {}",
           e.getMessage(),
           e);
-      return fallbackBuilder.convertTabletToTsFileWithDBInfo();
+      throw e;
     }
   }
 
@@ -113,31 +153,47 @@ public class PipeTableModelTsFileBuilderV2 extends PipeTsFileBuilder {
   @Override
   public synchronized void onSuccess() {
     super.onSuccess();
+    deleteAllObjectTempDirsRecursively();
     dataBase2TabletList.clear();
-    fallbackBuilder.onSuccess();
+    dataBase2ObjectTempDir.clear();
   }
 
   @Override
   public synchronized void close() {
     super.close();
+    deleteAllObjectTempDirsRecursively();
     dataBase2TabletList.clear();
-    fallbackBuilder.close();
+    dataBase2ObjectTempDir.clear();
   }
 
-  private List<Pair<String, File>> writeTabletsToTsFiles(final String dataBase)
+  /**
+   * Removes every per-database object temp dir (all files/subdirs and the dir itself) via {@link
+   * FileUtils#deleteFileOrDirectory(File, boolean)}. {@code quietForNoSuchFile=true} avoids noise
+   * when the dir was already renamed/moved after successful transfer.
+   */
+  private void deleteAllObjectTempDirsRecursively() {
+    for (final File dir : dataBase2ObjectTempDir.values()) {
+      if (dir != null) {
+        FileUtils.deleteFileOrDirectory(dir, true);
+      }
+    }
+  }
+
+  private List<Pair<String, Pair<File, File>>> writeTabletsToTsFiles(final String dataBase)
       throws WriteProcessException {
     final IMemTable memTable = new PrimitiveMemTable(null, null);
-    final List<Pair<String, File>> sealedFiles = new ArrayList<>();
+    final List<Pair<String, Pair<File, File>>> sealedFiles = new ArrayList<>();
     try (final RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(createFile())) {
       writeTabletsIntoOneFile(dataBase, memTable, writer);
-      sealedFiles.add(new Pair<>(dataBase, writer.getFile()));
+      final File tsFile = writer.getFile();
+      final File tempDir = dataBase2ObjectTempDir.get(dataBase);
+      sealedFiles.add(new Pair<>(dataBase, new Pair<>(tsFile, tempDir)));
     } catch (final Exception e) {
       LOGGER.warn(
           "Batch id = {}: Failed to write tablets into tsfile, because {}",
           currentBatchId.get(),
           e.getMessage(),
           e);
-      // TODO: handle ex
       throw new WriteProcessException(e);
     } finally {
       memTable.release();

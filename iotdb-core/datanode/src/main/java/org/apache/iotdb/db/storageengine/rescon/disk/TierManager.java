@@ -287,6 +287,16 @@ public class TierManager {
     return objectDirs;
   }
 
+  public boolean isDataRegionObjectDirExists(String dataRegionId) {
+    for (String objectDir : objectDirs) {
+      File dataRegionDir = FSFactoryProducer.getFSFactory().getFile(objectDir, dataRegionId);
+      if (dataRegionDir.exists()) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   public Optional<File> getAbsoluteObjectFilePath(String filePath) {
     return getAbsoluteObjectFilePath(filePath, false);
   }
