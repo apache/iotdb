@@ -137,6 +137,10 @@ public final class Patterns {
     return typeOf(ExplainAnalyzeNode.class);
   }
 
+  public static Pattern<CopyToNode> copyTo() {
+    return typeOf(CopyToNode.class);
+  }
+
   public static Pattern<ProjectNode> project() {
     return typeOf(ProjectNode.class);
   }

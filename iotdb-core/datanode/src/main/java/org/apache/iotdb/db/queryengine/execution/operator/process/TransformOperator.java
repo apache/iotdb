@@ -54,6 +54,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 public class TransformOperator implements ProcessOperator {
 
@@ -225,6 +226,7 @@ public class TransformOperator implements ProcessOperator {
   @Override
   public TsBlock next() throws Exception {
 
+    long start = System.nanoTime();
     try {
       YieldableState yieldableState = iterateAllColumnsToNextValid();
       if (yieldableState == YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA) {
@@ -236,9 +238,10 @@ public class TransformOperator implements ProcessOperator {
       final TimeColumnBuilder timeBuilder = tsBlockBuilder.getTimeColumnBuilder();
       final ColumnBuilder[] columnBuilders = tsBlockBuilder.getValueColumnBuilders();
       final int columnCount = columnBuilders.length;
-
-      int rowCount = 0;
-      while (!timeHeap.isEmpty()) {
+      long maxRuntime = operatorContext.getMaxRunTime().roundTo(TimeUnit.NANOSECONDS);
+      while (!timeHeap.isEmpty()
+          && !tsBlockBuilder.isFull()
+          && System.nanoTime() - start < maxRuntime) {
         final long currentTime = timeHeap.pollFirst();
 
         // time
@@ -253,25 +256,26 @@ public class TransformOperator implements ProcessOperator {
             }
             timeHeap.add(currentTime);
 
-            tsBlockBuilder.declarePositions(rowCount);
             return tsBlockBuilder.build();
           }
         }
 
         prepareEachColumn(columnCount);
 
-        ++rowCount;
+        tsBlockBuilder.declarePosition();
 
         yieldableState = iterateAllColumnsToNextValid();
         if (yieldableState == YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA) {
-          tsBlockBuilder.declarePositions(rowCount);
           return tsBlockBuilder.build();
         }
 
         inputLayer.updateRowRecordListEvictionUpperBound();
       }
 
-      tsBlockBuilder.declarePositions(rowCount);
+      if (tsBlockBuilder.isEmpty()) {
+        return null;
+      }
+
       return tsBlockBuilder.build();
     } catch (Exception e) {
       throw new RuntimeException(e);

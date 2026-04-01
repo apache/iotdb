@@ -82,6 +82,15 @@ public class TableSchema {
         .orElse(null);
   }
 
+  public String getTimeColumnName() {
+    for (ColumnSchema column : columns) {
+      if (column.getColumnCategory().toTsFileColumnType() == ColumnCategory.TIME) {
+        return column.getName();
+      }
+    }
+    return null;
+  }
+
   public ColumnSchema getColumn(final String columnName) {
     List<ColumnSchema> columnScheme =
         columns.stream()

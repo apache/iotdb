@@ -2232,7 +2232,12 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
         final TSStatus realtimeTsStatus = configNodeClient.createPipe(realtimeReq);
         // If creation fails, immediately return with exception
-        if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != realtimeTsStatus.getCode()) {
+        // If the procedure is still running, it's probably stuck on DataNode
+        // The pipe creation can ignore this situation and succeed, thus we do not need to skip in
+        // this case
+        if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != realtimeTsStatus.getCode()
+            && TSStatusCode.OVERLAP_WITH_EXISTING_TASK.getStatusCode()
+                != realtimeTsStatus.getCode()) {
           future.setException(new IoTDBException(realtimeTsStatus));
           return future;
         }
@@ -2253,6 +2258,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                                     Boolean.toString(false),
                                     PipeSourceConstant.EXTRACTOR_HISTORY_ENABLE_KEY,
                                     Boolean.toString(true),
+                                    PipeSourceConstant.EXTRACTOR_MODE_KEY,
+                                    PipeSourceConstant.EXTRACTOR_MODE_SNAPSHOT_VALUE,
                                     // We force the historical pipe to transfer data (and maybe
                                     // deletion) only
                                     // Thus we can transfer schema only once

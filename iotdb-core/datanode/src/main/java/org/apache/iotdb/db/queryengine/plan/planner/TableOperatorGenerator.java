@@ -66,6 +66,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.TableSortOpera
 import org.apache.iotdb.db.queryengine.execution.operator.process.TableStreamSortOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TableTopKOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.ValuesOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.copyto.TableCopyToOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.IFill;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.ILinearFill;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.constant.BinaryConstantFill;
@@ -190,6 +191,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationT
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AlignedAggregationTreeDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AssignUniqueId;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CollectNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CopyToNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CteScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.EnforceSingleRowNode;
@@ -3471,6 +3473,40 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                 ExplainAnalyzeOperator.class.getSimpleName());
     return new ExplainAnalyzeOperator(
         operatorContext, operator, node.getQueryId(), node.isVerbose(), node.getTimeout());
+  }
+
+  @Override
+  public Operator visitCopyTo(CopyToNode node, LocalExecutionPlanContext context) {
+    PlanNode childNode = node.getChild();
+
+    List<Symbol> innerQueryOutputSymbols = node.getInnerQueryOutputSymbols();
+    List<Symbol> childOutputSymbols = childNode.getOutputSymbols();
+    Map<Symbol, Integer> childOutputSymbolsIndexMap = new HashMap<>(childOutputSymbols.size());
+    for (int i = 0; i < childOutputSymbols.size(); i++) {
+      childOutputSymbolsIndexMap.put(childOutputSymbols.get(i), i);
+    }
+    int[] columnIndex2TsBlockColumnIndexList = new int[innerQueryOutputSymbols.size()];
+    for (int i = 0; i < innerQueryOutputSymbols.size(); i++) {
+      int index = childOutputSymbolsIndexMap.get(innerQueryOutputSymbols.get(i));
+      columnIndex2TsBlockColumnIndexList[i] = index;
+    }
+
+    Operator operator = childNode.accept(this, context);
+
+    OperatorContext operatorContext =
+        context
+            .getDriverContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                TableCopyToOperator.class.getSimpleName());
+    return new TableCopyToOperator(
+        operatorContext,
+        operator,
+        node.getTargetFilePath(),
+        node.getCopyToOptions(),
+        node.getInnerQueryDatasetHeader().getColumnHeaders(),
+        columnIndex2TsBlockColumnIndexList);
   }
 
   @Override

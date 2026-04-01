@@ -103,7 +103,7 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
     this.schemaRegionConsensusPort = portList[4];
     this.mqttPort = portList[5];
     this.pipeAirGapReceiverPort = portList[6];
-    this.restServicePort = portList[10] + 6000;
+    this.restServicePort = portList[7];
     this.defaultNodePropertiesFile =
         EnvUtils.getFilePathFromSysVar(DEFAULT_DATA_NODE_PROPERTIES, clusterIndex);
     this.defaultCommonPropertiesFile =
