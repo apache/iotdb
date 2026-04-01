@@ -68,6 +68,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Cast;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CoalesceExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Columns;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CopyTo;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateIndex;
@@ -848,6 +849,14 @@ public class StatementAnalyzer {
       queryContext.setExplainType(ExplainType.EXPLAIN);
       analysis.setFinishQueryAfterAnalyze();
       return visitQuery((Query) node.getStatement(), context);
+    }
+
+    @Override
+    protected Scope visitCopyTo(CopyTo node, Optional<Scope> context) {
+      accessControl.checkUserGlobalSysPrivilege(queryContext);
+      Scope innerQueryScope = visitQuery((Query) node.getQueryStatement(), context);
+      analysis.setScope(node, innerQueryScope);
+      return innerQueryScope;
     }
 
     @Override

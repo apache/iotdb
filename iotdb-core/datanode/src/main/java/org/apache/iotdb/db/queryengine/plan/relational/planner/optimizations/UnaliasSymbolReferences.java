@@ -33,6 +33,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.DeterminismEva
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ApplyNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AssignUniqueId;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CopyToNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CorrelatedJoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CteScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
@@ -385,6 +386,25 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
               node.getTimeout(),
               node.getOutputSymbols().get(0),
               newChildPermittedOutputs),
+          mapping);
+    }
+
+    @Override
+    public PlanAndMappings visitCopyTo(CopyToNode node, UnaliasContext context) {
+      PlanAndMappings rewrittenSource = node.getChild().accept(this, context);
+      Map<Symbol, Symbol> mapping = new HashMap<>(rewrittenSource.getMappings());
+      SymbolMapper mapper = symbolMapper(mapping);
+      List<Symbol> newChildPermittedOutputs = mapper.map(node.getChildPermittedOutputs());
+      List<Symbol> newInnerQueryOutputSymbols = mapper.map(node.getInnerQueryOutputSymbols());
+      return new PlanAndMappings(
+          new CopyToNode(
+              node.getPlanNodeId(),
+              rewrittenSource.getRoot(),
+              node.getTargetFilePath(),
+              node.getCopyToOptions(),
+              newChildPermittedOutputs,
+              node.getInnerQueryDatasetHeader(),
+              newInnerQueryOutputSymbols),
           mapping);
     }
 

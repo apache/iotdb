@@ -89,6 +89,10 @@ public abstract class AstVisitor<R, C> {
     return visitStatement(node, context);
   }
 
+  protected R visitCopyTo(CopyTo node, C context) {
+    return visitStatement(node, context);
+  }
+
   protected R visitExplainAnalyze(ExplainAnalyze node, C context) {
     return visitStatement(node, context);
   }
