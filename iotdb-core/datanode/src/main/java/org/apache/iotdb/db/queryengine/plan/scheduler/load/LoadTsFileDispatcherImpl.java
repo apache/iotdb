@@ -40,6 +40,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.SubPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadSingleTsFileNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileObjectPieceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
 import org.apache.iotdb.db.queryengine.plan.scheduler.FragInstanceDispatchResult;
 import org.apache.iotdb.db.queryengine.plan.scheduler.IFragInstanceDispatcher;
@@ -57,6 +58,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
 import java.net.SocketTimeoutException;
 import java.nio.ByteBuffer;
@@ -171,9 +173,18 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
       if (!RpcUtils.SUCCESS_STATUS.equals(resultStatus)) {
         throw new FragmentInstanceDispatchException(resultStatus);
       }
+    } else if (planNode instanceof LoadTsFileObjectPieceNode) {
+      final TSStatus resultStatus =
+          StorageEngine.getInstance()
+              .writeLoadTsFileObjectPieceNode(
+                  (DataRegionId) groupId, (LoadTsFileObjectPieceNode) planNode, uuid);
+      if (!RpcUtils.SUCCESS_STATUS.equals(resultStatus)) {
+        throw new FragmentInstanceDispatchException(resultStatus);
+      }
     } else if (planNode instanceof LoadSingleTsFileNode) { // do not need to split
       final TsFileResource tsFileResource = ((LoadSingleTsFileNode) planNode).getTsFileResource();
       final String filePath = tsFileResource.getTsFile().getAbsolutePath();
+      final File objectFileSearchRoot = ((LoadSingleTsFileNode) planNode).getObjectFileSearchRoot();
       try {
         PipeDataNodeAgent.runtime().assignProgressIndexForTsFileLoad(tsFileResource);
         tsFileResource.setGeneratedByPipe(isGeneratedByPipe);
@@ -186,14 +197,15 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
         }
 
         DataRegion dataRegion = StorageEngine.getInstance().getDataRegion((DataRegionId) groupId);
-        dataRegion.loadNewTsFile(
+        dataRegion.loadNewTsFileWithObject(
             cloneTsFileResource,
             ((LoadSingleTsFileNode) planNode).isDeleteAfterLoad(),
             isGeneratedByPipe,
             false,
             dataRegion.isTableModel()
                 ? TableDiskUsageStatisticUtil.calculateTableSizeMap(cloneTsFileResource)
-                : Optional.empty());
+                : Optional.empty(),
+            objectFileSearchRoot);
       } catch (LoadFileException e) {
         LOGGER.warn("Load TsFile Node {} error.", planNode, e);
         TSStatus resultStatus = new TSStatus();

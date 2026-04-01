@@ -69,6 +69,8 @@ public class LoadTsFileStatement extends Statement {
   private List<TsFileResource> resources;
   private List<Long> writePointCountList;
   private boolean needDecode4TimeColumn;
+  private final List<Boolean> tsFileContainsObjectColumn = new ArrayList<>();
+  private File objectFileSearchRoot;
 
   public LoadTsFileStatement(String filePath) throws FileNotFoundException {
     this.file = new File(filePath).getAbsoluteFile();
@@ -273,6 +275,20 @@ public class LoadTsFileStatement extends Statement {
     if (LoadTsFileConfigurator.parseOrGetDefaultPipeGenerated(loadAttributes)) {
       markIsGeneratedByPipe();
     }
+    this.objectFileSearchRoot = LoadTsFileConfigurator.parseObjectFileSearchRoot(loadAttributes);
+  }
+
+  public void addTsFileContainsObjectColumn(final boolean contains) {
+    tsFileContainsObjectColumn.add(contains);
+  }
+
+  public boolean isTsFileContainsObjectColumn(final int resourceIndex) {
+    return resourceIndex < tsFileContainsObjectColumn.size()
+        && Boolean.TRUE.equals(tsFileContainsObjectColumn.get(resourceIndex));
+  }
+
+  public File getObjectFileSearchRoot() {
+    return objectFileSearchRoot;
   }
 
   public boolean reconstructStatementIfMiniFileConverted(final List<Boolean> isMiniTsFile) {

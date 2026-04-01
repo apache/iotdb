@@ -43,6 +43,8 @@ public interface TsFileData {
         return ChunkData.deserialize(stream);
       case DELETION:
         return DeletionData.deserialize(stream);
+      case OBJECT_FILE_PAYLOAD:
+        return LoadTsFileObjectFileBatch.deserialize(stream);
       default:
         throw new UnsupportedOperationException("Unknown TsFileData type: " + type);
     }

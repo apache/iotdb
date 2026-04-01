@@ -449,7 +449,8 @@ public class TsFileResourceUtils {
             entry.getKey(), timeseriesMetaData.getStatistics().getStartTime());
         newTimeIndex.updateEndTime(entry.getKey(), timeseriesMetaData.getStatistics().getEndTime());
         if (deviceLastValues != null) {
-          if (timeseriesMetaData.getTsDataType() != TSDataType.BLOB) {
+          if (timeseriesMetaData.getTsDataType() != TSDataType.BLOB
+              && timeseriesMetaData.getTsDataType() != TSDataType.OBJECT) {
             TsPrimitiveType value;
             value =
                 TsPrimitiveType.getByType(

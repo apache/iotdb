@@ -1162,6 +1162,7 @@ public class IoTDBConfig {
 
   private int loadTsFileMaxDeviceCountToUseDeviceTimeIndex = 10000;
   private long loadChunkMetadataMemorySizeInBytes = 33554432; // 32MB
+  private int loadTsFileObjectPayloadSliceSizeInBytes = 1048576; // 1MB
 
   private long loadMemoryAllocateRetryIntervalMs = 1000L;
   private int loadMemoryAllocateMaxRetries = 5;
@@ -1173,6 +1174,12 @@ public class IoTDBConfig {
   private double loadWriteThroughputBytesPerSecond = -1; // Bytes/s
 
   private long loadTabletConversionThresholdBytes = -1;
+
+  /**
+   * Max accumulated object payload bytes per chunk tablet when loading TsFile with OBJECT columns
+   * (table datatype conversion path). Values &lt;= 0 fall back to 1024 at read time.
+   */
+  private int loadTsFileObjectColumnChunkSizeLimitInBytes = 1024;
 
   private boolean loadActiveListeningEnable = true;
 
@@ -1217,6 +1224,14 @@ public class IoTDBConfig {
           + IoTDBConstant.LOAD_TSFILE_FOLDER_NAME
           + File.separator
           + IoTDBConstant.LOAD_TSFILE_ACTIVE_LISTENING_FAILED_FOLDER_NAME;
+
+  private String loadObjectFileTempDir =
+      IoTDBConstant.EXT_FOLDER_NAME
+          + File.separator
+          + IoTDBConstant.LOAD_TSFILE_FOLDER_NAME
+          + File.separator
+          + IoTDBConstant.LOAD_OBJECT_FILE_TEMP_FOLDER_NAME;
+
   private long loadActiveListeningCheckIntervalSeconds = 5L;
 
   private int loadActiveListeningMaxThreadNum = Runtime.getRuntime().availableProcessors();
@@ -4072,6 +4087,36 @@ public class IoTDBConfig {
     this.loadChunkMetadataMemorySizeInBytes = loadChunkMetadataMemorySizeInBytes;
   }
 
+  public int getLoadTsFileObjectPayloadSliceSizeInBytes() {
+    return loadTsFileObjectPayloadSliceSizeInBytes;
+  }
+
+  public void setLoadTsFileObjectPayloadSliceSizeInBytes(
+      int loadTsFileObjectPayloadSliceSizeInBytes) {
+    if (loadTsFileObjectPayloadSliceSizeInBytes <= 0) {
+      return;
+    }
+    this.loadTsFileObjectPayloadSliceSizeInBytes = loadTsFileObjectPayloadSliceSizeInBytes;
+  }
+
+  public void setLoadTsFileObjectPayloadSliceSizeInBytes(
+      String loadTsFileObjectPayloadSliceSizeInBytes) {
+    if (loadTsFileObjectPayloadSliceSizeInBytes == null) {
+      return;
+    }
+    final String value = loadTsFileObjectPayloadSliceSizeInBytes.trim();
+    if (value.isEmpty()) {
+      return;
+    }
+    try {
+      setLoadTsFileObjectPayloadSliceSizeInBytes(Integer.parseInt(value));
+    } catch (Exception ignored) {
+      logger.info(
+          "Invalid input for loadTsFileObjectPayloadSliceSizeInBytes: {}. Keep current value.",
+          value);
+    }
+  }
+
   public long getLoadMemoryAllocateRetryIntervalMs() {
     return loadMemoryAllocateRetryIntervalMs;
   }
@@ -4119,6 +4164,20 @@ public class IoTDBConfig {
 
   public void setLoadTabletConversionThresholdBytes(long loadTabletConversionThresholdBytes) {
     this.loadTabletConversionThresholdBytes = loadTabletConversionThresholdBytes;
+  }
+
+  public int getLoadTsFileObjectColumnChunkSizeLimitInBytes() {
+    return loadTsFileObjectColumnChunkSizeLimitInBytes > 0
+        ? loadTsFileObjectColumnChunkSizeLimitInBytes
+        : 1024;
+  }
+
+  public void setLoadTsFileObjectColumnChunkSizeLimitInBytes(
+      int loadTsFileObjectColumnChunkSizeLimitInBytes) {
+    if (loadTsFileObjectColumnChunkSizeLimitInBytes > 0) {
+      this.loadTsFileObjectColumnChunkSizeLimitInBytes =
+          loadTsFileObjectColumnChunkSizeLimitInBytes;
+    }
   }
 
   public int getLoadActiveListeningMaxThreadNum() {
@@ -4199,6 +4258,23 @@ public class IoTDBConfig {
 
   public void setLoadActiveListeningPipeDir(String loadActiveListeningPipeDir) {
     this.loadActiveListeningPipeDir = loadActiveListeningPipeDir;
+  }
+
+  public String getLoadObjectFileTempDir() {
+    return loadObjectFileTempDir == null || Objects.equals(loadObjectFileTempDir, "")
+        ? extDir
+            + File.separator
+            + IoTDBConstant.LOAD_TSFILE_FOLDER_NAME
+            + File.separator
+            + IoTDBConstant.LOAD_OBJECT_FILE_TEMP_FOLDER_NAME
+        : loadObjectFileTempDir;
+  }
+
+  public void setLoadObjectFileTempDir(String loadObjectFileTempDir) {
+    if (loadObjectFileTempDir == null || loadObjectFileTempDir.trim().isEmpty()) {
+      return;
+    }
+    this.loadObjectFileTempDir = addDataHomeDir(loadObjectFileTempDir.trim());
   }
 
   public String[] getLoadActiveListeningDirs() {

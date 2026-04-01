@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -53,12 +53,14 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.encrypt.EncryptParameter;
 import org.apache.tsfile.encrypt.EncryptUtils;
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.TableSchema;
 import org.apache.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.TsFileSequenceReaderTimeseriesMetadataIterator;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -491,9 +493,15 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
     final boolean isAutoCreateSchemaOrVerifySchemaEnabled =
         IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled() || isVerifySchema();
+    boolean containsObjectColumn = false;
     while (timeseriesMetadataIterator.hasNext()) {
       final Map<IDeviceID, List<TimeseriesMetadata>> device2TimeseriesMetadata =
           timeseriesMetadataIterator.next();
+
+      if (!containsObjectColumn) {
+        containsObjectColumn =
+            timeseriesMetadataBatchContainsObjectColumn(device2TimeseriesMetadata);
+      }
 
       // Update time index no matter if resource file exists or not, because resource file may be
       // untrusted
@@ -518,6 +526,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     TimestampPrecisionUtils.checkTimestampPrecision(tsFileResource.getFileEndTime());
     tsFileResource.setStatus(TsFileResourceStatus.NORMAL);
 
+    addTsFileContainsObjectColumn(containsObjectColumn);
     addTsFileResource(tsFileResource);
     addWritePointCount(writePointCount);
   }
@@ -553,6 +562,8 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     getOrCreateTableSchemaCache().setTableSchemaMap(tableSchemaMap);
     getOrCreateTableSchemaCache().setCurrentModificationsAndTimeIndex(tsFileResource, reader);
 
+    final boolean containsObjectColumn = tableModelTsFileHasObjectColumn(tableSchemaMap);
+
     while (timeseriesMetadataIterator.hasNext()) {
       final Map<IDeviceID, List<TimeseriesMetadata>> device2TimeseriesMetadata =
           timeseriesMetadataIterator.next();
@@ -585,8 +596,41 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     TimestampPrecisionUtils.checkTimestampPrecision(tsFileResource.getFileEndTime());
     tsFileResource.setStatus(TsFileResourceStatus.NORMAL);
 
+    addTsFileContainsObjectColumn(containsObjectColumn);
     addTsFileResource(tsFileResource);
     addWritePointCount(writePointCount);
+  }
+
+  private static boolean tableModelTsFileHasObjectColumn(
+      final Map<String, TableSchema> tableSchemaMap) {
+    for (TableSchema tableSchema : tableSchemaMap.values()) {
+      for (IMeasurementSchema column : tableSchema.getColumnSchemas()) {
+        if (column.getType() == TSDataType.OBJECT) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  private static boolean timeseriesMetadataBatchContainsObjectColumn(
+      final Map<IDeviceID, List<TimeseriesMetadata>> device2TimeseriesMetadata) {
+    for (List<TimeseriesMetadata> metaList : device2TimeseriesMetadata.values()) {
+      for (TimeseriesMetadata meta : metaList) {
+        if (meta.getTsDataType() == TSDataType.OBJECT) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  private void addTsFileContainsObjectColumn(final boolean contains) {
+    if (isTableModelStatement) {
+      loadTsFileTableStatement.addTsFileContainsObjectColumn(contains);
+    } else {
+      loadTsFileTreeStatement.addTsFileContainsObjectColumn(contains);
+    }
   }
 
   private TsFileResource constructTsFileResource(

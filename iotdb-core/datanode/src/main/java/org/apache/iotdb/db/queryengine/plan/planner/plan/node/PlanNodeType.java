@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node;
 
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileObjectPieceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.CountSchemaMergeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.DeviceSchemaFetchScanNode;
@@ -290,6 +291,7 @@ public enum PlanNodeType {
   // 100 - 106 are occupied
   SHOW_DISK_USAGE((short) 107),
   TREE_COLLECT((short) 108),
+  LOAD_TSFILE_OBJECT_PIECE((short) 109),
 
   CREATE_OR_UPDATE_TABLE_DEVICE((short) 902),
   TABLE_DEVICE_QUERY_SCAN((short) 903),
@@ -542,6 +544,8 @@ public enum PlanNodeType {
         return PathsUsingTemplateScanNode.deserialize(buffer);
       case 55:
         return LoadTsFilePieceNode.deserialize(buffer);
+      case 113:
+        return LoadTsFileObjectPieceNode.deserialize(buffer);
       case 56:
         return ConstructSchemaBlackListNode.deserialize(buffer);
       case 57:

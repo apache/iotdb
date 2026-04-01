@@ -41,6 +41,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.LoadFileException;
 import org.apache.iotdb.db.exception.load.LoadReadOnlyException;
+import org.apache.iotdb.db.exception.load.ObjectFileCorruptedException;
 import org.apache.iotdb.db.exception.load.RegionReplicaSetChangedException;
 import org.apache.iotdb.db.exception.mpp.FragmentInstanceDispatchException;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
@@ -52,7 +53,9 @@ import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.PlanFragment;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadSingleTsFileNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileObjectPieceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
 import org.apache.iotdb.db.queryengine.plan.scheduler.FragInstanceDispatchResult;
@@ -70,8 +73,11 @@ import org.apache.iotdb.db.storageengine.load.memory.LoadTsFileMemoryManager;
 import org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileCostMetricsSet;
 import org.apache.iotdb.db.storageengine.load.splitter.ChunkData;
 import org.apache.iotdb.db.storageengine.load.splitter.DeletionData;
+import org.apache.iotdb.db.storageengine.load.splitter.LoadTsFileObjectFileBatch;
+import org.apache.iotdb.db.storageengine.load.splitter.LoadTsFileObjectFileBatchIterator;
 import org.apache.iotdb.db.storageengine.load.splitter.TsFileData;
 import org.apache.iotdb.db.storageengine.load.splitter.TsFileSplitter;
+import org.apache.iotdb.db.storageengine.load.util.LoadObjectFileUtil;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.mpp.rpc.thrift.TLoadCommandReq;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -138,6 +144,7 @@ public class LoadTsFileScheduler implements IScheduler {
   private final DataPartitionBatchFetcher partitionFetcher;
   private final List<LoadSingleTsFileNode> tsFileNodeList;
   private final List<Integer> failedTsFileNodeIndexes;
+  private final Set<Integer> noConversionTsFileNodeIndexes;
   private final PlanFragmentId fragmentId;
   private final Set<TRegionReplicaSet> allReplicaSets;
   private final boolean isGeneratedByPipe;
@@ -155,6 +162,7 @@ public class LoadTsFileScheduler implements IScheduler {
     this.stateMachine = stateMachine;
     this.tsFileNodeList = new ArrayList<>();
     this.failedTsFileNodeIndexes = new ArrayList<>();
+    this.noConversionTsFileNodeIndexes = new HashSet<>();
     this.fragmentId = distributedQueryPlan.getRootSubPlan().getPlanFragment().getId();
     this.dispatcher = new LoadTsFileDispatcherImpl(internalServiceClientManager, isGeneratedByPipe);
     this.partitionFetcher = new DataPartitionBatchFetcher(partitionFetcher);
@@ -207,9 +215,13 @@ public class LoadTsFileScheduler implements IScheduler {
                       slotList, queryContext.getSession().getUserName()))) {
             // do not decode, load locally
             final long startTime = System.nanoTime();
+            File preparedObjectTempDir = null;
             try {
+              preparedObjectTempDir = LoadObjectFileUtil.prepareObjectFilesForLocalLoad(node);
+              node.setObjectFileSearchRoot(preparedObjectTempDir);
               isLoadSingleTsFileSuccess = loadLocally(node);
             } finally {
+              LoadObjectFileUtil.cleanupPreparedObjectTempDir(preparedObjectTempDir);
               LOAD_TSFILE_COST_METRICS_SET.recordPhaseTimeCost(
                   LoadTsFileCostMetricsSet.LOAD_LOCALLY, System.nanoTime() - startTime);
             }
@@ -270,6 +282,9 @@ public class LoadTsFileScheduler implements IScheduler {
         } catch (Exception e) {
           isLoadSuccess = false;
           failedTsFileNodeIndexes.add(i);
+          if (hasCause(e, ObjectFileCorruptedException.class)) {
+            noConversionTsFileNodeIndexes.add(i);
+          }
           LOGGER.warn("LoadTsFileScheduler loads TsFile {} error", filePath, e);
         } finally {
           if (shouldRemoveFileFromLoadingSet) {
@@ -315,7 +330,10 @@ public class LoadTsFileScheduler implements IScheduler {
     final TsFileDataManager tsFileDataManager = new TsFileDataManager(this, node, block);
     try {
       new TsFileSplitter(
-              node.getTsFileResource().getTsFile(), tsFileDataManager::addOrSendTsFileData)
+              node.getTsFileResource().getTsFile(),
+              tsFileDataManager::addOrSendTsFileData,
+              node.isTsFileContainsObjectColumn(),
+              node.getObjectFileSearchRoot())
           .splitTsFileByDataPartition();
       if (!tsFileDataManager.sendAllTsFileData()) {
         return false;
@@ -328,6 +346,9 @@ public class LoadTsFileScheduler implements IScheduler {
           e);
       return false;
     } catch (Exception e) {
+      if (hasCause(e, ObjectFileCorruptedException.class)) {
+        throw new RuntimeException(e);
+      }
       LOGGER.warn(
           String.format("Parse or send TsFile %s error.", node.getTsFileResource().getTsFile()), e);
       return false;
@@ -391,6 +412,91 @@ public class LoadTsFileScheduler implements IScheduler {
       LOGGER.warn(
           String.format("Wait for loading %s time out.", LoadTsFilePieceNode.class.getName()), e);
       return false;
+    }
+    return true;
+  }
+
+  private boolean dispatchOneObjectPieceNode(
+      LoadTsFileObjectPieceNode objectPieceNode, TRegionReplicaSet replicaSet) {
+    allReplicaSets.add(replicaSet);
+    FragmentInstance instance =
+        new FragmentInstance(
+            new PlanFragment(fragmentId, objectPieceNode),
+            fragmentId.genFragmentInstanceId(),
+            null,
+            queryContext.getQueryType(),
+            queryContext.getTimeOut() - (System.currentTimeMillis() - queryContext.getStartTime()),
+            queryContext.getSession(),
+            queryContext.isDebug(),
+            queryContext.isVerbose());
+    instance.setExecutorAndHost(new StorageExecutor(replicaSet));
+    Future<FragInstanceDispatchResult> dispatchResultFuture =
+        dispatcher.dispatch(null, Collections.singletonList(instance));
+
+    try {
+      FragInstanceDispatchResult result =
+          dispatchResultFuture.get(
+              CONFIG.getLoadCleanupTaskExecutionDelayTimeSeconds(), TimeUnit.SECONDS);
+      if (!result.isSuccessful()) {
+        LOGGER.warn(
+            "Dispatch one object piece to ReplicaSet {} error. Result status code {}. "
+                + "Result status message {}. Dispatch object piece node error:%n{}",
+            replicaSet,
+            TSStatusCode.representOf(result.getFailureStatus().getCode()).name(),
+            result.getFailureStatus().getMessage(),
+            objectPieceNode);
+        if (result.getFailureStatus().getSubStatus() != null) {
+          for (TSStatus status : result.getFailureStatus().getSubStatus()) {
+            LOGGER.warn(
+                "Sub status code {}. Sub status message {}.",
+                TSStatusCode.representOf(status.getCode()).toString(),
+                status.getMessage());
+          }
+        }
+        TSStatus status = result.getFailureStatus();
+        status.setMessage(
+            "Failed to dispatch object file piece node in first phase: " + status.getMessage());
+        return false;
+      }
+    } catch (InterruptedException | ExecutionException | CancellationException e) {
+      if (e instanceof InterruptedException) {
+        Thread.currentThread().interrupt();
+      }
+      LOGGER.warn("Interrupt or Execution error.", e);
+      return false;
+    } catch (TimeoutException e) {
+      dispatchResultFuture.cancel(true);
+      LOGGER.warn(
+          String.format("Wait for loading %s time out.", LoadTsFileObjectPieceNode.class.getName()),
+          e);
+      return false;
+    }
+    return true;
+  }
+
+  private boolean dispatchObjectFileBatches(
+      LoadTsFilePieceNode pieceNode, TRegionReplicaSet replicaSet) {
+    for (TsFileData tsFileData : pieceNode.getAllTsFileData()) {
+      if (!(tsFileData instanceof ChunkData)) {
+        continue;
+      }
+      ChunkData chunkData = (ChunkData) tsFileData;
+      if (chunkData.getObjectFiles().isEmpty()) {
+        continue;
+      }
+      try (LoadTsFileObjectFileBatchIterator iterator =
+          chunkData.getObjectFileBatchIterator(
+              CONFIG.getLoadTsFileObjectPayloadSliceSizeInBytes())) {
+        while (iterator.hasNext()) {
+          LoadTsFileObjectFileBatch batch = iterator.next();
+          LoadTsFileObjectPieceNode objectPieceNode =
+              new LoadTsFileObjectPieceNode(
+                  new PlanNodeId(fragmentId.genFragmentInstanceId().toString()), batch);
+          if (!dispatchOneObjectPieceNode(objectPieceNode, replicaSet)) {
+            return false;
+          }
+        }
+      }
     }
     return true;
   }
@@ -579,6 +685,13 @@ public class LoadTsFileScheduler implements IScheduler {
       final String filePath = failedNode.getTsFileResource().getTsFilePath();
 
       try {
+        if (noConversionTsFileNodeIndexes.contains(failedLoadTsFileIndex)) {
+          LOGGER.warn(
+              "Load: Skip converting TsFile {} to tablets because object file corruption was detected.",
+              failedNode.getTsFileResource().getTsFilePath());
+          continue;
+        }
+
         final TSStatus status =
             failedNode.isTableModel()
                 ? loadTsFileDataTypeConverter
@@ -586,7 +699,8 @@ public class LoadTsFileScheduler implements IScheduler {
                         new LoadTsFile(null, filePath, Collections.emptyMap())
                             .setDatabase(failedNode.getDatabase())
                             .setDeleteAfterLoad(failedNode.isDeleteAfterLoad())
-                            .setConvertOnTypeMismatch(true))
+                            .setConvertOnTypeMismatch(true)
+                            .setObjectFileSearchRoot(failedNode.getObjectFileSearchRoot()))
                     .orElse(null)
                 : loadTsFileDataTypeConverter
                     .convertForTreeModel(
@@ -621,11 +735,33 @@ public class LoadTsFileScheduler implements IScheduler {
       LOGGER.info("Load: all failed TsFiles are converted to tablets and inserted.");
       stateMachine.transitionToFinished();
     } else {
-      final String errorMsg =
-          "Load: failed to load some TsFiles by converting them into tablets. Failed TsFiles: "
-              + failedTsFileNodeIndexes.stream()
-                  .map(i -> tsFileNodeList.get(i).getTsFileResource().getTsFilePath())
-                  .collect(Collectors.joining(", "));
+      final String skippedConversionTsFiles =
+          failedTsFileNodeIndexes.stream()
+              .filter(noConversionTsFileNodeIndexes::contains)
+              .map(i -> tsFileNodeList.get(i).getTsFileResource().getTsFilePath())
+              .collect(Collectors.joining(", "));
+      final String convertedButStillFailedTsFiles =
+          failedTsFileNodeIndexes.stream()
+              .filter(i -> !noConversionTsFileNodeIndexes.contains(i))
+              .map(i -> tsFileNodeList.get(i).getTsFileResource().getTsFilePath())
+              .collect(Collectors.joining(", "));
+
+      final String errorMsg;
+      if (!skippedConversionTsFiles.isEmpty() && !convertedButStillFailedTsFiles.isEmpty()) {
+        errorMsg =
+            "Load: failed to load some TsFiles due to object file corruption: "
+                + skippedConversionTsFiles
+                + ". Converted to tablets but still failed: "
+                + convertedButStillFailedTsFiles;
+      } else if (!skippedConversionTsFiles.isEmpty()) {
+        errorMsg =
+            "Load: failed to load some TsFiles due to object file corruption: "
+                + skippedConversionTsFiles;
+      } else {
+        errorMsg =
+            "Load: failed to load some TsFiles by converting them into tablets. Failed TsFiles: "
+                + convertedButStillFailedTsFiles;
+      }
       LOGGER.warn(errorMsg);
       stateMachine.transitionToFailed(new LoadFileException(errorMsg));
     }
@@ -650,6 +786,18 @@ public class LoadTsFileScheduler implements IScheduler {
       final TTimePartitionSlot timePartitionSlot) {
     timePartitionSlotToProgressIndex.putIfAbsent(
         timePartitionSlot, PipeDataNodeAgent.runtime().getNextProgressIndexForTsFileLoad());
+  }
+
+  private static boolean hasCause(
+      final Throwable throwable, final Class<? extends Throwable> targetType) {
+    Throwable cursor = throwable;
+    while (cursor != null) {
+      if (targetType.isInstance(cursor)) {
+        return true;
+      }
+      cursor = cursor.getCause();
+    }
+    return false;
   }
 
   public enum LoadCommand {
@@ -697,8 +845,9 @@ public class LoadTsFileScheduler implements IScheduler {
 
     private boolean addOrSendChunkData(ChunkData chunkData) throws LoadFileException {
       nonDirectionalChunkData.add(chunkData);
-      dataSize += chunkData.getDataSize();
-      block.addMemoryUsage(chunkData.getDataSize());
+      long size = chunkData.getDataSize() + chunkData.getObjectMetadataSizeInBytes();
+      dataSize += size;
+      block.addMemoryUsage(size);
       scheduler.computeTimePartitionSlotToProgressIndexIfAbsent(chunkData.getTimePartitionSlot());
 
       if (!isMemoryEnough()) {
@@ -721,7 +870,10 @@ public class LoadTsFileScheduler implements IScheduler {
           if (pieceNode.getDataSize() == 0) { // total data size has been reduced to 0
             break;
           }
-          final boolean isDispatchSuccess = scheduler.dispatchOnePieceNode(pieceNode, replicaSet);
+          boolean isDispatchSuccess = scheduler.dispatchOnePieceNode(pieceNode, replicaSet);
+          if (isDispatchSuccess && !scheduler.dispatchObjectFileBatches(pieceNode, replicaSet)) {
+            isDispatchSuccess = false;
+          }
 
           regionId2ReplicaSetAndNode.replace(
               sortedRegionId,
@@ -732,11 +884,12 @@ public class LoadTsFileScheduler implements IScheduler {
                       singleTsFileNode
                           .getTsFileResource()
                           .getTsFile()))); // can not just remove, because of deletion
-          dataSize -= pieceNode.getDataSize();
-          block.reduceMemoryUsage(pieceNode.getDataSize());
+
+          long chunkDataSize = chunkData.getDataSize() + chunkData.getObjectMetadataSizeInBytes();
+          dataSize -= chunkDataSize;
+          block.reduceMemoryUsage(chunkDataSize);
 
           if (!isDispatchSuccess) {
-            // Currently there is no retry, so return directly
             return false;
           }
 
@@ -804,14 +957,21 @@ public class LoadTsFileScheduler implements IScheduler {
       for (Map.Entry<TConsensusGroupId, Pair<TRegionReplicaSet, LoadTsFilePieceNode>> entry :
           regionId2ReplicaSetAndNode.entrySet()) {
         block.reduceMemoryUsage(entry.getValue().getRight().getDataSize());
-        if (isAllSuccess
-            && !scheduler.dispatchOnePieceNode(
-                entry.getValue().getRight(), entry.getValue().getLeft())) {
-          LOGGER.warn(
-              "Dispatch piece node {} of TsFile {} error.",
-              entry.getValue(),
-              singleTsFileNode.getTsFileResource().getTsFile());
-          isAllSuccess = false;
+        if (isAllSuccess) {
+          final LoadTsFilePieceNode pieceNode = entry.getValue().getRight();
+          final TRegionReplicaSet replicaSet = entry.getValue().getLeft();
+          if (!scheduler.dispatchOnePieceNode(pieceNode, replicaSet)) {
+            LOGGER.warn(
+                "Dispatch piece node {} of TsFile {} error.",
+                entry.getValue(),
+                singleTsFileNode.getTsFileResource().getTsFile());
+            isAllSuccess = false;
+          } else if (!scheduler.dispatchObjectFileBatches(pieceNode, replicaSet)) {
+            LOGGER.warn(
+                "Dispatch object file batches of TsFile {} error.",
+                singleTsFileNode.getTsFileResource().getTsFile());
+            isAllSuccess = false;
+          }
         }
       }
       return isAllSuccess;

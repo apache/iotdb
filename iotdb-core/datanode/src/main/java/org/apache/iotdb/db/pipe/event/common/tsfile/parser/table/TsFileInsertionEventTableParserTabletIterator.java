@@ -45,6 +45,7 @@ import org.apache.tsfile.read.controller.MetadataQuerierByFileImpl;
 import org.apache.tsfile.read.reader.IChunkReader;
 import org.apache.tsfile.read.reader.chunk.TableChunkReader;
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.DateUtils;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.TsPrimitiveType;
@@ -336,6 +337,8 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
                   columnTypes,
                   rowCountAndMemorySize.getLeft());
           tablet.initBitMaps();
+          tablet.addTimestamp(0, 0);
+          tablet.setRowSize(0);
           isFirstRow = false;
         }
         final int rowIndex = tablet.getRowSize();
@@ -441,6 +444,10 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
           case BLOB:
           case STRING:
             tablet.addValue(rowIndex, i, Binary.EMPTY_VALUE.getValues());
+            break;
+          case OBJECT:
+            ((Binary[]) tablet.getValues()[i])[rowIndex] = Binary.EMPTY_VALUE;
+            break;
         }
         tablet.getBitMaps()[i].mark(rowIndex);
         continue;
@@ -475,6 +482,18 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
               rowIndex,
               i,
               binary.getValues() == null ? Binary.EMPTY_VALUE.getValues() : binary.getValues());
+          break;
+        case OBJECT:
+          final Binary objectBinary = primitiveType.getBinary();
+          final Binary[] objectColumn = (Binary[]) tablet.getValues()[i];
+          objectColumn[rowIndex] =
+              (objectBinary == null || objectBinary.getValues() == null)
+                  ? Binary.EMPTY_VALUE
+                  : objectBinary;
+          final BitMap[] objBitMaps = tablet.getBitMaps();
+          if (objBitMaps != null && objBitMaps[i] != null) {
+            objBitMaps[i].unmark(rowIndex);
+          }
           break;
         default:
           throw new UnSupportedDataTypeException("UnSupported" + primitiveType.getDataType());

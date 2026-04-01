@@ -57,6 +57,7 @@ import org.apache.iotdb.db.exception.load.LoadReadOnlyException;
 import org.apache.iotdb.db.exception.runtime.StorageEngineFailureException;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileObjectPieceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
 import org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileScheduler;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
@@ -1027,6 +1028,57 @@ public class StorageEngine implements IService {
           "Exception occurred when writing piece node of TsFile {} to DataRegion {}.",
           pieceNode.getTsFile(),
           dataRegionId,
+          e);
+      status.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
+      status.setMessage(e.getMessage());
+      return status;
+    }
+
+    return RpcUtils.SUCCESS_STATUS;
+  }
+
+  public TSStatus writeLoadTsFileObjectPieceNode(
+      final DataRegionId dataRegionId,
+      final LoadTsFileObjectPieceNode objectPieceNode,
+      final String uuid) {
+    final TSStatus status = new TSStatus();
+
+    if (CommonDescriptor.getInstance().getConfig().isReadOnly()) {
+      status.setCode(TSStatusCode.SYSTEM_READ_ONLY.getStatusCode());
+      status.setMessage(LoadReadOnlyException.MESSAGE);
+      return status;
+    }
+
+    LoadTsFileRateLimiter.getInstance().acquire(objectPieceNode.getDataSize());
+
+    final DataRegion dataRegion = getDataRegion(dataRegionId);
+    if (dataRegion == null) {
+      LOGGER.warn(
+          "DataRegion {} not found when writing object file payload for time partition {} (uuid {}), skipping.",
+          dataRegionId,
+          objectPieceNode.getObjectBatch().getLastTimePartitionSlot(),
+          uuid);
+      return RpcUtils.SUCCESS_STATUS;
+    }
+
+    try {
+      loadTsFileManager.writeObjectPayloadToDataRegion(dataRegion, objectPieceNode, uuid);
+    } catch (final IOException e) {
+      LOGGER.warn(
+          "IOException when writing object file payload for time partition {} to DataRegion {} (uuid {}).",
+          objectPieceNode.getObjectBatch().getLastTimePartitionSlot(),
+          dataRegionId,
+          uuid,
+          e);
+      status.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
+      status.setMessage(e.getMessage());
+      return status;
+    } catch (final Exception e) {
+      LOGGER.warn(
+          "Unexpected error when writing object file payload for time partition {} to DataRegion {} (uuid {}).",
+          objectPieceNode.getObjectBatch().getLastTimePartitionSlot(),
+          dataRegionId,
+          uuid,
           e);
       status.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
       status.setMessage(e.getMessage());

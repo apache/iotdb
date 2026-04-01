@@ -113,6 +113,7 @@ import java.util.function.LongConsumer;
 import java.util.regex.Pattern;
 
 public class IoTDBDescriptor {
+  private static final String LOAD_OBJECT_FILE_TEMP_DIR_KEY = "load_object_file_temp_dir";
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBDescriptor.class);
 
@@ -3046,6 +3047,8 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "load_chunk_metadata_memory_size_in_bytes",
                 String.valueOf(conf.getLoadChunkMetadataMemorySizeInBytes()))));
+    conf.setLoadTsFileObjectPayloadSliceSizeInBytes(
+        properties.getProperty("load_tsfile_object_payload_slice_size_in_bytes"));
     conf.setLoadCleanupTaskExecutionDelayTimeSeconds(
         Long.parseLong(
             properties.getProperty(
@@ -3068,6 +3071,12 @@ public class IoTDBDescriptor {
                 "load_tablet_conversion_threshold_bytes",
                 String.valueOf(conf.getLoadTabletConversionThresholdBytes()))));
 
+    conf.setLoadTsFileObjectColumnChunkSizeLimitInBytes(
+        Integer.parseInt(
+            properties.getProperty(
+                "load_tsfile_object_column_chunk_size_limit_in_bytes",
+                String.valueOf(conf.getLoadTsFileObjectColumnChunkSizeLimitInBytes()))));
+
     conf.setLoadActiveListeningEnable(
         Boolean.parseBoolean(
             properties.getProperty(
@@ -3086,6 +3095,8 @@ public class IoTDBDescriptor {
     conf.setLoadActiveListeningFailDir(
         properties.getProperty(
             "load_active_listening_fail_dir", conf.getLoadActiveListeningFailDir()));
+    conf.setLoadObjectFileTempDir(
+        properties.getProperty(LOAD_OBJECT_FILE_TEMP_DIR_KEY, conf.getLoadObjectFileTempDir()));
 
     final long loadActiveListeningCheckIntervalSeconds =
         Long.parseLong(
@@ -3203,12 +3214,17 @@ public class IoTDBDescriptor {
         properties.getProperty(
             "load_active_listening_fail_dir",
             ConfigurationFileUtils.getConfigurationDefaultValue("load_active_listening_fail_dir")));
+    conf.setLoadObjectFileTempDir(
+        properties.getProperty(
+            LOAD_OBJECT_FILE_TEMP_DIR_KEY, String.valueOf(conf.getLoadObjectFileTempDir())));
 
     conf.setLoadTsFileSpiltPartitionMaxSize(
         Integer.parseInt(
             properties.getProperty(
                 "load_tsfile_split_partition_max_size",
                 Integer.toString(conf.getLoadTsFileSpiltPartitionMaxSize()))));
+    conf.setLoadTsFileObjectPayloadSliceSizeInBytes(
+        properties.getProperty("load_tsfile_object_payload_slice_size_in_bytes"));
 
     conf.setLoadTsFileStatementSplitThreshold(
         Integer.parseInt(
@@ -3221,6 +3237,12 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "load_tsfile_sub_statement_batch_size",
                 Integer.toString(conf.getLoadTsFileSubStatementBatchSize()))));
+
+    conf.setLoadTsFileObjectColumnChunkSizeLimitInBytes(
+        Integer.parseInt(
+            properties.getProperty(
+                "load_tsfile_object_column_chunk_size_limit_in_bytes",
+                Integer.toString(conf.getLoadTsFileObjectColumnChunkSizeLimitInBytes()))));
 
     conf.setSkipFailedTableSchemaCheck(
         Boolean.parseBoolean(

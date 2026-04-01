@@ -65,6 +65,8 @@ public class LoadTsFile extends Statement {
   private List<Long> writePointCountList;
   private List<Boolean> isTableModel;
   private boolean needDecode4TimeColumn;
+  private final List<Boolean> tsFileContainsObjectColumn = new ArrayList<>();
+  private File objectFileSearchRoot;
 
   public LoadTsFile(NodeLocation location, String filePath, Map<String, String> loadAttributes) {
     super(location);
@@ -206,6 +208,25 @@ public class LoadTsFile extends Statement {
         LoadTsFileConfigurator.parseOrGetDefaultTabletConversionThresholdBytes(loadAttributes);
     this.verify = LoadTsFileConfigurator.parseOrGetDefaultVerify(loadAttributes);
     this.isAsyncLoad = LoadTsFileConfigurator.parseOrGetDefaultAsyncLoad(loadAttributes);
+    this.objectFileSearchRoot = LoadTsFileConfigurator.parseObjectFileSearchRoot(loadAttributes);
+  }
+
+  public void addTsFileContainsObjectColumn(boolean contains) {
+    tsFileContainsObjectColumn.add(contains);
+  }
+
+  public boolean isTsFileContainsObjectColumn(int resourceIndex) {
+    return resourceIndex < tsFileContainsObjectColumn.size()
+        && Boolean.TRUE.equals(tsFileContainsObjectColumn.get(resourceIndex));
+  }
+
+  public LoadTsFile setObjectFileSearchRoot(File objectFileSearchRoot) {
+    this.objectFileSearchRoot = objectFileSearchRoot;
+    return this;
+  }
+
+  public File getObjectFileSearchRoot() {
+    return objectFileSearchRoot;
   }
 
   public boolean reconstructStatementIfMiniFileConverted(final List<Boolean> isMiniTsFile) {

@@ -160,6 +160,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileObjectPieceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.AlterEncodingCompressorNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.AlterTimeSeriesNode;
@@ -613,14 +614,29 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
     final ConsensusGroupId groupId =
         ConsensusGroupId.Factory.createFromTConsensusGroupId(req.consensusGroupId);
-    final LoadTsFilePieceNode pieceNode = (LoadTsFilePieceNode) PlanNodeType.deserialize(req.body);
-    if (pieceNode == null) {
+    final PlanNode planNode = PlanNodeType.deserialize(req.body);
+    if (planNode == null) {
       return createTLoadResp(
           new TSStatus(TSStatusCode.DESERIALIZE_PIECE_OF_TSFILE_ERROR.getStatusCode()));
     }
-    final TSStatus resultStatus =
-        StorageEngine.getInstance()
-            .writeLoadTsFileNode((DataRegionId) groupId, pieceNode, req.uuid);
+
+    final TSStatus resultStatus;
+    if (planNode instanceof LoadTsFilePieceNode) {
+      resultStatus =
+          StorageEngine.getInstance()
+              .writeLoadTsFileNode(
+                  (DataRegionId) groupId, (LoadTsFilePieceNode) planNode, req.uuid);
+    } else if (planNode instanceof LoadTsFileObjectPieceNode) {
+      resultStatus =
+          StorageEngine.getInstance()
+              .writeLoadTsFileObjectPieceNode(
+                  (DataRegionId) groupId, (LoadTsFileObjectPieceNode) planNode, req.uuid);
+    } else {
+      LOGGER.warn(
+          "Unsupported plan node type for sendTsFilePieceNode: {}", planNode.getClass().getName());
+      return createTLoadResp(
+          new TSStatus(TSStatusCode.DESERIALIZE_PIECE_OF_TSFILE_ERROR.getStatusCode()));
+    }
 
     return createTLoadResp(resultStatus);
   }

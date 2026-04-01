@@ -49,7 +49,7 @@ import java.nio.ByteBuffer;
 
 import static org.apache.iotdb.db.storageengine.load.LoadTsFileManager.MEASUREMENT_ID_CACHE;
 
-public class NonAlignedChunkData implements ChunkData {
+public class NonAlignedChunkData extends AbstractChunkData {
 
   private final TTimePartitionSlot timePartitionSlot;
   private final IDeviceID device;
@@ -200,6 +200,7 @@ public class NonAlignedChunkData implements ChunkData {
           case TEXT:
           case BLOB:
           case STRING:
+          case OBJECT:
             dataSize += ReadWriteIOUtils.write((Binary) values[i], stream);
             break;
           default:
@@ -262,6 +263,7 @@ public class NonAlignedChunkData implements ChunkData {
             case TEXT:
             case BLOB:
             case STRING:
+            case OBJECT:
               chunkWriter.write(time, ReadWriteIOUtils.readBinary(stream));
               break;
             default:

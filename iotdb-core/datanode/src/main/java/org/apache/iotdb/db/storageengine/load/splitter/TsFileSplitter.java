@@ -20,16 +20,25 @@
 package org.apache.iotdb.db.storageengine.load.splitter;
 
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.commons.path.PatternTreeMap;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.LoadFileException;
+import org.apache.iotdb.db.exception.load.ObjectFileCorruptedException;
+import org.apache.iotdb.db.pipe.event.common.tsfile.parser.scan.SinglePageWholeChunkReader;
+import org.apache.iotdb.db.pipe.event.common.tsfile.parser.util.ModsOperationUtil;
+import org.apache.iotdb.db.pipe.event.common.tsfile.parser.util.ModsOperationUtil.ModsInfo;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.utils.ObjectTypeUtils;
+import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.common.constant.TsFileConstant;
+import org.apache.tsfile.compress.IUnCompressor;
 import org.apache.tsfile.encoding.decoder.Decoder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.TsFileRuntimeException;
@@ -46,6 +55,7 @@ import org.apache.tsfile.read.common.BatchData;
 import org.apache.tsfile.read.reader.page.PageReader;
 import org.apache.tsfile.read.reader.page.TimePageReader;
 import org.apache.tsfile.read.reader.page.ValuePageReader;
+import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.TsPrimitiveType;
 import org.slf4j.Logger;
@@ -55,6 +65,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -68,6 +79,11 @@ public class TsFileSplitter {
 
   private final File tsFile;
   private final TsFileDataConsumer consumer;
+
+  private final boolean fileContainsObjectColumns;
+
+  private final File objectFileSearchRoot;
+
   private Map<Long, IChunkMetadata> offset2ChunkMetadata = new HashMap<>();
   private List<ModEntry> deletions = new ArrayList<>();
   private Map<Integer, List<AlignedChunkData>> pageIndex2ChunkData = new HashMap<>();
@@ -87,9 +103,27 @@ public class TsFileSplitter {
   private List<Map<Integer, long[]>> pageIndex2TimesList = null;
   private List<Boolean> isTimeChunkNeedDecodeList = new ArrayList<>();
 
+  private PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> modsPatternTree;
+
+  @TestOnly
   public TsFileSplitter(File tsFile, TsFileDataConsumer consumer) {
+    this(tsFile, consumer, false, null);
+  }
+
+  public TsFileSplitter(
+      File tsFile, TsFileDataConsumer consumer, boolean fileContainsObjectColumns) {
+    this(tsFile, consumer, fileContainsObjectColumns, null);
+  }
+
+  public TsFileSplitter(
+      File tsFile,
+      TsFileDataConsumer consumer,
+      boolean fileContainsObjectColumns,
+      File objectFileSearchRoot) {
     this.tsFile = tsFile;
     this.consumer = consumer;
+    this.fileContainsObjectColumns = fileContainsObjectColumns;
+    this.objectFileSearchRoot = objectFileSearchRoot;
   }
 
   @SuppressWarnings({"squid:S3776", "squid:S6541"})
@@ -97,6 +131,13 @@ public class TsFileSplitter {
       throws IOException, LoadFileException, IllegalStateException {
     try (TsFileSequenceReader reader = new TsFileSequenceReader(tsFile.getAbsolutePath())) {
       getAllModification(deletions);
+
+      modsPatternTree = PatternTreeMapFactory.getModsPatternTreeMap();
+      if (fileContainsObjectColumns) {
+        for (ModEntry mod : deletions) {
+          modsPatternTree.append(mod.keyOfPatternTree(), mod);
+        }
+      }
 
       if (!checkMagic(reader)) {
         throw new TsFileRuntimeException(
@@ -148,6 +189,16 @@ public class TsFileSplitter {
     }
   }
 
+  private ModsInfo getModsInfoForMeasurement(String measurementID) {
+    if (modsPatternTree == null || modsPatternTree.isEmpty()) {
+      return null;
+    }
+    List<ModsInfo> infos =
+        ModsOperationUtil.initializeMeasurementMods(
+            curDevice, Collections.singletonList(measurementID), modsPatternTree);
+    return infos.isEmpty() ? null : infos.get(0);
+  }
+
   private void processTimeChunkOrNonAlignedChunk(TsFileSequenceReader reader, byte marker)
       throws IOException, LoadFileException {
     long chunkOffset = reader.position();
@@ -180,6 +231,16 @@ public class TsFileSplitter {
         ChunkData.createChunkData(isAligned, curDevice, header, timePartitionSlot);
 
     if (!needDecodeChunk(chunkMetadata)) {
+      final long chunkDataStartOffset = reader.position();
+      if (fileContainsObjectColumns && isAligned) {
+        pageIndex2Times = collectAlignedTimeBatchForObjectColumn(reader, header);
+        reader.position(chunkDataStartOffset);
+      } else if (fileContainsObjectColumns && header.getDataType() == TSDataType.OBJECT) {
+        ModsInfo modsInfo = getModsInfoForMeasurement(measurementId);
+        collectNonAlignedObjectFiles(
+            reader, header, chunkData.getTimePartitionSlot(), chunkData, modsInfo);
+        reader.position(chunkDataStartOffset);
+      }
       chunkData.setNotDecode();
       chunkData.writeEntireChunk(reader.readChunk(-1, header.getDataSize()), chunkMetadata);
       if (isAligned) {
@@ -217,6 +278,8 @@ public class TsFileSplitter {
       pageIndex2Times = new HashMap<>();
     }
 
+    ModsInfo modsInfo = getModsInfoForMeasurement(measurementId);
+
     while (dataSize > 0) {
       PageHeader pageHeader =
           reader.readPageHeader(
@@ -241,13 +304,29 @@ public class TsFileSplitter {
               .computeIfAbsent(pageIndex, o -> new ArrayList<>())
               .add((AlignedChunkData) chunkData);
         }
-        chunkData.writeEntirePage(pageHeader, reader.readCompressedPage(pageHeader));
+        final ByteBuffer compressedPage = reader.readCompressedPage(pageHeader);
+        if (fileContainsObjectColumns && header.getDataType() == TSDataType.OBJECT && !isAligned) {
+          final IUnCompressor unCompressor =
+              IUnCompressor.getUnCompressor(header.getCompressionType());
+          final ByteBuffer uncompressedPage =
+              SinglePageWholeChunkReader.uncompressPageData(
+                  pageHeader, unCompressor, compressedPage.duplicate());
+          final Pair<long[], Object[]> tvArray =
+              decodePage(
+                  false, uncompressedPage, pageHeader, defaultTimeDecoder, valueDecoder, header);
+          collectObjectFilesFromValues(
+              chunkData, tvArray.left, tvArray.right, timePartitionSlot, modsInfo);
+        }
+        chunkData.writeEntirePage(pageHeader, compressedPage);
       } else { // split page
         ByteBuffer pageData = reader.readPage(pageHeader, header.getCompressionType());
         Pair<long[], Object[]> tvArray =
             decodePage(isAligned, pageData, pageHeader, defaultTimeDecoder, valueDecoder, header);
         long[] times = tvArray.left;
         Object[] values = tvArray.right;
+        if (fileContainsObjectColumns && header.getDataType() == TSDataType.OBJECT && !isAligned) {
+          collectObjectFilesFromValues(chunkData, times, values, timePartitionSlot, modsInfo);
+        }
         if (isAligned) {
           pageIndex2Times.put(pageIndex, times);
         }
@@ -315,9 +394,16 @@ public class TsFileSplitter {
       return;
     }
 
+    ModsInfo modsInfo = getModsInfoForMeasurement(header.getMeasurementID());
+
     if (!isTimeChunkNeedDecode) {
       AlignedChunkData alignedChunkData = pageIndex2ChunkData.get(1).get(0);
       alignedChunkData.addValueChunk(header);
+      if (fileContainsObjectColumns && header.getDataType() == TSDataType.OBJECT) {
+        final long valueChunkDataStartOffset = reader.position();
+        collectAlignedObjectFiles(reader, header, pageIndex2Times, alignedChunkData, modsInfo);
+        reader.position(valueChunkDataStartOffset);
+      }
       alignedChunkData.writeEntireChunk(reader.readChunk(-1, header.getDataSize()), chunkMetadata);
       return;
     }
@@ -347,6 +433,10 @@ public class TsFileSplitter {
         long[] times = pageIndex2Times.get(pageIndex);
         TsPrimitiveType[] values = decodeValuePage(reader, header, pageHeader, times, valueDecoder);
         for (AlignedChunkData alignedChunkData : alignedChunkDataList) {
+          if (fileContainsObjectColumns && header.getDataType() == TSDataType.OBJECT) {
+            collectObjectFilesFromAlignedValues(
+                alignedChunkData, times, values, modsInfo, alignedChunkData.timePartitionSlot);
+          }
           alignedChunkData.writeDecodeValuePage(times, values, header.getDataType());
         }
       }
@@ -466,6 +556,7 @@ public class TsFileSplitter {
       }
     }
     this.pageIndex2ChunkData = new HashMap<>();
+    this.pageIndex2Times = new HashMap<>();
   }
 
   private void consumeChunkData(String measurement, long offset, ChunkData chunkData)
@@ -580,8 +671,210 @@ public class TsFileSplitter {
     ByteBuffer pageData = reader.readPage(pageHeader, chunkHeader.getCompressionType());
     ValuePageReader valuePageReader =
         new ValuePageReader(pageHeader, pageData, chunkHeader.getDataType(), valueDecoder);
-    return valuePageReader.nextValueBatch(
-        times); // should be origin time, so recording satisfied length is necessary
+    return valuePageReader.nextValueBatch(times);
+  }
+
+  private void processAndAddObjectFile(
+      final ChunkData chunkData, final long time, final Binary valueBinary, final ModsInfo modsInfo)
+      throws LoadFileException {
+
+    if (ModsOperationUtil.isDelete(time, modsInfo)) {
+      return;
+    }
+
+    final Pair<Long, String> lengthAndPath = parseObjectLengthAndPathFromBinary(valueBinary);
+    if (lengthAndPath == null) {
+      return;
+    }
+
+    verifyAndAddObjectFile(chunkData, lengthAndPath.getRight(), lengthAndPath.getLeft());
+  }
+
+  private Pair<Long, String> parseObjectLengthAndPathFromBinary(final Binary binary) {
+    if (binary == null) {
+      return null;
+    }
+    return ObjectTypeUtils.parseObjectBinaryToSizeStringPathPair(binary);
+  }
+
+  private Map<Integer, long[]> collectAlignedTimeBatchForObjectColumn(
+      final TsFileSequenceReader reader, final ChunkHeader chunkHeader) throws IOException {
+
+    final Map<Integer, long[]> timeBatchByPage = new HashMap<>();
+    final Decoder defaultTimeDecoder =
+        Decoder.getDecoderByType(
+            TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder()),
+            TSDataType.INT64);
+
+    int pageIndex = 0;
+    int dataSize = chunkHeader.getDataSize();
+
+    while (dataSize > 0) {
+      final PageHeader pageHeader =
+          reader.readPageHeader(
+              chunkHeader.getDataType(),
+              (chunkHeader.getChunkType() & 0x3F) == MetaMarker.CHUNK_HEADER);
+      final ByteBuffer pageData = reader.readPage(pageHeader, chunkHeader.getCompressionType());
+
+      final Pair<long[], Object[]> tvArray =
+          decodePage(true, pageData, pageHeader, defaultTimeDecoder, null, chunkHeader);
+      timeBatchByPage.put(pageIndex++, tvArray.left);
+
+      dataSize -= pageHeader.getSerializedPageSize();
+    }
+    return timeBatchByPage;
+  }
+
+  private void collectNonAlignedObjectFiles(
+      final TsFileSequenceReader reader,
+      final ChunkHeader chunkHeader,
+      final TTimePartitionSlot timePartitionSlot,
+      final ChunkData chunkData,
+      final ModsInfo modsInfo)
+      throws IOException, LoadFileException {
+
+    final Decoder defaultTimeDecoder =
+        Decoder.getDecoderByType(
+            TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder()),
+            TSDataType.INT64);
+    final Decoder valueDecoder =
+        Decoder.getDecoderByType(chunkHeader.getEncodingType(), chunkHeader.getDataType());
+
+    int dataSize = chunkHeader.getDataSize();
+
+    while (dataSize > 0) {
+      final PageHeader pageHeader =
+          reader.readPageHeader(
+              chunkHeader.getDataType(),
+              (chunkHeader.getChunkType() & 0x3F) == MetaMarker.CHUNK_HEADER);
+      final ByteBuffer pageData = reader.readPage(pageHeader, chunkHeader.getCompressionType());
+
+      final Pair<long[], Object[]> tvArray =
+          decodePage(false, pageData, pageHeader, defaultTimeDecoder, valueDecoder, chunkHeader);
+      collectObjectFilesFromValues(
+          chunkData, tvArray.left, tvArray.right, timePartitionSlot, modsInfo);
+
+      dataSize -= pageHeader.getSerializedPageSize();
+    }
+  }
+
+  private void collectAlignedObjectFiles(
+      final TsFileSequenceReader reader,
+      final ChunkHeader chunkHeader,
+      final Map<Integer, long[]> timeBatchByPage,
+      final ChunkData chunkData,
+      final ModsInfo modsInfo)
+      throws IOException, LoadFileException {
+
+    final Decoder valueDecoder =
+        Decoder.getDecoderByType(chunkHeader.getEncodingType(), chunkHeader.getDataType());
+    int dataSize = chunkHeader.getDataSize();
+    int pageIndex = 0;
+
+    while (dataSize > 0) {
+      final PageHeader pageHeader =
+          reader.readPageHeader(
+              chunkHeader.getDataType(),
+              (chunkHeader.getChunkType() & 0x3F) == MetaMarker.CHUNK_HEADER);
+      final long[] times = timeBatchByPage.get(pageIndex);
+
+      if (times == null || times.length == 0) {
+        reader.readPage(pageHeader, chunkHeader.getCompressionType());
+      } else {
+        final TsPrimitiveType[] values =
+            decodeValuePage(reader, chunkHeader, pageHeader, times, valueDecoder);
+        for (int i = 0; i < values.length; i++) {
+          if (values[i] != null) {
+            processAndAddObjectFile(chunkData, times[i], values[i].getBinary(), modsInfo);
+          }
+        }
+      }
+      pageIndex++;
+      dataSize -= pageHeader.getSerializedPageSize();
+    }
+  }
+
+  private void collectObjectFilesFromValues(
+      final ChunkData chunkData,
+      final long[] times,
+      final Object[] values,
+      final TTimePartitionSlot timePartitionSlot,
+      final ModsInfo modsInfo)
+      throws LoadFileException {
+
+    final long startTime = timePartitionSlot.getStartTime();
+    long endTime = startTime + TimePartitionUtils.getTimePartitionInterval();
+    endTime = (endTime <= startTime) ? Long.MAX_VALUE : endTime;
+
+    for (int i = 0; i < times.length; i++) {
+      final long time = times[i];
+      if (time >= endTime) {
+        break;
+      }
+      if (time < startTime || values[i] == null) {
+        continue;
+      }
+
+      processAndAddObjectFile(chunkData, time, (Binary) values[i], modsInfo);
+    }
+  }
+
+  private void collectObjectFilesFromAlignedValues(
+      final ChunkData chunkData,
+      final long[] times,
+      final TsPrimitiveType[] values,
+      final ModsInfo modsInfo,
+      final TTimePartitionSlot timePartitionSlot)
+      throws LoadFileException {
+
+    if (times == null || values == null) {
+      return;
+    }
+
+    final long startTime = timePartitionSlot.getStartTime();
+    long endTime = startTime + TimePartitionUtils.getTimePartitionInterval();
+    endTime = (endTime <= startTime) ? Long.MAX_VALUE : endTime;
+
+    final int len = Math.min(times.length, values.length);
+    for (int i = 0; i < len; i++) {
+      final long time = times[i];
+      if (time >= endTime) {
+        break;
+      }
+      if (time < startTime || values[i] == null) {
+        continue;
+      }
+      if (values[i] != null) {
+        processAndAddObjectFile(chunkData, times[i], values[i].getBinary(), modsInfo);
+      }
+    }
+  }
+
+  private void verifyAndAddObjectFile(
+      final ChunkData chunkData, final String normalizedPath, final long expectedLength)
+      throws LoadFileException {
+    if (normalizedPath == null || normalizedPath.isEmpty()) {
+      throw new ObjectFileCorruptedException(
+          "Object file relative path resolved to empty in OBJECT column of TsFile: "
+              + tsFile.getPath());
+    }
+
+    File resolvedObjectFile = new File(objectFileSearchRoot, normalizedPath);
+
+    if (!resolvedObjectFile.exists() || !resolvedObjectFile.isFile()) {
+      throw new ObjectFileCorruptedException(
+          String.format(
+              "Referenced object file does not exist or is not a regular file: %s",
+              resolvedObjectFile.getAbsolutePath()));
+    }
+    if (expectedLength >= 0 && resolvedObjectFile.length() != expectedLength) {
+      throw new ObjectFileCorruptedException(
+          String.format(
+              "Referenced object file size mismatch, expected %d but got %d: %s",
+              expectedLength, resolvedObjectFile.length(), resolvedObjectFile.getAbsolutePath()));
+    }
+
+    chunkData.addObjectRelativePath(objectFileSearchRoot, normalizedPath);
   }
 
   @FunctionalInterface

@@ -111,7 +111,7 @@ public class DiskAlignedChunkLoader implements IChunkLoader {
         final TsFileID tsFileID = getTsFileID();
         if (chunk != null
             && tsFileID.regionId > 0
-            && chunkMetaData.getDataType() == TSDataType.OBJECT) {
+            && valueChunkMetadata.getDataType() == TSDataType.OBJECT) {
           chunk
               .getHeader()
               .setReplaceDecoder(

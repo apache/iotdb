@@ -26,6 +26,7 @@ import org.apache.tsfile.external.commons.lang3.StringUtils;
 
 import javax.annotation.Nullable;
 
+import java.io.File;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
@@ -59,6 +60,9 @@ public class LoadTsFileConfigurator {
         break;
       case ASYNC_LOAD_KEY:
         validateAsyncLoadParam(value);
+        break;
+      case OBJECT_FILE_PATHS_KEY:
+        validateObjectFilePathsParam(value);
         break;
       default:
         throw new SemanticException("Invalid parameter '" + key + "' for LOAD TSFILE command.");
@@ -216,6 +220,34 @@ public class LoadTsFileConfigurator {
   public static boolean parseOrGetDefaultAsyncLoad(final Map<String, String> loadAttributes) {
     return Boolean.parseBoolean(
         loadAttributes.getOrDefault(ASYNC_LOAD_KEY, String.valueOf(ASYNC_LOAD_DEFAULT_VALUE)));
+  }
+
+  public static final String OBJECT_FILE_PATHS_KEY = "object-file-path";
+
+  public static void validateObjectFilePathsParam(final String objectFilePaths) {
+    if (StringUtils.isEmpty(objectFilePaths)) {
+      return;
+    }
+    final String path = objectFilePaths.trim();
+    if (path.isEmpty()) {
+      return;
+    }
+    final File dir = new File(path);
+    if (!dir.exists() || !dir.isDirectory()) {
+      throw new SemanticException(
+          String.format(
+              "Given %s value '%s' is not a valid directory.",
+              OBJECT_FILE_PATHS_KEY, objectFilePaths));
+    }
+  }
+
+  public static @Nullable File parseObjectFileSearchRoot(final Map<String, String> loadAttributes) {
+    String raw = loadAttributes.get(OBJECT_FILE_PATHS_KEY);
+    if (StringUtils.isEmpty(raw)) {
+      return null;
+    }
+    final String path = raw.trim();
+    return path.isEmpty() ? null : new File(path).getAbsoluteFile();
   }
 
   private LoadTsFileConfigurator() {

@@ -128,7 +128,9 @@ public class LoadTsFileNode extends WritePlanNode {
               database,
               statement.isDeleteAfterLoad(),
               statement.getWritePointCount(i),
-              needDecode4TimeColumn));
+              needDecode4TimeColumn,
+              statement.isTsFileContainsObjectColumn(i),
+              statement.getObjectFileSearchRoot()));
     }
     return res;
   }
@@ -151,7 +153,9 @@ public class LoadTsFileNode extends WritePlanNode {
                 database,
                 statement.isDeleteAfterLoad(),
                 statement.getWritePointCount(i),
-                needDecode4TimeColumn));
+                needDecode4TimeColumn,
+                statement.isTsFileContainsObjectColumn(i),
+                statement.getObjectFileSearchRoot()));
       }
     }
     return res;

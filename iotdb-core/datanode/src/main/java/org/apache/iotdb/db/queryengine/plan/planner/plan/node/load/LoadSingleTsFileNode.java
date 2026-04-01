@@ -33,6 +33,7 @@ import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFil
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.load.util.LoadUtil;
 
+import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.exception.NotImplementedException;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Pair;
@@ -63,6 +64,9 @@ public class LoadSingleTsFileNode extends WritePlanNode {
   private final long writePointCount;
   private boolean needDecodeTsFile;
 
+  private final boolean tsFileContainsObjectColumn;
+  private File objectFileSearchRoot;
+
   private TRegionReplicaSet localRegionReplicaSet;
 
   public LoadSingleTsFileNode(
@@ -72,7 +76,9 @@ public class LoadSingleTsFileNode extends WritePlanNode {
       final String database,
       final boolean deleteAfterLoad,
       final long writePointCount,
-      final boolean needDecodeTsFile) {
+      final boolean needDecode4TimeColumn,
+      final boolean tsFileContainsObjectColumn,
+      final File objectFileSearchRoot) {
     super(id);
     this.tsFile = resource.getTsFile();
     this.resource = resource;
@@ -80,7 +86,24 @@ public class LoadSingleTsFileNode extends WritePlanNode {
     this.database = database;
     this.deleteAfterLoad = deleteAfterLoad;
     this.writePointCount = writePointCount;
-    this.needDecodeTsFile = needDecodeTsFile;
+    this.needDecodeTsFile = needDecode4TimeColumn;
+    this.tsFileContainsObjectColumn = tsFileContainsObjectColumn;
+    if (tsFileContainsObjectColumn && objectFileSearchRoot == null) {
+      String fileName = tsFile.getName();
+      if (!fileName.endsWith(TsFileConstant.TSFILE_SUFFIX)) {
+        throw new IllegalArgumentException(
+            "TsFile containing object column must end with '"
+                + TsFileConstant.TSFILE_SUFFIX
+                + "'. Current file: "
+                + fileName);
+      }
+
+      String objectDirName =
+          fileName.endsWith(TsFileConstant.TSFILE_SUFFIX)
+              ? fileName.substring(0, fileName.length() - TsFileConstant.TSFILE_SUFFIX.length())
+              : fileName;
+      this.objectFileSearchRoot = new File(tsFile.getParentFile(), objectDirName);
+    }
   }
 
   public boolean isTsFileEmpty() {
@@ -120,6 +143,20 @@ public class LoadSingleTsFileNode extends WritePlanNode {
     }
 
     return needDecodeTsFile;
+  }
+
+  public boolean isTsFileContainsObjectColumn() {
+    return tsFileContainsObjectColumn;
+  }
+
+  public File getObjectFileSearchRoot() {
+    return objectFileSearchRoot;
+  }
+
+  public void setObjectFileSearchRoot(final File objectFileSearchRoot) {
+    if (objectFileSearchRoot != null) {
+      this.objectFileSearchRoot = objectFileSearchRoot;
+    }
   }
 
   private boolean isDispatchedToLocal(Set<TRegionReplicaSet> replicaSets) {

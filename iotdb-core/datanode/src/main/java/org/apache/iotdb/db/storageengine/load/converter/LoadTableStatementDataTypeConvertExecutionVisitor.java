@@ -32,6 +32,7 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.external.commons.io.FileUtils;
+import org.apache.tsfile.write.record.Tablet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -93,18 +94,27 @@ public class LoadTableStatementDataTypeConvertExecutionVisitor
           final PipeRawTabletInsertionEvent rawTabletInsertionEvent =
               (PipeRawTabletInsertionEvent) tabletInsertionEvent;
 
-          final LoadConvertedInsertTabletStatement statement =
-              new LoadConvertedInsertTabletStatement(
-                  PipeTransferTabletRawReqV2.toTPipeTransferRawReq(
-                          rawTabletInsertionEvent.convertToTablet(),
-                          rawTabletInsertionEvent.isAligned(),
-                          databaseName)
-                      .constructStatement(),
-                  loadTsFileStatement.isConvertOnTypeMismatch());
+          Tablet originalTablet = rawTabletInsertionEvent.convertToTablet();
 
-          final TSStatus status = executeInsertTabletWithRetry(statement, databaseName);
-          if (!handleTSStatus(status, loadTsFileStatement)) {
-            return Optional.of(status);
+          try (TabletObjectSplitIterator tabletIterator =
+              new TabletObjectSplitIterator(
+                  originalTablet, file, loadTsFileStatement.getObjectFileSearchRoot())) {
+
+            while (tabletIterator.hasNext()) {
+              Tablet currentTablet = tabletIterator.next();
+
+              final LoadConvertedInsertTabletStatement statement =
+                  new LoadConvertedInsertTabletStatement(
+                      PipeTransferTabletRawReqV2.toTPipeTransferRawReq(
+                              currentTablet, rawTabletInsertionEvent.isAligned(), databaseName)
+                          .constructStatement(),
+                      loadTsFileStatement.isConvertOnTypeMismatch());
+
+              TSStatus status = executeInsertTabletWithRetry(statement, databaseName);
+              if (!handleTSStatus(status, loadTsFileStatement)) {
+                return Optional.of(status);
+              }
+            }
           }
         }
       } catch (final Exception e) {

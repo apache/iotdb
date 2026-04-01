@@ -26,17 +26,36 @@ import org.apache.tsfile.file.header.ChunkHeader;
 import org.apache.tsfile.file.header.PageHeader;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.writer.TsFileIOWriter;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
+import java.util.Collections;
+import java.util.Set;
 
 public interface ChunkData extends TsFileData {
   IDeviceID getDevice();
 
   TTimePartitionSlot getTimePartitionSlot();
+
+  default Set<Pair<File, String>> getObjectFiles() {
+    return Collections.emptySet();
+  }
+
+  default void addObjectRelativePath(File parentDir, String relativePath) {}
+
+  default long getObjectMetadataSizeInBytes() {
+    return 0L;
+  }
+
+  default LoadTsFileObjectFileBatchIterator getObjectFileBatchIterator(int maxBatchSize) {
+    return new LoadTsFileObjectFileBatchIterator(
+        getObjectFiles(), maxBatchSize, getTimePartitionSlot());
+  }
 
   void setNotDecode();
 

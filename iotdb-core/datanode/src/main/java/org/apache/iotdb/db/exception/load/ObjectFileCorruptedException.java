@@ -17,10 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.storageengine.load.splitter;
+package org.apache.iotdb.db.exception.load;
 
-public enum TsFileDataType {
-  CHUNK,
-  DELETION,
-  OBJECT_FILE_PAYLOAD
+public class ObjectFileCorruptedException extends LoadFileException {
+
+  public ObjectFileCorruptedException(final String message) {
+    super(message);
+  }
 }

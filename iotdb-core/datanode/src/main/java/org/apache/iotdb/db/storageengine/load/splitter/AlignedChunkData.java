@@ -57,7 +57,7 @@ import java.util.Queue;
 
 import static org.apache.iotdb.db.storageengine.load.LoadTsFileManager.MEASUREMENT_ID_CACHE;
 
-public class AlignedChunkData implements ChunkData {
+public class AlignedChunkData extends AbstractChunkData {
   protected static final int DEFAULT_INT32 = 0;
   protected static final long DEFAULT_INT64 = 0L;
   protected static final float DEFAULT_FLOAT = 0;
@@ -93,6 +93,7 @@ public class AlignedChunkData implements ChunkData {
     this(alignedChunkData.device, alignedChunkData.timePartitionSlot);
     this.satisfiedLengthQueue = new LinkedList<>(alignedChunkData.satisfiedLengthQueue);
     this.needDecodeChunk = alignedChunkData.needDecodeChunk;
+    copyObjectSidecarFrom(alignedChunkData);
     addAttrDataSize();
   }
 
@@ -277,6 +278,7 @@ public class AlignedChunkData implements ChunkData {
             case TEXT:
             case BLOB:
             case STRING:
+            case OBJECT:
               dataSize += ReadWriteIOUtils.write(values[i].getBinary(), stream);
               break;
             default:
@@ -408,6 +410,7 @@ public class AlignedChunkData implements ChunkData {
               case TEXT:
               case BLOB:
               case STRING:
+              case OBJECT:
                 final Binary binaryValue =
                     isNull ? DEFAULT_BINARY : ReadWriteIOUtils.readBinary(stream);
                 chunkWriter.write(timePageBatch[i], binaryValue, isNull, valueChunkIndex);

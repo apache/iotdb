@@ -288,6 +288,7 @@ public class IoTDBConstant {
   public static final String LOAD_TSFILE_FOLDER_NAME = "load";
   public static final String LOAD_TSFILE_ACTIVE_LISTENING_PENDING_FOLDER_NAME = "pending";
   public static final String LOAD_TSFILE_ACTIVE_LISTENING_FAILED_FOLDER_NAME = "failed";
+  public static final String LOAD_OBJECT_FILE_TEMP_FOLDER_NAME = "object_tmp";
   public static final String SYNC_FOLDER_NAME = "sync";
   public static final String QUERY_FOLDER_NAME = "query";
   public static final String EXT_FOLDER_NAME = "ext";

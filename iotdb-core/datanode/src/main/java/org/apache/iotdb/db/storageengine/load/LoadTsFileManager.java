@@ -40,6 +40,7 @@ import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.exception.load.LoadFileException;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileObjectPieceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
 import org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileScheduler.LoadCommand;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
@@ -52,6 +53,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.load.active.ActiveLoadAgent;
 import org.apache.iotdb.db.storageengine.load.splitter.ChunkData;
 import org.apache.iotdb.db.storageengine.load.splitter.DeletionData;
+import org.apache.iotdb.db.storageengine.load.splitter.LoadTsFileObjectFileBatch;
 import org.apache.iotdb.db.storageengine.load.splitter.TsFileData;
 import org.apache.iotdb.db.storageengine.rescon.disk.FolderManager;
 import org.apache.iotdb.db.storageengine.rescon.disk.strategy.DirectoryStrategyType;
@@ -263,6 +265,56 @@ public class LoadTsFileManager {
             throw new IOException("Unsupported TsFileData type: " + tsFileData.getType());
         }
       }
+    } finally {
+      cleanupTask.ifPresent(CleanupTask::markLoadTaskNotRunning);
+    }
+  }
+
+  public void writeObjectPayloadToDataRegion(
+      final DataRegion dataRegion,
+      final LoadTsFileObjectPieceNode objectPieceNode,
+      final String uuid)
+      throws IOException {
+    if (!uuid2WriterManager.containsKey(uuid)) {
+      synchronized (uuid2CleanupTask) {
+        if (!uuid2WriterManager.containsKey(uuid)) {
+          final CleanupTask cleanupTask =
+              new CleanupTask(uuid, CONFIG.getLoadCleanupTaskExecutionDelayTimeSeconds() * 1000);
+          uuid2CleanupTask.put(uuid, cleanupTask);
+          cleanupTaskQueue.add(cleanupTask);
+        }
+      }
+    }
+
+    final Optional<CleanupTask> cleanupTask = Optional.of(uuid2CleanupTask.get(uuid));
+    cleanupTask.ifPresent(CleanupTask::markLoadTaskRunning);
+    try {
+      final AtomicReference<Exception> exception = new AtomicReference<>();
+      final TsFileWriterManager writerManager =
+          uuid2WriterManager.computeIfAbsent(
+              uuid,
+              o -> {
+                try {
+                  return getFolderManager()
+                      .getNextWithRetry(folder -> new TsFileWriterManager(new File(folder, uuid)));
+                } catch (DiskSpaceInsufficientException e) {
+                  exception.set(e);
+                  return null;
+                }
+              });
+
+      if (exception.get() != null || writerManager == null) {
+        throw new IOException(
+            "Failed to create TsFileWriterManager for uuid "
+                + uuid
+                + " because of insufficient disk space.",
+            exception.get());
+      }
+
+      writerManager.writeObjectFileBatch(
+          new DataPartitionInfo(
+              dataRegion, objectPieceNode.getObjectBatch().getLastTimePartitionSlot()),
+          objectPieceNode.getObjectBatch());
     } finally {
       cleanupTask.ifPresent(CleanupTask::markLoadTaskNotRunning);
     }
@@ -559,6 +611,58 @@ public class LoadTsFileManager {
       }
     }
 
+    /**
+     * Stage object-file chunks under current load task directory.
+     *
+     * <p>Design rationale:
+     *
+     * <ul>
+     *   <li>Object payload is transferred chunk-by-chunk together with TsFile pieces. Before the
+     *       final TsFile is closed and loaded, these chunks cannot be directly installed into the
+     *       tiered object directories because the load may still fail/rollback.
+     *   <li>Therefore we first stage object chunks in task-local temp space: {@code
+     *       <taskDir>/<database-dataRegion-timePartition>/...}. This keeps the lifecycle bounded to
+     *       one load task and one data partition.
+     *   <li>The subdirectory name is {@link DataPartitionInfo#toString()}, so staged object files
+     *       are naturally isolated by target DataRegion and time partition, matching the split
+     *       TsFile writers in this manager.
+     * </ul>
+     *
+     * <p>Workflow:
+     *
+     * <ol>
+     *   <li>Create/validate staging directory for the current partition.
+     *   <li>Append each object chunk into files under this staging directory.
+     *   <li>Later in {@link #loadAll(boolean, Map)}, pass this staging directory to {@code
+     *       DataRegion.loadNewTsFile(..., objectFileDir)}; DataRegion then installs staged object
+     *       files into real tier directories atomically during load.
+     * </ol>
+     */
+    private void writeObjectFileBatch(
+        DataPartitionInfo dataPartitionInfo, LoadTsFileObjectFileBatch objectBatch)
+        throws IOException {
+      if (isClosed) {
+        throw new IOException(String.format(MESSAGE_WRITER_MANAGER_HAS_BEEN_CLOSED, taskDir));
+      }
+      File targetDir = SystemFileFactory.INSTANCE.getFile(taskDir, dataPartitionInfo.toString());
+
+      if (!targetDir.exists() && !targetDir.mkdirs()) {
+        throw new IOException(
+            String.format(
+                "Failed to create object file staging directory: %s", targetDir.getAbsolutePath()));
+      } else if (!targetDir.isDirectory()) {
+        throw new IOException(
+            String.format(
+                "Object file staging path exists but is not a directory: %s",
+                targetDir.getAbsolutePath()));
+      }
+
+      for (LoadTsFileObjectFileBatch.ObjectFileChunk objectFileChunk :
+          objectBatch.getObjectFileChunks()) {
+        objectFileChunk.writeChunk(targetDir, dataPartitionInfo.dataRegion.getDataRegionIdString());
+      }
+    }
+
     private void loadAll(
         boolean isGeneratedByPipe,
         Map<TTimePartitionSlot, ProgressIndex> timePartitionProgressIndexMap)
@@ -578,6 +682,7 @@ public class LoadTsFileManager {
         }
         writer.endFile();
 
+        final DataPartitionInfo partitionInfo = entry.getKey();
         final DataRegion dataRegion = entry.getKey().getDataRegion();
         final TsFileResource tsFileResource = dataPartition2Resource.get(entry.getKey());
         tsFileResource.setGeneratedByPipe(isGeneratedByPipe);
@@ -586,12 +691,17 @@ public class LoadTsFileManager {
             tsFileResource,
             timePartitionProgressIndexMap.getOrDefault(
                 entry.getKey().getTimePartitionSlot(), MinimumProgressIndex.INSTANCE));
-        dataRegion.loadNewTsFile(
+        // Object files are still in task-local staging dir here. DataRegion.loadNewTsFile(...)
+        // will finalize them into tiered object directories together with TsFile installation.
+        final File objectFileDir =
+            SystemFileFactory.INSTANCE.getFile(taskDir, partitionInfo.toString());
+        dataRegion.loadNewTsFileWithObject(
             tsFileResource,
             true,
             isGeneratedByPipe,
             false,
-            Optional.ofNullable(writer.getTableSizeMap()));
+            Optional.ofNullable(writer.getTableSizeMap()),
+            objectFileDir);
 
         // Metrics
         dataRegion
@@ -638,6 +748,7 @@ public class LoadTsFileManager {
                   TsPrimitiveType lastValue =
                       chunkMetadata.getStatistics() != null
                               && chunkMetadata.getDataType() != TSDataType.BLOB
+                              && chunkMetadata.getDataType() != TSDataType.OBJECT
                           ? TsPrimitiveType.getByType(
                               chunkMetadata.getDataType() == TSDataType.VECTOR
                                   ? TSDataType.INT64
@@ -714,8 +825,18 @@ public class LoadTsFileManager {
                     return null;
                   });
             }
+
+            final File objectTmpDir =
+                SystemFileFactory.INSTANCE.getFile(taskDir, entry.getKey().toString());
+            if (objectTmpDir.exists()) {
+              FileUtils.deleteFileOrDirectory(objectTmpDir, false);
+            }
           } catch (IOException e) {
-            LOGGER.warn("Close TsFileIOWriter {} error.", entry.getValue().getFile().getPath(), e);
+            LOGGER.warn(
+                "Failed to close or cleanup temporary load files for writer {} and object temp dir {}.",
+                entry.getValue().getFile().getPath(),
+                SystemFileFactory.INSTANCE.getFile(taskDir, entry.getKey().toString()).getPath(),
+                e);
           }
         }
       }
