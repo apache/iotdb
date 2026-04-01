@@ -51,6 +51,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectN
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.PredicateWithUncorrelatedScalarSubqueryReconstructor;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CopyToNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExplainAnalyzeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.IntoNode;
@@ -67,6 +68,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.Log
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PlanOptimizer;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AbstractQueryDeviceWithCache;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AbstractTraverseDevice;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CopyTo;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateOrUpdateDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Delete;
@@ -254,6 +256,9 @@ public class TableLogicalPlanner {
     if (statement instanceof ExplainAnalyze) {
       return planExplainAnalyze((ExplainAnalyze) statement, analysis);
     }
+    if (statement instanceof CopyTo) {
+      return createRelationPlan((CopyTo) statement, analysis);
+    }
     if (statement instanceof Insert) {
       return genInsertPlan(analysis, (Insert) statement);
     }
@@ -330,7 +335,14 @@ public class TableLogicalPlanner {
 
     int columnNumber = 0;
     // TODO perfect the logic of outputDescriptor
-    if (queryContext.isExplainAnalyze() && !queryContext.isInnerTriggeredQuery()) {
+    if (plan.getRoot() instanceof CopyToNode) {
+      for (ColumnHeader columnHeader :
+          ((CopyToNode) plan.getRoot()).getCopyToOptions().getRespColumnHeaders()) {
+        outputs.add(new Symbol(columnHeader.getColumnName()));
+        names.add(columnHeader.getColumnName());
+        columnHeaders.add(columnHeader);
+      }
+    } else if (queryContext.isExplainAnalyze() && !queryContext.isInnerTriggeredQuery()) {
       outputs.add(new Symbol(ColumnHeaderConstant.EXPLAIN_ANALYZE));
       names.add(ColumnHeaderConstant.EXPLAIN_ANALYZE);
       columnHeaders.add(new ColumnHeader(ColumnHeaderConstant.EXPLAIN_ANALYZE, TSDataType.TEXT));
@@ -604,15 +616,6 @@ public class TableLogicalPlanner {
     Symbol symbol =
         symbolAllocator.newSymbol(ColumnHeaderConstant.EXPLAIN_ANALYZE, StringType.getInstance());
 
-    // recording permittedOutputs of ExplainAnalyzeNode's child
-    RelationType outputDescriptor = analysis.getOutputDescriptor(statement.getStatement());
-    ImmutableList.Builder<Symbol> childPermittedOutputs = ImmutableList.builder();
-    for (Field field : outputDescriptor.getVisibleFields()) {
-      int fieldIndex = outputDescriptor.indexOf(field);
-      Symbol columnSymbol = originalQueryPlan.getSymbol(fieldIndex);
-      childPermittedOutputs.add(columnSymbol);
-    }
-
     PlanNode newRoot =
         new ExplainAnalyzeNode(
             queryContext.getQueryId().genPlanNodeId(),
@@ -621,12 +624,55 @@ public class TableLogicalPlanner {
             queryContext.getLocalQueryId(),
             queryContext.getTimeOut(),
             symbol,
-            childPermittedOutputs.build());
+            // recording permittedOutputs of ExplainAnalyzeNode's child
+            getChildPermittedOutputs(analysis, statement.getStatement(), originalQueryPlan));
     return new RelationPlan(
         newRoot,
         originalQueryPlan.getScope(),
         originalQueryPlan.getFieldMappings(),
         Optional.empty());
+  }
+
+  private RelationPlan createRelationPlan(final CopyTo statement, final Analysis analysis) {
+    Statement innerQueryStatement = statement.getQueryStatement();
+    RelationPlan innerQueryRelationPlan = planStatementWithoutOutput(analysis, innerQueryStatement);
+
+    OutputNode outputNode = (OutputNode) createOutputPlan(innerQueryRelationPlan, analysis);
+    DatasetHeader innerQueryRespDatasetHeader = analysis.getRespDatasetHeader();
+
+    statement
+        .getOptions()
+        .infer(analysis, innerQueryRelationPlan, innerQueryRespDatasetHeader.getColumnHeaders());
+    statement.getOptions().check(innerQueryRespDatasetHeader.getColumnHeaders());
+
+    PlanNode newRoot =
+        new CopyToNode(
+            queryContext.getQueryId().genPlanNodeId(),
+            innerQueryRelationPlan.getRoot(),
+            statement.getTargetFileName(),
+            statement.getOptions(),
+            // recording permittedOutputs of CopyToNode's child
+            getChildPermittedOutputs(
+                analysis, statement.getQueryStatement(), innerQueryRelationPlan),
+            innerQueryRespDatasetHeader,
+            outputNode.getOutputSymbols());
+    return new RelationPlan(
+        newRoot,
+        innerQueryRelationPlan.getScope(),
+        innerQueryRelationPlan.getFieldMappings(),
+        Optional.empty());
+  }
+
+  private List<Symbol> getChildPermittedOutputs(
+      Analysis analysis, Statement innerQueryStatement, RelationPlan innerQueryPlan) {
+    RelationType outputDescriptor = analysis.getOutputDescriptor(innerQueryStatement);
+    ImmutableList.Builder<Symbol> childPermittedOutputs = ImmutableList.builder();
+    for (Field field : outputDescriptor.getVisibleFields()) {
+      int fieldIndex = outputDescriptor.indexOf(field);
+      Symbol columnSymbol = innerQueryPlan.getSymbol(fieldIndex);
+      childPermittedOutputs.add(columnSymbol);
+    }
+    return childPermittedOutputs.build();
   }
 
   private enum Stage {
