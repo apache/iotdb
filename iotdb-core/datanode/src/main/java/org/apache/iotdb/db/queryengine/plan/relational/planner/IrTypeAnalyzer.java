@@ -487,6 +487,7 @@ public class IrTypeAnalyzer {
           "Not a valid IR expression: " + node.getClass().getName());
     }
 
+    // Only allow INT32 -> INT64 coercion to suppress some related bugs for now
     private void coerceType(
         Context context, Expression expression, Type expectedType, Function<Type, String> message) {
       Type actualType = process(expression, context);

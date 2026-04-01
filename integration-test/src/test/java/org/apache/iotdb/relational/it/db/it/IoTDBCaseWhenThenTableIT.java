@@ -171,7 +171,7 @@ public class IoTDBCaseWhenThenTableIT {
         DATABASE);
     tableAssertTestFail(
         "select case when s1<=0 then 0 when s1>1 then null end from table1",
-        "701: All result types must be the same:",
+        "701: All result types and default result type must be the same:",
         DATABASE);
 
     // TEXT and other types cannot exist at the same time
