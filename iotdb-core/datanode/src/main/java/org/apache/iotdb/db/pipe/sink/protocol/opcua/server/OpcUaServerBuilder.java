@@ -117,6 +117,7 @@ public class OpcUaServerBuilder implements Closeable {
     return this;
   }
 
+  // Must be a modifiable set.
   public OpcUaServerBuilder setSecurityPolicies(final Set<SecurityPolicy> securityPolicies) {
     this.securityPolicies = securityPolicies;
     return this;
