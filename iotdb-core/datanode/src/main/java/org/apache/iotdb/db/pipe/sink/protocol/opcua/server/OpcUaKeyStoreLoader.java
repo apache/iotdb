@@ -30,6 +30,8 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.Key;
@@ -61,8 +63,8 @@ class OpcUaKeyStoreLoader {
     LOGGER.info("Loading KeyStore at {}", serverKeyStore);
 
     if (serverKeyStore.exists()) {
-      try {
-        keyStore.load(Files.newInputStream(serverKeyStore.toPath()), password);
+      try (InputStream is = Files.newInputStream(serverKeyStore.toPath())) {
+        keyStore.load(is, password);
       } catch (final IOException e) {
         LOGGER.warn("Load keyStore failed, the existing keyStore may be stale, re-constructing...");
         FileUtils.deleteFileOrDirectory(serverKeyStore);
@@ -105,7 +107,9 @@ class OpcUaKeyStoreLoader {
 
       keyStore.setKeyEntry(
           SERVER_ALIAS, keyPair.getPrivate(), password, new X509Certificate[] {certificate});
-      keyStore.store(Files.newOutputStream(serverKeyStore.toPath()), password);
+      try (final OutputStream os = Files.newOutputStream(serverKeyStore.toPath())) {
+        keyStore.store(os, password);
+      }
     }
 
     final Key serverPrivateKey = keyStore.getKey(SERVER_ALIAS, password);
@@ -114,6 +118,10 @@ class OpcUaKeyStoreLoader {
 
       final PublicKey serverPublicKey = serverCertificate.getPublicKey();
       serverKeyPair = new KeyPair(serverPublicKey, (PrivateKey) serverPrivateKey);
+    } else {
+      throw new Exception(
+          "Invalid keyStore, the serverPrivateKey is "
+              + (serverPrivateKey != null ? serverPrivateKey.getClass().getSimpleName() : "null"));
     }
 
     return this;
