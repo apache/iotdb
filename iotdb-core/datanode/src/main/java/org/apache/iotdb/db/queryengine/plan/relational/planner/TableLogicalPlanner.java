@@ -625,7 +625,8 @@ public class TableLogicalPlanner {
             queryContext.getTimeOut(),
             symbol,
             // recording permittedOutputs of ExplainAnalyzeNode's child
-            getChildPermittedOutputs(analysis, statement.getStatement(), originalQueryPlan));
+            getChildPermittedOutputs(analysis, statement.getStatement(), originalQueryPlan),
+            statement.getOutputFormat());
     return new RelationPlan(
         newRoot,
         originalQueryPlan.getScope(),

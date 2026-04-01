@@ -34,6 +34,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.lock.SchemaLockType;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.NotThreadSafeMemoryReservationManager;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExplainOutputFormat;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
@@ -108,6 +109,7 @@ public class MPPQueryContext implements IAuditEntity {
   // - EXPLAIN: Show the logical and physical query plan without execution
   // - EXPLAIN_ANALYZE: Execute the query and collect detailed execution statistics
   private ExplainType explainType = ExplainType.NONE;
+  private ExplainOutputFormat explainOutputFormat = null;
   private boolean verbose = false;
 
   private QueryPlanStatistics queryPlanStatistics = null;
@@ -344,6 +346,14 @@ public class MPPQueryContext implements IAuditEntity {
 
   public ExplainType getExplainType() {
     return explainType;
+  }
+
+  public void setExplainOutputFormat(ExplainOutputFormat explainOutputFormat) {
+    this.explainOutputFormat = explainOutputFormat;
+  }
+
+  public ExplainOutputFormat getExplainOutputFormat() {
+    return explainOutputFormat;
   }
 
   public boolean isExplainAnalyze() {

@@ -25,6 +25,7 @@ import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanGraphJsonPrinter;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanGraphPrinter;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
@@ -35,6 +36,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.TableD
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Explain;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExplainOutputFormat;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
@@ -103,15 +105,26 @@ public class TableModelStatementMemorySourceVisitor
                 Coordinator.getInstance().getDataNodeLocationSupplier())
             .generateDistributedPlanWithOptimize(planContext);
 
-    List<String> mainExplainResult =
-        outputNodeWithExchange.accept(
-            new PlanGraphPrinter(),
-            new PlanGraphPrinter.GraphContext(
-                context.getQueryContext().getTypeProvider().getTemplatedInfo()));
+    List<String> mainExplainResult;
+    if (node.getOutputFormat() == ExplainOutputFormat.JSON) {
+      mainExplainResult = PlanGraphJsonPrinter.getJsonLines(outputNodeWithExchange);
+    } else {
+      mainExplainResult =
+          outputNodeWithExchange.accept(
+              new PlanGraphPrinter(),
+              new PlanGraphPrinter.GraphContext(
+                  context.getQueryContext().getTypeProvider().getTemplatedInfo()));
+    }
 
     Map<NodeRef<Table>, Pair<Integer, List<String>>> cteExplainResults =
         context.getQueryContext().getCteExplainResults();
-    List<String> lines = mergeExplainResults(cteExplainResults, mainExplainResult);
+    List<String> lines;
+    if (node.getOutputFormat() == ExplainOutputFormat.JSON) {
+      // For JSON format, we merge CTE results into the JSON output
+      lines = mergeExplainResultsJson(cteExplainResults, mainExplainResult);
+    } else {
+      lines = mergeExplainResults(cteExplainResults, mainExplainResult);
+    }
 
     return getStatementMemorySource(header, lines);
   }
@@ -148,5 +161,45 @@ public class TableModelStatementMemorySourceVisitor
     analyzeResult.addAll(mainExplainResult);
 
     return analyzeResult;
+  }
+
+  private List<String> mergeExplainResultsJson(
+      Map<NodeRef<Table>, Pair<Integer, List<String>>> cteExplainResults,
+      List<String> mainExplainResult) {
+    if (cteExplainResults.isEmpty()) {
+      return mainExplainResult;
+    }
+
+    // For JSON format with CTEs, wrap everything in a combined JSON object
+    StringBuilder sb = new StringBuilder();
+    sb.append("{\n");
+    sb.append("  \"cteQueries\": [\n");
+    int cteIndex = 0;
+    int cteSize = cteExplainResults.size();
+    for (Map.Entry<NodeRef<Table>, Pair<Integer, List<String>>> entry :
+        cteExplainResults.entrySet()) {
+      sb.append("    {\n");
+      sb.append("      \"name\": \"").append(entry.getKey().getNode().getName()).append("\",\n");
+      sb.append("      \"plan\": ");
+      // Each CTE's plan is already a JSON string
+      for (String line : entry.getValue().getRight()) {
+        sb.append(line);
+      }
+      sb.append("\n    }");
+      if (++cteIndex < cteSize) {
+        sb.append(",");
+      }
+      sb.append("\n");
+    }
+    sb.append("  ],\n");
+    sb.append("  \"mainQuery\": ");
+    for (String line : mainExplainResult) {
+      sb.append(line);
+    }
+    sb.append("\n}");
+
+    List<String> result = new ArrayList<>();
+    result.add(sb.toString());
+    return result;
   }
 }

@@ -33,8 +33,10 @@ import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.execution.QueryExecution;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExplainOutputFormat;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
 import org.apache.iotdb.db.queryengine.statistics.FragmentInstanceStatisticsDrawer;
+import org.apache.iotdb.db.queryengine.statistics.FragmentInstanceStatisticsJsonDrawer;
 import org.apache.iotdb.db.queryengine.statistics.QueryStatisticsFetcher;
 import org.apache.iotdb.db.queryengine.statistics.StatisticLine;
 import org.apache.iotdb.db.utils.SetThreadName;
@@ -78,9 +80,12 @@ public class ExplainAnalyzeOperator implements ProcessOperator {
   private final boolean verbose;
   private boolean outputResult = false;
   private final List<FragmentInstance> instances;
+  private final ExplainOutputFormat outputFormat;
 
   private final FragmentInstanceStatisticsDrawer fragmentInstanceStatisticsDrawer =
       new FragmentInstanceStatisticsDrawer();
+  private final FragmentInstanceStatisticsJsonDrawer fragmentInstanceStatisticsJsonDrawer =
+      new FragmentInstanceStatisticsJsonDrawer();
 
   private final ScheduledFuture<?> logRecordTask;
   private final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> clientManager;
@@ -92,9 +97,20 @@ public class ExplainAnalyzeOperator implements ProcessOperator {
       long queryId,
       boolean verbose,
       long timeout) {
+    this(operatorContext, child, queryId, verbose, timeout, ExplainOutputFormat.TEXT);
+  }
+
+  public ExplainAnalyzeOperator(
+      OperatorContext operatorContext,
+      Operator child,
+      long queryId,
+      boolean verbose,
+      long timeout,
+      ExplainOutputFormat outputFormat) {
     this.operatorContext = operatorContext;
     this.child = child;
     this.verbose = verbose;
+    this.outputFormat = outputFormat;
     Coordinator coordinator = Coordinator.getInstance();
 
     this.clientManager = coordinator.getInternalServiceClientManager();
@@ -103,6 +119,7 @@ public class ExplainAnalyzeOperator implements ProcessOperator {
     this.instances = queryExecution.getDistributedPlan().getInstances();
     mppQueryContext = queryExecution.getContext();
     fragmentInstanceStatisticsDrawer.renderPlanStatistics(mppQueryContext);
+    fragmentInstanceStatisticsJsonDrawer.renderPlanStatistics(mppQueryContext);
 
     // The time interval guarantees the result of EXPLAIN ANALYZE will be printed at least three
     // times.
@@ -130,6 +147,7 @@ public class ExplainAnalyzeOperator implements ProcessOperator {
     }
 
     fragmentInstanceStatisticsDrawer.renderDispatchCost(mppQueryContext);
+    fragmentInstanceStatisticsJsonDrawer.renderDispatchCost(mppQueryContext);
 
     // fetch statics from all fragment instances
     TsBlock result = buildResult();
@@ -182,6 +200,9 @@ public class ExplainAnalyzeOperator implements ProcessOperator {
   }
 
   private TsBlock buildResult() throws FragmentInstanceFetchException {
+    if (outputFormat == ExplainOutputFormat.JSON) {
+      return buildJsonResult();
+    }
     Map<NodeRef<Table>, Pair<Integer, List<String>>> cteAnalyzeResults =
         mppQueryContext.getCteExplainResults();
     List<String> mainAnalyzeResult = buildFragmentInstanceStatistics(instances, verbose);
@@ -196,6 +217,22 @@ public class ExplainAnalyzeOperator implements ProcessOperator {
       columnBuilder.writeBinary(new Binary(line.getBytes()));
       builder.declarePosition();
     }
+    return builder.build();
+  }
+
+  private TsBlock buildJsonResult() throws FragmentInstanceFetchException {
+    Map<FragmentInstanceId, TFetchFragmentInstanceStatisticsResp> allStatistics =
+        QueryStatisticsFetcher.fetchAllStatistics(instances, clientManager);
+    String jsonResult =
+        fragmentInstanceStatisticsJsonDrawer.renderFragmentInstancesAsJson(
+            instances, allStatistics, verbose);
+
+    TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(TSDataType.TEXT));
+    TimeColumnBuilder timeColumnBuilder = builder.getTimeColumnBuilder();
+    ColumnBuilder columnBuilder = builder.getColumnBuilder(0);
+    timeColumnBuilder.writeLong(0);
+    columnBuilder.writeBinary(new Binary(jsonResult.getBytes()));
+    builder.declarePosition();
     return builder.build();
   }
 

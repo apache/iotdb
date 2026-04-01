@@ -35,17 +35,31 @@ public class ExplainAnalyze extends Statement {
 
   private final Statement statement;
   private final boolean verbose;
+  private final ExplainOutputFormat outputFormat;
 
   public ExplainAnalyze(Statement statement, boolean verbose) {
     super(null);
     this.statement = requireNonNull(statement, "statement is null");
     this.verbose = verbose;
+    this.outputFormat = ExplainOutputFormat.TEXT;
   }
 
   public ExplainAnalyze(NodeLocation location, boolean verbose, Statement statement) {
     super(requireNonNull(location, "location is null"));
     this.statement = requireNonNull(statement, "statement is null");
     this.verbose = verbose;
+    this.outputFormat = ExplainOutputFormat.TEXT;
+  }
+
+  public ExplainAnalyze(
+      NodeLocation location,
+      boolean verbose,
+      Statement statement,
+      ExplainOutputFormat outputFormat) {
+    super(requireNonNull(location, "location is null"));
+    this.statement = requireNonNull(statement, "statement is null");
+    this.verbose = verbose;
+    this.outputFormat = requireNonNull(outputFormat, "outputFormat is null");
   }
 
   public Statement getStatement() {
@@ -54,6 +68,10 @@ public class ExplainAnalyze extends Statement {
 
   public boolean isVerbose() {
     return verbose;
+  }
+
+  public ExplainOutputFormat getOutputFormat() {
+    return outputFormat;
   }
 
   @Override
@@ -85,7 +103,11 @@ public class ExplainAnalyze extends Statement {
 
   @Override
   public String toString() {
-    return toStringHelper(this).add("statement", statement).add("verbose", verbose).toString();
+    return toStringHelper(this)
+        .add("statement", statement)
+        .add("verbose", verbose)
+        .add("outputFormat", outputFormat)
+        .toString();
   }
 
   @Override
