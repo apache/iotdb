@@ -87,8 +87,7 @@ public enum BuiltinPipePlugin {
   IOTDB_AIR_GAP_CONNECTOR("iotdb-air-gap-connector", IoTDBAirGapSink.class),
   IOT_CONSENSUS_V2_ASYNC_CONNECTOR(
       "iot-consensus-v2-async-connector", IoTConsensusV2AsyncSink.class),
-  PIPE_CONSENSUS_ASYNC_CONNECTOR(
-      "pipe-consensus-async-connector", IoTConsensusV2AsyncSink.class),
+  PIPE_CONSENSUS_ASYNC_CONNECTOR("pipe-consensus-async-connector", IoTConsensusV2AsyncSink.class),
 
   WEBSOCKET_CONNECTOR("websocket-connector", WebSocketSink.class),
   OPC_UA_CONNECTOR("opc-ua-connector", OpcUaSink.class),
