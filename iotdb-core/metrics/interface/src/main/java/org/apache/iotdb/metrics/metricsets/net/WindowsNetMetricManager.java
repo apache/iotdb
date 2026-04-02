@@ -56,9 +56,7 @@ public class WindowsNetMetricManager implements INetMetricManager {
 
   private int connectionNum = 0;
 
-  public WindowsNetMetricManager() {
-    checkUpdate();
-  }
+  public WindowsNetMetricManager() {}
 
   @Override
   public Set<String> getIfaceSet() {
