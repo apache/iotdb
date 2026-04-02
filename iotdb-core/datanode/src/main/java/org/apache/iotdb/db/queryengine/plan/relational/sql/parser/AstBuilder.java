@@ -1605,13 +1605,16 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       options = Collections.singleton(CacheClearOptions.TABLE_ATTRIBUTE);
     } else if (context.QUERY() != null) {
       options = Collections.singleton(CacheClearOptions.QUERY);
+    } else if (context.AUTH() != null) {
+      options = Collections.singleton(CacheClearOptions.AUTH);
     } else {
       options =
           new HashSet<>(
               Arrays.asList(
                   CacheClearOptions.TABLE_ATTRIBUTE,
                   CacheClearOptions.TREE_SCHEMA,
-                  CacheClearOptions.QUERY));
+                  CacheClearOptions.QUERY,
+                  CacheClearOptions.AUTH));
     }
     return new ClearCache(
         Objects.isNull(ctx.localOrClusterMode())
