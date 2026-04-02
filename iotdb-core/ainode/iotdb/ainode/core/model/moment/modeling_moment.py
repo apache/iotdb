@@ -56,20 +56,35 @@ class RevIN(nn.Module):
             self.affine_weight = nn.Parameter(torch.ones(self.n_features))
             self.affine_bias = nn.Parameter(torch.zeros(self.n_features))
 
-    def forward(self, x: torch.Tensor, mode: str) -> torch.Tensor:
+    def forward(
+        self, x: torch.Tensor, mode: str, mask: Optional[torch.Tensor] = None
+    ) -> torch.Tensor:
         # x: [batch, n_channels, seq_len]
+        # mask: [batch, seq_len] - 1 for observed, 0 for padding (optional)
         if mode == "norm":
-            self._get_statistics(x)
+            self._get_statistics(x, mask)
             x = self._normalize(x)
         elif mode == "denorm":
             x = self._denormalize(x)
         return x
 
-    def _get_statistics(self, x: torch.Tensor):
-        self.mean = torch.mean(x, dim=-1, keepdim=True).detach()
-        self.stdev = torch.sqrt(
-            torch.var(x, dim=-1, keepdim=True, unbiased=False) + self.eps
-        ).detach()
+    def _get_statistics(self, x: torch.Tensor, mask: Optional[torch.Tensor] = None):
+        if mask is not None:
+            # Expand mask to match x: [batch, 1, seq_len] -> broadcast over n_channels
+            m = mask.unsqueeze(1).float()  # [batch, 1, seq_len]
+            count = m.sum(dim=-1, keepdim=True).clamp(min=1)
+            self.mean = (x * m).sum(dim=-1, keepdim=True) / count
+            self.stdev = torch.sqrt(
+                ((x - self.mean) * m).pow(2).sum(dim=-1, keepdim=True) / count
+                + self.eps
+            )
+            self.mean = self.mean.detach()
+            self.stdev = self.stdev.detach()
+        else:
+            self.mean = torch.mean(x, dim=-1, keepdim=True).detach()
+            self.stdev = torch.sqrt(
+                torch.var(x, dim=-1, keepdim=True, unbiased=False) + self.eps
+            ).detach()
 
     def _normalize(self, x: torch.Tensor) -> torch.Tensor:
         x = (x - self.mean) / self.stdev
@@ -213,7 +228,10 @@ class MomentBackbone(nn.Module):
         # RevIN normalization (channel-independent)
         # Reshape to process each channel independently
         x = x_enc.reshape(batch_size * n_channels, 1, seq_len)
-        x = self.revin(x, mode="norm")
+        # Expand input_mask to match reshaped x: repeat for each channel
+        revin_mask = input_mask.unsqueeze(1).expand(-1, n_channels, -1)
+        revin_mask = revin_mask.reshape(batch_size * n_channels, seq_len)
+        x = self.revin(x, mode="norm", mask=revin_mask)
         x = x.reshape(batch_size, n_channels, seq_len)
 
         # Patching: [batch, n_channels, n_patches, patch_len]
