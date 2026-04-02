@@ -50,6 +50,17 @@ public class DiskMetrics implements IMetricSet {
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
+    String os = System.getProperty("os.name").toLowerCase();
+    if (os.startsWith("windows")) {
+      Thread thread = new Thread(() -> bindTask(metricService), "Windows-Disk-Metric-Binder");
+      thread.setDaemon(true);
+      thread.start();
+      return;
+    }
+    bindTask(metricService);
+  }
+
+  private void bindTask(AbstractMetricService metricService) {
     // metrics for disks
     Set<String> diskIDs = diskMetricsManager.getDiskIds();
     for (String diskID : diskIDs) {
