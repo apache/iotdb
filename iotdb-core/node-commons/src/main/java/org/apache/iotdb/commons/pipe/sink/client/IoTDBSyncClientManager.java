@@ -361,7 +361,7 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
         final Pair<IoTDBSyncClient, Boolean> nextClientAndStatus =
             endPoint2ClientAndStatus.get(endPointList.get(nextClientIndex));
         if (Boolean.TRUE.equals(nextClientAndStatus.getRight())
-            && clientAndStatus.getLeft() != null) {
+            && nextClientAndStatus.getLeft() != null) {
           return nextClientAndStatus;
         }
       }

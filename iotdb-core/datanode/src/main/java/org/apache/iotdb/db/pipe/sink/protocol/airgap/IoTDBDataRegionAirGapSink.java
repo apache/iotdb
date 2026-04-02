@@ -168,7 +168,7 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
       throw new PipeConnectionException(
           String.format(
               "Network error when transfer tsfile event %s, because %s.",
-              ((PipeSchemaRegionWritePlanEvent) event).coreReportMessage(), e.getMessage()),
+              ((EnrichedEvent) event).coreReportMessage(), e.getMessage()),
           e);
     }
   }

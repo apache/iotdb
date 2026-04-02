@@ -728,7 +728,7 @@ public class AggregateProcessor implements PipeProcessor {
               throw new UnsupportedOperationException(
                   String.format(
                       "The output tablet does not support column type %s",
-                      valueColumnTypes[rowIndex]));
+                      valueColumnTypes[columnIndex]));
           }
         } else {
           bitMaps[columnIndex].mark(rowIndex);
@@ -742,7 +742,7 @@ public class AggregateProcessor implements PipeProcessor {
     int filteredCount = 0;
     for (int i = 0; i < columnNameStringList.length; ++i) {
       if (!bitMaps[i].isAllMarked()) {
-        originColumnIndex2FilteredColumnIndexMapperList[i] = ++filteredCount;
+        originColumnIndex2FilteredColumnIndexMapperList[i] = filteredCount++;
       }
     }
 
