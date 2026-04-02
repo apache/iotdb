@@ -38,6 +38,7 @@ import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.confignode.consensus.request.read.database.CountDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.database.GetDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.table.DescTablePlan;
@@ -196,6 +197,10 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       final TDatabaseSchema databaseSchema = plan.getSchema();
       final PartialPath partialPathName = getQualifiedDatabasePartialPath(databaseSchema.getName());
 
+      // Update TimePartitionUtils cache with database-specific time partition settings
+      TimePartitionUtils.updateDatabaseTimePartitionConfig(
+          databaseSchema.getName(), databaseSchema);
+
       final ConfigMTree mTree = databaseSchema.isIsTableModel() ? tableModelMTree : treeModelMTree;
       mTree.setStorageGroup(partialPathName);
 
@@ -280,6 +285,9 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
           .getAsMNode()
           .setDatabaseSchema(currentSchema);
 
+      // Update TimePartitionUtils cache with new time partition settings
+      TimePartitionUtils.updateDatabaseTimePartitionConfig(currentSchema.getName(), currentSchema);
+
       result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (final MetadataException e) {
       LOGGER.error(ERROR_NAME, e);
@@ -304,6 +312,9 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       // Delete Database
       (isTableModel ? tableModelMTree : treeModelMTree)
           .deleteDatabase(getQualifiedDatabasePartialPath(plan.getName()));
+
+      // Remove database-specific time partition configuration from cache
+      TimePartitionUtils.removeDatabaseTimePartitionConfig(plan.getName());
 
       result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (final MetadataException e) {

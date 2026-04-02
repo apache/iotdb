@@ -446,19 +446,20 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
                   "Failed to alter database. Doesn't support ALTER DataReplicationFactor yet.");
     }
 
-    if (databaseSchema.isSetTimePartitionOrigin()) {
-      errorResp =
-          new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
-              .setMessage(
-                  "Failed to alter database. Doesn't support ALTER TimePartitionOrigin yet.");
-    }
+    // Time partition settings are now supported for database-level configuration
+    // if (databaseSchema.isSetTimePartitionOrigin()) {
+    //   errorResp =
+    //       new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
+    //           .setMessage(
+    //               "Failed to alter database. Doesn't support ALTER TimePartitionOrigin yet.");
+    // }
 
-    if (databaseSchema.isSetTimePartitionInterval()) {
-      errorResp =
-          new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
-              .setMessage(
-                  "Failed to alter database. Doesn't support ALTER TimePartitionInterval yet.");
-    }
+    // if (databaseSchema.isSetTimePartitionInterval()) {
+    //   errorResp =
+    //       new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
+    //           .setMessage(
+    //               "Failed to alter database. Doesn't support ALTER TimePartitionInterval yet.");
+    // }
 
     if (errorResp != null) {
       LOGGER.warn("Execute AlterDatabase: {} with result: {}", databaseSchema, errorResp);

@@ -109,7 +109,10 @@ public class DataPartition extends Partition {
         dataPartitionMap.get(storageGroup).get(seriesPartitionSlot);
     List<TTimePartitionSlot> timePartitionSlotList =
         map.keySet().stream()
-            .filter(key -> TimePartitionUtils.satisfyPartitionStartTime(timeFilter, key.startTime))
+            .filter(
+                key ->
+                    TimePartitionUtils.satisfyPartitionStartTime(
+                        timeFilter, key.startTime, storageGroup))
             .sorted(Comparator.comparingLong(TTimePartitionSlot::getStartTime))
             .collect(toList());
 
@@ -152,7 +155,8 @@ public class DataPartition extends Partition {
     return regionReplicaSetMap.entrySet().stream()
         .filter(
             entry ->
-                TimePartitionUtils.satisfyPartitionStartTime(timeFilter, entry.getKey().startTime))
+                TimePartitionUtils.satisfyPartitionStartTime(
+                    timeFilter, entry.getKey().startTime, storageGroup))
         .flatMap(entry -> entry.getValue().stream())
         .distinct()
         .collect(toList());
@@ -175,7 +179,8 @@ public class DataPartition extends Partition {
     return dataPartitionMap.get(database).get(seriesPartitionSlot).entrySet().stream()
         .filter(
             entry ->
-                TimePartitionUtils.satisfyPartitionStartTime(timeFilter, entry.getKey().startTime))
+                TimePartitionUtils.satisfyPartitionStartTime(
+                    timeFilter, entry.getKey().startTime, database))
         .flatMap(entry -> entry.getValue().stream())
         .distinct()
         .collect(toList());
