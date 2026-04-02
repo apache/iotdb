@@ -74,6 +74,7 @@ public enum BuiltinPipePlugin {
   STANDARD_STATISTICS_PROCESSOR("standard-statistics-processor", StandardStatisticsProcessor.class),
   TUMBLING_WINDOWING_PROCESSOR("tumbling-windowing-processor", TumblingWindowingProcessor.class),
   IOT_CONSENSUS_V2_PROCESSOR("iot-consensus-v2-processor", IoTConsensusV2Processor.class),
+  // Legacy alias for stale PipeMeta written before the PipeConsensus -> IoTConsensusV2 rename.
   PIPE_CONSENSUS_PROCESSOR("pipe-consensus-processor", IoTConsensusV2Processor.class),
   RENAME_DATABASE_PROCESSOR("rename-database-processor", RenameDatabaseProcessor.class),
 
@@ -87,6 +88,7 @@ public enum BuiltinPipePlugin {
   IOTDB_AIR_GAP_CONNECTOR("iotdb-air-gap-connector", IoTDBAirGapSink.class),
   IOT_CONSENSUS_V2_ASYNC_CONNECTOR(
       "iot-consensus-v2-async-connector", IoTConsensusV2AsyncSink.class),
+  // Legacy alias for stale PipeMeta written before the PipeConsensus -> IoTConsensusV2 rename.
   PIPE_CONSENSUS_ASYNC_CONNECTOR("pipe-consensus-async-connector", IoTConsensusV2AsyncSink.class),
 
   WEBSOCKET_CONNECTOR("websocket-connector", WebSocketSink.class),
@@ -107,6 +109,7 @@ public enum BuiltinPipePlugin {
   WRITE_BACK_SINK("write-back-sink", WriteBackSink.class),
   SUBSCRIPTION_SINK("subscription-sink", DoNothingSink.class),
   IOT_CONSENSUS_V2_ASYNC_SINK("iot-consensus-v2-async-sink", IoTConsensusV2AsyncSink.class),
+  // Legacy alias for stale PipeMeta written before the PipeConsensus -> IoTConsensusV2 rename.
   PIPE_CONSENSUS_ASYNC_SINK("pipe-consensus-async-sink", IoTConsensusV2AsyncSink.class),
   ;
 

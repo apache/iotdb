@@ -282,25 +282,12 @@ public class IoTDBStartCheck {
     if (properties.containsKey(CLUSTER_ID)) {
       config.setClusterId(properties.getProperty(CLUSTER_ID));
     }
+    // Only the data region protocol could have been persisted as the old PipeConsensus name
+    // during a jar-only upgrade, so only that field needs compatibility normalization.
     boolean needRewriteConsensusProtocol = false;
     if (properties.containsKey(SCHEMA_REGION_CONSENSUS_PROTOCOL)) {
-      final String persistedSchemaRegionConsensusProtocolClass =
-          properties.getProperty(SCHEMA_REGION_CONSENSUS_PROTOCOL);
-      final String schemaRegionConsensusProtocolClass =
-          ConsensusFactory.normalizeConsensusProtocolClass(
-              persistedSchemaRegionConsensusProtocolClass);
-      if (!Objects.equals(
-          persistedSchemaRegionConsensusProtocolClass, schemaRegionConsensusProtocolClass)) {
-        properties.setProperty(
-            SCHEMA_REGION_CONSENSUS_PROTOCOL, schemaRegionConsensusProtocolClass);
-        needRewriteConsensusProtocol = true;
-        logger.warn(
-            "[SystemProperties] Normalize {} from {} to {} for compatibility.",
-            SCHEMA_REGION_CONSENSUS_PROTOCOL,
-            persistedSchemaRegionConsensusProtocolClass,
-            schemaRegionConsensusProtocolClass);
-      }
-      config.setSchemaRegionConsensusProtocolClass(schemaRegionConsensusProtocolClass);
+      config.setSchemaRegionConsensusProtocolClass(
+          properties.getProperty(SCHEMA_REGION_CONSENSUS_PROTOCOL));
     }
     if (properties.containsKey(DATA_REGION_CONSENSUS_PROTOCOL)) {
       final String persistedDataRegionConsensusProtocolClass =

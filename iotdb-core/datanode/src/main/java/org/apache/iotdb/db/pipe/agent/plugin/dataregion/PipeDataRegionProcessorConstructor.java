@@ -69,6 +69,7 @@ class PipeDataRegionProcessorConstructor extends PipeProcessorConstructor {
     pluginConstructors.put(
         BuiltinPipePlugin.IOT_CONSENSUS_V2_PROCESSOR.getPipePluginName(),
         IoTConsensusV2Processor::new);
+    // Keep the pre-rename plugin name wired to the new implementation for stale PipeMeta.
     pluginConstructors.put(
         BuiltinPipePlugin.PIPE_CONSENSUS_PROCESSOR.getPipePluginName(),
         IoTConsensusV2Processor::new);

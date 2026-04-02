@@ -56,6 +56,7 @@ class PipeDataRegionSinkConstructor extends PipeSinkConstructor {
     pluginConstructors.put(
         BuiltinPipePlugin.IOT_CONSENSUS_V2_ASYNC_CONNECTOR.getPipePluginName(),
         IoTConsensusV2AsyncSink::new);
+    // Keep the pre-rename plugin name wired to the new implementation for stale PipeMeta.
     pluginConstructors.put(
         BuiltinPipePlugin.PIPE_CONSENSUS_ASYNC_CONNECTOR.getPipePluginName(),
         IoTConsensusV2AsyncSink::new);
@@ -100,6 +101,7 @@ class PipeDataRegionSinkConstructor extends PipeSinkConstructor {
     pluginConstructors.put(
         BuiltinPipePlugin.IOT_CONSENSUS_V2_ASYNC_SINK.getPipePluginName(),
         IoTConsensusV2AsyncSink::new);
+    // Keep the pre-rename plugin name wired to the new implementation for stale PipeMeta.
     pluginConstructors.put(
         BuiltinPipePlugin.PIPE_CONSENSUS_ASYNC_SINK.getPipePluginName(),
         IoTConsensusV2AsyncSink::new);
