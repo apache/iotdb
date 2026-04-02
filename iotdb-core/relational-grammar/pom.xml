@@ -96,8 +96,10 @@
                 <configuration>
                     <consoleOutput>true</consoleOutput>
                     <excludes combine.children="append">
-                        <exclude>**/SqlLexer.java</exclude>
-                        <exclude>**/SqlLexer.interp</exclude>
+                        <exclude>**/RelationalSqlParser.java</exclude>
+                        <exclude>**/RelationalSqlLexer.java</exclude>
+                        <exclude>**/RelationalSqlLexer.interp</exclude>
+                        <exclude>**/RelationalSql.interp</exclude>
                     </excludes>
                 </configuration>
             </plugin>
