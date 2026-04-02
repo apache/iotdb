@@ -329,9 +329,11 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
       if (!config.isAutoCreateSchemaEnabled()) {
         // disable auto-create for non-system series
         indexOfDevicesWithMissingMeasurements.removeIf(
-            i -> !devicePathList.get(i).startsWith("root." + SystemConstant.SYSTEM_PREFIX_KEY));
-        indexOfDevicesWithMissingMeasurements.removeIf(
-            i -> !devicePathList.get(i).startsWith("root." + SystemConstant.AUDIT_PREFIX_KEY));
+            i ->
+                !devicePathList.get(i).startsWith("root." + SystemConstant.SYSTEM_PREFIX_KEY)
+                    && !devicePathList
+                        .get(i)
+                        .startsWith("root." + SystemConstant.AUDIT_PREFIX_KEY));
         if (indexOfDevicesWithMissingMeasurements.isEmpty()) {
           return schemaTree;
         }

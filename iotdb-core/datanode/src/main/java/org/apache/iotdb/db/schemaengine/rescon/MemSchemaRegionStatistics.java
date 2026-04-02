@@ -242,6 +242,8 @@ public class MemSchemaRegionStatistics implements ISchemaRegionStatistics {
     templateUsage.forEach(
         (templateId, cnt) -> schemaEngineStatistics.deactivateTemplate(templateId, cnt));
     templateUsage.clear();
+    tableDeviceNumber.clear();
+    tableAttributeMemory.clear();
   }
 
   @Override

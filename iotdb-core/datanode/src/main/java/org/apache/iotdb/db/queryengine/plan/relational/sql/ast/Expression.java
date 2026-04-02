@@ -158,6 +158,8 @@ public abstract class Expression extends Node {
       case 28:
         expression = new WhenClause(byteBuffer);
         break;
+      // 29: CurrentDatabase, 30: CurrentUser
+      // Do not deserialize here and throw exception because it's unexpected
       case 31:
         expression = new Row(byteBuffer);
         break;

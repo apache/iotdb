@@ -39,7 +39,6 @@ public enum SchemaRegionPlanType {
   ACTIVATE_TEMPLATE_IN_CLUSTER((byte) 63),
   PRE_DELETE_TIMESERIES_IN_CLUSTER((byte) 64),
   ROLLBACK_PRE_DELETE_TIMESERIES((byte) 65),
-  ALTER_ENCODING_COMPRESSOR((byte) 66),
   LOCK_ALIAS((byte) 71),
   CREATE_ALIAS_SERIES((byte) 72),
   MARK_SERIES_INVALID((byte) 73),
@@ -47,6 +46,7 @@ public enum SchemaRegionPlanType {
   DROP_ALIAS_SERIES((byte) 75),
   MARK_SERIES_ENABLED((byte) 76),
   UNLOCK_FOR_ALIAS((byte) 77),
+  ALTER_ENCODING_COMPRESSOR((byte) 80),
 
   // endregion
 
