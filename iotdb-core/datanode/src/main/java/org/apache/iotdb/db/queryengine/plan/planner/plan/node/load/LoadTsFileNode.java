@@ -156,6 +156,8 @@ public class LoadTsFileNode extends WritePlanNode {
                 needDecode4TimeColumn,
                 statement.isTsFileContainsObjectColumn(i),
                 statement.getObjectFileSearchRoot()));
+      } else {
+        throw new IllegalStateException("LoadTsFile statement is null during table model split.");
       }
     }
     return res;

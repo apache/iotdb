@@ -387,10 +387,10 @@ public class LoadTsFileTableSchemaCache {
             && (realColumn == null || !fileColumn.getType().equals(realColumn.getType()))) {
           LOGGER.debug(
               "Data type mismatch for column {} in table {}, type in TsFile: {}, type in IoTDB: {}",
-              realColumn.getName(),
+              fileColumn.getName(),
               realSchema.getTableName(),
               fileColumn.getType(),
-              realColumn.getType());
+              Objects.nonNull(realColumn) ? realColumn.getType() : null);
         }
       }
     }
