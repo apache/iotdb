@@ -144,7 +144,7 @@ class MomentBackbone(nn.Module):
         -> Output [batch, n_channels, forecast_horizon]
     """
 
-    def __init__(self, config: MomentConfig, t5_config: Optional[dict] = None):
+    def __init__(self, config: MomentConfig):
         super().__init__()
         self.config = config
         self.seq_len = config.seq_len
@@ -159,9 +159,7 @@ class MomentBackbone(nn.Module):
         self.revin = RevIN(n_features=1, affine=config.revin_affine)
 
         # Patching and embedding
-        self.patching = Patching(
-            patch_len=self.patch_len, stride=self.patch_stride_len
-        )
+        self.patching = Patching(patch_len=self.patch_len, stride=self.patch_stride_len)
         self.patch_embedding = PatchEmbedding(
             d_model=self.d_model, patch_len=self.patch_len
         )
@@ -173,6 +171,7 @@ class MomentBackbone(nn.Module):
         self.mask_embedding = nn.Parameter(torch.zeros(self.d_model))
 
         # T5 encoder backbone
+        t5_config = getattr(config, "t5_config", None)
         if t5_config is not None:
             encoder_config = T5Config(**t5_config)
         else:
@@ -226,9 +225,7 @@ class MomentBackbone(nn.Module):
         # Apply input mask at patch level
         patch_mask = self._create_patch_mask(input_mask)
         mask_embed = self.mask_embedding.unsqueeze(0).unsqueeze(0).unsqueeze(0)
-        x = x * patch_mask.unsqueeze(-1) + mask_embed * (
-            1.0 - patch_mask.unsqueeze(-1)
-        )
+        x = x * patch_mask.unsqueeze(-1) + mask_embed * (1.0 - patch_mask.unsqueeze(-1))
 
         # Position embedding
         positions = torch.arange(self.n_patches, device=x.device)
@@ -264,7 +261,9 @@ class MomentBackbone(nn.Module):
         # input_mask: [batch, seq_len]
         # output: [batch, 1, n_patches] with values in [0, 1]
         mask = input_mask.unsqueeze(1)  # [batch, 1, seq_len]
-        mask = mask.unfold(dimension=-1, size=self.patch_len, step=self.patch_stride_len)
+        mask = mask.unfold(
+            dimension=-1, size=self.patch_len, step=self.patch_stride_len
+        )
         # [batch, 1, n_patches, patch_len]
         mask = mask.mean(dim=-1)  # [batch, 1, n_patches]
         mask = (mask > 0.5).float()
@@ -289,7 +288,7 @@ class MomentForPrediction(MomentPreTrainedModel):
     Loads the pre-trained MOMENT backbone from safetensors and configures
     the forecasting head for a given horizon.
 
-    Reference: https://huggingface.co/AutonLab/MOMENT-1-small
+    Reference: https://huggingface.co/AutonLab/MOMENT-1-large
     """
 
     def __init__(self, config: MomentConfig):
@@ -315,6 +314,11 @@ class MomentForPrediction(MomentPreTrainedModel):
         This method handles mapping those keys into our nested ``moment.*``
         structure.
         """
+        # Pop kwargs injected by load_transformers_model that are not
+        # relevant to our custom loading logic.
+        kwargs.pop("config", None)
+        kwargs.pop("trust_remote_code", None)
+
         if not os.path.isdir(pretrained_model_name_or_path):
             raise ValueError(
                 f"pretrained_model_name_or_path must be a local directory, "
@@ -335,32 +339,26 @@ class MomentForPrediction(MomentPreTrainedModel):
         # Extract t5_config if present in the upstream config
         t5_config = config_dict.pop("t5_config", None)
 
-        # Map upstream config fields to our MomentConfig fields
-        moment_config_kwargs = {
-            "seq_len": config_dict.get("seq_len", 512),
-            "patch_len": config_dict.get("patch_len", 8),
-            "patch_stride_len": config_dict.get("patch_stride_len", 8),
-            "transformer_backbone": config_dict.get(
+        forecast_horizon = kwargs.pop("forecast_horizon", 96)
+
+        # Build MomentConfig with t5_config stored for backbone construction
+        config = MomentConfig(
+            seq_len=config_dict.get("seq_len", 512),
+            patch_len=config_dict.get("patch_len", 8),
+            patch_stride_len=config_dict.get("patch_stride_len", 8),
+            d_model=config_dict.get("d_model"),
+            transformer_backbone=config_dict.get(
                 "transformer_backbone", "google/flan-t5-large"
             ),
-            "forecast_horizon": kwargs.pop("forecast_horizon", 96),
-            "revin_affine": config_dict.get("revin_affine", False),
-        }
+            forecast_horizon=forecast_horizon,
+            revin_affine=config_dict.get("revin_affine", False),
+            t5_config=t5_config,
+        )
 
-        # Infer d_model from t5_config
-        if t5_config and "d_model" in t5_config:
-            moment_config_kwargs["d_model"] = t5_config["d_model"]
-        elif "d_model" in config_dict and config_dict["d_model"] is not None:
-            moment_config_kwargs["d_model"] = config_dict["d_model"]
-
-        moment_config_kwargs.update(kwargs)
-        config = MomentConfig(**moment_config_kwargs)
-
-        # Instantiate model (backbone uses t5_config for encoder construction)
-        # Override backbone init to pass t5_config
+        # Instantiate model
         instance = cls.__new__(cls)
         MomentPreTrainedModel.__init__(instance, config)
-        instance.moment = MomentBackbone(config, t5_config=t5_config)
+        instance.moment = MomentBackbone(config)
         instance.post_init()
 
         # Load weights
@@ -374,14 +372,17 @@ class MomentForPrediction(MomentPreTrainedModel):
         state_dict = safetorch.load_file(safetensors_file, device="cpu")
 
         # Map upstream flat keys to our nested moment.* structure
-        mapped_state_dict = {}
-        for key, value in state_dict.items():
-            new_key = f"moment.{key}"
-            mapped_state_dict[new_key] = value
+        mapped_state_dict = {
+            f"moment.{key}": value for key, value in state_dict.items()
+        }
 
         # Load with strict=False to skip mismatched head weights
         model_state = instance.state_dict()
-        filtered = {k: v for k, v in mapped_state_dict.items() if k in model_state}
+        filtered = {
+            k: v
+            for k, v in mapped_state_dict.items()
+            if k in model_state and v.shape == model_state[k].shape
+        }
         instance.load_state_dict(filtered, strict=False)
         instance.eval()
 

@@ -160,16 +160,16 @@ class MomentPipeline(ForecastPipeline):
                     current_x = torch.cat(
                         [current_x[:, :, step_len:], step_forecast], dim=-1
                     )
-                    current_mask = torch.ones(
-                        batch_size, seq_len, device=x_enc.device
-                    )
+                    current_mask = torch.ones(batch_size, seq_len, device=x_enc.device)
 
             forecasts = torch.cat(forecasts_list, dim=-1)
 
         # Split batch into list of per-sample tensors
         return [forecasts[i] for i in range(batch_size)]
 
-    def _postprocess(self, outputs: list[torch.Tensor], **infer_kwargs) -> list[torch.Tensor]:
+    def _postprocess(
+        self, outputs: list[torch.Tensor], **infer_kwargs
+    ) -> list[torch.Tensor]:
         """
         Postprocess outputs. Each tensor is already [n_channels, output_length].
         """

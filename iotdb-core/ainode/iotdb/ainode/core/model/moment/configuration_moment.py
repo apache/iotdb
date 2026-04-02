@@ -20,6 +20,8 @@
 # (https://github.com/moment-timeseries-foundation-model/moment),
 # originally licensed under the MIT License.
 
+from typing import Optional
+
 from transformers import PretrainedConfig
 
 
@@ -43,18 +45,27 @@ class MomentConfig(PretrainedConfig):
         seq_len: int = 512,
         patch_len: int = 8,
         patch_stride_len: int = 8,
-        d_model: int = 512,
-        transformer_backbone: str = "google/flan-t5-small",
+        d_model: Optional[int] = None,
+        transformer_backbone: str = "google/flan-t5-large",
         forecast_horizon: int = 96,
         revin_affine: bool = False,
+        t5_config: Optional[dict] = None,
         **kwargs,
     ):
         self.seq_len = seq_len
         self.patch_len = patch_len
         self.patch_stride_len = patch_stride_len
-        self.d_model = d_model
         self.transformer_backbone = transformer_backbone
         self.forecast_horizon = forecast_horizon
         self.revin_affine = revin_affine
+        self.t5_config = t5_config
+
+        # Infer d_model: prefer explicit value, then t5_config, then default
+        if d_model is not None:
+            self.d_model = d_model
+        elif t5_config is not None and "d_model" in t5_config:
+            self.d_model = t5_config["d_model"]
+        else:
+            self.d_model = 1024  # Default for MOMENT-1-large
 
         super().__init__(**kwargs)

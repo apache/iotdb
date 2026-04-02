@@ -53,7 +53,6 @@ AINODE_INFERENCE_MAX_OUTPUT_LENGTH = 2880
 AINODE_INFERENCE_MODEL_MEM_USAGE_MAP = {
     "sundial": 1036 * 1024**2,  # 1036 MiB
     "timer_xl": 856 * 1024**2,  # 856 MiB
-    "moment": 200 * 1024**2,  # ~200 MiB (MOMENT-1-small)
 }  # the memory usage of each model in bytes
 
 AINODE_INFERENCE_MEMORY_USAGE_RATIO = 0.2  # the device space allocated for inference
