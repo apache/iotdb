@@ -273,6 +273,7 @@
                         </goals>
                         <phase>integration-test</phase>
                         <configuration>
+                            <config>${cmake.build.type}</config>
                             <projectDirectory>${project.build.directory}/build/test</projectDirectory>
                             <skipTests>${maven.test.skip}</skipTests>
                         </configuration>

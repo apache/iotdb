@@ -287,5 +287,21 @@ TEST_CASE("C API Table - Dataset column info", "[c_table_datasetColumns]") {
     int colCount = ts_dataset_get_column_count(dataSet);
     REQUIRE(colCount >= 2);  // at least time + tag1 + m1
 
+    for (int i = 0; i < colCount; i++) {
+        const char* colType = ts_dataset_get_column_type(dataSet, i);
+        REQUIRE(colType != nullptr);
+        REQUIRE(strlen(colType) > 0);
+    }
+
+    if (ts_dataset_has_next(dataSet)) {
+        CRowRecord* record = ts_dataset_next(dataSet);
+        REQUIRE(record != nullptr);
+        REQUIRE(ts_row_record_get_field_count(record) >= 1);
+        (void)ts_row_record_get_timestamp(record);
+        (void)ts_row_record_get_data_type(record, 0);
+        (void)ts_row_record_is_null(record, 0);
+        ts_row_record_destroy(record);
+    }
+
     ts_dataset_destroy(dataSet);
 }

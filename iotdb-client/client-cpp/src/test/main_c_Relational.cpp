@@ -30,6 +30,9 @@ struct CTableSessionListener : Catch::TestEventListenerBase {
 
     void testCaseStarting(Catch::TestCaseInfo const& testInfo) override {
         g_table_session = ts_table_session_new("127.0.0.1", 6667, "root", "root", "");
+        if (g_table_session) {
+            ts_table_session_open(g_table_session);
+        }
     }
 
     void testCaseEnded(Catch::TestCaseStats const& testCaseStats) override {

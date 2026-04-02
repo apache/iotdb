@@ -41,7 +41,6 @@ struct CSession_ {
 
 struct CTableSession_ {
     std::shared_ptr<TableSession> cpp;
-    std::shared_ptr<Session> innerSession;  // kept alive for lifetime
 };
 
 struct CTablet_ {
