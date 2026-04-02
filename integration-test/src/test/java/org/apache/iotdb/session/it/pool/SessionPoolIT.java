@@ -268,7 +268,6 @@ public class SessionPoolIT {
           .ensureNodeStatus(
               Collections.singletonList(node), Collections.singletonList(NodeStatus.Running));
       pool = EnvFactory.getEnv().getSessionPool(3);
-      TimeUnit.SECONDS.sleep(5);
       correctQuery(pool, DEFAULT_QUERY_TIMEOUT);
       pool.close();
       return;
@@ -354,7 +353,6 @@ public class SessionPoolIT {
     EnvFactory.getEnv()
         .ensureNodeStatus(
             Collections.singletonList(node), Collections.singletonList(NodeStatus.Running));
-    TimeUnit.SECONDS.sleep(5);
     write10Data(pool, true);
     pool.close();
   }
