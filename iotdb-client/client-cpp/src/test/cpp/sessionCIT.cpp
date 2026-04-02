@@ -748,7 +748,7 @@ TEST_CASE("C API - RowRecord and delete data APIs", "[c_rowDeleteCov]") {
             TS_OK);
     REQUIRE(ts_session_create_timeseries(g_session, pd, TS_TYPE_DOUBLE, TS_ENCODING_RLE, TS_COMPRESSION_SNAPPY) ==
             TS_OK);
-    REQUIRE(ts_session_create_timeseries(g_session, pt, TS_TYPE_TEXT, TS_ENCODING_RLE, TS_COMPRESSION_SNAPPY) ==
+    REQUIRE(ts_session_create_timeseries(g_session, pt, TS_TYPE_TEXT, TS_ENCODING_PLAIN, TS_COMPRESSION_SNAPPY) ==
             TS_OK);
 
     const char* dev = "root.cov_types.d1";
