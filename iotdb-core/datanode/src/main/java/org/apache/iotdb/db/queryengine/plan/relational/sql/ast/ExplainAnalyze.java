@@ -86,7 +86,7 @@ public class ExplainAnalyze extends Statement {
 
   @Override
   public int hashCode() {
-    return Objects.hash(statement, verbose);
+    return Objects.hash(statement, verbose, outputFormat);
   }
 
   @Override
@@ -98,7 +98,9 @@ public class ExplainAnalyze extends Statement {
       return false;
     }
     ExplainAnalyze o = (ExplainAnalyze) obj;
-    return Objects.equals(statement, o.statement);
+    return Objects.equals(statement, o.statement)
+        && verbose == o.verbose
+        && outputFormat == o.outputFormat;
   }
 
   @Override

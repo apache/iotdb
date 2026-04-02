@@ -239,13 +239,19 @@ public class IoTExplainJsonFormatIT {
     }
   }
 
-  @Test(expected = SQLException.class)
-  public void testExplainInvalidFormat() throws SQLException {
+  @Test
+  public void testExplainInvalidFormat() {
     String sql = "EXPLAIN (FORMAT XML) SELECT * FROM testtb";
     try (Connection conn = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = conn.createStatement()) {
       statement.execute("USE " + DATABASE_NAME);
       statement.executeQuery(sql);
+      fail("Expected SQLException for invalid format");
+    } catch (SQLException e) {
+      Assert.assertTrue(
+          "Error message should mention the invalid format",
+          e.getMessage().toUpperCase().contains("FORMAT")
+              || e.getMessage().toUpperCase().contains("XML"));
     }
   }
 }

@@ -19,6 +19,15 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+/**
+ * Output format for EXPLAIN and EXPLAIN ANALYZE statements.
+ *
+ * <ul>
+ *   <li>{@link #GRAPHVIZ} - Box-drawing plan visualization. Valid for EXPLAIN only (default).
+ *   <li>{@link #TEXT} - Text-based output. Valid for EXPLAIN ANALYZE only (default).
+ *   <li>{@link #JSON} - Structured JSON output. Valid for both EXPLAIN and EXPLAIN ANALYZE.
+ * </ul>
+ */
 public enum ExplainOutputFormat {
   GRAPHVIZ,
   TEXT,

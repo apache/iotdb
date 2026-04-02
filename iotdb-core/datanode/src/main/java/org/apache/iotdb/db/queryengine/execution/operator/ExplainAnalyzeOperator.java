@@ -82,15 +82,14 @@ public class ExplainAnalyzeOperator implements ProcessOperator {
   private final List<FragmentInstance> instances;
   private final ExplainOutputFormat outputFormat;
 
-  private final FragmentInstanceStatisticsDrawer fragmentInstanceStatisticsDrawer =
-      new FragmentInstanceStatisticsDrawer();
-  private final FragmentInstanceStatisticsJsonDrawer fragmentInstanceStatisticsJsonDrawer =
-      new FragmentInstanceStatisticsJsonDrawer();
+  private final FragmentInstanceStatisticsDrawer fragmentInstanceStatisticsDrawer;
+  private final FragmentInstanceStatisticsJsonDrawer fragmentInstanceStatisticsJsonDrawer;
 
   private final ScheduledFuture<?> logRecordTask;
   private final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> clientManager;
   private final MPPQueryContext mppQueryContext;
 
+  @Deprecated
   public ExplainAnalyzeOperator(
       OperatorContext operatorContext,
       Operator child,
@@ -118,8 +117,16 @@ public class ExplainAnalyzeOperator implements ProcessOperator {
     QueryExecution queryExecution = (QueryExecution) coordinator.getQueryExecution(queryId);
     this.instances = queryExecution.getDistributedPlan().getInstances();
     mppQueryContext = queryExecution.getContext();
-    fragmentInstanceStatisticsDrawer.renderPlanStatistics(mppQueryContext);
-    fragmentInstanceStatisticsJsonDrawer.renderPlanStatistics(mppQueryContext);
+
+    if (outputFormat == ExplainOutputFormat.JSON) {
+      this.fragmentInstanceStatisticsDrawer = null;
+      this.fragmentInstanceStatisticsJsonDrawer = new FragmentInstanceStatisticsJsonDrawer();
+      fragmentInstanceStatisticsJsonDrawer.renderPlanStatistics(mppQueryContext);
+    } else {
+      this.fragmentInstanceStatisticsDrawer = new FragmentInstanceStatisticsDrawer();
+      this.fragmentInstanceStatisticsJsonDrawer = null;
+      fragmentInstanceStatisticsDrawer.renderPlanStatistics(mppQueryContext);
+    }
 
     // The time interval guarantees the result of EXPLAIN ANALYZE will be printed at least three
     // times.
@@ -146,8 +153,11 @@ public class ExplainAnalyzeOperator implements ProcessOperator {
       return null;
     }
 
-    fragmentInstanceStatisticsDrawer.renderDispatchCost(mppQueryContext);
-    fragmentInstanceStatisticsJsonDrawer.renderDispatchCost(mppQueryContext);
+    if (outputFormat == ExplainOutputFormat.JSON) {
+      fragmentInstanceStatisticsJsonDrawer.renderDispatchCost(mppQueryContext);
+    } else {
+      fragmentInstanceStatisticsDrawer.renderDispatchCost(mppQueryContext);
+    }
 
     // fetch statics from all fragment instances
     TsBlock result = buildResult();

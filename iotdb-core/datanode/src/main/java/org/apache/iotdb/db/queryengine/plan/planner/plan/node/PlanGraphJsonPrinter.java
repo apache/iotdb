@@ -19,12 +19,21 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node;
 
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExplainAnalyzeNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MergeSortNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OffsetNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceViewScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.UnionNode;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -59,6 +68,7 @@ public class PlanGraphJsonPrinter {
     jsonNode.addProperty("id", nodeId);
 
     JsonObject properties = buildProperties(node);
+    // JsonObject.isEmpty() is not available in all Gson versions
     if (properties.size() > 0) {
       jsonNode.add("properties", properties);
     }
@@ -80,71 +90,68 @@ public class PlanGraphJsonPrinter {
 
     if (node instanceof OutputNode) {
       OutputNode n = (OutputNode) node;
-      properties.addProperty("OutputColumns", String.valueOf(n.getOutputColumnNames()));
-      properties.addProperty("OutputSymbols", String.valueOf(n.getOutputSymbols()));
+      properties.add("OutputColumns", toJsonArray(n.getOutputColumnNames()));
+      properties.add("OutputSymbols", toJsonArray(n.getOutputSymbols()));
     } else if (node instanceof ExplainAnalyzeNode) {
       ExplainAnalyzeNode n = (ExplainAnalyzeNode) node;
-      properties.addProperty("ChildPermittedOutputs", String.valueOf(n.getChildPermittedOutputs()));
+      properties.add("ChildPermittedOutputs", toJsonArray(n.getChildPermittedOutputs()));
     } else if (node instanceof TableScanNode) {
       buildTableScanProperties(properties, (TableScanNode) node);
     } else if (node instanceof ExchangeNode) {
       // No extra properties needed
-    } else if (node
-        instanceof org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode) {
-      buildAggregationProperties(
-          properties,
-          (org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode) node);
-    } else if (node
-        instanceof org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode) {
-      org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode n =
-          (org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode) node;
+    } else if (node instanceof AggregationNode) {
+      buildAggregationProperties(properties, (AggregationNode) node);
+    } else if (node instanceof FilterNode) {
+      FilterNode n = (FilterNode) node;
       properties.addProperty("Predicate", String.valueOf(n.getPredicate()));
-    } else if (node
-        instanceof org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode) {
-      org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode n =
-          (org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode) node;
-      properties.addProperty("OutputSymbols", String.valueOf(n.getOutputSymbols()));
-      properties.addProperty("Expressions", String.valueOf(n.getAssignments().getMap().values()));
-    } else if (node
-        instanceof org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode) {
-      org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode n =
-          (org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode) node;
-      properties.addProperty("Count", String.valueOf(n.getCount()));
-    } else if (node
-        instanceof org.apache.iotdb.db.queryengine.plan.relational.planner.node.OffsetNode) {
-      org.apache.iotdb.db.queryengine.plan.relational.planner.node.OffsetNode n =
-          (org.apache.iotdb.db.queryengine.plan.relational.planner.node.OffsetNode) node;
-      properties.addProperty("Count", String.valueOf(n.getCount()));
-    } else if (node
-        instanceof org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode) {
-      org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode n =
-          (org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode) node;
+    } else if (node instanceof ProjectNode) {
+      ProjectNode n = (ProjectNode) node;
+      properties.add("OutputSymbols", toJsonArray(n.getOutputSymbols()));
+      properties.add("Expressions", toJsonArray(n.getAssignments().getMap().values()));
+    } else if (node instanceof LimitNode) {
+      LimitNode n = (LimitNode) node;
+      properties.addProperty("Count", n.getCount());
+    } else if (node instanceof OffsetNode) {
+      OffsetNode n = (OffsetNode) node;
+      properties.addProperty("Count", n.getCount());
+    } else if (node instanceof SortNode) {
+      SortNode n = (SortNode) node;
       properties.addProperty("OrderBy", String.valueOf(n.getOrderingScheme()));
-    } else if (node
-        instanceof org.apache.iotdb.db.queryengine.plan.relational.planner.node.MergeSortNode) {
-      org.apache.iotdb.db.queryengine.plan.relational.planner.node.MergeSortNode n =
-          (org.apache.iotdb.db.queryengine.plan.relational.planner.node.MergeSortNode) node;
+    } else if (node instanceof MergeSortNode) {
+      MergeSortNode n = (MergeSortNode) node;
       properties.addProperty("OrderBy", String.valueOf(n.getOrderingScheme()));
-    } else if (node
-        instanceof org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode) {
-      org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode n =
-          (org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode) node;
+    } else if (node instanceof JoinNode) {
+      JoinNode n = (JoinNode) node;
       properties.addProperty("JoinType", String.valueOf(n.getJoinType()));
-      properties.addProperty("Criteria", String.valueOf(n.getCriteria()));
-      properties.addProperty("OutputSymbols", String.valueOf(n.getOutputSymbols()));
-    } else if (node
-        instanceof org.apache.iotdb.db.queryengine.plan.relational.planner.node.UnionNode) {
-      org.apache.iotdb.db.queryengine.plan.relational.planner.node.UnionNode n =
-          (org.apache.iotdb.db.queryengine.plan.relational.planner.node.UnionNode) node;
-      properties.addProperty("OutputSymbols", String.valueOf(n.getOutputSymbols()));
+      properties.add("Criteria", toJsonArray(n.getCriteria()));
+      properties.add("OutputSymbols", toJsonArray(n.getOutputSymbols()));
+    } else if (node instanceof UnionNode) {
+      UnionNode n = (UnionNode) node;
+      properties.add("OutputSymbols", toJsonArray(n.getOutputSymbols()));
     }
 
     return properties;
   }
 
+  private static <T> JsonArray toJsonArray(java.util.Collection<T> items) {
+    JsonArray array = new JsonArray();
+    for (T item : items) {
+      array.add(String.valueOf(item));
+    }
+    return array;
+  }
+
+  private static <T> JsonArray toJsonArray(List<T> items) {
+    JsonArray array = new JsonArray();
+    for (T item : items) {
+      array.add(String.valueOf(item));
+    }
+    return array;
+  }
+
   private static void buildTableScanProperties(JsonObject properties, TableScanNode node) {
     properties.addProperty("QualifiedTableName", node.getQualifiedObjectName().toString());
-    properties.addProperty("OutputSymbols", String.valueOf(node.getOutputSymbols()));
+    properties.add("OutputSymbols", toJsonArray(node.getOutputSymbols()));
 
     if (node instanceof DeviceTableScanNode) {
       DeviceTableScanNode deviceNode = (DeviceTableScanNode) node;
@@ -182,15 +189,12 @@ public class PlanGraphJsonPrinter {
     }
   }
 
-  private static void buildAggregationProperties(
-      JsonObject properties,
-      org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode node) {
-    properties.addProperty("OutputSymbols", String.valueOf(node.getOutputSymbols()));
+  private static void buildAggregationProperties(JsonObject properties, AggregationNode node) {
+    properties.add("OutputSymbols", toJsonArray(node.getOutputSymbols()));
 
     JsonArray aggregators = new JsonArray();
     int i = 0;
-    for (org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.Aggregation
-        aggregation : node.getAggregations().values()) {
+    for (AggregationNode.Aggregation aggregation : node.getAggregations().values()) {
       JsonObject agg = new JsonObject();
       agg.addProperty("index", i++);
       agg.addProperty("function", aggregation.getResolvedFunction().toString());
@@ -204,10 +208,10 @@ public class PlanGraphJsonPrinter {
     }
     properties.add("Aggregators", aggregators);
 
-    properties.addProperty("GroupingKeys", String.valueOf(node.getGroupingKeys()));
+    properties.add("GroupingKeys", toJsonArray(node.getGroupingKeys()));
     if (node.isStreamable()) {
       properties.addProperty("Streamable", true);
-      properties.addProperty("PreGroupedSymbols", String.valueOf(node.getPreGroupedSymbols()));
+      properties.add("PreGroupedSymbols", toJsonArray(node.getPreGroupedSymbols()));
     }
     properties.addProperty("Step", String.valueOf(node.getStep()));
   }

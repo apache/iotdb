@@ -345,6 +345,7 @@ public class FragmentInstanceStatisticsJsonDrawer {
           childrenArray.add(childJson);
         }
       }
+      // JsonArray.isEmpty() is not available in all Gson versions
       if (childrenArray.size() > 0) {
         operatorJson.add("children", childrenArray);
       }

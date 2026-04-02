@@ -41,6 +41,11 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.utils.Pair;
@@ -59,6 +64,8 @@ import static org.apache.iotdb.db.queryengine.plan.execution.memory.StatementMem
 
 public class TableModelStatementMemorySourceVisitor
     extends AstVisitor<StatementMemorySource, TableModelStatementMemorySourceContext> {
+
+  private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
   @Override
   public StatementMemorySource visitNode(
@@ -170,36 +177,18 @@ public class TableModelStatementMemorySourceVisitor
       return mainExplainResult;
     }
 
-    // For JSON format with CTEs, wrap everything in a combined JSON object
-    StringBuilder sb = new StringBuilder();
-    sb.append("{\n");
-    sb.append("  \"cteQueries\": [\n");
-    int cteIndex = 0;
-    int cteSize = cteExplainResults.size();
+    JsonObject wrapper = new JsonObject();
+    JsonArray cteArray = new JsonArray();
     for (Map.Entry<NodeRef<Table>, Pair<Integer, List<String>>> entry :
         cteExplainResults.entrySet()) {
-      sb.append("    {\n");
-      sb.append("      \"name\": \"").append(entry.getKey().getNode().getName()).append("\",\n");
-      sb.append("      \"plan\": ");
-      // Each CTE's plan is already a JSON string
-      for (String line : entry.getValue().getRight()) {
-        sb.append(line);
-      }
-      sb.append("\n    }");
-      if (++cteIndex < cteSize) {
-        sb.append(",");
-      }
-      sb.append("\n");
+      JsonObject cte = new JsonObject();
+      cte.addProperty("name", entry.getKey().getNode().getName());
+      cte.add("plan", JsonParser.parseString(entry.getValue().getRight().get(0)));
+      cteArray.add(cte);
     }
-    sb.append("  ],\n");
-    sb.append("  \"mainQuery\": ");
-    for (String line : mainExplainResult) {
-      sb.append(line);
-    }
-    sb.append("\n}");
+    wrapper.add("cteQueries", cteArray);
+    wrapper.add("mainQuery", JsonParser.parseString(mainExplainResult.get(0)));
 
-    List<String> result = new ArrayList<>();
-    result.add(sb.toString());
-    return result;
+    return Collections.singletonList(GSON.toJson(wrapper));
   }
 }
