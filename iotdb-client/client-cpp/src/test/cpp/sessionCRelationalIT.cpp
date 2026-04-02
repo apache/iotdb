@@ -46,7 +46,7 @@ private:
  *  DDL via SQL — create database & table
  * ============================================================ */
 
-TEST_CASE("C API Table - Create table", "[c_table_createTable]") {
+TEST_CASE("C API Table - Create table", "[c_table_createTable][c_table_ddl]") {
     CaseReporter cr("c_table_createTable");
 
     ts_table_session_execute_non_query(g_table_session, "DROP DATABASE IF EXISTS c_db1");
@@ -85,7 +85,7 @@ TEST_CASE("C API Table - Create table", "[c_table_createTable]") {
  *  Insert Tablet (table model, with TAG/FIELD/ATTRIBUTE columns)
  * ============================================================ */
 
-TEST_CASE("C API Table - Insert tablet", "[c_table_insertTablet]") {
+TEST_CASE("C API Table - Insert tablet", "[c_table_insertTablet][c_table_write]") {
     CaseReporter cr("c_table_insertTablet");
 
     ts_table_session_execute_non_query(g_table_session, "DROP DATABASE IF EXISTS c_db2");
@@ -136,7 +136,7 @@ TEST_CASE("C API Table - Insert tablet", "[c_table_insertTablet]") {
  *  Query with timeout
  * ============================================================ */
 
-TEST_CASE("C API Table - Query with timeout", "[c_table_queryTimeout]") {
+TEST_CASE("C API Table - Query with timeout", "[c_table_queryTimeout][c_table_query]") {
     CaseReporter cr("c_table_queryTimeout");
 
     ts_table_session_execute_non_query(g_table_session, "DROP DATABASE IF EXISTS c_db3");
@@ -179,7 +179,7 @@ TEST_CASE("C API Table - Query with timeout", "[c_table_queryTimeout]") {
  *  Multi-type tablet insert
  * ============================================================ */
 
-TEST_CASE("C API Table - Multi-type tablet", "[c_table_multiType]") {
+TEST_CASE("C API Table - Multi-type tablet", "[c_table_multiType][c_table_write]") {
     CaseReporter cr("c_table_multiType");
 
     ts_table_session_execute_non_query(g_table_session, "DROP DATABASE IF EXISTS c_db4");
@@ -237,7 +237,7 @@ TEST_CASE("C API Table - Multi-type tablet", "[c_table_multiType]") {
  *  Multi-node table session
  * ============================================================ */
 
-TEST_CASE("C API Table - Multi-node table session", "[c_table_multiNode]") {
+TEST_CASE("C API Table - Multi-node table session", "[c_table_multiNode][c_table_lifecycle]") {
     CaseReporter cr("c_table_multiNode");
 
     const char* urls[] = {"127.0.0.1:6667"};
@@ -256,7 +256,7 @@ TEST_CASE("C API Table - Multi-node table session", "[c_table_multiNode]") {
  *  Dataset column info (table model)
  * ============================================================ */
 
-TEST_CASE("C API Table - Dataset column info", "[c_table_datasetColumns]") {
+TEST_CASE("C API Table - Dataset column info", "[c_table_datasetColumns][c_table_query]") {
     CaseReporter cr("c_table_datasetColumns");
 
     ts_table_session_execute_non_query(g_table_session, "DROP DATABASE IF EXISTS c_db6");

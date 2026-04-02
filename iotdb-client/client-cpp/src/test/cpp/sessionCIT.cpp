@@ -46,15 +46,44 @@ private:
 static const char* testTimeseries[] = {"root.ctest.d1.s1", "root.ctest.d1.s2", "root.ctest.d1.s3"};
 static const int testTimeseriesCount = 3;
 
+static void dropTimeseriesIfExists(CSession* session, const char* path) {
+    bool exists = false;
+    REQUIRE(ts_session_check_timeseries_exists(session, path, &exists) == TS_OK);
+    if (exists) {
+        REQUIRE(ts_session_delete_timeseries(session, path) == TS_OK);
+    }
+}
+
+static void ensureTimeseries(CSession* session, const char* path, TSDataType_C type, TSEncoding_C encoding,
+                             TSCompressionType_C compression) {
+    dropTimeseriesIfExists(session, path);
+    REQUIRE(ts_session_create_timeseries(session, path, type, encoding, compression) == TS_OK);
+}
+
+static int queryRowCount(CSession* session, const char* sql, int fetchSize = 1024) {
+    CSessionDataSet* dataSet = nullptr;
+    REQUIRE(ts_session_execute_query(session, sql, &dataSet) == TS_OK);
+    REQUIRE(dataSet != nullptr);
+    ts_dataset_set_fetch_size(dataSet, fetchSize);
+    int count = 0;
+    while (ts_dataset_has_next(dataSet)) {
+        CRowRecord* record = ts_dataset_next(dataSet);
+        REQUIRE(record != nullptr);
+        ++count;
+        ts_row_record_destroy(record);
+    }
+    ts_dataset_destroy(dataSet);
+    return count;
+}
+
+static void dropDatabaseIfExists(CSession* session, const char* database) {
+    TsStatus status = ts_session_delete_database(session, database);
+    (void)status;
+}
+
 static void prepareTimeseries() {
     for (int i = 0; i < testTimeseriesCount; i++) {
-        bool exists = false;
-        ts_session_check_timeseries_exists(g_session, testTimeseries[i], &exists);
-        if (exists) {
-            ts_session_delete_timeseries(g_session, testTimeseries[i]);
-        }
-        ts_session_create_timeseries(g_session, testTimeseries[i],
-                                     TS_TYPE_INT64, TS_ENCODING_RLE, TS_COMPRESSION_SNAPPY);
+        ensureTimeseries(g_session, testTimeseries[i], TS_TYPE_INT64, TS_ENCODING_RLE, TS_COMPRESSION_SNAPPY);
     }
 }
 
@@ -65,34 +94,21 @@ static void prepareTimeseries() {
 TEST_CASE("C API - Create timeseries", "[c_createTimeseries]") {
     CaseReporter cr("c_createTimeseries");
     const char* path = "root.ctest.d1.s1";
+    ensureTimeseries(g_session, path, TS_TYPE_INT64, TS_ENCODING_RLE, TS_COMPRESSION_SNAPPY);
     bool exists = false;
-    ts_session_check_timeseries_exists(g_session, path, &exists);
-    if (!exists) {
-        TsStatus status = ts_session_create_timeseries(g_session, path,
-                                                        TS_TYPE_INT64, TS_ENCODING_RLE, TS_COMPRESSION_SNAPPY);
-        REQUIRE(status == TS_OK);
-    }
-    ts_session_check_timeseries_exists(g_session, path, &exists);
-    REQUIRE(exists == true);
-    ts_session_delete_timeseries(g_session, path);
+    REQUIRE(ts_session_check_timeseries_exists(g_session, path, &exists) == TS_OK);
+    REQUIRE(exists);
+    REQUIRE(ts_session_delete_timeseries(g_session, path) == TS_OK);
 }
 
 TEST_CASE("C API - Delete timeseries", "[c_deleteTimeseries]") {
     CaseReporter cr("c_deleteTimeseries");
     const char* path = "root.ctest.d1.s1";
-
-    bool exists = false;
-    ts_session_check_timeseries_exists(g_session, path, &exists);
-    if (!exists) {
-        ts_session_create_timeseries(g_session, path, TS_TYPE_INT64, TS_ENCODING_RLE, TS_COMPRESSION_SNAPPY);
-    }
-    ts_session_check_timeseries_exists(g_session, path, &exists);
-    REQUIRE(exists == true);
-
-    TsStatus status = ts_session_delete_timeseries(g_session, path);
-    REQUIRE(status == TS_OK);
-    ts_session_check_timeseries_exists(g_session, path, &exists);
-    REQUIRE(exists == false);
+    ensureTimeseries(g_session, path, TS_TYPE_INT64, TS_ENCODING_RLE, TS_COMPRESSION_SNAPPY);
+    REQUIRE(ts_session_delete_timeseries(g_session, path) == TS_OK);
+    bool exists = true;
+    REQUIRE(ts_session_check_timeseries_exists(g_session, path, &exists) == TS_OK);
+    REQUIRE_FALSE(exists);
 }
 
 TEST_CASE("C API - Login failure", "[c_Authentication]") {
@@ -126,7 +142,6 @@ TEST_CASE("C API - Insert record by string", "[c_insertRecordStr]") {
     TsStatus status = ts_session_execute_query(g_session, "select s1,s2,s3 from root.ctest.d1", &dataSet);
     REQUIRE(status == TS_OK);
     REQUIRE(dataSet != nullptr);
-
     ts_dataset_set_fetch_size(dataSet, 1024);
     int count = 0;
     while (ts_dataset_has_next(dataSet)) {
@@ -135,7 +150,7 @@ TEST_CASE("C API - Insert record by string", "[c_insertRecordStr]") {
         REQUIRE(ts_row_record_get_int64(record, 0) == 1);
         REQUIRE(ts_row_record_get_int64(record, 1) == 2);
         REQUIRE(ts_row_record_get_int64(record, 2) == 3);
-        count++;
+        ++count;
         ts_row_record_destroy(record);
     }
     REQUIRE(count == 100);
@@ -155,10 +170,7 @@ TEST_CASE("C API - Insert record with types", "[c_insertRecordTyped]") {
     TSCompressionType_C compressions[] = {TS_COMPRESSION_SNAPPY, TS_COMPRESSION_SNAPPY, TS_COMPRESSION_SNAPPY};
 
     for (int i = 0; i < 3; i++) {
-        bool exists = false;
-        ts_session_check_timeseries_exists(g_session, timeseries[i], &exists);
-        if (exists) ts_session_delete_timeseries(g_session, timeseries[i]);
-        ts_session_create_timeseries(g_session, timeseries[i], types[i], encodings[i], compressions[i]);
+        ensureTimeseries(g_session, timeseries[i], types[i], encodings[i], compressions[i]);
     }
 
     const char* deviceId = "root.ctest.d1";
@@ -173,17 +185,7 @@ TEST_CASE("C API - Insert record with types", "[c_insertRecordTyped]") {
         REQUIRE(status == TS_OK);
     }
 
-    CSessionDataSet* dataSet = nullptr;
-    ts_session_execute_query(g_session, "select s1,s2,s3 from root.ctest.d1", &dataSet);
-    ts_dataset_set_fetch_size(dataSet, 1024);
-    int count = 0;
-    while (ts_dataset_has_next(dataSet)) {
-        CRowRecord* record = ts_dataset_next(dataSet);
-        count++;
-        ts_row_record_destroy(record);
-    }
-    REQUIRE(count == 100);
-    ts_dataset_destroy(dataSet);
+    REQUIRE(queryRowCount(g_session, "select s1,s2,s3 from root.ctest.d1") == 100);
 }
 
 /* ============================================================
@@ -217,17 +219,7 @@ TEST_CASE("C API - Insert records batch", "[c_insertRecordsBatch]") {
                                                      measurementCounts, measurementsList, valuesList);
     REQUIRE(status == TS_OK);
 
-    CSessionDataSet* dataSet = nullptr;
-    ts_session_execute_query(g_session, "select s1,s2,s3 from root.ctest.d1", &dataSet);
-    ts_dataset_set_fetch_size(dataSet, 1024);
-    int count = 0;
-    while (ts_dataset_has_next(dataSet)) {
-        CRowRecord* record = ts_dataset_next(dataSet);
-        count++;
-        ts_row_record_destroy(record);
-    }
-    REQUIRE(count == BATCH);
-    ts_dataset_destroy(dataSet);
+    REQUIRE(queryRowCount(g_session, "select s1,s2,s3 from root.ctest.d1") == BATCH);
 }
 
 /* ============================================================
@@ -257,7 +249,8 @@ TEST_CASE("C API - Insert tablet", "[c_insertTablet]") {
     REQUIRE(status == TS_OK);
 
     CSessionDataSet* dataSet = nullptr;
-    ts_session_execute_query(g_session, "select s1,s2,s3 from root.ctest.d1", &dataSet);
+    REQUIRE(ts_session_execute_query(g_session, "select s1,s2,s3 from root.ctest.d1", &dataSet) == TS_OK);
+    REQUIRE(dataSet != nullptr);
     ts_dataset_set_fetch_size(dataSet, 1024);
     int count = 0;
     while (ts_dataset_has_next(dataSet)) {
@@ -265,7 +258,7 @@ TEST_CASE("C API - Insert tablet", "[c_insertTablet]") {
         REQUIRE(ts_row_record_get_int64(record, 0) == 0);
         REQUIRE(ts_row_record_get_int64(record, 1) == 1);
         REQUIRE(ts_row_record_get_int64(record, 2) == 2);
-        count++;
+        ++count;
         ts_row_record_destroy(record);
     }
     REQUIRE(count == 100);
@@ -344,17 +337,7 @@ TEST_CASE("C API - Delete data", "[c_deleteData]") {
     TsStatus status = ts_session_delete_data_batch(g_session, 3, paths, 49);
     REQUIRE(status == TS_OK);
 
-    CSessionDataSet* dataSet = nullptr;
-    ts_session_execute_query(g_session, "select s1,s2,s3 from root.ctest.d1", &dataSet);
-    ts_dataset_set_fetch_size(dataSet, 1024);
-    int count = 0;
-    while (ts_dataset_has_next(dataSet)) {
-        CRowRecord* record = ts_dataset_next(dataSet);
-        count++;
-        ts_row_record_destroy(record);
-    }
-    REQUIRE(count == 50);
-    ts_dataset_destroy(dataSet);
+    REQUIRE(queryRowCount(g_session, "select s1,s2,s3 from root.ctest.d1") == 50);
 }
 
 /* ============================================================
@@ -390,14 +373,11 @@ TEST_CASE("C API - Multi-node session", "[c_multiNode]") {
     REQUIRE(status == TS_OK);
 
     const char* path = "root.ctest.d1.s1";
+    ensureTimeseries(localSession, path, TS_TYPE_INT64, TS_ENCODING_RLE, TS_COMPRESSION_SNAPPY);
     bool exists = false;
-    ts_session_check_timeseries_exists(localSession, path, &exists);
-    if (!exists) {
-        ts_session_create_timeseries(localSession, path, TS_TYPE_INT64, TS_ENCODING_RLE, TS_COMPRESSION_SNAPPY);
-    }
-    ts_session_check_timeseries_exists(localSession, path, &exists);
-    REQUIRE(exists == true);
-    ts_session_delete_timeseries(localSession, path);
+    REQUIRE(ts_session_check_timeseries_exists(localSession, path, &exists) == TS_OK);
+    REQUIRE(exists);
+    REQUIRE(ts_session_delete_timeseries(localSession, path) == TS_OK);
 
     ts_session_close(localSession);
     ts_session_destroy(localSession);
@@ -440,8 +420,8 @@ TEST_CASE("C API - Dataset column info", "[c_datasetColumns]") {
  *  SessionC.h API coverage (tree model) — additional smoke tests
  * ============================================================ */
 
-TEST_CASE("C API - Session lifecycle variants", "[c_sessionLifecycleCov]") {
-    CaseReporter cr("c_sessionLifecycleCov");
+TEST_CASE("C API - Session lifecycle variants", "[c_sessionLifecycle]") {
+    CaseReporter cr("c_sessionLifecycle");
 
     CSession* s1 = ts_session_new_with_zone("127.0.0.1", 6667, "root", "root", "Asia/Shanghai", 1024);
     REQUIRE(s1 != nullptr);
@@ -456,37 +436,29 @@ TEST_CASE("C API - Session lifecycle variants", "[c_sessionLifecycleCov]") {
     ts_session_destroy(s2);
 }
 
-static void covIgnoreStatus(TsStatus s) {
-    (void)s;
-}
-
-TEST_CASE("C API - Database and extended timeseries APIs", "[c_dbTimeseriesCov]") {
-    CaseReporter cr("c_dbTimeseriesCov");
+TEST_CASE("C API - Database and extended timeseries APIs", "[c_dbTimeseries]") {
+    CaseReporter cr("c_dbTimeseries");
 
     const char* sg1 = "root.cov_sg_a";
     const char* sg2 = "root.cov_sg_b";
-    covIgnoreStatus(ts_session_delete_database(g_session, sg1));
-    covIgnoreStatus(ts_session_delete_database(g_session, sg2));
+    dropDatabaseIfExists(g_session, sg1);
+    dropDatabaseIfExists(g_session, sg2);
     REQUIRE(ts_session_create_database(g_session, sg1) == TS_OK);
     REQUIRE(ts_session_create_database(g_session, sg2) == TS_OK);
     const char* dbs[] = {sg1, sg2};
     REQUIRE(ts_session_delete_databases(g_session, dbs, 2) == TS_OK);
 
     const char* sg3 = "root.cov_sg_c";
-    covIgnoreStatus(ts_session_delete_database(g_session, sg3));
+    dropDatabaseIfExists(g_session, sg3);
     REQUIRE(ts_session_create_database(g_session, sg3) == TS_OK);
     REQUIRE(ts_session_delete_database(g_session, sg3) == TS_OK);
 
     const char* sgEx = "root.cov_sg_ex";
-    covIgnoreStatus(ts_session_delete_database(g_session, sgEx));
+    dropDatabaseIfExists(g_session, sgEx);
     REQUIRE(ts_session_create_database(g_session, sgEx) == TS_OK);
 
     const char* pathEx = "root.cov_sg_ex.d1.s_ex";
-    bool ex = false;
-    ts_session_check_timeseries_exists(g_session, pathEx, &ex);
-    if (ex) {
-        ts_session_delete_timeseries(g_session, pathEx);
-    }
+    dropTimeseriesIfExists(g_session, pathEx);
     REQUIRE(ts_session_create_timeseries_ex(
                 g_session, pathEx, TS_TYPE_INT64, TS_ENCODING_RLE, TS_COMPRESSION_SNAPPY, 0, nullptr, nullptr, 0,
                 nullptr, nullptr, 0, nullptr, nullptr, nullptr) == TS_OK);
@@ -496,10 +468,7 @@ TEST_CASE("C API - Database and extended timeseries APIs", "[c_dbTimeseriesCov]"
     TSEncoding_C encM[] = {TS_ENCODING_RLE, TS_ENCODING_RLE};
     TSCompressionType_C compM[] = {TS_COMPRESSION_SNAPPY, TS_COMPRESSION_SNAPPY};
     for (int i = 0; i < 2; i++) {
-        ts_session_check_timeseries_exists(g_session, pathsM[i], &ex);
-        if (ex) {
-            ts_session_delete_timeseries(g_session, pathsM[i]);
-        }
+        dropTimeseriesIfExists(g_session, pathsM[i]);
     }
     REQUIRE(ts_session_create_multi_timeseries(g_session, 2, pathsM, tsM, encM, compM) == TS_OK);
     REQUIRE(ts_session_delete_timeseries_batch(g_session, pathsM, 2) == TS_OK);
@@ -507,8 +476,8 @@ TEST_CASE("C API - Database and extended timeseries APIs", "[c_dbTimeseriesCov]"
     REQUIRE(ts_session_delete_database(g_session, sgEx) == TS_OK);
 }
 
-TEST_CASE("C API - Tablet row count and reset", "[c_tabletResetCov]") {
-    CaseReporter cr("c_tabletResetCov");
+TEST_CASE("C API - Tablet row count and reset", "[c_tabletReset]") {
+    CaseReporter cr("c_tabletReset");
     const char* colNames[] = {"s1"};
     TSDataType_C dts[] = {TS_TYPE_INT64};
     CTablet* tablet = ts_tablet_new("root.ctest.d1", 1, colNames, dts, 10);
@@ -521,11 +490,11 @@ TEST_CASE("C API - Tablet row count and reset", "[c_tabletResetCov]") {
     ts_tablet_destroy(tablet);
 }
 
-TEST_CASE("C API - Aligned timeseries and aligned writes", "[c_alignedCov]") {
-    CaseReporter cr("c_alignedCov");
+TEST_CASE("C API - Aligned timeseries and aligned writes", "[c_aligned]") {
+    CaseReporter cr("c_aligned");
 
     const char* sg = "root.cov_al";
-    covIgnoreStatus(ts_session_delete_database(g_session, sg));
+    dropDatabaseIfExists(g_session, sg);
     REQUIRE(ts_session_create_database(g_session, sg) == TS_OK);
 
     const char* alDev = "root.cov_al.dev";
@@ -598,28 +567,17 @@ TEST_CASE("C API - Aligned timeseries and aligned writes", "[c_alignedCov]") {
     REQUIRE(ts_session_delete_database(g_session, sg) == TS_OK);
 }
 
-TEST_CASE("C API - Typed batch inserts and insert_tablets", "[c_batchTabletCov]") {
-    CaseReporter cr("c_batchTabletCov");
+TEST_CASE("C API - Typed batch inserts and insert_tablets", "[c_batchTablet]") {
+    CaseReporter cr("c_batchTablet");
 
     const char* sg = "root.cov_batch";
-    covIgnoreStatus(ts_session_delete_database(g_session, sg));
+    dropDatabaseIfExists(g_session, sg);
     REQUIRE(ts_session_create_database(g_session, sg) == TS_OK);
 
     const char* p1 = "root.cov_batch.da.s1";
     const char* p2 = "root.cov_batch.db.s1";
-    bool ex = false;
-    ts_session_check_timeseries_exists(g_session, p1, &ex);
-    if (ex) {
-        ts_session_delete_timeseries(g_session, p1);
-    }
-    ts_session_check_timeseries_exists(g_session, p2, &ex);
-    if (ex) {
-        ts_session_delete_timeseries(g_session, p2);
-    }
-    REQUIRE(ts_session_create_timeseries(g_session, p1, TS_TYPE_INT64, TS_ENCODING_RLE, TS_COMPRESSION_SNAPPY) ==
-            TS_OK);
-    REQUIRE(ts_session_create_timeseries(g_session, p2, TS_TYPE_INT64, TS_ENCODING_RLE, TS_COMPRESSION_SNAPPY) ==
-            TS_OK);
+    ensureTimeseries(g_session, p1, TS_TYPE_INT64, TS_ENCODING_RLE, TS_COMPRESSION_SNAPPY);
+    ensureTimeseries(g_session, p2, TS_TYPE_INT64, TS_ENCODING_RLE, TS_COMPRESSION_SNAPPY);
 
     const char* devIds[] = {"root.cov_batch.da", "root.cov_batch.db"};
     int64_t tt[] = {1LL, 2LL};
@@ -639,12 +597,7 @@ TEST_CASE("C API - Typed batch inserts and insert_tablets", "[c_batchTabletCov]"
 
     const char* dc = "root.cov_batch.dc";
     const char* p3 = "root.cov_batch.dc.s1";
-    ts_session_check_timeseries_exists(g_session, p3, &ex);
-    if (ex) {
-        ts_session_delete_timeseries(g_session, p3);
-    }
-    REQUIRE(ts_session_create_timeseries(g_session, p3, TS_TYPE_INT64, TS_ENCODING_RLE, TS_COMPRESSION_SNAPPY) ==
-            TS_OK);
+    ensureTimeseries(g_session, p3, TS_TYPE_INT64, TS_ENCODING_RLE, TS_COMPRESSION_SNAPPY);
     int64_t tdc[] = {3LL, 4LL};
     int mcdc[] = {1, 1};
     const char* const* mdcList[] = {mda, mda};
@@ -664,18 +617,8 @@ TEST_CASE("C API - Typed batch inserts and insert_tablets", "[c_batchTabletCov]"
     REQUIRE(tb2 != nullptr);
     const char* pta = "root.cov_batch.ta.s1";
     const char* ptb = "root.cov_batch.tb.s1";
-    ts_session_check_timeseries_exists(g_session, pta, &ex);
-    if (ex) {
-        ts_session_delete_timeseries(g_session, pta);
-    }
-    ts_session_check_timeseries_exists(g_session, ptb, &ex);
-    if (ex) {
-        ts_session_delete_timeseries(g_session, ptb);
-    }
-    REQUIRE(ts_session_create_timeseries(g_session, pta, TS_TYPE_INT64, TS_ENCODING_RLE, TS_COMPRESSION_SNAPPY) ==
-            TS_OK);
-    REQUIRE(ts_session_create_timeseries(g_session, ptb, TS_TYPE_INT64, TS_ENCODING_RLE, TS_COMPRESSION_SNAPPY) ==
-            TS_OK);
+    ensureTimeseries(g_session, pta, TS_TYPE_INT64, TS_ENCODING_RLE, TS_COMPRESSION_SNAPPY);
+    ensureTimeseries(g_session, ptb, TS_TYPE_INT64, TS_ENCODING_RLE, TS_COMPRESSION_SNAPPY);
     ts_tablet_add_timestamp(tb1, 0, 1LL);
     ts_tablet_add_value_int64(tb1, 0, 0, 100);
     ts_tablet_set_row_count(tb1, 1);
@@ -691,8 +634,8 @@ TEST_CASE("C API - Typed batch inserts and insert_tablets", "[c_batchTabletCov]"
     REQUIRE(ts_session_delete_database(g_session, sg) == TS_OK);
 }
 
-TEST_CASE("C API - Query timeout and last data queries", "[c_queryLastCov]") {
-    CaseReporter cr("c_queryLastCov");
+TEST_CASE("C API - Query timeout and last data queries", "[c_queryLast]") {
+    CaseReporter cr("c_queryLast");
     prepareTimeseries();
 
     const char* deviceId = "root.ctest.d1";
@@ -720,11 +663,11 @@ TEST_CASE("C API - Query timeout and last data queries", "[c_queryLastCov]") {
     ts_dataset_destroy(ds);
 }
 
-TEST_CASE("C API - RowRecord and delete data APIs", "[c_rowDeleteCov]") {
-    CaseReporter cr("c_rowDeleteCov");
+TEST_CASE("C API - RowRecord and delete data APIs", "[c_rowDelete]") {
+    CaseReporter cr("c_rowDelete");
 
     const char* sg = "root.cov_types";
-    covIgnoreStatus(ts_session_delete_database(g_session, sg));
+    dropDatabaseIfExists(g_session, sg);
     REQUIRE(ts_session_create_database(g_session, sg) == TS_OK);
 
     const char* pb = "root.cov_types.d1.sb";
@@ -732,13 +675,9 @@ TEST_CASE("C API - RowRecord and delete data APIs", "[c_rowDeleteCov]") {
     const char* pf = "root.cov_types.d1.sf";
     const char* pd = "root.cov_types.d1.sd";
     const char* pt = "root.cov_types.d1.st";
-    bool ex = false;
     const char* tpaths[] = {pb, pi, pf, pd, pt};
     for (const char* tp : tpaths) {
-        ts_session_check_timeseries_exists(g_session, tp, &ex);
-        if (ex) {
-            ts_session_delete_timeseries(g_session, tp);
-        }
+        dropTimeseriesIfExists(g_session, tp);
     }
     REQUIRE(ts_session_create_timeseries(g_session, pb, TS_TYPE_BOOLEAN, TS_ENCODING_RLE, TS_COMPRESSION_SNAPPY) ==
             TS_OK);

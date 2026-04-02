@@ -141,6 +141,9 @@ ELSE()
     ADD_TEST(NAME sessionCRelationalIT COMMAND ${TARGET_NAME_C_RELATIONAL})
 ENDIF()
 
+# One process at a time: parallel ctest overloads a single local IoTDB on 127.0.0.1:6667.
+SET_TESTS_PROPERTIES(sessionIT sessionRelationalIT sessionCIT sessionCRelationalIT PROPERTIES RUN_SERIAL TRUE)
+
 if(UNIX AND NOT APPLE)
   target_link_options(session_tests PRIVATE -Wl,--no-as-needed)
   target_link_options(session_relational_tests PRIVATE -Wl,--no-as-needed)

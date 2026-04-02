@@ -23,30 +23,35 @@
 #include "Session.h"
 #include "SessionBuilder.h"
 
-auto builder = std::unique_ptr<SessionBuilder>(new SessionBuilder());
-std::shared_ptr<Session> session =
-    std::shared_ptr<Session>(
-        builder
-        ->host("127.0.0.1")
-        ->rpcPort(6667)
-        ->username("root")
-        ->password("root")
-        ->useSSL(false)
-        ->build()
-    );
+std::shared_ptr<Session> session;
 
 struct SessionListener : Catch::TestEventListenerBase {
 
     using TestEventListenerBase::TestEventListenerBase;
 
     void testCaseStarting(Catch::TestCaseInfo const &testInfo) override {
-        // Perform some setup before a test case is run
-        session->open(false);
+        if (!session) {
+            SessionBuilder builder;
+            session = builder.host("127.0.0.1")
+                          ->rpcPort(6667)
+                          ->username("root")
+                          ->password("root")
+                          ->useSSL(false)
+                          ->build();
+        } else {
+            session->open(false);
+        }
     }
 
     void testCaseEnded(Catch::TestCaseStats const &testCaseStats) override {
-        // Tear-down after a test case is run
-        session->close();
+        if (session) {
+            session->close();
+        }
+    }
+
+    void testRunEnded(Catch::TestRunStats const &testRunStats) override {
+        // Release session before static/global teardown on Windows.
+        session.reset();
     }
 };
 
