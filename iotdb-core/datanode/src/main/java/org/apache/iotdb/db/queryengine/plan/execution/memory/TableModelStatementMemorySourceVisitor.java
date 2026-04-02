@@ -182,7 +182,7 @@ public class TableModelStatementMemorySourceVisitor
     for (Map.Entry<NodeRef<Table>, Pair<Integer, List<String>>> entry :
         cteExplainResults.entrySet()) {
       JsonObject cte = new JsonObject();
-      cte.addProperty("name", entry.getKey().getNode().getName());
+      cte.addProperty("name", entry.getKey().getNode().getName().toString());
       cte.add("plan", JsonParser.parseString(entry.getValue().getRight().get(0)));
       cteArray.add(cte);
     }
