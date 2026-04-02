@@ -3514,6 +3514,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         future.setException(
             new IOException(
                 "The DataNode to be removed is not in the cluster, or the input format is incorrect."));
+        return future;
       }
 
       LOGGER.info("Starting to remove DataNode with nodeIds: {}", nodeIds);
@@ -3583,6 +3584,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         future.setException(
             new IOException(
                 "The ConfigNode to be removed is not in the cluster, or the input format is incorrect."));
+        return future;
       }
 
       TConfigNodeLocation configNodeLocation = removeConfigNodeLocations.get(0);

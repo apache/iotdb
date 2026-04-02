@@ -152,6 +152,8 @@ public class LoadTsFileNode extends WritePlanNode {
                 statement.isDeleteAfterLoad(),
                 statement.getWritePointCount(i),
                 needDecode4TimeColumn));
+      } else {
+        throw new IllegalStateException("LoadTsFile statement is null during table model split.");
       }
     }
     return res;

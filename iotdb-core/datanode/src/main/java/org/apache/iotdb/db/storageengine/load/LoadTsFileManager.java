@@ -224,7 +224,7 @@ public class LoadTsFileManager {
       }
     }
 
-    final Optional<CleanupTask> cleanupTask = Optional.of(uuid2CleanupTask.get(uuid));
+    final Optional<CleanupTask> cleanupTask = Optional.ofNullable(uuid2CleanupTask.get(uuid));
     cleanupTask.ifPresent(CleanupTask::markLoadTaskRunning);
     try {
       final AtomicReference<Exception> exception = new AtomicReference<>();
@@ -304,7 +304,7 @@ public class LoadTsFileManager {
       return false;
     }
 
-    final Optional<CleanupTask> cleanupTask = Optional.of(uuid2CleanupTask.get(uuid));
+    final Optional<CleanupTask> cleanupTask = Optional.ofNullable(uuid2CleanupTask.get(uuid));
     cleanupTask.ifPresent(CleanupTask::markLoadTaskRunning);
     try {
       uuid2WriterManager.get(uuid).loadAll(isGeneratedByPipe, timePartitionProgressIndexMap);
