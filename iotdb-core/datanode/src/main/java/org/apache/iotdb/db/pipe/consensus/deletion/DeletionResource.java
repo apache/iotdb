@@ -70,10 +70,9 @@ public class DeletionResource implements PersistentResource {
   }
 
   public synchronized void decreaseReference() {
-    if (pipeTaskReferenceCount.get() == 1) {
+    if (pipeTaskReferenceCount.decrementAndGet() == 0) {
       removeSelf();
     }
-    pipeTaskReferenceCount.decrementAndGet();
   }
 
   public void removeSelf() {
