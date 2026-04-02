@@ -282,13 +282,46 @@ public class IoTDBStartCheck {
     if (properties.containsKey(CLUSTER_ID)) {
       config.setClusterId(properties.getProperty(CLUSTER_ID));
     }
+    boolean needRewriteConsensusProtocol = false;
     if (properties.containsKey(SCHEMA_REGION_CONSENSUS_PROTOCOL)) {
-      config.setSchemaRegionConsensusProtocolClass(
-          properties.getProperty(SCHEMA_REGION_CONSENSUS_PROTOCOL));
+      final String persistedSchemaRegionConsensusProtocolClass =
+          properties.getProperty(SCHEMA_REGION_CONSENSUS_PROTOCOL);
+      final String schemaRegionConsensusProtocolClass =
+          ConsensusFactory.normalizeConsensusProtocolClass(
+              persistedSchemaRegionConsensusProtocolClass);
+      if (!Objects.equals(
+          persistedSchemaRegionConsensusProtocolClass, schemaRegionConsensusProtocolClass)) {
+        properties.setProperty(
+            SCHEMA_REGION_CONSENSUS_PROTOCOL, schemaRegionConsensusProtocolClass);
+        needRewriteConsensusProtocol = true;
+        logger.warn(
+            "[SystemProperties] Normalize {} from {} to {} for compatibility.",
+            SCHEMA_REGION_CONSENSUS_PROTOCOL,
+            persistedSchemaRegionConsensusProtocolClass,
+            schemaRegionConsensusProtocolClass);
+      }
+      config.setSchemaRegionConsensusProtocolClass(schemaRegionConsensusProtocolClass);
     }
     if (properties.containsKey(DATA_REGION_CONSENSUS_PROTOCOL)) {
-      config.setDataRegionConsensusProtocolClass(
-          properties.getProperty(DATA_REGION_CONSENSUS_PROTOCOL));
+      final String persistedDataRegionConsensusProtocolClass =
+          properties.getProperty(DATA_REGION_CONSENSUS_PROTOCOL);
+      final String dataRegionConsensusProtocolClass =
+          ConsensusFactory.normalizeConsensusProtocolClass(
+              persistedDataRegionConsensusProtocolClass);
+      if (!Objects.equals(
+          persistedDataRegionConsensusProtocolClass, dataRegionConsensusProtocolClass)) {
+        properties.setProperty(DATA_REGION_CONSENSUS_PROTOCOL, dataRegionConsensusProtocolClass);
+        needRewriteConsensusProtocol = true;
+        logger.warn(
+            "[SystemProperties] Normalize {} from {} to {} for compatibility.",
+            DATA_REGION_CONSENSUS_PROTOCOL,
+            persistedDataRegionConsensusProtocolClass,
+            dataRegionConsensusProtocolClass);
+      }
+      config.setDataRegionConsensusProtocolClass(dataRegionConsensusProtocolClass);
+    }
+    if (needRewriteConsensusProtocol) {
+      systemPropertiesHandler.overwrite(properties);
     }
   }
 

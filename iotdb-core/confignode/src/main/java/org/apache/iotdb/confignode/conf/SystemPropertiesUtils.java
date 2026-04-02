@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.file.SystemPropertiesHandler;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
+import org.apache.iotdb.consensus.ConsensusFactory;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -125,9 +126,24 @@ public class SystemPropertiesUtils {
     }
 
     // Consensus protocol configuration
-    String configNodeConsensusProtocolClass =
+    boolean needRewriteConsensusProtocol = false;
+
+    String persistedConfigNodeConsensusProtocolClass =
         systemProperties.getProperty(CN_CONSENSUS_PROTOCOL, null);
-    if (!configNodeConsensusProtocolClass.equals(conf.getConfigNodeConsensusProtocolClass())) {
+    String configNodeConsensusProtocolClass =
+        ConsensusFactory.normalizeConsensusProtocolClass(persistedConfigNodeConsensusProtocolClass);
+    if (!Objects.equals(
+        persistedConfigNodeConsensusProtocolClass, configNodeConsensusProtocolClass)) {
+      systemProperties.setProperty(CN_CONSENSUS_PROTOCOL, configNodeConsensusProtocolClass);
+      needRewriteConsensusProtocol = true;
+      LOGGER.warn(
+          "[SystemProperties] Normalize {} from {} to {} for compatibility.",
+          CN_CONSENSUS_PROTOCOL,
+          persistedConfigNodeConsensusProtocolClass,
+          configNodeConsensusProtocolClass);
+    }
+    if (!Objects.equals(
+        configNodeConsensusProtocolClass, conf.getConfigNodeConsensusProtocolClass())) {
       LOGGER.warn(
           format,
           CN_CONSENSUS_PROTOCOL,
@@ -136,9 +152,22 @@ public class SystemPropertiesUtils {
       conf.setConfigNodeConsensusProtocolClass(configNodeConsensusProtocolClass);
     }
 
-    String dataRegionConsensusProtocolClass =
+    String persistedDataRegionConsensusProtocolClass =
         systemProperties.getProperty(DATA_CONSENSUS_PROTOCOL, null);
-    if (!dataRegionConsensusProtocolClass.equals(conf.getDataRegionConsensusProtocolClass())) {
+    String dataRegionConsensusProtocolClass =
+        ConsensusFactory.normalizeConsensusProtocolClass(persistedDataRegionConsensusProtocolClass);
+    if (!Objects.equals(
+        persistedDataRegionConsensusProtocolClass, dataRegionConsensusProtocolClass)) {
+      systemProperties.setProperty(DATA_CONSENSUS_PROTOCOL, dataRegionConsensusProtocolClass);
+      needRewriteConsensusProtocol = true;
+      LOGGER.warn(
+          "[SystemProperties] Normalize {} from {} to {} for compatibility.",
+          DATA_CONSENSUS_PROTOCOL,
+          persistedDataRegionConsensusProtocolClass,
+          dataRegionConsensusProtocolClass);
+    }
+    if (!Objects.equals(
+        dataRegionConsensusProtocolClass, conf.getDataRegionConsensusProtocolClass())) {
       LOGGER.warn(
           format,
           DATA_CONSENSUS_PROTOCOL,
@@ -147,15 +176,32 @@ public class SystemPropertiesUtils {
       conf.setDataRegionConsensusProtocolClass(dataRegionConsensusProtocolClass);
     }
 
-    String schemaRegionConsensusProtocolClass =
+    String persistedSchemaRegionConsensusProtocolClass =
         systemProperties.getProperty(SCHEMA_CONSENSUS_PROTOCOL, null);
-    if (!schemaRegionConsensusProtocolClass.equals(conf.getSchemaRegionConsensusProtocolClass())) {
+    String schemaRegionConsensusProtocolClass =
+        ConsensusFactory.normalizeConsensusProtocolClass(
+            persistedSchemaRegionConsensusProtocolClass);
+    if (!Objects.equals(
+        persistedSchemaRegionConsensusProtocolClass, schemaRegionConsensusProtocolClass)) {
+      systemProperties.setProperty(SCHEMA_CONSENSUS_PROTOCOL, schemaRegionConsensusProtocolClass);
+      needRewriteConsensusProtocol = true;
+      LOGGER.warn(
+          "[SystemProperties] Normalize {} from {} to {} for compatibility.",
+          SCHEMA_CONSENSUS_PROTOCOL,
+          persistedSchemaRegionConsensusProtocolClass,
+          schemaRegionConsensusProtocolClass);
+    }
+    if (!Objects.equals(
+        schemaRegionConsensusProtocolClass, conf.getSchemaRegionConsensusProtocolClass())) {
       LOGGER.warn(
           format,
           SCHEMA_CONSENSUS_PROTOCOL,
           conf.getSchemaRegionConsensusProtocolClass(),
           schemaRegionConsensusProtocolClass);
       conf.setSchemaRegionConsensusProtocolClass(schemaRegionConsensusProtocolClass);
+    }
+    if (needRewriteConsensusProtocol) {
+      systemPropertiesHandler.overwrite(systemProperties);
     }
 
     // PartitionSlot configuration
@@ -263,11 +309,18 @@ public class SystemPropertiesUtils {
     systemProperties.setProperty(CN_CONSENSUS_PORT, String.valueOf(conf.getConsensusPort()));
 
     // Consensus protocol configuration
-    systemProperties.setProperty(CN_CONSENSUS_PROTOCOL, conf.getConfigNodeConsensusProtocolClass());
     systemProperties.setProperty(
-        DATA_CONSENSUS_PROTOCOL, conf.getDataRegionConsensusProtocolClass());
+        CN_CONSENSUS_PROTOCOL,
+        ConsensusFactory.normalizeConsensusProtocolClass(
+            conf.getConfigNodeConsensusProtocolClass()));
     systemProperties.setProperty(
-        SCHEMA_CONSENSUS_PROTOCOL, conf.getSchemaRegionConsensusProtocolClass());
+        DATA_CONSENSUS_PROTOCOL,
+        ConsensusFactory.normalizeConsensusProtocolClass(
+            conf.getDataRegionConsensusProtocolClass()));
+    systemProperties.setProperty(
+        SCHEMA_CONSENSUS_PROTOCOL,
+        ConsensusFactory.normalizeConsensusProtocolClass(
+            conf.getSchemaRegionConsensusProtocolClass()));
 
     // PartitionSlot configuration
     systemProperties.setProperty(

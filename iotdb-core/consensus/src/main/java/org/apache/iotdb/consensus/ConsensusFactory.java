@@ -37,6 +37,8 @@ public class ConsensusFactory {
   public static final String SIMPLE_CONSENSUS = "org.apache.iotdb.consensus.simple.SimpleConsensus";
   public static final String RATIS_CONSENSUS = "org.apache.iotdb.consensus.ratis.RatisConsensus";
   public static final String IOT_CONSENSUS = "org.apache.iotdb.consensus.iot.IoTConsensus";
+  public static final String LEGACY_IOT_CONSENSUS_V2 =
+      "org.apache.iotdb.consensus.pipe.PipeConsensus";
   public static final String REAL_IOT_CONSENSUS_V2 =
       "org.apache.iotdb.consensus.pipe.IoTConsensusV2";
   public static final String IOT_CONSENSUS_V2 = "org.apache.iotdb.consensus.iot.IoTConsensusV2";
@@ -49,11 +51,22 @@ public class ConsensusFactory {
     throw new IllegalStateException("Utility class ConsensusFactory");
   }
 
+  public static String normalizeConsensusProtocolClass(String className) {
+    if (className == null) {
+      return null;
+    }
+    if (LEGACY_IOT_CONSENSUS_V2.equals(className) || REAL_IOT_CONSENSUS_V2.equals(className)) {
+      return IOT_CONSENSUS_V2;
+    }
+    return className;
+  }
+
   public static Optional<IConsensus> getConsensusImpl(
       String className, ConsensusConfig config, IStateMachine.Registry registry) {
     try {
+      className = normalizeConsensusProtocolClass(className);
       // special judge for IoTConsensusV2
-      if (className.equals(IOT_CONSENSUS_V2)) {
+      if (IOT_CONSENSUS_V2.equals(className)) {
         className = REAL_IOT_CONSENSUS_V2;
         // initialize iotConsensusV2's thrift component
         IoTV2GlobalComponentContainer.build();

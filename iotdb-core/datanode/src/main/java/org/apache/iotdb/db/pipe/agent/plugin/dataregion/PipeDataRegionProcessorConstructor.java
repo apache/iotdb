@@ -70,6 +70,9 @@ class PipeDataRegionProcessorConstructor extends PipeProcessorConstructor {
         BuiltinPipePlugin.IOT_CONSENSUS_V2_PROCESSOR.getPipePluginName(),
         IoTConsensusV2Processor::new);
     pluginConstructors.put(
+        BuiltinPipePlugin.PIPE_CONSENSUS_PROCESSOR.getPipePluginName(),
+        IoTConsensusV2Processor::new);
+    pluginConstructors.put(
         BuiltinPipePlugin.RENAME_DATABASE_PROCESSOR.getPipePluginName(),
         RenameDatabaseProcessor::new);
   }
