@@ -91,6 +91,54 @@ public class IoTExplainJsonFormatIT {
 
   @Test
   public void testExplainJsonFormat() {
+    // Expected output (single row, single JSON object representing the distributed plan tree):
+    // {
+    //   "name": "OutputNode-<id>",
+    //   "id": "<id>",
+    //   "properties": {
+    //     "OutputColumns": ["time", "deviceid", "voltage"],
+    //     "OutputSymbols": ["time", "deviceid", "voltage"]
+    //   },
+    //   "children": [
+    //     {
+    //       "name": "CollectNode-<id>",
+    //       "id": "<id>",
+    //       "children": [
+    //         {
+    //           "name": "ExchangeNode-<id>",
+    //           "id": "<id>",
+    //           "children": [
+    //             {
+    //               "name": "DeviceTableScanNode-<id>",
+    //               "id": "<id>",
+    //               "properties": {
+    //                 "QualifiedTableName": "testdb_json.testtb",
+    //                 "OutputSymbols": ["time", "deviceid", "voltage"],
+    //                 "DeviceNumber": "1",
+    //                 "ScanOrder": "ASC",
+    //                 "PushDownOffset": "0",
+    //                 "PushDownLimit": "0",
+    //                 "PushDownLimitToEachDevice": "false",
+    //                 "RegionId": "<regionId>"
+    //               }
+    //             }
+    //           ]
+    //         },
+    //         {
+    //           "name": "ExchangeNode-<id>",
+    //           "id": "<id>",
+    //           "children": [
+    //             {
+    //               "name": "DeviceTableScanNode-<id>",
+    //               "id": "<id>",
+    //               "properties": { ... }
+    //             }
+    //           ]
+    //         }
+    //       ]
+    //     }
+    //   ]
+    // }
     String sql = "EXPLAIN (FORMAT JSON) SELECT * FROM testtb";
     try (Connection conn = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = conn.createStatement()) {
@@ -134,6 +182,76 @@ public class IoTExplainJsonFormatIT {
 
   @Test
   public void testExplainAnalyzeJsonFormat() {
+    // Expected output (single row, single JSON object with plan statistics + fragment instances):
+    // {
+    //   "planStatistics": {
+    //     "analyzeCostMs": <ms>,
+    //     "fetchPartitionCostMs": <ms>,
+    //     "fetchSchemaCostMs": <ms>,
+    //     "logicalPlanCostMs": <ms>,
+    //     "logicalOptimizationCostMs": <ms>,
+    //     "distributionPlanCostMs": <ms>,
+    //     "dispatchCostMs": <ms>
+    //   },
+    //   "fragmentInstancesCount": 3,
+    //   "fragmentInstances": [
+    //     {
+    //       "id": "<queryId>.<fragmentId>.<instanceId>",
+    //       "ip": "127.0.0.1:<port>",
+    //       "dataRegion": "virtual_data_region",
+    //       "state": "FINISHED",
+    //       "totalWallTimeMs": <ms>,
+    //       "initDataQuerySourceCostMs": <ms>,
+    //       "seqFileUnclosed": 0, "seqFileClosed": 0,
+    //       "unseqFileUnclosed": 0, "unseqFileClosed": 0,
+    //       "readyQueuedTimeMs": <ms>,
+    //       "blockQueuedTimeMs": <ms>,
+    //       "queryStatistics": {
+    //         "timeSeriesIndexFilteredRows": 0,
+    //         "chunkIndexFilteredRows": 0,
+    //         "pageIndexFilteredRows": 0
+    //       },
+    //       "operators": {
+    //         "planNodeId": "<id>",
+    //         "nodeType": "IdentitySinkNode",
+    //         "operatorType": "IdentitySinkOperator",
+    //         "cpuTimeMs": <ms>,
+    //         "outputRows": 5,
+    //         "hasNextCalledCount": 5,
+    //         "nextCalledCount": 4,
+    //         "estimatedMemorySize": 1024,
+    //         "specifiedInfo": { "DownStreamPlanNodeId": "<id>" },
+    //         "children": [
+    //           {
+    //             "planNodeId": "<id>",
+    //             "nodeType": "CollectNode",
+    //             "operatorType": "CollectOperator",
+    //             ...
+    //             "children": [
+    //               { "planNodeId": "<id>", "nodeType": "ExchangeNode", ... },
+    //               { "planNodeId": "<id>", "nodeType": "ExchangeNode", ... }
+    //             ]
+    //           }
+    //         ]
+    //       }
+    //     },
+    //     {
+    //       "id": "...", "dataRegion": "4", "state": "FINISHED",
+    //       ...
+    //       "operators": {
+    //         "nodeType": "IdentitySinkNode", ...
+    //         "children": [
+    //           { "nodeType": "DeviceTableScanNode", "operatorType": "TableScanOperator", ... }
+    //         ]
+    //       }
+    //     },
+    //     {
+    //       "id": "...", "dataRegion": "3", "state": "FINISHED",
+    //       ...
+    //       "operators": { ... }
+    //     }
+    //   ]
+    // }
     String sql = "EXPLAIN ANALYZE (FORMAT JSON) SELECT * FROM testtb";
     try (Connection conn = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = conn.createStatement()) {
@@ -168,6 +286,47 @@ public class IoTExplainJsonFormatIT {
 
   @Test
   public void testExplainAnalyzeVerboseJsonFormat() {
+    // Expected output (same structure as testExplainAnalyzeJsonFormat, but queryStatistics
+    // includes verbose fields like bloom filter, metadata, chunk reader, and page decoder stats):
+    // {
+    //   "planStatistics": { ... },
+    //   "fragmentInstancesCount": 3,
+    //   "fragmentInstances": [
+    //     {
+    //       "id": "...", "dataRegion": "virtual_data_region", ...
+    //       "queryStatistics": {
+    //         "loadBloomFilterFromCacheCount": 0,
+    //         "loadBloomFilterFromDiskCount": 0,
+    //         "loadBloomFilterActualIOSize": 0,
+    //         "loadBloomFilterTimeMs": 0.0,
+    //         "loadTimeSeriesMetadataFromCacheCount": 0,
+    //         "loadTimeSeriesMetadataFromDiskCount": 0,
+    //         "loadTimeSeriesMetadataActualIOSize": 0,
+    //         "loadChunkFromCacheCount": 0,
+    //         "loadChunkFromDiskCount": 0,
+    //         "loadChunkActualIOSize": 0,
+    //         "timeSeriesIndexFilteredRows": 0,
+    //         "chunkIndexFilteredRows": 0,
+    //         "pageIndexFilteredRows": 0,
+    //         "rowScanFilteredRows": 0
+    //       },
+    //       "operators": { ... }
+    //     },
+    //     {
+    //       "id": "...", "dataRegion": "4", ...
+    //       "queryStatistics": {
+    //         ... (same as above, plus non-zero fields like:)
+    //         "loadTimeSeriesMetadataAlignedMemSeqCount": 2,
+    //         "loadTimeSeriesMetadataAlignedMemSeqTimeMs": <ms>,
+    //         "pageReadersDecodeAlignedMemCount": 2,
+    //         "pageReadersDecodeAlignedMemTimeMs": <ms>,
+    //         ...
+    //       },
+    //       "operators": { ... }
+    //     },
+    //     { "id": "...", "dataRegion": "3", ... }
+    //   ]
+    // }
     String sql = "EXPLAIN ANALYZE VERBOSE (FORMAT JSON) SELECT * FROM testtb";
     try (Connection conn = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = conn.createStatement()) {
@@ -266,6 +425,17 @@ public class IoTExplainJsonFormatIT {
 
   @Test
   public void testExplainAnalyzeJsonMultipleFragmentInstances() {
+    // Expected output (same structure as testExplainAnalyzeJsonFormat):
+    // {
+    //   "planStatistics": { ... },
+    //   "fragmentInstancesCount": 3,       // >= 2 due to multi-partition data
+    //   "fragmentInstances": [
+    //     { "id": "...", "dataRegion": "virtual_data_region", "state": "FINISHED", ... },
+    //     { "id": "...", "dataRegion": "4", "state": "FINISHED", ... },
+    //     { "id": "...", "dataRegion": "3", "state": "FINISHED", ... }
+    //   ]
+    // }
+    // Each fragment instance must have "id", "state", and "dataRegion" fields.
     String sql = "EXPLAIN ANALYZE (FORMAT JSON) SELECT * FROM testtb";
     try (Connection conn = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = conn.createStatement()) {
@@ -303,6 +473,42 @@ public class IoTExplainJsonFormatIT {
 
   @Test
   public void testExplainJsonWithCte() {
+    // Expected output (when CTE is present, the JSON wraps cteQueries + mainQuery):
+    // {
+    //   "cteQueries": [
+    //     {
+    //       "name": "cte1",
+    //       "plan": <plan node for CTE query>
+    //     }
+    //   ],
+    //   "mainQuery": {
+    //     "name": "OutputNode-<id>",
+    //     "id": "<id>",
+    //     "properties": {
+    //       "OutputColumns": ["time", "deviceid", "voltage"],
+    //       "OutputSymbols": ["time", "deviceid", "voltage"]
+    //     },
+    //     "children": [
+    //       {
+    //         "name": "ProjectNode-<id>", ...
+    //         "children": [
+    //           {
+    //             "name": "FilterNode-<id>", ...
+    //             "children": [
+    //               {
+    //                 "name": "SemiJoinNode-<id>", ...
+    //                 "children": [
+    //                   { "name": "ExchangeNode-<id>", ... },  // main table scan branch
+    //                   { "name": "ExchangeNode-<id>", ... }   // CTE scan branch
+    //                 ]
+    //               }
+    //             ]
+    //           }
+    //         ]
+    //       }
+    //     ]
+    //   }
+    // }
     try (Connection conn = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = conn.createStatement()) {
       statement.execute("USE " + DATABASE_NAME);
@@ -344,6 +550,43 @@ public class IoTExplainJsonFormatIT {
 
   @Test
   public void testExplainJsonWithScalarSubquery() {
+    // Expected output (scalar subquery is inlined during optimization, so the plan is a simple
+    // tree with the constant predicate pushed down to DeviceTableScanNode):
+    // {
+    //   "name": "OutputNode-<id>",
+    //   "id": "<id>",
+    //   "properties": {
+    //     "OutputColumns": ["time", "deviceid", "voltage"],
+    //     "OutputSymbols": ["time", "deviceid", "voltage"]
+    //   },
+    //   "children": [
+    //     {
+    //       "name": "CollectNode-<id>",
+    //       "id": "<id>",
+    //       "children": [
+    //         {
+    //           "name": "ExchangeNode-<id>", ...
+    //           "children": [
+    //             {
+    //               "name": "DeviceTableScanNode-<id>",
+    //               "properties": {
+    //                 "QualifiedTableName": "testdb_json.testtb",
+    //                 "PushDownPredicate": "(\"voltage\" > 2E2)",
+    //                 ...
+    //               }
+    //             }
+    //           ]
+    //         },
+    //         {
+    //           "name": "ExchangeNode-<id>", ...
+    //           "children": [
+    //             { "name": "DeviceTableScanNode-<id>", ... }
+    //           ]
+    //         }
+    //       ]
+    //     }
+    //   ]
+    // }
     String sql =
         "EXPLAIN (FORMAT JSON) SELECT * FROM testtb "
             + "WHERE voltage > (SELECT avg(voltage) FROM testtb)";
@@ -369,6 +612,56 @@ public class IoTExplainJsonFormatIT {
 
   @Test
   public void testExplainAnalyzeJsonWithScalarSubquery() {
+    // Expected output (same EXPLAIN ANALYZE JSON structure, but the scalar subquery is resolved
+    // at planning time, so the executed plan only scans with a constant predicate):
+    // {
+    //   "planStatistics": {
+    //     "analyzeCostMs": <ms>,
+    //     "fetchPartitionCostMs": <ms>,
+    //     "fetchSchemaCostMs": <ms>,
+    //     "logicalPlanCostMs": <ms>,     // higher than simple query due to subquery planning
+    //     "logicalOptimizationCostMs": <ms>,
+    //     "distributionPlanCostMs": <ms>,
+    //     "dispatchCostMs": <ms>
+    //   },
+    //   "fragmentInstancesCount": 3,
+    //   "fragmentInstances": [
+    //     {
+    //       "id": "...", "dataRegion": "virtual_data_region", "state": "FINISHED",
+    //       ...
+    //       "operators": {
+    //         "nodeType": "IdentitySinkNode", ...
+    //         "children": [
+    //           {
+    //             "nodeType": "CollectNode", ...
+    //             "children": [
+    //               { "nodeType": "ExchangeNode", "outputRows": 2, ... },
+    //               { "nodeType": "ExchangeNode", "outputRows": 0, ... }
+    //             ]
+    //           }
+    //         ]
+    //       }
+    //     },
+    //     {
+    //       "dataRegion": "4", ...
+    //       "operators": {
+    //         "nodeType": "IdentitySinkNode", ...
+    //         "children": [
+    //           { "nodeType": "DeviceTableScanNode", "operatorType": "TableScanOperator", ... }
+    //         ]
+    //       }
+    //     },
+    //     {
+    //       "dataRegion": "3", ...
+    //       "operators": {
+    //         "nodeType": "IdentitySinkNode", ...
+    //         "children": [
+    //           { "nodeType": "DeviceTableScanNode", "outputRows": 0, ... }
+    //         ]
+    //       }
+    //     }
+    //   ]
+    // }
     String sql =
         "EXPLAIN ANALYZE (FORMAT JSON) SELECT * FROM testtb "
             + "WHERE voltage > (SELECT avg(voltage) FROM testtb)";
