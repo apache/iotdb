@@ -332,6 +332,7 @@ public class DataPartitionTableIntegrityCheckProcedure
 
       Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TConsensusGroupId>>>
           seriesPartitionMap = localDataPartitionTable.get(database);
+      long localEarliestSlotStartTime = Long.MAX_VALUE;
       for (Map.Entry<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TConsensusGroupId>>>
           seriesPartitionEntry : seriesPartitionMap.entrySet()) {
         Map<TTimePartitionSlot, List<TConsensusGroupId>> tTimePartitionSlotListMap =
@@ -346,14 +347,17 @@ public class DataPartitionTableIntegrityCheckProcedure
                 .min(Comparator.comparingLong(TTimePartitionSlot::getStartTime))
                 .orElse(null);
 
-        if (localEarliestSlot.getStartTime()
-            > TimePartitionUtils.getStartTimeByPartitionId(earliestTimeslot)) {
-          databasesWithLostDataPartition.add(database);
-          LOG.warn(
-              "[DataPartitionIntegrity] Database {} has lost timeslot {} in its data table partition, and this issue needs to be repaired",
-              database,
-              earliestTimeslot);
-        }
+        localEarliestSlotStartTime =
+            Math.min(localEarliestSlotStartTime, localEarliestSlot.getStartTime());
+      }
+
+      if (localEarliestSlotStartTime
+          > TimePartitionUtils.getStartTimeByPartitionId(earliestTimeslot)) {
+        databasesWithLostDataPartition.add(database);
+        LOG.warn(
+            "[DataPartitionIntegrity] Database {} has lost timeslot {} in its data table partition, and this issue needs to be repaired",
+            database,
+            earliestTimeslot);
       }
     }
 

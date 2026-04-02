@@ -37,10 +37,12 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListMap;
@@ -280,7 +282,16 @@ public class SeriesPartitionTable {
     if (sourceMap == null) return;
     sourceMap.seriesPartitionMap.forEach(
         (timeSlot, groups) -> {
-          this.seriesPartitionMap.computeIfAbsent(timeSlot, k -> new ArrayList<>()).addAll(groups);
+          List<TConsensusGroupId> groupList =
+              this.seriesPartitionMap.computeIfAbsent(timeSlot, k -> new ArrayList<>());
+          synchronized (groupList) {
+            Set<TConsensusGroupId> groupSet = new HashSet<>(groupList);
+            for (TConsensusGroupId groupId : groups) {
+              if (!groupSet.contains(groupId)) {
+                groupList.add(groupId);
+              }
+            }
+          }
         });
   }
 
