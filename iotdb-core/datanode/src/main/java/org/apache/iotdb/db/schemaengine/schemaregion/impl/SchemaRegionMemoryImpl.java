@@ -857,8 +857,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
           regionStatistics.getGlobalMemoryUsage(), regionStatistics.getGlobalSeriesNumber());
     }
 
+    final List<PartialPath> pathList = plan.getViewPathList();
     try {
-      List<PartialPath> pathList = plan.getViewPathList();
       Map<PartialPath, ViewExpression> viewPathToSourceMap =
           plan.getViewPathToSourceExpressionMap();
       for (PartialPath path : pathList) {
