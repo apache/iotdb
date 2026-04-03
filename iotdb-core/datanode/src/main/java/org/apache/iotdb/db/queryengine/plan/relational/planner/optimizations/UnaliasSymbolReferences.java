@@ -65,6 +65,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKRankingN
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.UnionNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValueFillNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValuesNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.WindowNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullLiteral;
@@ -508,6 +509,19 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
               newOrderingScheme,
               node.getPartitionKeyCount()),
           mapping);
+    }
+
+    @Override
+    public PlanAndMappings visitValuesNode(ValuesNode node, UnaliasContext context) {
+      Map<Symbol, Symbol> mapping = new HashMap<>(context.getCorrelationMapping());
+      SymbolMapper mapper = symbolMapper(mapping);
+
+      List<Symbol> newOutputs = mapper.map(node.getOutputSymbols());
+      Optional<List<Expression>> newRows =
+          node.getRows().map(rows -> rows.stream().map(mapper::map).collect(toImmutableList()));
+
+      return new PlanAndMappings(
+          new ValuesNode(node.getPlanNodeId(), newOutputs, node.getRowCount(), newRows), mapping);
     }
 
     @Override
