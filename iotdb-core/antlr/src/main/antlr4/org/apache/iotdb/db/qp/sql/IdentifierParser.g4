@@ -296,6 +296,7 @@ keyWords
     | WRITABLE
     | WRITE
     | AUDIT
+    | AUTH
     | OPTION
     | INF
     | CURRENT_TIMESTAMP
