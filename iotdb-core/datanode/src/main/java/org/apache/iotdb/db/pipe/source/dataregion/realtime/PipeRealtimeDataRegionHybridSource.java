@@ -65,7 +65,6 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
               "Unsupported event type %s for hybrid realtime extractor %s",
               eventToExtract.getClass(), this));
     }
-    PipeTsFileEpochProgressIndexAndFlushManager.getInstance().flushAllTimeoutTsFiles();
   }
 
   @Override
@@ -216,6 +215,7 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
   @Override
   public Event supply() {
     PipeRealtimeEvent realtimeEvent = (PipeRealtimeEvent) pendingQueue.directPoll();
+    PipeTsFileEpochProgressIndexAndFlushManager.getInstance().flushAllTimeoutTsFiles();
 
     while (realtimeEvent != null) {
       final Event suppliedEvent;

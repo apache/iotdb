@@ -40,8 +40,6 @@ public class PipeRealtimeDataRegionTsFileSource extends PipeRealtimeDataRegionSo
 
   @Override
   protected void doExtract(final PipeRealtimeEvent event) {
-    PipeTsFileEpochProgressIndexAndFlushManager.getInstance().flushAllTimeoutTsFiles();
-
     if (event.getEvent() instanceof PipeHeartbeatEvent) {
       extractHeartbeat(event);
       return;
@@ -82,6 +80,7 @@ public class PipeRealtimeDataRegionTsFileSource extends PipeRealtimeDataRegionSo
   @Override
   public Event supply() {
     PipeRealtimeEvent realtimeEvent = (PipeRealtimeEvent) pendingQueue.directPoll();
+    PipeTsFileEpochProgressIndexAndFlushManager.getInstance().flushAllTimeoutTsFiles();
 
     while (realtimeEvent != null) {
       Event suppliedEvent = null;

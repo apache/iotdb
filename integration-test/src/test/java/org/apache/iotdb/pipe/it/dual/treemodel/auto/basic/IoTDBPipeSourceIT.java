@@ -74,7 +74,7 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
         .setEnableUnseqSpaceCompaction(false)
         .setEnableCrossSpaceCompaction(false)
         .setPipeMemoryManagementEnabled(false)
-        .setPipeTsFileFlushIntervalSeconds(10)
+        .setPipeTsFileFlushIntervalSeconds(8)
         .setIsPipeEnableMemoryCheck(false)
         .setPipeAutoSplitFullEnabled(false);
     senderEnv.getConfig().getConfigNodeConfig().setLeaderDistributionPolicy("HASH");

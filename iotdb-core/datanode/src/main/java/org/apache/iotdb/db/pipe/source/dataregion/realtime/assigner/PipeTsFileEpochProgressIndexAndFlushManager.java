@@ -35,6 +35,7 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class PipeTsFileEpochProgressIndexAndFlushManager {
+  private static volatile long lastFlushTime = Long.MIN_VALUE;
 
   // data region id -> pipeName -> tsFile path -> max progress index
   private final Map<Integer, Map<String, Map<String, Pair<TsFileResource, Long>>>>
@@ -61,6 +62,12 @@ public class PipeTsFileEpochProgressIndexAndFlushManager {
   }
 
   public void flushAllTimeoutTsFiles() {
+    final long intervalMillis =
+        PipeConfig.getInstance().getPipeTsFileFlushIntervalSeconds() * 1000L;
+    if (System.currentTimeMillis() - intervalMillis < lastFlushTime) {
+      return;
+    }
+    lastFlushTime = System.currentTimeMillis();
     progressIndexKeeper.forEach(
         (regionId, map) ->
             map.values()
@@ -68,10 +75,7 @@ public class PipeTsFileEpochProgressIndexAndFlushManager {
                     fileMap ->
                         fileMap.forEach(
                             (path, pair) -> {
-                              if (System.currentTimeMillis()
-                                      - PipeConfig.getInstance().getPipeTsFileFlushIntervalSeconds()
-                                          * 1000L
-                                  >= pair.getRight()) {
+                              if (System.currentTimeMillis() - intervalMillis >= pair.getRight()) {
                                 StorageEngine.getInstance()
                                     .getDataRegion(new DataRegionId(regionId))
                                     .asyncCloseOneTsFileProcessor(pair.getLeft());
