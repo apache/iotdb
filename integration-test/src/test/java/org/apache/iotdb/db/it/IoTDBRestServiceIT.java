@@ -2365,13 +2365,14 @@ public class IoTDBRestServiceIT {
   }
 
   public void queryWithValidTimeZoneHeader(CloseableHttpClient httpClient) {
+    CloseableHttpResponse response = null;
     try {
       HttpPost httpPost = getHttpPost("http://127.0.0.1:" + port + "/rest/v1/query");
       httpPost.setHeader("Time-Zone", "+05:00");
       String sql =
           "{\"sql\":\"SELECT count(s3) FROM root.sg25 GROUP BY ([2026-03-28T00:00:00, 2026-03-29T00:00:00), 1d)\"}";
       httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
-      CloseableHttpResponse response = httpClient.execute(httpPost);
+      response = httpClient.execute(httpPost);
       assertEquals(200, response.getStatusLine().getStatusCode());
       String message = EntityUtils.toString(response.getEntity(), "utf-8");
       JsonObject result = JsonParser.parseString(message).getAsJsonObject();
@@ -2381,11 +2382,22 @@ public class IoTDBRestServiceIT {
           ZonedDateTime.of(2026, 3, 28, 0, 0, 0, 0, ZoneId.of("+05:00")).toInstant().toEpochMilli();
       assertEquals(expectedTimestamp, result.getAsJsonArray("timestamps").get(0).getAsLong());
     } catch (IOException e) {
+      e.printStackTrace();
       fail(e.getMessage());
+    } finally {
+      try {
+        if (response != null) {
+          response.close();
+        }
+      } catch (IOException e) {
+        e.printStackTrace();
+        fail(e.getMessage());
+      }
     }
   }
 
   public void nonQueryWithValidTimeZoneHeader(CloseableHttpClient httpClient) {
+    CloseableHttpResponse response = null;
     try {
       HttpPost createPost = getHttpPost("http://127.0.0.1:" + port + "/rest/v1/nonQuery");
       nonQuery(
@@ -2403,28 +2415,37 @@ public class IoTDBRestServiceIT {
       HttpPost queryPost = getHttpPost("http://127.0.0.1:" + port + "/rest/v1/query");
       queryPost.setEntity(
           new StringEntity("{\"sql\":\"SELECT s1 FROM root.sg_tz.d1\"}", StandardCharsets.UTF_8));
-      try (CloseableHttpResponse resp = httpClient.execute(queryPost)) {
-        String message = EntityUtils.toString(resp.getEntity(), StandardCharsets.UTF_8);
-        JsonObject result = JsonParser.parseString(message).getAsJsonObject();
-        long expected =
-            ZonedDateTime.of(2026, 3, 28, 0, 0, 0, 0, ZoneId.of("+05:00"))
-                .toInstant()
-                .toEpochMilli();
-        assertEquals(expected, result.getAsJsonArray("timestamps").get(0).getAsLong());
-      }
+      response = httpClient.execute(queryPost);
+      String message = EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
+      JsonObject result = JsonParser.parseString(message).getAsJsonObject();
+      long expected =
+          ZonedDateTime.of(2026, 3, 28, 0, 0, 0, 0, ZoneId.of("+05:00")).toInstant().toEpochMilli();
+      assertEquals(expected, result.getAsJsonArray("timestamps").get(0).getAsLong());
+
     } catch (IOException e) {
+      e.printStackTrace();
       fail(e.getMessage());
+    } finally {
+      try {
+        if (response != null) {
+          response.close();
+        }
+      } catch (IOException e) {
+        e.printStackTrace();
+        fail(e.getMessage());
+      }
     }
   }
 
   public void queryWithValidTimeZoneHeaderV2(CloseableHttpClient httpClient) {
+    CloseableHttpResponse response = null;
     try {
       HttpPost httpPost = getHttpPost("http://127.0.0.1:" + port + "/rest/v2/query");
       httpPost.setHeader("Time-Zone", "+05:00");
       String sql =
           "{\"sql\":\"SELECT count(s3) FROM root.sg25 GROUP BY ([2026-03-28T00:00:00, 2026-03-29T00:00:00), 1d)\"}";
       httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
-      CloseableHttpResponse response = httpClient.execute(httpPost);
+      response = httpClient.execute(httpPost);
       assertEquals(200, response.getStatusLine().getStatusCode());
       String message = EntityUtils.toString(response.getEntity(), "utf-8");
       JsonObject result = JsonParser.parseString(message).getAsJsonObject();
@@ -2434,11 +2455,22 @@ public class IoTDBRestServiceIT {
           ZonedDateTime.of(2026, 3, 28, 0, 0, 0, 0, ZoneId.of("+05:00")).toInstant().toEpochMilli();
       assertEquals(expectedTimestamp, result.getAsJsonArray("timestamps").get(0).getAsLong());
     } catch (IOException e) {
+      e.printStackTrace();
       fail(e.getMessage());
+    } finally {
+      try {
+        if (response != null) {
+          response.close();
+        }
+      } catch (IOException e) {
+        e.printStackTrace();
+        fail(e.getMessage());
+      }
     }
   }
 
   public void nonQueryWithValidTimeZoneHeaderV2(CloseableHttpClient httpClient) {
+    CloseableHttpResponse response = null;
     try {
       HttpPost createPost = getHttpPost("http://127.0.0.1:" + port + "/rest/v2/nonQuery");
       nonQuery(
@@ -2456,51 +2488,81 @@ public class IoTDBRestServiceIT {
       HttpPost queryPost = getHttpPost("http://127.0.0.1:" + port + "/rest/v2/query");
       queryPost.setEntity(
           new StringEntity("{\"sql\":\"SELECT s1 FROM root.sg_tz.d2\"}", StandardCharsets.UTF_8));
-      try (CloseableHttpResponse resp = httpClient.execute(queryPost)) {
-        String message = EntityUtils.toString(resp.getEntity(), StandardCharsets.UTF_8);
-        JsonObject result = JsonParser.parseString(message).getAsJsonObject();
-        long expected =
-            ZonedDateTime.of(2026, 3, 28, 0, 0, 0, 0, ZoneId.of("+05:00"))
-                .toInstant()
-                .toEpochMilli();
-        assertEquals(expected, result.getAsJsonArray("timestamps").get(0).getAsLong());
-      }
+      response = httpClient.execute(queryPost);
+      String message = EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
+      JsonObject result = JsonParser.parseString(message).getAsJsonObject();
+      long expected =
+          ZonedDateTime.of(2026, 3, 28, 0, 0, 0, 0, ZoneId.of("+05:00")).toInstant().toEpochMilli();
+      assertEquals(expected, result.getAsJsonArray("timestamps").get(0).getAsLong());
+
     } catch (IOException e) {
+      e.printStackTrace();
       fail(e.getMessage());
+    } finally {
+      try {
+        if (response != null) {
+          response.close();
+        }
+      } catch (IOException e) {
+        e.printStackTrace();
+        fail(e.getMessage());
+      }
     }
   }
 
   public void queryWithInvalidTimeZoneHeader(CloseableHttpClient httpClient) {
+    CloseableHttpResponse response = null;
     try {
       HttpPost httpPost = getHttpPost("http://127.0.0.1:" + port + "/rest/v1/query");
       httpPost.setHeader("Time-Zone", "Invalid/Zone");
       String sql = "{\"sql\":\"SELECT s3 FROM root.sg25\"}";
       httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
-      CloseableHttpResponse response = httpClient.execute(httpPost);
+      response = httpClient.execute(httpPost);
       assertEquals(400, response.getStatusLine().getStatusCode());
       String message = EntityUtils.toString(response.getEntity(), "utf-8");
       JsonObject result = JsonParser.parseString(message).getAsJsonObject();
       assertEquals(TSStatusCode.ILLEGAL_PARAMETER.getStatusCode(), result.get("code").getAsInt());
       assertTrue(result.get("message").getAsString().contains("Invalid time zone"));
     } catch (IOException e) {
+      e.printStackTrace();
       fail(e.getMessage());
+    } finally {
+      try {
+        if (response != null) {
+          response.close();
+        }
+      } catch (IOException e) {
+        e.printStackTrace();
+        fail(e.getMessage());
+      }
     }
   }
 
   public void queryWithInvalidTimeZoneHeaderV2(CloseableHttpClient httpClient) {
+    CloseableHttpResponse response = null;
     try {
       HttpPost httpPost = getHttpPost("http://127.0.0.1:" + port + "/rest/v2/query");
       httpPost.setHeader("Time-Zone", "Invalid/Zone");
       String sql = "{\"sql\":\"SELECT s3 FROM root.sg25\"}";
       httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
-      CloseableHttpResponse response = httpClient.execute(httpPost);
+      response = httpClient.execute(httpPost);
       assertEquals(400, response.getStatusLine().getStatusCode());
       String message = EntityUtils.toString(response.getEntity(), "utf-8");
       JsonObject result = JsonParser.parseString(message).getAsJsonObject();
       assertEquals(TSStatusCode.ILLEGAL_PARAMETER.getStatusCode(), result.get("code").getAsInt());
       assertTrue(result.get("message").getAsString().contains("Invalid time zone"));
     } catch (IOException e) {
+      e.printStackTrace();
       fail(e.getMessage());
+    } finally {
+      try {
+        if (response != null) {
+          response.close();
+        }
+      } catch (IOException e) {
+        e.printStackTrace();
+        fail(e.getMessage());
+      }
     }
   }
 }
