@@ -129,6 +129,7 @@ import com.timecho.iotdb.os.HybridFileInputFactoryDecorator;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.apache.ratis.util.ExitUtils;
 import org.apache.thrift.TException;
+import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.encrypt.EncryptParameter;
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -375,6 +376,28 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
                 CommonDescriptor.getInstance().getConfig().getAuditableOperationResult(),
                 thisNode);
         DNAuditLogger.getInstance().log(fields, () -> logMessage);
+        if (!Objects.equals(
+                TSFileDescriptor.getInstance().getConfig().getEncryptType(), "UNENCRYPTED")
+            && !Objects.equals(
+                TSFileDescriptor.getInstance().getConfig().getEncryptType(),
+                "org.apache.tsfile.encrypt.UNENCRYPTED")) {
+          AuditLogFields encryptFields =
+              new AuditLogFields(
+                  -1,
+                  null,
+                  null,
+                  AuditEventType.GENERATE_KEY,
+                  AuditLogOperation.CONTROL,
+                  PrivilegeType.SECURITY,
+                  true,
+                  null,
+                  null);
+          String encryptLogMessage =
+              String.format(
+                  "DataNode %s is configured to encrypt TsFile with encrypt type %s, the encrypt key is generated successfully",
+                  thisNode, TSFileDescriptor.getInstance().getConfig().getEncryptType());
+          DNAuditLogger.getInstance().log(encryptFields, () -> encryptLogMessage);
+        }
       }
     } catch (Throwable e) {
       int exitStatusCode = retrieveExitStatusCode(e);

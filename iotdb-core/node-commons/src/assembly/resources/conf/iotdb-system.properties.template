@@ -2410,7 +2410,7 @@ auditable_query_event_type=OBJECT_AUTHENTICATION,SLOW_OPERATION
 # Datatype: String
 # effectiveMode: hot_reload
 # Privilege: AUDIT
-auditable_control_event_type=CHANGE_AUDIT_OPTION,OBJECT_AUTHENTICATION,LOGIN,LOGOUT,DN_SHUTDOWN,SLOW_OPERATION
+auditable_control_event_type=CHANGE_AUDIT_OPTION,OBJECT_AUTHENTICATION,LOGIN,LOGOUT,DN_SHUTDOWN,SLOW_OPERATION,DESTROY_KEY,AUDIT_STORAGE_FULL,GENERATE_KEY
 
 
 # the level of auditable operation, including global, object

@@ -19,6 +19,10 @@
 
 package com.timecho.iotdb.dataregion.migration;
 
+import org.apache.iotdb.commons.audit.AuditEventType;
+import org.apache.iotdb.commons.audit.AuditLogFields;
+import org.apache.iotdb.commons.audit.AuditLogOperation;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
@@ -31,6 +35,7 @@ import org.apache.iotdb.commons.queryengine.utils.DateTimeUtils;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.service.metric.MetricService;
+import org.apache.iotdb.db.audit.DNAuditLogger;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.IoTDBDescriptor.IMigrationManager;
@@ -187,7 +192,23 @@ public class MigrationTaskManager implements IService, IMigrationManager {
           <= auditTsFilesMaxSpaceInGB) {
         return;
       }
-
+      AuditLogFields fields =
+          new AuditLogFields(
+              -1,
+              null,
+              null,
+              AuditEventType.AUDIT_STORAGE_FULL,
+              AuditLogOperation.CONTROL,
+              PrivilegeType.AUDIT,
+              true,
+              null,
+              null);
+      String message =
+          String.format(
+              "Audit log storage is full, total space: %.2f GB, max space: %.2f GB. Start deleting old audit logs.",
+              auditTsFilesTotalSpaceInBytes * 1.0 / (1024L * 1024L * 1024L),
+              auditTsFilesMaxSpaceInGB);
+      DNAuditLogger.getInstance().log(fields, () -> message);
       List<TsFileResource> deleteCandidates =
           auditTsFiles.stream()
               .filter(f -> f.getStatus() == TsFileResourceStatus.NORMAL)

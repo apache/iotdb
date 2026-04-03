@@ -53,6 +53,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Map;
+import java.util.Objects;
 
 public class DataNodeShutdownHook extends Thread {
 
@@ -109,6 +110,26 @@ public class DataNodeShutdownHook extends Thread {
               null);
       String logMessage = String.format("DataNode %s exiting...", nodeLocation);
       DNAuditLogger.getInstance().log(fields, () -> logMessage);
+      if (!Objects.equals(
+              TSFileDescriptor.getInstance().getConfig().getEncryptType(), "UNENCRYPTED")
+          && !Objects.equals(
+              TSFileDescriptor.getInstance().getConfig().getEncryptType(),
+              "org.apache.tsfile.encrypt.UNENCRYPTED")) {
+        AuditLogFields encryptFields =
+            new AuditLogFields(
+                -1,
+                null,
+                null,
+                AuditEventType.DESTROY_KEY,
+                AuditLogOperation.CONTROL,
+                PrivilegeType.SECURITY,
+                true,
+                null,
+                null);
+        String encryptLogMessage =
+            String.format("The encrypt key is deleted successfully in DataNode %s", nodeLocation);
+        DNAuditLogger.getInstance().log(encryptFields, () -> encryptLogMessage);
+      }
 
       startWatcher();
       // Stop external rpc service firstly.
@@ -200,12 +221,12 @@ public class DataNodeShutdownHook extends Thread {
 
       watcherThread.interrupt();
     } finally {
+      // set encryption key to 16-byte zero.
+      TSFileDescriptor.getInstance().getConfig().setEncryptKey(new byte[16]);
       // Flush and shutdown audit log async batch while encryption key is still valid.
       if (CommonDescriptor.getInstance().getConfig().isEnableAuditLog()) {
         DNAuditLogger.getInstance().stop();
       }
-      // set encryption key to 16-byte zero.
-      TSFileDescriptor.getInstance().getConfig().setEncryptKey(new byte[16]);
     }
   }
 
