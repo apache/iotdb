@@ -112,8 +112,7 @@ public enum BuiltinPipePlugin {
   IOT_CONSENSUS_V2_ASYNC_SINK("iot-consensus-v2-async-sink", IoTConsensusV2AsyncSink.class),
   // Legacy alias for stale PipeMeta written before the PipeConsensus -> IoTConsensusV2 rename.
   PIPE_CONSENSUS_ASYNC_SINK("pipe-consensus-async-sink", IoTConsensusV2AsyncSink.class),
-  TSFILE_LOCAL_SINK("tsfile-local-sink", PipeTsFileLocalSink.class)
-  ;
+  TSFILE_LOCAL_SINK("tsfile-local-sink", PipeTsFileLocalSink.class);
 
   private final String pipePluginName;
   private final Class<?> pipePluginClass;
