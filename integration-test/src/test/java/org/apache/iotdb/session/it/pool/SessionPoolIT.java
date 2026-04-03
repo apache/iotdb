@@ -62,6 +62,7 @@ public class SessionPoolIT {
 
   @Before
   public void setUp() throws Exception {
+    EnvFactory.getEnv().getConfig().getCommonConfig().setWalMode("SYNC");
     // As this IT is only testing SessionPool itself, there's no need to launch a large cluster
     EnvFactory.getEnv().initClusterEnvironment(1, 1);
   }
