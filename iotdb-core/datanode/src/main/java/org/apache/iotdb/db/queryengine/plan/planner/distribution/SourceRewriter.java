@@ -1452,14 +1452,18 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
         tSeriesPartitionSlot.slotId,
         k ->
             getDataRegionReplicaSetWithTimeFilter(
-                finalSeriesPartitionMap, tSeriesPartitionSlot, timeFilter));
+                finalSeriesPartitionMap,
+                tSeriesPartitionSlot,
+                timeFilter,
+                analysis.getDatabaseName()));
   }
 
   public List<TRegionReplicaSet> getDataRegionReplicaSetWithTimeFilter(
       Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
           seriesPartitionMap,
       TSeriesPartitionSlot tSeriesPartitionSlot,
-      Filter timeFilter) {
+      Filter timeFilter,
+      String database) {
     Map<TTimePartitionSlot, List<TRegionReplicaSet>> regionReplicaSetMap =
         seriesPartitionMap.getOrDefault(tSeriesPartitionSlot, Collections.emptyMap());
     if (regionReplicaSetMap.isEmpty()) {
@@ -1469,7 +1473,8 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
     Set<TRegionReplicaSet> uniqueValues = new HashSet<>();
     for (Map.Entry<TTimePartitionSlot, List<TRegionReplicaSet>> entry :
         regionReplicaSetMap.entrySet()) {
-      if (!TimePartitionUtils.satisfyPartitionStartTime(timeFilter, entry.getKey().startTime)) {
+      if (!TimePartitionUtils.satisfyPartitionStartTime(
+          timeFilter, entry.getKey().startTime, database)) {
         continue;
       }
       for (TRegionReplicaSet tRegionReplicaSet : entry.getValue()) {

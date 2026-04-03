@@ -44,6 +44,7 @@ import java.io.DataOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.util.Map;
 
 import static org.apache.iotdb.rpc.TConfigurationConst.defaultTConfiguration;
 
@@ -226,7 +227,7 @@ public class ThriftCommonsSerDeUtils {
   }
 
   public static void serializeTTimePartitionSlot(
-      TTimePartitionSlot timePartitionSlot, DataOutputStream stream) {
+      Map<String, TTimePartitionSlot> timePartitionSlot, DataOutputStream stream) {
     try {
       timePartitionSlot.write(generateWriteProtocol(stream));
     } catch (TException e) {

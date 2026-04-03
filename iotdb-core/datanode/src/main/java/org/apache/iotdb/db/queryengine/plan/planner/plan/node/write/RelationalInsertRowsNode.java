@@ -173,7 +173,8 @@ public class RelationalInsertRowsNode extends InsertRowsNode {
               .getDataPartitionInfo()
               .getDataRegionReplicaSetForWriting(
                   insertRowNode.getDeviceID(),
-                  TimePartitionUtils.getTimePartitionSlot(insertRowNode.getTime()),
+                  TimePartitionUtils.getTimePartitionSlot(
+                      insertRowNode.getTime(), analysis.getDatabaseName()),
                   analysis.getDatabaseName());
 
       // Collect redirectInfo

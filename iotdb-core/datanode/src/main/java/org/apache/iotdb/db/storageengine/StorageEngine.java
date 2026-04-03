@@ -44,7 +44,6 @@ import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -174,11 +173,6 @@ public class StorageEngine implements IService {
     return InstanceHolder.INSTANCE;
   }
 
-  private static void initTimePartition() {
-    TimePartitionUtils.setTimePartitionInterval(
-        CommonDescriptor.getInstance().getConfig().getTimePartitionInterval());
-  }
-
   /** block insertion if the insertion is rejected by memory control */
   public static void blockInsertionIfReject() throws WriteProcessRejectException {
     long startTime = System.currentTimeMillis();
@@ -299,8 +293,6 @@ public class StorageEngine implements IService {
   @Override
   public void start() throws StartupException {
     recoverDataRegionNum = 0;
-    // build time Interval to divide time partition
-    initTimePartition();
     // create systemDir
     try {
       FileUtils.forceMkdir(SystemFileFactory.INSTANCE.getFile(systemDir));

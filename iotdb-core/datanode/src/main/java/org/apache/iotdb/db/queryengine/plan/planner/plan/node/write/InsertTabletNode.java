@@ -235,15 +235,18 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
       return Collections.emptyList();
     }
 
-    final Map<IDeviceID, PartitionSplitInfo> deviceIDSplitInfoMap = collectSplitRanges();
+    final Map<IDeviceID, PartitionSplitInfo> deviceIDSplitInfoMap =
+        collectSplitRanges(analysis.getDatabaseName());
     final Map<TRegionReplicaSet, List<Integer>> splitMap =
         splitByReplicaSet(deviceIDSplitInfoMap, analysis);
     return doSplit(splitMap);
   }
 
-  private Map<IDeviceID, PartitionSplitInfo> collectSplitRanges() {
-    long upperBoundOfTimePartition = TimePartitionUtils.getTimePartitionUpperBound(times[0]);
-    TTimePartitionSlot timePartitionSlot = TimePartitionUtils.getTimePartitionSlot(times[0]);
+  private Map<IDeviceID, PartitionSplitInfo> collectSplitRanges(String database) {
+    long upperBoundOfTimePartition =
+        TimePartitionUtils.getTimePartitionUpperBound(times[0], database);
+    TTimePartitionSlot timePartitionSlot =
+        TimePartitionUtils.getTimePartitionSlot(times[0], database);
     int startLoc = 0; // included
     IDeviceID currDeviceId = getDeviceID(0);
 
@@ -261,8 +264,9 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
         splitInfo.timePartitionSlots.add(timePartitionSlot);
         // next init
         startLoc = i;
-        upperBoundOfTimePartition = TimePartitionUtils.getTimePartitionUpperBound(times[i]);
-        timePartitionSlot = TimePartitionUtils.getTimePartitionSlot(times[i]);
+        upperBoundOfTimePartition =
+            TimePartitionUtils.getTimePartitionUpperBound(times[i], database);
+        timePartitionSlot = TimePartitionUtils.getTimePartitionSlot(times[i], database);
         currDeviceId = nextDeviceId;
       }
     }
@@ -381,16 +385,19 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   }
 
   @TestOnly
-  public List<TTimePartitionSlot> getTimePartitionSlots() {
+  public List<TTimePartitionSlot> getTimePartitionSlots(String database) {
     List<TTimePartitionSlot> result = new ArrayList<>();
-    long upperBoundOfTimePartition = TimePartitionUtils.getTimePartitionUpperBound(times[0]);
-    TTimePartitionSlot timePartitionSlot = TimePartitionUtils.getTimePartitionSlot(times[0]);
+    long upperBoundOfTimePartition =
+        TimePartitionUtils.getTimePartitionUpperBound(times[0], database);
+    TTimePartitionSlot timePartitionSlot =
+        TimePartitionUtils.getTimePartitionSlot(times[0], database);
     for (int i = 1; i < times.length; i++) { // times are sorted in session API.
       if (times[i] >= upperBoundOfTimePartition) {
         result.add(timePartitionSlot);
         // next init
-        upperBoundOfTimePartition = TimePartitionUtils.getTimePartitionUpperBound(times[i]);
-        timePartitionSlot = TimePartitionUtils.getTimePartitionSlot(times[i]);
+        upperBoundOfTimePartition =
+            TimePartitionUtils.getTimePartitionUpperBound(times[i], database);
+        timePartitionSlot = TimePartitionUtils.getTimePartitionSlot(times[i], database);
       }
     }
     result.add(timePartitionSlot);

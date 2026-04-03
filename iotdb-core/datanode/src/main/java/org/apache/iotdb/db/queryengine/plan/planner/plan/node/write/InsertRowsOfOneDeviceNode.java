@@ -168,7 +168,8 @@ public class InsertRowsOfOneDeviceNode extends InsertNode {
     for (int i = 0; i < insertRowNodeList.size(); i++) {
       InsertRowNode insertRowNode = insertRowNodeList.get(i);
       TTimePartitionSlot timePartitionSlot =
-          TimePartitionUtils.getTimePartitionSlot(insertRowNode.getTime());
+          TimePartitionUtils.getTimePartitionSlot(
+              insertRowNode.getTime(), analysis.getDatabaseName());
       TRegionReplicaSet dataRegionReplicaSet =
           analysis
               .getDataPartitionInfo()

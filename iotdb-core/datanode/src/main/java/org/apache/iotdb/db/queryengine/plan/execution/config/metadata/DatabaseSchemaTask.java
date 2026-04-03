@@ -66,6 +66,9 @@ public class DatabaseSchemaTask implements IConfigTask {
     if (databaseSchemaStatement.getTimePartitionInterval() != null) {
       databaseSchema.setTimePartitionInterval(databaseSchemaStatement.getTimePartitionInterval());
     }
+    if (databaseSchemaStatement.getTimePartitionOrigin() != null) {
+      databaseSchema.setTimePartitionOrigin(databaseSchemaStatement.getTimePartitionOrigin());
+    }
     if (databaseSchemaStatement.getSchemaRegionGroupNum() != null) {
       databaseSchema.setMinSchemaRegionGroupNum(databaseSchemaStatement.getSchemaRegionGroupNum());
     }

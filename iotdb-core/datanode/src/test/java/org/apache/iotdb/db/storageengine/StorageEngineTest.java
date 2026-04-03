@@ -74,14 +74,17 @@ public class StorageEngineTest {
 
   @Test
   public void testGetTimePartitionId() {
+    @SuppressWarnings("deprecation")
     long timePartitionInterval = TimePartitionUtils.getTimePartitionInterval();
-    Assert.assertEquals(-2, TimePartitionUtils.getTimePartitionId(-timePartitionInterval - 1));
-    Assert.assertEquals(-1, TimePartitionUtils.getTimePartitionId(-timePartitionInterval));
+    @SuppressWarnings("deprecation")
+    long interval = TimePartitionUtils.getTimePartitionInterval();
+    Assert.assertEquals(-2, TimePartitionUtils.getTimePartitionId(-interval - 1));
+    Assert.assertEquals(-1, TimePartitionUtils.getTimePartitionId(-interval));
     Assert.assertEquals(-1, TimePartitionUtils.getTimePartitionId(-1));
     Assert.assertEquals(0, TimePartitionUtils.getTimePartitionId(0));
     Assert.assertEquals(0, TimePartitionUtils.getTimePartitionId(1));
-    Assert.assertEquals(0, TimePartitionUtils.getTimePartitionId(timePartitionInterval / 2));
-    Assert.assertEquals(1, TimePartitionUtils.getTimePartitionId(timePartitionInterval * 2 - 1));
+    Assert.assertEquals(0, TimePartitionUtils.getTimePartitionId(interval / 2));
+    Assert.assertEquals(1, TimePartitionUtils.getTimePartitionId(interval * 2 - 1));
     Assert.assertEquals(2, TimePartitionUtils.getTimePartitionId(timePartitionInterval * 2 + 1));
   }
 }

@@ -757,11 +757,11 @@ public class DataRegion implements IDataRegionForQuery {
           dataRegionRecoveryContext.recoverPerformers) {
         recoverUnsealedTsFileCallBack(recoverPerformer);
       }
-      for (TsFileResource resource : tsFileManager.getTsFileList(true)) {
+      for (TsFileResource resource : tsFileManager.getTsFileList(true, databaseName)) {
         long partitionNum = resource.getTimePartition();
         updatePartitionFileVersion(partitionNum, resource.getVersion());
       }
-      for (TsFileResource resource : tsFileManager.getTsFileList(false)) {
+      for (TsFileResource resource : tsFileManager.getTsFileList(false, databaseName)) {
         long partitionNum = resource.getTimePartition();
         updatePartitionFileVersion(partitionNum, resource.getVersion());
       }
@@ -2069,14 +2069,14 @@ public class DataRegion implements IDataRegionForQuery {
 
   /** close all tsfile resource */
   public void closeAllResources() {
-    for (TsFileResource tsFileResource : tsFileManager.getTsFileList(false)) {
+    for (TsFileResource tsFileResource : tsFileManager.getTsFileList(false, databaseName)) {
       try {
         tsFileResource.close();
       } catch (IOException e) {
         logger.error("Cannot close a TsFileResource {}", tsFileResource, e);
       }
     }
-    for (TsFileResource tsFileResource : tsFileManager.getTsFileList(true)) {
+    for (TsFileResource tsFileResource : tsFileManager.getTsFileList(true, databaseName)) {
       try {
         tsFileResource.close();
       } catch (IOException e) {
@@ -2097,8 +2097,8 @@ public class DataRegion implements IDataRegionForQuery {
       // normally, mergingModification is just need to be closed by after a merge task is finished.
       // we close it here just for IT test.
       closeAllResources();
-      List<TsFileResource> tsFileResourceList = tsFileManager.getTsFileList(true);
-      tsFileResourceList.addAll(tsFileManager.getTsFileList(false));
+      List<TsFileResource> tsFileResourceList = tsFileManager.getTsFileList(true, databaseName);
+      tsFileResourceList.addAll(tsFileManager.getTsFileList(false, databaseName));
       tsFileResourceList.forEach(
           x -> {
             FileMetrics.getInstance().deleteTsFile(x.isSeq(), Collections.singletonList(x));
@@ -2401,7 +2401,7 @@ public class DataRegion implements IDataRegionForQuery {
       throws QueryProcessException {
 
     Pair<List<TsFileResource>, List<TsFileResource>> pair =
-        tsFileManager.getAllTsFileListForQuery(timePartitions, globalTimeFilter);
+        tsFileManager.getAllTsFileListForQuery(timePartitions, globalTimeFilter, databaseName);
 
     List<TsFileResource> seqTsFileResouceList = pair.left;
     List<TsFileResource> unSeqTsFileResouceList = pair.right;
@@ -2573,7 +2573,7 @@ public class DataRegion implements IDataRegionForQuery {
       List<Long> timePartitions,
       long waitForLockTimeInMs) {
     Pair<List<TsFileResource>, List<TsFileResource>> pair =
-        tsFileManager.getAllTsFileListForQuery(timePartitions, globalTimeFilter);
+        tsFileManager.getAllTsFileListForQuery(timePartitions, globalTimeFilter, databaseName);
 
     List<TsFileResource> seqTsFileResouceList = pair.left;
     List<TsFileResource> unSeqTsFileResouceList = pair.right;
@@ -2598,7 +2598,7 @@ public class DataRegion implements IDataRegionForQuery {
 
         List<IFileScanHandle> unSeqFileScanHandles =
             getFileHandleListForQuery(
-                tsFileManager.getTsFileList(false, timePartitions, globalTimeFilter),
+                tsFileManager.getTsFileList(false, timePartitions, globalTimeFilter, databaseName),
                 pathList,
                 queryContext,
                 globalTimeFilter,
@@ -2651,7 +2651,7 @@ public class DataRegion implements IDataRegionForQuery {
       long waitForLockTimeInMs) {
 
     Pair<List<TsFileResource>, List<TsFileResource>> pair =
-        tsFileManager.getAllTsFileListForQuery(timePartitions, globalTimeFilter);
+        tsFileManager.getAllTsFileListForQuery(timePartitions, globalTimeFilter, databaseName);
 
     List<TsFileResource> seqTsFileResouceList = pair.left;
     List<TsFileResource> unSeqTsFileResouceList = pair.right;
@@ -2676,7 +2676,7 @@ public class DataRegion implements IDataRegionForQuery {
 
         List<IFileScanHandle> unSeqFileScanHandles =
             getFileHandleListForQuery(
-                tsFileManager.getTsFileList(false, timePartitions, globalTimeFilter),
+                tsFileManager.getTsFileList(false, timePartitions, globalTimeFilter, databaseName),
                 devicePathToAligned,
                 queryContext,
                 globalTimeFilter,
@@ -2822,8 +2822,9 @@ public class DataRegion implements IDataRegionForQuery {
       List<TsFileResource> unsealedResource,
       long startTime,
       long endTime) {
-    List<TsFileResource> tsFileResources = tsFileManager.getTsFileList(true, startTime, endTime);
-    tsFileResources.addAll(tsFileManager.getTsFileList(false, startTime, endTime));
+    List<TsFileResource> tsFileResources =
+        tsFileManager.getTsFileList(true, startTime, endTime, databaseName);
+    tsFileResources.addAll(tsFileManager.getTsFileList(false, startTime, endTime, databaseName));
     tsFileResources.stream().filter(TsFileResource::isClosed).forEach(sealedResource::add);
     tsFileResources.stream()
         .filter(resource -> !resource.isClosed())
@@ -3063,12 +3064,14 @@ public class DataRegion implements IDataRegionForQuery {
       long startTime = modEntry.getStartTime();
       long endTime = modEntry.getEndTime();
       for (Map.Entry<Long, TsFileProcessor> entry : workSequenceTsFileProcessors.entrySet()) {
-        if (TimePartitionUtils.satisfyPartitionId(startTime, endTime, entry.getKey())) {
+        if (TimePartitionUtils.satisfyPartitionId(
+            startTime, endTime, entry.getKey(), deleteDataNode.getDatabaseName())) {
           involvedProcessors.add(entry.getValue());
         }
       }
       for (Map.Entry<Long, TsFileProcessor> entry : workUnsequenceTsFileProcessors.entrySet()) {
-        if (TimePartitionUtils.satisfyPartitionId(startTime, endTime, entry.getKey())) {
+        if (TimePartitionUtils.satisfyPartitionId(
+            startTime, endTime, entry.getKey(), deleteDataNode.getDatabaseName())) {
           involvedProcessors.add(entry.getValue());
         }
       }
@@ -3104,13 +3107,13 @@ public class DataRegion implements IDataRegionForQuery {
         new DeleteDataNode(new PlanNodeId(""), Collections.singletonList(path), startTime, endTime);
     deleteDataNode.setSearchIndex(searchIndex);
     for (Map.Entry<Long, TsFileProcessor> entry : workSequenceTsFileProcessors.entrySet()) {
-      if (TimePartitionUtils.satisfyPartitionId(startTime, endTime, entry.getKey())) {
+      if (TimePartitionUtils.satisfyPartitionId(startTime, endTime, entry.getKey(), databaseName)) {
         WALFlushListener walFlushListener = entry.getValue().logDeleteDataNodeInWAL(deleteDataNode);
         walFlushListeners.add(walFlushListener);
       }
     }
     for (Map.Entry<Long, TsFileProcessor> entry : workUnsequenceTsFileProcessors.entrySet()) {
-      if (TimePartitionUtils.satisfyPartitionId(startTime, endTime, entry.getKey())) {
+      if (TimePartitionUtils.satisfyPartitionId(startTime, endTime, entry.getKey(), databaseName)) {
         WALFlushListener walFlushListener = entry.getValue().logDeleteDataNodeInWAL(deleteDataNode);
         walFlushListeners.add(walFlushListener);
       }
@@ -4342,7 +4345,7 @@ public class DataRegion implements IDataRegionForQuery {
     writeLock("unloadTsFileInside");
     TsFileResource unloadedTsFileResource = null;
     try {
-      Iterator<TsFileResource> sequenceIterator = tsFileManager.getIterator(true);
+      Iterator<TsFileResource> sequenceIterator = tsFileManager.getIterator(true, databaseName);
       while (sequenceIterator.hasNext()) {
         TsFileResource sequenceResource = sequenceIterator.next();
         if (sequenceResource.getTsFile().getName().equals(fileToBeUnloaded.getName())) {
@@ -4354,7 +4357,8 @@ public class DataRegion implements IDataRegionForQuery {
         }
       }
       if (unloadedTsFileResource == null) {
-        Iterator<TsFileResource> unsequenceIterator = tsFileManager.getIterator(false);
+        Iterator<TsFileResource> unsequenceIterator =
+            tsFileManager.getIterator(false, databaseName);
         while (unsequenceIterator.hasNext()) {
           TsFileResource unsequenceResource = unsequenceIterator.next();
           if (unsequenceResource.getTsFile().getName().equals(fileToBeUnloaded.getName())) {
@@ -4382,11 +4386,11 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   public List<TsFileResource> getSequenceFileList() {
-    return tsFileManager.getTsFileList(true);
+    return tsFileManager.getTsFileList(true, databaseName);
   }
 
   public List<TsFileResource> getUnSequenceFileList() {
-    return tsFileManager.getTsFileList(false);
+    return tsFileManager.getTsFileList(false, databaseName);
   }
 
   @Override
@@ -4783,14 +4787,14 @@ public class DataRegion implements IDataRegionForQuery {
       List<TsFileResource> unseqResourcesToBeSettled,
       List<String> tsFilePaths) {
     if (tsFilePaths.isEmpty()) {
-      for (TsFileResource resource : tsFileManager.getTsFileList(true)) {
+      for (TsFileResource resource : tsFileManager.getTsFileList(true, databaseName)) {
         if (!resource.isClosed()) {
           continue;
         }
         resource.setSettleTsFileCallBack(this::settleTsFileCallBack);
         seqResourcesToBeSettled.add(resource);
       }
-      for (TsFileResource resource : tsFileManager.getTsFileList(false)) {
+      for (TsFileResource resource : tsFileManager.getTsFileList(false, databaseName)) {
         if (!resource.isClosed()) {
           continue;
         }
@@ -4808,7 +4812,7 @@ public class DataRegion implements IDataRegionForQuery {
                     .getParentFile()
                     .getParentFile()
                     .getName())) {
-          for (TsFileResource resource : tsFileManager.getTsFileList(true)) {
+          for (TsFileResource resource : tsFileManager.getTsFileList(true, databaseName)) {
             if (resource.getTsFile().getAbsolutePath().equals(tsFilePath)) {
               resource.setSettleTsFileCallBack(this::settleTsFileCallBack);
               seqResourcesToBeSettled.add(resource);
@@ -4816,7 +4820,7 @@ public class DataRegion implements IDataRegionForQuery {
             }
           }
         } else {
-          for (TsFileResource resource : tsFileManager.getTsFileList(false)) {
+          for (TsFileResource resource : tsFileManager.getTsFileList(false, databaseName)) {
             if (resource.getTsFile().getAbsolutePath().equals(tsFilePath)) {
               unseqResourcesToBeSettled.add(resource);
               break;

@@ -177,6 +177,9 @@ public class TimePartitionUtils {
 
   // Get database-specific configuration, fallback to global if not found
   private static DatabaseTimePartitionConfig getDatabaseConfig(String database) {
+    if (database == null) {
+      return new DatabaseTimePartitionConfig(timePartitionOrigin, timePartitionInterval);
+    }
     DatabaseTimePartitionConfig config = databaseConfigCache.get(database);
     return config != null
         ? config
@@ -193,6 +196,10 @@ public class TimePartitionUtils {
 
   public static long getTimePartitionInterval(String database) {
     return getDatabaseConfig(database).getTimePartitionInterval();
+  }
+
+  public static long getTimePartitionOrigin(String database) {
+    return getDatabaseConfig(database).getTimePartitionOrigin();
   }
 
   public static long getTimePartitionLowerBound(long time, String database) {
@@ -324,47 +331,63 @@ public class TimePartitionUtils {
   }
 
   // Original global methods for backward compatibility
+  @Deprecated
   public static long getTimePartitionInterval() {
     return timePartitionInterval;
   }
 
+  @Deprecated
+  public static long getTimePartitionOrigin() {
+    return timePartitionOrigin;
+  }
+
+  @Deprecated
   public static void setTimePartitionInterval(long timePartitionInterval) {
     TimePartitionUtils.timePartitionInterval = timePartitionInterval;
   }
 
   // Backward compatibility methods that use global configuration
+  @Deprecated
   public static TTimePartitionSlot getTimePartitionSlot(long time) {
     return getTimePartitionSlot(time, null);
   }
 
+  @Deprecated
   public static long getTimePartitionLowerBound(long time) {
     return getTimePartitionLowerBound(time, null);
   }
 
+  @Deprecated
   public static long getTimePartitionUpperBound(long time) {
     return getTimePartitionUpperBound(time, null);
   }
 
+  @Deprecated
   public static long getTimePartitionId(long time) {
     return getTimePartitionId(time, null);
   }
 
+  @Deprecated
   public static long getStartTimeByPartitionId(long partitionId) {
     return getStartTimeByPartitionId(partitionId, null);
   }
 
+  @Deprecated
   public static boolean satisfyPartitionId(long startTime, long endTime, long partitionId) {
     return satisfyPartitionId(startTime, endTime, partitionId, null);
   }
 
+  @Deprecated
   public static boolean satisfyPartitionStartTime(Filter timeFilter, long partitionStartTime) {
     return satisfyPartitionStartTime(timeFilter, partitionStartTime, null);
   }
 
+  @Deprecated
   public static boolean satisfyTimePartition(Filter timeFilter, long partitionId) {
     return satisfyTimePartition(timeFilter, partitionId, null);
   }
 
+  @Deprecated
   public static long getEstimateTimePartitionSize(long startTime, long endTime) {
     return getEstimateTimePartitionSize(startTime, endTime, null);
   }

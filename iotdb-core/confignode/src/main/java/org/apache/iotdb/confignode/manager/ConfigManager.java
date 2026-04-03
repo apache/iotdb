@@ -91,6 +91,7 @@ import org.apache.iotdb.confignode.consensus.request.write.database.SetDataRepli
 import org.apache.iotdb.confignode.consensus.request.write.database.SetSchemaReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTimePartitionIntervalPlan;
+import org.apache.iotdb.confignode.consensus.request.write.database.SetTimePartitionOriginPlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.response.ainode.AINodeRegisterResp;
@@ -715,6 +716,16 @@ public class ConfigManager implements IManager {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return clusterSchemaManager.setTimePartitionInterval(setTimePartitionIntervalPlan);
+    } else {
+      return status;
+    }
+  }
+
+  @Override
+  public TSStatus setTimePartitionOrigin(SetTimePartitionOriginPlan setTimePartitionOriginPlan) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return clusterSchemaManager.setTimePartitionOrigin(setTimePartitionOriginPlan);
     } else {
       return status;
     }

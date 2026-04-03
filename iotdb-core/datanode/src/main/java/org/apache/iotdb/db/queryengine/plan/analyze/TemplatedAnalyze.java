@@ -392,8 +392,9 @@ public class TemplatedAnalyze {
       IPartitionFetcher partitionFetcher) {
     long startTime = System.nanoTime();
     try {
+      String database = context.getDatabaseName().orElse(null);
       Pair<List<TTimePartitionSlot>, Pair<Boolean, Boolean>> res =
-          getTimePartitionSlotList(context.getGlobalTimeFilter(), context);
+          getTimePartitionSlotList(context.getGlobalTimeFilter(), context, database);
       // there is no satisfied time range
       if (res.left.isEmpty() && Boolean.FALSE.equals(res.right.left)) {
         return new DataPartition(

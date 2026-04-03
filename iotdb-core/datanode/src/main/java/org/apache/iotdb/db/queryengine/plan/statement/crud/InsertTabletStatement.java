@@ -245,24 +245,27 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
         || columns.length == 0;
   }
 
-  public List<TTimePartitionSlot> getTimePartitionSlots() {
+  public List<TTimePartitionSlot> getTimePartitionSlots(String database) {
     List<TTimePartitionSlot> result = new ArrayList<>();
-    long upperBoundOfTimePartition = TimePartitionUtils.getTimePartitionUpperBound(times[0]);
-    TTimePartitionSlot timePartitionSlot = TimePartitionUtils.getTimePartitionSlot(times[0]);
+    long upperBoundOfTimePartition =
+        TimePartitionUtils.getTimePartitionUpperBound(times[0], database);
+    TTimePartitionSlot timePartitionSlot =
+        TimePartitionUtils.getTimePartitionSlot(times[0], database);
     for (int i = 1; i < times.length; i++) { // times are sorted in session API.
       if (times[i] >= upperBoundOfTimePartition) {
         result.add(timePartitionSlot);
         // next init
-        upperBoundOfTimePartition = TimePartitionUtils.getTimePartitionUpperBound(times[i]);
-        timePartitionSlot = TimePartitionUtils.getTimePartitionSlot(times[i]);
+        upperBoundOfTimePartition =
+            TimePartitionUtils.getTimePartitionUpperBound(times[i], database);
+        timePartitionSlot = TimePartitionUtils.getTimePartitionSlot(times[i], database);
       }
     }
     result.add(timePartitionSlot);
     return result;
   }
 
-  public TTimePartitionSlot getTimePartitionSlot(int i) {
-    return TimePartitionUtils.getTimePartitionSlot(times[i]);
+  public TTimePartitionSlot getTimePartitionSlot(int i, String database) {
+    return TimePartitionUtils.getTimePartitionSlot(times[i], database);
   }
 
   @Override

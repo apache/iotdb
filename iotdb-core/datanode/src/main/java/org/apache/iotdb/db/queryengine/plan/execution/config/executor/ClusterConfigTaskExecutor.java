@@ -3357,9 +3357,11 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         tGetRegionIdReq.setDatabase(getRegionIdStatement.getDatabase());
       }
       tGetRegionIdReq.setStartTimeSlot(
-          TimePartitionUtils.getTimePartitionSlot(getRegionIdStatement.getStartTimeStamp()));
+          TimePartitionUtils.getTimePartitionSlot(
+              getRegionIdStatement.getStartTimeStamp(), getRegionIdStatement.getDatabase()));
       tGetRegionIdReq.setEndTimeSlot(
-          TimePartitionUtils.getTimePartitionSlot(getRegionIdStatement.getEndTimeStamp()));
+          TimePartitionUtils.getTimePartitionSlot(
+              getRegionIdStatement.getEndTimeStamp(), getRegionIdStatement.getDatabase()));
       resp = configNodeClient.getRegionId(tGetRegionIdReq);
       if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         future.setException(new IoTDBException(resp.getStatus()));

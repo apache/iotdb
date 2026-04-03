@@ -46,7 +46,8 @@ public interface ChunkData extends TsFileData {
 
   void writeEntirePage(PageHeader pageHeader, ByteBuffer pageData) throws IOException;
 
-  void writeDecodePage(long[] times, Object[] values, int satisfiedLength) throws IOException;
+  void writeDecodePage(long[] times, Object[] values, int satisfiedLength, String database)
+      throws IOException;
 
   void writeToFileWriter(TsFileIOWriter writer) throws IOException, PageException;
 

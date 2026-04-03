@@ -1591,6 +1591,7 @@ public class TableDistributedPlanGenerator
       IDeviceID deviceId,
       Filter timeFilter,
       Map<Integer, List<TRegionReplicaSet>> cachedSeriesSlotWithRegions) {
+    String database = dataPartition.getDatabaseNameByDevice(deviceId);
 
     // given seriesPartitionSlot has already been calculated
     final TSeriesPartitionSlot seriesPartitionSlot = dataPartition.calculateDeviceGroupId(deviceId);
@@ -1610,7 +1611,8 @@ public class TableDistributedPlanGenerator
     }
     if (timeSlotMap.size() == 1) {
       TTimePartitionSlot timePartitionSlot = timeSlotMap.keySet().iterator().next();
-      if (TimePartitionUtils.satisfyPartitionStartTime(timeFilter, timePartitionSlot.startTime)) {
+      if (TimePartitionUtils.satisfyPartitionStartTime(
+          timeFilter, timePartitionSlot.startTime, database)) {
         cachedSeriesSlotWithRegions.put(
             seriesPartitionSlot.getSlotId(), timeSlotMap.values().iterator().next());
         return timeSlotMap.values().iterator().next();
@@ -1623,7 +1625,8 @@ public class TableDistributedPlanGenerator
     Set<TRegionReplicaSet> resultSet = new HashSet<>();
     for (Map.Entry<TTimePartitionSlot, List<TRegionReplicaSet>> entry : timeSlotMap.entrySet()) {
       TTimePartitionSlot timePartitionSlot = entry.getKey();
-      if (TimePartitionUtils.satisfyPartitionStartTime(timeFilter, timePartitionSlot.startTime)) {
+      if (TimePartitionUtils.satisfyPartitionStartTime(
+          timeFilter, timePartitionSlot.startTime, database)) {
         resultSet.addAll(entry.getValue());
       }
     }

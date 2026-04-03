@@ -521,7 +521,7 @@ public class PartitionInfo implements SnapshotProcessor {
               if (isDatabaseExisted(database) && 0 < ttl && ttl < Long.MAX_VALUE) {
                 databasePartitionTables
                     .get(database)
-                    .autoCleanPartitionTable(ttl, plan.getCurrentTimeSlot());
+                    .autoCleanPartitionTable(ttl, plan.getCurrentTimeSlotMap());
               }
             });
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());

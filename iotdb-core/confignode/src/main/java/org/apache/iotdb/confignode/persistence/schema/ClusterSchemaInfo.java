@@ -54,6 +54,7 @@ import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDataba
 import org.apache.iotdb.confignode.consensus.request.write.database.SetDataReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetSchemaReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTimePartitionIntervalPlan;
+import org.apache.iotdb.confignode.consensus.request.write.database.SetTimePartitionOriginPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.AlterColumnDataTypePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitCreateTablePlan;
@@ -480,6 +481,32 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
             .getAsMNode()
             .getDatabaseSchema()
             .setTimePartitionInterval(plan.getTimePartitionInterval());
+        result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      } else {
+        result.setCode(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode());
+      }
+    } catch (final MetadataException e) {
+      LOGGER.error(ERROR_NAME, e);
+      result.setCode(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode()).setMessage(ERROR_NAME);
+    } finally {
+      databaseReadWriteLock.writeLock().unlock();
+    }
+    return result;
+  }
+
+  public TSStatus setTimePartitionOrigin(final SetTimePartitionOriginPlan plan) {
+    final TSStatus result = new TSStatus();
+    databaseReadWriteLock.writeLock().lock();
+    try {
+      final ConfigMTree mTree =
+          PathUtils.isTableModelDatabase(plan.getDatabase()) ? tableModelMTree : treeModelMTree;
+      final PartialPath path = getQualifiedDatabasePartialPath(plan.getDatabase());
+      if (mTree.isDatabaseAlreadySet(path)) {
+        mTree
+            .getDatabaseNodeByDatabasePath(path)
+            .getAsMNode()
+            .getDatabaseSchema()
+            .setTimePartitionOrigin(plan.getTimePartitionOrigin());
         result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       } else {
         result.setCode(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode());

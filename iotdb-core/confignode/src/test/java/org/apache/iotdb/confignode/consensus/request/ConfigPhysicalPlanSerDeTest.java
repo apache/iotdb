@@ -486,10 +486,21 @@ public class ConfigPhysicalPlanSerDeTest {
     databaseTTLMap.put("root.db1", -1L); // NULL_TTL
     databaseTTLMap.put("root.db2", 3600L * 1000 * 24); // 1d_TTL
     databaseTTLMap.put("root.db3", 3600L * 1000 * 24 * 30); // 1m_TTL
-    TTimePartitionSlot currentTimeSlot =
-        new TTimePartitionSlot(TimePartitionUtils.getTimePartitionSlot(System.currentTimeMillis()));
+    TTimePartitionSlot db1CurrentTimeSlot =
+        new TTimePartitionSlot(
+            TimePartitionUtils.getTimePartitionSlot(System.currentTimeMillis(), "root.db1"));
+    TTimePartitionSlot db2CurrentTimeSlot =
+        new TTimePartitionSlot(
+            TimePartitionUtils.getTimePartitionSlot(System.currentTimeMillis(), "root.db2"));
+    TTimePartitionSlot db3CurrentTimeSlot =
+        new TTimePartitionSlot(
+            TimePartitionUtils.getTimePartitionSlot(System.currentTimeMillis(), "root.db3"));
+    Map<String, TTimePartitionSlot> currentTimeSlotMap = new HashMap<>();
+    currentTimeSlotMap.put("root.db1", db1CurrentTimeSlot);
+    currentTimeSlotMap.put("root.db2", db2CurrentTimeSlot);
+    currentTimeSlotMap.put("root.db3", db3CurrentTimeSlot);
     AutoCleanPartitionTablePlan req0 =
-        new AutoCleanPartitionTablePlan(databaseTTLMap, currentTimeSlot);
+        new AutoCleanPartitionTablePlan(databaseTTLMap, currentTimeSlotMap);
     AutoCleanPartitionTablePlan req1 =
         (AutoCleanPartitionTablePlan)
             ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
