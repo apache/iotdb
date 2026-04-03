@@ -58,6 +58,7 @@ statement
     | dropTableStatement
     | showTableStatement
     | descTableStatement
+    | descQueryStatement
     | alterTableStatement
     | commentStatement
     | showCreateTableStatement
@@ -265,6 +266,10 @@ showTableStatement
 
 descTableStatement
     : (DESC | DESCRIBE) table=qualifiedName (DETAILS)?
+    ;
+
+descQueryStatement
+    : (DESC | DESCRIBE) query
     ;
 
 alterTableStatement
