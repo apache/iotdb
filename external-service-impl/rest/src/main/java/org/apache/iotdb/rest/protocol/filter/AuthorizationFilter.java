@@ -90,7 +90,7 @@ public class AuthorizationFilter implements ContainerRequestFilter, ContainerRes
       return;
     }
 
-    ZoneId zoneId = parseTimeZone(containerRequestContext);
+    ZoneId zoneId = resolveTimeZone(containerRequestContext);
     if (zoneId == null) {
       return;
     }
@@ -155,13 +155,13 @@ public class AuthorizationFilter implements ContainerRequestFilter, ContainerRes
   }
 
   /**
-   * Parses the X-TimeZone header from the request.
+   * Resolves the Time-Zone header from the request.
    *
    * @param requestContext the incoming HTTP request
-   * @return the parsed ZoneId, or {@code null} if the header is invalid (the request is aborted)
+   * @return the resolved ZoneId, or {@code null} if the header is invalid (the request is aborted)
    */
-  private ZoneId parseTimeZone(ContainerRequestContext requestContext) {
-    String timeZoneHeader = requestContext.getHeaderString("X-TimeZone");
+  private ZoneId resolveTimeZone(ContainerRequestContext requestContext) {
+    String timeZoneHeader = requestContext.getHeaderString("Time-Zone");
     if (timeZoneHeader == null || timeZoneHeader.isEmpty()) {
       return ZoneId.systemDefault();
     }

@@ -91,8 +91,8 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
     try {
       RequestValidationHandler.validateSQL(sql);
 
-      Statement statement =
-          StatementGenerator.createStatement(sql.getSql(), ZoneId.systemDefault());
+      ZoneId zoneId = SESSION_MANAGER.getCurrSession().getZoneId();
+      Statement statement = StatementGenerator.createStatement(sql.getSql(), zoneId);
       if (!(statement instanceof ShowStatement) && !(statement instanceof QueryStatement)) {
         return Response.ok()
             .entity(
@@ -168,7 +168,8 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
         sql += " " + expressionRequest.getControl();
       }
 
-      Statement statement = StatementGenerator.createStatement(sql, ZoneId.systemDefault());
+      ZoneId zoneId = SESSION_MANAGER.getCurrSession().getZoneId();
+      Statement statement = StatementGenerator.createStatement(sql, zoneId);
 
       Response response = authorizationHandler.checkAuthority(securityContext, statement);
       if (response != null) {
@@ -232,7 +233,8 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
         // TODO: necessary to create a partial path?
         PartialPath path = new PartialPath(Joiner.on(".").join(requestBody));
         String sql = "show child paths " + path;
-        Statement statement = StatementGenerator.createStatement(sql, ZoneId.systemDefault());
+        ZoneId zoneId = SESSION_MANAGER.getCurrSession().getZoneId();
+        Statement statement = StatementGenerator.createStatement(sql, zoneId);
 
         Response response = authorizationHandler.checkAuthority(securityContext, statement);
         if (response != null) {

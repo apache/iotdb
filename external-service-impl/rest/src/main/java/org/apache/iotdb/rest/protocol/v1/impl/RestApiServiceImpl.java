@@ -87,7 +87,8 @@ public class RestApiServiceImpl extends RestApiService {
     Statement statement = null;
     try {
       RequestValidationHandler.validateSQL(sql);
-      statement = StatementGenerator.createStatement(sql.getSql(), ZoneId.systemDefault());
+      ZoneId zoneId = SESSION_MANAGER.getCurrSession().getZoneId();
+      statement = StatementGenerator.createStatement(sql.getSql(), zoneId);
       if (statement == null) {
         return Response.ok()
             .entity(
@@ -177,7 +178,8 @@ public class RestApiServiceImpl extends RestApiService {
     Statement statement = null;
     try {
       RequestValidationHandler.validateSQL(sql);
-      statement = StatementGenerator.createStatement(sql.getSql(), ZoneId.systemDefault());
+      ZoneId zoneId = SESSION_MANAGER.getCurrSession().getZoneId();
+      statement = StatementGenerator.createStatement(sql.getSql(), zoneId);
       if (statement == null) {
         return Response.ok()
             .entity(
