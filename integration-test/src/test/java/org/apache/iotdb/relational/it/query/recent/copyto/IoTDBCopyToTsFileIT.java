@@ -586,7 +586,8 @@ public class IoTDBCopyToTsFileIT {
         EnvFactory.getEnv().getTableSessionConnectionWithDB(DATABASE_NAME)) {
 
       SessionDataSet sessionDataSet =
-          session.executeQueryStatement("copy test_db.table1 to '12.tsfile'");
+          session.executeQueryStatement(
+              "copy test_db.table1 to '12.tsfile' (MEMORY_THRESHOLD 1000000)");
       SessionDataSet.DataIterator iterator = sessionDataSet.iterator();
       while (iterator.next()) {
         targetFilePath = iterator.getString(1);
@@ -632,7 +633,7 @@ public class IoTDBCopyToTsFileIT {
 
       SessionDataSet sessionDataSet =
           session.executeQueryStatement(
-              "copy (select time, table1.s1 as s1_1, table2.s1 as s1_2 from table1 join table2 using(time) limit 1) to '13.tsfile'");
+              "copy (select time, table1.s1 as s1_1, table2.s1 as s1_2 from table1 join table2 using(time) limit 1) to '13.tsfile' (MEMORY_THRESHOLD 1000000)");
       SessionDataSet.DataIterator iterator = sessionDataSet.iterator();
       while (iterator.next()) {
         targetFilePath = iterator.getString(1);
