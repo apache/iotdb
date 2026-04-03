@@ -100,6 +100,8 @@
                         <exclude>**/RelationalSqlLexer.java</exclude>
                         <exclude>**/RelationalSqlLexer.interp</exclude>
                         <exclude>**/RelationalSql.interp</exclude>
+                        <exclude>**/RelationalSqlBaseListener.java</exclude>
+                        <exclude>**/RelationalSqlListener.java</exclude>
                     </excludes>
                 </configuration>
             </plugin>
