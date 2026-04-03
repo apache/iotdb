@@ -26,6 +26,8 @@ import org.apache.iotdb.commons.pipe.agent.plugin.service.PipePluginExecutableMa
 import org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
+import org.apache.iotdb.db.pipe.processor.iotconsensusv2.IoTConsensusV2Processor;
+import org.apache.iotdb.db.pipe.sink.protocol.iotconsensusv2.IoTConsensusV2AsyncSink;
 import org.apache.iotdb.db.pipe.sink.protocol.thrift.async.IoTDBDataRegionAsyncSink;
 import org.apache.iotdb.db.pipe.source.dataregion.IoTDBDataRegionSource;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
@@ -119,6 +121,20 @@ public class PipeDataNodePluginAgentTest {
                     }))
             .getClass());
     Assert.assertEquals(
+        IoTConsensusV2Processor.class,
+        agent
+            .dataRegion()
+            .reflectProcessor(
+                new PipeParameters(
+                    new HashMap<String, String>() {
+                      {
+                        put(
+                            PipeProcessorConstant.PROCESSOR_KEY,
+                            BuiltinPipePlugin.PIPE_CONSENSUS_PROCESSOR.getPipePluginName());
+                      }
+                    }))
+            .getClass());
+    Assert.assertEquals(
         IoTDBDataRegionAsyncSink.class,
         agent
             .dataRegion()
@@ -129,6 +145,20 @@ public class PipeDataNodePluginAgentTest {
                         put(
                             PipeSinkConstant.CONNECTOR_KEY,
                             BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR.getPipePluginName());
+                      }
+                    }))
+            .getClass());
+    Assert.assertEquals(
+        IoTConsensusV2AsyncSink.class,
+        agent
+            .dataRegion()
+            .reflectSink(
+                new PipeParameters(
+                    new HashMap<String, String>() {
+                      {
+                        put(
+                            PipeSinkConstant.CONNECTOR_KEY,
+                            BuiltinPipePlugin.PIPE_CONSENSUS_ASYNC_CONNECTOR.getPipePluginName());
                       }
                     }))
             .getClass());
