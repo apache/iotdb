@@ -586,7 +586,8 @@ public class IoTDBCopyToTsFileIT {
         EnvFactory.getEnv().getTableSessionConnectionWithDB(DATABASE_NAME)) {
 
       SessionDataSet sessionDataSet =
-          session.executeQueryStatement("copy test_db.table1 to '12.tsfile' (MEMORY_THRESHOLD 1000000)");
+          session.executeQueryStatement(
+              "copy test_db.table1 to '12.tsfile' (MEMORY_THRESHOLD 1000000)");
       SessionDataSet.DataIterator iterator = sessionDataSet.iterator();
       while (iterator.next()) {
         targetFilePath = iterator.getString(1);
