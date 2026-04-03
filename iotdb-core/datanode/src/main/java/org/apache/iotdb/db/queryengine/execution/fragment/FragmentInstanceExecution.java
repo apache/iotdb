@@ -222,7 +222,6 @@ public class FragmentInstanceExecution {
         } else {
           String planNodeId = operatorContext.getPlanNodeId().toString();
           operatorStatistics.setCount(1);
-          operatorStatistics.getSpecifiedInfo().clear();
           leadOverloadOperators.put(operatorType, planNodeId);
           operatorStatisticsMap.put(planNodeId, operatorStatistics);
         }
