@@ -63,8 +63,8 @@ EOF
 else
 cat > "$FILE_NAME" <<EOF
 [Unit]
-Description=iotdb-datanode
-Documentation=https://iotdb.apache.org/
+Description=timechodb-datanode
+Documentation=https://www.timecho.com/
 After=network.target
 
 [Service]
@@ -75,8 +75,8 @@ Type=simple
 User=root
 Group=root
 Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-ExecStart=$IOTDB_SBIN_HOME/start-datanode.sh
-ExecStop=$IOTDB_SBIN_HOME/stop-datanode.sh
+ExecStart=$TIMECHODB_SBIN_HOME/start-datanode.sh
+ExecStop=$TIMECHODB_SBIN_HOME/stop-datanode.sh
 Restart=on-failure
 SuccessExitStatus=143
 RestartSec=5
