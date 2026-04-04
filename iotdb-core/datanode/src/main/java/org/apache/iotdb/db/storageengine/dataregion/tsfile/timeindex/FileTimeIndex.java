@@ -181,7 +181,7 @@ public class FileTimeIndex implements ITimeIndex {
   }
 
   @Override
-  public long getTimePartition(String tsFilePath) {
+  public long getTimePartition(String tsFilePath, String database) {
     try {
       String[] filePathSplits = FilePathUtils.splitTsFilePath(tsFilePath);
       return Long.parseLong(filePathSplits[filePathSplits.length - 2]);
