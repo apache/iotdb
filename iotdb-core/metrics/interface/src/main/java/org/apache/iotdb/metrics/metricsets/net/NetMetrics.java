@@ -41,6 +41,17 @@ public class NetMetrics implements IMetricSet {
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
+    String os = System.getProperty("os.name").toLowerCase();
+    if (os.startsWith("windows")) {
+      Thread thread = new Thread(() -> bindTask(metricService), "Windows-Net-Metric-Binder");
+      thread.setDaemon(true);
+      thread.start();
+      return;
+    }
+    bindTask(metricService);
+  }
+
+  private void bindTask(AbstractMetricService metricService) {
     // metrics for net
     Set<String> ifaceSet = netMetricManager.getIfaceSet();
     for (String iface : ifaceSet) {

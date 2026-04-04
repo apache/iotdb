@@ -17,12 +17,30 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.schema.cache;
+package org.apache.iotdb.db.queryengine.plan.relational.type;
 
-public enum CacheClearOptions {
-  TABLE_ATTRIBUTE,
-  TREE_SCHEMA,
-  QUERY,
-  AUTH,
-  DEFAULT,
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
+import org.apache.tsfile.read.common.type.IntType;
+import org.apache.tsfile.read.common.type.LongType;
+import org.apache.tsfile.read.common.type.Type;
+
+import java.util.Collections;
+import java.util.Map;
+import java.util.Set;
+
+public class TypeCoercionUtils {
+
+  private static final Map<Type, Set<Type>> typeCoercionMap;
+
+  static {
+    typeCoercionMap = ImmutableMap.of(IntType.INT32, ImmutableSet.of(LongType.INT64));
+  }
+
+  public static boolean canCoerceTo(Type from, Type to) {
+    if (from.equals(to)) {
+      return true;
+    }
+    return typeCoercionMap.getOrDefault(from, Collections.emptySet()).contains(to);
+  }
 }

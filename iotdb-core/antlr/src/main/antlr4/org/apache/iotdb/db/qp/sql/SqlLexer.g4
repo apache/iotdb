@@ -1195,6 +1195,10 @@ AUDIT
     : A U D I T
     ;
 
+AUTH
+    : A U T H
+    ;
+
 REPAIR
     : R E P A I R
     ;
