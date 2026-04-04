@@ -1193,7 +1193,8 @@ public class DataRegion implements IDataRegionForQuery {
       }
 
       // init map
-      long timePartitionId = TimePartitionUtils.getTimePartitionId(insertRowNode.getTime());
+      long timePartitionId =
+          TimePartitionUtils.getTimePartitionId(insertRowNode.getTime(), databaseName);
       initFlushTimeMap(timePartitionId);
 
       boolean isSequence =
@@ -1257,7 +1258,7 @@ public class DataRegion implements IDataRegionForQuery {
     int before = loc;
     long beforeTime = insertTabletNode.getTimes()[before];
     // before time partition
-    long beforeTimePartition = TimePartitionUtils.getTimePartitionId(beforeTime);
+    long beforeTimePartition = TimePartitionUtils.getTimePartitionId(beforeTime, databaseName);
     // init flush time map
     initFlushTimeMap(beforeTimePartition);
 
@@ -1265,7 +1266,7 @@ public class DataRegion implements IDataRegionForQuery {
     boolean isSequence = false;
     while (loc < endOffset) {
       long time = insertTabletNode.getTimes()[loc];
-      final long timePartitionId = TimePartitionUtils.getTimePartitionId(time);
+      final long timePartitionId = TimePartitionUtils.getTimePartitionId(time, databaseName);
 
       long lastFlushTime;
       // judge if we should insert sequence
@@ -1779,7 +1780,8 @@ public class DataRegion implements IDataRegionForQuery {
       tsFileProcessor.insertRows(subInsertRowsNode, infoForMetrics);
     } catch (DataTypeInconsistentException e) {
       InsertRowNode firstRow = subInsertRowsNode.getInsertRowNodeList().get(0);
-      long timePartitionId = TimePartitionUtils.getTimePartitionId(firstRow.getTime());
+      long timePartitionId =
+          TimePartitionUtils.getTimePartitionId(firstRow.getTime(), databaseName);
       // flush both MemTables so that the new type can be inserted into a new MemTable
       TsFileProcessor workSequenceProcessor = workSequenceTsFileProcessors.get(timePartitionId);
       if (workSequenceProcessor != null) {
@@ -4472,7 +4474,8 @@ public class DataRegion implements IDataRegionForQuery {
           continue;
         }
         // init map
-        long timePartitionId = TimePartitionUtils.getTimePartitionId(insertRowNode.getTime());
+        long timePartitionId =
+            TimePartitionUtils.getTimePartitionId(insertRowNode.getTime(), databaseName);
 
         if (config.isEnableSeparateData()
             && !lastFlushTimeMap.checkAndCreateFlushedTimePartition(timePartitionId, true)) {
@@ -4596,7 +4599,8 @@ public class DataRegion implements IDataRegionForQuery {
           continue;
         }
         // init map
-        timePartitionIds[i] = TimePartitionUtils.getTimePartitionId(insertRowNode.getTime());
+        timePartitionIds[i] =
+            TimePartitionUtils.getTimePartitionId(insertRowNode.getTime(), databaseName);
 
         if (config.isEnableSeparateData()
             && !lastFlushTimeMap.checkAndCreateFlushedTimePartition(timePartitionIds[i], true)) {

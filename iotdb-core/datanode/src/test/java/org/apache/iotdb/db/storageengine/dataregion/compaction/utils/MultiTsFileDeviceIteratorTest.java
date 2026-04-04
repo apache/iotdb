@@ -146,7 +146,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
     new InnerSpaceCompactionTask(
             0, tsFileManager, seqResources, true, new ReadChunkCompactionPerformer(), 0)
         .start();
-    TsFileResource targetFile = tsFileManager.getTsFileList(true).get(0);
+    TsFileResource targetFile = tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).get(0);
     try (TsFileSequenceReader reader =
         new TsFileSequenceReader(targetFile.getTsFile().getAbsolutePath())) {
       Assert.assertEquals(4000, reader.getAllMeasurements().size());
@@ -448,7 +448,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
 
     int deviceNum = 0;
     try (MultiTsFileDeviceIterator multiTsFileDeviceIterator =
-        new MultiTsFileDeviceIterator(tsFileManager.getTsFileList(true))) {
+        new MultiTsFileDeviceIterator(tsFileManager.getTsFileList(true, COMPACTION_TEST_SG))) {
       while (multiTsFileDeviceIterator.hasNextDevice()) {
         Pair<IDeviceID, Boolean> deviceInfo = multiTsFileDeviceIterator.nextDevice();
         Assert.assertEquals(deviceIds.get(deviceNum), deviceInfo.left);
@@ -488,7 +488,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
         new InnerSpaceCompactionTask(
             0,
             tsFileManager,
-            tsFileManager.getTsFileList(true),
+            tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
             true,
             new ReadChunkCompactionPerformer(),
             0L);
@@ -505,7 +505,10 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
       }
     }
     generateModsFile(
-        seriesPaths, tsFileManager.getTsFileList(true), Long.MIN_VALUE, Long.MAX_VALUE);
+        seriesPaths,
+        tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
+        Long.MIN_VALUE,
+        Long.MAX_VALUE);
 
     deleteTimeseriesInMManager(seriesPaths);
 
@@ -527,7 +530,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
 
     deviceNum = 0;
     try (MultiTsFileDeviceIterator multiTsFileDeviceIterator =
-        new MultiTsFileDeviceIterator(tsFileManager.getTsFileList(true))) {
+        new MultiTsFileDeviceIterator(tsFileManager.getTsFileList(true, COMPACTION_TEST_SG))) {
       while (multiTsFileDeviceIterator.hasNextDevice()) {
         Pair<IDeviceID, Boolean> deviceInfo = multiTsFileDeviceIterator.nextDevice();
         Assert.assertEquals(deviceIds.get(deviceNum), deviceInfo.left);
@@ -539,17 +542,24 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
     TsFileGeneratorUtils.alignDeviceOffset = oldAlignedDeviceOffset;
     List<TsFileResource> targetResources =
         CompactionFileGeneratorUtils.getInnerCompactionTargetTsFileResources(
-            tsFileManager.getTsFileList(true), true);
+            tsFileManager.getTsFileList(true, COMPACTION_TEST_SG), true);
     ReadChunkCompactionPerformer performer =
-        new ReadChunkCompactionPerformer(tsFileManager.getTsFileList(true), targetResources.get(0));
+        new ReadChunkCompactionPerformer(
+            tsFileManager.getTsFileList(true, COMPACTION_TEST_SG), targetResources.get(0));
     performer.setSummary(new CompactionTaskSummary());
     performer.perform();
 
     CompactionUtils.moveTargetFile(
         targetResources, CompactionTaskType.INNER_SEQ, COMPACTION_TEST_SG);
     tsFileManager.replace(
-        tsFileManager.getTsFileList(true), Collections.emptyList(), targetResources, 0);
-    tsFileManager.getTsFileList(true).get(0).setStatusForTest(TsFileResourceStatus.NORMAL);
+        tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
+        Collections.emptyList(),
+        targetResources,
+        0);
+    tsFileManager
+        .getTsFileList(true, COMPACTION_TEST_SG)
+        .get(0)
+        .setStatusForTest(TsFileResourceStatus.NORMAL);
 
     validateSeqFiles(true);
     validateTargetDatas(sourceData, Collections.emptyList());
@@ -602,7 +612,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
 
     int deviceNum = 0;
     try (MultiTsFileDeviceIterator multiTsFileDeviceIterator =
-        new MultiTsFileDeviceIterator(tsFileManager.getTsFileList(true))) {
+        new MultiTsFileDeviceIterator(tsFileManager.getTsFileList(true, COMPACTION_TEST_SG))) {
       while (multiTsFileDeviceIterator.hasNextDevice()) {
         Pair<IDeviceID, Boolean> deviceInfo = multiTsFileDeviceIterator.nextDevice();
         Assert.assertEquals(deviceIds.get(deviceNum), deviceInfo.left);
@@ -642,7 +652,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
         new InnerSpaceCompactionTask(
             0,
             tsFileManager,
-            tsFileManager.getTsFileList(true),
+            tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
             true,
             new ReadChunkCompactionPerformer(),
             0L);
@@ -659,7 +669,10 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
       }
     }
     generateModsFile(
-        seriesPaths, tsFileManager.getTsFileList(true), Long.MIN_VALUE, Long.MAX_VALUE);
+        seriesPaths,
+        tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
+        Long.MIN_VALUE,
+        Long.MAX_VALUE);
 
     deleteTimeseriesInMManager(seriesPaths);
 
@@ -682,7 +695,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
 
     deviceNum = 0;
     try (MultiTsFileDeviceIterator multiTsFileDeviceIterator =
-        new MultiTsFileDeviceIterator(tsFileManager.getTsFileList(true))) {
+        new MultiTsFileDeviceIterator(tsFileManager.getTsFileList(true, COMPACTION_TEST_SG))) {
       while (multiTsFileDeviceIterator.hasNextDevice()) {
         Pair<IDeviceID, Boolean> deviceInfo = multiTsFileDeviceIterator.nextDevice();
         Assert.assertEquals(deviceIds.get(deviceNum), deviceInfo.left);
@@ -694,17 +707,24 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
     TsFileGeneratorUtils.alignDeviceOffset = oldAlignedDeviceOffset;
     List<TsFileResource> targetResources =
         CompactionFileGeneratorUtils.getInnerCompactionTargetTsFileResources(
-            tsFileManager.getTsFileList(true), true);
+            tsFileManager.getTsFileList(true, COMPACTION_TEST_SG), true);
     ReadChunkCompactionPerformer performer =
-        new ReadChunkCompactionPerformer(tsFileManager.getTsFileList(true), targetResources.get(0));
+        new ReadChunkCompactionPerformer(
+            tsFileManager.getTsFileList(true, COMPACTION_TEST_SG), targetResources.get(0));
     performer.setSummary(new CompactionTaskSummary());
     performer.perform();
 
     CompactionUtils.moveTargetFile(
         targetResources, CompactionTaskType.INNER_SEQ, COMPACTION_TEST_SG);
     tsFileManager.replace(
-        tsFileManager.getTsFileList(true), Collections.emptyList(), targetResources, 0);
-    tsFileManager.getTsFileList(true).get(0).setStatusForTest(TsFileResourceStatus.NORMAL);
+        tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
+        Collections.emptyList(),
+        targetResources,
+        0);
+    tsFileManager
+        .getTsFileList(true, COMPACTION_TEST_SG)
+        .get(0)
+        .setStatusForTest(TsFileResourceStatus.NORMAL);
 
     validateSeqFiles(true);
     validateTargetDatas(sourceData, Collections.emptyList());
@@ -752,7 +772,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
 
     int deviceNum = 0;
     try (MultiTsFileDeviceIterator multiTsFileDeviceIterator =
-        new MultiTsFileDeviceIterator(tsFileManager.getTsFileList(true))) {
+        new MultiTsFileDeviceIterator(tsFileManager.getTsFileList(true, COMPACTION_TEST_SG))) {
       while (multiTsFileDeviceIterator.hasNextDevice()) {
         Pair<IDeviceID, Boolean> deviceInfo = multiTsFileDeviceIterator.nextDevice();
         Assert.assertEquals(deviceIds.get(deviceNum), deviceInfo.left);
@@ -792,7 +812,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
         new InnerSpaceCompactionTask(
             0,
             tsFileManager,
-            tsFileManager.getTsFileList(true),
+            tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
             true,
             new ReadPointCompactionPerformer(),
             0L);
@@ -809,7 +829,10 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
       }
     }
     generateModsFile(
-        seriesPaths, tsFileManager.getTsFileList(true), Long.MIN_VALUE, Long.MAX_VALUE);
+        seriesPaths,
+        tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
+        Long.MIN_VALUE,
+        Long.MAX_VALUE);
 
     deleteTimeseriesInMManager(seriesPaths);
 
@@ -831,7 +854,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
 
     deviceNum = 0;
     try (MultiTsFileDeviceIterator multiTsFileDeviceIterator =
-        new MultiTsFileDeviceIterator(tsFileManager.getTsFileList(true))) {
+        new MultiTsFileDeviceIterator(tsFileManager.getTsFileList(true, COMPACTION_TEST_SG))) {
       while (multiTsFileDeviceIterator.hasNextDevice()) {
         Pair<IDeviceID, Boolean> deviceInfo = multiTsFileDeviceIterator.nextDevice();
         Assert.assertEquals(deviceIds.get(deviceNum), deviceInfo.left);
@@ -843,18 +866,26 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
     TsFileGeneratorUtils.alignDeviceOffset = oldAlignedDeviceOffset;
     List<TsFileResource> targetResources =
         CompactionFileGeneratorUtils.getInnerCompactionTargetTsFileResources(
-            tsFileManager.getTsFileList(true), true);
+            tsFileManager.getTsFileList(true, COMPACTION_TEST_SG), true);
     ReadPointCompactionPerformer performer =
         new ReadPointCompactionPerformer(
-            tsFileManager.getTsFileList(true), Collections.emptyList(), targetResources);
+            tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
+            Collections.emptyList(),
+            targetResources);
     performer.setSummary(new CompactionTaskSummary());
     performer.perform();
 
     CompactionUtils.moveTargetFile(
         targetResources, CompactionTaskType.INNER_SEQ, COMPACTION_TEST_SG);
     tsFileManager.replace(
-        tsFileManager.getTsFileList(true), Collections.emptyList(), targetResources, 0);
-    tsFileManager.getTsFileList(true).get(0).setStatusForTest(TsFileResourceStatus.NORMAL);
+        tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
+        Collections.emptyList(),
+        targetResources,
+        0);
+    tsFileManager
+        .getTsFileList(true, COMPACTION_TEST_SG)
+        .get(0)
+        .setStatusForTest(TsFileResourceStatus.NORMAL);
 
     validateSeqFiles(true);
     validateTargetDatas(sourceData, Collections.emptyList());
@@ -902,7 +933,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
 
     int deviceNum = 0;
     try (MultiTsFileDeviceIterator multiTsFileDeviceIterator =
-        new MultiTsFileDeviceIterator(tsFileManager.getTsFileList(true))) {
+        new MultiTsFileDeviceIterator(tsFileManager.getTsFileList(true, COMPACTION_TEST_SG))) {
       while (multiTsFileDeviceIterator.hasNextDevice()) {
         Pair<IDeviceID, Boolean> deviceInfo = multiTsFileDeviceIterator.nextDevice();
         Assert.assertEquals(deviceIds.get(deviceNum), deviceInfo.left);
@@ -942,7 +973,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
         new InnerSpaceCompactionTask(
             0,
             tsFileManager,
-            tsFileManager.getTsFileList(true),
+            tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
             true,
             new ReadPointCompactionPerformer(),
             0L);
@@ -959,7 +990,10 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
       }
     }
     generateModsFile(
-        seriesPaths, tsFileManager.getTsFileList(true), Long.MIN_VALUE, Long.MAX_VALUE);
+        seriesPaths,
+        tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
+        Long.MIN_VALUE,
+        Long.MAX_VALUE);
 
     deleteTimeseriesInMManager(seriesPaths);
 
@@ -991,7 +1025,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
 
     deviceNum = 0;
     try (MultiTsFileDeviceIterator multiTsFileDeviceIterator =
-        new MultiTsFileDeviceIterator(tsFileManager.getTsFileList(true))) {
+        new MultiTsFileDeviceIterator(tsFileManager.getTsFileList(true, COMPACTION_TEST_SG))) {
       while (multiTsFileDeviceIterator.hasNextDevice()) {
         Pair<IDeviceID, Boolean> deviceInfo = multiTsFileDeviceIterator.nextDevice();
         Assert.assertEquals(deviceIds.get(deviceNum), deviceInfo.left);
@@ -1003,18 +1037,26 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
     TsFileGeneratorUtils.alignDeviceOffset = oldAlignedDeviceOffset;
     List<TsFileResource> targetResources =
         CompactionFileGeneratorUtils.getInnerCompactionTargetTsFileResources(
-            tsFileManager.getTsFileList(true), true);
+            tsFileManager.getTsFileList(true, COMPACTION_TEST_SG), true);
     ReadPointCompactionPerformer performer =
         new ReadPointCompactionPerformer(
-            tsFileManager.getTsFileList(true), Collections.emptyList(), targetResources);
+            tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
+            Collections.emptyList(),
+            targetResources);
     performer.setSummary(new CompactionTaskSummary());
     performer.perform();
 
     CompactionUtils.moveTargetFile(
         targetResources, CompactionTaskType.INNER_SEQ, COMPACTION_TEST_SG);
     tsFileManager.replace(
-        tsFileManager.getTsFileList(true), Collections.emptyList(), targetResources, 0);
-    tsFileManager.getTsFileList(true).get(0).setStatusForTest(TsFileResourceStatus.NORMAL);
+        tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
+        Collections.emptyList(),
+        targetResources,
+        0);
+    tsFileManager
+        .getTsFileList(true, COMPACTION_TEST_SG)
+        .get(0)
+        .setStatusForTest(TsFileResourceStatus.NORMAL);
 
     validateSeqFiles(true);
     validateTargetDatas(sourceData, Collections.emptyList());
@@ -1062,7 +1104,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
 
     int deviceNum = 0;
     try (MultiTsFileDeviceIterator multiTsFileDeviceIterator =
-        new MultiTsFileDeviceIterator(tsFileManager.getTsFileList(true))) {
+        new MultiTsFileDeviceIterator(tsFileManager.getTsFileList(true, COMPACTION_TEST_SG))) {
       while (multiTsFileDeviceIterator.hasNextDevice()) {
         Pair<IDeviceID, Boolean> deviceInfo = multiTsFileDeviceIterator.nextDevice();
         Assert.assertEquals(deviceIds.get(deviceNum), deviceInfo.left);
@@ -1102,7 +1144,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
         new InnerSpaceCompactionTask(
             0,
             tsFileManager,
-            tsFileManager.getTsFileList(true),
+            tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
             true,
             new FastCompactionPerformer(false),
             0L);
@@ -1119,7 +1161,10 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
       }
     }
     generateModsFile(
-        seriesPaths, tsFileManager.getTsFileList(true), Long.MIN_VALUE, Long.MAX_VALUE);
+        seriesPaths,
+        tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
+        Long.MIN_VALUE,
+        Long.MAX_VALUE);
 
     deleteTimeseriesInMManager(seriesPaths);
 
@@ -1141,7 +1186,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
 
     deviceNum = 0;
     try (MultiTsFileDeviceIterator multiTsFileDeviceIterator =
-        new MultiTsFileDeviceIterator(tsFileManager.getTsFileList(true))) {
+        new MultiTsFileDeviceIterator(tsFileManager.getTsFileList(true, COMPACTION_TEST_SG))) {
       while (multiTsFileDeviceIterator.hasNextDevice()) {
         Pair<IDeviceID, Boolean> deviceInfo = multiTsFileDeviceIterator.nextDevice();
         Assert.assertEquals(deviceIds.get(deviceNum), deviceInfo.left);
@@ -1153,18 +1198,26 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
     TsFileGeneratorUtils.alignDeviceOffset = oldAlignedDeviceOffset;
     List<TsFileResource> targetResources =
         CompactionFileGeneratorUtils.getInnerCompactionTargetTsFileResources(
-            tsFileManager.getTsFileList(true), true);
+            tsFileManager.getTsFileList(true, COMPACTION_TEST_SG), true);
     FastCompactionPerformer performer =
         new FastCompactionPerformer(
-            tsFileManager.getTsFileList(true), Collections.emptyList(), targetResources);
+            tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
+            Collections.emptyList(),
+            targetResources);
     performer.setSummary(new FastCompactionTaskSummary());
     performer.perform();
 
     CompactionUtils.moveTargetFile(
         targetResources, CompactionTaskType.INNER_SEQ, COMPACTION_TEST_SG);
     tsFileManager.replace(
-        tsFileManager.getTsFileList(true), Collections.emptyList(), targetResources, 0);
-    tsFileManager.getTsFileList(true).get(0).setStatusForTest(TsFileResourceStatus.NORMAL);
+        tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
+        Collections.emptyList(),
+        targetResources,
+        0);
+    tsFileManager
+        .getTsFileList(true, COMPACTION_TEST_SG)
+        .get(0)
+        .setStatusForTest(TsFileResourceStatus.NORMAL);
 
     validateSeqFiles(true);
     validateTargetDatas(sourceData, Collections.emptyList());
@@ -1212,7 +1265,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
 
     int deviceNum = 0;
     try (MultiTsFileDeviceIterator multiTsFileDeviceIterator =
-        new MultiTsFileDeviceIterator(tsFileManager.getTsFileList(true))) {
+        new MultiTsFileDeviceIterator(tsFileManager.getTsFileList(true, COMPACTION_TEST_SG))) {
       while (multiTsFileDeviceIterator.hasNextDevice()) {
         Pair<IDeviceID, Boolean> deviceInfo = multiTsFileDeviceIterator.nextDevice();
         Assert.assertEquals(deviceIds.get(deviceNum), deviceInfo.left);
@@ -1252,7 +1305,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
         new InnerSpaceCompactionTask(
             0,
             tsFileManager,
-            tsFileManager.getTsFileList(true),
+            tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
             true,
             new FastCompactionPerformer(false),
             0L);
@@ -1269,7 +1322,10 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
       }
     }
     generateModsFile(
-        seriesPaths, tsFileManager.getTsFileList(true), Long.MIN_VALUE, Long.MAX_VALUE);
+        seriesPaths,
+        tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
+        Long.MIN_VALUE,
+        Long.MAX_VALUE);
 
     deleteTimeseriesInMManager(seriesPaths);
 
@@ -1301,7 +1357,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
 
     deviceNum = 0;
     try (MultiTsFileDeviceIterator multiTsFileDeviceIterator =
-        new MultiTsFileDeviceIterator(tsFileManager.getTsFileList(true))) {
+        new MultiTsFileDeviceIterator(tsFileManager.getTsFileList(true, COMPACTION_TEST_SG))) {
       while (multiTsFileDeviceIterator.hasNextDevice()) {
         Pair<IDeviceID, Boolean> deviceInfo = multiTsFileDeviceIterator.nextDevice();
         Assert.assertEquals(deviceIds.get(deviceNum), deviceInfo.left);
@@ -1313,18 +1369,26 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
     TsFileGeneratorUtils.alignDeviceOffset = oldAlignedDeviceOffset;
     List<TsFileResource> targetResources =
         CompactionFileGeneratorUtils.getInnerCompactionTargetTsFileResources(
-            tsFileManager.getTsFileList(true), true);
+            tsFileManager.getTsFileList(true, COMPACTION_TEST_SG), true);
     FastCompactionPerformer performer =
         new FastCompactionPerformer(
-            tsFileManager.getTsFileList(true), Collections.emptyList(), targetResources);
+            tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
+            Collections.emptyList(),
+            targetResources);
     performer.setSummary(new FastCompactionTaskSummary());
     performer.perform();
 
     CompactionUtils.moveTargetFile(
         targetResources, CompactionTaskType.INNER_SEQ, COMPACTION_TEST_SG);
     tsFileManager.replace(
-        tsFileManager.getTsFileList(true), Collections.emptyList(), targetResources, 0);
-    tsFileManager.getTsFileList(true).get(0).setStatusForTest(TsFileResourceStatus.NORMAL);
+        tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
+        Collections.emptyList(),
+        targetResources,
+        0);
+    tsFileManager
+        .getTsFileList(true, COMPACTION_TEST_SG)
+        .get(0)
+        .setStatusForTest(TsFileResourceStatus.NORMAL);
 
     validateSeqFiles(true);
     validateTargetDatas(sourceData, Collections.emptyList());

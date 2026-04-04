@@ -215,7 +215,8 @@ public class AnalyzeUtils {
       InsertTabletStatement statement, MPPQueryContext context) {
     DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
     dataPartitionQueryParam.setDeviceID(statement.getDevicePath().getIDeviceIDAsFullDevice());
-    dataPartitionQueryParam.setTimePartitionSlotList(statement.getTimePartitionSlots());
+    dataPartitionQueryParam.setTimePartitionSlotList(
+        statement.getTimePartitionSlots(getDatabaseName(statement, context)));
     dataPartitionQueryParam.setDatabaseName(getDatabaseName(statement, context));
     return dataPartitionQueryParam;
   }

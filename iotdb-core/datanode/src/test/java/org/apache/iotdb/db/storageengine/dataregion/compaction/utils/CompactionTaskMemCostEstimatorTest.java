@@ -70,7 +70,7 @@ public class CompactionTaskMemCostEstimatorTest extends AbstractCompactionTest {
       throws IOException, MetadataException, WriteProcessException {
     createFiles(3, 10, 5, 100000, 0, 0, 50, 50, true, true);
     tsFileManager.addAll(seqResources, true);
-    List<TsFileResource> tsFileList = tsFileManager.getTsFileList(true);
+    List<TsFileResource> tsFileList = tsFileManager.getTsFileList(true, COMPACTION_TEST_SG);
     System.out.println(tsFileList.get(0).getTsFile().getAbsolutePath());
     long cost = new ReadChunkInnerCompactionEstimator().estimateInnerCompactionMemory(tsFileList);
     Assert.assertTrue(cost > 0);
@@ -81,7 +81,7 @@ public class CompactionTaskMemCostEstimatorTest extends AbstractCompactionTest {
       throws IOException, MetadataException, WriteProcessException {
     createFiles(3, 10, 5, 100, 0, 0, 50, 50, false, true);
     tsFileManager.addAll(seqResources, true);
-    List<TsFileResource> tsFileList = tsFileManager.getTsFileList(true);
+    List<TsFileResource> tsFileList = tsFileManager.getTsFileList(true, COMPACTION_TEST_SG);
     long cost = new ReadChunkInnerCompactionEstimator().estimateInnerCompactionMemory(tsFileList);
     Assert.assertTrue(cost > 0);
   }
@@ -103,7 +103,7 @@ public class CompactionTaskMemCostEstimatorTest extends AbstractCompactionTest {
       throws IOException, MetadataException, WriteProcessException {
     createFiles(3, 10, 5, 100, 0, 0, 50, 50, false, true);
     tsFileManager.addAll(seqResources, true);
-    List<TsFileResource> tsFileList = tsFileManager.getTsFileList(true);
+    List<TsFileResource> tsFileList = tsFileManager.getTsFileList(true, COMPACTION_TEST_SG);
     long cost =
         new FastCompactionInnerCompactionEstimator().estimateInnerCompactionMemory(tsFileList);
     Assert.assertTrue(cost > 0);

@@ -2152,7 +2152,7 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
 
     // set the end time of d1 in the first seq file to 1100
     tsFileManager
-        .getTsFileList(true)
+        .getTsFileList(true, COMPACTION_TEST_SG)
         .get(0)
         .updateEndTime(
             IDeviceID.Factory.DEFAULT_FACTORY.create(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1"),
@@ -2160,14 +2160,14 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
 
     // set the end time of d1 in the second seq file to 1200
     tsFileManager
-        .getTsFileList(true)
+        .getTsFileList(true, COMPACTION_TEST_SG)
         .get(1)
         .updateStartTime(
             IDeviceID.Factory.DEFAULT_FACTORY.create(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1"),
             1200L);
 
     for (int i = 1; i < seqResources.size(); i++) {
-      tsFileManager.getTsFileList(true).get(i).degradeTimeIndex();
+      tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).get(i).degradeTimeIndex();
     }
 
     // meet overlap files
@@ -2175,10 +2175,10 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
         TsFileResourceUtils.validateTsFileResourcesHasNoOverlap(
             tsFileManager.getOrCreateSequenceListByTimePartition(0).getArrayList()));
 
-    tsFileManager.getTsFileList(true).get(0).deserialize();
-    tsFileManager.getTsFileList(true).get(1).deserialize();
-    tsFileManager.getTsFileList(true).get(0).degradeTimeIndex();
-    tsFileManager.getTsFileList(true).get(1).degradeTimeIndex();
+    tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).get(0).deserialize();
+    tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).get(1).deserialize();
+    tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).get(0).degradeTimeIndex();
+    tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).get(1).degradeTimeIndex();
     Assert.assertTrue(
         TsFileResourceUtils.validateTsFileResourcesHasNoOverlap(
             tsFileManager.getOrCreateSequenceListByTimePartition(0).getArrayList()));
@@ -2282,11 +2282,14 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
     Assert.assertEquals(2, pairs.get(0).getSeqFiles().size());
     Assert.assertEquals(1, pairs.get(0).getUnseqFiles().size());
     Assert.assertEquals(
-        tsFileManager.getTsFileList(true).get(4), pairs.get(0).getSeqFiles().get(0));
+        tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).get(4),
+        pairs.get(0).getSeqFiles().get(0));
     Assert.assertEquals(
-        tsFileManager.getTsFileList(true).get(5), pairs.get(0).getSeqFiles().get(1));
+        tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).get(5),
+        pairs.get(0).getSeqFiles().get(1));
     Assert.assertEquals(
-        tsFileManager.getTsFileList(false).get(0), pairs.get(0).getUnseqFiles().get(0));
+        tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).get(0),
+        pairs.get(0).getUnseqFiles().get(0));
 
     // target file of first compaction task can be selected to participate in another inner
     // compaction task

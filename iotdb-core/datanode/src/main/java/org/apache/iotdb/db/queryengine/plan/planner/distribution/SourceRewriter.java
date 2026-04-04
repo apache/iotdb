@@ -1236,7 +1236,8 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
         InnerTimeJoinNode innerTimeJoinNode = (InnerTimeJoinNode) node.clone();
         innerTimeJoinNode.setPlanNodeId(context.queryContext.getQueryId().genPlanNodeId());
 
-        List<Long> timePartitionIds = convertToTimePartitionIds(oneRegion);
+        List<Long> timePartitionIds =
+            convertToTimePartitionIds(oneRegion, analysis.getDatabaseName());
         innerTimeJoinNode.setTimePartitions(timePartitionIds);
 
         // region group id -> parent InnerTimeJoinNode
@@ -1285,10 +1286,11 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
     return subInnerJoinNode;
   }
 
-  private List<Long> convertToTimePartitionIds(List<TTimePartitionSlot> timePartitionSlotList) {
+  private List<Long> convertToTimePartitionIds(
+      List<TTimePartitionSlot> timePartitionSlotList, String database) {
     List<Long> res = new ArrayList<>(timePartitionSlotList.size());
     for (TTimePartitionSlot timePartitionSlot : timePartitionSlotList) {
-      res.add(TimePartitionUtils.getTimePartitionId(timePartitionSlot.startTime));
+      res.add(TimePartitionUtils.getTimePartitionId(timePartitionSlot.startTime, database));
     }
     return res;
   }

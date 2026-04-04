@@ -65,11 +65,6 @@ public class TsFileManager {
     this.dataRegionId = dataRegionId;
   }
 
-  // @todo
-  public List<TsFileResource> getTsFileList(boolean sequence) {
-    return getTsFileList(sequence, null, null, "");
-  }
-
   public List<TsFileResource> getTsFileList(boolean sequence, String database) {
     return getTsFileList(sequence, null, null, database);
   }

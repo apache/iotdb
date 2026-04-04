@@ -113,8 +113,7 @@ public class WritePlanNodeSplitTest {
     for (int i = 0; i < seriesSlotPartitionNum; i++) {
       Map<TTimePartitionSlot, List<TRegionReplicaSet>> timePartitionSlotMap = new HashMap<>();
       for (int t = -2; t < 5; t++) {
-        @SuppressWarnings("deprecation")
-        long startTime = t * TimePartitionUtils.getTimePartitionInterval() + 1;
+        long startTime = t * TimePartitionUtils.getTimePartitionInterval("root.sg1") + 1;
         timePartitionSlotMap.put(
             TimePartitionUtils.getTimePartitionSlot(startTime, "root.sg1"),
             Collections.singletonList(
@@ -365,8 +364,7 @@ public class WritePlanNodeSplitTest {
     for (int i = 0; i < 7; i++) {
       InsertRowNode insertRowNode = new InsertRowNode(new PlanNodeId("plan node 3"));
       insertRowNode.setTargetPath(new PartialPath(String.format("root.sg1.d%d", i)));
-      @SuppressWarnings("deprecation")
-      long interval = TimePartitionUtils.getTimePartitionInterval();
+      long interval = TimePartitionUtils.getTimePartitionInterval("root.sg1");
       insertRowNode.setTime((i - 2) * interval);
       insertRowsNode.addOneInsertRowNode(insertRowNode, 2 * i);
 

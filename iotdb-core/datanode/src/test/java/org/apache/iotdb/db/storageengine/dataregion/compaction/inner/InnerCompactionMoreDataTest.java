@@ -171,7 +171,7 @@ public class InnerCompactionMoreDataTest extends InnerCompactionTest {
         new SeriesDataBlockReader(
             path,
             TEST_QUERY_FI_CONTEXT,
-            tsFileManager.getTsFileList(true),
+            tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
             new ArrayList<>(),
             true);
 

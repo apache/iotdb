@@ -3428,7 +3428,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     } catch (final Exception e) {
       future.setException(e);
     }
-    GetTimeSlotListTask.buildTSBlock(resp, future);
+    GetTimeSlotListTask.buildTSBlock(resp, future, getTimeSlotListStatement.getDatabase());
     return future;
   }
 

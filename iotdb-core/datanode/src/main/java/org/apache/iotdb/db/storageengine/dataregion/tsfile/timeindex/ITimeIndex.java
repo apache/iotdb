@@ -102,25 +102,29 @@ public interface ITimeIndex {
    * get time partition
    *
    * @param tsFilePath tsFile absolute path
+   * @param database database name
    * @return partition
    */
-  long getTimePartition(String tsFilePath);
+  long getTimePartition(String tsFilePath, String database);
 
   /**
    * get time partition with check. If data of tsFile spans partitions, an exception will be thrown
    *
    * @param tsFilePath tsFile path
+   * @param database database name
    * @return partition
    * @throws PartitionViolationException data of tsFile spans partitions
    */
-  long getTimePartitionWithCheck(String tsFilePath) throws PartitionViolationException;
+  long getTimePartitionWithCheck(String tsFilePath, String database)
+      throws PartitionViolationException;
 
   /**
    * Check whether the tsFile spans multiple time partitions.
    *
+   * @param database database name
    * @return true if the tsFile spans multiple time partitions, otherwise false.
    */
-  boolean isSpanMultiTimePartitions();
+  boolean isSpanMultiTimePartitions(String database);
 
   /**
    * update start time

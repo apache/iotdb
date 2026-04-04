@@ -191,9 +191,10 @@ public class FileTimeIndex implements ITimeIndex {
   }
 
   @Override
-  public long getTimePartitionWithCheck(String tsFilePath) throws PartitionViolationException {
-    final long startPartitionId = TimePartitionUtils.getTimePartitionId(startTime);
-    final long endPartitionId = TimePartitionUtils.getTimePartitionId(endTime);
+  public long getTimePartitionWithCheck(String tsFilePath, String database)
+      throws PartitionViolationException {
+    final long startPartitionId = TimePartitionUtils.getTimePartitionId(startTime, database);
+    final long endPartitionId = TimePartitionUtils.getTimePartitionId(endTime, database);
 
     if (startPartitionId == endPartitionId) {
       return startPartitionId;
@@ -203,9 +204,9 @@ public class FileTimeIndex implements ITimeIndex {
   }
 
   @Override
-  public boolean isSpanMultiTimePartitions() {
-    return TimePartitionUtils.getTimePartitionId(startTime)
-        != TimePartitionUtils.getTimePartitionId(endTime);
+  public boolean isSpanMultiTimePartitions(String database) {
+    return TimePartitionUtils.getTimePartitionId(startTime, database)
+        != TimePartitionUtils.getTimePartitionId(endTime, database);
   }
 
   @Override

@@ -41,6 +41,7 @@ import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 
 import java.io.DataOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
@@ -227,7 +228,17 @@ public class ThriftCommonsSerDeUtils {
   }
 
   public static void serializeTTimePartitionSlot(
-      Map<String, TTimePartitionSlot> timePartitionSlot, DataOutputStream stream) {
+      Map<String, TTimePartitionSlot> timePartitionSlot, DataOutputStream stream)
+      throws IOException {
+    stream.writeInt(timePartitionSlot.size());
+    for (Map.Entry<String, TTimePartitionSlot> entry : timePartitionSlot.entrySet()) {
+      BasicStructureSerDeUtil.write(entry.getKey(), stream);
+      serializeTTimePartitionSlot(entry.getValue(), stream);
+    }
+  }
+
+  public static void serializeTTimePartitionSlot(
+      TTimePartitionSlot timePartitionSlot, DataOutputStream stream) throws IOException {
     try {
       timePartitionSlot.write(generateWriteProtocol(stream));
     } catch (TException e) {
@@ -243,6 +254,17 @@ public class ThriftCommonsSerDeUtils {
       throw new ThriftSerDeException("Read TTimePartitionSlot failed: ", e);
     }
     return timePartitionSlot;
+  }
+
+  public static Map<String, TTimePartitionSlot> deserializeTTimePartitionSlotMap(
+      ByteBuffer buffer, Map<String, TTimePartitionSlot> map) {
+    int size = buffer.getInt();
+    for (int i = 0; i < size; i++) {
+      String key = BasicStructureSerDeUtil.readString(buffer);
+      TTimePartitionSlot value = deserializeTTimePartitionSlot(buffer);
+      map.put(key, value);
+    }
+    return map;
   }
 
   public static void serializeTConsensusGroupId(

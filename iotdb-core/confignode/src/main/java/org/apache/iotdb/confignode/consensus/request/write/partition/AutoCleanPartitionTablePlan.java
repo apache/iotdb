@@ -35,25 +35,25 @@ import java.util.TreeMap;
 public class AutoCleanPartitionTablePlan extends ConfigPhysicalPlan {
 
   Map<String, Long> databaseTTLMap;
-  TTimePartitionSlot currentTimeSlot;
+  Map<String, TTimePartitionSlot> currentTimeSlotMap;
 
   public AutoCleanPartitionTablePlan() {
     super(ConfigPhysicalPlanType.AutoCleanPartitionTable);
   }
 
   public AutoCleanPartitionTablePlan(
-      Map<String, Long> databaseTTLMap, TTimePartitionSlot currentTimeSlot) {
+      Map<String, Long> databaseTTLMap, Map<String, TTimePartitionSlot> currentTimeSlotMap) {
     this();
     this.databaseTTLMap = databaseTTLMap;
-    this.currentTimeSlot = currentTimeSlot;
+    this.currentTimeSlotMap = currentTimeSlotMap;
   }
 
   public Map<String, Long> getDatabaseTTLMap() {
     return databaseTTLMap;
   }
 
-  public TTimePartitionSlot getCurrentTimeSlot() {
-    return currentTimeSlot;
+  public Map<String, TTimePartitionSlot> getCurrentTimeSlotMap() {
+    return currentTimeSlotMap;
   }
 
   @Override
@@ -64,7 +64,7 @@ public class AutoCleanPartitionTablePlan extends ConfigPhysicalPlan {
       BasicStructureSerDeUtil.write(entry.getKey(), stream);
       stream.writeLong(entry.getValue());
     }
-    ThriftCommonsSerDeUtils.serializeTTimePartitionSlot(currentTimeSlot, stream);
+    ThriftCommonsSerDeUtils.serializeTTimePartitionSlot(currentTimeSlotMap, stream);
   }
 
   @Override
@@ -76,7 +76,8 @@ public class AutoCleanPartitionTablePlan extends ConfigPhysicalPlan {
       long value = buffer.getLong();
       databaseTTLMap.put(key, value);
     }
-    currentTimeSlot = ThriftCommonsSerDeUtils.deserializeTTimePartitionSlot(buffer);
+    currentTimeSlotMap =
+        ThriftCommonsSerDeUtils.deserializeTTimePartitionSlotMap(buffer, new TreeMap<>());
   }
 
   @Override
@@ -89,11 +90,11 @@ public class AutoCleanPartitionTablePlan extends ConfigPhysicalPlan {
     }
     AutoCleanPartitionTablePlan that = (AutoCleanPartitionTablePlan) o;
     return Objects.equals(databaseTTLMap, that.databaseTTLMap)
-        && Objects.equals(currentTimeSlot, that.currentTimeSlot);
+        && Objects.equals(currentTimeSlotMap, that.currentTimeSlotMap);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), databaseTTLMap, currentTimeSlot);
+    return Objects.hash(super.hashCode(), databaseTTLMap, currentTimeSlotMap);
   }
 }

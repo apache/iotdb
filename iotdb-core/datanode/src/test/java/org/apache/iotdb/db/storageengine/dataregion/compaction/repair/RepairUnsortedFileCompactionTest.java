@@ -124,7 +124,8 @@ public class RepairUnsortedFileCompactionTest extends AbstractRepairDataTest {
     Assert.assertTrue(task.start());
 
     TsFileResource resource2 =
-        new TsFileResource(tsFileManager.getTsFileList(false).get(0).getTsFile());
+        new TsFileResource(
+            tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).get(0).getTsFile());
     resource2.deserialize();
     Assert.assertEquals(
         ArrayDeviceTimeIndex.ARRAY_DEVICE_TIME_INDEX_TYPE, resource2.getTimeIndexType());
@@ -148,11 +149,11 @@ public class RepairUnsortedFileCompactionTest extends AbstractRepairDataTest {
     RepairUnsortedFileCompactionTask task =
         new RepairUnsortedFileCompactionTask(0, tsFileManager, resource, resource.isSeq(), 0);
     task.start();
-    Assert.assertEquals(0, tsFileManager.getTsFileList(true).size());
-    Assert.assertEquals(1, tsFileManager.getTsFileList(false).size());
+    Assert.assertEquals(0, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size());
+    Assert.assertEquals(1, tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).size());
     Assert.assertTrue(
         TsFileResourceUtils.validateTsFileDataCorrectness(
-            tsFileManager.getTsFileList(false).get(0)));
+            tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).get(0)));
   }
 
   @Test
@@ -173,11 +174,11 @@ public class RepairUnsortedFileCompactionTest extends AbstractRepairDataTest {
     RepairUnsortedFileCompactionTask task =
         new RepairUnsortedFileCompactionTask(0, tsFileManager, resource, resource.isSeq(), 0);
     task.start();
-    Assert.assertEquals(0, tsFileManager.getTsFileList(true).size());
-    Assert.assertEquals(1, tsFileManager.getTsFileList(false).size());
+    Assert.assertEquals(0, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size());
+    Assert.assertEquals(1, tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).size());
     Assert.assertTrue(
         TsFileResourceUtils.validateTsFileDataCorrectness(
-            tsFileManager.getTsFileList(false).get(0)));
+            tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).get(0)));
   }
 
   @Test
@@ -202,11 +203,11 @@ public class RepairUnsortedFileCompactionTest extends AbstractRepairDataTest {
     RepairUnsortedFileCompactionTask task =
         new RepairUnsortedFileCompactionTask(0, tsFileManager, resource, resource.isSeq(), 0);
     task.start();
-    Assert.assertEquals(0, tsFileManager.getTsFileList(true).size());
-    Assert.assertEquals(1, tsFileManager.getTsFileList(false).size());
+    Assert.assertEquals(0, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size());
+    Assert.assertEquals(1, tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).size());
     Assert.assertTrue(
         TsFileResourceUtils.validateTsFileDataCorrectness(
-            tsFileManager.getTsFileList(false).get(0)));
+            tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).get(0)));
   }
 
   @Test
@@ -235,11 +236,11 @@ public class RepairUnsortedFileCompactionTest extends AbstractRepairDataTest {
     RepairUnsortedFileCompactionTask task =
         new RepairUnsortedFileCompactionTask(0, tsFileManager, resource, resource.isSeq(), 0);
     task.start();
-    Assert.assertEquals(0, tsFileManager.getTsFileList(true).size());
-    Assert.assertEquals(1, tsFileManager.getTsFileList(false).size());
+    Assert.assertEquals(0, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size());
+    Assert.assertEquals(1, tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).size());
     Assert.assertTrue(
         TsFileResourceUtils.validateTsFileDataCorrectness(
-            tsFileManager.getTsFileList(false).get(0)));
+            tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).get(0)));
   }
 
   @Test
@@ -264,11 +265,11 @@ public class RepairUnsortedFileCompactionTest extends AbstractRepairDataTest {
     RepairUnsortedFileCompactionTask task =
         new RepairUnsortedFileCompactionTask(0, tsFileManager, resource, resource.isSeq(), 0);
     task.start();
-    Assert.assertEquals(0, tsFileManager.getTsFileList(true).size());
-    Assert.assertEquals(1, tsFileManager.getTsFileList(false).size());
+    Assert.assertEquals(0, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size());
+    Assert.assertEquals(1, tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).size());
     Assert.assertTrue(
         TsFileResourceUtils.validateTsFileDataCorrectness(
-            tsFileManager.getTsFileList(false).get(0)));
+            tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).get(0)));
   }
 
   @Test
@@ -293,11 +294,11 @@ public class RepairUnsortedFileCompactionTest extends AbstractRepairDataTest {
     RepairUnsortedFileCompactionTask task =
         new RepairUnsortedFileCompactionTask(0, tsFileManager, resource, resource.isSeq(), 0);
     task.start();
-    Assert.assertEquals(0, tsFileManager.getTsFileList(true).size());
-    Assert.assertEquals(1, tsFileManager.getTsFileList(false).size());
+    Assert.assertEquals(0, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size());
+    Assert.assertEquals(1, tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).size());
     Assert.assertTrue(
         TsFileResourceUtils.validateTsFileDataCorrectness(
-            tsFileManager.getTsFileList(false).get(0)));
+            tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).get(0)));
     Assert.assertTrue(
         TsFileResourceUtils.validateTsFileResourcesHasNoOverlap(
             tsFileManager.getOrCreateSequenceListByTimePartition(0)));
@@ -344,7 +345,7 @@ public class RepairUnsortedFileCompactionTest extends AbstractRepairDataTest {
             0);
     Assert.assertFalse(task.start());
 
-    for (TsFileResource resource : tsFileManager.getTsFileList(true)) {
+    for (TsFileResource resource : tsFileManager.getTsFileList(true, COMPACTION_TEST_SG)) {
       Assert.assertTrue(resource.getTsFileRepairStatus().isRepairCompactionCandidate());
     }
 
@@ -368,9 +369,9 @@ public class RepairUnsortedFileCompactionTest extends AbstractRepairDataTest {
         throw new RuntimeException(e);
       }
     }
-    Assert.assertEquals(0, tsFileManager.getTsFileList(true).size());
-    Assert.assertEquals(2, tsFileManager.getTsFileList(false).size());
-    for (TsFileResource resource : tsFileManager.getTsFileList(false)) {
+    Assert.assertEquals(0, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size());
+    Assert.assertEquals(2, tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).size());
+    for (TsFileResource resource : tsFileManager.getTsFileList(false, COMPACTION_TEST_SG)) {
       TsFileResourceUtils.validateTsFileDataCorrectness(resource);
     }
     Assert.assertTrue(
@@ -419,7 +420,7 @@ public class RepairUnsortedFileCompactionTest extends AbstractRepairDataTest {
             0);
     Assert.assertFalse(task.start());
 
-    for (TsFileResource resource : tsFileManager.getTsFileList(true)) {
+    for (TsFileResource resource : tsFileManager.getTsFileList(true, COMPACTION_TEST_SG)) {
       Assert.assertTrue(resource.getTsFileRepairStatus().isRepairCompactionCandidate());
     }
 
@@ -443,9 +444,9 @@ public class RepairUnsortedFileCompactionTest extends AbstractRepairDataTest {
         throw new RuntimeException(e);
       }
     }
-    Assert.assertEquals(0, tsFileManager.getTsFileList(true).size());
-    Assert.assertEquals(2, tsFileManager.getTsFileList(false).size());
-    for (TsFileResource resource : tsFileManager.getTsFileList(false)) {
+    Assert.assertEquals(0, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size());
+    Assert.assertEquals(2, tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).size());
+    for (TsFileResource resource : tsFileManager.getTsFileList(false, COMPACTION_TEST_SG)) {
       TsFileResourceUtils.validateTsFileDataCorrectness(resource);
     }
     Assert.assertTrue(
@@ -495,7 +496,7 @@ public class RepairUnsortedFileCompactionTest extends AbstractRepairDataTest {
             0);
     Assert.assertFalse(task.start());
 
-    for (TsFileResource resource : tsFileManager.getTsFileList(true)) {
+    for (TsFileResource resource : tsFileManager.getTsFileList(true, COMPACTION_TEST_SG)) {
       Assert.assertTrue(resource.getTsFileRepairStatus().isRepairCompactionCandidate());
     }
 
@@ -520,9 +521,9 @@ public class RepairUnsortedFileCompactionTest extends AbstractRepairDataTest {
         throw new RuntimeException(e);
       }
     }
-    Assert.assertEquals(0, tsFileManager.getTsFileList(true).size());
-    Assert.assertEquals(2, tsFileManager.getTsFileList(false).size());
-    for (TsFileResource resource : tsFileManager.getTsFileList(false)) {
+    Assert.assertEquals(0, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size());
+    Assert.assertEquals(2, tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).size());
+    for (TsFileResource resource : tsFileManager.getTsFileList(false, COMPACTION_TEST_SG)) {
       TsFileResourceUtils.validateTsFileDataCorrectness(resource);
     }
   }
@@ -563,14 +564,14 @@ public class RepairUnsortedFileCompactionTest extends AbstractRepairDataTest {
     RepairUnsortedFileCompactionTask task =
         new RepairUnsortedFileCompactionTask(0, tsFileManager, seqResource2, true, 0);
     Assert.assertTrue(task.start());
-    Assert.assertEquals(1, tsFileManager.getTsFileList(true).size());
-    Assert.assertEquals(1, tsFileManager.getTsFileList(false).size());
+    Assert.assertEquals(1, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size());
+    Assert.assertEquals(1, tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).size());
     Assert.assertTrue(
         TsFileResourceUtils.validateTsFileDataCorrectness(
-            tsFileManager.getTsFileList(false).get(0)));
+            tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).get(0)));
     Assert.assertTrue(
         TsFileResourceUtils.validateTsFileResourceCorrectness(
-            tsFileManager.getTsFileList(false).get(0)));
+            tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).get(0)));
   }
 
   @Test
@@ -614,9 +615,9 @@ public class RepairUnsortedFileCompactionTest extends AbstractRepairDataTest {
     RepairUnsortedFileCompactionTask task =
         new RepairUnsortedFileCompactionTask(0, tsFileManager, seqResource2, true, 0);
     Assert.assertTrue(task.start());
-    Assert.assertEquals(1, tsFileManager.getTsFileList(true).size());
-    Assert.assertEquals(1, tsFileManager.getTsFileList(false).size());
-    TsFileResource targetResource = tsFileManager.getTsFileList(false).get(0);
+    Assert.assertEquals(1, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size());
+    Assert.assertEquals(1, tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).size());
+    TsFileResource targetResource = tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).get(0);
     Assert.assertTrue(TsFileResourceUtils.validateTsFileDataCorrectness(targetResource));
     Assert.assertTrue(TsFileResourceUtils.validateTsFileResourceCorrectness(targetResource));
     Assert.assertTrue(targetResource.anyModFileExists());
@@ -706,7 +707,7 @@ public class RepairUnsortedFileCompactionTest extends AbstractRepairDataTest {
     RepairUnsortedFileCompactionTask task =
         new RepairUnsortedFileCompactionTask(0, tsFileManager, resource, true, 0);
     Assert.assertTrue(task.start());
-    TsFileResource target = tsFileManager.getTsFileList(false).get(0);
+    TsFileResource target = tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).get(0);
     try (TsFileSequenceReader reader = new TsFileSequenceReader(target.getTsFilePath())) {
       List<AbstractAlignedChunkMetadata> chunkMetadataList =
           reader.getAlignedChunkMetadata(
@@ -820,7 +821,7 @@ public class RepairUnsortedFileCompactionTest extends AbstractRepairDataTest {
     RepairUnsortedFileCompactionTask task =
         new RepairUnsortedFileCompactionTask(0, tsFileManager, resource, true, 0);
     Assert.assertTrue(task.start());
-    TsFileResource target = tsFileManager.getTsFileList(false).get(0);
+    TsFileResource target = tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).get(0);
     try (TsFileSequenceReader reader = new TsFileSequenceReader(target.getTsFilePath())) {
       List<AbstractAlignedChunkMetadata> chunkMetadataList =
           reader.getAlignedChunkMetadata(
@@ -864,7 +865,7 @@ public class RepairUnsortedFileCompactionTest extends AbstractRepairDataTest {
     RepairUnsortedFileCompactionTask task =
         new RepairUnsortedFileCompactionTask(0, tsFileManager, resource, true, 0);
     Assert.assertTrue(task.start());
-    TsFileResource target = tsFileManager.getTsFileList(false).get(0);
+    TsFileResource target = tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).get(0);
     try (TsFileSequenceReader reader = new TsFileSequenceReader(target.getTsFilePath())) {
       List<IDeviceID> devicesInTargetFile = reader.getAllDevices();
       Assert.assertEquals(Arrays.asList(d1, d2), devicesInTargetFile);
@@ -909,7 +910,8 @@ public class RepairUnsortedFileCompactionTest extends AbstractRepairDataTest {
     task = new RepairUnsortedFileCompactionTask(0, tsFileManager, resource2, true, 0);
     Assert.assertTrue(task.start());
 
-    List<TsFileResource> sourceTsFileResources = tsFileManager.getTsFileList(false);
+    List<TsFileResource> sourceTsFileResources =
+        tsFileManager.getTsFileList(false, COMPACTION_TEST_SG);
     List<IFullPath> fullPaths = getPaths(sourceTsFileResources);
     Map<IFullPath, List<TimeValuePair>> dataByQuery1 =
         CompactionCheckerUtils.getDataByQuery(
