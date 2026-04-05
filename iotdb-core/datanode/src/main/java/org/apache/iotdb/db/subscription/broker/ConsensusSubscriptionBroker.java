@@ -133,6 +133,7 @@ public class ConsensusSubscriptionBroker implements ISubscriptionBroker {
 
       final List<ConsensusPrefetchingQueue> pollQueues =
           buildPollOrderForAssignedQueues(assignedQueues, topicName);
+      final int eventsBeforeTopicPoll = eventsToPoll.size();
 
       for (final ConsensusPrefetchingQueue consensusQueue : pollQueues) {
         if (consensusQueue.isClosed()) {
@@ -166,7 +167,6 @@ public class ConsensusSubscriptionBroker implements ISubscriptionBroker {
           break;
         }
       }
-
       if (totalSize >= maxBytes) {
         break;
       }
@@ -370,7 +370,6 @@ public class ConsensusSubscriptionBroker implements ISubscriptionBroker {
       final RegionProgress regionProgress,
       final boolean seekAfter) {
     if (Objects.isNull(regionProgress) || regionProgress.getWriterPositions().isEmpty()) {
-      queue.seekToEnd();
       return;
     }
     if (seekAfter) {

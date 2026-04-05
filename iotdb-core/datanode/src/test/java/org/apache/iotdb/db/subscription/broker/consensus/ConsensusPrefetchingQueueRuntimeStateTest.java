@@ -43,7 +43,6 @@ import java.util.Map;
 import java.util.NavigableMap;
 import java.util.PriorityQueue;
 import java.util.TreeMap;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -91,51 +90,6 @@ public class ConsensusPrefetchingQueueRuntimeStateTest {
 
       assertFalse(queue.isActive());
       assertNull(queue.poll("consumer", (RegionProgress) null));
-    } finally {
-      queue.close();
-    }
-  }
-
-  @Test
-  public void testInitPrefetchRollsWalOnceBeforeRetryingLookup() {
-    final TestConsensusPrefetchingQueue queue = createTestQueue();
-    final RegionProgress regionProgress =
-        new RegionProgress(
-            Collections.singletonMap(
-                new WriterId("DataRegion[11]", 2, 5L), new WriterProgress(10L, 3L)));
-    final AtomicBoolean walRolledDuringInit = new AtomicBoolean(false);
-    queue.setLocateResults(-1L, 42L);
-
-    try {
-      final long searchIndex =
-          queue.findEarliestSearchIndexAfterRegionProgressForInit(
-              new File("."), regionProgress, walRolledDuringInit);
-
-      assertEquals(42L, searchIndex);
-      assertEquals(1, queue.getWalRollCount());
-      assertTrue(walRolledDuringInit.get());
-    } finally {
-      queue.close();
-    }
-  }
-
-  @Test
-  public void testInitPrefetchDoesNotRollWalTwice() {
-    final TestConsensusPrefetchingQueue queue = createTestQueue();
-    final RegionProgress regionProgress =
-        new RegionProgress(
-            Collections.singletonMap(
-                new WriterId("DataRegion[11]", 2, 5L), new WriterProgress(10L, 3L)));
-    final AtomicBoolean walRolledDuringInit = new AtomicBoolean(true);
-    queue.setLocateResults(-1L);
-
-    try {
-      final long searchIndex =
-          queue.findEarliestSearchIndexAfterRegionProgressForInit(
-              new File("."), regionProgress, walRolledDuringInit);
-
-      assertEquals(-1L, searchIndex);
-      assertEquals(0, queue.getWalRollCount());
     } finally {
       queue.close();
     }
@@ -418,11 +372,6 @@ public class ConsensusPrefetchingQueueRuntimeStateTest {
   }
 
   private static final class TestConsensusPrefetchingQueue extends ConsensusPrefetchingQueue {
-
-    private long[] locateResults = new long[0];
-    private int locateIndex = 0;
-    private int walRollCount = 0;
-
     private TestConsensusPrefetchingQueue(
         final IoTConsensusServerImpl server,
         final ConsensusLogToTabletConverter converter,
@@ -442,39 +391,8 @@ public class ConsensusPrefetchingQueueRuntimeStateTest {
           true);
     }
 
-    private void setLocateResults(final long... locateResults) {
-      this.locateResults = locateResults;
-      this.locateIndex = 0;
-      this.walRollCount = 0;
-    }
-
-    private int getWalRollCount() {
-      return walRollCount;
-    }
-
     private RegionProgress resolveCommittedRegionProgressForInitForTest() {
       return resolveCommittedRegionProgressForInit();
-    }
-
-    @Override
-    protected long findEarliestSearchIndexAfterRegionProgress(
-        final File logDir, final RegionProgress regionProgress) {
-      final long result =
-          locateIndex < locateResults.length
-              ? locateResults[locateIndex]
-              : locateResults[locateResults.length - 1];
-      locateIndex++;
-      return result;
-    }
-
-    @Override
-    protected boolean canRollCurrentWalFileForPrefetchInit() {
-      return true;
-    }
-
-    @Override
-    protected void rollCurrentWalFileForPrefetchInit() {
-      walRollCount++;
     }
   }
 }

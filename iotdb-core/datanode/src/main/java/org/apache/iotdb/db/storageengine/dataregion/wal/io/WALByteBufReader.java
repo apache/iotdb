@@ -52,6 +52,18 @@ public class WALByteBufReader implements Closeable {
     }
   }
 
+  public WALByteBufReader(File logFile, WALMetaData metaDataSnapshot) throws IOException {
+    WALInputStream walInputStream = new WALInputStream(logFile);
+    try {
+      this.logStream = new DataInputStream(walInputStream);
+      this.metaData = metaDataSnapshot == null ? new WALMetaData() : metaDataSnapshot;
+      this.sizeIterator = this.metaData.getBuffersSize().iterator();
+    } catch (Exception e) {
+      walInputStream.close();
+      throw e;
+    }
+  }
+
   /** Like {@link Iterator#hasNext()}. */
   public boolean hasNext() {
     return sizeIterator.hasNext();

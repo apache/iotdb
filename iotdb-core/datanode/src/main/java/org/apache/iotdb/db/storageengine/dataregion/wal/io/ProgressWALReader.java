@@ -38,6 +38,10 @@ public class ProgressWALReader implements Closeable {
     this.delegate = new WALByteBufReader(logFile);
   }
 
+  public ProgressWALReader(File logFile, WALMetaData metaDataSnapshot) throws IOException {
+    this.delegate = new WALByteBufReader(logFile, metaDataSnapshot);
+  }
+
   public boolean hasNext() {
     return delegate.hasNext();
   }

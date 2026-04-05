@@ -469,8 +469,8 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
     final TopicProgress safeProgress =
         Objects.nonNull(topicProgress) ? topicProgress : new TopicProgress(Collections.emptyMap());
     seekInternalTopicProgress(topicName, safeProgress);
-    setCurrentPositions(topicName, safeProgress);
-    setCommittedPositions(topicName, safeProgress);
+    overlayCurrentPositions(topicName, safeProgress);
+    overlayCommittedPositions(topicName, safeProgress);
     clearPendingRedirectAcks(topicName);
   }
 
@@ -480,8 +480,8 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
     final TopicProgress safeProgress =
         Objects.nonNull(topicProgress) ? topicProgress : new TopicProgress(Collections.emptyMap());
     seekAfterInternalTopicProgress(topicName, safeProgress);
-    setCurrentPositions(topicName, safeProgress);
-    setCommittedPositions(topicName, safeProgress);
+    overlayCurrentPositions(topicName, safeProgress);
+    overlayCommittedPositions(topicName, safeProgress);
     clearPendingRedirectAcks(topicName);
   }
 
@@ -1838,6 +1838,50 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
       return;
     }
     committedPositionsByTopic.put(topicName, new TopicProgress(topicProgress.getRegionProgress()));
+  }
+
+  private void overlayCurrentPositions(final String topicName, final TopicProgress topicProgress) {
+    overlayTopicProgress(currentPositionsByTopic, topicName, topicProgress);
+  }
+
+  private void overlayCommittedPositions(
+      final String topicName, final TopicProgress topicProgress) {
+    overlayTopicProgress(committedPositionsByTopic, topicName, topicProgress);
+  }
+
+  private void overlayTopicProgress(
+      final Map<String, TopicProgress> progressByTopic,
+      final String topicName,
+      final TopicProgress topicProgress) {
+    if (Objects.isNull(topicName)
+        || topicName.isEmpty()
+        || Objects.isNull(topicProgress)
+        || topicProgress.getRegionProgress().isEmpty()) {
+      return;
+    }
+    progressByTopic.compute(
+        topicName,
+        (ignored, oldTopicProgress) -> {
+          final Map<String, RegionProgress> mergedRegionProgress =
+              Objects.nonNull(oldTopicProgress)
+                  ? new HashMap<>(oldTopicProgress.getRegionProgress())
+                  : new HashMap<>();
+          topicProgress
+              .getRegionProgress()
+              .forEach(
+                  (regionId, regionProgress) -> {
+                    if (Objects.isNull(regionId)
+                        || regionId.isEmpty()
+                        || Objects.isNull(regionProgress)
+                        || regionProgress.getWriterPositions().isEmpty()) {
+                      return;
+                    }
+                    mergedRegionProgress.put(
+                        regionId,
+                        new RegionProgress(new HashMap<>(regionProgress.getWriterPositions())));
+                  });
+          return mergedRegionProgress.isEmpty() ? null : new TopicProgress(mergedRegionProgress);
+        });
   }
 
   private WriterId extractWriterId(final SubscriptionCommitContext commitContext) {

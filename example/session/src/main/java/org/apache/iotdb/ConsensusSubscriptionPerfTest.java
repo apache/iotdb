@@ -21,6 +21,7 @@ package org.apache.iotdb;
 
 import org.apache.iotdb.rpc.subscription.config.TopicConfig;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
+import org.apache.iotdb.rpc.subscription.payload.poll.TopicProgress;
 import org.apache.iotdb.session.subscription.ISubscriptionTreeSession;
 import org.apache.iotdb.session.subscription.SubscriptionTreeSessionBuilder;
 import org.apache.iotdb.session.subscription.consumer.tree.SubscriptionTreePullConsumer;
@@ -37,6 +38,7 @@ import org.apache.tsfile.write.schema.IMeasurementSchema;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -44,8 +46,11 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.NavigableMap;
 import java.util.Objects;
 import java.util.Properties;
+import java.util.Random;
+import java.util.TreeMap;
 import java.util.concurrent.locks.LockSupport;
 
 /**
@@ -68,6 +73,7 @@ public class ConsensusSubscriptionPerfTest {
 
   private static final DateTimeFormatter TIME_FORMATTER =
       DateTimeFormatter.ofPattern("HH:mm:ss").withZone(ZoneId.systemDefault());
+  private static final long RANDOM_SEEK_CHECKPOINT_INTERVAL_ROWS = 100_000L;
 
   public static void main(final String[] args) throws Exception {
     final PerfConfig config = PerfConfig.parse(args);
@@ -93,14 +99,24 @@ public class ConsensusSubscriptionPerfTest {
       return;
     }
 
-    final PerfStats stats = new PerfStats();
+    final PerfStats stats = new PerfStats(config.enableEquivalentRowTracking());
+    final RandomSeekController randomSeekController = new RandomSeekController(config.randomSeek);
+    final ScheduledSeekController scheduledSeekController =
+        new ScheduledSeekController(config.seekCaptureRows > 0 && config.seekTriggerNanos > 0);
+    final ConsumerRestartController consumerRestartController =
+        new ConsumerRestartController(config.consumerStopNanos > 0);
+    final ConsumerPauseController consumerPauseController =
+        new ConsumerPauseController(config.consumerPauseEveryRows);
     long startNanoTime;
     long lastReportNanoTime;
     final Snapshot[] lastSnapshot = new Snapshot[1];
+    final ProcessingRateLimiter processingRateLimiter =
+        new ProcessingRateLimiter(config.targetPointsPerSec);
+    SubscriptionTreePullConsumer consumer = null;
+    PollResult lastPollResult = emptyPollResult(stats);
 
-    try (final SubscriptionTreePullConsumer consumer = createConsumer(config)) {
-      consumer.open();
-      consumer.subscribe(config.topic);
+    try {
+      consumer = openAndSubscribeConsumer(config);
 
       System.out.println(
           String.format(
@@ -124,8 +140,93 @@ public class ConsensusSubscriptionPerfTest {
 
       while (config.durationSec <= 0
           || nanosToSeconds(System.nanoTime() - startNanoTime) < config.durationSec) {
-        final PollResult pollResult = consumer.pollWithInfo(config.pollTimeoutMs);
-        handlePollResult(pollResult, stats, config.processDelayNanos, config.ingestWallTimeSensor);
+        final long loopNowNanoTime = System.nanoTime();
+        final long elapsedNanoTime = loopNowNanoTime - startNanoTime;
+
+        if (shouldStopConsumer(config, consumerRestartController, elapsedNanoTime)
+            && Objects.nonNull(consumer)) {
+          consumerRestartController.stopPerformed = true;
+          consumerRestartController.stoppedNanoTime = System.nanoTime();
+          System.out.println(
+              String.format(
+                  Locale.ROOT,
+                  "[%s] Consumer polling paused at elapsedSec=%.3f; polling will resume at %.3f second(s).",
+                  nowString(),
+                  elapsedNanoTime / 1_000_000_000.0d,
+                  config.consumerResumeSec));
+        }
+
+        if (shouldPauseConsumerByRows(config, consumerPauseController, stats.totalRows)
+            && Objects.nonNull(consumer)) {
+          consumerPauseController.pausePerformedCount++;
+          consumerPauseController.paused = true;
+          consumerPauseController.stoppedNanoTime = System.nanoTime();
+          consumerPauseController.nextPauseRows = stats.totalRows + config.consumerPauseEveryRows;
+          System.out.println(
+              String.format(
+                  Locale.ROOT,
+                  "[%s] Consumer paused after rows=%d; polling will resume in %.3f second(s).",
+                  nowString(),
+                  stats.totalRows,
+                  config.consumerPauseDurationSec));
+        }
+
+        if (shouldResumeConsumer(config, consumerRestartController, elapsedNanoTime)
+            && Objects.nonNull(consumer)) {
+          final long resumedNanoTime = System.nanoTime();
+          processingRateLimiter.pauseForDowntime(
+              resumedNanoTime - consumerRestartController.stoppedNanoTime);
+          consumerRestartController.resumePerformed = true;
+          System.out.println(
+              String.format(
+                  Locale.ROOT,
+                  "[%s] Consumer polling resumed at elapsedSec=%.3f after downtimeSec=%.3f.",
+                  nowString(),
+                  (resumedNanoTime - startNanoTime) / 1_000_000_000.0d,
+                  (resumedNanoTime - consumerRestartController.stoppedNanoTime)
+                      / 1_000_000_000.0d));
+        }
+
+        if (shouldResumeConsumerByRows(config, consumerPauseController)
+            && Objects.nonNull(consumer)) {
+          final long resumedNanoTime = System.nanoTime();
+          processingRateLimiter.pauseForDowntime(
+              resumedNanoTime - consumerPauseController.stoppedNanoTime);
+          consumerPauseController.paused = false;
+          System.out.println(
+              String.format(
+                  Locale.ROOT,
+                  "[%s] Consumer resumed after row-based pause at rows=%d, downtimeSec=%.3f.",
+                  nowString(),
+                  stats.totalRows,
+                  (resumedNanoTime - consumerPauseController.stoppedNanoTime) / 1_000_000_000.0d));
+        }
+
+        final boolean pollingPaused =
+            consumerRestartController.enabled
+                    && consumerRestartController.stopPerformed
+                    && !consumerRestartController.resumePerformed
+                || consumerPauseController.enabled && consumerPauseController.paused;
+
+        final PollResult pollResult;
+        if (Objects.nonNull(consumer) && !pollingPaused) {
+          pollResult = consumer.pollWithInfo(config.pollTimeoutMs);
+          handlePollResult(
+              pollResult,
+              stats,
+              config.processDelayNanos,
+              processingRateLimiter,
+              config.ingestWallTimeSensor);
+          captureScheduledSeekCheckpoint(consumer, config, stats, scheduledSeekController);
+          captureRandomSeekCheckpoint(consumer, config, stats, randomSeekController);
+          maybePerformScheduledSeek(
+              consumer, config, stats, scheduledSeekController, System.nanoTime() - startNanoTime);
+          maybePerformRandomSeek(consumer, config, stats, randomSeekController);
+        } else {
+          LockSupport.parkNanos(Math.min(100_000_000L, config.pollTimeoutMs * 1_000_000L));
+          pollResult = emptyPollResult(stats);
+        }
+        lastPollResult = pollResult;
 
         final long nowNanoTime = System.nanoTime();
         if (nowNanoTime - lastReportNanoTime >= config.reportIntervalSec * 1_000_000_000L) {
@@ -145,10 +246,11 @@ public class ConsensusSubscriptionPerfTest {
           Snapshot.zero(),
           Snapshot.capture(stats),
           System.nanoTime() - startNanoTime,
-          new PollResult(
-              Collections.<SubscriptionMessage>emptyList(),
-              stats.lastBufferedCount,
-              stats.lastWatermark));
+          lastPollResult);
+    } finally {
+      if (Objects.nonNull(consumer)) {
+        consumer.close();
+      }
     }
   }
 
@@ -187,10 +289,59 @@ public class ConsensusSubscriptionPerfTest {
             .build();
   }
 
+  private static SubscriptionTreePullConsumer openAndSubscribeConsumer(final PerfConfig config)
+      throws Exception {
+    final SubscriptionTreePullConsumer consumer = createConsumer(config);
+    consumer.open();
+    consumer.subscribe(config.topic);
+    return consumer;
+  }
+
+  private static PollResult emptyPollResult(final PerfStats stats) {
+    return new PollResult(Collections.<SubscriptionMessage>emptyList(), 0, stats.lastWatermark);
+  }
+
+  private static boolean shouldStopConsumer(
+      final PerfConfig config,
+      final ConsumerRestartController controller,
+      final long elapsedNanoTime) {
+    return controller.enabled
+        && !controller.stopPerformed
+        && elapsedNanoTime >= config.consumerStopNanos;
+  }
+
+  private static boolean shouldResumeConsumer(
+      final PerfConfig config,
+      final ConsumerRestartController controller,
+      final long elapsedNanoTime) {
+    return controller.enabled
+        && controller.stopPerformed
+        && !controller.resumePerformed
+        && elapsedNanoTime >= config.consumerResumeNanos;
+  }
+
+  private static boolean shouldPauseConsumerByRows(
+      final PerfConfig config, final ConsumerPauseController controller, final long totalRows) {
+    return controller.enabled
+        && !controller.paused
+        && totalRows > 0
+        && totalRows >= controller.nextPauseRows
+        && config.consumerPauseEveryRows > 0;
+  }
+
+  private static boolean shouldResumeConsumerByRows(
+      final PerfConfig config, final ConsumerPauseController controller) {
+    return controller.enabled
+        && controller.paused
+        && controller.stoppedNanoTime > 0
+        && System.nanoTime() - controller.stoppedNanoTime >= config.consumerPauseDurationNanos;
+  }
+
   private static void handlePollResult(
       final PollResult pollResult,
       final PerfStats stats,
       final long processDelayNanos,
+      final ProcessingRateLimiter processingRateLimiter,
       final String ingestWallTimeSensor) {
     stats.totalPollCalls++;
     stats.lastBufferedCount = pollResult.getBufferedCount();
@@ -217,7 +368,7 @@ public class ConsensusSubscriptionPerfTest {
 
       if (message.getMessageType() == SubscriptionMessageType.TS_FILE_HANDLER.getType()) {
         stats.totalTsFileMessages++;
-        maybeApplyProcessingDelay(processDelayNanos);
+        maybeApplyProcessingDelay(processDelayNanos, processingRateLimiter, 0);
         continue;
       }
 
@@ -232,10 +383,18 @@ public class ConsensusSubscriptionPerfTest {
           stats.totalApproxBytes += tablet.ramBytesUsed();
           updateOrderingStats(stats, tablet, rowSize);
           updateLatencyStats(stats, tablet, rowSize, ingestWallTimeSensor);
+          maybeApplyProcessingDelay(
+              processDelayNanos, processingRateLimiter, estimateTabletPoints(tablet, rowSize));
         }
-        maybeApplyProcessingDelay(processDelayNanos);
       }
     }
+  }
+
+  private static long estimateTabletPoints(final Tablet tablet, final int rowSize) {
+    if (rowSize <= 0) {
+      return 0L;
+    }
+    return (long) rowSize * tablet.getSchemas().size();
   }
 
   private static void updateOrderingStats(
@@ -249,6 +408,10 @@ public class ConsensusSubscriptionPerfTest {
 
     for (int rowIndex = 0; rowIndex < rowSize; rowIndex++) {
       final long currentTimestamp = tablet.getTimestamp(rowIndex);
+      if (stats.equivalentRowTracker == null
+          || stats.equivalentRowTracker.record(deviceId, currentTimestamp)) {
+        stats.totalEquivalentRows++;
+      }
       if (lastSeenTimestamp != Long.MIN_VALUE && currentTimestamp < lastSeenTimestamp) {
         stats.totalOutOfOrderRows++;
         final long regression = lastSeenTimestamp - currentTimestamp;
@@ -313,10 +476,160 @@ public class ConsensusSubscriptionPerfTest {
     return -1;
   }
 
-  private static void maybeApplyProcessingDelay(final long processDelayNanos) {
+  private static void maybeApplyProcessingDelay(
+      final long processDelayNanos,
+      final ProcessingRateLimiter processingRateLimiter,
+      final long processedPoints) {
+    if (processingRateLimiter.isEnabled()) {
+      processingRateLimiter.acquire(processedPoints);
+      return;
+    }
     if (processDelayNanos > 0) {
       LockSupport.parkNanos(processDelayNanos);
     }
+  }
+
+  private static void captureRandomSeekCheckpoint(
+      final SubscriptionTreePullConsumer consumer,
+      final PerfConfig config,
+      final PerfStats stats,
+      final RandomSeekController controller)
+      throws Exception {
+    if (!controller.enabled
+        || stats.totalRows <= 0
+        || (controller.lastCapturedRows >= 0
+            && stats.totalRows - controller.lastCapturedRows
+                < RANDOM_SEEK_CHECKPOINT_INTERVAL_ROWS)) {
+      return;
+    }
+
+    TopicProgress progress = consumer.committedPositions(config.topic);
+    String source = "committed";
+    if (isEmptyTopicProgress(progress)) {
+      progress = consumer.positions(config.topic);
+      source = "current";
+    }
+    if (isEmptyTopicProgress(progress)) {
+      return;
+    }
+
+    final TopicProgress safeProgress = new TopicProgress(progress.getRegionProgress());
+    if (Objects.equals(controller.lastCapturedProgress, safeProgress)) {
+      controller.lastCapturedRows = stats.totalRows;
+      return;
+    }
+
+    controller.checkpoints.add(
+        new SeekCheckpoint(stats.totalRows, stats.totalEquivalentRows, source, safeProgress));
+    controller.lastCapturedRows = stats.totalRows;
+    controller.lastCapturedProgress = safeProgress;
+    stats.totalRandomSeekCheckpoints = controller.checkpoints.size();
+  }
+
+  private static void captureScheduledSeekCheckpoint(
+      final SubscriptionTreePullConsumer consumer,
+      final PerfConfig config,
+      final PerfStats stats,
+      final ScheduledSeekController controller)
+      throws Exception {
+    if (!controller.enabled || Objects.nonNull(controller.checkpoint)) {
+      return;
+    }
+    if (stats.totalRows < config.seekCaptureRows) {
+      return;
+    }
+
+    final TopicProgress currentProgress = consumer.positions(config.topic);
+    if (isEmptyTopicProgress(currentProgress)) {
+      return;
+    }
+    final TopicProgress committedProgress = consumer.committedPositions(config.topic);
+
+    controller.checkpoint =
+        new SeekCheckpoint(
+            stats.totalRows,
+            stats.totalEquivalentRows,
+            "current",
+            new TopicProgress(currentProgress.getRegionProgress()));
+
+    System.out.println(
+        String.format(
+            Locale.ROOT,
+            "[%s] Scheduled seek checkpoint captured: checkpointRows=%d, checkpointEquivalentRows=%d, progressSource=current, triggerSec=%.3f",
+            nowString(),
+            controller.checkpoint.rawRows,
+            controller.checkpoint.equivalentRows,
+            config.seekTriggerSec));
+  }
+
+  private static void maybePerformRandomSeek(
+      final SubscriptionTreePullConsumer consumer,
+      final PerfConfig config,
+      final PerfStats stats,
+      final RandomSeekController controller)
+      throws Exception {
+    if (!controller.enabled
+        || controller.performed
+        || stats.totalRows < config.randomSeekMinRows
+        || controller.checkpoints.size() < 2) {
+      return;
+    }
+
+    final int candidateCount = controller.checkpoints.size() - 1;
+    final SeekCheckpoint targetCheckpoint =
+        controller.checkpoints.get(controller.random.nextInt(candidateCount));
+
+    consumer.seekAfter(config.topic, targetCheckpoint.topicProgress);
+
+    controller.performed = true;
+    stats.totalRandomSeeks++;
+    stats.lastRandomSeekSourceRows = targetCheckpoint.rawRows;
+    stats.lastRandomSeekEquivalentRows = targetCheckpoint.equivalentRows;
+    stats.lastRandomSeekObservedRows = stats.totalRows;
+
+    System.out.println(
+        String.format(
+            Locale.ROOT,
+            "[%s] Random seekAfter triggered: checkpointRows=%d, checkpointEquivalentRows=%d, progressSource=%s, checkpointCount=%d",
+            nowString(),
+            targetCheckpoint.rawRows,
+            targetCheckpoint.equivalentRows,
+            targetCheckpoint.source,
+            controller.checkpoints.size()));
+  }
+
+  private static void maybePerformScheduledSeek(
+      final SubscriptionTreePullConsumer consumer,
+      final PerfConfig config,
+      final PerfStats stats,
+      final ScheduledSeekController controller,
+      final long elapsedNanoTime)
+      throws Exception {
+    if (!controller.enabled
+        || controller.performed
+        || Objects.isNull(controller.checkpoint)
+        || elapsedNanoTime < config.seekTriggerNanos) {
+      return;
+    }
+
+    consumer.seekAfter(config.topic, controller.checkpoint.topicProgress);
+
+    controller.performed = true;
+    stats.totalRandomSeeks++;
+
+    System.out.println(
+        String.format(
+            Locale.ROOT,
+            "[%s] Scheduled seekAfter triggered: checkpointRows=%d, checkpointEquivalentRows=%d, progressSource=%s, triggerSec=%.3f",
+            nowString(),
+            controller.checkpoint.rawRows,
+            controller.checkpoint.equivalentRows,
+            controller.checkpoint.source,
+            config.seekTriggerSec));
+  }
+
+  private static boolean isEmptyTopicProgress(final TopicProgress topicProgress) {
+    return Objects.isNull(topicProgress) || topicProgress.getRegionProgress().isEmpty();
   }
 
   private static void printReport(
@@ -330,6 +643,7 @@ public class ConsensusSubscriptionPerfTest {
     final long intervalMessages = current.totalMessages - previous.totalMessages;
     final long intervalTablets = current.totalTablets - previous.totalTablets;
     final long intervalRows = current.totalRows - previous.totalRows;
+    final long intervalEquivalentRows = current.totalEquivalentRows - previous.totalEquivalentRows;
     final long intervalBytes = current.totalApproxBytes - previous.totalApproxBytes;
     final long intervalWatermarks =
         current.totalWatermarkMessages - previous.totalWatermarkMessages;
@@ -344,10 +658,10 @@ public class ConsensusSubscriptionPerfTest {
     System.out.println(
         String.format(
             Locale.ROOT,
-            "[%s] %-8s msgs=%d (%.1f/s), tablets=%d (%.1f/s), rows=%d (%.1f/s), bytes=%s (%s/s), "
+            "[%s] %-8s msgs=%d (%.1f/s), tablets=%d (%.1f/s), rows=%d (%.1f/s), eqRows=%d (%.1f/s), bytes=%s (%s/s), "
                 + "watermarks=%d, oooRows=%d (%.4f%%), totalOoo=%.4f%%, maxTsBack=%d, "
                 + "latRows=%d, latAvgMs=%s, latP95Ms=%s, latP99Ms=%s, latMaxMs=%s, totalLatAvgMs=%s, totalLatP95Ms=%s, totalLatP99Ms=%s, totalLatMaxMs=%s, "
-                + "totalRows=%d, totalBytes=%s, polls=%d, emptyPolls=%d, buffered=%d, watermark=%s",
+                + "totalRows=%d, equivalentRows=%d, replayRows=%d, seeks=%d, totalBytes=%s, polls=%d, emptyPolls=%d, buffered=%d, watermark=%s",
             nowString(),
             label,
             intervalMessages,
@@ -356,6 +670,8 @@ public class ConsensusSubscriptionPerfTest {
             intervalTablets / seconds,
             intervalRows,
             intervalRows / seconds,
+            intervalEquivalentRows,
+            intervalEquivalentRows / seconds,
             formatBytes(intervalBytes),
             formatBytes((long) (intervalBytes / seconds)),
             intervalWatermarks,
@@ -373,6 +689,9 @@ public class ConsensusSubscriptionPerfTest {
             totalLatency.p99MsLabel,
             totalLatency.maxMsLabel,
             current.totalRows,
+            current.totalEquivalentRows,
+            current.totalRows - current.totalEquivalentRows,
+            current.totalRandomSeeks,
             formatBytes(current.totalApproxBytes),
             current.totalPollCalls,
             current.emptyPollCalls,
@@ -430,7 +749,18 @@ public class ConsensusSubscriptionPerfTest {
     System.out.println("  reportIntervalSec=5");
     System.out.println("  durationSec=0  (0 means run until manually stopped)");
     System.out.println("  processDelayMs=0  (delay per non-watermark message, decimal allowed)");
+    System.out.println("  targetPointsPerSec=0  (0 disables point-rate limiting)");
     System.out.println("  ingestWallTimeSensor=ingest_wall_time_ms");
+    System.out.println("  randomSeek=false");
+    System.out.println("  randomSeekMinRows=1000000");
+    System.out.println("  seekCaptureRows=0  (0 disables scheduled checkpoint capture)");
+    System.out.println("  seekTriggerSec=0  (0 disables scheduled seek)");
+    System.out.println(
+        "  consumerStopSec=0  (0 disables consumer polling pause/resume simulation)");
+    System.out.println("  consumerResumeSec=0  (must be > consumerStopSec when enabled)");
+    System.out.println("  consumerPauseEveryRows=0  (0 disables row-based recurring pauses)");
+    System.out.println(
+        "  consumerPauseDurationSec=0  (must be > 0 when consumerPauseEveryRows is enabled)");
   }
 
   private static final class PerfConfig {
@@ -456,6 +786,19 @@ public class ConsensusSubscriptionPerfTest {
     private final long durationSec;
     private final double processDelayMs;
     private final long processDelayNanos;
+    private final double targetPointsPerSec;
+    private final boolean randomSeek;
+    private final long randomSeekMinRows;
+    private final long seekCaptureRows;
+    private final double seekTriggerSec;
+    private final long seekTriggerNanos;
+    private final double consumerStopSec;
+    private final long consumerStopNanos;
+    private final double consumerResumeSec;
+    private final long consumerResumeNanos;
+    private final long consumerPauseEveryRows;
+    private final double consumerPauseDurationSec;
+    private final long consumerPauseDurationNanos;
 
     private PerfConfig(
         final boolean help,
@@ -479,7 +822,20 @@ public class ConsensusSubscriptionPerfTest {
         final long reportIntervalSec,
         final long durationSec,
         final double processDelayMs,
-        final long processDelayNanos) {
+        final long processDelayNanos,
+        final double targetPointsPerSec,
+        final boolean randomSeek,
+        final long randomSeekMinRows,
+        final long seekCaptureRows,
+        final double seekTriggerSec,
+        final long seekTriggerNanos,
+        final double consumerStopSec,
+        final long consumerStopNanos,
+        final double consumerResumeSec,
+        final long consumerResumeNanos,
+        final long consumerPauseEveryRows,
+        final double consumerPauseDurationSec,
+        final long consumerPauseDurationNanos) {
       this.help = help;
       this.host = host;
       this.port = port;
@@ -502,6 +858,19 @@ public class ConsensusSubscriptionPerfTest {
       this.durationSec = durationSec;
       this.processDelayMs = processDelayMs;
       this.processDelayNanos = processDelayNanos;
+      this.targetPointsPerSec = targetPointsPerSec;
+      this.randomSeek = randomSeek;
+      this.randomSeekMinRows = randomSeekMinRows;
+      this.seekCaptureRows = seekCaptureRows;
+      this.seekTriggerSec = seekTriggerSec;
+      this.seekTriggerNanos = seekTriggerNanos;
+      this.consumerStopSec = consumerStopSec;
+      this.consumerStopNanos = consumerStopNanos;
+      this.consumerResumeSec = consumerResumeSec;
+      this.consumerResumeNanos = consumerResumeNanos;
+      this.consumerPauseEveryRows = consumerPauseEveryRows;
+      this.consumerPauseDurationSec = consumerPauseDurationSec;
+      this.consumerPauseDurationNanos = consumerPauseDurationNanos;
     }
 
     private static PerfConfig parse(final String[] args) {
@@ -523,9 +892,18 @@ public class ConsensusSubscriptionPerfTest {
       long autoCommitIntervalMs = 1000L;
       long pollTimeoutMs = 1000L;
       double waitBeforePollSec = 0d;
-      long reportIntervalSec = 5L;
+      long reportIntervalSec = 1L;
       long durationSec = 0L;
       double processDelayMs = 0d;
+      double targetPointsPerSec = 10_000_000d;
+      boolean randomSeek = false;
+      long randomSeekMinRows = 2_000_000L;
+      long seekCaptureRows = 10_000_000L;
+      double seekTriggerSec = 120d;
+      double consumerStopSec = 0d;
+      double consumerResumeSec = 0d;
+      long consumerPauseEveryRows = 0L;
+      double consumerPauseDurationSec = 0d;
       boolean help = false;
 
       for (final String arg : args) {
@@ -604,6 +982,38 @@ public class ConsensusSubscriptionPerfTest {
           case "processDelayMs":
             processDelayMs = Double.parseDouble(value);
             break;
+          case "targetPointsPerSec":
+          case "target-points-per-sec":
+            targetPointsPerSec = Double.parseDouble(value);
+            break;
+          case "randomSeek":
+            randomSeek = Boolean.parseBoolean(value);
+            break;
+          case "randomSeekMinRows":
+            randomSeekMinRows = Long.parseLong(value);
+            break;
+          case "seekCaptureRows":
+            seekCaptureRows = Long.parseLong(value);
+            break;
+          case "seekTriggerSec":
+            seekTriggerSec = Double.parseDouble(value);
+            break;
+          case "consumerStopSec":
+          case "consumer-stop-sec":
+            consumerStopSec = Double.parseDouble(value);
+            break;
+          case "consumerResumeSec":
+          case "consumer-resume-sec":
+            consumerResumeSec = Double.parseDouble(value);
+            break;
+          case "consumerPauseEveryRows":
+          case "consumer-pause-every-rows":
+            consumerPauseEveryRows = Long.parseLong(value);
+            break;
+          case "consumerPauseDurationSec":
+          case "consumer-pause-duration-sec":
+            consumerPauseDurationSec = Double.parseDouble(value);
+            break;
           default:
             throw new IllegalArgumentException("Unknown argument key: " + key);
         }
@@ -615,12 +1025,61 @@ public class ConsensusSubscriptionPerfTest {
       if (processDelayMs < 0) {
         throw new IllegalArgumentException("processDelayMs must be >= 0");
       }
+      if (targetPointsPerSec < 0) {
+        throw new IllegalArgumentException("targetPointsPerSec must be >= 0");
+      }
       if (waitBeforePollSec < 0) {
         throw new IllegalArgumentException("waitBeforePollSec must be >= 0");
+      }
+      if (randomSeekMinRows < 0) {
+        throw new IllegalArgumentException("randomSeekMinRows must be >= 0");
+      }
+      if (seekCaptureRows < 0) {
+        throw new IllegalArgumentException("seekCaptureRows must be >= 0");
+      }
+      if (seekTriggerSec < 0) {
+        throw new IllegalArgumentException("seekTriggerSec must be >= 0");
+      }
+      if (consumerStopSec < 0) {
+        throw new IllegalArgumentException("consumerStopSec must be >= 0");
+      }
+      if (consumerResumeSec < 0) {
+        throw new IllegalArgumentException("consumerResumeSec must be >= 0");
+      }
+      if (consumerPauseEveryRows < 0) {
+        throw new IllegalArgumentException("consumerPauseEveryRows must be >= 0");
+      }
+      if (consumerPauseDurationSec < 0) {
+        throw new IllegalArgumentException("consumerPauseDurationSec must be >= 0");
+      }
+      if ((seekCaptureRows > 0) != (seekTriggerSec > 0)) {
+        throw new IllegalArgumentException(
+            "seekCaptureRows and seekTriggerSec must both be set to positive values to enable scheduled seek");
+      }
+      if ((consumerStopSec > 0) != (consumerResumeSec > 0)) {
+        throw new IllegalArgumentException(
+            "consumerStopSec and consumerResumeSec must both be set to positive values to enable consumer polling pause/resume simulation");
+      }
+      if (consumerResumeSec > 0 && consumerResumeSec <= consumerStopSec) {
+        throw new IllegalArgumentException(
+            "consumerResumeSec must be greater than consumerStopSec");
+      }
+      if ((consumerPauseEveryRows > 0) != (consumerPauseDurationSec > 0)) {
+        throw new IllegalArgumentException(
+            "consumerPauseEveryRows and consumerPauseDurationSec must both be set to positive values to enable row-based recurring pauses");
+      }
+      if (consumerPauseEveryRows > 0 && consumerStopSec > 0) {
+        throw new IllegalArgumentException(
+            "consumerPauseEveryRows/consumerPauseDurationSec cannot be combined with consumerStopSec/consumerResumeSec");
       }
 
       final long waitBeforePollNanos = Math.round(waitBeforePollSec * 1_000_000_000.0d);
       final long processDelayNanos = Math.round(processDelayMs * 1_000_000.0d);
+      final long seekTriggerNanos = Math.round(seekTriggerSec * 1_000_000_000.0d);
+      final long consumerStopNanos = Math.round(consumerStopSec * 1_000_000_000.0d);
+      final long consumerResumeNanos = Math.round(consumerResumeSec * 1_000_000_000.0d);
+      final long consumerPauseDurationNanos =
+          Math.round(consumerPauseDurationSec * 1_000_000_000.0d);
 
       return new PerfConfig(
           help,
@@ -644,7 +1103,20 @@ public class ConsensusSubscriptionPerfTest {
           reportIntervalSec,
           durationSec,
           processDelayMs,
-          processDelayNanos);
+          processDelayNanos,
+          targetPointsPerSec,
+          randomSeek,
+          randomSeekMinRows,
+          seekCaptureRows,
+          seekTriggerSec,
+          seekTriggerNanos,
+          consumerStopSec,
+          consumerStopNanos,
+          consumerResumeSec,
+          consumerResumeNanos,
+          consumerPauseEveryRows,
+          consumerPauseDurationSec,
+          consumerPauseDurationNanos);
     }
 
     @Override
@@ -654,7 +1126,7 @@ public class ConsensusSubscriptionPerfTest {
           "Config{host=%s, port=%d, username=%s, topic=%s, group=%s, consumer=%s, path=%s, "
               + "orderMode=%s, ingestWallTimeSensor=%s, autoCreateTopic=%s, createTopicOnly=%s, autoCommit=%s, autoCommitIntervalMs=%d, pollTimeoutMs=%d, "
               + "waitBeforePollSec=%.3f, "
-              + "reportIntervalSec=%d, durationSec=%d, processDelayMs=%.3f}",
+              + "reportIntervalSec=%d, durationSec=%d, processDelayMs=%.3f, targetPointsPerSec=%.3f, randomSeek=%s, randomSeekMinRows=%d, seekCaptureRows=%d, seekTriggerSec=%.3f, consumerStopSec=%.3f, consumerResumeSec=%.3f, consumerPauseEveryRows=%d, consumerPauseDurationSec=%.3f}",
           host,
           port,
           username,
@@ -672,7 +1144,61 @@ public class ConsensusSubscriptionPerfTest {
           waitBeforePollSec,
           reportIntervalSec,
           durationSec,
-          processDelayMs);
+          processDelayMs,
+          targetPointsPerSec,
+          randomSeek,
+          randomSeekMinRows,
+          seekCaptureRows,
+          seekTriggerSec,
+          consumerStopSec,
+          consumerResumeSec,
+          consumerPauseEveryRows,
+          consumerPauseDurationSec);
+    }
+
+    private boolean enableEquivalentRowTracking() {
+      return randomSeek || (seekCaptureRows > 0 && seekTriggerSec > 0);
+    }
+  }
+
+  private static final class ProcessingRateLimiter {
+    private final double targetPointsPerSec;
+    private long throttlingStartNanoTime = -1L;
+    private long totalProcessedPoints = 0L;
+
+    private ProcessingRateLimiter(final double targetPointsPerSec) {
+      this.targetPointsPerSec = targetPointsPerSec;
+    }
+
+    private boolean isEnabled() {
+      return targetPointsPerSec > 0d;
+    }
+
+    private void acquire(final long processedPoints) {
+      if (!isEnabled() || processedPoints <= 0) {
+        return;
+      }
+
+      final long nowNanoTime = System.nanoTime();
+      if (throttlingStartNanoTime < 0) {
+        throttlingStartNanoTime = nowNanoTime;
+      }
+
+      totalProcessedPoints += processedPoints;
+      final long targetElapsedNanos =
+          (long) Math.ceil((totalProcessedPoints * 1_000_000_000.0d) / targetPointsPerSec);
+      final long actualElapsedNanos = nowNanoTime - throttlingStartNanoTime;
+      final long remainingNanos = targetElapsedNanos - actualElapsedNanos;
+      if (remainingNanos > 0) {
+        LockSupport.parkNanos(remainingNanos);
+      }
+    }
+
+    private void pauseForDowntime(final long pausedNanos) {
+      if (!isEnabled() || throttlingStartNanoTime < 0 || pausedNanos <= 0) {
+        return;
+      }
+      throttlingStartNanoTime += pausedNanos;
     }
   }
 
@@ -684,6 +1210,7 @@ public class ConsensusSubscriptionPerfTest {
     private long totalTsFileMessages;
     private long totalTablets;
     private long totalRows;
+    private long totalEquivalentRows;
     private long totalApproxBytes;
     private long totalOutOfOrderRows;
     private long maxTimestampRegression;
@@ -693,6 +1220,16 @@ public class ConsensusSubscriptionPerfTest {
     private int lastBufferedCount;
     private long lastWatermark = -1L;
     private final Map<String, Long> lastSeenTimestampByDevice = new HashMap<>();
+    private final EquivalentRowTracker equivalentRowTracker;
+    private long totalRandomSeeks;
+    private long totalRandomSeekCheckpoints;
+    private long lastRandomSeekSourceRows = -1L;
+    private long lastRandomSeekEquivalentRows = -1L;
+    private long lastRandomSeekObservedRows = -1L;
+
+    private PerfStats(final boolean enableEquivalentRowTracking) {
+      this.equivalentRowTracker = enableEquivalentRowTracking ? new EquivalentRowTracker() : null;
+    }
 
     private void recordLatency(final long latencyMs) {
       totalLatencySamples++;
@@ -708,6 +1245,7 @@ public class ConsensusSubscriptionPerfTest {
     private final long totalWatermarkMessages;
     private final long totalTablets;
     private final long totalRows;
+    private final long totalEquivalentRows;
     private final long totalApproxBytes;
     private final long totalOutOfOrderRows;
     private final long maxTimestampRegression;
@@ -715,6 +1253,7 @@ public class ConsensusSubscriptionPerfTest {
     private final long totalLatencySumMs;
     private final long[] latencyHistogramBuckets;
     private final long lastWatermark;
+    private final long totalRandomSeeks;
 
     private Snapshot(
         final long totalPollCalls,
@@ -723,19 +1262,22 @@ public class ConsensusSubscriptionPerfTest {
         final long totalWatermarkMessages,
         final long totalTablets,
         final long totalRows,
+        final long totalEquivalentRows,
         final long totalApproxBytes,
         final long totalOutOfOrderRows,
         final long maxTimestampRegression,
         final long totalLatencySamples,
         final long totalLatencySumMs,
         final long[] latencyHistogramBuckets,
-        final long lastWatermark) {
+        final long lastWatermark,
+        final long totalRandomSeeks) {
       this.totalPollCalls = totalPollCalls;
       this.emptyPollCalls = emptyPollCalls;
       this.totalMessages = totalMessages;
       this.totalWatermarkMessages = totalWatermarkMessages;
       this.totalTablets = totalTablets;
       this.totalRows = totalRows;
+      this.totalEquivalentRows = totalEquivalentRows;
       this.totalApproxBytes = totalApproxBytes;
       this.totalOutOfOrderRows = totalOutOfOrderRows;
       this.maxTimestampRegression = maxTimestampRegression;
@@ -743,6 +1285,7 @@ public class ConsensusSubscriptionPerfTest {
       this.totalLatencySumMs = totalLatencySumMs;
       this.latencyHistogramBuckets = latencyHistogramBuckets;
       this.lastWatermark = lastWatermark;
+      this.totalRandomSeeks = totalRandomSeeks;
     }
 
     private static Snapshot capture(final PerfStats stats) {
@@ -754,18 +1297,115 @@ public class ConsensusSubscriptionPerfTest {
           stats.totalWatermarkMessages,
           stats.totalTablets,
           stats.totalRows,
+          stats.totalEquivalentRows,
           stats.totalApproxBytes,
           stats.totalOutOfOrderRows,
           stats.maxTimestampRegression,
           stats.totalLatencySamples,
           stats.totalLatencySumMs,
           Arrays.copyOf(stats.latencyHistogramBuckets, stats.latencyHistogramBuckets.length),
-          stats.lastWatermark);
+          stats.lastWatermark,
+          stats.totalRandomSeeks);
     }
 
     private static Snapshot zero() {
       return new Snapshot(
-          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, new long[LatencyHistogram.BUCKET_COUNT], -1L);
+          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, new long[LatencyHistogram.BUCKET_COUNT], -1L, 0);
+    }
+  }
+
+  private static final class RandomSeekController {
+    private final boolean enabled;
+    private final Random random = new Random();
+    private final List<SeekCheckpoint> checkpoints = new ArrayList<>();
+    private boolean performed;
+    private long lastCapturedRows = Long.MIN_VALUE;
+    private TopicProgress lastCapturedProgress;
+
+    private RandomSeekController(final boolean enabled) {
+      this.enabled = enabled;
+    }
+  }
+
+  private static final class ScheduledSeekController {
+    private final boolean enabled;
+    private boolean performed;
+    private SeekCheckpoint checkpoint;
+
+    private ScheduledSeekController(final boolean enabled) {
+      this.enabled = enabled;
+    }
+  }
+
+  private static final class ConsumerRestartController {
+    private final boolean enabled;
+    private boolean stopPerformed;
+    private boolean resumePerformed;
+    private long stoppedNanoTime = -1L;
+
+    private ConsumerRestartController(final boolean enabled) {
+      this.enabled = enabled;
+    }
+  }
+
+  private static final class ConsumerPauseController {
+    private final boolean enabled;
+    private long nextPauseRows;
+    private boolean paused;
+    private long stoppedNanoTime = -1L;
+    private long pausePerformedCount;
+
+    private ConsumerPauseController(final long pauseEveryRows) {
+      this.enabled = pauseEveryRows > 0;
+      this.nextPauseRows = pauseEveryRows;
+    }
+  }
+
+  private static final class SeekCheckpoint {
+    private final long rawRows;
+    private final long equivalentRows;
+    private final String source;
+    private final TopicProgress topicProgress;
+
+    private SeekCheckpoint(
+        final long rawRows,
+        final long equivalentRows,
+        final String source,
+        final TopicProgress topicProgress) {
+      this.rawRows = rawRows;
+      this.equivalentRows = equivalentRows;
+      this.source = source;
+      this.topicProgress = topicProgress;
+    }
+  }
+
+  private static final class EquivalentRowTracker {
+    private final Map<String, NavigableMap<Long, Long>> intervalsByDevice = new HashMap<>();
+
+    private boolean record(final String deviceId, final long timestamp) {
+      final NavigableMap<Long, Long> intervals =
+          intervalsByDevice.computeIfAbsent(deviceId, ignored -> new TreeMap<>());
+      final Map.Entry<Long, Long> floor = intervals.floorEntry(timestamp);
+      if (Objects.nonNull(floor) && floor.getValue() >= timestamp) {
+        return false;
+      }
+
+      long start = timestamp;
+      long end = timestamp;
+
+      if (Objects.nonNull(floor) && floor.getValue() + 1 == timestamp) {
+        start = floor.getKey();
+        intervals.remove(floor.getKey());
+      }
+
+      final Map.Entry<Long, Long> ceiling = intervals.ceilingEntry(timestamp);
+      if (Objects.nonNull(ceiling) && ceiling.getKey() - 1 == timestamp) {
+        end = ceiling.getValue();
+        intervals.remove(ceiling.getKey());
+      }
+
+      intervals.put(start, end);
+      return true;
     }
   }
 
