@@ -60,6 +60,7 @@ public class PartitionTableAutoCleaner<Env> extends InternalProcedure<Env> {
   protected void periodicExecute(Env env) {
     List<String> databases = configManager.getClusterSchemaManager().getDatabaseNames(null);
     Map<String, Long> databaseTTLMap = new TreeMap<>();
+    Map<String, TTimePartitionSlot> timePartitionSlotMap = new TreeMap<>();
     for (String database : databases) {
       long databaseTTL;
       if (PathUtils.isTableModelDatabase(database)) {
@@ -93,12 +94,15 @@ public class PartitionTableAutoCleaner<Env> extends InternalProcedure<Env> {
       LOGGER.info(
           "[PartitionTableCleaner] Periodically activate PartitionTableAutoCleaner for: {}",
           databaseTTLMap);
-      // Only clean the partition table when necessary
-      TTimePartitionSlot currentTimePartitionSlot = getCurrentTimePartitionSlot();
+      for (String database : databaseTTLMap.keySet()) {
+        // Only clean the partition table when necessary
+        TTimePartitionSlot currentTimePartitionSlot = getCurrentTimePartitionSlot();
+        timePartitionSlotMap.put(database, currentTimePartitionSlot);
+      }
       try {
         configManager
             .getConsensusManager()
-            .write(new AutoCleanPartitionTablePlan(databaseTTLMap, currentTimePartitionSlot));
+            .write(new AutoCleanPartitionTablePlan(databaseTTLMap, timePartitionSlotMap));
       } catch (ConsensusException e) {
         LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
       }
