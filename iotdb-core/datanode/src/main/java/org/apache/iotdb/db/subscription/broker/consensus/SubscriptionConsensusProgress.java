@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.subscription.broker.consensus;
 
+import org.apache.iotdb.rpc.subscription.payload.poll.RegionProgress;
 import org.apache.iotdb.rpc.subscription.payload.poll.WriterId;
 import org.apache.iotdb.rpc.subscription.payload.poll.WriterProgress;
 
@@ -27,54 +28,48 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Persisted commit metadata for a single (consumerGroup, topic, region) combination.
  *
- * <p>This object is no longer a scalar region frontier. It only stores a normalized committed
- * writer checkpoint plus the persistence throttling counter.
+ * <p>This object stores the committed per-writer region frontier plus the persistence throttling
+ * counter.
  */
 public class SubscriptionConsensusProgress {
 
-  private volatile CommittedWriterState committedWriterState;
+  private volatile RegionProgress committedRegionProgress;
 
   private final AtomicLong commitIndex;
 
   public SubscriptionConsensusProgress() {
-    this(null, new WriterProgress(0L, -1L), 0L);
+    this(new RegionProgress(Collections.emptyMap()), 0L);
   }
 
   public SubscriptionConsensusProgress(
-      final WriterId committedWriterId,
-      final WriterProgress committedWriterProgress,
-      final long commitIndex) {
-    this.committedWriterState =
-        new CommittedWriterState(
-            committedWriterId,
-            Objects.nonNull(committedWriterProgress)
-                ? committedWriterProgress
-                : new WriterProgress(0L, -1L));
+      final RegionProgress committedRegionProgress, final long commitIndex) {
+    this.committedRegionProgress = normalize(committedRegionProgress);
     this.commitIndex = new AtomicLong(commitIndex);
   }
 
+  public RegionProgress getCommittedRegionProgress() {
+    return committedRegionProgress;
+  }
+
+  public void setCommittedRegionProgress(final RegionProgress committedRegionProgress) {
+    this.committedRegionProgress = normalize(committedRegionProgress);
+  }
+
   public WriterId getCommittedWriterId() {
-    return committedWriterState.writerId;
+    return getDerivedCommittedWriterState().writerId;
   }
 
   public WriterProgress getCommittedWriterProgress() {
-    return committedWriterState.writerProgress;
-  }
-
-  public void setCommittedWriter(
-      final WriterId committedWriterId, final WriterProgress committedWriterProgress) {
-    this.committedWriterState =
-        new CommittedWriterState(
-            committedWriterId,
-            Objects.nonNull(committedWriterProgress)
-                ? committedWriterProgress
-                : new WriterProgress(0L, -1L));
+    return getDerivedCommittedWriterState().writerProgress;
   }
 
   public long getCommitIndex() {
@@ -86,28 +81,14 @@ public class SubscriptionConsensusProgress {
   }
 
   public void serialize(final DataOutputStream stream) throws IOException {
-    final CommittedWriterState snapshot = committedWriterState;
-    final boolean hasWriterId = Objects.nonNull(snapshot.writerId);
-    final boolean hasWriterProgress = Objects.nonNull(snapshot.writerProgress);
-    ReadWriteIOUtils.write((byte) (hasWriterId ? 1 : 0), stream);
-    if (hasWriterId) {
-      snapshot.writerId.serialize(stream);
-    }
-    ReadWriteIOUtils.write((byte) (hasWriterProgress ? 1 : 0), stream);
-    if (hasWriterProgress) {
-      snapshot.writerProgress.serialize(stream);
-    }
+    committedRegionProgress.serialize(stream);
     ReadWriteIOUtils.write(commitIndex.get(), stream);
   }
 
   public static SubscriptionConsensusProgress deserialize(final ByteBuffer buffer) {
-    final boolean hasWriterId = ReadWriteIOUtils.readByte(buffer) != 0;
-    final WriterId writerId = hasWriterId ? WriterId.deserialize(buffer) : null;
-    final boolean hasWriterProgress = ReadWriteIOUtils.readByte(buffer) != 0;
-    final WriterProgress writerProgress =
-        hasWriterProgress ? WriterProgress.deserialize(buffer) : null;
+    final RegionProgress committedRegionProgress = RegionProgress.deserialize(buffer);
     final long commitIndex = ReadWriteIOUtils.readLong(buffer);
-    return new SubscriptionConsensusProgress(writerId, writerProgress, commitIndex);
+    return new SubscriptionConsensusProgress(committedRegionProgress, commitIndex);
   }
 
   @Override
@@ -119,39 +100,92 @@ public class SubscriptionConsensusProgress {
       return false;
     }
     final SubscriptionConsensusProgress that = (SubscriptionConsensusProgress) o;
-    final CommittedWriterState thisSnapshot = committedWriterState;
-    final CommittedWriterState thatSnapshot = that.committedWriterState;
     return commitIndex.get() == that.commitIndex.get()
-        && Objects.equals(thisSnapshot.writerId, thatSnapshot.writerId)
-        && Objects.equals(thisSnapshot.writerProgress, thatSnapshot.writerProgress);
+        && Objects.equals(committedRegionProgress, that.committedRegionProgress);
   }
 
   @Override
   public int hashCode() {
-    final CommittedWriterState snapshot = committedWriterState;
-    return Objects.hash(snapshot.writerId, snapshot.writerProgress, commitIndex.get());
+    return Objects.hash(committedRegionProgress, commitIndex.get());
   }
 
   @Override
   public String toString() {
-    final CommittedWriterState snapshot = committedWriterState;
     return "SubscriptionConsensusProgress{"
-        + "committedWriterId="
-        + snapshot.writerId
-        + ", committedWriterProgress="
-        + snapshot.writerProgress
+        + "committedRegionProgress="
+        + committedRegionProgress
         + ", commitIndex="
         + commitIndex.get()
         + '}';
   }
 
-  private static final class CommittedWriterState {
+  private static RegionProgress normalize(final RegionProgress committedRegionProgress) {
+    if (Objects.isNull(committedRegionProgress)
+        || committedRegionProgress.getWriterPositions().isEmpty()) {
+      return new RegionProgress(Collections.emptyMap());
+    }
+    final Map<WriterId, WriterProgress> normalized = new LinkedHashMap<>();
+    for (final Map.Entry<WriterId, WriterProgress> entry :
+        committedRegionProgress.getWriterPositions().entrySet()) {
+      if (Objects.nonNull(entry.getKey()) && Objects.nonNull(entry.getValue())) {
+        normalized.put(entry.getKey(), entry.getValue());
+      }
+    }
+    return new RegionProgress(normalized);
+  }
+
+  private DerivedCommittedWriterState getDerivedCommittedWriterState() {
+    WriterId bestWriterId = null;
+    WriterProgress bestWriterProgress = null;
+    for (final Map.Entry<WriterId, WriterProgress> entry :
+        committedRegionProgress.getWriterPositions().entrySet()) {
+      if (Objects.isNull(bestWriterProgress)
+          || compareWriterProgress(entry.getValue(), bestWriterProgress) > 0
+          || (compareWriterProgress(entry.getValue(), bestWriterProgress) == 0
+              && compareWriterId(entry.getKey(), bestWriterId) > 0)) {
+        bestWriterId = entry.getKey();
+        bestWriterProgress = entry.getValue();
+      }
+    }
+    return new DerivedCommittedWriterState(
+        bestWriterId,
+        Objects.nonNull(bestWriterProgress) ? bestWriterProgress : new WriterProgress(0L, -1L));
+  }
+
+  private static int compareWriterProgress(
+      final WriterProgress leftProgress, final WriterProgress rightProgress) {
+    int cmp = Long.compare(leftProgress.getPhysicalTime(), rightProgress.getPhysicalTime());
+    if (cmp != 0) {
+      return cmp;
+    }
+    return Long.compare(leftProgress.getLocalSeq(), rightProgress.getLocalSeq());
+  }
+
+  private static int compareWriterId(final WriterId leftWriterId, final WriterId rightWriterId) {
+    if (Objects.isNull(leftWriterId) && Objects.isNull(rightWriterId)) {
+      return 0;
+    }
+    if (Objects.isNull(leftWriterId)) {
+      return -1;
+    }
+    if (Objects.isNull(rightWriterId)) {
+      return 1;
+    }
+    int cmp = Integer.compare(leftWriterId.getNodeId(), rightWriterId.getNodeId());
+    if (cmp != 0) {
+      return cmp;
+    }
+    return Long.compare(leftWriterId.getWriterEpoch(), rightWriterId.getWriterEpoch());
+  }
+
+  private static final class DerivedCommittedWriterState {
 
     private final WriterId writerId;
 
     private final WriterProgress writerProgress;
 
-    private CommittedWriterState(final WriterId writerId, final WriterProgress writerProgress) {
+    private DerivedCommittedWriterState(
+        final WriterId writerId, final WriterProgress writerProgress) {
       this.writerId = writerId;
       this.writerProgress = writerProgress;
     }
