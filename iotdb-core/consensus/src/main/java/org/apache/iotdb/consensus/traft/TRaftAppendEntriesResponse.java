@@ -19,9 +19,34 @@
 
 package org.apache.iotdb.consensus.traft;
 
-/** Standard Raft roles used by the TRaft implementation. */
-public enum TRaftRole {
-  LEADER,
-  FOLLOWER,
-  CANDIDATE
+/** Reply to an AppendEntries attempt, including a hint for the next retry index. */
+class TRaftAppendEntriesResponse {
+
+  private final boolean success;
+  private final long term;
+  private final long matchIndex;
+  private final long nextIndexHint;
+
+  TRaftAppendEntriesResponse(boolean success, long term, long matchIndex, long nextIndexHint) {
+    this.success = success;
+    this.term = term;
+    this.matchIndex = matchIndex;
+    this.nextIndexHint = nextIndexHint;
+  }
+
+  boolean isSuccess() {
+    return success;
+  }
+
+  long getTerm() {
+    return term;
+  }
+
+  long getMatchIndex() {
+    return matchIndex;
+  }
+
+  long getNextIndexHint() {
+    return nextIndexHint;
+  }
 }

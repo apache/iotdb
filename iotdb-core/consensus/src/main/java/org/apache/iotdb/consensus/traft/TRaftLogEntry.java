@@ -21,8 +21,17 @@ package org.apache.iotdb.consensus.traft;
 
 import java.util.Arrays;
 
+/**
+ * Persistent TRaft log entry.
+ *
+ * <p>The {@code logIndex} and {@code logTerm} fields participate in ordinary Raft safety checks.
+ * The timestamp/partition fields are TRaft-specific metadata used to preserve time-series write
+ * ordering information across replication and snapshots; they do not replace the traditional
+ * Raft log matching rules.
+ */
 public class TRaftLogEntry {
 
+  private final TRaftEntryType entryType;
   private final long timestamp;
   private final long partitionIndex;
   private final long logIndex;
@@ -32,6 +41,7 @@ public class TRaftLogEntry {
   private final byte[] data;
 
   public TRaftLogEntry(
+      TRaftEntryType entryType,
       long timestamp,
       long partitionIndex,
       long logIndex,
@@ -39,6 +49,7 @@ public class TRaftLogEntry {
       long interPartitionIndex,
       long lastPartitionCount,
       byte[] data) {
+    this.entryType = entryType;
     this.timestamp = timestamp;
     this.partitionIndex = partitionIndex;
     this.logIndex = logIndex;
@@ -46,6 +57,10 @@ public class TRaftLogEntry {
     this.interPartitionIndex = interPartitionIndex;
     this.lastPartitionCount = lastPartitionCount;
     this.data = data;
+  }
+
+  public TRaftEntryType getEntryType() {
+    return entryType;
   }
 
   public long getTimestamp() {
@@ -78,6 +93,7 @@ public class TRaftLogEntry {
 
   public TRaftLogEntry copy() {
     return new TRaftLogEntry(
+        entryType,
         timestamp,
         partitionIndex,
         logIndex,

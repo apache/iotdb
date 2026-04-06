@@ -24,19 +24,23 @@ import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 
 import java.nio.ByteBuffer;
 
+/**
+ * Helpers for converting between state-machine requests and raw TRaft log payloads.
+ *
+ * <p>The original experimental TRaft code tried to derive timestamps directly from serialized
+ * request bytes. The current implementation only trusts timestamps explicitly exposed by the
+ * request object and otherwise falls back to the caller-provided value.
+ */
 class TRaftRequestParser {
 
   private TRaftRequestParser() {}
 
   static long extractTimestamp(IConsensusRequest request, long fallbackTimestamp) {
+    // Only explicit business timestamps are trusted for TRaft's partition metadata.
     if (request.hasTime()) {
       return request.getTime();
     }
-    ByteBuffer buffer = request.serializeToByteBuffer().duplicate();
-    if (buffer.remaining() < Long.BYTES) {
-      return fallbackTimestamp;
-    }
-    return buffer.getLong(buffer.position());
+    return fallbackTimestamp;
   }
 
   static byte[] extractRawRequest(IConsensusRequest request) {

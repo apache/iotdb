@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.consensus.traft;
 
+/** Reply to a RequestVote RPC. */
 class TRaftVoteResult {
 
   private final boolean granted;

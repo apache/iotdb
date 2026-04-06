@@ -19,9 +19,22 @@
 
 package org.apache.iotdb.consensus.traft;
 
-/** Standard Raft roles used by the TRaft implementation. */
-public enum TRaftRole {
-  LEADER,
-  FOLLOWER,
-  CANDIDATE
+/** Reply to a leadership transfer request that asks a peer to campaign immediately. */
+class TRaftTriggerElectionResponse {
+
+  private final boolean accepted;
+  private final long term;
+
+  TRaftTriggerElectionResponse(boolean accepted, long term) {
+    this.accepted = accepted;
+    this.term = term;
+  }
+
+  boolean isAccepted() {
+    return accepted;
+  }
+
+  long getTerm() {
+    return term;
+  }
 }

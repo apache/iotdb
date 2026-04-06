@@ -28,21 +28,26 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Collections;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
+import java.util.NavigableMap;
+import java.util.TreeMap;
 
+/**
+ * Disk-backed log store used by TRaft.
+ *
+ * <p>The store enforces contiguous Raft log indexes and relies on callers to truncate conflicting
+ * suffixes before appending replacement entries.
+ */
 class TRaftLogStore {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TRaftLogStore.class);
   private static final String LOG_FILE_NAME = "traft.log";
 
   private final File logFile;
-  private final Map<Long, TRaftLogEntry> logEntries = new LinkedHashMap<>();
+  private final NavigableMap<Long, TRaftLogEntry> logEntries = new TreeMap<>();
 
   TRaftLogStore(String storageDir) throws IOException {
     this.logFile = new File(storageDir, LOG_FILE_NAME);
@@ -57,16 +62,50 @@ class TRaftLogStore {
   }
 
   synchronized void append(TRaftLogEntry entry) throws IOException {
-    if (logEntries.containsKey(entry.getLogIndex())) {
-      return;
+    TRaftLogEntry existing = logEntries.get(entry.getLogIndex());
+    if (existing != null) {
+      if (isSameEntry(existing, entry)) {
+        return;
+      }
+      throw new IOException(
+          String.format("Conflicting TRaft log entry at index %s", entry.getLogIndex()));
     }
-    try (BufferedWriter writer =
-        Files.newBufferedWriter(
-            logFile.toPath(), StandardCharsets.UTF_8, StandardOpenOption.APPEND)) {
-      writer.write(serialize(entry));
-      writer.newLine();
+    if (!logEntries.isEmpty() && entry.getLogIndex() != logEntries.lastKey() + 1) {
+      throw new IOException(
+          String.format(
+              "Non-contiguous TRaft log append. expected=%s actual=%s",
+              logEntries.lastKey() + 1,
+              entry.getLogIndex()));
     }
     logEntries.put(entry.getLogIndex(), entry.copy());
+    persistAll();
+  }
+
+  synchronized void appendAll(List<TRaftLogEntry> entries) throws IOException {
+    for (TRaftLogEntry entry : entries) {
+      TRaftLogEntry existing = logEntries.get(entry.getLogIndex());
+      if (existing != null && !isSameEntry(existing, entry)) {
+        throw new IOException(
+            String.format("Conflicting TRaft log entry at index %s", entry.getLogIndex()));
+      }
+      logEntries.put(entry.getLogIndex(), entry.copy());
+    }
+    persistAll();
+  }
+
+  synchronized void truncateSuffix(long startIndexInclusive) throws IOException {
+    logEntries.tailMap(startIndexInclusive, true).clear();
+    persistAll();
+  }
+
+  synchronized void compactPrefix(long lastIncludedIndex) throws IOException {
+    logEntries.headMap(lastIncludedIndex, true).clear();
+    persistAll();
+  }
+
+  synchronized void clear() throws IOException {
+    logEntries.clear();
+    persistAll();
   }
 
   synchronized TRaftLogEntry getByIndex(long index) {
@@ -74,19 +113,35 @@ class TRaftLogStore {
     return entry == null ? null : entry.copy();
   }
 
-  synchronized boolean contains(long index) {
-    return logEntries.containsKey(index);
+  synchronized long getFirstIndex() {
+    return logEntries.isEmpty() ? -1 : logEntries.firstKey();
+  }
+
+  synchronized long getLastIndex() {
+    return logEntries.isEmpty() ? -1 : logEntries.lastKey();
+  }
+
+  synchronized long getTerm(long index) {
+    TRaftLogEntry entry = logEntries.get(index);
+    return entry == null ? -1 : entry.getLogTerm();
   }
 
   synchronized TRaftLogEntry getLastEntry() {
-    if (logEntries.isEmpty()) {
-      return null;
+    return logEntries.isEmpty() ? null : logEntries.lastEntry().getValue().copy();
+  }
+
+  synchronized List<TRaftLogEntry> getEntriesFrom(long startIndexInclusive, int maxEntries) {
+    if (maxEntries <= 0) {
+      return Collections.emptyList();
     }
-    TRaftLogEntry last = null;
-    for (TRaftLogEntry entry : logEntries.values()) {
-      last = entry;
+    List<TRaftLogEntry> result = new ArrayList<>();
+    for (TRaftLogEntry entry : logEntries.tailMap(startIndexInclusive, true).values()) {
+      result.add(entry.copy());
+      if (result.size() >= maxEntries) {
+        break;
+      }
     }
-    return last == null ? null : last.copy();
+    return Collections.unmodifiableList(result);
   }
 
   synchronized List<TRaftLogEntry> getAllEntries() {
@@ -110,10 +165,32 @@ class TRaftLogStore {
     }
   }
 
+  private void persistAll() throws IOException {
+    try (BufferedWriter writer = Files.newBufferedWriter(logFile.toPath(), StandardCharsets.UTF_8)) {
+      for (TRaftLogEntry entry : logEntries.values()) {
+        writer.write(serialize(entry));
+        writer.newLine();
+      }
+    }
+  }
+
+  private boolean isSameEntry(TRaftLogEntry left, TRaftLogEntry right) {
+    return left.getLogIndex() == right.getLogIndex()
+        && left.getLogTerm() == right.getLogTerm()
+        && left.getEntryType() == right.getEntryType()
+        && left.getTimestamp() == right.getTimestamp()
+        && left.getPartitionIndex() == right.getPartitionIndex()
+        && left.getInterPartitionIndex() == right.getInterPartitionIndex()
+        && left.getLastPartitionCount() == right.getLastPartitionCount()
+        && java.util.Arrays.equals(left.getData(), right.getData());
+  }
+
   private String serialize(TRaftLogEntry entry) {
     return entry.getLogIndex()
         + ","
         + entry.getLogTerm()
+        + ","
+        + entry.getEntryType().name()
         + ","
         + entry.getTimestamp()
         + ","
@@ -127,19 +204,21 @@ class TRaftLogStore {
   }
 
   private TRaftLogEntry deserialize(String line) {
-    String[] fields = line.split(",", 7);
-    if (fields.length != 7) {
+    String[] fields = line.split(",", 8);
+    if (fields.length != 8) {
       throw new IllegalArgumentException("Invalid TRaft log line: " + line);
     }
     try {
       long logIndex = Long.parseLong(fields[0]);
       long logTerm = Long.parseLong(fields[1]);
-      long timestamp = Long.parseLong(fields[2]);
-      long partitionIndex = Long.parseLong(fields[3]);
-      long interPartitionIndex = Long.parseLong(fields[4]);
-      long lastPartitionCount = Long.parseLong(fields[5]);
-      byte[] data = Base64.getDecoder().decode(fields[6]);
+      TRaftEntryType entryType = TRaftEntryType.valueOf(fields[2]);
+      long timestamp = Long.parseLong(fields[3]);
+      long partitionIndex = Long.parseLong(fields[4]);
+      long interPartitionIndex = Long.parseLong(fields[5]);
+      long lastPartitionCount = Long.parseLong(fields[6]);
+      byte[] data = Base64.getDecoder().decode(fields[7]);
       return new TRaftLogEntry(
+          entryType,
           timestamp,
           partitionIndex,
           logIndex,

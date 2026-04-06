@@ -95,6 +95,7 @@ import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupAlreadyExistException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
+import org.apache.iotdb.consensus.traft.TRaftConsensus;
 import org.apache.iotdb.db.audit.DNAuditLogger;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -304,6 +305,14 @@ import org.apache.iotdb.mpp.rpc.thrift.TSendSinglePlanNodeResp;
 import org.apache.iotdb.mpp.rpc.thrift.TTableDeviceDeletionWithPatternAndFilterReq;
 import org.apache.iotdb.mpp.rpc.thrift.TTableDeviceDeletionWithPatternOrModReq;
 import org.apache.iotdb.mpp.rpc.thrift.TTableDeviceInvalidateCacheReq;
+import org.apache.iotdb.mpp.rpc.thrift.TTraftAppendEntriesReq;
+import org.apache.iotdb.mpp.rpc.thrift.TTraftAppendEntriesResp;
+import org.apache.iotdb.mpp.rpc.thrift.TTraftInstallSnapshotReq;
+import org.apache.iotdb.mpp.rpc.thrift.TTraftInstallSnapshotResp;
+import org.apache.iotdb.mpp.rpc.thrift.TTraftRequestVoteReq;
+import org.apache.iotdb.mpp.rpc.thrift.TTraftRequestVoteResp;
+import org.apache.iotdb.mpp.rpc.thrift.TTraftTriggerElectionReq;
+import org.apache.iotdb.mpp.rpc.thrift.TTraftTriggerElectionResp;
 import org.apache.iotdb.mpp.rpc.thrift.TTsFilePieceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTableReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTemplateReq;
@@ -2692,6 +2701,21 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     return false;
   }
 
+  private TRaftConsensus getTRaftConsensus(ConsensusGroupId regionId) {
+    // TRaft RPCs are only valid when the target region is currently hosted by a TRaft consensus
+    // implementation. The wire handlers below deliberately keep policy out of the RPC layer and
+    // forward every request into TRaftConsensus/TRaftServerImpl.
+    if (regionId instanceof DataRegionId
+        && DataRegionConsensusImpl.getInstance() instanceof TRaftConsensus) {
+      return (TRaftConsensus) DataRegionConsensusImpl.getInstance();
+    }
+    if (regionId instanceof SchemaRegionId
+        && SchemaRegionConsensusImpl.getInstance() instanceof TRaftConsensus) {
+      return (TRaftConsensus) SchemaRegionConsensusImpl.getInstance();
+    }
+    return null;
+  }
+
   @Override
   public TSStatus createNewRegionPeer(TCreatePeerReq req) {
     ConsensusGroupId regionId =
@@ -2764,6 +2788,85 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     status.setCode(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
     status.setMessage("Submit deleteOldRegionPeer task failed, region: " + regionId);
     return status;
+  }
+
+  @Override
+  public TTraftAppendEntriesResp sendTRaftAppendEntries(TTraftAppendEntriesReq req) {
+    TTraftAppendEntriesResp response = new TTraftAppendEntriesResp();
+    response.setSuccess(false);
+    response.setTerm(0);
+    response.setMatchIndex(0);
+    response.setNextIndexHint(1);
+    ConsensusGroupId regionId =
+        ConsensusGroupId.Factory.createFromTConsensusGroupId(req.getRegionId());
+    TRaftConsensus consensus = getTRaftConsensus(regionId);
+    if (consensus == null) {
+      return response;
+    }
+    try {
+      return consensus.receiveAppendEntries(req);
+    } catch (Exception e) {
+      LOGGER.warn("Failed to process TRaft append entries for region {}", regionId, e);
+      return response;
+    }
+  }
+
+  @Override
+  public TTraftRequestVoteResp sendTRaftRequestVote(TTraftRequestVoteReq req) {
+    TTraftRequestVoteResp response = new TTraftRequestVoteResp();
+    response.setGranted(false);
+    response.setTerm(0);
+    ConsensusGroupId regionId =
+        ConsensusGroupId.Factory.createFromTConsensusGroupId(req.getRegionId());
+    TRaftConsensus consensus = getTRaftConsensus(regionId);
+    if (consensus == null) {
+      return response;
+    }
+    try {
+      return consensus.receiveRequestVote(req);
+    } catch (Exception e) {
+      LOGGER.warn("Failed to process TRaft vote request for region {}", regionId, e);
+      return response;
+    }
+  }
+
+  @Override
+  public TTraftInstallSnapshotResp sendTRaftInstallSnapshot(TTraftInstallSnapshotReq req) {
+    TTraftInstallSnapshotResp response = new TTraftInstallSnapshotResp();
+    response.setSuccess(false);
+    response.setTerm(0);
+    response.setLastIncludedIndex(0);
+    ConsensusGroupId regionId =
+        ConsensusGroupId.Factory.createFromTConsensusGroupId(req.getRegionId());
+    TRaftConsensus consensus = getTRaftConsensus(regionId);
+    if (consensus == null) {
+      return response;
+    }
+    try {
+      return consensus.receiveInstallSnapshot(req);
+    } catch (Exception e) {
+      LOGGER.warn("Failed to process TRaft install snapshot for region {}", regionId, e);
+      return response;
+    }
+  }
+
+  @Override
+  public TTraftTriggerElectionResp sendTRaftTriggerElection(TTraftTriggerElectionReq req) {
+    TTraftTriggerElectionResp response = new TTraftTriggerElectionResp();
+    response.setAccepted(false);
+    response.setTerm(0);
+    ConsensusGroupId regionId =
+        ConsensusGroupId.Factory.createFromTConsensusGroupId(req.getRegionId());
+    TRaftConsensus consensus = getTRaftConsensus(regionId);
+    if (consensus == null) {
+      return response;
+    }
+    try {
+      return consensus.receiveTriggerElection(req);
+    } catch (Exception e) {
+      LOGGER.warn("Failed to process TRaft trigger election for region {}", regionId, e);
+      return response;
+    }
   }
 
   // TODO: return which DataNode fail

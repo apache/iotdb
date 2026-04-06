@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.consensus.traft;
 
-/** Standard Raft roles used by the TRaft implementation. */
-public enum TRaftRole {
-  LEADER,
-  FOLLOWER,
-  CANDIDATE
+/** Control entry types layered on top of the ordinary data log. */
+enum TRaftEntryType {
+  DATA,
+  CONFIGURATION,
+  NO_OP
 }

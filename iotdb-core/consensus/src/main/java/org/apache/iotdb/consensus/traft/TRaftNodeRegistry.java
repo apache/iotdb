@@ -20,12 +20,16 @@
 package org.apache.iotdb.consensus.traft;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.consensus.common.Peer;
-
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * Registry for the same-JVM transport fast path.
+ *
+ * <p>This is not the distributed discovery mechanism. Cross-process communication goes through the
+ * TRaft RPCs defined on the DataNode internal service.
+ */
 class TRaftNodeRegistry {
 
   private static final Map<String, TRaftConsensus> CONSENSUS_BY_ENDPOINT = new ConcurrentHashMap<>();
@@ -40,12 +44,8 @@ class TRaftNodeRegistry {
     CONSENSUS_BY_ENDPOINT.remove(toEndpointKey(endpoint));
   }
 
-  static Optional<TRaftServerImpl> resolveServer(Peer peer) {
-    TRaftConsensus consensus = CONSENSUS_BY_ENDPOINT.get(toEndpointKey(peer.getEndpoint()));
-    if (consensus == null) {
-      return Optional.empty();
-    }
-    return Optional.ofNullable(consensus.getImpl(peer.getGroupId()));
+  static Optional<TRaftConsensus> resolveConsensus(TEndPoint endpoint) {
+    return Optional.ofNullable(CONSENSUS_BY_ENDPOINT.get(toEndpointKey(endpoint)));
   }
 
   private static String toEndpointKey(TEndPoint endpoint) {

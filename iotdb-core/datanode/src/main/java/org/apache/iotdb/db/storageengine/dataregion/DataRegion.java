@@ -4863,7 +4863,10 @@ public class DataRegion implements IDataRegionForQuery {
   public static long getAcquireDirectBufferMemCost() {
     long acquireDirectBufferMemCost = 0;
     if (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
-        || config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS_V2)) {
+        || config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS_V2)
+        || config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.TRAFT_CONSENSUS)) {
+      // TRaft still depends on the ordinary DataRegion WAL buffer, so its direct-buffer footprint
+      // matches the IoT-series consensus family rather than Ratis' dedicated appender buffer.
       acquireDirectBufferMemCost =
           config.getWalMode().equals(WALMode.DISABLE) ? 0 : config.getWalBufferSize();
     } else if (config

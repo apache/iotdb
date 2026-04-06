@@ -78,6 +78,86 @@ struct TResetPeerListReq {
   2: required list<common.TDataNodeLocation> correctLocations
 }
 
+/**
+ * TRaft's wire log entry.
+ *
+ * The log index/term pair drives ordinary Raft safety. Timestamp and partition fields are
+ * TRaft-specific metadata used to preserve time-series partitioning information across replication
+ * and snapshots.
+ */
+struct TTraftLogEntry {
+  1: required string entryType
+  2: required i64 timestamp
+  3: required i64 partitionIndex
+  4: required i64 logIndex
+  5: required i64 logTerm
+  6: required i64 interPartitionIndex
+  7: required i64 lastPartitionCount
+  8: required binary data
+}
+
+struct TTraftAppendEntriesReq {
+  1: required common.TConsensusGroupId regionId
+  2: required i32 leaderId
+  3: required i64 term
+  4: required i64 prevLogIndex
+  5: required i64 prevLogTerm
+  6: required i64 leaderCommit
+  7: required list<TTraftLogEntry> entries
+}
+
+struct TTraftAppendEntriesResp {
+  1: required bool success
+  2: required i64 term
+  3: required i64 matchIndex
+  4: required i64 nextIndexHint
+}
+
+struct TTraftRequestVoteReq {
+  1: required common.TConsensusGroupId regionId
+  2: required i32 candidateId
+  3: required i64 term
+  4: required i64 lastLogIndex
+  5: required i64 lastLogTerm
+  // These fields are carried for TRaft metadata compatibility, but vote safety still follows the
+  // classic Raft freshness rule based on lastLogTerm/lastLogIndex.
+  6: required i64 partitionIndex
+  7: required i64 currentPartitionIndexCount
+}
+
+struct TTraftRequestVoteResp {
+  1: required bool granted
+  2: required i64 term
+}
+
+struct TTraftInstallSnapshotReq {
+  1: required common.TConsensusGroupId regionId
+  2: required i32 leaderId
+  3: required i64 term
+  4: required i64 lastIncludedIndex
+  5: required i64 lastIncludedTerm
+  6: required i64 historicalMaxTimestamp
+  7: required i64 lastPartitionIndex
+  8: required i64 lastPartitionCount
+  9: required binary peers
+  10: required binary snapshot
+}
+
+struct TTraftInstallSnapshotResp {
+  1: required bool success
+  2: required i64 term
+  3: required i64 lastIncludedIndex
+}
+
+struct TTraftTriggerElectionReq {
+  1: required common.TConsensusGroupId regionId
+}
+
+struct TTraftTriggerElectionResp {
+  1: required bool accepted
+  2: required i64 term
+}
+
 struct TFragmentInstanceId {
   1: required string queryId
   2: required i32 fragmentId
@@ -896,6 +976,21 @@ service IDataNodeRPCService {
    * @param TMaintainPeerReq which contains RegionId and the DataNodeLocation where the specified Region peer located
    */
   common.TSStatus deleteOldRegionPeer(TMaintainPeerReq req)
+
+  /**
+   * Cross-process transport for TRaft AppendEntries. Safety checks are implemented in the
+   * consensus layer after these wire structs are decoded.
+   */
+  TTraftAppendEntriesResp sendTRaftAppendEntries(TTraftAppendEntriesReq req)
+
+  /** Cross-process transport for TRaft RequestVote. */
+  TTraftRequestVoteResp sendTRaftRequestVote(TTraftRequestVoteReq req)
+
+  /** Cross-process transport for TRaft InstallSnapshot. */
+  TTraftInstallSnapshotResp sendTRaftInstallSnapshot(TTraftInstallSnapshotReq req)
+
+  /** Cross-process transport used by leadership transfer to trigger an immediate campaign. */
+  TTraftTriggerElectionResp sendTRaftTriggerElection(TTraftTriggerElectionReq req)
 
   /**
    * Reset a consensus group's peer list

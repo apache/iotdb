@@ -19,9 +19,28 @@
 
 package org.apache.iotdb.consensus.traft;
 
-/** Standard Raft roles used by the TRaft implementation. */
-public enum TRaftRole {
-  LEADER,
-  FOLLOWER,
-  CANDIDATE
+/** Reply to an InstallSnapshot attempt. */
+class TRaftInstallSnapshotResponse {
+
+  private final boolean success;
+  private final long term;
+  private final long lastIncludedIndex;
+
+  TRaftInstallSnapshotResponse(boolean success, long term, long lastIncludedIndex) {
+    this.success = success;
+    this.term = term;
+    this.lastIncludedIndex = lastIncludedIndex;
+  }
+
+  boolean isSuccess() {
+    return success;
+  }
+
+  long getTerm() {
+    return term;
+  }
+
+  long getLastIncludedIndex() {
+    return lastIncludedIndex;
+  }
 }

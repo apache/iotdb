@@ -19,16 +19,32 @@
 
 package org.apache.iotdb.consensus.traft;
 
+/**
+ * In-memory form of a RequestVote RPC.
+ *
+ * <p>Partition metadata is still carried because TRaft logs keep time-partition information, but
+ * election safety is decided by the standard Raft freshness pair: lastLogTerm and lastLogIndex.
+ */
 class TRaftVoteRequest {
 
   private final int candidateId;
   private final long term;
+  private final long lastLogIndex;
+  private final long lastLogTerm;
   private final long partitionIndex;
   private final long currentPartitionIndexCount;
 
-  TRaftVoteRequest(int candidateId, long term, long partitionIndex, long currentPartitionIndexCount) {
+  TRaftVoteRequest(
+      int candidateId,
+      long term,
+      long lastLogIndex,
+      long lastLogTerm,
+      long partitionIndex,
+      long currentPartitionIndexCount) {
     this.candidateId = candidateId;
     this.term = term;
+    this.lastLogIndex = lastLogIndex;
+    this.lastLogTerm = lastLogTerm;
     this.partitionIndex = partitionIndex;
     this.currentPartitionIndexCount = currentPartitionIndexCount;
   }
@@ -39,6 +55,14 @@ class TRaftVoteRequest {
 
   long getTerm() {
     return term;
+  }
+
+  long getLastLogIndex() {
+    return lastLogIndex;
+  }
+
+  long getLastLogTerm() {
+    return lastLogTerm;
   }
 
   long getPartitionIndex() {

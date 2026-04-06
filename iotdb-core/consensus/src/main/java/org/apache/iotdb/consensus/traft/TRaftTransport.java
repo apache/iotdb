@@ -19,9 +19,26 @@
 
 package org.apache.iotdb.consensus.traft;
 
-/** Standard Raft roles used by the TRaft implementation. */
-public enum TRaftRole {
-  LEADER,
-  FOLLOWER,
-  CANDIDATE
+import org.apache.iotdb.consensus.common.Peer;
+
+import java.io.Closeable;
+import java.io.IOException;
+
+/** Transport abstraction for the four TRaft RPC families. */
+interface TRaftTransport extends Closeable {
+
+  TRaftAppendEntriesResponse appendEntries(Peer peer, TRaftAppendEntriesRequest request)
+      throws IOException;
+
+  TRaftVoteResult requestVote(Peer peer, TRaftVoteRequest request) throws IOException;
+
+  TRaftInstallSnapshotResponse installSnapshot(Peer peer, TRaftInstallSnapshotRequest request)
+      throws IOException;
+
+  TRaftTriggerElectionResponse triggerElection(Peer peer) throws IOException;
+
+  @Override
+  default void close() throws IOException {
+    // no-op
+  }
 }

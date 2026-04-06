@@ -70,8 +70,7 @@ public class WALManager implements IService {
   private final AtomicLong totalFileNum = new AtomicLong();
 
   private WALManager() {
-    if (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
-        || config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS_V2)) {
+    if (isIoTSeriesConsensus()) {
       walNodesManager = new FirstCreateStrategy();
     } else if (config.getMaxWalNodesNum() == 0) {
       walNodesManager = new ElasticStrategy();
@@ -81,10 +80,9 @@ public class WALManager implements IService {
   }
 
   public static String getApplicantUniqueId(String dataRegionName, boolean sequence) {
-    return config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
-            || config
-                .getDataRegionConsensusProtocolClass()
-                .equals(ConsensusFactory.IOT_CONSENSUS_V2)
+    // TRaft does not use the IoT-series shared WAL-node naming scheme, so it follows the regular
+    // per-sequence/per-unsequence applicant split used by the non-IoT consensus paths.
+    return isIoTSeriesConsensus()
         ? dataRegionName
         : dataRegionName
             + IoTDBConstant.FILE_NAME_SEPARATOR
@@ -103,11 +101,7 @@ public class WALManager implements IService {
   /** WAL node will be registered only when using iot series consensus protocol. */
   public void registerWALNode(
       String applicantUniqueId, String logDirectory, long startFileVersion, long startSearchIndex) {
-    if (config.getWalMode() == WALMode.DISABLE
-        || (!config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
-            && !config
-                .getDataRegionConsensusProtocolClass()
-                .equals(ConsensusFactory.IOT_CONSENSUS_V2))) {
+    if (config.getWalMode() == WALMode.DISABLE || !isIoTSeriesConsensus()) {
       return;
     }
 
@@ -118,11 +112,7 @@ public class WALManager implements IService {
 
   /** WAL node will be deleted only when using iot series consensus protocol. */
   public void deleteWALNode(String applicantUniqueId) {
-    if (config.getWalMode() == WALMode.DISABLE
-        || (!config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
-            && !config
-                .getDataRegionConsensusProtocolClass()
-                .equals(ConsensusFactory.IOT_CONSENSUS_V2))) {
+    if (config.getWalMode() == WALMode.DISABLE || !isIoTSeriesConsensus()) {
       return;
     }
 
@@ -141,6 +131,11 @@ public class WALManager implements IService {
         .deleteUniqueIdAndMayDeleteWALNode(getApplicantUniqueId(dataRegionName, true));
     ((ElasticStrategy) walNodesManager)
         .deleteUniqueIdAndMayDeleteWALNode(getApplicantUniqueId(dataRegionName, false));
+  }
+
+  private static boolean isIoTSeriesConsensus() {
+    return config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
+        || config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS_V2);
   }
 
   @Override

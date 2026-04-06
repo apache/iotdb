@@ -37,6 +37,14 @@ import org.apache.iotdb.consensus.exception.IllegalPeerEndpointException;
 import org.apache.iotdb.consensus.exception.IllegalPeerNumException;
 import org.apache.iotdb.consensus.exception.PeerAlreadyInConsensusGroupException;
 import org.apache.iotdb.consensus.exception.PeerNotInConsensusGroupException;
+import org.apache.iotdb.mpp.rpc.thrift.TTraftAppendEntriesReq;
+import org.apache.iotdb.mpp.rpc.thrift.TTraftAppendEntriesResp;
+import org.apache.iotdb.mpp.rpc.thrift.TTraftInstallSnapshotReq;
+import org.apache.iotdb.mpp.rpc.thrift.TTraftInstallSnapshotResp;
+import org.apache.iotdb.mpp.rpc.thrift.TTraftRequestVoteReq;
+import org.apache.iotdb.mpp.rpc.thrift.TTraftRequestVoteResp;
+import org.apache.iotdb.mpp.rpc.thrift.TTraftTriggerElectionReq;
+import org.apache.iotdb.mpp.rpc.thrift.TTraftTriggerElectionResp;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -55,6 +63,13 @@ import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+/**
+ * IoTDB consensus facade for TRaft.
+ *
+ * <p>This class owns per-region {@link TRaftServerImpl} instances, wires them to the DataNode RPC
+ * layer, and keeps a same-process transport fast path through {@link TRaftNodeRegistry}. The
+ * actual Raft safety logic still lives inside {@link TRaftServerImpl}.
+ */
 public class TRaftConsensus implements IConsensus {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TRaftConsensus.class);
@@ -64,6 +79,7 @@ public class TRaftConsensus implements IConsensus {
   private final File storageDir;
   private final IStateMachine.Registry registry;
   private final Map<ConsensusGroupId, TRaftServerImpl> stateMachineMap = new ConcurrentHashMap<>();
+  private final TRaftTransport transport;
 
   private TRaftConfig config;
   private Map<ConsensusGroupId, List<Peer>> correctPeerListBeforeStart = null;
@@ -74,19 +90,31 @@ public class TRaftConsensus implements IConsensus {
     this.storageDir = new File(config.getStorageDir());
     this.registry = registry;
     this.config = config.getTRaftConfig();
+    this.transport = new TRaftCompositeTransport();
   }
 
   @Override
   public synchronized void start() throws IOException {
-    initAndRecover();
-    stateMachineMap.values().forEach(TRaftServerImpl::start);
+    // Register first so same-process peers can discover this node immediately during recovery.
     TRaftNodeRegistry.register(thisNode, this);
+    try {
+      initAndRecover();
+      stateMachineMap.values().forEach(TRaftServerImpl::start);
+    } catch (IOException e) {
+      TRaftNodeRegistry.unregister(thisNode);
+      throw e;
+    }
   }
 
   @Override
   public synchronized void stop() {
     TRaftNodeRegistry.unregister(thisNode);
     stateMachineMap.values().forEach(TRaftServerImpl::stop);
+    try {
+      transport.close();
+    } catch (IOException e) {
+      LOGGER.warn("Failed to close TRaft transport for {}", thisNode, e);
+    }
   }
 
   @Override
@@ -136,12 +164,14 @@ public class TRaftConsensus implements IConsensus {
                     return null;
                   }
                   try {
+                    // Each region owns an independent TRaft server and persistent storage directory.
                     return new TRaftServerImpl(
                         peerDir.getAbsolutePath(),
                         new Peer(groupId, thisNodeId, thisNode),
                         new TreeSet<>(finalPeers),
                         registry.apply(groupId),
-                        config);
+                        config,
+                        transport);
                   } catch (IOException e) {
                     LOGGER.error("Failed to create TRaft server for {}", groupId, e);
                     return null;
@@ -233,7 +263,14 @@ public class TRaftConsensus implements IConsensus {
 
   @Override
   public void triggerSnapshot(ConsensusGroupId groupId, boolean force) throws ConsensusException {
-    throw new ConsensusException("TRaft does not support snapshot trigger currently");
+    TRaftServerImpl impl =
+        Optional.ofNullable(stateMachineMap.get(groupId))
+            .orElseThrow(() -> new ConsensusGroupNotExistException(groupId));
+    try {
+      impl.triggerSnapshot(force);
+    } catch (IOException e) {
+      throw new ConsensusException("Failed to trigger TRaft snapshot", e);
+    }
   }
 
   @Override
@@ -288,6 +325,118 @@ public class TRaftConsensus implements IConsensus {
     return stateMachineMap.get(groupId);
   }
 
+  TRaftAppendEntriesResponse receiveAppendEntries(
+      ConsensusGroupId groupId, TRaftAppendEntriesRequest request) throws IOException {
+    TRaftServerImpl impl =
+        Optional.ofNullable(stateMachineMap.get(groupId))
+            .orElseThrow(() -> new IOException("TRaft consensus group not found: " + groupId));
+    return impl.receiveAppendEntries(request);
+  }
+
+  TRaftVoteResult receiveVoteRequest(ConsensusGroupId groupId, TRaftVoteRequest request)
+      throws IOException {
+    TRaftServerImpl impl =
+        Optional.ofNullable(stateMachineMap.get(groupId))
+            .orElseThrow(() -> new IOException("TRaft consensus group not found: " + groupId));
+    return impl.requestVote(request);
+  }
+
+  TRaftInstallSnapshotResponse receiveInstallSnapshot(
+      ConsensusGroupId groupId, TRaftInstallSnapshotRequest request) throws IOException {
+    TRaftServerImpl impl =
+        Optional.ofNullable(stateMachineMap.get(groupId))
+            .orElseThrow(() -> new IOException("TRaft consensus group not found: " + groupId));
+    return impl.receiveInstallSnapshot(request);
+  }
+
+  TRaftTriggerElectionResponse receiveTriggerElection(ConsensusGroupId groupId)
+      throws IOException {
+    TRaftServerImpl impl =
+        Optional.ofNullable(stateMachineMap.get(groupId))
+            .orElseThrow(() -> new IOException("TRaft consensus group not found: " + groupId));
+    return impl.triggerElection();
+  }
+
+  public TTraftAppendEntriesResp receiveAppendEntries(TTraftAppendEntriesReq request)
+      throws IOException {
+    // Thrift handlers only translate wire structures; AppendEntries semantics stay in TRaftServerImpl.
+    ConsensusGroupId groupId =
+        ConsensusGroupId.Factory.createFromTConsensusGroupId(request.getRegionId());
+    TRaftAppendEntriesRequest localRequest =
+        new TRaftAppendEntriesRequest(
+            request.getLeaderId(),
+            request.getTerm(),
+            request.getPrevLogIndex(),
+            request.getPrevLogTerm(),
+            request.getLeaderCommit(),
+            (request.getEntries() == null ? java.util.Collections.<org.apache.iotdb.mpp.rpc.thrift.TTraftLogEntry>emptyList() : request.getEntries()).stream()
+                .map(TRaftSerializationUtils::fromThrift)
+                .collect(java.util.stream.Collectors.toList()));
+    TRaftAppendEntriesResponse response = receiveAppendEntries(groupId, localRequest);
+    TTraftAppendEntriesResp thriftResponse = new TTraftAppendEntriesResp();
+    thriftResponse.setSuccess(response.isSuccess());
+    thriftResponse.setTerm(response.getTerm());
+    thriftResponse.setMatchIndex(response.getMatchIndex());
+    thriftResponse.setNextIndexHint(response.getNextIndexHint());
+    return thriftResponse;
+  }
+
+  public TTraftRequestVoteResp receiveRequestVote(TTraftRequestVoteReq request) throws IOException {
+    ConsensusGroupId groupId =
+        ConsensusGroupId.Factory.createFromTConsensusGroupId(request.getRegionId());
+    TRaftVoteResult response =
+        receiveVoteRequest(
+            groupId,
+            new TRaftVoteRequest(
+                request.getCandidateId(),
+                request.getTerm(),
+                request.getLastLogIndex(),
+                request.getLastLogTerm(),
+                request.getPartitionIndex(),
+                request.getCurrentPartitionIndexCount()));
+    TTraftRequestVoteResp thriftResponse = new TTraftRequestVoteResp();
+    thriftResponse.setGranted(response.isGranted());
+    thriftResponse.setTerm(response.getTerm());
+    return thriftResponse;
+  }
+
+  public TTraftInstallSnapshotResp receiveInstallSnapshot(TTraftInstallSnapshotReq request)
+      throws IOException {
+    ConsensusGroupId groupId =
+        ConsensusGroupId.Factory.createFromTConsensusGroupId(request.getRegionId());
+    byte[] peers = request.getPeers();
+    byte[] snapshot = request.getSnapshot();
+    TRaftInstallSnapshotResponse response =
+        receiveInstallSnapshot(
+            groupId,
+            new TRaftInstallSnapshotRequest(
+                request.getLeaderId(),
+                request.getTerm(),
+                request.getLastIncludedIndex(),
+                request.getLastIncludedTerm(),
+                request.getHistoricalMaxTimestamp(),
+                request.getLastPartitionIndex(),
+                request.getLastPartitionCount(),
+                peers,
+                snapshot));
+    TTraftInstallSnapshotResp thriftResponse = new TTraftInstallSnapshotResp();
+    thriftResponse.setSuccess(response.isSuccess());
+    thriftResponse.setTerm(response.getTerm());
+    thriftResponse.setLastIncludedIndex(response.getLastIncludedIndex());
+    return thriftResponse;
+  }
+
+  public TTraftTriggerElectionResp receiveTriggerElection(TTraftTriggerElectionReq request)
+      throws IOException {
+    ConsensusGroupId groupId =
+        ConsensusGroupId.Factory.createFromTConsensusGroupId(request.getRegionId());
+    TRaftTriggerElectionResponse response = receiveTriggerElection(groupId);
+    TTraftTriggerElectionResp thriftResponse = new TTraftTriggerElectionResp();
+    thriftResponse.setAccepted(response.isAccepted());
+    thriftResponse.setTerm(response.getTerm());
+    return thriftResponse;
+  }
+
   private void initAndRecover() throws IOException {
     if (!storageDir.exists() && !storageDir.mkdirs()) {
       throw new IOException(String.format("Unable to create consensus dir at %s", storageDir));
@@ -301,13 +450,15 @@ public class TRaftConsensus implements IConsensus {
         ConsensusGroupId consensusGroupId =
             ConsensusGroupId.Factory.create(
                 Integer.parseInt(items[0]), Integer.parseInt(items[1]));
+        // Recovery path loads persisted metadata, log, and snapshot from the peer directory.
         TRaftServerImpl consensus =
             new TRaftServerImpl(
                 path.toString(),
                 new Peer(consensusGroupId, thisNodeId, thisNode),
                 new TreeSet<>(),
                 registry.apply(consensusGroupId),
-                config);
+                config,
+                transport);
         stateMachineMap.put(consensusGroupId, consensus);
       }
     }

@@ -36,520 +36,421 @@ import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
+import java.util.Properties;
 import java.util.Random;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
+/**
+ * Core TRaft implementation.
+ *
+ * <p>Safety-critical behavior follows traditional Raft: term-based leadership, randomized
+ * elections, AppendEntries log matching via {@code prevLogIndex/prevLogTerm}, majority commit, and
+ * apply-after-commit. TRaft extends the log with time-partition metadata so time-series workloads
+ * can preserve ordering hints across replication and snapshots, but that metadata does not replace
+ * the ordinary Raft safety rules.
+ */
 class TRaftServerImpl {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TRaftServerImpl.class);
   private static final String CONFIGURATION_FILE_NAME = "configuration.dat";
+  private static final String METADATA_FILE_NAME = "metadata.properties";
+  private static final String SNAPSHOT_DIR_NAME = "snapshot";
   private static final long INITIAL_PARTITION_INDEX = 0;
 
-  // ── persistent / structural state ───────────────────────────────────────────
   private final String storageDir;
   private final Peer thisNode;
   private final IStateMachine stateMachine;
   private final TreeSet<Peer> configuration = new TreeSet<>();
-  private final ConcurrentHashMap<Integer, TRaftFollowerInfo> followerInfoMap =
-      new ConcurrentHashMap<>();
   private final TRaftLogStore logStore;
-  private final AtomicLong logicalClock = new AtomicLong(0);
+  private final TRaftTransport transport;
+  private final AtomicLong logicalClock = new AtomicLong();
   private final Random random;
+  private final ConcurrentHashMap<Integer, Long> nextIndexByFollower = new ConcurrentHashMap<>();
+  private final ConcurrentHashMap<Integer, Long> matchIndexByFollower = new ConcurrentHashMap<>();
+  private final ConcurrentHashMap<Long, TSStatus> applyResultByIndex = new ConcurrentHashMap<>();
+  private final AtomicBoolean snapshotInProgress = new AtomicBoolean(false);
+  private final File metadataFile;
+  private final File snapshotDir;
 
-  // ── volatile node state ──────────────────────────────────────────────────────
   private volatile TRaftRole role = TRaftRole.FOLLOWER;
   private volatile boolean active = true;
   private volatile boolean started = false;
+  private volatile boolean leaderReady = false;
 
-  // ── term / election state ────────────────────────────────────────────────────
   private long currentTerm = 0;
   private int leaderId = -1;
   private int votedFor = -1;
+  private long commitIndex = 0;
+  private long lastApplied = 0;
+  private long leaderReadyIndex = 0;
 
-  // ── partition tracking ───────────────────────────────────────────────────────
+  private long snapshotLastIncludedIndex = 0;
+  private long snapshotLastIncludedTerm = 0;
+  private long snapshotHistoricalMaxTimestamp = Long.MIN_VALUE;
+  private long snapshotPartitionIndex = INITIAL_PARTITION_INDEX;
+  private long snapshotPartitionCount = 0;
+
+  // These fields are TRaft-specific metadata used to remember how time-partition assignment
+  // progressed. They help reconstruct partition state after replay or snapshot restore, but commit
+  // and election safety still depend on the ordinary Raft log term/index pair.
   private long historicalMaxTimestamp = Long.MIN_VALUE;
   private long maxPartitionIndex = INITIAL_PARTITION_INDEX;
   private long currentPartitionIndexCount = 0;
 
-  /**
-   * The partition index of entries currently being actively inserted by the leader (fast path).
-   * Entries arriving with a partition index equal to this value are eligible for direct
-   * in-memory replication to matching followers. Entries with a higher partition index are
-   * written directly to disk and replicated by the per-follower {@link TRaftLogAppender}.
-   */
-  private long currentLeaderInsertingPartitionIndex = INITIAL_PARTITION_INDEX;
+  private long electionDeadlineMs;
 
-  // ── quorum commit tracking ───────────────────────────────────────────────────
-  /**
-   * Tracks, per log index, how many followers have acknowledged that entry. Once the ACK count
-   * reaches ⌈followerCount/2⌉ the entry is considered committed and removed from the map.
-   * The map becoming empty signals that all entries of the current partition have achieved
-   * quorum, allowing the next partition's entries to be transmitted.
-   */
-  private final ConcurrentHashMap<Long, AtomicInteger> currentReplicationgIndicesToAckFollowerCount =
-      new ConcurrentHashMap<>();
-
-  // ── background appenders ─────────────────────────────────────────────────────
-  /** One background appender thread per follower, keyed by follower node-id. */
-  private final ConcurrentHashMap<Integer, TRaftLogAppender> appenderMap =
-      new ConcurrentHashMap<>();
-
-  private ExecutorService appenderExecutor;
+  private ScheduledExecutorService backgroundExecutor;
+  private ScheduledFuture<?> electionFuture;
+  private ScheduledFuture<?> heartbeatFuture;
 
   private TRaftConfig config;
-
-  // ────────────────────────────────────────────────────────────────────────────
-  // Construction
-  // ────────────────────────────────────────────────────────────────────────────
 
   TRaftServerImpl(
       String storageDir,
       Peer thisNode,
       TreeSet<Peer> peers,
       IStateMachine stateMachine,
-      TRaftConfig config)
+      TRaftConfig config,
+      TRaftTransport transport)
       throws IOException {
     this.storageDir = storageDir;
     this.thisNode = thisNode;
     this.stateMachine = stateMachine;
     this.config = config;
+    this.transport = transport;
     this.logStore = new TRaftLogStore(storageDir);
     this.random = new Random(config.getElection().getRandomSeed() + thisNode.getNodeId());
+    this.metadataFile = new File(storageDir, METADATA_FILE_NAME);
+    this.snapshotDir = new File(storageDir, SNAPSHOT_DIR_NAME);
     if (peers.isEmpty()) {
       this.configuration.addAll(loadConfigurationFromDisk());
     } else {
       this.configuration.addAll(peers);
       persistConfiguration();
     }
-    if (!this.configuration.contains(thisNode)) {
+    if (this.configuration.isEmpty()) {
       this.configuration.add(thisNode);
       persistConfiguration();
     }
     recoverFromDisk();
-    electInitialLeader();
-    initFollowerInfoMap();
+    resetElectionDeadlineLocked();
   }
-
-  // ────────────────────────────────────────────────────────────────────────────
-  // Lifecycle
-  // ────────────────────────────────────────────────────────────────────────────
 
   public synchronized void start() {
     if (started) {
       return;
     }
-    stateMachine.start();
     started = true;
-    notifyLeaderChanged();
-    if (role == TRaftRole.LEADER) {
-      initAppenders();
-    }
+    stateMachine.start();
+    loadSnapshotIfPresent();
+    applyCommittedEntriesLocked();
+    backgroundExecutor =
+        Executors.newScheduledThreadPool(
+            3,
+            r -> {
+              Thread thread = new Thread(r);
+              thread.setName("TRaft-" + thisNode.getGroupId() + "-" + thisNode.getNodeId());
+              thread.setDaemon(true);
+              return thread;
+            });
+    electionFuture =
+        backgroundExecutor.scheduleWithFixedDelay(
+            this::checkElectionTimeout,
+            50L,
+            50L,
+            TimeUnit.MILLISECONDS);
+    heartbeatFuture =
+        backgroundExecutor.scheduleWithFixedDelay(
+            this::heartbeat,
+            config.getElection().getHeartbeatIntervalMs(),
+            config.getElection().getHeartbeatIntervalMs(),
+            TimeUnit.MILLISECONDS);
+    notifyFollowerStateLocked();
   }
 
   public synchronized void stop() {
-    // Mark as stopped first so appender callbacks become no-ops immediately.
     started = false;
-    stopAppenders();
+    leaderReady = false;
+    if (electionFuture != null) {
+      electionFuture.cancel(true);
+      electionFuture = null;
+    }
+    if (heartbeatFuture != null) {
+      heartbeatFuture.cancel(true);
+      heartbeatFuture = null;
+    }
+    if (backgroundExecutor != null) {
+      backgroundExecutor.shutdownNow();
+      backgroundExecutor = null;
+    }
     stateMachine.stop();
   }
 
-  // ────────────────────────────────────────────────────────────────────────────
-  // Write path (Leader)
-  // ────────────────────────────────────────────────────────────────────────────
-
-  /**
-   * Process a client write request as the leader.
-   *
-   * <p><b>Step 1 – Parse:</b> Build a {@link TRaftLogEntry} with timestamp and partition index
-   * derived from the request.
-   *
-   * <p><b>Step 2 – Route by partition index:</b>
-   * <ul>
-   *   <li>If the entry's partition index is <em>greater than</em>
-   *       {@code currentLeaderInsertingPartitionIndex}: the entry and all subsequent entries go
-   *       directly to disk. The partition index pointer is advanced. A best-effort quorum-commit
-   *       check is performed (if the map is already empty the pointer advances cleanly; otherwise
-   *       it advances anyway and the appender will enforce ordering). All followers receive the
-   *       entry in their delayed queue; disk dispatch is attempted synchronously.
-   *   <li>If the entry's partition index <em>equals</em>
-   *       {@code currentLeaderInsertingPartitionIndex}: each follower is inspected individually.
-   *       Followers whose {@code currentFollowerReplicatingPartitionIndex} matches are sent the
-   *       entry immediately (fast path) and the index is recorded in
-   *       {@code currentReplicatingIndices}. Followers that are behind receive it as a delayed
-   *       entry and disk dispatch is attempted. The entry is then persisted to disk.
-   * </ul>
-   *
-   * <p><b>Step 3 – Quorum tracking:</b> Each sent entry is registered in
-   * {@code currentReplicationgIndicesToAckFollowerCount}. When a follower acknowledges the entry,
-   * its ACK count is incremented; once ≥ half the follower count the entry is removed from the
-   * map. When the map empties the current partition is fully committed and the next partition may
-   * be transmitted.
-   */
-  public synchronized TSStatus write(IConsensusRequest request) {
-    if (!active) {
-      return RpcUtils.getStatus(
-          TSStatusCode.WRITE_PROCESS_REJECT,
-          String.format("Peer %s is inactive and cannot process writes", thisNode));
-    }
-    if (role != TRaftRole.LEADER) {
-      return RpcUtils.getStatus(
-          TSStatusCode.WRITE_PROCESS_REJECT,
-          String.format("Peer %s is not leader, current leader id: %s", thisNode, leaderId));
-    }
-
-    TRaftLogEntry logEntry = buildLogEntry(request);
-
-    // Apply to local state machine immediately (leader apply-on-write model).
-    TSStatus localStatus = stateMachine.write(stateMachine.deserializeRequest(request));
-    if (!isSuccess(localStatus)) {
-      return localStatus;
-    }
-
-    List<Peer> followers = getFollowers();
-    int followerCount = followers.size();
-    long entryPartitionIndex = logEntry.getPartitionIndex();
-
-    if (entryPartitionIndex > currentLeaderInsertingPartitionIndex) {
-      // ── Higher partition: write directly to disk ─────────────────────────
-      // Log a debug note if there are still uncommitted entries from the old partition.
-      if (!currentReplicationgIndicesToAckFollowerCount.isEmpty()) {
-        LOGGER.debug(
-            "Partition boundary crossed from {} to {} with {} uncommitted indices pending quorum",
-            currentLeaderInsertingPartitionIndex,
-            entryPartitionIndex,
-            currentReplicationgIndicesToAckFollowerCount.size());
+  public TSStatus write(IConsensusRequest request) {
+    TRaftLogEntry logEntry;
+    synchronized (this) {
+      if (!active) {
+        return RpcUtils.getStatus(
+            TSStatusCode.WRITE_PROCESS_REJECT,
+            String.format("Peer %s is inactive and cannot process writes", thisNode));
       }
-      currentLeaderInsertingPartitionIndex = entryPartitionIndex;
-
+      if (role != TRaftRole.LEADER) {
+        return RpcUtils.getStatus(
+            TSStatusCode.WRITE_PROCESS_REJECT,
+            String.format("Peer %s is not leader, current leader id: %s", thisNode, leaderId));
+      }
       try {
-        logStore.append(logEntry);
+        // The leader always persists the entry locally before waiting for quorum. State-machine
+        // application happens only after the entry is committed.
+        logEntry = appendDataEntryLocked(request);
       } catch (IOException e) {
-        LOGGER.error("Failed to append TRaft log entry {}", logEntry.getLogIndex(), e);
+        LOGGER.error("Failed to append TRaft log entry for request", e);
         return RpcUtils.getStatus(
             TSStatusCode.INTERNAL_SERVER_ERROR, "Failed to persist TRaft log entry");
       }
-      logicalClock.updateAndGet(v -> Math.max(v, logEntry.getLogIndex()));
-      updatePartitionIndexStat(logEntry);
-
-      // Add to every follower's delayed queue; attempt synchronous dispatch.
-      for (Peer follower : followers) {
-        TRaftFollowerInfo info =
-            followerInfoMap.computeIfAbsent(
-                follower.getNodeId(),
-                key -> new TRaftFollowerInfo(getLatestPartitionIndex(), logicalClock.get()));
-        info.addDelayedIndex(logEntry.getPartitionIndex(), logEntry.getLogIndex());
-        limitDelayedEntriesIfNecessary(info);
-        dispatchNextDelayedEntry(follower, info);
-      }
-
-    } else {
-      // ── Same partition: attempt fast-path replication per follower ────────
-      if (followerCount > 0) {
-        currentReplicationgIndicesToAckFollowerCount.put(
-            logEntry.getLogIndex(), new AtomicInteger(0));
-      }
-
-      List<Peer> delayedFollowers = new ArrayList<>();
-      for (Peer follower : followers) {
-        TRaftFollowerInfo info =
-            followerInfoMap.computeIfAbsent(
-                follower.getNodeId(),
-                key -> new TRaftFollowerInfo(getLatestPartitionIndex(), logicalClock.get() + 1));
-
-        if (entryPartitionIndex == info.getCurrentReplicatingPartitionIndex()) {
-          // Fast path: record index and send directly.
-          info.addCurrentReplicatingIndex(logEntry.getLogIndex());
-          boolean success = sendEntryToFollower(follower, logEntry);
-          if (success) {
-            info.recordMemoryReplicationSuccess();
-            onFollowerAck(follower, info, logEntry);
-          } else {
-            onFollowerSendFailed(info, logEntry);
-            delayedFollowers.add(follower);
-          }
-        } else if (entryPartitionIndex > info.getCurrentReplicatingPartitionIndex()) {
-          // Follower is behind – defer to disk path.
-          delayedFollowers.add(follower);
-        }
-        // entryPartitionIndex < info.getCurrentReplicatingPartitionIndex() should not happen.
-      }
-
-      // Persist to disk after in-memory replication attempts.
-      try {
-        logStore.append(logEntry);
-      } catch (IOException e) {
-        LOGGER.error("Failed to append TRaft log entry {}", logEntry.getLogIndex(), e);
-        return RpcUtils.getStatus(
-            TSStatusCode.INTERNAL_SERVER_ERROR, "Failed to persist TRaft log entry");
-      }
-      logicalClock.updateAndGet(v -> Math.max(v, logEntry.getLogIndex()));
-      updatePartitionIndexStat(logEntry);
-
-      // For delayed followers: enqueue + synchronous disk dispatch.
-      for (Peer follower : delayedFollowers) {
-        TRaftFollowerInfo info = followerInfoMap.get(follower.getNodeId());
-        if (info == null) {
-          continue;
-        }
-        info.addDelayedIndex(logEntry.getPartitionIndex(), logEntry.getLogIndex());
-        limitDelayedEntriesIfNecessary(info);
-        dispatchNextDelayedEntry(follower, info);
-      }
+      advanceCommitIndexLocked();
+      applyCommittedEntriesLocked();
+      maybeTriggerSnapshotAsyncLocked();
     }
-
-    return localStatus;
+    if (!waitForCommit(logEntry.getLogIndex(), config.getReplication().getRequestTimeoutMs())) {
+      return RpcUtils.getStatus(
+          TSStatusCode.WRITE_PROCESS_REJECT,
+          "Timed out waiting for TRaft entry to reach quorum");
+    }
+    TSStatus status = applyResultByIndex.remove(logEntry.getLogIndex());
+    return status == null ? RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS) : status;
   }
-
-  // ────────────────────────────────────────────────────────────────────────────
-  // Read path
-  // ────────────────────────────────────────────────────────────────────────────
 
   public synchronized DataSet read(IConsensusRequest request) {
     return stateMachine.read(request);
   }
 
-  // ────────────────────────────────────────────────────────────────────────────
-  // Follower RPC handler
-  // ────────────────────────────────────────────────────────────────────────────
-
-  /**
-   * Receive a replicated log entry from the leader.
-   *
-   * <p><b>Term check:</b>
-   * <ul>
-   *   <li>If the leader's term is less than the follower's current term the request is rejected
-   *       so the leader can discover it is stale and step down.
-   *   <li>If the leader's term is greater the follower updates its own term and resets its vote.
-   * </ul>
-   *
-   * <p><b>Partition index check (after term is accepted):</b>
-   * <ul>
-   *   <li>If the entry's partition index is <em>less than</em> the follower's current maximum
-   *       partition index, the follower is ahead of what the leader is sending – this is an
-   *       inconsistency and an error is returned.
-   *   <li>If the entry's partition index is equal to or greater than the follower's maximum, the
-   *       entry is accepted, persisted, and applied to the state machine.
-   * </ul>
-   */
-  synchronized TSStatus receiveReplicatedLog(TRaftLogEntry logEntry, int newLeaderId, long term) {
-    // ── Term comparison ──────────────────────────────────────────────────────
-    if (term < currentTerm) {
-      LOGGER.warn(
-          "Rejecting replicated log from leader {} with stale term {} (currentTerm={})",
-          newLeaderId,
-          term,
-          currentTerm);
-      return RpcUtils.getStatus(
-          TSStatusCode.WRITE_PROCESS_REJECT,
-          "Leader term " + term + " is stale; follower currentTerm=" + currentTerm);
+  synchronized TRaftAppendEntriesResponse receiveAppendEntries(TRaftAppendEntriesRequest request) {
+    if (!active) {
+      return new TRaftAppendEntriesResponse(false, currentTerm, getLastLogIndexLocked(), getLastLogIndexLocked() + 1);
     }
-    if (term > currentTerm) {
-      currentTerm = term;
-      votedFor = -1;
+    if (request.getTerm() < currentTerm) {
+      return new TRaftAppendEntriesResponse(false, currentTerm, getLastLogIndexLocked(), getLastLogIndexLocked() + 1);
     }
-    becomeFollower(newLeaderId);
+    if (request.getTerm() > currentTerm) {
+      updateTermLocked(request.getTerm(), -1);
+    }
+    if (role != TRaftRole.FOLLOWER || leaderId != request.getLeaderId()) {
+      becomeFollowerLocked(request.getLeaderId());
+    }
+    resetElectionDeadlineLocked();
 
-    // Idempotency: already have this log index.
-    if (logStore.contains(logEntry.getLogIndex())) {
-      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+    // Traditional Raft log matching: the follower only accepts new entries if the leader proves
+    // the term/index pair immediately before them. TRaft's partition metadata is intentionally not
+    // part of this safety check.
+    long expectedPrevTerm = getLogTermLocked(request.getPrevLogIndex());
+    if (expectedPrevTerm != request.getPrevLogTerm()) {
+      long nextIndexHint = computeNextIndexHintLocked(request.getPrevLogIndex());
+      return new TRaftAppendEntriesResponse(false, currentTerm, getLastLogIndexLocked(), nextIndexHint);
     }
 
-    // ── Partition index comparison ───────────────────────────────────────────
-    if (logEntry.getPartitionIndex() < maxPartitionIndex) {
-      // Follower's partition is ahead of what the leader sent – inconsistency.
-      LOGGER.error(
-          "Partition inconsistency on follower {}: entry partitionIndex={}, follower maxPartitionIndex={}",
-          thisNode,
-          logEntry.getPartitionIndex(),
-          maxPartitionIndex);
-      return RpcUtils.getStatus(
-          TSStatusCode.INTERNAL_SERVER_ERROR,
-          "Partition index inconsistency: follower maxPartition="
-              + maxPartitionIndex
-              + " > entry partition="
-              + logEntry.getPartitionIndex());
-    }
-
-    // ── Persist and apply ────────────────────────────────────────────────────
     try {
-      logStore.append(logEntry);
+      appendReplicatedEntriesLocked(request.getEntries());
+      if (request.getLeaderCommit() > commitIndex) {
+        commitIndex = Math.min(request.getLeaderCommit(), getLastLogIndexLocked());
+        persistMetadataLocked();
+      }
+      applyCommittedEntriesLocked();
     } catch (IOException e) {
-      LOGGER.error("Failed to persist replicated TRaft log {}", logEntry.getLogIndex(), e);
-      return RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, "Failed to persist log");
+      LOGGER.error("Failed to persist replicated TRaft log for {}", thisNode, e);
+      return new TRaftAppendEntriesResponse(false, currentTerm, getLastLogIndexLocked(), getLastLogIndexLocked() + 1);
     }
 
-    logicalClock.updateAndGet(v -> Math.max(v, logEntry.getLogIndex()));
-    updatePartitionIndexStat(logEntry);
-
-    IConsensusRequest deserializedRequest =
-        stateMachine.deserializeRequest(TRaftRequestParser.buildRequest(logEntry.getData()));
-    deserializedRequest.markAsGeneratedByRemoteConsensusLeader();
-    return stateMachine.write(deserializedRequest);
+    long matchIndex =
+        request.getEntries().isEmpty()
+            ? request.getPrevLogIndex()
+            : request.getEntries().get(request.getEntries().size() - 1).getLogIndex();
+    return new TRaftAppendEntriesResponse(true, currentTerm, matchIndex, matchIndex + 1);
   }
 
-  // ────────────────────────────────────────────────────────────────────────────
-  // Election
-  // ────────────────────────────────────────────────────────────────────────────
-
   synchronized TRaftVoteResult requestVote(TRaftVoteRequest voteRequest) {
+    if (!active) {
+      return new TRaftVoteResult(false, currentTerm);
+    }
     if (voteRequest.getTerm() < currentTerm) {
       return new TRaftVoteResult(false, currentTerm);
     }
     if (voteRequest.getTerm() > currentTerm) {
-      currentTerm = voteRequest.getTerm();
-      votedFor = voteRequest.getCandidateId();
-      becomeFollower(-1);
-      return new TRaftVoteResult(true, currentTerm);
+      updateTermLocked(voteRequest.getTerm(), -1);
+      // A rejected higher-term vote request should not refresh the election deadline. Otherwise a
+      // stale candidate could repeatedly bump term and starve the more up-to-date follower.
+      becomeFollowerLocked(-1, false);
     }
-    if (votedFor != -1 && votedFor != voteRequest.getCandidateId()) {
-      return new TRaftVoteResult(false, currentTerm);
-    }
-    int freshnessCompareResult =
-        compareCandidateFreshness(
-            voteRequest.getPartitionIndex(),
-            voteRequest.getCurrentPartitionIndexCount(),
-            maxPartitionIndex,
-            currentPartitionIndexCount);
-    boolean shouldVote = freshnessCompareResult > 0;
-    if (!shouldVote && freshnessCompareResult == 0) {
-      shouldVote = random.nextBoolean();
-    }
-    if (!shouldVote) {
+    boolean canVote = votedFor == -1 || votedFor == voteRequest.getCandidateId();
+    // Election safety follows standard Raft freshness. The TRaft partition counters travel with
+    // the RPC for observability and future extensions, but they do not override term/index order.
+    boolean candidateUpToDate =
+        compareLogFreshnessLocked(
+                voteRequest.getLastLogTerm(),
+                voteRequest.getLastLogIndex(),
+                getLastLogTermLocked(),
+                getLastLogIndexLocked())
+            >= 0;
+    if (!canVote || !candidateUpToDate) {
       return new TRaftVoteResult(false, currentTerm);
     }
     votedFor = voteRequest.getCandidateId();
+    persistMetadataQuietlyLocked();
+    resetElectionDeadlineLocked();
     return new TRaftVoteResult(true, currentTerm);
   }
 
-  synchronized boolean campaignLeader() {
+  synchronized TRaftInstallSnapshotResponse receiveInstallSnapshot(
+      TRaftInstallSnapshotRequest request) {
     if (!active) {
-      return false;
+      return new TRaftInstallSnapshotResponse(false, currentTerm, snapshotLastIncludedIndex);
     }
-    role = TRaftRole.CANDIDATE;
-    leaderId = -1;
-    currentTerm++;
-    votedFor = thisNode.getNodeId();
-    int grantVotes = 1;
-    TRaftVoteRequest voteRequest =
-        new TRaftVoteRequest(
-            thisNode.getNodeId(), currentTerm, maxPartitionIndex, currentPartitionIndexCount);
-    for (Peer follower : getFollowers()) {
-      Optional<TRaftServerImpl> followerServer = TRaftNodeRegistry.resolveServer(follower);
-      if (!followerServer.isPresent()) {
-        continue;
-      }
-      TRaftVoteResult voteResult = followerServer.get().requestVote(voteRequest);
-      if (voteResult.getTerm() > currentTerm) {
-        currentTerm = voteResult.getTerm();
-        becomeFollower(-1);
-        return false;
-      }
-      if (voteResult.isGranted()) {
-        grantVotes++;
-      }
+    if (request.getTerm() < currentTerm) {
+      return new TRaftInstallSnapshotResponse(false, currentTerm, snapshotLastIncludedIndex);
     }
-    if (grantVotes > configuration.size() / 2) {
-      becomeLeader();
-      return true;
+    if (request.getTerm() > currentTerm) {
+      updateTermLocked(request.getTerm(), -1);
     }
-    becomeFollower(-1);
-    return false;
+    becomeFollowerLocked(request.getLeaderId());
+    resetElectionDeadlineLocked();
+    try {
+      replaceSnapshotLocked(request);
+      if (started) {
+        stateMachine.loadSnapshot(snapshotDir);
+      }
+      return new TRaftInstallSnapshotResponse(true, currentTerm, snapshotLastIncludedIndex);
+    } catch (IOException e) {
+      LOGGER.error("Failed to install TRaft snapshot for {}", thisNode, e);
+      return new TRaftInstallSnapshotResponse(false, currentTerm, snapshotLastIncludedIndex);
+    }
   }
 
-  // ────────────────────────────────────────────────────────────────────────────
-  // Configuration management
-  // ────────────────────────────────────────────────────────────────────────────
+  synchronized TRaftTriggerElectionResponse triggerElection() {
+    if (!active || !started) {
+      return new TRaftTriggerElectionResponse(false, currentTerm);
+    }
+    electionDeadlineMs = 0;
+    if (backgroundExecutor != null) {
+      backgroundExecutor.execute(this::startElection);
+    }
+    return new TRaftTriggerElectionResponse(true, currentTerm);
+  }
 
   synchronized void transferLeader(Peer newLeader) {
+    if (!configuration.contains(newLeader)) {
+      return;
+    }
     if (Objects.equals(newLeader, thisNode)) {
-      campaignLeader();
+      if (backgroundExecutor != null) {
+        backgroundExecutor.execute(this::startElection);
+      }
       return;
     }
-    Optional<TRaftServerImpl> targetServer = TRaftNodeRegistry.resolveServer(newLeader);
-    if (!targetServer.isPresent()) {
-      return;
-    }
-    targetServer.get().campaignLeader();
-    if (targetServer.get().isLeader()) {
-      becomeFollower(newLeader.getNodeId());
+    try {
+      TRaftTriggerElectionResponse response = transport.triggerElection(newLeader);
+      if (response.getTerm() > currentTerm) {
+        updateTermLocked(response.getTerm(), -1);
+      }
+      if (response.isAccepted()) {
+        becomeFollowerLocked(-1);
+      }
+    } catch (IOException e) {
+      LOGGER.warn("Failed to transfer TRaft leadership to {}", newLeader, e);
     }
   }
 
   synchronized void resetPeerList(List<Peer> newPeers) throws IOException {
     configuration.clear();
     configuration.addAll(newPeers);
-    if (!configuration.contains(thisNode)) {
-      configuration.add(thisNode);
-    }
     persistConfiguration();
-    electInitialLeader();
-    initFollowerInfoMap();
-    if (started && role == TRaftRole.LEADER) {
-      stopAppenders();
-      initAppenders();
+    reinitializeReplicationStateLocked();
+    if (!configuration.contains(thisNode) || role != TRaftRole.LEADER) {
+      leaderReady = false;
     }
+    stateMachine.event().notifyConfigurationChanged(currentTerm, commitIndex, new ArrayList<>(configuration));
   }
 
   synchronized void addPeer(Peer peer) throws IOException {
-    configuration.add(peer);
-    persistConfiguration();
-    initFollowerInfoMap();
-    if (started && role == TRaftRole.LEADER) {
-      stopAppenders();
-      initAppenders();
+    if (role != TRaftRole.LEADER) {
+      throw new IOException("Only leader can add peer in TRaft");
+    }
+    TreeSet<Peer> newConfiguration = new TreeSet<>(configuration);
+    newConfiguration.add(peer);
+    appendConfigurationChangeAndAwaitCommitLocked(newConfiguration);
+    long targetIndex = getLastLogIndexLocked();
+    if (!waitForFollowerCatchUp(peer, targetIndex, config.getReplication().getRequestTimeoutMs())) {
+      throw new IOException("Timed out waiting for new TRaft peer to catch up");
     }
   }
 
   synchronized void removePeer(Peer peer) throws IOException {
-    configuration.remove(peer);
-    persistConfiguration();
-    initFollowerInfoMap();
-    if (started && role == TRaftRole.LEADER) {
-      stopAppenders();
-      initAppenders();
+    if (role != TRaftRole.LEADER) {
+      throw new IOException("Only leader can remove peer in TRaft");
     }
-    if (peer.getNodeId() == leaderId) {
-      electInitialLeader();
-    }
+    TreeSet<Peer> newConfiguration = new TreeSet<>(configuration);
+    newConfiguration.remove(peer);
+    appendConfigurationChangeAndAwaitCommitLocked(newConfiguration);
   }
 
-  // ────────────────────────────────────────────────────────────────────────────
-  // Background appender: called by TRaftLogAppender every waitingReplicationTimeMs
-  // ────────────────────────────────────────────────────────────────────────────
-
-  /**
-   * Entry point for the per-follower {@link TRaftLogAppender} background thread.
-   *
-   * <p>Checks whether the follower has pending delayed entries and, if so, attempts to dispatch
-   * the next one from disk. This provides a periodic retry mechanism for followers that were
-   * offline during the original write, and ensures that entries written to disk during partition
-   * transitions are eventually transmitted.
-   */
-  synchronized void tryReplicateDiskEntriesToFollower(Peer follower) {
-    if (!started || role != TRaftRole.LEADER || !active) {
+  synchronized void triggerSnapshot(boolean force) throws IOException {
+    if (!started || !snapshotInProgress.compareAndSet(false, true)) {
       return;
     }
-    TRaftFollowerInfo info = followerInfoMap.get(follower.getNodeId());
-    if (info == null || !info.hasDelayedEntries() || info.hasCurrentReplicatingIndex()) {
-      return;
+    try {
+      long snapshotIndex = commitIndex;
+      if (!force
+          && (snapshotIndex <= snapshotLastIncludedIndex
+              || snapshotIndex - snapshotLastIncludedIndex
+                  < config.getSnapshot().getAutoTriggerLogThreshold())) {
+        return;
+      }
+      if (snapshotIndex <= 0) {
+        return;
+      }
+      File tmpSnapshotDir = new File(storageDir, SNAPSHOT_DIR_NAME + ".tmp");
+      deleteRecursively(tmpSnapshotDir);
+      if (!tmpSnapshotDir.exists() && !tmpSnapshotDir.mkdirs()) {
+        throw new IOException(String.format("Failed to create snapshot dir %s", tmpSnapshotDir));
+      }
+      if (!stateMachine.takeSnapshot(tmpSnapshotDir)) {
+        throw new IOException("State machine refused to take TRaft snapshot");
+      }
+      deleteRecursively(snapshotDir);
+      if (!tmpSnapshotDir.renameTo(snapshotDir)) {
+        throw new IOException(
+            String.format("Failed to move TRaft snapshot from %s to %s", tmpSnapshotDir, snapshotDir));
+      }
+      // Capture the last included term before advancing snapshotLastIncludedIndex. Once the index
+      // moves forward, getLogTermLocked(snapshotIndex) would read the snapshot metadata we are in
+      // the middle of updating instead of the original log term.
+      long snapshotTerm = getLogTermLocked(snapshotIndex);
+      snapshotLastIncludedIndex = snapshotIndex;
+      snapshotLastIncludedTerm = snapshotTerm;
+      snapshotHistoricalMaxTimestamp = historicalMaxTimestamp;
+      snapshotPartitionIndex = maxPartitionIndex;
+      snapshotPartitionCount = currentPartitionIndexCount;
+      logStore.compactPrefix(snapshotLastIncludedIndex);
+      recalculatePartitionStatsLocked();
+      persistMetadataLocked();
+    } finally {
+      snapshotInProgress.set(false);
     }
-    dispatchNextDelayedEntry(follower, info);
   }
-
-  // ────────────────────────────────────────────────────────────────────────────
-  // Accessors
-  // ────────────────────────────────────────────────────────────────────────────
 
   synchronized Peer getLeader() {
     return configuration.stream()
@@ -571,7 +472,7 @@ class TRaftServerImpl {
   }
 
   synchronized boolean isLeaderReady() {
-    return isLeader() && active;
+    return isLeader() && active && leaderReady;
   }
 
   synchronized boolean isReadOnly() {
@@ -584,6 +485,10 @@ class TRaftServerImpl {
 
   synchronized void setActive(boolean active) {
     this.active = active;
+    if (!active && role == TRaftRole.LEADER) {
+      leaderReady = false;
+      notifyFollowerStateLocked();
+    }
   }
 
   synchronized long getCurrentPartitionIndexCount() {
@@ -594,194 +499,514 @@ class TRaftServerImpl {
     return logStore.getAllEntries();
   }
 
-  synchronized TRaftFollowerInfo getFollowerInfo(int followerNodeId) {
-    return followerInfoMap.get(followerNodeId);
+  synchronized long getCommitIndex() {
+    return commitIndex;
   }
 
-  synchronized long getLatestPartitionIndex() {
-    TRaftLogEntry last = logStore.getLastEntry();
-    return last == null ? INITIAL_PARTITION_INDEX : last.getPartitionIndex();
-  }
-
-  synchronized long getCurrentLeaderInsertingPartitionIndex() {
-    return currentLeaderInsertingPartitionIndex;
-  }
-
-  synchronized int getPendingQuorumEntryCount() {
-    return currentReplicationgIndicesToAckFollowerCount.size();
+  synchronized long getCurrentTerm() {
+    return currentTerm;
   }
 
   synchronized void reloadConsensusConfig(TRaftConfig config) {
     this.config = config;
   }
 
-  // ────────────────────────────────────────────────────────────────────────────
-  // Private: log entry construction
-  // ────────────────────────────────────────────────────────────────────────────
+  private void checkElectionTimeout() {
+    synchronized (this) {
+      if (!started || !active || role == TRaftRole.LEADER) {
+        return;
+      }
+      if (System.currentTimeMillis() < electionDeadlineMs) {
+        return;
+      }
+      resetElectionDeadlineLocked();
+    }
+    startElection();
+  }
 
-  private TRaftLogEntry buildLogEntry(IConsensusRequest request) {
-    TRaftLogEntry previous = logStore.getLastEntry();
+  private void heartbeat() {
+    List<Peer> followers;
+    synchronized (this) {
+      if (!started || !active || role != TRaftRole.LEADER) {
+        return;
+      }
+      followers = getFollowersLocked();
+    }
+    for (Peer follower : followers) {
+      replicateToPeer(follower, true);
+    }
+  }
+
+  private void startElection() {
+    TRaftVoteRequest voteRequest;
+    List<Peer> followers;
+    long electionTerm;
+    int clusterSize;
+    synchronized (this) {
+      if (!started || !active || role == TRaftRole.LEADER) {
+        return;
+      }
+      role = TRaftRole.CANDIDATE;
+      leaderReady = false;
+      leaderId = -1;
+      currentTerm++;
+      votedFor = thisNode.getNodeId();
+      persistMetadataQuietlyLocked();
+      resetElectionDeadlineLocked();
+      voteRequest =
+          new TRaftVoteRequest(
+              thisNode.getNodeId(),
+              currentTerm,
+              getLastLogIndexLocked(),
+              getLastLogTermLocked(),
+              maxPartitionIndex,
+              currentPartitionIndexCount);
+      followers = getFollowersLocked();
+      electionTerm = currentTerm;
+      clusterSize = configuration.size();
+    }
+    int votes = 1;
+    for (Peer follower : followers) {
+      try {
+        TRaftVoteResult result = transport.requestVote(follower, voteRequest);
+        synchronized (this) {
+          if (role != TRaftRole.CANDIDATE || currentTerm != electionTerm) {
+            return;
+          }
+          if (result.getTerm() > currentTerm) {
+            updateTermLocked(result.getTerm(), -1);
+            becomeFollowerLocked(-1);
+            return;
+          }
+          if (result.isGranted()) {
+            votes++;
+          }
+        }
+      } catch (IOException e) {
+        LOGGER.debug("Failed to request TRaft vote from {}", follower, e);
+      }
+    }
+    boolean wonElection = false;
+    synchronized (this) {
+      if (role == TRaftRole.CANDIDATE && currentTerm == electionTerm && votes > clusterSize / 2) {
+        becomeLeaderLocked();
+        wonElection = true;
+      } else if (role == TRaftRole.CANDIDATE && currentTerm == electionTerm) {
+        becomeFollowerLocked(-1);
+      }
+    }
+    if (wonElection) {
+      try {
+        // Like traditional Raft, leader readiness is gated by a committed no-op in the new term.
+        long noOpIndex = appendSpecialEntry(TRaftEntryType.NO_OP, new byte[0]);
+        waitForCommit(noOpIndex, config.getReplication().getRequestTimeoutMs());
+      } catch (IOException e) {
+        LOGGER.error("Failed to append leader no-op entry for {}", thisNode, e);
+        synchronized (this) {
+          becomeFollowerLocked(-1);
+        }
+      }
+    }
+  }
+
+  private boolean waitForCommit(long logIndex, long timeoutMs) {
+    long deadline = System.currentTimeMillis() + timeoutMs;
+    while (true) {
+      synchronized (this) {
+        if (commitIndex >= logIndex) {
+          return true;
+        }
+        if (!started || !active || role != TRaftRole.LEADER) {
+          return false;
+        }
+      }
+      for (Peer follower : getFollowersSnapshot()) {
+        replicateToPeer(follower, false);
+      }
+      synchronized (this) {
+        if (commitIndex >= logIndex) {
+          return true;
+        }
+        long remaining = deadline - System.currentTimeMillis();
+        if (remaining <= 0) {
+          return false;
+        }
+        try {
+          wait(Math.min(remaining, config.getElection().getHeartbeatIntervalMs()));
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+          return false;
+        }
+      }
+    }
+  }
+
+  private boolean waitForFollowerCatchUp(Peer follower, long targetIndex, long timeoutMs) {
+    long deadline = System.currentTimeMillis() + timeoutMs;
+    while (true) {
+      synchronized (this) {
+        if (!configuration.contains(follower)) {
+          return false;
+        }
+        if (matchIndexByFollower.getOrDefault(follower.getNodeId(), 0L) >= targetIndex) {
+          return true;
+        }
+      }
+      replicateToPeer(follower, false);
+      synchronized (this) {
+        if (matchIndexByFollower.getOrDefault(follower.getNodeId(), 0L) >= targetIndex) {
+          return true;
+        }
+        long remaining = deadline - System.currentTimeMillis();
+        if (remaining <= 0) {
+          return false;
+        }
+        try {
+          wait(Math.min(remaining, config.getElection().getHeartbeatIntervalMs()));
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+          return false;
+        }
+      }
+    }
+  }
+
+  private void replicateToPeer(Peer follower, boolean forceHeartbeat) {
+    TRaftInstallSnapshotRequest snapshotRequest = null;
+    TRaftAppendEntriesRequest appendRequest = null;
+    synchronized (this) {
+      if (!started || !active || role != TRaftRole.LEADER || !configuration.contains(follower)) {
+        return;
+      }
+      long nextIndex = nextIndexByFollower.getOrDefault(follower.getNodeId(), firstAvailableIndexLocked());
+      if (nextIndex <= snapshotLastIncludedIndex) {
+        // Once the follower falls behind the compacted prefix, catch-up must switch from
+        // AppendEntries to InstallSnapshot.
+        snapshotRequest = buildInstallSnapshotRequestLocked();
+      } else {
+        long prevLogIndex = nextIndex - 1;
+        long prevLogTerm = getLogTermLocked(prevLogIndex);
+        List<TRaftLogEntry> entries =
+            logStore.getEntriesFrom(nextIndex, config.getReplication().getMaxEntriesPerAppend());
+        appendRequest =
+            new TRaftAppendEntriesRequest(
+                thisNode.getNodeId(), currentTerm, prevLogIndex, prevLogTerm, commitIndex, entries);
+      }
+    }
+    if (snapshotRequest != null) {
+      sendSnapshotToFollower(follower, snapshotRequest);
+    } else if (appendRequest != null) {
+      sendAppendEntriesToFollower(follower, appendRequest);
+    }
+  }
+
+  private void sendAppendEntriesToFollower(Peer follower, TRaftAppendEntriesRequest request) {
+    try {
+      TRaftAppendEntriesResponse response = transport.appendEntries(follower, request);
+      synchronized (this) {
+        if (role != TRaftRole.LEADER || request.getTerm() != currentTerm) {
+          return;
+        }
+        if (response.getTerm() > currentTerm) {
+          updateTermLocked(response.getTerm(), -1);
+          becomeFollowerLocked(-1);
+          return;
+        }
+        if (response.isSuccess()) {
+          matchIndexByFollower.put(follower.getNodeId(), response.getMatchIndex());
+          nextIndexByFollower.put(follower.getNodeId(), response.getMatchIndex() + 1);
+          advanceCommitIndexLocked();
+          applyCommittedEntriesLocked();
+          maybeTriggerSnapshotAsyncLocked();
+        } else {
+          long nextIndex = Math.max(1L, response.getNextIndexHint());
+          nextIndexByFollower.put(follower.getNodeId(), nextIndex);
+        }
+      }
+    } catch (IOException e) {
+      LOGGER.debug("Failed to append TRaft entry to {}", follower, e);
+    }
+  }
+
+  private void sendSnapshotToFollower(Peer follower, TRaftInstallSnapshotRequest request) {
+    try {
+      TRaftInstallSnapshotResponse response = transport.installSnapshot(follower, request);
+      synchronized (this) {
+        if (role != TRaftRole.LEADER || request.getTerm() != currentTerm) {
+          return;
+        }
+        if (response.getTerm() > currentTerm) {
+          updateTermLocked(response.getTerm(), -1);
+          becomeFollowerLocked(-1);
+          return;
+        }
+        if (response.isSuccess()) {
+          matchIndexByFollower.put(follower.getNodeId(), response.getLastIncludedIndex());
+          nextIndexByFollower.put(follower.getNodeId(), response.getLastIncludedIndex() + 1);
+        }
+      }
+    } catch (IOException e) {
+      LOGGER.debug("Failed to install TRaft snapshot to {}", follower, e);
+    }
+  }
+
+  private synchronized long appendSpecialEntry(TRaftEntryType entryType, byte[] data)
+      throws IOException {
+    TRaftLogEntry entry = buildLogEntryLocked(entryType, data, null);
+    if (entryType == TRaftEntryType.NO_OP && role == TRaftRole.LEADER) {
+      leaderReadyIndex = entry.getLogIndex();
+    }
+    appendLocalEntryLocked(entry);
+    advanceCommitIndexLocked();
+    applyCommittedEntriesLocked();
+    notifyAll();
+    return entry.getLogIndex();
+  }
+
+  private void appendConfigurationChangeAndAwaitCommitLocked(TreeSet<Peer> newConfiguration)
+      throws IOException {
+    // TRaft persists membership changes as a dedicated log entry. This is simpler than full
+    // joint-consensus Raft, so callers should serialize configuration changes one at a time.
+    byte[] serializedPeers = TRaftSerializationUtils.serializePeers(new ArrayList<>(newConfiguration));
+    long logIndex = appendSpecialEntry(TRaftEntryType.CONFIGURATION, serializedPeers);
+    if (!waitForCommit(logIndex, config.getReplication().getRequestTimeoutMs())) {
+      throw new IOException("Timed out waiting for TRaft configuration change to commit");
+    }
+  }
+
+  private TRaftLogEntry appendDataEntryLocked(IConsensusRequest request) throws IOException {
+    TRaftLogEntry entry =
+        buildLogEntryLocked(TRaftEntryType.DATA, TRaftRequestParser.extractRawRequest(request), request);
+    appendLocalEntryLocked(entry);
+    // No local apply here: the state machine advances only from applyCommittedEntriesLocked().
+    applyCommittedEntriesLocked();
+    notifyAll();
+    return entry;
+  }
+
+  private void appendLocalEntryLocked(TRaftLogEntry entry) throws IOException {
+    logStore.append(entry);
+    logicalClock.set(Math.max(logicalClock.get(), entry.getLogIndex()));
+    updatePartitionStatsForEntryLocked(entry);
+    persistMetadataLocked();
+  }
+
+  private TRaftLogEntry buildLogEntryLocked(
+      TRaftEntryType entryType, byte[] data, IConsensusRequest request) {
     long timestamp =
-        TRaftRequestParser.extractTimestamp(
-            request, historicalMaxTimestamp == Long.MIN_VALUE ? 0 : historicalMaxTimestamp);
-    long logIndex = previous == null ? 1 : previous.getLogIndex() + 1;
-    long logTerm = currentTerm;
+        request == null
+            ? (historicalMaxTimestamp == Long.MIN_VALUE ? 0 : historicalMaxTimestamp)
+            : TRaftRequestParser.extractTimestamp(
+                request, historicalMaxTimestamp == Long.MIN_VALUE ? 0 : historicalMaxTimestamp);
+    long logIndex = getLastLogIndexLocked() + 1;
     long partitionIndex;
     long interPartitionIndex;
-    long lastPartitionCount;
-    if (previous == null) {
+    long lastPartitionCount = currentPartitionIndexCount;
+    // TRaft-specific extension: out-of-order timestamps open a fresh logical partition so catch-up
+    // code can preserve time-series ordering hints. Traditional Raft has no notion of partitions;
+    // safety still comes entirely from the log index/term assigned below.
+    if (historicalMaxTimestamp == Long.MIN_VALUE) {
       partitionIndex = INITIAL_PARTITION_INDEX;
-      interPartitionIndex = INITIAL_PARTITION_INDEX;
-      lastPartitionCount = 0;
-      historicalMaxTimestamp = timestamp;
-    } else if (timestamp < historicalMaxTimestamp) {
-      partitionIndex = previous.getPartitionIndex() + 1;
       interPartitionIndex = 0;
-      lastPartitionCount = previous.getInterPartitionIndex();
+    } else if (request != null && request.hasTime() && timestamp < historicalMaxTimestamp) {
+      partitionIndex = maxPartitionIndex + 1;
+      interPartitionIndex = 0;
     } else {
-      partitionIndex = previous.getPartitionIndex();
-      interPartitionIndex = previous.getInterPartitionIndex() + 1;
-      lastPartitionCount = previous.getLastPartitionCount();
-      historicalMaxTimestamp = Math.max(historicalMaxTimestamp, timestamp);
+      partitionIndex = maxPartitionIndex;
+      interPartitionIndex = currentPartitionIndexCount;
     }
     return new TRaftLogEntry(
+        entryType,
         timestamp,
         partitionIndex,
         logIndex,
-        logTerm,
+        currentTerm,
         interPartitionIndex,
         lastPartitionCount,
-        TRaftRequestParser.extractRawRequest(request));
+        data);
   }
 
-  // ────────────────────────────────────────────────────────────────────────────
-  // Private: follower ACK and quorum tracking
-  // ────────────────────────────────────────────────────────────────────────────
-
-  /**
-   * Called when a follower successfully receives and acknowledges {@code ackEntry}.
-   *
-   * <ol>
-   *   <li>Clears the entry from the follower's in-flight tracking.
-   *   <li>Updates the quorum commit counter for this log index.
-   *   <li>Chains dispatch of the next pending delayed entry for this follower.
-   * </ol>
-   */
-  private void onFollowerAck(Peer follower, TRaftFollowerInfo info, TRaftLogEntry ackEntry) {
-    info.removeCurrentReplicatingIndex(ackEntry.getLogIndex());
-    info.removeDelayedIndex(ackEntry.getPartitionIndex(), ackEntry.getLogIndex());
-    updateQuorumTracking(ackEntry.getLogIndex());
-    dispatchNextDelayedEntry(follower, info);
+  private void appendReplicatedEntriesLocked(List<TRaftLogEntry> entries) throws IOException {
+    for (TRaftLogEntry entry : entries) {
+      long localTerm = getLogTermLocked(entry.getLogIndex());
+      if (localTerm == entry.getLogTerm()) {
+        continue;
+      }
+      if (localTerm != -1) {
+        // Traditional Raft conflict repair: drop the conflicting suffix and accept the leader's
+        // replacement entries from the first mismatching index.
+        logStore.truncateSuffix(entry.getLogIndex());
+        if (commitIndex >= entry.getLogIndex()) {
+          commitIndex = entry.getLogIndex() - 1;
+        }
+        lastApplied = Math.min(lastApplied, commitIndex);
+        recalculatePartitionStatsLocked();
+      }
+      logStore.append(entry);
+      logicalClock.set(Math.max(logicalClock.get(), entry.getLogIndex()));
+      updatePartitionStatsForEntryLocked(entry);
+    }
+    persistMetadataLocked();
   }
 
-  /**
-   * Increments the ACK counter for {@code logIndex}. When the count reaches at least half the
-   * follower count the entry is considered committed and removed from the tracking map.
-   */
-  private void updateQuorumTracking(long logIndex) {
-    AtomicInteger counter = currentReplicationgIndicesToAckFollowerCount.get(logIndex);
-    if (counter == null) {
+  private void advanceCommitIndexLocked() {
+    List<Long> matchedIndices = new ArrayList<>();
+    matchedIndices.add(getLastLogIndexLocked());
+    for (Peer follower : getFollowersLocked()) {
+      matchedIndices.add(matchIndexByFollower.getOrDefault(follower.getNodeId(), 0L));
+    }
+    matchedIndices.sort(Comparator.naturalOrder());
+    long majorityMatchIndex = matchedIndices.get(matchedIndices.size() / 2);
+    // Standard Raft commit rule: only commit entries from the current term once a quorum matches
+    // them. Older-term entries become committed indirectly when a later current-term entry commits.
+    if (majorityMatchIndex > commitIndex && getLogTermLocked(majorityMatchIndex) == currentTerm) {
+      commitIndex = majorityMatchIndex;
+      persistMetadataQuietlyLocked();
+      notifyAll();
+    }
+  }
+
+  private void applyCommittedEntriesLocked() {
+    while (lastApplied < commitIndex) {
+      long nextToApply = lastApplied + 1;
+      if (nextToApply <= snapshotLastIncludedIndex) {
+        lastApplied = nextToApply;
+        continue;
+      }
+      TRaftLogEntry entry = logStore.getByIndex(nextToApply);
+      if (entry == null) {
+        break;
+      }
+      TSStatus status = RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+      if (entry.getEntryType() == TRaftEntryType.DATA) {
+        IConsensusRequest deserializedRequest =
+            stateMachine.deserializeRequest(TRaftRequestParser.buildRequest(entry.getData()));
+        if (leaderId != thisNode.getNodeId()) {
+          deserializedRequest.markAsGeneratedByRemoteConsensusLeader();
+        }
+        // Both leader and follower apply only after commit. This is the key safety difference from
+        // the original experimental TRaft implementation, which used to apply before quorum.
+        status = stateMachine.write(deserializedRequest);
+        if (role == TRaftRole.LEADER && leaderId == thisNode.getNodeId()) {
+          applyResultByIndex.put(nextToApply, status);
+        }
+      } else if (entry.getEntryType() == TRaftEntryType.CONFIGURATION) {
+        applyConfigurationEntryLocked(entry);
+      }
+      lastApplied = nextToApply;
+      if (!isSuccess(status)) {
+        LOGGER.warn("TRaft apply of log index {} returned {}", nextToApply, status);
+      }
+      persistMetadataQuietlyLocked();
+    }
+    if (!leaderReady
+        && role == TRaftRole.LEADER
+        && leaderReadyIndex > 0
+        && commitIndex >= leaderReadyIndex) {
+      // Upper layers are notified only after the current-term no-op becomes committed.
+      leaderReady = true;
+      stateMachine.event().notifyLeaderReady();
+    }
+    notifyAll();
+  }
+
+  private void applyConfigurationEntryLocked(TRaftLogEntry entry) {
+    List<Peer> peers = TRaftSerializationUtils.deserializePeers(entry.getData());
+    configuration.clear();
+    configuration.addAll(peers);
+    persistConfigurationQuietlyLocked();
+    reinitializeReplicationStateLocked();
+    if (!configuration.contains(thisNode)) {
+      leaderReady = false;
+      if (role == TRaftRole.LEADER) {
+        becomeFollowerLocked(-1);
+      }
+    }
+    stateMachine.event().notifyConfigurationChanged(entry.getLogTerm(), entry.getLogIndex(), new ArrayList<>(configuration));
+  }
+
+  private void maybeTriggerSnapshotAsyncLocked() {
+    if (backgroundExecutor == null || snapshotInProgress.get()) {
       return;
     }
-    int count = counter.incrementAndGet();
-    int followerCount = getFollowers().size();
-    // Quorum: ACK count >= half of follower count (per the requirement).
-    // Using count * 2 >= followerCount avoids floating-point and handles all sizes correctly.
-    if (followerCount > 0 && count * 2 >= followerCount) {
-      currentReplicationgIndicesToAckFollowerCount.remove(logIndex);
+    if (commitIndex - snapshotLastIncludedIndex < config.getSnapshot().getAutoTriggerLogThreshold()) {
+      return;
+    }
+    backgroundExecutor.execute(
+        () -> {
+          try {
+            triggerSnapshot(false);
+          } catch (IOException e) {
+            LOGGER.warn("Failed to trigger automatic TRaft snapshot", e);
+          }
+        });
+  }
+
+  private void becomeLeaderLocked() {
+    role = TRaftRole.LEADER;
+    leaderId = thisNode.getNodeId();
+    leaderReady = false;
+    leaderReadyIndex = 0;
+    reinitializeReplicationStateLocked();
+    long nextIndex = getLastLogIndexLocked() + 1;
+    // Fresh leaders optimistically probe every follower from the current log tail and back off
+    // through AppendEntries responses until the common prefix is found.
+    for (Peer follower : getFollowersLocked()) {
+      nextIndexByFollower.put(follower.getNodeId(), nextIndex);
+      matchIndexByFollower.put(follower.getNodeId(), 0L);
+    }
+    stateMachine.event().notifyLeaderChanged(thisNode.getGroupId(), leaderId);
+  }
+
+  private void becomeFollowerLocked(int newLeaderId) {
+    becomeFollowerLocked(newLeaderId, true);
+  }
+
+  private void becomeFollowerLocked(int newLeaderId, boolean resetElectionDeadline) {
+    role = TRaftRole.FOLLOWER;
+    leaderId = newLeaderId;
+    leaderReady = false;
+    leaderReadyIndex = 0;
+    if (resetElectionDeadline) {
+      resetElectionDeadlineLocked();
+    }
+    notifyFollowerStateLocked();
+  }
+
+  private void notifyFollowerStateLocked() {
+    if (leaderId != -1) {
+      stateMachine.event().notifyLeaderChanged(thisNode.getGroupId(), leaderId);
+    }
+    if (role != TRaftRole.LEADER) {
+      stateMachine.event().notifyNotLeader();
     }
   }
 
-  private void onFollowerSendFailed(TRaftFollowerInfo info, TRaftLogEntry failedEntry) {
-    info.removeCurrentReplicatingIndex(failedEntry.getLogIndex());
-    info.addDelayedIndex(failedEntry.getPartitionIndex(), failedEntry.getLogIndex());
-    limitDelayedEntriesIfNecessary(info);
+  private void updateTermLocked(long newTerm, int newVotedFor) {
+    // currentTerm and votedFor are persisted independently from log entries so a restart does not
+    // lose voting history when no data entry was appended in the higher term.
+    currentTerm = newTerm;
+    votedFor = newVotedFor;
+    leaderReady = false;
+    persistMetadataQuietlyLocked();
   }
 
-  // ────────────────────────────────────────────────────────────────────────────
-  // Private: disk dispatch
-  // ────────────────────────────────────────────────────────────────────────────
-
-  /**
-   * Attempts to dispatch the next pending delayed log entry for {@code follower} from the local
-   * disk. After a successful dispatch the chain continues via {@link #onFollowerAck} so that
-   * subsequent delayed entries in the same (or an advanced) partition are sent without waiting
-   * for the next appender cycle.
-   */
-  private void dispatchNextDelayedEntry(Peer follower, TRaftFollowerInfo info) {
-    if (info.hasCurrentReplicatingIndex()) {
-      return;
+  private void reinitializeReplicationStateLocked() {
+    ConcurrentHashMap<Integer, Long> existingNextIndex = new ConcurrentHashMap<>(nextIndexByFollower);
+    ConcurrentHashMap<Integer, Long> existingMatchIndex = new ConcurrentHashMap<>(matchIndexByFollower);
+    nextIndexByFollower.clear();
+    matchIndexByFollower.clear();
+    for (Peer follower : getFollowersLocked()) {
+      nextIndexByFollower.put(
+          follower.getNodeId(),
+          existingNextIndex.getOrDefault(follower.getNodeId(), getLastLogIndexLocked() + 1));
+      matchIndexByFollower.put(
+          follower.getNodeId(), existingMatchIndex.getOrDefault(follower.getNodeId(), 0L));
     }
-
-    // Advance the follower's current replicating partition if possible.
-    Long firstDelayedPartition = info.getFirstDelayedPartitionIndex();
-    if (firstDelayedPartition == null) {
-      return;
-    }
-    if (firstDelayedPartition > info.getCurrentReplicatingPartitionIndex()) {
-      info.setCurrentReplicatingPartitionIndex(firstDelayedPartition);
-    }
-
-    Long delayedIndex =
-        info.getFirstDelayedIndexOfPartition(info.getCurrentReplicatingPartitionIndex());
-    if (delayedIndex == null) {
-      return;
-    }
-    info.setNextPartitionFirstIndex(delayedIndex);
-
-    TRaftLogEntry diskEntry = logStore.getByIndex(delayedIndex);
-    if (diskEntry == null) {
-      // Entry not yet on disk (race between write path and appender); retry next cycle.
-      return;
-    }
-
-    info.addCurrentReplicatingIndex(diskEntry.getLogIndex());
-    boolean success = sendEntryToFollower(follower, diskEntry);
-    if (success) {
-      info.recordDiskReplicationSuccess();
-      // ACK handling: remove from in-flight, update quorum, chain next dispatch.
-      info.removeCurrentReplicatingIndex(diskEntry.getLogIndex());
-      info.removeDelayedIndex(diskEntry.getPartitionIndex(), diskEntry.getLogIndex());
-      updateQuorumTracking(diskEntry.getLogIndex());
-      // Recurse into the chain until there is nothing left or a send fails.
-      dispatchNextDelayedEntry(follower, info);
-    } else {
-      info.removeCurrentReplicatingIndex(diskEntry.getLogIndex());
-    }
+    logicalClock.set(Math.max(logicalClock.get(), getLastLogIndexLocked()));
   }
 
-  // ────────────────────────────────────────────────────────────────────────────
-  // Private: RPC helpers
-  // ────────────────────────────────────────────────────────────────────────────
-
-  private boolean sendEntryToFollower(Peer follower, TRaftLogEntry entry) {
-    Optional<TRaftServerImpl> followerServer = TRaftNodeRegistry.resolveServer(follower);
-    if (!followerServer.isPresent()) {
-      return false;
-    }
-    TSStatus status =
-        followerServer
-            .get()
-            .receiveReplicatedLog(entry.copy(), thisNode.getNodeId(), currentTerm);
-    return isSuccess(status);
-  }
-
-  // ────────────────────────────────────────────────────────────────────────────
-  // Private: misc helpers
-  // ────────────────────────────────────────────────────────────────────────────
-
-  private void limitDelayedEntriesIfNecessary(TRaftFollowerInfo info) {
-    if (info.delayedEntryCount()
-        <= config.getReplication().getMaxPendingRetryEntriesPerFollower()) {
-      return;
-    }
-    LOGGER.warn(
-        "Delayed TRaft entries for a follower exceed limit {}. Current count: {}",
-        config.getReplication().getMaxPendingRetryEntriesPerFollower(),
-        info.delayedEntryCount());
-  }
-
-  private List<Peer> getFollowers() {
+  private List<Peer> getFollowersLocked() {
     List<Peer> followers = new ArrayList<>();
     for (Peer peer : configuration) {
       if (peer.getNodeId() != thisNode.getNodeId()) {
@@ -791,140 +1016,194 @@ class TRaftServerImpl {
     return followers;
   }
 
-  // ────────────────────────────────────────────────────────────────────────────
-  // Private: follower info init
-  // ────────────────────────────────────────────────────────────────────────────
-
-  private void initFollowerInfoMap() {
-    followerInfoMap.clear();
-    long latestPartitionIndex = getLatestPartitionIndex();
-    long nextLogIndex = logicalClock.get() + 1;
-    for (Peer follower : getFollowers()) {
-      followerInfoMap.put(
-          follower.getNodeId(), new TRaftFollowerInfo(latestPartitionIndex, nextLogIndex));
+  private List<Peer> getFollowersSnapshot() {
+    synchronized (this) {
+      return getFollowersLocked();
     }
   }
 
-  // ────────────────────────────────────────────────────────────────────────────
-  // Private: appender lifecycle
-  // ────────────────────────────────────────────────────────────────────────────
+  private long getLastLogIndexLocked() {
+    return Math.max(snapshotLastIncludedIndex, logStore.getLastIndex());
+  }
 
-  private void initAppenders() {
-    if (appenderExecutor == null || appenderExecutor.isShutdown()) {
-      appenderExecutor = Executors.newCachedThreadPool(
-          r -> {
-            Thread t = new Thread(r);
-            t.setName("TRaftAppender-" + thisNode.getGroupId());
-            t.setDaemon(true);
-            return t;
-          });
+  private long getLastLogTermLocked() {
+    return getLogTermLocked(getLastLogIndexLocked());
+  }
+
+  private long getLogTermLocked(long index) {
+    if (index == 0) {
+      return 0;
     }
-    long waitMs = config.getReplication().getWaitingReplicationTimeMs();
-    for (Peer follower : getFollowers()) {
-      TRaftLogAppender appender = new TRaftLogAppender(this, follower, waitMs);
-      appenderMap.put(follower.getNodeId(), appender);
-      appenderExecutor.submit(appender);
+    if (index == snapshotLastIncludedIndex) {
+      return snapshotLastIncludedTerm;
+    }
+    return logStore.getTerm(index);
+  }
+
+  private long computeNextIndexHintLocked(long rejectedPrevLogIndex) {
+    if (rejectedPrevLogIndex > getLastLogIndexLocked()) {
+      return getLastLogIndexLocked() + 1;
+    }
+    if (rejectedPrevLogIndex <= snapshotLastIncludedIndex) {
+      return snapshotLastIncludedIndex + 1;
+    }
+    return rejectedPrevLogIndex;
+  }
+
+  private int compareLogFreshnessLocked(
+      long candidateLastLogTerm, long candidateLastLogIndex, long localLastLogTerm, long localLastLogIndex) {
+    // Intentionally standard Raft freshness ordering: term first, then index.
+    int termCompare = Long.compare(candidateLastLogTerm, localLastLogTerm);
+    if (termCompare != 0) {
+      return termCompare;
+    }
+    return Long.compare(candidateLastLogIndex, localLastLogIndex);
+  }
+
+  private long firstAvailableIndexLocked() {
+    long firstIndex = logStore.getFirstIndex();
+    if (firstIndex != -1) {
+      return firstIndex;
+    }
+    return snapshotLastIncludedIndex + 1;
+  }
+
+  private TRaftInstallSnapshotRequest buildInstallSnapshotRequestLocked() {
+    if (snapshotLastIncludedIndex <= 0 || !snapshotDir.exists()) {
+      return null;
+    }
+    try {
+      // Snapshot RPC carries both the state-machine snapshot and the TRaft-specific partition
+      // metadata so the follower can rebuild partition assignment without replaying compacted logs.
+      return new TRaftInstallSnapshotRequest(
+          thisNode.getNodeId(),
+          currentTerm,
+          snapshotLastIncludedIndex,
+          snapshotLastIncludedTerm,
+          snapshotHistoricalMaxTimestamp,
+          snapshotPartitionIndex,
+          snapshotPartitionCount,
+          TRaftSerializationUtils.serializePeers(new ArrayList<>(configuration)),
+          TRaftSerializationUtils.zipDirectory(snapshotDir));
+    } catch (IOException e) {
+      LOGGER.warn("Failed to build TRaft install snapshot request", e);
+      return null;
     }
   }
 
-  private void stopAppenders() {
-    // Signal all appenders to stop, then interrupt their threads via shutdownNow().
-    // We do NOT block here: stopAppenders() is called while holding the server lock, and appender
-    // threads also need that lock for tryReplicateDiskEntriesToFollower(). Waiting here would
-    // deadlock. Instead, the guard in tryReplicateDiskEntriesToFollower() (started == false)
-    // ensures appenders become no-ops as soon as they wake from their sleep, and they exit on
-    // the next loop iteration once they detect stopped==true or an InterruptedException.
-    appenderMap.values().forEach(TRaftLogAppender::stop);
-    appenderMap.clear();
-    if (appenderExecutor != null) {
-      appenderExecutor.shutdownNow();
-      appenderExecutor = null;
-    }
-  }
-
-  // ────────────────────────────────────────────────────────────────────────────
-  // Private: leader/follower transitions
-  // ────────────────────────────────────────────────────────────────────────────
-
-  private void electInitialLeader() {
-    leaderId =
-        configuration.stream()
-            .map(Peer::getNodeId)
-            .max(Integer::compareTo)
-            .orElse(thisNode.getNodeId());
-    if (leaderId == thisNode.getNodeId()) {
-      role = TRaftRole.LEADER;
+  private void replaceSnapshotLocked(TRaftInstallSnapshotRequest request) throws IOException {
+    deleteRecursively(snapshotDir);
+    TRaftSerializationUtils.unzipDirectory(request.getSnapshot(), snapshotDir);
+    snapshotLastIncludedIndex = request.getLastIncludedIndex();
+    snapshotLastIncludedTerm = request.getLastIncludedTerm();
+    snapshotHistoricalMaxTimestamp = request.getHistoricalMaxTimestamp();
+    snapshotPartitionIndex = request.getLastPartitionIndex();
+    snapshotPartitionCount = request.getLastPartitionCount();
+    commitIndex = snapshotLastIncludedIndex;
+    lastApplied = snapshotLastIncludedIndex;
+    if (getLastLogIndexLocked() <= snapshotLastIncludedIndex) {
+      logStore.clear();
     } else {
-      role = TRaftRole.FOLLOWER;
+      logStore.compactPrefix(snapshotLastIncludedIndex);
+    }
+    configuration.clear();
+    configuration.addAll(TRaftSerializationUtils.deserializePeers(request.getPeers()));
+    persistConfiguration();
+    recalculatePartitionStatsLocked();
+    logicalClock.set(Math.max(getLastLogIndexLocked(), snapshotLastIncludedIndex));
+    persistMetadataLocked();
+    stateMachine.event().notifyConfigurationChanged(currentTerm, commitIndex, new ArrayList<>(configuration));
+  }
+
+  private void loadSnapshotIfPresent() {
+    if (snapshotDir.exists()) {
+      stateMachine.loadSnapshot(snapshotDir);
     }
   }
 
-  private void becomeLeader() {
-    role = TRaftRole.LEADER;
-    leaderId = thisNode.getNodeId();
-    votedFor = thisNode.getNodeId();
-    currentReplicationgIndicesToAckFollowerCount.clear();
-    initFollowerInfoMap();
-    if (started) {
-      stopAppenders();
-      initAppenders();
-      notifyLeaderChanged();
-    }
-  }
-
-  private void becomeFollower(int newLeaderId) {
-    boolean wasLeader = (role == TRaftRole.LEADER);
+  private void recoverFromDisk() throws IOException {
+    // Metadata recovery restores the persisted Raft term/vote/commit boundary before replay.
+    loadMetadata();
+    recalculatePartitionStatsLocked();
+    logicalClock.set(Math.max(getLastLogIndexLocked(), snapshotLastIncludedIndex));
+    commitIndex = Math.min(commitIndex, getLastLogIndexLocked());
+    lastApplied = Math.min(lastApplied, commitIndex);
+    leaderId = -1;
     role = TRaftRole.FOLLOWER;
-    leaderId = newLeaderId;
-    if (wasLeader) {
-      stopAppenders();
-    }
-    if (started) {
-      notifyLeaderChanged();
+    leaderReady = false;
+    reinitializeReplicationStateLocked();
+  }
+
+  private void recalculatePartitionStatsLocked() {
+    historicalMaxTimestamp = snapshotHistoricalMaxTimestamp;
+    maxPartitionIndex = snapshotPartitionIndex;
+    currentPartitionIndexCount = snapshotPartitionCount;
+    for (TRaftLogEntry entry : logStore.getAllEntries()) {
+      updatePartitionStatsForEntryLocked(entry);
     }
   }
 
-  private void notifyLeaderChanged() {
-    if (leaderId != -1) {
-      stateMachine.event().notifyLeaderChanged(thisNode.getGroupId(), leaderId);
-    }
-    if (role == TRaftRole.LEADER) {
-      stateMachine.event().notifyLeaderReady();
-    } else {
-      stateMachine.event().notifyNotLeader();
-    }
-  }
-
-  // ────────────────────────────────────────────────────────────────────────────
-  // Private: recovery
-  // ────────────────────────────────────────────────────────────────────────────
-
-  private void recoverFromDisk() {
-    List<TRaftLogEntry> entries = logStore.getAllEntries();
-    for (TRaftLogEntry entry : entries) {
-      logicalClock.updateAndGet(v -> Math.max(v, entry.getLogIndex()));
-      currentTerm = Math.max(currentTerm, entry.getLogTerm());
-      historicalMaxTimestamp = Math.max(historicalMaxTimestamp, entry.getTimestamp());
-      updatePartitionIndexStat(entry);
-    }
-    // On recovery, the inserting partition pointer starts at the maximum persisted partition.
-    currentLeaderInsertingPartitionIndex = maxPartitionIndex;
-  }
-
-  private void updatePartitionIndexStat(TRaftLogEntry entry) {
+  private void updatePartitionStatsForEntryLocked(TRaftLogEntry entry) {
+    historicalMaxTimestamp = Math.max(historicalMaxTimestamp, entry.getTimestamp());
     if (entry.getPartitionIndex() > maxPartitionIndex) {
       maxPartitionIndex = entry.getPartitionIndex();
-      currentPartitionIndexCount = 1;
+      currentPartitionIndexCount = entry.getInterPartitionIndex() + 1;
       return;
     }
     if (entry.getPartitionIndex() == maxPartitionIndex) {
-      currentPartitionIndexCount++;
+      currentPartitionIndexCount =
+          Math.max(currentPartitionIndexCount, entry.getInterPartitionIndex() + 1);
     }
   }
 
-  // ────────────────────────────────────────────────────────────────────────────
-  // Private: configuration persistence
-  // ────────────────────────────────────────────────────────────────────────────
+  private void loadMetadata() throws IOException {
+    if (!metadataFile.exists()) {
+      return;
+    }
+    Properties properties = new Properties();
+    try (InputStream inputStream = Files.newInputStream(metadataFile.toPath())) {
+      properties.load(inputStream);
+    }
+    currentTerm = Long.parseLong(properties.getProperty("currentTerm", "0"));
+    votedFor = Integer.parseInt(properties.getProperty("votedFor", "-1"));
+    commitIndex = Long.parseLong(properties.getProperty("commitIndex", "0"));
+    lastApplied = Long.parseLong(properties.getProperty("lastApplied", "0"));
+    snapshotLastIncludedIndex =
+        Long.parseLong(properties.getProperty("snapshotLastIncludedIndex", "0"));
+    snapshotLastIncludedTerm = Long.parseLong(properties.getProperty("snapshotLastIncludedTerm", "0"));
+    snapshotHistoricalMaxTimestamp =
+        Long.parseLong(
+            properties.getProperty("snapshotHistoricalMaxTimestamp", String.valueOf(Long.MIN_VALUE)));
+    snapshotPartitionIndex =
+        Long.parseLong(properties.getProperty("snapshotPartitionIndex", "0"));
+    snapshotPartitionCount =
+        Long.parseLong(properties.getProperty("snapshotPartitionCount", "0"));
+  }
+
+  private void persistMetadataLocked() throws IOException {
+    Properties properties = new Properties();
+    properties.setProperty("currentTerm", String.valueOf(currentTerm));
+    properties.setProperty("votedFor", String.valueOf(votedFor));
+    properties.setProperty("commitIndex", String.valueOf(commitIndex));
+    properties.setProperty("lastApplied", String.valueOf(lastApplied));
+    properties.setProperty("snapshotLastIncludedIndex", String.valueOf(snapshotLastIncludedIndex));
+    properties.setProperty("snapshotLastIncludedTerm", String.valueOf(snapshotLastIncludedTerm));
+    properties.setProperty(
+        "snapshotHistoricalMaxTimestamp", String.valueOf(snapshotHistoricalMaxTimestamp));
+    properties.setProperty("snapshotPartitionIndex", String.valueOf(snapshotPartitionIndex));
+    properties.setProperty("snapshotPartitionCount", String.valueOf(snapshotPartitionCount));
+    try (OutputStream outputStream = Files.newOutputStream(metadataFile.toPath())) {
+      properties.store(outputStream, "TRaft metadata");
+    }
+  }
+
+  private void persistMetadataQuietlyLocked() {
+    try {
+      persistMetadataLocked();
+    } catch (IOException e) {
+      LOGGER.warn("Failed to persist TRaft metadata for {}", thisNode, e);
+    }
+  }
 
   private TreeSet<Peer> loadConfigurationFromDisk() throws IOException {
     TreeSet<Peer> peers = new TreeSet<>();
@@ -961,25 +1240,41 @@ class TRaftServerImpl {
     }
   }
 
-  // ────────────────────────────────────────────────────────────────────────────
-  // Private: election utilities
-  // ────────────────────────────────────────────────────────────────────────────
-
-  private int compareCandidateFreshness(
-      long candidatePartitionIndex,
-      long candidatePartitionCount,
-      long localPartitionIndex,
-      long localPartitionCount) {
-    int partitionCompare = Long.compare(candidatePartitionIndex, localPartitionIndex);
-    if (partitionCompare != 0) {
-      return partitionCompare;
+  private void persistConfigurationQuietlyLocked() {
+    try {
+      persistConfiguration();
+    } catch (IOException e) {
+      LOGGER.warn("Failed to persist TRaft configuration for {}", thisNode, e);
     }
-    return Long.compare(candidatePartitionCount, localPartitionCount);
+  }
+
+  private void resetElectionDeadlineLocked() {
+    long timeoutMinMs = config.getElection().getTimeoutMinMs();
+    long timeoutMaxMs = config.getElection().getTimeoutMaxMs();
+    long timeoutRange = Math.max(1, timeoutMaxMs - timeoutMinMs);
+    // Randomization keeps candidates from repeatedly colliding, just like traditional Raft.
+    electionDeadlineMs =
+        System.currentTimeMillis() + timeoutMinMs + random.nextInt((int) timeoutRange);
   }
 
   private boolean isSuccess(TSStatus status) {
-    return status != null
-        && (status.getCode() == 0
-            || status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    return status != null && status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode();
+  }
+
+  private static void deleteRecursively(File file) throws IOException {
+    if (file == null || !file.exists()) {
+      return;
+    }
+    try (java.util.stream.Stream<java.nio.file.Path> walk = Files.walk(file.toPath())) {
+      walk.sorted(Comparator.reverseOrder())
+          .forEach(
+              path -> {
+                try {
+                  Files.deleteIfExists(path);
+                } catch (IOException e) {
+                  throw new RuntimeException(e);
+                }
+              });
+    }
   }
 }

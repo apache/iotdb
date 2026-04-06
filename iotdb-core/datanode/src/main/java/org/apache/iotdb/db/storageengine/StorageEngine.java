@@ -816,6 +816,9 @@ public class StorageEngine implements IService {
             }
             break;
           case ConsensusFactory.SIMPLE_CONSENSUS:
+          case ConsensusFactory.TRAFT_CONSENSUS:
+            // TRaft keeps its own consensus log under the peer directory, but region-local WAL
+            // cleanup still follows the same path as simple consensus.
             // delete region information in wal and may delete wal
             WALManager.getInstance()
                 .deleteRegionAndMayDeleteWALNode(
