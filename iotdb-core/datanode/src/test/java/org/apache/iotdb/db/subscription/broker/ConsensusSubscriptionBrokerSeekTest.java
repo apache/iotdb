@@ -25,6 +25,7 @@ import org.apache.iotdb.rpc.subscription.payload.poll.RegionProgress;
 import org.apache.iotdb.rpc.subscription.payload.poll.TopicProgress;
 import org.apache.iotdb.rpc.subscription.payload.poll.WriterId;
 import org.apache.iotdb.rpc.subscription.payload.poll.WriterProgress;
+import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeSeekReq;
 
 import org.junit.Test;
 
@@ -42,6 +43,36 @@ import static org.mockito.Mockito.when;
 public class ConsensusSubscriptionBrokerSeekTest {
 
   private static final String TOPIC = "topic_seek_test";
+
+  @Test
+  public void testSeekBeginningRoutesToAllQueues() throws Exception {
+    final ConsensusSubscriptionBroker broker = new ConsensusSubscriptionBroker("broker");
+    final ConsensusPrefetchingQueue queue1 = mockQueue(1);
+    final ConsensusPrefetchingQueue queue2 = mockQueue(2);
+    injectQueues(broker, Arrays.asList(queue1, queue2));
+
+    broker.seek(TOPIC, PipeSubscribeSeekReq.SEEK_TO_BEGINNING);
+
+    verify(queue1).seekToBeginning();
+    verify(queue2).seekToBeginning();
+    verify(queue1, never()).seekToEnd();
+    verify(queue2, never()).seekToEnd();
+  }
+
+  @Test
+  public void testSeekEndRoutesToAllQueues() throws Exception {
+    final ConsensusSubscriptionBroker broker = new ConsensusSubscriptionBroker("broker");
+    final ConsensusPrefetchingQueue queue1 = mockQueue(1);
+    final ConsensusPrefetchingQueue queue2 = mockQueue(2);
+    injectQueues(broker, Arrays.asList(queue1, queue2));
+
+    broker.seek(TOPIC, PipeSubscribeSeekReq.SEEK_TO_END);
+
+    verify(queue1).seekToEnd();
+    verify(queue2).seekToEnd();
+    verify(queue1, never()).seekToBeginning();
+    verify(queue2, never()).seekToBeginning();
+  }
 
   @Test
   public void testSeekAfterTopicProgressLeavesMissingRegionsUntouched() throws Exception {
@@ -81,6 +112,23 @@ public class ConsensusSubscriptionBrokerSeekTest {
     verify(queue1, never()).seekToRegionProgress(any());
     verify(queue1, never()).seekAfterRegionProgress(any());
     verify(queue1, never()).seekToEnd();
+  }
+
+  @Test
+  public void testUnsupportedSeekTypeDoesNotTouchQueues() throws Exception {
+    final ConsensusSubscriptionBroker broker = new ConsensusSubscriptionBroker("broker");
+    final ConsensusPrefetchingQueue queue1 = mockQueue(1);
+    final ConsensusPrefetchingQueue queue2 = mockQueue(2);
+    injectQueues(broker, Arrays.asList(queue1, queue2));
+
+    broker.seek(TOPIC, PipeSubscribeSeekReq.SEEK_TO_TIMESTAMP);
+
+    verify(queue1, never()).seekToBeginning();
+    verify(queue1, never()).seekToEnd();
+    verify(queue2, never()).seekToBeginning();
+    verify(queue2, never()).seekToEnd();
+    verify(queue1, never()).seekToRegionProgress(any());
+    verify(queue2, never()).seekToRegionProgress(any());
   }
 
   private static ConsensusPrefetchingQueue mockQueue(final int regionId) {

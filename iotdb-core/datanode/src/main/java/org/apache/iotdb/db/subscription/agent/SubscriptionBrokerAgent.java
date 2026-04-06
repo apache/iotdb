@@ -35,6 +35,7 @@ import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 import org.apache.iotdb.rpc.subscription.payload.poll.RegionProgress;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 import org.apache.iotdb.rpc.subscription.payload.poll.TopicProgress;
+import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeSeekReq;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -222,16 +223,23 @@ public class SubscriptionBrokerAgent {
   }
 
   public void seek(
-      final ConsumerConfig consumerConfig,
-      final String topicName,
-      final short seekType,
-      final long timestamp) {
+      final ConsumerConfig consumerConfig, final String topicName, final short seekType) {
     final String consumerGroupId = consumerConfig.getConsumerGroupId();
 
     final ConsensusSubscriptionBroker consensusBroker =
         consumerGroupIdToConsensusBroker.get(consumerGroupId);
     if (Objects.nonNull(consensusBroker) && consensusBroker.hasQueue(topicName)) {
-      consensusBroker.seek(topicName, seekType, timestamp);
+      if (seekType != PipeSubscribeSeekReq.SEEK_TO_BEGINNING
+          && seekType != PipeSubscribeSeekReq.SEEK_TO_END) {
+        final String errorMessage =
+            String.format(
+                "Subscription: consensus seek only supports beginning/end or topic progress, "
+                    + "consumerGroup=%s, topic=%s, seekType=%s",
+                consumerGroupId, topicName, seekType);
+        LOGGER.warn(errorMessage);
+        throw new SubscriptionException(errorMessage);
+      }
+      consensusBroker.seek(topicName, seekType);
       return;
     }
 

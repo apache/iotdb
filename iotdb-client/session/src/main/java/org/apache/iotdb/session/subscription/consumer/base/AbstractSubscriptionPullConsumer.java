@@ -358,15 +358,6 @@ public abstract class AbstractSubscriptionPullConsumer extends AbstractSubscript
   }
 
   @Override
-  public void seek(final String topicName, final long targetTimestamp)
-      throws SubscriptionException {
-    super.seek(topicName, targetTimestamp);
-    if (autoCommit) {
-      uncommittedMessages.clear();
-    }
-  }
-
-  @Override
   public void seek(final String topicName, final TopicProgress topicProgress)
       throws SubscriptionException {
     super.seek(topicName, topicProgress);

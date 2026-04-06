@@ -803,14 +803,24 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
           consumerConfig,
           topicName,
           req.getTopicProgress().getRegionProgress().size());
-    } else {
-      SubscriptionAgent.broker().seek(consumerConfig, topicName, seekType, req.getTimestamp());
+    } else if (seekType == PipeSubscribeSeekReq.SEEK_TO_BEGINNING
+        || seekType == PipeSubscribeSeekReq.SEEK_TO_END) {
+      SubscriptionAgent.broker().seek(consumerConfig, topicName, seekType);
       LOGGER.info(
-          "Subscription: consumer {} seek topic {} with seekType={}, timestamp={}",
+          "Subscription: consumer {} seek topic {} with seekType={}",
           consumerConfig,
           topicName,
-          seekType,
-          req.getTimestamp());
+          seekType);
+    } else {
+      final String errorMessage =
+          String.format(
+              "Subscription: unsupported seekType %s for topic %s. "
+                  + "Consensus subscription only supports seekToBeginning, seekToEnd, "
+                  + "seek(topicProgress), and seekAfter(topicProgress).",
+              seekType, topicName);
+      LOGGER.warn(errorMessage);
+      return PipeSubscribeSeekResp.toTPipeSubscribeResp(
+          RpcUtils.getStatus(TSStatusCode.SUBSCRIPTION_SEEK_ERROR, errorMessage));
     }
 
     return PipeSubscribeSeekResp.toTPipeSubscribeResp(RpcUtils.SUCCESS_STATUS);

@@ -427,19 +427,6 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
   }
 
   /**
-   * Seeks to the earliest WAL entry whose data timestamp >= targetTimestamp. Each node
-   * independently locates its own position, so this works correctly across multi-leader replicas.
-   */
-  public void seek(final String topicName, final long targetTimestamp)
-      throws SubscriptionException {
-    checkIfOpened();
-    seekInternal(topicName, PipeSubscribeSeekReq.SEEK_TO_TIMESTAMP, targetTimestamp);
-    clearCurrentPositions(topicName);
-    clearCommittedPositions(topicName);
-    clearPendingRedirectAcks(topicName);
-  }
-
-  /**
    * Returns the latest observed per-region positions for the given topic. This is the consumer's
    * current fetch position hint and is sent back to the server on subsequent poll requests.
    */

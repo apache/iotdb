@@ -184,8 +184,6 @@ public interface ISubscriptionTablePullConsumer extends AutoCloseable {
 
   void seekToEnd(final String topicName) throws SubscriptionException;
 
-  void seek(final String topicName, final long targetTimestamp) throws SubscriptionException;
-
   TopicProgress positions(final String topicName) throws SubscriptionException;
 
   TopicProgress committedPositions(final String topicName) throws SubscriptionException;

@@ -285,7 +285,7 @@ public class ConsensusSubscriptionBroker implements ISubscriptionBroker {
 
   //////////////////////////// seek ////////////////////////////
 
-  public void seek(final String topicName, final short seekType, final long timestamp) {
+  public void seek(final String topicName, final short seekType) {
     final List<ConsensusPrefetchingQueue> queues =
         topicNameToConsensusPrefetchingQueues.get(topicName);
     if (Objects.isNull(queues) || queues.isEmpty()) {
@@ -307,12 +307,9 @@ public class ConsensusSubscriptionBroker implements ISubscriptionBroker {
         case PipeSubscribeSeekReq.SEEK_TO_END:
           queue.seekToEnd();
           break;
-        case PipeSubscribeSeekReq.SEEK_TO_TIMESTAMP:
-          queue.seekToTimestamp(timestamp);
-          break;
         default:
           LOGGER.warn(
-              "ConsensusSubscriptionBroker [{}]: unknown seekType {} for topic [{}]",
+              "ConsensusSubscriptionBroker [{}]: unsupported seekType {} for topic [{}]",
               brokerId,
               seekType,
               topicName);

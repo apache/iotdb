@@ -40,6 +40,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOf
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.SearchNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
+import org.apache.iotdb.db.storageengine.dataregion.wal.io.ProgressWALReader;
+import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALMetaData;
 import org.apache.iotdb.db.storageengine.dataregion.wal.node.WALNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALFileUtils;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
@@ -77,7 +79,6 @@ import java.util.TreeMap;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -136,14 +137,6 @@ public class ConsensusPrefetchingQueue {
    * <p>This is analogous to Kafka's timeindex, which records maxTimestamp per segment rather than
    * timestamp闂傚倷鐒﹂崜姘跺磻閸涱喗鍙忛柣姘兼焼set mappings, making it immune to out-of-order producer timestamps.
    */
-  private final NavigableMap<Long, Long> intervalMaxTimestampIndex = new ConcurrentSkipListMap<>();
-
-  private static final int INTERVAL_SIZE = 100;
-
-  private long currentIntervalStart = -1;
-
-  private long currentIntervalMaxTimestamp = Long.MIN_VALUE;
-
   private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock(true);
 
   private volatile boolean isClosed = false;
@@ -1308,9 +1301,6 @@ public class ConsensusPrefetchingQueue {
             : insertNode.getWriterEpoch();
 
     trackWriterLane(writerNodeId, writerEpoch);
-    if (searchIndex >= 0) {
-      recordTimestampSample(insertNode, searchIndex);
-    }
     final long maxTs = extractMaxTime(insertNode);
     if (maxTs > maxObservedTimestamp) {
       maxObservedTimestamp = maxTs;
@@ -1893,9 +1883,6 @@ public class ConsensusPrefetchingQueue {
       pendingSubscriptionWalResetGeneration = Long.MIN_VALUE;
       closeSubscriptionWALIterator();
 
-      intervalMaxTimestampIndex.clear();
-      currentIntervalStart = -1;
-      currentIntervalMaxTimestamp = Long.MIN_VALUE;
     } finally {
       releaseWriteLock();
     }
@@ -1904,85 +1891,19 @@ public class ConsensusPrefetchingQueue {
   // ======================== Seek ========================
 
   /**
-   * Seeks the subscription to a specific WAL search index. Clears all pending, prefetched, and
-   * in-flight events, resets the WAL reader, and invalidates all pre-seek commit contexts.
-   *
-   * <p>After seek, the consumer will receive data starting from {@code targetSearchIndex}. If the
-   * target is beyond available WAL (reclaimed by retention), the consumer will start from the
-   * earliest available position.
-   */
-  public void seekToSearchIndex(final long targetSearchIndex) {
-    acquireWriteLock();
-    try {
-      if (isClosed) {
-        return;
-      }
-
-      // 1. Invalidate all pre-seek commit contexts via fencing token
-      seekGeneration.incrementAndGet();
-
-      // 2. Clean up all queued and in-flight events
-      prefetchingQueue.forEach(event -> event.cleanUp(true));
-      prefetchingQueue.clear();
-      inFlightEvents.values().forEach(event -> event.cleanUp(true));
-      inFlightEvents.clear();
-
-      // 3. Discard stale pending entries from in-memory queue
-      pendingEntries.clear();
-
-      // Reset per-writer release state and source-level dedup frontiers.
-      realtimeEntriesByLane.clear();
-      writerLanes.clear();
-      lastReleasedPhysicalTime = 0;
-      lastReleasedLocalSeq = -1;
-      clearRecoveryWriterProgress();
-      materializedFollowerProgressByWriter.clear();
-
-      // 3.6. Keep timestamp interval index across seek operations.
-      // This preserves historical timestamp->searchIndex hints so a later
-      // seekToTimestamp() after seekToEnd/seekToBeginning does not only rely
-      // on newly observed post-seek data.
-
-      // 4. Reset WAL read position
-      nextExpectedSearchIndex.set(targetSearchIndex);
-      requestSubscriptionWalReset(targetSearchIndex, seekGeneration.get());
-
-      // 5. Reset commit state in CommitManager. For searchIndex-based seek, keep the existing
-      // Legacy search-index fallback; precise writer-progress seek uses dedicated paths below.
-      commitManager.resetState(
-          brokerId, topicName, consensusGroupId, null, new WriterProgress(0L, targetSearchIndex));
-
-      // If prefetch was not yet initialized (seek before first poll), start it now
-      if (!prefetchInitialized) {
-        prefetchInitialized = true;
-        prefetchThread.start();
-      }
-
-      LOGGER.info(
-          "ConsensusPrefetchingQueue {}: seek to searchIndex={}, seekGeneration={}",
-          this,
-          targetSearchIndex,
-          seekGeneration.get());
-    } finally {
-      releaseWriteLock();
-    }
-  }
-
-  /**
    * Seeks to the earliest available WAL position. The actual position depends on WAL retention 闂?if
    * old files have been reclaimed, the earliest available position may be later than 0.
    */
   public void seekToBeginning() {
-    // ConsensusReqReader.DEFAULT_SAFELY_DELETED_SEARCH_INDEX is Long.MIN_VALUE;
-    // getReqIterator will clamp to the earliest available file.
-    seekToSearchIndex(0);
+    seekToResolvedPosition(0L, new RegionProgress(Collections.emptyMap()), "beginning");
   }
 
   /**
    * Seeks to the current WAL write position. After this, only newly written data will be consumed.
    */
   public void seekToEnd() {
-    seekToSearchIndex(consensusReqReader.getCurrentSearchIndex());
+    seekToResolvedPosition(
+        consensusReqReader.getCurrentSearchIndex(), computeTailRegionProgress(), "end");
   }
 
   public void seekToRegionProgress(final RegionProgress regionProgress) {
@@ -2004,7 +1925,7 @@ public class ConsensusPrefetchingQueue {
           this,
           regionProgress.getWriterPositions().size(),
           seekTarget.left);
-      seekToSearchIndexWithRegionProgress(seekTarget.left, seekTarget.right);
+      seekToResolvedPosition(seekTarget.left, seekTarget.right, "regionProgress");
       return;
     }
 
@@ -2034,7 +1955,7 @@ public class ConsensusPrefetchingQueue {
           this,
           regionProgress.getWriterPositions().size(),
           seekTarget.left);
-      seekToSearchIndexWithRegionProgress(seekTarget.left, seekTarget.right);
+      seekToResolvedPosition(seekTarget.left, seekTarget.right, "regionProgressAfter");
       return;
     }
 
@@ -2105,8 +2026,10 @@ public class ConsensusPrefetchingQueue {
         found ? earliestSearchIndex : -1L, new RegionProgress(effectiveWriterProgress));
   }
 
-  private void seekToSearchIndexWithRegionProgress(
-      final long targetSearchIndex, final RegionProgress committedRegionProgress) {
+  private void seekToResolvedPosition(
+      final long targetSearchIndex,
+      final RegionProgress committedRegionProgress,
+      final String seekReason) {
     acquireWriteLock();
     try {
       if (isClosed) {
@@ -2151,8 +2074,9 @@ public class ConsensusPrefetchingQueue {
       }
 
       LOGGER.info(
-          "ConsensusPrefetchingQueue {}: seek to searchIndex={}, writerCount={}, seekGeneration={}",
+          "ConsensusPrefetchingQueue {}: seek({}) to searchIndex={}, writerCount={}, seekGeneration={}",
           this,
+          seekReason,
           targetSearchIndex,
           Objects.nonNull(committedRegionProgress)
               ? committedRegionProgress.getWriterPositions().size()
@@ -2163,69 +2087,71 @@ public class ConsensusPrefetchingQueue {
     }
   }
 
-  /**
-   * Seeks to the earliest WAL entry whose data timestamp >= targetTimestamp. Uses the in-memory
-   * interval-based index ({@link #intervalMaxTimestampIndex}) to find the first searchIndex
-   * interval whose maxTimestamp >= targetTimestamp. This guarantees no data with timestamp >=
-   * targetTimestamp is missed, even with out-of-order writes. If no interval matches, falls back to
-   * seekToBeginning. If targetTimestamp exceeds all known intervals, seeks to end.
-   */
-  public void seekToTimestamp(final long targetTimestamp) {
-    // Flush the current in-progress interval so it participates in the search
-    flushCurrentInterval();
+  private RegionProgress computeTailRegionProgress() {
+    if (!(consensusReqReader instanceof WALNode)) {
+      return new RegionProgress(Collections.emptyMap());
+    }
 
-    long approxSearchIndex = 0; // fallback: seek to beginning
-    if (!intervalMaxTimestampIndex.isEmpty()) {
-      final Map.Entry<Long, Long> lastEntry = intervalMaxTimestampIndex.lastEntry();
-      if (lastEntry != null && targetTimestamp > lastEntry.getValue()) {
-        // targetTimestamp is beyond the max timestamp of all known intervals 闂?seek to end
-        approxSearchIndex = consensusReqReader.getCurrentSearchIndex();
-      } else {
-        // Linear scan to find the first interval whose maxTimestamp >= targetTimestamp.
-        // This guarantees no data with timestamp >= targetTimestamp is missed, even with
-        // out-of-order writes. O(N) where N = number of intervals (typically < 10,000).
-        for (final Map.Entry<Long, Long> entry : intervalMaxTimestampIndex.entrySet()) {
-          if (entry.getValue() >= targetTimestamp) {
-            approxSearchIndex = entry.getKey();
-            break;
-          }
-        }
+    final WALNode walNode = (WALNode) consensusReqReader;
+    final Map<WriterId, WriterProgress> tailProgressByWriter = new LinkedHashMap<>();
+    final File[] walFiles = WALFileUtils.listAllWALFiles(walNode.getLogDirectory());
+    if (Objects.isNull(walFiles) || walFiles.length == 0) {
+      mergeTailProgress(tailProgressByWriter, walNode.getCurrentWALMetaDataSnapshot());
+      return new RegionProgress(tailProgressByWriter);
+    }
+
+    WALFileUtils.ascSortByVersionId(walFiles);
+    final long liveVersionId = walNode.getCurrentWALFileVersion();
+    final WALMetaData liveSnapshot = walNode.getCurrentWALMetaDataSnapshot();
+    for (final File walFile : walFiles) {
+      final long versionId = WALFileUtils.parseVersionId(walFile.getName());
+      if (versionId == liveVersionId) {
+        mergeTailProgress(tailProgressByWriter, liveSnapshot);
+        continue;
+      }
+      try (final ProgressWALReader reader = new ProgressWALReader(walFile)) {
+        mergeTailProgress(tailProgressByWriter, reader.getMetaData());
+      } catch (final IOException e) {
+        LOGGER.warn(
+            "ConsensusPrefetchingQueue {}: failed to read WAL metadata from {} while computing seekToEnd frontier",
+            this,
+            walFile,
+            e);
       }
     }
-    LOGGER.info(
-        "ConsensusPrefetchingQueue {}: seekToTimestamp={}, approxSearchIndex={} (from interval index, size={})",
-        this,
-        targetTimestamp,
-        approxSearchIndex,
-        intervalMaxTimestampIndex.size());
-    seekToSearchIndex(approxSearchIndex);
+    return new RegionProgress(tailProgressByWriter);
   }
 
-  /**
-   * Records timestamp information for interval-based index. Called for every successfully
-   * deserialized InsertNode during prefetch. Tracks the max data timestamp within each searchIndex
-   * interval of size {@link #INTERVAL_SIZE}.
-   */
-  private void recordTimestampSample(final InsertNode insertNode, final long searchIndex) {
-    final long maxTs = extractMaxTime(insertNode);
-    if (maxTs == Long.MIN_VALUE) {
-      return; // extraction failed
+  private void mergeTailProgress(
+      final Map<WriterId, WriterProgress> tailProgressByWriter, final WALMetaData metadata) {
+    if (Objects.isNull(metadata)) {
+      return;
     }
-    final long intervalStart = (searchIndex / INTERVAL_SIZE) * INTERVAL_SIZE;
-    if (intervalStart != currentIntervalStart) {
-      // Entering a new interval 闂?flush the previous one
-      flushCurrentInterval();
-      currentIntervalStart = intervalStart;
-      currentIntervalMaxTimestamp = maxTs;
-    } else {
-      currentIntervalMaxTimestamp = Math.max(currentIntervalMaxTimestamp, maxTs);
-    }
-  }
+    final List<Long> physicalTimes = metadata.getPhysicalTimes();
+    final List<Short> nodeIds = metadata.getNodeIds();
+    final List<Short> writerEpochs = metadata.getWriterEpochs();
+    final List<Long> localSeqs = metadata.getLocalSeqs();
+    final int size =
+        Math.min(
+            Math.min(physicalTimes.size(), nodeIds.size()),
+            Math.min(writerEpochs.size(), localSeqs.size()));
+    for (int i = 0; i < size; i++) {
+      final int writerNodeId = nodeIds.get(i);
+      final long writerEpoch = writerEpochs.get(i);
+      final long physicalTime = physicalTimes.get(i);
+      final long localSeq = localSeqs.get(i);
+      if (writerNodeId < 0 || physicalTime < 0L || localSeq < 0L) {
+        continue;
+      }
 
-  /** Persists the current in-progress interval into the index map. */
-  private void flushCurrentInterval() {
-    if (currentIntervalStart >= 0) {
-      intervalMaxTimestampIndex.merge(currentIntervalStart, currentIntervalMaxTimestamp, Math::max);
+      final WriterId writerId =
+          new WriterId(consensusGroupId.toString(), writerNodeId, writerEpoch);
+      final WriterProgress candidateProgress = new WriterProgress(physicalTime, localSeq);
+      final WriterProgress currentProgress = tailProgressByWriter.get(writerId);
+      if (Objects.isNull(currentProgress)
+          || compareWriterProgress(candidateProgress, currentProgress) > 0) {
+        tailProgressByWriter.put(writerId, candidateProgress);
+      }
     }
   }
 
