@@ -28,6 +28,8 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 public class SubscriptionCommitContextTest {
 
@@ -45,6 +47,9 @@ public class SubscriptionCommitContextTest {
     assertEquals(0L, context.getSeekGeneration());
     assertEquals("", context.getRegionId());
     assertEquals(0L, context.getPhysicalTime());
+    assertFalse(context.hasWriterProgress());
+    assertTrue(context.hasLegacyCommitId());
+    assertTrue(context.isCommittable());
   }
 
   @Test
@@ -56,6 +61,8 @@ public class SubscriptionCommitContextTest {
     final SubscriptionCommitContext parsed = SubscriptionCommitContext.deserialize(buffer);
 
     assertEquals(original, parsed);
+    assertFalse(parsed.hasWriterProgress());
+    assertTrue(parsed.hasLegacyCommitId());
   }
 
   @Test
@@ -74,6 +81,9 @@ public class SubscriptionCommitContextTest {
     assertEquals("region", parsed.getRegionId());
     assertEquals(9L, parsed.getPhysicalTime());
     assertEquals(10L, parsed.getLocalSeq());
+    assertTrue(parsed.hasWriterProgress());
+    assertFalse(parsed.hasLegacyCommitId());
+    assertTrue(parsed.isCommittable());
   }
 
   @Test(expected = IllegalArgumentException.class)

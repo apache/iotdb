@@ -37,7 +37,7 @@ public class ConsensusSubscriptionCommitStateTest {
   public void testCommitAdvancesContiguousWriterProgress() {
     final ConsensusSubscriptionCommitManager.ConsensusSubscriptionCommitState state =
         new ConsensusSubscriptionCommitManager.ConsensusSubscriptionCommitState(
-            "1_1", new SubscriptionConsensusProgress(100L, 0L, 0L));
+            "1_1", new SubscriptionConsensusProgress(null, new WriterProgress(100L, 0L), 0L));
 
     state.recordMapping(new WriterId("1_1", 7, 2L), new WriterProgress(101L, 1L));
     state.recordMapping(new WriterId("1_1", 7, 2L), new WriterProgress(102L, 2L));
@@ -65,7 +65,7 @@ public class ConsensusSubscriptionCommitStateTest {
   public void testSerializeDeserializeWriterProgress() throws Exception {
     final ConsensusSubscriptionCommitManager.ConsensusSubscriptionCommitState state =
         new ConsensusSubscriptionCommitManager.ConsensusSubscriptionCommitState(
-            "2_5", new SubscriptionConsensusProgress(0L, -1L, 0L));
+            "2_5", new SubscriptionConsensusProgress());
     state.resetForSeek(new WriterId("2_5", 4, 9L), new WriterProgress(222L, 11L));
 
     final ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -90,7 +90,7 @@ public class ConsensusSubscriptionCommitStateTest {
   public void testDirectCommitWithoutOutstandingActsAsWriterCheckpoint() {
     final ConsensusSubscriptionCommitManager.ConsensusSubscriptionCommitState state =
         new ConsensusSubscriptionCommitManager.ConsensusSubscriptionCommitState(
-            "3_1", new SubscriptionConsensusProgress(100L, 0L, 0L));
+            "3_1", new SubscriptionConsensusProgress(null, new WriterProgress(100L, 0L), 0L));
 
     final WriterId writerId = new WriterId("3_1", 9, 4L);
     assertTrue(state.commitWithoutOutstanding(writerId, new WriterProgress(103L, 3L)));
@@ -106,7 +106,7 @@ public class ConsensusSubscriptionCommitStateTest {
   public void testDirectCommitWithoutOutstandingIsIndependentPerWriter() {
     final ConsensusSubscriptionCommitManager.ConsensusSubscriptionCommitState state =
         new ConsensusSubscriptionCommitManager.ConsensusSubscriptionCommitState(
-            "3_2", new SubscriptionConsensusProgress(100L, 0L, 0L));
+            "3_2", new SubscriptionConsensusProgress(null, new WriterProgress(100L, 0L), 0L));
 
     final WriterId writerA = new WriterId("3_2", 7, 1L);
     final WriterId writerB = new WriterId("3_2", 8, 1L);

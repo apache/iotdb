@@ -199,6 +199,18 @@ public class SubscriptionCommitContext implements Comparable<SubscriptionCommitC
     return writerProgress;
   }
 
+  public boolean hasWriterProgress() {
+    return Objects.nonNull(writerId) && Objects.nonNull(writerProgress);
+  }
+
+  public boolean hasLegacyCommitId() {
+    return !hasWriterProgress() && commitId != INVALID_COMMIT_ID;
+  }
+
+  public boolean isCommittable() {
+    return hasWriterProgress() || hasLegacyCommitId();
+  }
+
   /////////////////////////////// de/ser ///////////////////////////////
 
   public static ByteBuffer serialize(final SubscriptionCommitContext commitContext)

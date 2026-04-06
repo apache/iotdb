@@ -1592,6 +1592,22 @@ public class ConsensusPrefetchingQueue {
     if (isClosed) {
       return false;
     }
+    if (Objects.isNull(commitContext) || !commitContext.hasWriterProgress()) {
+      if (silent) {
+        LOGGER.debug(
+            "ConsensusPrefetchingQueue {}: reject {} without writer progress, commitContext={}",
+            this,
+            action,
+            commitContext);
+      } else {
+        LOGGER.warn(
+            "ConsensusPrefetchingQueue {}: reject {} without writer progress, commitContext={}",
+            this,
+            action,
+            commitContext);
+      }
+      return false;
+    }
     if (!isActive) {
       if (silent) {
         LOGGER.debug(
@@ -1628,7 +1644,6 @@ public class ConsensusPrefetchingQueue {
     final WriterId commitWriterId = extractCommitWriterId(commitContext);
     final WriterProgress commitWriterProgress = extractCommitWriterProgress(commitContext);
     final AtomicBoolean acked = new AtomicBoolean(false);
-    final AtomicBoolean committedDirectly = new AtomicBoolean(false);
     inFlightEvents.compute(
         new Pair<>(consumerId, commitContext),
         (key, ev) -> {
@@ -1637,7 +1652,6 @@ public class ConsensusPrefetchingQueue {
                 commitManager.commitWithoutOutstanding(
                     brokerId, topicName, consensusGroupId, commitWriterId, commitWriterProgress);
             acked.set(directCommitted);
-            committedDirectly.set(directCommitted);
             if (!acked.get()) {
               LOGGER.warn(
                   "ConsensusPrefetchingQueue {}: commit context {} does not exist for ack",
@@ -1654,18 +1668,23 @@ public class ConsensusPrefetchingQueue {
             return null;
           }
 
+          final boolean committed =
+              commitManager.commit(
+                  brokerId, topicName, consensusGroupId, commitWriterId, commitWriterProgress);
+          if (!committed) {
+            LOGGER.warn(
+                "ConsensusPrefetchingQueue {}: failed to advance commit frontier for {}",
+                this,
+                commitContext);
+            return ev;
+          }
+
           ev.ack();
           ev.recordCommittedTimestamp();
           acked.set(true);
-
           ev.cleanUp(false);
           return null;
         });
-
-    if (acked.get() && !committedDirectly.get()) {
-      commitManager.commit(
-          brokerId, topicName, consensusGroupId, commitWriterId, commitWriterProgress);
-    }
 
     return acked.get();
   }
@@ -1693,7 +1712,6 @@ public class ConsensusPrefetchingQueue {
       final WriterId commitWriterId = extractCommitWriterId(commitContext);
       final WriterProgress commitWriterProgress = extractCommitWriterProgress(commitContext);
       final AtomicBoolean acked = new AtomicBoolean(false);
-      final AtomicBoolean committedDirectly = new AtomicBoolean(false);
       inFlightEvents.compute(
           new Pair<>(consumerId, commitContext),
           (key, ev) -> {
@@ -1702,12 +1720,17 @@ public class ConsensusPrefetchingQueue {
                   commitManager.commitWithoutOutstanding(
                       brokerId, topicName, consensusGroupId, commitWriterId, commitWriterProgress);
               acked.set(directCommitted);
-              committedDirectly.set(directCommitted);
               return null;
             }
             if (ev.isCommitted()) {
               ev.cleanUp(false);
               return null;
+            }
+            final boolean committed =
+                commitManager.commit(
+                    brokerId, topicName, consensusGroupId, commitWriterId, commitWriterProgress);
+            if (!committed) {
+              return ev;
             }
             ev.ack();
             ev.recordCommittedTimestamp();
@@ -1715,10 +1738,6 @@ public class ConsensusPrefetchingQueue {
             ev.cleanUp(false);
             return null;
           });
-      if (acked.get() && !committedDirectly.get()) {
-        commitManager.commit(
-            brokerId, topicName, consensusGroupId, commitWriterId, commitWriterProgress);
-      }
       return acked.get();
     } finally {
       releaseReadLock();
@@ -1732,10 +1751,7 @@ public class ConsensusPrefetchingQueue {
 
   private WriterProgress extractCommitWriterProgress(
       final SubscriptionCommitContext commitContext) {
-    final WriterProgress writerProgress = commitContext.getWriterProgress();
-    return Objects.nonNull(writerProgress)
-        ? writerProgress
-        : new WriterProgress(commitContext.getPhysicalTime(), commitContext.getLocalSeq());
+    return commitContext.getWriterProgress();
   }
 
   /**

@@ -161,7 +161,7 @@ public class ConsensusSubscriptionCommitManager {
             return recoveredFromConfigNode;
           }
           return new ConsensusSubscriptionCommitState(
-              regionIdString, new SubscriptionConsensusProgress(0L, 0L, 0L));
+              regionIdString, new SubscriptionConsensusProgress());
         });
   }
 
@@ -621,11 +621,7 @@ public class ConsensusSubscriptionCommitManager {
       // Create a new state from the broadcast progress
       final ConsensusSubscriptionCommitState newState =
           new ConsensusSubscriptionCommitState(
-              regionIdStr,
-              new SubscriptionConsensusProgress(
-                  Objects.nonNull(writerProgress) ? writerProgress.getPhysicalTime() : 0L,
-                  Objects.nonNull(writerProgress) ? writerProgress.getLocalSeq() : -1L,
-                  0L));
+              regionIdStr, new SubscriptionConsensusProgress(writerId, writerProgress, 0L));
       newState.updateFromBroadcast(writerId, writerProgress);
       commitStates.putIfAbsent(key, newState);
       persistProgress(key, commitStates.get(key));
@@ -705,7 +701,7 @@ public class ConsensusSubscriptionCommitManager {
               regionId);
           final ConsensusSubscriptionCommitState recoveredState =
               new ConsensusSubscriptionCommitState(
-                  regionId.toString(), new SubscriptionConsensusProgress(0L, -1L, 0L));
+                  regionId.toString(), new SubscriptionConsensusProgress());
           recoveredState.resetForSeek(committedRegionProgress);
           return recoveredState;
         }
@@ -805,12 +801,18 @@ public class ConsensusSubscriptionCommitManager {
     /** Tracks dispatched but not-yet-committed events by writer-local slot. */
     private final Map<ProgressSlot, ProgressKey> outstandingKeys = new ConcurrentHashMap<>();
 
+    /** Tracks committed dispatched entries that cannot yet advance the frontier because of gaps. */
+    private final Map<ProgressSlot, ProgressKey> committedPendingKeys = new LinkedHashMap<>();
+
     public ConsensusSubscriptionCommitState(
         final String regionId, final SubscriptionConsensusProgress progress) {
       this.regionId = regionId;
       this.progress = progress;
-      this.committedWriterProgress =
-          new WriterProgress(progress.getPhysicalTime(), progress.getLocalSeq());
+      this.committedWriterId = progress.getCommittedWriterId();
+      this.committedWriterProgress = progress.getCommittedWriterProgress();
+      if (Objects.nonNull(committedWriterId) && Objects.nonNull(committedWriterProgress)) {
+        committedWriterPositions.put(committedWriterId, committedWriterProgress);
+      }
     }
 
     public SubscriptionConsensusProgress getProgress() {
@@ -917,10 +919,9 @@ public class ConsensusSubscriptionCommitManager {
         }
         final ProgressKey effectiveKey = recordedKey.resolveMissingFields(writerId, writerProgress);
         recentlyCommittedKeys.add(effectiveKey);
-        advanceCommittedIfAhead(effectiveKey);
+        stageCommittedAndAdvance(effectiveKey);
         recomputeCommittedFrontier();
-        progress.setPhysicalTime(getCommittedPhysicalTime());
-        progress.setLocalSeq(getCommittedLocalSeq());
+        syncPersistedProgress();
       }
 
       return true;
@@ -956,8 +957,7 @@ public class ConsensusSubscriptionCommitManager {
         advanceCommittedIfAhead(effectiveKey);
 
         recomputeCommittedFrontier();
-        progress.setPhysicalTime(getCommittedPhysicalTime());
-        progress.setLocalSeq(getCommittedLocalSeq());
+        syncPersistedProgress();
       }
 
       return true;
@@ -970,6 +970,7 @@ public class ConsensusSubscriptionCommitManager {
     public void resetForSeek(final WriterId writerId, final WriterProgress writerProgress) {
       synchronized (this) {
         outstandingKeys.clear();
+        committedPendingKeys.clear();
         recentlyCommittedKeys.clear();
         committedWriterPositions.clear();
         committedWriterId = writerId;
@@ -979,14 +980,14 @@ public class ConsensusSubscriptionCommitManager {
           committedWriterPositions.put(writerId, writerProgress);
         }
         recomputeCommittedFrontier();
-        progress.setPhysicalTime(getCommittedPhysicalTime());
-        progress.setLocalSeq(getCommittedLocalSeq());
+        syncPersistedProgress();
       }
     }
 
     public void resetForSeek(final RegionProgress regionProgress) {
       synchronized (this) {
         outstandingKeys.clear();
+        committedPendingKeys.clear();
         recentlyCommittedKeys.clear();
         committedWriterPositions.clear();
         committedWriterId = null;
@@ -1000,8 +1001,7 @@ public class ConsensusSubscriptionCommitManager {
           }
         }
         recomputeCommittedFrontier();
-        progress.setPhysicalTime(getCommittedPhysicalTime());
-        progress.setLocalSeq(getCommittedLocalSeq());
+        syncPersistedProgress();
       }
     }
 
@@ -1027,8 +1027,7 @@ public class ConsensusSubscriptionCommitManager {
             committedWriterProgress = incoming.toWriterProgress();
           }
           recomputeCommittedFrontier();
-          progress.setPhysicalTime(getCommittedPhysicalTime());
-          progress.setLocalSeq(getCommittedLocalSeq());
+          syncPersistedProgress();
         }
       }
     }
@@ -1045,10 +1044,39 @@ public class ConsensusSubscriptionCommitManager {
 
     private WriterProgress getCommittedWriterProgressForWriter(final WriterId writerId) {
       return Objects.nonNull(writerId)
-          ? committedWriterPositions.getOrDefault(writerId, new WriterProgress(0L, -1L))
+          ? committedWriterPositions.containsKey(writerId)
+              ? committedWriterPositions.get(writerId)
+              : Objects.isNull(committedWriterId) && Objects.nonNull(committedWriterProgress)
+                  ? committedWriterProgress
+                  : new WriterProgress(0L, -1L)
           : Objects.nonNull(committedWriterProgress)
               ? committedWriterProgress
               : new WriterProgress(0L, -1L);
+    }
+
+    private void stageCommittedAndAdvance(final ProgressKey key) {
+      committedPendingKeys.put(ProgressSlot.from(key), key);
+      final WriterId writerId = key.toWriterId(regionId);
+      if (Objects.isNull(writerId)) {
+        advanceCommittedIfAhead(key);
+        committedPendingKeys.remove(ProgressSlot.from(key));
+        return;
+      }
+      ProgressKey current =
+          new ProgressKey(writerId, getCommittedWriterProgressForWriter(writerId));
+      while (true) {
+        final ProgressKey nextCommitted = findNextCommittedKey(writerId, current);
+        if (Objects.isNull(nextCommitted)) {
+          return;
+        }
+        final ProgressKey nextOutstanding = findNextOutstandingKey(writerId, current);
+        if (Objects.nonNull(nextOutstanding) && nextOutstanding.compareTo(nextCommitted) < 0) {
+          return;
+        }
+        committedPendingKeys.remove(ProgressSlot.from(nextCommitted));
+        advanceCommitted(nextCommitted);
+        current = nextCommitted;
+      }
     }
 
     private void advanceCommittedIfAhead(final ProgressKey key) {
@@ -1058,6 +1086,44 @@ public class ConsensusSubscriptionCommitManager {
       if (key.compareTo(currentKey) > 0) {
         advanceCommitted(key);
       }
+    }
+
+    private ProgressKey findNextCommittedKey(final WriterId writerId, final ProgressKey current) {
+      ProgressKey next = null;
+      for (final ProgressKey candidate : committedPendingKeys.values()) {
+        if (!sameWriter(writerId, candidate)) {
+          continue;
+        }
+        if (candidate.compareTo(current) <= 0) {
+          continue;
+        }
+        if (Objects.isNull(next) || candidate.compareTo(next) < 0) {
+          next = candidate;
+        }
+      }
+      return next;
+    }
+
+    private ProgressKey findNextOutstandingKey(final WriterId writerId, final ProgressKey current) {
+      ProgressKey next = null;
+      for (final ProgressKey candidate : outstandingKeys.values()) {
+        if (!sameWriter(writerId, candidate)) {
+          continue;
+        }
+        if (candidate.compareTo(current) <= 0) {
+          continue;
+        }
+        if (Objects.isNull(next) || candidate.compareTo(next) < 0) {
+          next = candidate;
+        }
+      }
+      return next;
+    }
+
+    private boolean sameWriter(final WriterId writerId, final ProgressKey key) {
+      return Objects.nonNull(writerId)
+          && writerId.getNodeId() == key.writerNodeId
+          && writerId.getWriterEpoch() == key.writerEpoch;
     }
 
     private void recomputeCommittedFrontier() {
@@ -1077,16 +1143,19 @@ public class ConsensusSubscriptionCommitManager {
       }
     }
 
+    private void syncPersistedProgress() {
+      progress.setCommittedWriter(committedWriterId, committedWriterProgress);
+    }
+
     public void serialize(final DataOutputStream stream) throws IOException {
-      progress.serialize(stream);
-      stream.writeLong(getCommittedPhysicalTime());
-      stream.writeLong(getCommittedLocalSeq());
-      stream.writeInt(getCommittedWriterNodeId());
-      stream.writeLong(getCommittedWriterEpoch());
-      stream.writeInt(committedWriterPositions.size());
-      for (final Map.Entry<WriterId, WriterProgress> entry : committedWriterPositions.entrySet()) {
-        entry.getKey().serialize(stream);
-        entry.getValue().serialize(stream);
+      synchronized (this) {
+        progress.serialize(stream);
+        stream.writeInt(committedWriterPositions.size());
+        for (final Map.Entry<WriterId, WriterProgress> entry :
+            committedWriterPositions.entrySet()) {
+          entry.getKey().serialize(stream);
+          entry.getValue().serialize(stream);
+        }
       }
     }
 
@@ -1096,17 +1165,6 @@ public class ConsensusSubscriptionCommitManager {
           SubscriptionConsensusProgress.deserialize(buffer);
       final ConsensusSubscriptionCommitState state =
           new ConsensusSubscriptionCommitState(regionId, progress);
-      final long committedPhysicalTime = buffer.getLong();
-      final long committedLocalSeq = buffer.getLong();
-      int committedWriterNodeId = -1;
-      long committedWriterEpoch = 0L;
-      if (buffer.hasRemaining()) {
-        committedWriterNodeId = buffer.getInt();
-        committedWriterEpoch = buffer.getLong();
-      }
-      state.committedWriterId =
-          buildWriterId(regionId, committedWriterNodeId, committedWriterEpoch);
-      state.committedWriterProgress = new WriterProgress(committedPhysicalTime, committedLocalSeq);
       if (buffer.hasRemaining()) {
         final int writerCount = buffer.getInt();
         for (int i = 0; i < writerCount; i++) {
@@ -1120,6 +1178,7 @@ public class ConsensusSubscriptionCommitManager {
         state.committedWriterPositions.put(state.committedWriterId, state.committedWriterProgress);
       }
       state.recomputeCommittedFrontier();
+      state.syncPersistedProgress();
       return state;
     }
   }

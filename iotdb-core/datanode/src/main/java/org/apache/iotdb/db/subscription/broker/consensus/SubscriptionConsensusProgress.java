@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.db.subscription.broker.consensus;
 
+import org.apache.iotdb.rpc.subscription.payload.poll.WriterId;
+import org.apache.iotdb.rpc.subscription.payload.poll.WriterProgress;
+
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -28,78 +31,83 @@ import java.util.Objects;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * Tracks consensus subscription consumption progress for a single (consumerGroup, topic, region)
- * combination.
+ * Persisted commit metadata for a single (consumerGroup, topic, region) combination.
  *
- * <p>Progress is tracked using (physicalTime, localSeq). The local sequence is the original
- * writer's searchIndex, which is identical across all replicas for the same write operation.
- *
- * <ul>
- *   <li><b>physicalTime</b>: The physical time of the latest committed entry.
- *   <li><b>localSeq</b>: The local sequence (original writer's searchIndex) of the latest committed
- *       entry.
- *   <li><b>commitIndex</b>: Monotonically increasing count of committed events. Used for
- *       persistence throttling and diagnostics.
- * </ul>
+ * <p>This object is no longer a scalar region frontier. It only stores a normalized committed
+ * writer checkpoint plus the persistence throttling counter.
  */
 public class SubscriptionConsensusProgress {
 
-  private final AtomicLong physicalTime;
-
-  private final AtomicLong localSeq;
+  private volatile CommittedWriterState committedWriterState;
 
   private final AtomicLong commitIndex;
 
   public SubscriptionConsensusProgress() {
-    this(0L, -1L, 0L);
+    this(null, new WriterProgress(0L, -1L), 0L);
   }
 
   public SubscriptionConsensusProgress(
-      final long physicalTime, final long localSeq, final long commitIndex) {
-    this.physicalTime = new AtomicLong(physicalTime);
-    this.localSeq = new AtomicLong(localSeq);
+      final WriterId committedWriterId,
+      final WriterProgress committedWriterProgress,
+      final long commitIndex) {
+    this.committedWriterState =
+        new CommittedWriterState(
+            committedWriterId,
+            Objects.nonNull(committedWriterProgress)
+                ? committedWriterProgress
+                : new WriterProgress(0L, -1L));
     this.commitIndex = new AtomicLong(commitIndex);
   }
 
-  public long getPhysicalTime() {
-    return physicalTime.get();
+  public WriterId getCommittedWriterId() {
+    return committedWriterState.writerId;
   }
 
-  public void setPhysicalTime(final long physicalTime) {
-    this.physicalTime.set(physicalTime);
+  public WriterProgress getCommittedWriterProgress() {
+    return committedWriterState.writerProgress;
   }
 
-  public long getLocalSeq() {
-    return localSeq.get();
-  }
-
-  public void setLocalSeq(final long localSeq) {
-    this.localSeq.set(localSeq);
+  public void setCommittedWriter(
+      final WriterId committedWriterId, final WriterProgress committedWriterProgress) {
+    this.committedWriterState =
+        new CommittedWriterState(
+            committedWriterId,
+            Objects.nonNull(committedWriterProgress)
+                ? committedWriterProgress
+                : new WriterProgress(0L, -1L));
   }
 
   public long getCommitIndex() {
     return commitIndex.get();
   }
 
-  public void setCommitIndex(final long commitIndex) {
-    this.commitIndex.set(commitIndex);
-  }
-
   public void incrementCommitIndex() {
-    this.commitIndex.incrementAndGet();
+    commitIndex.incrementAndGet();
   }
 
   public void serialize(final DataOutputStream stream) throws IOException {
-    ReadWriteIOUtils.write(physicalTime.get(), stream);
-    ReadWriteIOUtils.write(localSeq.get(), stream);
+    final CommittedWriterState snapshot = committedWriterState;
+    final boolean hasWriterId = Objects.nonNull(snapshot.writerId);
+    final boolean hasWriterProgress = Objects.nonNull(snapshot.writerProgress);
+    ReadWriteIOUtils.write((byte) (hasWriterId ? 1 : 0), stream);
+    if (hasWriterId) {
+      snapshot.writerId.serialize(stream);
+    }
+    ReadWriteIOUtils.write((byte) (hasWriterProgress ? 1 : 0), stream);
+    if (hasWriterProgress) {
+      snapshot.writerProgress.serialize(stream);
+    }
     ReadWriteIOUtils.write(commitIndex.get(), stream);
   }
 
   public static SubscriptionConsensusProgress deserialize(final ByteBuffer buffer) {
-    final long physicalTime = ReadWriteIOUtils.readLong(buffer);
-    final long localSeq = ReadWriteIOUtils.readLong(buffer);
+    final boolean hasWriterId = ReadWriteIOUtils.readByte(buffer) != 0;
+    final WriterId writerId = hasWriterId ? WriterId.deserialize(buffer) : null;
+    final boolean hasWriterProgress = ReadWriteIOUtils.readByte(buffer) != 0;
+    final WriterProgress writerProgress =
+        hasWriterProgress ? WriterProgress.deserialize(buffer) : null;
     final long commitIndex = ReadWriteIOUtils.readLong(buffer);
-    return new SubscriptionConsensusProgress(physicalTime, localSeq, commitIndex);
+    return new SubscriptionConsensusProgress(writerId, writerProgress, commitIndex);
   }
 
   @Override
@@ -111,25 +119,41 @@ public class SubscriptionConsensusProgress {
       return false;
     }
     final SubscriptionConsensusProgress that = (SubscriptionConsensusProgress) o;
-    return physicalTime.get() == that.physicalTime.get()
-        && localSeq.get() == that.localSeq.get()
-        && commitIndex.get() == that.commitIndex.get();
+    final CommittedWriterState thisSnapshot = committedWriterState;
+    final CommittedWriterState thatSnapshot = that.committedWriterState;
+    return commitIndex.get() == that.commitIndex.get()
+        && Objects.equals(thisSnapshot.writerId, thatSnapshot.writerId)
+        && Objects.equals(thisSnapshot.writerProgress, thatSnapshot.writerProgress);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(physicalTime.get(), localSeq.get(), commitIndex.get());
+    final CommittedWriterState snapshot = committedWriterState;
+    return Objects.hash(snapshot.writerId, snapshot.writerProgress, commitIndex.get());
   }
 
   @Override
   public String toString() {
+    final CommittedWriterState snapshot = committedWriterState;
     return "SubscriptionConsensusProgress{"
-        + "physicalTime="
-        + physicalTime.get()
-        + ", localSeq="
-        + localSeq.get()
+        + "committedWriterId="
+        + snapshot.writerId
+        + ", committedWriterProgress="
+        + snapshot.writerProgress
         + ", commitIndex="
         + commitIndex.get()
         + '}';
+  }
+
+  private static final class CommittedWriterState {
+
+    private final WriterId writerId;
+
+    private final WriterProgress writerProgress;
+
+    private CommittedWriterState(final WriterId writerId, final WriterProgress writerProgress) {
+      this.writerId = writerId;
+      this.writerProgress = writerProgress;
+    }
   }
 }

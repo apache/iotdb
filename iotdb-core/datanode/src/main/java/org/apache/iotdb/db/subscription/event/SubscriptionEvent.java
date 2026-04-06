@@ -47,7 +47,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
-import static org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext.INVALID_COMMIT_ID;
 
 public class SubscriptionEvent implements Comparable<SubscriptionEvent> {
 
@@ -162,16 +161,15 @@ public class SubscriptionEvent implements Comparable<SubscriptionEvent> {
   }
 
   public boolean isCommitted() {
-    if (commitContext.getLocalSeq() == INVALID_COMMIT_ID) {
-      // event with invalid commit id is committed
+    if (!commitContext.isCommittable()) {
+      // fire-and-forget events are treated as already committed
       return true;
     }
     return committedTimestamp.get() != INVALID_TIMESTAMP;
   }
 
   public boolean isCommittable() {
-    if (commitContext.getLocalSeq() == INVALID_COMMIT_ID) {
-      // event with invalid commit id is uncommittable
+    if (!commitContext.isCommittable()) {
       return false;
     }
     return response.isCommittable();
