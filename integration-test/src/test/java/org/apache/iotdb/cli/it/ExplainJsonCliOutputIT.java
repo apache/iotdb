@@ -98,10 +98,10 @@ public class ExplainJsonCliOutputIT extends AbstractScriptIT {
             "-sql_dialect",
             "table",
             "-e",
-            "\"CREATE DATABASE IF NOT EXISTS test_cli_json;"
+            "CREATE DATABASE IF NOT EXISTS test_cli_json;"
                 + " USE test_cli_json;"
                 + " CREATE TABLE IF NOT EXISTS t1(id STRING TAG, v FLOAT FIELD);"
-                + " INSERT INTO t1 VALUES(1000, 'd1', 1.0)\"",
+                + " INSERT INTO t1 VALUES(1000, 'd1', 1.0)",
             "&",
             "exit",
             "%^errorlevel%");
@@ -121,7 +121,7 @@ public class ExplainJsonCliOutputIT extends AbstractScriptIT {
             "-sql_dialect",
             "table",
             "-e",
-            "\"USE test_cli_json; EXPLAIN (FORMAT JSON) SELECT * FROM t1\"",
+            "USE test_cli_json; EXPLAIN (FORMAT JSON) SELECT * FROM t1",
             "&",
             "exit",
             "%^errorlevel%");
@@ -141,7 +141,7 @@ public class ExplainJsonCliOutputIT extends AbstractScriptIT {
             "-sql_dialect",
             "table",
             "-e",
-            "\"USE test_cli_json; EXPLAIN ANALYZE (FORMAT JSON) SELECT * FROM t1\"",
+            "USE test_cli_json; EXPLAIN ANALYZE (FORMAT JSON) SELECT * FROM t1",
             "&",
             "exit",
             "%^errorlevel%");
