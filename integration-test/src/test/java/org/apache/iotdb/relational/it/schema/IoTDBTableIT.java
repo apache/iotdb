@@ -108,6 +108,14 @@ public class IoTDBTableIT {
         assertFalse(resultSet.next());
       }
 
+      try {
+        statement.execute(
+            "create table test1.table1(region_id STRING TAG, plant_id STRING TAG, device_id STRING TAG, model STRING ATTRIBUTE, temperature FLOAT FIELD, humidity DOUBLE FIELD) with (ttl=100, ttl=200, ttl=300)");
+        fail();
+      } catch (final SQLException e) {
+        assertEquals("701: Duplicated property: ttl", e.getMessage());
+      }
+
       // or use full qualified table name
       // test "TTL=INF"
       // "FIELD" can be omitted when type is specified
