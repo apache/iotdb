@@ -64,6 +64,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationT
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AlignedAggregationTreeDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AssignUniqueId;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CollectNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CopyToNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.EnforceSingleRowNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExplainAnalyzeNode;
@@ -212,6 +213,13 @@ public class TableDistributedPlanGenerator
   @Override
   public List<PlanNode> visitExplainAnalyze(
       final ExplainAnalyzeNode node, final PlanContext context) {
+    final List<PlanNode> children = genResult(node.getChild(), context);
+    node.setChild(children.get(0));
+    return Collections.singletonList(node);
+  }
+
+  @Override
+  public List<PlanNode> visitCopyTo(CopyToNode node, PlanContext context) {
     final List<PlanNode> children = genResult(node.getChild(), context);
     node.setChild(children.get(0));
     return Collections.singletonList(node);

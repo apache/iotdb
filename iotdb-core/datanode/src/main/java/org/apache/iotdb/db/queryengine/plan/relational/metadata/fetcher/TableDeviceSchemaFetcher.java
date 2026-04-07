@@ -38,7 +38,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.schema
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.AlignedDeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.NonAlignedDeviceEntry;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.cache.DeviceSchemaRequestCache;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.DeviceSchemaRequestCache;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.IDeviceSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TreeDeviceNormalSchema;
@@ -169,7 +169,7 @@ public class TableDeviceSchemaFetcher {
         for (int i = 0; i < tsBlock.get().getPositionCount(); i++) {
           final String[] nodes = new String[tagLength + 1];
           final Map<String, Binary> attributeMap = new HashMap<>();
-          constructNodsArrayAndAttributeMap(
+          constructNodesArrayAndAttributeMap(
               attributeMap, nodes, table, columnHeaderList, columns, tableInstance, i);
 
           fetchedDeviceSchema.put(IDeviceID.Factory.DEFAULT_FACTORY.create(nodes), attributeMap);
@@ -566,7 +566,7 @@ public class TableDeviceSchemaFetcher {
     for (int i = 0; i < tsBlock.getPositionCount(); i++) {
       final String[] nodes = new String[tableInstance.getTagNum() + 1];
       final Map<String, Binary> attributeMap = new HashMap<>();
-      constructNodsArrayAndAttributeMap(
+      constructNodesArrayAndAttributeMap(
           attributeMap,
           nodes,
           tableInstance.getTableName(),
@@ -597,7 +597,7 @@ public class TableDeviceSchemaFetcher {
     final Column[] columns = tsBlock.getValueColumns();
     for (int i = 0; i < tsBlock.getPositionCount(); i++) {
       final String[] nodes = new String[tableInstance.getTagNum()];
-      constructNodsArrayAndAttributeMap(
+      constructNodesArrayAndAttributeMap(
           Collections.emptyMap(), nodes, null, columnHeaderList, columns, tableInstance, i);
       final IDeviceID deviceID =
           DataNodeTreeViewSchemaUtils.convertToIDeviceID(tableInstance, nodes);
@@ -608,13 +608,13 @@ public class TableDeviceSchemaFetcher {
       mppQueryContext.reserveMemoryForFrontEnd(deviceEntry.ramBytesUsed());
       deviceEntryMap
           .computeIfAbsent(
-              columns[columns.length - 1].getBinary(0).getStringValue(TSFileConfig.STRING_CHARSET),
+              columns[columns.length - 1].getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET),
               k -> new ArrayList<>())
           .add(deviceEntry);
     }
   }
 
-  private void constructNodsArrayAndAttributeMap(
+  private void constructNodesArrayAndAttributeMap(
       final Map<String, Binary> attributeMap,
       final String[] nodes,
       final String tableName,

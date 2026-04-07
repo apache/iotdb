@@ -1002,7 +1002,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       writeToMLog(plan);
     }
     // update statistics
-    regionStatistics.addView(1L);
+    regionStatistics.addView(pathList.size());
   }
 
   @Override

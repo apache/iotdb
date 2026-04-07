@@ -138,7 +138,7 @@ public class PipeResourceMetrics implements IMetricSet {
     // phantom reference count
     metricService.remove(MetricType.AUTO_GAUGE, Metric.PIPE_PHANTOM_REFERENCE_COUNT.toString());
 
-    metricService.remove(MetricType.RATE, Metric.PIPE_TSFILE_SEND_DISK_IO.toString());
+    metricService.remove(MetricType.COUNTER, Metric.PIPE_TSFILE_SEND_DISK_IO.toString());
   }
 
   public void recordDiskIO(final long bytes) {

@@ -3703,13 +3703,16 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       clearCacheStatement.setOptions(Collections.singleton(CacheClearOptions.TREE_SCHEMA));
     } else if (ctx.QUERY() != null) {
       clearCacheStatement.setOptions(Collections.singleton(CacheClearOptions.QUERY));
+    } else if (ctx.AUTH() != null) {
+      clearCacheStatement.setOptions(Collections.singleton(CacheClearOptions.AUTH));
     } else if (ctx.ALL() != null) {
       clearCacheStatement.setOptions(
           new HashSet<>(
               Arrays.asList(
                   CacheClearOptions.TABLE_ATTRIBUTE,
                   CacheClearOptions.TREE_SCHEMA,
-                  CacheClearOptions.QUERY)));
+                  CacheClearOptions.QUERY,
+                  CacheClearOptions.AUTH)));
     } else {
       clearCacheStatement.setOptions(Collections.singleton(CacheClearOptions.DEFAULT));
     }
@@ -4092,7 +4095,9 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       String dataTypeString = ctx.dataType.getText().toUpperCase();
       try {
         dataType = TSDataType.valueOf(dataTypeString);
-        if (TSDataType.UNKNOWN.equals(dataType) || TSDataType.VECTOR.equals(dataType)) {
+        if (TSDataType.UNKNOWN.equals(dataType)
+            || TSDataType.VECTOR.equals(dataType)
+            || TSDataType.OBJECT.equals(dataType)) {
           throw new SemanticException(String.format(UNSUPPORTED_DATATYPE_MSG, dataTypeString));
         }
       } catch (Exception e) {

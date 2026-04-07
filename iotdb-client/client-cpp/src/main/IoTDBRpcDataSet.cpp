@@ -213,6 +213,7 @@ bool IoTDBRpcDataSet::fetchResults() {
     TSFetchResultsResp resp;
     client_->fetchResultsV2(resp, req);
     RpcUtils::verifySuccess(resp.status);
+    moreData_ = resp.moreData;
     if (!resp.hasResultSet) {
         close();
     }
@@ -270,8 +271,15 @@ boost::optional<bool> IoTDBRpcDataSet::getBoolean(const std::string& columnName)
     return getBooleanByTsBlockColumnIndex(index);
 }
 
+// Note: tsBlockColumnIndex < 0 indicates the time pseudo-column in tree model.
+// Only getLong and getString support reading the time column directly.
+// All other typed getters throw IoTDBException to prevent undefined behavior
+// from accessing valueColumns_ with a negative index.
 boost::optional<bool> IoTDBRpcDataSet::getBooleanByTsBlockColumnIndex(int32_t tsBlockColumnIndex) {
     checkRecord();
+    if (tsBlockColumnIndex < 0) {
+        throw IoTDBException("Cannot read boolean from time column");
+    }
     if (!isNull(tsBlockColumnIndex, tsBlockIndex_)) {
         lastReadWasNull_ = false;
         return curTsBlock_->getColumn(tsBlockColumnIndex)->getBoolean(tsBlockIndex_);
@@ -294,6 +302,9 @@ boost::optional<double> IoTDBRpcDataSet::getDouble(const std::string& columnName
 
 boost::optional<double> IoTDBRpcDataSet::getDoubleByTsBlockColumnIndex(int32_t tsBlockColumnIndex) {
     checkRecord();
+    if (tsBlockColumnIndex < 0) {
+        throw IoTDBException("Cannot read double from time column");
+    }
     if (!isNull(tsBlockColumnIndex, tsBlockIndex_)) {
         lastReadWasNull_ = false;
         return curTsBlock_->getColumn(tsBlockColumnIndex)->getDouble(tsBlockIndex_);
@@ -316,6 +327,9 @@ boost::optional<float> IoTDBRpcDataSet::getFloat(const std::string& columnName) 
 
 boost::optional<float> IoTDBRpcDataSet::getFloatByTsBlockColumnIndex(int32_t tsBlockColumnIndex) {
     checkRecord();
+    if (tsBlockColumnIndex < 0) {
+        throw IoTDBException("Cannot read float from time column");
+    }
     if (!isNull(tsBlockColumnIndex, tsBlockIndex_)) {
         lastReadWasNull_ = false;
         return curTsBlock_->getColumn(tsBlockColumnIndex)->getFloat(tsBlockIndex_);
@@ -338,6 +352,9 @@ boost::optional<int32_t> IoTDBRpcDataSet::getInt(const std::string& columnName) 
 
 boost::optional<int32_t> IoTDBRpcDataSet::getIntByTsBlockColumnIndex(int32_t tsBlockColumnIndex) {
     checkRecord();
+    if (tsBlockColumnIndex < 0) {
+        throw IoTDBException("Cannot read int32 from time column");
+    }
     if (!isNull(tsBlockColumnIndex, tsBlockIndex_)) {
         lastReadWasNull_ = false;
         TSDataType::TSDataType dataType = curTsBlock_->getColumn(tsBlockColumnIndex)->getDataType();
@@ -394,6 +411,9 @@ std::shared_ptr<Binary> IoTDBRpcDataSet::getBinary(const std::string& columnName
 
 std::shared_ptr<Binary> IoTDBRpcDataSet::getBinaryByTsBlockColumnIndex(int32_t tsBlockColumnIndex) {
     checkRecord();
+    if (tsBlockColumnIndex < 0) {
+        throw IoTDBException("Cannot read binary from time column");
+    }
     if (!isNull(tsBlockColumnIndex, tsBlockIndex_)) {
         lastReadWasNull_ = false;
         return curTsBlock_->getColumn(tsBlockColumnIndex)->getBinary(tsBlockIndex_);

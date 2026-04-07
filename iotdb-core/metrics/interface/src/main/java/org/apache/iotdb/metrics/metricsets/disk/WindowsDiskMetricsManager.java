@@ -106,7 +106,6 @@ public class WindowsDiskMetricsManager implements IDiskMetricsManager {
 
   public WindowsDiskMetricsManager() {
     processId = String.valueOf(MetricConfigDescriptor.getInstance().getMetricConfig().getPid());
-    collectDiskId();
   }
 
   @Override
@@ -233,15 +232,6 @@ public class WindowsDiskMetricsManager implements IDiskMetricsManager {
   public Set<String> getDiskIds() {
     checkUpdate();
     return diskIdSet;
-  }
-
-  private void collectDiskId() {
-    Map<String, String[]> diskInfoMap = queryDiskInfo();
-    if (diskInfoMap.isEmpty()) {
-      return;
-    }
-    diskIdSet.clear();
-    diskIdSet.addAll(diskInfoMap.keySet());
   }
 
   private Map<String, Double> toKbMap(Map<String, Long> source) {

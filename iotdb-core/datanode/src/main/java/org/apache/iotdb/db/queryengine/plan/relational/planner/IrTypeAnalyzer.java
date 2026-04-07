@@ -61,9 +61,12 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SearchedCaseExpre
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StringLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WhenClause;
+import org.apache.iotdb.db.queryengine.plan.relational.type.TypeCoercionUtils;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.LinkedHashMultimap;
 import org.apache.tsfile.read.common.type.BlobType;
 import org.apache.tsfile.read.common.type.DateType;
 import org.apache.tsfile.read.common.type.RowType;
@@ -72,10 +75,14 @@ import org.apache.tsfile.read.common.type.TimestampType;
 import org.apache.tsfile.read.common.type.Type;
 
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -230,37 +237,31 @@ public class IrTypeAnalyzer {
 
     @Override
     protected Type visitSearchedCaseExpression(SearchedCaseExpression node, Context context) {
-      LinkedHashSet<Type> resultTypes =
-          node.getWhenClauses().stream()
-              .map(
-                  clause -> {
-                    Type operandType = process(clause.getOperand(), context);
-                    if (!operandType.equals(BOOLEAN)) {
-                      throw new SemanticException(
-                          String.format("When clause operand must be boolean: %s", operandType));
-                    }
-                    return setExpressionType(clause, process(clause.getResult(), context));
-                  })
-              .collect(Collectors.toCollection(LinkedHashSet::new));
-
-      if (resultTypes.size() != 1) {
-        throw new SemanticException(
-            String.format("All result types must be the same: %s", resultTypes));
+      for (WhenClause whenClause : node.getWhenClauses()) {
+        coerceType(
+            context,
+            whenClause.getOperand(),
+            BOOLEAN,
+            (actualType) -> String.format("When clause operand must be boolean: %s", actualType));
       }
-      Type resultType = resultTypes.iterator().next();
-      node.getDefaultValue()
-          .ifPresent(
-              defaultValue -> {
-                Type defaultType = process(defaultValue, context);
-                if (!defaultType.equals(resultType)) {
-                  throw new SemanticException(
-                      String.format(
-                          "Default result type must be the same as WHEN result types: %s vs %s",
-                          defaultType, resultType));
-                }
-              });
 
-      return setExpressionType(node, resultType);
+      List<Expression> expressions = new ArrayList<>();
+      for (WhenClause whenClause : node.getWhenClauses()) {
+        expressions.add(whenClause.getResult());
+      }
+      node.getDefaultValue().ifPresent(expressions::add);
+
+      Type type =
+          coerceToSingleType(
+              context, expressions, "All result types and default result type must be the same");
+      setExpressionType(node, type);
+
+      for (WhenClause whenClause : node.getWhenClauses()) {
+        Type whenClauseType = process(whenClause.getResult(), context);
+        setExpressionType(whenClause, whenClauseType);
+      }
+
+      return type;
     }
 
     @Override
@@ -484,6 +485,66 @@ public class IrTypeAnalyzer {
     protected Type visitNode(Node node, Context context) {
       throw new UnsupportedOperationException(
           "Not a valid IR expression: " + node.getClass().getName());
+    }
+
+    // Only allow INT32 -> INT64 coercion to suppress some related bugs for now
+    private void coerceType(
+        Context context, Expression expression, Type expectedType, Function<Type, String> message) {
+      Type actualType = process(expression, context);
+      coerceType(expression, expectedType, actualType, message);
+    }
+
+    private Type coerceToSingleType(
+        Context context, List<Expression> expressions, String description) {
+      LinkedHashMultimap<Type, NodeRef<Expression>> typeExpressions = LinkedHashMultimap.create();
+
+      for (Expression expression : expressions) {
+        Type type = process(expression, context);
+        typeExpressions.put(type, NodeRef.of(expression));
+      }
+      Set<Type> types = typeExpressions.keySet();
+      Iterator<Type> iterator = types.iterator();
+      Type superType = iterator.next();
+      if (types.size() == 1) {
+        return superType;
+      }
+      while (iterator.hasNext()) {
+        Type current = iterator.next();
+        if (TypeCoercionUtils.canCoerceTo(current, superType)) {
+          continue;
+        }
+        if (TypeCoercionUtils.canCoerceTo(superType, current)) {
+          superType = current;
+        }
+        throw new SemanticException(String.format(description + ": %s vs %s", superType, current));
+      }
+      for (Type type : types) {
+        Set<NodeRef<Expression>> nodeRefs = typeExpressions.get(type);
+        if (type.equals(superType)) {
+          continue;
+        }
+        if (!TypeCoercionUtils.canCoerceTo(type, superType)) {
+          throw new SemanticException("Cannot coerce type " + type + " to " + superType);
+        }
+        addOrReplaceExpressionType(nodeRefs, superType);
+      }
+      return superType;
+    }
+
+    private void coerceType(
+        Expression expression,
+        Type actualType,
+        Type expectedType,
+        Function<Type, String> errorMsg) {
+      if (!TypeCoercionUtils.canCoerceTo(actualType, expectedType)) {
+        throw new SemanticException(errorMsg.apply(actualType));
+      }
+      setExpressionType(expression, actualType);
+    }
+
+    private void addOrReplaceExpressionType(
+        Collection<NodeRef<Expression>> expressions, Type superType) {
+      expressions.forEach(expression -> expressionTypes.put(expression, superType));
     }
   }
 

@@ -380,7 +380,7 @@ public class RelationalAuthorStatement extends Statement {
         }
         break;
       case DROP_ROLE:
-        if (AuthorityChecker.SUPER_USER.equals(userName)) {
+        if (AuthorityChecker.SUPER_USER.equals(roleName)) {
           return AuthorityChecker.getTSStatus(false, "Cannot drop role with admin name");
         }
         break;

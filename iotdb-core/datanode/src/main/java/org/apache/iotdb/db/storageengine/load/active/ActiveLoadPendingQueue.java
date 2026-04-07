@@ -70,11 +70,11 @@ public class ActiveLoadPendingQueue {
     return loadingFileSet.contains(file) || pendingFileSet.contains(file);
   }
 
-  public int size() {
+  public synchronized int size() {
     return pendingFileQueue.size() + loadingFileSet.size();
   }
 
-  public boolean isEmpty() {
+  public synchronized boolean isEmpty() {
     return pendingFileQueue.isEmpty() && loadingFileSet.isEmpty();
   }
 

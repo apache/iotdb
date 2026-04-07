@@ -214,10 +214,12 @@ public class MemSchemaRegionStatistics implements ISchemaRegionStatistics {
     memoryUsage.getAndSet(0);
     measurementNumber.getAndSet(0);
     devicesNumber.getAndSet(0);
-    viewNumber.getAndAdd(0);
+    viewNumber.getAndSet(0);
     templateUsage.forEach(
         (templateId, cnt) -> schemaEngineStatistics.deactivateTemplate(templateId, cnt));
     templateUsage.clear();
+    tableDeviceNumber.clear();
+    tableAttributeMemory.clear();
   }
 
   @Override
