@@ -68,6 +68,7 @@ public class UDTFCluster implements UDTF {
   @Override
   public void validate(UDFParameterValidator validator) throws Exception {
     validator
+        .validateInputSeriesNumber(1)
         .validateInputSeriesDataType(0, Type.INT32, Type.INT64, Type.FLOAT, Type.DOUBLE)
         .validate(
             x -> (int) x > 0,
