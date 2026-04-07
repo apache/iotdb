@@ -466,9 +466,6 @@ public class CommonConfig {
   private String userEncryptTokenHint = "not set yet";
 
   private boolean enforceStrongPassword = false;
-  private long passwordExpirationDays = -1;
-  // an old password cannot be reused within the given interval if >= 0.
-  private long passwordReuseIntervalDays = -1;
   private boolean mayBypassPasswordCheckInException = true;
 
   /** whether to enable the audit log * */
@@ -2752,22 +2749,6 @@ public class CommonConfig {
 
   public void setEnforceStrongPassword(boolean enforceStrongPassword) {
     this.enforceStrongPassword = enforceStrongPassword;
-  }
-
-  public long getPasswordExpirationDays() {
-    return passwordExpirationDays;
-  }
-
-  public void setPasswordExpirationDays(long passwordExpirationDays) {
-    this.passwordExpirationDays = passwordExpirationDays;
-  }
-
-  public long getPasswordReuseIntervalDays() {
-    return passwordReuseIntervalDays;
-  }
-
-  public void setPasswordReuseIntervalDays(long passwordReuseIntervalDays) {
-    this.passwordReuseIntervalDays = passwordReuseIntervalDays;
   }
 
   public boolean isMayBypassPasswordCheckInException() {
