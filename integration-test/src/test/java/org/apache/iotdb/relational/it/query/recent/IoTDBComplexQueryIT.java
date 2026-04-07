@@ -81,4 +81,30 @@ public class IoTDBComplexQueryIT {
         retArray,
         DATABASE_NAME);
   }
+
+  @Test
+  public void testTableLessQuery() {
+    String[] expectedHeader;
+    String[] retArray;
+
+    expectedHeader = new String[] {"_col0", "_col1", "_col2", "_col3"};
+    retArray = new String[] {"2,0,1,1,"};
+    tableResultSetEqualTest("SELECT 1+1, 1-1, 1*1, 1/1", expectedHeader, retArray, DATABASE_NAME);
+
+    expectedHeader = new String[] {"_col0", "_col1", "_col2"};
+    retArray =
+        new String[] {Math.sin(1) + "," + Math.cos(1) + "," + Math.tan(1) + ","};
+    tableResultSetEqualTest(
+        "SELECT sin(1), cos(1), tan(1)", expectedHeader, retArray, DATABASE_NAME);
+
+    expectedHeader = new String[] {"_col0"};
+    retArray = new String[] {"Hello world,"};
+    tableResultSetEqualTest(
+        "SELECT FORMAT('Hello %s','world')", expectedHeader, retArray, DATABASE_NAME);
+
+    // SELECT COUNT(*) without FROM returns 1 (implicit single-row semantics)
+    expectedHeader = new String[] {"_col0"};
+    retArray = new String[] {"1,"};
+    tableResultSetEqualTest("SELECT COUNT(*)", expectedHeader, retArray, DATABASE_NAME);
+  }
 }
