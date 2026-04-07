@@ -35,20 +35,27 @@ import org.junit.After;
 import org.junit.Test;
 
 import java.io.File;
+import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Deque;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
+import java.util.NoSuchElementException;
 import java.util.PriorityQueue;
 import java.util.TreeMap;
+import java.util.function.LongFunction;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -411,6 +418,75 @@ public class ConsensusPrefetchingQueueRuntimeStateTest {
     }
   }
 
+  @Test
+  public void testAccumulateFromPendingWaitsForTransientWalGapWithoutSkippingBatch()
+      throws Exception {
+    final ConsensusReqReader reqReader = mock(ConsensusReqReader.class);
+    when(reqReader.getCurrentSearchIndex()).thenReturn(8L);
+
+    final TestConsensusPrefetchingQueue queue =
+        createTestQueue(reqReader, mock(ConsensusSubscriptionCommitManager.class), null);
+    queue.setWalIteratorFactory(
+        startSearchIndex ->
+            new FakeProgressWALIterator(
+                Arrays.asList(
+                    Collections.emptyList(),
+                    Arrays.asList(
+                        newIndexedConsensusRequest(5L, 5L, 1, 1L, 5L),
+                        newIndexedConsensusRequest(6L, 6L, 1, 1L, 6L),
+                        newIndexedConsensusRequest(7L, 7L, 1, 1L, 7L)))));
+    try {
+      queue.setNextExpectedSearchIndexForTest(5L);
+
+      final boolean accepted =
+          queue.accumulateFromPendingForTest(
+              Collections.singletonList(newIndexedConsensusRequest(8L, 8L, 1, 1L, 8L)),
+              queue.newDeliveryBatchStateForTest(),
+              queue.getCurrentSeekGeneration(),
+              Integer.MAX_VALUE,
+              Long.MAX_VALUE);
+
+      assertTrue(accepted);
+      assertEquals(9L, queue.getCurrentReadSearchIndex());
+      assertEquals(0L, queue.getWalGapSkippedEntries());
+      assertEquals(1, queue.getWalGapRetryCount());
+    } finally {
+      queue.close();
+    }
+  }
+
+  @Test
+  public void testAccumulateFromPendingReturnsFalseWhenSeekChangesDuringWalGapWait()
+      throws Exception {
+    final ConsensusReqReader reqReader = mock(ConsensusReqReader.class);
+    when(reqReader.getCurrentSearchIndex()).thenReturn(8L);
+
+    final TestConsensusPrefetchingQueue queue =
+        createTestQueue(reqReader, mock(ConsensusSubscriptionCommitManager.class), null);
+    queue.setWalIteratorFactory(
+        startSearchIndex ->
+            new FakeProgressWALIterator(Collections.singletonList(Collections.emptyList())));
+    queue.setWalGapRetryHook(queue::incrementSeekGenerationForTest);
+    try {
+      queue.setNextExpectedSearchIndexForTest(5L);
+
+      final boolean accepted =
+          queue.accumulateFromPendingForTest(
+              Collections.singletonList(newIndexedConsensusRequest(8L, 8L, 1, 1L, 8L)),
+              queue.newDeliveryBatchStateForTest(),
+              queue.getCurrentSeekGeneration(),
+              Integer.MAX_VALUE,
+              Long.MAX_VALUE);
+
+      assertFalse(accepted);
+      assertEquals(5L, queue.getCurrentReadSearchIndex());
+      assertEquals(0L, queue.getWalGapSkippedEntries());
+      assertEquals(1, queue.getWalGapRetryCount());
+    } finally {
+      queue.close();
+    }
+  }
+
   private static ConsensusPrefetchingQueue createQueue(final boolean initialActive) {
     final IoTConsensusServerImpl server = mock(IoTConsensusServerImpl.class);
     final ConsensusReqReader reqReader = mock(ConsensusReqReader.class);
@@ -551,6 +627,9 @@ public class ConsensusPrefetchingQueueRuntimeStateTest {
             0L, new RegionProgress(Collections.emptyMap()), "default test locate");
     private RegionProgress lastLocatedRegionProgress;
     private boolean lastSeekAfter;
+    private LongFunction<ProgressWALIterator> walIteratorFactory;
+    private Runnable walGapRetryHook = () -> {};
+    private int walGapRetryCount = 0;
 
     private TestConsensusPrefetchingQueue(
         final IoTConsensusServerImpl server,
@@ -583,8 +662,34 @@ public class ConsensusPrefetchingQueueRuntimeStateTest {
       return locateDecision;
     }
 
+    @Override
+    protected ProgressWALIterator createSubscriptionWALIterator(final long startSearchIndex) {
+      if (walIteratorFactory != null) {
+        return walIteratorFactory.apply(startSearchIndex);
+      }
+      return super.createSubscriptionWALIterator(startSearchIndex);
+    }
+
+    @Override
+    protected void pauseBeforeRetryingWalGapFill() {
+      walGapRetryCount++;
+      walGapRetryHook.run();
+    }
+
     private void setLocateDecision(final ReplayLocateDecision locateDecision) {
       this.locateDecision = locateDecision;
+    }
+
+    private void setWalIteratorFactory(final LongFunction<ProgressWALIterator> walIteratorFactory) {
+      this.walIteratorFactory = walIteratorFactory;
+    }
+
+    private void setWalGapRetryHook(final Runnable walGapRetryHook) {
+      this.walGapRetryHook = walGapRetryHook;
+    }
+
+    private int getWalGapRetryCount() {
+      return walGapRetryCount;
     }
 
     private RegionProgress getLastLocatedRegionProgress() {
@@ -619,6 +724,114 @@ public class ConsensusPrefetchingQueueRuntimeStateTest {
 
     private RegionProgress resolveCommittedRegionProgressForInitForTest() {
       return resolveCommittedRegionProgressForInit();
+    }
+
+    private Object newDeliveryBatchStateForTest() throws Exception {
+      final Class<?> batchStateClass =
+          Class.forName(
+              "org.apache.iotdb.db.subscription.broker.consensus."
+                  + "ConsensusPrefetchingQueue$DeliveryBatchState");
+      final Constructor<?> constructor = batchStateClass.getDeclaredConstructor();
+      constructor.setAccessible(true);
+      return constructor.newInstance();
+    }
+
+    private boolean accumulateFromPendingForTest(
+        final List<IndexedConsensusRequest> batch,
+        final Object lingerBatch,
+        final long expectedSeekGeneration,
+        final int maxTablets,
+        final long maxBatchBytes)
+        throws Exception {
+      final Class<?> batchStateClass =
+          Class.forName(
+              "org.apache.iotdb.db.subscription.broker.consensus."
+                  + "ConsensusPrefetchingQueue$DeliveryBatchState");
+      final Method method =
+          ConsensusPrefetchingQueue.class.getDeclaredMethod(
+              "accumulateFromPending",
+              List.class,
+              batchStateClass,
+              long.class,
+              int.class,
+              long.class);
+      method.setAccessible(true);
+      return (boolean)
+          method.invoke(
+              this, batch, lingerBatch, expectedSeekGeneration, maxTablets, maxBatchBytes);
+    }
+
+    private void setNextExpectedSearchIndexForTest(final long nextExpectedSearchIndex)
+        throws Exception {
+      final Field field =
+          ConsensusPrefetchingQueue.class.getDeclaredField("nextExpectedSearchIndex");
+      field.setAccessible(true);
+      ((java.util.concurrent.atomic.AtomicLong) field.get(this)).set(nextExpectedSearchIndex);
+    }
+
+    private void incrementSeekGenerationForTest() {
+      try {
+        final Field field = ConsensusPrefetchingQueue.class.getDeclaredField("seekGeneration");
+        field.setAccessible(true);
+        ((java.util.concurrent.atomic.AtomicLong) field.get(this)).incrementAndGet();
+      } catch (final Exception e) {
+        throw new RuntimeException(e);
+      }
+    }
+  }
+
+  private static final class FakeProgressWALIterator extends ProgressWALIterator {
+
+    private final Path tempDir;
+    private final List<List<IndexedConsensusRequest>> refreshSnapshots;
+    private final Deque<IndexedConsensusRequest> ready = new ArrayDeque<>();
+    private int refreshCount = 0;
+
+    private FakeProgressWALIterator(final List<List<IndexedConsensusRequest>> refreshSnapshots) {
+      this(createTempDir(), refreshSnapshots);
+    }
+
+    private FakeProgressWALIterator(
+        final Path tempDir, final List<List<IndexedConsensusRequest>> refreshSnapshots) {
+      super(tempDir.toFile(), Long.MIN_VALUE);
+      this.tempDir = tempDir;
+      this.refreshSnapshots = refreshSnapshots;
+    }
+
+    @Override
+    public void refresh() {
+      ready.clear();
+      if (refreshCount < refreshSnapshots.size()) {
+        ready.addAll(refreshSnapshots.get(refreshCount));
+      }
+      refreshCount++;
+    }
+
+    @Override
+    public boolean hasNext() {
+      return !ready.isEmpty();
+    }
+
+    @Override
+    public IndexedConsensusRequest next() {
+      if (ready.isEmpty()) {
+        throw new NoSuchElementException();
+      }
+      return ready.removeFirst();
+    }
+
+    @Override
+    public void close() throws IOException {
+      ready.clear();
+      Files.deleteIfExists(tempDir);
+    }
+
+    private static Path createTempDir() {
+      try {
+        return Files.createTempDirectory("consensus-prefetch-gap-fill");
+      } catch (final IOException e) {
+        throw new RuntimeException(e);
+      }
     }
   }
 }

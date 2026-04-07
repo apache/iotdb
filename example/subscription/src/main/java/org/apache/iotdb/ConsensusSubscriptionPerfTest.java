@@ -896,8 +896,8 @@ public class ConsensusSubscriptionPerfTest {
       double targetPointsPerSec = 10_000_000d;
       boolean randomSeek = false;
       long randomSeekMinRows = 2_000_000L;
-      long seekCaptureRows = 10_000_000L;
-      double seekTriggerSec = 120d;
+      long seekCaptureRows = 0L;
+      double seekTriggerSec = 0d;
       double consumerStopSec = 0d;
       double consumerResumeSec = 0d;
       long consumerPauseEveryRows = 0L;

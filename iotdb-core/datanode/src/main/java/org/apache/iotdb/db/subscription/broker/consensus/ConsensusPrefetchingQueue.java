@@ -950,6 +950,8 @@ public class ConsensusPrefetchingQueue {
   }
 
   private static final long PENDING_DRAIN_TIMEOUT_MS = 10;
+  private static final long WAL_GAP_RETRY_SLEEP_MS = 10L;
+  private static final long WAL_GAP_WAIT_LOG_INTERVAL_MS = 5_000L;
 
   private static final long PREFETCH_STATS_LOG_INTERVAL_MS = 5_000L;
 
@@ -1259,7 +1261,12 @@ public class ConsensusPrefetchingQueue {
    * Fills a gap in the pending queue by reading entries from WAL so the internal local replay
    * cursor stays contiguous even when pending delivery jumps ahead of the WAL iterator.
    *
-   * @return false if gap fill had to stop because the current batch became stale
+   * <p>Temporary WAL visibility lag is treated as a normal back-pressure condition: the current
+   * pending batch waits in-place until WAL catches up or a new seek invalidates the batch. This
+   * preserves contiguous replay semantics instead of silently skipping missing searchIndex ranges.
+   *
+   * @return false if gap fill had to stop because the current batch became stale or the queue was
+   *     interrupted/closed
    */
   private boolean fillGapFromWAL(
       final long fromIndex,
@@ -1269,24 +1276,48 @@ public class ConsensusPrefetchingQueue {
       final int maxTablets,
       final long maxBatchBytes) {
     resetSubscriptionWALPosition(fromIndex);
-    if (!pumpFromSubscriptionWAL(
-        batchState, expectedSeekGeneration, Integer.MAX_VALUE, maxTablets, maxBatchBytes)) {
-      return false;
-    }
+    final long waitStartTimeMs = System.currentTimeMillis();
+    long lastWaitLogTimeMs = waitStartTimeMs;
 
-    if (nextExpectedSearchIndex.get() < toIndex) {
-      final long skipped = toIndex - nextExpectedSearchIndex.get();
-      walGapSkippedEntries.addAndGet(skipped);
-      LOGGER.warn(
-          "ConsensusPrefetchingQueue {}: WAL gap [{}, {}) cannot be filled - {} entries lost. "
-              + "Total skipped entries so far: {}. "
-              + "Possible causes: WAL retention policy reclaimed files, or WAL corruption/truncation.",
-          this,
-          nextExpectedSearchIndex.get(),
-          toIndex,
-          skipped,
-          walGapSkippedEntries.get());
-      nextExpectedSearchIndex.set(toIndex);
+    while (nextExpectedSearchIndex.get() < toIndex) {
+      if (seekGeneration.get() != expectedSeekGeneration || isClosed) {
+        return false;
+      }
+      if (Thread.currentThread().isInterrupted()) {
+        Thread.currentThread().interrupt();
+        return false;
+      }
+      if (!pumpFromSubscriptionWAL(
+          batchState, expectedSeekGeneration, Integer.MAX_VALUE, maxTablets, maxBatchBytes)) {
+        return false;
+      }
+
+      final long nextExpected = nextExpectedSearchIndex.get();
+      if (nextExpected >= toIndex) {
+        return true;
+      }
+
+      final long nowMs = System.currentTimeMillis();
+      if (nowMs - lastWaitLogTimeMs >= WAL_GAP_WAIT_LOG_INTERVAL_MS) {
+        LOGGER.info(
+            "ConsensusPrefetchingQueue {}: waiting {}ms for WAL gap [{}, {}) to become visible, "
+                + "currentNextExpected={}, currentWalIndex={}, seekGeneration={}",
+            this,
+            nowMs - waitStartTimeMs,
+            nextExpected,
+            toIndex,
+            nextExpected,
+            consensusReqReader.getCurrentSearchIndex(),
+            expectedSeekGeneration);
+        lastWaitLogTimeMs = nowMs;
+      }
+
+      try {
+        pauseBeforeRetryingWalGapFill();
+      } catch (final InterruptedException e) {
+        Thread.currentThread().interrupt();
+        return false;
+      }
     }
 
     return true;
@@ -1398,10 +1429,18 @@ public class ConsensusPrefetchingQueue {
 
   private void resetSubscriptionWALPosition(final long startSearchIndex) {
     closeSubscriptionWALIterator();
+    subscriptionWALIterator = createSubscriptionWALIterator(startSearchIndex);
+  }
+
+  protected ProgressWALIterator createSubscriptionWALIterator(final long startSearchIndex) {
     if (consensusReqReader instanceof WALNode) {
-      subscriptionWALIterator =
-          new ProgressWALIterator((WALNode) consensusReqReader, startSearchIndex);
+      return new ProgressWALIterator((WALNode) consensusReqReader, startSearchIndex);
     }
+    return null;
+  }
+
+  protected void pauseBeforeRetryingWalGapFill() throws InterruptedException {
+    Thread.sleep(WAL_GAP_RETRY_SLEEP_MS);
   }
 
   private boolean hasReadableWalEntries() {
