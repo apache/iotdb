@@ -29,8 +29,9 @@ import java.util.Random;
 import java.util.Set;
 
 /**
- * Coarse clustering: {@link KMeans} uses {@code min(2k, n)} clusters (n = number of windows); greedy
- * fastKShape picks k representatives; both labels and the objective use {@link ClusterUtils#maxNcc}.
+ * Coarse clustering: {@link KMeans} uses {@code min(2k, n)} clusters (n = number of windows);
+ * greedy fastKShape picks k representatives; both labels and the objective use {@link
+ * ClusterUtils#maxNcc}.
  */
 public class MedoidShape {
 
@@ -192,6 +193,9 @@ public class MedoidShape {
     }
     if (k < 2) {
       throw new IllegalArgumentException("k must be at least 2.");
+    }
+    if (k > samples.length) {
+      throw new IllegalArgumentException("k must not exceed the number of samples.");
     }
     if (maxIterations < 1) {
       throw new IllegalArgumentException("maxIterations must be at least 1.");

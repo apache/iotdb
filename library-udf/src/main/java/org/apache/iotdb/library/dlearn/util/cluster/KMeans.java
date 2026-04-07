@@ -21,7 +21,9 @@ package org.apache.iotdb.library.dlearn.util.cluster;
 
 import java.util.Arrays;
 
-/** Univariate subsequence k-means (Lloyd); optionally z-normalize, then cluster in Euclidean space. */
+/**
+ * Univariate subsequence k-means (Lloyd); optionally z-normalize, then cluster in Euclidean space.
+ */
 public class KMeans {
 
   private double[][] centroids;
