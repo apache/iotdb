@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceSegmentLock;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
+import org.apache.tsfile.common.constant.TsFileConstant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -68,7 +69,7 @@ public class PipeObjectResourceManager {
           + "to referencing.";
 
   /**
-   * Two-level concurrent mapping structure: PipeName -> TsFileName -> PipeObjectResource. Used to
+   * Two-level concurrent mapping structure: PipeName -> TsFileKey -> PipeObjectResource. Used to
    * globally track all active object resources currently managed by the pipe engine.
    */
   private final Map<String, Map<String, PipeObjectResource>> pipeToTsFileResourceMap =
@@ -145,12 +146,12 @@ public class PipeObjectResourceManager {
     validateTsFileResource(tsFileResource);
 
     final File tsFile = tsFileResource.getTsFile();
+    final String tsFileKey = buildTsFileResourceKeySafely(tsFile);
     segmentLock.lock(tsFile);
     try {
-      final PipeObjectResource resource = getPipeResources(pipeName).get(tsFile.getName());
+      final PipeObjectResource resource = getPipeResources(pipeName).get(tsFileKey);
       if (resource == null) {
-        throw new IllegalStateException(
-            String.format(ERR_RESOURCE_MISSING, tsFile.getName(), pipeName));
+        throw new IllegalStateException(String.format(ERR_RESOURCE_MISSING, tsFileKey, pipeName));
       }
       resource.increaseReferenceCount();
     } finally {
@@ -173,17 +174,17 @@ public class PipeObjectResourceManager {
     }
 
     final File tsFile = tsFileResource.getTsFile();
-    final String tsFileName = tsFile.getName();
+    final String tsFileKey = buildTsFileResourceKeySafely(tsFile);
 
     segmentLock.lock(tsFile);
     try {
       final Map<String, PipeObjectResource> pipeResources = getPipeResources(pipeName);
-      final PipeObjectResource resource = pipeResources.get(tsFileName);
+      final PipeObjectResource resource = pipeResources.get(tsFileKey);
 
       // decreaseReferenceCount() returns true if the reference count reaches zero, meaning it's
       // safe to recycle
       if (resource != null && resource.decreaseReferenceCount()) {
-        pipeResources.remove(tsFileName);
+        pipeResources.remove(tsFileKey);
         executeResourceCleanup(resource);
       }
     } finally {
@@ -206,18 +207,18 @@ public class PipeObjectResourceManager {
     }
 
     final File tsFile = tsFileResource.getTsFile();
-    final String tsFileName = tsFile.getName();
+    final String tsFileKey = buildTsFileResourceKeySafely(tsFile);
 
     segmentLock.lock(tsFile);
     try {
       final Map<String, PipeObjectResource> pipeResources = getPipeResources(pipeName);
-      final PipeObjectResource resource = pipeResources.get(tsFileName);
+      final PipeObjectResource resource = pipeResources.get(tsFileKey);
 
       if (resource != null) {
         resource.setTsFileClosed();
         // Cleanup trigger conditions: 1. No linked Object files; OR 2. No external references left
         if (resource.getLinkedFileCount() == 0 || resource.getReferenceCount() <= 0) {
-          pipeResources.remove(tsFileName);
+          pipeResources.remove(tsFileKey);
           executeResourceCleanup(resource);
         }
       }
@@ -251,7 +252,8 @@ public class PipeObjectResourceManager {
       return null;
     }
 
-    final PipeObjectResource resource = pipeResources.get(tsFileResource.getTsFile().getName());
+    final PipeObjectResource resource =
+        pipeResources.get(buildTsFileResourceKeySafely(tsFileResource.getTsFile()));
     return resource != null ? resource.getObjectFileHardlink(relativePath) : null;
   }
 
@@ -274,7 +276,8 @@ public class PipeObjectResourceManager {
       return null;
     }
 
-    final PipeObjectResource resource = pipeResources.get(tsFileResource.getTsFile().getName());
+    final PipeObjectResource resource =
+        pipeResources.get(buildTsFileResourceKeySafely(tsFileResource.getTsFile()));
 
     return resource != null ? resource.getObjectFileDir() : null;
   }
@@ -318,10 +321,10 @@ public class PipeObjectResourceManager {
   private PipeObjectResource getOrCreateObjectResource(
       final TsFileResource tsFileResource, final String pipeName) throws IOException {
     final File tsFile = tsFileResource.getTsFile();
-    final String tsFileName = tsFile.getName();
+    final String tsFileKey = buildTsFileResourceKey(tsFile);
     final Map<String, PipeObjectResource> pipeResources = getPipeResources(pipeName);
 
-    PipeObjectResource resource = pipeResources.get(tsFileName);
+    PipeObjectResource resource = pipeResources.get(tsFileKey);
     if (resource == null) {
       final File targetObjectDir = getPipeObjectFileDir(tsFile, pipeName);
 
@@ -333,7 +336,7 @@ public class PipeObjectResourceManager {
       }
 
       resource = new PipeObjectResource(tsFileResource, targetObjectDir);
-      pipeResources.put(tsFileName, resource);
+      pipeResources.put(tsFileKey, resource);
 
       // Once successfully created, update the base directory cache
       cacheObjectBaseDir(resource);
@@ -364,12 +367,30 @@ public class PipeObjectResourceManager {
     if (objectBaseDirCache == null) {
       synchronized (this) {
         if (objectBaseDirCache == null) {
-          // Based on the known structure: baseDir / pipeName / tsFileName, backtrack two levels to
+          // Based on the known structure: baseDir / pipeName / tsFileKey, backtrack two levels to
           // find the root directory
           objectBaseDirCache = resource.getObjectFileDir().getParentFile().getParentFile();
         }
       }
     }
+  }
+
+  private static String buildTsFileResourceKeySafely(final File tsFile) {
+    try {
+      return buildTsFileResourceKey(tsFile);
+    } catch (IOException e) {
+      return stripTsFileSuffix(tsFile.getName());
+    }
+  }
+
+  private static String buildTsFileResourceKey(final File tsFile) throws IOException {
+    return buildIsolatedTsFileName(tsFile);
+  }
+
+  private static String stripTsFileSuffix(final String tsFileName) {
+    return tsFileName != null && tsFileName.endsWith(TsFileConstant.TSFILE_SUFFIX)
+        ? tsFileName.substring(0, tsFileName.length() - TsFileConstant.TSFILE_SUFFIX.length())
+        : tsFileName;
   }
 
   /**
@@ -402,7 +423,55 @@ public class PipeObjectResourceManager {
   public static File getPipeObjectFileDir(final File tsFile, final String pipeName)
       throws IOException {
     validatePipeName(pipeName);
+    final File dataContextDir = parseDataContextDir(tsFile);
 
+    // Final directory structure assembly:
+    // <dataContextDir>/<pipeHardlinkBase>/object/<pipeName>/<sequenceDir>-<db>-<region>-<timePartition>-<tsFileName>
+    final File pipeBaseDir =
+        new File(dataContextDir, PipeConfig.getInstance().getPipeHardlinkBaseDirName());
+    final File objectCategoryDir = new File(pipeBaseDir, OBJECT_SUBDIR_NAME);
+    final File specificPipeDir = new File(objectCategoryDir, pipeName);
+    final String isolatedTsFileDirName = buildIsolatedTsFileName(tsFile);
+    return new File(specificPipeDir, isolatedTsFileDirName).getCanonicalFile();
+  }
+
+  private static String buildIsolatedTsFileName(final File tsFile) throws IOException {
+    File currentDir = tsFile.getCanonicalFile().getParentFile();
+    String sequenceDir = null;
+    String databaseName = null;
+    String dataRegionName = null;
+    String timePartition = null;
+
+    // Continuously backtrack to the parent until reaching the level explicitly belonging to
+    // 'sequence' or 'unsequence'
+    while (currentDir != null) {
+      final String dirName = currentDir.getName();
+      if (SEQUENCE_DIR_NAME.equals(dirName) || UNSEQUENCE_DIR_NAME.equals(dirName)) {
+        sequenceDir = dirName;
+        break;
+      }
+      if (timePartition == null) {
+        timePartition = dirName;
+      } else if (dataRegionName == null) {
+        dataRegionName = dirName;
+      } else if (databaseName == null) {
+        databaseName = dirName;
+      }
+      currentDir = currentDir.getParentFile();
+    }
+
+    return sequenceDir
+        + "-"
+        + databaseName
+        + "-"
+        + dataRegionName
+        + "-"
+        + timePartition
+        + "-"
+        + stripTsFileSuffix(tsFile.getName());
+  }
+
+  private static File parseDataContextDir(final File tsFile) throws IOException {
     File currentDir = tsFile.getCanonicalFile();
     File dataContextDir = null;
 
@@ -420,15 +489,7 @@ public class PipeObjectResourceManager {
     if (dataContextDir == null) {
       throw new IOException(String.format(ERR_DATA_DIR_NOT_FOUND, tsFile.getAbsolutePath()));
     }
-
-    // Final directory structure assembly:
-    // <dataContextDir>/<pipeHardlinkBase>/object/<pipeName>/<tsFileName>
-    final File pipeBaseDir =
-        new File(dataContextDir, PipeConfig.getInstance().getPipeHardlinkBaseDirName());
-    final File objectCategoryDir = new File(pipeBaseDir, OBJECT_SUBDIR_NAME);
-    final File specificPipeDir = new File(objectCategoryDir, pipeName);
-
-    return new File(specificPipeDir, tsFile.getName()).getCanonicalFile();
+    return dataContextDir;
   }
 
   private static void validatePipeName(final String pipeName) {

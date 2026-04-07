@@ -20,14 +20,13 @@
 
 -->
 <assembly>
-    <id>bin</id>
+    <id>extension</id>
     <formats>
         <format>dir</format>
         <format>zip</format>
     </formats>
-    <baseDirectory>timechodb-${project.version}-bin</baseDirectory>
+    <baseDirectory>timechodb-${project.version}-extension</baseDirectory>
     <fileSets>
-        <!-- 包含合并的依赖JAR -->
         <fileSet>
             <outputDirectory>lib</outputDirectory>
             <directory>${project.build.directory}</directory>
@@ -35,7 +34,6 @@
                 <include>common-dependency.jar</include>
             </includes>
         </fileSet>
-        <!-- 混淆后的主JAR文件 -->
         <fileSet>
             <outputDirectory>lib</outputDirectory>
             <directory>${project.build.directory}</directory>
@@ -82,7 +80,6 @@
                 <exclude>META-INF/**</exclude>
             </excludes>
         </fileSet>
-        <!-- 激活目录 -->
         <fileSet>
             <outputDirectory>activation</outputDirectory>
             <directory>${maven.multiModuleProjectDirectory}/activation</directory>
@@ -91,12 +88,6 @@
                 <exclude>**/*</exclude>
             </excludes>
         </fileSet>
-        <!-- SSL 证书 -->
-        <!-- <fileSet>
-            <outputDirectory>.</outputDirectory>
-            <directory>${maven.multiModuleProjectDirectory}/certs</directory>
-        </fileSet> -->
-        <!-- 启动脚本 -->
         <fileSet>
             <outputDirectory>sbin</outputDirectory>
             <directory>${maven.multiModuleProjectDirectory}/scripts/sbin</directory>
@@ -106,15 +97,12 @@
             </excludes>
             <fileMode>0755</fileMode>
         </fileSet>
-        <!-- 工具脚本 -->
         <fileSet>
             <outputDirectory>tools</outputDirectory>
             <directory>${maven.multiModuleProjectDirectory}/scripts/tools</directory>
             <excludes>
                 <exclude>*ainode.*</exclude>
                 <exclude>**/*ainode.*</exclude>
-                <exclude>tsfile-backup.sh</exclude>
-                <exclude>windows/tsfile-backup.bat</exclude>
             </excludes>
             <fileMode>0755</fileMode>
         </fileSet>
@@ -134,6 +122,10 @@
             <source>${maven.multiModuleProjectDirectory}/iotdb-core/node-commons/src/assembly/resources/conf/safe/iotdb-system.properties</source>
             <outputDirectory>conf</outputDirectory>
             <destName>iotdb-system.properties.template.safe</destName>
+        </file>
+        <file>
+            <source>${maven.multiModuleProjectDirectory}/library-pipe/tsfile-remote-sink/target/tsfile-remote-sink-${project.version}-jar-with-dependencies.jar</source>
+            <outputDirectory>lib</outputDirectory>
         </file>
     </files>
     <componentDescriptors>

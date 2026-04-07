@@ -19,9 +19,11 @@
 
 package org.apache.iotdb.pipe.it.dual.tablemodel.manual.basic;
 
+import org.apache.iotdb.db.it.utils.StandardObjectTableModelTsFileGenerator;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.db.utils.ObjectTypeUtils;
 import org.apache.iotdb.isession.ITableSession;
+import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2DualTableManualBasic;
 import org.apache.iotdb.pipe.it.dual.tablemodel.manual.AbstractPipeTableModelDualManualIT;
@@ -45,6 +47,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -59,7 +62,21 @@ public class IoTDBPipeTsFileSinkObjectIT extends AbstractPipeTableModelDualManua
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBPipeTsFileSinkObjectIT.class);
 
+  /** Same table name as {@link StandardObjectTableModelTsFileGenerator}. */
+  private static final String OBJECT_TABLE_NAME = "factory_metrics";
+
+  private static final int OBJECT_MULTI_WEEK_DEVICE_COUNT = 5;
+  private static final long HOUR_MS = 3600 * 1000L;
+  private static final long DAY_MS = 24L * HOUR_MS;
+  private static final long WEEK_MS = 7L * DAY_MS;
+
+  /** Base time aligned so each device sits in a distinct week bucket. */
+  private static final long OBJECT_BASE_TIME = 1600000000000L;
+
   private String targetDir;
+
+  /** Directory for internally generated TsFiles before LOAD on sender. */
+  private String sourceTsDir;
 
   @Override
   @Before
@@ -69,6 +86,8 @@ public class IoTDBPipeTsFileSinkObjectIT extends AbstractPipeTableModelDualManua
     try {
       targetDir =
           Files.createTempDirectory("pipe_tsfile_sink_object_it").toAbsolutePath().toString();
+      sourceTsDir =
+          Files.createTempDirectory("pipe_tsfile_sink_object_it_src").toAbsolutePath().toString();
     } catch (IOException e) {
       throw new RuntimeException("Failed to create temp directory for targetDir", e);
     }
@@ -78,6 +97,9 @@ public class IoTDBPipeTsFileSinkObjectIT extends AbstractPipeTableModelDualManua
   public void cleanupTargetDir() {
     if (targetDir != null) {
       deleteDirectoryQuietly(Paths.get(targetDir));
+    }
+    if (sourceTsDir != null) {
+      deleteDirectoryQuietly(Paths.get(sourceTsDir));
     }
   }
 
@@ -126,6 +148,138 @@ public class IoTDBPipeTsFileSinkObjectIT extends AbstractPipeTableModelDualManua
       waitForAndVerifyExportedObjects(250, 1, 250, 250, 251, 500);
 
       session.executeNonQueryStatement("DROP PIPE p1");
+    }
+  }
+
+  /**
+   * One internally built TsFile with five devices; each device only has points inside a single
+   * calendar week, and the five devices use five distinct weeks. Data is LOADed on the sender,
+   * exported by Pipe (tsfile-local-sink), sender database is dropped, then the exported TsFiles are
+   * LOADed back and OBJECT payloads are checked against the generator format.
+   */
+  @Test
+  public void testPipeTsFileLocalSinkObjectFiveDevicesMultiWeekGeneratedTsFileLoadRoundTrip()
+      throws Exception {
+    final File tsFile = new File(sourceTsDir, "five_devices_multi_week.tsfile");
+    final List<List<Long>> expectedTimesPerDevice = new ArrayList<>();
+
+    try (StandardObjectTableModelTsFileGenerator generator =
+        new StandardObjectTableModelTsFileGenerator(tsFile)) {
+      for (int i = 0; i < OBJECT_MULTI_WEEK_DEVICE_COUNT; i++) {
+        final String deviceId = String.format("device_%02d", i + 1);
+        final long weekStart = OBJECT_BASE_TIME + (long) i * WEEK_MS;
+        final long weekEnd = weekStart + 6 * DAY_MS;
+        generator.writeDeviceData(OBJECT_TABLE_NAME, deviceId, weekStart, weekEnd, DAY_MS);
+        expectedTimesPerDevice.add(generateExpectedTimes(weekStart, weekEnd, DAY_MS));
+      }
+    }
+
+    try (ITableSession session = senderEnv.getTableSessionConnection()) {
+      session.executeNonQueryStatement("CREATE DATABASE IF NOT EXISTS db1");
+      session.executeNonQueryStatement("USE \"db1\"");
+      session.executeNonQueryStatement(String.format("LOAD '%s'", tsFile.getAbsolutePath()));
+      TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+
+      session.executeNonQueryStatement(
+          String.format(
+              "CREATE PIPE p_multi_week_obj "
+                  + "WITH SOURCE ("
+                  + "'source.capture.table'='true', "
+                  + "'source.database-name'='db1', "
+                  + "'source.table-name'='%s', "
+                  + "'source.inclusion'='data.insert', "
+                  + "'source.history.enable'='true', "
+                  + "'source.realtime.enable'='true' "
+                  + ") "
+                  + "WITH CONNECTOR ("
+                  + "'sink'='tsfile-local-sink', "
+                  + "'sink.local.target-path'='%s', "
+                  + "'sink.batch.max-delay-seconds'='1', "
+                  + "'sink.batch.size-bytes'='1048576'"
+                  + ")",
+              OBJECT_TABLE_NAME, targetDir));
+
+      waitForAtLeastOneExportedTsFile(new File(targetDir), 60_000);
+      session.executeNonQueryStatement("DROP PIPE p_multi_week_obj");
+
+      session.executeNonQueryStatement("DROP DATABASE db1");
+
+      final List<File> exportedTsFiles = new ArrayList<>();
+      findTsFiles(new File(targetDir), exportedTsFiles);
+      Assert.assertFalse("Pipe should export at least one .tsfile", exportedTsFiles.isEmpty());
+
+      session.executeNonQueryStatement("CREATE DATABASE IF NOT EXISTS db1");
+      session.executeNonQueryStatement("USE \"db1\"");
+      for (File f : exportedTsFiles) {
+        session.executeNonQueryStatement(String.format("LOAD '%s'", f.getAbsolutePath()));
+      }
+      TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+
+      for (int i = 0; i < OBJECT_MULTI_WEEK_DEVICE_COUNT; i++) {
+        final String deviceId = String.format("device_%02d", i + 1);
+        assertDeviceObjectBytesMatchGenerator(
+            session, OBJECT_TABLE_NAME, deviceId, expectedTimesPerDevice.get(i));
+      }
+    }
+  }
+
+  private static List<Long> generateExpectedTimes(
+      final long startTime, final long endTime, final long interval) {
+    final List<Long> times = new ArrayList<>();
+    for (long t = startTime; t <= endTime; t += interval) {
+      times.add(t);
+    }
+    return times;
+  }
+
+  /**
+   * Polls until at least one {@code .tsfile} appears under {@code root} (recursive) or {@code
+   * timeoutMs} elapses.
+   */
+  private static void waitForAtLeastOneExportedTsFile(final File root, final long timeoutMs)
+      throws Exception {
+    final long deadline = System.currentTimeMillis() + timeoutMs;
+    while (System.currentTimeMillis() < deadline) {
+      final List<File> found = new ArrayList<>();
+      findTsFiles(root, found);
+      if (!found.isEmpty()) {
+        Thread.sleep(1500);
+        return;
+      }
+      Thread.sleep(1000);
+    }
+    Assert.fail("Timeout waiting for exported .tsfile under " + root.getAbsolutePath());
+  }
+
+  private static void assertDeviceObjectBytesMatchGenerator(
+      final ITableSession session,
+      final String tableName,
+      final String deviceId,
+      final List<Long> expectedTimes)
+      throws Exception {
+    final String query =
+        String.format(
+            "SELECT time, READ_OBJECT(sensor_obj) FROM %s WHERE id='%s' ORDER BY time ASC",
+            tableName, deviceId);
+
+    try (SessionDataSet dataSet = session.executeQueryStatement(query)) {
+      final SessionDataSet.DataIterator iterator = dataSet.iterator();
+      int count = 0;
+      while (iterator.next()) {
+        Assert.assertTrue("More rows than expected for " + deviceId, count < expectedTimes.size());
+        final long actualTime = iterator.getLong(1);
+        final Binary binary = iterator.getBlob(2);
+        final byte[] actualBytes = binary.getValues();
+        final long expectedTime = expectedTimes.get(count);
+        Assert.assertEquals("Time mismatch at index " + count, expectedTime, actualTime);
+        final byte[] expectedBytes =
+            String.format("AutoGenerated|Table=%s|ID=%s|Time=%d", tableName, deviceId, expectedTime)
+                .getBytes(StandardCharsets.UTF_8);
+        Assert.assertArrayEquals(
+            "Object byte content mismatch at time " + actualTime, expectedBytes, actualBytes);
+        count++;
+      }
+      Assert.assertEquals("Total row count mismatch for " + deviceId, expectedTimes.size(), count);
     }
   }
 

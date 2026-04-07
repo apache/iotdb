@@ -28,6 +28,8 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -242,11 +244,19 @@ public class PipeObjectResource implements AutoCloseable {
     }
 
     // Attempt to locate the original physical file across different storage tiers
+    final String dataRegionId = tsFileResource.getDataRegionId();
+    Path relPath = Paths.get(relativePath);
+    Path subPath = relPath.subpath(1, relPath.getNameCount());
+    Path newRelativePath = Paths.get(dataRegionId).resolve(subPath);
     final Optional<File> originalOpt =
-        TierManager.getInstance().getAbsoluteObjectFilePath(relativePath, false);
+        TierManager.getInstance().getAbsoluteObjectFilePath(newRelativePath.toString(), false);
     if (!originalOpt.isPresent()) {
       throw new IOException(
-          "Object file does not exist in any tier (relative path: " + relativePath + ")");
+          "Object file does not exist in any tier (dataRegionId: "
+              + dataRegionId
+              + ", relative path: "
+              + relativePath
+              + ")");
     }
 
     final File hardlinkTargetFile = new File(objectFileDir, relativePath);

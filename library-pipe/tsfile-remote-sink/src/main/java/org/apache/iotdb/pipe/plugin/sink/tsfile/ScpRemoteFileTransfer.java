@@ -189,6 +189,7 @@ class ScpRemoteFileTransfer implements RemoteFileTransfer {
 
   private synchronized ClientSession getSession() throws IOException {
     if (client == null || !client.isStarted()) {
+      System.setProperty("org.apache.sshd.security.provider.BC.enabled", "false");
       client = SshClient.setUpDefaultClient();
       client.start();
     }
