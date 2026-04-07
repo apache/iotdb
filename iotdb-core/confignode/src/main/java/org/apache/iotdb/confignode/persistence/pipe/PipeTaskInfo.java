@@ -983,8 +983,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
 
     if (!restartedConsensusPipes.isEmpty()) {
       LOGGER.info(
-          "Recovered consensus pipes {} as RUNNING during snapshot load.",
-          restartedConsensusPipes);
+          "Recovered consensus pipes {} as RUNNING during snapshot load.", restartedConsensusPipes);
     }
   }
 

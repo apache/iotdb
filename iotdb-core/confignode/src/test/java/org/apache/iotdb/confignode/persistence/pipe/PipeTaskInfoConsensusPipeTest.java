@@ -196,7 +196,11 @@ public class PipeTaskInfoConsensusPipeTest {
               .getIsStoppedByRuntimeException());
       Assert.assertEquals(
           PipeStatus.STOPPED,
-          recoveredPipeTaskInfo.getPipeMetaByPipeName(userPipeName).getRuntimeMeta().getStatus().get());
+          recoveredPipeTaskInfo
+              .getPipeMetaByPipeName(userPipeName)
+              .getRuntimeMeta()
+              .getStatus()
+              .get());
     } finally {
       new File(snapshotDir, "pipe_task_info.bin").delete();
       snapshotDir.delete();
