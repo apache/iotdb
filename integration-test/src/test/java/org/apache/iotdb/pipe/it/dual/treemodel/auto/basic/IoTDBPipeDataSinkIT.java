@@ -29,12 +29,17 @@ import org.apache.iotdb.itbase.category.MultiClusterIT2DualTreeAutoBasic;
 import org.apache.iotdb.pipe.it.dual.treemodel.auto.AbstractPipeDualTreeModelAutoIT;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.entity.StringEntity;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClientBuilder;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
+import java.nio.charset.Charset;
 import java.sql.Connection;
 import java.sql.Statement;
 import java.util.Arrays;
@@ -43,6 +48,8 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.function.Consumer;
+
+import static org.apache.iotdb.db.it.IoTDBRestServiceIT.getHttpPost;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2DualTreeAutoBasic.class})
@@ -54,8 +61,15 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualTreeModelAutoIT {
     super.setUp();
   }
 
+  @Override
+  protected void setupConfig() {
+    super.setupConfig();
+    senderEnv.getConfig().getDataNodeConfig().setEnableRestService(true);
+    senderEnv.getConfig().getCommonConfig().setPipeAutoSplitFullEnabled(true);
+  }
+
   @Test
-  public void testThriftConnectorWithRealtimeFirstDisabled() throws Exception {
+  public void testThriftSinkWithRealtimeFirstDisabled() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
     final String receiverIp = receiverDataNode.getIp();
@@ -91,9 +105,6 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualTreeModelAutoIT {
                   .setProcessorAttributes(processorAttributes));
 
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-
-      Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
 
       // Do not fail if the failure has nothing to do with pipe
       // Because the failures will randomly generate due to resource limitation
@@ -159,9 +170,6 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualTreeModelAutoIT {
                       .setProcessorAttributes(processorAttributes))
               .getCode());
 
-      Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
-
       // Do not fail if the failure has nothing to do with pipe
       // Because the failures will randomly generate due to resource limitation
       TestUtils.executeNonQueries(
@@ -207,7 +215,7 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualTreeModelAutoIT {
   }
 
   @Test
-  public void testLegacyConnector() throws Exception {
+  public void testLegacySink() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
     final String receiverIp = receiverDataNode.getIp();
@@ -223,9 +231,6 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualTreeModelAutoIT {
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
-
       // Do not fail if the failure has nothing to do with pipe
       // Because the failures will randomly generate due to resource limitation
       TestUtils.executeNonQueries(
@@ -403,9 +408,6 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualTreeModelAutoIT {
                       .setProcessorAttributes(processorAttributes))
               .getCode());
 
-      Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
-
       // Do not fail if the failure has nothing to do with pipe
       // Because the failures will randomly generate due to resource limitation
       TestUtils.executeNonQueries(
@@ -499,9 +501,6 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualTreeModelAutoIT {
                       .setProcessorAttributes(processorAttributes))
               .getCode());
 
-      Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
-
       TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList("insert into root.vehicle.d0(time, s1) values (2, 1)", "flush"),
@@ -513,5 +512,105 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualTreeModelAutoIT {
           "Time,root.vehicle.d0.s1,",
           Collections.unmodifiableSet(new HashSet<>(Arrays.asList("1,1.0,", "2,1.0,"))));
     }
+  }
+
+  @Test
+  public void testSpecialPartialInsert() throws Exception {
+    try (final Connection connection = senderEnv.getConnection();
+        final Statement statement = connection.createStatement()) {
+      statement.execute(
+          String.format(
+              "create pipe a2b with sink ('node-urls'='%s')",
+              receiverEnv.getDataNodeWrapperList().get(0).getIpAndPortString()));
+    }
+
+    CloseableHttpClient httpClient = HttpClientBuilder.create().build();
+
+    HttpPost httpPost =
+        getHttpPost(
+            "http://"
+                + senderEnv.getDataNodeWrapper(0).getIp()
+                + ":"
+                + senderEnv.getDataNodeWrapper(0).getRestServicePort()
+                + "/rest/v2/insertRecords");
+    String json =
+        "{\"timestamps\":[1635232113960,1635232151960,1635232143960,1635232143960],\"measurements_list\":[[\"s33\",\"s44\"],[\"s55\",\"s66\"],[\"s77\",\"s88\"],[\"s771\",\"s881\"]],\"data_types_list\":[[\"INT32\",\"INT64\"],[\"FLOAT\",\"DOUBLE\"],[\"FLOAT\",\"DOUBLE\"],[\"BOOLEAN\",\"TEXT\"]],\"values_list\":[[1,false],[2.1,2],[4,6],[false,\"cccccc\"]],\"is_aligned\":false,\"devices\":[\"root.s1\",\"root.s1\",\"root.s1\",\"root.s3\"]}";
+    httpPost.setEntity(new StringEntity(json, Charset.defaultCharset()));
+    for (int i = 0; i < 30; i++) {
+      try {
+        httpClient.execute(httpPost);
+        break;
+      } catch (final Exception e) {
+        if (i == 29) {
+          throw e;
+        }
+        try {
+          Thread.sleep(1000);
+        } catch (InterruptedException ex) {
+          throw new RuntimeException(ex);
+        }
+      }
+    }
+
+    TestUtils.assertDataEventuallyOnEnv(
+        receiverEnv,
+        "select s88, s77, s66, s55, s44, s33 from root.s1",
+        "Time,root.s1.s88,root.s1.s77,root.s1.s66,root.s1.s55,root.s1.s33,",
+        new HashSet<>(
+            Arrays.asList(
+                "1635232113960,null,null,null,null,1,",
+                "1635232151960,null,null,2.0,2.1,null,",
+                "1635232143960,6.0,4.0,null,null,null,")));
+  }
+
+  @Test
+  public void testTransferMods() {
+    TestUtils.executeNonQueries(
+        senderEnv,
+        Arrays.asList(
+            "create database root.sg_nonAligned",
+            "create TIMESERIES root.sg_nonAligned.`非对齐序列带有encoding和压缩方式`.s0 with datatype=boolean, encoding=RLE,compressor=snappy",
+            "create timeseries root.sg_nonAligned.`非对齐序列带有encoding和压缩方式`.s1 with datatype=int32, encoding=PLAIN,compressor=LZ4",
+            "create timeseries root.sg_nonAligned.`非对齐序列带有encoding和压缩方式`.s2 with datatype=int64,encoding=gorilla,compressor=uncompressed",
+            "create timeseries root.sg_nonAligned.`非对齐序列带有encoding和压缩方式`.s3 with datatype=float,encoding=chimp,compressor=gzip",
+            "create timeseries root.sg_nonAligned.`非对齐序列带有encoding和压缩方式`.s4 with datatype=double,encoding=ts_2diff,compressor=zstd",
+            "create timeseries root.sg_nonAligned.`非对齐序列带有encoding和压缩方式`.s5 with datatype=text,encoding=dictionary,compressor=lzma2",
+            "insert into root.sg_nonAligned.`非对齐序列带有encoding和压缩方式`(time,s1, s2,s3,s4,s0,s5) values(1,1,10,5.39,5.51234,true,''),(11,null,20,5.39,15.51234,false,'第2条 device_nonAligned'),(21,3,null,5.39,25.51234,true,'第3条device_nonAligned'),(31,4,40,null,35.51234,true,'第4条device_nonAligned'),(41,5,50,5.39,null,false,'第5条device_nonAligned'),(51,6,60,5.39,55.51234,null,'第6条device_nonAligned'),(61,7,70,5.39,65.51234,false,null),(71,8,80,5.39,75.51234,false,'第8条device_nonAligned'),(81,9,90,5.39,85.51234,false,'第9条device_nonAligned'),(91,10,100,5.39,95.51234,false,'第10条device_nonAligned'),(101,11,110,5.39,105.51234,false,'第11条device_nonAligned'),(111,12,120,5.39,115.51234,false,'第12条device_nonAligned'),(121,13,130,5.39,125.51234,false,'第13条device_nonAligned'),(131,14,140,5.39,135.51234,false,'第14条device_nonAligned'),(141,15,150,5.39,145.51234,false,'第15条'),(151,16,160,5.39,155.51234,false,'第16条'),(161,17,170,5.39,165.51234,false,'第17条'),(171,18,180,5.39,175.51234,false,'第18条'),(181,19,190,5.39,185.51234,false,'第19条'),(191,20,200,5.39,195.51234,false,'第20条'),(201,21,210,5.39,null,false,'第21条')",
+            "flush",
+            "delete timeseries root.sg_nonAligned.非对齐序列带有encoding和压缩方式.s0",
+            String.format(
+                "create pipe test with source ('source.realtime.mode'='stream','inclusion'='data','path'='root.sg_nonAligned.非对齐序列带有encoding和压缩方式.**','source.realtime.enable'='true','mods.enable'='true') with sink ('sink'='iotdb-thrift-sink', 'sink.node-urls'='%s')",
+                receiverEnv.getDataNodeWrapperList().get(0).getIpAndPortString())));
+
+    TestUtils.assertDataEventuallyOnEnv(
+        receiverEnv,
+        "count timeseries root.sg_nonAligned.非对齐序列带有encoding和压缩方式.*",
+        "count(timeseries),",
+        Collections.singleton("5,"));
+
+    TestUtils.executeNonQueries(
+        senderEnv, Arrays.asList("drop pipe test_history", "drop pipe test_realtime"));
+
+    TestUtils.executeNonQuery(receiverEnv, "drop database root.**");
+
+    TestUtils.executeNonQueries(
+        senderEnv,
+        Arrays.asList(
+            "delete timeseries root.sg_nonAligned.非对齐序列带有encoding和压缩方式.s1",
+            String.format(
+                "create pipe test with source ('source.realtime.mode'='stream','inclusion'='data','path'='root.sg_nonAligned.非对齐序列带有encoding和压缩方式.**','source.realtime.enable'='true','mods.enable'='true') with sink ('sink'='iotdb-thrift-sink', 'sink.node-urls'='%s')",
+                receiverEnv.getDataNodeWrapperList().get(0).getIpAndPortString())));
+
+    TestUtils.assertDataEventuallyOnEnv(
+        receiverEnv,
+        "count timeseries root.sg_nonAligned.非对齐序列带有encoding和压缩方式.*",
+        "count(timeseries),",
+        Collections.singleton("4,"),
+        15);
+    TestUtils.assertDataAlwaysOnEnv(
+        receiverEnv,
+        "count timeseries root.sg_nonAligned.非对齐序列带有encoding和压缩方式.*",
+        "count(timeseries),",
+        Collections.singleton("4,"));
   }
 }

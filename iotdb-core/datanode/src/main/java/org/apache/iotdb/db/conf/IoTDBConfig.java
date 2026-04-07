@@ -1237,6 +1237,13 @@ public class IoTDBConfig {
 
   private long maxObjectSizeInByte = 4 * 1024 * 1024 * 1024L;
 
+  private int maxSubTaskNumForInformationTableScan = 4;
+
+  /* Need use these parameters when repair data partition table */
+  private int partitionTableRecoverWorkerNum = 10;
+  // Rate limit set to 10 MB/s
+  private int partitionTableRecoverMaxReadMBsPerSecond = 10;
+
   IoTDBConfig() {}
 
   public int getMaxLogEntriesNumPerBatch() {
@@ -4424,5 +4431,30 @@ public class IoTDBConfig {
 
   public void setMaxObjectSizeInByte(long maxObjectSizeInByte) {
     this.maxObjectSizeInByte = maxObjectSizeInByte;
+  }
+
+  public int getMaxSubTaskNumForInformationTableScan() {
+    return maxSubTaskNumForInformationTableScan;
+  }
+
+  public void setMaxSubTaskNumForInformationTableScan(int maxSubTaskNumForInformationTableScan) {
+    this.maxSubTaskNumForInformationTableScan = maxSubTaskNumForInformationTableScan;
+  }
+
+  public int getPartitionTableRecoverWorkerNum() {
+    return partitionTableRecoverWorkerNum;
+  }
+
+  public void setPartitionTableRecoverWorkerNum(int partitionTableRecoverWorkerNum) {
+    this.partitionTableRecoverWorkerNum = partitionTableRecoverWorkerNum;
+  }
+
+  public int getPartitionTableRecoverMaxReadMBsPerSecond() {
+    return partitionTableRecoverMaxReadMBsPerSecond;
+  }
+
+  public void setPartitionTableRecoverMaxReadMBsPerSecond(
+      int partitionTableRecoverMaxReadMBsPerSecond) {
+    this.partitionTableRecoverMaxReadMBsPerSecond = partitionTableRecoverMaxReadMBsPerSecond;
   }
 }

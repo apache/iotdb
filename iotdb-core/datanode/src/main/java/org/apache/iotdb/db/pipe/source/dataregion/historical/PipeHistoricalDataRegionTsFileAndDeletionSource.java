@@ -904,7 +904,8 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
       return isReferenceCountIncreased ? event : null;
     } finally {
       try {
-        PipeDataNodeResourceManager.tsfile().unpinTsFileResource(resource, pipeName);
+        PipeDataNodeResourceManager.tsfile()
+            .unpinTsFileResource(resource, shouldTransferModFile, pipeName);
       } catch (final IOException e) {
         LOGGER.warn(
             "Pipe {}@{}: failed to unpin TsFileResource after creating event, original path: {}",
@@ -929,6 +930,18 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
             cliHostname,
             skipIfNoPrivileges,
             false);
+
+    // if using IoTV2, assign a replicateIndex for this historical deletion event
+    if (DataRegionConsensusImpl.getInstance() instanceof IoTConsensusV2
+        && IoTConsensusV2Processor.isShouldReplicate(event)) {
+      event.setReplicateIndexForIoTV2(
+          ReplicateProgressDataNodeManager.assignReplicateIndexForIoTV2(pipeName));
+      LOGGER.debug(
+          "[{}]Set {} for historical deletion event {}",
+          pipeName,
+          event.getReplicateIndexForIoTV2(),
+          event);
+    }
 
     if (sloppyPattern || isDbNameCoveredByPattern) {
       event.skipParsingPattern();
@@ -977,7 +990,8 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
             if (resource instanceof TsFileResource) {
               try {
                 PipeDataNodeResourceManager.tsfile()
-                    .unpinTsFileResource((TsFileResource) resource, pipeName);
+                    .unpinTsFileResource(
+                        (TsFileResource) resource, shouldTransferModFile, pipeName);
               } catch (final IOException e) {
                 LOGGER.warn(
                     "Pipe {}@{}: failed to unpin TsFileResource after dropping pipe, original path: {}",

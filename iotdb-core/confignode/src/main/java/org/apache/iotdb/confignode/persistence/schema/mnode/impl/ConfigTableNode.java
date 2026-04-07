@@ -101,6 +101,10 @@ public class ConfigTableNode implements IConfigMNode {
   @Override
   public void setName(final String name) {
     tableNodeInfo.setName(name);
+
+    // Full path ends with name, so it needs to be updated when name changes
+    // Clear cache and compute again when fullPath is next accessed
+    this.fullPath = null;
   }
 
   @Override

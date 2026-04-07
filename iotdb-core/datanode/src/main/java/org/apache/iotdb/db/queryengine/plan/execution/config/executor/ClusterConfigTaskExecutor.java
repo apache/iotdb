@@ -181,6 +181,7 @@ import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
+import org.apache.iotdb.db.pipe.source.dataregion.DataRegionListeningFilter;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
@@ -1263,8 +1264,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       }
     } else {
       try {
-        StorageEngine.getInstance().operateFlush(tFlushReq);
-        tsStatus = RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+        tsStatus = StorageEngine.getInstance().operateFlush(tFlushReq, true);
       } catch (final Exception e) {
         tsStatus = RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
       }
@@ -2205,10 +2205,10 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         new PipeParameters(createPipeStatement.getSourceAttributes());
     final PipeParameters sinkPipeParameters =
         new PipeParameters(createPipeStatement.getSinkAttributes());
-    if (PipeConfig.getInstance().getPipeAutoSplitFullEnabled()
-        && PipeDataNodeAgent.task().isFullSync(sourcePipeParameters)) {
-      try (final ConfigNodeClient configNodeClient =
-          CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+    try (final ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      if (PipeConfig.getInstance().getPipeAutoSplitFullEnabled()
+          && PipeDataNodeAgent.task().isFullSync(sourcePipeParameters)) {
         // 1. Send request to create the real-time data synchronization pipeline
         final TCreatePipeReq realtimeReq =
             new TCreatePipeReq()
@@ -2232,7 +2232,12 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
         final TSStatus realtimeTsStatus = configNodeClient.createPipe(realtimeReq);
         // If creation fails, immediately return with exception
-        if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != realtimeTsStatus.getCode()) {
+        // If the procedure is still running, it's probably stuck on DataNode
+        // The pipe creation can ignore this situation and succeed, thus we do not need to skip in
+        // this case
+        if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != realtimeTsStatus.getCode()
+            && TSStatusCode.OVERLAP_WITH_EXISTING_TASK.getStatusCode()
+                != realtimeTsStatus.getCode()) {
           future.setException(new IoTDBException(realtimeTsStatus));
           return future;
         }
@@ -2253,11 +2258,19 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                                     Boolean.toString(false),
                                     PipeSourceConstant.EXTRACTOR_HISTORY_ENABLE_KEY,
                                     Boolean.toString(true),
-                                    // We force the historical pipe to transfer data only
+                                    PipeSourceConstant.EXTRACTOR_MODE_KEY,
+                                    PipeSourceConstant.EXTRACTOR_MODE_SNAPSHOT_VALUE,
+                                    // We force the historical pipe to transfer data (and maybe
+                                    // deletion) only
                                     // Thus we can transfer schema only once
                                     // And may drop the historical pipe on successfully transferred
                                     PipeSourceConstant.SOURCE_INCLUSION_KEY,
-                                    PipeSourceConstant.EXTRACTOR_INCLUSION_DEFAULT_VALUE,
+                                    DataRegionListeningFilter
+                                            .parseInsertionDeletionListeningOptionPair(
+                                                sourcePipeParameters)
+                                            .getRight()
+                                        ? "data"
+                                        : PipeSourceConstant.EXTRACTOR_INCLUSION_DEFAULT_VALUE,
                                     PipeSourceConstant.SOURCE_EXCLUSION_KEY,
                                     PipeSourceConstant.EXTRACTOR_EXCLUSION_DEFAULT_VALUE)))
                         .getAttribute())
@@ -2280,27 +2293,20 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
         // 3. Set success status only if both pipelines are created successfully
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
-      } catch (final Exception e) {
-        // Catch any other exceptions (e.g., network issues)
-        future.setException(e);
-      }
-      return future;
-    }
-
-    try (final ConfigNodeClient configNodeClient =
-        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      final TCreatePipeReq req =
-          new TCreatePipeReq()
-              .setPipeName(pipeName)
-              .setIfNotExistsCondition(createPipeStatement.hasIfNotExistsCondition())
-              .setExtractorAttributes(createPipeStatement.getSourceAttributes())
-              .setProcessorAttributes(createPipeStatement.getProcessorAttributes())
-              .setConnectorAttributes(createPipeStatement.getSinkAttributes());
-      final TSStatus tsStatus = configNodeClient.createPipe(req);
-      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
-        future.setException(new IoTDBException(tsStatus));
       } else {
-        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+        final TCreatePipeReq req =
+            new TCreatePipeReq()
+                .setPipeName(pipeName)
+                .setIfNotExistsCondition(createPipeStatement.hasIfNotExistsCondition())
+                .setExtractorAttributes(createPipeStatement.getSourceAttributes())
+                .setProcessorAttributes(createPipeStatement.getProcessorAttributes())
+                .setConnectorAttributes(createPipeStatement.getSinkAttributes());
+        final TSStatus tsStatus = configNodeClient.createPipe(req);
+        if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
+          future.setException(new IoTDBException(tsStatus));
+        } else {
+          future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+        }
       }
     } catch (final Exception e) {
       future.setException(e);
@@ -3508,6 +3514,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         future.setException(
             new IOException(
                 "The DataNode to be removed is not in the cluster, or the input format is incorrect."));
+        return future;
       }
 
       LOGGER.info("Starting to remove DataNode with nodeIds: {}", nodeIds);
@@ -3577,6 +3584,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         future.setException(
             new IOException(
                 "The ConfigNode to be removed is not in the cluster, or the input format is incorrect."));
+        return future;
       }
 
       TConfigNodeLocation configNodeLocation = removeConfigNodeLocations.get(0);

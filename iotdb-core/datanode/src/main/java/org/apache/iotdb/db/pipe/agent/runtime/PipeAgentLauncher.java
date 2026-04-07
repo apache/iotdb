@@ -78,7 +78,7 @@ class PipeAgentLauncher {
         curList.add(uninstalledOrConflictedPipePluginMetaList.get(index + offset));
         offset++;
       }
-      index += (offset + 1);
+      index += offset;
       fetchAndSavePipePluginJars(curList);
     }
 
@@ -161,7 +161,7 @@ class PipeAgentLauncher {
         ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       final TGetAllPipeInfoResp getAllPipeInfoResp = configNodeClient.getAllPipeInfo();
       if (getAllPipeInfoResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        throw new StartupException("Failed to get pipe task meta from config node.");
+        LOGGER.warn("Failed to get pipe metas, will be synced by configNode later...");
       }
 
       PipeDataNodeAgent.task()

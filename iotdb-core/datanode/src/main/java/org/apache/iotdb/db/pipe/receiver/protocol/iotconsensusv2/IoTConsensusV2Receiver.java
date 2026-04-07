@@ -60,6 +60,7 @@ import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
+import org.apache.iotdb.db.storageengine.dataregion.utils.TableDiskUsageStatisticUtil;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
 import org.apache.iotdb.db.storageengine.load.LoadTsFileManager;
 import org.apache.iotdb.db.storageengine.rescon.disk.FolderManager;
@@ -554,6 +555,15 @@ public class IoTConsensusV2Receiver {
         }
       }
 
+      if (req.getFileNames().size() < 2) {
+        return new TIoTConsensusV2TransferResp(
+            RpcUtils.getStatus(
+                TSStatusCode.IOT_CONSENSUS_V2_TRANSFER_FILE_ERROR,
+                String.format(
+                    "Failed to seal file %s, because the number of files is less than 2.",
+                    req.getFileNames())));
+      }
+
       // Sync here is necessary to ensure that the data is written to the disk. Or data region may
       // load the file before the data is written to the disk and cause unexpected behavior after
       // system restart. (e.g., empty file in data region's data directory)
@@ -659,7 +669,14 @@ public class IoTConsensusV2Receiver {
         StorageEngine.getInstance().getDataRegion(((DataRegionId) consensusGroupId));
     if (region != null) {
       TsFileResource resource = generateTsFileResource(filePath, progressIndex);
-      region.loadNewTsFile(resource, true, false, true);
+      region.loadNewTsFile(
+          resource,
+          true,
+          false,
+          true,
+          region.isTableModel()
+              ? TableDiskUsageStatisticUtil.calculateTableSizeMap(resource)
+              : Optional.empty());
     } else {
       // Data region is null indicates that dr has been removed or migrated. In those cases, there
       // is no need to replicate data. we just return success to avoid leader keeping retry
@@ -944,6 +961,7 @@ public class IoTConsensusV2Receiver {
 
   private class IoTConsensusV2TsFileWriterPool {
     private final Lock lock = new ReentrantLock();
+    private final Condition condition = lock.newCondition();
     private final List<IoTConsensusV2TsFileWriter> iotConsensusV2TsFileWriterPool =
         new ArrayList<>();
     private final ConsensusPipeName consensusPipeName;
@@ -1006,15 +1024,18 @@ public class IoTConsensusV2Receiver {
           while (!tsFileWriter.isPresent()) {
             tsFileWriter =
                 iotConsensusV2TsFileWriterPool.stream().filter(item -> !item.isUsed()).findFirst();
-            Thread.sleep(RETRY_WAIT_TIME);
+            condition.await(RETRY_WAIT_TIME, TimeUnit.MILLISECONDS);
           }
           tsFileWriter.get().setUsed(true);
           tsFileWriter.get().setCommitIdOfCorrespondingHolderEvent(commitId);
-        } catch (InterruptedException e) {
+        } catch (final InterruptedException e) {
           Thread.currentThread().interrupt();
-          LOGGER.warn(
-              "IoTConsensusV2{}: receiver thread get interrupted when waiting for borrowing tsFileWriter.",
-              consensusPipeName);
+          final String errorStr =
+              String.format(
+                  "IoTConsensusV2%s: receiver thread get interrupted when waiting for borrowing tsFileWriter.",
+                  consensusPipeName);
+          LOGGER.warn(errorStr);
+          throw new RuntimeException(errorStr);
         } finally {
           lock.unlock();
         }
@@ -1049,7 +1070,7 @@ public class IoTConsensusV2Receiver {
                 && tsFileWriter.isUsed()) {
               try {
                 Thread.sleep(RETRY_WAIT_TIME);
-              } catch (InterruptedException e) {
+              } catch (final InterruptedException e) {
                 Thread.currentThread().interrupt();
                 LOGGER.warn(
                     "IoTConsensusV2-PipeName-{}: receiver thread get interrupted when exiting.",

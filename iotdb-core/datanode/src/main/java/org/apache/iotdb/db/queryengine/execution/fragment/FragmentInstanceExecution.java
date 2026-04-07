@@ -250,8 +250,19 @@ public class FragmentInstanceExecution {
     operatorStatistics.setNextCalledCount(operatorContext.getNextCalledCount());
     operatorStatistics.setHasNextCalledCount(operatorContext.getHasNextCalledCount());
     operatorStatistics.setOutputRows(operatorContext.getOutputRows());
-    operatorStatistics.setSpecifiedInfo(operatorContext.getSpecifiedInfo());
+    operatorStatistics.setSpecifiedInfo(convertSpecifiedInfo(operatorContext.getSpecifiedInfo()));
     operatorStatistics.setMemoryUsage(operatorContext.getEstimatedMemorySize());
+  }
+
+  private Map<String, String> convertSpecifiedInfo(Map<String, Object> specifiedInfo) {
+    Map<String, String> result = new HashMap<>(specifiedInfo.size());
+    specifiedInfo.forEach(
+        (key, value) -> {
+          if (value != null) {
+            result.put(key, value.toString());
+          }
+        });
+    return result;
   }
 
   // Directly build statistics from FragmentInstanceExecution, which is still running.

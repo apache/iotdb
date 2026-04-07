@@ -77,9 +77,6 @@ public class CommonDescriptor {
   public void loadCommonProps(TrimProperties properties) throws IOException {
     config.setAuthorizerProvider(
         properties.getProperty("authorizer_provider_class", config.getAuthorizerProvider()).trim());
-    // if using org.apache.iotdb.db.auth.authorizer.OpenIdAuthorizer, openID_url is needed.
-    config.setOpenIdProviderUrl(
-        properties.getProperty("openID_url", config.getOpenIdProviderUrl()).trim());
     config.setEncryptDecryptProvider(
         properties
             .getProperty(

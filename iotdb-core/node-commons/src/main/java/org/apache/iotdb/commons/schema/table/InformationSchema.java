@@ -21,17 +21,25 @@ package org.apache.iotdb.commons.schema.table;
 
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
 
+import com.google.common.collect.ImmutableSet;
 import org.apache.tsfile.enums.TSDataType;
 
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 public class InformationSchema {
   public static final String INFORMATION_DATABASE = "information_schema";
   private static final Map<String, TsTable> schemaTables = new HashMap<>();
+  private static final Map<String, Set<String>> columnsThatSupportPushDownPredicate =
+      new HashMap<>();
+  private static final Set<String> tablesThatSupportPushDownLimitOffset = new HashSet<>();
 
   public static final String QUERIES = "queries";
   public static final String DATABASES = "databases";
@@ -49,6 +57,7 @@ public class InformationSchema {
   public static final String NODES = "nodes";
   public static final String CONFIG_NODES = "config_nodes";
   public static final String DATA_NODES = "data_nodes";
+  public static final String TABLE_DISK_USAGE = "table_disk_usage";
   public static final String CONNECTIONS = "connections";
   public static final String CURRENT_QUERIES = "current_queries";
   public static final String QUERIES_COSTS_HISTOGRAM = "queries_costs_histogram";
@@ -69,6 +78,13 @@ public class InformationSchema {
         new AttributeColumnSchema(ColumnHeaderConstant.STATEMENT_TABLE_MODEL, TSDataType.STRING));
     queriesTable.addColumnSchema(
         new AttributeColumnSchema(ColumnHeaderConstant.USER_TABLE_MODEL, TSDataType.STRING));
+    queriesTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.WAIT_TIME_IN_SERVER_TABLE_MODEL, TSDataType.FLOAT));
+    queriesTable.addColumnSchema(
+        new AttributeColumnSchema(ColumnHeaderConstant.CLIENT_IP, TSDataType.STRING));
+    queriesTable.addColumnSchema(
+        new AttributeColumnSchema(ColumnHeaderConstant.TIMEOUT_TABLE_MODEL, TSDataType.INT64));
     schemaTables.put(QUERIES, queriesTable);
 
     final TsTable databaseTable = new TsTable(DATABASES);
@@ -331,6 +347,23 @@ public class InformationSchema {
             ColumnHeaderConstant.SCHEMA_CONSENSUS_PORT_TABLE_MODEL, TSDataType.INT32));
     schemaTables.put(DATA_NODES, dataNodesTable);
 
+    final TsTable tableDiskUsageTable = new TsTable(TABLE_DISK_USAGE);
+    tableDiskUsageTable.addColumnSchema(
+        new FieldColumnSchema(
+            ColumnHeaderConstant.DATABASE.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
+    tableDiskUsageTable.addColumnSchema(
+        new FieldColumnSchema(ColumnHeaderConstant.TABLE_NAME_TABLE_MODEL, TSDataType.STRING));
+    tableDiskUsageTable.addColumnSchema(
+        new FieldColumnSchema(ColumnHeaderConstant.DATA_NODE_ID_TABLE_MODEL, TSDataType.INT32));
+    tableDiskUsageTable.addColumnSchema(
+        new FieldColumnSchema(ColumnHeaderConstant.REGION_ID_TABLE_MODEL, TSDataType.INT32));
+    tableDiskUsageTable.addColumnSchema(
+        new FieldColumnSchema(ColumnHeaderConstant.TIME_PARTITION_TABLE_MODEL, TSDataType.INT64));
+    tableDiskUsageTable.addColumnSchema(
+        new FieldColumnSchema(ColumnHeaderConstant.SIZE_IN_BYTES_TABLE_MODEL, TSDataType.INT64));
+    tableDiskUsageTable.removeColumnSchema(TsTable.TIME_COLUMN_NAME);
+    schemaTables.put(TABLE_DISK_USAGE, tableDiskUsageTable);
+
     final TsTable connectionsTable = new TsTable(CONNECTIONS);
     connectionsTable.addColumnSchema(
         new TagColumnSchema(ColumnHeaderConstant.DATANODE_ID, TSDataType.STRING));
@@ -388,8 +421,29 @@ public class InformationSchema {
     schemaTables.put(SERVICES, servicesTable);
   }
 
+  static {
+    columnsThatSupportPushDownPredicate.put(
+        TABLE_DISK_USAGE,
+        ImmutableSet.of(
+            ColumnHeaderConstant.DATABASE.toLowerCase(),
+            ColumnHeaderConstant.TABLE_NAME_TABLE_MODEL,
+            ColumnHeaderConstant.DATA_NODE_ID_TABLE_MODEL,
+            ColumnHeaderConstant.REGION_ID_TABLE_MODEL,
+            ColumnHeaderConstant.TIME_PARTITION_TABLE_MODEL));
+
+    tablesThatSupportPushDownLimitOffset.add(TABLE_DISK_USAGE);
+  }
+
   public static Map<String, TsTable> getSchemaTables() {
     return schemaTables;
+  }
+
+  public static Set<String> getColumnsSupportPushDownPredicate(String tableName) {
+    return columnsThatSupportPushDownPredicate.getOrDefault(tableName, Collections.emptySet());
+  }
+
+  public static boolean supportsPushDownLimitOffset(String tableName) {
+    return tablesThatSupportPushDownLimitOffset.contains(tableName);
   }
 
   private InformationSchema() {

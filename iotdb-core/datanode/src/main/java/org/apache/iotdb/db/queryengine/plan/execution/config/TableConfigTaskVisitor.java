@@ -880,8 +880,12 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   private Map<String, String> convertPropertiesToMap(
       final List<Property> propertyList, final boolean serializeDefault) {
     final Map<String, String> map = new HashMap<>();
+    final Set<String> deduplicate = new HashSet<>();
     for (final Property property : propertyList) {
       final String key = property.getName().getValue().toLowerCase(Locale.ENGLISH);
+      if (!deduplicate.add(key)) {
+        throw new SemanticException("Duplicated property: " + key);
+      }
       if (TABLE_ALLOWED_PROPERTIES.contains(key)) {
         if (!property.isSetToDefault()) {
           final Expression value = property.getNonDefaultValue();

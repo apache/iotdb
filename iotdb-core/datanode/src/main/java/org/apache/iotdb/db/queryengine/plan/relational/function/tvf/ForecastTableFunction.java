@@ -62,8 +62,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
@@ -74,6 +72,8 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.udf.builtin.relational.tvf.WindowTVFUtils.findColumnIndex;
+import static org.apache.iotdb.db.queryengine.plan.relational.function.tvf.TableFunctionUtils.checkType;
+import static org.apache.iotdb.db.queryengine.plan.relational.function.tvf.TableFunctionUtils.parseOptions;
 import static org.apache.iotdb.db.queryengine.plan.relational.utils.ResultColumnAppender.createResultColumnAppender;
 
 public class ForecastTableFunction implements TableFunction {
@@ -200,17 +200,6 @@ public class ForecastTableFunction implements TableFunction {
   protected static final String OPTIONS_PARAMETER_NAME = "MODEL_OPTIONS";
   protected static final String DEFAULT_OPTIONS = "";
   protected static final int MAX_INPUT_LENGTH = 2880;
-
-  private static final String INVALID_OPTIONS_FORMAT = "Invalid options: %s";
-
-  private static final Set<Type> ALLOWED_INPUT_TYPES = new HashSet<>();
-
-  static {
-    ALLOWED_INPUT_TYPES.add(Type.INT32);
-    ALLOWED_INPUT_TYPES.add(Type.INT64);
-    ALLOWED_INPUT_TYPES.add(Type.FLOAT);
-    ALLOWED_INPUT_TYPES.add(Type.DOUBLE);
-  }
 
   @Override
   public List<ParameterSpecification> getArgumentsSpecifications() {
@@ -367,38 +356,6 @@ public class ForecastTableFunction implements TableFunction {
     };
   }
 
-  // only allow for INT32, INT64, FLOAT, DOUBLE
-  public void checkType(Type type, String columnName) {
-    if (!ALLOWED_INPUT_TYPES.contains(type)) {
-      throw new SemanticException(
-          String.format(
-              "The type of the column [%s] is [%s], only INT32, INT64, FLOAT, DOUBLE is allowed",
-              columnName, type));
-    }
-  }
-
-  public static Map<String, String> parseOptions(String options) {
-    if (options.isEmpty()) {
-      return Collections.emptyMap();
-    }
-    String[] optionArray = options.split(",");
-    if (optionArray.length == 0) {
-      throw new SemanticException(String.format(INVALID_OPTIONS_FORMAT, options));
-    }
-
-    Map<String, String> optionsMap = new HashMap<>(optionArray.length);
-    for (String option : optionArray) {
-      int index = option.indexOf('=');
-      if (index == -1 || index == option.length() - 1) {
-        throw new SemanticException(String.format(INVALID_OPTIONS_FORMAT, option));
-      }
-      String key = option.substring(0, index).trim();
-      String value = option.substring(index + 1).trim();
-      optionsMap.put(key, value);
-    }
-    return optionsMap;
-  }
-
   protected static class ForecastDataProcessor implements TableFunctionDataProcessor {
 
     protected static final TsBlockSerde SERDE = new TsBlockSerde();
@@ -474,7 +431,7 @@ public class ForecastTableFunction implements TableFunction {
       int columnSize = properColumnBuilders.size();
 
       // sort inputRecords in ascending order by timestamp
-      inputRecords.sort(Comparator.comparingLong(record -> record.getLong(0)));
+      inputRecords.sort(Comparator.comparingLong(r -> r.getLong(0)));
 
       // time column
       long inputStartTime = inputRecords.getFirst().getLong(0);
@@ -514,6 +471,7 @@ public class ForecastTableFunction implements TableFunction {
             TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
       }
 
+      // construct result column
       for (int columnIndex = 1, size = predicatedResult.getValueColumnCount();
           columnIndex <= size;
           columnIndex++) {

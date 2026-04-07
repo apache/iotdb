@@ -204,7 +204,6 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
             };
     deleteDevicesExecutor.execute();
 
-    setNextState(CONSTRUCT_BLACK_LIST);
     deletedDevicesNum =
         !isFailed()
             ? deleteDevicesExecutor.getSuccessResult().stream()

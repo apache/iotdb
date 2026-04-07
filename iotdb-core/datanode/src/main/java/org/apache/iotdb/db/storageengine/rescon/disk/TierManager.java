@@ -80,6 +80,10 @@ public class TierManager {
 
   private List<String> objectDirs;
 
+  private List<String> copyToTargetDirs;
+
+  private FolderManager copyToFolderManager;
+
   /** total space of each tier, Long.MAX_VALUE when one tier contains remote storage */
   private long[] tierDiskTotalSpace;
 
@@ -161,6 +165,23 @@ public class TierManager {
         unSeqDir2TierLevel.put(dir, tierLevel);
       }
 
+      if (tierLevel == 0) {
+        copyToTargetDirs =
+            Arrays.stream(tierDirs[tierLevel])
+                .filter(Objects::nonNull)
+                .map(
+                    v ->
+                        FSFactoryProducer.getFSFactory()
+                            .getFile(v, IoTDBConstant.COPY_TO_TARGET_FOLDER_NAME)
+                            .getPath())
+                .collect(Collectors.toList());
+        try {
+          copyToFolderManager = new FolderManager(copyToTargetDirs, directoryStrategyType);
+        } catch (DiskSpaceInsufficientException e) {
+          logger.error("All disks of tier {} are full.", tierLevel, e);
+        }
+      }
+
       objectDirs =
           Arrays.stream(tierDirs[tierLevel])
               .filter(Objects::nonNull)
@@ -224,6 +245,17 @@ public class TierManager {
     return sequence
         ? seqTiers.get(tierLevel).getNextFolder()
         : unSeqTiers.get(tierLevel).getNextFolder();
+  }
+
+  public String getNextFolderForCopyToTargetFile() throws DiskSpaceInsufficientException {
+    if (copyToFolderManager == null) {
+      throw new DiskSpaceInsufficientException(
+          "copyToFolderManager is not initialized. This usually indicates that folder "
+              + "initialization in TierManager.initFolders() failed due to insufficient disk "
+              + "space. Please check disk space and related configuration before retrying the "
+              + "copy-to-target operation.");
+    }
+    return copyToFolderManager.getNextFolder();
   }
 
   public String getNextFolderForObjectFile() throws DiskSpaceInsufficientException {

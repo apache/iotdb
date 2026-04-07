@@ -48,10 +48,15 @@ import org.junit.runner.RunWith;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.COLUMN_TTL;
 import static org.junit.Assert.assertEquals;
@@ -79,7 +84,7 @@ public class IoTDBRestServiceIT {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
-  private String getAuthorization(String username, String password) {
+  public static String getAuthorization(String username, String password) {
     return Base64.getEncoder()
         .encodeToString((username + ":" + password).getBytes(StandardCharsets.UTF_8));
   }
@@ -129,7 +134,7 @@ public class IoTDBRestServiceIT {
     }
   }
 
-  private HttpPost getHttpPost(String url) {
+  public static HttpPost getHttpPost(String url) {
     HttpPost httpPost = new HttpPost(url);
     httpPost.addHeader("Content-type", "application/json; charset=utf-8");
     httpPost.setHeader("Accept", "application/json");
@@ -240,6 +245,69 @@ public class IoTDBRestServiceIT {
         e.printStackTrace();
         fail(e.getMessage());
       }
+    }
+  }
+
+  @Test
+  public void errorInsertRecords() throws SQLException {
+    CloseableHttpResponse response = null;
+    CloseableHttpClient httpClient = HttpClientBuilder.create().build();
+    for (int i = 0; i < EnvFactory.getEnv().getDataNodeWrapperList().size(); i++) {
+      DataNodeWrapper wrapper = EnvFactory.getEnv().getDataNodeWrapperList().get(i);
+      try {
+        HttpPost httpPost =
+            getHttpPost(
+                "http://"
+                    + wrapper.getIp()
+                    + ":"
+                    + wrapper.getRestServicePort()
+                    + "/rest/v2/insertRecords");
+        String json =
+            "{\"timestamps\":["
+                + i
+                + "],\"measurements_list\":[[\"s33\",\"s44\"]],\"data_types_list\":[[\"INT32\",\"INT64\"]],\"values_list\":[[1,false]],\"is_aligned\":false,\"devices\":[\"root.s1\"]}";
+        httpPost.setEntity(new StringEntity(json, Charset.defaultCharset()));
+        for (int j = 0; j < 30; j++) {
+          try {
+            response = httpClient.execute(httpPost);
+            break;
+          } catch (Exception e) {
+            if (i == 29) {
+              throw e;
+            }
+            try {
+              TimeUnit.SECONDS.sleep(1);
+            } catch (InterruptedException ex) {
+              throw new RuntimeException(ex);
+            }
+          }
+        }
+        HttpEntity responseEntity = response.getEntity();
+        String message = EntityUtils.toString(responseEntity, "utf-8");
+        JsonObject result = JsonParser.parseString(message).getAsJsonObject();
+        assertEquals(507, Integer.parseInt(result.get("code").toString()));
+      } catch (IOException e) {
+        e.printStackTrace();
+        fail(e.getMessage());
+      } finally {
+        try {
+          if (response != null) {
+            response.close();
+          }
+        } catch (IOException e) {
+          e.printStackTrace();
+          fail(e.getMessage());
+        }
+      }
+    }
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+
+      ResultSet resultSet = statement.executeQuery("select count(s33) from root.s1");
+      resultSet.next();
+      assertEquals(
+          EnvFactory.getEnv().getDataNodeWrapperList().size(),
+          resultSet.getInt("count(root.s1.s33)"));
     }
   }
 

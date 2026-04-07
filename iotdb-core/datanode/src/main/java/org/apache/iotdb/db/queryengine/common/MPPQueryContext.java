@@ -76,7 +76,11 @@ public class MPPQueryContext implements IAuditEntity {
   private long localQueryId;
   private SessionInfo session;
   private QueryType queryType = QueryType.READ;
+
+  /** the max executing time of query in ms. Unit: millisecond */
   private long timeOut;
+
+  // time unit is ms
   private long startTime;
 
   private TEndPoint localDataBlockEndpoint;
@@ -104,7 +108,7 @@ public class MPPQueryContext implements IAuditEntity {
   // - EXPLAIN: Show the logical and physical query plan without execution
   // - EXPLAIN_ANALYZE: Execute the query and collect detailed execution statistics
   private ExplainType explainType = ExplainType.NONE;
-  private boolean isVerbose = false;
+  private boolean verbose = false;
 
   private QueryPlanStatistics queryPlanStatistics = null;
 
@@ -147,6 +151,7 @@ public class MPPQueryContext implements IAuditEntity {
   // Tables in the subquery
   private final Map<NodeRef<Query>, List<Identifier>> subQueryTables = new HashMap<>();
 
+  @TestOnly
   public MPPQueryContext(QueryId queryId) {
     this.queryId = queryId;
     this.endPointBlackList = ConcurrentHashMap.newKeySet();
@@ -161,12 +166,7 @@ public class MPPQueryContext implements IAuditEntity {
       SessionInfo session,
       TEndPoint localDataBlockEndpoint,
       TEndPoint localInternalEndpoint) {
-    this(queryId);
-    this.sql = sql;
-    this.session = session;
-    this.localDataBlockEndpoint = localDataBlockEndpoint;
-    this.localInternalEndpoint = localInternalEndpoint;
-    this.initResultNodeContext();
+    this(sql, queryId, -1, session, localDataBlockEndpoint, localInternalEndpoint);
   }
 
   public MPPQueryContext(
@@ -244,10 +244,12 @@ public class MPPQueryContext implements IAuditEntity {
     return queryType;
   }
 
+  /** the max executing time of query in ms. Unit: millisecond */
   public long getTimeOut() {
     return timeOut;
   }
 
+  /** the max executing time of query in ms. Unit: millisecond */
   public void setTimeOut(long timeOut) {
     this.timeOut = timeOut;
   }
@@ -353,11 +355,11 @@ public class MPPQueryContext implements IAuditEntity {
   }
 
   public void setVerbose(boolean verbose) {
-    isVerbose = verbose;
+    this.verbose = verbose;
   }
 
   public boolean isVerbose() {
-    return isVerbose;
+    return verbose;
   }
 
   public long getAnalyzeCost() {
@@ -589,6 +591,9 @@ public class MPPQueryContext implements IAuditEntity {
 
   @Override
   public String getCliHostname() {
+    if (session == null || session.getCliHostname() == null) {
+      return "UNKNOWN";
+    }
     return session.getCliHostname();
   }
 

@@ -414,6 +414,7 @@ public class IoTDBDatabaseIT {
               "regions,INF,",
               "services,INF,",
               "subscriptions,INF,",
+              "table_disk_usage,INF,",
               "tables,INF,",
               "topics,INF,",
               "views,INF,"));
@@ -463,7 +464,10 @@ public class IoTDBDatabaseIT {
                   "datanode_id,INT32,ATTRIBUTE,",
                   "elapsed_time,FLOAT,ATTRIBUTE,",
                   "statement,STRING,ATTRIBUTE,",
-                  "user,STRING,ATTRIBUTE,")));
+                  "user,STRING,ATTRIBUTE,",
+                  "wait_time_in_server,FLOAT,ATTRIBUTE,",
+                  "client_ip,STRING,ATTRIBUTE,",
+                  "timeout,INT64,ATTRIBUTE,")));
       TestUtils.assertResultSetEqual(
           statement.executeQuery("desc pipes"),
           "ColumnName,DataType,Category,",
@@ -566,6 +570,17 @@ public class IoTDBDatabaseIT {
                   "mpp_port,INT32,ATTRIBUTE,",
                   "data_consensus_port,INT32,ATTRIBUTE,",
                   "schema_consensus_port,INT32,ATTRIBUTE,")));
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("desc table_disk_usage"),
+          "ColumnName,DataType,Category,",
+          new HashSet<>(
+              Arrays.asList(
+                  "database,STRING,FIELD,",
+                  "table_name,STRING,FIELD,",
+                  "datanode_id,INT32,FIELD,",
+                  "region_id,INT32,FIELD,",
+                  "time_partition,INT64,FIELD,",
+                  "size_in_bytes,INT64,FIELD,")));
 
       // Only root user is allowed
       Assert.assertThrows(SQLException.class, () -> statement.execute("select * from regions"));
@@ -580,6 +595,8 @@ public class IoTDBDatabaseIT {
       Assert.assertThrows(SQLException.class, () -> statement.execute("select * from data_nodes"));
       Assert.assertThrows(
           SQLException.class, () -> statement.executeQuery("select * from pipe_plugins"));
+      Assert.assertThrows(
+          SQLException.class, () -> statement.executeQuery("select * from table_disk_usage"));
 
       // Filter out not self-created pipes
       TestUtils.assertResultSetEqual(
@@ -645,6 +662,7 @@ public class IoTDBDatabaseIT {
                   "information_schema,configurations,INF,USING,null,SYSTEM VIEW,",
                   "information_schema,keywords,INF,USING,null,SYSTEM VIEW,",
                   "information_schema,nodes,INF,USING,null,SYSTEM VIEW,",
+                  "information_schema,table_disk_usage,INF,USING,null,SYSTEM VIEW,",
                   "information_schema,config_nodes,INF,USING,null,SYSTEM VIEW,",
                   "information_schema,data_nodes,INF,USING,null,SYSTEM VIEW,",
                   "information_schema,connections,INF,USING,null,SYSTEM VIEW,",
@@ -655,7 +673,7 @@ public class IoTDBDatabaseIT {
       TestUtils.assertResultSetEqual(
           statement.executeQuery("count devices from tables where status = 'USING'"),
           "count(devices),",
-          Collections.singleton("22,"));
+          Collections.singleton("23,"));
       TestUtils.assertResultSetEqual(
           statement.executeQuery(
               "select * from columns where table_name = 'queries' or database = 'test'"),
@@ -668,6 +686,9 @@ public class IoTDBDatabaseIT {
                   "information_schema,queries,elapsed_time,FLOAT,ATTRIBUTE,USING,null,",
                   "information_schema,queries,statement,STRING,ATTRIBUTE,USING,null,",
                   "information_schema,queries,user,STRING,ATTRIBUTE,USING,null,",
+                  "information_schema,queries,wait_time_in_server,FLOAT,ATTRIBUTE,USING,null,",
+                  "information_schema,queries,client_ip,STRING,ATTRIBUTE,USING,null,",
+                  "information_schema,queries,timeout,INT64,ATTRIBUTE,USING,null,",
                   "test,test,time,TIMESTAMP,TIME,USING,null,",
                   "test,test,a,STRING,TAG,USING,null,",
                   "test,test,b,STRING,ATTRIBUTE,USING,null,",

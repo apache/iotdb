@@ -212,6 +212,9 @@ public class ColumnHeaderConstant {
   public static final String QUERY_ID = "QueryId";
   public static final String ELAPSED_TIME = "ElapsedTime";
   public static final String STATEMENT = "Statement";
+  public static final String WAIT_TIME_IN_SERVER = "WaitTimeInServer";
+  public static final String CLIENT_IP_TREE_MODEL = "ClientIp";
+  public static final String TIMEOUT = "Timeout";
 
   // column names for show idle connection
   public static final String DATANODE_ID = "datanode_id";
@@ -225,6 +228,8 @@ public class ColumnHeaderConstant {
   public static final String DATA_NODE_ID_TABLE_MODEL = "datanode_id";
   public static final String START_TIME_TABLE_MODEL = "start_time";
   public static final String ELAPSED_TIME_TABLE_MODEL = "elapsed_time";
+  public static final String WAIT_TIME_IN_SERVER_TABLE_MODEL = "wait_time_in_server";
+  public static final String TIMEOUT_TABLE_MODEL = "timeout";
 
   // column names for current_queries and queries_costs_histogram
   public static final String STATE_TABLE_MODEL = "state";
@@ -348,6 +353,15 @@ public class ColumnHeaderConstant {
   public static final String SHOW_CONFIGURATIONS_VALUE = "value";
   public static final String SHOW_CONFIGURATIONS_DEFAULT_VALUE = "default_value";
   public static final String SHOW_CONFIGURATIONS_DESCRIPTION = "description";
+
+  public static final String SIZE_IN_BYTES = "SizeInBytes";
+  public static final String SIZE_IN_BYTES_TABLE_MODEL = "size_in_bytes";
+  public static final String TIME_PARTITION_TABLE_MODEL = "time_partition";
+
+  public static final String ROW_COUNT = "row_count";
+  public static final String DEVICE_COUNT = "device_count";
+  public static final String TIME_COLUMN = "time_column";
+  public static final String TAG_COLUMNS = "tag_columns";
 
   public static final List<ColumnHeader> lastQueryColumnHeaders =
       ImmutableList.of(
@@ -641,10 +655,21 @@ public class ColumnHeaderConstant {
 
   public static final List<ColumnHeader> showQueriesColumnHeaders =
       ImmutableList.of(
-          new ColumnHeader(QUERY_ID, TSDataType.TEXT),
+          new ColumnHeader(QUERY_ID, TSDataType.STRING),
           new ColumnHeader(DATA_NODE_ID, TSDataType.INT32),
           new ColumnHeader(ELAPSED_TIME, TSDataType.FLOAT),
-          new ColumnHeader(STATEMENT, TSDataType.TEXT));
+          new ColumnHeader(STATEMENT, TSDataType.STRING),
+          new ColumnHeader(WAIT_TIME_IN_SERVER, TSDataType.FLOAT),
+          new ColumnHeader(CLIENT_IP_TREE_MODEL, TSDataType.STRING),
+          new ColumnHeader(TIMEOUT, TSDataType.INT64));
+
+  public static final List<ColumnHeader> showDiskUsageColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(DATABASE, TSDataType.TEXT),
+          new ColumnHeader(DATA_NODE_ID, TSDataType.INT32),
+          new ColumnHeader(REGION_ID, TSDataType.INT32),
+          new ColumnHeader(TIME_PARTITION, TSDataType.INT64),
+          new ColumnHeader(SIZE_IN_BYTES, TSDataType.INT64));
 
   public static final List<ColumnHeader> showSpaceQuotaColumnHeaders =
       ImmutableList.of(
@@ -777,4 +802,14 @@ public class ColumnHeaderConstant {
           new ColumnHeader(SHOW_CONFIGURATIONS_VALUE, TSDataType.TEXT),
           new ColumnHeader(SHOW_CONFIGURATIONS_DEFAULT_VALUE, TSDataType.TEXT),
           new ColumnHeader(SHOW_CONFIGURATIONS_DESCRIPTION, TSDataType.TEXT));
+
+  public static final List<ColumnHeader> COPY_TO_TSFILE_COLUMN_HEADERS =
+      ImmutableList.of(
+          new ColumnHeader(PATH.toLowerCase(), TSDataType.TEXT),
+          new ColumnHeader(ROW_COUNT, TSDataType.INT64),
+          new ColumnHeader(DEVICE_COUNT, TSDataType.INT64),
+          new ColumnHeader(SIZE_IN_BYTES_TABLE_MODEL, TSDataType.INT64),
+          new ColumnHeader(TABLE_NAME_TABLE_MODEL, TSDataType.STRING),
+          new ColumnHeader(TIME_COLUMN, TSDataType.STRING),
+          new ColumnHeader(TAG_COLUMNS, TSDataType.STRING));
 }

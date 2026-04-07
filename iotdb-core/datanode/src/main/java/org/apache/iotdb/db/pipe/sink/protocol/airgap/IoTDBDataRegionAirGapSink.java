@@ -31,7 +31,6 @@ import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.metric.overview.PipeResourceMetrics;
 import org.apache.iotdb.db.pipe.metric.sink.PipeDataRegionSinkMetrics;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferPlanNodeReq;
-import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTabletBinaryReqV2;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTabletInsertNodeReqV2;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTabletRawReqV2;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTsFilePieceReq;
@@ -173,7 +172,7 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
       throw new PipeConnectionException(
           String.format(
               "Network error when transfer tsfile event %s, because %s.",
-              ((PipeDeleteDataNodeEvent) event).coreReportMessage(), e.getMessage()),
+              ((EnrichedEvent) event).coreReportMessage(), e.getMessage()),
           e);
     }
   }
@@ -234,20 +233,14 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
   private void doTransfer(
       final AirGapSocket socket,
       final PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent)
-      throws PipeException, WALPipeException, IOException {
+      throws PipeException, IOException {
     final InsertNode insertNode = pipeInsertNodeTabletInsertionEvent.getInsertNode();
     final byte[] bytes =
-        Objects.isNull(insertNode)
-            ? PipeTransferTabletBinaryReqV2.toTPipeTransferBytes(
-                pipeInsertNodeTabletInsertionEvent.getByteBuffer(),
-                pipeInsertNodeTabletInsertionEvent.isTableModelEvent()
-                    ? pipeInsertNodeTabletInsertionEvent.getTableModelDatabaseName()
-                    : null)
-            : PipeTransferTabletInsertNodeReqV2.toTPipeTransferBytes(
-                insertNode,
-                pipeInsertNodeTabletInsertionEvent.isTableModelEvent()
-                    ? pipeInsertNodeTabletInsertionEvent.getTableModelDatabaseName()
-                    : null);
+        PipeTransferTabletInsertNodeReqV2.toTPipeTransferBytes(
+            insertNode,
+            pipeInsertNodeTabletInsertionEvent.isTableModelEvent()
+                ? pipeInsertNodeTabletInsertionEvent.getTableModelDatabaseName()
+                : null);
 
     if (!send(
         pipeInsertNodeTabletInsertionEvent.getPipeName(),

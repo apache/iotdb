@@ -98,12 +98,21 @@ public abstract class TreePattern {
   /**
    * Check if a device may have some measurements matched by the pattern.
    *
-   * <p>NOTE1: this is only called when {@link TreePattern#coversDevice} is {@code false}.
-   *
-   * <p>NOTE2: this is just a loose check and may have false positives. To further check if a
+   * <p>NOTE: this is just a loose check and may have false positives. To further check if a
    * measurement matches the pattern, please use {@link TreePattern#matchesMeasurement} after this.
    */
   public abstract boolean mayOverlapWithDevice(final IDeviceID device);
+
+  /**
+   * Check if a device has some measurements matched by the pattern.
+   *
+   * <p>NOTE: this is a precise check and will not have false positives. It means that, you can
+   * always find a measurement(existing or non-existing) to match the pattern with the device.
+   * However, it may not be precise now if there are any exclusions (e.g. Inclusion: root.**.d*.*s,
+   * exclusion: root.**.device.*s, device: root.a.b.device). It may be supported by incoming
+   * versions.
+   */
+  public abstract boolean overlapWithDevice(final IDeviceID device);
 
   /**
    * Check if a full path with device and measurement can be matched by pattern.
@@ -468,10 +477,17 @@ public abstract class TreePattern {
     final List<TreePattern> sortedPatterns = new ArrayList<>(patterns);
     sortedPatterns.sort(
         (o1, o2) -> {
+          final List<PartialPath> p1List = o1.getBaseInclusionPaths();
+          final List<PartialPath> p2List = o2.getBaseInclusionPaths();
+
+          if (p1List.isEmpty()) {
+            return p2List.isEmpty() ? 1 : -1;
+          }
+
           // We can only approximate comparison here since TreePattern represents multiple paths.
           // We use the first inclusion path as a representative.
-          final PartialPath p1 = o1.getBaseInclusionPaths().get(0);
-          final PartialPath p2 = o2.getBaseInclusionPaths().get(0);
+          final PartialPath p1 = p1List.get(0);
+          final PartialPath p2 = p2List.get(0);
 
           // 1. Length: Shorter is generally broader (e.g., root.** vs root.sg.d1)
           final int lenCompare = Integer.compare(p1.getNodeLength(), p2.getNodeLength());

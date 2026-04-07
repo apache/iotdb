@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.consensus.ConsensusFactory;
+import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.it.env.MultiEnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
@@ -39,6 +40,8 @@ import org.junit.runner.RunWith;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
@@ -81,13 +84,12 @@ public class IoTDBPipeAutoSplitIT extends AbstractPipeDualTreeModelAutoIT {
   public void testSingleEnv() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
-    final String sql =
-        String.format(
-            "create pipe a2b with source ('source'='iotdb-source') with processor ('processor'='do-nothing-processor') with sink ('node-urls'='%s')",
-            receiverDataNode.getIpAndPortString());
     try (final Connection connection = senderEnv.getConnection();
         final Statement statement = connection.createStatement()) {
-      statement.execute(sql);
+      statement.execute(
+          String.format(
+              "create pipe a2b with sink ('node-urls'='%s')",
+              receiverDataNode.getIpAndPortString()));
     } catch (final SQLException e) {
       fail(e.getMessage());
     }
@@ -104,5 +106,47 @@ public class IoTDBPipeAutoSplitIT extends AbstractPipeDualTreeModelAutoIT {
               || (Objects.equals(showPipeResult.get(1).id, "a2b_history")
                   && Objects.equals(showPipeResult.get(0).id, "a2b_realtime")));
     }
+
+    // Do not split for pipes without insertion or non-full
+    TestUtils.executeNonQueries(
+        senderEnv,
+        Arrays.asList(
+            "drop pipe a2b_history",
+            "drop pipe a2b_realtime",
+            String.format(
+                "create pipe a2b1 with source ('inclusion'='schema') with sink ('node-urls'='%s')",
+                receiverDataNode.getIpAndPortString()),
+            String.format(
+                "create pipe a2b2 with source ('realtime.enable'='false') with sink ('node-urls'='%s')",
+                receiverDataNode.getIpAndPortString()),
+            String.format(
+                "create pipe a2b3 with source ('history.enable'='false') with sink ('node-urls'='%s')",
+                receiverDataNode.getIpAndPortString())));
+
+    try (final SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+      final List<TShowPipeInfo> showPipeResult =
+          client.showPipe(new TShowPipeReq().setUserName(SessionConfig.DEFAULT_USER)).pipeInfoList;
+      showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
+      Assert.assertEquals(3, showPipeResult.size());
+    }
+
+    TestUtils.executeNonQueries(
+        senderEnv,
+        Arrays.asList(
+            "drop pipe a2b1",
+            "drop pipe a2b2",
+            "drop pipe a2b3",
+            "insert into root.test.device(time, field) values(0,1),(1,2)",
+            "delete from root.test.device.* where time == 0",
+            String.format(
+                "create pipe a2b with source ('inclusion'='all') with sink ('node-urls'='%s')",
+                receiverDataNode.getIpAndPortString())));
+
+    TestUtils.assertDataEventuallyOnEnv(
+        receiverEnv,
+        "select * from root.test.device",
+        "Time,root.test.device.field,",
+        Collections.singleton("1,2.0,"));
   }
 }

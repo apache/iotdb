@@ -26,6 +26,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ColumnDefinition;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CopyTo;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipe;
@@ -640,6 +641,21 @@ public final class SqlFormatter {
 
       process(node.getStatement(), indent);
 
+      return null;
+    }
+
+    @Override
+    protected Void visitCopyTo(CopyTo node, Integer context) {
+      builder.append("COPY\n");
+      builder.append("(\n");
+      process(node.getQueryStatement(), context);
+      builder.append("\n) ");
+      builder.append("TO ");
+      builder.append('\'');
+      builder.append(node.getTargetFileName());
+      builder.append('\'');
+      builder.append("\n");
+      builder.append(node.getOptions().toString());
       return null;
     }
 

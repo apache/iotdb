@@ -51,7 +51,6 @@ import org.apache.iotdb.db.pipe.sink.protocol.iotconsensusv2.handler.IoTConsensu
 import org.apache.iotdb.db.pipe.sink.protocol.iotconsensusv2.handler.IoTConsensusV2TsFileInsertionEventHandler;
 import org.apache.iotdb.db.pipe.sink.protocol.iotconsensusv2.payload.builder.IoTConsensusV2AsyncBatchReqBuilder;
 import org.apache.iotdb.db.pipe.sink.protocol.iotconsensusv2.payload.request.IoTConsensusV2DeleteNodeReq;
-import org.apache.iotdb.db.pipe.sink.protocol.iotconsensusv2.payload.request.IoTConsensusV2TabletBinaryReq;
 import org.apache.iotdb.db.pipe.sink.protocol.iotconsensusv2.payload.request.IoTConsensusV2TabletInsertNodeReq;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.pipe.api.annotation.TableModel;
@@ -70,7 +69,6 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.Comparator;
 import java.util.Iterator;
-import java.util.Objects;
 import java.util.Queue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingDeque;
@@ -236,7 +234,15 @@ public class IoTConsensusV2AsyncSink extends IoTDBSink implements ConsensusPipeS
     while (!current.equalsInIoTConsensusV2(event) && iterator.hasNext()) {
       current = iterator.next();
     }
-    iterator.remove();
+    if (current.equalsInIoTConsensusV2(event)) {
+      iterator.remove();
+    } else {
+      LOGGER.warn(
+          "IoTConsensusV2-ConsensusGroup-{}: event-{} not found in transferBuffer, skip removing. queue size = {}",
+          consensusGroupId,
+          event,
+          transferBuffer.size());
+    }
     // update replicate progress
     currentReplicateProgress =
         Math.max(currentReplicateProgress, event.getReplicateIndexForIoTV2());
@@ -316,15 +322,8 @@ public class IoTConsensusV2AsyncSink extends IoTDBSink implements ConsensusPipeS
     final InsertNode insertNode = pipeInsertNodeTabletInsertionEvent.getInsertNode();
     final ProgressIndex progressIndex = pipeInsertNodeTabletInsertionEvent.getProgressIndex();
     final TIoTConsensusV2TransferReq iotConsensusV2TransferReq =
-        Objects.isNull(insertNode)
-            ? IoTConsensusV2TabletBinaryReq.toTIoTConsensusV2TransferReq(
-                pipeInsertNodeTabletInsertionEvent.getByteBuffer(),
-                tCommitId,
-                tConsensusGroupId,
-                progressIndex,
-                thisDataNodeId)
-            : IoTConsensusV2TabletInsertNodeReq.toTIoTConsensusV2TransferReq(
-                insertNode, tCommitId, tConsensusGroupId, progressIndex, thisDataNodeId);
+        IoTConsensusV2TabletInsertNodeReq.toTIoTConsensusV2TransferReq(
+            insertNode, tCommitId, tConsensusGroupId, progressIndex, thisDataNodeId);
     final IoTConsensusV2TabletInsertNodeEventHandler iotConsensusV2InsertNodeReqHandler =
         new IoTConsensusV2TabletInsertNodeEventHandler(
             pipeInsertNodeTabletInsertionEvent,

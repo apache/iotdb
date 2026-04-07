@@ -37,6 +37,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.im
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegion;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
+import org.apache.iotdb.rpc.subscription.annotation.TableModel;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -667,6 +668,7 @@ public class TableDeviceSchemaCache {
     }
   }
 
+  @TableModel
   public void invalidate(
       final String database,
       final String tableName,
@@ -680,7 +682,7 @@ public class TableDeviceSchemaCache {
           isAttributeColumn
               ? entry -> -entry.invalidateAttributeColumn(columnName)
               : entry -> -entry.invalidateLastCache(columnName);
-      dualKeyCache.update(new TableId(null, tableName), deviceID -> true, updateFunction);
+      dualKeyCache.update(new TableId(database, tableName), deviceID -> true, updateFunction);
     } finally {
       readWriteLock.writeLock().unlock();
     }

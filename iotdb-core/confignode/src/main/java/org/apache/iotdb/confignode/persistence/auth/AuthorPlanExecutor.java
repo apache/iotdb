@@ -22,7 +22,6 @@ package org.apache.iotdb.confignode.persistence.auth;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.authorizer.IAuthorizer;
-import org.apache.iotdb.commons.auth.authorizer.OpenIdAuthorizer;
 import org.apache.iotdb.commons.auth.entity.ModelType;
 import org.apache.iotdb.commons.auth.entity.PrivilegeModelType;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
@@ -83,14 +82,7 @@ public class AuthorPlanExecutor implements IAuthorPlanExecutor {
     try {
       status = authorizer.login(username, password, useEncryptedPassword);
       if (status) {
-        // Bring this user's permission information back to the datanode for caching
-        if (authorizer instanceof OpenIdAuthorizer) {
-          username = ((OpenIdAuthorizer) authorizer).getIoTDBUserName(username);
-          result = getUserPermissionInfo(username, ModelType.ALL);
-          result.getUserInfo().setIsOpenIdUser(true);
-        } else {
-          result = getUserPermissionInfo(username, ModelType.ALL);
-        }
+        result = getUserPermissionInfo(username, ModelType.ALL);
 
         result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Login successfully"));
       } else {

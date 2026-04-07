@@ -95,8 +95,11 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
 
               @Override
               public void shutdown() {
-                getServer().shutdown();
-                builder.close();
+                try {
+                  getServer().shutdown();
+                } finally {
+                  builder.close();
+                }
               }
             });
   }
@@ -250,8 +253,8 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
     final String currentFolder = currentStr.toString();
 
     StatusCode currentQuality = sink.getDefaultQuality();
-    UaVariableNode valueNode = null;
     Object value = null;
+    TSDataType dataType = null;
     long timestamp = 0;
 
     for (int i = 0; i < measurementSchemas.size(); ++i) {
@@ -274,70 +277,89 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
             "When the 'with-quality' mode is enabled, the measurement must be either \"value-name\" or \"quality-name\"");
         continue;
       }
-      final String nodeName =
-          Objects.isNull(sink.getValueName()) ? name : segments[segments.length - 1];
-      final NodeId nodeId = newNodeId(currentFolder + nodeName);
       final UaVariableNode measurementNode;
-      if (!getNodeManager().containsNode(nodeId)) {
-        measurementNode =
-            new UaVariableNode.UaVariableNodeBuilder(getNodeContext())
-                .setNodeId(nodeId)
-                .setAccessLevel(AccessLevel.READ_WRITE)
-                .setUserAccessLevel(AccessLevel.READ_ONLY)
-                .setBrowseName(newQualifiedName(nodeName))
-                .setDisplayName(LocalizedText.english(nodeName))
-                .setDataType(convertToOpcDataType(type))
-                .setTypeDefinition(Identifiers.BaseDataVariableType)
-                .build();
-        getNodeManager().addNode(measurementNode);
-        if (Objects.nonNull(folderNode)) {
-          folderNode.addReference(
-              new Reference(
-                  folderNode.getNodeId(), Identifiers.Organizes, nodeId.expanded(), true));
-        } else {
-          measurementNode.addReference(
-              new Reference(
-                  nodeId, Identifiers.Organizes, Identifiers.ObjectsFolder.expanded(), false));
-        }
-      } else {
-        // This must exist
-        measurementNode =
-            (UaVariableNode)
-                getNodeManager()
-                    .getNode(nodeId)
-                    .orElseThrow(
-                        () ->
-                            new PipeRuntimeCriticalException(
-                                String.format("The Node %s does not exist.", nodeId)));
-      }
-
       final long utcTimestamp = timestampToUtc(timestamps.get(timestamps.size() > 1 ? i : 0));
+      final DataValue dataValue =
+          new DataValue(
+              new Variant(values.get(i)),
+              currentQuality,
+              new DateTime(utcTimestamp),
+              new DateTime());
+
       if (Objects.isNull(sink.getValueName())) {
+        measurementNode = addNode(name, currentFolder, folderNode, dataValue, type);
         if (Objects.isNull(measurementNode.getValue())
-            || Objects.requireNonNull(measurementNode.getValue().getSourceTime()).getUtcTime()
-                < utcTimestamp) {
-          measurementNode.setValue(
-              new DataValue(
-                  new Variant(values.get(i)),
-                  currentQuality,
-                  new DateTime(utcTimestamp),
-                  new DateTime()));
+            || Objects.isNull(measurementNode.getValue().getSourceTime())
+            || measurementNode.getValue().getSourceTime().getUtcTime() < utcTimestamp) {
+          measurementNode.setValue(dataValue);
         }
       } else {
-        valueNode = measurementNode;
         value = values.get(i);
         timestamp = utcTimestamp;
+        dataType = type;
       }
     }
-    if (Objects.nonNull(valueNode)) {
+    if (Objects.nonNull(value)) {
+      final UaVariableNode valueNode =
+          addNode(
+              segments[segments.length - 1],
+              currentFolder,
+              folderNode,
+              new DataValue(
+                  new Variant(value), currentQuality, new DateTime(timestamp), new DateTime()),
+              dataType);
       if (Objects.isNull(valueNode.getValue())
-          || Objects.requireNonNull(valueNode.getValue().getSourceTime()).getUtcTime()
-              < timestamp) {
+          || Objects.isNull(valueNode.getValue().getSourceTime())
+          || valueNode.getValue().getSourceTime().getUtcTime() < timestamp) {
         valueNode.setValue(
             new DataValue(
                 new Variant(value), currentQuality, new DateTime(timestamp), new DateTime()));
       }
     }
+  }
+
+  private UaVariableNode addNode(
+      final String nodeName,
+      final String currentFolder,
+      final UaNode folderNode,
+      final DataValue dataValue,
+      final TSDataType type) {
+    final NodeId nodeId = newNodeId(currentFolder + nodeName);
+    final UaVariableNode measurementNode;
+
+    if (!getNodeManager().containsNode(nodeId)) {
+      measurementNode =
+          new UaVariableNode.UaVariableNodeBuilder(getNodeContext())
+              .setNodeId(nodeId)
+              .setAccessLevel(AccessLevel.READ_WRITE)
+              .setUserAccessLevel(AccessLevel.READ_ONLY)
+              .setBrowseName(newQualifiedName(nodeName))
+              .setDisplayName(LocalizedText.english(nodeName))
+              .setDataType(convertToOpcDataType(type))
+              .setTypeDefinition(Identifiers.BaseDataVariableType)
+              .setValue(dataValue)
+              .build();
+      getNodeManager().addNode(measurementNode);
+      if (Objects.nonNull(folderNode)) {
+        folderNode.addReference(
+            new Reference(folderNode.getNodeId(), Identifiers.Organizes, nodeId.expanded(), true));
+      } else {
+        measurementNode.addReference(
+            new Reference(
+                nodeId, Identifiers.Organizes, Identifiers.ObjectsFolder.expanded(), false));
+      }
+    } else {
+      // This must exist
+      measurementNode =
+          (UaVariableNode)
+              getNodeManager()
+                  .getNode(nodeId)
+                  .orElseThrow(
+                      () ->
+                          new PipeRuntimeCriticalException(
+                              String.format("The Node %s does not exist.", nodeId)));
+    }
+    return measurementNode;
   }
 
   private static Object getTabletObjectValue4Opc(
@@ -389,13 +411,13 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
     if (isTableModel) {
       sourceNameList = new ArrayList<>(tablet.getRowSize());
       for (int i = 0; i < tablet.getRowSize(); ++i) {
-        final StringBuilder idBuilder = new StringBuilder(sink.getDatabaseName());
+        final StringBuilder tagBuilder = new StringBuilder(sink.getDatabaseName());
         for (final Object segment : tablet.getDeviceID(i).getSegments()) {
-          idBuilder
+          tagBuilder
               .append(TsFileConstant.PATH_SEPARATOR)
               .append(Objects.isNull(segment) ? sink.getPlaceHolder4NullTag() : segment);
         }
-        sourceNameList.add(idBuilder.toString());
+        sourceNameList.add(tagBuilder.toString());
       }
     }
 

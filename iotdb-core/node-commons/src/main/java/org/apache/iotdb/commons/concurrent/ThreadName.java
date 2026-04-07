@@ -200,8 +200,11 @@ public enum ThreadName {
   REGION_MIGRATE("Region-Migrate-Pool"),
   STORAGE_ENGINE_RECOVER_TRIGGER("StorageEngine-RecoverTrigger"),
   FILE_TIME_INDEX_RECORD("FileTimeIndexRecord"),
+  TABLE_SIZE_INDEX_RECORD("TableSizeIndexRecord"),
   BINARY_ALLOCATOR_SAMPLE_EVICTOR("BinaryAllocator-SampleEvictor"),
   BINARY_ALLOCATOR_AUTO_RELEASER("BinaryAllocator-Auto-Releaser"),
+  FIND_EARLIEST_TIME_SLOT_PARALLEL_POOL("FindEarliestTimeSlot-Parallel-Pool"),
+  DATA_PARTITION_RECOVER_PARALLEL_POOL("DataPartitionRecover-Parallel-Pool"),
 
   // the unknown thread name is used for metrics
   UNKNOWN("UNKNOWN");

@@ -25,13 +25,14 @@ if [ ! -d "$SYSTEMD_DIR" ]; then
     exit 1  # Exit with an error status
 fi
 
-if [ -z "$JAVA_HOME" ]; then
-    echo "JAVA_HOME is not set. Please set the JAVA_HOME environment variable."
+if ! java --version >/dev/null 2>&1; then
+    echo "java command is not available. Please install Java or ensure it is in PATH."
     exit 1
 fi
 
 FILE_NAME=$SYSTEMD_DIR/iotdb-confignode.service
 
+if [ -z "$JAVA_HOME" ]; then
 cat > "$FILE_NAME" <<EOF
 [Unit]
 Description=iotdb-confignode
@@ -46,6 +47,7 @@ Type=simple
 User=root
 Group=root
 Environment=JAVA_HOME=$JAVA_HOME
+Environment=PATH=$JAVA_HOME/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 ExecStart=$IOTDB_SBIN_HOME/start-confignode.sh
 ExecStop=$IOTDB_SBIN_HOME/stop-confignode.sh
 Restart=on-failure
@@ -58,6 +60,34 @@ RestartPreventExitStatus=SIGKILL
 [Install]
 WantedBy=multi-user.target
 EOF
+else
+cat > "$FILE_NAME" <<EOF
+[Unit]
+Description=iotdb-confignode
+Documentation=https://iotdb.apache.org/
+After=network.target
+
+[Service]
+StandardOutput=null
+StandardError=null
+LimitNOFILE=65536
+Type=simple
+User=root
+Group=root
+Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+ExecStart=$IOTDB_SBIN_HOME/start-confignode.sh
+ExecStop=$IOTDB_SBIN_HOME/stop-confignode.sh
+Restart=on-failure
+SuccessExitStatus=143
+RestartSec=5
+StartLimitInterval=600s
+StartLimitBurst=3
+RestartPreventExitStatus=SIGKILL
+
+[Install]
+WantedBy=multi-user.target
+EOF
+fi
 
 echo "Daemon service of IoTDB ConfigNode has been successfully registered."
 

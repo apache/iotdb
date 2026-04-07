@@ -52,13 +52,15 @@ public class AINodeTestUtils {
   public static final Map<String, FakeModelInfo> BUILTIN_LTSM_MAP =
       Stream.of(
               new AbstractMap.SimpleEntry<>(
-                  "sundial", new FakeModelInfo("sundial", "sundial", "builtin", "active")),
-              new AbstractMap.SimpleEntry<>(
                   "timer_xl", new FakeModelInfo("timer_xl", "timer", "builtin", "active")),
+              new AbstractMap.SimpleEntry<>(
+                  "sundial", new FakeModelInfo("sundial", "sundial", "builtin", "active")),
               new AbstractMap.SimpleEntry<>(
                   "chronos2", new FakeModelInfo("chronos2", "t5", "builtin", "active")),
               new AbstractMap.SimpleEntry<>(
-                  "moirai2", new FakeModelInfo("moirai2", "moirai", "builtin", "active")))
+                  "moirai2", new FakeModelInfo("moirai2", "moirai", "builtin", "active")),
+              new AbstractMap.SimpleEntry<>(
+                  "toto", new FakeModelInfo("toto", "toto", "builtin", "active")))
           .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
   public static final Map<String, FakeModelInfo> BUILTIN_MODEL_MAP;
@@ -171,7 +173,7 @@ public class AINodeTestUtils {
           LOGGER.info("Model {} found in device {}, count {}", loadedModelId, deviceId, count);
           if (loadedModelId.equals(modelId) && targetDevices.contains(deviceId) && count > 0) {
             foundDevices.add(deviceId);
-            LOGGER.info("Model {} is loaded to device {}", modelId, device);
+            LOGGER.info("Model {} is loaded to device {}", modelId, deviceId);
           }
         }
         if (foundDevices.containsAll(targetDevices)) {
@@ -248,6 +250,32 @@ public class AINodeTestUtils {
             String.format(
                 "INSERT INTO db.AI(time,s0,s1,s2,s3) VALUES(%d,%f,%f,%d,%d)",
                 i, (float) i, (double) i, i, i));
+      }
+    }
+  }
+
+  /** Prepare db.AI2(s0 FLOAT,...) with 2880 rows of data in table. */
+  public static void prepareDataInTable2() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("CREATE DATABASE db");
+      statement.execute(
+          "CREATE TABLE db.AI2 (s0 FLOAT FIELD, s1 DOUBLE FIELD, s2 INT32 FIELD, s3 INT64 FIELD, s4 FLOAT FIELD, s5 DOUBLE FIELD, s6 INT32 FIELD, s7 INT64 FIELD, s8 FLOAT FIELD, s9 DOUBLE FIELD)");
+      for (int i = 0; i < 2880; i++) {
+        statement.execute(
+            String.format(
+                "INSERT INTO db.AI2(time,s0,s1,s2,s3,s4,s5,s6,s7,s8,s9) VALUES(%d,%f,%f,%d,%d,%f,%f,%d,%d,%f,%f)",
+                i,
+                (float) i,
+                (double) i,
+                i,
+                i,
+                (float) (i * 2),
+                (double) (i * 2),
+                i * 2,
+                i * 2,
+                (float) (i * 3),
+                (double) (i * 3)));
       }
     }
   }

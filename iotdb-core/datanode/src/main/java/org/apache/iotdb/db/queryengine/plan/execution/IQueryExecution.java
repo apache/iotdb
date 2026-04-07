@@ -35,8 +35,6 @@ public interface IQueryExecution {
 
   void stop(Throwable t);
 
-  void stopAndCleanup();
-
   void stopAndCleanup(Throwable t);
 
   void cancel();
@@ -61,14 +59,39 @@ public interface IQueryExecution {
 
   String getQueryId();
 
+  // time unit is ms
   long getStartExecutionTime();
 
+  /**
+   * @param executionTime time unit should be ns
+   */
   void recordExecutionTime(long executionTime);
+
+  /**
+   * update current rpc start time, which is used to calculate rpc execution time and update total
+   * execution time
+   *
+   * @param startTime start time of current rpc, time unit is ns
+   */
+  void updateCurrentRpcStartTime(long startTime);
+
+  /**
+   * Check if there is an active RPC for this query. If {@code startTimeOfCurrentRpc == -1}, it
+   * means there is no active RPC, otherwise there is an active RPC. An active RPC means that the
+   * client is still fetching results and the QueryExecution should not be cleaned up until the RPC
+   * finishes. On the other hand, if there is no active RPC, it means that the client has finished
+   * fetching results or has not started fetching results yet, and the QueryExecution can be safely
+   * cleaned up.
+   */
+  boolean isActive();
 
   /**
    * @return cost time in ns
    */
   long getTotalExecutionTime();
+
+  /** the max executing time of query in ms. Unit: millisecond */
+  long getTimeout();
 
   Optional<String> getExecuteSQL();
 
@@ -78,6 +101,7 @@ public interface IQueryExecution {
 
   String getUser();
 
+  /** return ip for a thrift-based client, client-id for MQTT/REST client */
   String getClientHostname();
 
   boolean isDebug();

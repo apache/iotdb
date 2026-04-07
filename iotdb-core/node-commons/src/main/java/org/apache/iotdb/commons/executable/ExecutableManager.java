@@ -81,7 +81,6 @@ public class ExecutableManager {
 
   private void downloadExecutables(List<String> uris, long requestId)
       throws IOException, URISyntaxException {
-    // TODO: para download
     try {
       for (String uriString : uris) {
         final URL url = new URI(uriString).toURL();
@@ -223,7 +222,8 @@ public class ExecutableManager {
         }
         Files.createFile(path);
       }
-      // FileOutPutStream is not in append mode by default, so the file will be overridden if it
+      // FileOutPutStream is not in append mode by default, so the file will be
+      // overridden if it
       // already exists.
       try (FileOutputStream outputStream = new FileOutputStream(destination)) {
         outputStream.getChannel().write(byteBuffer);

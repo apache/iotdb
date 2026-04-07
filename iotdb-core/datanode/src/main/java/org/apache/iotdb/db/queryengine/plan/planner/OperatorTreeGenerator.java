@@ -44,6 +44,7 @@ import org.apache.iotdb.db.queryengine.execution.driver.SchemaDriverContext;
 import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeManager;
 import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeService;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.DownStreamChannelIndex;
+import org.apache.iotdb.db.queryengine.execution.exchange.sink.DownStreamChannelLocation;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.ISinkChannel;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.ISinkHandle;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.LocalSinkChannel;
@@ -57,6 +58,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.process.ActiveRegionScanMergeOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.AggregationMergeSortOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.AggregationOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.CollectOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.ColumnInjectOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.DeviceViewIntoOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.DeviceViewOperator;
@@ -150,6 +152,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.source.AlignedSeriesSc
 import org.apache.iotdb.db.queryengine.execution.operator.source.ExchangeOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.SeriesAggregationScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.SeriesScanOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.ShowDiskUsageOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.ShowQueriesOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.window.ConditionWindowParameter;
 import org.apache.iotdb.db.queryengine.execution.operator.window.CountWindowParameter;
@@ -198,6 +201,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AI.Inferen
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ActiveRegionScanMergeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationMergeSortNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.CollectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ColumnInjectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.DeviceViewIntoNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.DeviceViewNode;
@@ -236,6 +240,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.LastQuerySc
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesAggregationSourceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesScanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.ShowDiskUsageNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.ShowQueriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.TimeseriesRegionScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationDescriptor;
@@ -283,6 +288,7 @@ import org.apache.tsfile.read.common.block.column.TimeColumn;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.read.filter.operator.TimeFilterOperators.TimeGt;
 import org.apache.tsfile.read.filter.operator.TimeFilterOperators.TimeGtEq;
+import org.apache.tsfile.read.reader.series.PaginationController;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.TimeDuration;
@@ -315,6 +321,8 @@ import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil
 import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil.getOutputColumnSizePerLine;
 import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil.initTimeRangeIterator;
 import static org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.MergeSortComparator.getComparator;
+import static org.apache.iotdb.db.queryengine.execution.operator.sink.IdentitySinkOperator.DELIMITER_BETWEEN_ID;
+import static org.apache.iotdb.db.queryengine.execution.operator.sink.IdentitySinkOperator.DOWNSTREAM_PLAN_NODE_ID;
 import static org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils.convertPredicateToFilter;
 import static org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand.TIMESTAMP_EXPRESSION_STRING;
 import static org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationDescriptor.getAggregationTypeByFuncName;
@@ -1169,6 +1177,18 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         children,
         dataTypes,
         getComparator(sortItemList, sortItemIndexList, sortItemDataTypeList));
+  }
+
+  @Override
+  public Operator visitCollect(CollectNode node, LocalExecutionPlanContext context) {
+    OperatorContext operatorContext =
+        context
+            .getDriverContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                CollectOperator.class.getSimpleName());
+    return new CollectOperator(operatorContext, dealWithConsumeChildrenOneByOneNode(node, context));
   }
 
   @Override
@@ -2596,6 +2616,32 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         node.getAllowedUsername());
   }
 
+  @Override
+  public Operator visitShowDiskUsage(ShowDiskUsageNode node, LocalExecutionPlanContext context) {
+    OperatorContext operatorContext =
+        context
+            .getDriverContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                ShowDiskUsageOperator.class.getSimpleName());
+    Filter pushDownFilter =
+        convertPredicateToFilter(
+            node.getPushDownPredicate(),
+            node.getOutputColumnNames(),
+            false,
+            context.getTypeProvider(),
+            context.getZoneId());
+    PaginationController paginationController =
+        new PaginationController(node.getPushDownLimit(), node.getPushDownOffset());
+    return new ShowDiskUsageOperator(
+        operatorContext,
+        node.getPlanNodeId(),
+        node.getPathPattern(),
+        pushDownFilter,
+        paginationController);
+  }
+
   private List<OutputColumn> generateOutputColumnsFromChildren(MultiChildProcessNode node) {
     // TODO we should also sort the InputLocation for each column if they are not overlapped
     return makeLayout(node).entrySet().stream()
@@ -2676,6 +2722,13 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
                 IdentitySinkOperator.class.getSimpleName());
+    String downStreamPlanNodeId =
+        node.getDownStreamChannelLocationList().stream()
+            .map(DownStreamChannelLocation::getRemotePlanNodeId)
+            .collect(Collectors.joining(DELIMITER_BETWEEN_ID));
+    if (!downStreamPlanNodeId.isEmpty()) {
+      operatorContext.recordSpecifiedInfo(DOWNSTREAM_PLAN_NODE_ID, downStreamPlanNodeId);
+    }
 
     checkArgument(
         MPP_DATA_EXCHANGE_MANAGER != null, "MPP_DATA_EXCHANGE_MANAGER should not be null");
@@ -2706,6 +2759,14 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
                 ShuffleHelperOperator.class.getSimpleName());
+
+    String downStreamPlanNodeIds =
+        node.getDownStreamChannelLocationList().stream()
+            .map(DownStreamChannelLocation::getRemotePlanNodeId)
+            .collect(Collectors.joining(DELIMITER_BETWEEN_ID));
+    if (!downStreamPlanNodeIds.isEmpty()) {
+      operatorContext.recordSpecifiedInfo(DOWNSTREAM_PLAN_NODE_ID, downStreamPlanNodeIds);
+    }
 
     // TODO implement pipeline division for shuffle sink
     context.setDegreeOfParallelism(1);

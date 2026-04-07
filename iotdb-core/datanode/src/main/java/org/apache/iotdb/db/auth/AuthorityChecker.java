@@ -133,6 +133,10 @@ public class AuthorityChecker {
     return authorityFetcher.get().getAuthorCache().invalidateCache(username, roleName);
   }
 
+  public static void invalidateAllCache() {
+    authorityFetcher.get().getAuthorCache().invalidAllCache();
+  }
+
   public static User getUser(String username) {
     return authorityFetcher.get().getUser(username);
   }

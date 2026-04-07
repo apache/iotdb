@@ -81,7 +81,7 @@ public class InformationSchemaTableScanNode extends TableScanNode {
     this.regionReplicaSet = regionReplicaSet;
   }
 
-  private InformationSchemaTableScanNode() {}
+  protected InformationSchemaTableScanNode() {}
 
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
@@ -102,15 +102,20 @@ public class InformationSchemaTableScanNode extends TableScanNode {
   }
 
   @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.INFORMATION_SCHEMA_TABLE_SCAN_NODE;
+  }
+
+  @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
-    PlanNodeType.INFORMATION_SCHEMA_TABLE_SCAN_NODE.serialize(byteBuffer);
+    getType().serialize(byteBuffer);
 
     TableScanNode.serializeMemberVariables(this, byteBuffer, true);
   }
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
-    PlanNodeType.INFORMATION_SCHEMA_TABLE_SCAN_NODE.serialize(stream);
+    getType().serialize(stream);
 
     TableScanNode.serializeMemberVariables(this, stream, true);
   }

@@ -61,6 +61,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.Seri
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TimeSeriesCountNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TimeSeriesSchemaScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AI.InferenceNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.CollectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ColumnInjectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.DeviceViewIntoNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.DeviceViewNode;
@@ -86,6 +87,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeri
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.DeviceRegionScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesSourceNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.ShowDiskUsageNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.ShowQueriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.TimeseriesRegionScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationDescriptor;
@@ -1314,6 +1316,72 @@ public class LogicalPlanBuilder {
     this.root =
         new ShowQueriesNode(
             context.getQueryId().genPlanNodeId(), dataNodeLocation, allowedUsername);
+    return this;
+  }
+
+  public LogicalPlanBuilder planShowDiskUsage(Analysis analysis, PartialPath pathPattern) {
+    List<TDataNodeLocation> dataNodeLocations = analysis.getReadableDataNodeLocations();
+    if (dataNodeLocations.size() == 1) {
+      this.root =
+          planSingleShowDiskUsage(dataNodeLocations.get(0), pathPattern)
+              .planFilterAndTransform(
+                  analysis.getWhereExpression(),
+                  analysis.getSourceExpressions(),
+                  false,
+                  Ordering.ASC,
+                  true)
+              .planSort(analysis.getMergeOrderParameter())
+              .getRoot();
+    } else if (analysis.getMergeOrderParameter().isEmpty()) {
+      CollectNode collectNode =
+          new CollectNode(
+              context.getQueryId().genPlanNodeId(),
+              ShowDiskUsageNode.SHOW_DISK_USAGE_HEADER_COLUMNS);
+      dataNodeLocations.forEach(
+          dataNodeLocation ->
+              collectNode.addChild(
+                  planSingleShowDiskUsage(dataNodeLocation, pathPattern)
+                      .planFilterAndTransform(
+                          analysis.getWhereExpression(),
+                          analysis.getSourceExpressions(),
+                          false,
+                          Ordering.ASC,
+                          true)
+                      .getRoot()));
+      this.root = collectNode;
+    } else {
+      MergeSortNode mergeSortNode =
+          new MergeSortNode(
+              context.getQueryId().genPlanNodeId(),
+              analysis.getMergeOrderParameter(),
+              ShowDiskUsageNode.SHOW_DISK_USAGE_HEADER_COLUMNS);
+      dataNodeLocations.forEach(
+          dataNodeLocation ->
+              mergeSortNode.addChild(
+                  planSingleShowDiskUsage(dataNodeLocation, pathPattern)
+                      .planFilterAndTransform(
+                          analysis.getWhereExpression(),
+                          analysis.getSourceExpressions(),
+                          false,
+                          Ordering.ASC,
+                          true)
+                      .planSort(analysis.getMergeOrderParameter())
+                      .getRoot()));
+      this.root = mergeSortNode;
+    }
+
+    ColumnHeaderConstant.showDiskUsageColumnHeaders.forEach(
+        columnHeader ->
+            context
+                .getTypeProvider()
+                .setTreeModelType(columnHeader.getColumnName(), columnHeader.getColumnType()));
+    return this;
+  }
+
+  private LogicalPlanBuilder planSingleShowDiskUsage(
+      TDataNodeLocation dataNodeLocation, PartialPath pathPattern) {
+    this.root =
+        new ShowDiskUsageNode(context.getQueryId().genPlanNodeId(), dataNodeLocation, pathPattern);
     return this;
   }
 

@@ -64,10 +64,10 @@ public class PipeSinkSubtaskManager {
 
   public synchronized String register(
       final Supplier<? extends PipeSinkSubtaskExecutor> executorSupplier,
-      final PipeParameters pipeConnectorParameters,
+      final PipeParameters pipeSinkParameters,
       final PipeTaskSinkRuntimeEnvironment environment) {
     final String connectorKey =
-        pipeConnectorParameters
+        pipeSinkParameters
             .getStringOrDefault(
                 Arrays.asList(PipeSinkConstant.CONNECTOR_KEY, PipeSinkConstant.SINK_KEY),
                 BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR.getPipePluginName())
@@ -81,24 +81,32 @@ public class PipeSinkSubtaskManager {
             environment.getRegionId(),
             connectorKey);
 
-    final boolean isDataRegionConnector =
+    final boolean isDataRegionSink =
         StorageEngine.getInstance()
                 .getAllDataRegionIds()
                 .contains(new DataRegionId(environment.getRegionId()))
             || PipeRuntimeMeta.isSourceExternal(environment.getRegionId());
 
-    final int connectorNum;
+    final int sinkNum;
     boolean realTimeFirst = false;
-    String attributeSortedString = generateAttributeSortedString(pipeConnectorParameters);
-    if (isDataRegionConnector) {
-      connectorNum =
-          pipeConnectorParameters.getIntOrDefault(
+    String attributeSortedString = generateAttributeSortedString(pipeSinkParameters);
+    if (isDataRegionSink) {
+      sinkNum =
+          pipeSinkParameters.getIntOrDefault(
               Arrays.asList(
                   PipeSinkConstant.CONNECTOR_IOTDB_PARALLEL_TASKS_KEY,
                   PipeSinkConstant.SINK_IOTDB_PARALLEL_TASKS_KEY),
-              PipeSinkConstant.CONNECTOR_IOTDB_PARALLEL_TASKS_DEFAULT_VALUE);
+              PipeSinkConstant.SINGLE_THREAD_DEFAULT_SINK.contains(
+                      pipeSinkParameters
+                          .getStringOrDefault(
+                              Arrays.asList(
+                                  PipeSinkConstant.CONNECTOR_KEY, PipeSinkConstant.SINK_KEY),
+                              BuiltinPipePlugin.IOTDB_THRIFT_SINK.getPipePluginName())
+                          .toLowerCase())
+                  ? 1
+                  : PipeSinkConstant.CONNECTOR_IOTDB_PARALLEL_TASKS_DEFAULT_VALUE);
       realTimeFirst =
-          pipeConnectorParameters.getBooleanOrDefault(
+          pipeSinkParameters.getBooleanOrDefault(
               Arrays.asList(
                   PipeSinkConstant.CONNECTOR_REALTIME_FIRST_KEY,
                   PipeSinkConstant.SINK_REALTIME_FIRST_KEY),
@@ -107,15 +115,14 @@ public class PipeSinkSubtaskManager {
     } else {
       // Do not allow parallel tasks for schema region connectors
       // to avoid the potential disorder of the schema region data transfer
-      connectorNum = 1;
+      sinkNum = 1;
       attributeSortedString = "schema_" + attributeSortedString;
     }
     environment.setAttributeSortedString(attributeSortedString);
 
     if (!attributeSortedString2SubtaskLifeCycleMap.containsKey(attributeSortedString)) {
       final PipeSinkSubtaskExecutor executor = executorSupplier.get();
-      final List<PipeSinkSubtaskLifeCycle> pipeSinkSubtaskLifeCycleList =
-          new ArrayList<>(connectorNum);
+      final List<PipeSinkSubtaskLifeCycle> pipeSinkSubtaskLifeCycleList = new ArrayList<>(sinkNum);
 
       AtomicInteger counter = new AtomicInteger(0);
       // Shared pending queue for all subtasks
@@ -128,24 +135,23 @@ public class PipeSinkSubtaskManager {
         ((PipeRealtimePriorityBlockingQueue) pendingQueue).setOfferTsFileCounter(counter);
       }
 
-      for (int connectorIndex = 0; connectorIndex < connectorNum; connectorIndex++) {
-        final PipeConnector pipeConnector =
-            isDataRegionConnector
-                ? PipeDataNodeAgent.plugin().dataRegion().reflectSink(pipeConnectorParameters)
-                : PipeDataNodeAgent.plugin().schemaRegion().reflectSink(pipeConnectorParameters);
+      for (int sinkIndex = 0; sinkIndex < sinkNum; sinkIndex++) {
+        final PipeConnector pipeSink =
+            isDataRegionSink
+                ? PipeDataNodeAgent.plugin().dataRegion().reflectSink(pipeSinkParameters)
+                : PipeDataNodeAgent.plugin().schemaRegion().reflectSink(pipeSinkParameters);
         // 1. Construct, validate and customize PipeConnector, and then handshake (create
         // connection) with the target
         try {
-          if (pipeConnector instanceof IoTDBDataRegionAsyncSink) {
-            ((IoTDBDataRegionAsyncSink) pipeConnector).setTransferTsFileCounter(counter);
+          if (pipeSink instanceof IoTDBDataRegionAsyncSink) {
+            ((IoTDBDataRegionAsyncSink) pipeSink).setTransferTsFileCounter(counter);
           }
-          pipeConnector.validate(new PipeParameterValidator(pipeConnectorParameters));
-          pipeConnector.customize(
-              pipeConnectorParameters, new PipeTaskRuntimeConfiguration(environment));
-          pipeConnector.handshake();
+          pipeSink.validate(new PipeParameterValidator(pipeSinkParameters));
+          pipeSink.customize(pipeSinkParameters, new PipeTaskRuntimeConfiguration(environment));
+          pipeSink.handshake();
         } catch (final Exception e) {
           try {
-            pipeConnector.close();
+            pipeSink.close();
           } catch (final Exception closeException) {
             LOGGER.warn(
                 "Failed to close connector after failed to initialize connector. "
@@ -160,20 +166,19 @@ public class PipeSinkSubtaskManager {
         final PipeSinkSubtask pipeSinkSubtask =
             new PipeSinkSubtask(
                 String.format(
-                    "%s_%s_%s",
-                    attributeSortedString, environment.getCreationTime(), connectorIndex),
+                    "%s_%s_%s", attributeSortedString, environment.getCreationTime(), sinkIndex),
                 environment.getCreationTime(),
                 attributeSortedString,
-                connectorIndex,
+                sinkIndex,
                 pendingQueue,
-                pipeConnector);
+                pipeSink);
         final PipeSinkSubtaskLifeCycle pipeSinkSubtaskLifeCycle =
             new PipeSinkSubtaskLifeCycle(executor, pipeSinkSubtask, pendingQueue);
         pipeSinkSubtaskLifeCycleList.add(pipeSinkSubtaskLifeCycle);
       }
 
       LOGGER.info(
-          "Pipe connector subtasks with attributes {} is bounded with connectorExecutor {} and callbackExecutor {}.",
+          "Pipe sink subtasks with attributes {} is bounded with sinkExecutor {} and callbackExecutor {}.",
           attributeSortedString,
           executor.getWorkingThreadName(),
           executor.getCallbackThreadName());

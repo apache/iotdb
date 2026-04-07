@@ -243,6 +243,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSqlDialectStatement
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSystemStatusStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowCurrentSqlDialectStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowCurrentUserStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowDiskUsageStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowVersionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StartRepairDataStatement;
@@ -3702,13 +3703,16 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       clearCacheStatement.setOptions(Collections.singleton(CacheClearOptions.TREE_SCHEMA));
     } else if (ctx.QUERY() != null) {
       clearCacheStatement.setOptions(Collections.singleton(CacheClearOptions.QUERY));
+    } else if (ctx.AUTH() != null) {
+      clearCacheStatement.setOptions(Collections.singleton(CacheClearOptions.AUTH));
     } else if (ctx.ALL() != null) {
       clearCacheStatement.setOptions(
           new HashSet<>(
               Arrays.asList(
                   CacheClearOptions.TABLE_ATTRIBUTE,
                   CacheClearOptions.TREE_SCHEMA,
-                  CacheClearOptions.QUERY)));
+                  CacheClearOptions.QUERY,
+                  CacheClearOptions.AUTH)));
     } else {
       clearCacheStatement.setOptions(Collections.singleton(CacheClearOptions.DEFAULT));
     }
@@ -3826,6 +3830,41 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
 
     return showQueriesStatement;
+  }
+
+  @Override
+  public Statement visitShowDiskUsage(IoTDBSqlParser.ShowDiskUsageContext ctx) {
+    PartialPath pathPattern = parsePrefixPath(ctx.prefixPath());
+    ShowDiskUsageStatement showDiskUsageStatement = new ShowDiskUsageStatement(pathPattern);
+    if (ctx.whereClause() != null) {
+      showDiskUsageStatement.setWhereCondition(parseWhereClause(ctx.whereClause()));
+    }
+
+    // parse ORDER BY
+    if (ctx.orderByClause() != null) {
+      showDiskUsageStatement.setOrderByComponent(
+          parseOrderByClause(
+              ctx.orderByClause(),
+              ImmutableSet.of(
+                  OrderByKey.DATABASE,
+                  OrderByKey.DATANODEID,
+                  OrderByKey.REGIONID,
+                  OrderByKey.TIMEPARTITION,
+                  OrderByKey.SIZEINBYTES),
+              false));
+    }
+
+    // parse LIMIT & OFFSET
+    if (ctx.rowPaginationClause() != null) {
+      if (ctx.rowPaginationClause().limitClause() != null) {
+        showDiskUsageStatement.setLimit(parseLimitClause(ctx.rowPaginationClause().limitClause()));
+      }
+      if (ctx.rowPaginationClause().offsetClause() != null) {
+        showDiskUsageStatement.setOffset(
+            parseOffsetClause(ctx.rowPaginationClause().offsetClause()));
+      }
+    }
+    return showDiskUsageStatement;
   }
 
   // show region
@@ -4056,7 +4095,9 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       String dataTypeString = ctx.dataType.getText().toUpperCase();
       try {
         dataType = TSDataType.valueOf(dataTypeString);
-        if (TSDataType.UNKNOWN.equals(dataType) || TSDataType.VECTOR.equals(dataType)) {
+        if (TSDataType.UNKNOWN.equals(dataType)
+            || TSDataType.VECTOR.equals(dataType)
+            || TSDataType.OBJECT.equals(dataType)) {
           throw new SemanticException(String.format(UNSUPPORTED_DATATYPE_MSG, dataTypeString));
         }
       } catch (Exception e) {

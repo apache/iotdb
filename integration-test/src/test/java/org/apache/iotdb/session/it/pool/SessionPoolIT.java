@@ -62,6 +62,7 @@ public class SessionPoolIT {
 
   @Before
   public void setUp() throws Exception {
+    EnvFactory.getEnv().getConfig().getCommonConfig().setWalMode("SYNC");
     // As this IT is only testing SessionPool itself, there's no need to launch a large cluster
     EnvFactory.getEnv().initClusterEnvironment(1, 1);
   }
@@ -242,7 +243,7 @@ public class SessionPoolIT {
   }
 
   @Test
-  public void tryIfTheServerIsRestart() {
+  public void tryIfTheServerIsRestart() throws InterruptedException {
     ISessionPool pool = EnvFactory.getEnv().getSessionPool(3);
     SessionDataSetWrapper wrapper = null;
     BaseNodeWrapper node = EnvFactory.getEnv().getDataNodeWrapper(0);
@@ -335,7 +336,7 @@ public class SessionPoolIT {
   }
 
   @Test
-  public void restart() {
+  public void restart() throws InterruptedException {
     ISessionPool pool = EnvFactory.getEnv().getSessionPool(1);
     write10Data(pool, true);
     // stop the server.
