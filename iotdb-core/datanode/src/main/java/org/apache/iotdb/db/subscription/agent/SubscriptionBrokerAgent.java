@@ -432,7 +432,7 @@ public class SubscriptionBrokerAgent {
       final ConsensusSubscriptionCommitManager commitManager,
       final RegionProgress fallbackCommittedRegionProgress,
       final long tailStartSearchIndex,
-      final long initialEpoch,
+      final long initialRuntimeVersion,
       final boolean initialActive) {
     consumerGroupIdToConsensusBroker
         .compute(
@@ -455,7 +455,7 @@ public class SubscriptionBrokerAgent {
             commitManager,
             fallbackCommittedRegionProgress,
             tailStartSearchIndex,
-            initialEpoch,
+            initialRuntimeVersion,
             initialActive);
     prefetchingQueueCount.invalidate();
   }
@@ -664,13 +664,19 @@ public class SubscriptionBrokerAgent {
       final String consumerGroupId,
       final String topicName,
       final String regionId,
-      final long epoch,
-      final long syncIndex,
+      final long physicalTime,
+      final long localSeq,
       final int writerNodeId,
       final long writerEpoch) {
     ConsensusSubscriptionCommitManager.getInstance()
         .receiveProgressBroadcast(
-            consumerGroupId, topicName, regionId, epoch, syncIndex, writerNodeId, writerEpoch);
+            consumerGroupId,
+            topicName,
+            regionId,
+            physicalTime,
+            localSeq,
+            writerNodeId,
+            writerEpoch);
   }
 
   /////////////////////////////// Cache ///////////////////////////////

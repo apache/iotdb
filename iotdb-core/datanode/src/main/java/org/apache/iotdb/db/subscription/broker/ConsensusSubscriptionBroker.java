@@ -562,7 +562,7 @@ public class ConsensusSubscriptionBroker implements ISubscriptionBroker {
       final ConsensusSubscriptionCommitManager commitManager,
       final RegionProgress fallbackCommittedRegionProgress,
       final long tailStartSearchIndex,
-      final long initialEpoch,
+      final long initialRuntimeVersion,
       final boolean initialActive) {
     // Get or create the list of queues for this topic
     final List<ConsensusPrefetchingQueue> queues =
@@ -582,7 +582,7 @@ public class ConsensusSubscriptionBroker implements ISubscriptionBroker {
       }
     }
 
-    // Get or create the shared commit ID generator for this topic
+    // Create the per-region consensus queue for this topic.
     final ConsensusPrefetchingQueue consensusQueue =
         new ConsensusPrefetchingQueue(
             brokerId,
@@ -594,19 +594,19 @@ public class ConsensusSubscriptionBroker implements ISubscriptionBroker {
             commitManager,
             fallbackCommittedRegionProgress,
             tailStartSearchIndex,
-            initialEpoch,
+            initialRuntimeVersion,
             initialActive);
     queues.add(consensusQueue);
     LOGGER.info(
         "Subscription: create consensus prefetching queue bound to topic [{}] for consumer group [{}], "
             + "consensusGroupId={}, fallbackCommittedRegionProgress={}, "
-            + "tailStartSearchIndex={}, initialEpoch={}, initialActive={}, totalRegionQueues={}",
+            + "tailStartSearchIndex={}, initialRuntimeVersion={}, initialActive={}, totalRegionQueues={}",
         topicName,
         brokerId,
         consensusGroupId,
         fallbackCommittedRegionProgress,
         tailStartSearchIndex,
-        initialEpoch,
+        initialRuntimeVersion,
         initialActive,
         queues.size());
   }

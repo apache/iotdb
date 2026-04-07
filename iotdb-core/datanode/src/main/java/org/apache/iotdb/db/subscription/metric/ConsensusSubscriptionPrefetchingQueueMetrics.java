@@ -95,11 +95,12 @@ public class ConsensusSubscriptionPrefetchingQueueMetrics implements IMetricSet 
         ConsensusPrefetchingQueue::getSubscriptionUncommittedEventCount,
         Tag.NAME.toString(),
         queue.getPrefetchingQueueId());
+    // Keep the legacy metric name for dashboard compatibility, but expose seek generation here.
     metricService.createAutoGauge(
         Metric.SUBSCRIPTION_CURRENT_COMMIT_ID.toString(),
         MetricLevel.IMPORTANT,
         queue,
-        ConsensusPrefetchingQueue::getCurrentCommitId,
+        ConsensusPrefetchingQueue::getCurrentSeekGeneration,
         Tag.NAME.toString(),
         queue.getPrefetchingQueueId());
     metricService.createAutoGauge(

@@ -69,8 +69,9 @@ public class ConsensusSubscriptionSetupHandler {
       new ConcurrentHashMap<>();
 
   /**
-   * Per-region current epoch value. Uses the routing-broadcast timestamp from ConfigNode, ensuring
-   * all DataNodes derive the same epoch for the same routing change without local persistence.
+   * Per-region routing runtime version. Uses the routing-broadcast timestamp from ConfigNode so all
+   * DataNodes derive the same ordering version for the same routing change without local
+   * persistence.
    */
   private static final ConcurrentHashMap<TConsensusGroupId, Long> regionRuntimeVersion =
       new ConcurrentHashMap<>();
@@ -181,8 +182,8 @@ public class ConsensusSubscriptionSetupHandler {
           final String actualDbName = topicConfig.isTableTopic() ? dbTableModel : null;
           final ConsensusLogToTabletConverter converter = buildConverter(topicConfig, actualDbName);
 
-          // Recover from global consensus progress when available. The queue will translate
-          // (epoch, syncIndex) back to the local WAL searchIndex on first poll.
+          // Recover from persisted per-writer region progress when available. The queue will
+          // resolve a replay start from that progress on first poll via the region-level locator.
           final RegionProgress committedRegionProgress =
               resolveFallbackCommittedRegionProgress(
                   commitManager, consumerGroupId, topicName, groupId);
@@ -418,8 +419,8 @@ public class ConsensusSubscriptionSetupHandler {
       final String actualDbName = topicConfig.isTableTopic() ? dbTableModel : null;
       final ConsensusLogToTabletConverter converter = buildConverter(topicConfig, actualDbName);
 
-      // Recover from global consensus progress when available. The queue will translate
-      // (epoch, syncIndex) back to the local WAL searchIndex on first poll.
+      // Recover from persisted per-writer region progress when available. The queue will resolve a
+      // replay start from that progress on first poll via the region-level locator.
       final RegionProgress committedRegionProgress =
           resolveFallbackCommittedRegionProgress(
               commitManager, consumerGroupId, topicName, groupId);

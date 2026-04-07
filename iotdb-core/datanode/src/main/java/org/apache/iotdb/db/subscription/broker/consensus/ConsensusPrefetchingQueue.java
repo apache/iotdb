@@ -125,19 +125,7 @@ public class ConsensusPrefetchingQueue {
 
   private final AtomicLong walGapSkippedEntries = new AtomicLong(0);
 
-  /**
-   * Interval-based in-memory index for {@link #seekToTimestamp(long)}. Organized by searchIndex
-   * intervals (each {@link #INTERVAL_SIZE} entries), recording the maximum data timestamp observed
-   * within each interval. This design tolerates out-of-order timestamps: seek finds the first
-   * interval whose maxTimestamp >= targetTimestamp, guaranteeing no data with timestamp >=
-   * targetTimestamp is skipped (though earlier data within that interval may also be returned).
-   *
-   * <p>Key: interval start searchIndex (floor-aligned to INTERVAL_SIZE). Value: max data timestamp
-   * seen in that interval.
-   *
-   * <p>This is analogous to Kafka's timeindex, which records maxTimestamp per segment rather than
-   * timestamp闂傚倷鐒﹂崜姘跺磻閸涱喗鍙忛柣姘兼焼set mappings, making it immune to out-of-order producer timestamps.
-   */
+  /** Guards queue state transitions that touch replay positioning, seek state, and lane buffers. */
   private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock(true);
 
   private volatile boolean isClosed = false;
@@ -152,7 +140,7 @@ public class ConsensusPrefetchingQueue {
 
   private volatile int previousPreferredWriterNodeId = -1;
 
-  // ======================== Epoch Ordering ========================
+  // ======================== Routing Runtime Version ========================
 
   private volatile long runtimeVersion = 0;
 
@@ -224,8 +212,13 @@ public class ConsensusPrefetchingQueue {
   private final Map<WriterLaneId, NavigableMap<Long, PreparedEntry>> realtimeEntriesByLane =
       new ConcurrentHashMap<>();
 
-  /** Fallback local tail position used when no precise global progress is available. */
+  /**
+   * Local tail position used only when initialization starts without any persisted region progress.
+   */
   private final long fallbackTailSearchIndex;
+
+  /** Local sequence used to represent the position immediately before a writer's first record. */
+  private static final long BEFORE_FIRST_LOCAL_SEQ = -1L;
 
   /** Writer-progress metadata for the current pending/WAL batch being assembled. */
   private volatile long batchPhysicalTime = 0L;
@@ -306,7 +299,7 @@ public class ConsensusPrefetchingQueue {
       final ConsensusSubscriptionCommitManager commitManager,
       final RegionProgress fallbackCommittedRegionProgress,
       final long tailStartSearchIndex,
-      final long initialEpoch,
+      final long initialRuntimeVersion,
       final boolean initialActive) {
     this.brokerId = brokerId;
     this.topicName = topicName;
@@ -317,7 +310,7 @@ public class ConsensusPrefetchingQueue {
     this.commitManager = commitManager;
     this.fallbackCommittedRegionProgress = fallbackCommittedRegionProgress;
     this.fallbackTailSearchIndex = tailStartSearchIndex;
-    this.runtimeVersion = initialEpoch;
+    this.runtimeVersion = initialRuntimeVersion;
     this.isActive = initialActive;
     this.orderMode = TopicConfig.normalizeOrderMode(orderMode);
 
@@ -339,14 +332,14 @@ public class ConsensusPrefetchingQueue {
     LOGGER.info(
         "ConsensusPrefetchingQueue created (dormant): brokerId={}, topicName={}, "
             + "orderMode={}, consensusGroupId={}, fallbackCommittedRegionProgress={}, "
-            + "fallbackTailSearchIndex={}, initialEpoch={}, initialActive={}",
+            + "fallbackTailSearchIndex={}, initialRuntimeVersion={}, initialActive={}",
         brokerId,
         topicName,
         this.orderMode,
         consensusGroupId,
         fallbackCommittedRegionProgress,
         tailStartSearchIndex,
-        initialEpoch,
+        initialRuntimeVersion,
         initialActive);
 
     // Register metrics
@@ -605,7 +598,9 @@ public class ConsensusPrefetchingQueue {
   private WriterProgress decrementWriterProgress(final WriterProgress writerProgress) {
     return new WriterProgress(
         writerProgress.getPhysicalTime(),
-        writerProgress.getLocalSeq() > 0L ? writerProgress.getLocalSeq() - 1L : INVALID_COMMIT_ID);
+        writerProgress.getLocalSeq() > 0L
+            ? writerProgress.getLocalSeq() - 1L
+            : BEFORE_FIRST_LOCAL_SEQ);
   }
 
   protected ReplayLocateDecision scanReplayStartForRequests(
@@ -2141,7 +2136,7 @@ public class ConsensusPrefetchingQueue {
   // ======================== Seek ========================
 
   /**
-   * Seeks to the earliest available WAL position. The actual position depends on WAL retention 闂?if
+   * Seeks to the earliest available WAL position. The actual position depends on WAL retention: if
    * old files have been reclaimed, the earliest available position may be later than 0.
    */
   public void seekToBeginning() {
@@ -2411,7 +2406,7 @@ public class ConsensusPrefetchingQueue {
    */
   private void maybeInjectWatermark() {
     if (maxObservedTimestamp == Long.MIN_VALUE) {
-      return; // No data observed yet 闂?nothing to report
+      return; // No data observed yet, nothing to report
     }
     final long intervalMs =
         SubscriptionConfig.getInstance().getSubscriptionConsensusWatermarkIntervalMs();
@@ -2433,18 +2428,8 @@ public class ConsensusPrefetchingQueue {
    * @param watermarkTimestamp the maximum data timestamp observed so far
    */
   private void injectWatermark(final long watermarkTimestamp) {
-    // Watermarks are fire-and-forget (not in inFlightEvents), use INVALID_COMMIT_ID
     final int dataNodeId = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
-    final SubscriptionCommitContext watermarkCtx =
-        new SubscriptionCommitContext(
-            dataNodeId,
-            PipeDataNodeAgent.runtime().getRebootTimes(),
-            topicName,
-            brokerId,
-            INVALID_COMMIT_ID,
-            seekGeneration.get(),
-            consensusGroupId.toString(),
-            runtimeVersion);
+    final SubscriptionCommitContext watermarkCtx = createNonCommittableSeekContext(dataNodeId);
     final SubscriptionEvent watermarkEvent =
         new SubscriptionEvent(
             SubscriptionPollResponseType.WATERMARK.getType(),
@@ -2501,24 +2486,40 @@ public class ConsensusPrefetchingQueue {
     return new SubscriptionEvent(
         SubscriptionPollResponseType.ERROR.getType(),
         new ErrorPayload(errorMessage, false),
-        new SubscriptionCommitContext(
-            IoTDBDescriptor.getInstance().getConfig().getDataNodeId(),
-            PipeDataNodeAgent.runtime().getRebootTimes(),
-            topicName,
-            brokerId,
-            INVALID_COMMIT_ID));
+        createNonCommittableContext(IoTDBDescriptor.getInstance().getConfig().getDataNodeId()));
   }
 
   private SubscriptionEvent generateOutdatedErrorResponse() {
     return new SubscriptionEvent(
         SubscriptionPollResponseType.ERROR.getType(),
         ErrorPayload.OUTDATED_ERROR_PAYLOAD,
-        new SubscriptionCommitContext(
-            IoTDBDescriptor.getInstance().getConfig().getDataNodeId(),
-            PipeDataNodeAgent.runtime().getRebootTimes(),
-            topicName,
-            brokerId,
-            INVALID_COMMIT_ID));
+        createNonCommittableContext(IoTDBDescriptor.getInstance().getConfig().getDataNodeId()));
+  }
+
+  /**
+   * Shared subscription events still use {@link SubscriptionCommitContext#INVALID_COMMIT_ID} to
+   * mark metadata and error payloads as non-committable. Consensus correctness never treats this
+   * sentinel as a replay or commit frontier.
+   */
+  private SubscriptionCommitContext createNonCommittableContext(final int dataNodeId) {
+    return new SubscriptionCommitContext(
+        dataNodeId,
+        PipeDataNodeAgent.runtime().getRebootTimes(),
+        topicName,
+        brokerId,
+        INVALID_COMMIT_ID);
+  }
+
+  private SubscriptionCommitContext createNonCommittableSeekContext(final int dataNodeId) {
+    return new SubscriptionCommitContext(
+        dataNodeId,
+        PipeDataNodeAgent.runtime().getRebootTimes(),
+        topicName,
+        brokerId,
+        INVALID_COMMIT_ID,
+        seekGeneration.get(),
+        consensusGroupId.toString(),
+        runtimeVersion);
   }
 
   public boolean isCommitContextOutdated(final SubscriptionCommitContext commitContext) {
@@ -2536,7 +2537,7 @@ public class ConsensusPrefetchingQueue {
     isClosed = true;
   }
 
-  // ======================== Routing Epoch Control ========================
+  // ======================== Routing Runtime Version Control ========================
 
   public long getWalGapSkippedEntries() {
     return walGapSkippedEntries.get();
@@ -2689,7 +2690,8 @@ public class ConsensusPrefetchingQueue {
     return inFlightEvents.size();
   }
 
-  public long getCurrentCommitId() {
+  /** Exposes the current seek generation for the legacy consensus metric name. */
+  public long getCurrentSeekGeneration() {
     return seekGeneration.get();
   }
 
