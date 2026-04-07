@@ -173,14 +173,15 @@ public class DLearnIT {
           String.format(
               "insert into root.vehicle.d2(timestamp,s1,s2,s3,s4) values(%d,%d,%d,%d,%d)",
               900, 4, 4, 4, 4));
-      // Toy series for cluster UDF (l=3, k=2): windows [1,2,3], [10,20,30], [1,5,1]. With norm=false,
-      // k-means groups the first two windows; k-shape / medoidshape group windows 0 and 2 (shape-related).
+      // Toy series for cluster UDF (l=3, k=2): windows [1,2,3], [10,20,30], [1,5,1]. With
+      // norm=false,
+      // k-means groups the first two windows; k-shape / medoidshape group windows 0 and 2
+      // (shape-related).
       int[] toy = {1, 2, 3, 10, 20, 30, 1, 5, 1};
       for (int i = 0; i < toy.length; i++) {
         statement.addBatch(
             String.format(
-                "insert into root.vehicle.d3(timestamp,s1) values(%d,%d)",
-                (i + 1) * 100, toy[i]));
+                "insert into root.vehicle.d3(timestamp,s1) values(%d,%d)", (i + 1) * 100, toy[i]));
       }
       statement.executeBatch();
     } catch (SQLException throwable) {

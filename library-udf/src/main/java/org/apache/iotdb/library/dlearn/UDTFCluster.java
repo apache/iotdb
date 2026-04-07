@@ -37,9 +37,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Clusters a time series by partitioning it into non-overlapping subsequences of length l. Parameters: l,
- * k, method (default kmeans), norm, maxiter, output; medoidshape also uses sample_rate (greedy sampling
- * ratio; use 1 when the window count is small). Requires at least k windows.
+ * Clusters a time series by partitioning it into non-overlapping subsequences of length l.
+ * Parameters: l, k, method (default kmeans), norm, maxiter, output; medoidshape also uses
+ * sample_rate (greedy sampling ratio; use 1 when the window count is small). Requires at least k
+ * windows.
  */
 public class UDTFCluster implements UDTF {
 

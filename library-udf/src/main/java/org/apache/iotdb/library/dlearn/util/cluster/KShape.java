@@ -29,9 +29,9 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * k-Shape: assignment uses {@link ClusterUtils#shapeDistance} (SBD = 1 − max NCC); centroids are the
- * first right singular vector of the cluster matrix from SVD, sign correction, then z-normalize or L2
- * normalization.
+ * k-Shape: assignment uses {@link ClusterUtils#shapeDistance} (SBD = 1 − max NCC); centroids are
+ * the first right singular vector of the cluster matrix from SVD, sign correction, then z-normalize
+ * or L2 normalization.
  */
 public class KShape {
 

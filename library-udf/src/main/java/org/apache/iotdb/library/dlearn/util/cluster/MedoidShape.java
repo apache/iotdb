@@ -29,8 +29,9 @@ import java.util.Random;
 import java.util.Set;
 
 /**
- * Coarse clustering: {@link KMeans} uses {@code min(2k, n)} clusters (n = number of windows); greedy
- * fastKShape picks k representatives; both labels and the objective use {@link ClusterUtils#maxNcc}.
+ * Coarse clustering: {@link KMeans} uses {@code min(2k, n)} clusters (n = number of windows);
+ * greedy fastKShape picks k representatives; both labels and the objective use {@link
+ * ClusterUtils#maxNcc}.
  */
 public class MedoidShape {
 
