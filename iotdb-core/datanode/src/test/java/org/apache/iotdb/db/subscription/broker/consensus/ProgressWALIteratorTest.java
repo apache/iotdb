@@ -26,6 +26,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALInfoEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALFileVersion;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALMetaData;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALWriter;
+import org.apache.iotdb.db.storageengine.dataregion.wal.node.WALNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALFileStatus;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALFileUtils;
 
@@ -39,6 +40,8 @@ import java.nio.file.Path;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 public class ProgressWALIteratorTest {
 
@@ -237,6 +240,33 @@ public class ProgressWALIteratorTest {
     } finally {
       Files.deleteIfExists(firstWal.toPath());
       Files.deleteIfExists(lastWal.toPath());
+      Files.deleteIfExists(dir);
+    }
+  }
+
+  @Test
+  public void testIteratorMarksIncompleteScanWhenNearLiveWalCannotBeOpened() throws Exception {
+    final Path dir = Files.createTempDirectory("progress-wal-iterator-incomplete-scan");
+    final File brokenLiveWal =
+        dir.resolve(WALFileUtils.getLogFileName(7, 0, WALFileStatus.CONTAINS_SEARCH_INDEX))
+            .toFile();
+
+    try {
+      assertTrue(brokenLiveWal.mkdir());
+
+      final WALNode walNode = mock(WALNode.class);
+      when(walNode.getLogDirectory()).thenReturn(dir.toFile());
+      when(walNode.getCurrentWALFileVersion()).thenReturn(7L);
+      when(walNode.getCurrentWALMetaDataSnapshot()).thenReturn(new WALMetaData());
+
+      try (ProgressWALIterator iterator = new ProgressWALIterator(walNode, Long.MIN_VALUE)) {
+        assertFalse(iterator.hasNext());
+        assertTrue(iterator.hasIncompleteScan());
+        assertTrue(iterator.hasReadError());
+        assertTrue(iterator.getIncompleteScanDetail().contains("near-live WAL file"));
+      }
+    } finally {
+      Files.deleteIfExists(brokenLiveWal.toPath());
       Files.deleteIfExists(dir);
     }
   }

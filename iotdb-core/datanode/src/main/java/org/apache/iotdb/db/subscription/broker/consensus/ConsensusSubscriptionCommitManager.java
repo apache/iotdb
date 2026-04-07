@@ -350,27 +350,6 @@ public class ConsensusSubscriptionCommitManager {
       final String consumerGroupId,
       final String topicName,
       final ConsensusGroupId regionId,
-      final WriterId writerId,
-      final WriterProgress writerProgress) {
-    final String key = generateKey(consumerGroupId, topicName, regionId);
-    final ConsensusSubscriptionCommitState state = commitStates.get(key);
-    if (state == null) {
-      LOGGER.warn(
-          "ConsensusSubscriptionCommitManager: Cannot reset unknown state, "
-              + "consumerGroupId={}, topicName={}, regionId={}",
-          consumerGroupId,
-          topicName,
-          regionId);
-      return;
-    }
-    state.resetForSeek(writerId, writerProgress);
-    persistProgress(key, state);
-  }
-
-  public void resetState(
-      final String consumerGroupId,
-      final String topicName,
-      final ConsensusGroupId regionId,
       final RegionProgress regionProgress) {
     final String key = generateKey(consumerGroupId, topicName, regionId);
     final ConsensusSubscriptionCommitState state = commitStates.get(key);
@@ -917,30 +896,6 @@ public class ConsensusSubscriptionCommitManager {
         syncPersistedProgress();
         return buildCommitOperationResult(
             effectiveWriterId, before, getCommittedWriterProgressForWriter(effectiveWriterId));
-      }
-    }
-
-    /**
-     * Resets all commit tracking state for a seek operation. Clears all outstanding mappings and
-     * resets progress to the new position.
-     */
-    public void resetForSeek(final WriterId writerId, final WriterProgress writerProgress) {
-      synchronized (this) {
-        outstandingKeys.clear();
-        committedPendingKeys.clear();
-        recentlyCommittedKeys.clear();
-        committedWriterPositions.clear();
-        if (Objects.nonNull(writerId) && Objects.nonNull(writerProgress)) {
-          committedWriterPositions.put(writerId, writerProgress);
-        } else if (Objects.nonNull(writerProgress)) {
-          LOGGER.info(
-              "ConsensusSubscriptionCommitState: dropping non-per-writer seek baseline, "
-                  + "regionId={}, writerId={}, writerProgress={}",
-              regionId,
-              writerId,
-              writerProgress);
-        }
-        syncPersistedProgress();
       }
     }
 

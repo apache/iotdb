@@ -71,6 +71,9 @@ public class ProgressWALIterator implements Closeable {
   private boolean currentReaderUsesLiveSnapshot = false;
   private int consumedEntryCountInCurrentFile = 0;
   private final Set<Long> skippedBrokenWalVersionIds = new HashSet<>();
+  private IOException lastError;
+  private boolean incompleteScan = false;
+  private String incompleteScanDetail;
 
   private long pendingSearchIndex = Long.MIN_VALUE;
   private long pendingLocalSeq = Long.MIN_VALUE;
@@ -161,7 +164,11 @@ public class ProgressWALIterator implements Closeable {
     }
     try {
       nextReady = advance();
+      if (nextReady != null) {
+        lastError = null;
+      }
     } catch (IOException e) {
+      lastError = e;
       LOGGER.warn("ProgressWALIterator: error reading WAL", e);
       return false;
     }
@@ -177,6 +184,35 @@ public class ProgressWALIterator implements Closeable {
     return result;
   }
 
+  public boolean hasReadError() {
+    return lastError != null;
+  }
+
+  public IOException getLastError() {
+    return lastError;
+  }
+
+  public boolean hasSkippedBrokenWalFiles() {
+    return !skippedBrokenWalVersionIds.isEmpty();
+  }
+
+  public boolean hasIncompleteScan() {
+    return incompleteScan || hasReadError() || hasSkippedBrokenWalFiles();
+  }
+
+  public String getIncompleteScanDetail() {
+    if (incompleteScanDetail != null) {
+      return incompleteScanDetail;
+    }
+    if (lastError != null) {
+      return lastError.getMessage();
+    }
+    if (!skippedBrokenWalVersionIds.isEmpty()) {
+      return "encountered broken retained WAL files during replay scan";
+    }
+    return "replay scan did not complete";
+  }
+
   @Override
   public void close() throws IOException {
     closeCurrentReader();
@@ -184,6 +220,9 @@ public class ProgressWALIterator implements Closeable {
     pendingRequests.clear();
     pendingSearchIndex = Long.MIN_VALUE;
     pendingLocalSeq = Long.MIN_VALUE;
+    lastError = null;
+    incompleteScan = false;
+    incompleteScanDetail = null;
     resetCurrentFileTracking();
   }
 
@@ -330,11 +369,13 @@ public class ProgressWALIterator implements Closeable {
               : new ProgressWALReader(walFile);
       if (!skipEntries(reader, skipEntries)) {
         reader.close();
-        currentReader = null;
-        currentReaderVersionId = versionId;
-        currentReaderUsesLiveSnapshot = useLiveSnapshot;
-        consumedEntryCountInCurrentFile = skipEntries;
-        return useLiveSnapshot;
+        markIncompleteScan(
+            String.format(
+                "failed to reopen WAL file %s at entry offset %s: iterator could not skip to the requested position",
+                walFile.getName(), skipEntries),
+            null);
+        resetCurrentFileTracking();
+        return false;
       }
       currentReader = reader;
       currentFileIndex = fileIndex;
@@ -352,9 +393,16 @@ public class ProgressWALIterator implements Closeable {
           refresh();
           final int refreshedIndex = findFileIndexByVersion(versionId);
           if (refreshedIndex >= 0) {
-            return openReaderAtIndex(refreshedIndex, skipEntries, false);
+            if (openReaderAtIndex(refreshedIndex, skipEntries, false)) {
+              return true;
+            }
           }
         }
+        markIncompleteScan(
+            String.format(
+                "failed to open near-live WAL file %s while replay scan was still in progress",
+                walFile.getName()),
+            e);
         return false;
       }
       skippedBrokenWalVersionIds.add(versionId);
@@ -460,5 +508,15 @@ public class ProgressWALIterator implements Closeable {
     currentReaderVersionId = -1L;
     currentReaderUsesLiveSnapshot = false;
     consumedEntryCountInCurrentFile = 0;
+  }
+
+  private void markIncompleteScan(final String detail, final IOException cause) {
+    incompleteScan = true;
+    if (incompleteScanDetail == null) {
+      incompleteScanDetail = detail;
+    }
+    if (lastError == null && cause != null) {
+      lastError = cause;
+    }
   }
 }
