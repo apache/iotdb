@@ -24,17 +24,23 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Random;
 import java.util.Set;
 
 /**
- * 粗聚类：{@link KMeans} 簇数为 {@code min(2k, n)}（n 为窗口数）；贪心 fastKShape 选 k 条代表；标签与目标函数均用 {@link
- * ClusterUtils#maxNcc}。
+ * Coarse clustering: {@link KMeans} uses {@code min(2k, n)} clusters (n = number of windows); greedy
+ * fastKShape picks k representatives; both labels and the objective use {@link ClusterUtils#maxNcc}.
  */
 public class MedoidShape {
 
   private double sampleRate = 0.3;
-  private final Random random = new Random();
+  private Random random = new Random();
+
+  /** Overrides the RNG used for greedy sampling (default is {@link Random#Random()}). */
+  public void setRandom(Random random) {
+    this.random = Objects.requireNonNull(random);
+  }
 
   private double[][] centroids;
   private int[] labels;

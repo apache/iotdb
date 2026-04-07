@@ -26,7 +26,10 @@ import org.apache.commons.math3.transform.TransformType;
 
 import java.util.Arrays;
 
-/** 子序列 z-normalize、欧氏距离，以及基于 FFT 的 NCC / SBD（供 KShape、MedoidShape 共用）。 */
+/**
+ * Subsequence z-normalize, Euclidean distance, and FFT-based NCC / SBD (shared by KShape and
+ * MedoidShape).
+ */
 public final class ClusterUtils {
 
   public static final double EPS = 1e-9;
@@ -86,7 +89,10 @@ public final class ClusterUtils {
     return best;
   }
 
-  /** 归一化互相关序列（FFT）上的最大值，用于 SBD 与 MedoidShape 目标函数。 */
+  /**
+   * Maximum over the normalized cross-correlation sequence (FFT); used for SBD and MedoidShape
+   * objective.
+   */
   public static double maxNcc(double[] x, double[] y) {
     double[] cc = nccFft(x, y);
     double max = Double.NEGATIVE_INFINITY;
@@ -98,7 +104,7 @@ public final class ClusterUtils {
     return max;
   }
 
-  /** SBD：1 − max NCC（与 k-Shape / FastKShape 中基于 NCC 的定义一致）。 */
+  /** SBD: 1 − max NCC (consistent with the NCC-based definition in k-Shape / FastKShape). */
   public static double shapeDistance(double[] x, double[] y) {
     return 1.0 - maxNcc(x, y);
   }

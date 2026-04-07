@@ -29,8 +29,9 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * k-Shape：分配用 {@link ClusterUtils#shapeDistance}（SBD = 1−max NCC）；质心为簇内矩阵 SVD 第一右奇异向量 + 符号校正后再
- * z-normalize 或 L2 单位化。
+ * k-Shape: assignment uses {@link ClusterUtils#shapeDistance} (SBD = 1 − max NCC); centroids are the
+ * first right singular vector of the cluster matrix from SVD, sign correction, then z-normalize or L2
+ * normalization.
  */
 public class KShape {
 

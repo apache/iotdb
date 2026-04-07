@@ -102,6 +102,7 @@ call ../sbin/windows/start-cli.bat -h %host% -p %rpcPort% -u %user% -pw %pass% -
 
 @REM Machine Learning
 call ../sbin/windows/start-cli.bat -h %host% -p %rpcPort% -u %user% -pw %pass% -e "create function ar as 'org.apache.iotdb.library.dlearn.UDTFAR'"
+call ../sbin/windows/start-cli.bat -h %host% -p %rpcPort% -u %user% -pw %pass% -e "create function cluster as 'org.apache.iotdb.library.dlearn.UDTFCluster'"
 
 @REM Match
 call ../sbin/windows/start-cli.bat -h %host% -p %rpcPort% -u %user% -pw %pass% -e "create function pattern_match as 'org.apache.iotdb.library.match.UDAFPatternMatch'"

@@ -37,8 +37,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 将时间序列按长度 l 的不重叠子序列划分后做聚类。参数：l、k、method（默认 kmeans）、norm、maxiter、output；medoidshape 另需
- * sample_rate（贪心采样比例），且窗口数需 ≥ 2k。
+ * Clusters a time series by partitioning it into non-overlapping subsequences of length l. Parameters: l,
+ * k, method (default kmeans), norm, maxiter, output; medoidshape also uses sample_rate (greedy sampling
+ * ratio; use 1 when the window count is small). Requires at least k windows.
  */
 public class UDTFCluster implements UDTF {
 
@@ -146,14 +147,6 @@ public class UDTFCluster implements UDTF {
               + numWindows
               + " windows, need at least k="
               + k
-              + ".");
-    }
-    if (METHOD_MEDOIDSHAPE.equals(method) && numWindows < 2 * k) {
-      throw new UDFException(
-          "MedoidShape requires at least 2k windows for coarse KMeans; got "
-              + numWindows
-              + ", need >= "
-              + (2 * k)
               + ".");
     }
 
