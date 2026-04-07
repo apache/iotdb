@@ -193,6 +193,9 @@ public class MedoidShape {
     if (k < 2) {
       throw new IllegalArgumentException("k must be at least 2.");
     }
+    if (k > samples.length) {
+      throw new IllegalArgumentException("k must not exceed the number of samples.");
+    }
     if (maxIterations < 1) {
       throw new IllegalArgumentException("maxIterations must be at least 1.");
     }
