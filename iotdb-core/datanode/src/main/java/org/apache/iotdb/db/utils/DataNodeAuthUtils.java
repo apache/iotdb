@@ -522,6 +522,7 @@ public class DataNodeAuthUtils {
           });
       insertRowStatement.setDataTypes(
           new TSDataType[] {TSDataType.STRING, TSDataType.STRING, TSDataType.BOOLEAN});
+      insertRowStatement.setAligned(true);
     } catch (IllegalPathException e) {
       LOGGER.warn(
           "Cannot create password history for {} ,  because the path will be illegal:{}",

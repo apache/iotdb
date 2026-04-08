@@ -214,7 +214,7 @@ public class DNAuditLogger extends AbstractAuditLogger {
           AUDIT_LOG_SQL_STRING,
           AUDIT_LOG_LOG
         });
-    insertStatement.setAligned(false);
+    insertStatement.setAligned(true);
     String sqlString = auditLogFields.getSqlString();
     if (sqlString != null) {
       if (sqlString.toUpperCase().startsWith("CREATE USER")) {
