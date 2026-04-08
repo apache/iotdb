@@ -236,7 +236,7 @@ public class PipeConsensusAsyncSink extends IoTDBSink implements ConsensusPipeSi
     while (!current.equalsInPipeConsensus(event) && iterator.hasNext()) {
       current = iterator.next();
     }
-    if (current.equalsInIoTConsensusV2(event)) {
+    if (current.equalsInPipeConsensus(event)) {
       iterator.remove();
     } else {
       LOGGER.warn(

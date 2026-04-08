@@ -930,8 +930,8 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
             false);
 
     // if using IoTV2, assign a replicateIndex for this historical deletion event
-    if (DataRegionConsensusImpl.getInstance() instanceof IoTConsensusV2
-        && IoTConsensusV2Processor.isShouldReplicate(event)) {
+    if (DataRegionConsensusImpl.getInstance() instanceof PipeConsensus
+        && PipeConsensusProcessor.isShouldReplicate(event)) {
       event.setReplicateIndexForIoTV2(
           ReplicateProgressDataNodeManager.assignReplicateIndexForIoTV2(pipeName));
       LOGGER.debug(

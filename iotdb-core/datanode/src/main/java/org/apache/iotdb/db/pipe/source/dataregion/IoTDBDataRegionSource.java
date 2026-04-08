@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.source.dataregion;
 
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.pipe.agent.task.PipeTaskAgent;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePatternOperations;
@@ -139,6 +140,21 @@ public class IoTDBDataRegionSource extends IoTDBSource {
   @Override
   public void validate(final PipeParameterValidator validator) throws Exception {
     super.validate(validator);
+
+    final boolean forwardingPipeRequests =
+        validator
+            .getParameters()
+            .getBooleanOrDefault(
+                Arrays.asList(
+                    PipeSourceConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_KEY,
+                    PipeSourceConstant.SOURCE_FORWARDING_PIPE_REQUESTS_KEY),
+                PipeSourceConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_DEFAULT_VALUE);
+    if (!forwardingPipeRequests) {
+      throw new PipeParameterNotValidException(
+          String.format(
+              "The parameter %s cannot be set to false.",
+              PipeSourceConstant.SOURCE_FORWARDING_PIPE_REQUESTS_KEY));
+    }
 
     final boolean isTreeDialect =
         validator
@@ -265,32 +281,6 @@ public class IoTDBDataRegionSource extends IoTDBSource {
                 .getBooleanOrDefault(
                     Arrays.asList(EXTRACTOR_REALTIME_ENABLE_KEY, SOURCE_REALTIME_ENABLE_KEY),
                     EXTRACTOR_REALTIME_ENABLE_DEFAULT_VALUE));
-
-    // Validate source.realtime.mode
-    if (validator
-            .getParameters()
-            .getBooleanOrDefault(
-                Arrays.asList(EXTRACTOR_REALTIME_ENABLE_KEY, SOURCE_REALTIME_ENABLE_KEY),
-                EXTRACTOR_REALTIME_ENABLE_DEFAULT_VALUE)
-        || validator
-            .getParameters()
-            .hasAnyAttributes(
-                SOURCE_START_TIME_KEY,
-                EXTRACTOR_START_TIME_KEY,
-                SOURCE_END_TIME_KEY,
-                EXTRACTOR_END_TIME_KEY)) {
-      validator.validateAttributeValueRange(
-          validator.getParameters().hasAttribute(EXTRACTOR_REALTIME_MODE_KEY)
-              ? EXTRACTOR_REALTIME_MODE_KEY
-              : SOURCE_REALTIME_MODE_KEY,
-          true,
-          EXTRACTOR_REALTIME_MODE_FILE_VALUE,
-          EXTRACTOR_REALTIME_MODE_HYBRID_VALUE,
-          EXTRACTOR_REALTIME_MODE_LOG_VALUE,
-          EXTRACTOR_REALTIME_MODE_FORCED_LOG_VALUE,
-          EXTRACTOR_REALTIME_MODE_STREAM_MODE_VALUE,
-          EXTRACTOR_REALTIME_MODE_BATCH_MODE_VALUE);
-    }
 
     checkInvalidParameters(validator);
 
@@ -451,6 +441,13 @@ public class IoTDBDataRegionSource extends IoTDBSource {
     if (PipeTaskAgent.isSnapshotMode(parameters)) {
       realtimeExtractor = new PipeRealtimeDataRegionHeartbeatSource();
       LOGGER.info("Pipe: snapshot mode is enabled, use heartbeat realtime source.");
+      return;
+    }
+
+    if (!(pipeName != null
+        && (pipeName.startsWith(PipeStaticMeta.SUBSCRIPTION_PIPE_PREFIX)
+            || pipeName.startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)))) {
+      realtimeExtractor = new PipeRealtimeDataRegionTsFileSource();
       return;
     }
 

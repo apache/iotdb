@@ -22,7 +22,6 @@ package org.apache.iotdb.confignode.manager.pipe.agent.plugin;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.sink.donothing.DoNothingSink;
 import org.apache.iotdb.commons.pipe.agent.plugin.constructor.PipeSinkConstructor;
-import org.apache.iotdb.confignode.manager.pipe.sink.protocol.IoTDBConfigRegionAirGapSink;
 import org.apache.iotdb.confignode.manager.pipe.sink.protocol.IoTDBConfigRegionSink;
 import org.apache.iotdb.pipe.api.PipeConnector;
 
@@ -42,9 +41,6 @@ class PipeConfigRegionSinkConstructor extends PipeSinkConstructor {
         BuiltinPipePlugin.IOTDB_THRIFT_ASYNC_CONNECTOR.getPipePluginName(),
         IoTDBConfigRegionSink::new);
     pluginConstructors.put(
-        BuiltinPipePlugin.IOTDB_AIR_GAP_CONNECTOR.getPipePluginName(),
-        IoTDBConfigRegionAirGapSink::new);
-    pluginConstructors.put(
         BuiltinPipePlugin.DO_NOTHING_CONNECTOR.getPipePluginName(), DoNothingSink::new);
 
     pluginConstructors.put(
@@ -55,8 +51,6 @@ class PipeConfigRegionSinkConstructor extends PipeSinkConstructor {
         BuiltinPipePlugin.IOTDB_THRIFT_SYNC_SINK.getPipePluginName(), IoTDBConfigRegionSink::new);
     pluginConstructors.put(
         BuiltinPipePlugin.IOTDB_THRIFT_ASYNC_SINK.getPipePluginName(), IoTDBConfigRegionSink::new);
-    pluginConstructors.put(
-        BuiltinPipePlugin.IOTDB_AIR_GAP_SINK.getPipePluginName(), IoTDBConfigRegionAirGapSink::new);
     pluginConstructors.put(
         BuiltinPipePlugin.DO_NOTHING_SINK.getPipePluginName(), DoNothingSink::new);
   }
