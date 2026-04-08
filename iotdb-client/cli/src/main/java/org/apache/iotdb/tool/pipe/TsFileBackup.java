@@ -82,6 +82,8 @@ public final class TsFileBackup {
     static final String SOURCE_MODE_SNAPSHOT = "snapshot";
     static final String SOURCE_INCLUSION = "source.inclusion";
     static final String SOURCE_INCLUSION_INSERT = "data.insert,data.delete";
+    static final String SOURCE_START_TIME = "source.start-time";
+    static final String SOURCE_END_TIME = "source.end-time";
 
     static final String SOURCE_CAPTURE_TREE = "source.capture.tree";
     static final String SOURCE_CAPTURE_TABLE = "source.capture.table";
@@ -146,6 +148,17 @@ public final class TsFileBackup {
     static final String TABLE_LONG = "table";
     static final String TABLE_ARG = "regex";
     static final String TABLE_DESC = "Table model table name regex, default .*";
+
+    static final String START_TIME_OPT = "s";
+    static final String START_TIME_LONG = "start_time";
+    static final String START_TIME_ARG = "ISO8601/Timestamp";
+    static final String START_TIME_DESC =
+        "Start time for data extraction (e.g. 2023-01-01T00:00:00 or timestamp).";
+
+    static final String END_TIME_OPT = "e";
+    static final String END_TIME_LONG = "end_time";
+    static final String END_TIME_ARG = "ISO8601/Timestamp";
+    static final String END_TIME_DESC = "End time for data extraction.";
 
     static final String TARGET_DIR_OPT = "t";
     static final String TARGET_DIR_LONG = "target";
@@ -214,6 +227,8 @@ public final class TsFileBackup {
     final String treePath;
     final String dbRegex;
     final String tableRegex;
+    final String startTime;
+    final String endTime;
 
     final String scpHost;
     final int sshPort;
@@ -237,6 +252,8 @@ public final class TsFileBackup {
       this.treePath = line.getOptionValue(CliOptions.PATH_LONG, DefaultValues.TREE_PATH).trim();
       this.dbRegex = line.getOptionValue(CliOptions.DB_OPT, DefaultValues.REGEX_ALL).trim();
       this.tableRegex = line.getOptionValue(CliOptions.TABLE_OPT, DefaultValues.REGEX_ALL).trim();
+      this.startTime = line.getOptionValue(CliOptions.START_TIME_LONG);
+      this.endTime = line.getOptionValue(CliOptions.END_TIME_LONG);
 
       this.scpHost =
           StringUtils.isBlank(line.getOptionValue(CliOptions.TARGET_HOST_OPT))
@@ -395,6 +412,20 @@ public final class TsFileBackup {
               .desc(CliOptions.TABLE_DESC)
               .build());
       o.addOption(
+          Option.builder(CliOptions.START_TIME_OPT)
+              .longOpt(CliOptions.START_TIME_LONG)
+              .hasArg()
+              .argName(CliOptions.START_TIME_ARG)
+              .desc(CliOptions.START_TIME_DESC)
+              .build());
+      o.addOption(
+          Option.builder(CliOptions.END_TIME_OPT)
+              .longOpt(CliOptions.END_TIME_LONG)
+              .hasArg()
+              .argName(CliOptions.END_TIME_ARG)
+              .desc(CliOptions.END_TIME_DESC)
+              .build());
+      o.addOption(
           Option.builder(CliOptions.TARGET_DIR_OPT)
               .longOpt(CliOptions.TARGET_DIR_LONG)
               .required()
@@ -545,6 +576,12 @@ public final class TsFileBackup {
       source.add(formatKv(PipeKeys.SOURCE_REALTIME_ENABLE, "false"));
       source.add(formatKv(PipeKeys.SOURCE_INCLUSION, PipeKeys.SOURCE_INCLUSION_INSERT));
       source.add(formatKv(PipeKeys.SOURCE_MODS_ENABLE, "true"));
+      if (StringUtils.isNotBlank(config.startTime)) {
+        source.add(formatKv(PipeKeys.SOURCE_START_TIME, config.startTime.trim()));
+      }
+      if (StringUtils.isNotBlank(config.endTime)) {
+        source.add(formatKv(PipeKeys.SOURCE_END_TIME, config.endTime.trim()));
+      }
 
       if (config.isTreeModel) {
         source.add(formatKv(PipeKeys.SOURCE_CAPTURE_TREE, "true"));
