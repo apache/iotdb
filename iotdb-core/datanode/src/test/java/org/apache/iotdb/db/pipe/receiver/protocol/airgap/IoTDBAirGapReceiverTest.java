@@ -62,7 +62,8 @@ public class IoTDBAirGapReceiverTest {
     final InputStream inputStream =
         new ByteArrayInputStream(
             BytesUtils.concatByteArray(
-                AirGapELanguageConstant.E_LANGUAGE_PREFIX, AirGapELanguageConstant.E_LANGUAGE_PREFIX));
+                AirGapELanguageConstant.E_LANGUAGE_PREFIX,
+                AirGapELanguageConstant.E_LANGUAGE_PREFIX));
 
     final IOException exception =
         Assert.assertThrows(IOException.class, () -> receiver.readData(inputStream));
