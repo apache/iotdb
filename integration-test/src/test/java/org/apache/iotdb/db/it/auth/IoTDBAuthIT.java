@@ -20,9 +20,7 @@
 package org.apache.iotdb.db.it.auth;
 
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
-import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -51,7 +49,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Callable;
 
-import static org.apache.iotdb.commons.auth.entity.User.INTERNAL_USER_END_ID;
 import static org.apache.iotdb.db.it.utils.TestUtils.createUser;
 import static org.apache.iotdb.db.it.utils.TestUtils.executeNonQuery;
 import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
