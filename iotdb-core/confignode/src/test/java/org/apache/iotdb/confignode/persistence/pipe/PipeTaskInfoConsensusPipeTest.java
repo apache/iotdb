@@ -33,6 +33,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -148,5 +149,61 @@ public class PipeTaskInfoConsensusPipeTest {
     Assert.assertEquals(1, result.size());
     Assert.assertTrue(result.containsKey(consensusPipeName));
     Assert.assertFalse(result.containsKey(subscriptionPipeName));
+  }
+
+  @Test
+  public void testProcessLoadSnapshotRestartsOnlyHealthyStoppedConsensusPipes() throws Exception {
+    DataRegionId regionId = new DataRegionId(100);
+    String consensusPipeToRestart = new ConsensusPipeName(regionId, 1, 2).toString();
+    String consensusPipeStoppedByException = new ConsensusPipeName(regionId, 2, 1).toString();
+    String userPipeName = "userPipe";
+
+    createPipe(consensusPipeToRestart, PipeStatus.STOPPED);
+    createPipe(consensusPipeStoppedByException, PipeStatus.STOPPED);
+    createPipe(userPipeName, PipeStatus.STOPPED);
+
+    pipeTaskInfo
+        .getPipeMetaByPipeName(consensusPipeStoppedByException)
+        .getRuntimeMeta()
+        .setIsStoppedByRuntimeException(true);
+
+    final File snapshotDir =
+        java.nio.file.Files.createTempDirectory("pipe-task-info-consensus-test").toFile();
+    try {
+      Assert.assertTrue(pipeTaskInfo.processTakeSnapshot(snapshotDir));
+
+      PipeTaskInfo recoveredPipeTaskInfo = new PipeTaskInfo();
+      recoveredPipeTaskInfo.processLoadSnapshot(snapshotDir);
+
+      Assert.assertEquals(
+          PipeStatus.RUNNING,
+          recoveredPipeTaskInfo
+              .getPipeMetaByPipeName(consensusPipeToRestart)
+              .getRuntimeMeta()
+              .getStatus()
+              .get());
+      Assert.assertEquals(
+          PipeStatus.STOPPED,
+          recoveredPipeTaskInfo
+              .getPipeMetaByPipeName(consensusPipeStoppedByException)
+              .getRuntimeMeta()
+              .getStatus()
+              .get());
+      Assert.assertTrue(
+          recoveredPipeTaskInfo
+              .getPipeMetaByPipeName(consensusPipeStoppedByException)
+              .getRuntimeMeta()
+              .getIsStoppedByRuntimeException());
+      Assert.assertEquals(
+          PipeStatus.STOPPED,
+          recoveredPipeTaskInfo
+              .getPipeMetaByPipeName(userPipeName)
+              .getRuntimeMeta()
+              .getStatus()
+              .get());
+    } finally {
+      new File(snapshotDir, "pipe_task_info.bin").delete();
+      snapshotDir.delete();
+    }
   }
 }
