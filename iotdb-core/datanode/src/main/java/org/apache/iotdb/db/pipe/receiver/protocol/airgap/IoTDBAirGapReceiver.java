@@ -86,21 +86,17 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
           "Pipe air gap receiver {} closed because socket is closed. Socket: {}",
           receiverId,
           socket);
-    } catch (final Throwable e) {
-      LOGGER.error(
-          "Pipe air gap receiver {} closed because of critical failure. Socket: {}",
+    } catch (final Exception e) {
+      LOGGER.warn(
+          "Pipe air gap receiver {} closed because of exception. Socket: {}",
           receiverId,
           socket,
           e);
-      if (!socket.isClosed()) {
-        socket.close();
-      }
+      throw e;
     } finally {
       // session will be closed and removed here
       PipeDataNodeAgent.receiver().thrift().handleClientExit();
-      if (!socket.isClosed()) {
-        socket.close();
-      }
+      socket.close();
     }
   }
 
