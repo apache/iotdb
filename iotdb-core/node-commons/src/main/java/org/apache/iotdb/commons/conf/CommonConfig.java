@@ -311,7 +311,11 @@ public class CommonConfig {
   private double pipeReceiverActualToEstimatedMemoryRatio = 3;
 
   private int pipeReceiverReqDecompressedMaxLengthInBytes = 1073741824; // 1GB
-  private int pipeAirGapReceiverMaxPayloadSizeInBytes = 10 * 1024 * 1024; // 10MB
+  // Align with default thrift frame size calculation.
+  private int pipeAirGapReceiverMaxPayloadSizeInBytes =
+      Math.min(
+          64 * 1024 * 1024,
+          (int) Math.min(Runtime.getRuntime().maxMemory() / 64, Integer.MAX_VALUE));
   private boolean pipeReceiverLoadConversionEnabled = false;
   private volatile long pipePeriodicalLogMinIntervalSeconds = 60;
   private volatile long pipeLoggerCacheMaxSizeInBytes = 16 * MB;
