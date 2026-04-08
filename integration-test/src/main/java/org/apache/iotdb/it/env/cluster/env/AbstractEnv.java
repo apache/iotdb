@@ -70,6 +70,7 @@ import org.apache.iotdb.session.TableSessionBuilder;
 import org.apache.iotdb.session.pool.SessionPool;
 import org.apache.iotdb.session.pool.TableSessionPoolBuilder;
 
+import org.apache.thrift.TConfiguration;
 import org.apache.thrift.TException;
 import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransportException;
@@ -1454,10 +1455,13 @@ public abstract class AbstractEnv implements BaseEnv {
             final String[] ipPort = nodeWrapper.getIpAndPortString().split(":");
             final String ip = ipPort[0];
             final int port = Integer.parseInt(ipPort[1]);
-            try (TSocket socket = new TSocket(ip, port)) {
+            try (TSocket socket = new TSocket(new TConfiguration(), ip, port, 1000)) {
               socket.open();
             } catch (final TTransportException e) {
-              errorMessages.add(e.getMessage());
+              errorMessages.add(
+                  String.format(
+                      "DataNode %s is not reachable: %s",
+                      nodeWrapper.getIpAndPortString(), e.getMessage()));
             }
           }
         }
