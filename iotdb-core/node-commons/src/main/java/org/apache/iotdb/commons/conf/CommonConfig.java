@@ -311,6 +311,7 @@ public class CommonConfig {
   private double pipeReceiverActualToEstimatedMemoryRatio = 3;
 
   private int pipeReceiverReqDecompressedMaxLengthInBytes = 1073741824; // 1GB
+  private int pipeAirGapReceiverMaxPayloadSizeInBytes = 10 * 1024 * 1024; // 10MB
   private boolean pipeReceiverLoadConversionEnabled = false;
   private volatile long pipePeriodicalLogMinIntervalSeconds = 60;
   private volatile long pipeLoggerCacheMaxSizeInBytes = 16 * MB;
@@ -1702,6 +1703,17 @@ public class CommonConfig {
         pipeReceiverReqDecompressedMaxLengthInBytes);
   }
 
+  public void setPipeAirGapReceiverMaxPayloadSizeInBytes(
+      int pipeAirGapReceiverMaxPayloadSizeInBytes) {
+    if (this.pipeAirGapReceiverMaxPayloadSizeInBytes == pipeAirGapReceiverMaxPayloadSizeInBytes) {
+      return;
+    }
+    this.pipeAirGapReceiverMaxPayloadSizeInBytes = pipeAirGapReceiverMaxPayloadSizeInBytes;
+    logger.info(
+        "pipeAirGapReceiverMaxPayloadSizeInBytes is set to {}.",
+        pipeAirGapReceiverMaxPayloadSizeInBytes);
+  }
+
   public boolean isPipeReceiverLoadConversionEnabled() {
     return pipeReceiverLoadConversionEnabled;
   }
@@ -1741,6 +1753,10 @@ public class CommonConfig {
 
   public int getPipeReceiverReqDecompressedMaxLengthInBytes() {
     return pipeReceiverReqDecompressedMaxLengthInBytes;
+  }
+
+  public int getPipeAirGapReceiverMaxPayloadSizeInBytes() {
+    return pipeAirGapReceiverMaxPayloadSizeInBytes;
   }
 
   public double getPipeMetaReportMaxLogNumPerRound() {

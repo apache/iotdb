@@ -86,17 +86,21 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
           "Pipe air gap receiver {} closed because socket is closed. Socket: {}",
           receiverId,
           socket);
-    } catch (final Exception e) {
-      LOGGER.warn(
-          "Pipe air gap receiver {} closed because of exception. Socket: {}",
+    } catch (final Throwable e) {
+      LOGGER.error(
+          "Pipe air gap receiver {} closed because of critical failure. Socket: {}",
           receiverId,
           socket,
           e);
-      throw e;
+      if (!socket.isClosed()) {
+        socket.close();
+      }
     } finally {
       // session will be closed and removed here
       PipeDataNodeAgent.receiver().thrift().handleClientExit();
-      socket.close();
+      if (!socket.isClosed()) {
+        socket.close();
+      }
     }
   }
 
@@ -228,6 +232,15 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
     if (length <= 0) {
       // Will fail() after checkSum()
       return new byte[0];
+    }
+
+    final int maxLength = PipeConfig.getInstance().getPipeAirGapReceiverMaxPayloadSizeInBytes();
+    if (length > maxLength) {
+      throw new IOException(
+          String.format(
+              "Detected potential DoS attack: AirGap payload length (%d) exceeds maximum allowed (%d). "
+                  + "Closing connection from %s",
+              length, maxLength, socket.getRemoteSocketAddress()));
     }
 
     final byte[] resultBuffer = new byte[length];
