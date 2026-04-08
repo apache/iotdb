@@ -74,6 +74,11 @@ public class DataDriver extends Driver {
     return true;
   }
 
+  @Override
+  public boolean isInit() {
+    return init;
+  }
+
   /**
    * Init seq file list and unseq file list in {@link
    * org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource} and set it into each
