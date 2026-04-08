@@ -46,7 +46,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
-import org.apache.iotdb.db.storageengine.dataregion.VirtualDataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.series.SeriesReaderTestUtil;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -330,7 +329,13 @@ public class DataDriverTest {
               seriesScanOperator2,
               Arrays.asList(TSDataType.INT32, TSDataType.INT32),
               new AscTimeComparator());
-      SingleDeviceViewOperator fakeOperator = new SingleDeviceViewOperator(driverContext.getOperatorContexts().get(3), "d1", timeJoinOperator, Arrays.asList(0), Arrays.asList(TSDataType.INT32, TSDataType.INT32));
+      SingleDeviceViewOperator fakeOperator =
+          new SingleDeviceViewOperator(
+              driverContext.getOperatorContexts().get(3),
+              "d1",
+              timeJoinOperator,
+              Arrays.asList(0),
+              Arrays.asList(TSDataType.INT32, TSDataType.INT32));
       fakeOperator.getOperatorContext().setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
       fragmentInstanceContext.setSourcePaths(driverContext.getPaths());
