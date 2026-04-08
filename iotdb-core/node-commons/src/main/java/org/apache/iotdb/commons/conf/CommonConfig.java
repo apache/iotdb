@@ -1705,6 +1705,12 @@ public class CommonConfig {
 
   public void setPipeAirGapReceiverMaxPayloadSizeInBytes(
       int pipeAirGapReceiverMaxPayloadSizeInBytes) {
+    if (pipeAirGapReceiverMaxPayloadSizeInBytes <= 0) {
+      logger.info(
+          "Ignore invalid pipeAirGapReceiverMaxPayloadSizeInBytes {}, because it must be greater than 0.",
+          pipeAirGapReceiverMaxPayloadSizeInBytes);
+      return;
+    }
     if (this.pipeAirGapReceiverMaxPayloadSizeInBytes == pipeAirGapReceiverMaxPayloadSizeInBytes) {
       return;
     }
