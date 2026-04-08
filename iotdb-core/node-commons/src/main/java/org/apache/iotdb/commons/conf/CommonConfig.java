@@ -324,7 +324,8 @@ public class CommonConfig {
   private volatile int pipeTsFilePinMaxLogIntervalRounds = 90;
 
   // <= 0 means disabled
-  private volatile long pipeTsFileFlushIntervalSeconds = 5 * 60L;
+  // Default average flush time is 3.33 + (3.33 / 2) = 5min
+  private volatile long pipeTsFileFlushIntervalSeconds = (long) (10.0 / 3 * 60L);
 
   private volatile boolean pipeMemoryManagementEnabled = true;
   private volatile long pipeMemoryAllocateRetryIntervalMs = 50;
