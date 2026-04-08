@@ -286,9 +286,6 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
           .getAsMNode()
           .setDatabaseSchema(currentSchema);
 
-      // Update TimePartitionUtils cache with new time partition settings
-      TimePartitionUtils.updateDatabaseTimePartitionConfig(currentSchema.getName(), currentSchema);
-
       result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (final MetadataException e) {
       LOGGER.error(ERROR_NAME, e);
