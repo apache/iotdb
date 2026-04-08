@@ -222,7 +222,7 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
     }
   }
 
-  private byte[] readData(final InputStream inputStream) throws IOException {
+  byte[] readData(final InputStream inputStream) throws IOException {
     final int length = readLength(inputStream);
 
     if (length <= 0) {
@@ -234,8 +234,7 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
     if (length > maxLength) {
       throw new IOException(
           String.format(
-              "Detected potential DoS attack: AirGap payload length (%d) exceeds maximum allowed (%d). "
-                  + "Closing connection from %s",
+              "AirGap payload length (%d) exceeds maximum allowed (%d). Closing connection from %s",
               length, maxLength, socket.getRemoteSocketAddress()));
     }
 
