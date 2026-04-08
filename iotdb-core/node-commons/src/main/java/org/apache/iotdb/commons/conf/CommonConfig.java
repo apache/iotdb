@@ -2751,14 +2751,6 @@ public class CommonConfig {
     this.enforceStrongPassword = enforceStrongPassword;
   }
 
-  public boolean isMayBypassPasswordCheckInException() {
-    return mayBypassPasswordCheckInException;
-  }
-
-  public void setMayBypassPasswordCheckInException(boolean mayBypassPasswordCheckInException) {
-    this.mayBypassPasswordCheckInException = mayBypassPasswordCheckInException;
-  }
-
   public boolean isEnableAuditLog() {
     return enableAuditLog;
   }
