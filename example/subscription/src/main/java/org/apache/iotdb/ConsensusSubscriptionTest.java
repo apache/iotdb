@@ -22,14 +22,9 @@ package org.apache.iotdb;
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 import org.apache.iotdb.rpc.subscription.payload.poll.RegionProgress;
-import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 import org.apache.iotdb.rpc.subscription.payload.poll.TopicProgress;
-import org.apache.iotdb.rpc.subscription.payload.poll.WriterId;
-import org.apache.iotdb.rpc.subscription.payload.poll.WriterProgress;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.subscription.SubscriptionTreeSession;
-import org.apache.iotdb.session.subscription.consumer.base.ColumnAlignProcessor;
-import org.apache.iotdb.session.subscription.consumer.base.WatermarkProcessor;
 import org.apache.iotdb.session.subscription.consumer.tree.SubscriptionTreePullConsumer;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
 import org.apache.iotdb.session.subscription.payload.SubscriptionRecordHandler.SubscriptionResultSet;
@@ -107,11 +102,6 @@ public class ConsensusSubscriptionTest {
       runTest(
           "testAckNackAndPoisonSemantics",
           ConsensusSubscriptionTest::testAckNackAndPoisonSemantics);
-    }
-    if (targetTest == null || "testProcessorWatermarkAndMetadata".equals(targetTest)) {
-      runTest(
-          "testProcessorWatermarkAndMetadata",
-          ConsensusSubscriptionTest::testProcessorWatermarkAndMetadata);
     }
 
     // Summary
@@ -214,9 +204,9 @@ public class ConsensusSubscriptionTest {
 
       Properties topicConfig = new Properties();
       topicConfig.put(TopicConstant.MODE_KEY, TopicConstant.MODE_LIVE_VALUE);
-      topicConfig.put(
-          TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_SESSION_DATA_SETS_HANDLER_VALUE);
+      topicConfig.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_RECORD_HANDLER_VALUE);
       topicConfig.put(TopicConstant.PATH_KEY, path);
+      topicConfig.put(TopicConstant.ORDER_MODE_KEY, TopicConstant.ORDER_MODE_PER_WRITER_VALUE);
       subSession.createTopic(topicName, topicConfig);
       System.out.println("  Created topic: " + topicName + " (path=" + path + ")");
     }
@@ -433,6 +423,12 @@ public class ConsensusSubscriptionTest {
     }
   }
 
+  private static void assertAtMost(String msg, int max, int actual) {
+    if (actual > max) {
+      throw new AssertionError(msg + ": expected at most " + max + ", actual=" + actual);
+    }
+  }
+
   private static int countWriterFrontiers(TopicProgress topicProgress) {
     int writerCount = 0;
     if (topicProgress == null || topicProgress.getRegionProgress() == null) {
@@ -461,6 +457,188 @@ public class ConsensusSubscriptionTest {
     return rows;
   }
 
+  private static final class CommittedSnapshot {
+    private final TopicProgress progress;
+    private final int rowsInMessage;
+    private final int cumulativeRows;
+
+    private CommittedSnapshot(TopicProgress progress, int rowsInMessage, int cumulativeRows) {
+      this.progress = progress;
+      this.rowsInMessage = rowsInMessage;
+      this.cumulativeRows = cumulativeRows;
+    }
+  }
+
+  private static final class PolledMessageBatch {
+    private final List<SubscriptionMessage> messages;
+    private final int totalRows;
+
+    private PolledMessageBatch(List<SubscriptionMessage> messages, int totalRows) {
+      this.messages = messages;
+      this.totalRows = totalRows;
+    }
+  }
+
+  private static void pause(long millis) {
+    try {
+      Thread.sleep(millis);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new RuntimeException("Interrupted while waiting for subscription test state", e);
+    }
+  }
+
+  private static void bootstrapSeekTopic(String database, String topicName) throws Exception {
+    try (ISession session = openSession()) {
+      createDatabase(session, database);
+      session.executeNonQueryStatement(
+          String.format("INSERT INTO %s.d1(time, s1) VALUES (0, 0)", database));
+      session.executeNonQueryStatement("flush");
+    }
+    pause(2000);
+
+    createTopic(topicName, database + ".**");
+    pause(1000);
+  }
+
+  private static SubscriptionTreePullConsumer createSubscribedConsumer(
+      String topicName, String consumerId, String consumerGroupId) throws Exception {
+    SubscriptionTreePullConsumer consumer = createConsumer(consumerId, consumerGroupId);
+    consumer.subscribe(topicName);
+    pause(3000);
+    return consumer;
+  }
+
+  private static void writeSequentialRowsAndFlush(
+      String database, int startTimestampInclusive, int rowCount) throws Exception {
+    try (ISession session = openSession()) {
+      for (int i = 0; i < rowCount; i++) {
+        long ts = startTimestampInclusive + i;
+        session.executeNonQueryStatement(
+            String.format("INSERT INTO %s.d1(time, s1) VALUES (%d, %d)", database, ts, ts * 10));
+      }
+      session.executeNonQueryStatement("flush");
+    }
+    pause(2000);
+  }
+
+  private static CommittedSnapshot pollUntilCommittedRows(
+      SubscriptionTreePullConsumer consumer,
+      String topicName,
+      int minimumRows,
+      int maxPollAttempts,
+      long pollTimeoutMs) {
+    int cumulativeRows = 0;
+    int consecutiveEmpty = 0;
+
+    for (int attempt = 1; attempt <= maxPollAttempts; attempt++) {
+      List<SubscriptionMessage> messages = consumer.poll(Duration.ofMillis(pollTimeoutMs));
+      if (messages.isEmpty()) {
+        consecutiveEmpty++;
+        if (consecutiveEmpty >= 5 && cumulativeRows > 0) {
+          break;
+        }
+        pause(1000);
+        continue;
+      }
+
+      consecutiveEmpty = 0;
+      for (SubscriptionMessage message : messages) {
+        int rowsInMessage = countRows(message);
+        consumer.commitSync(message);
+        cumulativeRows += rowsInMessage;
+        TopicProgress checkpoint = consumer.committedPositions(topicName);
+        System.out.println(
+            "    Captured committed checkpoint after "
+                + cumulativeRows
+                + " rows (last message="
+                + rowsInMessage
+                + ")");
+        if (cumulativeRows >= minimumRows) {
+          return new CommittedSnapshot(checkpoint, rowsInMessage, cumulativeRows);
+        }
+      }
+    }
+
+    throw new AssertionError(
+        "Unable to capture committed checkpoint after "
+            + minimumRows
+            + " rows; stopped at "
+            + cumulativeRows);
+  }
+
+  private static List<CommittedSnapshot> pollAndCaptureCommittedSnapshots(
+      SubscriptionTreePullConsumer consumer,
+      String topicName,
+      int maxPollAttempts,
+      long pollTimeoutMs) {
+    List<CommittedSnapshot> snapshots = new ArrayList<>();
+    int cumulativeRows = 0;
+    int consecutiveEmpty = 0;
+
+    for (int attempt = 1; attempt <= maxPollAttempts; attempt++) {
+      List<SubscriptionMessage> messages = consumer.poll(Duration.ofMillis(pollTimeoutMs));
+      if (messages.isEmpty()) {
+        consecutiveEmpty++;
+        if (consecutiveEmpty >= 3 && cumulativeRows > 0) {
+          break;
+        }
+        if (consecutiveEmpty >= 8 && cumulativeRows == 0) {
+          break;
+        }
+        pause(1000);
+        continue;
+      }
+
+      consecutiveEmpty = 0;
+      for (SubscriptionMessage message : messages) {
+        int rowsInMessage = countRows(message);
+        consumer.commitSync(message);
+        cumulativeRows += rowsInMessage;
+        snapshots.add(
+            new CommittedSnapshot(
+                consumer.committedPositions(topicName), rowsInMessage, cumulativeRows));
+      }
+    }
+
+    System.out.println(
+        "    Drained "
+            + cumulativeRows
+            + " rows across "
+            + snapshots.size()
+            + " committed messages");
+    return snapshots;
+  }
+
+  private static PolledMessageBatch pollFirstNonEmptyBatchWithoutCommit(
+      SubscriptionTreePullConsumer consumer, int maxPollAttempts, long pollTimeoutMs) {
+    for (int attempt = 1; attempt <= maxPollAttempts; attempt++) {
+      List<SubscriptionMessage> messages = consumer.poll(Duration.ofMillis(pollTimeoutMs));
+      if (messages.isEmpty()) {
+        pause(1000);
+        continue;
+      }
+
+      int totalRows = 0;
+      for (SubscriptionMessage message : messages) {
+        totalRows += countRows(message);
+      }
+      System.out.println(
+          "    Polled stale batch without commit: "
+              + messages.size()
+              + " messages, "
+              + totalRows
+              + " rows");
+      return new PolledMessageBatch(new ArrayList<>(messages), totalRows);
+    }
+
+    return new PolledMessageBatch(new ArrayList<>(), 0);
+  }
+
+  private static int totalRows(List<CommittedSnapshot> snapshots) {
+    return snapshots.isEmpty() ? 0 : snapshots.get(snapshots.size() - 1).cumulativeRows;
+  }
+
   // ======================================================================
   // High-signal 10-test suite wrappers
   // ======================================================================
@@ -475,18 +653,14 @@ public class ConsensusSubscriptionTest {
   }
 
   private static void testSeekAndPositionSemantics() throws Exception {
-    testSeek();
+    testSeekNavigationSemantics();
+    testSeekAfterCheckpointSemantics();
+    testSeekAfterWithStaleAckFencing();
   }
 
   private static void testAckNackAndPoisonSemantics() throws Exception {
     testCommitAfterUnsubscribe();
     testPoisonMessageDrop();
-  }
-
-  private static void testProcessorWatermarkAndMetadata() throws Exception {
-    testProcessorFramework();
-    testPollWithInfoWatermarkValue();
-    testWriterProgressFields();
   }
 
   // ======================================================================
@@ -855,7 +1029,7 @@ public class ConsensusSubscriptionTest {
    *
    * <ul>
    *   <li>Device-level: topic on d1.** does NOT deliver d2 data
-   *   <li>Timeseries-level: topic on d1.s1 — lenient check for s2 filtering
+   *   <li>Timeseries-level: topic on d1.s1 鈥?lenient check for s2 filtering
    * </ul>
    */
   private static void testPathFiltering() throws Exception {
@@ -915,7 +1089,7 @@ public class ConsensusSubscriptionTest {
       boolean hasS2 = result.seenColumns.stream().anyMatch(c -> c.contains(".s2"));
       if (hasS2) {
         System.out.println(
-            "  INFO: Both s1 and s2 received — converter uses device-level filtering only.");
+            "  INFO: Both s1 and s2 received 鈥?converter uses device-level filtering only.");
         assertAtLeast("Should have received d1 rows", 50, result.totalRows);
       } else {
         System.out.println("  Timeseries-level filtering verified: only s1 data received");
@@ -1078,7 +1252,7 @@ public class ConsensusSubscriptionTest {
   }
 
   // ======================================================================
-  // Test 7: Burst Write Gap Recovery (NEW — tests C2 fix)
+  // Test 7: Burst Write Gap Recovery (NEW 鈥?tests C2 fix)
   // ======================================================================
   /**
    * Tests that burst writing beyond the pending queue capacity (4096) does not cause data loss. The
@@ -1096,7 +1270,7 @@ public class ConsensusSubscriptionTest {
    * cannot guarantee gap occurrence on every run. Check server logs for "gap detected" / "Filling
    * from WAL" messages to confirm the gap path was exercised.
    *
-   * <p>Fix verified: C2 — gap entries are not skipped when WAL fill times out; they are deferred to
+   * <p>Fix verified: C2 鈥?gap entries are not skipped when WAL fill times out; they are deferred to
    * the next prefetch iteration.
    */
   private static void testBurstWriteGapRecovery() throws Exception {
@@ -1123,7 +1297,7 @@ public class ConsensusSubscriptionTest {
       Thread.sleep(3000);
 
       // Use multiple concurrent writer threads with individual SQL INSERTs.
-      // Each INSERT → 1 IoTConsensusServerImpl.write() → 1 pendingEntries.offer().
+      // Each INSERT 鈫?1 IoTConsensusServerImpl.write() 鈫?1 pendingEntries.offer().
       // With N threads writing concurrently, aggregate rate should exceed drain rate
       // and overflow the 4096-capacity queue, creating gaps.
       final int writerThreads = 4;
@@ -1179,7 +1353,7 @@ public class ConsensusSubscriptionTest {
         System.out.println("  WARNING: " + errorCount.get() + " writer threads encountered errors");
       }
 
-      // Do NOT add artificial delay — let the consumer compete with ongoing WAL writes
+      // Do NOT add artificial delay 鈥?let the consumer compete with ongoing WAL writes
       System.out.println(
           "  Polling (expecting " + totalRows + " rows, may need WAL gap recovery)...");
       System.out.println(
@@ -1197,14 +1371,14 @@ public class ConsensusSubscriptionTest {
   }
 
   // ======================================================================
-  // Test 8: Commit After Unsubscribe (NEW — tests H7 fix)
+  // Test 8: Commit After Unsubscribe (NEW 鈥?tests H7 fix)
   // ======================================================================
   /**
    * Tests that commit still works correctly after the consumer has unsubscribed (queue has been
    * torn down). The commit routing should use metadata-based topic config check instead of runtime
    * queue state.
    *
-   * <p>Fix verified: H7 — commit routes via isConsensusBasedTopic() instead of hasQueue().
+   * <p>Fix verified: H7 鈥?commit routes via isConsensusBasedTopic() instead of hasQueue().
    */
   private static void testCommitAfterUnsubscribe() throws Exception {
     String database = nextDatabase();
@@ -1273,7 +1447,7 @@ public class ConsensusSubscriptionTest {
       consumer.unsubscribe(topicName);
       Thread.sleep(2000);
 
-      // Now commit the previously polled messages — should NOT throw
+      // Now commit the previously polled messages 鈥?should NOT throw
       System.out.println(
           "  Committing " + uncommittedMessages.size() + " messages AFTER unsubscribe...");
       boolean commitSucceeded = true;
@@ -1286,7 +1460,7 @@ public class ConsensusSubscriptionTest {
         }
       }
 
-      // The commit may silently succeed or fail gracefully — the key is no crash
+      // The commit may silently succeed or fail gracefully 鈥?the key is no crash
       System.out.println("  Commit after unsubscribe completed. Success=" + commitSucceeded);
       assertTrue("Commit after unsubscribe should succeed without exception", commitSucceeded);
       System.out.println("  (Key: no exception crash, routing handled gracefully)");
@@ -1303,727 +1477,268 @@ public class ConsensusSubscriptionTest {
     }
   }
 
-  // ======================================================================
-  // Test 8: Seek (seekToBeginning, seekToEnd, seek by timestamp)
-  // ======================================================================
   /**
-   * Verifies all three seek operations in a single flow:
+   * Verifies:
    *
    * <ul>
-   *   <li>seekToBeginning — re-delivers previously committed data from earliest available position
-   *   <li>seekToEnd — skips all existing data, only new writes are received
-   *   <li>seek(timestamp) — positions at the approximate WAL entry matching the given timestamp
+   *   <li>seekToBeginning replays historical rows from the beginning of the topic
+   *   <li>seekToEnd suppresses old rows and only delivers future writes
+   *   <li>seek(topicProgress) resumes from a committed checkpoint without replaying earlier rows
    * </ul>
    */
-  private static void testSeek() throws Exception {
+  private static void testSeekNavigationSemantics() throws Exception {
     String database = nextDatabase();
     String topicName = nextTopic();
     String consumerGroupId = nextConsumerGroup();
     String consumerId = nextConsumerId();
     SubscriptionTreePullConsumer consumer = null;
 
+    final int initialRows = 1800;
+    final int rowsAfterSeekToEnd = 240;
+
     try {
-      // Step 0: Create DataRegion
-      try (ISession session = openSession()) {
-        createDatabase(session, database);
-        session.executeNonQueryStatement(
-            String.format("INSERT INTO %s.d1(time, s1) VALUES (0, 0)", database));
-        session.executeNonQueryStatement("flush");
-      }
-      Thread.sleep(2000);
+      bootstrapSeekTopic(database, topicName);
+      consumer = createSubscribedConsumer(topicName, consumerId, consumerGroupId);
 
-      // Step 1: Create topic + consumer + subscribe
-      System.out.println("  Step 1: Create topic and subscribe");
-      createTopic(topicName, database + ".**");
-      Thread.sleep(1000);
-
-      consumer = createConsumer(consumerId, consumerGroupId);
-      consumer.subscribe(topicName);
-      Thread.sleep(3000);
-
-      // Step 2: Write 1000 rows with timestamps 1000..1999 and poll+commit all
-      System.out.println("  Step 2: Write 1000 rows (timestamps 1000..1999) and poll+commit");
-      try (ISession session = openSession()) {
-        for (int i = 0; i < 1000; i++) {
-          long ts = 1000 + i;
-          session.executeNonQueryStatement(
-              String.format("INSERT INTO %s.d1(time, s1) VALUES (%d, %d)", database, ts, ts * 10));
-        }
-      }
-      Thread.sleep(2000);
-
-      PollResult firstPoll = pollUntilComplete(consumer, 1000, 120);
+      System.out.println("  Step 1: Write initial live rows and drain them");
+      writeSequentialRowsAndFlush(database, 1000, initialRows);
+      PollResult firstPoll = pollUntilComplete(consumer, initialRows, 120);
       System.out.println("  First poll: " + firstPoll.totalRows + " rows");
-      assertAtLeast("First poll should get rows", 1, firstPoll.totalRows);
+      assertEquals(
+          "Initial live poll should deliver exactly the rows written after subscribe",
+          initialRows,
+          firstPoll.totalRows);
 
-      // ------------------------------------------------------------------
-      // Step 3: seekToBeginning — should re-deliver data from the start
-      // ------------------------------------------------------------------
-      System.out.println("  Step 3: seekToBeginning → expect re-delivery");
+      System.out.println("  Step 2: seekToBeginning -> expect full replay");
       consumer.seekToBeginning(topicName);
-      Thread.sleep(2000);
+      pause(2000);
 
-      // expectedRows=1001: 1000 from Step 2 + 1 from Step 0 initial INSERT (if WAL not yet cleaned)
-      PollResult beginningPoll = pollUntilComplete(consumer, 1001, 120);
-      System.out.println("  After seekToBeginning: " + beginningPoll);
+      PollResult beginningPoll = pollUntilComplete(consumer, initialRows, 120);
+      System.out.println("  After seekToBeginning: " + beginningPoll.totalRows + " rows");
       assertAtLeast(
-          "seekToBeginning should re-deliver rows (WAL retention permitting)",
-          1,
+          "seekToBeginning should replay the rows written after subscribe",
+          initialRows,
+          beginningPoll.totalRows);
+      assertAtMost(
+          "seekToBeginning should replay at most one extra bootstrap row",
+          initialRows + 1,
           beginningPoll.totalRows);
 
-      // ------------------------------------------------------------------
-      // Step 4: seekToEnd — should receive nothing until new writes
-      // ------------------------------------------------------------------
-      System.out.println("  Step 4: seekToEnd → expect no old data");
+      System.out.println("  Step 3: seekToEnd -> expect no old data");
       consumer.seekToEnd(topicName);
-      Thread.sleep(2000);
+      pause(2000);
 
-      PollResult endPoll = new PollResult();
-      int consecutiveEmpty = 0;
-      for (int attempt = 0; attempt < 15; attempt++) {
-        List<SubscriptionMessage> msgs = consumer.poll(Duration.ofMillis(1000));
-        if (msgs.isEmpty()) {
-          consecutiveEmpty++;
-          if (consecutiveEmpty >= 5) break;
-          Thread.sleep(500);
-          continue;
-        }
-        consecutiveEmpty = 0;
-        for (SubscriptionMessage msg : msgs) {
-          for (SubscriptionResultSet ds : getResultSets(msg)) {
-            while (ds.hasNext()) {
-              ds.next();
-              endPoll.totalRows++;
-            }
-          }
-          consumer.commitSync(msg);
-        }
-      }
-      System.out.println("  After seekToEnd (no new writes): " + endPoll.totalRows + " rows");
-      // May occasionally be 1 due to prefetch thread race; tolerate small values
-      assertTrue("seekToEnd should yield at most 1 row (race tolerance)", endPoll.totalRows <= 1);
+      PollResult endPoll = pollUntilComplete(consumer, 0, 15, 1000, true);
+      System.out.println("  After seekToEnd with no new writes: " + endPoll.totalRows + " rows");
+      assertAtMost("seekToEnd should yield at most 1 race row", 1, endPoll.totalRows);
 
-      // Write 200 new rows — they should be received
-      System.out.println("  Writing 200 new rows after seekToEnd");
-      try (ISession session = openSession()) {
-        for (int i = 2000; i < 2200; i++) {
-          session.executeNonQueryStatement(
-              String.format("INSERT INTO %s.d1(time, s1) VALUES (%d, %d)", database, i, i * 10));
-        }
-      }
-      Thread.sleep(2000);
-
-      PollResult afterEndPoll = pollUntilComplete(consumer, 200, 120);
-      System.out.println("  After seekToEnd + new writes: " + afterEndPoll);
+      System.out.println("  Step 4: Write new rows after seekToEnd");
+      writeSequentialRowsAndFlush(database, 4000, rowsAfterSeekToEnd);
+      PollResult afterEndPoll = pollUntilComplete(consumer, rowsAfterSeekToEnd, 120);
+      System.out.println("  After seekToEnd + new writes: " + afterEndPoll.totalRows + " rows");
       assertEquals(
-          "Should receive exactly 200 new rows after seekToEnd", 200, afterEndPoll.totalRows);
+          "seekToEnd should only deliver rows written after the seek",
+          rowsAfterSeekToEnd,
+          afterEndPoll.totalRows);
 
-      // ------------------------------------------------------------------
-      // Step 5: seek(timestamp) — seek to midpoint timestamp 1500
-      // ------------------------------------------------------------------
-      System.out.println("  Step 5: seek(1500) → expect rows from near midpoint");
+      System.out.println("  Step 5: seek(committed checkpoint) -> expect remaining tail only");
       consumer.seekToBeginning(topicName);
-      Thread.sleep(2000);
+      pause(2000);
 
-      PollResult midpointPoll = new PollResult();
-      TopicProgress midpointProgress = null;
-      consecutiveEmpty = 0;
-      for (int attempt = 0; attempt < 20 && midpointProgress == null; attempt++) {
-        List<SubscriptionMessage> msgs = consumer.poll(Duration.ofMillis(1000));
-        if (msgs.isEmpty()) {
-          consecutiveEmpty++;
-          if (consecutiveEmpty >= 5) break;
-          Thread.sleep(500);
-          continue;
-        }
-        consecutiveEmpty = 0;
-        for (SubscriptionMessage msg : msgs) {
-          for (SubscriptionResultSet ds : getResultSets(msg)) {
-            while (ds.hasNext()) {
-              ds.next();
-              midpointPoll.totalRows++;
-            }
-          }
-          consumer.commitSync(msg);
-          if (midpointPoll.totalRows >= 500) {
-            midpointProgress = consumer.committedPositions(topicName);
-            break;
-          }
-        }
-      }
-      assertTrue("Should capture a midpoint TopicProgress", midpointProgress != null);
-
-      consumer.seek(topicName, midpointProgress);
-      Thread.sleep(2000);
-
-      // With 1000 rows (ts=1000..1999) + 200 rows (ts=2000..2199), sparse mapping (interval=100)
-      // produces ~12 samples. seek(1500) should position near ts=1500.
-      // Minimum expected: 500 rows (ts=1500..1999) + 200 rows (ts=2000..2199) = 700
-      // May get more due to sparse mapping imprecision (up to ~100 extra rows)
-      PollResult afterSeek = pollUntilComplete(consumer, 1200, 120);
-      final int minimumTailRows = Math.max(1, 1200 - midpointPoll.totalRows);
+      CommittedSnapshot midpointCheckpoint =
+          pollUntilCommittedRows(consumer, topicName, initialRows / 2, 60, 1000);
+      List<CommittedSnapshot> remainingTail =
+          pollAndCaptureCommittedSnapshots(consumer, topicName, 60, 1000);
+      int expectedRemainingRows = totalRows(remainingTail);
       System.out.println(
-          "  After seek(topicProgress): "
-              + afterSeek.totalRows
-              + " rows from midpoint progress "
-              + midpointPoll.totalRows);
+          "  Midpoint checkpoint after "
+              + midpointCheckpoint.cumulativeRows
+              + " rows, expected remaining tail="
+              + expectedRemainingRows);
       assertAtLeast(
-          "seek(topicProgress) should deliver the remaining tail rows",
-          minimumTailRows,
+          "seek(topicProgress) scenario should leave rows after the checkpoint",
+          1,
+          expectedRemainingRows);
+
+      consumer.seekAfter(topicName, midpointCheckpoint.progress);
+      pause(2000);
+
+      PollResult afterSeek = pollUntilComplete(consumer, expectedRemainingRows, 120);
+      System.out.println("  After seek(topicProgress): " + afterSeek.totalRows + " rows");
+      assertEquals(
+          "seek(topicProgress) should resume from the committed checkpoint",
+          expectedRemainingRows,
           afterSeek.totalRows);
+    } finally {
+      cleanup(consumer, topicName, database);
+    }
+  }
 
-      // ------------------------------------------------------------------
-      // Step 6: seek(future timestamp) — expect 0 rows
-      // ------------------------------------------------------------------
-      System.out.println("  Step 6: seek(99999) → expect no data");
+  /**
+   * Verifies:
+   *
+   * <ul>
+   *   <li>seekAfter(topicProgress) replays only rows strictly after the checkpoint
+   *   <li>Repeating seekAfter with the same checkpoint is stable
+   *   <li>seekAfter(tail) suppresses history but still allows future rows through
+   * </ul>
+   */
+  private static void testSeekAfterCheckpointSemantics() throws Exception {
+    String database = nextDatabase();
+    String topicName = nextTopic();
+    String consumerGroupId = nextConsumerGroup();
+    String consumerId = nextConsumerId();
+    SubscriptionTreePullConsumer consumer = null;
+
+    final int totalRows = 2000;
+    final int futureRows = 160;
+
+    try {
+      bootstrapSeekTopic(database, topicName);
+      consumer = createSubscribedConsumer(topicName, consumerId, consumerGroupId);
+
+      System.out.println("  Step 1: Write rows and capture a committed checkpoint");
+      writeSequentialRowsAndFlush(database, 1000, totalRows);
+      CommittedSnapshot checkpoint =
+          pollUntilCommittedRows(consumer, topicName, totalRows / 3, 60, 1000);
+      List<CommittedSnapshot> drainedTail =
+          pollAndCaptureCommittedSnapshots(consumer, topicName, 80, 1000);
+      int expectedTailRows = totalRows(drainedTail);
+      System.out.println(
+          "  Checkpoint after "
+              + checkpoint.cumulativeRows
+              + " rows, tail after checkpoint="
+              + expectedTailRows);
+      assertAtLeast(
+          "seekAfter(topicProgress) scenario should leave rows after the checkpoint",
+          1,
+          expectedTailRows);
+
+      int writerFrontierCount = countWriterFrontiers(checkpoint.progress);
+      assertAtLeast("Committed checkpoint should contain writer frontiers", 1, writerFrontierCount);
+
+      System.out.println("  Step 2: seekAfter(midpoint checkpoint) -> expect exact tail replay");
+      consumer.seekAfter(topicName, checkpoint.progress);
+      pause(2000);
+
+      PollResult firstReplay = pollUntilComplete(consumer, expectedTailRows, 120);
+      System.out.println("  After first seekAfter(checkpoint): " + firstReplay.totalRows + " rows");
+      assertEquals(
+          "seekAfter(topicProgress) should replay exactly the tail after the checkpoint",
+          expectedTailRows,
+          firstReplay.totalRows);
+
+      System.out.println("  Step 3: repeat seekAfter(checkpoint) -> expect same exact replay");
+      consumer.seekAfter(topicName, checkpoint.progress);
+      pause(2000);
+
+      PollResult repeatedReplay = pollUntilComplete(consumer, expectedTailRows, 120);
+      System.out.println(
+          "  After repeated seekAfter(checkpoint): " + repeatedReplay.totalRows + " rows");
+      assertEquals(
+          "Repeating seekAfter(topicProgress) should be stable",
+          expectedTailRows,
+          repeatedReplay.totalRows);
+
+      System.out.println("  Step 4: seekAfter(tail) -> expect no historical rows");
       TopicProgress tailProgress = consumer.committedPositions(topicName);
-      assertTrue("Tail TopicProgress should be available after replay", tailProgress != null);
+      assertTrue("Tail checkpoint should be non-null", tailProgress != null);
       consumer.seekAfter(topicName, tailProgress);
-      Thread.sleep(2000);
+      pause(2000);
 
-      PollResult futurePoll = new PollResult();
-      consecutiveEmpty = 0;
-      for (int attempt = 0; attempt < 10; attempt++) {
-        List<SubscriptionMessage> msgs = consumer.poll(Duration.ofMillis(1000));
-        if (msgs.isEmpty()) {
-          consecutiveEmpty++;
-          if (consecutiveEmpty >= 5) break;
-          Thread.sleep(500);
-          continue;
-        }
-        consecutiveEmpty = 0;
-        for (SubscriptionMessage msg : msgs) {
-          for (SubscriptionResultSet ds : getResultSets(msg)) {
-            while (ds.hasNext()) {
-              ds.next();
-              futurePoll.totalRows++;
-            }
-          }
-          consumer.commitSync(msg);
-        }
-      }
-      System.out.println(
-          "  After seekAfter(tail topicProgress): " + futurePoll.totalRows + " rows");
-      // seek(99999) should behave like seekToEnd — 0 rows normally,
-      // but may yield up to 1 row due to prefetch thread race (same as seekToEnd)
-      assertTrue(
-          "seekAfter(tail topicProgress) should yield at most 1 row (race tolerance)",
-          futurePoll.totalRows <= 1);
+      PollResult noHistory = pollUntilComplete(consumer, 0, 15, 1000, true);
+      System.out.println("  After seekAfter(tail): " + noHistory.totalRows + " rows");
+      assertAtMost("seekAfter(tail) should yield at most 1 race row", 1, noHistory.totalRows);
 
-      // ------------------------------------------------------------------
-      // Step 7: seek(topicProgress) — seek by per-region writer progress
-      // ------------------------------------------------------------------
-      System.out.println(
-          "  Step 7: seekToBeginning first, then poll to collect per-region positions");
-      consumer.seekToBeginning(topicName);
-      Thread.sleep(2000);
-
-      List<TopicProgress> positionSnapshots = new ArrayList<>();
-      List<Integer> rowsPerMsg = new ArrayList<>();
-      int totalRowsCollected = 0;
-      consecutiveEmpty = 0;
-
-      for (int attempt = 0; attempt < 60; attempt++) {
-        List<SubscriptionMessage> msgs = consumer.poll(Duration.ofMillis(2000));
-        if (msgs.isEmpty()) {
-          consecutiveEmpty++;
-          if (consecutiveEmpty >= 5 && totalRowsCollected > 0) break;
-          Thread.sleep(500);
-          continue;
-        }
-        consecutiveEmpty = 0;
-        for (SubscriptionMessage msg : msgs) {
-          int msgRows = 0;
-          for (SubscriptionResultSet ds : getResultSets(msg)) {
-            while (ds.hasNext()) {
-              ds.next();
-              msgRows++;
-            }
-          }
-          consumer.commitSync(msg);
-          rowsPerMsg.add(msgRows);
-          totalRowsCollected += msgRows;
-          positionSnapshots.add(consumer.committedPositions(topicName));
-        }
-      }
-      System.out.println(
-          "  Collected "
-              + totalRowsCollected
-              + " rows in "
-              + positionSnapshots.size()
-              + " messages");
-
-      if (positionSnapshots.size() >= 2) {
-        int midIdx = positionSnapshots.size() / 2;
-        TopicProgress seekPositions = positionSnapshots.get(midIdx);
-        int writerFrontierCount = countWriterFrontiers(seekPositions);
-        assertTrue(
-            "committed TopicProgress should contain at least one writer frontier",
-            writerFrontierCount > 0);
-        System.out.println(
-            "  seekAfter(topicProgress.regionCount="
-                + seekPositions.getRegionProgress().size()
-                + ", writerFrontierCount="
-                + writerFrontierCount
-                + ") [msg "
-                + midIdx
-                + "/"
-                + positionSnapshots.size()
-                + "]");
-
-        int expectedFromMid = 0;
-        for (int i = midIdx; i < rowsPerMsg.size(); i++) {
-          expectedFromMid += rowsPerMsg.get(i);
-        }
-
-        consumer.seekAfter(topicName, seekPositions);
-        Thread.sleep(2000);
-
-        PollResult afterSeekEpoch = pollUntilComplete(consumer, expectedFromMid, 60);
-        System.out.println(
-            "  After seekAfter(topicProgress): "
-                + afterSeekEpoch.totalRows
-                + " rows (expected ~"
-                + expectedFromMid
-                + ")");
-        assertAtLeast(
-            "seekAfter(topicProgress) should deliver at least half the tail data",
-            expectedFromMid / 2,
-            afterSeekEpoch.totalRows);
-      } else {
-        System.out.println(
-            "  SKIP seekAfter(topicProgress) sub-test: only "
-                + positionSnapshots.size()
-                + " messages");
-      }
-
-      System.out.println("  testSeek passed all sub-tests!");
+      System.out.println("  Step 5: Write new rows after seekAfter(tail)");
+      writeSequentialRowsAndFlush(database, 5000, futureRows);
+      PollResult futureOnly = pollUntilComplete(consumer, futureRows, 120);
+      System.out.println("  After seekAfter(tail) + new writes: " + futureOnly.totalRows + " rows");
+      assertEquals(
+          "seekAfter(tail) should only deliver rows written after the seek",
+          futureRows,
+          futureOnly.totalRows);
     } finally {
       cleanup(consumer, topicName, database);
     }
   }
 
-  // ======================================================================
-  // Test 9: Processor Framework (ColumnAlignProcessor + WatermarkProcessor + PollResult)
-  // ======================================================================
   /**
    * Verifies:
    *
    * <ul>
-   *   <li>ColumnAlignProcessor forward-fills null columns per device
-   *   <li>pollWithInfo() returns PollResult with correct metadata
-   *   <li>WatermarkProcessor buffers and emits based on watermark
-   *   <li>Processor chaining works correctly
-   *   <li>Idempotent double-commit does not throw
+   *   <li>seekAfter fences off stale in-flight commit contexts from before the seek
+   *   <li>Committing old polled messages after the seek does not affect the new replay frontier
+   *   <li>The full tail after the checkpoint is replayed exactly once
    * </ul>
    */
-  private static void testProcessorFramework() throws Exception {
-    String database = nextDatabase();
-    String topicName = nextTopic();
-    String consumerGroupId = nextConsumerGroup();
-    String consumerId = nextConsumerId();
-    SubscriptionTreePullConsumer consumer = null;
-    SubscriptionTreePullConsumer consumer2 = null;
-
-    try {
-      // Step 1: Create timeseries with 3 measurements
-      System.out.println("  Step 1: Creating timeseries with 3 measurements");
-      try (ISession session = openSession()) {
-        createDatabase(session, database);
-        session.executeNonQueryStatement(
-            String.format(
-                "CREATE TIMESERIES %s.d1.s1 WITH DATATYPE=INT32, ENCODING=PLAIN", database));
-        session.executeNonQueryStatement(
-            String.format(
-                "CREATE TIMESERIES %s.d1.s2 WITH DATATYPE=INT32, ENCODING=PLAIN", database));
-        session.executeNonQueryStatement(
-            String.format(
-                "CREATE TIMESERIES %s.d1.s3 WITH DATATYPE=INT32, ENCODING=PLAIN", database));
-      }
-
-      // Step 2: Create topic and subscribe
-      System.out.println("  Step 2: Creating topic and subscribing");
-      createTopic(topicName, database + ".d1.**");
-      Thread.sleep(1000);
-
-      // Build consumer with ColumnAlignProcessor
-      consumer =
-          new SubscriptionTreePullConsumer.Builder()
-              .host(HOST)
-              .port(PORT)
-              .consumerId(consumerId)
-              .consumerGroupId(consumerGroupId)
-              .autoCommit(false)
-              .buildPullConsumer();
-      consumer.addProcessor(new ColumnAlignProcessor());
-      consumer.open();
-      consumer.subscribe(topicName);
-      Thread.sleep(3000);
-
-      // Step 3: Write a Tablet with 2 rows — row 2 has s2/s3 null (marked in BitMap).
-      // Using insertTablet ensures both rows share the same Tablet with all 3 columns,
-      // so ColumnAlignProcessor can forward-fill the nulls.
-      // Note: Tablet.addTimestamp() initializes BitMaps with all positions marked as null,
-      // and addValue() unmarks the set positions; columns not set remain marked as null.
-      System.out.println("  Step 3: Writing partial-column data via insertTablet");
-      try (ISession session = openSession()) {
-        List<IMeasurementSchema> schemas =
-            Arrays.asList(
-                new MeasurementSchema("s1", TSDataType.INT32),
-                new MeasurementSchema("s2", TSDataType.INT32),
-                new MeasurementSchema("s3", TSDataType.INT32));
-        Tablet tablet = new Tablet(database + ".d1", schemas, 2);
-
-        // Row 0 (time=100): all columns present
-        tablet.addTimestamp(0, 100);
-        tablet.addValue("s1", 0, 10);
-        tablet.addValue("s2", 0, 20);
-        tablet.addValue("s3", 0, 30);
-
-        // Row 1 (time=200): only s1 — s2/s3 remain null (BitMap marked by addTimestamp)
-        tablet.addTimestamp(1, 200);
-        tablet.addValue("s1", 1, 11);
-
-        tablet.setRowSize(2);
-        session.insertTablet(tablet);
-        session.executeNonQueryStatement("flush");
-      }
-      Thread.sleep(2000);
-
-      // Step 4: Poll with pollWithInfo and verify ColumnAlign + PollResult
-      System.out.println("  Step 4: Polling with pollWithInfo");
-      int totalRows = 0;
-      boolean foundForwardFill = false;
-      org.apache.iotdb.session.subscription.payload.PollResult lastPollResult = null;
-      List<SubscriptionMessage> allMessages = new ArrayList<>();
-
-      for (int attempt = 0; attempt < 30; attempt++) {
-        org.apache.iotdb.session.subscription.payload.PollResult pollResult =
-            consumer.pollWithInfo(Duration.ofMillis(1000));
-        lastPollResult = pollResult;
-
-        assertTrue("PollResult should not be null", pollResult != null);
-        // With only ColumnAlignProcessor (non-buffering), bufferedCount should be 0
-        assertEquals("ColumnAlignProcessor should not buffer", 0, pollResult.getBufferedCount());
-
-        List<SubscriptionMessage> msgs = pollResult.getMessages();
-        if (msgs.isEmpty()) {
-          if (totalRows >= 2) break;
-          Thread.sleep(1000);
-          continue;
-        }
-
-        allMessages.addAll(msgs);
-        for (SubscriptionMessage msg : msgs) {
-          for (SubscriptionResultSet ds : getResultSets(msg)) {
-            while (ds.hasNext()) {
-              org.apache.tsfile.read.common.RowRecord row = ds.nextRecord();
-              totalRows++;
-              List<org.apache.tsfile.read.common.Field> fields = row.getFields();
-              System.out.println("      Row: time=" + row.getTimestamp() + ", fields=" + fields);
-              // Check if forward-fill happened: at timestamp 200, s2 and s3 should be filled
-              if (row.getTimestamp() == 200 && fields.size() >= 3) {
-                // After ColumnAlignProcessor, s2 (index 1) and s3 (index 2) should be non-null
-                if (fields.get(1) != null
-                    && fields.get(1).getDataType() != null
-                    && fields.get(2) != null
-                    && fields.get(2).getDataType() != null) {
-                  foundForwardFill = true;
-                  System.out.println("      >>> Forward-fill confirmed at timestamp 200");
-                }
-              }
-            }
-          }
-        }
-      }
-
-      assertEquals("Expected 2 rows total", 2, totalRows);
-      assertTrue(
-          "ColumnAlignProcessor should forward-fill nulls at timestamp 200", foundForwardFill);
-      System.out.println("  ColumnAlignProcessor: PASSED");
-
-      // Step 5: Idempotent double-commit
-      System.out.println("  Step 5: Testing idempotent double-commit");
-      if (!allMessages.isEmpty()) {
-        SubscriptionMessage firstMsg = allMessages.get(0);
-        consumer.commitSync(firstMsg);
-        // Second commit of same message should not throw
-        consumer.commitSync(firstMsg);
-        System.out.println("    Double-commit succeeded (idempotent)");
-      }
-
-      // Step 6: Test with WatermarkProcessor chained
-      System.out.println("  Step 6: Verifying WatermarkProcessor buffering");
-      // Close current consumer and create a new one with WatermarkProcessor
-      consumer.unsubscribe(topicName);
-      consumer.close();
-
-      String consumerId2 = consumerId + "_wm";
-      consumer2 =
-          new SubscriptionTreePullConsumer.Builder()
-              .host(HOST)
-              .port(PORT)
-              .consumerId(consumerId2)
-              .consumerGroupId(consumerGroupId + "_wm")
-              .autoCommit(false)
-              .buildPullConsumer();
-      // Chain: ColumnAlign → Watermark(5s out-of-order, 10s timeout)
-      consumer2.addProcessor(new ColumnAlignProcessor());
-      consumer2.addProcessor(new WatermarkProcessor(5000, 10000));
-      consumer2.open();
-      consumer2.subscribe(topicName);
-      Thread.sleep(3000);
-
-      // Write data that should be buffered by watermark
-      try (ISession session = openSession()) {
-        session.executeNonQueryStatement(
-            String.format(
-                "INSERT INTO %s.d1(time, s1, s2, s3) VALUES (1000, 100, 200, 300)", database));
-        session.executeNonQueryStatement("flush");
-      }
-      Thread.sleep(2000);
-
-      // First poll — data may be buffered by WatermarkProcessor
-      org.apache.iotdb.session.subscription.payload.PollResult wmResult =
-          consumer2.pollWithInfo(Duration.ofMillis(2000));
-      System.out.println(
-          "    WatermarkProcessor poll: messages="
-              + wmResult.getMessages().size()
-              + ", buffered="
-              + wmResult.getBufferedCount());
-      // The watermark processor may buffer or emit depending on timing;
-      // we just verify the API works and returns valid metadata
-      assertTrue("PollResult bufferedCount should be >= 0", wmResult.getBufferedCount() >= 0);
-
-      consumer = null; // first consumer already closed in Step 6 setup
-
-      System.out.println("  testProcessorFramework passed all sub-tests!");
-    } finally {
-      cleanup(consumer, topicName, database);
-      cleanup(consumer2, topicName, database);
-    }
-  }
-
-  // ======================================================================
-  // Test 10: pollWithInfo() returns real watermark (not -1) when
-  //          WatermarkProcessor is configured and server injects
-  //          WATERMARK events.
-  // ======================================================================
-  /**
-   * Verifies:
-   *
-   * <ul>
-   *   <li>pollWithInfo().getWatermark() returns a value > Long.MIN_VALUE when WatermarkProcessor is
-   *       configured and the server has watermark injection enabled
-   *   <li>Watermark is monotonically non-decreasing across consecutive polls
-   *   <li>Without WatermarkProcessor, watermark stays at -1
-   * </ul>
-   *
-   * <p><b>Prerequisite:</b> Server must have {@code subscription_consensus_watermark_enabled=true}
-   * and {@code subscription_consensus_watermark_interval_ms} set to a reasonable value (e.g. 2000).
-   * If watermark injection is disabled, the test will warn but not fail.
-   */
-  private static void testPollWithInfoWatermarkValue() throws Exception {
+  private static void testSeekAfterWithStaleAckFencing() throws Exception {
     String database = nextDatabase();
     String topicName = nextTopic();
     String consumerGroupId = nextConsumerGroup();
     String consumerId = nextConsumerId();
     SubscriptionTreePullConsumer consumer = null;
 
+    final int totalRows = 2400;
+
     try {
-      // Step 0: Create DataRegion with two devices
-      try (ISession session = openSession()) {
-        createDatabase(session, database);
-        session.executeNonQueryStatement(
-            String.format("INSERT INTO %s.d1(time, s1) VALUES (0, 0)", database));
-        session.executeNonQueryStatement(
-            String.format("INSERT INTO %s.d2(time, s1) VALUES (0, 0)", database));
-        session.executeNonQueryStatement("flush");
-      }
-      Thread.sleep(2000);
+      bootstrapSeekTopic(database, topicName);
+      consumer = createSubscribedConsumer(topicName, consumerId, consumerGroupId);
 
-      // Step 1: Create topic and subscribe with WatermarkProcessor
-      System.out.println("  Step 1: Creating topic and subscribing with WatermarkProcessor");
-      createTopic(topicName, database + ".**");
-      Thread.sleep(1000);
+      System.out.println("  Step 1: Write rows and commit part of them");
+      writeSequentialRowsAndFlush(database, 1000, totalRows);
+      CommittedSnapshot committedCheckpoint =
+          pollUntilCommittedRows(consumer, topicName, totalRows / 3, 60, 1000);
+      assertTrue(
+          "Committed checkpoint should not be null",
+          committedCheckpoint.progress != null
+              && committedCheckpoint.progress.getRegionProgress() != null
+              && !committedCheckpoint.progress.getRegionProgress().isEmpty());
 
-      consumer =
-          new SubscriptionTreePullConsumer.Builder()
-              .host(HOST)
-              .port(PORT)
-              .consumerId(consumerId)
-              .consumerGroupId(consumerGroupId)
-              .autoCommit(false)
-              .buildPullConsumer();
-      // maxOutOfOrderness=0: watermark = min(sources) directly, no tolerance.
-      // timeout=30s: safety net in case watermark doesn't advance.
-      consumer.addProcessor(new WatermarkProcessor(0, 30000));
-      consumer.open();
-      consumer.subscribe(topicName);
-      Thread.sleep(3000);
+      System.out.println("  Step 2: Poll a stale batch without committing it");
+      PolledMessageBatch staleBatch = pollFirstNonEmptyBatchWithoutCommit(consumer, 30, 1000);
+      assertAtLeast(
+          "Stale-ack scenario should poll at least one row after the checkpoint",
+          1,
+          staleBatch.totalRows);
 
-      // Step 2: Write data intentionally out-of-order in write time:
-      //   First write d1 with LATER timestamps [2000..2049]
-      //   Then  write d2 with EARLIER timestamps [1000..1049]
-      // Server pushes d1's data first, d2's second into subscription queue.
-      // Without WatermarkProcessor, consumer sees d1 (maxTs~2049) before d2 (maxTs~1049) — out of
-      // order.
-      // With WatermarkProcessor, output should be reordered: d2 (maxTs~1049) before d1
-      // (maxTs~2049).
+      int expectedTailRows = totalRows - committedCheckpoint.cumulativeRows;
       System.out.println(
-          "  Step 2: Writing d1 ts=[2000..2049] first, then d2 ts=[1000..1049] — intentional reverse order");
-      try (ISession session = openSession()) {
-        // Write d1 FIRST with LATER timestamps
-        for (int i = 0; i < 50; i++) {
-          long ts = 2000 + i;
-          session.executeNonQueryStatement(
-              String.format("INSERT INTO %s.d1(time, s1) VALUES (%d, %d)", database, ts, ts));
-        }
-        session.executeNonQueryStatement("flush");
+          "  Committed checkpoint after "
+              + committedCheckpoint.cumulativeRows
+              + " rows, stale batch="
+              + staleBatch.totalRows
+              + ", expected replay tail="
+              + expectedTailRows);
+      assertAtLeast(
+          "Stale-ack replay should include the stale batch rows",
+          staleBatch.totalRows,
+          expectedTailRows);
 
-        // Write d2 SECOND with EARLIER timestamps
-        for (int i = 0; i < 50; i++) {
-          long ts = 1000 + i;
-          session.executeNonQueryStatement(
-              String.format("INSERT INTO %s.d2(time, s1) VALUES (%d, %d)", database, ts, ts));
-        }
-        session.executeNonQueryStatement("flush");
-      }
-      Thread.sleep(3000);
+      System.out.println("  Step 3: seekAfter(checkpoint), then commit stale messages");
+      consumer.seekAfter(topicName, committedCheckpoint.progress);
+      pause(2000);
 
-      // Step 3: Poll with pollWithInfo and verify:
-      //   a) Watermark advances (not -1)
-      //   b) Watermark is monotonically non-decreasing
-      //   c) Messages are released in maxTimestamp non-decreasing order (reordering verified)
-      System.out.println("  Step 3: Polling and verifying watermark + output order");
-      long lastWatermark = Long.MIN_VALUE;
-      boolean watermarkAdvanced = false;
-      int totalRows = 0;
-      long prevMaxTs = Long.MIN_VALUE;
-      boolean orderingVerified = false; // true once we see d2 (ts<2000) before d1 (ts>=2000)
-      boolean seenLowTs = false; // saw timestamps < 2000 (d2)
-      boolean seenHighTsAfterLow = false; // saw timestamps >= 2000 (d1) AFTER seeing d2 data
-      int messageIndex = 0;
-
-      for (int attempt = 0; attempt < 40; attempt++) {
-        org.apache.iotdb.session.subscription.payload.PollResult pollResult =
-            consumer.pollWithInfo(Duration.ofMillis(2000));
-        long wm = pollResult.getWatermark();
-        System.out.println(
-            "    Poll attempt "
-                + attempt
-                + ": watermark="
-                + wm
-                + ", msgs="
-                + pollResult.getMessages().size());
-
-        if (wm > Long.MIN_VALUE) {
-          watermarkAdvanced = true;
-          assertTrue(
-              "Watermark should be monotonically non-decreasing: last="
-                  + lastWatermark
-                  + " current="
-                  + wm,
-              wm >= lastWatermark);
-          lastWatermark = wm;
-        }
-
-        for (SubscriptionMessage msg : pollResult.getMessages()) {
-          // Extract maxTimestamp from this message's tablets to verify ordering
-          long msgMaxTs = Long.MIN_VALUE;
-          long msgMinTs = Long.MAX_VALUE;
-          int msgRows = 0;
-          for (SubscriptionResultSet ds : getResultSets(msg)) {
-            while (ds.hasNext()) {
-              long rowTs = ds.nextRecord().getTimestamp();
-              msgMaxTs = Math.max(msgMaxTs, rowTs);
-              msgMinTs = Math.min(msgMinTs, rowTs);
-              totalRows++;
-              msgRows++;
-            }
-          }
-
-          if (msgRows > 0) {
-            System.out.println(
-                "    Message #"
-                    + messageIndex
-                    + ": rows="
-                    + msgRows
-                    + " ts range=["
-                    + msgMinTs
-                    + ".."
-                    + msgMaxTs
-                    + "]");
-
-            // Track ordering: WatermarkProcessor's PriorityQueue outputs by maxTimestamp ascending
-            if (msgMaxTs >= prevMaxTs) {
-              // Expected: non-decreasing maxTimestamp order
-            } else {
-              // If WatermarkProcessor works correctly, this should not happen
-              System.out.println(
-                  "    WARNING: Out-of-order output detected: prevMaxTs="
-                      + prevMaxTs
-                      + " > currentMaxTs="
-                      + msgMaxTs);
-            }
-            prevMaxTs = msgMaxTs;
-
-            // Detect reordering: d2 data (ts<2000) should appear before d1 data (ts>=2000)
-            if (msgMaxTs < 2000) {
-              seenLowTs = true;
-            }
-            if (seenLowTs && msgMinTs >= 2000) {
-              seenHighTsAfterLow = true;
-              orderingVerified = true;
-            }
-            messageIndex++;
-          }
-          consumer.commitSync(msg);
-        }
-
-        if (totalRows >= 100 && watermarkAdvanced) break;
+      for (SubscriptionMessage staleMessage : staleBatch.messages) {
+        consumer.commitSync(staleMessage);
       }
 
+      PollResult replayAfterSeek = pollUntilComplete(consumer, expectedTailRows, 120);
       System.out.println(
-          "  Results: totalRows="
-              + totalRows
-              + ", watermarkAdvanced="
-              + watermarkAdvanced
-              + ", finalWatermark="
-              + lastWatermark
-              + ", orderingVerified="
-              + orderingVerified);
-
-      assertAtLeast("Should have received data rows", 1, totalRows);
-
-      if (watermarkAdvanced) {
-        System.out.println("  PASSED: pollWithInfo().getWatermark() returned real watermark value");
-        assertTrue("Final watermark should be > Long.MIN_VALUE", lastWatermark > Long.MIN_VALUE);
-      } else {
-        System.out.println(
-            "  WARNING: Watermark never advanced from -1. "
-                + "Check server config: subscription_consensus_watermark_enabled=true");
-      }
-
-      if (orderingVerified) {
-        System.out.println(
-            "  PASSED: Reordering verified — d2 data (ts<2000) was emitted before d1 data (ts>=2000)");
-      } else if (seenLowTs && !seenHighTsAfterLow) {
-        System.out.println(
-            "  NOTE: Only saw low-ts data (d2). d1 data may not have been released yet (watermark not high enough).");
-      } else {
-        System.out.println(
-            "  NOTE: Could not verify reordering — server may have delivered data in-order already.");
-        // This is not a failure: in single-node the server might batch d1+d2 into one message,
-        // or deliver them in timestamp order rather than write order.
-      }
+          "  After seekAfter(checkpoint) with stale commits: "
+              + replayAfterSeek.totalRows
+              + " rows");
+      assertEquals(
+          "Stale commits from the old generation must not reduce the replayed tail",
+          expectedTailRows,
+          replayAfterSeek.totalRows);
     } finally {
       cleanup(consumer, topicName, database);
     }
   }
 
   // ======================================================================
-  // Test 11: pollWithInfo(topicNames, timeoutMs) — topic-level filtering
+  // Test 11: pollWithInfo(topicNames, timeoutMs) 鈥?topic-level filtering
   // ======================================================================
   /**
    * Verifies:
@@ -2110,7 +1825,7 @@ public class ConsensusSubscriptionTest {
       System.out.println("  Topic1-only poll received: " + d1Rows + " rows");
       assertEquals("Topic1 should deliver exactly 30 rows from d1", 30, d1Rows);
 
-      // Step 5: pollWithInfo for topicName2 only — should get d2 data
+      // Step 5: pollWithInfo for topicName2 only 鈥?should get d2 data
       System.out.println("  Step 5: pollWithInfo for topic2 (d2) only");
       Set<String> topic2Only = new HashSet<>(Arrays.asList(topicName2));
       int d2Rows = 0;
@@ -2162,7 +1877,7 @@ public class ConsensusSubscriptionTest {
   }
 
   // ======================================================================
-  // Test 12: Poison Message Drop — messages nacked beyond threshold
+  // Test 12: Poison Message Drop 鈥?messages nacked beyond threshold
   //          are force-acked (dropped) and don't block new data.
   // ======================================================================
   /**
@@ -2216,7 +1931,7 @@ public class ConsensusSubscriptionTest {
       }
       Thread.sleep(2000);
 
-      // Step 3: Poll without commit — repeatedly. Each poll-then-timeout cycle
+      // Step 3: Poll without commit 鈥?repeatedly. Each poll-then-timeout cycle
       // causes the server to nack the in-flight event and re-enqueue it.
       // After POISON_MESSAGE_NACK_THRESHOLD (10) nacks, the message should be dropped.
       System.out.println(
@@ -2233,13 +1948,13 @@ public class ConsensusSubscriptionTest {
               totalPoisonPolled++;
             }
           }
-          // Deliberately NOT committing — this is the "nack" behavior
+          // Deliberately NOT committing 鈥?this is the "nack" behavior
         }
         System.out.println(
             "    Round " + round + ": received " + roundRows + " rows (NOT committing)");
         if (msgs.isEmpty() && round > 11) {
           // After threshold exceeded, the message may have been dropped
-          System.out.println("    No messages — poison message may have been force-acked");
+          System.out.println("    No messages 鈥?poison message may have been force-acked");
           break;
         }
         Thread.sleep(1000);
@@ -2263,154 +1978,13 @@ public class ConsensusSubscriptionTest {
       // The exact count may be slightly more than 50 if the old poison data leaked through
       // in an earlier round, but the queue must not be permanently blocked.
       assertAtLeast(
-          "Consumer must not be permanently blocked by poison message — new data should arrive",
+          "Consumer must not be permanently blocked by poison message 鈥?new data should arrive",
           1,
           newResult.totalRows);
       System.out.println(
           "  testPoisonMessageDrop passed: consumer received "
               + newResult.totalRows
               + " new rows after poison message handling");
-    } finally {
-      cleanup(consumer, topicName, database);
-    }
-  }
-
-  // ======================================================================
-  // Test 13: Serialization V2 Fields — regionId, epoch, dataNodeId
-  //          are properly populated in polled messages' SubscriptionCommitContext.
-  // ======================================================================
-  /**
-   * Verifies:
-   *
-   * <ul>
-   *   <li>SubscriptionCommitContext.getWriterId() is non-null for consensus messages
-   *   <li>SubscriptionCommitContext.getWriterProgress() is non-null for consensus messages
-   *   <li>SubscriptionCommitContext.getWriterId().getRegionId() stays aligned with the region
-   *   <li>These writer-progress fields survive the serialize/deserialize round-trip through RPC
-   * </ul>
-   */
-  private static void testWriterProgressFields() throws Exception {
-    String database = nextDatabase();
-    String topicName = nextTopic();
-    String consumerGroupId = nextConsumerGroup();
-    String consumerId = nextConsumerId();
-    SubscriptionTreePullConsumer consumer = null;
-
-    try {
-      // Step 0: Create DataRegion
-      try (ISession session = openSession()) {
-        createDatabase(session, database);
-        session.executeNonQueryStatement(
-            String.format("INSERT INTO %s.d1(time, s1) VALUES (0, 0)", database));
-        session.executeNonQueryStatement("flush");
-      }
-      Thread.sleep(2000);
-
-      // Step 1: Create topic and subscribe
-      System.out.println("  Step 1: Creating topic and subscribing");
-      createTopic(topicName, database + ".**");
-      Thread.sleep(1000);
-
-      consumer = createConsumer(consumerId, consumerGroupId);
-      consumer.subscribe(topicName);
-      Thread.sleep(3000);
-
-      // Step 2: Write data
-      System.out.println("  Step 2: Writing 20 rows");
-      try (ISession session = openSession()) {
-        for (int i = 1; i <= 20; i++) {
-          session.executeNonQueryStatement(
-              String.format("INSERT INTO %s.d1(time, s1) VALUES (%d, %d)", database, i, i * 10));
-        }
-      }
-      Thread.sleep(2000);
-
-      // Step 3: Poll and check writer-progress fields in SubscriptionCommitContext
-      System.out.println("  Step 3: Polling and verifying writer-progress fields in CommitContext");
-      int totalRows = 0;
-      int messagesChecked = 0;
-      boolean foundWriterProgress = false;
-
-      for (int attempt = 0; attempt < 30; attempt++) {
-        List<SubscriptionMessage> msgs = consumer.poll(Duration.ofMillis(2000));
-        if (msgs.isEmpty()) {
-          if (totalRows > 0) break;
-          Thread.sleep(1000);
-          continue;
-        }
-
-        for (SubscriptionMessage msg : msgs) {
-          SubscriptionCommitContext ctx = msg.getCommitContext();
-          messagesChecked++;
-
-          // Check writer-progress fields and their compatibility projections
-          String regionId = ctx.getRegionId();
-          int dataNodeId = ctx.getDataNodeId();
-          WriterId writerId = ctx.getWriterId();
-          WriterProgress writerProgress = ctx.getWriterProgress();
-          long physicalTime =
-              writerProgress != null ? writerProgress.getPhysicalTime() : Long.MIN_VALUE;
-
-          System.out.println(
-              "    Message "
-                  + messagesChecked
-                  + ": regionId="
-                  + regionId
-                  + ", physicalTime="
-                  + physicalTime
-                  + ", writerId="
-                  + writerId
-                  + ", writerProgress="
-                  + writerProgress
-                  + ", dataNodeId="
-                  + dataNodeId
-                  + ", topicName="
-                  + ctx.getTopicName()
-                  + ", consumerGroupId="
-                  + ctx.getConsumerGroupId());
-
-          // regionId must be non-null and non-empty
-          assertTrue(
-              "regionId should be non-null for consensus message",
-              regionId != null && !regionId.isEmpty());
-          assertTrue("writerId should be non-null for consensus message", writerId != null);
-          assertTrue(
-              "writerProgress should be non-null for consensus message", writerProgress != null);
-          assertEquals("regionId should match writerId.regionId", writerId.getRegionId(), regionId);
-          assertEquals(
-              "physicalTime should mirror writerProgress.physicalTime",
-              writerProgress.getPhysicalTime(),
-              physicalTime);
-          foundWriterProgress = true;
-
-          // physicalTime must be >= 0 (0 for initial/default state, timestamp-based for later)
-          assertTrue("physicalTime should be >= 0, got " + physicalTime, physicalTime >= 0);
-
-          // dataNodeId must be positive (valid node ID)
-          assertTrue("dataNodeId should be > 0, got " + dataNodeId, dataNodeId > 0);
-
-          for (SubscriptionResultSet ds : getResultSets(msg)) {
-            while (ds.hasNext()) {
-              ds.next();
-              totalRows++;
-            }
-          }
-          consumer.commitSync(msg);
-        }
-      }
-
-      System.out.println(
-          "  Checked "
-              + messagesChecked
-              + " messages, "
-              + totalRows
-              + " rows. foundWriterProgress="
-              + foundWriterProgress);
-      assertAtLeast("Should have received data rows", 1, totalRows);
-      assertTrue(
-          "Should have found writer-progress metadata in at least one message",
-          foundWriterProgress);
-      System.out.println("  testWriterProgressFields passed!");
     } finally {
       cleanup(consumer, topicName, database);
     }

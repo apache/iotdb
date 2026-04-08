@@ -174,10 +174,6 @@ public class SubscriptionConfig {
     return COMMON_CONFIG.getSubscriptionConsensusPrefetchingQueueCapacity();
   }
 
-  public boolean isSubscriptionConsensusEpochOrderingEnabled() {
-    return COMMON_CONFIG.isSubscriptionConsensusEpochOrderingEnabled();
-  }
-
   public long getSubscriptionConsensusWatermarkIntervalMs() {
     if (!COMMON_CONFIG.isSubscriptionConsensusWatermarkEnabled()) {
       return -1;

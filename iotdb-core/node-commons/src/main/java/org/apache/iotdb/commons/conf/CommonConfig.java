@@ -403,9 +403,7 @@ public class CommonConfig {
 
   private int subscriptionConsensusPrefetchingQueueCapacity = 256;
 
-  private boolean subscriptionConsensusEpochOrderingEnabled = true;
-
-  private boolean subscriptionConsensusWatermarkEnabled = true;
+  private boolean subscriptionConsensusWatermarkEnabled = false;
 
   private long subscriptionConsensusWatermarkIntervalMs = 1000;
 
@@ -2578,15 +2576,6 @@ public class CommonConfig {
       final int subscriptionConsensusPrefetchingQueueCapacity) {
     this.subscriptionConsensusPrefetchingQueueCapacity =
         subscriptionConsensusPrefetchingQueueCapacity;
-  }
-
-  public boolean isSubscriptionConsensusEpochOrderingEnabled() {
-    return subscriptionConsensusEpochOrderingEnabled;
-  }
-
-  public void setSubscriptionConsensusEpochOrderingEnabled(
-      final boolean subscriptionConsensusEpochOrderingEnabled) {
-    this.subscriptionConsensusEpochOrderingEnabled = subscriptionConsensusEpochOrderingEnabled;
   }
 
   public boolean isSubscriptionConsensusWatermarkEnabled() {
