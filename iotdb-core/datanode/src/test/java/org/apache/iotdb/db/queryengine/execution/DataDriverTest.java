@@ -22,7 +22,9 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
@@ -53,7 +55,6 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import com.google.common.util.concurrent.ListenableFuture;
 import io.airlift.units.Duration;
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.exception.write.WriteProcessException;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.column.IntColumn;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -93,7 +94,11 @@ public class DataDriverTest {
           TimeUnit.MILLISECONDS);
 
   @Before
-  public void setUp() throws MetadataException, IOException, WriteProcessException {
+  public void setUp()
+      throws MetadataException,
+          IOException,
+          WriteProcessException,
+          org.apache.tsfile.exception.write.WriteProcessException {
     IoTDBDescriptor.getInstance().getConfig().setDriverTaskExecutionTimeSliceInMs(10000);
     SeriesReaderTestUtil.setUp(
         measurementSchemas, deviceIds, seqResources, unSeqResources, DATA_DRIVER_TEST_SG);
@@ -252,13 +257,13 @@ public class DataDriverTest {
   }
 
   @Test
-  public void testCallIsFinishedBeforeDataSourcePrepared() {
+  public void testCallIsFinishedBeforeDataSourcePrepared() throws IllegalPathException {
     ExecutorService instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
     try {
-      IFullPath measurementPath1 =
-          new NonAlignedFullPath(
-              IDeviceID.Factory.DEFAULT_FACTORY.create(DATA_DRIVER_TEST_SG + ".device0"),
+      MeasurementPath measurementPath1 =
+          new MeasurementPath(
+              new PartialPath(DATA_DRIVER_TEST_SG + ".device0"),
               new MeasurementSchema("sensor0", TSDataType.INT32));
       Set<String> allSensors = new HashSet<>();
       allSensors.add("sensor0");
@@ -297,9 +302,9 @@ public class DataDriverTest {
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
-      IFullPath measurementPath2 =
-          new NonAlignedFullPath(
-              IDeviceID.Factory.DEFAULT_FACTORY.create(DATA_DRIVER_TEST_SG + ".device0"),
+      MeasurementPath measurementPath2 =
+          new MeasurementPath(
+              new PartialPath(DATA_DRIVER_TEST_SG + ".device0"),
               new MeasurementSchema("sensor1", TSDataType.INT32));
       SeriesScanOperator seriesScanOperator2 =
           new SeriesScanOperator(
@@ -337,7 +342,7 @@ public class DataDriverTest {
       Mockito.when(
               dataRegion.query(
                   eq(driverContext.getPaths()),
-                  eq(IDeviceID.Factory.DEFAULT_FACTORY.create(deviceId)),
+                  eq(deviceId),
                   eq(fragmentInstanceContext),
                   Mockito.isNull(),
                   Mockito.isNull(),
