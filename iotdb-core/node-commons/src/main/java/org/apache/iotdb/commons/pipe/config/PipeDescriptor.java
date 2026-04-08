@@ -101,6 +101,15 @@ public class PipeDescriptor {
             properties.getProperty(
                 "pipe_air_gap_receiver_port",
                 Integer.toString(config.getPipeAirGapReceiverPort()))));
+    config.setPipeAirGapRetryLocalIntervalMs(
+        Long.parseLong(
+            properties.getProperty(
+                "pipe_air_gap_retry_local_interval_ms",
+                Long.toString(config.getPipeAirGapRetryLocalIntervalMs()))));
+    config.setPipeAirGapRetryMaxMs(
+        Long.parseLong(
+            properties.getProperty(
+                "pipe_air_gap_retry_max_ms", Long.toString(config.getPipeAirGapRetryMaxMs()))));
 
     config.setPipeMetaReportMaxLogNumPerRound(
         Double.parseDouble(
@@ -370,7 +379,7 @@ public class PipeDescriptor {
                     properties.getProperty(
                         "pipe_connector_rpc_thrift_compression_enabled",
                         String.valueOf(config.isPipeConnectorRPCThriftCompressionEnabled())))));
-    config.setPipeAsyncConnectorMaxRetryExecutionTimeMsPerCall(
+    config.setPipeAsyncSinkMaxRetryExecutionTimeMsPerCall(
         Long.parseLong(
             Optional.ofNullable(
                     properties.getProperty("pipe_async_sink_max_retry_execution_time_ms_per_call"))
