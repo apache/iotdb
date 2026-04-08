@@ -117,6 +117,8 @@ public abstract class AbstractDataTool {
   protected static int linesPerFailedFile = 10000;
   protected static String successDir = "success/";
   protected static String timestampPrecision = "ms";
+  protected static String objectFilePaths = null;
+
   protected static String failedFileDirectory = null;
   protected static ImportTsFileOperation failOperation;
   protected static ZoneId zoneId = ZoneId.systemDefault();
@@ -182,13 +184,17 @@ public abstract class AbstractDataTool {
         trustStorePwd = cliCtx.getLineReader().readLine("please input your trust_store_pwd:", '\0');
       }
     }
-    boolean hasPw = commandLine.hasOption(Constants.PW_ARGS);
-    if (hasPw) {
-      String inputPassword = commandLine.getOptionValue(Constants.PW_ARGS);
-      if (inputPassword != null) {
+    if (commandLine.hasOption(Constants.PW_ARGS)) {
+      final String inputPassword = commandLine.getOptionValue(Constants.PW_ARGS);
+      if (StringUtils.isNotBlank(inputPassword)) {
         password = inputPassword;
       } else {
-        password = cliCtx.getLineReader().readLine("please input your password:", '\0');
+        final String promptedPassword =
+            cliCtx.getLineReader().readLine("please input your password:", '\0');
+        password =
+            StringUtils.isNotBlank(promptedPassword)
+                ? promptedPassword
+                : Constants.PW_DEFAULT_VALUE;
       }
     } else {
       password = Constants.PW_DEFAULT_VALUE;

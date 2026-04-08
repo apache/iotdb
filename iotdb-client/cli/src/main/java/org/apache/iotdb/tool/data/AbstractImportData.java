@@ -23,14 +23,20 @@ import org.apache.iotdb.cli.utils.IoTPrinter;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.tool.common.Constants;
+import org.apache.iotdb.tool.common.ImportTsFileOperation;
 import org.apache.iotdb.tool.tsfile.ImportTsFileScanTool;
+
+import org.apache.tsfile.external.commons.lang3.StringUtils;
 
 import java.io.File;
 import java.nio.file.FileAlreadyExistsException;
+import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.SimpleFileVisitor;
 import java.nio.file.StandardCopyOption;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -65,8 +71,9 @@ public abstract class AbstractImportData extends AbstractDataTool implements Run
         }
       }
     } catch (Exception e) {
+      final String currentFile = file == null ? "unknown" : file.getName();
       ioTPrinter.println(
-          String.format("[%s] - Unexpected error occurred: %s", file.getName(), e.getMessage()));
+          String.format("[%s] - Unexpected error occurred: %s", currentFile, e.getMessage()));
     }
   }
 
@@ -89,11 +96,16 @@ public abstract class AbstractImportData extends AbstractDataTool implements Run
               ioTPrinter.println("ImportData thread join interrupted: " + e.getMessage());
             }
           });
+      finalizeGlobalObjectDirectory();
       ioTPrinter.println(Constants.IMPORT_COMPLETELY);
     }
   }
 
   public static void init(AbstractImportData instance) {
+    loadFileFailedNum.reset();
+    loadFileSuccessfulNum.reset();
+    processingLoadFailedFileSuccessfulNum.reset();
+    processingLoadSuccessfulFileSuccessfulNum.reset();
     instance.new ThreadManager().asyncImportDataFiles();
   }
 
@@ -103,11 +115,39 @@ public abstract class AbstractImportData extends AbstractDataTool implements Run
 
   protected abstract void importFromCsvFile(File file);
 
+  /** Escapes content inside a SQL single-quoted string literal (double single-quotes). */
+  protected static String escapeLoadTsFileStringLiteralContent(final String s) {
+    if (s == null) {
+      return "";
+    }
+    return s.replace("'", "''");
+  }
+
+  /**
+   * LOAD TSFILE: {@code LOAD 'path' [ WITH ('object-file-path'='...') ]}.
+   *
+   * <p>Tree and relational grammars both support optional {@code WITH (...)}; only adds {@code
+   * object-file-path} when configured.
+   */
+  protected static String buildLoadTsFileSql(final File file, final String objectFilePaths) {
+    final StringBuilder sb =
+        new StringBuilder("load '")
+            .append(escapeLoadTsFileStringLiteralContent(file.getAbsolutePath()))
+            .append("'");
+    if (StringUtils.isNotBlank(objectFilePaths)) {
+      sb.append(" with ('object-file-path'='")
+          .append(escapeLoadTsFileStringLiteralContent(objectFilePaths))
+          .append("')");
+    }
+    return sb.toString();
+  }
+
   protected void processSuccessFile(String file) {
     loadFileSuccessfulNum.increment();
     if (fileType.equalsIgnoreCase(Constants.TSFILE_SUFFIXS)) {
       try {
         processingFile(file, true);
+        processPerFileObjectDirectory(file, true);
         processingLoadSuccessfulFileSuccessfulNum.increment();
         ioTPrinter.println("Processed success file [ " + file + " ] successfully!");
       } catch (final Exception processSuccessException) {
@@ -121,14 +161,10 @@ public abstract class AbstractImportData extends AbstractDataTool implements Run
   }
 
   protected void processingFile(final String file, final boolean isSuccess) {
-    final String relativePath = file.substring(ImportTsFileScanTool.getSourceFullPathLength() + 1);
-    final Path sourcePath = Paths.get(file);
+    Path sourcePath = Paths.get(file);
 
-    final String target =
-        isSuccess
-            ? successDir
-            : failDir + File.separator + relativePath.replace(File.separator, "_");
-    final Path targetPath = Paths.get(target);
+    Path targetPath = isSuccess ? Paths.get(successDir) : Paths.get(failDir);
+    String target = targetPath.toString();
 
     final String RESOURCE = ".resource";
     Path sourceResourcePath = Paths.get(sourcePath + RESOURCE);
@@ -204,13 +240,22 @@ public abstract class AbstractImportData extends AbstractDataTool implements Run
       case MV:
         {
           try {
-            Files.move(sourcePath, targetPath, StandardCopyOption.REPLACE_EXISTING);
-            if (null != sourceResourcePath) {
-              Files.move(
-                  sourceResourcePath, targetResourcePath, StandardCopyOption.REPLACE_EXISTING);
+            Path realTargetPath = targetPath.resolve(sourcePath.getFileName());
+            if (Files.notExists(targetPath)) {
+              Files.createDirectories(targetPath);
             }
-            if (null != sourceModsPath) {
-              Files.move(sourceModsPath, targetModsPath, StandardCopyOption.REPLACE_EXISTING);
+            Files.move(sourcePath, realTargetPath, StandardCopyOption.REPLACE_EXISTING);
+            if (sourceResourcePath != null) {
+              Files.move(
+                  sourceResourcePath,
+                  targetPath.resolve(sourceResourcePath.getFileName()),
+                  StandardCopyOption.REPLACE_EXISTING);
+            }
+            if (sourceModsPath != null) {
+              Files.move(
+                  sourceModsPath,
+                  targetPath.resolve(sourceModsPath.getFileName()),
+                  StandardCopyOption.REPLACE_EXISTING);
             }
           } catch (final Exception e) {
             ioTPrinter.println(String.format("Failed to move file: %s", e.getMessage()));
@@ -236,6 +281,7 @@ public abstract class AbstractImportData extends AbstractDataTool implements Run
 
       try {
         processingFile(filePath, false);
+        processPerFileObjectDirectory(filePath, false);
         processingLoadFailedFileSuccessfulNum.increment();
         ioTPrinter.println("Processed fail file [ " + filePath + " ] successfully!");
       } catch (final Exception processFailException) {
@@ -251,5 +297,135 @@ public abstract class AbstractImportData extends AbstractDataTool implements Run
     } catch (final Exception e1) {
       ioTPrinter.println("Unexpected error occurred: " + e1.getMessage());
     }
+  }
+
+  private static void finalizeGlobalObjectDirectory() {
+    if (!Constants.TSFILE_SUFFIXS.equalsIgnoreCase(fileType)
+        || StringUtils.isBlank(AbstractDataTool.objectFilePaths)) {
+      return;
+    }
+    final Path sourceObjectDir = Paths.get(AbstractDataTool.objectFilePaths);
+    if (!Files.isDirectory(sourceObjectDir)) {
+      return;
+    }
+    final long failed = loadFileFailedNum.sum();
+    final long succeeded = loadFileSuccessfulNum.sum();
+    // Global object handling policy:
+    // - all succeeded: apply success operation
+    // - all failed: apply fail operation
+    // - partial success/failed: do nothing
+    if (failed > 0 && succeeded > 0) {
+      return;
+    }
+    if (failed == 0 && succeeded == 0) {
+      return;
+    }
+    final boolean allSucceeded = failed == 0;
+    final ImportTsFileOperation operation = allSucceeded ? successOperation : failOperation;
+    final String targetRoot = allSucceeded ? successDir : failDir;
+    final Path targetObjectDir = Paths.get(targetRoot, sourceObjectDir.getFileName().toString());
+    try {
+      processObjectDirectory(sourceObjectDir, targetObjectDir, operation);
+    } catch (Exception e) {
+      ioTPrinter.println(
+          "Failed to process global object directory [ "
+              + sourceObjectDir
+              + " ]: "
+              + e.getMessage());
+    }
+  }
+
+  private static void processPerFileObjectDirectory(final String filePath, final boolean isSuccess)
+      throws Exception {
+    if (!Constants.TSFILE_SUFFIXS.equalsIgnoreCase(fileType)
+        || !StringUtils.isBlank(AbstractDataTool.objectFilePaths)) {
+      return;
+    }
+    Path tsFilePath = Paths.get(filePath);
+    String fileName = tsFilePath.getFileName().toString();
+    String baseName =
+        fileName.endsWith("." + Constants.TSFILE_SUFFIXS)
+            ? fileName.substring(0, fileName.lastIndexOf("." + Constants.TSFILE_SUFFIXS))
+            : fileName;
+
+    Path sourceObjectDir = tsFilePath.resolveSibling(baseName);
+    if (!Files.isDirectory(sourceObjectDir)) {
+      return;
+    }
+
+    Path rootSourceDir = Paths.get(ImportTsFileScanTool.getSourceFullPath());
+    Path relativePath = rootSourceDir.relativize(tsFilePath);
+
+    Path objectRelativePath = relativePath.resolveSibling(baseName);
+
+    Path targetRootDir = Paths.get(isSuccess ? successDir : failDir);
+    Path targetObjectDir = targetRootDir.resolve(objectRelativePath);
+    processObjectDirectory(
+        sourceObjectDir, targetObjectDir, isSuccess ? successOperation : failOperation);
+  }
+
+  private static void processObjectDirectory(
+      final Path sourceDir, final Path targetDir, final ImportTsFileOperation operation)
+      throws Exception {
+    switch (operation) {
+      case NONE:
+        return;
+      case DELETE:
+        deleteDirectoryRecursively(sourceDir);
+        return;
+      case MV:
+        Files.createDirectories(targetDir.getParent());
+        Files.move(sourceDir, targetDir, StandardCopyOption.REPLACE_EXISTING);
+        return;
+      case CP:
+      case HARDLINK:
+        copyDirectoryRecursively(sourceDir, targetDir);
+        return;
+      default:
+        return;
+    }
+  }
+
+  private static void copyDirectoryRecursively(final Path sourceDir, final Path targetDir)
+      throws Exception {
+    Files.walkFileTree(
+        sourceDir,
+        new SimpleFileVisitor<Path>() {
+          @Override
+          public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs)
+              throws java.io.IOException {
+            final Path relative = sourceDir.relativize(dir);
+            Files.createDirectories(targetDir.resolve(relative));
+            return FileVisitResult.CONTINUE;
+          }
+
+          @Override
+          public FileVisitResult visitFile(Path file, BasicFileAttributes attrs)
+              throws java.io.IOException {
+            final Path relative = sourceDir.relativize(file);
+            Files.copy(file, targetDir.resolve(relative), StandardCopyOption.REPLACE_EXISTING);
+            return FileVisitResult.CONTINUE;
+          }
+        });
+  }
+
+  private static void deleteDirectoryRecursively(final Path sourceDir) throws Exception {
+    Files.walkFileTree(
+        sourceDir,
+        new SimpleFileVisitor<Path>() {
+          @Override
+          public FileVisitResult visitFile(Path file, BasicFileAttributes attrs)
+              throws java.io.IOException {
+            Files.deleteIfExists(file);
+            return FileVisitResult.CONTINUE;
+          }
+
+          @Override
+          public FileVisitResult postVisitDirectory(Path dir, java.io.IOException exc)
+              throws java.io.IOException {
+            Files.deleteIfExists(dir);
+            return FileVisitResult.CONTINUE;
+          }
+        });
   }
 }

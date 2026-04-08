@@ -292,6 +292,9 @@ public class ImportData extends AbstractDataTool {
     if (commandLine.getOptionValue(Constants.END_TIME_ARGS) != null) {
       endTime = commandLine.getOptionValue(Constants.END_TIME_ARGS);
     }
+    if (commandLine.getOptionValue(Constants.OBJECT_FILE_PATHS_ARGS) != null) {
+      objectFilePaths = commandLine.getOptionValue(Constants.OBJECT_FILE_PATHS_ARGS);
+    }
     try {
       isRemoteLoad = !NodeUrlUtils.containsLocalAddress(Collections.singletonList(host));
       if (!sqlDialectTree && isRemoteLoad && Constants.TSFILE_SUFFIXS.equalsIgnoreCase(fileType)) {

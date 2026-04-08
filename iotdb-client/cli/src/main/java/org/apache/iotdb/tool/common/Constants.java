@@ -201,6 +201,13 @@ public class Constants {
   public static final String TARGET_DIR_SUBSCRIPTION_DESC =
       "Target file directory.default ./target (optional)";
 
+  public static final String OBJECT_FILE_PATHS_ARGS = "o";
+  public static final String OBJECT_FILE_PATHS_NAME = "object-file-paths";
+  public static final String OBJECT_FILE_PATHS_DESC =
+      "Root directory for external Object (.bin) files; optional. (optional)";
+
+  public static final String PROMPT_IOTDB_PASSWORD = "please input your IoTDB password:";
+
   public static final String TARGET_PATH_ARGS = "path";
   public static final String TARGET_PATH_ARGS_NAME = "path_pattern";
   public static final String TARGET_PATH_NAME = "exportPathPattern";

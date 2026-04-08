@@ -76,6 +76,13 @@ public class ImportDataTree extends AbstractImportData {
           sessionPoolBuilder.useSSL(true).trustStore(trustStore).trustStorePwd(trustStorePwd);
     }
     sessionPool = sessionPoolBuilder.build();
+    // Fail fast on invalid credentials/network before file scanning and worker startup.
+    try (SessionDataSetWrapper ignored = sessionPool.executeQueryStatement("show databases")) {
+      // no-op
+    } catch (IoTDBConnectionException | StatementExecutionException e) {
+      ioTPrinter.println("Authentication or connection failed: " + e.getMessage());
+      System.exit(Constants.CODE_ERROR);
+    }
     sessionPool.setEnableQueryRedirection(false);
     if (timeZoneID != null) {
       sessionPool.setTimeZone(timeZoneID);
@@ -135,7 +142,7 @@ public class ImportDataTree extends AbstractImportData {
   }
 
   protected void importFromTsFile(File file) {
-    final String sql = "load '" + file + "' onSuccess=none ";
+    final String sql = buildLoadTsFileSql(file, objectFilePaths);
     try {
       sessionPool.executeNonQueryStatement(sql);
       processSuccessFile(file.getPath());

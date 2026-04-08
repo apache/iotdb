@@ -544,8 +544,6 @@ public enum PlanNodeType {
         return PathsUsingTemplateScanNode.deserialize(buffer);
       case 55:
         return LoadTsFilePieceNode.deserialize(buffer);
-      case 113:
-        return LoadTsFileObjectPieceNode.deserialize(buffer);
       case 56:
         return ConstructSchemaBlackListNode.deserialize(buffer);
       case 57:
@@ -655,6 +653,8 @@ public enum PlanNodeType {
         return ShowDiskUsageNode.deserialize(buffer);
       case 108:
         return CollectNode.deserialize(buffer);
+      case 109:
+        return LoadTsFileObjectPieceNode.deserialize(buffer);
       case 902:
         return CreateOrUpdateTableDeviceNode.deserialize(buffer);
       case 903:

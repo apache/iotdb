@@ -299,9 +299,19 @@ public class TabletObjectSplitIterator implements Iterator<Tablet>, AutoCloseabl
                 ObjectTypeUtils.readObjectContent(
                     searchRoot, relativePath, currentFileOffset, bytesToRead);
             totalBytesRead = byteBuffer.remaining();
+            if (byteBuffer.remaining() != bytesToRead) {
+              throw new IllegalStateException(
+                  String.format(
+                      "Invalid object content length, expected %d bytes but got %d bytes, "
+                          + "relativePath=%s, offset=%d, declaredFileLength=%d.",
+                      bytesToRead,
+                      byteBuffer.remaining(),
+                      relativePath,
+                      currentFileOffset,
+                      fileLength));
+            }
 
-            content = new byte[totalBytesRead];
-            byteBuffer.get(content);
+            content = byteBuffer.array();
           } catch (Exception e) {
             LOGGER.warn("Failed to read object content via ObjectTypeUtils.", e);
             throw new RuntimeException("Failed to read object content via ObjectTypeUtils.", e);

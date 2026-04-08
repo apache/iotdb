@@ -81,6 +81,13 @@ public class ImportDataTable extends AbstractImportData {
           tableSessionPoolBuilder.useSSL(true).trustStore(trustStore).trustStorePwd(trustStorePwd);
     }
     sessionPool = tableSessionPoolBuilder.build();
+    // Fail fast on invalid credentials/network before file scanning and worker startup.
+    try (ITableSession session = sessionPool.getSession()) {
+      // no-op
+    } catch (IoTDBConnectionException e) {
+      ioTPrinter.println("Authentication or connection failed: " + e.getMessage());
+      System.exit(Constants.CODE_ERROR);
+    }
     final File file = new File(targetPath);
     if (!file.isFile() && !file.isDirectory()) {
       ioTPrinter.println(String.format("Source file or directory %s does not exist", targetPath));
@@ -207,7 +214,7 @@ public class ImportDataTable extends AbstractImportData {
   }
 
   protected void importFromTsFile(File file) {
-    final String sql = "load '" + file + "'";
+    final String sql = buildLoadTsFileSql(file, objectFilePaths);
     try (ITableSession session = sessionPool.getSession()) {
       session.executeNonQueryStatement(sql);
       processSuccessFile(file.getPath());

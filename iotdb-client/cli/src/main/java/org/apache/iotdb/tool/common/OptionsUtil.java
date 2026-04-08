@@ -725,6 +725,15 @@ public class OptionsUtil extends Constants {
             .build();
 
     options.addOption(opTimestampPrecision);
+
+    Option opObjectPaths =
+        Option.builder(OBJECT_FILE_PATHS_ARGS)
+            .longOpt(OBJECT_FILE_PATHS_NAME)
+            .argName(OBJECT_FILE_PATHS_NAME)
+            .hasArg()
+            .desc(OBJECT_FILE_PATHS_DESC)
+            .build();
+    options.addOption(opObjectPaths);
     return options;
   }
 
@@ -964,6 +973,15 @@ public class OptionsUtil extends Constants {
             .build();
 
     options.addOption(opTimestampPrecision);
+
+    Option opObjectPathsTable =
+        Option.builder(OBJECT_FILE_PATHS_ARGS)
+            .longOpt(OBJECT_FILE_PATHS_NAME)
+            .argName(OBJECT_FILE_PATHS_NAME)
+            .hasArg()
+            .desc(OBJECT_FILE_PATHS_DESC)
+            .build();
+    options.addOption(opObjectPathsTable);
     return options;
   }
 

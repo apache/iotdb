@@ -27,6 +27,8 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
+import com.timecho.iotdb.db.storageengine.dataregion.Base32ObjectPath;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Binary;
 import org.junit.After;
 import org.junit.Assert;
@@ -385,6 +387,49 @@ public class IoTDBLoadObjectTableModelTsFileIT {
     }
   }
 
+  /**
+   * Deletes the object file for the largest timestamp (same layout as {@link
+   * StandardObjectTableModelTsFileGenerator}) and expects LOAD to fail because the TsFile still
+   * references that object.
+   */
+  @Test
+  public void testLoadSingleDeviceTriggerTsFileToTabletBranchFailsWhenMaxTimeObjectMissing()
+      throws Exception {
+    final File tsFile =
+        new File(tmpDir, "table-model-tsfile-to-tablet-mods-missing-max-obj.tsfile");
+    final long maxTimestamp = BASE_TIME + 9999 * WEEK_MS;
+
+    try (StandardObjectTableModelTsFileGenerator generator =
+        new StandardObjectTableModelTsFileGenerator(tsFile)) {
+
+      generator.writeDeviceData(TABLE_NAME, "device_01", BASE_TIME, maxTimestamp, WEEK_MS);
+      generator.writeDeviceData(TABLE_NAME, "device_02", BASE_TIME, maxTimestamp, WEEK_MS);
+    }
+
+    final File objectFileForMaxTime =
+        resolveObjectDataFile(tsFile, TABLE_NAME, "device_02", maxTimestamp);
+    Assert.assertTrue(
+        "Expected object file to exist before removal: " + objectFileForMaxTime.getAbsolutePath(),
+        objectFileForMaxTime.isFile());
+    Assert.assertTrue(
+        "Failed to delete object file: " + objectFileForMaxTime.getAbsolutePath(),
+        objectFileForMaxTime.delete());
+
+    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
+      initDatabase(session);
+      try {
+        session.executeNonQueryStatement(String.format("LOAD '%s'", tsFile.getAbsolutePath()));
+        Assert.fail(
+            "Expected exception to be thrown: 1100: Load: failed to load some TsFiles by converting them into tablets");
+      } catch (Exception e) {
+        Assert.assertTrue(
+            e.getMessage()
+                .contains(
+                    "1100: Load: failed to load some TsFiles by converting them into tablets"));
+      }
+    }
+  }
+
   /** Generates a list of expected times excluding the specified deleted time range. */
   private List<Long> generateExpectedTimes(
       long startTime, long endTime, long interval, long delStart, long delEnd) {
@@ -452,6 +497,24 @@ public class IoTDBLoadObjectTableModelTsFileIT {
   private void initDatabase(ITableSession session) throws Exception {
     session.executeNonQueryStatement("CREATE DATABASE IF NOT EXISTS " + DATABASE);
     session.executeNonQueryStatement("USE \"" + DATABASE + "\"");
+  }
+
+  /**
+   * Resolves the on-disk object file path for one OBJECT column value, matching {@link
+   * StandardObjectTableModelTsFileGenerator#writeDeviceData}.
+   */
+  private static File resolveObjectDataFile(
+      final File tsFile, final String tableName, final String tagValue, final long time) {
+    final String tsFileName = tsFile.getName();
+    final String dirName =
+        tsFileName.endsWith(".tsfile")
+            ? tsFileName.substring(0, tsFileName.length() - ".tsfile".length())
+            : tsFileName;
+    final IDeviceID deviceID =
+        IDeviceID.Factory.DEFAULT_FACTORY.create(new String[] {tableName, tagValue});
+    final Base32ObjectPath objectPath = new Base32ObjectPath(1, time, deviceID, "sensor_obj");
+    final String relativePath = dirName + File.separator + objectPath.getPath().toString();
+    return new File(tsFile.getParentFile(), relativePath);
   }
 
   private void deleteDatabase() {

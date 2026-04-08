@@ -22,6 +22,7 @@ package org.apache.iotdb.tool.tsfile;
 import org.apache.iotdb.cli.utils.IoTPrinter;
 import org.apache.iotdb.exception.ArgsErrorException;
 import org.apache.iotdb.session.Session;
+import org.apache.iotdb.tool.common.Constants;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
@@ -57,7 +58,7 @@ public abstract class AbstractTsFileTool {
   protected static String host = "127.0.0.1";
   protected static String port = "6667";
   protected static String username = "root";
-  protected static String password = "TimechoDB@2021";
+  protected static String password = Constants.PW_DEFAULT_VALUE;
 
   protected AbstractTsFileTool() {}
 
@@ -138,7 +139,7 @@ public abstract class AbstractTsFileTool {
             .optionalArg(true)
             .argName(PW_NAME)
             .hasArg()
-            .desc("Password (optional)")
+            .desc(Constants.PW_DESC)
             .build();
     options.addOption(opPassword);
   }

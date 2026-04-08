@@ -91,6 +91,10 @@ public class ImportTsFileScanTool {
         : new File(ImportTsFileScanTool.sourceFullPath).getParent().length();
   }
 
+  public static String getSourceFullPath() {
+    return ImportTsFileScanTool.sourceFullPath;
+  }
+
   public static int getTsFileQueueSize() {
     return ImportTsFileScanTool.tsfileQueue.size();
   }

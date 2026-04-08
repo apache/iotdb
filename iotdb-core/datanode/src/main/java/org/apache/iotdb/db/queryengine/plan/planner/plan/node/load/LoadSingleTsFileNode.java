@@ -103,6 +103,8 @@ public class LoadSingleTsFileNode extends WritePlanNode {
               ? fileName.substring(0, fileName.length() - TsFileConstant.TSFILE_SUFFIX.length())
               : fileName;
       this.objectFileSearchRoot = new File(tsFile.getParentFile(), objectDirName);
+    } else {
+      this.objectFileSearchRoot = objectFileSearchRoot;
     }
   }
 
