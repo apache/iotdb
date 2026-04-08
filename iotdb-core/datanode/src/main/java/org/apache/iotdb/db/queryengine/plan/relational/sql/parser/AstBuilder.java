@@ -2361,70 +2361,79 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
   @Override
   public Node visitQuerySpecification(RelationalSqlParser.QuerySpecificationContext ctx) {
-    Optional<Relation> from = Optional.empty();
-    List<SelectItem> selectItems = visit(ctx.selectItem(), SelectItem.class);
-
-    List<Relation> relations = visit(ctx.relation(), Relation.class);
-    if (!relations.isEmpty()) {
-      // synthesize implicit join nodes
-      Iterator<Relation> iterator = relations.iterator();
-      Relation relation = iterator.next();
-
-      while (iterator.hasNext()) {
-        relation = new Join(getLocation(ctx), Join.Type.IMPLICIT, relation, iterator.next());
-      }
-
-      from = Optional.of(relation);
-    }
-
-    return new QuerySpecification(
-        getLocation(ctx),
-        new Select(getLocation(ctx.SELECT()), isDistinct(ctx.setQuantifier()), selectItems),
-        from,
-        visitIfPresent(ctx.where, Expression.class),
-        visitIfPresent(ctx.groupBy(), GroupBy.class),
-        visitIfPresent(ctx.having, Expression.class),
-        Optional.empty(),
-        visit(ctx.windowDefinition(), WindowDefinition.class),
-        Optional.empty(),
-        Optional.empty(),
-        Optional.empty());
+    return buildQuerySpecification(
+        ctx,
+        ctx.selectItem(),
+        ctx.relation(),
+        ctx.SELECT(),
+        ctx.setQuantifier(),
+        ctx.where,
+        ctx.groupBy(),
+        ctx.having,
+        ctx.windowDefinition());
   }
 
   @Override
   public Node visitFromFirstQuerySpecification(
       RelationalSqlParser.FromFirstQuerySpecificationContext ctx) {
-    Optional<Relation> from = Optional.empty();
-    List<SelectItem> selectItems = visit(ctx.selectItem(), SelectItem.class);
+    return buildQuerySpecification(
+        ctx,
+        ctx.selectItem(),
+        ctx.relation(),
+        ctx.SELECT(),
+        ctx.setQuantifier(),
+        ctx.where,
+        ctx.groupBy(),
+        ctx.having,
+        ctx.windowDefinition());
+  }
 
-    List<Relation> relations = visit(ctx.relation(), Relation.class);
+  private Node buildQuerySpecification(
+      ParserRuleContext parserRuleContext,
+      List<RelationalSqlParser.SelectItemContext> selectItemContexts,
+      List<RelationalSqlParser.RelationContext> relationContexts,
+      TerminalNode selectNode,
+      RelationalSqlParser.SetQuantifierContext setQuantifier,
+      RelationalSqlParser.BooleanExpressionContext where,
+      RelationalSqlParser.GroupByContext groupBy,
+      RelationalSqlParser.BooleanExpressionContext having,
+      List<RelationalSqlParser.WindowDefinitionContext> windowDefinitions) {
+
+    Optional<Relation> from = Optional.empty();
+    List<SelectItem> selectItems = visit(selectItemContexts, SelectItem.class);
+
+    List<Relation> relations = visit(relationContexts, Relation.class);
     if (!relations.isEmpty()) {
       // synthesize implicit join nodes
       Iterator<Relation> iterator = relations.iterator();
       Relation relation = iterator.next();
 
       while (iterator.hasNext()) {
-        relation = new Join(getLocation(ctx), Join.Type.IMPLICIT, relation, iterator.next());
+        relation =
+            new Join(getLocation(parserRuleContext), Join.Type.IMPLICIT, relation, iterator.next());
       }
 
       from = Optional.of(relation);
     }
+
+    // If no SELECT items provided (FROM-first without SELECT clause), default to SELECT *
     if (selectItems.isEmpty()) {
-      selectItems = ImmutableList.of(new AllColumns(getLocation(ctx), ImmutableList.of()));
+      selectItems =
+          ImmutableList.of(new AllColumns(getLocation(parserRuleContext), ImmutableList.of()));
     }
 
     NodeLocation selectLocation =
-        ctx.SELECT() != null ? getLocation(ctx.SELECT()) : getLocation(ctx);
+        selectNode != null ? getLocation(selectNode) : getLocation(parserRuleContext);
 
     return new QuerySpecification(
-        getLocation(ctx),
-        new Select(selectLocation, isDistinct(ctx.setQuantifier()), selectItems),
+        getLocation(parserRuleContext),
+        new Select(selectLocation, isDistinct(setQuantifier), selectItems),
         from,
-        visitIfPresent(ctx.where, Expression.class),
-        visitIfPresent(ctx.groupBy(), GroupBy.class),
-        visitIfPresent(ctx.having, Expression.class),
+        visitIfPresent(where, Expression.class),
+        visitIfPresent(groupBy, GroupBy.class),
+        visitIfPresent(having, Expression.class),
         Optional.empty(),
-        visit(ctx.windowDefinition(), WindowDefinition.class),
+        visit(windowDefinitions, WindowDefinition.class),
         Optional.empty(),
         Optional.empty(),
         Optional.empty());
