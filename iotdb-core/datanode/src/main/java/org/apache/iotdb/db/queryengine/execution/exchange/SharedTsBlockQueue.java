@@ -160,9 +160,9 @@ public class SharedTsBlockQueue {
 
   /** Notify no more TsBlocks will be added to the queue. */
   public void setNoMoreTsBlocks(boolean noMoreTsBlocks) {
-    LOGGER.debug("[SignalNoMoreTsBlockOnQueue]");
+    LOGGER.info("[SignalNoMoreTsBlockOnQueue]");
     if (closed) {
-      LOGGER.debug("The queue has been destroyed when calling setNoMoreTsBlocks.");
+      LOGGER.info("The queue has been destroyed when calling setNoMoreTsBlocks.");
       return;
     }
     this.noMoreTsBlocks = noMoreTsBlocks;
@@ -222,9 +222,9 @@ public class SharedTsBlockQueue {
    * the returned future of last invocation completes.
    */
   public ListenableFuture<Void> add(TsBlock tsBlock) {
-    if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("[addTsBlock] TsBlock:{}", CommonUtils.toString(tsBlock));
-    }
+    //    if (LOGGER.isDebugEnabled()) {
+    LOGGER.info("[addTsBlock] TsBlock:{}", CommonUtils.toString(tsBlock));
+    //    }
     if (closed) {
       // queue may have been closed
       return immediateVoidFuture();

@@ -77,6 +77,7 @@ jobs:
         run: |
           mvn clean verify \
           -P with-integration-tests \
+          -Dit.test=IoTDBGapFillTableViewIT \
           -DskipUTs \
           -DintegrationTest.forkCount=2 -DDataNodeMaxHeapSize=1024 \
           -pl integration-test \

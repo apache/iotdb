@@ -124,10 +124,10 @@ public class LocalSourceHandle implements ISourceHandle {
         tsBlock = queue.remove();
       }
       if (tsBlock != null) {
-        if (LOGGER.isDebugEnabled()) {
-          LOGGER.debug(
-              "[GetTsBlockFromQueue] TsBlock:{} size:{}", currSequenceId, tsBlock.getSizeInBytes());
-        }
+        //        if (LOGGER.isDebugEnabled()) {
+        LOGGER.info(
+            "[GetTsBlockFromQueue] TsBlock:{} size:{}", currSequenceId, tsBlock.getSizeInBytes());
+        //        }
         currSequenceId++;
       }
       checkAndInvokeOnFinished();
@@ -141,9 +141,9 @@ public class LocalSourceHandle implements ISourceHandle {
   @Override
   public ByteBuffer getSerializedTsBlock() throws IoTDBException {
     TsBlock tsBlock = receive();
-    if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("[GetSerializedTsBlock] TsBlock:{}", CommonUtils.toString(tsBlock));
-    }
+    //    if (LOGGER.isDebugEnabled()) {
+    LOGGER.info("[GetSerializedTsBlock] TsBlock:{}", CommonUtils.toString(tsBlock));
+    //    }
 
     if (tsBlock != null) {
       long startTime = System.nanoTime();
@@ -195,9 +195,9 @@ public class LocalSourceHandle implements ISourceHandle {
   @Override
   public void abort() {
     try (SetThreadName sourceHandleName = new SetThreadName(threadName)) {
-      if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("[StartAbortLocalSourceHandle]");
-      }
+      //      if (LOGGER.isDebugEnabled()) {
+      LOGGER.info("[StartAbortLocalSourceHandle]");
+      //      }
       synchronized (queue) {
         synchronized (this) {
           if (aborted || closed) {
@@ -208,18 +208,18 @@ public class LocalSourceHandle implements ISourceHandle {
           sourceHandleListener.onAborted(this);
         }
       }
-      if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("[EndAbortLocalSourceHandle]");
-      }
+      //      if (LOGGER.isDebugEnabled()) {
+      LOGGER.info("[EndAbortLocalSourceHandle]");
+      //      }
     }
   }
 
   @Override
   public void abort(Throwable t) {
     try (SetThreadName sourceHandleName = new SetThreadName(threadName)) {
-      if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("[StartAbortLocalSourceHandle]");
-      }
+      //      if (LOGGER.isDebugEnabled()) {
+      LOGGER.info("[StartAbortLocalSourceHandle]");
+      //      }
       synchronized (queue) {
         synchronized (this) {
           if (aborted || closed) {
@@ -230,18 +230,18 @@ public class LocalSourceHandle implements ISourceHandle {
           sourceHandleListener.onAborted(this);
         }
       }
-      if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("[EndAbortLocalSourceHandle]");
-      }
+      //      if (LOGGER.isDebugEnabled()) {
+      LOGGER.info("[EndAbortLocalSourceHandle]");
+      //      }
     }
   }
 
   @Override
   public void close() {
     try (SetThreadName sourceHandleName = new SetThreadName(threadName)) {
-      if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("[StartCloseLocalSourceHandle]");
-      }
+      //      if (LOGGER.isDebugEnabled()) {
+      LOGGER.info("[StartCloseLocalSourceHandle]");
+      //      }
       synchronized (queue) {
         synchronized (this) {
           if (aborted || closed) {
@@ -252,9 +252,9 @@ public class LocalSourceHandle implements ISourceHandle {
           sourceHandleListener.onFinished(this);
         }
       }
-      if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("[EndCloseLocalSourceHandle]");
-      }
+      //      if (LOGGER.isDebugEnabled()) {
+      LOGGER.info("[EndCloseLocalSourceHandle]");
+      //      }
     }
   }
 
