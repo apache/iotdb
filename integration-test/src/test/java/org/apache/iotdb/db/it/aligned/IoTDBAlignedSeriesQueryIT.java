@@ -165,6 +165,7 @@ public class IoTDBAlignedSeriesQueryIT {
 
     String[] retArray =
         new String[] {
+          "-40,null,null,null,null,null,null,null,null,null,null,40.0",
           "1,1.0,1,1,true,aligned_test1,1.0,1,1,true,non_aligned_test1,null",
           "2,2.0,2,2,null,aligned_test2,2.0,2,2,null,non_aligned_test2,null",
           "3,30000.0,null,30000,true,aligned_unseq_test3,3.0,null,3,false,non_aligned_test3,null",
@@ -1896,7 +1897,6 @@ public class IoTDBAlignedSeriesQueryIT {
           "39,root.sg1.d1,null,39,null,null,aligned_test39,null",
           "40,root.sg1.d1,null,40,null,null,aligned_test40,null",
           "-40,root.sg1.d2,null,null,null,null,null,40.0",
-          "-40,null,null,null,null,null,null,null,null,null,null,40.0",
           "1,root.sg1.d2,1.0,1,1,true,non_aligned_test1,null",
           "2,root.sg1.d2,2.0,2,2,null,non_aligned_test2,null",
           "3,root.sg1.d2,3.0,null,3,false,non_aligned_test3,null",
