@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.pipe.sink.protocol.airgap;
 
-import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskSinkRuntimeEnvironment;
@@ -106,9 +105,7 @@ public class IoTDBDataRegionAirGapSinkTest {
 
   private PipeParameters buildParameters(final boolean useTsFileBatch) {
     final Map<String, String> attributes = new HashMap<>();
-    attributes.put(
-        PipeSinkConstant.CONNECTOR_KEY,
-        BuiltinPipePlugin.IOTDB_AIR_GAP_CONNECTOR.getPipePluginName());
+    attributes.put(PipeSinkConstant.CONNECTOR_KEY, "iotdb-air-gap-connector");
     attributes.put(PipeSinkConstant.CONNECTOR_IOTDB_NODE_URLS_KEY, "127.0.0.1:6668");
     attributes.put(PipeSinkConstant.CONNECTOR_IOTDB_BATCH_DELAY_MS_KEY, "200");
     attributes.put(PipeSinkConstant.CONNECTOR_IOTDB_BATCH_SIZE_KEY, "1048576");
