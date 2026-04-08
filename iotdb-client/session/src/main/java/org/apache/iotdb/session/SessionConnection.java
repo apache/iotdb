@@ -249,7 +249,11 @@ public class SessionConnection {
 
     } catch (StatementExecutionException e) {
       transport.close();
-      throw e;
+      if (e.getStatusCode() == TSStatusCode.SESSION_NUMS_EXCEEDED.getStatusCode()) {
+        throw new IoTDBConnectionException(e.getMessage());
+      } else {
+        throw e;
+      }
     } catch (Exception e) {
       transport.close();
       throw new IoTDBConnectionException(e);
