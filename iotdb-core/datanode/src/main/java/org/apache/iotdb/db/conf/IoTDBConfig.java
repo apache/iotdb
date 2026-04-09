@@ -24,6 +24,8 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.property.ClientPoolProperty.DefaultProperty;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.enums.ReadConsistencyLevel;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.ConsensusFactory;
@@ -3386,6 +3388,15 @@ public class IoTDBConfig {
 
   public void setPartitionCacheSize(int partitionCacheSize) {
     this.partitionCacheSize = partitionCacheSize;
+  }
+
+  public int getPipeDataStructureTabletSizeInBytes() {
+    int size = PipeConfig.getInstance().getPipeDataStructureTabletSizeInBytes();
+    if (size > thriftMaxFrameSize) {
+      size = (int) (thriftMaxFrameSize * 0.8);
+      CommonDescriptor.getInstance().getConfig().setPipeDataStructureTabletSizeInBytes(size);
+    }
+    return size;
   }
 
   public int getAuthorCacheSize() {

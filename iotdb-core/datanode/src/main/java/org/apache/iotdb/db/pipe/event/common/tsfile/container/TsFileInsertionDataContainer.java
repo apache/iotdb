@@ -21,9 +21,9 @@ package org.apache.iotdb.db.pipe.event.common.tsfile.container;
 
 import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
-import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.metric.overview.PipeTsFileToTabletsMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
@@ -92,7 +92,7 @@ public abstract class TsFileInsertionDataContainer implements AutoCloseable {
     this.allocatedMemoryBlockForTablet =
         PipeDataNodeResourceManager.memory()
             .forceAllocateForTabletWithRetry(
-                PipeConfig.getInstance().getPipeDataStructureTabletSizeInBytes());
+                IoTDBDescriptor.getInstance().getConfig().getPipeDataStructureTabletSizeInBytes());
   }
 
   /**
