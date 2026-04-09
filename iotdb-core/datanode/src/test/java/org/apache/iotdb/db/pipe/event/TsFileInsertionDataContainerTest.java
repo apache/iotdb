@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.pipe.event;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBPipePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.PrefixPipePattern;
@@ -47,6 +49,7 @@ import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -78,9 +81,19 @@ public class TsFileInsertionDataContainerTest {
   private File alignedTsFile;
   private File nonalignedTsFile;
   private TsFileResource resource;
+  private boolean isPipeMemoryManagementEnabled;
+
+  @Before
+  public void setUp() throws Exception {
+    isPipeMemoryManagementEnabled = PipeConfig.getInstance().getPipeMemoryManagementEnabled();
+    CommonDescriptor.getInstance().getConfig().setPipeMemoryManagementEnabled(false);
+  }
 
   @After
   public void tearDown() throws Exception {
+    CommonDescriptor.getInstance()
+        .getConfig()
+        .setPipeMemoryManagementEnabled(isPipeMemoryManagementEnabled);
     if (alignedTsFile != null) {
       alignedTsFile.delete();
     }
