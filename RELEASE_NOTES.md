@@ -19,6 +19,94 @@
 
 -->
 
+# Apache IoTDB 2.0.8
+
+## Features & Improvements
+- Data Query: Added list display for available DataNode nodes
+- Data Query: Added a system table for statistics on query latency in the table model
+- Data Query: Python SessionDataset supported converting TsBlock to DataFrame and returning DataFrame in batches
+- Storage Management: Supported custom column names for the TIME column
+- Storage Management: Supported viewing the complete definition statement of created tables/views via SQL
+- System Management: Added a system table for DataNode node connection status in the table model
+- Stream Processing: Pipe synchronization supported excluding specified devices / measurement points
+- Stream Processing: Supported specifying multiple exact paths in the path parameter of tree model data synchronization pipe statements
+- Stream Processing: Supported comma-separated mixed use of source.pattern and source.path parameters when filtering paths in Pipe
+- AI Management: Built-in Chronos-2 model supports prediction functions.
+- AI Management: Built-in Timer-XL and Sundial models supported concurrent inference
+- Others: Fixed security vulnerabilities CVE-2025-12183, CVE-2025-66566, and CVE-2025-11226
+- ...
+
+
+## Bugs
+- Fixed the issue where the result set returned by the query was empty after last cache hit.
+- Fixed the issue where reverse query with time filter conditions might miss partial data when a sequence in the memtable contained more than 200,000 points in TVList.
+- Fixed the issue that aligned time series query timed out because canSkip failed to filter out firstTimeseriesMetadata.
+- Fixed the issue where the result returned by LAST query with alias should be adjusted to the measurement alias.
+- Fixed the issue where time filter conditions incorrectly filtered valid data in latest point query under specific cases.
+- Fixed the issue that deletion would fail if performed immediately after a failed write operation.
+- Fixed the potential NPE issue when using the active load function to load TsFiles that use non-default time columns.
+- ...
+
+# Apache IoTDB 2.0.7
+
+## Features & Improvements
+
+- Others: Remove risky RPC interfaces.
+- Others: Remove JEXL functions.
+- Others: Check naming when creating a Pipe.
+- Others: Change the default client RPC service address to 127.0.0.1.
+- Others: Modify code to make internal services bind to the value specified by `dn_internal_address`instead of the default address.
+
+## Bugs
+- Fixed an issue in the partition table automatic deletion logic: Only TTL configured at the DB level takes effect, using the maximum TTL value within the DB.
+- ...
+
+# Apache IoTDB 2.0.6
+
+## Features & Improvements
+- Data Query: Supports table model query and write-back functions.
+- Data Query: The MATCH RECOGNIZE feature for table models supports aggregate functions to capture continuous data for analysis and calculation.
+- Data Query: Added built-in scalar functions – bit manipulation functions for table models.
+- Data Query: Added pushdown-enabled EXTRACT time function for table models.
+- Others: Fixed security vulnerabilities CVE-2025-12183，CVE-2025-66566 and CVE-2025-11226.
+- ...
+## Bugs
+- Fixed the issue where executing queries with CASE WHEN throws an internal server error.
+- Fixed the issue where creating a view succeeds but querying the view fails when the tree model database name is the same as the device name in tree-to-table scenarios.
+- Fixed the issue where the automatic database creation function fails subsequently if a database is deleted after successful table model data synchronization, and the database is not restarted.
+- Fixed the issue where modifying the password of a user that failed to be created throws an internal server error.
+- Fixed the issue where an error is thrown when using the IF PERMITTED clause to modify sequence encoding and compression settings.
+- Fixed the issue where querying BLOB data types via the tree model RESTAPI interface /rest/v2/query returns garbled results.
+- Fixed the issue where incorrect exception information is displayed when checking pipe status after creating a pipe in a table model that only contains tree-to-table views.
+- Fixed the issue where the number of server connections keeps increasing when using a user without MAINTAIN permission (non-root user in table models) in a Session.
+- ...
+
+# Apache IoTDB 2.0.5
+
+## Features & Improvements
+- Data Query: Support manual creation of tree-to-table views
+- Data Query: Table model adds window functions
+- Data Query: Table model adds the aggregate function approx_most_frequent
+- Data Query: Table model JOIN function expansion, supporting LEFT & RIGHT JOIN, ASOF LEFT JOIN
+- Data Query: Table model supports row pattern recognition, enabling capture of continuous data for analysis and calculation
+- Storage Management: Table model adds multiple system tables, such as: VIEWS (table view information), MODELS (model information), etc.
+- AI Management: AINode adds two built-in models: Timer-XL and Timer-Sundial
+- AI Management: AINode supports inference functions for tree models and table models
+- ...
+
+## Bugs
+- Fixed the issue where the where time > X and time < X in last query was not applied to partitioned table fetching, failing to hit PartitionCache
+- Fixed the error in aggregate query with order by time + align by device for single device across regions
+- Fixed the error in aggregate query with order by time + align by device for multiple devices across regions
+- Data synchronization batching supports sink.batch.max-delay-ms, providing more fine-grained cache time control
+- Fixed the potential NPE issue when the tablet contains null values during data synchronization with sink format=tsfile
+- Fixed the incorrect processing result of pipe processor when writing tablets with null values with duplicate timestamps
+- Fixed the issue of tree model load updating table model schema cache
+- Fixed the issue where disruptor queue close could not be completed, which might cause the DN stop script to get stuck
+- Fixed multiple issues of data synchronization in normal scenarios, restart scenarios, and deletion scenarios
+- Fixed the time formatting issue when exporting table model to csv
+- ...
+
 # Apache IoTDB 2.0.4
 
 ## Features & Improvements
