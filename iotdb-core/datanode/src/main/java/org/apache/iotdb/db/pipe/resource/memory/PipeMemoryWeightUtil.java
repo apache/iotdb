@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.resource.memory;
 
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.event.common.row.PipeRow;
 import org.apache.iotdb.db.utils.MemUtils;
 
@@ -195,7 +196,7 @@ public class PipeMemoryWeightUtil {
     // Here we estimate the max use of
     int sizeLimit =
         Math.min(
-            PipeConfig.getInstance().getPipeDataStructureTabletSizeInBytes(),
+            IoTDBDescriptor.getInstance().getConfig().getPipeDataStructureTabletSizeInBytes(),
             (int) (inputNum * rowBytesUsed * 1.2));
 
     int rowNumber = 8 * (sizeLimit - 100) / (8 * rowBytesUsed + schemaCount);
