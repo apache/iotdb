@@ -29,6 +29,7 @@ import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import org.apache.http.HttpEntity;
@@ -2367,10 +2368,21 @@ public class IoTDBRestServiceIT {
   public void queryWithValidTimeZoneHeader(CloseableHttpClient httpClient) {
     CloseableHttpResponse response = null;
     try {
+      long expectedTimestamp =
+          ZonedDateTime.of(2026, 3, 28, 0, 0, 0, 0, ZoneId.of("+05:00")).toInstant().toEpochMilli();
+      HttpPost insertPost = getHttpPost("http://127.0.0.1:" + port + "/rest/v1/nonQuery");
+      String insertSql =
+          String.format(
+              "{\"sql\":\"INSERT INTO root.sg_tz.d2(timestamp, s3) VALUES(%d, 10.5)\"}",
+              expectedTimestamp);
+      insertPost.setEntity(new StringEntity(insertSql, Charset.defaultCharset()));
+      try (CloseableHttpResponse insertResponse = httpClient.execute(insertPost)) {
+        assertEquals(200, insertResponse.getStatusLine().getStatusCode());
+      }
       HttpPost httpPost = getHttpPost("http://127.0.0.1:" + port + "/rest/v1/query");
       httpPost.setHeader("Time-Zone", "+05:00");
       String sql =
-          "{\"sql\":\"SELECT count(s3) FROM root.sg25 GROUP BY ([2026-03-28T00:00:00, 2026-03-29T00:00:00), 1d)\"}";
+          "{\"sql\":\"SELECT count(s3) FROM root.sg_tz.d2 GROUP BY ([2026-03-28T00:00:00, 2026-03-29T00:00:00), 1d)\"}";
       httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
       response = httpClient.execute(httpPost);
       assertEquals(200, response.getStatusLine().getStatusCode());
@@ -2378,9 +2390,10 @@ public class IoTDBRestServiceIT {
       JsonObject result = JsonParser.parseString(message).getAsJsonObject();
       assertTrue(result.has("timestamps"));
       assertTrue(result.getAsJsonArray("timestamps").size() > 0);
-      long expectedTimestamp =
-          ZonedDateTime.of(2026, 3, 28, 0, 0, 0, 0, ZoneId.of("+05:00")).toInstant().toEpochMilli();
       assertEquals(expectedTimestamp, result.getAsJsonArray("timestamps").get(0).getAsLong());
+      JsonArray values = result.getAsJsonArray("values");
+      int countResult = values.get(0).getAsJsonArray().get(0).getAsInt();
+      assertEquals(1, countResult);
     } catch (IOException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -2440,10 +2453,21 @@ public class IoTDBRestServiceIT {
   public void queryWithValidTimeZoneHeaderV2(CloseableHttpClient httpClient) {
     CloseableHttpResponse response = null;
     try {
+      long expectedTimestamp =
+          ZonedDateTime.of(2026, 3, 28, 0, 0, 0, 0, ZoneId.of("+05:00")).toInstant().toEpochMilli();
+      HttpPost insertPost = getHttpPost("http://127.0.0.1:" + port + "/rest/v1/nonQuery");
+      String insertSql =
+          String.format(
+              "{\"sql\":\"INSERT INTO root.sg_tz.d3(timestamp, s3) VALUES(%d, 10.5)\"}",
+              expectedTimestamp);
+      insertPost.setEntity(new StringEntity(insertSql, Charset.defaultCharset()));
+      try (CloseableHttpResponse insertResponse = httpClient.execute(insertPost)) {
+        assertEquals(200, insertResponse.getStatusLine().getStatusCode());
+      }
       HttpPost httpPost = getHttpPost("http://127.0.0.1:" + port + "/rest/v2/query");
       httpPost.setHeader("Time-Zone", "+05:00");
       String sql =
-          "{\"sql\":\"SELECT count(s3) FROM root.sg25 GROUP BY ([2026-03-28T00:00:00, 2026-03-29T00:00:00), 1d)\"}";
+          "{\"sql\":\"SELECT count(s3) FROM root.sg_tz.d3 GROUP BY ([2026-03-28T00:00:00, 2026-03-29T00:00:00), 1d)\"}";
       httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
       response = httpClient.execute(httpPost);
       assertEquals(200, response.getStatusLine().getStatusCode());
@@ -2451,9 +2475,10 @@ public class IoTDBRestServiceIT {
       JsonObject result = JsonParser.parseString(message).getAsJsonObject();
       assertTrue(result.has("timestamps"));
       assertTrue(result.getAsJsonArray("timestamps").size() > 0);
-      long expectedTimestamp =
-          ZonedDateTime.of(2026, 3, 28, 0, 0, 0, 0, ZoneId.of("+05:00")).toInstant().toEpochMilli();
       assertEquals(expectedTimestamp, result.getAsJsonArray("timestamps").get(0).getAsLong());
+      JsonArray values = result.getAsJsonArray("values");
+      int countResult = values.get(0).getAsJsonArray().get(0).getAsInt();
+      assertEquals(1, countResult);
     } catch (IOException e) {
       e.printStackTrace();
       fail(e.getMessage());

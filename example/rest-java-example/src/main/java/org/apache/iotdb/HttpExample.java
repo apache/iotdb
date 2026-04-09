@@ -145,6 +145,7 @@ public class HttpExample {
     CloseableHttpResponse response = null;
     try {
       HttpPost httpPost = getHttpPost("http://127.0.0.1:18080/rest/v1/query");
+      httpPost.setHeader("Time-Zone", "Asia/Shanghai");
       String sql = "{\"sql\":\"select * from root.sg25 where time <= 2026-03-28T00:00:00\"}";
       httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
       response = httpClient.execute(httpPost);

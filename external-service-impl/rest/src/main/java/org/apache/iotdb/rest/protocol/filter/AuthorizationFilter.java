@@ -162,7 +162,11 @@ public class AuthorizationFilter implements ContainerRequestFilter, ContainerRes
    */
   private ZoneId resolveTimeZone(ContainerRequestContext requestContext) {
     String timeZoneHeader = requestContext.getHeaderString("Time-Zone");
-    if (timeZoneHeader == null || timeZoneHeader.isEmpty()) {
+    if (timeZoneHeader == null) {
+      return ZoneId.systemDefault();
+    }
+    timeZoneHeader = timeZoneHeader.trim();
+    if (timeZoneHeader.isEmpty()) {
       return ZoneId.systemDefault();
     }
     try {
