@@ -41,6 +41,10 @@ public class SubscriptionConfig {
     return COMMON_CONFIG.getSubscriptionSubtaskExecutorMaxThreadNum();
   }
 
+  public int getSubscriptionConsensusPrefetchExecutorMaxThreadNum() {
+    return COMMON_CONFIG.getSubscriptionConsensusPrefetchExecutorMaxThreadNum();
+  }
+
   public int getSubscriptionPrefetchTabletBatchMaxDelayInMs() {
     return COMMON_CONFIG.getSubscriptionPrefetchTabletBatchMaxDelayInMs();
   }
@@ -195,6 +199,9 @@ public class SubscriptionConfig {
     LOGGER.info(
         "SubscriptionSubtaskExecutorMaxThreadNum: {}",
         getSubscriptionSubtaskExecutorMaxThreadNum());
+    LOGGER.info(
+        "SubscriptionConsensusPrefetchExecutorMaxThreadNum: {}",
+        getSubscriptionConsensusPrefetchExecutorMaxThreadNum());
 
     LOGGER.info(
         "SubscriptionPrefetchTabletBatchMaxDelayInMs: {}",

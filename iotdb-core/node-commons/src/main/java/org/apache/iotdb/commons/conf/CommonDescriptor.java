@@ -293,6 +293,11 @@ public class CommonDescriptor {
             properties.getProperty(
                 "subscription_subtask_executor_max_thread_num",
                 Integer.toString(config.getSubscriptionSubtaskExecutorMaxThreadNum()))));
+    config.setSubscriptionConsensusPrefetchExecutorMaxThreadNum(
+        Integer.parseInt(
+            properties.getProperty(
+                "subscription_consensus_prefetch_executor_max_thread_num",
+                Integer.toString(config.getSubscriptionConsensusPrefetchExecutorMaxThreadNum()))));
 
     config.setSubscriptionPrefetchTabletBatchMaxDelayInMs(
         Integer.parseInt(

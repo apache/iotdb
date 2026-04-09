@@ -26,6 +26,7 @@ import org.apache.iotdb.consensus.iot.WriterSafeFrontierTracker;
 import org.apache.iotdb.consensus.iot.log.ConsensusReqReader;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.dataregion.wal.node.WALNode;
+import org.apache.iotdb.db.subscription.task.execution.ConsensusSubscriptionPrefetchExecutorManager;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 import org.apache.iotdb.rpc.subscription.payload.poll.RegionProgress;
 import org.apache.iotdb.rpc.subscription.payload.poll.WriterId;
@@ -282,6 +283,64 @@ public class ConsensusPrefetchingQueueRuntimeStateTest {
       } catch (final InvocationTargetException e) {
         assertTrue(e.getCause() instanceof IllegalStateException);
       }
+    } finally {
+      queue.close();
+    }
+  }
+
+  @Test
+  public void testAbortPendingSeekBeforeFirstActivationRestoresInitState() throws Exception {
+    final ConsensusSubscriptionCommitManager commitManager =
+        mock(ConsensusSubscriptionCommitManager.class);
+    final RegionProgress committedRegionProgress =
+        new RegionProgress(
+            Collections.singletonMap(
+                new WriterId("DataRegion[11]", 2, 5L), new WriterProgress(10L, 3L)));
+    when(commitManager.getCommittedRegionProgress(
+            anyString(), anyString(), any(DataRegionId.class)))
+        .thenReturn(committedRegionProgress);
+
+    final WALNode walNode = mock(WALNode.class);
+    when(walNode.getLogDirectory()).thenReturn(new File("."));
+    final TestConsensusPrefetchingQueue queue = createTestQueue(walNode, commitManager, null);
+    queue.setLocateDecision(
+        ConsensusPrefetchingQueue.ReplayLocateDecision.found(
+            37L, committedRegionProgress, "test locate"));
+    try {
+      queue.installPendingSeekForAbortForTest(
+          99L, committedRegionProgress, "runtimeStopAbort", false, 0L, 1L);
+
+      queue.abortPendingSeekForRuntimeStop();
+      queue.initPrefetchForTest(null);
+
+      assertEquals(0L, queue.getCurrentSeekGeneration());
+      assertEquals(37L, queue.getCurrentReadSearchIndex());
+      assertSame(committedRegionProgress, queue.getLastLocatedRegionProgress());
+      assertFalse(queue.hasPendingSeekForTest());
+    } finally {
+      queue.close();
+    }
+  }
+
+  @Test
+  public void testSeekFailsWhenPrefetchRuntimeUnavailableInsteadOfInlineApply() throws Exception {
+    ConsensusSubscriptionPrefetchExecutorManager.getInstance().stop();
+
+    final TestConsensusPrefetchingQueue queue =
+        createTestQueue(
+            mock(ConsensusReqReader.class), mock(ConsensusSubscriptionCommitManager.class), null);
+    try {
+      try {
+        queue.seekToBeginning();
+        fail("expected seekToBeginning to fail when prefetch runtime is unavailable");
+      } catch (final IllegalStateException e) {
+        assertTrue(e.getMessage().contains("prefetch runtime is unavailable"));
+      }
+
+      assertEquals(0L, queue.getCurrentSeekGeneration());
+      assertEquals(1L, queue.getCurrentReadSearchIndex());
+      assertFalse(queue.hasPendingSeekForTest());
+      assertFalse(queue.isPrefetchInitializedForTest());
     } finally {
       queue.close();
     }
@@ -671,7 +730,7 @@ public class ConsensusPrefetchingQueueRuntimeStateTest {
     }
 
     @Override
-    protected void pauseBeforeRetryingWalGapFill() {
+    protected void onWalGapRetryScheduled() {
       walGapRetryCount++;
       walGapRetryHook.run();
     }
@@ -777,6 +836,67 @@ public class ConsensusPrefetchingQueueRuntimeStateTest {
       } catch (final Exception e) {
         throw new RuntimeException(e);
       }
+    }
+
+    private void installPendingSeekForAbortForTest(
+        final long targetSearchIndex,
+        final RegionProgress committedRegionProgress,
+        final String seekReason,
+        final boolean previousPrefetchInitialized,
+        final long previousSeekGeneration,
+        final long targetSeekGeneration)
+        throws Exception {
+      final Class<?> pendingSeekRequestClass =
+          Class.forName(
+              "org.apache.iotdb.db.subscription.broker.consensus."
+                  + "ConsensusPrefetchingQueue$PendingSeekRequest");
+      final Constructor<?> constructor =
+          pendingSeekRequestClass.getDeclaredConstructor(
+              long.class,
+              RegionProgress.class,
+              String.class,
+              boolean.class,
+              long.class,
+              long.class);
+      constructor.setAccessible(true);
+      final Object pendingSeekRequest =
+          constructor.newInstance(
+              targetSearchIndex,
+              committedRegionProgress,
+              seekReason,
+              previousPrefetchInitialized,
+              previousSeekGeneration,
+              targetSeekGeneration);
+
+      final Field pendingSeekRequestField =
+          ConsensusPrefetchingQueue.class.getDeclaredField("pendingSeekRequest");
+      pendingSeekRequestField.setAccessible(true);
+      pendingSeekRequestField.set(this, pendingSeekRequest);
+
+      final Field prefetchInitializedField =
+          ConsensusPrefetchingQueue.class.getDeclaredField("prefetchInitialized");
+      prefetchInitializedField.setAccessible(true);
+      prefetchInitializedField.setBoolean(this, true);
+
+      final Field seekGenerationField =
+          ConsensusPrefetchingQueue.class.getDeclaredField("seekGeneration");
+      seekGenerationField.setAccessible(true);
+      ((java.util.concurrent.atomic.AtomicLong) seekGenerationField.get(this))
+          .set(targetSeekGeneration);
+    }
+
+    private boolean hasPendingSeekForTest() throws Exception {
+      final Field pendingSeekRequestField =
+          ConsensusPrefetchingQueue.class.getDeclaredField("pendingSeekRequest");
+      pendingSeekRequestField.setAccessible(true);
+      return pendingSeekRequestField.get(this) != null;
+    }
+
+    private boolean isPrefetchInitializedForTest() throws Exception {
+      final Field prefetchInitializedField =
+          ConsensusPrefetchingQueue.class.getDeclaredField("prefetchInitialized");
+      prefetchInitializedField.setAccessible(true);
+      return prefetchInitializedField.getBoolean(this);
     }
   }
 

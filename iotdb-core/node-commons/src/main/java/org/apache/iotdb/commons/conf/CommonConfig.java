@@ -359,6 +359,7 @@ public class CommonConfig {
 
   private float subscriptionCacheMemoryUsagePercentage = 0.2F;
   private int subscriptionSubtaskExecutorMaxThreadNum = 2;
+  private int subscriptionConsensusPrefetchExecutorMaxThreadNum = 2;
 
   private int subscriptionPrefetchTabletBatchMaxDelayInMs = 20;
   private long subscriptionPrefetchTabletBatchMaxSizeInBytes = MB;
@@ -2294,6 +2295,16 @@ public class CommonConfig {
   public void setSubscriptionSubtaskExecutorMaxThreadNum(
       int subscriptionSubtaskExecutorMaxThreadNum) {
     this.subscriptionSubtaskExecutorMaxThreadNum = subscriptionSubtaskExecutorMaxThreadNum;
+  }
+
+  public int getSubscriptionConsensusPrefetchExecutorMaxThreadNum() {
+    return subscriptionConsensusPrefetchExecutorMaxThreadNum;
+  }
+
+  public void setSubscriptionConsensusPrefetchExecutorMaxThreadNum(
+      int subscriptionConsensusPrefetchExecutorMaxThreadNum) {
+    this.subscriptionConsensusPrefetchExecutorMaxThreadNum =
+        subscriptionConsensusPrefetchExecutorMaxThreadNum;
   }
 
   public int getSubscriptionPrefetchTabletBatchMaxDelayInMs() {

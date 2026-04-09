@@ -380,18 +380,10 @@ public class ConsensusSubscriptionBroker implements ISubscriptionBroker {
 
   @Override
   public boolean executePrefetch(final String topicName) {
-    final List<ConsensusPrefetchingQueue> queues =
-        topicNameToConsensusPrefetchingQueues.get(topicName);
-    if (Objects.isNull(queues) || queues.isEmpty()) {
-      return false;
-    }
-    boolean anyPrefetched = false;
-    for (final ConsensusPrefetchingQueue q : queues) {
-      if (!q.isClosed() && q.executePrefetch()) {
-        anyPrefetched = true;
-      }
-    }
-    return anyPrefetched;
+    // Consensus prefetch is fully driven by queue-local wakeup sources and the dedicated delayed
+    // scheduler. This interface remains only to satisfy the shared broker contract used by
+    // pipe-based subscription.
+    return false;
   }
 
   @Override
@@ -716,6 +708,17 @@ public class ConsensusSubscriptionBroker implements ISubscriptionBroker {
       for (final ConsensusPrefetchingQueue q : queues) {
         if (regionId.equals(q.getConsensusGroupId())) {
           q.applyRuntimeState(runtimeState);
+        }
+      }
+    }
+  }
+
+  public void abortPendingSeeksForRuntimeStop() {
+    for (final List<ConsensusPrefetchingQueue> queues :
+        topicNameToConsensusPrefetchingQueues.values()) {
+      for (final ConsensusPrefetchingQueue q : queues) {
+        if (!q.isClosed()) {
+          q.abortPendingSeekForRuntimeStop();
         }
       }
     }

@@ -29,6 +29,7 @@ import org.apache.iotdb.db.subscription.broker.consensus.ConsensusSubscriptionCo
 import org.apache.iotdb.db.subscription.broker.consensus.ConsensusSubscriptionSetupHandler;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.db.subscription.resource.SubscriptionDataNodeResourceManager;
+import org.apache.iotdb.db.subscription.task.execution.ConsensusSubscriptionPrefetchExecutorManager;
 import org.apache.iotdb.db.subscription.task.subtask.SubscriptionSinkSubtask;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConfig;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
@@ -229,6 +230,7 @@ public class SubscriptionBrokerAgent {
     final ConsensusSubscriptionBroker consensusBroker =
         consumerGroupIdToConsensusBroker.get(consumerGroupId);
     if (Objects.nonNull(consensusBroker) && consensusBroker.hasQueue(topicName)) {
+      ensureConsensusSeekRuntimeAvailable(consumerGroupId, topicName, "seek");
       if (seekType != PipeSubscribeSeekReq.SEEK_TO_BEGINNING
           && seekType != PipeSubscribeSeekReq.SEEK_TO_END) {
         final String errorMessage =
@@ -261,6 +263,7 @@ public class SubscriptionBrokerAgent {
     final ConsensusSubscriptionBroker consensusBroker =
         consumerGroupIdToConsensusBroker.get(consumerGroupId);
     if (Objects.nonNull(consensusBroker) && consensusBroker.hasQueue(topicName)) {
+      ensureConsensusSeekRuntimeAvailable(consumerGroupId, topicName, "seek(topicProgress)");
       consensusBroker.seek(topicName, topicProgress);
       return;
     }
@@ -283,6 +286,7 @@ public class SubscriptionBrokerAgent {
     final ConsensusSubscriptionBroker consensusBroker =
         consumerGroupIdToConsensusBroker.get(consumerGroupId);
     if (Objects.nonNull(consensusBroker) && consensusBroker.hasQueue(topicName)) {
+      ensureConsensusSeekRuntimeAvailable(consumerGroupId, topicName, "seekAfter(topicProgress)");
       consensusBroker.seekAfter(topicName, topicProgress);
       return;
     }
@@ -294,6 +298,20 @@ public class SubscriptionBrokerAgent {
             consumerGroupId, topicName);
     LOGGER.warn(errorMessage);
     throw new SubscriptionException(errorMessage);
+  }
+
+  private void ensureConsensusSeekRuntimeAvailable(
+      final String consumerGroupId, final String topicName, final String operation) {
+    if (!ConsensusSubscriptionPrefetchExecutorManager.getInstance().isStarted()
+        || SubscriptionAgent.runtime().isShutdown()) {
+      final String errorMessage =
+          String.format(
+              "Subscription: consensus %s is unavailable because subscription runtime is stopped, "
+                  + "consumerGroup=%s, topic=%s",
+              operation, consumerGroupId, topicName);
+      LOGGER.warn(errorMessage);
+      throw new SubscriptionException(errorMessage);
+    }
   }
 
   public boolean isCommitContextOutdated(final SubscriptionCommitContext commitContext) {
@@ -533,6 +551,12 @@ public class SubscriptionBrokerAgent {
     }
   }
 
+  public void abortConsensusPendingSeeksForRuntimeStop() {
+    for (final ConsensusSubscriptionBroker broker : consumerGroupIdToConsensusBroker.values()) {
+      broker.abortPendingSeeksForRuntimeStop();
+    }
+  }
+
   public void updateCompletedTopicNames(final String consumerGroupId, final String topicName) {
     final SubscriptionBroker pipeBroker = consumerGroupIdToPipeBroker.get(consumerGroupId);
     if (Objects.isNull(pipeBroker)) {
@@ -584,12 +608,10 @@ public class SubscriptionBrokerAgent {
   }
 
   public boolean executePrefetch(final String consumerGroupId, final String topicName) {
-    // Try consensus broker first
-    final ConsensusSubscriptionBroker consensusBroker =
-        consumerGroupIdToConsensusBroker.get(consumerGroupId);
-    if (Objects.nonNull(consensusBroker) && consensusBroker.hasQueue(topicName)) {
-      return consensusBroker.executePrefetch(topicName);
+    if (ConsensusSubscriptionSetupHandler.isConsensusBasedTopic(topicName)) {
+      return false;
     }
+
     // Fall back to pipe broker
     final SubscriptionBroker pipeBroker = consumerGroupIdToPipeBroker.get(consumerGroupId);
     if (Objects.isNull(pipeBroker)) {
