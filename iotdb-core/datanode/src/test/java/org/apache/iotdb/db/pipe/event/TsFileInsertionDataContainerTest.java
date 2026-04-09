@@ -25,6 +25,8 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.PrefixPipePattern;
 import org.apache.iotdb.db.pipe.event.common.tsfile.container.TsFileInsertionDataContainer;
 import org.apache.iotdb.db.pipe.event.common.tsfile.container.query.TsFileInsertionQueryDataContainer;
 import org.apache.iotdb.db.pipe.event.common.tsfile.container.scan.TsFileInsertionScanDataContainer;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionTestFileWriter;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
@@ -47,6 +49,7 @@ import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -78,9 +81,19 @@ public class TsFileInsertionDataContainerTest {
   private File alignedTsFile;
   private File nonalignedTsFile;
   private TsFileResource resource;
+  private boolean isPipeMemoryManagementEnabled;
+
+  @Before
+  public void setUp() throws Exception {
+    isPipeMemoryManagementEnabled = PipeConfig.getInstance().getPipeMemoryManagementEnabled();
+    CommonDescriptor.getInstance().getConfig().setPipeMemoryManagementEnabled(false);
+  }
 
   @After
   public void tearDown() throws Exception {
+    CommonDescriptor.getInstance()
+        .getConfig()
+        .setPipeMemoryManagementEnabled(isPipeMemoryManagementEnabled);
     if (alignedTsFile != null) {
       alignedTsFile.delete();
     }
