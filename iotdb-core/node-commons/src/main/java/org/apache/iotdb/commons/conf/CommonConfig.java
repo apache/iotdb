@@ -218,7 +218,9 @@ public class CommonConfig {
   private boolean pipeRetryLocallyForParallelOrUserConflict = true;
 
   private int pipeDataStructureTabletRowSize = 2048;
-  private int pipeDataStructureTabletSizeInBytes = 2097152;
+
+  // 128MB
+  private int pipeDataStructureTabletSizeInBytes = 128 * 1024 * 1024;
   private double pipeDataStructureTabletMemoryBlockAllocationRejectThreshold = 0.3;
   private double pipeDataStructureTsFileMemoryBlockAllocationRejectThreshold = 0.3;
   private volatile double pipeTotalFloatingMemoryProportion = 0.5;
