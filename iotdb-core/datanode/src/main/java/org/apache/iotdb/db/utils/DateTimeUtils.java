@@ -821,6 +821,7 @@ public class DateTimeUtils {
     return ZonedDateTime.ofInstant(Instant.ofEpochMilli(timestamp), zoneId);
   }
 
+  /** Converts string to ZoneOffset. Truncates seconds for HH:mm database compatibility. */
   public static ZoneOffset toZoneOffset(String str, ZoneId zoneId) {
     if (str.endsWith("Z")) {
       return ZoneOffset.UTC;
@@ -834,7 +835,8 @@ public class DateTimeUtils {
     long millis = convertDatetimeStrToLong(str, ZoneOffset.UTC, 0, "ms");
     LocalDateTime localDateTime =
         LocalDateTime.ofInstant(Instant.ofEpochMilli(millis), ZoneOffset.UTC);
-    return zoneId.getRules().getOffset(localDateTime);
+    ZoneOffset offset = zoneId.getRules().getOffset(localDateTime);
+    return ZoneOffset.ofTotalSeconds((offset.getTotalSeconds() / 60) * 60);
   }
 
   public static ZonedDateTime convertMillsecondToZonedDateTime(long millisecond) {

@@ -417,4 +417,18 @@ public class DateTimeUtilsTest {
               DateTimeUtils.toZoneOffset("2024-12-31 10", zoneId);
             });
   }
+
+  @Test
+  public void testToZoneOffsetHistoricalLMT() {
+    ZoneId zoneId = ZoneId.of("Europe/Warsaw");
+    ZoneOffset offset = DateTimeUtils.toZoneOffset("0001-01-01 00:00:00", zoneId);
+    Assert.assertEquals(ZoneOffset.ofHoursMinutes(1, 24), offset);
+
+    ZoneId shanghaiId = ZoneId.of("Asia/Shanghai");
+    ZoneOffset shanghaiOffset = DateTimeUtils.toZoneOffset("0001-01-01 00:00:00", shanghaiId);
+    Assert.assertEquals(ZoneOffset.ofHoursMinutes(8, 5), shanghaiOffset);
+
+    ZoneId utcId = ZoneId.of("UTC");
+    Assert.assertEquals(ZoneOffset.UTC, DateTimeUtils.toZoneOffset("0001-01-01 00:00:00", utcId));
+  }
 }
