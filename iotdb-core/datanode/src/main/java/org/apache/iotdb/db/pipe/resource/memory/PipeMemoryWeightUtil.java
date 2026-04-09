@@ -33,10 +33,10 @@ import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.record.Tablet;
-import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 public class PipeMemoryWeightUtil {
 
@@ -192,60 +192,8 @@ public class PipeMemoryWeightUtil {
     }
   }
 
-  public static long calculateTabletSizeInBytes(Tablet tablet) {
-    long totalSizeInBytes = 0;
-
-    if (tablet == null) {
-      return totalSizeInBytes;
-    }
-
-    // timestamps
-    if (tablet.timestamps != null) {
-      totalSizeInBytes += tablet.timestamps.length * 8L;
-    }
-
-    // values
-    final List<MeasurementSchema> timeseries = tablet.getSchemas();
-    if (timeseries != null) {
-      for (int column = 0; column < timeseries.size(); column++) {
-        final MeasurementSchema measurementSchema = timeseries.get(column);
-        if (measurementSchema == null) {
-          continue;
-        }
-
-        final TSDataType tsDataType = measurementSchema.getType();
-        if (tsDataType == null) {
-          continue;
-        }
-
-        if (tsDataType.isBinary()) {
-          if (tablet.values == null || tablet.values.length <= column) {
-            continue;
-          }
-          final Binary[] values = ((Binary[]) tablet.values[column]);
-          if (values == null) {
-            continue;
-          }
-          for (Binary value : values) {
-            totalSizeInBytes += value == null ? 8 : value.ramBytesUsed();
-          }
-        } else {
-          totalSizeInBytes += (long) tablet.getMaxRowNumber() * tsDataType.getDataTypeSize();
-        }
-      }
-    }
-
-    // bitMaps
-    if (tablet.bitMaps != null) {
-      for (int i = 0; i < tablet.bitMaps.length; i++) {
-        totalSizeInBytes += tablet.bitMaps[i] == null ? 0 : tablet.bitMaps[i].getSize();
-      }
-    }
-
-    // estimate other dataStructures size
-    totalSizeInBytes += 100;
-
-    return totalSizeInBytes;
+  public static long calculateTabletSizeInBytes(final Tablet tablet) {
+    return Objects.nonNull(tablet) ? tablet.ramBytesUsed() : 0L;
   }
 
   public static int calculateBatchDataRamBytesUsed(BatchData batchData) {
