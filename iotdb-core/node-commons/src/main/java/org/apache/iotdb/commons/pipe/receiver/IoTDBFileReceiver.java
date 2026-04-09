@@ -798,7 +798,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
               String.format(
                   "Failed to seal file %s, because the length of file is not correct. "
                       + "The original file has length %s, but receiver file has length %s.",
-                  fileName, fileLength, writingFileWriter.length()));
+                  fileName, fileLength, file.length()));
       PipeLogger.log(
           LOGGER::warn,
           "Receiver id = %s: Failed to seal file %s, because the length of file is not correct. "
@@ -806,7 +806,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
           receiverId.get(),
           fileName,
           fileLength,
-          writingFileWriter.length());
+          file.length());
       return new TPipeTransferResp(status);
     }
 
