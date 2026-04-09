@@ -563,7 +563,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       } catch (final Exception e) {
         PipeLogger.log(
             LOGGER::warn,
-                e,
+            e,
             "Receiver id = %s: Failed to delete original writing file %s, because %s.",
             receiverId.get(),
             file.getPath(),
