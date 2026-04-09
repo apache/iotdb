@@ -339,6 +339,10 @@ public class TimechoConfigManager extends org.apache.iotdb.confignode.manager.Co
           TSStatusCode.EXECUTE_STATEMENT_ERROR,
           "Invalid value for " + DN_RPC_MAX_CONCURRENT_CLIENT_NUM + ": " + value);
     }
+    TSStatus leaderStatus = confirmLeader();
+    if (leaderStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return null;
+    }
     TCheckMaxClientNumResp resp = checkMaxClientNumValid(n);
     if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       int minSum = resp.getMinSessionsSum();
