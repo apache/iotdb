@@ -626,7 +626,7 @@ public class IoTDBTableIT {
           statement.executeQuery("show create table test100"),
           "Table,Create Table,",
           Collections.singleton(
-              "table2,CREATE TABLE \"test100\" (\"t1\" TIMESTAMP TIME) WITH (ttl=6600000),"));
+              "test100,CREATE TABLE \"test100\" (\"t1\" TIMESTAMP TIME) WITH (ttl='INF'),"));
     } catch (final SQLException e) {
       e.printStackTrace();
       fail(e.getMessage());
