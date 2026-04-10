@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.queryengine.common;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNodeId;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 

@@ -22,10 +22,11 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
+import org.apache.iotdb.db.node_commons.plan.planner.plan.node.IPlanVisitor;
+import org.apache.iotdb.db.node_commons.plan.planner.plan.node.IQueryPlanVisitor;
+import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 
 import java.nio.ByteBuffer;
@@ -59,8 +60,8 @@ public class TableDeviceQueryCountNode extends AbstractTableDeviceQueryNode {
   }
 
   @Override
-  public <R, C> R accept(final PlanVisitor<R, C> visitor, final C context) {
-    return visitor.visitTableDeviceQueryCount(this, context);
+  public <R, C> R accept(final IPlanVisitor<R, C> visitor, final C context) {
+    return ((IQueryPlanVisitor<R, C>) visitor).visitTableDeviceQueryCount(this, context);
   }
 
   @Override

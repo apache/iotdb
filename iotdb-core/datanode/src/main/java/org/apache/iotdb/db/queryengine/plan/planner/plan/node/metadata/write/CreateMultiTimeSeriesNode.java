@@ -24,9 +24,10 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.node_commons.plan.planner.plan.node.IPlanVisitor;
+import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
@@ -160,8 +161,8 @@ public class CreateMultiTimeSeriesNode extends WritePlanNode {
   }
 
   @Override
-  public <R, C> R accept(PlanVisitor<R, C> visitor, C schemaRegion) {
-    return visitor.visitCreateMultiTimeSeries(this, schemaRegion);
+  public <R, C> R accept(IPlanVisitor<R, C> visitor, C schemaRegion) {
+    return ((PlanVisitor<R, C>) visitor).visitCreateMultiTimeSeries(this, schemaRegion);
   }
 
   public static CreateMultiTimeSeriesNode deserialize(ByteBuffer byteBuffer) {

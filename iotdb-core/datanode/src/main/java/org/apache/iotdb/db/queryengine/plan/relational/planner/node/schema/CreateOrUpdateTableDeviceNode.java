@@ -20,11 +20,12 @@
 package org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.db.node_commons.plan.planner.plan.node.IPlanVisitor;
+import org.apache.iotdb.db.node_commons.plan.planner.plan.node.IQueryPlanVisitor;
+import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegionPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionPlanType;
@@ -288,8 +289,8 @@ public class CreateOrUpdateTableDeviceNode extends WritePlanNode implements ISch
   }
 
   @Override
-  public <R, C> R accept(final PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitCreateOrUpdateTableDevice(this, context);
+  public <R, C> R accept(final IPlanVisitor<R, C> visitor, C context) {
+    return ((IQueryPlanVisitor<R, C>) visitor).visitCreateOrUpdateTableDevice(this, context);
   }
 
   @Override

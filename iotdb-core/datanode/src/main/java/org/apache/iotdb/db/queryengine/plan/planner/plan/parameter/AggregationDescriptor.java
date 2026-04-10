@@ -37,13 +37,10 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.commons.conf.IoTDBConstant.LAST_VALUE;
 import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil.addPartialSuffix;
 import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil.isBuiltinAggregationName;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.AVG;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.FIRST_VALUE;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.STDDEV;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.TIME_DURATION;
 
 public class AggregationDescriptor {
 
