@@ -480,7 +480,7 @@ public class IoTDBTableIT {
       // After
       statement.execute("COMMENT ON COLUMN table2.region_id IS '重庆'");
       statement.execute("COMMENT ON COLUMN table2.region_id IS NULL");
-      statement.execute("COMMENT ON COLUMN test2.table2.time IS 'recent'");
+      statement.execute("COMMENT ON COLUMN test2.table2.t1 IS 'recent'");
       statement.execute("COMMENT ON COLUMN test2.table2.region_id IS ''");
 
       comments = new String[] {"recent", "", null, null, "fast"};
@@ -527,7 +527,7 @@ public class IoTDBTableIT {
       }
 
       try {
-        statement.execute("alter table table2 drop column time");
+        statement.execute("alter table table2 drop column t1");
       } catch (final SQLException e) {
         assertEquals("701: Dropping tag or time column is not supported.", e.getMessage());
       }
@@ -619,8 +619,14 @@ public class IoTDBTableIT {
 
       // Test time column
       // More time column tests are included in other IT
-      statement.execute("create table test100 (time time)");
-      statement.execute("create table test101 (time timestamp time)");
+      statement.execute("create table test100 (t1 time)");
+      statement.execute("create table test101 (t1 timestamp time)");
+
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("show create table test100"),
+          "Table,Create Table,",
+          Collections.singleton(
+              "table2,CREATE TABLE \"test100\" (\"t1\" TIMESTAMP TIME) WITH (ttl=6600000),"));
     } catch (final SQLException e) {
       e.printStackTrace();
       fail(e.getMessage());
