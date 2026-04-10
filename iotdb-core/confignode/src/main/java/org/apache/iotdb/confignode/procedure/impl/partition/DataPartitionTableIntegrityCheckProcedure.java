@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.enums.DataPartitionTableGeneratorState;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.DatabaseScopedDataPartitionTable;
@@ -218,6 +219,10 @@ public class DataPartitionTableIntegrityCheckProcedure
    * Collect earliest timeslot information from all DataNodes. Each DataNode returns a Map<String,
    * Long> where key is database name and value is the earliest timeslot id.
    */
+  /**
+   * Collect earliest timeslot information from all DataNodes. Each DataNode returns a Map<String,
+   * Long> where key is database name and value is the earliest timeslot id.
+   */
   private Flow collectEarliestTimeslots() {
     if (LOG.isDebugEnabled()) {
       LOG.debug("Collecting earliest timeslots from all DataNodes...");
@@ -236,6 +241,14 @@ public class DataPartitionTableIntegrityCheckProcedure
     // Collect earliest timeslots from all DataNodes
     allDataNodes.removeAll(skipDataNodes);
     for (TDataNodeConfiguration dataNode : allDataNodes) {
+      // Check if DataNode is alive before sending request
+      NodeStatus nodeStatus =
+          dataNodeManager.getLoadManager().getNodeStatus(dataNode.getLocation().getDataNodeId());
+      if (!NodeStatus.Running.equals(nodeStatus)) {
+        failedDataNodes.add(dataNode);
+        continue;
+      }
+
       try {
         TGetEarliestTimeslotsResp resp =
             (TGetEarliestTimeslotsResp)
@@ -423,6 +436,13 @@ public class DataPartitionTableIntegrityCheckProcedure
     allDataNodes.removeAll(failedDataNodes);
     for (TDataNodeConfiguration dataNode : allDataNodes) {
       int dataNodeId = dataNode.getLocation().getDataNodeId();
+      // Check if DataNode is alive before sending request
+      NodeStatus nodeStatus = dataNodeManager.getLoadManager().getNodeStatus(dataNodeId);
+      if (!NodeStatus.Running.equals(nodeStatus)) {
+        failedDataNodes.add(dataNode);
+        continue;
+      }
+
       if (!dataPartitionTables.containsKey(dataNodeId)) {
         try {
           TGenerateDataPartitionTableReq req = new TGenerateDataPartitionTableReq();
@@ -472,6 +492,12 @@ public class DataPartitionTableIntegrityCheckProcedure
     int completeCount = 0;
     for (TDataNodeConfiguration dataNode : allDataNodes) {
       int dataNodeId = dataNode.getLocation().getDataNodeId();
+      // Check if DataNode is alive before sending request
+      NodeStatus nodeStatus = dataNodeManager.getLoadManager().getNodeStatus(dataNodeId);
+      if (!NodeStatus.Running.equals(nodeStatus)) {
+        failedDataNodes.add(dataNode);
+        continue;
+      }
 
       if (!dataPartitionTables.containsKey(dataNodeId)) {
         try {

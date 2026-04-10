@@ -1323,7 +1323,7 @@ public class NodeManager {
     return configManager.getPartitionManager();
   }
 
-  private LoadManager getLoadManager() {
+  public LoadManager getLoadManager() {
     return configManager.getLoadManager();
   }
 
