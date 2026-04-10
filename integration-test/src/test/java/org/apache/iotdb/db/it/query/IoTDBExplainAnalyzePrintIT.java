@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.it.query;
 
 import org.apache.iotdb.db.queryengine.execution.operator.sink.IdentitySinkOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.ExchangeOperator;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
@@ -46,6 +47,7 @@ public class IoTDBExplainAnalyzePrintIT {
   private static final String[] creationSqls =
       new String[] {
         "insert into root.test.device_0(s1, s2, s3, s4, s5, s6, s7, s8, s9, s10) values(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)",
+        "insert into root.test.device_1(s11) values(11)",
       };
 
   @BeforeClass
@@ -71,7 +73,7 @@ public class IoTDBExplainAnalyzePrintIT {
   }
 
   @Test
-  public void testMultiScanOperatorInAnalyze() throws SQLException {
+  public void testIdentitySinkOperatorWhenMergedInAnalyze() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement();
         ResultSet resultSet =
@@ -83,7 +85,27 @@ public class IoTDBExplainAnalyzePrintIT {
           break;
         }
       }
-      assertTrue("explain analyze output should contain DownStreamPlanNodeId", found);
+      assertTrue(
+          "explain analyze output should contain DownStreamPlanNodeId in IdentitySinkOperator",
+          found);
+    }
+  }
+
+  @Test
+  public void testExchangeOperatorWhenMergedInAnalyze() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement();
+        ResultSet resultSet =
+            statement.executeQuery(
+                "explain analyze select * from root.test.device_0, root.test.device_1")) {
+      boolean found = false;
+      while (resultSet.next()) {
+        if (resultSet.getString(1).contains(ExchangeOperator.SIZE_IN_BYTES)) {
+          found = true;
+          break;
+        }
+      }
+      assertTrue("explain analyze output should contain size_in_bytes", found);
     }
   }
 }

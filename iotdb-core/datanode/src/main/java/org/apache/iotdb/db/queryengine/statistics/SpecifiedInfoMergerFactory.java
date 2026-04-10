@@ -57,6 +57,7 @@ public class SpecifiedInfoMergerFactory {
       case "TableSortOperator":
       case "TableMergeSortOperator":
       case "FilterAndProjectOperator":
+      case "ExchangeOperator":
         return LONG_MERGER;
       case "IdentitySinkOperator":
       case "ShuffleHelperOperator":
