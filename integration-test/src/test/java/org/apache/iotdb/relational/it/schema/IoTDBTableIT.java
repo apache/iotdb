@@ -306,7 +306,7 @@ public class IoTDBTableIT {
       }
 
       statement.execute(
-          "create table table2(region_id STRING TAG, plant_id STRING TAG, color STRING ATTRIBUTE, temperature FLOAT FIELD) with (TTL=6600000)");
+          "create table table2(t1 TIMESTAMP TIME, region_id STRING TAG, plant_id STRING TAG, color STRING ATTRIBUTE, temperature FLOAT FIELD) with (TTL=6600000)");
 
       statement.execute("alter table table2 add column speed DOUBLE FIELD COMMENT 'fast'");
 
@@ -314,7 +314,7 @@ public class IoTDBTableIT {
           statement.executeQuery("show create table table2"),
           "Table,Create Table,",
           Collections.singleton(
-              "table2,CREATE TABLE \"table2\" (\"region_id\" STRING TAG,\"plant_id\" STRING TAG,\"color\" STRING ATTRIBUTE,\"temperature\" FLOAT FIELD,\"speed\" DOUBLE FIELD COMMENT 'fast') WITH (ttl=6600000),"));
+              "table2,CREATE TABLE \"table2\" (\"t1\" TIMESTAMP TIME,\"region_id\" STRING TAG,\"plant_id\" STRING TAG,\"color\" STRING ATTRIBUTE,\"temperature\" FLOAT FIELD,\"speed\" DOUBLE FIELD COMMENT 'fast') WITH (ttl=6600000),"));
 
       try {
         statement.execute("alter table table2 add column speed DOUBLE FIELD");
@@ -422,7 +422,7 @@ public class IoTDBTableIT {
         assertEquals(columnNames.length, cnt);
       }
 
-      columnNames = new String[] {"time", "region_id", "plant_id", "color", "temperature", "speed"};
+      columnNames = new String[] {"t1", "region_id", "plant_id", "color", "temperature", "speed"};
       dataTypes = new String[] {"TIMESTAMP", "STRING", "STRING", "STRING", "FLOAT", "DOUBLE"};
       categories = new String[] {"TIME", "TAG", "TAG", "ATTRIBUTE", "FIELD", "FIELD"};
 
@@ -451,7 +451,7 @@ public class IoTDBTableIT {
 
       // Test comment
       // Before
-      columnNames = new String[] {"time", "region_id", "plant_id", "temperature", "speed"};
+      columnNames = new String[] {"t1", "region_id", "plant_id", "temperature", "speed"};
       dataTypes = new String[] {"TIMESTAMP", "STRING", "STRING", "FLOAT", "DOUBLE"};
       categories = new String[] {"TIME", "TAG", "TAG", "FIELD", "FIELD"};
       statuses = new String[] {"USING", "USING", "USING", "USING", "USING"};
@@ -1066,14 +1066,14 @@ public class IoTDBTableIT {
           statement.executeQuery("show create view view_table"),
           "View,Create View,",
           Collections.singleton(
-              "view_table,CREATE VIEW \"view_table\" (\"tag1\" STRING TAG,\"tag2\" STRING TAG,\"s11\" INT32 FIELD,\"s3\" STRING FIELD FROM \"s2\") RESTRICT WITH (ttl=100) AS root.\"重庆\".\"1\".**,"));
+              "view_table,CREATE VIEW \"view_table\" (\"time\" TIMESTAMP TIME,\"tag1\" STRING TAG,\"tag2\" STRING TAG,\"s11\" INT32 FIELD,\"s3\" STRING FIELD FROM \"s2\") RESTRICT WITH (ttl=100) AS root.\"重庆\".\"1\".**,"));
 
       // Can also use "show create table"
       TestUtils.assertResultSetEqual(
           statement.executeQuery("show create table view_table"),
           "View,Create View,",
           Collections.singleton(
-              "view_table,CREATE VIEW \"view_table\" (\"tag1\" STRING TAG,\"tag2\" STRING TAG,\"s11\" INT32 FIELD,\"s3\" STRING FIELD FROM \"s2\") RESTRICT WITH (ttl=100) AS root.\"重庆\".\"1\".**,"));
+              "view_table,CREATE VIEW \"view_table\" (\"time\" TIMESTAMP TIME,\"tag1\" STRING TAG,\"tag2\" STRING TAG,\"s11\" INT32 FIELD,\"s3\" STRING FIELD FROM \"s2\") RESTRICT WITH (ttl=100) AS root.\"重庆\".\"1\".**,"));
 
       statement.execute("create table a ()");
       try {
