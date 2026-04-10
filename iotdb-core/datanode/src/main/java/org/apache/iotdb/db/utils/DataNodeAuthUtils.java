@@ -501,7 +501,7 @@ public class DataNodeAuthUtils {
 
   public static void recordLoginHistory(
       String username, long userId, String hostname, boolean loginResult, long timeToRecord) {
-    if (!commonConfig.isEnableAuditLog()) {
+    if (!commonConfig.isEnableAuditLog() || userId == -1) {
       return;
     }
     InsertRowStatement insertRowStatement = new InsertRowStatement();
