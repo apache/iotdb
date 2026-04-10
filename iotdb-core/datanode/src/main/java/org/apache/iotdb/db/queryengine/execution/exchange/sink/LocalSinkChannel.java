@@ -148,9 +148,9 @@ public class LocalSinkChannel implements ISinkChannel {
         if (queue.hasNoMoreTsBlocks()) {
           return;
         }
-        if (LOGGER.isDebugEnabled()) {
-          LOGGER.debug("[StartSendTsBlockOnLocal]");
-        }
+        //        if (LOGGER.isDebugEnabled()) {
+        LOGGER.info("[StartSendTsBlockOnLocal]");
+        //        }
         synchronized (this) {
           blocked = queue.add(tsBlock);
         }
@@ -165,9 +165,9 @@ public class LocalSinkChannel implements ISinkChannel {
   public void setNoMoreTsBlocks() {
     synchronized (queue) {
       synchronized (this) {
-        if (LOGGER.isDebugEnabled()) {
-          LOGGER.debug("[StartSetNoMoreTsBlocksOnLocal]");
-        }
+        //        if (LOGGER.isDebugEnabled()) {
+        LOGGER.info("[StartSetNoMoreTsBlocksOnLocal]");
+        //        }
         if (aborted || closed) {
           return;
         }
@@ -176,16 +176,16 @@ public class LocalSinkChannel implements ISinkChannel {
       }
     }
     checkAndInvokeOnFinished();
-    if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("[EndSetNoMoreTsBlocksOnLocal]");
-    }
+    //    if (LOGGER.isDebugEnabled()) {
+    LOGGER.info("[EndSetNoMoreTsBlocksOnLocal]");
+    //    }
   }
 
   @Override
   public boolean abort() {
-    if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("[StartAbortLocalSinkChannel]");
-    }
+    //    if (LOGGER.isDebugEnabled()) {
+    LOGGER.info("[StartAbortLocalSinkChannel]");
+    //    }
     synchronized (queue) {
       synchronized (this) {
         if (aborted || closed) {
@@ -200,17 +200,17 @@ public class LocalSinkChannel implements ISinkChannel {
         }
       }
     }
-    if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("[EndAbortLocalSinkChannel]");
-    }
+    //    if (LOGGER.isDebugEnabled()) {
+    LOGGER.info("[EndAbortLocalSinkChannel]");
+    //    }
     return true;
   }
 
   @Override
   public boolean close() {
-    if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("[StartCloseLocalSinkChannel]");
-    }
+    //    if (LOGGER.isDebugEnabled()) {
+    LOGGER.info("[StartCloseLocalSinkChannel]");
+    //    }
     synchronized (queue) {
       synchronized (this) {
         if (aborted || closed) {
@@ -224,9 +224,9 @@ public class LocalSinkChannel implements ISinkChannel {
         }
       }
     }
-    if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("[EndCloseLocalSinkChannel]");
-    }
+    //    if (LOGGER.isDebugEnabled()) {
+    LOGGER.info("[EndCloseLocalSinkChannel]");
+    //    }
     return true;
   }
 
