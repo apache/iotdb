@@ -22,9 +22,6 @@ package org.apache.iotdb.commons.schema.table;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.exception.runtime.SchemaExecutionException;
-import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
-import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
-import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TimeColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
@@ -237,33 +234,10 @@ public class TsTable {
         () -> {
           // Ensures idempotency
           if (columnSchemaMap.containsKey(oldName)) {
-            final TsTableColumnSchema schema = columnSchemaMap.remove(oldName);
+            final TsTableColumnSchema schema = columnSchemaMap.get(oldName);
             final Map<String, String> oldProps = schema.getProps();
             oldProps.computeIfAbsent(TreeViewSchema.ORIGINAL_NAME, k -> schema.getColumnName());
-            switch (schema.getColumnCategory()) {
-              case TAG:
-                columnSchemaMap.put(
-                    newName, new TagColumnSchema(newName, schema.getDataType(), oldProps));
-                break;
-              case FIELD:
-                columnSchemaMap.put(
-                    newName,
-                    new FieldColumnSchema(
-                        newName,
-                        schema.getDataType(),
-                        ((FieldColumnSchema) schema).getEncoding(),
-                        ((FieldColumnSchema) schema).getCompressor(),
-                        oldProps));
-                break;
-              case ATTRIBUTE:
-                columnSchemaMap.put(
-                    newName, new AttributeColumnSchema(newName, schema.getDataType(), oldProps));
-                break;
-              case TIME:
-              default:
-                // Do nothing
-                columnSchemaMap.put(oldName, schema);
-            }
+            schema.setColumnName(newName);
           }
         });
   }
