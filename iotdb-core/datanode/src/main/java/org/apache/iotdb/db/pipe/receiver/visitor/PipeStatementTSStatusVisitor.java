@@ -168,34 +168,21 @@ public class PipeStatementTSStatusVisitor extends StatementVisitor<TSStatus, TSS
   @Override
   public TSStatus visitCreateMultiTimeSeries(
       final CreateMultiTimeSeriesStatement createMultiTimeSeriesStatement, final TSStatus status) {
-    return visitGeneralCreateMultiTimeSeries(createMultiTimeSeriesStatement, status);
+    return visitGeneralCreateTimeSeries(createMultiTimeSeriesStatement, status);
   }
 
   @Override
   public TSStatus visitInternalCreateTimeseries(
       final InternalCreateTimeSeriesStatement internalCreateTimeSeriesStatement,
       final TSStatus status) {
-    return visitGeneralCreateMultiTimeSeries(internalCreateTimeSeriesStatement, status);
+    return visitGeneralCreateTimeSeries(internalCreateTimeSeriesStatement, status);
   }
 
   @Override
   public TSStatus visitInternalCreateMultiTimeSeries(
       final InternalCreateMultiTimeSeriesStatement internalCreateMultiTimeSeriesStatement,
       final TSStatus status) {
-    return visitGeneralCreateMultiTimeSeries(internalCreateMultiTimeSeriesStatement, status);
-  }
-
-  private TSStatus visitGeneralCreateMultiTimeSeries(
-      final Statement statement, final TSStatus status) {
-    if (status.getCode() == TSStatusCode.TIMESERIES_ALREADY_EXIST.getStatusCode()
-        || status.getCode() == TSStatusCode.ALIAS_ALREADY_EXIST.getStatusCode()) {
-      return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
-          .setMessage(status.getMessage());
-    } else if (status.getCode() == TSStatusCode.SCHEMA_QUOTA_EXCEEDED.getStatusCode()) {
-      return new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
-          .setMessage(status.getMessage());
-    }
-    return visitStatement(statement, status);
+    return visitGeneralCreateTimeSeries(internalCreateMultiTimeSeriesStatement, status);
   }
 
   @Override
@@ -236,17 +223,6 @@ public class PipeStatementTSStatusVisitor extends StatementVisitor<TSStatus, TSS
   @Override
   public TSStatus visitBatchActivateTemplate(
       final BatchActivateTemplateStatement batchActivateTemplateStatement, final TSStatus status) {
-    if (status.getCode() == TSStatusCode.TEMPLATE_IS_IN_USE.getStatusCode()) {
-      return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
-          .setMessage(status.getMessage());
-    }
-    if (status.getCode() == TSStatusCode.METADATA_ERROR.getStatusCode()
-        && status.isSetMessage()
-        && status.getMessage().contains("has not been set any template")) {
-      return new TSStatus(
-              TSStatusCode.PIPE_RECEIVER_PARALLEL_OR_USER_CONFLICT_EXCEPTION.getStatusCode())
-          .setMessage(status.getMessage());
-    }
     return visitGeneralActivateTemplate(batchActivateTemplateStatement, status);
   }
 
