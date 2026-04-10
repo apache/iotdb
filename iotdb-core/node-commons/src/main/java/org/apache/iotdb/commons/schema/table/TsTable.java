@@ -141,6 +141,19 @@ public class TsTable {
     }
   }
 
+  // No need to acquire lock, because the time column is fixed after table creation
+  // And the inner name is protected by the volatile keyword
+  public TsTableColumnSchema getTimeColumnSchema() {
+    if (Objects.isNull(timeColumnSchema)) {
+      timeColumnSchema =
+              columnSchemaMap.values().stream()
+                      .filter(column -> column instanceof TimeColumnSchema)
+                      .findFirst()
+                      .orElse(null);
+    }
+    return timeColumnSchema;
+  }
+
   /**
    * Execute a write operation with optimistic lock support. This method handles the write flag and
    * version increment automatically.
