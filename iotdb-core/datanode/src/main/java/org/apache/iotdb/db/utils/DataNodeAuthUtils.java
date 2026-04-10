@@ -60,7 +60,6 @@ import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.nio.charset.StandardCharsets;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -179,10 +178,10 @@ public class DataNodeAuthUtils {
       insertRowStatement.setMeasurements(new String[] {"password", "oldPassword"});
       insertRowStatement.setValues(
           new Object[] {
-            new Binary(AuthUtils.encryptPassword(password), StandardCharsets.UTF_8),
+            new Binary(AuthUtils.encryptPassword(password), TSFileConfig.STRING_CHARSET),
             oldEncryptedPassword == null
                 ? null
-                : new Binary(oldEncryptedPassword, StandardCharsets.UTF_8)
+                : new Binary(oldEncryptedPassword, TSFileConfig.STRING_CHARSET)
           });
       insertRowStatement.setDataTypes(new TSDataType[] {TSDataType.STRING, TSDataType.STRING});
     } catch (IllegalPathException ignored) {
@@ -465,6 +464,9 @@ public class DataNodeAuthUtils {
         long lastPasswordTime =
             CommonDateTimeUtils.convertIoTDBTimeToMillis(tsBlock.getTimeByIndex(0));
         // columns of last query: [timeseriesName, value, dataType]
+        if (tsBlock.getColumn(1).isNull(0)) {
+          return null;
+        }
         String oldPassword = tsBlock.getColumn(1).getBinary(0).toString();
         if (oldPassword.equals(
             useEncryptedPassword ? password : AuthUtils.encryptPassword(password))) {
@@ -601,7 +603,12 @@ public class DataNodeAuthUtils {
     Optional<TsBlock> lastTsBlock = findLastNonEmptyTsBlock(tsBlocks);
     resp.setLastSuccessIp(
         lastTsBlock
-            .map(b -> new String(b.getColumn(1).getBinary(0).getValues(), StandardCharsets.UTF_8))
+            .map(
+                b ->
+                    b.getColumn(1).isNull(0)
+                        ? "null"
+                        : new String(
+                            b.getColumn(1).getBinary(0).getValues(), TSFileConfig.STRING_CHARSET))
             .orElse("null"));
     resp.setLastSuccessloginTime(
         lastTsBlock.map(b -> b.getTimeByIndex(b.getPositionCount() - 1)).orElse(0L));
@@ -620,7 +627,12 @@ public class DataNodeAuthUtils {
     Optional<TsBlock> lastTsBlock = findLastNonEmptyTsBlock(tsBlocks);
     resp.setLastFailedIp(
         lastTsBlock
-            .map(b -> new String(b.getColumn(1).getBinary(0).getValues(), StandardCharsets.UTF_8))
+            .map(
+                b ->
+                    b.getColumn(1).isNull(0)
+                        ? "null"
+                        : new String(
+                            b.getColumn(1).getBinary(0).getValues(), TSFileConfig.STRING_CHARSET))
             .orElse("null"));
     resp.setLastFailedLoginTime(
         lastTsBlock.map(b -> b.getTimeByIndex(b.getPositionCount() - 1)).orElse(0L));
@@ -637,7 +649,7 @@ public class DataNodeAuthUtils {
     List<TsBlock> tsBlocks = getTsBlockBySql(sql);
     int count = 0;
     for (TsBlock tsBlock : tsBlocks) {
-      if (tsBlock != null && tsBlock.getPositionCount() > 0) {
+      if (tsBlock != null && tsBlock.getPositionCount() > 0 && !tsBlock.getColumn(1).isNull(0)) {
         count += tsBlock.getColumn(1).getLong(0);
       }
     }
