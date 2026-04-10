@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.resource.memory;
 
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.event.common.row.PipeRow;
 import org.apache.iotdb.db.utils.MemUtils;
 
@@ -118,7 +119,10 @@ public class PipeMemoryWeightUtil {
       }
     }
 
-    return calculateTabletRowCountAndMemoryBySize(totalSizeInBytes, schemaCount);
+    return calculateTabletRowCountAndMemoryBySize(
+        totalSizeInBytes,
+        schemaCount,
+        PipeConfig.getInstance().getPipeDataStructureTabletRowSize());
   }
 
   /**
@@ -163,7 +167,8 @@ public class PipeMemoryWeightUtil {
       }
     }
 
-    return calculateTabletRowCountAndMemoryBySize(totalSizeInBytes, schemaCount);
+    return calculateTabletRowCountAndMemoryBySize(
+        totalSizeInBytes, schemaCount, batchData.length());
   }
 
   /**
@@ -173,22 +178,28 @@ public class PipeMemoryWeightUtil {
    * @return left is the row count of tablet, right is the memory cost of tablet in bytes
    */
   public static Pair<Integer, Integer> calculateTabletRowCountAndMemory(PipeRow row) {
-    return calculateTabletRowCountAndMemoryBySize(row.getCurrentRowSize(), row.size());
+    return calculateTabletRowCountAndMemoryBySize(
+        row.getCurrentRowSize(),
+        row.size(),
+        PipeConfig.getInstance().getPipeDataStructureTabletRowSize());
   }
 
   private static Pair<Integer, Integer> calculateTabletRowCountAndMemoryBySize(
-      int rowSize, int schemaCount) {
-    if (rowSize <= 0) {
+      int rowBytesUsed, int schemaCount, int inputNum) {
+    if (rowBytesUsed <= 0) {
       return new Pair<>(1, 0);
     }
 
     // Calculate row number according to the max size of a pipe tablet.
     // "-100" is the estimated size of other data structures in a pipe tablet.
     // "*8" converts bytes to bits, because the bitmap size is 1 bit per schema.
-    int rowNumber =
-        8
-            * (PipeConfig.getInstance().getPipeDataStructureTabletSizeInBytes() - 100)
-            / (8 * rowSize + schemaCount);
+    // Here we estimate the max use of
+    int sizeLimit =
+        Math.min(
+            IoTDBDescriptor.getInstance().getConfig().getPipeDataStructureTabletSizeInBytes(),
+            (int) (inputNum * rowBytesUsed * 1.2));
+
+    int rowNumber = 8 * (sizeLimit - 100) / (8 * rowBytesUsed + schemaCount);
     rowNumber = Math.max(1, rowNumber);
 
     if ( // This means the row number is larger than the max row count of a pipe tablet
@@ -196,10 +207,9 @@ public class PipeMemoryWeightUtil {
       // Bound the row number, the memory cost is rowSize * rowNumber
       return new Pair<>(
           PipeConfig.getInstance().getPipeDataStructureTabletRowSize(),
-          rowSize * PipeConfig.getInstance().getPipeDataStructureTabletRowSize());
+          rowBytesUsed * PipeConfig.getInstance().getPipeDataStructureTabletRowSize());
     } else {
-      return new Pair<>(
-          rowNumber, PipeConfig.getInstance().getPipeDataStructureTabletSizeInBytes());
+      return new Pair<>(rowNumber, sizeLimit);
     }
   }
 
