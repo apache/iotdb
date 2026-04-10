@@ -79,6 +79,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Deallocate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Delete;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DeleteDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DereferenceExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DescribeOutput;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DescribeQuery;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DescribeTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DoubleLiteral;
@@ -497,6 +498,17 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   @Override
   public Node visitDescQueryStatement(final RelationalSqlParser.DescQueryStatementContext ctx) {
     return new DescribeQuery(getLocation(ctx), (Query) visit(ctx.query()));
+  }
+
+  @Override
+  public Node visitDescribeOutputStatement(
+      final RelationalSqlParser.DescribeOutputStatementContext ctx) {
+    final List<Literal> parameters =
+        ctx.literalExpression() != null && !ctx.literalExpression().isEmpty()
+            ? visit(ctx.literalExpression(), Literal.class)
+            : ImmutableList.of();
+    return new DescribeOutput(
+        getLocation(ctx), lowerIdentifier((Identifier) visit(ctx.statementName)), parameters);
   }
 
   @Override

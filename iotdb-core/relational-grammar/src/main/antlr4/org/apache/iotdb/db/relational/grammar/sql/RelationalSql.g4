@@ -57,6 +57,7 @@ statement
     | createTableStatement
     | dropTableStatement
     | showTableStatement
+    | describeOutputStatement
     | descTableStatement
     | descQueryStatement
     | alterTableStatement
@@ -941,6 +942,10 @@ unloadModelStatement
 // ------------------------------------------- Prepared Statement ---------------------------------------------------------
 prepareStatement
     : PREPARE statementName=identifier FROM sql=statement
+    ;
+
+describeOutputStatement
+    : DESCRIBE OUTPUT statementName=identifier (USING literalExpression (',' literalExpression)*)?
     ;
 
 executeStatement

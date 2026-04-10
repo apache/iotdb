@@ -28,64 +28,73 @@ import java.util.Objects;
 import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Objects.requireNonNull;
 
-public class DescribeQuery extends Statement {
-
+public class DescribeOutput extends Statement {
   private static final long INSTANCE_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(DescribeQuery.class);
+      RamUsageEstimator.shallowSizeOfInstance(DescribeOutput.class);
 
-  private final Query query;
+  private final Identifier statementName;
+  private final List<Literal> parameters;
 
-  public DescribeQuery(final Query query) {
-    super(null);
-    this.query = requireNonNull(query, "query is null");
-  }
-
-  public DescribeQuery(final NodeLocation location, final Query query) {
+  public DescribeOutput(
+      final NodeLocation location, final Identifier statementName, final List<Literal> parameters) {
     super(requireNonNull(location, "location is null"));
-    this.query = requireNonNull(query, "query is null");
+    this.statementName = requireNonNull(statementName, "statementName is null");
+    this.parameters = ImmutableList.copyOf(requireNonNull(parameters, "parameters is null"));
   }
 
-  public Query getQuery() {
-    return query;
+  public Identifier getStatementName() {
+    return statementName;
+  }
+
+  public List<Literal> getParameters() {
+    return parameters;
   }
 
   @Override
   public <R, C> R accept(final AstVisitor<R, C> visitor, final C context) {
-    return visitor.visitDescribeQuery(this, context);
+    return visitor.visitDescribeOutput(this, context);
   }
 
   @Override
   public List<Node> getChildren() {
-    return ImmutableList.of(query);
+    final ImmutableList.Builder<Node> children = ImmutableList.builder();
+    children.add(statementName);
+    children.addAll(parameters);
+    return children.build();
   }
 
   @Override
-  public boolean equals(final Object obj) {
-    if (this == obj) {
+  public boolean equals(final Object o) {
+    if (this == o) {
       return true;
     }
-    if (obj == null || getClass() != obj.getClass()) {
+    if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    final DescribeQuery that = (DescribeQuery) obj;
-    return Objects.equals(query, that.query);
+    final DescribeOutput that = (DescribeOutput) o;
+    return Objects.equals(statementName, that.statementName)
+        && Objects.equals(parameters, that.parameters);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(query);
+    return Objects.hash(statementName, parameters);
   }
 
   @Override
   public String toString() {
-    return toStringHelper(this).add("query", query).toString();
+    return toStringHelper(this)
+        .add("statementName", statementName)
+        .add("parameters", parameters)
+        .toString();
   }
 
   @Override
   public long ramBytesUsed() {
     long size = INSTANCE_SIZE;
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
-    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(query);
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(statementName);
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeList(parameters);
     return size;
   }
 }

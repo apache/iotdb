@@ -149,6 +149,25 @@ public class IoTDBTablePreparedStatementIT {
     }
   }
 
+  private static SQLException executePreparedStatementAndExpectSQLException(
+      Connection connection, Statement statement, String sql) {
+    return assertThrows(
+        SQLException.class,
+        () -> {
+          if (connection instanceof ClusterTestConnection) {
+            try (Statement writeStatement =
+                ((ClusterTestConnection) connection)
+                    .writeConnection
+                    .getUnderlyingConnection()
+                    .createStatement()) {
+              writeStatement.executeQuery(sql);
+            }
+          } else {
+            statement.executeQuery(sql);
+          }
+        });
+  }
+
   @Test
   public void testPrepareAndExecute() {
     String[] expectedHeader = new String[] {"time", "id", "name", "value"};
@@ -380,6 +399,60 @@ public class IoTDBTablePreparedStatementIT {
       statement.execute("DEALLOCATE PREPARE stmt8");
     } catch (SQLException e) {
       fail("testPrepareAndExecuteWithStringParameter failed: " + e.getMessage());
+    }
+  }
+
+  @Test
+  public void testDescribeOutput() {
+    String[] expectedHeader = new String[] {"ColumnName", "DataType"};
+    String[] retArray = new String[] {"id,INT64,", "name,STRING,", "value,DOUBLE,"};
+    try (Connection connection = EnvFactory.getEnv().getTableConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("USE " + DATABASE_NAME);
+      statement.execute("PREPARE stmt_desc_out1 FROM SELECT id, name, value FROM test_table");
+      executePreparedStatementAndVerify(
+          connection, statement, "DESCRIBE OUTPUT stmt_desc_out1", expectedHeader, retArray);
+      statement.execute("DEALLOCATE PREPARE stmt_desc_out1");
+    } catch (SQLException e) {
+      fail("testDescribeOutput failed: " + e.getMessage());
+    }
+  }
+
+  @Test
+  public void testDescribeOutputUsingParameters() {
+    String[] expectedHeader = new String[] {"ColumnName", "DataType"};
+    String[] retArray = new String[] {"id,INT64,", "name,STRING,", "_col2,DOUBLE,"};
+    try (Connection connection = EnvFactory.getEnv().getTableConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("USE " + DATABASE_NAME);
+      statement.execute(
+          "PREPARE stmt_desc_out2 FROM SELECT id, name, value * ? FROM test_table WHERE id >= ?");
+      executePreparedStatementAndVerify(
+          connection,
+          statement,
+          "DESCRIBE OUTPUT stmt_desc_out2 USING 2.0, 2",
+          expectedHeader,
+          retArray);
+      statement.execute("DEALLOCATE PREPARE stmt_desc_out2");
+    } catch (SQLException e) {
+      fail("testDescribeOutputUsingParameters failed: " + e.getMessage());
+    }
+  }
+
+  @Test
+  public void testDescribeOutputNonExistentStatement() {
+    try (Connection connection = EnvFactory.getEnv().getTableConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("USE " + DATABASE_NAME);
+      SQLException exception =
+          executePreparedStatementAndExpectSQLException(
+              connection, statement, "DESCRIBE OUTPUT stmt_not_exists");
+      System.out.println(exception.getMessage());
+      assertTrue(
+          exception.getMessage().contains("does not exist")
+              && exception.getMessage().contains("Prepared statement"));
+    } catch (SQLException e) {
+      fail("testDescribeOutputNonExistentStatement failed: " + e.getMessage());
     }
   }
 }

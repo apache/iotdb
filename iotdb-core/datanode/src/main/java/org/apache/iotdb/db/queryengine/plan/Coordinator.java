@@ -84,6 +84,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTraining;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Deallocate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DeleteDevice;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DescribeOutput;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DescribeQuery;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DescribeTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropDB;
@@ -716,7 +718,27 @@ public class Coordinator {
       innerStatement = ((ExplainAnalyze) statement).getStatement();
     }
 
-    if (innerStatement instanceof Execute) {
+    if (innerStatement instanceof DescribeOutput) {
+      final DescribeOutput describeOutput = (DescribeOutput) innerStatement;
+      final String statementName = describeOutput.getStatementName().getValue();
+      final PreparedStatementInfo preparedInfo = clientSession.getPreparedStatement(statementName);
+      if (preparedInfo == null) {
+        throw new SemanticException(
+            String.format("Prepared statement '%s' does not exist", statementName));
+      }
+      final org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement resolvedSql =
+          preparedInfo.getSql();
+      parameterLookup =
+          ParameterExtractor.bindParameters(resolvedSql, describeOutput.getParameters());
+      parameters = new ArrayList<>(describeOutput.getParameters());
+      if (!(resolvedSql instanceof Query)) {
+        throw new SemanticException(
+            String.format(
+                "DESCRIBE OUTPUT only supports prepared query statements, but '%s' is %s",
+                statementName, resolvedSql.getClass().getSimpleName()));
+      }
+      statementToUse = new DescribeQuery((Query) resolvedSql);
+    } else if (innerStatement instanceof Execute) {
       Execute executeStatement = (Execute) innerStatement;
       String statementName = executeStatement.getStatementName().getValue();
 
