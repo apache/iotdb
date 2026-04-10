@@ -146,11 +146,11 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
         } catch (Exception e) {
           PipeLogger.log(
               LOGGER::warn,
+              e,
               "Receiver id = %s: Failed to delete original receiver file dir %s, because %s.",
               receiverId.get(),
               receiverFileDirWithIdSuffix.get().getPath(),
-              e.getMessage(),
-              e);
+              e.getMessage());
         }
       } else {
         if (LOGGER.isDebugEnabled()) {
@@ -184,9 +184,9 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       } catch (Exception e) {
         PipeLogger.log(
             LOGGER::warn,
+            e,
             "Receiver id = %s: Failed to create pipe receiver file folder because all disks of folders are full.",
-            receiverId.get(),
-            e);
+            receiverId.get());
         return new TPipeTransferResp(StatusUtils.getStatus(TSStatusCode.DISK_SPACE_INSUFFICIENT));
       }
 
@@ -535,11 +535,11 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       } catch (final Exception e) {
         PipeLogger.log(
             LOGGER::warn,
+            e,
             "Receiver id = %s: Failed to close current writing file writer %s, because %s.",
             receiverId.get(),
             writingFile == null ? "null" : writingFile.getPath(),
-            e.getMessage(),
-            e);
+            e.getMessage());
       }
       writingFileWriter = null;
     } else {
@@ -574,11 +574,11 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       } catch (final Exception e) {
         PipeLogger.log(
             LOGGER::warn,
+            e,
             "Receiver id = %s: Failed to delete original writing file %s, because %s.",
             receiverId.get(),
             file.getPath(),
-            e.getMessage(),
-            e);
+            e.getMessage());
       }
     } else {
       if (LOGGER.isDebugEnabled()) {
@@ -659,11 +659,11 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
     } catch (final Exception e) {
       PipeLogger.log(
           LOGGER::warn,
+          e,
           "Receiver id = %s: Failed to seal file %s from req %s.",
           receiverId.get(),
           writingFile,
-          req,
-          e);
+          req);
       return new TPipeTransferResp(
           RpcUtils.getStatus(
               TSStatusCode.PIPE_TRANSFER_FILE_ERROR,
@@ -756,11 +756,11 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
     } catch (final Exception e) {
       PipeLogger.log(
           LOGGER::warn,
+          e,
           "Receiver id = %s: Failed to seal file %s from req %s.",
           receiverId.get(),
           files,
-          req,
-          e);
+          req);
       return new TPipeTransferResp(
           RpcUtils.getStatus(
               TSStatusCode.PIPE_TRANSFER_FILE_ERROR,

@@ -96,7 +96,7 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
               .forceAllocateForTabletWithRetry(currentModifications.ramBytesUsed());
       long tableSize =
           Math.min(
-              PipeConfig.getInstance().getPipeDataStructureTabletSizeInBytes(),
+              IoTDBDescriptor.getInstance().getConfig().getPipeDataStructureTabletSizeInBytes(),
               IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize());
 
       this.allocatedMemoryBlockForChunk =
@@ -110,7 +110,9 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
       this.allocatedMemoryBlockForTableSchemas =
           PipeDataNodeResourceManager.memory()
               .forceAllocateForTabletWithRetry(
-                  PipeConfig.getInstance().getPipeDataStructureTabletSizeInBytes());
+                  IoTDBDescriptor.getInstance()
+                      .getConfig()
+                      .getPipeDataStructureTabletSizeInBytes());
 
       this.startTime = startTime;
       this.endTime = endTime;
