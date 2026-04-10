@@ -40,12 +40,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalIn
 @SuppressWarnings("java:S6539") // suppress "Monster class" warning
 public abstract class PlanVisitor<R, C> implements IQueryPlanVisitor<R, C> {
 
-  public R process(PlanNode node, C context) {
-    return node.accept(this, context);
-  }
-
-  public abstract R visitPlan(PlanNode node, C context);
-
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // Data Write Node
   /////////////////////////////////////////////////////////////////////////////////////////////////

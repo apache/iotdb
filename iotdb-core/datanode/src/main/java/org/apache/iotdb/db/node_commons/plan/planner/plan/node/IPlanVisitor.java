@@ -18,5 +18,9 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 
 public interface IPlanVisitor<R, C> {
 
+  default R process(PlanNode node, C context) {
+    return node.accept(this, context);
+  }
+
   R visitPlan(PlanNode node, C context);
 }

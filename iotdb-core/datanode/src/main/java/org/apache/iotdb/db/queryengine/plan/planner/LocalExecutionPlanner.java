@@ -182,7 +182,7 @@ public class LocalExecutionPlanner {
         break;
       case TABLE:
         instanceContext.setIgnoreAllNullRows(false);
-        root = node.accept(new TableOperatorGenerator(metadata), context);
+        root = node.accept(new DataNodeTableOperatorGenerator(metadata), context);
         break;
       default:
         throw new IllegalArgumentException(String.format("Unknown sql dialect: %s", sqlDialect));
