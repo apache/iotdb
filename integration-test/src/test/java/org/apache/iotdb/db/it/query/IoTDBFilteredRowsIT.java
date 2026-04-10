@@ -101,7 +101,6 @@ public class IoTDBFilteredRowsIT {
 
     try (Statement statement = connection.createStatement()) {
       String sql = "explain analyze verbose select * from " + device + " where " + condition;
-      log.info(sql);
       ResultSet resultSet = statement.executeQuery(sql);
 
       StringBuilder stringBuilder = new StringBuilder();
