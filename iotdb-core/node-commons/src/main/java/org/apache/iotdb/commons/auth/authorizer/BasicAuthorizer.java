@@ -136,11 +136,11 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   @Override
   public String login4Pipe(final String username, final String password) {
     final User user = userManager.getEntity(username);
-    if (Objects.isNull(password)) {
-      return user.getPassword();
-    }
     if (user == null) {
       return null;
+    }
+    if (Objects.isNull(password)) {
+      return user.getPassword();
     }
     if (AuthUtils.validatePassword(
         password, user.getPassword(), AsymmetricEncrypt.DigestAlgorithm.SHA_256)) {

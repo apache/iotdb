@@ -214,7 +214,7 @@ public abstract class Driver implements IDriver {
       finished =
           state.get() != State.ALIVE
               || driverContext.isDone()
-              || root.isFinished()
+              || (isInit() && root.isFinished())
               || sink.isClosed();
     } catch (Exception e) {
       throw new RuntimeException(e);
@@ -224,6 +224,8 @@ public abstract class Driver implements IDriver {
     }
     return finished;
   }
+
+  abstract boolean isInit();
 
   @SuppressWarnings({"squid:S1181", "squid:S112"})
   private ListenableFuture<?> processInternal() {

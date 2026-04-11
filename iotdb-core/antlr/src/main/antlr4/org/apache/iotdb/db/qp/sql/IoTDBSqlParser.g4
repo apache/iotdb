@@ -1211,7 +1211,7 @@ flush
 
 // Clear Cache
 clearCache
-    : CLEAR (SCHEMA | QUERY | ALL)? CACHE (ON (LOCAL | CLUSTER))?
+    : CLEAR (SCHEMA | QUERY | AUTH | ALL)? CACHE (ON (LOCAL | CLUSTER))?
     ;
 
 // Set Configuration

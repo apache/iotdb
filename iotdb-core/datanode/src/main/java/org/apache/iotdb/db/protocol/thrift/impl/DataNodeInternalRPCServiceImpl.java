@@ -2454,6 +2454,9 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
           || options.contains(CacheClearOptions.QUERY)) {
         storageEngine.clearCache();
       }
+      if (options.contains(CacheClearOptions.AUTH)) {
+        AuthorityChecker.invalidateAllCache();
+      }
       if (options.contains(CacheClearOptions.QUERY)
           && options.contains(CacheClearOptions.TABLE_ATTRIBUTE)
           && options.contains(CacheClearOptions.TREE_SCHEMA)) {
