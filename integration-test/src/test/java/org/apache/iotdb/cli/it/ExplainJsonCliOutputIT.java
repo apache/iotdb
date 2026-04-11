@@ -204,6 +204,19 @@ public class ExplainJsonCliOutputIT extends AbstractScriptIT {
   }
 
   /**
+   * Formats all output lines into a single string for use in assertion messages. Each line is
+   * prefixed with its index for easy identification.
+   */
+  private String formatOutputForDiag(List<String> outputList) {
+    StringBuilder sb = new StringBuilder();
+    sb.append("Total lines: ").append(outputList.size()).append("\n");
+    for (int i = 0; i < outputList.size(); i++) {
+      sb.append(String.format("  [%3d] |%s|%n", i, outputList.get(i)));
+    }
+    return sb.toString();
+  }
+
+  /**
    * Collects all output lines from a process, then verifies: 1. The column header is printed before
    * JSON content 2. No JSON content line has table border characters ('|' prefix or '+---'
    * separator) 3. The combined JSON content is valid JSON
@@ -231,6 +244,8 @@ public class ExplainJsonCliOutputIT extends AbstractScriptIT {
       System.out.println(s);
     }
 
+    String fullOutput = formatOutputForDiag(outputList);
+
     // Find the JSON content region: from the first line starting with '{' to the corresponding '}'
     int jsonStart = -1;
     int jsonEnd = -1;
@@ -245,26 +260,54 @@ public class ExplainJsonCliOutputIT extends AbstractScriptIT {
       }
     }
 
-    assertTrue("Should find JSON start '{'", jsonStart >= 0);
-    assertTrue("Should find JSON end '}'", jsonEnd >= jsonStart);
+    assertTrue("Should find JSON start '{'. Full process output:\n" + fullOutput, jsonStart >= 0);
+    assertTrue(
+        "Should find JSON end '}'. jsonStart="
+            + jsonStart
+            + ". Full process output:\n"
+            + fullOutput,
+        jsonEnd >= jsonStart);
 
     // Verify the column header with table border appears before JSON content
     // Expected format: +---+  |header|  +---+  {json...}  +---+
-    assertTrue("Header border should appear before JSON content", jsonStart >= 3);
     assertTrue(
-        "Header border line should be present",
+        "Header border should appear before JSON content. jsonStart="
+            + jsonStart
+            + ". Full process output:\n"
+            + fullOutput,
+        jsonStart >= 3);
+    assertTrue(
+        "Header border line should be present at line "
+            + (jsonStart - 3)
+            + ", got: '"
+            + outputList.get(jsonStart - 3).trim()
+            + "'. Full process output:\n"
+            + fullOutput,
         outputList.get(jsonStart - 3).trim().matches("\\+[-+]+\\+"));
     assertTrue(
-        "Column header '" + expectedHeader + "' should be present",
+        "Column header '"
+            + expectedHeader
+            + "' should be present at line "
+            + (jsonStart - 2)
+            + ", got: '"
+            + outputList.get(jsonStart - 2)
+            + "'. Full process output:\n"
+            + fullOutput,
         outputList.get(jsonStart - 2).contains(expectedHeader));
     assertTrue(
-        "Header border line should be present",
+        "Header border line should be present at line "
+            + (jsonStart - 1)
+            + ", got: '"
+            + outputList.get(jsonStart - 1).trim()
+            + "'. Full process output:\n"
+            + fullOutput,
         outputList.get(jsonStart - 1).trim().matches("\\+[-+]+\\+"));
 
     // Verify JSON content lines do not have '|' borders
     for (int i = jsonStart; i <= jsonEnd; i++) {
       String s = outputList.get(i).trim();
-      assertFalse("JSON line should not start with '|', but found: " + s, s.startsWith("|"));
+      assertFalse(
+          "JSON line " + i + " should not start with '|', but found: " + s, s.startsWith("|"));
     }
 
     // Concatenate JSON lines and verify it's valid JSON
@@ -276,7 +319,13 @@ public class ExplainJsonCliOutputIT extends AbstractScriptIT {
     try {
       JsonParser.parseString(jsonStr).getAsJsonObject();
     } catch (Exception e) {
-      fail("Output should be valid JSON, but got parse error: " + e.getMessage());
+      fail(
+          "Output should be valid JSON, but got parse error: "
+              + e.getMessage()
+              + "\nJSON string: "
+              + jsonStr
+              + "\nFull process output:\n"
+              + fullOutput);
     }
 
     // Verify process exit code
@@ -288,6 +337,6 @@ public class ExplainJsonCliOutputIT extends AbstractScriptIT {
         fail();
       }
     }
-    assertEquals(0, p.exitValue());
+    assertEquals("Process exit code should be 0. Full output:\n" + fullOutput, 0, p.exitValue());
   }
 }
