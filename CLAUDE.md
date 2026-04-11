@@ -97,6 +97,7 @@ To run integration tests from IntelliJ: enable the `with-integration-tests` prof
 
 ## Code Style
 
+- **Apache License header**: Every new file committed to the repository MUST include the Apache License 2.0 header. Use the comment syntax appropriate for the file type (e.g., `<!-- -->` for `.md`, `/* */` for `.java`, `#` for `.properties`/`.py`). JSON files are exempt (no comment syntax). Refer to existing files in the repo for the exact format.
 - **Spotless** with Google Java Format (GOOGLE style). Import order: `org.apache.iotdb`, blank, `javax`, `java`, static.
 - **Checkstyle** is also configured (see `checkstyle.xml` at project root).
 - Java source/target level is 1.8 (compiled with `maven.compiler.release=8` on JDK 9+).
