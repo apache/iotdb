@@ -109,6 +109,8 @@ public class ExplainJsonCliOutputIT extends AbstractScriptIT {
     testOutput(setupBuilder, new String[] {"Msg: The statement is executed successfully."}, 0);
 
     // Test EXPLAIN (FORMAT JSON) output has no table borders
+    // Use fully qualified table name (database.table) to avoid multi-statement quoting issues
+    // on Windows where cmd.exe mangles ';' separated SQL through the batch script
     ProcessBuilder explainBuilder =
         new ProcessBuilder(
             "cmd.exe",
@@ -121,7 +123,7 @@ public class ExplainJsonCliOutputIT extends AbstractScriptIT {
             "-sql_dialect",
             "table",
             "-e",
-            "\"USE test_cli_json; EXPLAIN (FORMAT JSON) SELECT * FROM t1\"",
+            "\"EXPLAIN (FORMAT JSON) SELECT * FROM test_cli_json.t1\"",
             "&",
             "exit",
             "%^errorlevel%");
@@ -141,7 +143,7 @@ public class ExplainJsonCliOutputIT extends AbstractScriptIT {
             "-sql_dialect",
             "table",
             "-e",
-            "\"USE test_cli_json; EXPLAIN ANALYZE (FORMAT JSON) SELECT * FROM t1\"",
+            "\"EXPLAIN ANALYZE (FORMAT JSON) SELECT * FROM test_cli_json.t1\"",
             "&",
             "exit",
             "%^errorlevel%");
@@ -171,6 +173,7 @@ public class ExplainJsonCliOutputIT extends AbstractScriptIT {
     testOutput(setupBuilder, new String[] {"Msg: The statement is executed successfully."}, 0);
 
     // Test EXPLAIN (FORMAT JSON) output has no table borders
+    // Use fully qualified table name (database.table) for consistency with Windows tests
     ProcessBuilder explainBuilder =
         new ProcessBuilder(
             "bash",
@@ -182,7 +185,7 @@ public class ExplainJsonCliOutputIT extends AbstractScriptIT {
             "-sql_dialect",
             "table",
             "-e",
-            "\"USE test_cli_json; EXPLAIN (FORMAT JSON) SELECT * FROM t1\"");
+            "\"EXPLAIN (FORMAT JSON) SELECT * FROM test_cli_json.t1\"");
     explainBuilder.environment().put("IOTDB_HOME", homePath);
     assertRawJsonOutput(explainBuilder, "distribution plan");
 
@@ -198,7 +201,7 @@ public class ExplainJsonCliOutputIT extends AbstractScriptIT {
             "-sql_dialect",
             "table",
             "-e",
-            "\"USE test_cli_json; EXPLAIN ANALYZE (FORMAT JSON) SELECT * FROM t1\"");
+            "\"EXPLAIN ANALYZE (FORMAT JSON) SELECT * FROM test_cli_json.t1\"");
     analyzeBuilder.environment().put("IOTDB_HOME", homePath);
     assertRawJsonOutput(analyzeBuilder, "Explain Analyze");
   }
