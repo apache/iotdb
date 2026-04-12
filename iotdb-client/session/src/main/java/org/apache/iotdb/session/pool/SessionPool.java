@@ -1354,8 +1354,8 @@ public class SessionPool implements ISessionPool {
   }
 
   /**
-   * Inserts multiple records for a single device. This performs the same operation as
-   * {@link #insertRecordsOfOneDevice}.
+   * Inserts multiple records for a single device. This performs the same operation as {@link
+   * #insertRecordsOfOneDevice}.
    *
    * @param deviceId Device ID
    * @param times List of timestamps
