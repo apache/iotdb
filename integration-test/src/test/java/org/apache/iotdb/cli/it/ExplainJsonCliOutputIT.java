@@ -123,7 +123,7 @@ public class ExplainJsonCliOutputIT extends AbstractScriptIT {
             "-sql_dialect",
             "table",
             "-e",
-            "EXPLAIN (FORMAT JSON) SELECT * FROM test_cli_json.t1",
+            "EXPLAIN (FORMAT JSON) SELECT time,id,v FROM test_cli_json.t1",
             "&",
             "exit",
             "%^errorlevel%");
@@ -143,7 +143,7 @@ public class ExplainJsonCliOutputIT extends AbstractScriptIT {
             "-sql_dialect",
             "table",
             "-e",
-            "EXPLAIN ANALYZE (FORMAT JSON) SELECT * FROM test_cli_json.t1",
+            "EXPLAIN ANALYZE (FORMAT JSON) SELECT time,id,v FROM test_cli_json.t1",
             "&",
             "exit",
             "%^errorlevel%");
@@ -185,7 +185,7 @@ public class ExplainJsonCliOutputIT extends AbstractScriptIT {
             "-sql_dialect",
             "table",
             "-e",
-            "\"EXPLAIN (FORMAT JSON) SELECT * FROM test_cli_json.t1\"");
+            "\"EXPLAIN (FORMAT JSON) SELECT time,id,v FROM test_cli_json.t1\"");
     explainBuilder.environment().put("IOTDB_HOME", homePath);
     assertRawJsonOutput(explainBuilder, "distribution plan");
 
@@ -201,7 +201,7 @@ public class ExplainJsonCliOutputIT extends AbstractScriptIT {
             "-sql_dialect",
             "table",
             "-e",
-            "\"EXPLAIN ANALYZE (FORMAT JSON) SELECT * FROM test_cli_json.t1\"");
+            "\"EXPLAIN ANALYZE (FORMAT JSON) SELECT time,id,v FROM test_cli_json.t1\"");
     analyzeBuilder.environment().put("IOTDB_HOME", homePath);
     assertRawJsonOutput(analyzeBuilder, "Explain Analyze");
   }
