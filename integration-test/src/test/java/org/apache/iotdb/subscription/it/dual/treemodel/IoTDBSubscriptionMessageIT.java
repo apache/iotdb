@@ -17,18 +17,18 @@
  * under the License.
  */
 
-package org.apache.iotdb.subscription.it.local;
+package org.apache.iotdb.subscription.it.dual.treemodel;
 
 import org.apache.iotdb.isession.ISession;
-import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.LocalStandaloneIT;
+import org.apache.iotdb.itbase.category.MultiClusterIT2SubscriptionTreeArchVerification;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionRuntimeException;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 import org.apache.iotdb.session.subscription.SubscriptionTreeSession;
 import org.apache.iotdb.session.subscription.consumer.tree.SubscriptionTreePullConsumer;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
 import org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant;
+import org.apache.iotdb.subscription.it.dual.AbstractSubscriptionDualIT;
 
 import org.junit.Assert;
 import org.junit.Before;
@@ -46,8 +46,8 @@ import java.util.concurrent.locks.LockSupport;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
-@Category({LocalStandaloneIT.class})
-public class IoTDBSubscriptionMessageIT extends AbstractSubscriptionLocalIT {
+@Category({MultiClusterIT2SubscriptionTreeArchVerification.class})
+public class IoTDBSubscriptionMessageIT extends AbstractSubscriptionDualIT {
 
   @Override
   @Before
@@ -61,8 +61,8 @@ public class IoTDBSubscriptionMessageIT extends AbstractSubscriptionLocalIT {
     insertHistoricalData(0, 100);
     createTopic(topicName);
 
-    final String host = EnvFactory.getEnv().getIP();
-    final int port = Integer.parseInt(EnvFactory.getEnv().getPort());
+    final String host = senderEnv.getIP();
+    final int port = Integer.parseInt(senderEnv.getPort());
     try (final SubscriptionTreePullConsumer consumer =
         new SubscriptionTreePullConsumer.Builder()
             .host(host)
@@ -100,8 +100,8 @@ public class IoTDBSubscriptionMessageIT extends AbstractSubscriptionLocalIT {
     insertHistoricalData(100, 200);
     createTopic(topicName);
 
-    final String host = EnvFactory.getEnv().getIP();
-    final int port = Integer.parseInt(EnvFactory.getEnv().getPort());
+    final String host = senderEnv.getIP();
+    final int port = Integer.parseInt(senderEnv.getPort());
     try (final SubscriptionTreePullConsumer consumer =
         new SubscriptionTreePullConsumer.Builder()
             .host(host)
@@ -132,7 +132,7 @@ public class IoTDBSubscriptionMessageIT extends AbstractSubscriptionLocalIT {
   }
 
   private void insertHistoricalData(final int start, final int end) {
-    try (final ISession session = EnvFactory.getEnv().getSessionConnection()) {
+    try (final ISession session = senderEnv.getSessionConnection()) {
       for (int i = start; i < end; ++i) {
         session.executeNonQueryStatement(
             String.format("insert into root.db.d1(time, s1) values (%s, 1)", i));
@@ -145,8 +145,8 @@ public class IoTDBSubscriptionMessageIT extends AbstractSubscriptionLocalIT {
   }
 
   private void createTopic(final String topicName) {
-    final String host = EnvFactory.getEnv().getIP();
-    final int port = Integer.parseInt(EnvFactory.getEnv().getPort());
+    final String host = senderEnv.getIP();
+    final int port = Integer.parseInt(senderEnv.getPort());
     try (final SubscriptionTreeSession session = new SubscriptionTreeSession(host, port)) {
       session.open();
       session.createTopic(topicName);
@@ -172,7 +172,8 @@ public class IoTDBSubscriptionMessageIT extends AbstractSubscriptionLocalIT {
 
   @SuppressWarnings("unchecked")
   private SortedMap<Long, Set<SubscriptionCommitContext>> getUncommittedCommitContexts(
-      final SubscriptionTreePullConsumer consumer) throws Exception {
+      final SubscriptionTreePullConsumer consumer)
+      throws Exception {
     final Field field =
         SubscriptionTreePullConsumer.class
             .getSuperclass()
