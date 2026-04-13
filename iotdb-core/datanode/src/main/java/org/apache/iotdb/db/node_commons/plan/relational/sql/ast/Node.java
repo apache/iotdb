@@ -17,7 +17,9 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
+package org.apache.iotdb.db.node_commons.plan.relational.sql.ast;
+
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NodeLocation;
 
 import org.apache.tsfile.utils.Accountable;
 
@@ -34,9 +36,13 @@ public abstract class Node implements Accountable {
     this.location = location;
   }
 
-  /** Accessible for {@link AstVisitor}, use {@link AstVisitor#process(Node, Object)} instead. */
-  protected <R, C> R accept(AstVisitor<R, C> visitor, C context) {
-    return visitor.visitNode(this, context);
+  /**
+   * Accessible for {@link org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor}, use
+   * {@link org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor#process(Node,
+   * Object)} instead.
+   */
+  protected <R, C> R accept(IAstVisitor<R, C> visitor, C context) {
+    return ((CommonQueryAstVisitor<R, C>) visitor).visitNode(this, context);
   }
 
   public Optional<NodeLocation> getLocation() {

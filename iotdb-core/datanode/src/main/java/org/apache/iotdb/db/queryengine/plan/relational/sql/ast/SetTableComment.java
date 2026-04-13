@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.IAstVisitor;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Node;
+
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
@@ -69,8 +72,8 @@ public class SetTableComment extends Statement {
   }
 
   @Override
-  public <R, C> R accept(final AstVisitor<R, C> visitor, final C context) {
-    return visitor.visitSetTableComment(this, context);
+  public <R, C> R accept(final IAstVisitor<R, C> visitor, final C context) {
+    return ((AstVisitor<R, C>) visitor).visitSetTableComment(this, context);
   }
 
   @Override

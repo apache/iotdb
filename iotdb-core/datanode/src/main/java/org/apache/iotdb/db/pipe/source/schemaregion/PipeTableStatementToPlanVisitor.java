@@ -20,11 +20,11 @@
 package org.apache.iotdb.db.pipe.source.schemaregion;
 
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Node;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.CreateOrUpdateTableDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateOrUpdateDevice;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
 
 public class PipeTableStatementToPlanVisitor extends AstVisitor<PlanNode, Void> {
   @Override

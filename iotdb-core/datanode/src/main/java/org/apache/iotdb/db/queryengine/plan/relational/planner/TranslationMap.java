@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
+import org.apache.iotdb.db.node_commons.plan.relational.planner.Symbol;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.ResolvedField;
@@ -26,7 +28,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Scope;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.ExpressionRewriter;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.ExpressionTreeRewriter;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DereferenceExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FieldReference;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GenericDataType;
@@ -60,7 +61,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.ScopeAware
  * boundary.
  *
  * <p>AST and IR expressions use the same class hierarchy ({@link
- * org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression}, but differ in the following
+ * org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Expression}, but differ in the following
  * ways:
  * <li>AST expressions contain Identifiers, while IR expressions contain SymbolReferences
  * <li>FunctionCalls in AST expressions are SQL function names. In IR expressions, they contain an

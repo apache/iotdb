@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.IAstVisitor;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Node;
+
 import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.List;
@@ -40,8 +43,8 @@ public class DropModel extends Statement {
   }
 
   @Override
-  public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
-    return visitor.visitDropModel(this, context);
+  public <R, C> R accept(IAstVisitor<R, C> visitor, C context) {
+    return ((AstVisitor<R, C>) visitor).visitDropModel(this, context);
   }
 
   @Override

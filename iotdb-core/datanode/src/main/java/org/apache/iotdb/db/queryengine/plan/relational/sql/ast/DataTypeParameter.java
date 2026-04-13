@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.IAstVisitor;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Node;
+
 import javax.annotation.Nullable;
 
 public abstract class DataTypeParameter extends Node {
@@ -28,7 +31,7 @@ public abstract class DataTypeParameter extends Node {
   }
 
   @Override
-  protected <R, C> R accept(AstVisitor<R, C> visitor, C context) {
-    return visitor.visitDataTypeParameter(this, context);
+  protected <R, C> R accept(IAstVisitor<R, C> visitor, C context) {
+    return ((AstVisitor<R, C>) visitor).visitDataTypeParameter(this, context);
   }
 }

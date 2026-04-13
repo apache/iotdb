@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.IAstVisitor;
+
 import javax.annotation.Nullable;
 
 public abstract class QueryBody extends Relation {
@@ -28,7 +30,7 @@ public abstract class QueryBody extends Relation {
   }
 
   @Override
-  public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
-    return visitor.visitQueryBody(this, context);
+  public <R, C> R accept(IAstVisitor<R, C> visitor, C context) {
+    return ((AstVisitor<R, C>) visitor).visitQueryBody(this, context);
   }
 }

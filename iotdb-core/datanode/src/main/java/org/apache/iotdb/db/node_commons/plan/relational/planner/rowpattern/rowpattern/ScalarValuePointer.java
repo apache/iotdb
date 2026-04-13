@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpattern;
 
-import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.Symbol;
 
 import java.io.DataOutputStream;
 import java.io.IOException;

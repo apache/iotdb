@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.IAstVisitor;
+
 import org.apache.tsfile.utils.RamUsageEstimator;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
@@ -29,8 +31,8 @@ public class ShowPipePlugins extends PipeStatement {
       RamUsageEstimator.shallowSizeOfInstance(ShowPipePlugins.class);
 
   @Override
-  public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
-    return visitor.visitShowPipePlugins(this, context);
+  public <R, C> R accept(IAstVisitor<R, C> visitor, C context) {
+    return ((AstVisitor<R, C>) visitor).visitShowPipePlugins(this, context);
   }
 
   @Override

@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.IAstVisitor;
+
 import org.apache.tsfile.utils.RamUsageEstimator;
 
 public class OneOrMoreQuantifier extends PatternQuantifier {
@@ -30,8 +32,8 @@ public class OneOrMoreQuantifier extends PatternQuantifier {
   }
 
   @Override
-  public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
-    return visitor.visitOneOrMoreQuantifier(this, context);
+  public <R, C> R accept(IAstVisitor<R, C> visitor, C context) {
+    return ((AstVisitor<R, C>) visitor).visitOneOrMoreQuantifier(this, context);
   }
 
   @Override

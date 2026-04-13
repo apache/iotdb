@@ -41,6 +41,7 @@ import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Node;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.ConstantContext;
@@ -100,7 +101,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DataType;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DataTypeParameter;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GenericDataType;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NumericParameter;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Property;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName;
@@ -5021,7 +5021,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
                     .literalExpression()));
   }
 
-  private org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression parseExpression(
+  private org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Expression parseExpression(
       final IoTDBSqlParser.LiteralExpressionContext context) {
     if (context.STRING_LITERAL() != null) {
       return new org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StringLiteral(

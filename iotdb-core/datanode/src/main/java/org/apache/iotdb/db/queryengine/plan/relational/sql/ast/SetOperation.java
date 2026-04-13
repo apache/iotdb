@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.IAstVisitor;
+
 import java.util.List;
 
 public abstract class SetOperation extends QueryBody {
@@ -34,8 +36,8 @@ public abstract class SetOperation extends QueryBody {
   }
 
   @Override
-  public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
-    return visitor.visitSetOperation(this, context);
+  public <R, C> R accept(IAstVisitor<R, C> visitor, C context) {
+    return ((AstVisitor<R, C>) visitor).visitSetOperation(this, context);
   }
 
   public abstract List<Relation> getRelations();

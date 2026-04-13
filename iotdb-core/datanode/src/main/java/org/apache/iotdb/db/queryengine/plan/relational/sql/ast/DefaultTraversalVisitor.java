@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Node;
+
 public abstract class DefaultTraversalVisitor<C> extends AstVisitor<Void, C> {
   @Override
   protected Void visitExtract(Extract node, C context) {

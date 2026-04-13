@@ -20,26 +20,9 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.CommonQueryAstVisitor;
 
-import javax.annotation.Nullable;
-
-public abstract class AstVisitor<R, C> {
-
-  public R process(Node node) {
-    return process(node, null);
-  }
-
-  public R process(Node node, @Nullable C context) {
-    return node.accept(this, context);
-  }
-
-  protected R visitNode(Node node, C context) {
-    return null;
-  }
-
-  protected R visitExpression(Expression node, C context) {
-    return visitNode(node, context);
-  }
+public abstract class AstVisitor<R, C> extends CommonQueryAstVisitor<R, C> {
 
   protected R visitCurrentTime(CurrentTime node, C context) {
     return visitExpression(node, context);
