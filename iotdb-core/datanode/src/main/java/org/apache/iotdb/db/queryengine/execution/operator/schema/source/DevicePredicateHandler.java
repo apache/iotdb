@@ -23,8 +23,8 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.utils.PathUtils;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.LeafColumnTransformer;
+import org.apache.iotdb.db.node_commons.transformation.dag.column.column.ColumnTransformer;
+import org.apache.iotdb.db.node_commons.transformation.dag.column.column.leaf.LeafColumnTransformer;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTreeViewSchemaUtils;
 

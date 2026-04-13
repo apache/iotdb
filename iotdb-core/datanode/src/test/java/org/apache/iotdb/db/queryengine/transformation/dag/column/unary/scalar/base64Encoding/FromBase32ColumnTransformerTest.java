@@ -22,9 +22,9 @@
 package org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.base64Encoding;
 
 import org.apache.iotdb.db.exception.sql.SemanticException;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.GenericCodecColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.factory.CodecStrategiesFactory;
+import org.apache.iotdb.db.node_commons.transformation.dag.column.column.ColumnTransformer;
+import org.apache.iotdb.db.node_commons.transformation.dag.column.column.unary.scalar.GenericCodecColumnTransformer;
+import org.apache.iotdb.db.node_commons.transformation.dag.column.column.unary.scalar.factory.CodecStrategiesFactory;
 
 import com.google.common.io.BaseEncoding;
 import org.apache.tsfile.block.column.Column;

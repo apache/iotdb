@@ -30,7 +30,7 @@ import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 
-import static org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.SubStringColumnTransformer.EMPTY_STRING;
+import static org.apache.iotdb.db.node_commons.transformation.dag.column.column.unary.scalar.SubStringColumnTransformer.EMPTY_STRING;
 
 public class SubStringFunctionTransformer extends UnaryTransformer {
   private int beginPosition;

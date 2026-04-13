@@ -27,7 +27,7 @@ import java.text.SimpleDateFormat;
 import java.time.ZoneId;
 import java.util.TimeZone;
 
-import static org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.DateBinFunctionColumnTransformer.dateBin;
+import static org.apache.iotdb.db.node_commons.transformation.dag.column.column.unary.scalar.DateBinFunctionColumnTransformer.dateBin;
 import static org.junit.Assert.assertEquals;
 
 public class DateBinFunctionTest {

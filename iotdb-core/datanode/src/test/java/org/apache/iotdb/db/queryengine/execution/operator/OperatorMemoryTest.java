@@ -82,11 +82,11 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationSt
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.ArithmeticAdditionColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.CompareLessEqualColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.ConstantColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.TimeColumnTransformer;
+import org.apache.iotdb.db.node_commons.transformation.dag.column.column.ColumnTransformer;
+import org.apache.iotdb.db.node_commons.transformation.dag.column.column.binary.ArithmeticAdditionColumnTransformer;
+import org.apache.iotdb.db.node_commons.transformation.dag.column.column.binary.CompareLessEqualColumnTransformer;
+import org.apache.iotdb.db.node_commons.transformation.dag.column.column.leaf.ConstantColumnTransformer;
+import org.apache.iotdb.db.node_commons.transformation.dag.column.column.leaf.TimeColumnTransformer;
 
 import com.google.common.collect.Sets;
 import org.apache.tsfile.common.conf.TSFileDescriptor;

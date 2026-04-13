@@ -26,7 +26,7 @@
 package org.apache.iotdb.db.queryengine.transformation.dag.column.unary;
 
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
+import org.apache.iotdb.db.node_commons.transformation.dag.column.column.ColumnTransformer;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;

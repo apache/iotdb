@@ -19,7 +19,18 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.column.binary;
 
-import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.IdentityColumnTransformer;
+import org.apache.iotdb.db.node_commons.transformation.dag.column.column.binary.ArithmeticAdditionColumnTransformer;
+import org.apache.iotdb.db.node_commons.transformation.dag.column.column.binary.ArithmeticDivisionColumnTransformer;
+import org.apache.iotdb.db.node_commons.transformation.dag.column.column.binary.ArithmeticModuloColumnTransformer;
+import org.apache.iotdb.db.node_commons.transformation.dag.column.column.binary.ArithmeticMultiplicationColumnTransformer;
+import org.apache.iotdb.db.node_commons.transformation.dag.column.column.binary.ArithmeticSubtractionColumnTransformer;
+import org.apache.iotdb.db.node_commons.transformation.dag.column.column.binary.BinaryColumnTransformer;
+import org.apache.iotdb.db.node_commons.transformation.dag.column.column.binary.CompareEqualToColumnTransformer;
+import org.apache.iotdb.db.node_commons.transformation.dag.column.column.binary.CompareGreaterEqualColumnTransformer;
+import org.apache.iotdb.db.node_commons.transformation.dag.column.column.binary.CompareGreaterThanColumnTransformer;
+import org.apache.iotdb.db.node_commons.transformation.dag.column.column.binary.CompareLessEqualColumnTransformer;
+import org.apache.iotdb.db.node_commons.transformation.dag.column.column.binary.CompareNonEqualColumnTransformer;
+import org.apache.iotdb.db.node_commons.transformation.dag.column.column.leaf.IdentityColumnTransformer;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;

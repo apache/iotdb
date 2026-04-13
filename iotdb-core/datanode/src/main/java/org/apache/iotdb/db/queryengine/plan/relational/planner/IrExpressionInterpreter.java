@@ -82,7 +82,7 @@ import static org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Arithmeti
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.DeterminismEvaluator.isDeterministic;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils.isEffectivelyLiteral;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignatureTranslator.toTypeSignature;
-import static org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.ExtractTransformer.constructEvaluateFunction;
+import static org.apache.iotdb.db.node_commons.transformation.dag.column.column.unary.scalar.ExtractTransformer.constructEvaluateFunction;
 
 public class IrExpressionInterpreter {
 

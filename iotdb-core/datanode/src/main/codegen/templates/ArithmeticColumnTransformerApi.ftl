@@ -28,7 +28,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.function.arithmetic.Divis
 import org.apache.iotdb.db.queryengine.plan.relational.function.arithmetic.ModulusResolver;
 import org.apache.iotdb.db.queryengine.plan.relational.function.arithmetic.MultiplicationResolver;
 import org.apache.iotdb.db.queryengine.plan.relational.function.arithmetic.SubtractionResolver;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
+import org.apache.iotdb.db.node_commons.transformation.dag.column.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.DoubleNegationColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.FloatNegationColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.IntNegationColumnTransformer;
