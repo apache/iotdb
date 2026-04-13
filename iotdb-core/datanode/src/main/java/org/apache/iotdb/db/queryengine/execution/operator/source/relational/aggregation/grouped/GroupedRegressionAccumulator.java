@@ -42,6 +42,7 @@ public class GroupedRegressionAccumulator implements GroupedAccumulator {
 
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(GroupedRegressionAccumulator.class);
+  private static final int INTERMEDIATE_SIZE = Long.BYTES + 4 * Double.BYTES;
 
   private final TSDataType yDataType;
   private final TSDataType xDataType;
@@ -128,17 +129,17 @@ public class GroupedRegressionAccumulator implements GroupedAccumulator {
   }
 
   private void update(int groupId, double x, double y) {
-    long newCount = counts.get(groupId) + 1;
-    double deltaX = x - meanXs.get(groupId);
-    double deltaY = y - meanYs.get(groupId);
+    long n = counts.get(groupId) + 1;
+    double oldMeanX = meanXs.get(groupId);
+    double newMeanX = oldMeanX + (x - oldMeanX) / n;
+    double oldMeanY = meanYs.get(groupId);
+    double newMeanY = oldMeanY + (y - oldMeanY) / n;
 
-    meanXs.add(groupId, deltaX / newCount);
-    meanYs.add(groupId, deltaY / newCount);
-
-    c2s.add(groupId, deltaX * (y - meanYs.get(groupId)));
-    m2Xs.add(groupId, deltaX * (x - meanXs.get(groupId)));
-
-    counts.set(groupId, newCount);
+    meanXs.set(groupId, newMeanX);
+    meanYs.set(groupId, newMeanY);
+    c2s.add(groupId, (x - oldMeanX) * (y - newMeanY));
+    m2Xs.add(groupId, (x - oldMeanX) * (x - newMeanX));
+    counts.set(groupId, n);
   }
 
   @Override
@@ -184,16 +185,19 @@ public class GroupedRegressionAccumulator implements GroupedAccumulator {
       m2Xs.set(groupId, otherM2X);
       c2s.set(groupId, otherC2);
     } else {
-      long newCount = counts.get(groupId) + otherCount;
-      double deltaX = otherMeanX - meanXs.get(groupId);
-      double deltaY = otherMeanY - meanYs.get(groupId);
+      long na = counts.get(groupId);
+      long nb = otherCount;
+      long n = na + nb;
+      double meanXValue = meanXs.get(groupId);
+      double meanYValue = meanYs.get(groupId);
+      double deltaX = otherMeanX - meanXValue;
+      double deltaY = otherMeanY - meanYValue;
 
-      c2s.add(groupId, otherC2 + deltaX * deltaY * counts.get(groupId) * otherCount / newCount);
-      m2Xs.add(groupId, otherM2X + deltaX * deltaX * counts.get(groupId) * otherCount / newCount);
-
-      meanXs.add(groupId, deltaX * otherCount / newCount);
-      meanYs.add(groupId, deltaY * otherCount / newCount);
-      counts.set(groupId, newCount);
+      m2Xs.add(groupId, otherM2X + na * nb * deltaX * deltaX / (double) n);
+      c2s.add(groupId, otherC2 + deltaX * deltaY * na * nb / (double) n);
+      meanXs.set(groupId, meanXValue + deltaX * nb / (double) n);
+      meanYs.set(groupId, meanYValue + deltaY * nb / (double) n);
+      counts.set(groupId, n);
     }
   }
 
@@ -206,7 +210,7 @@ public class GroupedRegressionAccumulator implements GroupedAccumulator {
     if (counts.get(groupId) == 0) {
       columnBuilder.appendNull();
     } else {
-      ByteBuffer buffer = ByteBuffer.allocate(Long.BYTES + Double.BYTES * 4);
+      ByteBuffer buffer = ByteBuffer.allocate(INTERMEDIATE_SIZE);
       buffer.putLong(counts.get(groupId));
       buffer.putDouble(meanXs.get(groupId));
       buffer.putDouble(meanYs.get(groupId));
@@ -218,17 +222,27 @@ public class GroupedRegressionAccumulator implements GroupedAccumulator {
 
   @Override
   public void evaluateFinal(int groupId, ColumnBuilder columnBuilder) {
-    if (counts.get(groupId) == 0 || m2Xs.get(groupId) == 0) {
+    if (counts.get(groupId) == 0) {
       columnBuilder.appendNull();
       return;
     }
-    double slope = c2s.get(groupId) / m2Xs.get(groupId);
     switch (regressionType) {
       case REGR_SLOPE:
-        columnBuilder.writeDouble(slope);
+        double slope = c2s.get(groupId) / m2Xs.get(groupId);
+        if (Double.isFinite(slope)) {
+          columnBuilder.writeDouble(slope);
+        } else {
+          columnBuilder.appendNull();
+        }
         break;
       case REGR_INTERCEPT:
-        columnBuilder.writeDouble(meanYs.get(groupId) - slope * meanXs.get(groupId));
+        double intercept =
+            meanYs.get(groupId) - (c2s.get(groupId) / m2Xs.get(groupId)) * meanXs.get(groupId);
+        if (Double.isFinite(intercept)) {
+          columnBuilder.writeDouble(intercept);
+        } else {
+          columnBuilder.appendNull();
+        }
         break;
       default:
         throw new UnsupportedOperationException("Unknown type: " + regressionType);

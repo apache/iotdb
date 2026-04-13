@@ -42,6 +42,7 @@ public class GroupedCovarianceAccumulator implements GroupedAccumulator {
 
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(GroupedCovarianceAccumulator.class);
+  private static final int INTERMEDIATE_SIZE = Long.BYTES + 3 * Double.BYTES;
 
   private final TSDataType xDataType;
   private final TSDataType yDataType;
@@ -196,12 +197,13 @@ public class GroupedCovarianceAccumulator implements GroupedAccumulator {
       return;
     }
 
-    ByteBuffer buffer = ByteBuffer.allocate(Long.BYTES + Double.BYTES * 3);
+    byte[] bytes = new byte[INTERMEDIATE_SIZE];
+    ByteBuffer buffer = ByteBuffer.wrap(bytes);
     buffer.putLong(count);
     buffer.putDouble(meanXs.get(groupId));
     buffer.putDouble(meanYs.get(groupId));
     buffer.putDouble(c2s.get(groupId));
-    columnBuilder.writeBinary(new Binary(buffer.array()));
+    columnBuilder.writeBinary(new Binary(bytes));
   }
 
   @Override

@@ -112,12 +112,12 @@ public class IoTDBTableAggregationIT {
         "INSERT INTO table1(time,province,city,region,device_id,color,type,s1,s4,s6,s8,s9) values (2024-09-24T06:15:55.000+00:00,'beijing','beijing','haidian','d16','yellow','BBBBBBBBBBBBBBBB',55,55.0,'beijing_haidian_yellow_B_d16_55',X'cafebabe55',2024-09-24T06:15:55.000+00:00)",
         // stat_table for statistical aggregation function tests (CORR, COVAR_POP, COVAR_SAMP,
         // REGR_SLOPE, REGR_INTERCEPT, KURTOSIS, SKEWNESS)
-        "CREATE TABLE stat_table(device_id STRING TAG, s1 INT32 FIELD, s2 INT64 FIELD, s3 FLOAT FIELD, s4 DOUBLE FIELD, s5 BOOLEAN FIELD, s6 TEXT FIELD)",
-        "INSERT INTO stat_table(time, device_id, s1, s2, s3, s4, s5, s6) VALUES (1, 'd1', 1, 1, 1.0, 1.0, true, 'a')",
-        "INSERT INTO stat_table(time, device_id, s1, s2, s3, s4, s5, s6) VALUES (2, 'd1', 2, 2, 2.0, 2.0, false, 'b')",
-        "INSERT INTO stat_table(time, device_id, s1, s2, s3, s4, s5, s6) VALUES (3, 'd1', 3, 2, 3.0, 2.0, false, 'c')",
-        "INSERT INTO stat_table(time, device_id, s1, s2, s3, s4, s5, s6) VALUES (4, 'd1', 4, 1, 4.0, 1.0, true, 'd')",
-        "INSERT INTO stat_table(time, device_id, s1, s2, s3, s4, s5, s6) VALUES (5, 'd1', 5, 1, 5.0, 1.0, true, 'e')",
+        "CREATE TABLE stat_table(device_id STRING TAG, s1 INT32 FIELD, s2 INT64 FIELD, s3 FLOAT FIELD, s4 DOUBLE FIELD, s5 BOOLEAN FIELD, s6 TEXT FIELD, s7 TIMESTAMP FIELD)",
+        "INSERT INTO stat_table(time, device_id, s1, s2, s3, s4, s5, s6, s7) VALUES (1, 'd1', 1, 1, 1.0, 1.0, true, 'a', '2026-04-13T09:15:30.000+00:00')",
+        "INSERT INTO stat_table(time, device_id, s1, s2, s3, s4, s5, s6, s7) VALUES (2, 'd1', 2, 2, 2.0, 2.0, false, 'b', '2026-04-13T09:30:30.000+00:00')",
+        "INSERT INTO stat_table(time, device_id, s1, s2, s3, s4, s5, s6, s7) VALUES (3, 'd1', 3, 2, 3.0, 2.0, false, 'c', '2026-04-13T09:45:30.000+00:00')",
+        "INSERT INTO stat_table(time, device_id, s1, s2, s3, s4, s5, s6, s7) VALUES (4, 'd1', 4, 1, 4.0, 1.0, true, 'd', '2026-04-13T10:00:30.000+00:00')",
+        "INSERT INTO stat_table(time, device_id, s1, s2, s3, s4, s5, s6, s7) VALUES (5, 'd1', 5, 1, 5.0, 1.0, true, 'e', '2026-04-13T10:15:30.000+00:00')",
         "INSERT INTO stat_table(time, device_id, s1, s2, s3, s4) VALUES (1, 'd2', 1, 2, 1.0, 2.0)",
         "INSERT INTO stat_table(time, device_id, s1, s2, s3, s4) VALUES (2, 'd2', 1, 2, 1.0, 2.0)",
         "INSERT INTO stat_table(time, device_id, s1, s2, s3, s4) VALUES (3, 'd2', 1, 2, 1.0, 2.0)",
@@ -5553,6 +5553,19 @@ public class IoTDBTableAggregationIT {
             + "skewness(s1), skewness(s2), kurtosis(s1), kurtosis(s2), "
             + "corr(s3, s4), covar_pop(s3, s4), covar_samp(s3, s4), regr_slope(s3, s4), regr_intercept(s3, s4), "
             + "skewness(s3), skewness(s4), kurtosis(s3), kurtosis(s4) "
+            + "from stat_table where device_id = 'd1'",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    expectedHeader = new String[] {"_col0", "_col1", "_col2", "_col3", "_col4", "_col5", "_col6"};
+    retArray =
+        new String[] {
+          "1.0,1800000.0,2250000.0,1.111111111111111E-6,-1973412.0333333332,0.0,-1.1999999999999993,"
+        };
+    tableResultSetEqualTest(
+        "select corr(s1, s7), covar_pop(s1, s7), covar_samp(s1, s7), regr_slope(s1, s7), regr_intercept(s1, s7), "
+            + "skewness(s7), kurtosis(s7) "
             + "from stat_table where device_id = 'd1'",
         expectedHeader,
         retArray,

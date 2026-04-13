@@ -42,6 +42,7 @@ public class GroupedCentralMomentAccumulator implements GroupedAccumulator {
 
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(GroupedCentralMomentAccumulator.class);
+  private static final int INTERMEDIATE_SIZE = Long.BYTES + 4 * Double.BYTES;
 
   private final TSDataType seriesDataType;
   private final CentralMomentAccumulator.MomentType momentType;
@@ -118,30 +119,24 @@ public class GroupedCentralMomentAccumulator implements GroupedAccumulator {
 
   private void update(int groupId, double value) {
     long n1 = counts.get(groupId);
-    long newCount = n1 + 1;
-    double mean = means.get(groupId);
+    long n = n1 + 1;
+    double m1 = means.get(groupId);
     double m2 = m2s.get(groupId);
     double m3 = m3s.get(groupId);
     double m4 = m4s.get(groupId);
 
-    double delta = value - mean;
-    double delta_n = delta / newCount;
-    double delta_n2 = delta_n * delta_n;
-    double term1 = delta * delta_n * n1;
+    double delta = value - m1;
+    double deltaN = delta / n;
+    double deltaN2 = deltaN * deltaN;
+    double dm2 = delta * deltaN * n1;
 
-    mean += delta_n;
-    m4 +=
-        term1 * delta_n2 * (newCount * newCount - 3 * newCount + 3)
-            + 6 * delta_n2 * m2
-            - 4 * delta_n * m3;
-    m3 += term1 * delta_n * (newCount - 2) - 3 * delta_n * m2;
-    m2 += term1;
-
-    counts.set(groupId, newCount);
-    means.set(groupId, mean);
-    m2s.set(groupId, m2);
-    m3s.set(groupId, m3);
-    m4s.set(groupId, m4);
+    counts.set(groupId, n);
+    means.set(groupId, m1 + deltaN);
+    m2s.set(groupId, m2 + dm2);
+    m3s.set(groupId, m3 + dm2 * deltaN * (n - 2) - 3 * deltaN * m2);
+    m4s.set(
+        groupId,
+        m4 + dm2 * deltaN2 * (n * (double) n - 3 * n + 3) + 6 * deltaN2 * m2 - 4 * deltaN * m3);
   }
 
   @Override
@@ -179,34 +174,31 @@ public class GroupedCentralMomentAccumulator implements GroupedAccumulator {
       m3s.set(groupId, m3B);
       m4s.set(groupId, m4B);
     } else {
-      long nTotal = nA + nB;
-      double delta = meanB - means.get(groupId);
+      double m1A = means.get(groupId);
+      double m2A = m2s.get(groupId);
+      double m3A = m3s.get(groupId);
+      double n = nA + nB;
+      double delta = meanB - m1A;
       double delta2 = delta * delta;
       double delta3 = delta * delta2;
       double delta4 = delta2 * delta2;
 
-      double m2 = m2s.get(groupId);
-      double m3 = m3s.get(groupId);
-      double m4 = m4s.get(groupId);
-
-      m4 +=
-          m4B
-              + delta4 * nA * nB * (nA * nA - nA * nB + nB * nB) / (nTotal * nTotal * nTotal)
-              + 6.0 * delta2 * (nA * nA * m2B + nB * nB * m2) / (nTotal * nTotal)
-              + 4.0 * delta * (nA * m3B - nB * m3) / nTotal;
-
-      m3 +=
-          m3B
-              + delta3 * nA * nB * (nA - nB) / (nTotal * nTotal)
-              + 3.0 * delta * (nA * m2B - nB * m2) / nTotal;
-
-      m2 += m2B + delta2 * nA * nB / nTotal;
-
-      means.add(groupId, delta * nB / nTotal);
-      counts.set(groupId, nTotal);
-      m2s.set(groupId, m2);
-      m3s.set(groupId, m3);
-      m4s.set(groupId, m4);
+      counts.set(groupId, (long) n);
+      means.set(groupId, (nA * m1A + nB * meanB) / n);
+      m2s.set(groupId, m2A + m2B + delta2 * nA * nB / n);
+      m3s.set(
+          groupId,
+          m3A
+              + m3B
+              + delta3 * nA * nB * (nA - nB) / (n * n)
+              + 3 * delta * (nA * m2B - nB * m2A) / n);
+      m4s.set(
+          groupId,
+          m4s.get(groupId)
+              + m4B
+              + delta4 * nA * nB * (nA * nA - nA * nB + nB * nB) / (n * n * n)
+              + 6 * delta2 * (nA * nA * m2B + nB * nB * m2A) / (n * n)
+              + 4 * delta * (nA * m3B - nB * m3A) / n);
     }
   }
 
@@ -219,7 +211,7 @@ public class GroupedCentralMomentAccumulator implements GroupedAccumulator {
     if (counts.get(groupId) == 0) {
       columnBuilder.appendNull();
     } else {
-      ByteBuffer buffer = ByteBuffer.allocate(Long.BYTES + Double.BYTES * 4);
+      ByteBuffer buffer = ByteBuffer.allocate(INTERMEDIATE_SIZE);
       buffer.putLong(counts.get(groupId));
       buffer.putDouble(means.get(groupId));
       buffer.putDouble(m2s.get(groupId));

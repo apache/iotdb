@@ -27,6 +27,8 @@ import static com.google.common.base.Preconditions.checkArgument;
 
 public class RegressionAccumulator implements Accumulator {
 
+  private static final int INTERMEDIATE_SIZE = Long.BYTES + 4 * Double.BYTES;
+
   public enum RegressionType {
     REGR_SLOPE,
     REGR_INTERCEPT
@@ -82,17 +84,15 @@ public class RegressionAccumulator implements Accumulator {
   }
 
   private void update(double x, double y) {
-    long newCount = count + 1;
-    double deltaX = x - meanX;
-    double deltaY = y - meanY;
-
-    meanX += deltaX / newCount;
-    meanY += deltaY / newCount;
-
-    c2 += deltaX * (y - meanY);
-    m2X += deltaX * (x - meanX);
-
-    count = newCount;
+    long n = count + 1;
+    double oldMeanX = meanX;
+    meanX = oldMeanX + (x - oldMeanX) / n;
+    double oldMeanY = meanY;
+    double newMeanY = oldMeanY + (y - oldMeanY) / n;
+    meanY = newMeanY;
+    c2 += (x - oldMeanX) * (y - newMeanY);
+    m2X += (x - oldMeanX) * (x - meanX);
+    count = n;
   }
 
   @Override
@@ -125,16 +125,19 @@ public class RegressionAccumulator implements Accumulator {
       m2X = otherM2X;
       c2 = otherC2;
     } else {
-      long newCount = count + otherCount;
-      double deltaX = otherMeanX - meanX;
-      double deltaY = otherMeanY - meanY;
+      long na = count;
+      long nb = otherCount;
+      long n = na + nb;
+      double meanXValue = meanX;
+      double meanYValue = meanY;
+      double deltaX = otherMeanX - meanXValue;
+      double deltaY = otherMeanY - meanYValue;
 
-      c2 += otherC2 + deltaX * deltaY * count * otherCount / newCount;
-      m2X += otherM2X + deltaX * deltaX * count * otherCount / newCount;
-
-      meanX += deltaX * otherCount / newCount;
-      meanY += deltaY * otherCount / newCount;
-      count = newCount;
+      m2X += otherM2X + na * nb * deltaX * deltaX / (double) n;
+      c2 += otherC2 + deltaX * deltaY * na * nb / (double) n;
+      meanX = meanXValue + deltaX * nb / (double) n;
+      meanY = meanYValue + deltaY * nb / (double) n;
+      count = n;
     }
   }
 
@@ -144,7 +147,7 @@ public class RegressionAccumulator implements Accumulator {
     if (count == 0) {
       columnBuilders[0].appendNull();
     } else {
-      byte[] bytes = new byte[40];
+      byte[] bytes = new byte[INTERMEDIATE_SIZE];
       ByteBuffer buffer = ByteBuffer.wrap(bytes);
       buffer.putLong(count);
       buffer.putDouble(meanX);
@@ -161,20 +164,22 @@ public class RegressionAccumulator implements Accumulator {
       columnBuilder.appendNull();
       return;
     }
-
-    if (m2X == 0) {
-      columnBuilder.appendNull();
-      return;
-    }
-
-    double slope = c2 / m2X;
-
     switch (regressionType) {
       case REGR_SLOPE:
-        columnBuilder.writeDouble(slope);
+        double slope = c2 / m2X;
+        if (Double.isFinite(slope)) {
+          columnBuilder.writeDouble(slope);
+        } else {
+          columnBuilder.appendNull();
+        }
         break;
       case REGR_INTERCEPT:
-        columnBuilder.writeDouble(meanY - slope * meanX);
+        double intercept = meanY - (c2 / m2X) * meanX;
+        if (Double.isFinite(intercept)) {
+          columnBuilder.writeDouble(intercept);
+        } else {
+          columnBuilder.appendNull();
+        }
         break;
       default:
         throw new UnsupportedOperationException("Unknown type: " + regressionType);

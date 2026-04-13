@@ -32,6 +32,8 @@ import static com.google.common.base.Preconditions.checkArgument;
 
 public class CovarianceAccumulator implements Accumulator {
 
+  private static final int INTERMEDIATE_SIZE = Long.BYTES + 3 * Double.BYTES;
+
   public enum CovarianceType {
     COVAR_POP,
     COVAR_SAMP
@@ -142,12 +144,13 @@ public class CovarianceAccumulator implements Accumulator {
       return;
     }
 
-    ByteBuffer buffer = ByteBuffer.allocate(Long.BYTES + Double.BYTES * 3);
+    byte[] bytes = new byte[INTERMEDIATE_SIZE];
+    ByteBuffer buffer = ByteBuffer.wrap(bytes);
     buffer.putLong(count);
     buffer.putDouble(meanX);
     buffer.putDouble(meanY);
     buffer.putDouble(c2);
-    columnBuilders[0].writeBinary(new Binary(buffer.array()));
+    columnBuilders[0].writeBinary(new Binary(bytes));
   }
 
   @Override

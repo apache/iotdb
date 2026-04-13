@@ -208,6 +208,11 @@ public class TypeInferenceUtils {
         throw new SemanticException(
             "Aggregate functions [SKEWNESS, KURTOSIS] only support "
                 + "numeric data types [INT32, INT64, FLOAT, DOUBLE, TIMESTAMP]");
+      /**
+       * For the two-argument aggregation functions CORR, COVAR_POP, COVAR_SAMP, REGR_SLOPE, and
+       * REGR_INTERCEPT, type validation is performed in
+       * verifyIsAggregationDataTypeMatchedForBothInputs.
+       */
       case SqlConstant.CORR:
       case SqlConstant.COVAR_POP:
       case SqlConstant.COVAR_SAMP:
