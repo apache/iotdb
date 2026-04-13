@@ -18,10 +18,10 @@
  */
 package org.apache.iotdb.db.queryengine.plan.relational.planner.informationschema;
 
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.StringLiteral;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlanTester;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StringLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 
 import com.google.common.collect.ImmutableList;

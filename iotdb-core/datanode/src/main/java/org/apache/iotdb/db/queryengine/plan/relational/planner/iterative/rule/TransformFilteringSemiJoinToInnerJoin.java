@@ -43,13 +43,13 @@ import static com.google.common.collect.ImmutableList.toImmutableList;
 import static org.apache.iotdb.db.node_commons.plan.relational.planner.node.AggregationNode.singleAggregation;
 import static org.apache.iotdb.db.node_commons.plan.relational.planner.node.AggregationNode.singleGroupingSet;
 import static org.apache.iotdb.db.node_commons.plan.relational.planner.node.JoinNode.JoinType.INNER;
+import static org.apache.iotdb.db.node_commons.plan.relational.sql.ast.BooleanLiteral.TRUE_LITERAL;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ExpressionSymbolInliner.inlineSymbols;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils.and;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils.extractConjuncts;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.filter;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.semiJoin;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.source;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral.TRUE_LITERAL;
 import static org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Capture.newCapture;
 
 /**

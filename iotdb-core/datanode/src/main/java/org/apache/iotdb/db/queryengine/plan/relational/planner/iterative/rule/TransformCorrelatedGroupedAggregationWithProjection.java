@@ -47,6 +47,7 @@ import static com.google.common.collect.ImmutableList.toImmutableList;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.node_commons.plan.relational.planner.node.AggregationNode.singleGroupingSet;
 import static org.apache.iotdb.db.node_commons.plan.relational.planner.node.JoinNode.JoinType.INNER;
+import static org.apache.iotdb.db.node_commons.plan.relational.sql.ast.BooleanLiteral.TRUE_LITERAL;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.AggregationDecorrelation.isDistinctOperator;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.AggregationDecorrelation.restoreDistinctAggregation;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.Aggregation.groupingColumns;
@@ -57,7 +58,6 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patte
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.correlatedJoin;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.project;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.source;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral.TRUE_LITERAL;
 import static org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Capture.newCapture;
 import static org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Pattern.nonEmpty;
 

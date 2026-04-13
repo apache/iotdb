@@ -5024,7 +5024,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   private org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Expression parseExpression(
       final IoTDBSqlParser.LiteralExpressionContext context) {
     if (context.STRING_LITERAL() != null) {
-      return new org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StringLiteral(
+      return new org.apache.iotdb.db.node_commons.plan.relational.sql.ast.StringLiteral(
           parseStringLiteral(context.getText()));
     } else if (context.INTEGER_LITERAL() != null) {
       return new org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral(

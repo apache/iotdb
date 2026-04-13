@@ -28,11 +28,11 @@ import org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Pattern;
 
 import static org.apache.iotdb.db.node_commons.plan.relational.planner.node.JoinNode.JoinType.INNER;
 import static org.apache.iotdb.db.node_commons.plan.relational.planner.node.JoinNode.JoinType.RIGHT;
+import static org.apache.iotdb.db.node_commons.plan.relational.sql.ast.BooleanLiteral.TRUE_LITERAL;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.CorrelatedJoin.filter;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.correlatedJoin;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.QueryCardinalityUtil.isAtLeastScalar;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.QueryCardinalityUtil.isScalar;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral.TRUE_LITERAL;
 
 public class RemoveUnreferencedScalarSubqueries implements Rule<CorrelatedJoinNode> {
   private static final Pattern<CorrelatedJoinNode> PATTERN =

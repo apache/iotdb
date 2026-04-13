@@ -32,7 +32,7 @@ import org.apache.tsfile.utils.Pair;
 import java.util.Arrays;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.TIME;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral.TRUE_LITERAL;
+import static org.apache.iotdb.db.node_commons.plan.relational.sql.ast.BooleanLiteral.TRUE_LITERAL;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression.Operator.AND;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression.Operator.OR;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression.and;

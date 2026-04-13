@@ -19,7 +19,12 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.ArithmeticBinaryExpression;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.ArithmeticUnaryExpression;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.BetweenPredicate;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Cast;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Extract;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Node;
 
 public abstract class DefaultTraversalVisitor<C> extends AstVisitor<Void, C> {

@@ -28,23 +28,11 @@ public abstract class AstVisitor<R, C> extends CommonQueryAstVisitor<R, C> {
     return visitExpression(node, context);
   }
 
-  protected R visitArithmeticBinary(ArithmeticBinaryExpression node, C context) {
-    return visitExpression(node, context);
-  }
-
-  protected R visitBetweenPredicate(BetweenPredicate node, C context) {
-    return visitExpression(node, context);
-  }
-
   protected R visitCoalesceExpression(CoalesceExpression node, C context) {
     return visitExpression(node, context);
   }
 
   protected R visitComparisonExpression(ComparisonExpression node, C context) {
-    return visitExpression(node, context);
-  }
-
-  protected R visitLiteral(Literal node, C context) {
     return visitExpression(node, context);
   }
 
@@ -188,18 +176,6 @@ public abstract class AstVisitor<R, C> extends CommonQueryAstVisitor<R, C> {
     return visitExpression(node, context);
   }
 
-  protected R visitStringLiteral(StringLiteral node, C context) {
-    return visitLiteral(node, context);
-  }
-
-  protected R visitBinaryLiteral(BinaryLiteral node, C context) {
-    return visitLiteral(node, context);
-  }
-
-  protected R visitBooleanLiteral(BooleanLiteral node, C context) {
-    return visitLiteral(node, context);
-  }
-
   protected R visitInListExpression(InListExpression node, C context) {
     return visitExpression(node, context);
   }
@@ -228,15 +204,7 @@ public abstract class AstVisitor<R, C> extends CommonQueryAstVisitor<R, C> {
     return visitLiteral(node, context);
   }
 
-  protected R visitArithmeticUnary(ArithmeticUnaryExpression node, C context) {
-    return visitExpression(node, context);
-  }
-
   protected R visitNotExpression(NotExpression node, C context) {
-    return visitExpression(node, context);
-  }
-
-  protected R visitExtract(Extract node, C context) {
     return visitExpression(node, context);
   }
 
@@ -329,10 +297,6 @@ public abstract class AstVisitor<R, C> extends CommonQueryAstVisitor<R, C> {
   }
 
   protected R visitExists(ExistsPredicate node, C context) {
-    return visitExpression(node, context);
-  }
-
-  protected R visitCast(Cast node, C context) {
     return visitExpression(node, context);
   }
 
