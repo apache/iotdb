@@ -20,9 +20,9 @@
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.source;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.IPartitionRelatedNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 
 public abstract class SourceNode extends PlanNode implements AutoCloseable, IPartitionRelatedNode {
   protected SourceNode() {}

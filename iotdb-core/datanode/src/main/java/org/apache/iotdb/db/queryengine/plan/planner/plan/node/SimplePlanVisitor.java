@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node;
 
+import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNode;
+
 public class SimplePlanVisitor<C> implements PlanVisitor<Void, C> {
   @Override
   public Void visitPlan(PlanNode node, C context) {

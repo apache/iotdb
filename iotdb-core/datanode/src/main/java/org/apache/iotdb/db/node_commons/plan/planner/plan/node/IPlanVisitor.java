@@ -14,8 +14,6 @@
 
 package org.apache.iotdb.db.node_commons.plan.planner.plan.node;
 
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-
 public interface IPlanVisitor<R, C> {
 
   default R process(PlanNode node, C context) {

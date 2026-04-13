@@ -86,7 +86,7 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.CompareL
 import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.CompareNonEqualColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.HmacColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.Like2ColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.factory.HmacStrategiesFactory;
+import org.apache.iotdb.db.node_commons.transformation.dag.column.binary.factory.factory.HmacStrategiesFactory;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.ConstantColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.IdentityColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.LeafColumnTransformer;
@@ -237,10 +237,10 @@ import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMeta
 import static org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager.getTSDataType;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignatureTranslator.toTypeSignature;
 import static org.apache.iotdb.db.queryengine.transformation.dag.column.FailFunctionColumnTransformer.FAIL_FUNCTION_NAME;
-import static org.apache.iotdb.db.queryengine.transformation.dag.column.binary.factory.HmacStrategiesFactory.createConstantKeyHmacMd5Strategy;
-import static org.apache.iotdb.db.queryengine.transformation.dag.column.binary.factory.HmacStrategiesFactory.createConstantKeyHmacSha1Strategy;
-import static org.apache.iotdb.db.queryengine.transformation.dag.column.binary.factory.HmacStrategiesFactory.createConstantKeyHmacSha256Strategy;
-import static org.apache.iotdb.db.queryengine.transformation.dag.column.binary.factory.HmacStrategiesFactory.createConstantKeyHmacSha512Strategy;
+import static org.apache.iotdb.db.node_commons.transformation.dag.column.binary.factory.factory.HmacStrategiesFactory.createConstantKeyHmacMd5Strategy;
+import static org.apache.iotdb.db.node_commons.transformation.dag.column.binary.factory.factory.HmacStrategiesFactory.createConstantKeyHmacSha1Strategy;
+import static org.apache.iotdb.db.node_commons.transformation.dag.column.binary.factory.factory.HmacStrategiesFactory.createConstantKeyHmacSha256Strategy;
+import static org.apache.iotdb.db.node_commons.transformation.dag.column.binary.factory.factory.HmacStrategiesFactory.createConstantKeyHmacSha512Strategy;
 import static org.apache.tsfile.read.common.type.BlobType.BLOB;
 import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
 import static org.apache.tsfile.read.common.type.DoubleType.DOUBLE;

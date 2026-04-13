@@ -22,7 +22,7 @@ package org.apache.iotdb.db.queryengine.transformation.dag.column.binary.hmac;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.HmacColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.factory.HmacStrategiesFactory;
+import org.apache.iotdb.db.node_commons.transformation.dag.column.binary.factory.factory.HmacStrategiesFactory;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.strategies.HmacStrategy;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.HmacConstantKeyColumnTransformer;
 

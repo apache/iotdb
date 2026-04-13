@@ -19,13 +19,13 @@
 
 package org.apache.iotdb.db.node_commons.plan.relational.planner.node;
 
+import org.apache.iotdb.db.node_commons.plan.planner.plan.node.ICoreQueryPlanVisitor;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.IPlanVisitor;
+import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.process.MultiChildProcessNode;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.Symbol;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 
 import com.google.common.base.Objects;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -58,7 +58,7 @@ public class CollectNode extends MultiChildProcessNode {
 
   @Override
   public <R, C> R accept(IPlanVisitor<R, C> visitor, C context) {
-    return ((PlanVisitor<R, C>) visitor).visitCollect(this, context);
+    return ((ICoreQueryPlanVisitor<R, C>) visitor).visitCollect(this, context);
   }
 
   @Override
