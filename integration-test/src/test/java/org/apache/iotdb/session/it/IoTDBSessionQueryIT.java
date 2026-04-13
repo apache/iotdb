@@ -252,6 +252,34 @@ public class IoTDBSessionQueryIT {
   }
 
   @Test
+  public void lastQueryWithPrefixTest() throws IoTDBConnectionException {
+    final String[] retArray =
+        new String[] {
+          "30,root.sg1.d1.s3,30,INT64",
+          "30,root.sg1.d1.s4,false,BOOLEAN",
+          "40,root.sg1.d1.s5,aligned_test40,TEXT",
+          "23,root.sg1.d1.s1,230000.0,FLOAT",
+          "40,root.sg1.d1.s2,40,INT32"
+        };
+
+    try (final ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      // Push last cache first
+      try (final SessionDataSet resultSet =
+          session.executeFastLastDataQueryForOnePrefixPath(Arrays.asList("root", "sg1", "d1"))) {
+        assertResultSetEqual(resultSet, lastQueryColumnNames, retArray, true);
+      }
+
+      try (final SessionDataSet resultSet =
+          session.executeFastLastDataQueryForOnePrefixPath(Arrays.asList("root", "sg1", "d1"))) {
+        assertResultSetEqual(resultSet, lastQueryColumnNames, retArray, true);
+      }
+    } catch (StatementExecutionException | RedirectException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
   public void lastQueryWithoutPermissionTest() throws IoTDBConnectionException {
     final String[] retArray = new String[] {};
     TestUtils.executeNonQuery(EnvFactory.getEnv(), "create user abcd 'veryComplexPassword@123'");
@@ -277,9 +305,6 @@ public class IoTDBSessionQueryIT {
     } catch (StatementExecutionException | RedirectException e) {
       e.printStackTrace();
       fail(e.getMessage());
-    } finally {
-      TestUtils.executeNonQueries(
-          EnvFactory.getEnv(), Arrays.asList("drop database root.sg1", "drop user abcd"));
     }
   }
 
