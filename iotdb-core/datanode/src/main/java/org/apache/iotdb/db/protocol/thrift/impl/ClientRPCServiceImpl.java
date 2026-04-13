@@ -1345,7 +1345,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               .get(0)
               .mPPDataExchangeEndPoint;
 
-      // Place the permission check at first
+      // Place the permission check first
       final Statement s = StatementGenerator.createStatement(convert(req));
       // permission check
       final TSStatus status =
