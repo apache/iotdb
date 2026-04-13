@@ -1260,16 +1260,36 @@ void ts_dataset_destroy(CSessionDataSet* dataSet) {
 }
 
 bool ts_dataset_has_next(CSessionDataSet* dataSet) {
-    if (!dataSet || !dataSet->cpp) return false;
+    clearError();
+    if (!dataSet) {
+        (void)setError(TS_ERR_NULL_PTR, "dataSet is null");
+        return false;
+    }
+    if (!dataSet->cpp) {
+        (void)setError(TS_ERR_NULL_PTR, "dataSet is not initialized");
+        return false;
+    }
     try {
         return dataSet->cpp->hasNext();
+    } catch (const std::exception& e) {
+        (void)handleException(e);
+        return false;
     } catch (...) {
+        (void)setError(TS_ERR_UNKNOWN, "non-standard exception");
         return false;
     }
 }
 
 CRowRecord* ts_dataset_next(CSessionDataSet* dataSet) {
-    if (!dataSet || !dataSet->cpp) return nullptr;
+    clearError();
+    if (!dataSet) {
+        (void)setError(TS_ERR_NULL_PTR, "dataSet is null");
+        return nullptr;
+    }
+    if (!dataSet->cpp) {
+        (void)setError(TS_ERR_NULL_PTR, "dataSet is not initialized");
+        return nullptr;
+    }
     try {
         auto row = dataSet->cpp->next();
         if (!row) return nullptr;
@@ -1278,7 +1298,11 @@ CRowRecord* ts_dataset_next(CSessionDataSet* dataSet) {
         auto* crr = new CRowRecord_();
         crr->cpp = std::move(tmp.cpp);
         return crr;
+    } catch (const std::exception& e) {
+        (void)handleException(e);
+        return nullptr;
     } catch (...) {
+        (void)setError(TS_ERR_UNKNOWN, "non-standard exception");
         return nullptr;
     }
 }
@@ -1331,20 +1355,7 @@ int ts_row_record_get_field_count(CRowRecord* record) {
 bool ts_row_record_is_null(CRowRecord* record, int index) {
     if (!record || !record->cpp) return true;
     if (index < 0 || index >= (int)record->cpp->fields.size()) return true;
-    const Field& f = record->cpp->fields[index];
-    switch (f.dataType) {
-        case TSDataType::BOOLEAN:   return !f.boolV.is_initialized();
-        case TSDataType::INT32:     return !f.intV.is_initialized();
-        case TSDataType::INT64:
-        case TSDataType::TIMESTAMP: return !f.longV.is_initialized();
-        case TSDataType::FLOAT:     return !f.floatV.is_initialized();
-        case TSDataType::DOUBLE:    return !f.doubleV.is_initialized();
-        case TSDataType::TEXT:
-        case TSDataType::STRING:
-        case TSDataType::BLOB:      return !f.stringV.is_initialized();
-        case TSDataType::DATE:      return !f.dateV.is_initialized();
-        default:                    return true;
-    }
+    return record->cpp->fields[index].isNull();
 }
 
 bool ts_row_record_get_bool(CRowRecord* record, int index) {
@@ -1396,8 +1407,8 @@ const char* ts_row_record_get_string(CRowRecord* record, int index) {
 }
 
 TSDataType_C ts_row_record_get_data_type(CRowRecord* record, int index) {
-    if (!record || !record->cpp) return TS_TYPE_TEXT;
-    if (index < 0 || index >= (int)record->cpp->fields.size()) return TS_TYPE_TEXT;
+    if (!record || !record->cpp) return TS_TYPE_INVALID;
+    if (index < 0 || index >= (int)record->cpp->fields.size()) return TS_TYPE_INVALID;
     return static_cast<TSDataType_C>(record->cpp->fields[index].dataType);
 }
 

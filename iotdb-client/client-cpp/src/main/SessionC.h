@@ -71,7 +71,9 @@ typedef enum {
     TS_TYPE_TIMESTAMP = 8,
     TS_TYPE_DATE      = 9,
     TS_TYPE_BLOB      = 10,
-    TS_TYPE_STRING    = 11
+    TS_TYPE_STRING    = 11,
+    /** Not a server type; used for invalid arguments / error paths in the C API. */
+    TS_TYPE_INVALID   = 255
 } TSDataType_C;
 
 typedef enum {
@@ -386,8 +388,10 @@ TsStatus ts_table_session_execute_non_query(CTableSession* session, const char* 
 
 void ts_dataset_destroy(CSessionDataSet* dataSet);
 
+/** On failure (null handle, exception), see ts_get_last_error(). */
 bool ts_dataset_has_next(CSessionDataSet* dataSet);
 
+/** On failure (null handle, exception), see ts_get_last_error(); nullptr may also mean end of rows. */
 CRowRecord* ts_dataset_next(CSessionDataSet* dataSet);
 
 int ts_dataset_get_column_count(CSessionDataSet* dataSet);
@@ -418,6 +422,7 @@ double ts_row_record_get_double(CRowRecord* record, int index);
 
 const char* ts_row_record_get_string(CRowRecord* record, int index);
 
+/** Returns TS_TYPE_INVALID if record is null or index is out of range. */
 TSDataType_C ts_row_record_get_data_type(CRowRecord* record, int index);
 
 /* ============================================================
