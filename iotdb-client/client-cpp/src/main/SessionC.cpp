@@ -221,10 +221,11 @@ CSession* ts_session_new(const char* host, int rpcPort,
                           const char* username, const char* password) {
     clearError();
     try {
-        auto* cs = new CSession_();
-        cs->cpp = std::make_shared<Session>(
+        auto cpp = std::make_shared<Session>(
             std::string(host), rpcPort,
             std::string(username), std::string(password));
+        auto* cs = new CSession_();
+        cs->cpp = std::move(cpp);
         return cs;
     } catch (const std::exception& e) {
         handleException(e);
@@ -237,11 +238,12 @@ CSession* ts_session_new_with_zone(const char* host, int rpcPort,
                                     const char* zoneId, int fetchSize) {
     clearError();
     try {
-        auto* cs = new CSession_();
-        cs->cpp = std::make_shared<Session>(
+        auto cpp = std::make_shared<Session>(
             std::string(host), rpcPort,
             std::string(username), std::string(password),
             std::string(zoneId), fetchSize);
+        auto* cs = new CSession_();
+        cs->cpp = std::move(cpp);
         return cs;
     } catch (const std::exception& e) {
         handleException(e);
@@ -254,8 +256,9 @@ CSession* ts_session_new_multi_node(const char* const* nodeUrls, int urlCount,
     clearError();
     try {
         auto urls = toStringVec(nodeUrls, urlCount);
+        auto cpp = std::make_shared<Session>(urls, std::string(username), std::string(password));
         auto* cs = new CSession_();
-        cs->cpp = std::make_shared<Session>(urls, std::string(username), std::string(password));
+        cs->cpp = std::move(cpp);
         return cs;
     } catch (const std::exception& e) {
         handleException(e);
@@ -316,8 +319,10 @@ CTableSession* ts_table_session_new(const char* host, int rpcPort,
             ->password(std::string(password))
             ->database(std::string(database ? database : ""))
             ->build();
+        CTableSession_ tmp{};
+        tmp.cpp = std::move(tableSession);
         auto* cts = new CTableSession_();
-        cts->cpp = tableSession;
+        cts->cpp = std::move(tmp.cpp);
         return cts;
     } catch (const std::exception& e) {
         handleException(e);
@@ -337,8 +342,10 @@ CTableSession* ts_table_session_new_multi_node(const char* const* nodeUrls, int 
             ->password(std::string(password))
             ->database(std::string(database ? database : ""))
             ->build();
+        CTableSession_ tmp{};
+        tmp.cpp = std::move(tableSession);
         auto* cts = new CTableSession_();
-        cts->cpp = tableSession;
+        cts->cpp = std::move(tmp.cpp);
         return cts;
     } catch (const std::exception& e) {
         handleException(e);
@@ -587,8 +594,9 @@ CTablet* ts_tablet_new(const char* deviceId, int columnCount,
             schemas.emplace_back(std::string(columnNames[i]),
                                  static_cast<TSDataType::TSDataType>(dataTypes[i]));
         }
+        Tablet tablet(std::string(deviceId), schemas, maxRowNumber);
         auto* ct = new CTablet_();
-        ct->cpp = Tablet(std::string(deviceId), schemas, maxRowNumber);
+        ct->cpp = std::move(tablet);
         return ct;
     } catch (const std::exception& e) {
         handleException(e);
@@ -611,8 +619,9 @@ CTablet* ts_tablet_new_with_category(const char* deviceId, int columnCount,
                                  static_cast<TSDataType::TSDataType>(dataTypes[i]));
             colTypes.push_back(static_cast<ColumnCategory>(columnCategories[i]));
         }
+        Tablet tablet(std::string(deviceId), schemas, colTypes, maxRowNumber);
         auto* ct = new CTablet_();
-        ct->cpp = Tablet(std::string(deviceId), schemas, colTypes, maxRowNumber);
+        ct->cpp = std::move(tablet);
         return ct;
     } catch (const std::exception& e) {
         handleException(e);
@@ -1075,8 +1084,10 @@ TsStatus ts_session_execute_query(CSession* session, const char* sql,
     if (!dataSet) return setError(TS_ERR_INVALID_PARAM, "dataSet pointer is null");
     try {
         auto ds = session->cpp->executeQueryStatement(std::string(sql));
+        CSessionDataSet_ tmp{};
+        tmp.cpp = std::move(ds);
         auto* cds = new CSessionDataSet_();
-        cds->cpp = std::move(ds);
+        cds->cpp = std::move(tmp.cpp);
         *dataSet = cds;
         return TS_OK;
     } catch (const std::exception& e) {
@@ -1093,8 +1104,10 @@ TsStatus ts_session_execute_query_with_timeout(CSession* session, const char* sq
     if (!dataSet) return setError(TS_ERR_INVALID_PARAM, "dataSet pointer is null");
     try {
         auto ds = session->cpp->executeQueryStatement(std::string(sql), timeoutInMs);
+        CSessionDataSet_ tmp{};
+        tmp.cpp = std::move(ds);
         auto* cds = new CSessionDataSet_();
-        cds->cpp = std::move(ds);
+        cds->cpp = std::move(tmp.cpp);
         *dataSet = cds;
         return TS_OK;
     } catch (const std::exception& e) {
@@ -1124,8 +1137,10 @@ TsStatus ts_session_execute_raw_data_query(CSession* session,
     try {
         auto pathsVec = toStringVec(paths, pathCount);
         auto ds = session->cpp->executeRawDataQuery(pathsVec, startTime, endTime);
+        CSessionDataSet_ tmp{};
+        tmp.cpp = std::move(ds);
         auto* cds = new CSessionDataSet_();
-        cds->cpp = std::move(ds);
+        cds->cpp = std::move(tmp.cpp);
         *dataSet = cds;
         return TS_OK;
     } catch (const std::exception& e) {
@@ -1143,8 +1158,10 @@ TsStatus ts_session_execute_last_data_query(CSession* session,
     try {
         auto pathsVec = toStringVec(paths, pathCount);
         auto ds = session->cpp->executeLastDataQuery(pathsVec);
+        CSessionDataSet_ tmp{};
+        tmp.cpp = std::move(ds);
         auto* cds = new CSessionDataSet_();
-        cds->cpp = std::move(ds);
+        cds->cpp = std::move(tmp.cpp);
         *dataSet = cds;
         return TS_OK;
     } catch (const std::exception& e) {
@@ -1163,8 +1180,10 @@ TsStatus ts_session_execute_last_data_query_with_time(CSession* session,
     try {
         auto pathsVec = toStringVec(paths, pathCount);
         auto ds = session->cpp->executeLastDataQuery(pathsVec, lastTime);
+        CSessionDataSet_ tmp{};
+        tmp.cpp = std::move(ds);
         auto* cds = new CSessionDataSet_();
-        cds->cpp = std::move(ds);
+        cds->cpp = std::move(tmp.cpp);
         *dataSet = cds;
         return TS_OK;
     } catch (const std::exception& e) {
@@ -1184,8 +1203,10 @@ TsStatus ts_table_session_execute_query(CTableSession* session, const char* sql,
     if (!dataSet) return setError(TS_ERR_INVALID_PARAM, "dataSet pointer is null");
     try {
         auto ds = session->cpp->executeQueryStatement(std::string(sql));
+        CSessionDataSet_ tmp{};
+        tmp.cpp = std::move(ds);
         auto* cds = new CSessionDataSet_();
-        cds->cpp = std::move(ds);
+        cds->cpp = std::move(tmp.cpp);
         *dataSet = cds;
         return TS_OK;
     } catch (const std::exception& e) {
@@ -1202,8 +1223,10 @@ TsStatus ts_table_session_execute_query_with_timeout(CTableSession* session, con
     if (!dataSet) return setError(TS_ERR_INVALID_PARAM, "dataSet pointer is null");
     try {
         auto ds = session->cpp->executeQueryStatement(std::string(sql), timeoutInMs);
+        CSessionDataSet_ tmp{};
+        tmp.cpp = std::move(ds);
         auto* cds = new CSessionDataSet_();
-        cds->cpp = std::move(ds);
+        cds->cpp = std::move(tmp.cpp);
         *dataSet = cds;
         return TS_OK;
     } catch (const std::exception& e) {
@@ -1250,8 +1273,10 @@ CRowRecord* ts_dataset_next(CSessionDataSet* dataSet) {
     try {
         auto row = dataSet->cpp->next();
         if (!row) return nullptr;
+        CRowRecord_ tmp{};
+        tmp.cpp = std::move(row);
         auto* crr = new CRowRecord_();
-        crr->cpp = row;
+        crr->cpp = std::move(tmp.cpp);
         return crr;
     } catch (...) {
         return nullptr;
