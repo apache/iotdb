@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped;
 
+import org.apache.iotdb.db.node_commons.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.AggregationMask;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
 
 import com.google.common.primitives.Ints;
 import org.apache.tsfile.block.column.Column;

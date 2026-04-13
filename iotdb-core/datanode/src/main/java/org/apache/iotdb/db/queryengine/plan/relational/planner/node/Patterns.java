@@ -19,10 +19,30 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.node;
 
+import org.apache.iotdb.db.node_commons.plan.relational.planner.node.AggregationNode;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.node.AssignUniqueId;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.node.EnforceSingleRowNode;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.FillNode;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.FilterNode;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.node.GapFillNode;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.node.GroupNode;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.LimitNode;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.node.MarkDistinctNode;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.node.MergeSortNode;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.node.OffsetNode;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.node.OutputNode;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.node.PatternRecognitionNode;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.node.ProjectNode;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.node.RowNumberNode;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.node.SemiJoinNode;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.node.SortNode;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.node.TableFunctionNode;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.node.TableFunctionProcessorNode;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.node.TopKNode;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.node.TopKRankingNode;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.node.UnionNode;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.node.WindowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Lookup;

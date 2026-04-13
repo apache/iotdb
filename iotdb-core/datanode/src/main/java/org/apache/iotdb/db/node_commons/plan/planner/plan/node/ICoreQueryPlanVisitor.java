@@ -16,30 +16,42 @@ package org.apache.iotdb.db.node_commons.plan.planner.plan.node;
 
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.process.MultiChildProcessNode;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.process.SingleChildProcessNode;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.node.AggregationNode;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.node.AssignUniqueId;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.node.CollectNode;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.node.EnforceSingleRowNode;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.FillNode;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.FilterNode;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.node.GapFillNode;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.node.GroupNode;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.LimitNode;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.node.LinearFillNode;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.node.MarkDistinctNode;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.node.MergeSortNode;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.node.OffsetNode;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.node.OutputNode;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.node.PatternRecognitionNode;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.node.PreviousFillNode;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.node.ProjectNode;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.node.RowNumberNode;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.node.SemiJoinNode;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.node.SortNode;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.node.StreamSortNode;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.node.TableFunctionNode;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.node.TableFunctionProcessorNode;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.node.TopKNode;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.node.TopKRankingNode;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.node.UnionNode;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.node.ValueFillNode;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.node.ValuesNode;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.node.WindowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TwoChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SourceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.GroupReference;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CteScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExceptNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GapFillNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GroupNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.IntersectNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LinearFillNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MarkDistinctNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PatternRecognitionNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PreviousFillNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.RowNumberNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SemiJoinNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionProcessorNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.UnionNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValueFillNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValuesNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.WindowNode;
 
 public interface ICoreQueryPlanVisitor<R, C> extends IPlanVisitor<R, C> {
 
@@ -85,14 +97,11 @@ public interface ICoreQueryPlanVisitor<R, C> extends IPlanVisitor<R, C> {
     return visitTwoChildProcess(node, context);
   }
 
-  default R visitAssignUniqueId(
-      org.apache.iotdb.db.queryengine.plan.relational.planner.node.AssignUniqueId node, C context) {
+  default R visitAssignUniqueId(AssignUniqueId node, C context) {
     return visitSingleChildProcess(node, context);
   }
 
-  default R visitEnforceSingleRow(
-      org.apache.iotdb.db.queryengine.plan.relational.planner.node.EnforceSingleRowNode node,
-      C context) {
+  default R visitEnforceSingleRow(EnforceSingleRowNode node, C context) {
     return visitSingleChildProcess(node, context);
   }
 
@@ -102,8 +111,7 @@ public interface ICoreQueryPlanVisitor<R, C> extends IPlanVisitor<R, C> {
     return visitTwoChildProcess(node, context);
   }
 
-  default R visitProject(
-      org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode node, C context) {
+  default R visitProject(ProjectNode node, C context) {
     return visitSingleChildProcess(node, context);
   }
 
@@ -111,23 +119,19 @@ public interface ICoreQueryPlanVisitor<R, C> extends IPlanVisitor<R, C> {
     return visitSingleChildProcess(node, context);
   }
 
-  default R visitOffset(
-      org.apache.iotdb.db.queryengine.plan.relational.planner.node.OffsetNode node, C context) {
+  default R visitOffset(OffsetNode node, C context) {
     return visitSingleChildProcess(node, context);
   }
 
-  default R visitMergeSort(
-      org.apache.iotdb.db.queryengine.plan.relational.planner.node.MergeSortNode node, C context) {
+  default R visitMergeSort(MergeSortNode node, C context) {
     return visitMultiChildProcess(node, context);
   }
 
-  default R visitOutput(
-      org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode node, C context) {
+  default R visitOutput(OutputNode node, C context) {
     return visitSingleChildProcess(node, context);
   }
 
-  default R visitCollect(
-      org.apache.iotdb.db.queryengine.plan.relational.planner.node.CollectNode node, C context) {
+  default R visitCollect(CollectNode node, C context) {
     return visitMultiChildProcess(node, context);
   }
 
@@ -151,13 +155,11 @@ public interface ICoreQueryPlanVisitor<R, C> extends IPlanVisitor<R, C> {
     return visitFill(node, context);
   }
 
-  default R visitSort(
-      org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode node, C context) {
+  default R visitSort(SortNode node, C context) {
     return visitSingleChildProcess(node, context);
   }
 
-  default R visitStreamSort(
-      org.apache.iotdb.db.queryengine.plan.relational.planner.node.StreamSortNode node, C context) {
+  default R visitStreamSort(StreamSortNode node, C context) {
     return visitSingleChildProcess(node, context);
   }
 
@@ -165,14 +167,11 @@ public interface ICoreQueryPlanVisitor<R, C> extends IPlanVisitor<R, C> {
     return visitSingleChildProcess(node, context);
   }
 
-  default R visitTopK(
-      org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode node, C context) {
+  default R visitTopK(TopKNode node, C context) {
     return visitMultiChildProcess(node, context);
   }
 
-  default R visitTopKRanking(
-      org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKRankingNode node,
-      C context) {
+  default R visitTopKRanking(TopKRankingNode node, C context) {
     return visitSingleChildProcess(node, context);
   }
 
@@ -196,9 +195,7 @@ public interface ICoreQueryPlanVisitor<R, C> extends IPlanVisitor<R, C> {
     return visitPlan(node, context);
   }
 
-  default R visitAggregation(
-      org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode node,
-      C context) {
+  default R visitAggregation(AggregationNode node, C context) {
     return visitSingleChildProcess(node, context);
   }
 

@@ -19,25 +19,25 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern;
 
-import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.IrPatternAlternationOptimizer;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.IrRowPattern;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.IrRowPatternFlattener;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpattern.IrPatternAlternationOptimizer;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpattern.IrRowPattern;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpattern.IrRowPatternFlattener;
 
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.util.Optional;
 
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.Patterns.alternation;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.Patterns.concatenation;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.Patterns.empty;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.Patterns.excluded;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.Patterns.label;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.Patterns.permutation;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.Patterns.plusQuantified;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.Patterns.questionMarkQuantified;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.Patterns.rangeQuantified;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.Patterns.starQuantified;
+import static org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpattern.Patterns.alternation;
+import static org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpattern.Patterns.concatenation;
+import static org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpattern.Patterns.empty;
+import static org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpattern.Patterns.excluded;
+import static org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpattern.Patterns.label;
+import static org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpattern.Patterns.permutation;
+import static org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpattern.Patterns.plusQuantified;
+import static org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpattern.Patterns.questionMarkQuantified;
+import static org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpattern.Patterns.rangeQuantified;
+import static org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpattern.Patterns.starQuantified;
 
 public class IrRowPatternOptimizationTest {
   @Test

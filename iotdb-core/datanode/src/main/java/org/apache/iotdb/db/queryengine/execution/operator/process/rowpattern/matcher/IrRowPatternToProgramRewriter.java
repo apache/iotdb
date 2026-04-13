@@ -19,17 +19,17 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.matcher;
 
-import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.IrAlternation;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.IrAnchor;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.IrConcatenation;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.IrEmpty;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.IrExclusion;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.IrLabel;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.IrPermutation;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.IrQuantified;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.IrQuantifier;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.IrRowPattern;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.IrRowPatternVisitor;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpattern.IrAlternation;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpattern.IrAnchor;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpattern.IrConcatenation;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpattern.IrEmpty;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpattern.IrExclusion;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpattern.IrLabel;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpattern.IrPermutation;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpattern.IrQuantified;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpattern.IrQuantifier;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpattern.IrRowPattern;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpattern.IrRowPatternVisitor;
 
 import java.util.ArrayList;
 import java.util.List;
