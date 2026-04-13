@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule;
 
+import org.apache.iotdb.db.node_commons.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ResolvedFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Assignments;
@@ -28,7 +29,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Rule;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ApplyNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CorrelatedJoinNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PlanNodeDecorrelator;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral;
@@ -48,10 +48,10 @@ import java.util.Optional;
 import static com.google.common.base.Preconditions.checkState;
 import static com.google.common.collect.Iterables.getOnlyElement;
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.db.node_commons.plan.relational.planner.node.JoinNode.JoinType.INNER;
+import static org.apache.iotdb.db.node_commons.plan.relational.planner.node.JoinNode.JoinType.LEFT;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.globalAggregation;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.singleAggregation;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode.JoinType.INNER;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode.JoinType.LEFT;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.applyNode;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.Util.getResolvedBuiltInAggregateFunction;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral.TRUE_LITERAL;

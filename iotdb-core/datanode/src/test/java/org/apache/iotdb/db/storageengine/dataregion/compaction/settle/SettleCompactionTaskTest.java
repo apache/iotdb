@@ -67,7 +67,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
-import static org.apache.iotdb.db.storageengine.dataregion.compaction.utils.TsFileGeneratorUtils.createTimeseries;
 import static org.apache.iotdb.db.storageengine.dataregion.compaction.utils.TsFileGeneratorUtils.testStorageGroup;
 import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 import static org.apache.tsfile.utils.TsFileGeneratorUtils.getDataType;

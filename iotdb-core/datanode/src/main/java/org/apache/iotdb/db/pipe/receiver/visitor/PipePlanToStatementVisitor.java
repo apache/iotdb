@@ -72,7 +72,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-public class PipePlanToStatementVisitor extends PlanVisitor<Object, Void> {
+public class PipePlanToStatementVisitor implements PlanVisitor<Object, Void> {
 
   @Override
   public Statement visitPlan(final PlanNode node, final Void context) {

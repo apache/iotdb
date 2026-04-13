@@ -24,11 +24,11 @@ import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.IPlanVisitor;
-import org.apache.iotdb.db.node_commons.plan.planner.plan.node.IQueryPlanVisitor;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeUtil;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -156,7 +156,7 @@ public class SeriesSchemaFetchScanNode extends SchemaFetchScanNode {
 
   @Override
   public <R, C> R accept(IPlanVisitor<R, C> visitor, C context) {
-    return ((IQueryPlanVisitor<R, C>) visitor).visitSeriesSchemaFetchScan(this, context);
+    return ((PlanVisitor<R, C>) visitor).visitSeriesSchemaFetchScan(this, context);
   }
 
   public boolean isWithTags() {

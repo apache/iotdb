@@ -19,6 +19,10 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.distribute;
 
+import org.apache.iotdb.db.node_commons.plan.relational.planner.node.FillNode;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.node.FilterNode;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.node.JoinNode;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.SimplePlanVisitor;
@@ -30,13 +34,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationT
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CollectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CopyToNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FillNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GapFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GroupNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.IntoNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MergeSortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OffsetNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;

@@ -24,7 +24,7 @@ import java.util.List;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
 
-public class BaseSourceRewriter<C> extends PlanVisitor<List<PlanNode>, C> {
+public class BaseSourceRewriter<C> implements PlanVisitor<List<PlanNode>, C> {
   @Override
   public List<PlanNode> visitPlan(PlanNode node, C context) {
     // TODO: (xingtanzjr) we apply no action for IWritePlanNode currently

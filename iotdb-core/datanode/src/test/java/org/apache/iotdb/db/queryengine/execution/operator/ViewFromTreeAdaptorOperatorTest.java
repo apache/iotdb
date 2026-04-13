@@ -32,7 +32,7 @@ import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContex
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceStateMachine;
 import org.apache.iotdb.db.queryengine.execution.operator.source.AlignedSeriesScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.TreeToTableViewAdaptorOperator;
-import org.apache.iotdb.db.queryengine.plan.planner.TableOperatorGenerator;
+import org.apache.iotdb.db.queryengine.plan.planner.DataNodeTableOperatorGenerator;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.AlignedDeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
@@ -179,7 +179,7 @@ public class ViewFromTreeAdaptorOperatorTest {
               columnIndexArray,
               columnSchemas,
               seriesScanOperator,
-              TableOperatorGenerator.createTreeDeviceIdColumnValueExtractor(
+              DataNodeTableOperatorGenerator.createTreeDeviceIdColumnValueExtractor(
                   VIEW_FROM_TREE_ADAPTOR_OPERATOR_TEST));
       int count = 0;
       while (operator.hasNext()) {

@@ -21,9 +21,9 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.node;
 
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.IPlanVisitor;
-import org.apache.iotdb.db.node_commons.plan.planner.plan.node.IQueryPlanVisitor;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.function.BoundSignature;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
@@ -284,7 +284,7 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
 
   @Override
   public <R, C> R accept(IPlanVisitor<R, C> visitor, C context) {
-    return ((IQueryPlanVisitor<R, C>) visitor).visitAggregationTableScan(this, context);
+    return ((PlanVisitor<R, C>) visitor).visitAggregationTableScan(this, context);
   }
 
   public static AggregationTableScanNode combineAggregationAndTableScan(

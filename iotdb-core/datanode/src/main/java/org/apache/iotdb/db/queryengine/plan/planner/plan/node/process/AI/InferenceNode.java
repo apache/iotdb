@@ -20,11 +20,11 @@
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AI;
 
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.IPlanVisitor;
-import org.apache.iotdb.db.node_commons.plan.planner.plan.node.IQueryPlanVisitor;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.node_commons.plan.planner.plan.node.process.SingleChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleChildProcessNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.model.ModelInferenceDescriptor;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -81,7 +81,7 @@ public class InferenceNode extends SingleChildProcessNode {
 
   @Override
   public <R, C> R accept(IPlanVisitor<R, C> visitor, C context) {
-    return ((IQueryPlanVisitor<R, C>) visitor).visitInference(this, context);
+    return ((PlanVisitor<R, C>) visitor).visitInference(this, context);
   }
 
   @Override

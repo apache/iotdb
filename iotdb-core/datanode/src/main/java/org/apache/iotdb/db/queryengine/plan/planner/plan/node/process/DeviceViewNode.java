@@ -20,11 +20,12 @@
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.process;
 
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.IPlanVisitor;
-import org.apache.iotdb.db.node_commons.plan.planner.plan.node.IQueryPlanVisitor;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.node_commons.plan.planner.plan.node.process.MultiChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.OrderByParameter;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -130,7 +131,7 @@ public class DeviceViewNode extends MultiChildProcessNode {
 
   @Override
   public <R, C> R accept(IPlanVisitor<R, C> visitor, C context) {
-    return ((IQueryPlanVisitor<R, C>) visitor).visitDeviceView(this, context);
+    return ((PlanVisitor<R, C>) visitor).visitDeviceView(this, context);
   }
 
   @Override

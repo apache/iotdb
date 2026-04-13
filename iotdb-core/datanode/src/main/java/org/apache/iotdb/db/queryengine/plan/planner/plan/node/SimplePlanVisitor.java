@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node;
 
-public class SimplePlanVisitor<C> extends PlanVisitor<Void, C> {
+public class SimplePlanVisitor<C> implements PlanVisitor<Void, C> {
   @Override
   public Void visitPlan(PlanNode node, C context) {
     for (PlanNode source : node.getChildren()) {

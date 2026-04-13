@@ -33,7 +33,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 public class PipePlanTablePatternParseVisitor
-    extends PlanVisitor<Optional<PlanNode>, TablePattern> {
+    implements PlanVisitor<Optional<PlanNode>, TablePattern> {
   @Override
   public Optional<PlanNode> visitPlan(final PlanNode node, final TablePattern pattern) {
     return Optional.of(node);

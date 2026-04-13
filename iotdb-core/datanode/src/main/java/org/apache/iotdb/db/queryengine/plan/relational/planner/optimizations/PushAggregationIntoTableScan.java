@@ -71,7 +71,7 @@ public class PushAggregationIntoTableScan implements PlanOptimizer {
             context.getSymbolAllocator()));
   }
 
-  private static class Rewriter extends PlanVisitor<PlanNode, Context> {
+  private static class Rewriter implements PlanVisitor<PlanNode, Context> {
 
     @Override
     public PlanNode visitPlan(PlanNode node, Context context) {

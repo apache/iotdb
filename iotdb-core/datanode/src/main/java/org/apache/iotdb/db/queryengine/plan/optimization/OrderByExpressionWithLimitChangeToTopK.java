@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.optimization;
 
+import org.apache.iotdb.db.node_commons.plan.planner.plan.node.process.MultiChildProcessNode;
+import org.apache.iotdb.db.node_commons.plan.planner.plan.node.process.SingleChildProcessNode;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
@@ -27,9 +29,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.FillNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MergeSortNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MultiChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.OffsetNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SortNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TopKNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TransformNode;
@@ -93,7 +93,7 @@ public class OrderByExpressionWithLimitChangeToTopK implements PlanOptimizer {
     return plan.accept(new Rewriter(), new RewriterContext(context));
   }
 
-  private static class Rewriter extends PlanVisitor<PlanNode, RewriterContext> {
+  private static class Rewriter implements PlanVisitor<PlanNode, RewriterContext> {
 
     @Override
     public PlanNode visitPlan(PlanNode node, RewriterContext context) {

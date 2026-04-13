@@ -36,7 +36,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.Assignment
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.MatchResult.NO_MATCH;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.MatchResult.match;
 
-final class PlanMatchingVisitor extends PlanVisitor<MatchResult, PlanMatchPattern> {
+final class PlanMatchingVisitor implements PlanVisitor<MatchResult, PlanMatchPattern> {
 
   private final Metadata metadata;
   private final SessionInfo sessionInfo;

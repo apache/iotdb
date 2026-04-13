@@ -54,7 +54,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.Map;
 
-public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
+public class DataExecutionVisitor implements PlanVisitor<TSStatus, DataRegion> {
   private static final Logger LOGGER = LoggerFactory.getLogger(DataExecutionVisitor.class);
 
   @Override

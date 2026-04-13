@@ -26,8 +26,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CorrelatedJo
 import org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Captures;
 import org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Pattern;
 
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode.JoinType.INNER;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode.JoinType.RIGHT;
+import static org.apache.iotdb.db.node_commons.plan.relational.planner.node.JoinNode.JoinType.INNER;
+import static org.apache.iotdb.db.node_commons.plan.relational.planner.node.JoinNode.JoinType.RIGHT;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.CorrelatedJoin.filter;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.correlatedJoin;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.QueryCardinalityUtil.isAtLeastScalar;

@@ -19,6 +19,10 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.node;
 
+import org.apache.iotdb.db.node_commons.plan.relational.planner.node.FillNode;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.node.FilterNode;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.node.JoinNode;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Lookup;

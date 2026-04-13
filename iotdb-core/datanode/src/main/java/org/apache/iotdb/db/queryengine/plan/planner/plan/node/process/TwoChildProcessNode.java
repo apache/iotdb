@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.process;
 
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.node_commons.plan.planner.plan.node.process.ProcessNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 
 import com.google.common.collect.ImmutableList;

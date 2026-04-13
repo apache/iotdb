@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.queryengine.plan.analyze.TemplatedInfo;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationMergeSortNode;
@@ -109,7 +110,7 @@ import java.util.Optional;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
-public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter.GraphContext> {
+public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrinter.GraphContext> {
 
   private static final String INDENT = " ";
   private static final String HORIZONTAL = "─";
@@ -820,7 +821,7 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
 
   @Override
   public List<String> visitFilter(
-      org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode node,
+      org.apache.iotdb.db.node_commons.plan.relational.planner.node.FilterNode node,
       GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("Filter-%s", node.getPlanNodeId().getId()));
@@ -930,7 +931,7 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
 
   @Override
   public List<String> visitLimit(
-      org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode node,
+      org.apache.iotdb.db.node_commons.plan.relational.planner.node.LimitNode node,
       GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("Limit-%s", node.getPlanNodeId().getId()));
@@ -1039,9 +1040,7 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
   }
 
   @Override
-  public List<String> visitJoin(
-      org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode node,
-      GraphContext context) {
+  public List<String> visitJoin(JoinNode node, GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("Join-%s", node.getPlanNodeId().getId()));
     if (node.getAsofCriteria().isPresent()) {

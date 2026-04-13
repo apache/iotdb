@@ -69,7 +69,7 @@ import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.schema.table.Audit.includeByAuditTreeDB;
 
-public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEvent> {
+public class TriggerFireVisitor implements PlanVisitor<TriggerFireResult, TriggerEvent> {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TriggerFireVisitor.class);
 

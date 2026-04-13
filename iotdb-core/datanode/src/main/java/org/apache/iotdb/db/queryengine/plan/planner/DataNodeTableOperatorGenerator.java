@@ -16,12 +16,14 @@ package org.apache.iotdb.db.queryengine.plan.planner;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
+import org.apache.iotdb.db.calc_commons.plan.planner.TableOperatorGenerator;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.ITableTimeRangeIterator;
@@ -79,6 +81,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggr
 import org.apache.iotdb.db.queryengine.execution.relational.ColumnTransformerBuilder;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.CountSchemaMergeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
@@ -127,6 +130,9 @@ import com.google.common.collect.ImmutableMap;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.idcolumn.FourOrHigherLevelDBExtractor;
+import org.apache.tsfile.file.metadata.idcolumn.ThreeLevelDBExtractor;
+import org.apache.tsfile.file.metadata.idcolumn.TwoLevelDBExtractor;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.read.common.type.BinaryType;
@@ -185,7 +191,8 @@ import static org.apache.iotdb.db.utils.constant.SqlConstant.MIN;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.SUM;
 import static org.apache.tsfile.read.common.type.TimestampType.TIMESTAMP;
 
-public class DataNodeTableOperatorGenerator extends TableOperatorGenerator {
+public class DataNodeTableOperatorGenerator extends TableOperatorGenerator
+    implements PlanVisitor<Operator, LocalExecutionPlanContext> {
 
   private static final MPPDataExchangeManager MPP_DATA_EXCHANGE_MANAGER =
       MPPDataExchangeService.getInstance().getMPPDataExchangeManager();
@@ -279,6 +286,29 @@ public class DataNodeTableOperatorGenerator extends TableOperatorGenerator {
     return exchangeOperator;
   }
 
+  public static IDeviceID.TreeDeviceIdColumnValueExtractor createTreeDeviceIdColumnValueExtractor(
+      String treeDBName) {
+    try {
+      PartialPath db = new PartialPath(treeDBName);
+      int dbLevel = db.getNodes().length;
+      // For the path of 'root.**', we can only get the root level in this place
+      // In this case, we still need to support deviceId such as 'root.db'
+      // The relevant deviceId must be two level db, but we can't get it now
+      if (dbLevel == 1 || dbLevel == 2) {
+        return new TwoLevelDBExtractor(treeDBName.length());
+      } else if (dbLevel == 3) {
+        return new ThreeLevelDBExtractor(treeDBName.length());
+      } else if (dbLevel >= 4) {
+        return new FourOrHigherLevelDBExtractor(dbLevel);
+      } else {
+        throw new IllegalArgumentException(
+            "tree db name should at least be two level: " + treeDBName);
+      }
+    } catch (IllegalPathException e) {
+      throw new IllegalArgumentException(e);
+    }
+  }
+
   @Override
   public Operator visitTreeNonAlignedDeviceViewScan(
       TreeNonAlignedDeviceViewScanNode node, LocalExecutionPlanContext context) {
@@ -325,7 +355,7 @@ public class DataNodeTableOperatorGenerator extends TableOperatorGenerator {
     }
     String treePrefixPath = DataNodeTreeViewSchemaUtils.getPrefixPath(tsTable);
     IDeviceID.TreeDeviceIdColumnValueExtractor extractor =
-        TableOperatorGenerator.createTreeDeviceIdColumnValueExtractor(treePrefixPath);
+        createTreeDeviceIdColumnValueExtractor(treePrefixPath);
     long viewTTL = tsTable.getCachedTableTTL();
 
     DeviceIteratorScanOperator.TreeNonAlignedDeviceViewScanParameters parameter =

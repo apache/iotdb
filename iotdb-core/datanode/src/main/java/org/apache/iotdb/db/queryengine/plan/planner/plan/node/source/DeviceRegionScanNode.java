@@ -25,12 +25,12 @@ import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.IPlanVisitor;
-import org.apache.iotdb.db.node_commons.plan.planner.plan.node.IQueryPlanVisitor;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.common.DeviceContext;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeUtil;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -93,7 +93,7 @@ public class DeviceRegionScanNode extends RegionScanNode {
 
   @Override
   public <R, C> R accept(IPlanVisitor<R, C> visitor, C context) {
-    return ((IQueryPlanVisitor<R, C>) visitor).visitDeviceRegionScan(this, context);
+    return ((PlanVisitor<R, C>) visitor).visitDeviceRegionScan(this, context);
   }
 
   @Override

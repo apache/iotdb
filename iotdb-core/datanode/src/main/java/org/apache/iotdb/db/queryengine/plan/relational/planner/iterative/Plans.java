@@ -33,7 +33,7 @@ public final class Plans {
     return node.accept(new ResolvingVisitor(lookup), null);
   }
 
-  private static class ResolvingVisitor extends PlanVisitor<PlanNode, Void> {
+  private static class ResolvingVisitor implements PlanVisitor<PlanNode, Void> {
     private final Lookup lookup;
 
     public ResolvingVisitor(Lookup lookup) {

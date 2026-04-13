@@ -34,7 +34,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 public class PipePlanTablePrivilegeParseVisitor
-    extends PlanVisitor<Optional<PlanNode>, IAuditEntity> {
+    implements PlanVisitor<Optional<PlanNode>, IAuditEntity> {
   @Override
   public Optional<PlanNode> visitPlan(final PlanNode node, final IAuditEntity auditEntity) {
     return Optional.of(node);

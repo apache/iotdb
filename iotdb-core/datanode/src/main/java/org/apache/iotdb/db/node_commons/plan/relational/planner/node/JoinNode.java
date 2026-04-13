@@ -17,13 +17,13 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.relational.planner.node;
+package org.apache.iotdb.db.node_commons.plan.relational.planner.node;
 
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.IPlanVisitor;
-import org.apache.iotdb.db.node_commons.plan.planner.plan.node.IQueryPlanVisitor;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TwoChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
@@ -46,8 +46,8 @@ import java.util.Set;
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode.EquiJoinClause.flipBatch;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode.JoinType.INNER;
+import static org.apache.iotdb.db.node_commons.plan.relational.planner.node.JoinNode.EquiJoinClause.flipBatch;
+import static org.apache.iotdb.db.node_commons.plan.relational.planner.node.JoinNode.JoinType.INNER;
 
 public class JoinNode extends TwoChildProcessNode {
 
@@ -176,7 +176,7 @@ public class JoinNode extends TwoChildProcessNode {
 
   @Override
   public <R, C> R accept(IPlanVisitor<R, C> visitor, C context) {
-    return ((IQueryPlanVisitor<R, C>) visitor).visitJoin(this, context);
+    return ((PlanVisitor<R, C>) visitor).visitJoin(this, context);
   }
 
   @Override

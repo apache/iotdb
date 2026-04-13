@@ -156,7 +156,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.db.queryengine.plan.planner.TableOperatorGenerator.makeLayout;
+import static org.apache.iotdb.db.calc_commons.plan.planner.TableOperatorGenerator.makeLayout;
 import static org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDeviceSchemaFetcher.convertTagValuesToDeviceID;
 import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 

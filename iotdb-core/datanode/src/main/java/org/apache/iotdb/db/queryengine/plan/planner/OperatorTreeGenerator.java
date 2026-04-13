@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.node_commons.plan.planner.plan.node.process.MultiChildProcessNode;
 import org.apache.iotdb.db.queryengine.common.DeviceContext;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.NodeRef;
@@ -214,7 +215,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.Horizontal
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.IntoNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MergeSortNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MultiChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.OffsetNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.RawDataAggregationNode;
@@ -331,7 +331,7 @@ import static org.apache.iotdb.db.queryengine.plan.statement.component.Ordering.
 import static org.apache.iotdb.db.utils.TimestampPrecisionUtils.TIMESTAMP_PRECISION;
 
 /** This Visitor is responsible for transferring PlanNode Tree to Operator Tree. */
-public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionPlanContext> {
+public class OperatorTreeGenerator implements PlanVisitor<Operator, LocalExecutionPlanContext> {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(OperatorTreeGenerator.class);
 

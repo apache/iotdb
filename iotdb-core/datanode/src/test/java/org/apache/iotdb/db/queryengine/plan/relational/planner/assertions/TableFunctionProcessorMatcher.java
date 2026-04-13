@@ -38,7 +38,6 @@ import static com.google.common.collect.ImmutableList.toImmutableList;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.MatchResult.NO_MATCH;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.MatchResult.match;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.node;
 
 public class TableFunctionProcessorMatcher implements Matcher {
   private final String name;

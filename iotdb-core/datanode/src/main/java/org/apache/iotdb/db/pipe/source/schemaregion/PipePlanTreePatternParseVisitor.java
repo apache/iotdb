@@ -68,7 +68,7 @@ import java.util.stream.IntStream;
  * one is used in the {@link PipeSchemaRegionWritePlanEvent} in {@link SchemaRegionListeningQueue}.
  */
 public class PipePlanTreePatternParseVisitor
-    extends PlanVisitor<Optional<PlanNode>, IoTDBTreePatternOperations> {
+    implements PlanVisitor<Optional<PlanNode>, IoTDBTreePatternOperations> {
   @Override
   public Optional<PlanNode> visitPlan(
       final PlanNode node, final IoTDBTreePatternOperations pattern) {

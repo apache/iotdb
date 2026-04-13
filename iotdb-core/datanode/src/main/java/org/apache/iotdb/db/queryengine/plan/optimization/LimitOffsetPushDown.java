@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.optimization;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.node_commons.plan.planner.plan.node.process.MultiChildProcessNode;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer;
@@ -30,7 +31,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.CollectNod
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.FillNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.LimitNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MultiChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.OffsetNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SortNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TransformNode;
@@ -87,7 +87,7 @@ public class LimitOffsetPushDown implements PlanOptimizer {
     return plan.accept(new Rewriter(), new RewriterContext(analysis));
   }
 
-  private static class Rewriter extends PlanVisitor<PlanNode, RewriterContext> {
+  private static class Rewriter implements PlanVisitor<PlanNode, RewriterContext> {
 
     @Override
     public PlanNode visitPlan(PlanNode node, RewriterContext context) {

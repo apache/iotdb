@@ -26,6 +26,8 @@ import org.apache.iotdb.commons.schema.table.InformationSchema;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.node.FilterNode;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet;
@@ -56,9 +58,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.ReplaceSymbolI
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AssignUniqueId;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SemiJoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
@@ -108,6 +108,10 @@ import static org.apache.iotdb.commons.schema.table.InformationSchema.CURRENT_QU
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.ATTRIBUTE;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.FIELD;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.TIME;
+import static org.apache.iotdb.db.node_commons.plan.relational.planner.node.JoinNode.JoinType.FULL;
+import static org.apache.iotdb.db.node_commons.plan.relational.planner.node.JoinNode.JoinType.INNER;
+import static org.apache.iotdb.db.node_commons.plan.relational.planner.node.JoinNode.JoinType.LEFT;
+import static org.apache.iotdb.db.node_commons.plan.relational.planner.node.JoinNode.JoinType.RIGHT;
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.PARTITION_FETCHER;
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.SCHEMA_FETCHER;
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.getTimePartitionSlotList;
@@ -124,10 +128,6 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils.isEffectivelyLiteral;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.CanonicalizeExpressionRewriter.canonicalizeExpression;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.ChildReplacer.replaceChildren;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode.JoinType.FULL;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode.JoinType.INNER;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode.JoinType.LEFT;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode.JoinType.RIGHT;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.JoinUtils.UNSUPPORTED_JOIN_CRITERIA;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.JoinUtils.extractJoinPredicate;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.JoinUtils.joinEqualityExpression;
@@ -187,7 +187,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
         new RewriteContext(TRUE_LITERAL));
   }
 
-  private static class Rewriter extends PlanVisitor<PlanNode, RewriteContext> {
+  private static class Rewriter implements PlanVisitor<PlanNode, RewriteContext> {
     private final MPPQueryContext queryContext;
     private final Analysis analysis;
     private final Metadata metadata;

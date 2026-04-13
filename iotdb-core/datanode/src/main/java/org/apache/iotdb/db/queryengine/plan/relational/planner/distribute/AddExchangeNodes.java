@@ -43,7 +43,7 @@ import static org.apache.iotdb.db.queryengine.plan.planner.distribution.NodeDist
 import static org.apache.iotdb.db.queryengine.plan.planner.distribution.NodeDistributionType.SAME_WITH_SOME_CHILD;
 
 public class AddExchangeNodes
-    extends PlanVisitor<PlanNode, TableDistributedPlanGenerator.PlanContext> {
+    implements PlanVisitor<PlanNode, TableDistributedPlanGenerator.PlanContext> {
 
   private final MPPQueryContext queryContext;
 

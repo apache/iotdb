@@ -28,7 +28,7 @@ import static com.google.common.base.Verify.verifyNotNull;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.ChildReplacer.replaceChildren;
 
 public abstract class SimplePlanRewriter<C>
-    extends PlanVisitor<PlanNode, SimplePlanRewriter.RewriteContext<C>> {
+    implements PlanVisitor<PlanNode, SimplePlanRewriter.RewriteContext<C>> {
   public static <C> PlanNode rewriteWith(SimplePlanRewriter<C> rewriter, PlanNode node) {
     return node.accept(rewriter, new RewriteContext<>(rewriter, null));
   }

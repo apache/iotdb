@@ -96,7 +96,7 @@ import java.util.Map;
 import java.util.Objects;
 
 /** Schema write {@link PlanNode} visitor */
-public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion> {
+public class SchemaExecutionVisitor implements PlanVisitor<TSStatus, ISchemaRegion> {
   private static Logger logger = LoggerFactory.getLogger(SchemaExecutionVisitor.class);
 
   @Override

@@ -17,14 +17,16 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.planner;
+package org.apache.iotdb.db.calc_commons.plan.planner;
 
-import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.SemanticException;
-import org.apache.iotdb.db.node_commons.plan.planner.plan.node.IQueryPlanVisitor;
+import org.apache.iotdb.db.node_commons.plan.planner.plan.node.ICoreQueryPlanVisitor;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.node_commons.plan.planner.plan.node.process.SingleChildProcessNode;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.node.FilterNode;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.node.JoinNode;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
@@ -101,8 +103,8 @@ import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggr
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.StreamingHashAggregationOperator;
 import org.apache.iotdb.db.queryengine.execution.relational.ColumnTransformerBuilder;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
+import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanContext;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.queryengine.plan.relational.function.BoundSignature;
 import org.apache.iotdb.db.queryengine.plan.relational.function.FunctionKind;
@@ -125,11 +127,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AssignUnique
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CollectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CteScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.EnforceSingleRowNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GapFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GroupNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LinearFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MarkDistinctNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.Measure;
@@ -179,10 +178,6 @@ import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.idcolumn.FourOrHigherLevelDBExtractor;
-import org.apache.tsfile.file.metadata.idcolumn.ThreeLevelDBExtractor;
-import org.apache.tsfile.file.metadata.idcolumn.TwoLevelDBExtractor;
 import org.apache.tsfile.read.common.block.column.BinaryColumn;
 import org.apache.tsfile.read.common.block.column.BooleanColumn;
 import org.apache.tsfile.read.common.block.column.DoubleColumn;
@@ -244,7 +239,7 @@ import static org.apache.tsfile.read.common.type.TimestampType.TIMESTAMP;
 
 /** This Visitor is responsible for transferring Table PlanNode Tree to Table Operator Tree. */
 public class TableOperatorGenerator
-    implements IQueryPlanVisitor<Operator, LocalExecutionPlanContext> {
+    implements ICoreQueryPlanVisitor<Operator, LocalExecutionPlanContext> {
 
   protected final Metadata metadata;
 
@@ -255,29 +250,6 @@ public class TableOperatorGenerator
   @Override
   public Operator visitPlan(PlanNode node, LocalExecutionPlanContext context) {
     throw new UnsupportedOperationException("should call the concrete visitXX() method");
-  }
-
-  public static IDeviceID.TreeDeviceIdColumnValueExtractor createTreeDeviceIdColumnValueExtractor(
-      String treeDBName) {
-    try {
-      PartialPath db = new PartialPath(treeDBName);
-      int dbLevel = db.getNodes().length;
-      // For the path of 'root.**', we can only get the root level in this place
-      // In this case, we still need to support deviceId such as 'root.db'
-      // The relevant deviceId must be two level db, but we can't get it now
-      if (dbLevel == 1 || dbLevel == 2) {
-        return new TwoLevelDBExtractor(treeDBName.length());
-      } else if (dbLevel == 3) {
-        return new ThreeLevelDBExtractor(treeDBName.length());
-      } else if (dbLevel >= 4) {
-        return new FourOrHigherLevelDBExtractor(dbLevel);
-      } else {
-        throw new IllegalArgumentException(
-            "tree db name should at least be two level: " + treeDBName);
-      }
-    } catch (IllegalPathException e) {
-      throw new IllegalArgumentException(e);
-    }
   }
 
   @Override

@@ -62,7 +62,7 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 public class PipePlanTreePrivilegeParseVisitor
-    extends PlanVisitor<Optional<PlanNode>, IAuditEntity> {
+    implements PlanVisitor<Optional<PlanNode>, IAuditEntity> {
 
   private final boolean skip;
 

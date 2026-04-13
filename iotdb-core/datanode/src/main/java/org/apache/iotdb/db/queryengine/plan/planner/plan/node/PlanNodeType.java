@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node;
 
+import org.apache.iotdb.db.node_commons.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.CountSchemaMergeNode;
@@ -652,7 +653,7 @@ public enum PlanNodeType {
         return org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode
             .deserialize(buffer);
       case 1001:
-        return org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode.deserialize(
+        return org.apache.iotdb.db.node_commons.plan.relational.planner.node.FilterNode.deserialize(
             buffer);
       case 1002:
         return org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode.deserialize(
@@ -661,7 +662,7 @@ public enum PlanNodeType {
         return org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode.deserialize(
             buffer);
       case 1004:
-        return org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode.deserialize(
+        return org.apache.iotdb.db.node_commons.plan.relational.planner.node.LimitNode.deserialize(
             buffer);
       case 1005:
         return org.apache.iotdb.db.queryengine.plan.relational.planner.node.OffsetNode.deserialize(
@@ -682,8 +683,7 @@ public enum PlanNodeType {
         return org.apache.iotdb.db.queryengine.plan.relational.planner.node.StreamSortNode
             .deserialize(buffer);
       case 1011:
-        return org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode.deserialize(
-            buffer);
+        return JoinNode.deserialize(buffer);
       case 1012:
         return PreviousFillNode.deserialize(buffer);
       case 1013:

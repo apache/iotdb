@@ -34,17 +34,21 @@ import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.node_commons.plan.planner.plan.node.process.SingleChildProcessNode;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.node.FillNode;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.node.FilterNode;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.node.JoinNode;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.db.queryengine.common.DataNodeEndPoints;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.plan.ClusterTopology;
-import org.apache.iotdb.db.queryengine.plan.planner.TableOperatorGenerator;
+import org.apache.iotdb.db.queryengine.plan.planner.DataNodeTableOperatorGenerator;
 import org.apache.iotdb.db.queryengine.plan.planner.distribution.NodeDistribution;
 import org.apache.iotdb.db.queryengine.plan.planner.exceptions.RootFIPlacementException;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.function.BoundSignature;
 import org.apache.iotdb.db.queryengine.plan.relational.function.FunctionId;
@@ -68,14 +72,10 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CopyToNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.EnforceSingleRowNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExplainAnalyzeNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FillNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GapFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GroupNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.IntoNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MarkDistinctNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MergeSortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.NonAlignedAggregationTreeDeviceViewScanNode;
@@ -156,7 +156,7 @@ import static org.apache.tsfile.utils.Preconditions.checkArgument;
 
 /** This class is used to generate distributed plan for table model. */
 public class TableDistributedPlanGenerator
-    extends PlanVisitor<List<PlanNode>, TableDistributedPlanGenerator.PlanContext> {
+    implements PlanVisitor<List<PlanNode>, TableDistributedPlanGenerator.PlanContext> {
   private final MPPQueryContext queryContext;
   private final QueryId queryId;
   private final Analysis analysis;
@@ -1905,7 +1905,7 @@ public class TableDistributedPlanGenerator
           DataNodeTableCache.getInstance()
               .getTable(qualifiedObjectName.getDatabaseName(), qualifiedObjectName.getObjectName());
       return Optional.of(
-          TableOperatorGenerator.createTreeDeviceIdColumnValueExtractor(
+          DataNodeTableOperatorGenerator.createTreeDeviceIdColumnValueExtractor(
               DataNodeTreeViewSchemaUtils.getPrefixPath(table)));
     } else {
       return Optional.empty();

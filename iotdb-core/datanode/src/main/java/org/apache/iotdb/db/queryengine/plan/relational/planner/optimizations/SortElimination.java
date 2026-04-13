@@ -19,12 +19,12 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations;
 
+import org.apache.iotdb.db.node_commons.plan.relational.planner.node.FillNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingScheme;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GapFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PatternRecognitionNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
@@ -54,7 +54,7 @@ public class SortElimination implements PlanOptimizer {
     return plan.accept(new Rewriter(), new Context());
   }
 
-  private static class Rewriter extends PlanVisitor<PlanNode, Context> {
+  private static class Rewriter implements PlanVisitor<PlanNode, Context> {
     @Override
     public PlanNode visitPlan(PlanNode node, Context context) {
       PlanNode newNode = node.clone();

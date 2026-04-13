@@ -68,7 +68,7 @@ public class PruneDistinctAggregation implements Rule<AggregationNode> {
     return node.getAggregations().isEmpty();
   }
 
-  private static class DistinctAggregationRewriter extends PlanVisitor<PlanNode, Boolean> {
+  private static class DistinctAggregationRewriter implements PlanVisitor<PlanNode, Boolean> {
     private final Lookup lookup;
     private boolean rewritten;
 

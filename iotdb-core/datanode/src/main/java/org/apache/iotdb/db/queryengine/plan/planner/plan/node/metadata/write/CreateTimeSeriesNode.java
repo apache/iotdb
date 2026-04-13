@@ -23,11 +23,11 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.IPlanVisitor;
-import org.apache.iotdb.db.node_commons.plan.planner.plan.node.IQueryPlanVisitor;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.ICreateTimeSeriesPlan;
 
@@ -351,7 +351,7 @@ public class CreateTimeSeriesNode extends WritePlanNode implements ICreateTimeSe
 
   @Override
   public <R, C> R accept(final IPlanVisitor<R, C> visitor, final C schemaRegion) {
-    return ((IQueryPlanVisitor<R, C>) visitor).visitCreateTimeSeries(this, schemaRegion);
+    return ((PlanVisitor<R, C>) visitor).visitCreateTimeSeries(this, schemaRegion);
   }
 
   @Override

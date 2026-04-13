@@ -30,7 +30,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkN
 import javax.annotation.Nonnull;
 
 public abstract class AbstractTableSchemaQueryAttributeSecurityVisitor<R>
-    extends PlanVisitor<R, ConsensusGroupId> {
+    implements PlanVisitor<R, ConsensusGroupId> {
 
   public R processFragment(
       final @Nonnull FragmentInstance instance, final @Nonnull ConsensusGroupId groupId) {

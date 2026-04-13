@@ -61,7 +61,7 @@ public class TransformSortToStreamSort implements PlanOptimizer {
         new Rewriter(context.getAnalysis(), context.getQueryContext()), new Context());
   }
 
-  private static class Rewriter extends PlanVisitor<PlanNode, Context> {
+  private static class Rewriter implements PlanVisitor<PlanNode, Context> {
     private final Analysis analysis;
     private final MPPQueryContext queryContext;
 

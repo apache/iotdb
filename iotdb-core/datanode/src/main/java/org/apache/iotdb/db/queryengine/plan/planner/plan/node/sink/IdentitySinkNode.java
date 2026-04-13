@@ -20,11 +20,11 @@
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink;
 
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.IPlanVisitor;
-import org.apache.iotdb.db.node_commons.plan.planner.plan.node.IQueryPlanVisitor;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.DownStreamChannelLocation;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -73,7 +73,7 @@ public class IdentitySinkNode extends MultiChildrenSinkNode {
 
   @Override
   public <R, C> R accept(IPlanVisitor<R, C> visitor, C context) {
-    return ((IQueryPlanVisitor<R, C>) visitor).visitIdentitySink(this, context);
+    return ((PlanVisitor<R, C>) visitor).visitIdentitySink(this, context);
   }
 
   @Override
