@@ -258,6 +258,12 @@ public class IoTDBSessionQueryIT {
 
     try (final ISession session =
         EnvFactory.getEnv().getSessionConnection("abcd", "veryComplexPassword@123")) {
+      // Push last cache first
+      try (final SessionDataSet resultSet =
+          session.executeFastLastDataQueryForOnePrefixPath(Arrays.asList("root", "sg1", "d1"))) {
+        assertResultSetEqual(resultSet, lastQueryColumnNames, retArray, true);
+      }
+
       try (final SessionDataSet resultSet =
           session.executeLastDataQueryForOneDevice(
               "root.sg1", "root.sg1.d1", Arrays.asList("notExist", "s1"), true)) {

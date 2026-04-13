@@ -476,6 +476,7 @@ public class IoTDBRestServiceIT {
     selectLast(httpClient);
 
     queryV2(httpClient);
+    selectFastLast(httpClient);
     queryGroupByLevelV2(httpClient);
     queryRowLimitV2(httpClient);
     queryShowChildPathsV2(httpClient);
@@ -1627,6 +1628,108 @@ public class IoTDBRestServiceIT {
               add(3.5555);
             }
           };
+
+      Assert.assertEquals(expressions, expressionsResult);
+      Assert.assertEquals(timestamps, timestampsResult);
+      Assert.assertEquals(values1, valuesResult.get(0));
+      Assert.assertEquals(values2, valuesResult.get(1));
+      Assert.assertEquals(values3, valuesResult.get(2));
+      Assert.assertEquals(values4, valuesResult.get(3));
+      Assert.assertEquals(values5, valuesResult.get(4));
+      Assert.assertEquals(values6, valuesResult.get(5));
+    } catch (IOException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    } finally {
+      try {
+        if (response != null) {
+          response.close();
+        }
+      } catch (IOException e) {
+        e.printStackTrace();
+        fail(e.getMessage());
+      }
+    }
+  }
+
+  public void selectFastLast(CloseableHttpClient httpClient) {
+    CloseableHttpResponse response = null;
+    try {
+      HttpPost httpPost = getHttpPost("http://127.0.0.1:" + port + "/rest/v2/fastLastQuery");
+      String sql = "{\"PrefixPathList\":[[\"root\",\"sg25\"]]}";
+      httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
+      response = httpClient.execute(httpPost);
+      HttpEntity responseEntity = response.getEntity();
+      String message = EntityUtils.toString(responseEntity, "utf-8");
+      ObjectMapper mapper = new ObjectMapper();
+      Map map = mapper.readValue(message, Map.class);
+      List<Long> timestampsResult = (List<Long>) map.get("timestamps");
+      List<Long> expressionsResult = (List<Long>) map.get("expressions");
+      List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
+      Assert.assertTrue(map.size() > 0);
+      List<Object> expressions =
+              new ArrayList<Object>() {
+                {
+                  add("root.sg25.s3");
+                  add("root.sg25.s4");
+                  add("root.sg25.s5");
+                  add("root.sg25.s6");
+                  add("root.sg25.s7");
+                  add("root.sg25.s8");
+                  add("root.sg25.s4 + 1");
+                  add("root.sg25.s4 + 1");
+                }
+              };
+      List<Object> timestamps =
+              new ArrayList<Object>() {
+                {
+                  add(1635232143960l);
+                  add(1635232153960l);
+                }
+              };
+      List<Object> values1 =
+              new ArrayList<Object>() {
+                {
+                  add("2aa");
+                  add("");
+                }
+              };
+      List<Object> values2 =
+              new ArrayList<Object>() {
+                {
+                  add(11);
+                  add(2);
+                }
+              };
+      List<Object> values3 =
+              new ArrayList<Object>() {
+                {
+                  add(1635000012345555l);
+                  add(1635000012345556l);
+                }
+              };
+
+      List<Object> values4 =
+              new ArrayList<Object>() {
+                {
+                  add(1.41);
+                  add(null);
+                }
+              };
+      List<Object> values5 =
+              new ArrayList<Object>() {
+                {
+                  add(null);
+                  add(false);
+                }
+              };
+      List<Object> values6 =
+              new ArrayList<Object>() {
+                {
+                  add(null);
+                  add(3.5555);
+                }
+              };
 
       Assert.assertEquals(expressions, expressionsResult);
       Assert.assertEquals(timestamps, timestampsResult);
