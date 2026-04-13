@@ -32,6 +32,7 @@ class TSDataType(IntEnum):
     DATE = 9
     BLOB = 10
     STRING = 11
+    OBJECT = 12
 
     def np_dtype(self):
         return {
@@ -45,7 +46,74 @@ class TSDataType(IntEnum):
             TSDataType.DATE: date,
             TSDataType.BLOB: bytes,
             TSDataType.STRING: str,
+            TSDataType.OBJECT: np.dtype("O"),
         }[self]
+
+
+# --- Groupings for tablet serialization and TsBlock / RPC result handling (protocol type bytes) ---
+
+TS_TABLET_NUMERIC_FIXED = frozenset(
+    {
+        TSDataType.BOOLEAN,
+        TSDataType.INT32,
+        TSDataType.INT64,
+        TSDataType.FLOAT,
+        TSDataType.DOUBLE,
+        TSDataType.TIMESTAMP,
+    }
+)
+
+TS_TABLET_LENGTH_PREFIXED = frozenset(
+    {
+        TSDataType.TEXT,
+        TSDataType.STRING,
+        TSDataType.BLOB,
+        TSDataType.OBJECT,
+    }
+)
+
+TS_BLOCK_VALUE_TYPES = frozenset(
+    {
+        TSDataType.BOOLEAN,
+        TSDataType.INT32,
+        TSDataType.INT64,
+        TSDataType.FLOAT,
+        TSDataType.DOUBLE,
+        TSDataType.TEXT,
+        TSDataType.TIMESTAMP,
+        TSDataType.DATE,
+        TSDataType.BLOB,
+        TSDataType.STRING,
+        TSDataType.OBJECT,
+    }
+)
+
+TS_RPC_BUFFER_AS_NUMPY = frozenset(
+    {
+        TSDataType.BOOLEAN,
+        TSDataType.INT32,
+        TSDataType.INT64,
+        TSDataType.FLOAT,
+        TSDataType.DOUBLE,
+        TSDataType.BLOB,
+        TSDataType.OBJECT,
+    }
+)
+
+TS_RPC_BUFFER_UTF8_STRING = frozenset({TSDataType.TEXT, TSDataType.STRING})
+
+TS_RPC_NO_BYTESWAP = frozenset({TSDataType.BLOB, TSDataType.OBJECT})
+
+TS_RPC_NULLABLE_OBJECT_COLUMNS = frozenset(
+    {
+        TSDataType.TEXT,
+        TSDataType.STRING,
+        TSDataType.BLOB,
+        TSDataType.OBJECT,
+        TSDataType.DATE,
+        TSDataType.TIMESTAMP,
+    }
+)
 
 
 @unique

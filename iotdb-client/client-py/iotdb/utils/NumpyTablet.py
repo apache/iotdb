@@ -23,8 +23,13 @@ from numpy import ndarray
 from typing import List
 
 from iotdb.tsfile.utils.date_utils import parse_date_to_int
-from iotdb.utils.IoTDBConstants import TSDataType
+from iotdb.utils.IoTDBConstants import (
+    TSDataType,
+    TS_TABLET_LENGTH_PREFIXED,
+    TS_TABLET_NUMERIC_FIXED,
+)
 from iotdb.utils.BitMap import BitMap
+from iotdb.utils.object_column import encode_object_cell
 from iotdb.utils.Tablet import ColumnType
 
 
@@ -78,6 +83,8 @@ class NumpyTablet(object):
         if timestamps.dtype != TSDataType.INT64.np_dtype():
             timestamps = timestamps.astype(TSDataType.INT64.np_dtype())
         for i in range(len(values)):
+            if data_types[i] == TSDataType.OBJECT:
+                continue
             if values[i].dtype != data_types[i].np_dtype():
                 values[i] = values[i].astype(data_types[i].np_dtype())
 
@@ -95,6 +102,30 @@ class NumpyTablet(object):
             )
         else:
             self.__column_types = column_types
+
+    def add_value_object(
+        self,
+        row_index: int,
+        column_index: int,
+        is_eof: bool,
+        offset: int,
+        content: bytes,
+    ):
+        """
+        Same semantics as Tablet.add_value_object; NumpyTablet stores one ndarray per column.
+        """
+        if row_index < 0 or row_index >= self.__row_number:
+            raise IndexError("row_index out of range")
+        if column_index < 0 or column_index >= self.__column_number:
+            raise IndexError("column_index out of range")
+        if self.__data_types[column_index] != TSDataType.OBJECT:
+            raise TypeError(
+                "add_value_object requires TSDataType.OBJECT column, got %s"
+                % self.__data_types[column_index]
+            )
+        self.__values[column_index][row_index] = encode_object_cell(
+            is_eof, offset, content
+        )
 
     @staticmethod
     def check_sorted(timestamps):
@@ -131,23 +162,20 @@ class NumpyTablet(object):
         bs_len = 0
         bs_list = []
         for data_type, value in zip(self.__data_types, self.__values):
-            # BOOLEAN, INT32, INT64, FLOAT, DOUBLE, TIMESTAMP
-            if (
-                data_type == 0
-                or data_type == 1
-                or data_type == 2
-                or data_type == 3
-                or data_type == 4
-                or data_type == 8
-            ):
+            if data_type in TS_TABLET_NUMERIC_FIXED:
                 bs = value.tobytes()
-            # TEXT, STRING, BLOB
-            elif data_type == 5 or data_type == 11 or data_type == 10:
+            elif data_type in TS_TABLET_LENGTH_PREFIXED:
                 format_str_list = [">"]
                 values_tobe_packed = []
                 for str_list in value:
-                    # For TEXT, it's same as the original solution
-                    if isinstance(str_list, str):
+                    if data_type == TSDataType.OBJECT:
+                        value_bytes = str_list
+                        if not isinstance(value_bytes, (bytes, bytearray)):
+                            raise TypeError(
+                                "OBJECT column must be bytes (use add_value_object)"
+                            )
+                        value_bytes = bytes(value_bytes)
+                    elif isinstance(str_list, str):
                         value_bytes = bytes(str_list, "utf-8")
                     else:
                         value_bytes = str_list
@@ -158,8 +186,7 @@ class NumpyTablet(object):
                     values_tobe_packed.append(value_bytes)
                 format_str = "".join(format_str_list)
                 bs = struct.pack(format_str, *values_tobe_packed)
-            # DATE
-            elif data_type == 9:
+            elif data_type == TSDataType.DATE:
                 bs = (
                     np.vectorize(parse_date_to_int)(value)
                     .astype(np.dtype(">i4"))

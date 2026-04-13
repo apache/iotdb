@@ -60,6 +60,8 @@ class Field(object):
                 or output.get_data_type() == TSDataType.BLOB
             ):
                 output.set_binary_value(field.get_binary_value())
+            elif output.get_data_type() == TSDataType.OBJECT:
+                output.value = field.value
             else:
                 raise Exception(
                     "unsupported data type {}".format(output.get_data_type())
@@ -150,6 +152,10 @@ class Field(object):
     def get_binary_value(self):
         if self.__data_type is None:
             raise Exception("Null Field Exception!")
+        if self.__data_type == TSDataType.OBJECT:
+            raise RuntimeError(
+                "OBJECT type only supports get_string_value / get_object_value, not get_binary_value"
+            )
         if (
             self.__data_type != TSDataType.TEXT
             and self.__data_type != TSDataType.STRING
@@ -185,14 +191,13 @@ class Field(object):
     def get_string_value(self):
         if self.__data_type is None or self.value is None or self.value is pd.NA:
             return "None"
-        # TEXT, STRING
-        if self.__data_type == 5 or self.__data_type == 11:
+        if self.__data_type in (TSDataType.TEXT, TSDataType.STRING):
             return self.value.decode("utf-8")
-        # BLOB
-        elif self.__data_type == 10:
+        elif self.__data_type == TSDataType.OBJECT:
+            return self.value.decode("utf-8")
+        elif self.__data_type == TSDataType.BLOB:
             return str(hex(int.from_bytes(self.value, byteorder="big")))
-        # TIMESTAMP
-        elif self.__data_type == 8:
+        elif self.__data_type == TSDataType.TIMESTAMP:
             return isoformat(
                 convert_to_timestamp(self.value, self.__precision, self.__timezone),
                 self.__precision,
@@ -210,24 +215,26 @@ class Field(object):
         """
         if self.__data_type is None or self.value is None or self.value is pd.NA:
             return None
-        if data_type == 0:
+        if data_type == TSDataType.BOOLEAN:
             return bool(self.value)
-        elif data_type == 1:
+        elif data_type == TSDataType.INT32:
             return np.int32(self.value)
-        elif data_type == 2:
+        elif data_type == TSDataType.INT64:
             return np.int64(self.value)
-        elif data_type == 3:
+        elif data_type == TSDataType.FLOAT:
             return np.float32(self.value)
-        elif data_type == 4:
+        elif data_type == TSDataType.DOUBLE:
             return np.float64(self.value)
-        elif data_type == 8:
+        elif data_type == TSDataType.TIMESTAMP:
             return convert_to_timestamp(self.value, self.__precision, self.__timezone)
-        elif data_type == 9:
+        elif data_type == TSDataType.DATE:
             return parse_int_to_date(self.value)
-        elif data_type == 5 or data_type == 11:
+        elif data_type in (TSDataType.TEXT, TSDataType.STRING):
             return self.value.decode("utf-8")
-        elif data_type == 10:
+        elif data_type == TSDataType.BLOB:
             return self.value
+        elif data_type == TSDataType.OBJECT:
+            return self.value.decode("utf-8")
         else:
             raise RuntimeError("Unsupported data type:" + str(data_type))
 

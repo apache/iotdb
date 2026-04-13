@@ -62,6 +62,7 @@ from .thrift.rpc.ttypes import (
 from .tsfile.utils.date_utils import parse_date_to_int
 from .utils import rpc_utils
 from .utils.exception import IoTDBConnectionException, RedirectException
+from .utils.IoTDBConstants import TSDataType
 
 logger = logging.getLogger("IoTDB")
 warnings.simplefilter("always", DeprecationWarning)
@@ -1613,33 +1614,27 @@ class Session(object):
         format_str_list = [">"]
         values_tobe_packed = []
         for data_type, value in zip(data_types, values):
-            # BOOLEAN
-            if data_type == 0:
+            if data_type == TSDataType.BOOLEAN:
                 format_str_list.append("c?")
-                values_tobe_packed.append(b"\x00")
+                values_tobe_packed.append(bytes([TSDataType.BOOLEAN]))
                 values_tobe_packed.append(value)
-            # INT32
-            elif data_type == 1:
+            elif data_type == TSDataType.INT32:
                 format_str_list.append("ci")
-                values_tobe_packed.append(b"\x01")
+                values_tobe_packed.append(bytes([TSDataType.INT32]))
                 values_tobe_packed.append(value)
-            # INT64
-            elif data_type == 2:
+            elif data_type == TSDataType.INT64:
                 format_str_list.append("cq")
-                values_tobe_packed.append(b"\x02")
+                values_tobe_packed.append(bytes([TSDataType.INT64]))
                 values_tobe_packed.append(value)
-            # FLOAT
-            elif data_type == 3:
+            elif data_type == TSDataType.FLOAT:
                 format_str_list.append("cf")
-                values_tobe_packed.append(b"\x03")
+                values_tobe_packed.append(bytes([TSDataType.FLOAT]))
                 values_tobe_packed.append(value)
-            # DOUBLE
-            elif data_type == 4:
+            elif data_type == TSDataType.DOUBLE:
                 format_str_list.append("cd")
-                values_tobe_packed.append(b"\x04")
+                values_tobe_packed.append(bytes([TSDataType.DOUBLE]))
                 values_tobe_packed.append(value)
-            # TEXT
-            elif data_type == 5:
+            elif data_type == TSDataType.TEXT:
                 if isinstance(value, str):
                     value_bytes = bytes(value, "utf-8")
                 else:
@@ -1647,29 +1642,25 @@ class Session(object):
                 format_str_list.append("ci")
                 format_str_list.append(str(len(value_bytes)))
                 format_str_list.append("s")
-                values_tobe_packed.append(b"\x05")
+                values_tobe_packed.append(bytes([TSDataType.TEXT]))
                 values_tobe_packed.append(len(value_bytes))
                 values_tobe_packed.append(value_bytes)
-            # TIMESTAMP
-            elif data_type == 8:
+            elif data_type == TSDataType.TIMESTAMP:
                 format_str_list.append("cq")
-                values_tobe_packed.append(b"\x08")
+                values_tobe_packed.append(bytes([TSDataType.TIMESTAMP]))
                 values_tobe_packed.append(value)
-            # DATE
-            elif data_type == 9:
+            elif data_type == TSDataType.DATE:
                 format_str_list.append("ci")
-                values_tobe_packed.append(b"\x09")
+                values_tobe_packed.append(bytes([TSDataType.DATE]))
                 values_tobe_packed.append(parse_date_to_int(value))
-            # BLOB
-            elif data_type == 10:
+            elif data_type == TSDataType.BLOB:
                 format_str_list.append("ci")
                 format_str_list.append(str(len(value)))
                 format_str_list.append("s")
-                values_tobe_packed.append(b"\x0a")
+                values_tobe_packed.append(bytes([TSDataType.BLOB]))
                 values_tobe_packed.append(len(value))
                 values_tobe_packed.append(value)
-            # STRING
-            elif data_type == 11:
+            elif data_type == TSDataType.STRING:
                 if isinstance(value, str):
                     value_bytes = bytes(value, "utf-8")
                 else:
@@ -1677,7 +1668,15 @@ class Session(object):
                 format_str_list.append("ci")
                 format_str_list.append(str(len(value_bytes)))
                 format_str_list.append("s")
-                values_tobe_packed.append(b"\x0b")
+                values_tobe_packed.append(bytes([TSDataType.STRING]))
+                values_tobe_packed.append(len(value_bytes))
+                values_tobe_packed.append(value_bytes)
+            elif data_type == TSDataType.OBJECT:
+                value_bytes = value if isinstance(value, bytes) else bytes(value)
+                format_str_list.append("ci")
+                format_str_list.append(str(len(value_bytes)))
+                format_str_list.append("s")
+                values_tobe_packed.append(bytes([TSDataType.OBJECT]))
                 values_tobe_packed.append(len(value_bytes))
                 values_tobe_packed.append(value_bytes)
             else:

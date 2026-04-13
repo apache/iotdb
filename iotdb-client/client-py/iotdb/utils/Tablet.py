@@ -22,7 +22,11 @@ from typing import List, Union
 
 from iotdb.tsfile.utils.date_utils import parse_date_to_int
 from iotdb.utils.BitMap import BitMap
-from iotdb.utils.IoTDBConstants import TSDataType
+from iotdb.utils.IoTDBConstants import (
+    TSDataType,
+    TS_TABLET_LENGTH_PREFIXED,
+)
+from iotdb.utils.object_column import encode_object_cell
 
 
 @unique
@@ -93,6 +97,44 @@ class Tablet(object):
         else:
             self.__column_types = column_types
 
+    def add_value_object(
+        self,
+        row_index: int,
+        column_index: int,
+        is_eof: bool,
+        offset: int,
+        content: bytes,
+    ):
+        """
+        Write one OBJECT column cell, same semantics as Java/C++ Tablet.addValue(
+        rowIndex, columnIndex, isEOF, offset, content).
+        """
+        if row_index < 0 or row_index >= self.__row_number:
+            raise IndexError("row_index out of range")
+        if column_index < 0 or column_index >= self.__column_number:
+            raise IndexError("column_index out of range")
+        if self.__data_types[column_index] != TSDataType.OBJECT:
+            raise TypeError(
+                "add_value_object requires TSDataType.OBJECT column, got %s"
+                % self.__data_types[column_index]
+            )
+        self.__values[row_index][column_index] = encode_object_cell(
+            is_eof, offset, content
+        )
+
+    def add_value_object_by_name(
+        self,
+        column_name: str,
+        row_index: int,
+        is_eof: bool,
+        offset: int,
+        content: bytes,
+    ):
+        if column_name not in self.__measurements:
+            raise KeyError("column %r not found" % column_name)
+        column_index = self.__measurements.index(column_name)
+        self.add_value_object(row_index, column_index, is_eof, offset, content)
+
     @staticmethod
     def check_sorted(timestamps):
         for i in range(1, len(timestamps)):
@@ -135,7 +177,7 @@ class Tablet(object):
             bitmaps.append(bitmap)
             data_type = self.__data_types[i]
             # BOOLEAN
-            if data_type == 0:
+            if data_type == TSDataType.BOOLEAN:
                 format_str_list.append(str(self.__row_number))
                 format_str_list.append("?")
                 for j in range(self.__row_number):
@@ -146,7 +188,7 @@ class Tablet(object):
                         self.__mark_none_value(bitmaps, i, j)
                         has_none = True
             # INT32
-            elif data_type == 1:
+            elif data_type == TSDataType.INT32:
                 format_str_list.append(str(self.__row_number))
                 format_str_list.append("i")
                 for j in range(self.__row_number):
@@ -157,7 +199,7 @@ class Tablet(object):
                         self.__mark_none_value(bitmaps, i, j)
                         has_none = True
             # INT64 or TIMESTAMP
-            elif data_type == 2 or data_type == 8:
+            elif data_type in (TSDataType.INT64, TSDataType.TIMESTAMP):
                 format_str_list.append(str(self.__row_number))
                 format_str_list.append("q")
                 for j in range(self.__row_number):
@@ -168,7 +210,7 @@ class Tablet(object):
                         self.__mark_none_value(bitmaps, i, j)
                         has_none = True
             # FLOAT
-            elif data_type == 3:
+            elif data_type == TSDataType.FLOAT:
                 format_str_list.append(str(self.__row_number))
                 format_str_list.append("f")
                 for j in range(self.__row_number):
@@ -179,7 +221,7 @@ class Tablet(object):
                         self.__mark_none_value(bitmaps, i, j)
                         has_none = True
             # DOUBLE
-            elif data_type == 4:
+            elif data_type == TSDataType.DOUBLE:
                 format_str_list.append(str(self.__row_number))
                 format_str_list.append("d")
                 for j in range(self.__row_number):
@@ -189,11 +231,18 @@ class Tablet(object):
                         values_tobe_packed.append(0)
                         self.__mark_none_value(bitmaps, i, j)
                         has_none = True
-            # TEXT, STRING, BLOB
-            elif data_type == 5 or data_type == 11 or data_type == 10:
+            # TEXT, STRING, BLOB, OBJECT (OBJECT cells are already encoded bytes)
+            elif data_type in TS_TABLET_LENGTH_PREFIXED:
                 for j in range(self.__row_number):
                     if self.__values[j][i] is not None:
-                        if isinstance(self.__values[j][i], str):
+                        if data_type == TSDataType.OBJECT:
+                            value_bytes = self.__values[j][i]
+                            if not isinstance(value_bytes, (bytes, bytearray)):
+                                raise TypeError(
+                                    "OBJECT column must be bytes (use add_value_object)"
+                                )
+                            value_bytes = bytes(value_bytes)
+                        elif isinstance(self.__values[j][i], str):
                             value_bytes = bytes(self.__values[j][i], "utf-8")
                         else:
                             value_bytes = self.__values[j][i]
@@ -212,7 +261,7 @@ class Tablet(object):
                         self.__mark_none_value(bitmaps, i, j)
                         has_none = True
             # DATE
-            elif data_type == 9:
+            elif data_type == TSDataType.DATE:
                 format_str_list.append(str(self.__row_number))
                 format_str_list.append("i")
                 for j in range(self.__row_number):

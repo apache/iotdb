@@ -28,7 +28,13 @@ from iotdb.thrift.rpc.IClientRPCService import TSFetchResultsReq, TSCloseOperati
 from iotdb.tsfile.utils.date_utils import parse_int_to_date
 from iotdb.tsfile.utils.tsblock_serde import deserialize
 from iotdb.utils.exception import IoTDBConnectionException
-from iotdb.utils.IoTDBConstants import TSDataType
+from iotdb.utils.IoTDBConstants import (
+    TSDataType,
+    TS_RPC_BUFFER_AS_NUMPY,
+    TS_RPC_BUFFER_UTF8_STRING,
+    TS_RPC_NO_BYTESWAP,
+    TS_RPC_NULLABLE_OBJECT_COLUMNS,
+)
 from iotdb.utils.rpc_utils import verify_success, convert_to_timestamp
 
 logger = logging.getLogger("IoTDB")
@@ -187,30 +193,26 @@ class IoTDBRpcDataSet(object):
                 column_array = column_arrays[location]
                 null_indicator = null_indicators[location]
                 if len(column_array) < array_length or (
-                    data_type == 0 and null_indicator is not None
+                    data_type == TSDataType.BOOLEAN and null_indicator is not None
                 ):
                     tmp_array = np.full(array_length, None, dtype=object)
                     if null_indicator is not None:
                         indexes = [not v for v in null_indicator]
-                        if data_type == 0:
+                        if data_type == TSDataType.BOOLEAN:
                             tmp_array[indexes] = column_array[indexes]
                         elif len(column_array) != 0:
                             tmp_array[indexes] = column_array
 
-                    # INT32, DATE
-                    if data_type == 1 or data_type == 9:
+                    if data_type in (TSDataType.INT32, TSDataType.DATE):
                         tmp_array = pd.Series(tmp_array, dtype="Int32")
                         has_pd_series[i] = True
-                    # INT64, TIMESTAMP
-                    elif data_type == 2 or data_type == 8:
+                    elif data_type in (TSDataType.INT64, TSDataType.TIMESTAMP):
                         tmp_array = pd.Series(tmp_array, dtype="Int64")
                         has_pd_series[i] = True
-                    # BOOLEAN
-                    elif data_type == 0:
+                    elif data_type == TSDataType.BOOLEAN:
                         tmp_array = pd.Series(tmp_array, dtype="boolean")
                         has_pd_series[i] = True
-                    # FLOAT, DOUBLE
-                    elif data_type == 3 or data_type == 4:
+                    elif data_type in (TSDataType.FLOAT, TSDataType.DOUBLE):
                         tmp_array = pd.Series(tmp_array)
                         has_pd_series[i] = True
                     column_array = tmp_array
@@ -332,22 +334,19 @@ class IoTDBRpcDataSet(object):
                     continue
                 data_type = self.__data_type_for_tsblock_column[location]
                 column_array = column_arrays[location]
-                # BOOLEAN, INT32, INT64, FLOAT, DOUBLE, BLOB
-                if data_type in (0, 1, 2, 3, 4, 10):
+                if data_type in TS_RPC_BUFFER_AS_NUMPY:
                     data_array = column_array
                     if (
-                        data_type != 10
+                        data_type not in TS_RPC_NO_BYTESWAP
                         and len(data_array) > 0
                         and data_array.dtype.byteorder == ">"
                     ):
                         data_array = data_array.byteswap().view(
                             data_array.dtype.newbyteorder("<")
                         )
-                # TEXT, STRING
-                elif data_type in (5, 11):
+                elif data_type in TS_RPC_BUFFER_UTF8_STRING:
                     data_array = np.array([x.decode("utf-8") for x in column_array])
-                # TIMESTAMP
-                elif data_type == 8:
+                elif data_type == TSDataType.TIMESTAMP:
                     data_array = pd.Series(
                         [
                             convert_to_timestamp(
@@ -357,47 +356,41 @@ class IoTDBRpcDataSet(object):
                         ],
                         dtype=object,
                     )
-                # DATE
-                elif data_type == 9:
+                elif data_type == TSDataType.DATE:
                     data_array = pd.Series(column_array).apply(parse_int_to_date)
                 else:
                     raise RuntimeError("unsupported data type {}.".format(data_type))
 
                 null_indicator = null_indicators[location]
                 if len(data_array) < array_length or (
-                    data_type == 0 and null_indicator is not None
+                    data_type == TSDataType.BOOLEAN and null_indicator is not None
                 ):
                     tmp_array = []
-                    # BOOLEAN, INT32, INT64
-                    if data_type == 0 or data_type == 1 or data_type == 2:
+                    if data_type in (
+                        TSDataType.BOOLEAN,
+                        TSDataType.INT32,
+                        TSDataType.INT64,
+                    ):
                         tmp_array = np.full(array_length, pd.NA, dtype=object)
-                    # FLOAT, DOUBLE
-                    elif data_type == 3 or data_type == 4:
+                    elif data_type in (TSDataType.FLOAT, TSDataType.DOUBLE):
                         tmp_array = np.full(
                             array_length, np.nan, dtype=data_type.np_dtype()
                         )
-                    # TEXT, STRING, BLOB, DATE, TIMESTAMP
-                    elif (
-                        data_type == 5
-                        or data_type == 11
-                        or data_type == 10
-                        or data_type == 9
-                        or data_type == 8
-                    ):
+                    elif data_type in TS_RPC_NULLABLE_OBJECT_COLUMNS:
                         tmp_array = np.full(array_length, None, dtype=object)
 
                     if null_indicator is not None:
                         indexes = [not v for v in null_indicator]
-                        if data_type == 0:
+                        if data_type == TSDataType.BOOLEAN:
                             tmp_array[indexes] = data_array[indexes]
                         elif len(data_array) != 0:
                             tmp_array[indexes] = data_array
 
-                    if data_type == 1:
+                    if data_type == TSDataType.INT32:
                         tmp_array = pd.Series(tmp_array).astype("Int32")
-                    elif data_type == 2:
+                    elif data_type == TSDataType.INT64:
                         tmp_array = pd.Series(tmp_array).astype("Int64")
-                    elif data_type == 0:
+                    elif data_type == TSDataType.BOOLEAN:
                         tmp_array = pd.Series(tmp_array).astype("boolean")
 
                     data_array = tmp_array

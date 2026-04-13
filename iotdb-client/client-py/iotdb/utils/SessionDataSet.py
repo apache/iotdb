@@ -71,7 +71,7 @@ class SessionDataSet(object):
             self.__field_list = [
                 (
                     Field(data_type, timezone=zone_id, precision=time_precision)
-                    if data_type == 8
+                    if data_type == TSDataType.TIMESTAMP
                     else Field(data_type)
                 )
                 for data_type in self.iotdb_rpc_data_set.get_column_types()
@@ -80,7 +80,7 @@ class SessionDataSet(object):
             self.__field_list = [
                 (
                     Field(data_type, timezone=zone_id, precision=time_precision)
-                    if data_type == 8
+                    if data_type == TSDataType.TIMESTAMP
                     else Field(data_type)
                 )
                 for data_type in self.iotdb_rpc_data_set.get_column_types()[1:]
