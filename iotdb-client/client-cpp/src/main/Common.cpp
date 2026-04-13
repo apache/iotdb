@@ -293,6 +293,10 @@ double MyStringBuffer::getDouble() {
 }
 
 char MyStringBuffer::getChar() {
+    if (pos >= str.size()) {
+        throw IoTDBException("MyStringBuffer::getChar: read past end (pos=" + std::to_string(pos) +
+                             ", size=" + std::to_string(str.size()) + ")");
+    }
     return str[pos++];
 }
 
@@ -301,8 +305,16 @@ bool MyStringBuffer::getBool() {
 }
 
 std::string MyStringBuffer::getString() {
-    size_t len = getInt();
-    size_t tmpPos = pos;
+    const int lenInt = getInt();
+    if (lenInt < 0) {
+        throw IoTDBException("MyStringBuffer::getString: negative length");
+    }
+    const size_t len = static_cast<size_t>(lenInt);
+    if (pos > str.size() || len > str.size() - pos) {
+        throw IoTDBException("MyStringBuffer::getString: length exceeds buffer (pos=" + std::to_string(pos) +
+                             ", len=" + std::to_string(len) + ", size=" + std::to_string(str.size()) + ")");
+    }
+    const size_t tmpPos = pos;
     pos += len;
     return str.substr(tmpPos, len);
 }
@@ -351,6 +363,10 @@ void MyStringBuffer::checkBigEndian() {
 }
 
 const char* MyStringBuffer::getOrderedByte(size_t len) {
+    if (pos > str.size() || len > str.size() - pos) {
+        throw IoTDBException("MyStringBuffer::getOrderedByte: read past end (pos=" + std::to_string(pos) +
+                             ", len=" + std::to_string(len) + ", size=" + std::to_string(str.size()) + ")");
+    }
     const char* p = nullptr;
     if (isBigEndian) {
         p = str.c_str() + pos;

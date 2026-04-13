@@ -20,6 +20,7 @@
 #include "catch.hpp"
 #include "Session.h"
 #include "SessionBuilder.h"
+#include "TsBlock.h"
 
 using namespace std;
 
@@ -858,4 +859,10 @@ TEST_CASE("UrlUtils - parseTEndPointIpv4AndIpv6Url", "[UrlUtils]") {
         REQUIRE_TENDPOINT(UrlUtils::parseTEndPointIpv4AndIpv6Url("localhost:0"), "localhost", 0);
         REQUIRE_TENDPOINT(UrlUtils::parseTEndPointIpv4AndIpv6Url("127.0.0.1:65535"), "127.0.0.1", 65535);
     }
+}
+
+TEST_CASE("TsBlock deserialize rejects truncated malicious payload", "[TsBlockDeserialize]") {
+    std::string data(18, '\0');
+    data[3] = '\x10';
+    REQUIRE_THROWS_AS(TsBlock::deserialize(data), IoTDBException);
 }
