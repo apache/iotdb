@@ -1656,7 +1656,7 @@ public class IoTDBRestServiceIT {
     CloseableHttpResponse response = null;
     try {
       HttpPost httpPost = getHttpPost("http://127.0.0.1:" + port + "/rest/v2/fastLastQuery");
-      String sql = "{\"PrefixPathList\":[[\"root\",\"sg25\"]]}";
+      String sql = "{\"prefix_paths\":[\"root\",\"sg25\"]}";
       httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
       response = httpClient.execute(httpPost);
       HttpEntity responseEntity = response.getEntity();
@@ -1668,77 +1668,63 @@ public class IoTDBRestServiceIT {
       List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
       Assert.assertTrue(map.size() > 0);
       List<Object> expressions =
-              new ArrayList<Object>() {
-                {
-                  add("root.sg25.s3");
-                  add("root.sg25.s4");
-                  add("root.sg25.s5");
-                  add("root.sg25.s6");
-                  add("root.sg25.s7");
-                  add("root.sg25.s8");
-                  add("root.sg25.s4 + 1");
-                  add("root.sg25.s4 + 1");
-                }
-              };
+          new ArrayList<Object>() {
+            {
+              add("Timeseries");
+              add("Value");
+              add("DataType");
+            }
+          };
       List<Object> timestamps =
-              new ArrayList<Object>() {
-                {
-                  add(1635232143960l);
-                  add(1635232153960l);
-                }
-              };
+          new ArrayList<Object>() {
+            {
+              add(1635232153960l);
+              add(1635232153960l);
+              add(1635232153960l);
+              add(1635232143960l);
+              add(1635232153960l);
+              add(1635232153960l);
+            }
+          };
       List<Object> values1 =
-              new ArrayList<Object>() {
-                {
-                  add("2aa");
-                  add("");
-                }
-              };
+          new ArrayList<Object>() {
+            {
+              add("root.sg25.s3");
+              add("root.sg25.s4");
+              add("root.sg25.s5");
+              add("root.sg25.s6");
+              add("root.sg25.s7");
+              add("root.sg25.s8");
+            }
+          };
       List<Object> values2 =
-              new ArrayList<Object>() {
-                {
-                  add(11);
-                  add(2);
-                }
-              };
+          new ArrayList<Object>() {
+            {
+              add("");
+              add("2");
+              add("1635000012345556");
+              add("1.41");
+              add("false");
+              add("3.5555");
+            }
+          };
       List<Object> values3 =
-              new ArrayList<Object>() {
-                {
-                  add(1635000012345555l);
-                  add(1635000012345556l);
-                }
-              };
-
-      List<Object> values4 =
-              new ArrayList<Object>() {
-                {
-                  add(1.41);
-                  add(null);
-                }
-              };
-      List<Object> values5 =
-              new ArrayList<Object>() {
-                {
-                  add(null);
-                  add(false);
-                }
-              };
-      List<Object> values6 =
-              new ArrayList<Object>() {
-                {
-                  add(null);
-                  add(3.5555);
-                }
-              };
+          new ArrayList<Object>() {
+            {
+              add("TEXT");
+              add("INT32");
+              add("INT64");
+              add("FLOAT");
+              add("BOOLEAN");
+              add("DOUBLE");
+            }
+          };
 
       Assert.assertEquals(expressions, expressionsResult);
       Assert.assertEquals(timestamps, timestampsResult);
       Assert.assertEquals(values1, valuesResult.get(0));
       Assert.assertEquals(values2, valuesResult.get(1));
       Assert.assertEquals(values3, valuesResult.get(2));
-      Assert.assertEquals(values4, valuesResult.get(3));
-      Assert.assertEquals(values5, valuesResult.get(4));
-      Assert.assertEquals(values6, valuesResult.get(5));
     } catch (IOException e) {
       e.printStackTrace();
       fail(e.getMessage());
