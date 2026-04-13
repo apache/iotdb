@@ -104,16 +104,20 @@ public class DataNodeHeartbeatHandler implements AsyncMethodCallback<TDataNodeHe
               }
 
               // Update RegionGroupCache
+              RegionHeartbeatSample regionHeartbeatSample =
+                  new RegionHeartbeatSample(
+                      heartbeatResp.getHeartbeatTimestamp(),
+                      // Region will inherit DataNode's status
+                      nextRegionStatus);
+
+              if (heartbeatResp.isSetRegionDisk()
+                  && heartbeatResp.getRegionDisk().containsKey(regionGroupId.getId())) {
+                regionHeartbeatSample.setDiskUsage(
+                    heartbeatResp.getRegionDisk().get(regionGroupId.getId()));
+              }
               loadManager
                   .getLoadCache()
-                  .cacheRegionHeartbeatSample(
-                      regionGroupId,
-                      nodeId,
-                      new RegionHeartbeatSample(
-                          heartbeatResp.getHeartbeatTimestamp(),
-                          // Region will inherit DataNode's status
-                          nextRegionStatus),
-                      false);
+                  .cacheRegionHeartbeatSample(regionGroupId, nodeId, regionHeartbeatSample, false);
 
               if (((TConsensusGroupType.SchemaRegion.equals(regionGroupId.getType())
                           && SCHEMA_REGION_SHOULD_CACHE_CONSENSUS_SAMPLE)

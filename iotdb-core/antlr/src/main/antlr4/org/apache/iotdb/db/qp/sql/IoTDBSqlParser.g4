@@ -63,10 +63,10 @@ ddlStatement
     // CQ
     | createContinuousQuery | dropContinuousQuery | showContinuousQueries
     // Cluster
-    | showVariables | showCluster | showRegions | showDataNodes | showAvailableUrls | showConfigNodes | showClusterId
+    | showVariables | showCluster | showMigrations | showRegions | showDataNodes | showAvailableUrls | showConfigNodes | showClusterId
     | getRegionId | getTimeSlotList | countTimeSlotList | getSeriesSlotList
     | migrateRegion | reconstructRegion | extendRegion | removeRegion  | removeDataNode | removeConfigNode | removeAINode
-    | verifyConnection
+    | verifyConnection | loadBalance
     // AINode
     | showAINodes | createModel | dropModel | showModels | showLoadedModels | showAIDevices
     | callInference | loadModel | unloadModel
@@ -517,6 +517,11 @@ showRegions
         (ON NODEID INTEGER_LITERAL (COMMA INTEGER_LITERAL)*)?
     ;
 
+// ---- Show Migrations
+showMigrations
+    : SHOW MIGRATIONS
+    ;
+
 // ---- Show Data Nodes
 showDataNodes
     : SHOW DATANODES
@@ -591,6 +596,10 @@ removeRegion
 
 verifyConnection
     : VERIFY CONNECTION (DETAILS)?
+    ;
+
+loadBalance
+    : LOAD BALANCE (TO DATANODE targetNodeIds+=INTEGER_LITERAL (COMMA targetNodeIds+=INTEGER_LITERAL)*)?
     ;
 
 // ---- Remove DataNode
