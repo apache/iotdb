@@ -60,7 +60,7 @@ final class PlanMatchingVisitor implements PlanVisitor<MatchResult, PlanMatchPat
 
   @Override
   public MatchResult visitProject(ProjectNode node, PlanMatchPattern pattern) {
-    MatchResult result = super.visitProject(node, pattern);
+    MatchResult result = visitSingleChildProcess(node, pattern);
 
     if (!result.isMatch()) {
       return result;
