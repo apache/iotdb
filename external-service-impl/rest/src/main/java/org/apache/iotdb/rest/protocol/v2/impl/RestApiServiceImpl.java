@@ -133,19 +133,22 @@ public class RestApiServiceImpl extends RestApiService {
         }
         sensorNum += region.fillLastQueryMap(prefixPath, resultMap);
       }
+
+      final IClientSession clientSession = SESSION_MANAGER.getCurrSession();
+      final TSLastDataQueryReq tsLastDataQueryReq =
+          FastLastHandler.createTSLastDataQueryReq(clientSession, prefixPathList);
+      statement = StatementGenerator.createStatement(tsLastDataQueryReq);
+
+      final Response response = authorizationHandler.checkAuthority(securityContext, statement);
+      if (response != null) {
+        return response;
+      }
+
       // Check cache first
       if (!TableDeviceSchemaCache.getInstance().getLastCache(resultMap)) {
-        IClientSession clientSession = SESSION_MANAGER.getCurrSession();
-        TSLastDataQueryReq tsLastDataQueryReq =
-            FastLastHandler.createTSLastDataQueryReq(clientSession, prefixPathList);
-        statement = StatementGenerator.createStatement(tsLastDataQueryReq);
-
         if (ExecuteStatementHandler.validateStatement(statement)) {
           return FastLastHandler.buildErrorResponse(TSStatusCode.EXECUTE_STATEMENT_ERROR);
         }
-
-        Optional.ofNullable(authorizationHandler.checkAuthority(securityContext, statement))
-            .ifPresent(Response.class::cast);
 
         queryId = SESSION_MANAGER.requestQueryId();
         SessionInfo sessionInfo = SESSION_MANAGER.getSessionInfo(clientSession);

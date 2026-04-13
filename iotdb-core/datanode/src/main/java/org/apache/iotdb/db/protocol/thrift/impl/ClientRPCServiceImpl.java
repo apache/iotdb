@@ -1199,7 +1199,20 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         return executeLastDataQueryInternal(convert(req), SELECT_RESULT);
       }
 
-      // 2.2 all sensors hit cache, return response ~= 20ms
+      // 2.2 Check permission, the cost is rather low because the req only contains one prefix path
+      final Statement s = StatementGenerator.createStatement(convert(req));
+      final TSStatus status =
+          AuthorityChecker.checkAuthority(
+              s,
+              new TreeAccessCheckContext(
+                  clientSession.getUserId(),
+                  clientSession.getUsername(),
+                  clientSession.getClientAddress()));
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return RpcUtils.getTSExecuteStatementResp(status);
+      }
+
+      // 2.3 all sensors hit cache, return response ~= 20ms
       final TsBlockBuilder builder = LastQueryUtil.createTsBlockBuilder(sensorNum);
 
       for (final Map.Entry<TableId, Map<IDeviceID, Map<String, Pair<TSDataType, TimeValuePair>>>>
@@ -1332,6 +1345,20 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               .get(0)
               .mPPDataExchangeEndPoint;
 
+      // Place the permission check at first
+      final Statement s = StatementGenerator.createStatement(convert(req));
+      // permission check
+      final TSStatus status =
+          AuthorityChecker.checkAuthority(
+              s,
+              new TreeAccessCheckContext(
+                  clientSession.getUserId(),
+                  clientSession.getUsername(),
+                  clientSession.getClientAddress()));
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return RpcUtils.getTSExecuteStatementResp(status);
+      }
+
       // the device's dataRegion's leader of the latest time partition is on current node, may can
       // read directly from cache
       if (isSameNode(lastRegionLeader)) {
@@ -1388,20 +1415,6 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           sampleForCacheHitFastLastDataQueryForOneDevice(req);
           return resp;
         }
-      }
-
-      // cache miss
-      Statement s = StatementGenerator.createStatement(convert(req));
-      // permission check
-      TSStatus status =
-          AuthorityChecker.checkAuthority(
-              s,
-              new TreeAccessCheckContext(
-                  clientSession.getUserId(),
-                  clientSession.getUsername(),
-                  clientSession.getClientAddress()));
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        return RpcUtils.getTSExecuteStatementResp(status);
       }
 
       quota =
