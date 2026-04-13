@@ -523,7 +523,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
 
       Map<TSeriesPartitionSlot, TConsensusGroupId> orderedMap =
           new LinkedHashMap<>(entry1.getValue());
-      List<TConsensusGroupId> orderedGroupIds = new ArrayList<>(orderedMap.values());
+      List<TConsensusGroupId> orderedGroupIds = new ArrayList<>(new HashSet<>(orderedMap.values()));
       List<TRegionReplicaSet> regionReplicaSets =
           partitionCache.getRegionReplicaSet(orderedGroupIds);
 
