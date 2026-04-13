@@ -27,6 +27,8 @@ import static com.google.common.base.Preconditions.checkArgument;
 
 public class CentralMomentAccumulator implements Accumulator {
 
+  private static final int INTERMEDIATE_SIZE = Long.BYTES + 4 * Double.BYTES;
+
   public enum MomentType {
     SKEWNESS,
     KURTOSIS
@@ -81,20 +83,20 @@ public class CentralMomentAccumulator implements Accumulator {
 
   private void update(double value) {
     long n1 = count;
-    count++;
+    long n = n1 + 1;
+    double m1 = mean;
+    double m2 = this.m2;
+    double m3 = this.m3;
+    double delta = value - m1;
+    double deltaN = delta / n;
+    double deltaN2 = deltaN * deltaN;
+    double dm2 = delta * deltaN * n1;
 
-    double delta = value - mean;
-    double delta_n = delta / count;
-    double delta_n2 = delta_n * delta_n;
-    double term1 = delta * delta_n * n1;
-
-    mean += delta_n;
-
-    m4 += term1 * delta_n2 * (count * count - 3 * count + 3) + 6 * delta_n2 * m2 - 4 * delta_n * m3;
-
-    m3 += term1 * delta_n * (count - 2) - 3 * delta_n * m2;
-
-    m2 += term1;
+    count = n;
+    mean = m1 + deltaN;
+    this.m2 = m2 + dm2;
+    this.m3 = m3 + dm2 * deltaN * (n - 2) - 3 * deltaN * m2;
+    m4 += dm2 * deltaN2 * (n * (double) n - 3 * n + 3) + 6 * deltaN2 * m2 - 4 * deltaN * m3;
   }
 
   @Override
@@ -125,27 +127,28 @@ public class CentralMomentAccumulator implements Accumulator {
       m4 = m4B;
     } else {
       long nA = count;
-      long nTotal = nA + nB;
-      double delta = meanB - mean;
+      double m1A = mean;
+      double m2A = m2;
+      double m3A = m3;
+      double n = nA + nB;
+      double delta = meanB - m1A;
       double delta2 = delta * delta;
       double delta3 = delta * delta2;
       double delta4 = delta2 * delta2;
 
+      count = (long) n;
+      mean = (nA * m1A + nB * meanB) / n;
+      m2 = m2A + m2B + delta2 * nA * nB / n;
+      m3 =
+          m3A
+              + m3B
+              + delta3 * nA * nB * (nA - nB) / (n * n)
+              + 3 * delta * (nA * m2B - nB * m2A) / n;
       m4 +=
           m4B
-              + delta4 * nA * nB * (nA * nA - nA * nB + nB * nB) / (nTotal * nTotal * nTotal)
-              + 6.0 * delta2 * (nA * nA * m2B + nB * nB * m2) / (nTotal * nTotal)
-              + 4.0 * delta * (nA * m3B - nB * m3) / nTotal;
-
-      m3 +=
-          m3B
-              + delta3 * nA * nB * (nA - nB) / (nTotal * nTotal)
-              + 3.0 * delta * (nA * m2B - nB * m2) / nTotal;
-
-      m2 += m2B + delta2 * nA * nB / nTotal;
-
-      mean += delta * nB / nTotal;
-      count = nTotal;
+              + delta4 * nA * nB * (nA * nA - nA * nB + nB * nB) / (n * n * n)
+              + 6 * delta2 * (nA * nA * m2B + nB * nB * m2A) / (n * n)
+              + 4 * delta * (nA * m3B - nB * m3A) / n;
     }
   }
 
@@ -156,7 +159,7 @@ public class CentralMomentAccumulator implements Accumulator {
       columnBuilders[0].appendNull();
     } else {
 
-      byte[] bytes = new byte[40];
+      byte[] bytes = new byte[INTERMEDIATE_SIZE];
       ByteBuffer buffer = ByteBuffer.wrap(bytes);
       buffer.putLong(count);
       buffer.putDouble(mean);

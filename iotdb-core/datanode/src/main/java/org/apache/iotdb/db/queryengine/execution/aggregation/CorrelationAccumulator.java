@@ -32,6 +32,8 @@ import static com.google.common.base.Preconditions.checkArgument;
 
 public class CorrelationAccumulator implements Accumulator {
 
+  private static final int INTERMEDIATE_SIZE = Long.BYTES + 5 * Double.BYTES;
+
   public enum CorrelationType {
     CORR
   }
@@ -139,17 +141,19 @@ public class CorrelationAccumulator implements Accumulator {
       m2Y = otherM2Y;
       c2 = otherC2;
     } else {
-      long newCount = count + otherCount;
-      double deltaX = otherMeanX - meanX;
-      double deltaY = otherMeanY - meanY;
+      long na = count;
+      long n = na + otherCount;
+      double meanXValue = meanX;
+      double meanYValue = meanY;
+      double deltaX = otherMeanX - meanXValue;
+      double deltaY = otherMeanY - meanYValue;
 
-      c2 += otherC2 + deltaX * deltaY * count * otherCount / newCount;
-      m2X += otherM2X + deltaX * deltaX * count * otherCount / newCount;
-      m2Y += otherM2Y + deltaY * deltaY * count * otherCount / newCount;
-
-      meanX += deltaX * otherCount / newCount;
-      meanY += deltaY * otherCount / newCount;
-      count = newCount;
+      m2X += otherM2X + na * otherCount * deltaX * deltaX / (double) n;
+      m2Y += otherM2Y + na * otherCount * deltaY * deltaY / (double) n;
+      c2 += otherC2 + deltaX * deltaY * na * otherCount / (double) n;
+      meanX = meanXValue + deltaX * otherCount / (double) n;
+      meanY = meanYValue + deltaY * otherCount / (double) n;
+      count = n;
     }
   }
 
@@ -159,14 +163,15 @@ public class CorrelationAccumulator implements Accumulator {
     if (count == 0) {
       columnBuilders[0].appendNull();
     } else {
-      ByteBuffer buffer = ByteBuffer.allocate(Long.BYTES + Double.BYTES * 5);
+      byte[] bytes = new byte[INTERMEDIATE_SIZE];
+      ByteBuffer buffer = ByteBuffer.wrap(bytes);
       buffer.putLong(count);
       buffer.putDouble(meanX);
       buffer.putDouble(meanY);
       buffer.putDouble(m2X);
       buffer.putDouble(m2Y);
       buffer.putDouble(c2);
-      columnBuilders[0].writeBinary(new Binary(buffer.array()));
+      columnBuilders[0].writeBinary(new Binary(bytes));
     }
   }
 
@@ -176,12 +181,11 @@ public class CorrelationAccumulator implements Accumulator {
       throw new UnsupportedOperationException("Unknown type: " + correlationType);
     }
 
-    if (count < 2) {
-      columnBuilder.appendNull();
-    } else if (m2X == 0 || m2Y == 0) {
-      columnBuilder.appendNull();
+    double result = c2 / Math.sqrt(m2X * m2Y);
+    if (Double.isFinite(result)) {
+      columnBuilder.writeDouble(result);
     } else {
-      columnBuilder.writeDouble(c2 / Math.sqrt(m2X * m2Y));
+      columnBuilder.appendNull();
     }
   }
 

@@ -42,6 +42,7 @@ public class GroupedCorrelationAccumulator implements GroupedAccumulator {
 
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(GroupedCorrelationAccumulator.class);
+  private static final int INTERMEDIATE_SIZE = Long.BYTES + 5 * Double.BYTES;
   private final TSDataType xDataType;
   private final TSDataType yDataType;
   private final CorrelationAccumulator.CorrelationType correlationType;
@@ -189,17 +190,19 @@ public class GroupedCorrelationAccumulator implements GroupedAccumulator {
       m2Ys.set(groupId, otherM2Y);
       c2s.set(groupId, otherC2);
     } else {
-      long newCount = counts.get(groupId) + otherCount;
-      double deltaX = otherMeanX - meanXs.get(groupId);
-      double deltaY = otherMeanY - meanYs.get(groupId);
+      long na = counts.get(groupId);
+      long n = na + otherCount;
+      double meanXValue = meanXs.get(groupId);
+      double meanYValue = meanYs.get(groupId);
+      double deltaX = otherMeanX - meanXValue;
+      double deltaY = otherMeanY - meanYValue;
 
-      c2s.add(groupId, otherC2 + deltaX * deltaY * counts.get(groupId) * otherCount / newCount);
-      m2Xs.add(groupId, otherM2X + deltaX * deltaX * counts.get(groupId) * otherCount / newCount);
-      m2Ys.add(groupId, otherM2Y + deltaY * deltaY * counts.get(groupId) * otherCount / newCount);
-
-      meanXs.add(groupId, deltaX * otherCount / newCount);
-      meanYs.add(groupId, deltaY * otherCount / newCount);
-      counts.set(groupId, newCount);
+      m2Xs.add(groupId, otherM2X + na * otherCount * deltaX * deltaX / (double) n);
+      m2Ys.add(groupId, otherM2Y + na * otherCount * deltaY * deltaY / (double) n);
+      c2s.add(groupId, otherC2 + deltaX * deltaY * na * otherCount / (double) n);
+      meanXs.set(groupId, meanXValue + deltaX * otherCount / (double) n);
+      meanYs.set(groupId, meanYValue + deltaY * otherCount / (double) n);
+      counts.set(groupId, n);
     }
   }
 
@@ -212,14 +215,15 @@ public class GroupedCorrelationAccumulator implements GroupedAccumulator {
     if (counts.get(groupId) == 0) {
       columnBuilder.appendNull();
     } else {
-      ByteBuffer buffer = ByteBuffer.allocate(Long.BYTES + Double.BYTES * 5);
+      byte[] bytes = new byte[INTERMEDIATE_SIZE];
+      ByteBuffer buffer = ByteBuffer.wrap(bytes);
       buffer.putLong(counts.get(groupId));
       buffer.putDouble(meanXs.get(groupId));
       buffer.putDouble(meanYs.get(groupId));
       buffer.putDouble(m2Xs.get(groupId));
       buffer.putDouble(m2Ys.get(groupId));
       buffer.putDouble(c2s.get(groupId));
-      columnBuilder.writeBinary(new Binary(buffer.array()));
+      columnBuilder.writeBinary(new Binary(bytes));
     }
   }
 
@@ -229,13 +233,11 @@ public class GroupedCorrelationAccumulator implements GroupedAccumulator {
       throw new UnsupportedOperationException("Unknown type: " + correlationType);
     }
 
-    if (counts.get(groupId) < 2) {
-      columnBuilder.appendNull();
-    } else if (m2Xs.get(groupId) == 0 || m2Ys.get(groupId) == 0) {
-      columnBuilder.appendNull();
+    double result = c2s.get(groupId) / Math.sqrt(m2Xs.get(groupId) * m2Ys.get(groupId));
+    if (Double.isFinite(result)) {
+      columnBuilder.writeDouble(result);
     } else {
-      columnBuilder.writeDouble(
-          c2s.get(groupId) / Math.sqrt(m2Xs.get(groupId) * m2Ys.get(groupId)));
+      columnBuilder.appendNull();
     }
   }
 

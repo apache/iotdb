@@ -35,6 +35,7 @@ public class TableCovarianceAccumulator implements TableAccumulator {
 
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(TableCovarianceAccumulator.class);
+  private static final int INTERMEDIATE_SIZE = Long.BYTES + 3 * Double.BYTES;
 
   private final TSDataType xDataType;
   private final TSDataType yDataType;
@@ -183,12 +184,13 @@ public class TableCovarianceAccumulator implements TableAccumulator {
       return;
     }
 
-    ByteBuffer buffer = ByteBuffer.allocate(Long.BYTES + Double.BYTES * 3);
+    byte[] bytes = new byte[INTERMEDIATE_SIZE];
+    ByteBuffer buffer = ByteBuffer.wrap(bytes);
     buffer.putLong(count);
     buffer.putDouble(meanX);
     buffer.putDouble(meanY);
     buffer.putDouble(c2);
-    columnBuilder.writeBinary(new Binary(buffer.array()));
+    columnBuilder.writeBinary(new Binary(bytes));
   }
 
   @Override
