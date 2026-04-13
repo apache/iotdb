@@ -20,9 +20,9 @@
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.FunctionCall;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.InPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExistsPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QuantifiedComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubqueryExpression;
 

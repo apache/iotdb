@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.node_commons.plan.relational.sql.ast;
 
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstMemoryEstimationHelper;
 
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -27,64 +28,57 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Objects;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static java.util.Locale.ENGLISH;
 import static java.util.Objects.requireNonNull;
 
-public class BooleanLiteral extends Literal {
+public class FloatLiteral extends Literal {
 
   private static final long INSTANCE_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(BooleanLiteral.class);
+      RamUsageEstimator.shallowSizeOfInstance(FloatLiteral.class);
 
-  public static final BooleanLiteral TRUE_LITERAL = new BooleanLiteral("true");
-  public static final BooleanLiteral FALSE_LITERAL = new BooleanLiteral("false");
+  private final float value;
 
-  private final boolean value;
-
-  public BooleanLiteral(String value) {
+  public FloatLiteral(String value) {
     super(null);
-    requireNonNull(value, "value is null");
-    checkArgument(
-        value.toLowerCase(ENGLISH).equals("true") || value.toLowerCase(ENGLISH).equals("false"));
-
-    this.value = value.toLowerCase(ENGLISH).equals("true");
+    this.value = Float.parseFloat(requireNonNull(value, "value is null"));
   }
 
-  public BooleanLiteral(NodeLocation location, String value) {
-    super(requireNonNull(location, "location is null"));
-    requireNonNull(value, "value is null");
-    checkArgument(
-        value.toLowerCase(ENGLISH).equals("true") || value.toLowerCase(ENGLISH).equals("false"));
-
-    this.value = value.toLowerCase(ENGLISH).equals("true");
+  public FloatLiteral(float value) {
+    super(null);
+    this.value = value;
   }
 
-  public boolean getValue() {
+  public FloatLiteral(NodeLocation location, String value) {
+    super(null);
+    throw new SemanticException("Currently the FloatLiteral cannot be created from NodeLocation");
+  }
+
+  public float getValue() {
     return value;
   }
 
   @Override
   public <R, C> R accept(IAstVisitor<R, C> visitor, C context) {
-    return ((CommonQueryAstVisitor<R, C>) visitor).visitBooleanLiteral(this, context);
+    return ((CommonQueryAstVisitor<R, C>) visitor).visitFloatLiteral(this, context);
   }
 
+  @SuppressWarnings("UnaryPlus")
   @Override
   public int hashCode() {
-    return Objects.hash(value);
+    return value != +0.0f ? Float.floatToIntBits(value) : 0;
   }
 
   @Override
-  public boolean equals(Object obj) {
-    if (this == obj) {
+  public boolean equals(Object o) {
+    if (this == o) {
       return true;
     }
-    if (obj == null || getClass() != obj.getClass()) {
+    if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    BooleanLiteral other = (BooleanLiteral) obj;
-    return Objects.equals(this.value, other.value);
+
+    FloatLiteral that = (FloatLiteral) o;
+    return Float.compare(that.value, value) == 0;
   }
 
   @Override
@@ -93,12 +87,12 @@ public class BooleanLiteral extends Literal {
       return false;
     }
 
-    return value == ((BooleanLiteral) other).value;
+    return value == ((FloatLiteral) other).value;
   }
 
   @Override
   public TableExpressionType getExpressionType() {
-    return TableExpressionType.BOOLEAN_LITERAL;
+    return TableExpressionType.FLOAT_LITERAL;
   }
 
   @Override
@@ -106,9 +100,9 @@ public class BooleanLiteral extends Literal {
     ReadWriteIOUtils.write(this.value, stream);
   }
 
-  public BooleanLiteral(ByteBuffer byteBuffer) {
+  public FloatLiteral(ByteBuffer byteBuffer) {
     super(null);
-    this.value = ReadWriteIOUtils.readBool(byteBuffer);
+    this.value = ReadWriteIOUtils.readFloat(byteBuffer);
   }
 
   @Override

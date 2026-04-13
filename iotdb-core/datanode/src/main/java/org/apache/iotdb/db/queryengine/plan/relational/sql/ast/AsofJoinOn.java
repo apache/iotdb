@@ -21,7 +21,10 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.ArithmeticBinaryExpression;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.LogicalExpression;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.LongLiteral;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Node;
 
 import com.google.common.collect.ImmutableList;
@@ -33,8 +36,8 @@ import java.util.List;
 import java.util.Objects;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
+import static org.apache.iotdb.db.node_commons.plan.relational.sql.ast.ComparisonExpression.Operator.LESS_THAN_OR_EQUAL;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils.and;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression.Operator.LESS_THAN_OR_EQUAL;
 
 public class AsofJoinOn extends JoinOn {
   private static final long INSTANCE_SIZE =

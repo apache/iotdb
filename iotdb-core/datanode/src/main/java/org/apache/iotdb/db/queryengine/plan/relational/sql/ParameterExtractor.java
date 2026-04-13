@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Literal;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.NodeLocation;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DefaultTraversalVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Parameter;
@@ -67,12 +68,8 @@ public final class ParameterExtractor {
                         .getLocation()
                         .orElseThrow(
                             () -> new SemanticException("Parameter node must have a location")),
-                Comparator.comparing(
-                        org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NodeLocation
-                            ::getLineNumber)
-                    .thenComparing(
-                        org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NodeLocation
-                            ::getColumnNumber)))
+                Comparator.comparing(NodeLocation::getLineNumber)
+                    .thenComparing(NodeLocation::getColumnNumber)))
         .collect(toImmutableList());
   }
 

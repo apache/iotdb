@@ -17,11 +17,9 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
+package org.apache.iotdb.db.node_commons.plan.relational.sql.ast;
 
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.IAstVisitor;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Node;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstMemoryEstimationHelper;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -32,16 +30,16 @@ import java.util.List;
 
 import static java.util.Objects.requireNonNull;
 
-public class CurrentDatabase extends Expression {
+public class CurrentUser extends Expression {
 
   private static final long INSTANCE_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(CurrentDatabase.class);
+      RamUsageEstimator.shallowSizeOfInstance(CurrentUser.class);
 
-  public CurrentDatabase() {
+  public CurrentUser() {
     super(null);
   }
 
-  public CurrentDatabase(@Nonnull final NodeLocation location) {
+  public CurrentUser(@Nonnull final NodeLocation location) {
     super(requireNonNull(location, "location is null"));
   }
 
@@ -52,7 +50,7 @@ public class CurrentDatabase extends Expression {
 
   @Override
   public <R, C> R accept(final IAstVisitor<R, C> visitor, final C context) {
-    return ((AstVisitor<R, C>) visitor).visitCurrentDatabase(this, context);
+    return ((CommonQueryAstVisitor<R, C>) visitor).visitCurrentUser(this, context);
   }
 
   @Override
@@ -78,7 +76,7 @@ public class CurrentDatabase extends Expression {
 
   @Override
   public TableExpressionType getExpressionType() {
-    return TableExpressionType.CURRENT_DATABASE;
+    return TableExpressionType.CURRENT_USER;
   }
 
   @Override

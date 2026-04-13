@@ -20,21 +20,21 @@
 package org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule;
 
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.ArithmeticBinaryExpression;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.FunctionCall;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.IsNotNullPredicate;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.IsNullPredicate;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.NotExpression;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.SearchedCaseExpression;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.IrTypeAnalyzer;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlannerContext;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.ExpressionRewriter;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.ExpressionTreeRewriter;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IfExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IsNotNullPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IsNullPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NotExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SearchedCaseExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WhenClause;
 
 import com.google.common.collect.ImmutableList;

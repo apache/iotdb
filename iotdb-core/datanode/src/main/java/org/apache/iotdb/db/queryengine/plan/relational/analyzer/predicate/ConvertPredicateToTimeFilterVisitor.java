@@ -20,22 +20,22 @@
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate;
 
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.BetweenPredicate;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Extract;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.InPredicate;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.IsNotNullPredicate;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.IsNullPredicate;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.LikePredicate;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.LogicalExpression;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.LongLiteral;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.NotExpression;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.SearchedCaseExpression;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.SimpleCaseExpression;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IfExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InListExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IsNotNullPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IsNullPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LikePredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NotExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullIfExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SearchedCaseExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.read.filter.basic.Filter;

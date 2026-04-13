@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.IAstVisitor;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.NodeLocation;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 

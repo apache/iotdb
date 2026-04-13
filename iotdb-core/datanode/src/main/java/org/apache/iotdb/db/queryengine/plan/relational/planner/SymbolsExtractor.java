@@ -23,6 +23,7 @@ import org.apache.iotdb.db.node_commons.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.WindowNode;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Lookup;
@@ -32,7 +33,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DereferenceExpres
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubqueryExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;

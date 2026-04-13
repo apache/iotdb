@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.IAstVisitor;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.NodeLocation;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.source.DeviceBlackListConstructor;

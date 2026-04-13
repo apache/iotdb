@@ -21,10 +21,10 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations;
 
 import org.apache.iotdb.db.node_commons.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.JoinNode;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.EqualityInference;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;

@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule;
 
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.IrExpressionInterpreter;
@@ -29,7 +30,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.NoOpSymbolResolve
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlannerContext;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Rule;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 
 import com.google.common.collect.ImmutableSet;
 import org.apache.tsfile.read.common.type.Type;

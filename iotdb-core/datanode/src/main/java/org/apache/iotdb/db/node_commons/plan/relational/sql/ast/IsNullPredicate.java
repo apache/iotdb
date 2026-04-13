@@ -17,11 +17,9 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
+package org.apache.iotdb.db.node_commons.plan.relational.sql.ast;
 
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.IAstVisitor;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Node;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstMemoryEstimationHelper;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -34,42 +32,50 @@ import java.util.Objects;
 
 import static java.util.Objects.requireNonNull;
 
-public class InPredicate extends Expression {
+public class IsNullPredicate extends Expression {
 
   private static final long INSTANCE_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(InPredicate.class);
+      RamUsageEstimator.shallowSizeOfInstance(IsNullPredicate.class);
 
   private final Expression value;
-  private final Expression valueList;
 
-  public InPredicate(Expression value, Expression valueList) {
+  public IsNullPredicate(Expression value) {
     super(null);
     this.value = requireNonNull(value, "value is null");
-    this.valueList = requireNonNull(valueList, "valueList is null");
   }
 
-  public InPredicate(NodeLocation location, Expression value, Expression valueList) {
+  public IsNullPredicate(NodeLocation location, Expression value) {
     super(requireNonNull(location, "location is null"));
     this.value = requireNonNull(value, "value is null");
-    this.valueList = requireNonNull(valueList, "valueList is null");
+  }
+
+  public IsNullPredicate(ByteBuffer byteBuffer) {
+    super(null);
+    this.value = Expression.deserialize(byteBuffer);
+  }
+
+  @Override
+  public TableExpressionType getExpressionType() {
+    return TableExpressionType.IS_NULL_PREDICATE;
+  }
+
+  @Override
+  protected void serialize(DataOutputStream stream) throws IOException {
+    Expression.serialize(value, stream);
   }
 
   public Expression getValue() {
     return value;
   }
 
-  public Expression getValueList() {
-    return valueList;
-  }
-
   @Override
   public <R, C> R accept(IAstVisitor<R, C> visitor, C context) {
-    return ((AstVisitor<R, C>) visitor).visitInPredicate(this, context);
+    return ((CommonQueryAstVisitor<R, C>) visitor).visitIsNullPredicate(this, context);
   }
 
   @Override
   public List<Node> getChildren() {
-    return ImmutableList.of(value, valueList);
+    return ImmutableList.of(value);
   }
 
   @Override
@@ -81,13 +87,13 @@ public class InPredicate extends Expression {
       return false;
     }
 
-    InPredicate that = (InPredicate) o;
-    return Objects.equals(value, that.value) && Objects.equals(valueList, that.valueList);
+    IsNullPredicate that = (IsNullPredicate) o;
+    return Objects.equals(value, that.value);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(value, valueList);
+    return value.hashCode();
   }
 
   @Override
@@ -96,27 +102,9 @@ public class InPredicate extends Expression {
   }
 
   @Override
-  public TableExpressionType getExpressionType() {
-    return TableExpressionType.IN_PREDICATE;
-  }
-
-  @Override
-  public void serialize(DataOutputStream stream) throws IOException {
-    Expression.serialize(value, stream);
-    Expression.serialize(valueList, stream);
-  }
-
-  public InPredicate(ByteBuffer byteBuffer) {
-    super(null);
-    this.value = Expression.deserialize(byteBuffer);
-    this.valueList = Expression.deserialize(byteBuffer);
-  }
-
-  @Override
   public long ramBytesUsed() {
     return INSTANCE_SIZE
         + AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal())
-        + AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(value)
-        + AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(valueList);
+        + AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(value);
   }
 }

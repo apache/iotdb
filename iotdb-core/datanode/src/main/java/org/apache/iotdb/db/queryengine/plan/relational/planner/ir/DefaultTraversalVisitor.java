@@ -22,19 +22,19 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.ir;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.ArithmeticBinaryExpression;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.BetweenPredicate;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Cast;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.CoalesceExpression;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.FunctionCall;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.InPredicate;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.IsNullPredicate;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.LogicalExpression;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.NotExpression;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.SearchedCaseExpression;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.SimpleCaseExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CoalesceExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IsNullPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NotExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullIfExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Row;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SearchedCaseExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WhenClause;
 
 public abstract class DefaultTraversalVisitor<C> extends AstVisitor<Void, C> {

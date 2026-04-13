@@ -27,10 +27,12 @@ import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TimeColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
-import org.apache.iotdb.db.calc_commons.plan.planner.TableOperatorGenerator;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.Symbol;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.LogicalExpression;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.LongLiteral;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
@@ -42,6 +44,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.LimitOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.OffsetOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.DeviceIteratorScanOperator;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
+import org.apache.iotdb.db.queryengine.plan.planner.DataNodeTableOperatorGenerator;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanContext;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestMetadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
@@ -51,9 +54,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectN
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolsExtractor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeNonAlignedDeviceViewScanNode;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
@@ -98,8 +98,8 @@ public class NonAlignedTreeDeviceViewScanOperatorTreeTest {
       "root.NonAlignedTreeDeviceViewScanOperatorTreeTest";
   private static final String tableDbName = "test";
   private static final String tableViewName = "view1";
-  private final TableOperatorGenerator tableOperatorGenerator =
-      new TableOperatorGenerator(new TestMetadata());
+  private final DataNodeTableOperatorGenerator tableOperatorGenerator =
+      new DataNodeTableOperatorGenerator(new TestMetadata());
   private final List<String> deviceIds = new ArrayList<>();
   private final List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
 

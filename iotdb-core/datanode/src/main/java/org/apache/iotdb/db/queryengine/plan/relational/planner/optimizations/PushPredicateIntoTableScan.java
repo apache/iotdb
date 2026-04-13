@@ -35,9 +35,14 @@ import org.apache.iotdb.db.node_commons.plan.relational.planner.node.ProjectNode
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.SemiJoinNode;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.UnionNode;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.FunctionCall;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.LogicalExpression;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Node;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.NullLiteral;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.StringLiteral;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet;
@@ -68,11 +73,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableS
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceViewScanNode;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 
 import com.google.common.collect.ImmutableList;
@@ -113,6 +113,7 @@ import static org.apache.iotdb.db.node_commons.plan.relational.planner.node.Join
 import static org.apache.iotdb.db.node_commons.plan.relational.planner.node.JoinNode.JoinType.LEFT;
 import static org.apache.iotdb.db.node_commons.plan.relational.planner.node.JoinNode.JoinType.RIGHT;
 import static org.apache.iotdb.db.node_commons.plan.relational.sql.ast.BooleanLiteral.TRUE_LITERAL;
+import static org.apache.iotdb.db.node_commons.plan.relational.sql.ast.ComparisonExpression.Operator.EQUAL;
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.PARTITION_FETCHER;
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.SCHEMA_FETCHER;
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.getTimePartitionSlotList;
@@ -135,7 +136,6 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizati
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.JoinUtils.processInnerJoin;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.JoinUtils.processLimitedOuterJoin;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.QueryCardinalityUtil.extractCardinality;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression.Operator.EQUAL;
 
 /**
  * <b>Optimization phase:</b> Logical plan planning.

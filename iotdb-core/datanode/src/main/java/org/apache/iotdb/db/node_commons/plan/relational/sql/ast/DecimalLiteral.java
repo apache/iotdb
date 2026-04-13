@@ -17,52 +17,47 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
+package org.apache.iotdb.db.node_commons.plan.relational.sql.ast;
 
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.IAstVisitor;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Node;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstMemoryEstimationHelper;
 
-import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.RamUsageEstimator;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.List;
+import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 
 import static java.util.Objects.requireNonNull;
 
-public class NotExpression extends Expression {
+public class DecimalLiteral extends Literal {
 
   private static final long INSTANCE_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(NotExpression.class);
+      RamUsageEstimator.shallowSizeOfInstance(DecimalLiteral.class);
 
-  private final Expression value;
+  private final String value;
 
-  public NotExpression(Expression value) {
+  public DecimalLiteral(String value) {
     super(null);
     this.value = requireNonNull(value, "value is null");
   }
 
-  public NotExpression(NodeLocation location, Expression value) {
+  public DecimalLiteral(NodeLocation location, String value) {
     super(requireNonNull(location, "location is null"));
+
     this.value = requireNonNull(value, "value is null");
   }
 
-  public Expression getValue() {
+  public String getValue() {
     return value;
   }
 
   @Override
   public <R, C> R accept(IAstVisitor<R, C> visitor, C context) {
-    return ((AstVisitor<R, C>) visitor).visitNotExpression(this, context);
-  }
-
-  @Override
-  public List<Node> getChildren() {
-    return ImmutableList.of(value);
+    return ((CommonQueryAstVisitor<R, C>) visitor).visitDecimalLiteral(this, context);
   }
 
   @Override
@@ -73,40 +68,49 @@ public class NotExpression extends Expression {
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-
-    NotExpression that = (NotExpression) o;
+    DecimalLiteral that = (DecimalLiteral) o;
     return Objects.equals(value, that.value);
   }
 
   @Override
   public int hashCode() {
-    return value.hashCode();
+    return Objects.hash(value);
   }
 
   @Override
   public boolean shallowEquals(Node other) {
-    return sameClass(this, other);
+    if (!sameClass(this, other)) {
+      return false;
+    }
+
+    DecimalLiteral otherLiteral = (DecimalLiteral) other;
+    return value.equals(otherLiteral.value);
   }
 
   @Override
   public TableExpressionType getExpressionType() {
-    return TableExpressionType.NOT_EXPRESSION;
+    return TableExpressionType.DECIMAL_LITERAL;
   }
 
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
-    Expression.serialize(this.value, stream);
+    ReadWriteIOUtils.write(this.value, stream);
   }
 
-  public NotExpression(ByteBuffer byteBuffer) {
+  public DecimalLiteral(ByteBuffer byteBuffer) {
     super(null);
-    this.value = Expression.deserialize(byteBuffer);
+    this.value = ReadWriteIOUtils.readString(byteBuffer);
+  }
+
+  @Override
+  public Object getTsValue() {
+    return new Binary(value.getBytes(StandardCharsets.UTF_8));
   }
 
   @Override
   public long ramBytesUsed() {
     return INSTANCE_SIZE
         + AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal())
-        + AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(value);
+        + RamUsageEstimator.sizeOf(value);
   }
 }

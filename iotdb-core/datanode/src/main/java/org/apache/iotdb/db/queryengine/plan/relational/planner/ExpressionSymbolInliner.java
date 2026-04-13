@@ -21,9 +21,9 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
 import org.apache.iotdb.db.node_commons.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.ExpressionRewriter;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.ExpressionTreeRewriter;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 
 import com.google.common.collect.HashMultiset;
 import com.google.common.collect.Multiset;

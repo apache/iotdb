@@ -42,6 +42,7 @@ import org.apache.iotdb.db.node_commons.plan.relational.planner.node.TopKNode;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.TopKRankingNode;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.UnionNode;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.WindowNode;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
@@ -61,7 +62,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.NonAlignedAg
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeAlignedDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeNonAlignedDeviceViewScanNode;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DataType;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SortItem;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;

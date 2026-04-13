@@ -21,7 +21,9 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.IAstVisitor;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Literal;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.LongLiteral;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Node;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.NodeLocation;
 import org.apache.iotdb.db.queryengine.plan.statement.component.FillPolicy;
 
 import com.google.common.base.MoreObjects;

@@ -28,13 +28,13 @@ import org.apache.iotdb.commons.schema.filter.impl.singlechild.TagFilter;
 import org.apache.iotdb.commons.schema.filter.impl.values.PreciseFilter;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.BetweenPredicate;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.LogicalExpression;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.schema.CheckSchemaPredicateVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.schema.ConvertSchemaPredicateToFilterVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
 
 import org.apache.tsfile.utils.Pair;
 

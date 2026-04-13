@@ -27,6 +27,7 @@ import org.apache.iotdb.db.node_commons.plan.relational.planner.node.UnionNode;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.WindowNode;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Cast;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.NullLiteral;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.function.BoundSignature;
@@ -42,7 +43,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SetOperationNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FrameBound;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WindowFrame;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
 

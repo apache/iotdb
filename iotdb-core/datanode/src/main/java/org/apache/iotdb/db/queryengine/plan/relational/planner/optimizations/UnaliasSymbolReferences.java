@@ -46,6 +46,8 @@ import org.apache.iotdb.db.node_commons.plan.relational.planner.node.UnionNode;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.ValueFillNode;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.WindowNode;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.NullLiteral;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
@@ -67,8 +69,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationS
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.IntersectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.IntoNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceViewScanNode;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableListMultimap;

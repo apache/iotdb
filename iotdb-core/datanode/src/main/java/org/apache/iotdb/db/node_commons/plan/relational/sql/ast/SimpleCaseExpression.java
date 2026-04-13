@@ -17,11 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
+package org.apache.iotdb.db.node_commons.plan.relational.sql.ast;
 
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.IAstVisitor;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Node;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstMemoryEstimationHelper;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WhenClause;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.external.commons.lang3.Validate;
@@ -40,25 +39,55 @@ import java.util.Optional;
 
 import static java.util.Objects.requireNonNull;
 
-public class SearchedCaseExpression extends Expression {
-  private static final long INSTANCE_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(SearchedCaseExpression.class);
+public class SimpleCaseExpression extends Expression {
 
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(SimpleCaseExpression.class);
+
+  private final Expression operand;
   private final List<WhenClause> whenClauses;
   @Nullable private final Expression defaultValue;
 
-  public SearchedCaseExpression(List<WhenClause> whenClauses) {
+  public SimpleCaseExpression(Expression operand, List<WhenClause> whenClauses) {
     super(null);
+    this.operand = requireNonNull(operand, "operand is null");
     this.whenClauses = ImmutableList.copyOf(requireNonNull(whenClauses, "whenClauses is null"));
     this.defaultValue = null;
   }
 
-  public SearchedCaseExpression(ByteBuffer byteBuffer) {
+  public SimpleCaseExpression(
+      Expression operand, List<WhenClause> whenClauses, Expression defaultValue) {
+    super(null);
+    this.operand = requireNonNull(operand, "operand is null");
+    this.whenClauses = ImmutableList.copyOf(requireNonNull(whenClauses, "whenClauses is null"));
+    this.defaultValue = requireNonNull(defaultValue, "defaultValue is null");
+  }
+
+  public SimpleCaseExpression(
+      NodeLocation location, Expression operand, List<WhenClause> whenClauses) {
+    super(requireNonNull(location, "location is null"));
+    this.operand = requireNonNull(operand, "operand is null");
+    this.whenClauses = ImmutableList.copyOf(requireNonNull(whenClauses, "whenClauses is null"));
+    this.defaultValue = null;
+  }
+
+  public SimpleCaseExpression(
+      NodeLocation location,
+      Expression operand,
+      List<WhenClause> whenClauses,
+      Expression defaultValue) {
+    super(requireNonNull(location, "location is null"));
+    this.operand = requireNonNull(operand, "operand is null");
+    this.whenClauses = ImmutableList.copyOf(requireNonNull(whenClauses, "whenClauses is null"));
+    this.defaultValue = requireNonNull(defaultValue, "defaultValue is null");
+  }
+
+  public SimpleCaseExpression(ByteBuffer byteBuffer) {
     super(null);
     int len = ReadWriteIOUtils.readInt(byteBuffer);
     Validate.isTrue(
-        len > 0, "the length of SearchedCaseExpression's whenClauses must greater than 0");
-
+        len > 0, "the length of SimpleCaseExpression's whenClauses must greater than 0");
+    this.operand = Expression.deserialize(byteBuffer);
     this.whenClauses = new ArrayList<>();
     for (int i = 0; i < len; i++) {
       Expression expression = Expression.deserialize(byteBuffer);
@@ -67,28 +96,8 @@ public class SearchedCaseExpression extends Expression {
     this.defaultValue = Expression.deserialize(byteBuffer);
   }
 
-  @Override
-  public TableExpressionType getExpressionType() {
-    return TableExpressionType.SEARCHED_CASE;
-  }
-
-  public SearchedCaseExpression(List<WhenClause> whenClauses, Expression defaultValue) {
-    super(null);
-    this.whenClauses = ImmutableList.copyOf(requireNonNull(whenClauses, "whenClauses is null"));
-    this.defaultValue = requireNonNull(defaultValue, "defaultValue is null");
-  }
-
-  public SearchedCaseExpression(NodeLocation location, List<WhenClause> whenClauses) {
-    super(requireNonNull(location, "location is null"));
-    this.whenClauses = ImmutableList.copyOf(requireNonNull(whenClauses, "whenClauses is null"));
-    this.defaultValue = null;
-  }
-
-  public SearchedCaseExpression(
-      NodeLocation location, List<WhenClause> whenClauses, Expression defaultValue) {
-    super(requireNonNull(location, "location is null"));
-    this.whenClauses = ImmutableList.copyOf(requireNonNull(whenClauses, "whenClauses is null"));
-    this.defaultValue = requireNonNull(defaultValue, "defaultValue is null");
+  public Expression getOperand() {
+    return operand;
   }
 
   public List<WhenClause> getWhenClauses() {
@@ -101,12 +110,13 @@ public class SearchedCaseExpression extends Expression {
 
   @Override
   public <R, C> R accept(IAstVisitor<R, C> visitor, C context) {
-    return ((AstVisitor<R, C>) visitor).visitSearchedCaseExpression(this, context);
+    return ((CommonQueryAstVisitor<R, C>) visitor).visitSimpleCaseExpression(this, context);
   }
 
   @Override
   public List<Node> getChildren() {
     ImmutableList.Builder<Node> nodes = ImmutableList.builder();
+    nodes.add(operand);
     nodes.addAll(whenClauses);
     if (defaultValue != null) {
       nodes.add(defaultValue);
@@ -123,14 +133,15 @@ public class SearchedCaseExpression extends Expression {
       return false;
     }
 
-    SearchedCaseExpression that = (SearchedCaseExpression) o;
-    return Objects.equals(whenClauses, that.whenClauses)
+    SimpleCaseExpression that = (SimpleCaseExpression) o;
+    return Objects.equals(operand, that.operand)
+        && Objects.equals(whenClauses, that.whenClauses)
         && Objects.equals(defaultValue, that.defaultValue);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(whenClauses, defaultValue);
+    return Objects.hash(operand, whenClauses, defaultValue);
   }
 
   @Override
@@ -139,9 +150,14 @@ public class SearchedCaseExpression extends Expression {
   }
 
   @Override
+  public TableExpressionType getExpressionType() {
+    return TableExpressionType.SIMPLE_CASE;
+  }
+
+  @Override
   protected void serialize(ByteBuffer byteBuffer) {
-    int len = this.whenClauses.size();
-    ReadWriteIOUtils.write(len, byteBuffer);
+    ReadWriteIOUtils.write(this.whenClauses.size(), byteBuffer);
+    Expression.serialize(this.operand, byteBuffer);
     getWhenClauses().forEach(child -> Expression.serialize(child, byteBuffer));
     Expression.serialize(getDefaultValue().orElse(new NullLiteral()), byteBuffer);
   }
@@ -149,6 +165,7 @@ public class SearchedCaseExpression extends Expression {
   @Override
   protected void serialize(DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(this.whenClauses.size(), stream);
+    Expression.serialize(this.operand, stream);
     for (Expression expression : this.getWhenClauses()) {
       Expression.serialize(expression, stream);
     }
@@ -159,6 +176,7 @@ public class SearchedCaseExpression extends Expression {
   public long ramBytesUsed() {
     long size = INSTANCE_SIZE;
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operand);
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeList(whenClauses);
     size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(defaultValue);
     return size;

@@ -17,49 +17,57 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
+package org.apache.iotdb.db.node_commons.plan.relational.sql.ast;
 
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.IAstVisitor;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Literal;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Node;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstMemoryEstimationHelper;
 
-import org.apache.tsfile.utils.Binary;
+import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
-import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Objects;
 
 import static java.util.Objects.requireNonNull;
 
-public class DecimalLiteral extends Literal {
+public class InPredicate extends Expression {
 
   private static final long INSTANCE_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(DecimalLiteral.class);
+      RamUsageEstimator.shallowSizeOfInstance(InPredicate.class);
 
-  private final String value;
+  private final Expression value;
+  private final Expression valueList;
 
-  public DecimalLiteral(String value) {
+  public InPredicate(Expression value, Expression valueList) {
     super(null);
     this.value = requireNonNull(value, "value is null");
+    this.valueList = requireNonNull(valueList, "valueList is null");
   }
 
-  public DecimalLiteral(NodeLocation location, String value) {
+  public InPredicate(NodeLocation location, Expression value, Expression valueList) {
     super(requireNonNull(location, "location is null"));
-
     this.value = requireNonNull(value, "value is null");
+    this.valueList = requireNonNull(valueList, "valueList is null");
   }
 
-  public String getValue() {
+  public Expression getValue() {
     return value;
+  }
+
+  public Expression getValueList() {
+    return valueList;
   }
 
   @Override
   public <R, C> R accept(IAstVisitor<R, C> visitor, C context) {
-    return ((AstVisitor<R, C>) visitor).visitDecimalLiteral(this, context);
+    return ((CommonQueryAstVisitor<R, C>) visitor).visitInPredicate(this, context);
+  }
+
+  @Override
+  public List<Node> getChildren() {
+    return ImmutableList.of(value, valueList);
   }
 
   @Override
@@ -70,49 +78,43 @@ public class DecimalLiteral extends Literal {
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    DecimalLiteral that = (DecimalLiteral) o;
-    return Objects.equals(value, that.value);
+
+    InPredicate that = (InPredicate) o;
+    return Objects.equals(value, that.value) && Objects.equals(valueList, that.valueList);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(value);
+    return Objects.hash(value, valueList);
   }
 
   @Override
   public boolean shallowEquals(Node other) {
-    if (!sameClass(this, other)) {
-      return false;
-    }
-
-    DecimalLiteral otherLiteral = (DecimalLiteral) other;
-    return value.equals(otherLiteral.value);
+    return sameClass(this, other);
   }
 
   @Override
   public TableExpressionType getExpressionType() {
-    return TableExpressionType.DECIMAL_LITERAL;
+    return TableExpressionType.IN_PREDICATE;
   }
 
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
-    ReadWriteIOUtils.write(this.value, stream);
+    Expression.serialize(value, stream);
+    Expression.serialize(valueList, stream);
   }
 
-  public DecimalLiteral(ByteBuffer byteBuffer) {
+  public InPredicate(ByteBuffer byteBuffer) {
     super(null);
-    this.value = ReadWriteIOUtils.readString(byteBuffer);
-  }
-
-  @Override
-  public Object getTsValue() {
-    return new Binary(value.getBytes(StandardCharsets.UTF_8));
+    this.value = Expression.deserialize(byteBuffer);
+    this.valueList = Expression.deserialize(byteBuffer);
   }
 
   @Override
   public long ramBytesUsed() {
     return INSTANCE_SIZE
         + AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal())
-        + RamUsageEstimator.sizeOf(value);
+        + AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(value)
+        + AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(valueList);
   }
 }

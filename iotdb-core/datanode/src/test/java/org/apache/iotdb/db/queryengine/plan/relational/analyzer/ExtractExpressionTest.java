@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.LongLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlanTester;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
 
 import com.google.common.collect.ImmutableMap;
 import org.junit.BeforeClass;

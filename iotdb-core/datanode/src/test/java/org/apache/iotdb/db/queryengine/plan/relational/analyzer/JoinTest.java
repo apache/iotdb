@@ -30,7 +30,9 @@ import org.apache.iotdb.db.node_commons.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.TopKNode;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
@@ -52,8 +54,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMa
 import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.TableDistributedPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
 import com.google.common.collect.ImmutableList;
@@ -75,6 +75,8 @@ import java.util.Optional;
 import static org.apache.iotdb.db.node_commons.plan.relational.planner.node.AggregationNode.Step.FINAL;
 import static org.apache.iotdb.db.node_commons.plan.relational.planner.node.AggregationNode.Step.PARTIAL;
 import static org.apache.iotdb.db.node_commons.plan.relational.planner.node.JoinNode.JoinType.INNER;
+import static org.apache.iotdb.db.node_commons.plan.relational.sql.ast.ComparisonExpression.Operator.EQUAL;
+import static org.apache.iotdb.db.node_commons.plan.relational.sql.ast.ComparisonExpression.Operator.GREATER_THAN;
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.AbstractTableScanOperator.TIME_COLUMN_TEMPLATE;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.AnalyzerTest.analyzeSQL;
@@ -103,8 +105,6 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.singleGroupingSet;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.sort;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.tableScan;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression.Operator.EQUAL;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression.Operator.GREATER_THAN;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;

@@ -22,24 +22,24 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.ir;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.BetweenPredicate;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.LogicalExpression;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.LongLiteral;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Node;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 
 import javax.annotation.Nullable;
 
 import java.time.ZoneId;
 
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression.Operator.GREATER_THAN;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression.Operator.GREATER_THAN_OR_EQUAL;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression.Operator.LESS_THAN;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression.Operator.LESS_THAN_OR_EQUAL;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression.Operator.AND;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression.Operator.OR;
+import static org.apache.iotdb.db.node_commons.plan.relational.sql.ast.ComparisonExpression.Operator.GREATER_THAN;
+import static org.apache.iotdb.db.node_commons.plan.relational.sql.ast.ComparisonExpression.Operator.GREATER_THAN_OR_EQUAL;
+import static org.apache.iotdb.db.node_commons.plan.relational.sql.ast.ComparisonExpression.Operator.LESS_THAN;
+import static org.apache.iotdb.db.node_commons.plan.relational.sql.ast.ComparisonExpression.Operator.LESS_THAN_OR_EQUAL;
+import static org.apache.iotdb.db.node_commons.plan.relational.sql.ast.LogicalExpression.Operator.AND;
+import static org.apache.iotdb.db.node_commons.plan.relational.sql.ast.LogicalExpression.Operator.OR;
 import static org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.DateBinFunctionColumnTransformer.dateBin;
 
 public class GapFillStartAndEndTimeExtractVisitor

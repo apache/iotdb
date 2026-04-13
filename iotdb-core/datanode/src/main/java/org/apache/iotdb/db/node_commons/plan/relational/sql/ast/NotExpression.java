@@ -17,50 +17,50 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
+package org.apache.iotdb.db.node_commons.plan.relational.sql.ast;
 
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.IAstVisitor;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Literal;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Node;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstMemoryEstimationHelper;
 
+import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
-import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.List;
+import java.util.Objects;
 
 import static java.util.Objects.requireNonNull;
 
-public class DoubleLiteral extends Literal {
+public class NotExpression extends Expression {
 
   private static final long INSTANCE_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(DoubleLiteral.class);
+      RamUsageEstimator.shallowSizeOfInstance(NotExpression.class);
 
-  private final double value;
+  private final Expression value;
 
-  public DoubleLiteral(String value) {
+  public NotExpression(Expression value) {
     super(null);
-    this.value = Double.parseDouble(requireNonNull(value, "value is null"));
+    this.value = requireNonNull(value, "value is null");
   }
 
-  public DoubleLiteral(double value) {
-    super(null);
-    this.value = value;
-  }
-
-  public DoubleLiteral(NodeLocation location, String value) {
+  public NotExpression(NodeLocation location, Expression value) {
     super(requireNonNull(location, "location is null"));
-    this.value = Double.parseDouble(requireNonNull(value, "value is null"));
+    this.value = requireNonNull(value, "value is null");
   }
 
-  public double getValue() {
+  public Expression getValue() {
     return value;
   }
 
   @Override
   public <R, C> R accept(IAstVisitor<R, C> visitor, C context) {
-    return ((AstVisitor<R, C>) visitor).visitDoubleLiteral(this, context);
+    return ((CommonQueryAstVisitor<R, C>) visitor).visitNotExpression(this, context);
+  }
+
+  @Override
+  public List<Node> getChildren() {
+    return ImmutableList.of(value);
   }
 
   @Override
@@ -72,54 +72,39 @@ public class DoubleLiteral extends Literal {
       return false;
     }
 
-    DoubleLiteral that = (DoubleLiteral) o;
-
-    if (Double.compare(that.value, value) != 0) {
-      return false;
-    }
-
-    return true;
+    NotExpression that = (NotExpression) o;
+    return Objects.equals(value, that.value);
   }
 
-  @SuppressWarnings("UnaryPlus")
   @Override
   public int hashCode() {
-    long temp = value != +0.0d ? Double.doubleToLongBits(value) : 0L;
-    return (int) (temp ^ (temp >>> 32));
+    return value.hashCode();
   }
 
   @Override
   public boolean shallowEquals(Node other) {
-    if (!sameClass(this, other)) {
-      return false;
-    }
-
-    return value == ((DoubleLiteral) other).value;
+    return sameClass(this, other);
   }
 
   @Override
   public TableExpressionType getExpressionType() {
-    return TableExpressionType.DOUBLE_LITERAL;
+    return TableExpressionType.NOT_EXPRESSION;
   }
 
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
-    ReadWriteIOUtils.write(this.value, stream);
+    Expression.serialize(this.value, stream);
   }
 
-  public DoubleLiteral(ByteBuffer byteBuffer) {
+  public NotExpression(ByteBuffer byteBuffer) {
     super(null);
-    this.value = ReadWriteIOUtils.readDouble(byteBuffer);
-  }
-
-  @Override
-  public Object getTsValue() {
-    return value;
+    this.value = Expression.deserialize(byteBuffer);
   }
 
   @Override
   public long ramBytesUsed() {
     return INSTANCE_SIZE
-        + AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+        + AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal())
+        + AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(value);
   }
 }

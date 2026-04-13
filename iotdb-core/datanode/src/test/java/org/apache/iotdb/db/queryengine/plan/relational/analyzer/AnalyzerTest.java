@@ -40,6 +40,7 @@ import org.apache.iotdb.db.node_commons.plan.relational.planner.node.OffsetNode;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.LogicalExpression;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.InternalClientSession;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -69,7 +70,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableS
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AllowAllAccessControl;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.rewrite.StatementRewriteFactory;

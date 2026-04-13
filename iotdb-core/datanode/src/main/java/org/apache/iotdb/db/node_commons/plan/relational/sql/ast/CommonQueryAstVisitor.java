@@ -69,4 +69,88 @@ public abstract class CommonQueryAstVisitor<R, C> implements IAstVisitor<R, C> {
   protected R visitStringLiteral(StringLiteral node, C context) {
     return visitLiteral(node, context);
   }
+
+  protected R visitLongLiteral(LongLiteral node, C context) {
+    return visitLiteral(node, context);
+  }
+
+  protected R visitDoubleLiteral(DoubleLiteral node, C context) {
+    return visitLiteral(node, context);
+  }
+
+  protected R visitFloatLiteral(FloatLiteral node, C context) {
+    return visitLiteral(node, context);
+  }
+
+  protected R visitDecimalLiteral(DecimalLiteral node, C context) {
+    return visitLiteral(node, context);
+  }
+
+  protected R visitGenericLiteral(GenericLiteral node, C context) {
+    return visitLiteral(node, context);
+  }
+
+  protected R visitNullLiteral(NullLiteral node, C context) {
+    return visitLiteral(node, context);
+  }
+
+  protected R visitCurrentDatabase(CurrentDatabase node, C context) {
+    return visitExpression(node, context);
+  }
+
+  protected R visitCurrentTime(CurrentTime node, C context) {
+    return visitExpression(node, context);
+  }
+
+  protected R visitCurrentUser(CurrentUser node, C context) {
+    return visitExpression(node, context);
+  }
+
+  protected R visitComparisonExpression(ComparisonExpression node, C context) {
+    return visitExpression(node, context);
+  }
+
+  protected R visitCoalesceExpression(CoalesceExpression node, C context) {
+    return visitExpression(node, context);
+  }
+
+  protected R visitInPredicate(InPredicate node, C context) {
+    return visitExpression(node, context);
+  }
+
+  protected R visitNotExpression(NotExpression node, C context) {
+    return visitExpression(node, context);
+  }
+
+  protected R visitLikePredicate(LikePredicate node, C context) {
+    return visitExpression(node, context);
+  }
+
+  protected R visitIsNotNullPredicate(IsNotNullPredicate node, C context) {
+    return visitExpression(node, context);
+  }
+
+  protected R visitIsNullPredicate(IsNullPredicate node, C context) {
+    return visitExpression(node, context);
+  }
+
+  protected R visitLogicalExpression(LogicalExpression node, C context) {
+    return visitExpression(node, context);
+  }
+
+  protected R visitSymbolReference(SymbolReference node, C context) {
+    return visitExpression(node, context);
+  }
+
+  protected R visitSimpleCaseExpression(SimpleCaseExpression node, C context) {
+    return visitExpression(node, context);
+  }
+
+  protected R visitSearchedCaseExpression(SearchedCaseExpression node, C context) {
+    return visitExpression(node, context);
+  }
+
+  protected R visitFunctionCall(FunctionCall node, C context) {
+    return visitExpression(node, context);
+  }
 }

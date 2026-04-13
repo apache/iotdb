@@ -5027,7 +5027,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       return new org.apache.iotdb.db.node_commons.plan.relational.sql.ast.StringLiteral(
           parseStringLiteral(context.getText()));
     } else if (context.INTEGER_LITERAL() != null) {
-      return new org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral(
+      return new org.apache.iotdb.db.node_commons.plan.relational.sql.ast.LongLiteral(
           context.getText());
     }
     throw new UnsupportedOperationException("Currently other expressions are not supported");

@@ -31,12 +31,12 @@ import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpa
 import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpattern.LogicalIndexPointer;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpattern.ScalarValuePointer;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.db.queryengine.plan.planner.node.PlanNodeDeserializeHelper;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.RowsPerMatch;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SkipToPosition;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;

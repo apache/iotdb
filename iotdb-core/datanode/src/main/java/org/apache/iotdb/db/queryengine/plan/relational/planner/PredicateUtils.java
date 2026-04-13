@@ -19,13 +19,13 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.InPredicate;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.LogicalExpression;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.LongLiteral;
 import org.apache.iotdb.db.queryengine.plan.expression.UnknownExpressionTypeException;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
 
 import org.apache.tsfile.utils.Pair;
 
@@ -33,10 +33,10 @@ import java.util.Arrays;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.TIME;
 import static org.apache.iotdb.db.node_commons.plan.relational.sql.ast.BooleanLiteral.TRUE_LITERAL;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression.Operator.AND;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression.Operator.OR;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression.and;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression.or;
+import static org.apache.iotdb.db.node_commons.plan.relational.sql.ast.LogicalExpression.Operator.AND;
+import static org.apache.iotdb.db.node_commons.plan.relational.sql.ast.LogicalExpression.Operator.OR;
+import static org.apache.iotdb.db.node_commons.plan.relational.sql.ast.LogicalExpression.and;
+import static org.apache.iotdb.db.node_commons.plan.relational.sql.ast.LogicalExpression.or;
 
 public class PredicateUtils {
 

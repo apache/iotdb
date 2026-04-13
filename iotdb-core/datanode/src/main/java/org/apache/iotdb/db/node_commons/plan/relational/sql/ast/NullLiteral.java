@@ -17,41 +17,34 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
+package org.apache.iotdb.db.node_commons.plan.relational.sql.ast;
 
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.IAstVisitor;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Node;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.NodeLocation;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstMemoryEstimationHelper;
 
-import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
-import javax.annotation.Nonnull;
-
-import java.util.List;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 
 import static java.util.Objects.requireNonNull;
 
-public final class AllRows extends Expression {
-  private static final long INSTANCE_SIZE = RamUsageEstimator.shallowSizeOfInstance(AllRows.class);
+public class NullLiteral extends Literal {
 
-  public AllRows() {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(NullLiteral.class);
+
+  public NullLiteral() {
     super(null);
   }
 
-  public AllRows(@Nonnull NodeLocation location) {
+  public NullLiteral(NodeLocation location) {
     super(requireNonNull(location, "location is null"));
   }
 
   @Override
   public <R, C> R accept(IAstVisitor<R, C> visitor, C context) {
-    return ((AstVisitor<R, C>) visitor).visitAllRows(this, context);
-  }
-
-  @Override
-  public List<Node> getChildren() {
-    return ImmutableList.of();
+    return ((CommonQueryAstVisitor<R, C>) visitor).visitNullLiteral(this, context);
   }
 
   @Override
@@ -59,7 +52,11 @@ public final class AllRows extends Expression {
     if (this == o) {
       return true;
     }
-    return (o != null) && (getClass() == o.getClass());
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+
+    return true;
   }
 
   @Override
@@ -73,9 +70,25 @@ public final class AllRows extends Expression {
   }
 
   @Override
+  public TableExpressionType getExpressionType() {
+    return TableExpressionType.NULL_LITERAL;
+  }
+
+  @Override
+  public void serialize(DataOutputStream stream) throws IOException {}
+
+  public NullLiteral(ByteBuffer byteBuffer) {
+    super(null);
+  }
+
+  @Override
+  public Object getTsValue() {
+    return null;
+  }
+
+  @Override
   public long ramBytesUsed() {
-    long size = INSTANCE_SIZE;
-    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
-    return size;
+    return INSTANCE_SIZE
+        + AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
   }
 }

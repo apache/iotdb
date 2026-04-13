@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.node_commons.plan.relational.sql.ast;
 
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NodeLocation;
-
 import com.google.common.collect.ImmutableList;
 
 import javax.annotation.Nullable;

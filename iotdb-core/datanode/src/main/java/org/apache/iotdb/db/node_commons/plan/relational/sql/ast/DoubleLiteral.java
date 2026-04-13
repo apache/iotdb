@@ -17,12 +17,9 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
+package org.apache.iotdb.db.node_commons.plan.relational.sql.ast;
 
-import org.apache.iotdb.db.exception.sql.SemanticException;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.IAstVisitor;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Literal;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Node;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstMemoryEstimationHelper;
 
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -33,41 +30,35 @@ import java.nio.ByteBuffer;
 
 import static java.util.Objects.requireNonNull;
 
-public class FloatLiteral extends Literal {
+public class DoubleLiteral extends Literal {
 
   private static final long INSTANCE_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(FloatLiteral.class);
+      RamUsageEstimator.shallowSizeOfInstance(DoubleLiteral.class);
 
-  private final float value;
+  private final double value;
 
-  public FloatLiteral(String value) {
+  public DoubleLiteral(String value) {
     super(null);
-    this.value = Float.parseFloat(requireNonNull(value, "value is null"));
+    this.value = Double.parseDouble(requireNonNull(value, "value is null"));
   }
 
-  public FloatLiteral(float value) {
+  public DoubleLiteral(double value) {
     super(null);
     this.value = value;
   }
 
-  public FloatLiteral(NodeLocation location, String value) {
-    super(null);
-    throw new SemanticException("Currently the FloatLiteral cannot be created from NodeLocation");
+  public DoubleLiteral(NodeLocation location, String value) {
+    super(requireNonNull(location, "location is null"));
+    this.value = Double.parseDouble(requireNonNull(value, "value is null"));
   }
 
-  public float getValue() {
+  public double getValue() {
     return value;
   }
 
   @Override
   public <R, C> R accept(IAstVisitor<R, C> visitor, C context) {
-    return ((AstVisitor<R, C>) visitor).visitFloatLiteral(this, context);
-  }
-
-  @SuppressWarnings("UnaryPlus")
-  @Override
-  public int hashCode() {
-    return value != +0.0f ? Float.floatToIntBits(value) : 0;
+    return ((CommonQueryAstVisitor<R, C>) visitor).visitDoubleLiteral(this, context);
   }
 
   @Override
@@ -79,8 +70,20 @@ public class FloatLiteral extends Literal {
       return false;
     }
 
-    FloatLiteral that = (FloatLiteral) o;
-    return Float.compare(that.value, value) == 0;
+    DoubleLiteral that = (DoubleLiteral) o;
+
+    if (Double.compare(that.value, value) != 0) {
+      return false;
+    }
+
+    return true;
+  }
+
+  @SuppressWarnings("UnaryPlus")
+  @Override
+  public int hashCode() {
+    long temp = value != +0.0d ? Double.doubleToLongBits(value) : 0L;
+    return (int) (temp ^ (temp >>> 32));
   }
 
   @Override
@@ -89,12 +92,12 @@ public class FloatLiteral extends Literal {
       return false;
     }
 
-    return value == ((FloatLiteral) other).value;
+    return value == ((DoubleLiteral) other).value;
   }
 
   @Override
   public TableExpressionType getExpressionType() {
-    return TableExpressionType.FLOAT_LITERAL;
+    return TableExpressionType.DOUBLE_LITERAL;
   }
 
   @Override
@@ -102,9 +105,9 @@ public class FloatLiteral extends Literal {
     ReadWriteIOUtils.write(this.value, stream);
   }
 
-  public FloatLiteral(ByteBuffer byteBuffer) {
+  public DoubleLiteral(ByteBuffer byteBuffer) {
     super(null);
-    this.value = ReadWriteIOUtils.readFloat(byteBuffer);
+    this.value = ReadWriteIOUtils.readDouble(byteBuffer);
   }
 
   @Override

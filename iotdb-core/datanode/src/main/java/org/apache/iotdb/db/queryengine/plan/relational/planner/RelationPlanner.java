@@ -41,7 +41,10 @@ import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpa
 import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpattern.RowPatternToIrRewriter;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpattern.ScalarValuePointer;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpattern.ValuePointer;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.CoalesceExpression;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.LogicalExpression;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Node;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
@@ -89,8 +92,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceVi
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AliasedRelation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AsofJoinOn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CoalesceExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Delete;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DereferenceExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Except;
@@ -104,7 +105,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.JoinCriteria;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.JoinOn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.JoinUsing;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.MeasureDefinition;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PatternRecognitionRelation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PipeEnriched;

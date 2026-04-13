@@ -24,30 +24,6 @@ import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.CommonQueryAstVi
 
 public abstract class AstVisitor<R, C> extends CommonQueryAstVisitor<R, C> {
 
-  protected R visitCurrentTime(CurrentTime node, C context) {
-    return visitExpression(node, context);
-  }
-
-  protected R visitCoalesceExpression(CoalesceExpression node, C context) {
-    return visitExpression(node, context);
-  }
-
-  protected R visitComparisonExpression(ComparisonExpression node, C context) {
-    return visitExpression(node, context);
-  }
-
-  protected R visitDoubleLiteral(DoubleLiteral node, C context) {
-    return visitLiteral(node, context);
-  }
-
-  protected R visitFloatLiteral(FloatLiteral node, C context) {
-    return visitLiteral(node, context);
-  }
-
-  protected R visitDecimalLiteral(DecimalLiteral node, C context) {
-    return visitLiteral(node, context);
-  }
-
   protected R visitStatement(Statement node, C context) {
     return visitNode(node, context);
   }
@@ -86,10 +62,6 @@ public abstract class AstVisitor<R, C> extends CommonQueryAstVisitor<R, C> {
 
   protected R visitDeallocate(Deallocate node, C context) {
     return visitStatement(node, context);
-  }
-
-  protected R visitGenericLiteral(GenericLiteral node, C context) {
-    return visitLiteral(node, context);
   }
 
   protected R visitWith(With node, C context) {
@@ -156,24 +128,8 @@ public abstract class AstVisitor<R, C> extends CommonQueryAstVisitor<R, C> {
     return visitExpression(node, context);
   }
 
-  protected R visitInPredicate(InPredicate node, C context) {
-    return visitExpression(node, context);
-  }
-
-  protected R visitFunctionCall(FunctionCall node, C context) {
-    return visitExpression(node, context);
-  }
-
   protected R visitProcessingMode(ProcessingMode node, C context) {
     return visitNode(node, context);
-  }
-
-  protected R visitSimpleCaseExpression(SimpleCaseExpression node, C context) {
-    return visitExpression(node, context);
-  }
-
-  protected R visitSearchedCaseExpression(SearchedCaseExpression node, C context) {
-    return visitExpression(node, context);
   }
 
   protected R visitInListExpression(InListExpression node, C context) {
@@ -197,14 +153,6 @@ public abstract class AstVisitor<R, C> extends CommonQueryAstVisitor<R, C> {
   }
 
   protected R visitNullIfExpression(NullIfExpression node, C context) {
-    return visitExpression(node, context);
-  }
-
-  protected R visitNullLiteral(NullLiteral node, C context) {
-    return visitLiteral(node, context);
-  }
-
-  protected R visitNotExpression(NotExpression node, C context) {
     return visitExpression(node, context);
   }
 
@@ -240,27 +188,7 @@ public abstract class AstVisitor<R, C> extends CommonQueryAstVisitor<R, C> {
     return visitSelectItem(node, context);
   }
 
-  protected R visitLikePredicate(LikePredicate node, C context) {
-    return visitExpression(node, context);
-  }
-
-  protected R visitIsNotNullPredicate(IsNotNullPredicate node, C context) {
-    return visitExpression(node, context);
-  }
-
-  protected R visitIsNullPredicate(IsNullPredicate node, C context) {
-    return visitExpression(node, context);
-  }
-
-  protected R visitLongLiteral(LongLiteral node, C context) {
-    return visitLiteral(node, context);
-  }
-
   protected R visitParameter(Parameter node, C context) {
-    return visitExpression(node, context);
-  }
-
-  protected R visitLogicalExpression(LogicalExpression node, C context) {
     return visitExpression(node, context);
   }
 
@@ -508,19 +436,7 @@ public abstract class AstVisitor<R, C> extends CommonQueryAstVisitor<R, C> {
     return visitGroupingElement(node, context);
   }
 
-  protected R visitSymbolReference(SymbolReference node, C context) {
-    return visitExpression(node, context);
-  }
-
   protected R visitQuantifiedComparisonExpression(QuantifiedComparisonExpression node, C context) {
-    return visitExpression(node, context);
-  }
-
-  protected R visitCurrentDatabase(CurrentDatabase node, C context) {
-    return visitExpression(node, context);
-  }
-
-  protected R visitCurrentUser(CurrentUser node, C context) {
     return visitExpression(node, context);
   }
 

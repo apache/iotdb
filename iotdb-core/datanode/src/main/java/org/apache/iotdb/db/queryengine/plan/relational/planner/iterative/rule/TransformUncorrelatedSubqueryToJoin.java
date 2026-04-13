@@ -24,12 +24,12 @@ import org.apache.iotdb.db.node_commons.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Cast;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.NullLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Assignments;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Lookup;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Rule;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CorrelatedJoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IfExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Captures;
 import org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Pattern;
 

@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.parser;
 
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NodeLocation;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.NodeLocation;
 
 import org.antlr.v4.runtime.RecognitionException;
 

@@ -17,36 +17,44 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
+package org.apache.iotdb.db.node_commons.plan.relational.sql.ast;
 
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.IAstVisitor;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Literal;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Node;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstMemoryEstimationHelper;
 
+import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.List;
+import java.util.Objects;
 
-import static java.util.Objects.requireNonNull;
-
-public class NullLiteral extends Literal {
+public class SymbolReference extends Expression {
 
   private static final long INSTANCE_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(NullLiteral.class);
+      RamUsageEstimator.shallowSizeOfInstance(SymbolReference.class);
 
-  public NullLiteral() {
+  private final String name;
+
+  public SymbolReference(String name) {
     super(null);
+    this.name = name;
   }
 
-  public NullLiteral(NodeLocation location) {
-    super(requireNonNull(location, "location is null"));
+  public String getName() {
+    return name;
   }
 
   @Override
   public <R, C> R accept(IAstVisitor<R, C> visitor, C context) {
-    return ((AstVisitor<R, C>) visitor).visitNullLiteral(this, context);
+    return ((CommonQueryAstVisitor<R, C>) visitor).visitSymbolReference(this, context);
+  }
+
+  @Override
+  public List<Node> getChildren() {
+    return ImmutableList.of();
   }
 
   @Override
@@ -57,40 +65,36 @@ public class NullLiteral extends Literal {
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-
-    return true;
+    SymbolReference that = (SymbolReference) o;
+    return Objects.equals(name, that.name);
   }
 
   @Override
   public int hashCode() {
-    return getClass().hashCode();
+    return Objects.hash(name);
   }
 
-  @Override
-  public boolean shallowEquals(Node other) {
-    return sameClass(this, other);
-  }
+  // =============== serialize =================
 
   @Override
   public TableExpressionType getExpressionType() {
-    return TableExpressionType.NULL_LITERAL;
+    return TableExpressionType.SYMBOL_REFERENCE;
   }
 
   @Override
-  public void serialize(DataOutputStream stream) throws IOException {}
+  public void serialize(DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(this.name, stream);
+  }
 
-  public NullLiteral(ByteBuffer byteBuffer) {
+  public SymbolReference(ByteBuffer byteBuffer) {
     super(null);
-  }
-
-  @Override
-  public Object getTsValue() {
-    return null;
+    this.name = ReadWriteIOUtils.readString(byteBuffer);
   }
 
   @Override
   public long ramBytesUsed() {
     return INSTANCE_SIZE
-        + AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+        + AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal())
+        + RamUsageEstimator.sizeOf(name);
   }
 }

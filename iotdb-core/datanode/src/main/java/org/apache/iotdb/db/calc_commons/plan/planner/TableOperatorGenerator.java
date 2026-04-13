@@ -64,8 +64,10 @@ import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpa
 import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpattern.MatchNumberValuePointer;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpattern.ScalarValuePointer;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpattern.ValuePointer;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Literal;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
@@ -161,8 +163,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.CastToTimestampLi
 import org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingScheme;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CteScanNode;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.LeafColumnTransformer;
