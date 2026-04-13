@@ -1299,6 +1299,20 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     long startTime = System.nanoTime();
     Throwable t = null;
     try {
+      // Place the permission check first
+      final Statement s = StatementGenerator.createStatement(convert(req));
+      // permission check
+      final TSStatus status =
+          AuthorityChecker.checkAuthority(
+              s,
+              new TreeAccessCheckContext(
+                  clientSession.getUserId(),
+                  clientSession.getUsername(),
+                  clientSession.getClientAddress()));
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return RpcUtils.getTSExecuteStatementResp(status);
+      }
+
       String db;
       String device;
       PartialPath devicePath;
@@ -1344,20 +1358,6 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               .dataNodeLocations
               .get(0)
               .mPPDataExchangeEndPoint;
-
-      // Place the permission check first
-      final Statement s = StatementGenerator.createStatement(convert(req));
-      // permission check
-      final TSStatus status =
-          AuthorityChecker.checkAuthority(
-              s,
-              new TreeAccessCheckContext(
-                  clientSession.getUserId(),
-                  clientSession.getUsername(),
-                  clientSession.getClientAddress()));
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        return RpcUtils.getTSExecuteStatementResp(status);
-      }
 
       // the device's dataRegion's leader of the latest time partition is on current node, may can
       // read directly from cache
