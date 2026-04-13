@@ -123,7 +123,6 @@ public class RestApiServiceImpl extends RestApiService {
           new PartialPath(prefixPathList.getPrefixPaths().toArray(new String[0]));
       final Map<TableId, Map<IDeviceID, Map<String, Pair<TSDataType, TimeValuePair>>>> resultMap =
           new HashMap<>();
-      int sensorNum = 0;
 
       final String prefixString = prefixPath.toString();
       for (final ISchemaRegion region : SchemaEngine.getInstance().getAllSchemaRegions()) {
@@ -131,9 +130,10 @@ public class RestApiServiceImpl extends RestApiService {
             && !region.getDatabaseFullPath().startsWith(prefixString)) {
           continue;
         }
-        sensorNum += region.fillLastQueryMap(prefixPath, resultMap);
+        region.fillLastQueryMap(prefixPath, resultMap);
       }
 
+      // Check permission, the cost is rather low because the req only contains one prefix path
       final IClientSession clientSession = SESSION_MANAGER.getCurrSession();
       final TSLastDataQueryReq tsLastDataQueryReq =
           FastLastHandler.createTSLastDataQueryReq(clientSession, prefixPathList);
