@@ -46,6 +46,7 @@ static void fail(const char* ctx, CTableSession* s) {
 }
 
 int main(void) {
+    /* Last arg: default database name; empty string leaves it unset (we USE "cdemo_db" via SQL below). */
     CTableSession* session = ts_table_session_new(HOST, PORT, USER, PASS, "");
     if (!session) {
         fprintf(stderr, "[table_example] ts_table_session_new returned NULL: %s\n", ts_get_last_error());
