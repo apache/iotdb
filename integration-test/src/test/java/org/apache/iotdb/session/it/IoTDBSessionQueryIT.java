@@ -22,6 +22,7 @@ package org.apache.iotdb.session.it;
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.it.utils.AlignedWriteUtil;
+import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.it.env.EnvFactory;
@@ -29,6 +30,7 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.rpc.RedirectException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 
 import org.junit.AfterClass;
@@ -246,6 +248,32 @@ public class IoTDBSessionQueryIT {
     } catch (StatementExecutionException e) {
       e.printStackTrace();
       fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void lastQueryWithoutPermissionTest() throws IoTDBConnectionException {
+    final String[] retArray = new String[] {};
+    TestUtils.executeNonQuery(EnvFactory.getEnv(), "create user abcd 'veryComplexPassword@123'");
+
+    try (final ISession session =
+        EnvFactory.getEnv().getSessionConnection("abcd", "veryComplexPassword@123")) {
+      try (final SessionDataSet resultSet =
+          session.executeLastDataQueryForOneDevice(
+              "root.sg1", "root.sg1.d1", Arrays.asList("notExist", "s1"), true)) {
+        assertResultSetEqual(resultSet, lastQueryColumnNames, retArray, true);
+      }
+
+      try (final SessionDataSet resultSet =
+          session.executeFastLastDataQueryForOnePrefixPath(Arrays.asList("root", "sg1", "d1"))) {
+        assertResultSetEqual(resultSet, lastQueryColumnNames, retArray, true);
+      }
+    } catch (StatementExecutionException | RedirectException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    } finally {
+      TestUtils.executeNonQueries(
+          EnvFactory.getEnv(), Arrays.asList("drop database root.sg1", "drop user abcd"));
     }
   }
 
