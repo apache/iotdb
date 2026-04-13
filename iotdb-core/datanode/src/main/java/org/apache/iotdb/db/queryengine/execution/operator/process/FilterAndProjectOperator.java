@@ -19,9 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process;
 
-import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
-import org.apache.iotdb.db.queryengine.execution.operator.Operator;
-import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.node_commons.transformation.dag.column.column.AbstractCaseWhenThenColumnTransformer;
 import org.apache.iotdb.db.node_commons.transformation.dag.column.column.ColumnTransformer;
 import org.apache.iotdb.db.node_commons.transformation.dag.column.column.FailFunctionColumnTransformer;
@@ -32,6 +29,9 @@ import org.apache.iotdb.db.node_commons.transformation.dag.column.column.multi.M
 import org.apache.iotdb.db.node_commons.transformation.dag.column.column.multi.MultiColumnTransformer;
 import org.apache.iotdb.db.node_commons.transformation.dag.column.column.ternary.TernaryColumnTransformer;
 import org.apache.iotdb.db.node_commons.transformation.dag.column.column.unary.UnaryColumnTransformer;
+import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
+import org.apache.iotdb.db.queryengine.execution.operator.Operator;
+import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.block.column.Column;

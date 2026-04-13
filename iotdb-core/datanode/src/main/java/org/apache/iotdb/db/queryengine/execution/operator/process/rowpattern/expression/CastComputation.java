@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.expression;
 
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DataType;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GenericDataType;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.DataType;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.GenericDataType;
 
 import java.util.List;
 

@@ -20,8 +20,11 @@
 package org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations;
 
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.node_commons.plan.relational.metadata.ResolvedFunction;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.Assignments;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.AggregationNode;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.node.ApplyNode;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.BooleanLiteral;
@@ -34,12 +37,9 @@ import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.SearchedCaseExpr
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.SimpleCaseExpression;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.ResolvedFunction;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.Assignments;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SimplePlanRewriter;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ApplyNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CorrelatedJoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WhenClause;
 
@@ -58,6 +58,7 @@ import static com.google.common.collect.Iterables.getOnlyElement;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.node_commons.plan.relational.planner.node.AggregationNode.globalAggregation;
 import static org.apache.iotdb.db.node_commons.plan.relational.planner.node.AggregationNode.singleAggregation;
+import static org.apache.iotdb.db.node_commons.plan.relational.planner.node.ApplyNode.Quantifier.ALL;
 import static org.apache.iotdb.db.node_commons.plan.relational.sql.ast.BooleanLiteral.FALSE_LITERAL;
 import static org.apache.iotdb.db.node_commons.plan.relational.sql.ast.BooleanLiteral.TRUE_LITERAL;
 import static org.apache.iotdb.db.node_commons.plan.relational.sql.ast.ComparisonExpression.Operator.EQUAL;
@@ -66,10 +67,9 @@ import static org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Compariso
 import static org.apache.iotdb.db.node_commons.plan.relational.sql.ast.ComparisonExpression.Operator.LESS_THAN;
 import static org.apache.iotdb.db.node_commons.plan.relational.sql.ast.ComparisonExpression.Operator.LESS_THAN_OR_EQUAL;
 import static org.apache.iotdb.db.node_commons.plan.relational.sql.ast.ComparisonExpression.Operator.NOT_EQUAL;
+import static org.apache.iotdb.db.node_commons.plan.relational.type.TypeSignatureTranslator.toSqlType;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.SimplePlanRewriter.rewriteWith;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils.combineConjuncts;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.ApplyNode.Quantifier.ALL;
-import static org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignatureTranslator.toSqlType;
 import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
 
 public class TransformQuantifiedComparisonApplyToCorrelatedJoin implements PlanOptimizer {

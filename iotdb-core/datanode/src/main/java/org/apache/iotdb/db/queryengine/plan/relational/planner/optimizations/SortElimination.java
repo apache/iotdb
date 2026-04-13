@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations;
 
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.OrderingScheme;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.FillNode;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.GapFillNode;
@@ -29,7 +30,6 @@ import org.apache.iotdb.db.node_commons.plan.relational.planner.node.StreamSortN
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.ValueFillNode;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.WindowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingScheme;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 
 import java.util.Collections;

@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.window;
 
-import org.apache.iotdb.db.queryengine.plan.expression.Expression;
+import org.apache.iotdb.db.node_commons.plan.expression.expression.Expression;
 
 public class ConditionWindowParameter extends WindowParameter {
 

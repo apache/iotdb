@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.assertions;
 
-import org.apache.iotdb.db.queryengine.plan.relational.planner.DataOrganizationSpecification;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingScheme;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.DataOrganizationSpecification;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.OrderingScheme;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder;
 
 import com.google.common.collect.ImmutableList;

@@ -20,6 +20,9 @@
 package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.node_commons.plan.expression.expression.multi.builtin.helper.CastFunctionHelper;
+import org.apache.iotdb.db.node_commons.plan.relational.function.function.InterpretedFunctionInvoker;
+import org.apache.iotdb.db.node_commons.plan.relational.function.function.OperatorType;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.ArithmeticBinaryExpression;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.ArithmeticUnaryExpression;
@@ -31,6 +34,7 @@ import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.ComparisonExpres
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Extract;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.FunctionCall;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.IfExpression;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.InPredicate;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.IsNotNullPredicate;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.IsNullPredicate;
@@ -43,14 +47,10 @@ import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.SimpleCaseExpres
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
-import org.apache.iotdb.db.queryengine.plan.expression.multi.builtin.helper.CastFunctionHelper;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
-import org.apache.iotdb.db.queryengine.plan.relational.function.InterpretedFunctionInvoker;
-import org.apache.iotdb.db.queryengine.plan.relational.function.OperatorType;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.DeterminismEvaluator;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IfExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InListExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WhenClause;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeCoercion;
@@ -79,10 +79,10 @@ import static com.google.common.collect.Iterables.getOnlyElement;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.node_commons.plan.relational.sql.ast.ArithmeticUnaryExpression.Sign.MINUS;
 import static org.apache.iotdb.db.node_commons.plan.relational.sql.ast.ArithmeticUnaryExpression.Sign.PLUS;
+import static org.apache.iotdb.db.node_commons.plan.relational.type.TypeSignatureTranslator.toTypeSignature;
+import static org.apache.iotdb.db.node_commons.transformation.dag.column.column.unary.scalar.ExtractTransformer.constructEvaluateFunction;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.DeterminismEvaluator.isDeterministic;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils.isEffectivelyLiteral;
-import static org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignatureTranslator.toTypeSignature;
-import static org.apache.iotdb.db.node_commons.transformation.dag.column.column.unary.scalar.ExtractTransformer.constructEvaluateFunction;
 
 public class IrExpressionInterpreter {
 

@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.queryengine.transformation.dag.column.unary;
 
 import org.apache.iotdb.db.node_commons.transformation.dag.column.column.leaf.IdentityColumnTransformer;
-
 import org.apache.iotdb.db.node_commons.transformation.dag.column.column.unary.ArithmeticNegationColumnTransformer;
 import org.apache.iotdb.db.node_commons.transformation.dag.column.column.unary.InColumnTransformer;
 import org.apache.iotdb.db.node_commons.transformation.dag.column.column.unary.IsNullColumnTransformer;
@@ -28,6 +27,7 @@ import org.apache.iotdb.db.node_commons.transformation.dag.column.column.unary.L
 import org.apache.iotdb.db.node_commons.transformation.dag.column.column.unary.LogicNotColumnTransformer;
 import org.apache.iotdb.db.node_commons.transformation.dag.column.column.unary.RegularColumnTransformer;
 import org.apache.iotdb.db.node_commons.transformation.dag.column.column.unary.UnaryColumnTransformer;
+
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.common.regexp.LikePattern;

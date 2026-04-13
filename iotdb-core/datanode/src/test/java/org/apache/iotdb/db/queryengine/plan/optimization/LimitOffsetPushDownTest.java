@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.optimization;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.node_commons.plan.expression.expression.Expression;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
@@ -29,7 +30,6 @@ import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analyzer;
 import org.apache.iotdb.db.queryengine.plan.analyze.FakePartitionFetcherImpl;
 import org.apache.iotdb.db.queryengine.plan.analyze.FakeSchemaFetcherImpl;
-import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.parser.StatementGenerator;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.OrderByParameter;
@@ -51,11 +51,11 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 
-import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.add;
-import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.function;
-import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.gt;
-import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.intValue;
-import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.timeSeries;
+import static org.apache.iotdb.db.node_commons.plan.expression.expression.ExpressionFactory.add;
+import static org.apache.iotdb.db.node_commons.plan.expression.expression.ExpressionFactory.function;
+import static org.apache.iotdb.db.node_commons.plan.expression.expression.ExpressionFactory.gt;
+import static org.apache.iotdb.db.node_commons.plan.expression.expression.ExpressionFactory.intValue;
+import static org.apache.iotdb.db.node_commons.plan.expression.expression.ExpressionFactory.timeSeries;
 import static org.apache.iotdb.db.queryengine.plan.optimization.OptimizationTestUtil.schemaMap;
 
 /** Use optimize rule: LimitOffsetPushDown and OrderByExpressionWithLimitChangeToTopK */

@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.node_commons.transformation.dag.column.column.udf;
 
-import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.RecordIterator;
 import org.apache.iotdb.db.node_commons.transformation.dag.column.column.ColumnTransformer;
 import org.apache.iotdb.db.node_commons.transformation.dag.column.column.multi.MultiColumnTransformer;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.RecordIterator;
 import org.apache.iotdb.udf.api.relational.ScalarFunction;
 import org.apache.iotdb.udf.api.relational.access.Record;
 

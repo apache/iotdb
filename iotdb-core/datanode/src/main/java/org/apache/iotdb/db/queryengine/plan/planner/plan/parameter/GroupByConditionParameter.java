@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner.plan.parameter;
 
+import org.apache.iotdb.db.node_commons.plan.expression.expression.Expression;
 import org.apache.iotdb.db.queryengine.execution.operator.window.WindowType;
-import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 

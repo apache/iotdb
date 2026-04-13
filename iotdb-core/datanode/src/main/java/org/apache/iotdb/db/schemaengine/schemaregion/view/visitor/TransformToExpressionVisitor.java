@@ -55,24 +55,32 @@ import org.apache.iotdb.commons.schema.view.viewExpression.unary.NegationViewExp
 import org.apache.iotdb.commons.schema.view.viewExpression.unary.RegularViewExpression;
 import org.apache.iotdb.commons.schema.view.viewExpression.unary.UnaryViewExpression;
 import org.apache.iotdb.commons.schema.view.viewExpression.visitor.ViewExpressionVisitor;
-import org.apache.iotdb.db.queryengine.plan.expression.Expression;
-import org.apache.iotdb.db.queryengine.plan.expression.binary.AdditionExpression;
-import org.apache.iotdb.db.queryengine.plan.expression.binary.DivisionExpression;
-import org.apache.iotdb.db.queryengine.plan.expression.binary.EqualToExpression;
-import org.apache.iotdb.db.queryengine.plan.expression.binary.GreaterEqualExpression;
-import org.apache.iotdb.db.queryengine.plan.expression.binary.GreaterThanExpression;
-import org.apache.iotdb.db.queryengine.plan.expression.binary.LessEqualExpression;
-import org.apache.iotdb.db.queryengine.plan.expression.binary.LessThanExpression;
-import org.apache.iotdb.db.queryengine.plan.expression.binary.LogicAndExpression;
-import org.apache.iotdb.db.queryengine.plan.expression.binary.LogicOrExpression;
-import org.apache.iotdb.db.queryengine.plan.expression.binary.ModuloExpression;
-import org.apache.iotdb.db.queryengine.plan.expression.binary.MultiplicationExpression;
-import org.apache.iotdb.db.queryengine.plan.expression.binary.NonEqualExpression;
-import org.apache.iotdb.db.queryengine.plan.expression.binary.SubtractionExpression;
-import org.apache.iotdb.db.queryengine.plan.expression.leaf.ConstantOperand;
-import org.apache.iotdb.db.queryengine.plan.expression.leaf.NullOperand;
-import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
-import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand;
+import org.apache.iotdb.db.node_commons.plan.expression.expression.Expression;
+import org.apache.iotdb.db.node_commons.plan.expression.expression.binary.AdditionExpression;
+import org.apache.iotdb.db.node_commons.plan.expression.expression.binary.DivisionExpression;
+import org.apache.iotdb.db.node_commons.plan.expression.expression.binary.EqualToExpression;
+import org.apache.iotdb.db.node_commons.plan.expression.expression.binary.GreaterEqualExpression;
+import org.apache.iotdb.db.node_commons.plan.expression.expression.binary.GreaterThanExpression;
+import org.apache.iotdb.db.node_commons.plan.expression.expression.binary.LessEqualExpression;
+import org.apache.iotdb.db.node_commons.plan.expression.expression.binary.LessThanExpression;
+import org.apache.iotdb.db.node_commons.plan.expression.expression.binary.LogicAndExpression;
+import org.apache.iotdb.db.node_commons.plan.expression.expression.binary.LogicOrExpression;
+import org.apache.iotdb.db.node_commons.plan.expression.expression.binary.ModuloExpression;
+import org.apache.iotdb.db.node_commons.plan.expression.expression.binary.MultiplicationExpression;
+import org.apache.iotdb.db.node_commons.plan.expression.expression.binary.NonEqualExpression;
+import org.apache.iotdb.db.node_commons.plan.expression.expression.binary.SubtractionExpression;
+import org.apache.iotdb.db.node_commons.plan.expression.expression.leaf.ConstantOperand;
+import org.apache.iotdb.db.node_commons.plan.expression.expression.leaf.NullOperand;
+import org.apache.iotdb.db.node_commons.plan.expression.expression.leaf.TimeSeriesOperand;
+import org.apache.iotdb.db.node_commons.plan.expression.expression.leaf.TimestampOperand;
+import org.apache.iotdb.db.node_commons.plan.expression.expression.multi.FunctionExpression;
+import org.apache.iotdb.db.node_commons.plan.expression.expression.ternary.BetweenExpression;
+import org.apache.iotdb.db.node_commons.plan.expression.expression.unary.InExpression;
+import org.apache.iotdb.db.node_commons.plan.expression.expression.unary.IsNullExpression;
+import org.apache.iotdb.db.node_commons.plan.expression.expression.unary.LikeExpression;
+import org.apache.iotdb.db.node_commons.plan.expression.expression.unary.LogicNotExpression;
+import org.apache.iotdb.db.node_commons.plan.expression.expression.unary.NegationExpression;
+import org.apache.iotdb.db.node_commons.plan.expression.expression.unary.RegularExpression;
 
 import org.apache.tsfile.utils.Pair;
 
@@ -134,21 +142,19 @@ public class TransformToExpressionVisitor extends ViewExpressionVisitor<Expressi
   @Override
   public Expression visitInExpression(InViewExpression inExpression, Void context) {
     Expression child = this.process(inExpression.getExpression(), context);
-    return new org.apache.iotdb.db.queryengine.plan.expression.unary.InExpression(
-        child, inExpression.isNotIn(), inExpression.getValuesInLinkedHashSet());
+    return new InExpression(child, inExpression.isNotIn(), inExpression.getValuesInLinkedHashSet());
   }
 
   @Override
   public Expression visitIsNullExpression(IsNullViewExpression isNullExpression, Void context) {
     Expression child = this.process(isNullExpression.getExpression(), context);
-    return new org.apache.iotdb.db.queryengine.plan.expression.unary.IsNullExpression(
-        child, isNullExpression.isNot());
+    return new IsNullExpression(child, isNullExpression.isNot());
   }
 
   @Override
   public Expression visitLikeExpression(LikeViewExpression likeExpression, Void context) {
     Expression child = this.process(likeExpression.getExpression(), context);
-    return new org.apache.iotdb.db.queryengine.plan.expression.unary.LikeExpression(
+    return new LikeExpression(
         child, likeExpression.getPattern(), likeExpression.getEscape(), likeExpression.isNot());
   }
 
@@ -156,20 +162,20 @@ public class TransformToExpressionVisitor extends ViewExpressionVisitor<Expressi
   public Expression visitLogicNotExpression(
       LogicNotViewExpression logicNotExpression, Void context) {
     Expression child = this.process(logicNotExpression.getExpression(), context);
-    return new org.apache.iotdb.db.queryengine.plan.expression.unary.LogicNotExpression(child);
+    return new LogicNotExpression(child);
   }
 
   @Override
   public Expression visitNegationExpression(
       NegationViewExpression negationExpression, Void context) {
     Expression child = this.process(negationExpression.getExpression(), context);
-    return new org.apache.iotdb.db.queryengine.plan.expression.unary.NegationExpression(child);
+    return new NegationExpression(child);
   }
 
   @Override
   public Expression visitRegularExpression(RegularViewExpression regularExpression, Void context) {
     Expression child = this.process(regularExpression.getExpression(), context);
-    return new org.apache.iotdb.db.queryengine.plan.expression.unary.RegularExpression(
+    return new RegularExpression(
         child,
         regularExpression.getPatternString(),
         regularExpression.getPattern(),
@@ -307,8 +313,7 @@ public class TransformToExpressionVisitor extends ViewExpressionVisitor<Expressi
     Expression first = this.process(betweenViewExpression.getFirstExpression(), null);
     Expression second = this.process(betweenViewExpression.getSecondExpression(), null);
     Expression third = this.process(betweenViewExpression.getThirdExpression(), null);
-    return new org.apache.iotdb.db.queryengine.plan.expression.ternary.BetweenExpression(
-        first, second, third, betweenViewExpression.isNotBetween());
+    return new BetweenExpression(first, second, third, betweenViewExpression.isNotBetween());
   }
 
   // endregion
@@ -321,7 +326,7 @@ public class TransformToExpressionVisitor extends ViewExpressionVisitor<Expressi
     for (ViewExpression viewExpression : viewExpressionList) {
       expressionList.add(this.process(viewExpression, null));
     }
-    return new org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression(
+    return new FunctionExpression(
         functionViewExpression.getFunctionName(),
         functionViewExpression.getFunctionAttributes(),
         expressionList);

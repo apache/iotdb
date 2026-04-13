@@ -28,6 +28,7 @@ import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.ComparisonExpres
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Extract;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.FunctionCall;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.IfExpression;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.InPredicate;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.IsNotNullPredicate;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.IsNullPredicate;
@@ -35,8 +36,11 @@ import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.LikePredicate;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.LogicalExpression;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Node;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.NotExpression;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.NullIfExpression;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Row;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.SearchedCaseExpression;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.SimpleCaseExpression;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Trim;
 
 public abstract class DefaultTraversalVisitor<C> extends AstVisitor<Void, C> {
   @Override

@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.memory;
 
-import org.apache.iotdb.db.queryengine.plan.expression.Expression;
-import org.apache.iotdb.db.queryengine.plan.expression.leaf.ConstantOperand;
-import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
+import org.apache.iotdb.db.node_commons.plan.expression.expression.Expression;
+import org.apache.iotdb.db.node_commons.plan.expression.expression.leaf.ConstantOperand;
+import org.apache.iotdb.db.node_commons.plan.expression.expression.multi.FunctionExpression;
 
 import java.util.HashMap;
 import java.util.Map;

@@ -21,12 +21,12 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule;
 
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.Symbol;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.node.ExceptNode;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.node.IntersectNode;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.node.SetOperationNode;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.UnionNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Lookup;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Rule;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExceptNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.IntersectNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SetOperationNode;
 
 import com.google.common.collect.ImmutableListMultimap;
 import com.google.common.collect.Iterables;

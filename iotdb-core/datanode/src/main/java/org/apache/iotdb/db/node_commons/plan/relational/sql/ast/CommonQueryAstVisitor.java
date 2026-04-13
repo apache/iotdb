@@ -153,4 +153,36 @@ public abstract class CommonQueryAstVisitor<R, C> implements IAstVisitor<R, C> {
   protected R visitFunctionCall(FunctionCall node, C context) {
     return visitExpression(node, context);
   }
+
+  protected R visitTrim(Trim node, C context) {
+    return visitExpression(node, context);
+  }
+
+  protected R visitIfExpression(IfExpression node, C context) {
+    return visitExpression(node, context);
+  }
+
+  protected R visitNullIfExpression(NullIfExpression node, C context) {
+    return visitExpression(node, context);
+  }
+
+  protected R visitDataType(DataType node, C context) {
+    return visitExpression(node, context);
+  }
+
+  protected R visitGenericDataType(GenericDataType node, C context) {
+    return visitDataType(node, context);
+  }
+
+  protected R visitFrameBound(FrameBound node, C context) {
+    return visitNode(node, context);
+  }
+
+  protected R visitWindowFrame(WindowFrame node, C context) {
+    return visitNode(node, context);
+  }
+
+  protected R visitRow(Row node, C context) {
+    return visitExpression(node, context);
+  }
 }

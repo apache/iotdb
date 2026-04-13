@@ -29,7 +29,7 @@ import org.junit.Test;
 
 import java.time.ZonedDateTime;
 
-import static org.apache.iotdb.db.queryengine.plan.expression.visitor.CountTimeAggregationAmountVisitor.COUNT_TIME_ONLY_SUPPORT_ONE_WILDCARD;
+import static org.apache.iotdb.db.node_commons.plan.expression.expression.visitor.CountTimeAggregationAmountVisitor.COUNT_TIME_ONLY_SUPPORT_ONE_WILDCARD;
 import static org.apache.iotdb.db.queryengine.plan.statement.component.IntoComponent.DEVICE_ALIGNMENT_INCONSISTENT_ERROR_MSG;
 import static org.apache.iotdb.db.queryengine.plan.statement.component.IntoComponent.DEVICE_NUM_MISMATCH_ERROR_MSG;
 import static org.apache.iotdb.db.queryengine.plan.statement.component.IntoComponent.DUPLICATE_TARGET_PATH_ERROR_MSG;

@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.expression.predicate;
 
+import org.apache.iotdb.db.node_commons.plan.expression.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils;
-import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 
@@ -36,22 +36,22 @@ import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.TimeZone;
 
-import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.and;
-import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.between;
-import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.eq;
-import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.groupByTime;
-import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.gt;
-import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.gte;
-import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.in;
-import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.longValue;
-import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.lt;
-import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.lte;
-import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.neq;
-import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.not;
-import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.notBetween;
-import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.notIn;
-import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.or;
-import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.time;
+import static org.apache.iotdb.db.node_commons.plan.expression.expression.ExpressionFactory.and;
+import static org.apache.iotdb.db.node_commons.plan.expression.expression.ExpressionFactory.between;
+import static org.apache.iotdb.db.node_commons.plan.expression.expression.ExpressionFactory.eq;
+import static org.apache.iotdb.db.node_commons.plan.expression.expression.ExpressionFactory.groupByTime;
+import static org.apache.iotdb.db.node_commons.plan.expression.expression.ExpressionFactory.gt;
+import static org.apache.iotdb.db.node_commons.plan.expression.expression.ExpressionFactory.gte;
+import static org.apache.iotdb.db.node_commons.plan.expression.expression.ExpressionFactory.in;
+import static org.apache.iotdb.db.node_commons.plan.expression.expression.ExpressionFactory.longValue;
+import static org.apache.iotdb.db.node_commons.plan.expression.expression.ExpressionFactory.lt;
+import static org.apache.iotdb.db.node_commons.plan.expression.expression.ExpressionFactory.lte;
+import static org.apache.iotdb.db.node_commons.plan.expression.expression.ExpressionFactory.neq;
+import static org.apache.iotdb.db.node_commons.plan.expression.expression.ExpressionFactory.not;
+import static org.apache.iotdb.db.node_commons.plan.expression.expression.ExpressionFactory.notBetween;
+import static org.apache.iotdb.db.node_commons.plan.expression.expression.ExpressionFactory.notIn;
+import static org.apache.iotdb.db.node_commons.plan.expression.expression.ExpressionFactory.or;
+import static org.apache.iotdb.db.node_commons.plan.expression.expression.ExpressionFactory.time;
 import static org.apache.tsfile.read.filter.operator.Not.CONTAIN_NOT_ERR_MSG;
 
 public class ConvertPredicateToTimeFilterTest {

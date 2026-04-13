@@ -24,14 +24,14 @@ import org.apache.iotdb.db.node_commons.plan.planner.plan.node.IPlanVisitor;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.process.SingleChildProcessNode;
+import org.apache.iotdb.db.node_commons.plan.relational.metadata.ResolvedFunction;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.DataOrganizationSpecification;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.OrderingScheme;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.FrameBound;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.WindowFrame;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.ResolvedFunction;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.DataOrganizationSpecification;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingScheme;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FrameBound;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WindowFrame;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -55,9 +55,9 @@ import java.util.Set;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.collect.Iterables.concat;
 import static java.util.Objects.requireNonNull;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FrameBound.Type.CURRENT_ROW;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FrameBound.Type.UNBOUNDED_PRECEDING;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WindowFrame.Type.RANGE;
+import static org.apache.iotdb.db.node_commons.plan.relational.sql.ast.FrameBound.Type.CURRENT_ROW;
+import static org.apache.iotdb.db.node_commons.plan.relational.sql.ast.FrameBound.Type.UNBOUNDED_PRECEDING;
+import static org.apache.iotdb.db.node_commons.plan.relational.sql.ast.WindowFrame.Type.RANGE;
 
 public class WindowNode extends SingleChildProcessNode {
   private final Set<Symbol> prePartitionedInputs;

@@ -144,18 +144,6 @@ public abstract class AstVisitor<R, C> extends CommonQueryAstVisitor<R, C> {
     return visitExpression(node, context);
   }
 
-  protected R visitTrim(Trim node, C context) {
-    return visitExpression(node, context);
-  }
-
-  protected R visitIfExpression(IfExpression node, C context) {
-    return visitExpression(node, context);
-  }
-
-  protected R visitNullIfExpression(NullIfExpression node, C context) {
-    return visitExpression(node, context);
-  }
-
   protected R visitWindowDefinition(WindowDefinition node, C context) {
     return visitNode(node, context);
   }
@@ -165,14 +153,6 @@ public abstract class AstVisitor<R, C> extends CommonQueryAstVisitor<R, C> {
   }
 
   protected R visitWindowSpecification(WindowSpecification node, C context) {
-    return visitNode(node, context);
-  }
-
-  protected R visitWindowFrame(WindowFrame node, C context) {
-    return visitNode(node, context);
-  }
-
-  protected R visitFrameBound(FrameBound node, C context) {
     return visitNode(node, context);
   }
 
@@ -206,10 +186,6 @@ public abstract class AstVisitor<R, C> extends CommonQueryAstVisitor<R, C> {
 
   protected R visitValues(Values node, C context) {
     return visitQueryBody(node, context);
-  }
-
-  protected R visitRow(Row node, C context) {
-    return visitExpression(node, context);
   }
 
   protected R visitTableSubquery(TableSubquery node, C context) {
@@ -438,14 +414,6 @@ public abstract class AstVisitor<R, C> extends CommonQueryAstVisitor<R, C> {
 
   protected R visitQuantifiedComparisonExpression(QuantifiedComparisonExpression node, C context) {
     return visitExpression(node, context);
-  }
-
-  protected R visitDataType(DataType node, C context) {
-    return visitExpression(node, context);
-  }
-
-  protected R visitGenericDataType(GenericDataType node, C context) {
-    return visitDataType(node, context);
   }
 
   protected R visitDataTypeParameter(DataTypeParameter node, C context) {

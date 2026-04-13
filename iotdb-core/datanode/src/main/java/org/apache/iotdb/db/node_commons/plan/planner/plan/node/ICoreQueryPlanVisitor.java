@@ -16,14 +16,20 @@ package org.apache.iotdb.db.node_commons.plan.planner.plan.node;
 
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.process.MultiChildProcessNode;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.process.SingleChildProcessNode;
+import org.apache.iotdb.db.node_commons.plan.planner.plan.node.process.TwoChildProcessNode;
+import org.apache.iotdb.db.node_commons.plan.planner.plan.node.source.SourceNode;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.iterative.GroupReference;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.AggregationNode;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.node.ApplyNode;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.AssignUniqueId;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.CollectNode;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.EnforceSingleRowNode;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.node.ExceptNode;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.FillNode;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.GapFillNode;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.GroupNode;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.node.IntersectNode;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.LinearFillNode;
@@ -46,12 +52,7 @@ import org.apache.iotdb.db.node_commons.plan.relational.planner.node.UnionNode;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.ValueFillNode;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.ValuesNode;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.WindowNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TwoChildProcessNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SourceNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.GroupReference;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CteScanNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExceptNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.IntersectNode;
 
 public interface ICoreQueryPlanVisitor<R, C> extends IPlanVisitor<R, C> {
 
@@ -92,8 +93,7 @@ public interface ICoreQueryPlanVisitor<R, C> extends IPlanVisitor<R, C> {
     return visitSingleChildProcess(node, context);
   }
 
-  default R visitApply(
-      org.apache.iotdb.db.queryengine.plan.relational.planner.node.ApplyNode node, C context) {
+  default R visitApply(ApplyNode node, C context) {
     return visitTwoChildProcess(node, context);
   }
 

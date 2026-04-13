@@ -21,7 +21,7 @@ package org.apache.iotdb.db.node_commons.transformation.dag.column.column.unary.
 
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
-import org.apache.iotdb.db.queryengine.plan.expression.multi.builtin.helper.CastFunctionHelper;
+import org.apache.iotdb.db.node_commons.plan.expression.expression.multi.builtin.helper.CastFunctionHelper;
 import org.apache.iotdb.db.node_commons.transformation.dag.column.column.ColumnTransformer;
 import org.apache.iotdb.db.node_commons.transformation.dag.column.column.unary.UnaryColumnTransformer;
 import org.apache.iotdb.db.utils.DateTimeUtils;
@@ -38,7 +38,7 @@ import org.apache.tsfile.utils.DateUtils;
 import java.time.ZoneId;
 import java.time.format.DateTimeParseException;
 
-import static org.apache.iotdb.db.queryengine.plan.expression.multi.builtin.helper.CastFunctionHelper.ERROR_MSG;
+import static org.apache.iotdb.db.node_commons.plan.expression.expression.multi.builtin.helper.CastFunctionHelper.ERROR_MSG;
 import static org.apache.iotdb.rpc.TSStatusCode.DATE_OUT_OF_RANGE;
 
 public abstract class AbstractCastFunctionColumnTransformer extends UnaryColumnTransformer {

@@ -22,8 +22,8 @@ import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.node_commons.plan.expression.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.planner.node.PlanNodeDeserializeHelper;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.GroupByLevelNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesAggregationScanNode;
@@ -44,9 +44,9 @@ import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Collections;
 
-import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.gt;
-import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.longValue;
-import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.time;
+import static org.apache.iotdb.db.node_commons.plan.expression.expression.ExpressionFactory.gt;
+import static org.apache.iotdb.db.node_commons.plan.expression.expression.ExpressionFactory.longValue;
+import static org.apache.iotdb.db.node_commons.plan.expression.expression.ExpressionFactory.time;
 import static org.junit.Assert.assertEquals;
 
 public class GroupByLevelNodeSerdeTest {
