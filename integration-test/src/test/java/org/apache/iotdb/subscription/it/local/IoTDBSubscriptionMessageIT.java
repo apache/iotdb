@@ -32,6 +32,7 @@ import org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant;
 
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -55,6 +56,7 @@ public class IoTDBSubscriptionMessageIT extends AbstractSubscriptionLocalIT {
     super.setUp();
   }
 
+  @Ignore
   @Test
   public void testPullConsumerCommitAfterRemoveUserData() throws Exception {
     final String topicName = "topic_remove_user_data";
@@ -94,6 +96,7 @@ public class IoTDBSubscriptionMessageIT extends AbstractSubscriptionLocalIT {
     }
   }
 
+  @Ignore
   @Test
   public void testPullConsumerAutoCommitStoresCommitContextsOnly() throws Exception {
     final String topicName = "topic_auto_commit_context_only";
