@@ -1720,6 +1720,10 @@ public class IoTDBRestServiceIT {
   }
 
   public void selectFastLast(CloseableHttpClient httpClient) {
+    // Only used in 1D scenarios
+    if (EnvFactory.getEnv().getDataNodeWrapperList().size() > 1) {
+      return;
+    }
     CloseableHttpResponse response = null;
     try {
       HttpPost httpPost = getHttpPost("http://127.0.0.1:" + port + "/rest/v2/fastLastQuery");

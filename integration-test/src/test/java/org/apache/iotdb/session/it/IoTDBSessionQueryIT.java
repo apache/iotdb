@@ -253,6 +253,10 @@ public class IoTDBSessionQueryIT {
 
   @Test
   public void lastQueryWithPrefixTest() throws IoTDBConnectionException {
+    // Only used in 1D scenarios
+    if (EnvFactory.getEnv().getDataNodeWrapperList().size() > 1) {
+      return;
+    }
     final Set<String> retArray =
         new HashSet<>(
             Arrays.asList(
