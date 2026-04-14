@@ -189,7 +189,8 @@ public class IoTDBAutoRegionGroupExtensionIT {
                   .merge(regionInfo.getDataNodeId(), 1, Integer::sum);
             });
     // The number of RegionGroups should not less than the testMinRegionGroupNum for each database
-    Assert.assertEquals(TEST_DATABASE_NUM, databaseRegionCounter.size());
+    // +1 for AUDIT database
+    Assert.assertEquals(TEST_DATABASE_NUM + 1, databaseRegionCounter.size());
     databaseRegionCounter.forEach(
         (database, regionCount) ->
             Assert.assertTrue(
@@ -208,7 +209,8 @@ public class IoTDBAutoRegionGroupExtensionIT {
             <= 1);
     // The maximal Region count - minimal Region count should be less than or equal to 1 for each
     // Database
-    Assert.assertEquals(TEST_DATABASE_NUM, databaseDataNodeRegionCounter.size());
+    // +1 for AUDIT database
+    Assert.assertEquals(TEST_DATABASE_NUM + 1, databaseDataNodeRegionCounter.size());
     databaseDataNodeRegionCounter.forEach(
         (database, dataNodeRegionCount) ->
             Assert.assertTrue(

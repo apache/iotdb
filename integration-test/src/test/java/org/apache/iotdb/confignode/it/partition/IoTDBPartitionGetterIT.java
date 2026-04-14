@@ -534,7 +534,8 @@ public class IoTDBPartitionGetterIT {
       nodeManagementResp = client.getSchemaNodeManagementPartition(nodeManagementReq);
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), nodeManagementResp.getStatus().getCode());
-      Assert.assertEquals(databaseNum, nodeManagementResp.getMatchedNodeSize());
+      // +1 for AUDIT database
+      Assert.assertEquals(databaseNum + 1, nodeManagementResp.getMatchedNodeSize());
       Assert.assertNotNull(nodeManagementResp.getSchemaRegionMap());
       Assert.assertEquals(0, nodeManagementResp.getSchemaRegionMapSize());
     }

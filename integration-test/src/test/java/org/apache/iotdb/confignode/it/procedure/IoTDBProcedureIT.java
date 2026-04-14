@@ -133,7 +133,7 @@ public class IoTDBProcedureIT {
         () -> {
           TShowDatabaseResp resp1 = newLeaderClient.showDatabase(showAllDatabasesReq);
           if (resp1.getDatabaseInfoMap() == null
-              || MAX_STATE != resp1.getDatabaseInfoMap().size()) {
+              || MAX_STATE != resp1.getDatabaseInfoMap().size() - 1) {
             return false;
           }
           resp1

@@ -154,7 +154,7 @@ public class IoTDBDeleteDatabaseIT extends AbstractSchemaIT {
       statement.execute("CREATE DATABASE root.ln4.wf02.wt04");
       statement.execute("DELETE DATABASE root.**");
       List<String> result = new ArrayList<>();
-      try (ResultSet resultSet = statement.executeQuery("SHOW DATABASES")) {
+      try (ResultSet resultSet = statement.executeQuery("SHOW DATABASES root.ln*.**")) {
         while (resultSet.next()) {
           result.add(resultSet.getString(1));
         }
