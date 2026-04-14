@@ -301,12 +301,11 @@ public class RegexMatchState {
     }
 
     public void calcGlobalRadio(double smoothValue) {
-      globalHeightRadio =
-          (dataMaxHeight - dataMinHeight) == 0
-              ? smoothValue
-              : (dataMaxHeight - dataMinHeight) / (patternMaxHeight - patternMinHeight) == 0
-                  ? smoothValue
-                  : (patternMaxHeight - patternMinHeight);
+      if ((patternMaxHeight - patternMinHeight) == 0 || (dataMaxHeight - dataMinHeight) == 0) {
+        globalHeightRadio = smoothValue;
+      } else {
+        globalHeightRadio = (dataMaxHeight - dataMinHeight) / (patternMaxHeight - patternMinHeight);
+      }
       globalWitdhRadio = (dataMaxWidth - dataMinWidth) / (patternMaxWidth - patternMinWidth);
     }
 
