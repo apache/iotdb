@@ -565,7 +565,11 @@ public abstract class AbstractCli {
           List<Integer> maxSizeList = new ArrayList<>(columnLength);
           List<List<String>> lists =
               cacheResult(ctx, resultSet, maxSizeList, columnLength, resultSetMetaData, zoneId);
-          output(ctx, lists, maxSizeList);
+          if (isJsonExplainResult(lists)) {
+            outputRawJson(ctx, lists, maxSizeList);
+          } else {
+            output(ctx, lists, maxSizeList);
+          }
           ctx.getPrinter().println(String.format("It costs %.3fs", costTime / 1000.0));
           while (!isReachEnd) {
             if (continuePrint) {
@@ -813,6 +817,46 @@ public abstract class AbstractCli {
     }
 
     return lists;
+  }
+
+  private static final String COLUMN_DISTRIBUTION_PLAN = "distribution plan";
+  private static final String COLUMN_EXPLAIN_ANALYZE = "Explain Analyze";
+
+  private static boolean isJsonExplainResult(List<List<String>> lists) {
+    if (lists.size() != 1 || lists.get(0).size() < 2) {
+      return false;
+    }
+    String columnName = lists.get(0).get(0);
+    if (!COLUMN_DISTRIBUTION_PLAN.equalsIgnoreCase(columnName)
+        && !COLUMN_EXPLAIN_ANALYZE.equalsIgnoreCase(columnName)) {
+      return false;
+    }
+    String value = lists.get(0).get(1).trim();
+    return value.startsWith("{") || value.startsWith("[");
+  }
+
+  private static void outputRawJson(
+      CliContext ctx, List<List<String>> lists, List<Integer> maxSizeList) {
+    // Use header text length for border width instead of the full content length
+    String header = lists.get(0).get(0);
+    int headerLen = header.length() + ctx.getPrinter().computeHANCount(header);
+    List<Integer> headerSizeList = new ArrayList<>(1);
+    headerSizeList.add(headerLen);
+    // Print header with table border
+    ctx.getPrinter().printBlockLine(headerSizeList);
+    ctx.getPrinter().printRow(lists, 0, headerSizeList);
+    ctx.getPrinter().printBlockLine(headerSizeList);
+    // Print JSON content without '|' borders
+    for (int i = 1; i < lists.get(0).size(); i++) {
+      ctx.getPrinter().println(lists.get(0).get(i));
+    }
+    ctx.getPrinter().printBlockLine(headerSizeList);
+    if (isReachEnd) {
+      lineCount += lists.get(0).size() - 1;
+      ctx.getPrinter().printCount(lineCount);
+    } else {
+      lineCount += maxPrintRowCount;
+    }
   }
 
   private static void output(CliContext ctx, List<List<String>> lists, List<Integer> maxSizeList) {

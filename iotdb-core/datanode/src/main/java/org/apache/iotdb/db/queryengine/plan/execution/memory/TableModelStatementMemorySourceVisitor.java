@@ -25,6 +25,7 @@ import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanGraphJsonPrinter;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanGraphPrinter;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
@@ -35,10 +36,16 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.TableD
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Explain;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExplainOutputFormat;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.utils.Pair;
@@ -57,6 +64,8 @@ import static org.apache.iotdb.db.queryengine.plan.execution.memory.StatementMem
 
 public class TableModelStatementMemorySourceVisitor
     extends AstVisitor<StatementMemorySource, TableModelStatementMemorySourceContext> {
+
+  private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
   @Override
   public StatementMemorySource visitNode(
@@ -103,15 +112,26 @@ public class TableModelStatementMemorySourceVisitor
                 Coordinator.getInstance().getDataNodeLocationSupplier())
             .generateDistributedPlanWithOptimize(planContext);
 
-    List<String> mainExplainResult =
-        outputNodeWithExchange.accept(
-            new PlanGraphPrinter(),
-            new PlanGraphPrinter.GraphContext(
-                context.getQueryContext().getTypeProvider().getTemplatedInfo()));
+    List<String> mainExplainResult;
+    if (node.getOutputFormat() == ExplainOutputFormat.JSON) {
+      mainExplainResult = PlanGraphJsonPrinter.getJsonLines(outputNodeWithExchange);
+    } else {
+      mainExplainResult =
+          outputNodeWithExchange.accept(
+              new PlanGraphPrinter(),
+              new PlanGraphPrinter.GraphContext(
+                  context.getQueryContext().getTypeProvider().getTemplatedInfo()));
+    }
 
     Map<NodeRef<Table>, Pair<Integer, List<String>>> cteExplainResults =
         context.getQueryContext().getCteExplainResults();
-    List<String> lines = mergeExplainResults(cteExplainResults, mainExplainResult);
+    List<String> lines;
+    if (node.getOutputFormat() == ExplainOutputFormat.JSON) {
+      // For JSON format, we merge CTE results into the JSON output
+      lines = mergeExplainResultsJson(cteExplainResults, mainExplainResult);
+    } else {
+      lines = mergeExplainResults(cteExplainResults, mainExplainResult);
+    }
 
     return getStatementMemorySource(header, lines);
   }
@@ -148,5 +168,27 @@ public class TableModelStatementMemorySourceVisitor
     analyzeResult.addAll(mainExplainResult);
 
     return analyzeResult;
+  }
+
+  private List<String> mergeExplainResultsJson(
+      Map<NodeRef<Table>, Pair<Integer, List<String>>> cteExplainResults,
+      List<String> mainExplainResult) {
+    if (cteExplainResults.isEmpty()) {
+      return mainExplainResult;
+    }
+
+    JsonObject wrapper = new JsonObject();
+    JsonArray cteArray = new JsonArray();
+    for (Map.Entry<NodeRef<Table>, Pair<Integer, List<String>>> entry :
+        cteExplainResults.entrySet()) {
+      JsonObject cte = new JsonObject();
+      cte.addProperty("name", entry.getKey().getNode().getName().toString());
+      cte.add("plan", JsonParser.parseString(entry.getValue().getRight().get(0)));
+      cteArray.add(cte);
+    }
+    wrapper.add("cteQueries", cteArray);
+    wrapper.add("mainQuery", JsonParser.parseString(mainExplainResult.get(0)));
+
+    return Collections.singletonList(GSON.toJson(wrapper));
   }
 }
