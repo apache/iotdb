@@ -523,13 +523,17 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
 
       Map<TSeriesPartitionSlot, TConsensusGroupId> orderedMap =
           new LinkedHashMap<>(entry1.getValue());
-      List<TConsensusGroupId> orderedGroupIds = new ArrayList<>(orderedMap.values());
+      List<TConsensusGroupId> orderedGroupIds =
+          orderedMap.values().stream().distinct().collect(Collectors.toList());
       List<TRegionReplicaSet> regionReplicaSets =
           partitionCache.getRegionReplicaSet(orderedGroupIds);
+      Map<TConsensusGroupId, TRegionReplicaSet> groupIdToReplicaSet = new HashMap<>();
+      for (int index = 0; index < orderedGroupIds.size(); index++) {
+        groupIdToReplicaSet.put(orderedGroupIds.get(index), regionReplicaSets.get(index));
+      }
 
-      int index = 0;
       for (Map.Entry<TSeriesPartitionSlot, TConsensusGroupId> entry2 : orderedMap.entrySet()) {
-        result1.put(entry2.getKey(), regionReplicaSets.get(index++));
+        result1.put(entry2.getKey(), groupIdToReplicaSet.get(entry2.getValue()));
       }
     }
     return new SchemaPartition(
