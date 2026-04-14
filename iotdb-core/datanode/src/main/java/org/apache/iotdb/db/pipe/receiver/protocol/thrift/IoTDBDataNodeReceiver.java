@@ -105,7 +105,6 @@ import org.apache.iotdb.db.storageengine.rescon.disk.FolderManager;
 import org.apache.iotdb.db.storageengine.rescon.disk.strategy.DirectoryStrategyType;
 import org.apache.iotdb.db.tools.schema.SRStatementGenerator;
 import org.apache.iotdb.db.tools.schema.SchemaRegionSnapshotParser;
-import org.apache.iotdb.db.utils.DataNodeAuthUtils;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -953,14 +952,6 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
               SessionManager.CURRENT_RPC_VERSION,
               IoTDBConstant.ClientVersion.V_1_0);
       return RpcUtils.getStatus(openSessionResp.getCode(), openSessionResp.getMessage());
-    }
-
-    long userId = AuthorityChecker.getUserId(username).orElse(-1L);
-    Long timeToExpire = DataNodeAuthUtils.checkPasswordExpiration(userId, password, false);
-    if (timeToExpire != null && timeToExpire <= System.currentTimeMillis()) {
-      return RpcUtils.getStatus(
-          TSStatusCode.ILLEGAL_PASSWORD.getStatusCode(),
-          "Password has expired, please use \"ALTER USER\" to change to a new one");
     }
 
     return AuthorityChecker.checkUser(username, password);

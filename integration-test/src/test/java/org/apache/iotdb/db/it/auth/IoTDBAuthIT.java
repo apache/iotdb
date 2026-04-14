@@ -20,9 +20,7 @@
 package org.apache.iotdb.db.it.auth;
 
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
-import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -51,8 +49,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Callable;
 
-import static org.apache.iotdb.commons.auth.entity.User.INTERNAL_USER_END_ID;
-import static org.apache.iotdb.db.audit.DNAuditLogger.PREFIX_PASSWORD_HISTORY;
 import static org.apache.iotdb.db.it.utils.TestUtils.createUser;
 import static org.apache.iotdb.db.it.utils.TestUtils.executeNonQuery;
 import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
@@ -1518,107 +1514,6 @@ public class IoTDBAuthIT {
 
       statement.execute("create user userB '123412345678'");
       statement.execute("alter user root set password 'root12345678'");
-    }
-  }
-
-  @Test
-  public void testPasswordHistory() {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      testPasswordHistoryEncrypted(statement);
-      testPasswordHistoryCreateAndDrop(statement);
-      testPasswordHistoryAlter(statement);
-    } catch (SQLException e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
-  }
-
-  public void testPasswordHistoryEncrypted(Statement statement) throws SQLException {
-    ResultSet resultSet =
-        statement.executeQuery("SELECT password,oldPassword from root.__audit.password_history._0");
-    assertTrue(resultSet.next());
-    assertEquals(
-        AuthUtils.encryptPassword(CommonDescriptor.getInstance().getConfig().getAdminPassword()),
-        resultSet.getString("root.__audit.password_history._0.password"));
-    assertEquals(
-        AuthUtils.encryptPassword(CommonDescriptor.getInstance().getConfig().getAdminPassword()),
-        resultSet.getString("root.__audit.password_history._0.oldPassword"));
-  }
-
-  public void testPasswordHistoryCreateAndDrop(Statement statement) throws SQLException {
-    statement.execute("create user userA 'abcdef123456'");
-
-    long expectedUserAId = INTERNAL_USER_END_ID + 1;
-    try (ResultSet resultSet =
-        statement.executeQuery(
-            String.format(
-                "select last password from %s.`_" + expectedUserAId + "`",
-                PREFIX_PASSWORD_HISTORY))) {
-      if (!resultSet.next()) {
-        fail("Password history not found");
-      }
-      assertEquals(AuthUtils.encryptPassword("abcdef123456"), resultSet.getString("Value"));
-    }
-
-    try (ResultSet resultSet =
-        statement.executeQuery(
-            String.format(
-                "select last oldPassword from %s.`_" + expectedUserAId + "`",
-                PREFIX_PASSWORD_HISTORY))) {
-      if (!resultSet.next()) {
-        fail("Password history not found");
-      }
-      assertEquals(AuthUtils.encryptPassword("abcdef123456"), resultSet.getString("Value"));
-    }
-
-    statement.execute("drop user userA");
-
-    try (ResultSet resultSet =
-        statement.executeQuery(
-            String.format(
-                "select last password from %s.`_" + expectedUserAId + "`",
-                PREFIX_PASSWORD_HISTORY))) {
-      assertFalse(resultSet.next());
-    }
-
-    try (ResultSet resultSet =
-        statement.executeQuery(
-            String.format(
-                "select last oldPassword from %s.`_" + expectedUserAId + "`",
-                PREFIX_PASSWORD_HISTORY))) {
-      assertFalse(resultSet.next());
-    }
-  }
-
-  public void testPasswordHistoryAlter(Statement statement) throws SQLException {
-    statement.execute("create user userA 'abcdef123456'");
-    statement.execute("alter user userA set password 'abcdef654321'");
-
-    long expectedUserAId = INTERNAL_USER_END_ID + 2;
-    try (ResultSet resultSet =
-        statement.executeQuery(
-            String.format(
-                "select last password from %s.`_" + expectedUserAId + "`",
-                PREFIX_PASSWORD_HISTORY))) {
-      if (!resultSet.next()) {
-        fail("Password history not found");
-      }
-      assertEquals(AuthUtils.encryptPassword("abcdef654321"), resultSet.getString("Value"));
-    }
-
-    try (ResultSet resultSet =
-        statement.executeQuery(
-            String.format(
-                "select oldPassword from %s.`_" + expectedUserAId + "` order by time desc limit 1",
-                PREFIX_PASSWORD_HISTORY))) {
-      if (!resultSet.next()) {
-        fail("Password history not found");
-      }
-      assertEquals(
-          AuthUtils.encryptPassword("abcdef123456"),
-          resultSet.getString(
-              String.format("%s._" + expectedUserAId + ".oldPassword", PREFIX_PASSWORD_HISTORY)));
     }
   }
 
