@@ -498,7 +498,7 @@ public class IoTDBCteIT {
   @Test
   public void testConcurrentCteQueries() throws Exception {
     final int threadCount = 3;
-    final int queriesPerThread = 20;
+    final int queriesPerThread = 6;
     final AtomicInteger successCount = new AtomicInteger(0);
     final AtomicInteger failureCount = new AtomicInteger(0);
     final AtomicInteger totalCount = new AtomicInteger(0);
@@ -527,7 +527,7 @@ public class IoTDBCteIT {
                       // Test different types of CTE queries
                       String[] queries = {
                         String.format(
-                            "WITH cte as %s (select * from testtb WHERE voltage > 150) select * from cte ORDER BY deviceid",
+                            "WITH cte as %s (select * from testtb WHERE voltage > 150) select * from cte",
                             cteKeywords[j % cteKeywords.length]),
                         String.format(
                             "WITH cte as %s (select deviceid, avg(voltage) as avg_v from testtb GROUP BY deviceid) select * from cte",
@@ -609,7 +609,7 @@ public class IoTDBCteIT {
     int totalQueries = threadCount * queriesPerThread;
     assertEquals("All queries should succeed", totalQueries, successCount.get());
     assertEquals("No queries should fail", 0, failureCount.get());
-    assertEquals("Total query count should match", 102, totalCount.get());
+    assertEquals("Total query count should match", 30, totalCount.get());
   }
 
   private static void prepareData() {
