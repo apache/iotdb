@@ -34,6 +34,7 @@ public class ConsumerConstant {
 
   public static final String USERNAME_KEY = "username";
   public static final String PASSWORD_KEY = "password";
+  public static final String ENCRYPTED_PASSWORD_KEY = "encrypted-password";
 
   public static final String CONSUMER_ID_KEY = "consumer-id";
   public static final String CONSUMER_GROUP_ID_KEY = "group-id";

@@ -36,6 +36,7 @@ public class AbstractSubscriptionConsumerBuilder {
 
   protected String username = SessionConfig.DEFAULT_USER;
   protected String password = SessionConfig.DEFAULT_PASSWORD;
+  protected String encryptedPassword;
 
   protected String consumerId;
   protected String consumerGroupId;
@@ -73,6 +74,11 @@ public class AbstractSubscriptionConsumerBuilder {
 
   public AbstractSubscriptionConsumerBuilder password(final String password) {
     this.password = password;
+    return this;
+  }
+
+  public AbstractSubscriptionConsumerBuilder encryptedPassword(final String encryptedPassword) {
+    this.encryptedPassword = encryptedPassword;
     return this;
   }
 
