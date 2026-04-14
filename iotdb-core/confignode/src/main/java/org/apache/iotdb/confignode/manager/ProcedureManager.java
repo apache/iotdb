@@ -1382,7 +1382,7 @@ public class ProcedureManager {
       procedure = new DataPartitionTableIntegrityCheckProcedure();
       executor.submitProcedure(procedure);
     }
-    return waitingProcedureFinished(procedure);
+    return waitingProcedureFinished(procedure, 86400000);
   }
 
   /**
