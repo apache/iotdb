@@ -87,7 +87,7 @@ public class TTLScheduleTask implements Callable<Void> {
         if (isStoppedByUser) {
           return null;
         }
-      } catch (Exception e) {
+      } catch (Throwable e) {
         logger.error("[TTLCheckTask-{}] Failed to execute ttl check", workerId, e);
       }
     }
