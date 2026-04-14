@@ -69,9 +69,11 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.Nullable;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -595,6 +597,8 @@ public class CompactionUtils {
           checkTTLAndDeleteExpiredObjectFile(currentFile, basicFileAttributes, lowerBoundInMS);
           return;
         }
+      } catch (FileNotFoundException | NoSuchFileException ignored) {
+        // may be deleted by other thread
       } catch (IOException e) {
         logger.warn("Failed to read file attributes: {}", currentFile, e);
       }
@@ -646,7 +650,10 @@ public class CompactionUtils {
       FileMetrics.getInstance().decreaseObjectFileNum(1);
       FileMetrics.getInstance().decreaseObjectFileSize(attributes.size());
       logger.info("Remove object file {}, size is {}(byte)", file.getPath(), attributes.size());
-    } catch (Exception ignored) {
+    } catch (FileNotFoundException | NoSuchFileException ignored) {
+      // may be deleted by other thread
+    } catch (Exception e) {
+      logger.warn("Failed to delete expired object file: {}", file, e);
     }
   }
 
