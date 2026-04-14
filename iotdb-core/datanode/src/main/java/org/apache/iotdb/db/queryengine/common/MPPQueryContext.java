@@ -779,6 +779,13 @@ public class MPPQueryContext implements IAuditEntity {
   // ================= Authentication Interfaces =========================
 
   // ================== Plan cache related ==================
+
+  /** The cache key (fingerprint) for this query, set during planning. Empty if not cacheable. */
+  private String planCacheCachedKey = "";
+
+  /** Whether a cache lookup was attempted for this query during planning. */
+  private boolean planCacheLookupAttempted = false;
+
   // the outer list corresponds one-to-one with scanNodes
   private final List<List<Expression>> metadataExpressionLists = new ArrayList<>();
   private final List<List<String>> attributeColumnsLists = new ArrayList<>();
@@ -807,5 +814,21 @@ public class MPPQueryContext implements IAuditEntity {
 
   public void addAssignmentsList(Map<Symbol, ColumnSchema> assignments) {
     assignmentsLists.add(assignments != null ? assignments : Collections.emptyMap());
+  }
+
+  public String getPlanCacheCachedKey() {
+    return planCacheCachedKey;
+  }
+
+  public void setPlanCacheCachedKey(String planCacheCachedKey) {
+    this.planCacheCachedKey = planCacheCachedKey;
+  }
+
+  public boolean isPlanCacheLookupAttempted() {
+    return planCacheLookupAttempted;
+  }
+
+  public void setPlanCacheLookupAttempted(boolean planCacheLookupAttempted) {
+    this.planCacheLookupAttempted = planCacheLookupAttempted;
   }
 }

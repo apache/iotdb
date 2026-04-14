@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
@@ -140,6 +142,15 @@ public class PlanCacheManager {
           cooldownDeadline = now + bypassCooldownNanos;
           lastStateChangeTime = now;
         }
+      } else if (state == PlanCacheState.ACTIVE) {
+        // Degrade ACTIVE → MONITOR when benefit drops below admission thresholds.
+        // This prevents historical hot templates from polluting the cache indefinitely.
+        if (ewmaReusablePlanningCost < minReusablePlanningCost
+            || ewmaBenefitRatio < admitRatio) {
+          state = PlanCacheState.MONITOR;
+          sampleCount = 0; // Reset samples for re-evaluation
+          lastStateChangeTime = now;
+        }
       }
       return state;
     }
@@ -165,13 +176,35 @@ public class PlanCacheManager {
     }
   }
 
-  private static final int MAX_CACHE_SIZE = 1000;
-  private static final long MAX_MEMORY_BYTES = 64L * 1024 * 1024;
-  private static final int MIN_SAMPLES = 5;
-  private static final long MIN_REUSABLE_PLANNING_COST_NANOS = 1_000_000L;
-  private static final double ADMIT_RATIO = 0.20d;
-  private static final double BYPASS_RATIO = 0.10d;
-  private static final long BYPASS_COOLDOWN_NANOS = 10L * 60L * 1_000_000_000L;
+  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
+
+  private int getMaxCacheSize() {
+    return CONFIG.getSmartPlanCacheCapacity();
+  }
+
+  private long getMaxMemoryBytes() {
+    return CONFIG.getSmartPlanCacheMaxMemoryBytes();
+  }
+
+  private int getMinSamples() {
+    return CONFIG.getSmartPlanCacheMinSamples();
+  }
+
+  private long getMinReusablePlanningCostNanos() {
+    return CONFIG.getSmartPlanCacheMinReusablePlanningCostNanos();
+  }
+
+  private double getAdmitRatio() {
+    return CONFIG.getSmartPlanCacheAdmitRatio();
+  }
+
+  private double getBypassRatio() {
+    return CONFIG.getSmartPlanCacheBypassRatio();
+  }
+
+  private long getBypassCooldownNanos() {
+    return CONFIG.getSmartPlanCacheBypassCooldownMinutes() * 60L * 1_000_000_000L;
+  }
 
   private final AtomicLong currentMemoryBytes = new AtomicLong(INSTANCE_SIZE);
   private final Map<String, CachedValue> planCache;
@@ -189,7 +222,7 @@ public class PlanCacheManager {
   public LookupDecision getLookupDecision(String cacheKey) {
     TemplateProfile profile =
         templateProfiles.computeIfAbsent(cacheKey, ignored -> new TemplateProfile());
-    return profile.beforeLookup(System.nanoTime(), BYPASS_COOLDOWN_NANOS);
+    return profile.beforeLookup(System.nanoTime(), getBypassCooldownNanos());
   }
 
   public void recordCacheHit(String cacheKey) {
@@ -210,11 +243,11 @@ public class PlanCacheManager {
         reusablePlanningCost,
         firstResponseLatency,
         cacheLookupMiss,
-        MIN_SAMPLES,
-        MIN_REUSABLE_PLANNING_COST_NANOS,
-        ADMIT_RATIO,
-        BYPASS_RATIO,
-        BYPASS_COOLDOWN_NANOS,
+        getMinSamples(),
+        getMinReusablePlanningCostNanos(),
+        getAdmitRatio(),
+        getBypassRatio(),
+        getBypassCooldownNanos(),
         System.nanoTime());
   }
 
@@ -264,7 +297,8 @@ public class PlanCacheManager {
       currentMemoryBytes.addAndGet(newValueSize);
 
       Iterator<Map.Entry<String, CachedValue>> iterator = planCache.entrySet().iterator();
-      while ((currentMemoryBytes.get() > MAX_MEMORY_BYTES || planCache.size() > MAX_CACHE_SIZE)
+      while ((currentMemoryBytes.get() > getMaxMemoryBytes()
+              || planCache.size() > getMaxCacheSize())
           && iterator.hasNext()) {
         Map.Entry<String, CachedValue> eldest = iterator.next();
         CachedValue evicted = eldest.getValue();

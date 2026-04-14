@@ -429,25 +429,21 @@ public class TableLogicalPlanner {
           .recordTablePlanCost(LOGICAL_PLAN_OPTIMIZE, logicalOptimizationCost);
 
       long reusablePlanningCost = logicalPlanCostTime + logicalOptimizationCost;
-      long firstResponseLatencyEstimate =
-          queryContext.getAnalyzeCost()
-              + queryContext.getFetchPartitionCost()
-              + queryContext.getFetchSchemaCost()
-              + reusablePlanningCost;
       queryContext.setReusablePlanningCost(reusablePlanningCost);
-      queryContext.setFirstResponseLatency(firstResponseLatencyEstimate);
 
       if (cacheableQuery != null) {
-        PlanCacheManager.PlanCacheState state =
-            PlanCacheManager.getInstance()
-                .recordExecution(
-                    cachedKey,
-                    reusablePlanningCost,
-                    firstResponseLatencyEstimate,
-                    cacheLookupAttempted);
-        queryContext.setPlanCacheState(state.name());
+        // Store cache context for deferred recordExecution in QueryExecution.recordExecutionTime()
+        // where the real firstResponseLatency (first RPC server-side time) is available.
+        queryContext.setPlanCacheCachedKey(cachedKey);
+        queryContext.setPlanCacheLookupAttempted(cacheLookupAttempted);
+
+        PlanCacheManager.PlanCacheState currentState =
+            lookupDecision != null
+                ? lookupDecision.getState()
+                : PlanCacheManager.PlanCacheState.MONITOR;
+        queryContext.setPlanCacheState(currentState.name());
         queryContext.setSavedLogicalPlanningCost(
-            state == PlanCacheManager.PlanCacheState.ACTIVE ? reusablePlanningCost : 0);
+            currentState == PlanCacheManager.PlanCacheState.ACTIVE ? reusablePlanningCost : 0);
         if (PlanCacheManager.getInstance().shouldCache(cachedKey)) {
           CachedValue.ClonerContext clonerContext =
               new CachedValue.ClonerContext(
@@ -469,7 +465,7 @@ public class TableLogicalPlanner {
                   queryContext.getAssignmentsLists());
           if (!cacheLookupAttempted && lookupDecision != null) {
             queryContext.setPlanCacheStatus(
-                state == PlanCacheManager.PlanCacheState.ACTIVE ? "MISS" : "MONITOR");
+                currentState == PlanCacheManager.PlanCacheState.ACTIVE ? "MISS" : "MONITOR");
           }
         }
       }

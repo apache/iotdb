@@ -484,6 +484,52 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "query_timeout_threshold", Long.toString(conf.getQueryTimeoutThreshold()))));
 
+    // Smart Plan Cache configuration
+    conf.setSmartPlanCacheCapacity(
+        Integer.parseInt(
+            properties.getProperty(
+                "smart_plan_cache_capacity",
+                Integer.toString(conf.getSmartPlanCacheCapacity()))));
+
+    conf.setSmartPlanCacheMaxMemoryBytes(
+        Long.parseLong(
+            properties.getProperty(
+                "smart_plan_cache_max_memory_bytes",
+                Long.toString(conf.getSmartPlanCacheMaxMemoryBytes()))));
+
+    conf.setSmartPlanCacheMinSamples(
+        Integer.parseInt(
+            properties.getProperty(
+                "smart_plan_cache_min_samples",
+                Integer.toString(conf.getSmartPlanCacheMinSamples()))));
+
+    conf.setSmartPlanCacheMinReusablePlanningCostNanos(
+        Long.parseLong(
+            properties.getProperty(
+                "smart_plan_cache_min_reusable_planning_cost_nanos",
+                Long.toString(conf.getSmartPlanCacheMinReusablePlanningCostNanos()))));
+
+    conf.setSmartPlanCacheAdmitRatio(
+        Double.parseDouble(
+            properties.getProperty(
+                "smart_plan_cache_admit_ratio",
+                Double.toString(conf.getSmartPlanCacheAdmitRatio()))));
+
+    conf.setSmartPlanCacheBypassRatio(
+        Double.parseDouble(
+            properties.getProperty(
+                "smart_plan_cache_bypass_ratio",
+                Double.toString(conf.getSmartPlanCacheBypassRatio()))));
+
+    conf.setSmartPlanCacheBypassCooldownMinutes(
+        Long.parseLong(
+            properties.getProperty(
+                "smart_plan_cache_bypass_cooldown_minutes",
+                Long.toString(conf.getSmartPlanCacheBypassCooldownMinutes()))));
+
+    conf.setSmartPlanCacheMode(
+        properties.getProperty("smart_plan_cache_mode", conf.getSmartPlanCacheMode()));
+
     conf.setSessionTimeoutThreshold(
         Integer.parseInt(
             properties.getProperty(
