@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.optimization;
 
-import org.apache.iotdb.db.node_commons.plan.expression.expression.ExpressionFactory;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.queryengine.plan.expression.expression.expression.ExpressionFactory;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByTimeParameter;
@@ -34,9 +34,9 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-import static org.apache.iotdb.db.node_commons.plan.expression.expression.ExpressionFactory.gt;
-import static org.apache.iotdb.db.node_commons.plan.expression.expression.ExpressionFactory.intValue;
-import static org.apache.iotdb.db.node_commons.plan.expression.expression.ExpressionFactory.timeSeries;
+import static org.apache.iotdb.db.queryengine.plan.expression.expression.expression.ExpressionFactory.gt;
+import static org.apache.iotdb.db.queryengine.plan.expression.expression.expression.ExpressionFactory.intValue;
+import static org.apache.iotdb.db.queryengine.plan.expression.expression.expression.ExpressionFactory.timeSeries;
 import static org.apache.iotdb.db.queryengine.plan.optimization.OptimizationTestUtil.getAggregationDescriptor;
 import static org.apache.iotdb.db.queryengine.plan.optimization.OptimizationTestUtil.schemaMap;
 

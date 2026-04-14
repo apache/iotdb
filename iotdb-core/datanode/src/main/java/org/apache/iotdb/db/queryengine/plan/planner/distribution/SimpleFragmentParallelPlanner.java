@@ -19,13 +19,13 @@
 package org.apache.iotdb.db.queryengine.plan.planner.distribution;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
-import org.apache.iotdb.db.node_commons.plan.expression.expression.Expression;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.plan.ClusterTopology;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
+import org.apache.iotdb.db.queryengine.plan.expression.expression.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.AbstractFragmentParallelPlanner;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.PlanFragment;

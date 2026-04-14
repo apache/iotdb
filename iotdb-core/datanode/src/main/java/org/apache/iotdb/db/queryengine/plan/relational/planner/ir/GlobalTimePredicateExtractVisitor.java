@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.ir;
 
-import org.apache.iotdb.db.node_commons.plan.expression.expression.UnknownExpressionTypeException;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.ArithmeticBinaryExpression;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.BetweenPredicate;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.ComparisonExpression;
@@ -38,6 +37,7 @@ import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.NullIfExpression
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.SearchedCaseExpression;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.SimpleCaseExpression;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.SymbolReference;
+import org.apache.iotdb.db.queryengine.plan.expression.expression.expression.UnknownExpressionTypeException;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 
 import org.apache.tsfile.utils.Pair;

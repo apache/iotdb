@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator;
 
-import org.apache.iotdb.db.node_commons.transformation.dag.column.column.unary.scalar.DateBinFunctionColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.dag.column.column.unary.scalar.DateBinFunctionColumnTransformer;
 
 import org.apache.tsfile.read.common.TimeRange;
 

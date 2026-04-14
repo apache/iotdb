@@ -25,6 +25,7 @@ import org.apache.iotdb.db.node_commons.plan.relational.planner.Assignments;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.ApplyNode;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.node.CorrelatedJoinNode;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.BooleanLiteral;
@@ -34,7 +35,6 @@ import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.ComparisonExpres
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.LongLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlannerContext;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Rule;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CorrelatedJoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PlanNodeDecorrelator;
 import org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Captures;
 import org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Pattern;

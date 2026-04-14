@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator;
 
+import org.apache.iotdb.db.node_commons.execution.operator.source.relational.aggregation.grouped.hash.hash.GroupByHash;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.array.LongBigArray;
-import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.hash.GroupByHash;
 
 import com.google.common.collect.AbstractIterator;
 import com.google.common.collect.ImmutableList;

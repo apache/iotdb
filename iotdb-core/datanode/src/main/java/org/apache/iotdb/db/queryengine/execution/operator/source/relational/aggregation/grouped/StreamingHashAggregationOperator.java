@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped;
 
+import org.apache.iotdb.db.node_commons.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.AggregationNode;
-import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.AbstractOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
@@ -45,7 +45,7 @@ import java.util.Optional;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
-import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.UpdateMemory.NOOP;
+import static org.apache.iotdb.db.node_commons.execution.operator.source.relational.aggregation.grouped.UpdateMemory.NOOP;
 import static org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanGraphPrinter.CURRENT_USED_MEMORY;
 import static org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanGraphPrinter.MAX_USED_MEMORY;
 

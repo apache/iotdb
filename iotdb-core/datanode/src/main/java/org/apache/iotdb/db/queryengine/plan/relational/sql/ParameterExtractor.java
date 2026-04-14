@@ -19,12 +19,12 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql;
 
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.node_commons.plan.relational.analyzer.NodeRef;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Literal;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.NodeLocation;
-import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Parameter;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DefaultTraversalVisitor;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Parameter;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 
 import com.google.common.collect.ImmutableMap;

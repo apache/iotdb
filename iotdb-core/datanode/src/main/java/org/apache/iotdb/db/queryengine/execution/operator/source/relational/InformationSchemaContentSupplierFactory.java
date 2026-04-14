@@ -64,6 +64,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TTableInfo;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.node_commons.common.ConnectionInfo;
 import org.apache.iotdb.db.node_commons.plan.relational.function.function.TableBuiltinTableFunction;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Expression;
@@ -74,7 +75,6 @@ import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
-import org.apache.iotdb.db.queryengine.common.ConnectionInfo;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.execution.QueryState;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
@@ -1567,7 +1567,9 @@ public class InformationSchemaContentSupplierFactory {
     protected void constructLine() {
       ConnectionInfo connectionInfo = sessionConnectionIterator.next();
       columnBuilders[0].writeBinary(
-          new Binary(String.valueOf(connectionInfo.getDataNodeId()), TSFileConfig.STRING_CHARSET));
+          new Binary(
+              String.valueOf(IoTDBDescriptor.getInstance().getConfig().getDataNodeId()),
+              TSFileConfig.STRING_CHARSET));
       columnBuilders[1].writeBinary(
           new Binary(String.valueOf(connectionInfo.getUserId()), TSFileConfig.STRING_CHARSET));
       columnBuilders[2].writeBinary(

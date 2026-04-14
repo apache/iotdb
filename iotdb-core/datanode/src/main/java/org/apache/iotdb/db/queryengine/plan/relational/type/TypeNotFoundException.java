@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.type;
 
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
+import org.apache.iotdb.db.node_commons.plan.relational.type.TypeSignature;
 
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.rpc.TSStatusCode.TYPE_NOT_FOUND;

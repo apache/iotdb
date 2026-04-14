@@ -30,8 +30,6 @@ import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpa
 import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpattern.IrLabel;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpattern.IrRowPattern;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.RowsPerMatch;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SkipToPosition;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -49,7 +47,7 @@ import java.util.Optional;
 import java.util.Set;
 
 import static java.util.Objects.requireNonNull;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.RowsPerMatch.ONE;
+import static org.apache.iotdb.db.node_commons.plan.relational.planner.node.RowsPerMatch.ONE;
 
 public class PatternRecognitionNode extends SingleChildProcessNode {
   private final List<Symbol> partitionBy;

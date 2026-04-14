@@ -41,6 +41,7 @@ import org.apache.iotdb.db.node_commons.plan.relational.function.function.Functi
 import org.apache.iotdb.db.node_commons.plan.relational.metadata.ResolvedFunction;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.Assignments;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.OrderingScheme;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.SortOrder;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.AssignUniqueId;
@@ -87,7 +88,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.AlignedDeviceEnt
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTreeDeviceViewScanNode;

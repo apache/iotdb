@@ -27,6 +27,7 @@ import org.apache.iotdb.db.node_commons.plan.relational.metadata.ResolvedFunctio
 import org.apache.iotdb.db.node_commons.plan.relational.planner.Assignments;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.DataOrganizationSpecification;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.OrderingScheme;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.SortOrder;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.GroupNode;
@@ -42,7 +43,6 @@ import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.WindowFrame;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.FunctionNullability;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
 

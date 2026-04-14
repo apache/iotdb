@@ -29,10 +29,10 @@ import org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Pattern;
 
 import com.google.common.collect.ImmutableSet;
 
+import static org.apache.iotdb.db.node_commons.plan.relational.planner.node.RowsPerMatch.ONE;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.Util.restrictChildOutputs;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.PatternRecognition.rowsPerMatch;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.patternRecognition;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.RowsPerMatch.ONE;
 
 /**
  * This rule restricts the inputs to PatternRecognitionNode based on which symbols are used by the

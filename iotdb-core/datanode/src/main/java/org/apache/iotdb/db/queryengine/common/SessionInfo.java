@@ -22,8 +22,8 @@ package org.apache.iotdb.db.queryengine.common;
 import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.conf.IoTDBConstant.ClientVersion;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.node_commons.plan.relational.security.Identity;
 import org.apache.iotdb.db.protocol.session.IClientSession;
-import org.apache.iotdb.db.queryengine.plan.relational.security.Identity;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 

@@ -19,12 +19,12 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational;
 
-import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
+import org.apache.iotdb.db.node_commons.execution.MemoryEstimationHelper;
+import org.apache.iotdb.db.node_commons.execution.operator.source.relational.aggregation.grouped.UpdateMemory;
+import org.apache.iotdb.db.node_commons.execution.operator.source.relational.aggregation.grouped.hash.hash.MarkDistinctHash;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.process.ProcessOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.UpdateMemory;
-import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.hash.MarkDistinctHash;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.MemoryReservationManager;
 
 import com.google.common.collect.ImmutableList;

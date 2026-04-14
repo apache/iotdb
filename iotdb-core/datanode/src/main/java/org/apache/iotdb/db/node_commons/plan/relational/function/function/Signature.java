@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.node_commons.plan.relational.function.function;
 
-import org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignature;
+import org.apache.iotdb.db.node_commons.plan.relational.type.TypeSignature;
 
 import java.util.ArrayList;
 import java.util.List;

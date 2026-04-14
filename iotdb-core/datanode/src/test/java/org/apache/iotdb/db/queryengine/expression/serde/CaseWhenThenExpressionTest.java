@@ -20,9 +20,9 @@
 package org.apache.iotdb.db.queryengine.expression.serde;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.db.node_commons.plan.expression.expression.Expression;
-import org.apache.iotdb.db.node_commons.plan.expression.expression.binary.WhenThenExpression;
-import org.apache.iotdb.db.node_commons.plan.expression.expression.other.CaseWhenThenExpression;
+import org.apache.iotdb.db.queryengine.plan.expression.expression.expression.Expression;
+import org.apache.iotdb.db.queryengine.plan.expression.expression.expression.binary.WhenThenExpression;
+import org.apache.iotdb.db.queryengine.plan.expression.expression.expression.other.CaseWhenThenExpression;
 
 import org.junit.Test;
 
@@ -30,12 +30,12 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.apache.iotdb.db.node_commons.plan.expression.expression.ExpressionFactory.eq;
-import static org.apache.iotdb.db.node_commons.plan.expression.expression.ExpressionFactory.gt;
-import static org.apache.iotdb.db.node_commons.plan.expression.expression.ExpressionFactory.intValue;
-import static org.apache.iotdb.db.node_commons.plan.expression.expression.ExpressionFactory.lt;
-import static org.apache.iotdb.db.node_commons.plan.expression.expression.ExpressionFactory.timeSeries;
-import static org.apache.iotdb.db.node_commons.plan.expression.expression.ExpressionFactory.whenThen;
+import static org.apache.iotdb.db.queryengine.plan.expression.expression.expression.ExpressionFactory.eq;
+import static org.apache.iotdb.db.queryengine.plan.expression.expression.expression.ExpressionFactory.gt;
+import static org.apache.iotdb.db.queryengine.plan.expression.expression.expression.ExpressionFactory.intValue;
+import static org.apache.iotdb.db.queryengine.plan.expression.expression.expression.ExpressionFactory.lt;
+import static org.apache.iotdb.db.queryengine.plan.expression.expression.expression.ExpressionFactory.timeSeries;
+import static org.apache.iotdb.db.queryengine.plan.expression.expression.expression.ExpressionFactory.whenThen;
 import static org.junit.Assert.assertEquals;
 
 public class CaseWhenThenExpressionTest {

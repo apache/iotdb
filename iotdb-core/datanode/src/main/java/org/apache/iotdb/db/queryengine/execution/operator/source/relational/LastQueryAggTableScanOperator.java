@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational;
 
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
-import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
+import org.apache.iotdb.db.node_commons.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.fragment.DataNodeQueryContext;
 import org.apache.iotdb.db.queryengine.execution.operator.process.last.LastQueryUtil;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.LastAccumulator;

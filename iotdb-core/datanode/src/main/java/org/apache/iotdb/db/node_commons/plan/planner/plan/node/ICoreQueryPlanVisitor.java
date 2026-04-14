@@ -23,6 +23,7 @@ import org.apache.iotdb.db.node_commons.plan.relational.planner.node.Aggregation
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.ApplyNode;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.AssignUniqueId;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.CollectNode;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.node.CorrelatedJoinNode;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.EnforceSingleRowNode;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.ExceptNode;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.FillNode;
@@ -105,9 +106,7 @@ public interface ICoreQueryPlanVisitor<R, C> extends IPlanVisitor<R, C> {
     return visitSingleChildProcess(node, context);
   }
 
-  default R visitCorrelatedJoin(
-      org.apache.iotdb.db.queryengine.plan.relational.planner.node.CorrelatedJoinNode node,
-      C context) {
+  default R visitCorrelatedJoin(CorrelatedJoinNode node, C context) {
     return visitTwoChildProcess(node, context);
   }
 

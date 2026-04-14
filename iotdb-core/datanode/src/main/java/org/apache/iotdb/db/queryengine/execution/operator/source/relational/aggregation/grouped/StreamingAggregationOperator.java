@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped;
 
+import org.apache.iotdb.db.node_commons.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.node_commons.plan.relational.type.InternalTypeManager;
-import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.AbstractOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;

@@ -19,10 +19,7 @@
 
 package org.apache.iotdb.db.node_commons.plan.relational.sql.ast;
 
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InListExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WhenClause;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.util.ExpressionFormatter;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.util.ExpressionFormatter;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 

@@ -19,13 +19,13 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.builder;
 
+import org.apache.iotdb.db.node_commons.execution.operator.source.relational.aggregation.grouped.UpdateMemory;
+import org.apache.iotdb.db.node_commons.execution.operator.source.relational.aggregation.grouped.hash.hash.GroupByHash;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.db.node_commons.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedAggregator;
-import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.UpdateMemory;
-import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.hash.GroupByHash;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.primitives.Ints;
@@ -47,7 +47,7 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
-import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.hash.GroupByHash.createGroupByHash;
+import static org.apache.iotdb.db.node_commons.execution.operator.source.relational.aggregation.grouped.hash.hash.GroupByHash.createGroupByHash;
 
 public class InMemoryHashAggregationBuilder implements HashAggregationBuilder {
   private final int[] groupByChannels;

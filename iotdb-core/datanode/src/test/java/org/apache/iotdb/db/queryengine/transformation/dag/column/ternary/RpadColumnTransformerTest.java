@@ -19,8 +19,8 @@
 package org.apache.iotdb.db.queryengine.transformation.dag.column.ternary;
 
 import org.apache.iotdb.db.exception.sql.SemanticException;
-import org.apache.iotdb.db.node_commons.transformation.dag.column.column.ColumnTransformer;
-import org.apache.iotdb.db.node_commons.transformation.dag.column.column.ternary.RpadColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.dag.column.column.ColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.dag.column.column.ternary.RpadColumnTransformer;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.read.common.block.column.BinaryColumn;

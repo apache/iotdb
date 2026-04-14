@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.util;
 
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Node;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.util.ExpressionFormatter;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AnchorPattern;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.EmptyPattern;

@@ -22,9 +22,9 @@ package org.apache.iotdb.db.schemaengine.schemaregion.view;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.metadata.view.UnsupportedViewException;
 import org.apache.iotdb.db.exception.metadata.view.ViewContainsAggregationException;
-import org.apache.iotdb.db.node_commons.plan.expression.expression.Expression;
-import org.apache.iotdb.db.node_commons.plan.expression.expression.leaf.TimeSeriesOperand;
-import org.apache.iotdb.db.node_commons.plan.expression.expression.visitor.CollectAggregationExpressionsVisitor;
+import org.apache.iotdb.db.queryengine.plan.expression.expression.expression.Expression;
+import org.apache.iotdb.db.queryengine.plan.expression.expression.expression.leaf.TimeSeriesOperand;
+import org.apache.iotdb.db.queryengine.plan.expression.expression.expression.visitor.CollectAggregationExpressionsVisitor;
 
 import org.apache.tsfile.utils.Pair;
 

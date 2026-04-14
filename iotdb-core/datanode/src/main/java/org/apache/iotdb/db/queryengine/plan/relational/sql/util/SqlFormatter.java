@@ -19,12 +19,17 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.util;
 
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.AllColumns;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Identifier;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Node;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.OrderBy;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.QualifiedName;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Row;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.SelectItem;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.util.ExpressionFormatter;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AddColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AliasedRelation;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AllColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
@@ -50,7 +55,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Except;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Explain;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExplainAnalyze;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Fill;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Insert;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Intersect;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join;
@@ -61,10 +65,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Limit;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NaturalJoin;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Offset;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.OrderBy;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PatternRecognitionRelation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Property;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QuerySpecification;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Relation;
@@ -73,7 +75,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RenameColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RenameTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RowPattern;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Select;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SelectItem;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetColumnComment;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetProperties;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetTableComment;
@@ -121,8 +122,8 @@ import static com.google.common.collect.ImmutableList.toImmutableList;
 import static com.google.common.collect.Iterables.getOnlyElement;
 import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.joining;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.util.ExpressionFormatter.formatGroupBy;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.util.ExpressionFormatter.formatOrderBy;
+import static org.apache.iotdb.db.node_commons.plan.relational.sql.util.ExpressionFormatter.formatGroupBy;
+import static org.apache.iotdb.db.node_commons.plan.relational.sql.util.ExpressionFormatter.formatOrderBy;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.util.RowPatternFormatter.formatPattern;
 
 public final class SqlFormatter {

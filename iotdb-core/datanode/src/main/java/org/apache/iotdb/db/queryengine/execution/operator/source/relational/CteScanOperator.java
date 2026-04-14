@@ -21,9 +21,9 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational;
 
+import org.apache.iotdb.db.node_commons.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
-import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.source.SourceOperator;
 import org.apache.iotdb.db.utils.cte.CteDataReader;

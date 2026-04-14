@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator;
 
+import org.apache.iotdb.db.node_commons.plan.relational.planner.SortOrder;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.MergeSortComparator;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder;
 import org.apache.iotdb.db.utils.datastructure.MergeSortKey;
 import org.apache.iotdb.db.utils.datastructure.SortKey;
 

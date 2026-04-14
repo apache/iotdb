@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.frame;
 
+import org.apache.iotdb.db.node_commons.plan.relational.planner.SortOrder;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.TableWindowOperatorTestUtils;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;

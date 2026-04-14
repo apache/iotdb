@@ -39,6 +39,10 @@ import java.util.function.Consumer;
 
 import static org.apache.iotdb.db.node_commons.plan.relational.function.function.tvf.ForecastTableFunction.DEFAULT_OUTPUT_INTERVAL;
 import static org.apache.iotdb.db.node_commons.plan.relational.function.function.tvf.ForecastTableFunction.DEFAULT_OUTPUT_START_TIME;
+import static org.apache.iotdb.db.node_commons.plan.relational.sql.ast.SortItem.NullOrdering.FIRST;
+import static org.apache.iotdb.db.node_commons.plan.relational.sql.ast.SortItem.NullOrdering.LAST;
+import static org.apache.iotdb.db.node_commons.plan.relational.sql.ast.SortItem.Ordering.ASCENDING;
+import static org.apache.iotdb.db.node_commons.plan.relational.sql.ast.SortItem.Ordering.DESCENDING;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.AnalyzerTest.analyzeSQL;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.QUERY_CONTEXT;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.TEST_MATADATA;
@@ -57,10 +61,6 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.tableFunctionProcessor;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.tableScan;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.topK;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SortItem.NullOrdering.FIRST;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SortItem.NullOrdering.LAST;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SortItem.Ordering.ASCENDING;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SortItem.Ordering.DESCENDING;
 import static org.apache.iotdb.udf.api.type.Type.DOUBLE;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;

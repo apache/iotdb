@@ -26,9 +26,9 @@ import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.db.exception.ainode.AINodeConnectionException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.node_commons.plan.relational.utils.ResultColumnAppender;
 import org.apache.iotdb.db.protocol.client.an.AINodeClient;
 import org.apache.iotdb.db.protocol.client.an.AINodeClientManager;
-import org.apache.iotdb.db.queryengine.plan.relational.utils.ResultColumnAppender;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.relational.TableFunction;
@@ -73,7 +73,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.udf.builtin.relational.tvf.WindowTVFUtils.findColumnIndex;
-import static org.apache.iotdb.db.queryengine.plan.relational.utils.ResultColumnAppender.createResultColumnAppender;
+import static org.apache.iotdb.db.node_commons.plan.relational.utils.ResultColumnAppender.createResultColumnAppender;
 
 public class ClassifyTableFunction implements TableFunction {
 

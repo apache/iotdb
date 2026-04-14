@@ -24,11 +24,11 @@ import org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils;
 import org.junit.Assert;
 import org.junit.Test;
 
-import static org.apache.iotdb.db.node_commons.plan.expression.expression.ExpressionFactory.add;
-import static org.apache.iotdb.db.node_commons.plan.expression.expression.ExpressionFactory.and;
-import static org.apache.iotdb.db.node_commons.plan.expression.expression.ExpressionFactory.gt;
-import static org.apache.iotdb.db.node_commons.plan.expression.expression.ExpressionFactory.intValue;
-import static org.apache.iotdb.db.node_commons.plan.expression.expression.ExpressionFactory.timeSeries;
+import static org.apache.iotdb.db.queryengine.plan.expression.expression.expression.ExpressionFactory.add;
+import static org.apache.iotdb.db.queryengine.plan.expression.expression.expression.ExpressionFactory.and;
+import static org.apache.iotdb.db.queryengine.plan.expression.expression.expression.ExpressionFactory.gt;
+import static org.apache.iotdb.db.queryengine.plan.expression.expression.expression.ExpressionFactory.intValue;
+import static org.apache.iotdb.db.queryengine.plan.expression.expression.expression.ExpressionFactory.timeSeries;
 import static org.apache.iotdb.db.queryengine.plan.optimization.OptimizationTestUtil.schemaMap;
 
 public class PredicateUtilsTest {

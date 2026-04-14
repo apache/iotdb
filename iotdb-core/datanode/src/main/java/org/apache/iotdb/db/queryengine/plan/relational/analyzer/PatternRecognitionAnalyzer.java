@@ -20,12 +20,13 @@
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.node_commons.plan.relational.analyzer.NodeRef;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.FunctionCall;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Identifier;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.LongLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis.Range;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExcludedPattern;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.MeasureDefinition;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PatternRecognitionRelation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PatternRecognitionRelation.RowsPerMatch;

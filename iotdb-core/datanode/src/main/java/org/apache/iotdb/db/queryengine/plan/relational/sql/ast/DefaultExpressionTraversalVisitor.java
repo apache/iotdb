@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.SubqueryExpression;
+
 /** When walking Expressions, don't traverse into SubqueryExpressions */
 public abstract class DefaultExpressionTraversalVisitor<C> extends DefaultTraversalVisitor<C> {
   @Override

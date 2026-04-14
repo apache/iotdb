@@ -21,17 +21,17 @@ package org.apache.iotdb.db.queryengine.expression.predicate;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.node_commons.plan.expression.expression.Expression;
-import org.apache.iotdb.db.node_commons.plan.expression.expression.binary.EqualToExpression;
-import org.apache.iotdb.db.node_commons.plan.expression.expression.binary.GreaterEqualExpression;
-import org.apache.iotdb.db.node_commons.plan.expression.expression.binary.GreaterThanExpression;
-import org.apache.iotdb.db.node_commons.plan.expression.expression.binary.LessEqualExpression;
-import org.apache.iotdb.db.node_commons.plan.expression.expression.binary.LessThanExpression;
-import org.apache.iotdb.db.node_commons.plan.expression.expression.binary.NonEqualExpression;
-import org.apache.iotdb.db.node_commons.plan.expression.expression.leaf.ConstantOperand;
-import org.apache.iotdb.db.node_commons.plan.expression.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
+import org.apache.iotdb.db.queryengine.plan.expression.expression.expression.Expression;
+import org.apache.iotdb.db.queryengine.plan.expression.expression.expression.binary.EqualToExpression;
+import org.apache.iotdb.db.queryengine.plan.expression.expression.expression.binary.GreaterEqualExpression;
+import org.apache.iotdb.db.queryengine.plan.expression.expression.expression.binary.GreaterThanExpression;
+import org.apache.iotdb.db.queryengine.plan.expression.expression.expression.binary.LessEqualExpression;
+import org.apache.iotdb.db.queryengine.plan.expression.expression.expression.binary.LessThanExpression;
+import org.apache.iotdb.db.queryengine.plan.expression.expression.expression.binary.NonEqualExpression;
+import org.apache.iotdb.db.queryengine.plan.expression.expression.expression.leaf.ConstantOperand;
+import org.apache.iotdb.db.queryengine.plan.expression.expression.expression.leaf.TimeSeriesOperand;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.filter.basic.Filter;

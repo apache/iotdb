@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.queryengine.transformation.dag.input;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.node_commons.plan.expression.expression.leaf.ConstantOperand;
+import org.apache.iotdb.db.queryengine.plan.expression.expression.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
 import org.apache.iotdb.db.queryengine.transformation.api.YieldableState;
 import org.apache.iotdb.db.utils.CommonUtils;

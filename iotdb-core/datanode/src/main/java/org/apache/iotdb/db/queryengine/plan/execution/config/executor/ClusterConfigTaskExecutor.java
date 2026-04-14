@@ -180,8 +180,6 @@ import org.apache.iotdb.db.exception.ainode.AINodeConnectionException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
-import org.apache.iotdb.db.node_commons.plan.expression.expression.Expression;
-import org.apache.iotdb.db.node_commons.plan.expression.expression.visitor.TransformToViewExpressionVisitor;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.source.dataregion.DataRegionListeningFilter;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
@@ -252,6 +250,8 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.sys.quota.ShowSpace
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.quota.ShowThrottleQuotaTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.ShowSubscriptionsTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.ShowTopicsTask;
+import org.apache.iotdb.db.queryengine.plan.expression.expression.expression.Expression;
+import org.apache.iotdb.db.queryengine.plan.expression.expression.expression.visitor.TransformToViewExpressionVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.view.AlterLogicalViewNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DeleteDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropDB;

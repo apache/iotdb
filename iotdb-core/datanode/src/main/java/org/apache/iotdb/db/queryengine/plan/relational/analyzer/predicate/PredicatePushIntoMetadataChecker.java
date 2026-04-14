@@ -37,6 +37,7 @@ import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.FloatLiteral;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.GenericLiteral;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.IfExpression;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.InListExpression;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.InPredicate;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.IsNotNullPredicate;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.IsNullPredicate;
@@ -53,7 +54,6 @@ import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.StringLiteral;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Trim;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InListExpression;
 
 import java.util.List;
 import java.util.Set;

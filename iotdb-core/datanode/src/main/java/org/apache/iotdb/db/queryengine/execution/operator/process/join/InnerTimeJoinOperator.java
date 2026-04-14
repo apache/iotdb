@@ -19,12 +19,12 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.join;
 
-import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
+import org.apache.iotdb.db.node_commons.execution.MemoryEstimationHelper;
+import org.apache.iotdb.db.node_commons.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.TimeComparator;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.block.column.Column;

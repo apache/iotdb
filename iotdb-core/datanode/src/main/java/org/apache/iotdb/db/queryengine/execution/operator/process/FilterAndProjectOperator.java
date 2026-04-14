@@ -19,19 +19,19 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process;
 
-import org.apache.iotdb.db.node_commons.transformation.dag.column.column.AbstractCaseWhenThenColumnTransformer;
-import org.apache.iotdb.db.node_commons.transformation.dag.column.column.ColumnTransformer;
-import org.apache.iotdb.db.node_commons.transformation.dag.column.column.FailFunctionColumnTransformer;
-import org.apache.iotdb.db.node_commons.transformation.dag.column.column.binary.BinaryColumnTransformer;
-import org.apache.iotdb.db.node_commons.transformation.dag.column.column.leaf.IdentityColumnTransformer;
-import org.apache.iotdb.db.node_commons.transformation.dag.column.column.leaf.LeafColumnTransformer;
-import org.apache.iotdb.db.node_commons.transformation.dag.column.column.multi.MappableUDFColumnTransformer;
-import org.apache.iotdb.db.node_commons.transformation.dag.column.column.multi.MultiColumnTransformer;
-import org.apache.iotdb.db.node_commons.transformation.dag.column.column.ternary.TernaryColumnTransformer;
-import org.apache.iotdb.db.node_commons.transformation.dag.column.column.unary.UnaryColumnTransformer;
-import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
+import org.apache.iotdb.db.node_commons.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
+import org.apache.iotdb.db.queryengine.transformation.dag.dag.column.column.AbstractCaseWhenThenColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.dag.column.column.ColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.dag.column.column.FailFunctionColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.dag.column.column.binary.BinaryColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.dag.column.column.leaf.IdentityColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.dag.column.column.leaf.LeafColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.dag.column.column.multi.MappableUDFColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.dag.column.column.multi.MultiColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.dag.column.column.ternary.TernaryColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.dag.column.column.unary.UnaryColumnTransformer;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.block.column.Column;

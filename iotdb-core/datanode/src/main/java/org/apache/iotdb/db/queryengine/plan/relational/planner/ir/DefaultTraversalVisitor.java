@@ -34,8 +34,8 @@ import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.NullIfExpression
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Row;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.SearchedCaseExpression;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.SimpleCaseExpression;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.WhenClause;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WhenClause;
 
 public abstract class DefaultTraversalVisitor<C> extends AstVisitor<Void, C> {
   @Override

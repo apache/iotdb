@@ -21,8 +21,8 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule;
 
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.Symbol;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.node.CorrelatedJoinNode;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.JoinNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CorrelatedJoinNode;
 
 import com.google.common.collect.ImmutableSet;
 

@@ -20,9 +20,9 @@
 package org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.IntegerEncoding;
 
 import org.apache.iotdb.db.exception.sql.SemanticException;
-import org.apache.iotdb.db.node_commons.transformation.dag.column.column.ColumnTransformer;
-import org.apache.iotdb.db.node_commons.transformation.dag.column.column.unary.scalar.BytesToIntColumnTransformer;
-import org.apache.iotdb.db.node_commons.transformation.dag.column.column.unary.scalar.factory.NumericCodecStrategiesFactory;
+import org.apache.iotdb.db.queryengine.transformation.dag.dag.column.column.ColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.dag.column.column.unary.scalar.BytesToIntColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.dag.column.column.unary.scalar.factory.NumericCodecStrategiesFactory;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.read.common.block.column.BinaryColumn;

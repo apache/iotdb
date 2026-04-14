@@ -38,6 +38,9 @@ import org.junit.Test;
 import static org.apache.iotdb.db.node_commons.plan.relational.sql.ast.ArithmeticBinaryExpression.Operator.ADD;
 import static org.apache.iotdb.db.node_commons.plan.relational.sql.ast.ComparisonExpression.Operator.GREATER_THAN;
 import static org.apache.iotdb.db.node_commons.plan.relational.sql.ast.LogicalExpression.Operator.AND;
+import static org.apache.iotdb.db.node_commons.plan.relational.sql.ast.SortItem.NullOrdering.LAST;
+import static org.apache.iotdb.db.node_commons.plan.relational.sql.ast.SortItem.Ordering.ASCENDING;
+import static org.apache.iotdb.db.node_commons.plan.relational.sql.ast.SortItem.Ordering.DESCENDING;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanAssert.assertPlan;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.any;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.anyTree;
@@ -51,9 +54,6 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.project;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.sort;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.tableScan;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SortItem.NullOrdering.LAST;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SortItem.Ordering.ASCENDING;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SortItem.Ordering.DESCENDING;
 
 public class ExampleTest {
   @Test

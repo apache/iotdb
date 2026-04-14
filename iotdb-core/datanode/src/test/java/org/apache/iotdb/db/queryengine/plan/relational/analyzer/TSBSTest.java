@@ -25,10 +25,10 @@ import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.ComparisonExpres
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.DoubleLiteral;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.LongLiteral;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.QualifiedName;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlanTester;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;

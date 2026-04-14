@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.node_commons.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
@@ -36,7 +37,6 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.Des
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.SingleColumnMerger;
 import org.apache.iotdb.db.queryengine.execution.operator.source.AlignedSeriesScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.SeriesScanOperator;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;

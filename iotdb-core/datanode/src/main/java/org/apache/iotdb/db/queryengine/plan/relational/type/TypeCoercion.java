@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.type;
 
+import org.apache.iotdb.db.node_commons.plan.relational.type.TypeSignature;
+
 import org.apache.tsfile.read.common.type.Type;
 
 import java.util.function.Function;

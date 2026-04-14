@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.intermediate;
 
-import org.apache.iotdb.db.node_commons.plan.expression.expression.Expression;
+import org.apache.iotdb.db.queryengine.plan.expression.expression.expression.Expression;
 import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
 import org.apache.iotdb.db.queryengine.transformation.api.LayerRowWindowReader;
 import org.apache.iotdb.db.queryengine.transformation.api.YieldableState;

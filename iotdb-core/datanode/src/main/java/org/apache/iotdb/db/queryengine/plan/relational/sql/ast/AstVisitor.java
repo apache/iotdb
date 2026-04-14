@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
-import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.CommonQueryAstVisitor;
 
 public abstract class AstVisitor<R, C> extends CommonQueryAstVisitor<R, C> {
@@ -88,20 +87,12 @@ public abstract class AstVisitor<R, C> extends CommonQueryAstVisitor<R, C> {
     return visitNode(node, context);
   }
 
-  protected R visitOrderBy(OrderBy node, C context) {
-    return visitNode(node, context);
-  }
-
   protected R visitOffset(Offset node, C context) {
     return visitNode(node, context);
   }
 
   protected R visitLimit(Limit node, C context) {
     return visitNode(node, context);
-  }
-
-  protected R visitAllRows(AllRows node, C context) {
-    return visitExpression(node, context);
   }
 
   protected R visitQuerySpecification(QuerySpecification node, C context) {
@@ -124,60 +115,16 @@ public abstract class AstVisitor<R, C> extends CommonQueryAstVisitor<R, C> {
     return visitSetOperation(node, context);
   }
 
-  protected R visitWhenClause(WhenClause node, C context) {
-    return visitExpression(node, context);
-  }
-
   protected R visitProcessingMode(ProcessingMode node, C context) {
     return visitNode(node, context);
-  }
-
-  protected R visitInListExpression(InListExpression node, C context) {
-    return visitExpression(node, context);
-  }
-
-  protected R visitIdentifier(Identifier node, C context) {
-    return visitExpression(node, context);
-  }
-
-  protected R visitDereferenceExpression(DereferenceExpression node, C context) {
-    return visitExpression(node, context);
   }
 
   protected R visitWindowDefinition(WindowDefinition node, C context) {
     return visitNode(node, context);
   }
 
-  protected R visitWindowReference(WindowReference node, C context) {
-    return visitNode(node, context);
-  }
-
-  protected R visitWindowSpecification(WindowSpecification node, C context) {
-    return visitNode(node, context);
-  }
-
-  protected R visitSelectItem(SelectItem node, C context) {
-    return visitNode(node, context);
-  }
-
   protected R visitSingleColumn(SingleColumn node, C context) {
     return visitSelectItem(node, context);
-  }
-
-  protected R visitAllColumns(AllColumns node, C context) {
-    return visitSelectItem(node, context);
-  }
-
-  protected R visitParameter(Parameter node, C context) {
-    return visitExpression(node, context);
-  }
-
-  protected R visitSubqueryExpression(SubqueryExpression node, C context) {
-    throw new SemanticException("Only TableSubquery is supported now");
-  }
-
-  protected R visitSortItem(SortItem node, C context) {
-    return visitNode(node, context);
   }
 
   protected R visitTable(Table node, C context) {
@@ -198,14 +145,6 @@ public abstract class AstVisitor<R, C> extends CommonQueryAstVisitor<R, C> {
 
   protected R visitJoin(Join node, C context) {
     return visitRelation(node, context);
-  }
-
-  protected R visitExists(ExistsPredicate node, C context) {
-    return visitExpression(node, context);
-  }
-
-  protected R visitFieldReference(FieldReference node, C context) {
-    return visitExpression(node, context);
   }
 
   protected R visitColumnDefinition(ColumnDefinition node, C context) {
@@ -396,38 +335,6 @@ public abstract class AstVisitor<R, C> extends CommonQueryAstVisitor<R, C> {
     return visitNode(node, context);
   }
 
-  protected R visitGroupBy(GroupBy node, C context) {
-    return visitNode(node, context);
-  }
-
-  protected R visitGroupingElement(GroupingElement node, C context) {
-    return visitNode(node, context);
-  }
-
-  protected R visitGroupingSets(GroupingSets node, C context) {
-    return visitGroupingElement(node, context);
-  }
-
-  protected R visitSimpleGroupBy(SimpleGroupBy node, C context) {
-    return visitGroupingElement(node, context);
-  }
-
-  protected R visitQuantifiedComparisonExpression(QuantifiedComparisonExpression node, C context) {
-    return visitExpression(node, context);
-  }
-
-  protected R visitDataTypeParameter(DataTypeParameter node, C context) {
-    return visitNode(node, context);
-  }
-
-  protected R visitNumericTypeParameter(NumericParameter node, C context) {
-    return visitDataTypeParameter(node, context);
-  }
-
-  protected R visitTypeParameter(TypeParameter node, C context) {
-    return visitDataTypeParameter(node, context);
-  }
-
   protected R visitShowFunctions(ShowFunctions node, C context) {
     return visitStatement(node, context);
   }
@@ -606,10 +513,6 @@ public abstract class AstVisitor<R, C> extends CommonQueryAstVisitor<R, C> {
 
   protected R visitRemoveRegion(RemoveRegion node, C context) {
     return visitStatement(node, context);
-  }
-
-  protected R visitColumns(Columns node, C context) {
-    return visitExpression(node, context);
   }
 
   protected R visitSetSqlDialect(SetSqlDialect node, C context) {

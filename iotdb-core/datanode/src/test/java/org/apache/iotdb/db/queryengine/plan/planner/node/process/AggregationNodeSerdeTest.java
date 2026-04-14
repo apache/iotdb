@@ -23,8 +23,8 @@ import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.node_commons.plan.expression.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.queryengine.plan.expression.expression.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.planner.node.PlanNodeDeserializeHelper;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesAggregationScanNode;
@@ -44,8 +44,8 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-import static org.apache.iotdb.db.node_commons.plan.expression.expression.ExpressionFactory.in;
-import static org.apache.iotdb.db.node_commons.plan.expression.expression.ExpressionFactory.timeSeries;
+import static org.apache.iotdb.db.queryengine.plan.expression.expression.expression.ExpressionFactory.in;
+import static org.apache.iotdb.db.queryengine.plan.expression.expression.expression.ExpressionFactory.timeSeries;
 import static org.junit.Assert.assertEquals;
 
 public class AggregationNodeSerdeTest {

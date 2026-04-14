@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.node_commons.plan.relational.planner.node;
 
-import org.apache.iotdb.db.node_commons.plan.expression.expression.multi.FunctionType;
+import org.apache.iotdb.db.node_commons.plan.expression.expression.expression.multi.FunctionType;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.ICoreQueryPlanVisitor;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.IPlanVisitor;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNode;

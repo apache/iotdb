@@ -32,8 +32,8 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.db.node_commons.plan.relational.planner.SortOrder.ASC_NULLS_FIRST;
 import static org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.MergeSortComparator.getComparatorForTable;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder.ASC_NULLS_FIRST;
 
 public class PartitionRecognizer {
 

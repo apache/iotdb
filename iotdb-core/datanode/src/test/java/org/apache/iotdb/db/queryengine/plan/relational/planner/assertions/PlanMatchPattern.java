@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.assertions;
 
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.DataOrganizationSpecification;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.SortOrder;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.iterative.GroupReference;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.AggregationNode;
@@ -48,9 +49,9 @@ import org.apache.iotdb.db.node_commons.plan.relational.planner.node.WindowNode;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.DataType;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.SortItem;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTreeDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AlignedAggregationTreeDeviceViewScanNode;
@@ -63,7 +64,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.NonAlignedAg
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeAlignedDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeNonAlignedDeviceViewScanNode;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SortItem;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 
 import com.google.common.collect.ImmutableList;
@@ -86,18 +86,18 @@ import static com.google.common.collect.ImmutableList.toImmutableList;
 import static com.google.common.collect.ImmutableMap.toImmutableMap;
 import static java.util.Collections.nCopies;
 import static java.util.Objects.requireNonNull;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder.ASC_NULLS_FIRST;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder.ASC_NULLS_LAST;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder.DESC_NULLS_FIRST;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder.DESC_NULLS_LAST;
+import static org.apache.iotdb.db.node_commons.plan.relational.planner.SortOrder.ASC_NULLS_FIRST;
+import static org.apache.iotdb.db.node_commons.plan.relational.planner.SortOrder.ASC_NULLS_LAST;
+import static org.apache.iotdb.db.node_commons.plan.relational.planner.SortOrder.DESC_NULLS_FIRST;
+import static org.apache.iotdb.db.node_commons.plan.relational.planner.SortOrder.DESC_NULLS_LAST;
+import static org.apache.iotdb.db.node_commons.plan.relational.sql.ast.SortItem.NullOrdering.FIRST;
+import static org.apache.iotdb.db.node_commons.plan.relational.sql.ast.SortItem.NullOrdering.UNDEFINED;
+import static org.apache.iotdb.db.node_commons.plan.relational.sql.ast.SortItem.Ordering.ASCENDING;
+import static org.apache.iotdb.db.node_commons.plan.relational.sql.ast.SortItem.Ordering.DESCENDING;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.MatchResult.NO_MATCH;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.MatchResult.match;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.StrictAssignedSymbolsMatcher.actualAssignments;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.StrictSymbolsMatcher.actualOutputs;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SortItem.NullOrdering.FIRST;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SortItem.NullOrdering.UNDEFINED;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SortItem.Ordering.ASCENDING;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SortItem.Ordering.DESCENDING;
 
 public final class PlanMatchPattern {
   private final List<Matcher> matchers = new ArrayList<>();

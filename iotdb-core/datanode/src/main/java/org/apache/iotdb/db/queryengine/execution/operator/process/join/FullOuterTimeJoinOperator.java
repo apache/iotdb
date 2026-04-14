@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.queryengine.execution.operator.process.join;
 
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
+import org.apache.iotdb.db.node_commons.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.process.AbstractConsumeAllOperator;

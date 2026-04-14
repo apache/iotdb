@@ -21,10 +21,10 @@ package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.AllColumns;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AllColumns;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Identifier;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.QualifiedName;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WithQuery;
 import org.apache.iotdb.rpc.TSStatusCode;

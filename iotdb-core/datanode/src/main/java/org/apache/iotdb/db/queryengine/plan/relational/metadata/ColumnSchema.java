@@ -21,7 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
-import org.apache.iotdb.db.queryengine.plan.relational.utils.TypeUtil;
+import org.apache.iotdb.db.node_commons.plan.relational.utils.TypeUtil;
 
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.common.type.TypeFactory;

@@ -20,9 +20,9 @@
 package org.apache.iotdb.db.queryengine.plan.relational.planner.assertions;
 
 import org.apache.iotdb.db.node_commons.plan.relational.planner.OrderingScheme;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.SortOrder;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder;
 
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
