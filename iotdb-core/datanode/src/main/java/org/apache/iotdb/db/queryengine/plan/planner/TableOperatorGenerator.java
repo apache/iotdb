@@ -4411,13 +4411,17 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
 
     // No-FROM query (e.g. SELECT 1+1): produce rowCount rows with no value columns so that the
     // upstream ProjectNode can evaluate expressions once per row.
-    TsBlock emptyRowBlock =
-        new TsBlock(
-            node.getRowCount(),
-            new RunLengthEncodedColumn(
-                AbstractTableScanOperator.TIME_COLUMN_TEMPLATE, node.getRowCount()),
-            new Column[0]);
-    return new ValuesOperator(operatorContext, ImmutableList.of(emptyRowBlock));
+    if (node.getRowCount() == 1) {
+      TsBlock oneRowWithoutColumnsBlock =
+          new TsBlock(
+              node.getRowCount(),
+              new RunLengthEncodedColumn(
+                  AbstractTableScanOperator.TIME_COLUMN_TEMPLATE, node.getRowCount()),
+              new Column[0]);
+      return new ValuesOperator(operatorContext, ImmutableList.of(oneRowWithoutColumnsBlock));
+    } else {
+      throw new IllegalArgumentException("Row count must be 0 or 1");
+    }
   }
 
   @Override

@@ -92,10 +92,12 @@ public class IoTDBComplexQueryIT {
     tableResultSetEqualTest("SELECT 1+1, 1-1, 1*1, 1/1", expectedHeader, retArray, DATABASE_NAME);
 
     expectedHeader = new String[] {"_col0", "_col1", "_col2"};
-    retArray =
-        new String[] {Math.sin(1) + "," + Math.cos(1) + "," + Math.tan(1) + ","};
+    retArray = new String[] {"0.841471,0.540302,1.557408,"};
     tableResultSetEqualTest(
-        "SELECT sin(1), cos(1), tan(1)", expectedHeader, retArray, DATABASE_NAME);
+        "SELECT round(sin(1),6), round(cos(1),6), round(tan(1),6)",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
 
     expectedHeader = new String[] {"_col0"};
     retArray = new String[] {"Hello world,"};
