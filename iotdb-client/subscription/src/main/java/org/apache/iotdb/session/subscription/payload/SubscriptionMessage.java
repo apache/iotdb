@@ -20,6 +20,7 @@
 package org.apache.iotdb.session.subscription.payload;
 
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionIncompatibleHandlerException;
+import org.apache.iotdb.rpc.subscription.exception.SubscriptionRuntimeException;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 
 import org.apache.thrift.annotation.Nullable;
@@ -38,6 +39,8 @@ public class SubscriptionMessage implements Comparable<SubscriptionMessage> {
   private final short messageType;
 
   private final SubscriptionMessageHandler handler;
+
+  private volatile boolean userDataRemoved = false;
 
   public SubscriptionMessage(
       final SubscriptionCommitContext commitContext, final Map<String, List<Tablet>> tablets) {
@@ -61,6 +64,17 @@ public class SubscriptionMessage implements Comparable<SubscriptionMessage> {
 
   public short getMessageType() {
     return messageType;
+  }
+
+  public void removeUserData() {
+    if (userDataRemoved) {
+      return;
+    }
+
+    handler.removeUserData();
+    if (handler instanceof SubscriptionRecordHandler) {
+      userDataRemoved = true;
+    }
   }
 
   /////////////////////////////// override ///////////////////////////////
@@ -101,6 +115,7 @@ public class SubscriptionMessage implements Comparable<SubscriptionMessage> {
   /////////////////////////////// handlers ///////////////////////////////
 
   public List<ResultSet> getResultSets() {
+    ensureUserDataAvailable();
     if (handler instanceof SubscriptionRecordHandler) {
       return ((SubscriptionRecordHandler) handler).getResultSets();
     }
@@ -109,6 +124,7 @@ public class SubscriptionMessage implements Comparable<SubscriptionMessage> {
   }
 
   public Iterator<Tablet> getRecordTabletIterator() {
+    ensureUserDataAvailable();
     if (handler instanceof SubscriptionRecordHandler) {
       final List<ResultSet> resultSets = ((SubscriptionRecordHandler) handler).getResultSets();
       return resultSets.stream()
@@ -126,5 +142,12 @@ public class SubscriptionMessage implements Comparable<SubscriptionMessage> {
     }
     throw new SubscriptionIncompatibleHandlerException(
         String.format("%s do not support getTsFile().", handler.getClass().getSimpleName()));
+  }
+
+  private void ensureUserDataAvailable() {
+    if (userDataRemoved) {
+      throw new SubscriptionRuntimeException(
+          String.format("User data has been removed from %s.", getClass().getSimpleName()));
+    }
   }
 }
