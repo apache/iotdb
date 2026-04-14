@@ -56,7 +56,7 @@ public class IoTDBSessionQueryIT {
   @BeforeClass
   public static void setUp() throws Exception {
     System.setProperty(IoTDBConstant.IOTDB_CONF, "src/test/resources/");
-    EnvFactory.getEnv().initClusterEnvironment(1, 3);
+    EnvFactory.getEnv().initClusterEnvironment();
     AlignedWriteUtil.insertDataWithSession();
   }
 
