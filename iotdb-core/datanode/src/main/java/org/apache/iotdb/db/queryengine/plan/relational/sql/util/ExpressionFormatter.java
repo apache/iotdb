@@ -99,7 +99,6 @@ import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toList;
 import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction.DATE_BIN;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FrameBound.Type.UNBOUNDED_PRECEDING;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.util.ReservedIdentifiers.reserved;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.util.SqlFormatter.formatName;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.util.SqlFormatter.formatSql;
@@ -110,6 +109,8 @@ public final class ExpressionFormatter {
       ThreadLocal.withInitial(
           () ->
               new DecimalFormat("0.###################E0###", new DecimalFormatSymbols(Locale.US)));
+
+  private static final String LITERAL_MARKER_FORMAT = "LiteralMarker(#%s)";
 
   private ExpressionFormatter() {}
 
@@ -193,6 +194,10 @@ public final class ExpressionFormatter {
 
     @Override
     protected String visitBooleanLiteral(BooleanLiteral node, Void context) {
+      if (node.isLiteralMarker()) {
+        return String.format(LITERAL_MARKER_FORMAT, node.getLiteralIndex());
+      }
+
       return literalFormatter
           .map(formatter -> formatter.apply(node))
           .orElseGet(() -> String.valueOf(node.getValue()));
@@ -200,6 +205,10 @@ public final class ExpressionFormatter {
 
     @Override
     protected String visitStringLiteral(StringLiteral node, Void context) {
+      if (node.isLiteralMarker()) {
+        return String.format(LITERAL_MARKER_FORMAT, node.getLiteralIndex());
+      }
+
       return literalFormatter
           .map(formatter -> formatter.apply(node))
           .orElseGet(() -> formatStringLiteral(node.getValue()));
@@ -207,6 +216,10 @@ public final class ExpressionFormatter {
 
     @Override
     protected String visitBinaryLiteral(BinaryLiteral node, Void context) {
+      if (node.isLiteralMarker()) {
+        return String.format(LITERAL_MARKER_FORMAT, node.getLiteralIndex());
+      }
+
       return literalFormatter
           .map(formatter -> formatter.apply(node))
           .orElseGet(() -> "X'" + node.toHexString() + "'");
@@ -224,11 +237,17 @@ public final class ExpressionFormatter {
 
     @Override
     protected String visitLongLiteral(LongLiteral node, Void context) {
+      if (node.isLiteralMarker()) {
+        return String.format(LITERAL_MARKER_FORMAT, node.getLiteralIndex());
+      }
       return literalFormatter.map(formatter -> formatter.apply(node)).orElseGet(node::getValue);
     }
 
     @Override
     protected String visitDoubleLiteral(DoubleLiteral node, Void context) {
+      if (node.isLiteralMarker()) {
+        return String.format(LITERAL_MARKER_FORMAT, node.getLiteralIndex());
+      }
       return literalFormatter
           .map(formatter -> formatter.apply(node))
           .orElseGet(() -> doubleFormatter.get().format(node.getValue()));
@@ -237,6 +256,9 @@ public final class ExpressionFormatter {
     // do not use doubleFormatter, to prevent from introducing the precision noise
     @Override
     protected String visitFloatLiteral(FloatLiteral node, Void context) {
+      if (node.isLiteralMarker()) {
+        return String.format(LITERAL_MARKER_FORMAT, node.getLiteralIndex());
+      }
       return literalFormatter
           .map(formatter -> formatter.apply(node))
           .orElseGet(() -> String.valueOf(node.getValue()));
@@ -244,6 +266,9 @@ public final class ExpressionFormatter {
 
     @Override
     protected String visitDecimalLiteral(DecimalLiteral node, Void context) {
+      if (node.isLiteralMarker()) {
+        return String.format(LITERAL_MARKER_FORMAT, node.getLiteralIndex());
+      }
       return literalFormatter
           .map(formatter -> formatter.apply(node))
           // TODO return node value without "DECIMAL '..'" when
@@ -253,6 +278,9 @@ public final class ExpressionFormatter {
 
     @Override
     protected String visitGenericLiteral(GenericLiteral node, Void context) {
+      if (node.isLiteralMarker()) {
+        return String.format(LITERAL_MARKER_FORMAT, node.getLiteralIndex());
+      }
       return literalFormatter
           .map(formatter -> formatter.apply(node))
           .orElseGet(() -> node.getType() + " " + formatStringLiteral(node.getValue()));
@@ -260,6 +288,9 @@ public final class ExpressionFormatter {
 
     @Override
     protected String visitNullLiteral(NullLiteral node, Void context) {
+      if (node.isLiteralMarker()) {
+        return String.format(LITERAL_MARKER_FORMAT, node.getLiteralIndex());
+      }
       return literalFormatter.map(formatter -> formatter.apply(node)).orElse("null");
     }
 

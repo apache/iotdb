@@ -70,6 +70,27 @@ public class FragmentInstanceStatisticsDrawer {
         String.format(
             "Distribution Plan Cost: %.3f ms",
             context.getDistributionPlanCost() * NS_TO_MS_FACTOR));
+    addLine(
+        planHeader,
+        0,
+        String.format(
+            "Plan Cache Status: %s%s",
+            context.getPlanCacheStatus(),
+            context.getPlanCacheReason().isEmpty()
+                ? ""
+                : String.format(" (%s)", context.getPlanCacheReason())));
+    addLine(planHeader, 0, String.format("Plan Cache State: %s", context.getPlanCacheState()));
+    addLine(
+        planHeader,
+        0,
+        String.format(
+            "Plan Cache Lookup Cost: %.3f ms", context.getPlanCacheLookupCost() * NS_TO_MS_FACTOR));
+    addLine(
+        planHeader,
+        0,
+        String.format(
+            "Saved Logical Planning Cost: %.3f ms",
+            context.getSavedLogicalPlanningCost() * NS_TO_MS_FACTOR));
   }
 
   public void renderDispatchCost(MPPQueryContext context) {
