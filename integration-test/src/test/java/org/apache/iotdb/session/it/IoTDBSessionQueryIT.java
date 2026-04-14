@@ -56,7 +56,7 @@ public class IoTDBSessionQueryIT {
   @BeforeClass
   public static void setUp() throws Exception {
     System.setProperty(IoTDBConstant.IOTDB_CONF, "src/test/resources/");
-    EnvFactory.getEnv().initClusterEnvironment();
+    EnvFactory.getEnv().initClusterEnvironment(1, 3);
     AlignedWriteUtil.insertDataWithSession();
   }
 
@@ -253,14 +253,14 @@ public class IoTDBSessionQueryIT {
 
   @Test
   public void lastQueryWithPrefixTest() throws IoTDBConnectionException {
-    final String[] retArray =
-        new String[] {
-          "30,root.sg1.d1.s3,30,INT64",
-          "30,root.sg1.d1.s4,false,BOOLEAN",
-          "40,root.sg1.d1.s5,aligned_test40,TEXT",
-          "23,root.sg1.d1.s1,230000.0,FLOAT",
-          "40,root.sg1.d1.s2,40,INT32"
-        };
+    final Set<String> retArray =
+        new HashSet<>(
+            Arrays.asList(
+                "30,root.sg1.d1.s3,30,INT64",
+                "30,root.sg1.d1.s4,false,BOOLEAN",
+                "40,root.sg1.d1.s5,aligned_test40,TEXT",
+                "23,root.sg1.d1.s1,230000.0,FLOAT",
+                "40,root.sg1.d1.s2,40,INT32"));
 
     try (final ISession session = EnvFactory.getEnv().getSessionConnection()) {
       // Push last cache first
