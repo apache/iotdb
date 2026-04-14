@@ -1168,7 +1168,7 @@ public class IoTDBDescriptor {
                 "delay_analyzer_window_size",
                 ConfigurationFileUtils.getConfigurationDefaultValue("delay_analyzer_window_size")));
     if (delayAnalyzerWindowSize > 0) {
-      LOGGER.warn("[DelayAnalyzer] Set delay_analyzer_window_size to {}", delayAnalyzerWindowSize);
+      LOGGER.info("[DelayAnalyzer] Set delay_analyzer_window_size to {}", delayAnalyzerWindowSize);
       conf.setDelayAnalyzerWindowSize(delayAnalyzerWindowSize);
     }
 
