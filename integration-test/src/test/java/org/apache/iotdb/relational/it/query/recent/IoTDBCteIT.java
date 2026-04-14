@@ -527,7 +527,7 @@ public class IoTDBCteIT {
                       // Test different types of CTE queries
                       String[] queries = {
                         String.format(
-                            "WITH cte as %s (select * from testtb WHERE voltage > 150) select * from cte",
+                            "WITH cte as %s (select * from testtb WHERE voltage > 150 order by deviceid) select * from cte",
                             cteKeywords[j % cteKeywords.length]),
                         String.format(
                             "WITH cte as %s (select deviceid, avg(voltage) as avg_v from testtb GROUP BY deviceid) select * from cte",
