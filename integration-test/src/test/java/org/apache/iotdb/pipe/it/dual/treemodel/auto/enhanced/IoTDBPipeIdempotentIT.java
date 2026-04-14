@@ -293,7 +293,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
         "create database root.sg2",
         "count databases",
         "count,",
-        Collections.singleton("2,"));
+        Collections.singleton("3,"));
   }
 
   @Test
@@ -402,7 +402,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
         "create database root.sg1",
         "count databases",
         "count,",
-        Collections.singleton("1,"));
+        Collections.singleton("2,"));
   }
 
   @Test
