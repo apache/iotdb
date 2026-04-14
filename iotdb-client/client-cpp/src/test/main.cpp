@@ -17,14 +17,7 @@
  * under the License.
  */
 
-#define CATCH_CONFIG_RUNNER
-
-#ifdef _WIN32
-#ifndef WIN32_LEAN_AND_MEAN
-#define WIN32_LEAN_AND_MEAN
-#endif
-#include <winsock2.h>
-#endif
+#define CATCH_CONFIG_MAIN
 
 #include <catch.hpp>
 #include "Session.h"
@@ -58,17 +51,3 @@ struct SessionListener : Catch::TestEventListenerBase {
 };
 
 CATCH_REGISTER_LISTENER( SessionListener )
-
-int main(int argc, char* argv[]) {
-#ifdef _WIN32
-    WSADATA wsaData;
-    WSAStartup(MAKEWORD(2, 2), &wsaData);
-#endif
-    const int result = Catch::Session().run(argc, argv);
-    session.reset();
-    builder.reset();
-#ifdef _WIN32
-    WSACleanup();
-#endif
-    return result;
-}
