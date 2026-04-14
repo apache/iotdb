@@ -92,7 +92,7 @@ public class TTLScheduleTask implements Callable<Void> {
       } catch (Throwable t) {
         logger.error(
             "[TTLCheckTask-{}] Failed to execute ttl check and cannot recover", workerId, t);
-        return null;
+        throw t;
       }
     }
   }
