@@ -91,6 +91,7 @@ public class CompactionScheduleTaskWorker implements Callable<Void> {
             "[CompactionScheduleTaskWorker-{}] Failed to execute compaction schedule task and cannot recover",
             workerId,
             t);
+        return null;
       }
     }
   }
