@@ -133,6 +133,7 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
 
   protected String pipeID;
   private String taskID;
+  private String tsFileDedupScopeID;
   protected long userId;
   protected String userName;
   protected String cliHostname;
@@ -226,6 +227,8 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
     creationTime = environment.getCreationTime();
     pipeID = pipeName + "_" + creationTime;
     taskID = pipeName + "_" + dataRegionId + "_" + creationTime;
+    tsFileDedupScopeID =
+        taskID + "_" + Integer.toHexString(System.identityHashCode(environment));
 
     treePattern = TreePattern.parsePipePatternFromSourceParameters(parameters);
     tablePattern = TablePattern.parsePipePatternFromSourceParameters(parameters);
@@ -322,6 +325,8 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
     if (dataRegionId >= 0) {
       PipeInsertionDataNodeListener.getInstance().stopListenAndAssign(dataRegionId, this);
       PipeTimePartitionListener.getInstance().stopListen(dataRegionId, this);
+      PipeTsFileEpochProgressIndexKeeper.getInstance()
+          .clearProgressIndex(dataRegionId, tsFileDedupScopeID);
     }
 
     synchronized (isClosed) {
@@ -576,7 +581,7 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
     if (PipeTsFileEpochProgressIndexKeeper.getInstance()
         .isProgressIndexAfterOrEquals(
             dataRegionId,
-            pipeName,
+            tsFileDedupScopeID,
             event.getTsFileEpoch().getFilePath(),
             getProgressIndex4RealtimeEvent(event))) {
       event.skipReportOnCommit();
@@ -646,6 +651,10 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
 
   public String getTaskID() {
     return taskID;
+  }
+
+  protected String getTsFileDedupScopeID() {
+    return tsFileDedupScopeID;
   }
 
   public void increaseExtractEpochSize() {

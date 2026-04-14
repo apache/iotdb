@@ -50,6 +50,7 @@ import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.processor.iotconsensusv2.IoTConsensusV2Processor;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.source.dataregion.DataRegionListeningFilter;
+import org.apache.iotdb.db.pipe.source.dataregion.realtime.assigner.PipeTsFileEpochProgressIndexKeeper;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
@@ -124,6 +125,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
 
   private String pipeName;
   private long creationTime;
+  private String tsFileDedupScopeID;
 
   private PipeTaskMeta pipeTaskMeta;
   private ProgressIndex startIndex;
@@ -320,6 +322,14 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
     }
 
     dataRegionId = environment.getRegionId();
+    tsFileDedupScopeID =
+        pipeName
+            + "_"
+            + dataRegionId
+            + "_"
+            + creationTime
+            + "_"
+            + Integer.toHexString(System.identityHashCode(environment));
 
     treePattern = TreePattern.parsePipePatternFromSourceParameters(parameters);
     tablePattern = TablePattern.parsePipePatternFromSourceParameters(parameters);
@@ -850,6 +860,30 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
       return isReferenceCountIncreased ? progressReportEvent : null;
     }
 
+    if (shouldSkipHistoricalTsFileEvent(resource)) {
+      filteredTsFileResources2TableNames.remove(resource);
+      LOGGER.info(
+          "Pipe {}@{}: skip historical tsfile {} because realtime source in current task {} has already captured it.",
+          pipeName,
+          dataRegionId,
+          resource.getTsFilePath(),
+          tsFileDedupScopeID);
+      try {
+        return null;
+      } finally {
+        try {
+          PipeDataNodeResourceManager.tsfile()
+              .unpinTsFileResource(resource, shouldTransferModFile, pipeName);
+        } catch (final IOException e) {
+          LOGGER.warn(
+              "Pipe {}@{}: failed to unpin skipped historical TsFileResource, original path: {}",
+              pipeName,
+              dataRegionId,
+              resource.getTsFilePath());
+        }
+      }
+    }
+
     final PipeTsFileInsertionEvent event =
         new PipeTsFileInsertionEvent(
             isModelDetected ? isTableModel : null,
@@ -914,6 +948,13 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
             resource.getTsFilePath());
       }
     }
+  }
+
+  private boolean shouldSkipHistoricalTsFileEvent(final TsFileResource resource) {
+    return pipeName.startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)
+        && DataRegionConsensusImpl.getInstance() instanceof IoTConsensusV2
+        && PipeTsFileEpochProgressIndexKeeper.getInstance()
+            .containsTsFile(dataRegionId, tsFileDedupScopeID, resource.getTsFilePath());
   }
 
   private Event supplyDeletionEvent(final DeletionResource deletionResource) {

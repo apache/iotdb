@@ -31,34 +31,49 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class PipeTsFileEpochProgressIndexKeeper {
 
-  // data region id -> pipeName -> tsFile path -> max progress index
+  // data region id -> task scope id -> tsFile path -> max progress index
   private final Map<Integer, Map<String, Map<String, TsFileResource>>> progressIndexKeeper =
       new ConcurrentHashMap<>();
 
   public synchronized void registerProgressIndex(
-      final int dataRegionId, final String pipeName, final TsFileResource resource) {
+      final int dataRegionId, final String taskScopeID, final TsFileResource resource) {
     progressIndexKeeper
         .computeIfAbsent(dataRegionId, k -> new ConcurrentHashMap<>())
-        .computeIfAbsent(pipeName, k -> new ConcurrentHashMap<>())
+        .computeIfAbsent(taskScopeID, k -> new ConcurrentHashMap<>())
         .putIfAbsent(resource.getTsFilePath(), resource);
   }
 
   public synchronized void eliminateProgressIndex(
-      final int dataRegionId, final @Nonnull String pipeName, final String filePath) {
+      final int dataRegionId, final @Nonnull String taskScopeID, final String filePath) {
     progressIndexKeeper
         .computeIfAbsent(dataRegionId, k -> new ConcurrentHashMap<>())
-        .computeIfAbsent(pipeName, k -> new ConcurrentHashMap<>())
+        .computeIfAbsent(taskScopeID, k -> new ConcurrentHashMap<>())
         .remove(filePath);
+  }
+
+  public synchronized void clearProgressIndex(
+      final int dataRegionId, final @Nonnull String taskScopeID) {
+    progressIndexKeeper
+        .computeIfAbsent(dataRegionId, k -> new ConcurrentHashMap<>())
+        .remove(taskScopeID);
+  }
+
+  public synchronized boolean containsTsFile(
+      final int dataRegionId, final @Nonnull String taskScopeID, final String tsFilePath) {
+    return progressIndexKeeper
+        .computeIfAbsent(dataRegionId, k -> new ConcurrentHashMap<>())
+        .computeIfAbsent(taskScopeID, k -> new ConcurrentHashMap<>())
+        .containsKey(tsFilePath);
   }
 
   public synchronized boolean isProgressIndexAfterOrEquals(
       final int dataRegionId,
-      final String pipeName,
+      final String taskScopeID,
       final String tsFilePath,
       final ProgressIndex progressIndex) {
     return progressIndexKeeper
         .computeIfAbsent(dataRegionId, k -> new ConcurrentHashMap<>())
-        .computeIfAbsent(pipeName, k -> new ConcurrentHashMap<>())
+        .computeIfAbsent(taskScopeID, k -> new ConcurrentHashMap<>())
         .entrySet()
         .stream()
         .filter(entry -> !Objects.equals(entry.getKey(), tsFilePath))
