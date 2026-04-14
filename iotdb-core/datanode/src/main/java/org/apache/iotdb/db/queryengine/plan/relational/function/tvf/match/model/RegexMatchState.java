@@ -301,11 +301,12 @@ public class RegexMatchState {
     }
 
     public void calcGlobalRadio(double smoothValue) {
-      if ((patternMaxHeight - patternMinHeight) == 0 || (dataMaxHeight - dataMinHeight) == 0) {
-        globalHeightRadio = smoothValue;
-      } else {
-        globalHeightRadio = (dataMaxHeight - dataMinHeight) / (patternMaxHeight - patternMinHeight);
-      }
+      globalHeightRadio =
+          (dataMaxHeight - dataMinHeight) == 0
+              ? smoothValue
+              : (dataMaxHeight - dataMinHeight) / (patternMaxHeight - patternMinHeight) == 0
+                  ? smoothValue
+                  : (patternMaxHeight - patternMinHeight);
       globalWitdhRadio = (dataMaxWidth - dataMinWidth) / (patternMaxWidth - patternMinWidth);
     }
 
@@ -350,7 +351,7 @@ public class RegexMatchState {
 
         double numRadio = ((double) patternPointNum) / ((double) dataPointNum);
 
-        for (int i = 1; i < dataPointNum; i++) {
+        for (int i = 1; i <= dataPointNum; i++) {
           double patternIndex = i * numRadio;
           int leftIndex = (int) patternIndex;
           double leftRadio = patternIndex - leftIndex;
