@@ -17,20 +17,18 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
+package org.apache.iotdb.db.node_commons.plan.relational.sql.ast;
 
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.IAstVisitor;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Node;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.NodeLocation;
+import javax.annotation.Nullable;
 
-public abstract class Relation extends Node {
+public abstract class QueryBody extends Relation {
 
-  protected Relation(NodeLocation location) {
+  protected QueryBody(@Nullable NodeLocation location) {
     super(location);
   }
 
   @Override
   public <R, C> R accept(IAstVisitor<R, C> visitor, C context) {
-    return ((AstVisitor<R, C>) visitor).visitRelation(this, context);
+    return ((CommonQueryAstVisitor<R, C>) visitor).visitQueryBody(this, context);
   }
 }

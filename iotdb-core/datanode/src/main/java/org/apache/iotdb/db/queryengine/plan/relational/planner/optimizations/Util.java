@@ -23,11 +23,11 @@ import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFu
 import org.apache.iotdb.db.node_commons.plan.relational.function.function.BoundSignature;
 import org.apache.iotdb.db.node_commons.plan.relational.function.function.FunctionId;
 import org.apache.iotdb.db.node_commons.plan.relational.function.function.FunctionKind;
+import org.apache.iotdb.db.node_commons.plan.relational.metadata.FunctionNullability;
 import org.apache.iotdb.db.node_commons.plan.relational.metadata.ResolvedFunction;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.db.queryengine.common.QueryId;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.FunctionNullability;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;

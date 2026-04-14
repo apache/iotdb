@@ -416,7 +416,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           }
         }
       } else {
-        org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement s =
+        org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Statement s =
             request.getTableStatement(relationSqlParser, clientSession.getZoneId(), clientSession);
 
         if (s instanceof Use) {
@@ -605,7 +605,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     }
 
     @Override
-    public org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement getTableStatement(
+    public org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Statement getTableStatement(
         SqlParser parser, ZoneId zoneId, IClientSession clientSession) {
       return parser.createStatement(req.getStatement(), zoneId, clientSession);
     }
@@ -649,7 +649,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     }
 
     @Override
-    public org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement getTableStatement(
+    public org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Statement getTableStatement(
         SqlParser parser, ZoneId zoneId, IClientSession clientSession) {
       ensureParsed();
       return executeStatement;
@@ -1689,7 +1689,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       String sql = req.getSql();
       String statementName = req.getStatementName();
 
-      org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement statement =
+      org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Statement statement =
           relationSqlParser.createStatement(sql, clientSession.getZoneId(), clientSession);
 
       if (statement == null) {
@@ -2172,7 +2172,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
             }
           } else {
 
-            org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement s =
+            org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Statement s =
                 relationSqlParser.createStatement(
                     statement, clientSession.getZoneId(), clientSession);
 
@@ -3624,7 +3624,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
    * @return the execution result
    */
   private ExecutionResult executeBatchTableStatement(
-      final org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement statement,
+      final org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Statement statement,
       final SqlParser relationSqlParser,
       final IClientSession clientSession,
       final long queryId,
@@ -3635,7 +3635,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       final boolean userQuery) {
 
     ExecutionResult result = null;
-    List<? extends org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement>
+    List<? extends org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Statement>
         subStatements = statement.getSubStatements();
     int totalSubStatements = subStatements.size();
     LOGGER.info(
@@ -3644,7 +3644,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         queryId);
 
     for (int i = 0; i < totalSubStatements; i++) {
-      final org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement subStatement =
+      final org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Statement subStatement =
           subStatements.get(i);
 
       LOGGER.info(

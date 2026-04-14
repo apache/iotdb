@@ -45,7 +45,7 @@ import java.util.Optional;
 import static com.google.common.base.Verify.verify;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.node_commons.plan.relational.function.function.FunctionKind.AGGREGATE;
-import static org.apache.iotdb.db.queryengine.plan.relational.metadata.FunctionNullability.getAggregationFunctionNullability;
+import static org.apache.iotdb.db.node_commons.plan.relational.metadata.FunctionNullability.getAggregationFunctionNullability;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.IrExpressionInterpreter.evaluateConstantExpression;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils.isEffectivelyLiteral;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.aggregation;

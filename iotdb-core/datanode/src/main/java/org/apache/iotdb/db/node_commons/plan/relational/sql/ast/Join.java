@@ -17,12 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
-
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.AstMemoryEstimationHelper;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.IAstVisitor;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Node;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.NodeLocation;
+package org.apache.iotdb.db.node_commons.plan.relational.sql.ast;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -117,7 +112,7 @@ public class Join extends Relation {
 
   @Override
   public <R, C> R accept(IAstVisitor<R, C> visitor, C context) {
-    return ((AstVisitor<R, C>) visitor).visitJoin(this, context);
+    return ((CommonQueryAstVisitor<R, C>) visitor).visitJoin(this, context);
   }
 
   @Override

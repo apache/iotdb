@@ -22,18 +22,15 @@ package org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowp
 import org.apache.iotdb.db.node_commons.plan.relational.metadata.ResolvedFunction;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolsExtractor;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
-import static com.google.common.collect.ImmutableList.toImmutableList;
 import static java.util.Objects.requireNonNull;
 
 public final class AggregationValuePointer implements ValuePointer {
@@ -74,17 +71,6 @@ public final class AggregationValuePointer implements ValuePointer {
 
   public Optional<Symbol> getMatchNumberSymbol() {
     return matchNumberSymbol;
-  }
-
-  public List<Symbol> getInputSymbols() {
-    return arguments.stream()
-        .map(SymbolsExtractor::extractAll)
-        .flatMap(Collection::stream)
-        .filter(
-            symbol ->
-                (!classifierSymbol.isPresent() || !classifierSymbol.get().equals(symbol))
-                    && (!matchNumberSymbol.isPresent() || !matchNumberSymbol.get().equals(symbol)))
-        .collect(toImmutableList());
   }
 
   @Override

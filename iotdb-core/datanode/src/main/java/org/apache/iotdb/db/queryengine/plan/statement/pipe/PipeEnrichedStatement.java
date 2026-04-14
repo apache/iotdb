@@ -77,7 +77,7 @@ public class PipeEnrichedStatement extends Statement {
 
   @TableModel
   @Override
-  public org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement toRelationalStatement(
+  public org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Statement toRelationalStatement(
       final MPPQueryContext context) {
     final PipeEnriched pipeEnriched =
         new PipeEnriched(innerStatement.toRelationalStatement(context));

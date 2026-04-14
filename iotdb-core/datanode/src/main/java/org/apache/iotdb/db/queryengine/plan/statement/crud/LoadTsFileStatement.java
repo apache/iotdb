@@ -370,7 +370,7 @@ public class LoadTsFileStatement extends Statement {
 
   @TableModel
   @Override
-  public org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement toRelationalStatement(
+  public org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Statement toRelationalStatement(
       MPPQueryContext context) {
     final Map<String, String> loadAttributes = new HashMap<>();
 

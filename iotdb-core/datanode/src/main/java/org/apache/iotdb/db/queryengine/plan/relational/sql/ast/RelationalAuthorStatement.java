@@ -28,6 +28,7 @@ import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.AstMemoryEstimationHelper;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.IAstVisitor;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Node;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.relational.type.AuthorRType;
 import org.apache.iotdb.db.utils.DataNodeAuthUtils;

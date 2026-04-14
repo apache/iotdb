@@ -24,6 +24,7 @@ import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.IAstVisitor;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Node;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.NodeLocation;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.QualifiedName;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Statement;
 
 import org.apache.tsfile.utils.RamUsageEstimator;
 

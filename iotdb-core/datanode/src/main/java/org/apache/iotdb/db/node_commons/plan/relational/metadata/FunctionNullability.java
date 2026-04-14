@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.relational.metadata;
+package org.apache.iotdb.db.node_commons.plan.relational.metadata;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 

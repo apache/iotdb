@@ -17,13 +17,12 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
+package org.apache.iotdb.db.node_commons.plan.relational.sql.ast;
 
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.AstMemoryEstimationHelper;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.IAstVisitor;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Node;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.NodeLocation;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.OrderBy;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Fill;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Limit;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Offset;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.With;
 import org.apache.iotdb.db.utils.cte.CteDataStore;
 
 import com.google.common.collect.ImmutableList;
@@ -145,7 +144,7 @@ public class Query extends Statement {
 
   @Override
   public <R, C> R accept(IAstVisitor<R, C> visitor, C context) {
-    return ((AstVisitor<R, C>) visitor).visitQuery(this, context);
+    return ((CommonQueryAstVisitor<R, C>) visitor).visitQuery(this, context);
   }
 
   @Override

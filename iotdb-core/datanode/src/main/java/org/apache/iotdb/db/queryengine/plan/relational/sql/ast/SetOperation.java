@@ -21,6 +21,8 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.IAstVisitor;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.NodeLocation;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.QueryBody;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Relation;
 
 import java.util.List;
 

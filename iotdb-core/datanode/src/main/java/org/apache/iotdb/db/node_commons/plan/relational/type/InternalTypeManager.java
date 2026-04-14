@@ -19,10 +19,6 @@
 
 package org.apache.iotdb.db.node_commons.plan.relational.type;
 
-import org.apache.iotdb.db.queryengine.plan.relational.type.TypeId;
-import org.apache.iotdb.db.queryengine.plan.relational.type.TypeManager;
-import org.apache.iotdb.db.queryengine.plan.relational.type.TypeNotFoundException;
-
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.common.type.TypeEnum;

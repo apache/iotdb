@@ -20,9 +20,9 @@
 package org.apache.iotdb.db.queryengine.plan.execution.config.session;
 
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.PreparedStatementInfo;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 
 /** Helper for prepared statement registration/unregistration. */
 public class PreparedStatementHelper {

@@ -29,6 +29,8 @@ import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.node_commons.plan.relational.function.function.OperatorType;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.node_commons.plan.relational.type.InternalTypeManager;
+import org.apache.iotdb.db.node_commons.plan.relational.type.TypeManager;
+import org.apache.iotdb.db.node_commons.plan.relational.type.TypeNotFoundException;
 import org.apache.iotdb.db.node_commons.plan.relational.type.TypeSignature;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
@@ -44,8 +46,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectN
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableHeaderSchemaValidator;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
-import org.apache.iotdb.db.queryengine.plan.relational.type.TypeManager;
-import org.apache.iotdb.db.queryengine.plan.relational.type.TypeNotFoundException;
 import org.apache.iotdb.db.queryengine.plan.udf.BuiltinAggregationFunction;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 import org.apache.iotdb.udf.api.relational.TableFunction;

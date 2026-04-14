@@ -17,11 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
-
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.IAstVisitor;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Node;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.NodeLocation;
+package org.apache.iotdb.db.node_commons.plan.relational.sql.ast;
 
 import javax.annotation.Nullable;
 
@@ -37,7 +33,7 @@ public abstract class Statement extends Node {
 
   @Override
   public <R, C> R accept(final IAstVisitor<R, C> visitor, final C context) {
-    return ((AstVisitor<R, C>) visitor).visitStatement(this, context);
+    return ((CommonQueryAstVisitor<R, C>) visitor).visitStatement(this, context);
   }
 
   /**

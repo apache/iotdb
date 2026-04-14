@@ -38,6 +38,7 @@ import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.InPredicate;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Node;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.NotExpression;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.QuantifiedComparisonExpression;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Query;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.SubqueryExpression;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
@@ -48,7 +49,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.RelationType;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Scope;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.QueryPlanner.PlanAndMappings;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.PredicateWithUncorrelatedScalarSubqueryReconstructor;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;

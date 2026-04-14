@@ -25,6 +25,7 @@ import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.AstMemoryEstimat
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.IAstVisitor;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Node;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.NodeLocation;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator;
 

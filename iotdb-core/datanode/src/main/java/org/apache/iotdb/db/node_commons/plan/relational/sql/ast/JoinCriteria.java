@@ -17,9 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
-
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Node;
+package org.apache.iotdb.db.node_commons.plan.relational.sql.ast;
 
 import org.apache.tsfile.utils.Accountable;
 

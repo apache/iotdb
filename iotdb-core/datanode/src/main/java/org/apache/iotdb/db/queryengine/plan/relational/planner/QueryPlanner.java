@@ -51,6 +51,8 @@ import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.LongLiteral;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Node;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.NullLiteral;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.OrderBy;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Query;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.QueryBody;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.SortItem;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.WindowFrame;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -66,8 +68,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Delete;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Fill;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.MeasureDefinition;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Offset;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QueryBody;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QuerySpecification;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.VariableDefinition;
 

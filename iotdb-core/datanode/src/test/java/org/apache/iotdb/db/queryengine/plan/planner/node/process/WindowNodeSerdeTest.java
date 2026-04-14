@@ -26,6 +26,7 @@ import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.node_commons.plan.relational.function.function.BoundSignature;
 import org.apache.iotdb.db.node_commons.plan.relational.function.function.FunctionId;
 import org.apache.iotdb.db.node_commons.plan.relational.function.function.FunctionKind;
+import org.apache.iotdb.db.node_commons.plan.relational.metadata.FunctionNullability;
 import org.apache.iotdb.db.node_commons.plan.relational.metadata.ResolvedFunction;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.DataOrganizationSpecification;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.OrderingScheme;
@@ -36,7 +37,6 @@ import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Identifier;
 import org.apache.iotdb.db.queryengine.plan.planner.node.PlanNodeDeserializeHelper;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesScanNode;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.FunctionNullability;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
 import com.google.common.collect.ImmutableList;

@@ -17,9 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.relational.type;
-
-import org.apache.iotdb.db.node_commons.plan.relational.type.TypeSignature;
+package org.apache.iotdb.db.node_commons.plan.relational.type;
 
 import org.apache.tsfile.read.common.type.Type;
 
@@ -27,7 +25,8 @@ public interface TypeManager {
   /**
    * Gets the type with the specified signature.
    *
-   * @throws TypeNotFoundException if not found
+   * @throws org.apache.iotdb.db.node_commons.plan.relational.type.TypeNotFoundException if not
+   *     found
    */
   Type getType(TypeSignature signature);
 

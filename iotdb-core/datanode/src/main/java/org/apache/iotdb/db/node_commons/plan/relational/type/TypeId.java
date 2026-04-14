@@ -17,47 +17,50 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
+package org.apache.iotdb.db.node_commons.plan.relational.type;
 
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.JoinCriteria;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Node;
+import java.util.Objects;
 
-import com.google.common.collect.ImmutableList;
-import org.apache.tsfile.utils.RamUsageEstimator;
+import static java.util.Objects.requireNonNull;
 
-import java.util.List;
+/**
+ * Represents an opaque identifier for a Type than can be used for serialization or storage in
+ * external systems.
+ */
+public class TypeId {
+  private final String id;
 
-import static com.google.common.base.MoreObjects.toStringHelper;
+  private TypeId(String id) {
+    this.id = requireNonNull(id, "id is null");
+  }
 
-public class NaturalJoin extends JoinCriteria {
-  private static final long INSTANCE_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(NaturalJoin.class);
+  public static TypeId of(String id) {
+    return new TypeId(id);
+  }
+
+  public String getId() {
+    return id;
+  }
 
   @Override
-  public boolean equals(Object obj) {
-    if (this == obj) {
+  public boolean equals(Object o) {
+    if (this == o) {
       return true;
     }
-    return (obj != null) && (getClass() == obj.getClass());
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    TypeId typeId = (TypeId) o;
+    return id.equals(typeId.id);
   }
 
   @Override
   public int hashCode() {
-    return getClass().hashCode();
+    return Objects.hash(id);
   }
 
   @Override
   public String toString() {
-    return toStringHelper(this).toString();
-  }
-
-  @Override
-  public List<Node> getNodes() {
-    return ImmutableList.of();
-  }
-
-  @Override
-  public long ramBytesUsed() {
-    return INSTANCE_SIZE;
+    return "type:[" + getId() + "]";
   }
 }

@@ -17,50 +17,27 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.relational.type;
+package org.apache.iotdb.db.node_commons.plan.relational.type;
 
-import java.util.Objects;
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.rpc.TSStatusCode.TYPE_NOT_FOUND;
 
-/**
- * Represents an opaque identifier for a Type than can be used for serialization or storage in
- * external systems.
- */
-public class TypeId {
-  private final String id;
+public class TypeNotFoundException extends IoTDBRuntimeException {
 
-  private TypeId(String id) {
-    this.id = requireNonNull(id, "id is null");
+  private final TypeSignature type;
+
+  public TypeNotFoundException(TypeSignature type) {
+    this(type, null);
   }
 
-  public static TypeId of(String id) {
-    return new TypeId(id);
+  public TypeNotFoundException(TypeSignature type, Throwable cause) {
+    super("Unknown type: " + type, cause, TYPE_NOT_FOUND.getStatusCode());
+    this.type = requireNonNull(type, "type is null");
   }
 
-  public String getId() {
-    return id;
-  }
-
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) {
-      return true;
-    }
-    if (o == null || getClass() != o.getClass()) {
-      return false;
-    }
-    TypeId typeId = (TypeId) o;
-    return id.equals(typeId.id);
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(id);
-  }
-
-  @Override
-  public String toString() {
-    return "type:[" + getId() + "]";
+  public TypeSignature getType() {
+    return type;
   }
 }

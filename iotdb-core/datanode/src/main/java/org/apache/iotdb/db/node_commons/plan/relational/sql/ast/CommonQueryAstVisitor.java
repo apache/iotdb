@@ -32,6 +32,14 @@ public abstract class CommonQueryAstVisitor<R, C> implements IAstVisitor<R, C> {
     return null;
   }
 
+  protected R visitStatement(Statement node, C context) {
+    return visitNode(node, context);
+  }
+
+  protected R visitQuery(Query node, C context) {
+    return visitStatement(node, context);
+  }
+
   protected R visitExpression(Expression node, C context) {
     return visitNode(node, context);
   }
@@ -282,5 +290,33 @@ public abstract class CommonQueryAstVisitor<R, C> implements IAstVisitor<R, C> {
 
   protected R visitTypeParameter(TypeParameter node, C context) {
     return visitDataTypeParameter(node, context);
+  }
+
+  protected R visitValues(Values node, C context) {
+    return visitQueryBody(node, context);
+  }
+
+  protected R visitQueryBody(QueryBody node, C context) {
+    return visitRelation(node, context);
+  }
+
+  protected R visitTableSubquery(TableSubquery node, C context) {
+    return visitQueryBody(node, context);
+  }
+
+  protected R visitRelation(Relation node, C context) {
+    return visitNode(node, context);
+  }
+
+  protected R visitAliasedRelation(AliasedRelation node, C context) {
+    return visitRelation(node, context);
+  }
+
+  protected R visitJoin(Join node, C context) {
+    return visitRelation(node, context);
+  }
+
+  protected R visitSingleColumn(SingleColumn node, C context) {
+    return visitSelectItem(node, context);
   }
 }

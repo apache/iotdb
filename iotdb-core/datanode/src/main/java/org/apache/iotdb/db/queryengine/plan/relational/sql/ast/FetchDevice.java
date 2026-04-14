@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.AstMemoryEstimationHelper;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.IAstVisitor;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Node;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Statement;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.RamUsageEstimator;

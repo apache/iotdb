@@ -14,6 +14,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.node_commons.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -21,7 +22,6 @@ import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AllowAllAccessControl;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.rewrite.StatementRewriteFactory;
 

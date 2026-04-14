@@ -34,13 +34,13 @@ import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Cast;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.SymbolReference;
+import org.apache.iotdb.db.node_commons.plan.relational.type.TypeManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlannerContext;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolsExtractor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Lookup;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeCoercion;
-import org.apache.iotdb.db.queryengine.plan.relational.type.TypeManager;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;

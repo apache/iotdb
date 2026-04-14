@@ -23,7 +23,6 @@ import org.apache.iotdb.db.node_commons.plan.relational.function.function.BoundS
 import org.apache.iotdb.db.node_commons.plan.relational.function.function.FunctionId;
 import org.apache.iotdb.db.node_commons.plan.relational.function.function.FunctionKind;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.QualifiedName;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.FunctionNullability;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 

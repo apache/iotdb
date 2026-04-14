@@ -26,6 +26,7 @@ import org.apache.iotdb.db.node_commons.plan.relational.function.function.BoundS
 import org.apache.iotdb.db.node_commons.plan.relational.function.function.FunctionId;
 import org.apache.iotdb.db.node_commons.plan.relational.function.function.FunctionKind;
 import org.apache.iotdb.db.node_commons.plan.relational.function.function.OperatorType;
+import org.apache.iotdb.db.node_commons.plan.relational.metadata.FunctionNullability;
 import org.apache.iotdb.db.node_commons.plan.relational.metadata.ResolvedFunction;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.ArithmeticBinaryExpression;
@@ -79,6 +80,7 @@ import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Trim;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.WhenClause;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.WindowFrame;
+import org.apache.iotdb.db.node_commons.plan.relational.type.TypeNotFoundException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
@@ -91,7 +93,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.PatternRecogniti
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.PatternRecognitionAnalysis.NavigationMode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.PatternRecognitionAnalysis.PatternFunctionAnalysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.PatternRecognitionAnalysis.ScalarInputDescriptor;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.FunctionNullability;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.OperatorNotFoundException;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
@@ -101,7 +102,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ProcessingMode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RangeQuantifier;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RowPattern;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubsetDefinition;
-import org.apache.iotdb.db.queryengine.plan.relational.type.TypeNotFoundException;
 
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.ImmutableList;

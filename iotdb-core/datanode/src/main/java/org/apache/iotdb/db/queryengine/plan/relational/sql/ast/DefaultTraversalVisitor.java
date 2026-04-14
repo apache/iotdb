@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.AliasedRelation;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.AllColumns;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.ArithmeticBinaryExpression;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.ArithmeticUnaryExpression;
@@ -39,6 +40,7 @@ import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.InListExpression
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.InPredicate;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.IsNotNullPredicate;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.IsNullPredicate;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Join;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.LikePredicate;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.LogicalExpression;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Node;
@@ -46,14 +48,19 @@ import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.NotExpression;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.NullIfExpression;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.OrderBy;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.QuantifiedComparisonExpression;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Query;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Relation;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Row;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.SearchedCaseExpression;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.SelectItem;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.SimpleCaseExpression;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.SimpleGroupBy;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.SingleColumn;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.SortItem;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.SubqueryExpression;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.TableSubquery;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Trim;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Values;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.WhenClause;
 
 public abstract class DefaultTraversalVisitor<C> extends AstVisitor<Void, C> {
