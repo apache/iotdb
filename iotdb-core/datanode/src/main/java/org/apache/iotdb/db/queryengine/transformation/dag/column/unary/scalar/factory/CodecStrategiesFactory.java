@@ -46,6 +46,10 @@ public final class CodecStrategiesFactory {
   public static final CodecStrategy FROM_BASE64 =
       (input) -> {
         try {
+          if (input.length % 4 != 0) {
+            throw new SemanticException(
+                "Base64 length must be a multiple of 4 (including padding '=')");
+          }
           return Base64.getDecoder().decode(input);
         } catch (IllegalArgumentException e) {
           // wrap the specific exception in dependency into a general one for uniform handling in
@@ -71,7 +75,8 @@ public final class CodecStrategiesFactory {
   public static final CodecStrategy FROM_BASE32 =
       (input) -> {
         try {
-          return GUAVA_BASE32_ENCODING.decode(new String(input, TSFileConfig.STRING_CHARSET));
+          return GUAVA_BASE32_ENCODING.decode(
+              new String(input, TSFileConfig.STRING_CHARSET).toUpperCase());
         } catch (IllegalArgumentException e) {
           throw new SemanticException("decode base32 error");
         }
