@@ -183,10 +183,6 @@ public class DropTableColumnProcedure
   }
 
   private void executeOnRegions(final ConfigNodeProcedureEnv env) {
-    if (this instanceof DropViewColumnProcedure) {
-      setNextState(DropTableColumnState.DROP_COLUMN);
-      return;
-    }
     final Map<TConsensusGroupId, TRegionReplicaSet> relatedRegionGroup =
         isAttributeColumn
             ? env.getConfigManager().getRelatedSchemaRegionGroup4TableModel(database)

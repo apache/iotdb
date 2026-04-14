@@ -154,10 +154,6 @@ public class DropTableProcedure extends AbstractAlterOrDropTableProcedure<DropTa
   }
 
   private void deleteData(final ConfigNodeProcedureEnv env) {
-    if (this instanceof DropViewProcedure) {
-      setNextState(DropTableState.DROP_TABLE);
-      return;
-    }
     final Map<TConsensusGroupId, TRegionReplicaSet> relatedDataRegionGroup =
         env.getConfigManager().getRelatedDataRegionGroup4TableModel(database);
 
