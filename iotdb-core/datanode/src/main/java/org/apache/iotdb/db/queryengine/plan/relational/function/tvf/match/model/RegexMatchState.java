@@ -320,19 +320,22 @@ public class RegexMatchState {
       double localHeightUp = Math.max(dataSection.getHeightBound(), smoothValue);
       double localHeightDown =
           Math.max(patternSection.getHeightBound() * globalHeightRadio, smoothValue);
-      double localHeightRadio = localHeightUp / localHeightDown;
+      // When both are 0 (both sections are flat with smooth=0), ratio is 1.0 (perfect match)
+      double localHeightRadio =
+          (localHeightUp == 0 && localHeightDown == 0) ? 1.0 : localHeightUp / localHeightDown;
 
       double led = Math.pow(Math.log(localWidthRadio), 2) + Math.pow(Math.log(localHeightRadio), 2);
 
       // different way
       double shapeError = 0.0;
+      double heightNorm =
+          (dataMaxHeight - dataMinHeight) == 0 ? smoothValue : (dataMaxHeight - dataMinHeight);
       if (CALC_SE_USING_MORE_MEMORY
           && dataSection.getCalcResult().get(patternSection.getId()) != null) {
         shapeError =
-            dataSection.getCalcResult().get(patternSection.getId())
-                / ((dataMaxHeight - dataMinHeight) == 0
-                    ? smoothValue
-                    : (dataMaxHeight - dataMinHeight));
+            heightNorm == 0
+                ? 0
+                : dataSection.getCalcResult().get(patternSection.getId()) / heightNorm;
       } else {
         // calc the SE
         // align the first point or the centroid, it's same because the calculation is just an avg
@@ -366,27 +369,16 @@ public class RegexMatchState {
                       - dataSection.getPoints().get(i).y);
         }
 
-        shapeError =
-            shapeError
-                / (((dataMaxHeight - dataMinHeight) == 0
-                        ? smoothValue
-                        : (dataMaxHeight - dataMinHeight))
-                    * (dataSection.getPoints().size() - 1));
+        double seDenominator = heightNorm * (dataSection.getPoints().size() - 1);
+        shapeError = seDenominator == 0 ? 0 : shapeError / seDenominator;
 
         if (CALC_SE_USING_MORE_MEMORY) {
-          dataSection
-              .getCalcResult()
-              .put(
-                  patternSection.getId(),
-                  shapeError
-                      * (((dataMaxHeight - dataMinHeight) == 0
-                          ? smoothValue
-                          : (dataMaxHeight - dataMinHeight))));
+          dataSection.getCalcResult().put(patternSection.getId(), shapeError * heightNorm);
         }
       }
 
       matchValue = matchValue + led + shapeError;
-      return matchValue > threshold;
+      return matchValue > threshold || Double.isNaN(matchValue);
     }
 
     public double getMatchValue() {
