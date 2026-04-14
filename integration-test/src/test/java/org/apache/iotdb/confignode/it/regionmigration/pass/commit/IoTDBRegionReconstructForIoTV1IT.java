@@ -104,7 +104,7 @@ public class IoTDBRegionReconstructForIoTV1IT extends IoTDBRegionOperationReliab
       Set<Integer> allDataNodeId = getAllDataNodes(statement);
 
       // select datanode
-      final int selectedRegion = 3;
+      final int selectedRegion = 1;
       Assert.assertTrue(dataRegionMap.containsKey(selectedRegion));
       Pair<Integer, Set<Integer>> leaderAndNodeIds = dataRegionMap.get(selectedRegion);
       Assert.assertEquals(2, leaderAndNodeIds.right.size());

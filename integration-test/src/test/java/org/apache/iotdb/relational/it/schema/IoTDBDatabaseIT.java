@@ -751,8 +751,7 @@ public class IoTDBDatabaseIT {
           Collections.singleton(EnvFactory.getEnv().getConfigNodeWrapperList().size() + ","));
 
       Set<String> resultSet = new HashSet<>();
-      // data region created from writing password history
-      resultSet.add("1,");
+      resultSet.add("0,");
       for (int i = 1; i < EnvFactory.getEnv().getDataNodeWrapperList().size(); i++) {
         resultSet.add("0,");
       }
@@ -821,7 +820,7 @@ public class IoTDBDatabaseIT {
     try (final Connection connection = EnvFactory.getEnv().getConnection();
         final Statement statement = connection.createStatement()) {
       // One for AUDIT database
-      TestUtils.assertResultSetSize(statement.executeQuery("show databases"), 2);
+      TestUtils.assertResultSetSize(statement.executeQuery("show databases"), 1);
     }
   }
 

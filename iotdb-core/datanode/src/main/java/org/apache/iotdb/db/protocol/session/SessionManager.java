@@ -163,7 +163,6 @@ public class SessionManager implements SessionManagerMBean {
     Pair<Long, Long> expirationAndModifiedTime =
         DataNodeAuthUtils.checkPasswordExpiration(userId, password, false);
     Long timeToExpire = expirationAndModifiedTime != null ? expirationAndModifiedTime.left : null;
-
     if (timeToExpire != null && timeToExpire <= System.currentTimeMillis()) {
       openSessionResp
           .sessionId(-1)
@@ -171,7 +170,6 @@ public class SessionManager implements SessionManagerMBean {
           .setMessage("Password has expired, please use \"ALTER USER\" to change to a new one");
       return openSessionResp;
     }
-
     boolean enableLoginLock = userId != -1;
     LoginLockManager loginLockManager = LoginLockManager.getInstance();
     if (enableLoginLock && loginLockManager.checkLock(userId, session.getClientAddress())) {
@@ -261,7 +259,6 @@ public class SessionManager implements SessionManagerMBean {
                             Instant.ofEpochMilli(timeToExpire), ZoneId.systemDefault()));
           }
         }
-
         openSessionResp
             .sessionId(session.getId())
             .setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode())

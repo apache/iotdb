@@ -954,7 +954,6 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
               IoTDBConstant.ClientVersion.V_1_0);
       return RpcUtils.getStatus(openSessionResp.getCode(), openSessionResp.getMessage());
     }
-
     long userId = AuthorityChecker.getUserId(username).orElse(-1L);
     Pair<Long, Long> expirationAndModifiedTime =
         DataNodeAuthUtils.checkPasswordExpiration(userId, password, false);
@@ -964,7 +963,6 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
           TSStatusCode.ILLEGAL_PASSWORD.getStatusCode(),
           "Password has expired, please use \"ALTER USER\" to change to a new one");
     }
-
     return AuthorityChecker.checkUser(username, password);
   }
 

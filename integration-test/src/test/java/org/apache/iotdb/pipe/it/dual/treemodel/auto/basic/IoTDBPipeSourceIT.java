@@ -1092,7 +1092,6 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
   }
 
   private void assertTimeseriesCountOnReceiver(BaseEnv receiverEnv, String sql, int count) {
-    // for system password history
     TestUtils.assertDataEventuallyOnEnv(
         receiverEnv, sql, "count(timeseries),", Collections.singleton(count + ","));
   }

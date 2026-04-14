@@ -258,7 +258,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualTreeModelAutoIT {
           "count(timeseries),",
           Collections.singleton("0,"));
       TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv, "count databases", "count,", Collections.singleton("4,"));
+          receiverEnv, "count databases", "count,", Collections.singleton("3,"));
     }
   }
 
