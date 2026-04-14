@@ -81,7 +81,7 @@ public class CompactionScheduleTaskWorker implements Callable<Void> {
         if (isStoppedByUser) {
           return null;
         }
-      } catch (Exception e) {
+      } catch (Throwable e) {
         logger.error(
             "[CompactionScheduleTaskWorker-{}] Failed to execute compaction schedule task",
             workerId,
