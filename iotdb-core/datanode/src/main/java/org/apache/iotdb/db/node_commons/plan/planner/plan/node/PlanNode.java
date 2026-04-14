@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.exception.runtime.SerializationRunTimeException;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -174,10 +173,7 @@ public abstract class PlanNode implements IConsensusRequest {
     }
   }
 
-  /**
-   * Deserialize via {@link
-   * org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType#deserialize(ByteBuffer)}
-   */
+  /** Deserialize via {@link PlanNodeType#deserialize(ByteBuffer)} */
   @Override
   public ByteBuffer serializeToByteBuffer() {
     try (PublicBAOS byteArrayOutputStream = new PublicBAOS();

@@ -22,10 +22,10 @@ import org.apache.iotdb.db.node_commons.plan.planner.plan.node.ICoreQueryPlanVis
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.IPlanVisitor;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.process.MultiChildProcessNode;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.OrderingScheme;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.Symbol;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 
 import com.google.common.base.Objects;
 import org.apache.tsfile.utils.ReadWriteIOUtils;

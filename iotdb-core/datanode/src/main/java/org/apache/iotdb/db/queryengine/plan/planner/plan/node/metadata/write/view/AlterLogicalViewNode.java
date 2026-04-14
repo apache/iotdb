@@ -27,7 +27,7 @@ import org.apache.iotdb.commons.schema.view.viewExpression.leaf.TimeSeriesViewOp
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.IPlanVisitor;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 
 import org.apache.tsfile.exception.NotImplementedException;

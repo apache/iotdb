@@ -21,7 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.planner.node;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNodeType;
 
 import java.nio.ByteBuffer;
 

@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.pipe.sink.payload.iotconsensusv2.request.IoTCons
 import org.apache.iotdb.commons.pipe.sink.payload.iotconsensusv2.request.IoTConsensusV2RequestVersion;
 import org.apache.iotdb.consensus.iotconsensusv2.thrift.TCommitId;
 import org.apache.iotdb.consensus.iotconsensusv2.thrift.TIoTConsensusV2TransferReq;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.AbstractDeleteDataNode;
 
 import org.apache.tsfile.utils.PublicBAOS;
