@@ -65,6 +65,7 @@ public class CompactionScheduleTaskManager implements IService {
       ConcurrentHashMap.newKeySet();
   private ReentrantLock lock = new ReentrantLock();
   private volatile boolean init = false;
+  private volatile boolean isStoppingAllScheduleTask = false;
 
   @Override
   public void start() throws StartupException {
@@ -76,8 +77,13 @@ public class CompactionScheduleTaskManager implements IService {
     logger.info("Compaction schedule task manager started.");
   }
 
+  public boolean isStoppingAllScheduleTask() {
+    return isStoppingAllScheduleTask;
+  }
+
   public void stopCompactionScheduleTasks() throws InterruptedException {
     lock.lock();
+    isStoppingAllScheduleTask = true;
     try {
       for (Future<Void> task : submitCompactionScheduleTaskFutures) {
         task.cancel(true);
@@ -121,6 +127,7 @@ public class CompactionScheduleTaskManager implements IService {
 
   public void startScheduleTasks() {
     lock.lock();
+    isStoppingAllScheduleTask = false;
     try {
       // compaction selector
       for (int workerId = 0; workerId < compactionSelectorNum; workerId++) {
@@ -144,6 +151,7 @@ public class CompactionScheduleTaskManager implements IService {
   @Override
   public void stop() {
     lock.lock();
+    isStoppingAllScheduleTask = true;
     try {
       if (!init) {
         return;
@@ -160,6 +168,7 @@ public class CompactionScheduleTaskManager implements IService {
   @Override
   public void waitAndStop(long milliseconds) {
     lock.lock();
+    isStoppingAllScheduleTask = true;
     try {
       if (!init) {
         return;

@@ -72,9 +72,11 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.Nullable;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileTime;
 import java.util.ArrayList;
@@ -613,7 +615,10 @@ public class CompactionUtils {
               database, regionId, table, currentFile, basicFileAttributes, lowerBoundInMS);
           return;
         }
-      } catch (IOException ignored) {
+      } catch (FileNotFoundException | NoSuchFileException ignored) {
+        // may be deleted by other thread
+      } catch (IOException e) {
+        logger.warn("Failed to read file attributes: {}", currentFile, e);
       }
     }
     if (isFirstCheckAfterRestart) {
@@ -642,16 +647,20 @@ public class CompactionUtils {
     // block-aligned and reflects allocated directory entry blocks.
     acquireCompactionReadRate(currentFile.length());
     for (File child : children) {
-      recursiveTTLCheckForTableDir(
-          database,
-          regionId,
-          table,
-          child,
-          depth + 1,
-          maxObjectFileDepth,
-          canDistinguishDirectoryByFileName,
-          lowerBoundInMS,
-          isFirstCheckAfterRestart);
+      try {
+        recursiveTTLCheckForTableDir(
+            database,
+            regionId,
+            table,
+            child,
+            depth + 1,
+            maxObjectFileDepth,
+            canDistinguishDirectoryByFileName,
+            lowerBoundInMS,
+            isFirstCheckAfterRestart);
+      } catch (Exception e) {
+        logger.warn("Failed to check table dir: {}", child, e);
+      }
     }
   }
 
@@ -694,8 +703,10 @@ public class CompactionUtils {
               -attributes.size(),
               -1);
       logger.info("Remove object file {}, size is {}(byte)", file.getPath(), attributes.size());
+    } catch (FileNotFoundException | NoSuchFileException ignored) {
+      // may be deleted by other thread
     } catch (Exception e) {
-      logger.error("Failed to remove object file {}", file.getPath(), e);
+      logger.warn("Failed to delete expired object file: {}", file, e);
     }
   }
 

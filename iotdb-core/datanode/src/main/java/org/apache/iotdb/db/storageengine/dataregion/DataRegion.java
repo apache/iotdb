@@ -3810,11 +3810,15 @@ public class DataRegion implements IDataRegionForQuery {
       if (!regionObjectDir.isDirectory()) {
         continue;
       }
-      CompactionUtils.executeTTLCheckObjectFilesForTableModel(
-          regionObjectDir,
-          databaseName,
-          dataRegionId.getId(),
-          isFirstCheckObjectFileDirsAfterRestart.compareAndSet(true, false));
+      try {
+        CompactionUtils.executeTTLCheckObjectFilesForTableModel(
+            regionObjectDir,
+            databaseName,
+            dataRegionId.getId(),
+            isFirstCheckObjectFileDirsAfterRestart.compareAndSet(true, false));
+      } catch (Exception e) {
+        logger.error("Failed to execute object ttl check", e);
+      }
     }
     CompactionMetrics.getInstance()
         .updateTTLCheckForObjectFileCost(System.currentTimeMillis() - startTime);
