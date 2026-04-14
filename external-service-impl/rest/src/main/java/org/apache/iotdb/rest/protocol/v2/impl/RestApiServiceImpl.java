@@ -270,7 +270,8 @@ public class RestApiServiceImpl extends RestApiService {
     boolean finish = false;
     try {
       RequestValidationHandler.validateSQL(sql);
-      ZoneId zoneId = SESSION_MANAGER.getCurrSession().getZoneId();
+      IClientSession session = SESSION_MANAGER.getCurrSession();
+      ZoneId zoneId = (session != null) ? session.getZoneId() : ZoneId.systemDefault();
       statement = StatementGenerator.createStatement(sql.getSql(), zoneId);
       if (statement == null) {
         return Response.ok()
@@ -334,7 +335,8 @@ public class RestApiServiceImpl extends RestApiService {
     boolean finish = false;
     try {
       RequestValidationHandler.validateSQL(sql);
-      ZoneId zoneId = SESSION_MANAGER.getCurrSession().getZoneId();
+      IClientSession session = SESSION_MANAGER.getCurrSession();
+      ZoneId zoneId = (session != null) ? session.getZoneId() : ZoneId.systemDefault();
       statement = StatementGenerator.createStatement(sql.getSql(), zoneId);
 
       if (statement == null) {
