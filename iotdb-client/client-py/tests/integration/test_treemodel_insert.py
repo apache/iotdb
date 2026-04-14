@@ -5358,8 +5358,7 @@ def test_insert_auto_create():
         session = Session(db.get_container_host_ip(), db.get_exposed_port(6667))
         session.open()
 
-        # plus 2 for password history
-        expect = 360 + 2
+        expect = 360
         # Test non aligned tablet writing
         num = 0
         for i in range(1, 10):
