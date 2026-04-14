@@ -595,7 +595,8 @@ public class CompactionUtils {
           checkTTLAndDeleteExpiredObjectFile(currentFile, basicFileAttributes, lowerBoundInMS);
           return;
         }
-      } catch (IOException ignored) {
+      } catch (IOException e) {
+        logger.warn("Failed to read file attributes: {}", currentFile, e);
       }
     }
     File[] children = currentFile.listFiles();
@@ -606,8 +607,16 @@ public class CompactionUtils {
     // block-aligned and reflects allocated directory entry blocks.
     acquireCompactionReadRate(currentFile.length());
     for (File child : children) {
-      recursiveTTLCheckForTableDir(
-          child, depth + 1, maxObjectFileDepth, canDistinguishDirectoryByFileName, lowerBoundInMS);
+      try {
+        recursiveTTLCheckForTableDir(
+            child,
+            depth + 1,
+            maxObjectFileDepth,
+            canDistinguishDirectoryByFileName,
+            lowerBoundInMS);
+      } catch (Exception e) {
+        logger.warn("Failed to check table dir: {}", child, e);
+      }
     }
   }
 
