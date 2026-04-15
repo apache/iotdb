@@ -879,7 +879,8 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
               "Pipe {}@{}: failed to unpin skipped historical TsFileResource, original path: {}",
               pipeName,
               dataRegionId,
-              resource.getTsFilePath());
+              resource.getTsFilePath(),
+              e);
         }
       }
     }
