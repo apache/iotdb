@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+#include <cstdint>
 #include <stdexcept>
 #include <algorithm>
 #include "TsBlock.h"
@@ -34,6 +35,14 @@ std::shared_ptr<TsBlock> TsBlock::deserialize(const std::string& data) {
 
     // Read value column count
     int32_t valueColumnCount = buffer.getInt();
+    if (valueColumnCount < 0) {
+        throw IoTDBException("TsBlock::deserialize: negative valueColumnCount");
+    }
+    const int64_t minHeaderBytes =
+        9LL + 2LL * static_cast<int64_t>(valueColumnCount);
+    if (minHeaderBytes > static_cast<int64_t>(data.size())) {
+        throw IoTDBException("TsBlock::deserialize: truncated header");
+    }
 
     // Read value column data types
     std::vector<TSDataType::TSDataType> valueColumnDataTypes(valueColumnCount);
@@ -43,6 +52,9 @@ std::shared_ptr<TsBlock> TsBlock::deserialize(const std::string& data) {
 
     // Read position count
     int32_t positionCount = buffer.getInt();
+    if (positionCount < 0) {
+        throw IoTDBException("TsBlock::deserialize: negative positionCount");
+    }
 
     // Read column encodings
     std::vector<ColumnEncoding> columnEncodings(valueColumnCount + 1);
