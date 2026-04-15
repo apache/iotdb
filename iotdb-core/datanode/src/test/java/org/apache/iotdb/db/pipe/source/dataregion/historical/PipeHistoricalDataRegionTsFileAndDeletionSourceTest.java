@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.source.dataregion.historical;
 
 import org.apache.iotdb.commons.pipe.datastructure.resource.PersistentResource;
+import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -41,7 +42,8 @@ import java.util.Set;
 public class PipeHistoricalDataRegionTsFileAndDeletionSourceTest {
 
   @Test
-  public void testSupplyContinuesAfterSkippingDuplicateHistoricalTsFile() throws Exception {
+  public void testSupplyReturnsProgressReportEventAfterSkippingDuplicateHistoricalTsFile()
+      throws Exception {
     final TestablePipeHistoricalDataRegionTsFileAndDeletionSource source =
         new TestablePipeHistoricalDataRegionTsFileAndDeletionSource();
     final Event expectedEvent = new Event() {};
@@ -59,9 +61,13 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSourceTest {
           "pendingQueue",
           new ArrayDeque<PersistentResource>(Arrays.asList(skippedResource, nextResource)));
 
-      Assert.assertSame(expectedEvent, source.supply());
+      Assert.assertTrue(source.supply() instanceof ProgressReportEvent);
       Assert.assertEquals(
           Arrays.asList(skippedResource.getTsFilePath()), source.getConsumedSkippedTsFilePaths());
+      Assert.assertTrue(source.getSuppliedTsFiles().isEmpty());
+      Assert.assertEquals(1, source.getPendingQueueSize());
+
+      Assert.assertSame(expectedEvent, source.supply());
       Assert.assertEquals(Arrays.asList(nextResource.getTsFilePath()), source.getSuppliedTsFiles());
     } finally {
       FileUtils.deleteFileOrDirectory(tempDir);
@@ -131,6 +137,13 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSourceTest {
 
     private List<String> getSuppliedTsFiles() {
       return suppliedTsFiles;
+    }
+
+    private int getPendingQueueSize() throws ReflectiveOperationException {
+      final Field field =
+          PipeHistoricalDataRegionTsFileAndDeletionSource.class.getDeclaredField("pendingQueue");
+      field.setAccessible(true);
+      return ((ArrayDeque<?>) field.get(this)).size();
     }
 
     private void setSuppliedEvent(final Event suppliedEvent) {

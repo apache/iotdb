@@ -814,19 +814,18 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
       return null;
     }
 
-    PersistentResource resource;
-    while ((resource = pendingQueue.poll()) != null) {
-      if (resource instanceof TsFileResource) {
-        final TsFileResource tsFileResource = (TsFileResource) resource;
-        if (consumeSkippedHistoricalTsFileEventIfNecessary(tsFileResource)) {
-          continue;
-        }
-        return supplyTsFileEvent(tsFileResource);
-      }
-      return supplyDeletionEvent((DeletionResource) resource);
+    final PersistentResource resource = pendingQueue.poll();
+    if (resource == null) {
+      return supplyTerminateEvent();
     }
 
-    return supplyTerminateEvent();
+    if (resource instanceof TsFileResource) {
+      final TsFileResource tsFileResource = (TsFileResource) resource;
+      return consumeSkippedHistoricalTsFileEventIfNecessary(tsFileResource)
+          ? supplyProgressReportEvent(tsFileResource.getMaxProgressIndex())
+          : supplyTsFileEvent(tsFileResource);
+    }
+    return supplyDeletionEvent((DeletionResource) resource);
   }
 
   private Event supplyTerminateEvent() {
@@ -879,20 +878,24 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
     }
   }
 
+  protected Event supplyProgressReportEvent(final ProgressIndex progressIndex) {
+    final ProgressReportEvent progressReportEvent =
+        new ProgressReportEvent(pipeName, creationTime, pipeTaskMeta);
+    progressReportEvent.bindProgressIndex(progressIndex);
+    final boolean isReferenceCountIncreased =
+        progressReportEvent.increaseReferenceCount(
+            PipeHistoricalDataRegionTsFileAndDeletionSource.class.getName());
+    if (!isReferenceCountIncreased) {
+      LOGGER.warn(
+          "The reference count of the event {} cannot be increased, skipping it.",
+          progressReportEvent);
+    }
+    return isReferenceCountIncreased ? progressReportEvent : null;
+  }
+
   protected Event supplyTsFileEvent(final TsFileResource resource) {
     if (!filteredTsFileResources2TableNames.containsKey(resource)) {
-      final ProgressReportEvent progressReportEvent =
-          new ProgressReportEvent(pipeName, creationTime, pipeTaskMeta);
-      progressReportEvent.bindProgressIndex(resource.getMaxProgressIndex());
-      final boolean isReferenceCountIncreased =
-          progressReportEvent.increaseReferenceCount(
-              PipeHistoricalDataRegionTsFileAndDeletionSource.class.getName());
-      if (!isReferenceCountIncreased) {
-        LOGGER.warn(
-            "The reference count of the event {} cannot be increased, skipping it.",
-            progressReportEvent);
-      }
-      return isReferenceCountIncreased ? progressReportEvent : null;
+      return supplyProgressReportEvent(resource.getMaxProgressIndex());
     }
 
     final PipeTsFileInsertionEvent event =
