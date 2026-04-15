@@ -165,7 +165,9 @@ public class MatchState {
     double localHeightUp = Math.max(section.getHeightBound(), smoothValue);
     double localHeightDown =
         Math.max(patternSectionNow.getHeightBound() * globalHeightRadio, smoothValue);
-    double localHeightRadio = localHeightUp / localHeightDown;
+    // When both are 0 (both sections are flat with smooth=0), ratio is 1.0 (perfect match)
+    double localHeightRadio =
+        (localHeightUp == 0 && localHeightDown == 0) ? 1.0 : localHeightUp / localHeightDown;
 
     double led = Math.pow(Math.log(localWidthRadio), 2) + Math.pow(Math.log(localHeightRadio), 2);
 
@@ -195,12 +197,10 @@ public class MatchState {
                   - section.getPoints().get(i).y);
     }
 
-    shapeError =
-        shapeError
-            / (((dataMaxHeight - dataMinHeight) == 0
-                    ? smoothValue
-                    : (dataMaxHeight - dataMinHeight))
-                * (section.getPoints().size() - 1));
+    double heightNorm =
+        (dataMaxHeight - dataMinHeight) == 0 ? smoothValue : (dataMaxHeight - dataMinHeight);
+    double seDenominator = heightNorm * (section.getPoints().size() - 1);
+    shapeError = seDenominator == 0 ? 0 : shapeError / seDenominator;
 
     // calc the match value for a section
     matchValue = matchValue + led + shapeError;
@@ -212,7 +212,7 @@ public class MatchState {
       patternSectionNow = null;
     }
 
-    if (isFinish || matchValue > threshold) {
+    if (isFinish || matchValue > threshold || Double.isNaN(matchValue)) {
       return true;
     } else {
       patternSectionNow = patternSectionNow.getNextSectionList().get(0);
