@@ -125,7 +125,8 @@ public class AlterTableColumnDataTypeProcedure
       final Pair<TSStatus, TsTable> result =
           env.getConfigManager()
               .getClusterSchemaManager()
-              .tableColumnCheckForColumnAltering(database, tableName, columnName, dataType);
+              .tableColumnCheckForColumnAltering(
+                  database, tableName, columnName, dataType, isGeneratedByPipe);
       final TSStatus status = result.getLeft();
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         setFailure(
