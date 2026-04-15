@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.pipe.agent.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.pipe.agent.plugin.service.PipePluginClassLoader;
 import org.apache.iotdb.commons.pipe.agent.plugin.service.PipePluginClassLoaderManager;
 import org.apache.iotdb.commons.pipe.agent.plugin.service.PipePluginExecutableManager;
+import org.apache.iotdb.commons.pipe.datastructure.visibility.Visibility;
 import org.apache.iotdb.commons.pipe.datastructure.visibility.VisibilityUtils;
 import org.apache.iotdb.db.pipe.agent.plugin.dataregion.PipeDataRegionPluginAgent;
 import org.apache.iotdb.db.pipe.agent.plugin.schemaregion.PipeSchemaRegionPluginAgent;
@@ -174,6 +175,30 @@ public class PipeDataNodePluginAgent {
       LOGGER.warn(errorMessage, e);
       throw new PipeException(errorMessage);
     }
+  }
+
+  public void markPluginLoadFailure(
+      final PipePluginMeta pipePluginMeta, final Throwable throwable) {
+    final String pluginName = pipePluginMeta.getPluginName();
+    pipePluginMetaKeeper.addPipePluginMeta(
+        pluginName,
+        new PipePluginMeta(
+            pipePluginMeta.getPluginName(),
+            pipePluginMeta.getClassName(),
+            pipePluginMeta.isBuiltin(),
+            pipePluginMeta.getJarName(),
+            pipePluginMeta.getJarMD5(),
+            getRootCauseMessage(throwable)));
+    pipePluginMetaKeeper.addPipePluginVisibility(pluginName, Visibility.BOTH);
+  }
+
+  private String getRootCauseMessage(final Throwable throwable) {
+    Throwable current = throwable;
+    while (current.getCause() != null && current.getCause() != current) {
+      current = current.getCause();
+    }
+    final String message = current.getMessage();
+    return current.getClass().getSimpleName() + (message == null ? "" : (": " + message));
   }
 
   public void deregister(final String pluginName, final boolean needToDeleteJar)
