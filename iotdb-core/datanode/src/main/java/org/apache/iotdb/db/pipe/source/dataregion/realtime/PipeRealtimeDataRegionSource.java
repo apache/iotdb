@@ -227,8 +227,7 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
     creationTime = environment.getCreationTime();
     pipeID = pipeName + "_" + creationTime;
     taskID = pipeName + "_" + dataRegionId + "_" + creationTime;
-    tsFileDedupScopeID =
-        taskID + "_" + Integer.toHexString(System.identityHashCode(environment));
+    tsFileDedupScopeID = taskID + "_" + Integer.toHexString(System.identityHashCode(environment));
 
     treePattern = TreePattern.parsePipePatternFromSourceParameters(parameters);
     tablePattern = TablePattern.parsePipePatternFromSourceParameters(parameters);

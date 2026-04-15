@@ -110,8 +110,7 @@ public class PipeTsFileEpochProgressIndexKeeper {
       return false;
     }
 
-    return tsFileProgressIndexKeeper.entrySet()
-        .stream()
+    return tsFileProgressIndexKeeper.entrySet().stream()
         .filter(entry -> !Objects.equals(entry.getKey(), tsFilePath))
         .map(Entry::getValue)
         .filter(Objects::nonNull)

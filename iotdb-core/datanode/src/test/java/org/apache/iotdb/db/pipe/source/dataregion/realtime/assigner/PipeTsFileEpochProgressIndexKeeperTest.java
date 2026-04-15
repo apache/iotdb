@@ -61,7 +61,8 @@ public class PipeTsFileEpochProgressIndexKeeperTest {
 
     keeper.registerProgressIndex(DATA_REGION_ID, TASK_SCOPE_A, resource);
 
-    Assert.assertTrue(keeper.containsTsFile(DATA_REGION_ID, TASK_SCOPE_A, resource.getTsFilePath()));
+    Assert.assertTrue(
+        keeper.containsTsFile(DATA_REGION_ID, TASK_SCOPE_A, resource.getTsFilePath()));
     Assert.assertFalse(
         keeper.containsTsFile(DATA_REGION_ID, TASK_SCOPE_B, resource.getTsFilePath()));
   }
