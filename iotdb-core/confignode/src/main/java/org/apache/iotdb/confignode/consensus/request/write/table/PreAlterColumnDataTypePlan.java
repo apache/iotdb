@@ -27,17 +27,16 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-public class AlterColumnDataTypePlan extends AbstractTableColumnPlan {
-
+public class PreAlterColumnDataTypePlan extends AbstractTableColumnPlan {
   private TSDataType newType;
 
-  public AlterColumnDataTypePlan() {
-    super(ConfigPhysicalPlanType.AlterColumnDataType);
+  public PreAlterColumnDataTypePlan() {
+    super(ConfigPhysicalPlanType.PreAlterColumnDataType);
   }
 
-  public AlterColumnDataTypePlan(
+  public PreAlterColumnDataTypePlan(
       String database, String tableName, String columnName, TSDataType newType) {
-    super(ConfigPhysicalPlanType.AlterColumnDataType, database, tableName, columnName);
+    super(ConfigPhysicalPlanType.PreAlterColumnDataType, database, tableName, columnName);
     this.newType = newType;
   }
 
