@@ -413,14 +413,14 @@ public class PipePluginInfo implements SnapshotProcessor {
             pipePluginMetaKeeper.addPipePluginVisibility(
                 pluginName, VisibilityUtils.calculateFromPluginClass(pluginClass));
             classLoaderManager.addPluginAndClassLoader(pluginName, pipePluginClassLoader);
-          } catch (final Exception e) {
+          } catch (final Throwable e) {
             try {
               pipePluginClassLoader.close();
             } catch (final Exception ignored) {
             }
             throw e;
           }
-        } catch (final Exception e) {
+        } catch (final Throwable e) {
           LOGGER.warn(
               "Failed to load plugin class for plugin [{}] when loading snapshot [{}] ",
               pluginName,
