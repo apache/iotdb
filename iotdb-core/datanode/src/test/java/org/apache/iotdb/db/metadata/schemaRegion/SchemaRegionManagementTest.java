@@ -27,6 +27,7 @@ import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
+import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionPlanType;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.ISchemaInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.SchemaRegionWritePlanFactory;
@@ -40,6 +41,7 @@ import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.File;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -228,5 +230,15 @@ public class SchemaRegionManagementTest extends AbstractSchemaRegionTest {
     } finally {
       config.setSchemaRegionConsensusProtocolClass(schemaRegionConsensusProtocolClass);
     }
+  }
+
+  @Test
+  public void testSchemaRegionPlanType() throws Exception {
+    Assert.assertEquals(
+        SchemaRegionPlanType.values().length,
+        Arrays.stream(SchemaRegionPlanType.values())
+            .map(SchemaRegionPlanType::getPlanType)
+            .distinct()
+            .count());
   }
 }
