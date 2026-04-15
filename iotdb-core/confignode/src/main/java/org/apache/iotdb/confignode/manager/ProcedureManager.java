@@ -2335,8 +2335,18 @@ public class ProcedureManager {
     if (procedureClass == null) {
       return false;
     }
-    return getExecutor().getProcedures().values().stream()
-        .anyMatch(procedure -> !procedure.isFinished() && procedureClass.isInstance(procedure));
+
+    for (Procedure<ConfigNodeProcedureEnv> procedure : getExecutor().getProcedures().values()) {
+      if (!procedure.isFinished() && procedureClass.isInstance(procedure)) {
+        LOGGER.info(
+            "[{}] procedure details are {}",
+            procedureClass.getSimpleName(),
+            procedure.toStringDetails());
+        return true;
+      }
+    }
+
+    return false;
   }
 
   // ======================================================
