@@ -30,13 +30,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static org.apache.iotdb.db.queryengine.plan.expression.expression.expression.ExpressionFactory.add;
-import static org.apache.iotdb.db.queryengine.plan.expression.expression.expression.ExpressionFactory.and;
-import static org.apache.iotdb.db.queryengine.plan.expression.expression.expression.ExpressionFactory.gt;
-import static org.apache.iotdb.db.queryengine.plan.expression.expression.expression.ExpressionFactory.intValue;
-import static org.apache.iotdb.db.queryengine.plan.expression.expression.expression.ExpressionFactory.or;
-import static org.apache.iotdb.db.queryengine.plan.expression.expression.expression.ExpressionFactory.sin;
-import static org.apache.iotdb.db.queryengine.plan.expression.expression.expression.ExpressionFactory.timeSeries;
+import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.add;
+import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.and;
+import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.gt;
+import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.intValue;
+import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.or;
+import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.sin;
+import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.timeSeries;
 import static org.apache.iotdb.db.queryengine.plan.optimization.OptimizationTestUtil.schemaMap;
 
 public class PredicatePushDownTest {

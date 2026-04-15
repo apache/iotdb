@@ -21,8 +21,8 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.node_commons.plan.relational.analyzer.NodeRef;
-import org.apache.iotdb.db.node_commons.plan.relational.function.function.InterpretedFunctionInvoker;
-import org.apache.iotdb.db.node_commons.plan.relational.function.function.OperatorType;
+import org.apache.iotdb.db.node_commons.plan.relational.function.InterpretedFunctionInvoker;
+import org.apache.iotdb.db.node_commons.plan.relational.function.OperatorType;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.ArithmeticBinaryExpression;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.ArithmeticUnaryExpression;
@@ -49,7 +49,7 @@ import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.WhenClause;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
-import org.apache.iotdb.db.queryengine.plan.expression.expression.expression.multi.builtin.helper.CastFunctionHelper;
+import org.apache.iotdb.db.queryengine.plan.expression.multi.builtin.helper.CastFunctionHelper;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.DeterminismEvaluator;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
@@ -82,7 +82,7 @@ import static org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Arithmeti
 import static org.apache.iotdb.db.node_commons.plan.relational.type.TypeSignatureTranslator.toTypeSignature;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.DeterminismEvaluator.isDeterministic;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils.isEffectivelyLiteral;
-import static org.apache.iotdb.db.queryengine.transformation.dag.dag.column.column.unary.scalar.ExtractTransformer.constructEvaluateFunction;
+import static org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.ExtractTransformer.constructEvaluateFunction;
 
 public class IrExpressionInterpreter {
 

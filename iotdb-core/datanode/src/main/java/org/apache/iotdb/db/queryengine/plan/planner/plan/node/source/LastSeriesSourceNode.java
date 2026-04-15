@@ -21,7 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan.node.source;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.expression.expression.expression.Expression;
+import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;

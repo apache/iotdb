@@ -23,12 +23,12 @@ package org.apache.iotdb.db.queryengine.transformation.dag.column.binary;
 
 import org.apache.tsfile.read.common.type.Type;
 
-import org.apache.iotdb.db.node_commons.plan.relational.function.arithmetic.function.AdditionResolver;
-import org.apache.iotdb.db.node_commons.plan.relational.function.arithmetic.function.DivisionResolver;
-import org.apache.iotdb.db.node_commons.plan.relational.function.arithmetic.function.ModulusResolver;
-import org.apache.iotdb.db.node_commons.plan.relational.function.arithmetic.function.MultiplicationResolver;
-import org.apache.iotdb.db.node_commons.plan.relational.function.arithmetic.function.SubtractionResolver;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.column.dag.ColumnTransformer;
+import org.apache.iotdb.db.node_commons.plan.relational.function.arithmetic.AdditionResolver;
+import org.apache.iotdb.db.node_commons.plan.relational.function.arithmetic.DivisionResolver;
+import org.apache.iotdb.db.node_commons.plan.relational.function.arithmetic.ModulusResolver;
+import org.apache.iotdb.db.node_commons.plan.relational.function.arithmetic.MultiplicationResolver;
+import org.apache.iotdb.db.node_commons.plan.relational.function.arithmetic.SubtractionResolver;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.DoubleNegationColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.FloatNegationColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.IntNegationColumnTransformer;

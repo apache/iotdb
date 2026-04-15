@@ -33,8 +33,8 @@ import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContex
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceStateMachine;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TransformOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.SeriesScanOperator;
-import org.apache.iotdb.db.queryengine.plan.expression.expression.expression.Expression;
-import org.apache.iotdb.db.queryengine.plan.expression.expression.expression.leaf.TimeSeriesOperand;
+import org.apache.iotdb.db.queryengine.plan.expression.Expression;
+import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
 import org.apache.iotdb.db.queryengine.transformation.dag.input.QueryDataSetInputLayer;
 import org.apache.iotdb.db.queryengine.transformation.dag.input.TsBlockInputDataSet;

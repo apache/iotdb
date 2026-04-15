@@ -21,9 +21,9 @@ package org.apache.iotdb.db.queryengine.plan.planner;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.node_commons.common.NodeRef;
-import org.apache.iotdb.db.queryengine.plan.expression.expression.expression.Expression;
-import org.apache.iotdb.db.queryengine.plan.expression.expression.expression.leaf.TimeSeriesOperand;
-import org.apache.iotdb.db.queryengine.plan.expression.expression.expression.multi.FunctionExpression;
+import org.apache.iotdb.db.queryengine.plan.expression.Expression;
+import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
+import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.junit.Assert;

@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement.component;
 
-import org.apache.iotdb.db.queryengine.plan.expression.expression.expression.Expression;
+import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 

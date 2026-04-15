@@ -76,17 +76,17 @@ import org.apache.iotdb.db.queryengine.execution.operator.source.SeriesScanOpera
 import org.apache.iotdb.db.queryengine.execution.operator.window.TimeWindowParameter;
 import org.apache.iotdb.db.queryengine.execution.operator.window.WindowParameter;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
-import org.apache.iotdb.db.queryengine.plan.expression.expression.expression.leaf.TimeSeriesOperand;
+import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
-import org.apache.iotdb.db.queryengine.transformation.dag.dag.column.column.ColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.dag.column.column.binary.ArithmeticAdditionColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.dag.column.column.binary.CompareLessEqualColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.dag.column.column.leaf.ConstantColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.dag.column.column.leaf.TimeColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.ArithmeticAdditionColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.CompareLessEqualColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.ConstantColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.TimeColumnTransformer;
 
 import com.google.common.collect.Sets;
 import org.apache.tsfile.common.conf.TSFileDescriptor;

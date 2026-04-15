@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.expression.expression.expression.leaf.TimeSeriesOperand;
+import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.planner.node.PlanNodeDeserializeHelper;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationDescriptor;
@@ -41,9 +41,9 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import static org.apache.iotdb.db.queryengine.plan.expression.expression.expression.ExpressionFactory.gt;
-import static org.apache.iotdb.db.queryengine.plan.expression.expression.expression.ExpressionFactory.longValue;
-import static org.apache.iotdb.db.queryengine.plan.expression.expression.expression.ExpressionFactory.time;
+import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.gt;
+import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.longValue;
+import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.time;
 import static org.junit.Assert.assertEquals;
 
 public class SeriesAggregationScanNodeSerdeTest {

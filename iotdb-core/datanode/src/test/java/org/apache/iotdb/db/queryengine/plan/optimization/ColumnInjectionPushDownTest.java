@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.optimization;
 
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.expression.expression.expression.ExpressionFactory;
+import org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByTimeParameter;

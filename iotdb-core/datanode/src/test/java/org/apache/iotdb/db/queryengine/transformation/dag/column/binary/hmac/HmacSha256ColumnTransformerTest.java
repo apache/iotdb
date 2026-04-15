@@ -20,11 +20,11 @@
 package org.apache.iotdb.db.queryengine.transformation.dag.column.binary.hmac;
 
 import org.apache.iotdb.db.exception.sql.SemanticException;
-import org.apache.iotdb.db.queryengine.transformation.dag.dag.column.binary.factory.factory.HmacStrategiesFactory;
-import org.apache.iotdb.db.queryengine.transformation.dag.dag.column.column.ColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.dag.column.column.binary.HmacColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.dag.column.column.binary.strategies.HmacStrategy;
-import org.apache.iotdb.db.queryengine.transformation.dag.dag.column.column.unary.scalar.HmacConstantKeyColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.HmacColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.factory.HmacStrategiesFactory;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.strategies.HmacStrategy;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.HmacConstantKeyColumnTransformer;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;

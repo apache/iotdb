@@ -20,9 +20,9 @@
 package org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule;
 
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.node_commons.plan.relational.function.function.BoundSignature;
-import org.apache.iotdb.db.node_commons.plan.relational.function.function.FunctionId;
-import org.apache.iotdb.db.node_commons.plan.relational.function.function.FunctionKind;
+import org.apache.iotdb.db.node_commons.plan.relational.function.BoundSignature;
+import org.apache.iotdb.db.node_commons.plan.relational.function.FunctionId;
+import org.apache.iotdb.db.node_commons.plan.relational.function.FunctionKind;
 import org.apache.iotdb.db.node_commons.plan.relational.metadata.FunctionNullability;
 import org.apache.iotdb.db.node_commons.plan.relational.metadata.ResolvedFunction;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.Assignments;

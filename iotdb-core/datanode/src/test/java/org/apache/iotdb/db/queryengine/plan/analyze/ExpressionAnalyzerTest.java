@@ -25,19 +25,19 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
-import org.apache.iotdb.db.queryengine.plan.expression.expression.expression.leaf.TimeSeriesOperand;
+import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 
 import org.junit.Test;
 
 import java.util.Arrays;
 import java.util.List;
 
-import static org.apache.iotdb.db.queryengine.plan.expression.expression.expression.ExpressionFactory.and;
-import static org.apache.iotdb.db.queryengine.plan.expression.expression.expression.ExpressionFactory.count;
-import static org.apache.iotdb.db.queryengine.plan.expression.expression.expression.ExpressionFactory.gt;
-import static org.apache.iotdb.db.queryengine.plan.expression.expression.expression.ExpressionFactory.intValue;
-import static org.apache.iotdb.db.queryengine.plan.expression.expression.expression.ExpressionFactory.path;
-import static org.apache.iotdb.db.queryengine.plan.expression.expression.expression.ExpressionFactory.timeSeries;
+import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.and;
+import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.count;
+import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.gt;
+import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.intValue;
+import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.path;
+import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.timeSeries;
 import static org.junit.Assert.assertEquals;
 
 public class ExpressionAnalyzerTest {

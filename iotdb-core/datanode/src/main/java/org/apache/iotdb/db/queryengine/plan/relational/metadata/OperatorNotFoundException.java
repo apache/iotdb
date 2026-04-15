@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 
 import org.apache.iotdb.commons.exception.IoTDBException;
-import org.apache.iotdb.db.node_commons.plan.relational.function.function.OperatorType;
+import org.apache.iotdb.db.node_commons.plan.relational.function.OperatorType;
 import org.apache.iotdb.db.node_commons.plan.relational.type.TypeSignature;
 
 import com.google.common.base.Joiner;

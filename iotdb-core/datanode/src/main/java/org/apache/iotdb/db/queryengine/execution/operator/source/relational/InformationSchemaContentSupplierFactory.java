@@ -65,7 +65,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TTableInfo;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.node_commons.common.ConnectionInfo;
-import org.apache.iotdb.db.node_commons.plan.relational.function.function.TableBuiltinTableFunction;
+import org.apache.iotdb.db.node_commons.plan.relational.function.TableBuiltinTableFunction;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.StringLiteral;

@@ -23,7 +23,7 @@ import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.IPlanVisitor;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNodeType;
-import org.apache.iotdb.db.node_commons.plan.relational.function.function.BoundSignature;
+import org.apache.iotdb.db.node_commons.plan.relational.function.BoundSignature;
 import org.apache.iotdb.db.node_commons.plan.relational.metadata.ResolvedFunction;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.Assignments;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.Symbol;

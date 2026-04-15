@@ -26,7 +26,7 @@ import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.table.InsertNodeMeasurementInfo;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
-import org.apache.iotdb.db.node_commons.plan.relational.function.function.OperatorType;
+import org.apache.iotdb.db.node_commons.plan.relational.function.OperatorType;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.node_commons.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.node_commons.plan.relational.type.TypeManager;

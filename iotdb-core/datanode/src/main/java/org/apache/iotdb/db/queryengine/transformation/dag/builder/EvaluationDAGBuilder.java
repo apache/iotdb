@@ -21,12 +21,12 @@ package org.apache.iotdb.db.queryengine.transformation.dag.builder;
 
 import org.apache.iotdb.db.node_commons.common.NodeRef;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.parameter.InputLocation;
-import org.apache.iotdb.db.queryengine.plan.expression.expression.expression.Expression;
-import org.apache.iotdb.db.queryengine.plan.expression.expression.expression.visitor.IntermediateLayerVisitor;
+import org.apache.iotdb.db.queryengine.plan.expression.Expression;
+import org.apache.iotdb.db.queryengine.plan.expression.visitor.IntermediateLayerVisitor;
 import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
-import org.apache.iotdb.db.queryengine.transformation.dag.dag.memory.LayerMemoryAssigner;
 import org.apache.iotdb.db.queryengine.transformation.dag.input.QueryDataSetInputLayer;
 import org.apache.iotdb.db.queryengine.transformation.dag.intermediate.IntermediateLayer;
+import org.apache.iotdb.db.queryengine.transformation.dag.memory.LayerMemoryAssigner;
 import org.apache.iotdb.db.queryengine.transformation.dag.udf.UDTFContext;
 
 import org.apache.tsfile.enums.TSDataType;

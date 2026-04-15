@@ -26,7 +26,7 @@ import org.apache.iotdb.db.node_commons.plan.planner.plan.node.process.TwoChildP
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer;
-import org.apache.iotdb.db.queryengine.plan.expression.expression.expression.Expression;
+import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.CollectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.FillNode;

@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.node_commons.plan.relational.metadata;
 
-import org.apache.iotdb.db.node_commons.plan.relational.function.function.BoundSignature;
-import org.apache.iotdb.db.node_commons.plan.relational.function.function.FunctionId;
-import org.apache.iotdb.db.node_commons.plan.relational.function.function.FunctionKind;
+import org.apache.iotdb.db.node_commons.plan.relational.function.BoundSignature;
+import org.apache.iotdb.db.node_commons.plan.relational.function.FunctionId;
+import org.apache.iotdb.db.node_commons.plan.relational.function.FunctionKind;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.QualifiedName;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;

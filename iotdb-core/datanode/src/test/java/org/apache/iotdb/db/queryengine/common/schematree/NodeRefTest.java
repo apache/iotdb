@@ -20,8 +20,8 @@
 package org.apache.iotdb.db.queryengine.common.schematree;
 
 import org.apache.iotdb.db.node_commons.common.NodeRef;
-import org.apache.iotdb.db.queryengine.plan.expression.expression.expression.Expression;
-import org.apache.iotdb.db.queryengine.plan.expression.expression.expression.leaf.ConstantOperand;
+import org.apache.iotdb.db.queryengine.plan.expression.Expression;
+import org.apache.iotdb.db.queryengine.plan.expression.leaf.ConstantOperand;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.junit.Assert;

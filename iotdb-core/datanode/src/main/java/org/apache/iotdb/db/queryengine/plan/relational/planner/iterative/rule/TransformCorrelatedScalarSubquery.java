@@ -56,7 +56,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patte
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.correlatedJoin;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.QueryCardinalityUtil.extractCardinality;
 import static org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Pattern.nonEmpty;
-import static org.apache.iotdb.db.queryengine.transformation.dag.dag.column.column.FailFunctionColumnTransformer.FAIL_FUNCTION_NAME;
+import static org.apache.iotdb.db.queryengine.transformation.dag.column.FailFunctionColumnTransformer.FAIL_FUNCTION_NAME;
 import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
 import static org.apache.tsfile.read.common.type.LongType.INT64;
 

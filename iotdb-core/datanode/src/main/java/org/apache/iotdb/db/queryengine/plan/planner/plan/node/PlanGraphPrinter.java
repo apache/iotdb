@@ -49,7 +49,7 @@ import org.apache.iotdb.db.node_commons.plan.relational.planner.node.ValueFillNo
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.ValuesNode;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.WindowNode;
 import org.apache.iotdb.db.queryengine.plan.analyze.TemplatedInfo;
-import org.apache.iotdb.db.queryengine.plan.expression.expression.expression.Expression;
+import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationMergeSortNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.CollectNode;

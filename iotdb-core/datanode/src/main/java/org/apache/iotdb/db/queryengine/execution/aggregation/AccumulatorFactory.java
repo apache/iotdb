@@ -21,9 +21,9 @@ package org.apache.iotdb.db.queryengine.execution.aggregation;
 
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.queryengine.plan.expression.expression.expression.Expression;
-import org.apache.iotdb.db.queryengine.plan.expression.expression.expression.binary.CompareBinaryExpression;
-import org.apache.iotdb.db.queryengine.plan.expression.expression.expression.leaf.ConstantOperand;
+import org.apache.iotdb.db.queryengine.plan.expression.Expression;
+import org.apache.iotdb.db.queryengine.plan.expression.binary.CompareBinaryExpression;
+import org.apache.iotdb.db.queryengine.plan.expression.leaf.ConstantOperand;
 
 import org.apache.tsfile.enums.TSDataType;
 

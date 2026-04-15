@@ -21,8 +21,8 @@ package org.apache.iotdb.db.queryengine.expression.predicate;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils;
-import org.apache.iotdb.db.queryengine.plan.expression.expression.expression.Expression;
-import org.apache.iotdb.db.queryengine.plan.expression.expression.expression.leaf.TimeSeriesOperand;
+import org.apache.iotdb.db.queryengine.plan.expression.Expression;
+import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -30,22 +30,22 @@ import org.junit.Test;
 import java.util.Arrays;
 import java.util.LinkedHashSet;
 
-import static org.apache.iotdb.db.queryengine.plan.expression.expression.expression.ExpressionFactory.add;
-import static org.apache.iotdb.db.queryengine.plan.expression.expression.expression.ExpressionFactory.between;
-import static org.apache.iotdb.db.queryengine.plan.expression.expression.expression.ExpressionFactory.eq;
-import static org.apache.iotdb.db.queryengine.plan.expression.expression.expression.ExpressionFactory.gte;
-import static org.apache.iotdb.db.queryengine.plan.expression.expression.expression.ExpressionFactory.in;
-import static org.apache.iotdb.db.queryengine.plan.expression.expression.expression.ExpressionFactory.intValue;
-import static org.apache.iotdb.db.queryengine.plan.expression.expression.expression.ExpressionFactory.isNotNull;
-import static org.apache.iotdb.db.queryengine.plan.expression.expression.expression.ExpressionFactory.isNull;
-import static org.apache.iotdb.db.queryengine.plan.expression.expression.expression.ExpressionFactory.like;
-import static org.apache.iotdb.db.queryengine.plan.expression.expression.expression.ExpressionFactory.longValue;
-import static org.apache.iotdb.db.queryengine.plan.expression.expression.expression.ExpressionFactory.lt;
-import static org.apache.iotdb.db.queryengine.plan.expression.expression.expression.ExpressionFactory.not;
-import static org.apache.iotdb.db.queryengine.plan.expression.expression.expression.ExpressionFactory.notRegex;
-import static org.apache.iotdb.db.queryengine.plan.expression.expression.expression.ExpressionFactory.sin;
-import static org.apache.iotdb.db.queryengine.plan.expression.expression.expression.ExpressionFactory.time;
-import static org.apache.iotdb.db.queryengine.plan.expression.expression.expression.ExpressionFactory.timeSeries;
+import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.add;
+import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.between;
+import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.eq;
+import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.gte;
+import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.in;
+import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.intValue;
+import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.isNotNull;
+import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.isNull;
+import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.like;
+import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.longValue;
+import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.lt;
+import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.not;
+import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.notRegex;
+import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.sin;
+import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.time;
+import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.timeSeries;
 
 public class PredicatePushIntoScanTest {
 

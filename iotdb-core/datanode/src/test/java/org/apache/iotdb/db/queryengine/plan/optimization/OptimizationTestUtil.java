@@ -31,7 +31,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analyzer;
 import org.apache.iotdb.db.queryengine.plan.analyze.FakePartitionFetcherImpl;
 import org.apache.iotdb.db.queryengine.plan.analyze.FakeSchemaFetcherImpl;
-import org.apache.iotdb.db.queryengine.plan.expression.expression.expression.leaf.TimeSeriesOperand;
+import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.parser.StatementGenerator;
 import org.apache.iotdb.db.queryengine.plan.planner.LogicalPlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationDescriptor;

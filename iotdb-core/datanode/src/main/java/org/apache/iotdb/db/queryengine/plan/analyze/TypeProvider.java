@@ -38,7 +38,7 @@ import java.util.Objects;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
-import static org.apache.iotdb.db.queryengine.plan.expression.expression.expression.leaf.TimestampOperand.TIMESTAMP_EXPRESSION_STRING;
+import static org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand.TIMESTAMP_EXPRESSION_STRING;
 
 public class TypeProvider {
 

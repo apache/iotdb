@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
 import org.apache.iotdb.db.exception.sql.SemanticException;
-import org.apache.iotdb.db.node_commons.plan.relational.function.function.tvf.ForecastTableFunction;
+import org.apache.iotdb.db.node_commons.plan.relational.function.tvf.ForecastTableFunction;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlanTester;
@@ -37,8 +37,8 @@ import org.junit.Test;
 import java.util.Collections;
 import java.util.function.Consumer;
 
-import static org.apache.iotdb.db.node_commons.plan.relational.function.function.tvf.ForecastTableFunction.DEFAULT_OUTPUT_INTERVAL;
-import static org.apache.iotdb.db.node_commons.plan.relational.function.function.tvf.ForecastTableFunction.DEFAULT_OUTPUT_START_TIME;
+import static org.apache.iotdb.db.node_commons.plan.relational.function.tvf.ForecastTableFunction.DEFAULT_OUTPUT_INTERVAL;
+import static org.apache.iotdb.db.node_commons.plan.relational.function.tvf.ForecastTableFunction.DEFAULT_OUTPUT_START_TIME;
 import static org.apache.iotdb.db.node_commons.plan.relational.sql.ast.SortItem.NullOrdering.FIRST;
 import static org.apache.iotdb.db.node_commons.plan.relational.sql.ast.SortItem.NullOrdering.LAST;
 import static org.apache.iotdb.db.node_commons.plan.relational.sql.ast.SortItem.Ordering.ASCENDING;

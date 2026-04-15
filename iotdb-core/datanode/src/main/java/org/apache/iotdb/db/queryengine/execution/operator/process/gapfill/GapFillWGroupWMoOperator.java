@@ -30,7 +30,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
 
-import static org.apache.iotdb.db.queryengine.transformation.dag.dag.column.column.unary.scalar.DateBinFunctionColumnTransformer.nextDateBin;
+import static org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.DateBinFunctionColumnTransformer.nextDateBin;
 
 // with month interval
 public class GapFillWGroupWMoOperator extends AbstractGapFillWGroupOperator {

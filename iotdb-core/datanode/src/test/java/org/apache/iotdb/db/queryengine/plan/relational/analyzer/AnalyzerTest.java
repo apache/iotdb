@@ -33,7 +33,7 @@ import org.apache.iotdb.commons.schema.table.InsertNodeMeasurementInfo;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.node_commons.plan.relational.function.function.OperatorType;
+import org.apache.iotdb.db.node_commons.plan.relational.function.OperatorType;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.CollectNode;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.FilterNode;

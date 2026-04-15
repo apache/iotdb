@@ -29,7 +29,7 @@ import org.apache.iotdb.commons.udf.service.UDFClassLoader;
 import org.apache.iotdb.commons.udf.service.UDFClassLoaderManager;
 import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.node_commons.plan.relational.function.function.TableBuiltinTableFunction;
+import org.apache.iotdb.db.node_commons.plan.relational.function.TableBuiltinTableFunction;
 import org.apache.iotdb.udf.api.UDF;
 import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.exception.UDFManagementException;

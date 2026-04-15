@@ -19,8 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar;
 
-import org.apache.iotdb.db.queryengine.transformation.dag.dag.column.column.ColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.dag.column.column.unary.scalar.BlobLengthColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.read.common.block.column.BinaryColumn;

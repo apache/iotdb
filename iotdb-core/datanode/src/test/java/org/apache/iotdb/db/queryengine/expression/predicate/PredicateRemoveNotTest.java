@@ -27,21 +27,21 @@ import java.util.LinkedHashSet;
 
 import static org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils.predicateRemoveNot;
 import static org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils.reversePredicate;
-import static org.apache.iotdb.db.queryengine.plan.expression.expression.expression.ExpressionFactory.and;
-import static org.apache.iotdb.db.queryengine.plan.expression.expression.expression.ExpressionFactory.between;
-import static org.apache.iotdb.db.queryengine.plan.expression.expression.expression.ExpressionFactory.eq;
-import static org.apache.iotdb.db.queryengine.plan.expression.expression.expression.ExpressionFactory.gt;
-import static org.apache.iotdb.db.queryengine.plan.expression.expression.expression.ExpressionFactory.gte;
-import static org.apache.iotdb.db.queryengine.plan.expression.expression.expression.ExpressionFactory.in;
-import static org.apache.iotdb.db.queryengine.plan.expression.expression.expression.ExpressionFactory.longValue;
-import static org.apache.iotdb.db.queryengine.plan.expression.expression.expression.ExpressionFactory.lt;
-import static org.apache.iotdb.db.queryengine.plan.expression.expression.expression.ExpressionFactory.lte;
-import static org.apache.iotdb.db.queryengine.plan.expression.expression.expression.ExpressionFactory.neq;
-import static org.apache.iotdb.db.queryengine.plan.expression.expression.expression.ExpressionFactory.not;
-import static org.apache.iotdb.db.queryengine.plan.expression.expression.expression.ExpressionFactory.notBetween;
-import static org.apache.iotdb.db.queryengine.plan.expression.expression.expression.ExpressionFactory.notIn;
-import static org.apache.iotdb.db.queryengine.plan.expression.expression.expression.ExpressionFactory.or;
-import static org.apache.iotdb.db.queryengine.plan.expression.expression.expression.ExpressionFactory.time;
+import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.and;
+import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.between;
+import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.eq;
+import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.gt;
+import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.gte;
+import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.in;
+import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.longValue;
+import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.lt;
+import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.lte;
+import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.neq;
+import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.not;
+import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.notBetween;
+import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.notIn;
+import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.or;
+import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.time;
 
 public class PredicateRemoveNotTest {
 
