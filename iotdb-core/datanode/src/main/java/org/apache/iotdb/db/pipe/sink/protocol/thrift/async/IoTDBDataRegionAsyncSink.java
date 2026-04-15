@@ -647,7 +647,6 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
         addFailureEventToRetryQueue(tsFileInsertionEvent, null);
       }
     } catch (final Exception e) {
-      tsFileInsertionEvent.decreaseReferenceCount(IoTDBDataRegionAsyncSink.class.getName(), false);
       addFailureEventToRetryQueue(tsFileInsertionEvent, e);
     }
   }

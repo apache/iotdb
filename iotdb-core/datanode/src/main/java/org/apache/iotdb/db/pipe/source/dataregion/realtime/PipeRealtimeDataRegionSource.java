@@ -371,6 +371,17 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
   }
 
   protected void extractProgressReportEvent(final PipeRealtimeEvent event) {
+    // Remove any heartbeat events in front of this event to avoid OOM
+    // Since the batch and retry queue no longer need the heartbeat event to trigger
+    // And the progress report event can trigger the processor calculation because it's not reported
+    // yet
+    while (true) {
+      final PipeRealtimeEvent lastEvent = ((PipeRealtimeEvent) pendingQueue.peekLast());
+      if (lastEvent == null || !(lastEvent.getEvent() instanceof PipeHeartbeatEvent)) {
+        break;
+      }
+      pendingQueue.pollLast();
+    }
     if (pendingQueue.peekLast() instanceof ProgressReportEvent) {
       final ProgressReportEvent oldEvent = (ProgressReportEvent) pendingQueue.peekLast();
       oldEvent.bindProgressIndex(

@@ -37,4 +37,8 @@ public class UnboundedBlockingPendingQueue<E extends Event> extends BlockingPend
   public E peekLast() {
     return pendingDeque.peekLast();
   }
+
+  public E pollLast() {
+    return pendingDeque.pollLast();
+  }
 }
