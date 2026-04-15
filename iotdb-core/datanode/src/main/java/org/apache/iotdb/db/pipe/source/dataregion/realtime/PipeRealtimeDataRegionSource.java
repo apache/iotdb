@@ -652,7 +652,7 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
     return taskID;
   }
 
-  protected String getTsFileDedupScopeID() {
+  public final String getTsFileDedupScopeID() {
     return tsFileDedupScopeID;
   }
 

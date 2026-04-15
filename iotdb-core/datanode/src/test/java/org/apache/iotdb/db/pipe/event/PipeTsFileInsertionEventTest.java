@@ -23,13 +23,17 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.audit.IAuditEntity;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.consensus.index.impl.SimpleProgressIndex;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.auth.AuthorityChecker;
+import org.apache.iotdb.db.pipe.event.common.tsfile.PipeCompactedTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
+import org.apache.iotdb.db.pipe.source.dataregion.realtime.assigner.PipeTsFileEpochProgressIndexKeeper;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.security.TreeAccessCheckContext;
@@ -50,8 +54,11 @@ import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.common.TimeRange;
 import org.junit.Assert;
 import org.junit.Test;
+import org.mockito.Mockito;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -155,6 +162,92 @@ public class PipeTsFileInsertionEventTest {
       AuthorityChecker.setAccessControl(oldControl);
       FileUtils.deleteFileOrDirectory(new File(TestConstant.BASE_OUTPUT_PATH));
     }
+  }
+
+  @Test
+  public void testTsFileDedupScopeIdIsPreservedForCleanupAndCopy() throws Exception {
+    final PipeTsFileEpochProgressIndexKeeper keeper =
+        PipeTsFileEpochProgressIndexKeeper.getInstance();
+    final int dataRegionId = 1;
+    final String scopeA = "scope-a";
+    final String scopeB = "scope-b";
+    final File tempDir = Files.createTempDirectory("pipeTsFileDedupScope").toFile();
+
+    try {
+      final TsFileResource sourceResource =
+          createSpyTsFileResource(tempDir, "source.tsfile", 1L, dataRegionId);
+      keeper.registerProgressIndex(dataRegionId, scopeA, sourceResource);
+      keeper.registerProgressIndex(dataRegionId, scopeB, sourceResource);
+
+      final PipeTsFileInsertionEvent sourceEvent =
+          new PipeTsFileInsertionEvent(
+                  true,
+                  "db",
+                  sourceResource,
+                  null,
+                  true,
+                  false,
+                  false,
+                  Collections.singleton("table"),
+                  "pipe",
+                  1L,
+                  null,
+                  null,
+                  null,
+                  null,
+                  null,
+                  null,
+                  true,
+                  Long.MIN_VALUE,
+                  Long.MAX_VALUE)
+              .bindTsFileDedupScopeID(scopeA);
+
+      sourceEvent.eliminateProgressIndex();
+      Assert.assertFalse(keeper.containsTsFile(dataRegionId, scopeA, sourceResource.getTsFilePath()));
+      Assert.assertTrue(keeper.containsTsFile(dataRegionId, scopeB, sourceResource.getTsFilePath()));
+
+      keeper.registerProgressIndex(dataRegionId, scopeA, sourceResource);
+      final PipeTsFileInsertionEvent copiedEvent =
+          sourceEvent.shallowCopySelfAndBindPipeTaskMetaForProgressReport(
+              "pipe", 2L, null, null, null, null, null, null, true, Long.MIN_VALUE, Long.MAX_VALUE);
+      Assert.assertEquals(scopeA, copiedEvent.getTsFileDedupScopeID());
+      copiedEvent.eliminateProgressIndex();
+      Assert.assertFalse(keeper.containsTsFile(dataRegionId, scopeA, sourceResource.getTsFilePath()));
+      Assert.assertTrue(keeper.containsTsFile(dataRegionId, scopeB, sourceResource.getTsFilePath()));
+
+      keeper.registerProgressIndex(dataRegionId, scopeA, sourceResource);
+      final TsFileResource compactedResource =
+          createSpyTsFileResource(tempDir, "compacted.tsfile", 2L, dataRegionId);
+      final PipeCompactedTsFileInsertionEvent compactedEvent =
+          new PipeCompactedTsFileInsertionEvent(
+              new CommitterKey("pipe", 1L, dataRegionId, 0),
+              Collections.singleton(sourceEvent),
+              sourceEvent,
+              compactedResource,
+              true);
+      Assert.assertEquals(scopeA, compactedEvent.getTsFileDedupScopeID());
+      compactedEvent.eliminateProgressIndex();
+      Assert.assertFalse(keeper.containsTsFile(dataRegionId, scopeA, sourceResource.getTsFilePath()));
+      Assert.assertTrue(keeper.containsTsFile(dataRegionId, scopeB, sourceResource.getTsFilePath()));
+    } finally {
+      keeper.clearProgressIndex(dataRegionId, scopeA);
+      keeper.clearProgressIndex(dataRegionId, scopeB);
+      FileUtils.deleteFileOrDirectory(tempDir);
+    }
+  }
+
+  private TsFileResource createSpyTsFileResource(
+      final File tempDir, final String fileName, final long flushOrderId, final int dataRegionId)
+      throws IOException {
+    final File file = new File(tempDir, fileName);
+    Assert.assertTrue(file.createNewFile());
+
+    final TsFileResource resource = new TsFileResource(file);
+    resource.updateProgressIndex(new SimpleProgressIndex(1, flushOrderId));
+
+    final TsFileResource spyResource = Mockito.spy(resource);
+    Mockito.doReturn(String.valueOf(dataRegionId)).when(spyResource).getDataRegionId();
+    return spyResource;
   }
 
   static class TestAccessControl implements AccessControl {

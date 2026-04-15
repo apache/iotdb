@@ -814,14 +814,19 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
       return null;
     }
 
-    final PersistentResource resource = pendingQueue.poll();
-    if (resource == null) {
-      return supplyTerminateEvent();
-    } else if (resource instanceof TsFileResource) {
-      return supplyTsFileEvent((TsFileResource) resource);
-    } else {
+    PersistentResource resource;
+    while ((resource = pendingQueue.poll()) != null) {
+      if (resource instanceof TsFileResource) {
+        final TsFileResource tsFileResource = (TsFileResource) resource;
+        if (consumeSkippedHistoricalTsFileEventIfNecessary(tsFileResource)) {
+          continue;
+        }
+        return supplyTsFileEvent(tsFileResource);
+      }
       return supplyDeletionEvent((DeletionResource) resource);
     }
+
+    return supplyTerminateEvent();
   }
 
   private Event supplyTerminateEvent() {
@@ -844,7 +849,37 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
     return terminateEvent;
   }
 
-  private Event supplyTsFileEvent(final TsFileResource resource) {
+  protected boolean consumeSkippedHistoricalTsFileEventIfNecessary(final TsFileResource resource) {
+    if (!filteredTsFileResources2TableNames.containsKey(resource)
+        || !shouldSkipHistoricalTsFileEvent(resource)) {
+      return false;
+    }
+
+    filteredTsFileResources2TableNames.remove(resource);
+    LOGGER.info(
+        "Pipe {}@{}: skip historical tsfile {} because realtime source in current task {} has already captured it.",
+        pipeName,
+        dataRegionId,
+        resource.getTsFilePath(),
+        tsFileDedupScopeID);
+    try {
+      return true;
+    } finally {
+      try {
+        PipeDataNodeResourceManager.tsfile()
+            .unpinTsFileResource(resource, shouldTransferModFile, pipeName);
+      } catch (final IOException e) {
+        LOGGER.warn(
+            "Pipe {}@{}: failed to unpin skipped historical TsFileResource, original path: {}",
+            pipeName,
+            dataRegionId,
+            resource.getTsFilePath(),
+            e);
+      }
+    }
+  }
+
+  protected Event supplyTsFileEvent(final TsFileResource resource) {
     if (!filteredTsFileResources2TableNames.containsKey(resource)) {
       final ProgressReportEvent progressReportEvent =
           new ProgressReportEvent(pipeName, creationTime, pipeTaskMeta);
@@ -858,31 +893,6 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
             progressReportEvent);
       }
       return isReferenceCountIncreased ? progressReportEvent : null;
-    }
-
-    if (shouldSkipHistoricalTsFileEvent(resource)) {
-      filteredTsFileResources2TableNames.remove(resource);
-      LOGGER.info(
-          "Pipe {}@{}: skip historical tsfile {} because realtime source in current task {} has already captured it.",
-          pipeName,
-          dataRegionId,
-          resource.getTsFilePath(),
-          tsFileDedupScopeID);
-      try {
-        return null;
-      } finally {
-        try {
-          PipeDataNodeResourceManager.tsfile()
-              .unpinTsFileResource(resource, shouldTransferModFile, pipeName);
-        } catch (final IOException e) {
-          LOGGER.warn(
-              "Pipe {}@{}: failed to unpin skipped historical TsFileResource, original path: {}",
-              pipeName,
-              dataRegionId,
-              resource.getTsFilePath(),
-              e);
-        }
-      }
     }
 
     final PipeTsFileInsertionEvent event =
