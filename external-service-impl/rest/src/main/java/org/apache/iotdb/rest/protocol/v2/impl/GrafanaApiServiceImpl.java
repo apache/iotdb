@@ -133,7 +133,9 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
         return QueryDataSetHandler.fillGrafanaVariablesResult(queryExecution, statement);
       }
     } catch (Exception e) {
-      return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
+      return Response.status(ExceptionHandler.getHttpStatus(e))
+          .entity(ExceptionHandler.tryCatchException(e))
+          .build();
     } finally {
       if (queryId != null) {
         COORDINATOR.cleanupQueryExecution(queryId);
@@ -206,7 +208,9 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
         }
       }
     } catch (Exception e) {
-      return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
+      return Response.status(ExceptionHandler.getHttpStatus(e))
+          .entity(ExceptionHandler.tryCatchException(e))
+          .build();
     } finally {
       if (queryId != null) {
         COORDINATOR.cleanupQueryExecution(queryId);
@@ -269,7 +273,9 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
         return QueryDataSetHandler.fillGrafanaNodesResult(null);
       }
     } catch (Exception e) {
-      return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
+      return Response.status(ExceptionHandler.getHttpStatus(e))
+          .entity(ExceptionHandler.tryCatchException(e))
+          .build();
     } finally {
       if (queryId != null) {
         COORDINATOR.cleanupQueryExecution(queryId);

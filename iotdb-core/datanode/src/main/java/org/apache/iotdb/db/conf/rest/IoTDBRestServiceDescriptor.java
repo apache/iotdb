@@ -91,6 +91,23 @@ public class IoTDBRestServiceDescriptor {
             trimProperties.getProperty(
                 "rest_query_default_row_size_limit",
                 Integer.toString(conf.getRestQueryDefaultRowSizeLimit()))));
+    conf.setRestMaxRequestBodySizeInBytes(
+        Long.parseLong(
+            trimProperties.getProperty(
+                "rest_max_request_body_size_in_bytes",
+                Long.toString(conf.getRestMaxRequestBodySizeInBytes()))));
+    conf.setRestMaxInsertRows(
+        Integer.parseInt(
+            trimProperties.getProperty(
+                "rest_max_insert_rows", Integer.toString(conf.getRestMaxInsertRows()))));
+    conf.setRestMaxInsertColumns(
+        Integer.parseInt(
+            trimProperties.getProperty(
+                "rest_max_insert_columns", Integer.toString(conf.getRestMaxInsertColumns()))));
+    conf.setRestMaxInsertValues(
+        Long.parseLong(
+            trimProperties.getProperty(
+                "rest_max_insert_values", Long.toString(conf.getRestMaxInsertValues()))));
     conf.setEnableSwagger(
         Boolean.parseBoolean(
             trimProperties.getProperty(

@@ -109,7 +109,9 @@ public class RestApiServiceImpl extends RestApiService {
         return res;
       }
     } catch (Exception e) {
-      return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
+      return Response.status(ExceptionHandler.getHttpStatus(e))
+          .entity(ExceptionHandler.tryCatchException(e))
+          .build();
     } finally {
       if (queryId != null) {
         COORDINATOR.cleanupQueryExecution(queryId);
@@ -132,7 +134,9 @@ public class RestApiServiceImpl extends RestApiService {
 
       return executeQueryInternal(sql, statement, clientSession, relationSqlParser);
     } catch (Exception e) {
-      return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
+      return Response.status(ExceptionHandler.getHttpStatus(e))
+          .entity(ExceptionHandler.tryCatchException(e))
+          .build();
     } finally {
       long costTime = System.nanoTime() - startTime;
       Optional.ofNullable(statement)
@@ -174,7 +178,9 @@ public class RestApiServiceImpl extends RestApiService {
 
       return responseGenerateHelper(result);
     } catch (Exception e) {
-      return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
+      return Response.status(ExceptionHandler.getHttpStatus(e))
+          .entity(ExceptionHandler.tryCatchException(e))
+          .build();
     } finally {
       long costTime = System.nanoTime() - startTime;
       Optional.ofNullable(insertTabletStatement)
@@ -231,7 +237,9 @@ public class RestApiServiceImpl extends RestApiService {
       }
       return responseGenerateHelper(result);
     } catch (Exception e) {
-      return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
+      return Response.status(ExceptionHandler.getHttpStatus(e))
+          .entity(ExceptionHandler.tryCatchException(e))
+          .build();
     } finally {
       long costTime = System.nanoTime() - startTime;
       Optional.ofNullable(statement)
