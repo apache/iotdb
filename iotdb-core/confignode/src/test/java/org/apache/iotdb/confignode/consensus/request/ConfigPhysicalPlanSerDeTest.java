@@ -1559,19 +1559,19 @@ public class ConfigPhysicalPlanSerDeTest {
   @Test
   public void AlterTableColumnDataTypePlanTest() throws IOException {
     final AlterColumnDataTypePlan alterColumnDataTypePlan =
-            new AlterColumnDataTypePlan("database1", "table1", "field", TSDataType.FLOAT);
+        new AlterColumnDataTypePlan("database1", "table1", "field", TSDataType.FLOAT);
     final AlterColumnDataTypePlan alterColumnDataTypePlan1 =
-            (AlterColumnDataTypePlan)
-                    ConfigPhysicalPlan.Factory.create(alterColumnDataTypePlan.serializeToByteBuffer());
+        (AlterColumnDataTypePlan)
+            ConfigPhysicalPlan.Factory.create(alterColumnDataTypePlan.serializeToByteBuffer());
     Assert.assertEquals(
-            alterColumnDataTypePlan.getDatabase(), alterColumnDataTypePlan1.getDatabase());
+        alterColumnDataTypePlan.getDatabase(), alterColumnDataTypePlan1.getDatabase());
     Assert.assertEquals(
-            alterColumnDataTypePlan.getTableName(), alterColumnDataTypePlan1.getTableName());
+        alterColumnDataTypePlan.getTableName(), alterColumnDataTypePlan1.getTableName());
     Assert.assertEquals(
-            alterColumnDataTypePlan.getColumnName(), alterColumnDataTypePlan1.getColumnName());
+        alterColumnDataTypePlan.getColumnName(), alterColumnDataTypePlan1.getColumnName());
     Assert.assertEquals(alterColumnDataTypePlan.getType(), alterColumnDataTypePlan1.getType());
     Assert.assertEquals(
-            alterColumnDataTypePlan.getNewType(), alterColumnDataTypePlan1.getNewType());
+        alterColumnDataTypePlan.getNewType(), alterColumnDataTypePlan1.getNewType());
   }
 
   @Test
