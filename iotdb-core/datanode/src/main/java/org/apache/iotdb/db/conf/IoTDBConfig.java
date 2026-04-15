@@ -630,10 +630,10 @@ public class IoTDBConfig {
   private long smartPlanCacheMinReusablePlanningCostNanos = 1_000_000L;
 
   /** Benefit ratio threshold for MONITOR → ACTIVE transition. */
-  private double smartPlanCacheAdmitRatio = 0.20d;
+  private double smartPlanCacheAdmitRatio = 0.30d;
 
   /** Benefit ratio threshold for MONITOR → BYPASS transition. */
-  private double smartPlanCacheBypassRatio = 0.10d;
+  private double smartPlanCacheBypassRatio = 0.20d;
 
   /** Cooldown time in minutes for BYPASS state before returning to MONITOR. */
   private long smartPlanCacheBypassCooldownMinutes = 10L;
