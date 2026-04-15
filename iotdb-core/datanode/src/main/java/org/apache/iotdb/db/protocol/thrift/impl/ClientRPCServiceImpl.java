@@ -1389,25 +1389,27 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         queryTree.constructTree();
         queryTree = s.getAuthorityScope().intersectWithFullPathPrefixTree(queryTree);
 
-        for (final MeasurementPath fullPath : queryTree.getAllPathPatterns(true)) {
-          final TimeValuePair timeValuePair = DATA_NODE_SCHEMA_CACHE.getLastCache(fullPath);
-          if (timeValuePair == null) {
-            allCached = false;
-            break;
-          } else if (timeValuePair.getValue() == null) {
-            // there is no data for this sensor
-            if (!canUseNullEntry) {
+        if (!queryTree.isEmpty()) {
+          for (final MeasurementPath fullPath : queryTree.getAllPathPatterns(true)) {
+            final TimeValuePair timeValuePair = DATA_NODE_SCHEMA_CACHE.getLastCache(fullPath);
+            if (timeValuePair == null) {
               allCached = false;
               break;
+            } else if (timeValuePair.getValue() == null) {
+              // there is no data for this sensor
+              if (!canUseNullEntry) {
+                allCached = false;
+                break;
+              }
+            } else {
+              // we don't consider TTL
+              LastQueryUtil.appendLastValueRespectBlob(
+                  builder,
+                  timeValuePair.getTimestamp(),
+                  new Binary(fullPath.getFullPath(), TSFileConfig.STRING_CHARSET),
+                  timeValuePair.getValue(),
+                  timeValuePair.getValue().getDataType().name());
             }
-          } else {
-            // we don't consider TTL
-            LastQueryUtil.appendLastValueRespectBlob(
-                builder,
-                timeValuePair.getTimestamp(),
-                new Binary(fullPath.getFullPath(), TSFileConfig.STRING_CHARSET),
-                timeValuePair.getValue(),
-                timeValuePair.getValue().getDataType().name());
           }
         }
         // cache hit
