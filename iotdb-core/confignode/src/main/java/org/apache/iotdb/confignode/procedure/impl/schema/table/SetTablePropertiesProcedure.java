@@ -203,7 +203,9 @@ public class SetTablePropertiesProcedure
         env.getConfigManager()
             .getClusterSchemaManager()
             .executePlan(
-                new SetTablePropertiesPlan(database, tableName, originalProperties),
+                this instanceof SetViewPropertiesProcedure
+                    ? new SetViewPropertiesPlan(database, tableName, originalProperties)
+                    : new SetTablePropertiesPlan(database, tableName, originalProperties),
                 isGeneratedByPipe);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setFailure(new ProcedureException(new IoTDBException(status)));
