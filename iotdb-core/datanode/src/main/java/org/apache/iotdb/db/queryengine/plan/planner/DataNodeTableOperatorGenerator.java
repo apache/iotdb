@@ -24,6 +24,10 @@ import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.db.calc_commons.execution.operator.Operator;
+import org.apache.iotdb.db.calc_commons.execution.operator.OperatorContext;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.FilterAndProjectOperator;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.LimitOperator;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.OffsetOperator;
 import org.apache.iotdb.db.calc_commons.execution.operator.source.relational.aggregation.LastDescAccumulator;
 import org.apache.iotdb.db.calc_commons.execution.operator.source.relational.aggregation.TableAggregator;
 import org.apache.iotdb.db.calc_commons.execution.relational.ColumnTransformerBuilder;
@@ -55,10 +59,6 @@ import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContex
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceManager;
 import org.apache.iotdb.db.queryengine.execution.operator.EmptyDataOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.ExplainAnalyzeOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
-import org.apache.iotdb.db.queryengine.execution.operator.process.FilterAndProjectOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.process.LimitOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.process.OffsetOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TableIntoOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.copyto.TableCopyToOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.FullOuterTimeJoinOperator;
@@ -80,6 +80,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.source.ExchangeOperato
 import org.apache.iotdb.db.queryengine.execution.operator.source.SeriesScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.AbstractAggTableScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.AbstractTableScanOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.CteScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.DefaultAggTableScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.DeviceIteratorScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.InformationSchemaTableScanOperator;
@@ -107,6 +108,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationT
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTreeDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AlignedAggregationTreeDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CopyToNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CteScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExplainAnalyzeNode;
@@ -199,6 +201,22 @@ public class DataNodeTableOperatorGenerator extends TableOperatorGenerator
 
   public DataNodeTableOperatorGenerator(Metadata metadata) {
     super(metadata);
+  }
+
+  @Override
+  public Operator visitCteScan(CteScanNode node, LocalExecutionPlanContext context) {
+    OperatorContext operatorContext =
+        context
+            .getDriverContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                CteScanOperator.class.getSimpleName());
+    return new CteScanOperator(
+        operatorContext,
+        node.getPlanNodeId(),
+        node.getDataStore(),
+        context.getFragmentInstanceId().getQueryId());
   }
 
   @Override

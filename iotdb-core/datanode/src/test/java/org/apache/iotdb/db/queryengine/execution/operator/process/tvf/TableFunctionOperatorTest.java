@@ -21,16 +21,16 @@ package org.apache.iotdb.db.queryengine.execution.operator.process.tvf;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.calc_commons.execution.operator.Operator;
+import org.apache.iotdb.db.calc_commons.execution.operator.OperatorContext;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.function.partition.PartitionState;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.function.partition.Slice;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.execution.driver.DriverContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceStateMachine;
-import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.process.function.PartitionRecognizer;
-import org.apache.iotdb.db.queryengine.execution.operator.process.function.partition.PartitionState;
-import org.apache.iotdb.db.queryengine.execution.operator.process.function.partition.Slice;
 import org.apache.iotdb.udf.api.relational.access.Record;
 
 import org.apache.tsfile.common.conf.TSFileConfig;

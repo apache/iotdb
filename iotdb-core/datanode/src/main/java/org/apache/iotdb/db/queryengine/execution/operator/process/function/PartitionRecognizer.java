@@ -20,8 +20,8 @@
 package org.apache.iotdb.db.queryengine.execution.operator.process.function;
 
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
-import org.apache.iotdb.db.queryengine.execution.operator.process.function.partition.PartitionState;
-import org.apache.iotdb.db.queryengine.execution.operator.process.function.partition.Slice;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.function.partition.PartitionState;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.function.partition.Slice;
 import org.apache.iotdb.db.utils.datastructure.SortKey;
 import org.apache.iotdb.udf.api.type.Type;
 

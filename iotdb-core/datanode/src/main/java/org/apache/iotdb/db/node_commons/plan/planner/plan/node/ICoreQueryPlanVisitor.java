@@ -53,7 +53,6 @@ import org.apache.iotdb.db.node_commons.plan.relational.planner.node.UnionNode;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.ValueFillNode;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.ValuesNode;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.WindowNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CteScanNode;
 
 public interface ICoreQueryPlanVisitor<R, C> extends IPlanVisitor<R, C> {
 
@@ -65,10 +64,6 @@ public interface ICoreQueryPlanVisitor<R, C> extends IPlanVisitor<R, C> {
 
   default R visitSourceNode(SourceNode node, C context) {
     return visitPlan(node, context);
-  }
-
-  default R visitCteScan(CteScanNode node, C context) {
-    return visitSourceNode(node, context);
   }
 
   // single child --------------------------------------------------------------------------------

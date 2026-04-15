@@ -20,8 +20,9 @@
 package org.apache.iotdb.db.queryengine.execution.operator.process.window.function.value;
 
 import org.apache.iotdb.db.calc_commons.execution.operator.CommonOperatorUtils;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.window.function.value.LagFunction;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.window.partition.PartitionExecutor;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.function.FunctionTestUtils;
-import org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.PartitionExecutor;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;

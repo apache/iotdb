@@ -20,6 +20,24 @@
 package org.apache.iotdb.db.calc_commons.plan.planner;
 
 import org.apache.iotdb.db.calc_commons.execution.operator.Operator;
+import org.apache.iotdb.db.calc_commons.execution.operator.OperatorContext;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.AssignUniqueIdOperator;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.CollectOperator;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.EnforceSingleRowOperator;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.FilterAndProjectOperator;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.LimitOperator;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.MappingCollectOperator;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.OffsetOperator;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.PatternRecognitionOperator;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.PreviousFillWithGroupOperator;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.TableFillOperator;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.TableLinearFillOperator;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.TableLinearFillWithGroupOperator;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.TableMergeSortOperator;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.TableSortOperator;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.TableStreamSortOperator;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.TableTopKOperator;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.ValuesOperator;
 import org.apache.iotdb.db.calc_commons.execution.operator.process.fill.IFill;
 import org.apache.iotdb.db.calc_commons.execution.operator.process.fill.ILinearFill;
 import org.apache.iotdb.db.calc_commons.execution.operator.process.fill.constant.BinaryConstantFill;
@@ -28,6 +46,37 @@ import org.apache.iotdb.db.calc_commons.execution.operator.process.fill.constant
 import org.apache.iotdb.db.calc_commons.execution.operator.process.fill.constant.FloatConstantFill;
 import org.apache.iotdb.db.calc_commons.execution.operator.process.fill.constant.IntConstantFill;
 import org.apache.iotdb.db.calc_commons.execution.operator.process.fill.constant.LongConstantFill;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.function.TableFunctionLeafOperator;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.function.TableFunctionOperator;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.join.SimpleNestedLoopCrossJoinOperator;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.join.merge.comparator.JoinKeyComparatorFactory;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.rowpattern.LogicalIndexNavigation;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.rowpattern.PatternAggregationTracker;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.rowpattern.PatternAggregator;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.rowpattern.PatternVariableRecognizer;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.rowpattern.PhysicalAggregationPointer;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.rowpattern.PhysicalValueAccessor;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.rowpattern.PhysicalValuePointer;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.rowpattern.expression.Computation;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.rowpattern.expression.PatternExpressionComputation;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.rowpattern.matcher.IrRowPatternToProgramRewriter;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.rowpattern.matcher.Matcher;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.rowpattern.matcher.Program;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.window.RowNumberOperator;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.window.TableWindowOperator;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.window.TopKRankingOperator;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.window.function.WindowFunction;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.window.function.WindowFunctionFactory;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.window.function.aggregate.AggregationWindowFunction;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.window.function.aggregate.WindowAggregator;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.window.partition.frame.FrameInfo;
+import org.apache.iotdb.db.calc_commons.execution.operator.source.relational.AsofMergeSortInnerJoinOperator;
+import org.apache.iotdb.db.calc_commons.execution.operator.source.relational.AsofMergeSortLeftJoinOperator;
+import org.apache.iotdb.db.calc_commons.execution.operator.source.relational.MarkDistinctOperator;
+import org.apache.iotdb.db.calc_commons.execution.operator.source.relational.MergeSortFullOuterJoinOperator;
+import org.apache.iotdb.db.calc_commons.execution.operator.source.relational.MergeSortInnerJoinOperator;
+import org.apache.iotdb.db.calc_commons.execution.operator.source.relational.MergeSortLeftJoinOperator;
+import org.apache.iotdb.db.calc_commons.execution.operator.source.relational.MergeSortSemiJoinOperator;
 import org.apache.iotdb.db.calc_commons.execution.operator.source.relational.aggregation.AggregationOperator;
 import org.apache.iotdb.db.calc_commons.execution.operator.source.relational.aggregation.LastByDescAccumulator;
 import org.apache.iotdb.db.calc_commons.execution.operator.source.relational.aggregation.LastDescAccumulator;
@@ -39,6 +88,15 @@ import org.apache.iotdb.db.calc_commons.execution.operator.source.relational.agg
 import org.apache.iotdb.db.calc_commons.execution.operator.source.relational.aggregation.grouped.StreamingAggregationOperator;
 import org.apache.iotdb.db.calc_commons.execution.operator.source.relational.aggregation.grouped.StreamingHashAggregationOperator;
 import org.apache.iotdb.db.calc_commons.execution.relational.ColumnTransformerBuilder;
+import org.apache.iotdb.db.calc_commons.plan.relational.planner.CastToBlobLiteralVisitor;
+import org.apache.iotdb.db.calc_commons.plan.relational.planner.CastToBooleanLiteralVisitor;
+import org.apache.iotdb.db.calc_commons.plan.relational.planner.CastToDateLiteralVisitor;
+import org.apache.iotdb.db.calc_commons.plan.relational.planner.CastToDoubleLiteralVisitor;
+import org.apache.iotdb.db.calc_commons.plan.relational.planner.CastToFloatLiteralVisitor;
+import org.apache.iotdb.db.calc_commons.plan.relational.planner.CastToInt32LiteralVisitor;
+import org.apache.iotdb.db.calc_commons.plan.relational.planner.CastToInt64LiteralVisitor;
+import org.apache.iotdb.db.calc_commons.plan.relational.planner.CastToStringLiteralVisitor;
+import org.apache.iotdb.db.calc_commons.plan.relational.planner.CastToTimestampLiteralVisitor;
 import org.apache.iotdb.db.calc_commons.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.calc_commons.transformation.dag.column.leaf.LeafColumnTransformer;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -99,73 +157,13 @@ import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Literal;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.node_commons.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
-import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
-import org.apache.iotdb.db.queryengine.execution.operator.process.AssignUniqueIdOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.process.CollectOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.process.EnforceSingleRowOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.process.FilterAndProjectOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.process.LimitOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.process.MappingCollectOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.process.OffsetOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.process.PatternRecognitionOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.process.PreviousFillWithGroupOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.process.TableFillOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.process.TableLinearFillOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.process.TableLinearFillWithGroupOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.process.TableMergeSortOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.process.TableSortOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.process.TableStreamSortOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.process.TableTopKOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.process.ValuesOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.process.function.TableFunctionLeafOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.process.function.TableFunctionOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.gapfill.GapFillWGroupWMoOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.gapfill.GapFillWGroupWoMoOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.gapfill.GapFillWoGroupWMoOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.gapfill.GapFillWoGroupWoMoOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.process.join.SimpleNestedLoopCrossJoinOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.comparator.JoinKeyComparatorFactory;
-import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.LogicalIndexNavigation;
-import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.PatternAggregationTracker;
-import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.PatternAggregator;
-import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.PatternVariableRecognizer;
-import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.PhysicalAggregationPointer;
-import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.PhysicalValueAccessor;
-import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.PhysicalValuePointer;
-import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.expression.Computation;
-import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.expression.PatternExpressionComputation;
-import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.matcher.IrRowPatternToProgramRewriter;
-import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.matcher.Matcher;
-import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.matcher.Program;
-import org.apache.iotdb.db.queryengine.execution.operator.process.window.RowNumberOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.process.window.TableWindowOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.process.window.TopKRankingOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.process.window.function.WindowFunction;
-import org.apache.iotdb.db.queryengine.execution.operator.process.window.function.WindowFunctionFactory;
-import org.apache.iotdb.db.queryengine.execution.operator.process.window.function.aggregate.AggregationWindowFunction;
-import org.apache.iotdb.db.queryengine.execution.operator.process.window.function.aggregate.WindowAggregator;
-import org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.frame.FrameInfo;
-import org.apache.iotdb.db.queryengine.execution.operator.source.relational.AsofMergeSortInnerJoinOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.source.relational.AsofMergeSortLeftJoinOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.source.relational.CteScanOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.source.relational.MarkDistinctOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.source.relational.MergeSortFullOuterJoinOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.source.relational.MergeSortInnerJoinOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.source.relational.MergeSortLeftJoinOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.source.relational.MergeSortSemiJoinOperator;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanContext;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.CastToBlobLiteralVisitor;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.CastToBooleanLiteralVisitor;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.CastToDateLiteralVisitor;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.CastToDoubleLiteralVisitor;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.CastToFloatLiteralVisitor;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.CastToInt32LiteralVisitor;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.CastToInt64LiteralVisitor;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.CastToStringLiteralVisitor;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.CastToTimestampLiteralVisitor;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CteScanNode;
 import org.apache.iotdb.db.utils.datastructure.SortKey;
 import org.apache.iotdb.udf.api.relational.TableFunction;
 import org.apache.iotdb.udf.api.relational.table.TableFunctionProcessorProvider;
@@ -210,6 +208,8 @@ import static com.google.common.collect.ImmutableList.toImmutableList;
 import static com.google.common.collect.Iterables.getOnlyElement;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFunction.getAggregationTypeByFuncName;
+import static org.apache.iotdb.db.calc_commons.execution.operator.process.rowpattern.PhysicalValuePointer.CLASSIFIER;
+import static org.apache.iotdb.db.calc_commons.execution.operator.process.rowpattern.PhysicalValuePointer.MATCH_NUMBER;
 import static org.apache.iotdb.db.calc_commons.execution.operator.source.relational.aggregation.AccumulatorFactory.createAccumulator;
 import static org.apache.iotdb.db.calc_commons.execution.operator.source.relational.aggregation.AccumulatorFactory.createBuiltinAccumulator;
 import static org.apache.iotdb.db.calc_commons.execution.operator.source.relational.aggregation.AccumulatorFactory.createGroupedAccumulator;
@@ -226,8 +226,6 @@ import static org.apache.iotdb.db.node_commons.plan.relational.planner.node.Skip
 import static org.apache.iotdb.db.node_commons.plan.relational.sql.ast.BooleanLiteral.TRUE_LITERAL;
 import static org.apache.iotdb.db.node_commons.plan.relational.type.InternalTypeManager.getTSDataType;
 import static org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.MergeSortComparator.getComparatorForTable;
-import static org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.PhysicalValuePointer.CLASSIFIER;
-import static org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.PhysicalValuePointer.MATCH_NUMBER;
 import static org.apache.iotdb.db.queryengine.plan.planner.OperatorTreeGenerator.IDENTITY_FILL;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.FIRST_AGGREGATION;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.FIRST_BY_AGGREGATION;
@@ -250,22 +248,6 @@ public class TableOperatorGenerator
   @Override
   public Operator visitPlan(PlanNode node, LocalExecutionPlanContext context) {
     throw new UnsupportedOperationException("should call the concrete visitXX() method");
-  }
-
-  @Override
-  public Operator visitCteScan(CteScanNode node, LocalExecutionPlanContext context) {
-    OperatorContext operatorContext =
-        context
-            .getDriverContext()
-            .addOperatorContext(
-                context.getNextOperatorId(),
-                node.getPlanNodeId(),
-                CteScanOperator.class.getSimpleName());
-    return new CteScanOperator(
-        operatorContext,
-        node.getPlanNodeId(),
-        node.getDataStore(),
-        context.getFragmentInstanceId().getQueryId());
   }
 
   public static Map<Symbol, List<InputLocation>> makeLayout(final List<PlanNode> children) {

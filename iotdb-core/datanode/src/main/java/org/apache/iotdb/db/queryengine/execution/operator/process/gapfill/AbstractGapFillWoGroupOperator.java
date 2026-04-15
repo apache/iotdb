@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.queryengine.execution.operator.process.gapfill;
 
 import org.apache.iotdb.db.calc_commons.execution.operator.Operator;
-import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
+import org.apache.iotdb.db.calc_commons.execution.operator.OperatorContext;
 import org.apache.iotdb.db.utils.datastructure.SortKey;
 
 import org.apache.tsfile.enums.TSDataType;

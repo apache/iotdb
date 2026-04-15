@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.calc_commons.execution.operator;
 
-import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
-
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.slf4j.Logger;

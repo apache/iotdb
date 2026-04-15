@@ -44,7 +44,7 @@ import java.util.Objects;
 import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.db.queryengine.execution.operator.process.FilterAndProjectOperator.constructFilteredTsBlock;
+import static org.apache.iotdb.db.calc_commons.execution.operator.process.FilterAndProjectOperator.constructFilteredTsBlock;
 
 public class DeviceAttributeUpdater extends DeviceUpdater {
   private final List<ColumnTransformer> commonTransformerList;

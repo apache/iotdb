@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.frame;
 
+import org.apache.iotdb.db.calc_commons.execution.operator.process.window.partition.frame.FrameInfo;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.SortOrder;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.TableWindowOperatorTestUtils;
 

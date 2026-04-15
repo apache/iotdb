@@ -20,6 +20,7 @@ package org.apache.iotdb.db.queryengine.execution.operator;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.calc_commons.execution.operator.Operator;
+import org.apache.iotdb.db.calc_commons.execution.operator.OperatorContext;
 import org.apache.iotdb.db.calc_commons.execution.operator.process.fill.ILinearFill;
 import org.apache.iotdb.db.calc_commons.execution.operator.process.fill.identity.IdentityLinearFill;
 import org.apache.iotdb.db.calc_commons.execution.operator.process.fill.linear.FloatLinearFill;

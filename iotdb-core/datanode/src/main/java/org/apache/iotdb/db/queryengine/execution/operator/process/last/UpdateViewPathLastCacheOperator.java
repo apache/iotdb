@@ -21,7 +21,7 @@ package org.apache.iotdb.db.queryengine.execution.operator.process.last;
 
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.calc_commons.execution.operator.Operator;
-import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
+import org.apache.iotdb.db.calc_commons.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TreeDeviceSchemaCacheManager;
 
 import org.apache.tsfile.enums.TSDataType;

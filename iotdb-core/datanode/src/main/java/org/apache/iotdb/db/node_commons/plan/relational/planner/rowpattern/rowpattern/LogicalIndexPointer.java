@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpattern;
 
-import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.LogicalIndexNavigation;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.rowpattern.LogicalIndexNavigation;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 

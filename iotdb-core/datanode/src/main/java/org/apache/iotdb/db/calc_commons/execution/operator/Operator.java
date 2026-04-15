@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.calc_commons.execution.operator;
 
-import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
-
 import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.utils.Accountable;

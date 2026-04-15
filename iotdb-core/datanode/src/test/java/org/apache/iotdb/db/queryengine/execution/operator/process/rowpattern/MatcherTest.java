@@ -19,14 +19,16 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern;
 
+import org.apache.iotdb.db.calc_commons.execution.operator.process.rowpattern.PatternAggregator;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.rowpattern.PatternVariableRecognizer;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.rowpattern.matcher.ArrayView;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.rowpattern.matcher.IrRowPatternToProgramRewriter;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.rowpattern.matcher.MatchResult;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.rowpattern.matcher.Matcher;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.rowpattern.matcher.Program;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.window.partition.Partition;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpattern.IrLabel;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpattern.IrRowPattern;
-import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.matcher.ArrayView;
-import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.matcher.IrRowPatternToProgramRewriter;
-import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.matcher.MatchResult;
-import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.matcher.Matcher;
-import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.matcher.Program;
-import org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.Partition;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;

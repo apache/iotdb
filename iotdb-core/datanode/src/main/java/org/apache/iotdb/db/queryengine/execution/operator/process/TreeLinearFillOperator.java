@@ -20,8 +20,9 @@
 package org.apache.iotdb.db.queryengine.execution.operator.process;
 
 import org.apache.iotdb.db.calc_commons.execution.operator.Operator;
+import org.apache.iotdb.db.calc_commons.execution.operator.OperatorContext;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.AbstractLinearFillOperator;
 import org.apache.iotdb.db.calc_commons.execution.operator.process.fill.ILinearFill;
-import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.read.common.block.TsBlock;
@@ -34,12 +35,12 @@ public class TreeLinearFillOperator extends AbstractLinearFillOperator {
   }
 
   @Override
-  Column getHelperColumn(TsBlock tsBlock) {
+  protected Column getHelperColumn(TsBlock tsBlock) {
     return tsBlock.getTimeColumn();
   }
 
   @Override
-  Integer getLastRowIndexForNonNullHelperColumn(TsBlock tsBlock) {
+  protected Integer getLastRowIndexForNonNullHelperColumn(TsBlock tsBlock) {
     return tsBlock.getPositionCount() - 1;
   }
 }
