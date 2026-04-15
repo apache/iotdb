@@ -139,8 +139,8 @@ public class ClusterScheduler implements IScheduler {
       QUERY_EXECUTION_METRICS.recordExecutionCost(WAIT_FOR_DISPATCH, System.nanoTime() - startTime);
     }
 
-    // For the FragmentInstance of WRITE, it will be executed directly when dispatching.
-    if (queryType == QueryType.WRITE) {
+    // For the FragmentInstance of non-query, it will be executed directly when dispatching.
+    if (!isQuery()) {
       stateMachine.transitionToFinished();
       return;
     }
