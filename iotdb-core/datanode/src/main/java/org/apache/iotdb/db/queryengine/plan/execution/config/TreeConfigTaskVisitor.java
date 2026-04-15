@@ -227,7 +227,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.SetSpaceQuotaSta
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.SetThrottleQuotaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowSpaceQuotaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowThrottleQuotaStatement;
-import org.apache.iotdb.db.utils.DataNodeAuthUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.exception.NotImplementedException;
@@ -346,8 +345,6 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
       throw new SemanticException("User " + statement.getUserName() + " not found");
     }
     statement.setPassWord(user.getPassword());
-    DataNodeAuthUtils.verifyPasswordReuse(
-        statement.getAssociatedUsedId(), statement.getNewPassword());
   }
 
   private void visitRenameUser(AuthorStatement statement) {

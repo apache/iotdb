@@ -198,7 +198,6 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
               "create user someUser 'passwd'",
               "create timeseries root.noPermission.wf02.wt01.status with datatype=BOOLEAN,encoding=PLAIN"),
           null);
-      awaitUntilFlush(senderEnv);
 
       final Map<String, String> sourceAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
@@ -229,7 +228,10 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
           "Timeseries,Alias,Database,DataType,Encoding,Compression,Tags,Attributes,Deadband,DeadbandParameters,ViewType,",
           Collections.emptySet());
       TestUtils.assertDataAlwaysOnEnv(
-          receiverEnv, "list user", "User,", Collections.singleton("root,"));
+          receiverEnv,
+          "list user",
+          "UserId,User,",
+          new HashSet<>(Arrays.asList("0,root,", "10000,thulab,")));
     }
   }
 
