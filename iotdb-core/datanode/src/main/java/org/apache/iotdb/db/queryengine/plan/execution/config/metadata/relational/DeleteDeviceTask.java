@@ -21,7 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relationa
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
-import org.apache.iotdb.db.queryengine.common.SessionInfo;
+import org.apache.iotdb.db.node_commons.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;

@@ -28,7 +28,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.KilledByOthersException;
 import org.apache.iotdb.db.exception.query.QueryTimeoutRuntimeException;
-import org.apache.iotdb.db.protocol.session.IClientSession;
+import org.apache.iotdb.db.node_commons.common.SqlDialect;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
@@ -729,7 +729,7 @@ public class QueryExecution implements IQueryExecution {
   }
 
   @Override
-  public IClientSession.SqlDialect getSQLDialect() {
+  public SqlDialect getSQLDialect() {
     return context.getSession().getSqlDialect();
   }
 

@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source;
 
+import org.apache.iotdb.db.node_commons.common.SqlDialect;
 import org.apache.iotdb.db.node_commons.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeaderFactory;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
@@ -140,7 +140,7 @@ public class ShowQueriesOperator implements SourceOperator {
         if (allowedUsername != null && !allowedUsername.equals(queryExecution.getUser())) {
           continue;
         }
-        if (queryExecution.getSQLDialect().equals(IClientSession.SqlDialect.TREE)) {
+        if (queryExecution.getSQLDialect().equals(SqlDialect.TREE)) {
           timeColumnBuilder.writeLong(
               TimestampPrecisionUtils.convertToCurrPrecision(
                   queryExecution.getStartExecutionTime(), TimeUnit.MILLISECONDS));

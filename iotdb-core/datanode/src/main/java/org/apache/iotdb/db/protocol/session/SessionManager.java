@@ -37,9 +37,10 @@ import org.apache.iotdb.db.audit.DNAuditLogger;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.auth.LoginLockManager;
 import org.apache.iotdb.db.node_commons.common.ConnectionInfo;
+import org.apache.iotdb.db.node_commons.common.SessionInfo;
+import org.apache.iotdb.db.node_commons.common.SqlDialect;
 import org.apache.iotdb.db.protocol.basic.BasicOpenSessionResp;
 import org.apache.iotdb.db.protocol.thrift.OperationType;
-import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.execution.config.session.PreparedStatementMemoryManager;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.QueryResourceManager;
 import org.apache.iotdb.db.utils.DataNodeAuthUtils;
@@ -113,13 +114,7 @@ public class SessionManager implements SessionManagerMBean {
       TSProtocolVersion tsProtocolVersion,
       IoTDBConstant.ClientVersion clientVersion) {
     return login(
-        session,
-        username,
-        password,
-        zoneId,
-        tsProtocolVersion,
-        clientVersion,
-        IClientSession.SqlDialect.TREE);
+        session, username, password, zoneId, tsProtocolVersion, clientVersion, SqlDialect.TREE);
   }
 
   public BasicOpenSessionResp login(
@@ -129,7 +124,7 @@ public class SessionManager implements SessionManagerMBean {
       String zoneId,
       TSProtocolVersion tsProtocolVersion,
       IoTDBConstant.ClientVersion clientVersion,
-      IClientSession.SqlDialect sqlDialect) {
+      SqlDialect sqlDialect) {
     return login(
         session, username, password, zoneId, tsProtocolVersion, clientVersion, sqlDialect, false);
   }
@@ -142,7 +137,7 @@ public class SessionManager implements SessionManagerMBean {
       final String zoneId,
       final TSProtocolVersion tsProtocolVersion,
       final IoTDBConstant.ClientVersion clientVersion,
-      final IClientSession.SqlDialect sqlDialect,
+      final SqlDialect sqlDialect,
       final boolean useEncryptedPassword) {
     final BasicOpenSessionResp openSessionResp = new BasicOpenSessionResp();
 
@@ -551,7 +546,7 @@ public class SessionManager implements SessionManagerMBean {
         ZoneId.systemDefault(),
         sessionInfo.getVersion(),
         sessionInfo.getDatabaseName().orElse(null),
-        IClientSession.SqlDialect.TREE);
+        SqlDialect.TREE);
   }
 
   public SessionInfo getSessionInfoOfTreeModel(IClientSession session) {
@@ -561,7 +556,7 @@ public class SessionManager implements SessionManagerMBean {
         ZoneId.systemDefault(),
         session.getClientVersion(),
         session.getDatabaseName(),
-        IClientSession.SqlDialect.TREE);
+        SqlDialect.TREE);
   }
 
   public SessionInfo getSessionInfoOfTableModel(IClientSession session) {
@@ -571,7 +566,7 @@ public class SessionManager implements SessionManagerMBean {
         ZoneId.systemDefault(),
         session.getClientVersion(),
         session.getDatabaseName(),
-        IClientSession.SqlDialect.TABLE);
+        SqlDialect.TABLE);
   }
 
   public SessionInfo getSessionInfoOfPipeReceiver(IClientSession session, String databaseName) {
@@ -581,7 +576,7 @@ public class SessionManager implements SessionManagerMBean {
         ZoneId.systemDefault(),
         session.getClientVersion(),
         databaseName,
-        IClientSession.SqlDialect.TABLE);
+        SqlDialect.TABLE);
   }
 
   @Override

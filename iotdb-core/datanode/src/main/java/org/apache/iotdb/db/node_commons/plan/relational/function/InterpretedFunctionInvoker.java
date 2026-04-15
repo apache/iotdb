@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.node_commons.plan.relational.function;
 
 import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction;
-import org.apache.iotdb.db.queryengine.common.SessionInfo;
+import org.apache.iotdb.db.node_commons.common.SessionInfo;
 
 import org.apache.tsfile.read.common.type.Type;
 

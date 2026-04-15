@@ -27,9 +27,9 @@ import org.apache.iotdb.db.exception.load.LoadAnalyzeException;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeTypeMismatchException;
 import org.apache.iotdb.db.exception.load.LoadEmptyFileException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
-import org.apache.iotdb.db.protocol.session.IClientSession;
+import org.apache.iotdb.db.node_commons.common.SessionInfo;
+import org.apache.iotdb.db.node_commons.common.SqlDialect;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
-import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
@@ -408,7 +408,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
                 sessionInfo.getUserEntity(),
                 sessionInfo.getZoneId(),
                 sessionInfo.getDatabaseName().orElse(null),
-                IClientSession.SqlDialect.TABLE);
+                SqlDialect.TABLE);
         context.setSession(newSessionInfo);
         doAnalyzeSingleTableFile(tsFile, reader, timeseriesMetadataIterator, tableSchemaMap);
       } else {
@@ -418,7 +418,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
                 sessionInfo.getUserEntity(),
                 sessionInfo.getZoneId(),
                 sessionInfo.getDatabaseName().orElse(null),
-                IClientSession.SqlDialect.TREE);
+                SqlDialect.TREE);
         context.setSession(newSessionInfo);
         doAnalyzeSingleTreeFile(tsFile, reader, timeseriesMetadataIterator);
       }

@@ -65,6 +65,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TTableInfo;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.node_commons.common.ConnectionInfo;
+import org.apache.iotdb.db.node_commons.common.SqlDialect;
 import org.apache.iotdb.db.node_commons.plan.relational.function.TableBuiltinTableFunction;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Expression;
@@ -73,7 +74,6 @@ import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeSinglePipeMetrics;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
-import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.execution.QueryState;
@@ -272,7 +272,7 @@ public class InformationSchemaContentSupplierFactory {
     protected void constructLine() {
       final IQueryExecution queryExecution = queryExecutions.get(nextConsumedIndex);
 
-      if (queryExecution.getSQLDialect().equals(IClientSession.SqlDialect.TABLE)) {
+      if (queryExecution.getSQLDialect().equals(SqlDialect.TABLE)) {
         columnBuilders[0].writeBinary(BytesUtils.valueOf(queryExecution.getQueryId()));
         columnBuilders[1].writeLong(
             TimestampPrecisionUtils.convertToCurrPrecision(

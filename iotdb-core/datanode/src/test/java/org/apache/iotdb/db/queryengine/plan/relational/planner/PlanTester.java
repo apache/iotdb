@@ -22,6 +22,8 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.node_commons.common.SessionInfo;
+import org.apache.iotdb.db.node_commons.common.SqlDialect;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.node_commons.plan.relational.type.InternalTypeManager;
@@ -29,7 +31,6 @@ import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext.ExplainType;
 import org.apache.iotdb.db.queryengine.common.QueryId;
-import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
@@ -69,7 +70,7 @@ public class PlanTester {
           ZoneId.systemDefault(),
           IoTDBConstant.ClientVersion.V_1_0,
           "db",
-          IClientSession.SqlDialect.TABLE);
+          SqlDialect.TABLE);
   private final Metadata metadata;
 
   private DistributedQueryPlan distributedQueryPlan;
@@ -191,8 +192,7 @@ public class PlanTester {
     Mockito.when(clientSession.getDatabaseName()).thenReturn(databaseName);
     Statement statement = sqlParser.createStatement(sql, ZoneId.systemDefault(), clientSession);
     SessionInfo session =
-        new SessionInfo(
-            0, "test", ZoneId.systemDefault(), databaseName, IClientSession.SqlDialect.TABLE);
+        new SessionInfo(0, "test", ZoneId.systemDefault(), databaseName, SqlDialect.TABLE);
     return analyzeStatement(statement, metadata, context, sqlParser, session);
   }
 

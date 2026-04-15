@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.assertions;
 
+import org.apache.iotdb.db.node_commons.common.SessionInfo;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 
 import static com.google.common.base.MoreObjects.toStringHelper;

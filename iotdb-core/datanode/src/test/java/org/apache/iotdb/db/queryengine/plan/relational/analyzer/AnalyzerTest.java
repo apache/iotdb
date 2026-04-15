@@ -32,6 +32,8 @@ import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 import org.apache.iotdb.commons.schema.table.InsertNodeMeasurementInfo;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.node_commons.common.SessionInfo;
+import org.apache.iotdb.db.node_commons.common.SqlDialect;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.node_commons.plan.relational.function.OperatorType;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.Symbol;
@@ -45,11 +47,9 @@ import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.LogicalExpression;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.node_commons.plan.relational.type.InternalTypeManager;
-import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.InternalClientSession;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
-import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
@@ -135,7 +135,7 @@ public class AnalyzerTest {
           ZoneId.systemDefault(),
           IoTDBConstant.ClientVersion.V_1_0,
           database,
-          IClientSession.SqlDialect.TABLE);
+          SqlDialect.TABLE);
   Metadata metadata = new TestMetadata();
   WarningCollector warningCollector = NOOP;
   String sql;
@@ -1372,8 +1372,7 @@ public class AnalyzerTest {
         sqlParser.createStatement(
             sql, ZoneId.systemDefault(), new InternalClientSession("testClient"));
     SessionInfo session =
-        new SessionInfo(
-            0, "test", ZoneId.systemDefault(), "testdb", IClientSession.SqlDialect.TABLE);
+        new SessionInfo(0, "test", ZoneId.systemDefault(), "testdb", SqlDialect.TABLE);
     return analyzeStatement(statement, metadata, context, sqlParser, session);
   }
 

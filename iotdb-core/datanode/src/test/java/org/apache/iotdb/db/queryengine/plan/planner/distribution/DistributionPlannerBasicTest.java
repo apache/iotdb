@@ -24,11 +24,11 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.SchemaConstant;
+import org.apache.iotdb.db.node_commons.common.SessionInfo;
+import org.apache.iotdb.db.node_commons.common.SqlDialect;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
-import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
@@ -253,8 +253,7 @@ public class DistributionPlannerBasicTest {
         new MPPQueryContext(
             "",
             queryId,
-            new SessionInfo(
-                0, "test", ZoneId.systemDefault(), "root.sg", IClientSession.SqlDialect.TABLE),
+            new SessionInfo(0, "test", ZoneId.systemDefault(), "root.sg", SqlDialect.TABLE),
             new TEndPoint(),
             new TEndPoint());
     context.setQueryType(QueryType.WRITE);
@@ -307,8 +306,7 @@ public class DistributionPlannerBasicTest {
         new MPPQueryContext(
             "",
             queryId,
-            new SessionInfo(
-                0, "test", ZoneId.systemDefault(), "root.sg", IClientSession.SqlDialect.TABLE),
+            new SessionInfo(0, "test", ZoneId.systemDefault(), "root.sg", SqlDialect.TABLE),
             new TEndPoint(),
             new TEndPoint());
     context.setQueryType(QueryType.WRITE);

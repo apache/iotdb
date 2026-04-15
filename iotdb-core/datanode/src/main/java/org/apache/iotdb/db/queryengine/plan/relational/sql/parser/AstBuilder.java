@@ -34,6 +34,7 @@ import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunctio
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.node_commons.common.SqlDialect;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.AliasedRelation;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.AllColumns;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.AllRows;
@@ -1652,8 +1653,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   @Override
   public Node visitSetSqlDialectStatement(RelationalSqlParser.SetSqlDialectStatementContext ctx) {
     return new SetSqlDialect(
-        ctx.TABLE() == null ? IClientSession.SqlDialect.TREE : IClientSession.SqlDialect.TABLE,
-        getLocation(ctx));
+        ctx.TABLE() == null ? SqlDialect.TREE : SqlDialect.TABLE, getLocation(ctx));
   }
 
   @Override

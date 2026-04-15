@@ -22,9 +22,9 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.node_commons.common.SqlDialect;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.parameter.InputLocation;
-import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
@@ -1850,8 +1850,8 @@ public class MergeTreeSortOperatorTest {
     }
 
     @Override
-    public IClientSession.SqlDialect getSQLDialect() {
-      return IClientSession.SqlDialect.TREE;
+    public SqlDialect getSQLDialect() {
+      return SqlDialect.TREE;
     }
 
     @Override

@@ -17,13 +17,12 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.common;
+package org.apache.iotdb.db.node_commons.common;
 
 import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.conf.IoTDBConstant.ClientVersion;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.node_commons.plan.relational.security.Identity;
-import org.apache.iotdb.db.protocol.session.IClientSession;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -43,7 +42,7 @@ public class SessionInfo {
 
   @Nullable private final String databaseName;
 
-  private final IClientSession.SqlDialect sqlDialect;
+  private final SqlDialect sqlDialect;
 
   private ClientVersion version = ClientVersion.V_1_0;
 
@@ -52,7 +51,7 @@ public class SessionInfo {
     this.userEntity = userEntity;
     this.zoneId = zoneId;
     this.databaseName = null;
-    this.sqlDialect = IClientSession.SqlDialect.TREE;
+    this.sqlDialect = SqlDialect.TREE;
   }
 
   public SessionInfo(
@@ -60,7 +59,7 @@ public class SessionInfo {
       UserEntity userEntity,
       ZoneId zoneId,
       @Nullable String databaseName,
-      IClientSession.SqlDialect sqlDialect) {
+      SqlDialect sqlDialect) {
     this(sessionId, userEntity, zoneId, ClientVersion.V_1_0, databaseName, sqlDialect);
   }
 
@@ -70,7 +69,7 @@ public class SessionInfo {
       ZoneId zoneId,
       ClientVersion version,
       @Nullable String databaseName,
-      IClientSession.SqlDialect sqlDialect) {
+      SqlDialect sqlDialect) {
     this.sessionId = sessionId;
     this.userEntity = userEntity;
     this.zoneId = zoneId;
@@ -81,7 +80,7 @@ public class SessionInfo {
 
   @TestOnly
   public SessionInfo(long sessionId, String username, ZoneId zoneId) {
-    this(sessionId, new UserEntity(-1, username, ""), zoneId, null, IClientSession.SqlDialect.TREE);
+    this(sessionId, new UserEntity(-1, username, ""), zoneId, null, SqlDialect.TREE);
   }
 
   @TestOnly
@@ -90,7 +89,7 @@ public class SessionInfo {
       String username,
       ZoneId zoneId,
       @Nullable String databaseName,
-      IClientSession.SqlDialect sqlDialect) {
+      SqlDialect sqlDialect) {
     this(sessionId, new UserEntity(-1, username, ""), zoneId, databaseName, sqlDialect);
   }
 
@@ -101,7 +100,7 @@ public class SessionInfo {
       ZoneId zoneId,
       ClientVersion version,
       @Nullable String databaseName,
-      IClientSession.SqlDialect sqlDialect) {
+      SqlDialect sqlDialect) {
     this(sessionId, new UserEntity(-1, username, ""), zoneId, version, databaseName, sqlDialect);
   }
 
@@ -141,7 +140,7 @@ public class SessionInfo {
     return Optional.ofNullable(databaseName);
   }
 
-  public IClientSession.SqlDialect getSqlDialect() {
+  public SqlDialect getSqlDialect() {
     return sqlDialect;
   }
 
@@ -156,7 +155,7 @@ public class SessionInfo {
     if (hasDatabaseName) {
       databaseName = ReadWriteIOUtils.readString(buffer);
     }
-    final IClientSession.SqlDialect sqlDialect1 = IClientSession.SqlDialect.deserializeFrom(buffer);
+    final SqlDialect sqlDialect1 = SqlDialect.deserializeFrom(buffer);
     return new SessionInfo(
         sessionId,
         new UserEntity(userId, userName, cliHostname),

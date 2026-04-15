@@ -47,6 +47,8 @@ import org.apache.iotdb.db.audit.DNAuditLogger;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.node_commons.common.SessionInfo;
+import org.apache.iotdb.db.node_commons.common.SqlDialect;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.BinaryLiteral;
@@ -65,7 +67,6 @@ import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.protocol.thrift.OperationType;
-import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeaderFactory;
 import org.apache.iotdb.db.queryengine.execution.aggregation.AccumulatorFactory;
@@ -343,7 +344,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     try {
       // create and cache dataset
       ExecutionResult result;
-      if (clientSession.getSqlDialect() == IClientSession.SqlDialect.TREE) {
+      if (clientSession.getSqlDialect() == SqlDialect.TREE) {
         Statement s = request.getTreeStatement(clientSession.getZoneId());
         if (s instanceof SetSqlDialectStatement) {
           setSqlDialect = true;
@@ -507,7 +508,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           if (setSqlDialect) {
             resp.setTableModel(
                 SESSION_MANAGER.getCurrSessionAndUpdateIdleTime().getSqlDialect()
-                    == IClientSession.SqlDialect.TABLE);
+                    == SqlDialect.TABLE);
           }
         }
         return resp;
@@ -1589,7 +1590,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   @Override
   public TSOpenSessionResp openSession(TSOpenSessionReq req) throws TException {
     IoTDBConstant.ClientVersion clientVersion = parseClientVersion(req);
-    IClientSession.SqlDialect sqlDialect;
+    SqlDialect sqlDialect;
     try {
       sqlDialect = parseSqlDialect(req);
     } catch (IllegalArgumentException e) {
@@ -1628,19 +1629,19 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     return IoTDBConstant.ClientVersion.V_0_12;
   }
 
-  private IClientSession.SqlDialect parseSqlDialect(TSOpenSessionReq req) {
+  private SqlDialect parseSqlDialect(TSOpenSessionReq req) {
     Map<String, String> configuration = req.configuration;
     if (configuration != null && configuration.containsKey("sql_dialect")) {
       String sqlDialect = configuration.get("sql_dialect");
       if ("tree".equalsIgnoreCase(sqlDialect)) {
-        return IClientSession.SqlDialect.TREE;
+        return SqlDialect.TREE;
       } else if ("table".equalsIgnoreCase(sqlDialect)) {
-        return IClientSession.SqlDialect.TABLE;
+        return SqlDialect.TABLE;
       } else {
         throw new IllegalArgumentException("Unknown sql_dialect: " + sqlDialect);
       }
     } else {
-      return IClientSession.SqlDialect.TREE;
+      return SqlDialect.TREE;
     }
   }
 
@@ -2102,7 +2103,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         try {
           long queryId;
           ExecutionResult result;
-          if (clientSession.getSqlDialect() == IClientSession.SqlDialect.TREE) {
+          if (clientSession.getSqlDialect() == SqlDialect.TREE) {
             Statement s = StatementGenerator.createStatement(statement, clientSession.getZoneId());
             if (s == null) {
               return RpcUtils.getStatus(
@@ -3484,8 +3485,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     resp.setColumnIndex2TsBlockColumnIndexList(header.getColumnIndex2TsBlockColumnIndexList());
     resp.setQueryId(queryId);
     resp.setTableModel(
-        SESSION_MANAGER.getCurrSessionAndUpdateIdleTime().getSqlDialect()
-            == IClientSession.SqlDialect.TABLE);
+        SESSION_MANAGER.getCurrSessionAndUpdateIdleTime().getSqlDialect() == SqlDialect.TABLE);
     return resp;
   }
 
