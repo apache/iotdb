@@ -326,7 +326,7 @@ public class TableLogicalPlanner {
         cacheLookupAttempted = true;
         CachedValue cachedValue = PlanCacheManager.getInstance().getCachedValue(cachedKey);
         queryContext.setPlanCacheLookupCost(System.nanoTime() - lookupStartTime);
-        if (cachedValue != null) {
+        if (cachedValue != null && !queryContext.isExplainAnalyze()) {
           queryContext.setPlanCacheStatus("HIT");
           queryContext.setSavedLogicalPlanningCost(
               PlanCacheManager.getInstance().getEstimatedReusablePlanningCost(cachedKey));
@@ -385,7 +385,14 @@ public class TableLogicalPlanner {
 
           return new LogicalQueryPlan(queryContext, newPlan);
         }
-        queryContext.setPlanCacheStatus("MISS");
+        if (cachedValue != null) {
+          // EXPLAIN ANALYZE: cache exists but we need full plan with ExplainAnalyzeNode
+          queryContext.setPlanCacheStatus("HIT");
+          queryContext.setSavedLogicalPlanningCost(
+              PlanCacheManager.getInstance().getEstimatedReusablePlanningCost(cachedKey));
+        } else {
+          queryContext.setPlanCacheStatus("MISS");
+        }
       } else {
         queryContext.setPlanCacheStatus("BYPASS", lookupDecision.getReason());
       }
