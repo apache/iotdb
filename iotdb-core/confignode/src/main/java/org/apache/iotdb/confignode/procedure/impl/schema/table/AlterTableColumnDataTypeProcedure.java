@@ -26,7 +26,6 @@ import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.confignode.consensus.request.write.table.AlterColumnDataTypePlan;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
-import org.apache.iotdb.confignode.procedure.impl.schema.SchemaUtils;
 import org.apache.iotdb.confignode.procedure.state.schema.AlterTableColumnDataTypeState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -142,8 +141,11 @@ public class AlterTableColumnDataTypeProcedure
 
   private void alterColumnDataType(final ConfigNodeProcedureEnv env) {
     final TSStatus status =
-        SchemaUtils.executeInConsensusLayer(
-            new AlterColumnDataTypePlan(database, tableName, columnName, dataType), env, LOGGER);
+        env.getConfigManager()
+            .getClusterSchemaManager()
+            .executePlan(
+                new AlterColumnDataTypePlan(database, tableName, columnName, dataType),
+                isGeneratedByPipe);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
     }
