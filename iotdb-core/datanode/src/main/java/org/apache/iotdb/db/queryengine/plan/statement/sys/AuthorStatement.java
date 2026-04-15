@@ -236,7 +236,7 @@ public class AuthorStatement extends Statement implements IConfigStatement {
       case UPDATE_USER:
       case RENAME_USER:
       case ACCOUNT_UNLOCK:
-        queryType = QueryType.WRITE;
+        queryType = QueryType.OTHER;
         break;
       case LIST_USER:
       case LIST_ROLE:

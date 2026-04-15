@@ -827,7 +827,7 @@ public class StatementAnalyzer {
 
     @Override
     protected Scope visitLoadTsFile(final LoadTsFile node, final Optional<Scope> scope) {
-      queryContext.setQueryType(QueryType.WRITE);
+      queryContext.setQueryType(QueryType.OTHER);
 
       try (final LoadTsFileAnalyzer loadTsFileAnalyzer =
           new LoadTsFileAnalyzer(node, node.isGeneratedByPipe(), queryContext)) {
@@ -4548,7 +4548,7 @@ public class StatementAnalyzer {
     @Override
     protected Scope visitCreateOrUpdateDevice(
         final CreateOrUpdateDevice node, final Optional<Scope> context) {
-      queryContext.setQueryType(QueryType.WRITE);
+      queryContext.setQueryType(QueryType.OTHER);
       DataNodeSchemaLockManager.getInstance()
           .takeReadLock(queryContext, SchemaLockType.VALIDATE_VS_DELETION_TABLE);
       // Check if the table exists

@@ -261,7 +261,7 @@ public class RelationalAuthorStatement extends Statement {
       case REVOKE_USER_ROLE:
       case RENAME_USER:
       case ACCOUNT_UNLOCK:
-        return QueryType.WRITE;
+        return QueryType.OTHER;
       case LIST_ROLE:
       case LIST_USER:
       case LIST_ROLE_PRIV:

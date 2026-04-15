@@ -52,7 +52,7 @@ public class StopRepairDataStatement extends Statement implements IConfigStateme
 
   @Override
   public QueryType getQueryType() {
-    return QueryType.WRITE;
+    return QueryType.OTHER;
   }
 
   @Override
