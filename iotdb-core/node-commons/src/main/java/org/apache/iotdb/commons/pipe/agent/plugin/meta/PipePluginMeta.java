@@ -121,8 +121,7 @@ public class PipePluginMeta {
     final boolean isBuiltin = ReadWriteIOUtils.readBool(byteBuffer);
     final String jarName = ReadWriteIOUtils.readString(byteBuffer);
     final String jarMD5 = ReadWriteIOUtils.readString(byteBuffer);
-    return new PipePluginMeta(
-        pluginName, className, isBuiltin, jarName, jarMD5, null);
+    return new PipePluginMeta(pluginName, className, isBuiltin, jarName, jarMD5, null);
   }
 
   public static PipePluginMeta deserialize(InputStream inputStream) throws IOException {
