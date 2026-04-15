@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
+import org.apache.iotdb.db.calc_commons.plan.relational.metadata.CommonMetadataUtils;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.node_commons.common.SessionInfo;
 import org.apache.iotdb.db.node_commons.plan.relational.analyzer.NodeRef;
@@ -107,7 +108,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.tablefunction.Ta
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlannerContext;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ScopeAware;
@@ -272,6 +272,7 @@ import static java.util.Locale.ENGLISH;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.commons.schema.table.TsTable.TABLE_ALLOWED_PROPERTIES;
 import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction.DATE_BIN;
+import static org.apache.iotdb.db.calc_commons.plan.relational.metadata.CommonMetadataUtils.isTimestampType;
 import static org.apache.iotdb.db.node_commons.plan.relational.function.tvf.ForecastTableFunction.TIMECOL_PARAMETER_NAME;
 import static org.apache.iotdb.db.node_commons.plan.relational.sql.ast.DereferenceExpression.getQualifiedName;
 import static org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Join.Type.FULL;
@@ -288,7 +289,6 @@ import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.Expressio
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.ExpressionTreeUtils.extractWindowFunctions;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.Scope.BasisType.TABLE;
 import static org.apache.iotdb.db.queryengine.plan.relational.metadata.MetadataUtil.createQualifiedObjectName;
-import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl.isTimestampType;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.IrExpressionInterpreter.evaluateConstantExpression;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PatternRecognitionRelation.RowsPerMatch.ONE;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.util.AstUtil.preOrder;
@@ -666,7 +666,7 @@ public class StatementAnalyzer {
       QualifiedObjectName targetTable =
           createQualifiedObjectName(sessionContext, insert.getTarget());
       if (!metadata.tableExists(targetTable)) {
-        TableMetadataImpl.throwTableNotExistsException(
+        CommonMetadataUtils.throwTableNotExistsException(
             targetTable.getDatabaseName(), targetTable.getObjectName());
       }
       // verify access privileges
@@ -676,7 +676,7 @@ public class StatementAnalyzer {
       // verify the insert destination columns match the query
       Optional<TableSchema> tableSchema = metadata.getTableSchema(sessionContext, targetTable);
       if (!tableSchema.isPresent()) {
-        TableMetadataImpl.throwTableNotExistsException(
+        CommonMetadataUtils.throwTableNotExistsException(
             targetTable.getDatabaseName(), targetTable.getObjectName());
       }
       List<ColumnSchema> columns =
@@ -3154,7 +3154,7 @@ public class StatementAnalyzer {
 
       // This can only be a table
       if (!tableSchema.isPresent()) {
-        TableMetadataImpl.throwTableNotExistsException(
+        CommonMetadataUtils.throwTableNotExistsException(
             name.getDatabaseName(), name.getObjectName());
       }
       analysis.addEmptyColumnReferencesForTable(accessControl, sessionContext.getIdentity(), name);
@@ -4623,7 +4623,7 @@ public class StatementAnalyzer {
       }
 
       if (!metadata.tableExists(new QualifiedObjectName(database, tableName))) {
-        TableMetadataImpl.throwTableNotExistsException(database, tableName);
+        CommonMetadataUtils.throwTableNotExistsException(database, tableName);
       }
       node.setColumnHeaderList();
 
@@ -4633,7 +4633,7 @@ public class StatementAnalyzer {
         final Optional<TableSchema> tableSchema = metadata.getTableSchema(sessionContext, name);
         // This can only be a table
         if (!tableSchema.isPresent()) {
-          TableMetadataImpl.throwTableNotExistsException(database, tableName);
+          CommonMetadataUtils.throwTableNotExistsException(database, tableName);
         }
 
         final TableSchema originalSchema = tableSchema.get();

@@ -49,6 +49,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TTableInfo;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.iot.IoTConsensus;
 import org.apache.iotdb.consensus.iot.IoTConsensusServerImpl;
+import org.apache.iotdb.db.calc_commons.plan.relational.metadata.CommonMetadataUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
@@ -87,7 +88,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNo
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.LastCacheLoadStrategy;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TreeDeviceSchemaCacheManager;
@@ -1637,7 +1637,7 @@ public class DataRegion implements IDataRegionForQuery {
                         .borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
                   resp = client.describeTable(getDatabaseName(), tableName, false);
                   if (resp == null || resp.tableInfo == null) {
-                    TableMetadataImpl.throwTableNotExistsException(getDatabaseName(), tableName);
+                    CommonMetadataUtils.throwTableNotExistsException(getDatabaseName(), tableName);
                   }
                   // For table schema from ConfigNode, we cannot get version info,
                   // so we don't cache it to avoid version mismatch
@@ -1649,7 +1649,7 @@ public class DataRegion implements IDataRegionForQuery {
                   logger.error(
                       "Remote request config node failed that judgment if table is exist, occur exception. {}",
                       e.getMessage());
-                  TableMetadataImpl.throwTableNotExistsException(getDatabaseName(), tableName);
+                  CommonMetadataUtils.throwTableNotExistsException(getDatabaseName(), tableName);
                   return null; // unreachable, throwTableNotExistsException always throws
                 }
               } else {

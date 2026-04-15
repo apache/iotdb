@@ -101,6 +101,7 @@ import static com.google.common.collect.ImmutableMap.toImmutableMap;
 import static com.google.common.collect.ImmutableSet.toImmutableSet;
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.db.calc_commons.plan.relational.metadata.CommonMetadataUtils.isNumericType;
 import static org.apache.iotdb.db.node_commons.plan.relational.planner.SortOrder.ASC_NULLS_LAST;
 import static org.apache.iotdb.db.node_commons.plan.relational.planner.node.AggregationNode.groupingSets;
 import static org.apache.iotdb.db.node_commons.plan.relational.planner.node.AggregationNode.singleAggregation;
@@ -111,7 +112,6 @@ import static org.apache.iotdb.db.node_commons.plan.relational.sql.ast.WindowFra
 import static org.apache.iotdb.db.node_commons.plan.relational.sql.ast.WindowFrame.Type.RANGE;
 import static org.apache.iotdb.db.node_commons.plan.relational.sql.ast.WindowFrame.Type.ROWS;
 import static org.apache.iotdb.db.node_commons.plan.relational.type.TypeSignatureTranslator.toSqlType;
-import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl.isNumericType;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingTranslator.sortItemToSortOrder;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.PlanBuilder.newPlanBuilder;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ScopeAware.scopeAwareKey;

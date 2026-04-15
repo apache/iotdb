@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.calc_commons.plan.relational.metadata.CommonMetadataUtils;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.node_commons.common.SessionInfo;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNode;
@@ -58,7 +59,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.execution.querystats.Plan
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.PredicateWithUncorrelatedScalarSubqueryReconstructor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CopyToNode;
@@ -279,7 +279,7 @@ public class TableLogicalPlanner {
     QualifiedObjectName targetTable = createQualifiedObjectName(sessionInfo, table.getName());
     Optional<TableSchema> tableSchema = metadata.getTableSchema(sessionInfo, targetTable);
     if (!tableSchema.isPresent()) {
-      TableMetadataImpl.throwTableNotExistsException(
+      CommonMetadataUtils.throwTableNotExistsException(
           targetTable.getDatabaseName(), targetTable.getObjectName());
     }
 

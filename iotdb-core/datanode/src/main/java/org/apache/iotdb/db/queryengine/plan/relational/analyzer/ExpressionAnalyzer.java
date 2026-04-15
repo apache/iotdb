@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.db.calc_commons.plan.relational.metadata.CommonMetadataUtils;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.node_commons.common.SessionInfo;
 import org.apache.iotdb.db.node_commons.plan.relational.analyzer.NodeRef;
@@ -96,7 +97,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.PatternRecogniti
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.OperatorNotFoundException;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ProcessingMode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RangeQuantifier;
@@ -142,6 +142,9 @@ import static java.util.Collections.unmodifiableMap;
 import static java.util.Collections.unmodifiableSet;
 import static java.util.Locale.ENGLISH;
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.db.calc_commons.plan.relational.metadata.CommonMetadataUtils.isCharType;
+import static org.apache.iotdb.db.calc_commons.plan.relational.metadata.CommonMetadataUtils.isNumericType;
+import static org.apache.iotdb.db.calc_commons.plan.relational.metadata.CommonMetadataUtils.isTwoTypeComparable;
 import static org.apache.iotdb.db.node_commons.plan.relational.sql.ast.DereferenceExpression.isQualifiedAllFieldsReference;
 import static org.apache.iotdb.db.node_commons.plan.relational.sql.ast.FrameBound.Type.CURRENT_ROW;
 import static org.apache.iotdb.db.node_commons.plan.relational.sql.ast.FrameBound.Type.FOLLOWING;
@@ -153,9 +156,6 @@ import static org.apache.iotdb.db.node_commons.plan.relational.sql.ast.WindowFra
 import static org.apache.iotdb.db.node_commons.plan.relational.sql.ast.WindowFrame.Type.ROWS;
 import static org.apache.iotdb.db.node_commons.plan.relational.type.TypeSignatureTranslator.toTypeSignature;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.ExpressionTreeUtils.extractExpressions;
-import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl.isCharType;
-import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl.isNumericType;
-import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl.isTwoTypeComparable;
 import static org.apache.iotdb.db.queryengine.plan.relational.utils.NodeUtils.getSortItemsFromOrderBy;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.FIRST_AGGREGATION;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.FIRST_BY_AGGREGATION;
@@ -640,7 +640,7 @@ public class ExpressionAnalyzer {
           return handleResolvedField(node, resolvedField.get(), context);
         }
         if (!scope.isColumnReference(qualifiedName)) {
-          TableMetadataImpl.throwColumnNotExistsException(qualifiedName);
+          CommonMetadataUtils.throwColumnNotExistsException(qualifiedName);
         }
       }
 
@@ -670,7 +670,7 @@ public class ExpressionAnalyzer {
       }
 
       if (rowFieldType == null) {
-        TableMetadataImpl.throwColumnNotExistsException(qualifiedName);
+        CommonMetadataUtils.throwColumnNotExistsException(qualifiedName);
       }
 
       return setExpressionType(node, rowFieldType);

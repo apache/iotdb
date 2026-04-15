@@ -66,6 +66,9 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import static org.apache.iotdb.db.calc_commons.plan.relational.metadata.CommonMetadataUtils.isOneNumericType;
+import static org.apache.iotdb.db.calc_commons.plan.relational.metadata.CommonMetadataUtils.isTwoNumericType;
+import static org.apache.iotdb.db.calc_commons.plan.relational.metadata.CommonMetadataUtils.isTwoTypeComparable;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.MockTSBSDataPartition.T1_DEVICE_1;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.MockTSBSDataPartition.T1_DEVICE_2;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.MockTSBSDataPartition.T1_DEVICE_3;
@@ -73,9 +76,6 @@ import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.MockTSBSD
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.MockTSBSDataPartition.T2_DEVICE_2;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.MockTSBSDataPartition.T2_DEVICE_3;
 import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl.getFunctionType;
-import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl.isOneNumericType;
-import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl.isTwoNumericType;
-import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl.isTwoTypeComparable;
 import static org.apache.tsfile.read.common.type.BinaryType.TEXT;
 import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
 import static org.apache.tsfile.read.common.type.DoubleType.DOUBLE;

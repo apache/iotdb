@@ -44,10 +44,10 @@ import java.util.List;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.db.calc_commons.plan.relational.metadata.CommonMetadataUtils.isBlobType;
+import static org.apache.iotdb.db.calc_commons.plan.relational.metadata.CommonMetadataUtils.isBool;
+import static org.apache.iotdb.db.calc_commons.plan.relational.metadata.CommonMetadataUtils.isCharType;
 import static org.apache.iotdb.db.node_commons.plan.relational.type.TypeSignatureTranslator.toSqlType;
-import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl.isBlobType;
-import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl.isBool;
-import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl.isCharType;
 import static org.apache.tsfile.read.common.type.DoubleType.DOUBLE;
 import static org.apache.tsfile.read.common.type.FloatType.FLOAT;
 import static org.apache.tsfile.read.common.type.IntType.INT32;

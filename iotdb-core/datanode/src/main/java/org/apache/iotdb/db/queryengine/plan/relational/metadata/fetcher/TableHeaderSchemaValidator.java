@@ -32,6 +32,7 @@ import org.apache.iotdb.commons.schema.table.column.TimeColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.db.auth.AuthorityChecker;
+import org.apache.iotdb.db.calc_commons.plan.relational.metadata.CommonMetadataUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeTableColumnDisorderException;
 import org.apache.iotdb.db.exception.sql.ColumnCreationFailException;
@@ -46,7 +47,6 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateTableTask;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTreeViewSchemaUtils;
@@ -136,7 +136,7 @@ public class TableHeaderSchemaValidator {
               "auto create table succeed, but cannot get table schema in current node's DataNodeTableCache, may be caused by concurrently auto creating table");
         }
       } else {
-        TableMetadataImpl.throwTableNotExistsException(database, tableSchema.getTableName());
+        CommonMetadataUtils.throwTableNotExistsException(database, tableSchema.getTableName());
       }
     } else {
       DataNodeTreeViewSchemaUtils.checkTableInWrite(database, table);
@@ -376,7 +376,7 @@ public class TableHeaderSchemaValidator {
               "auto create table succeed, but cannot get table schema in current node's DataNodeTableCache, may be caused by concurrently auto creating table");
         }
       } else {
-        TableMetadataImpl.throwTableNotExistsException(database, measurementInfo.getTableName());
+        CommonMetadataUtils.throwTableNotExistsException(database, measurementInfo.getTableName());
       }
     } else {
       DataNodeTreeViewSchemaUtils.checkTableInWrite(database, table);

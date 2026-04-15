@@ -22,11 +22,11 @@
   <#assign newType = type.type?replace("Type","")>
   <#assign className = "${newType}NegationColumnTransformer">
 <#if newType != "Date">
-  <@pp.changeOutputFile name="/org/apache/iotdb/db/queryengine/transformation/dag/column/unary/${className}.java" />
-package org.apache.iotdb.db.queryengine.transformation.dag.column.unary;
+  <@pp.changeOutputFile name="/org/apache/iotdb/db/calc_commons/transformation/dag/column/unary/${className}.java" />
+package org.apache.iotdb.db.calc_commons.transformation.dag.column.unary;
 
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
+import org.apache.iotdb.db.calc_commons.transformation.dag.column.ColumnTransformer;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;

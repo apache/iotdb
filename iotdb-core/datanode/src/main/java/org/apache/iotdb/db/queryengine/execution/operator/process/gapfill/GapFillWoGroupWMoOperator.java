@@ -27,7 +27,7 @@ import org.apache.tsfile.enums.TSDataType;
 import java.time.ZoneId;
 import java.util.List;
 
-import static org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.DateBinFunctionColumnTransformer.nextDateBin;
+import static org.apache.iotdb.db.calc_commons.transformation.dag.column.unary.scalar.DateBinFunctionColumnTransformer.nextDateBin;
 
 public class GapFillWoGroupWMoOperator extends AbstractGapFillWoGroupOperator {
 

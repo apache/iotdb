@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.calc_commons.plan.planner;
 
+import org.apache.iotdb.db.calc_commons.transformation.dag.column.ColumnTransformer;
+import org.apache.iotdb.db.calc_commons.transformation.dag.column.leaf.LeafColumnTransformer;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.ICoreQueryPlanVisitor;
@@ -164,8 +166,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.CastToInt64Litera
 import org.apache.iotdb.db.queryengine.plan.relational.planner.CastToStringLiteralVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.CastToTimestampLiteralVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CteScanNode;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.LeafColumnTransformer;
 import org.apache.iotdb.db.utils.datastructure.SortKey;
 import org.apache.iotdb.udf.api.relational.TableFunction;
 import org.apache.iotdb.udf.api.relational.table.TableFunctionProcessorProvider;

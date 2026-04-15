@@ -44,14 +44,6 @@ public class TransformUtils {
     throw new IllegalStateException("TransformUtils should not be instantiated.");
   }
 
-  public static int compare(Binary first, Binary second) {
-    if (Objects.requireNonNull(first) == Objects.requireNonNull(second)) {
-      return 0;
-    }
-
-    return first.compareTo(second);
-  }
-
   public static Column transformConstantOperandToColumn(ConstantOperand constantOperand) {
     Objects.requireNonNull(constantOperand);
 
