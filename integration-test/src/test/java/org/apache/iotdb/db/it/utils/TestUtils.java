@@ -684,6 +684,32 @@ public class TestUtils {
     }
   }
 
+  public static void assertResultSetEqual(
+      SessionDataSet actualResultSet,
+      List<String> expectedColumnNames,
+      Set<String> expectedRetSet,
+      boolean ignoreTimeStamp) {
+    final Set<String> copiedSet = new HashSet<>(expectedRetSet);
+    try {
+      List<String> actualColumnNames = actualResultSet.getColumnNames();
+      if (ignoreTimeStamp) {
+        assertEquals(expectedColumnNames, actualColumnNames);
+      } else {
+        assertEquals(TIMESTAMP_STR, actualColumnNames.get(0));
+        assertEquals(expectedColumnNames, actualColumnNames.subList(1, actualColumnNames.size()));
+      }
+
+      while (actualResultSet.hasNext()) {
+        RowRecord rowRecord = actualResultSet.next();
+        assertTrue(copiedSet.remove(rowRecord.toString().replace('\t', ',')));
+      }
+      assertEquals(0, copiedSet.size());
+    } catch (IoTDBConnectionException | StatementExecutionException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
   public static void createUser(String userName, String password) {
     createUser(EnvFactory.getEnv(), userName, password);
   }
