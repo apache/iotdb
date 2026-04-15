@@ -42,7 +42,8 @@ public class RequestValidationHandler {
     Objects.requireNonNull(insertTabletRequest.getTimestamps(), "timestamps should not be null");
     Objects.requireNonNull(insertTabletRequest.getIsAligned(), "isAligned should not be null");
     Objects.requireNonNull(insertTabletRequest.getDeviceId(), "deviceId should not be null");
-    Objects.requireNonNull(insertTabletRequest.getMeasurements(), "measurements should not be null");
+    Objects.requireNonNull(
+        insertTabletRequest.getMeasurements(), "measurements should not be null");
     Objects.requireNonNull(insertTabletRequest.getDataTypes(), "dataTypes should not be null");
     Objects.requireNonNull(insertTabletRequest.getValues(), "values should not be null");
 

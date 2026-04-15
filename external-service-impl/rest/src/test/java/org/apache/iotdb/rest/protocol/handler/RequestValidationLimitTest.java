@@ -79,13 +79,9 @@ public class RequestValidationLimitTest {
     request.setDevices(Arrays.asList("root.sg.d1", "root.sg.d2"));
     request.setTimestamps(Arrays.asList(1L, 2L));
     request.setMeasurementsList(
-        Arrays.asList(
-            Arrays.asList("s1", "s2"),
-            Collections.singletonList("s1")));
+        Arrays.asList(Arrays.asList("s1", "s2"), Collections.singletonList("s1")));
     request.setDataTypesList(
-        Arrays.asList(
-            Arrays.asList("INT64", "INT64"),
-            Collections.singletonList("INT64")));
+        Arrays.asList(Arrays.asList("INT64", "INT64"), Collections.singletonList("INT64")));
     request.setValuesList(Arrays.asList(Arrays.asList(1L, 2L), Collections.singletonList(3L)));
 
     org.apache.iotdb.rest.protocol.v2.handler.RequestValidationHandler.validateInsertRecordsRequest(
