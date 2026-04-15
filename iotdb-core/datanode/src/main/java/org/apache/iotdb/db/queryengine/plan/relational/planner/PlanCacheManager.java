@@ -138,6 +138,7 @@ public class PlanCacheManager {
     private static final double EWMA_ALPHA = 0.5;
 
     private PlanCacheState state = PlanCacheState.MONITOR;
+    private boolean warmedUp;
     private long sampleCount;
     private long hitCount;
     private long missCount;
@@ -176,10 +177,18 @@ public class PlanCacheManager {
         long bypassCooldownNanos,
         long now) {
       lastAccessTime = now;
-      sampleCount++;
       if (cacheLookupMiss) {
         missCount++;
       }
+
+      // Skip the first execution to avoid JVM warmup noise (class loading, JIT,
+      // cold caches) that produces unrepresentative planning cost.
+      if (!warmedUp) {
+        warmedUp = true;
+        return state;
+      }
+
+      sampleCount++;
 
       ewmaReusablePlanningCost = ewma(ewmaReusablePlanningCost, reusablePlanningCost);
       ewmaFirstResponseLatency = ewma(ewmaFirstResponseLatency, firstResponseLatency);
