@@ -38,7 +38,7 @@ public class FragmentInstanceStatisticsDrawer {
   private final List<StatisticLine> planHeader = new ArrayList<>();
   private static final double NS_TO_MS_FACTOR = 1.0 / 1000000;
 
-  public void renderPlanStatistics(MPPQueryContext context) {
+  public void renderPlanStatistics(MPPQueryContext context, boolean verbose) {
     addLine(
         planHeader,
         0,
@@ -91,6 +91,50 @@ public class FragmentInstanceStatisticsDrawer {
         String.format(
             "Saved Logical Planning Cost: %.3f ms",
             context.getSavedLogicalPlanningCost() * NS_TO_MS_FACTOR));
+    if (verbose) {
+      renderPlanCacheDiagnostics(context);
+    }
+  }
+
+  public void renderPlanStatistics(MPPQueryContext context) {
+    renderPlanStatistics(context, false);
+  }
+
+  private void renderPlanCacheDiagnostics(MPPQueryContext context) {
+    String state = context.getPlanCacheState();
+    if ("N/A".equals(state) || "DISABLED".equals(context.getPlanCacheStatus())) {
+      return;
+    }
+    addLine(
+        planHeader,
+        0,
+        String.format(
+            "EWMA Reusable Planning Cost: %.3f ms (threshold: %.3f ms)",
+            context.getEwmaReusablePlanningCost() * NS_TO_MS_FACTOR,
+            context.getMinReusablePlanningCostThreshold() * NS_TO_MS_FACTOR));
+    addLine(
+        planHeader,
+        0,
+        String.format(
+            "EWMA First Response Latency: %.3f ms",
+            context.getEwmaFirstResponseLatency() * NS_TO_MS_FACTOR));
+    addLine(
+        planHeader,
+        0,
+        String.format(
+            "EWMA Benefit Ratio: %.4f (admit: %.4f, bypass: %.4f)",
+            context.getEwmaBenefitRatio(),
+            context.getAdmitRatioThreshold(),
+            context.getBypassRatioThreshold()));
+    addLine(
+        planHeader,
+        0,
+        String.format(
+            "Profile Counters: samples=%d, hits=%d, misses=%d, bypasses=%d",
+            context.getProfileSampleCount(),
+            context.getProfileHitCount(),
+            context.getProfileMissCount(),
+            context.getProfileBypassCount()));
   }
 
   public void renderDispatchCost(MPPQueryContext context) {

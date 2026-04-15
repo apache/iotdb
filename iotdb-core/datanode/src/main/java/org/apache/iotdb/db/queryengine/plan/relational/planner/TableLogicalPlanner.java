@@ -207,6 +207,24 @@ public class TableLogicalPlanner {
     return DigestUtils.md5Hex(rawKey.getBytes(StandardCharsets.UTF_8));
   }
 
+  private void populatePlanCacheDiagnostics(String cachedKey, MPPQueryContext queryContext) {
+    PlanCacheManager.ProfileDiagnostics diag =
+        PlanCacheManager.getInstance().getProfileDiagnostics(cachedKey);
+    if (diag != null) {
+      queryContext.setPlanCacheDiagnostics(
+          diag.getEwmaReusablePlanningCost(),
+          diag.getEwmaFirstResponseLatency(),
+          diag.getEwmaBenefitRatio(),
+          diag.getSampleCount(),
+          diag.getHitCount(),
+          diag.getMissCount(),
+          diag.getBypassCount(),
+          CONFIG.getSmartPlanCacheMinReusablePlanningCostNanos(),
+          CONFIG.getSmartPlanCacheAdmitRatio(),
+          CONFIG.getSmartPlanCacheBypassRatio());
+    }
+  }
+
   private static final Logger logger = LoggerFactory.getLogger(TableLogicalPlanner.class);
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
@@ -321,6 +339,7 @@ public class TableLogicalPlanner {
       cachedKey = calculateCacheKey(cacheableQuery, analysis);
       lookupDecision = PlanCacheManager.getInstance().getLookupDecision(cachedKey);
       queryContext.setPlanCacheState(lookupDecision.getState().name());
+      populatePlanCacheDiagnostics(cachedKey, queryContext);
       if (lookupDecision.shouldLookup()) {
         long lookupStartTime = System.nanoTime();
         cacheLookupAttempted = true;

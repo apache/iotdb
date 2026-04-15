@@ -547,6 +547,74 @@ public class MPPQueryContext implements IAuditEntity {
     return queryPlanStatistics.getFirstResponseLatency();
   }
 
+  public void setPlanCacheDiagnostics(
+      double ewmaReusablePlanningCost,
+      double ewmaFirstResponseLatency,
+      double ewmaBenefitRatio,
+      long sampleCount,
+      long hitCount,
+      long missCount,
+      long bypassCount,
+      long minReusablePlanningCostThreshold,
+      double admitRatioThreshold,
+      double bypassRatioThreshold) {
+    if (queryPlanStatistics == null) {
+      queryPlanStatistics = new QueryPlanStatistics();
+    }
+    queryPlanStatistics.setEwmaReusablePlanningCost(ewmaReusablePlanningCost);
+    queryPlanStatistics.setEwmaFirstResponseLatency(ewmaFirstResponseLatency);
+    queryPlanStatistics.setEwmaBenefitRatio(ewmaBenefitRatio);
+    queryPlanStatistics.setProfileSampleCount(sampleCount);
+    queryPlanStatistics.setProfileHitCount(hitCount);
+    queryPlanStatistics.setProfileMissCount(missCount);
+    queryPlanStatistics.setProfileBypassCount(bypassCount);
+    queryPlanStatistics.setMinReusablePlanningCostThreshold(minReusablePlanningCostThreshold);
+    queryPlanStatistics.setAdmitRatioThreshold(admitRatioThreshold);
+    queryPlanStatistics.setBypassRatioThreshold(bypassRatioThreshold);
+  }
+
+  public double getEwmaReusablePlanningCost() {
+    return queryPlanStatistics == null ? 0 : queryPlanStatistics.getEwmaReusablePlanningCost();
+  }
+
+  public double getEwmaFirstResponseLatency() {
+    return queryPlanStatistics == null ? 0 : queryPlanStatistics.getEwmaFirstResponseLatency();
+  }
+
+  public double getEwmaBenefitRatio() {
+    return queryPlanStatistics == null ? 0 : queryPlanStatistics.getEwmaBenefitRatio();
+  }
+
+  public long getProfileSampleCount() {
+    return queryPlanStatistics == null ? 0 : queryPlanStatistics.getProfileSampleCount();
+  }
+
+  public long getProfileHitCount() {
+    return queryPlanStatistics == null ? 0 : queryPlanStatistics.getProfileHitCount();
+  }
+
+  public long getProfileMissCount() {
+    return queryPlanStatistics == null ? 0 : queryPlanStatistics.getProfileMissCount();
+  }
+
+  public long getProfileBypassCount() {
+    return queryPlanStatistics == null ? 0 : queryPlanStatistics.getProfileBypassCount();
+  }
+
+  public long getMinReusablePlanningCostThreshold() {
+    return queryPlanStatistics == null
+        ? 0
+        : queryPlanStatistics.getMinReusablePlanningCostThreshold();
+  }
+
+  public double getAdmitRatioThreshold() {
+    return queryPlanStatistics == null ? 0 : queryPlanStatistics.getAdmitRatioThreshold();
+  }
+
+  public double getBypassRatioThreshold() {
+    return queryPlanStatistics == null ? 0 : queryPlanStatistics.getBypassRatioThreshold();
+  }
+
   // region =========== FE memory related, make sure its not called concurrently ===========
 
   /**

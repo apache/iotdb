@@ -79,6 +79,61 @@ public class PlanCacheManager {
     }
   }
 
+  public static class ProfileDiagnostics {
+    private final double ewmaReusablePlanningCost;
+    private final double ewmaFirstResponseLatency;
+    private final double ewmaBenefitRatio;
+    private final long sampleCount;
+    private final long hitCount;
+    private final long missCount;
+    private final long bypassCount;
+
+    private ProfileDiagnostics(
+        double ewmaReusablePlanningCost,
+        double ewmaFirstResponseLatency,
+        double ewmaBenefitRatio,
+        long sampleCount,
+        long hitCount,
+        long missCount,
+        long bypassCount) {
+      this.ewmaReusablePlanningCost = ewmaReusablePlanningCost;
+      this.ewmaFirstResponseLatency = ewmaFirstResponseLatency;
+      this.ewmaBenefitRatio = ewmaBenefitRatio;
+      this.sampleCount = sampleCount;
+      this.hitCount = hitCount;
+      this.missCount = missCount;
+      this.bypassCount = bypassCount;
+    }
+
+    public double getEwmaReusablePlanningCost() {
+      return ewmaReusablePlanningCost;
+    }
+
+    public double getEwmaFirstResponseLatency() {
+      return ewmaFirstResponseLatency;
+    }
+
+    public double getEwmaBenefitRatio() {
+      return ewmaBenefitRatio;
+    }
+
+    public long getSampleCount() {
+      return sampleCount;
+    }
+
+    public long getHitCount() {
+      return hitCount;
+    }
+
+    public long getMissCount() {
+      return missCount;
+    }
+
+    public long getBypassCount() {
+      return bypassCount;
+    }
+  }
+
   private static class TemplateProfile {
     private static final double EWMA_ALPHA = 0.5;
 
@@ -168,6 +223,17 @@ public class PlanCacheManager {
       return (long) ewmaReusablePlanningCost;
     }
 
+    synchronized ProfileDiagnostics getDiagnostics() {
+      return new ProfileDiagnostics(
+          ewmaReusablePlanningCost,
+          ewmaFirstResponseLatency,
+          ewmaBenefitRatio,
+          sampleCount,
+          hitCount,
+          missCount,
+          bypassCount);
+    }
+
     private double ewma(double current, double latest) {
       if (current == 0) {
         return latest;
@@ -254,6 +320,11 @@ public class PlanCacheManager {
   public long getEstimatedReusablePlanningCost(String cacheKey) {
     TemplateProfile profile = templateProfiles.get(cacheKey);
     return profile == null ? 0 : profile.getEstimatedReusablePlanningCost();
+  }
+
+  public ProfileDiagnostics getProfileDiagnostics(String cacheKey) {
+    TemplateProfile profile = templateProfiles.get(cacheKey);
+    return profile == null ? null : profile.getDiagnostics();
   }
 
   public boolean shouldCache(String cacheKey) {

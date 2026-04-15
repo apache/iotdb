@@ -38,6 +38,18 @@ public class QueryPlanStatistics {
   private long reusablePlanningCost;
   private long firstResponseLatency;
 
+  // Plan cache profile diagnostics (populated when verbose)
+  private double ewmaReusablePlanningCost;
+  private double ewmaFirstResponseLatency;
+  private double ewmaBenefitRatio;
+  private long profileSampleCount;
+  private long profileHitCount;
+  private long profileMissCount;
+  private long profileBypassCount;
+  private long minReusablePlanningCostThreshold;
+  private double admitRatioThreshold;
+  private double bypassRatioThreshold;
+
   public void setAnalyzeCost(long analyzeCost) {
     this.analyzeCost = analyzeCost;
   }
@@ -150,5 +162,85 @@ public class QueryPlanStatistics {
 
   public void setFirstResponseLatency(long firstResponseLatency) {
     this.firstResponseLatency = firstResponseLatency;
+  }
+
+  public double getEwmaReusablePlanningCost() {
+    return ewmaReusablePlanningCost;
+  }
+
+  public void setEwmaReusablePlanningCost(double ewmaReusablePlanningCost) {
+    this.ewmaReusablePlanningCost = ewmaReusablePlanningCost;
+  }
+
+  public double getEwmaFirstResponseLatency() {
+    return ewmaFirstResponseLatency;
+  }
+
+  public void setEwmaFirstResponseLatency(double ewmaFirstResponseLatency) {
+    this.ewmaFirstResponseLatency = ewmaFirstResponseLatency;
+  }
+
+  public double getEwmaBenefitRatio() {
+    return ewmaBenefitRatio;
+  }
+
+  public void setEwmaBenefitRatio(double ewmaBenefitRatio) {
+    this.ewmaBenefitRatio = ewmaBenefitRatio;
+  }
+
+  public long getProfileSampleCount() {
+    return profileSampleCount;
+  }
+
+  public void setProfileSampleCount(long profileSampleCount) {
+    this.profileSampleCount = profileSampleCount;
+  }
+
+  public long getProfileHitCount() {
+    return profileHitCount;
+  }
+
+  public void setProfileHitCount(long profileHitCount) {
+    this.profileHitCount = profileHitCount;
+  }
+
+  public long getProfileMissCount() {
+    return profileMissCount;
+  }
+
+  public void setProfileMissCount(long profileMissCount) {
+    this.profileMissCount = profileMissCount;
+  }
+
+  public long getProfileBypassCount() {
+    return profileBypassCount;
+  }
+
+  public void setProfileBypassCount(long profileBypassCount) {
+    this.profileBypassCount = profileBypassCount;
+  }
+
+  public long getMinReusablePlanningCostThreshold() {
+    return minReusablePlanningCostThreshold;
+  }
+
+  public void setMinReusablePlanningCostThreshold(long minReusablePlanningCostThreshold) {
+    this.minReusablePlanningCostThreshold = minReusablePlanningCostThreshold;
+  }
+
+  public double getAdmitRatioThreshold() {
+    return admitRatioThreshold;
+  }
+
+  public void setAdmitRatioThreshold(double admitRatioThreshold) {
+    this.admitRatioThreshold = admitRatioThreshold;
+  }
+
+  public double getBypassRatioThreshold() {
+    return bypassRatioThreshold;
+  }
+
+  public void setBypassRatioThreshold(double bypassRatioThreshold) {
+    this.bypassRatioThreshold = bypassRatioThreshold;
   }
 }
