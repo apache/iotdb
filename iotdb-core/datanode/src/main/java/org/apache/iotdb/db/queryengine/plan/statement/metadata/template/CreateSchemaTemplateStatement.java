@@ -112,6 +112,6 @@ public class CreateSchemaTemplateStatement extends Statement implements IConfigS
 
   @Override
   public QueryType getQueryType() {
-    return QueryType.WRITE;
+    return QueryType.OTHER;
   }
 }

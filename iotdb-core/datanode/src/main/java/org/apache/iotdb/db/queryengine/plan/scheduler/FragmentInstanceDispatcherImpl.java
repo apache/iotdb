@@ -507,6 +507,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
           }
           break;
         case WRITE:
+        case OTHER:
           final TSendBatchPlanNodeReq sendPlanNodeReq =
               new TSendBatchPlanNodeReq(
                   Collections.singletonList(
@@ -644,6 +645,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
         }
         break;
       case WRITE:
+      case OTHER:
         final PlanNode planNode = instance.getFragment().getPlanNodeTree();
         final RegionWriteExecutor writeExecutor = new RegionWriteExecutor();
         final RegionExecutionResult writeResult = writeExecutor.execute(groupId, planNode);
@@ -682,6 +684,6 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
   public void abort() {}
 
   private boolean isQuery() {
-    return type != QueryType.WRITE;
+    return type == QueryType.READ || type == QueryType.READ_WRITE;
   }
 }

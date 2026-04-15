@@ -212,7 +212,7 @@ public class QueryExecution implements IQueryExecution {
     // When some columns in one insert failed, other column will continue executing insertion.
     // The error message should be return to client, therefore we need to set it after the insertion
     // of other column finished.
-    if (context.getQueryType() == QueryType.WRITE && analysis.isFailed()) {
+    if (!context.isQuery() && analysis.isFailed()) {
       stateMachine.transitionToFailed(analysis.getFailStatus());
     }
   }
@@ -625,7 +625,7 @@ public class QueryExecution implements IQueryExecution {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private ExecutionResult getExecutionResult(QueryState state) {
     TSStatusCode statusCode;
-    if (context.getQueryType() == QueryType.WRITE && analysis.isFailed()) {
+    if (!context.isQuery() && analysis.isFailed()) {
       // For WRITE, the state should be FINISHED
       statusCode =
           state == QueryState.FINISHED
@@ -671,7 +671,7 @@ public class QueryExecution implements IQueryExecution {
 
   @Override
   public boolean isQuery() {
-    return context.getQueryType() != QueryType.WRITE;
+    return context.isQuery();
   }
 
   @Override

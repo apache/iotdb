@@ -64,7 +64,7 @@ public class SetConfigurationStatement extends Statement implements IConfigState
 
   @Override
   public QueryType getQueryType() {
-    return QueryType.WRITE;
+    return QueryType.OTHER;
   }
 
   @Override

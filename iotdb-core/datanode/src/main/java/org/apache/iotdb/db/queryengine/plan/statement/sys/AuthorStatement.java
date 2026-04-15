@@ -262,7 +262,7 @@ public class AuthorStatement extends Statement implements IConfigStatement {
       case ACCOUNT_UNLOCK:
       case UPDATE_USER_MAX_SESSION:
       case UPDATE_USER_MIN_SESSION:
-        queryType = QueryType.WRITE;
+        queryType = QueryType.OTHER;
         break;
       case LIST_USER:
       case LIST_ROLE:
