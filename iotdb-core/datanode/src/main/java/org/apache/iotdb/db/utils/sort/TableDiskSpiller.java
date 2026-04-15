@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.utils.sort;
 
+import org.apache.iotdb.db.calc_commons.execution.operator.CommonOperatorUtils;
+
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
@@ -26,8 +28,6 @@ import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
 
 import java.util.List;
-
-import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator.TIME_COLUMN_TEMPLATE;
 
 public class TableDiskSpiller extends DiskSpiller {
   public TableDiskSpiller(String folderPath, String filePrefix, List<TSDataType> dataTypeList) {
@@ -37,7 +37,8 @@ public class TableDiskSpiller extends DiskSpiller {
   @Override
   protected TsBlock buildSortedTsBlock(TsBlockBuilder resultBuilder) {
     return resultBuilder.build(
-        new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, resultBuilder.getPositionCount()));
+        new RunLengthEncodedColumn(
+            CommonOperatorUtils.TIME_COLUMN_TEMPLATE, resultBuilder.getPositionCount()));
   }
 
   @Override

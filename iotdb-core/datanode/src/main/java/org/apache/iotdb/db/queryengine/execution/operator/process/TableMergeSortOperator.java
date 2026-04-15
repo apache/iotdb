@@ -19,7 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process;
 
-import org.apache.iotdb.db.queryengine.execution.operator.Operator;
+import org.apache.iotdb.db.calc_commons.execution.operator.CommonOperatorUtils;
+import org.apache.iotdb.db.calc_commons.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.utils.datastructure.SortKey;
 
@@ -31,8 +32,6 @@ import org.apache.tsfile.read.common.block.column.TimeColumnBuilder;
 
 import java.util.Comparator;
 import java.util.List;
-
-import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator.TIME_COLUMN_TEMPLATE;
 
 public class TableMergeSortOperator extends MergeSortOperator {
   public TableMergeSortOperator(
@@ -51,6 +50,7 @@ public class TableMergeSortOperator extends MergeSortOperator {
   @Override
   protected TsBlock buildResult(TsBlockBuilder resultBuilder) {
     return resultBuilder.build(
-        new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, resultBuilder.getPositionCount()));
+        new RunLengthEncodedColumn(
+            CommonOperatorUtils.TIME_COLUMN_TEMPLATE, resultBuilder.getPositionCount()));
   }
 }

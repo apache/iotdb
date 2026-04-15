@@ -37,7 +37,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Contains information about {@link Operator} execution.
+ * Contains information about {@link org.apache.iotdb.db.calc_commons.execution.operator.Operator}
+ * execution.
  *
  * <p>Not thread-safe.
  */

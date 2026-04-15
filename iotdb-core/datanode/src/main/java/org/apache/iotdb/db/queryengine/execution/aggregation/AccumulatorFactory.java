@@ -21,6 +21,14 @@ package org.apache.iotdb.db.queryengine.execution.aggregation;
 
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.calc_commons.execution.aggregation.Accumulator;
+import org.apache.iotdb.db.calc_commons.execution.aggregation.BinaryModeAccumulator;
+import org.apache.iotdb.db.calc_commons.execution.aggregation.BooleanModeAccumulator;
+import org.apache.iotdb.db.calc_commons.execution.aggregation.DoubleModeAccumulator;
+import org.apache.iotdb.db.calc_commons.execution.aggregation.FloatModeAccumulator;
+import org.apache.iotdb.db.calc_commons.execution.aggregation.IntModeAccumulator;
+import org.apache.iotdb.db.calc_commons.execution.aggregation.LongModeAccumulator;
+import org.apache.iotdb.db.calc_commons.execution.aggregation.VarianceAccumulator;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.CompareBinaryExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.ConstantOperand;

@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process;
 
+import org.apache.iotdb.db.calc_commons.execution.operator.Operator;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.db.calc_commons.transformation.dag.column.AbstractCaseWhenThenColumnTransformer;
 import org.apache.iotdb.db.calc_commons.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.calc_commons.transformation.dag.column.FailFunctionColumnTransformer;
@@ -30,7 +32,6 @@ import org.apache.iotdb.db.calc_commons.transformation.dag.column.multi.MultiCol
 import org.apache.iotdb.db.calc_commons.transformation.dag.column.ternary.TernaryColumnTransformer;
 import org.apache.iotdb.db.calc_commons.transformation.dag.column.unary.UnaryColumnTransformer;
 import org.apache.iotdb.db.node_commons.execution.MemoryEstimationHelper;
-import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 
 import com.google.common.util.concurrent.ListenableFuture;

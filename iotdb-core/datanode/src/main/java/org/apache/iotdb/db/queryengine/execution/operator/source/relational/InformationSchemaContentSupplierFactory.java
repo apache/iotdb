@@ -63,6 +63,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowTopicInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TTableInfo;
 import org.apache.iotdb.db.auth.AuthorityChecker;
+import org.apache.iotdb.db.calc_commons.execution.operator.CommonOperatorUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.node_commons.common.ConnectionInfo;
 import org.apache.iotdb.db.node_commons.common.SqlDialect;
@@ -1540,8 +1541,7 @@ public class InformationSchemaContentSupplierFactory {
       final TsBlock result =
           resultBuilder.build(
               new RunLengthEncodedColumn(
-                  AbstractTableScanOperator.TIME_COLUMN_TEMPLATE,
-                  resultBuilder.getPositionCount()));
+                  CommonOperatorUtils.TIME_COLUMN_TEMPLATE, resultBuilder.getPositionCount()));
       resultBuilder.reset();
       return result;
     }

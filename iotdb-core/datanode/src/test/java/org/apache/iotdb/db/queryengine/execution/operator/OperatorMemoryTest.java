@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;
+import org.apache.iotdb.db.calc_commons.execution.operator.Operator;
 import org.apache.iotdb.db.calc_commons.execution.operator.process.fill.IFill;
 import org.apache.iotdb.db.calc_commons.execution.operator.process.fill.linear.LinearFill;
 import org.apache.iotdb.db.calc_commons.transformation.dag.column.ColumnTransformer;

@@ -20,8 +20,9 @@
 package org.apache.iotdb.db.queryengine.execution.operator.process.function;
 
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
+import org.apache.iotdb.db.calc_commons.execution.operator.CommonOperatorUtils;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
-import org.apache.iotdb.db.queryengine.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.udf.api.relational.table.TableFunctionProcessorProvider;
 import org.apache.iotdb.udf.api.relational.table.processor.TableFunctionLeafProcessor;
@@ -37,8 +38,6 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
 import java.util.List;
-
-import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator.TIME_COLUMN_TEMPLATE;
 
 // only one input source is supported now
 public class TableFunctionLeafOperator implements ProcessOperator {
@@ -94,7 +93,8 @@ public class TableFunctionLeafOperator implements ProcessOperator {
   private TsBlock buildTsBlock(List<ColumnBuilder> columnBuilders) {
     int positionCount = columnBuilders.get(0).getPositionCount();
     blockBuilder.declarePositions(positionCount);
-    return blockBuilder.build(new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, positionCount));
+    return blockBuilder.build(
+        new RunLengthEncodedColumn(CommonOperatorUtils.TIME_COLUMN_TEMPLATE, positionCount));
   }
 
   @Override

@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.execution.driver;
 
+import org.apache.iotdb.db.calc_commons.execution.operator.Operator;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.DataSourceOperator;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.storageengine.dataregion.read.IQueryDataSource;

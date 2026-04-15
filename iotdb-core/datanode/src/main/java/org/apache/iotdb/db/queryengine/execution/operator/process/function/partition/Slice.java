@@ -39,7 +39,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.RecordIterator.OBJECT_ERR_MSG;
+import static org.apache.iotdb.db.calc_commons.execution.operator.source.relational.aggregation.RecordIterator.OBJECT_ERR_MSG;
 import static org.apache.iotdb.udf.api.type.Type.OBJECT;
 
 /** Parts of partition. */

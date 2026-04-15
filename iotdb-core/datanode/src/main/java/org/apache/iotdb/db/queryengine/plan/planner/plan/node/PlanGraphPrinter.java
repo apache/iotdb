@@ -132,9 +132,6 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
   private static final String REGION_NOT_ASSIGNED = "Not Assigned";
   public static final String DEVICE_NUMBER = "DeviceNumber";
   public static final String CACHED_DEVICE_NUMBER = "CachedDeviceNumber";
-  public static final String CURRENT_USED_MEMORY = "CurrentUsedMemory";
-  public static final String MAX_USED_MEMORY = "MaxUsedMemory";
-  public static final String MAX_RESERVED_MEMORY = "MaxReservedMemory";
   public static final String REGIONS_OF_CURRENT_SUB_TASK = "RegionsOfCurrentSubTask";
   public static final String PREPARE_CACHE_READER_COST = "PrepareCacheReaderCost";
   public static final String LOAD_OBJECT_FILE_COST = "LoadObjectFileCost";

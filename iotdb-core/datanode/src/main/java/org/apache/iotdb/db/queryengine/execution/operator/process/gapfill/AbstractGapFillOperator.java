@@ -19,10 +19,11 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.gapfill;
 
+import org.apache.iotdb.db.calc_commons.execution.operator.CommonOperatorUtils;
+import org.apache.iotdb.db.calc_commons.execution.operator.Operator;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.db.node_commons.execution.MemoryEstimationHelper;
-import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
-import org.apache.iotdb.db.queryengine.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.db.utils.datastructure.SortKey;
 
 import com.google.common.util.concurrent.ListenableFuture;
@@ -37,7 +38,6 @@ import org.apache.tsfile.utils.RamUsageEstimator;
 import java.util.List;
 
 import static com.google.common.base.Preconditions.checkArgument;
-import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator.TIME_COLUMN_TEMPLATE;
 
 abstract class AbstractGapFillOperator implements ProcessOperator {
 
@@ -86,7 +86,8 @@ abstract class AbstractGapFillOperator implements ProcessOperator {
         resultBuilder.reset();
         fillGaps(lastGroupKey.tsBlock, lastGroupKey.rowIndex, endTime);
         return resultBuilder.build(
-            new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, resultBuilder.getPositionCount()));
+            new RunLengthEncodedColumn(
+                CommonOperatorUtils.TIME_COLUMN_TEMPLATE, resultBuilder.getPositionCount()));
       } else {
         return null;
       }
@@ -130,7 +131,8 @@ abstract class AbstractGapFillOperator implements ProcessOperator {
     }
     lastGroupKey = new SortKey(block, size - 1);
     return resultBuilder.build(
-        new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, resultBuilder.getPositionCount()));
+        new RunLengthEncodedColumn(
+            CommonOperatorUtils.TIME_COLUMN_TEMPLATE, resultBuilder.getPositionCount()));
   }
 
   private void resetTimeIterator() {

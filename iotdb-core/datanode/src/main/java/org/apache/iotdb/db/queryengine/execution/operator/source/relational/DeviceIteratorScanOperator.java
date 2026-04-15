@@ -19,8 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational;
 
+import org.apache.iotdb.db.calc_commons.execution.operator.CommonOperatorUtils;
+import org.apache.iotdb.db.calc_commons.execution.operator.Operator;
 import org.apache.iotdb.db.node_commons.execution.MemoryEstimationHelper;
-import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.source.AbstractDataSourceOperator;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
@@ -64,7 +65,7 @@ public class DeviceIteratorScanOperator extends AbstractDataSourceOperator {
     this.currentDeviceIndex = 0;
     this.currentDeviceInit = false;
     this.operatorContext.recordSpecifiedInfo(
-        AbstractTableScanOperator.CURRENT_DEVICE_INDEX_STRING, Integer.toString(0));
+        CommonOperatorUtils.CURRENT_DEVICE_INDEX_STRING, Integer.toString(0));
     constructCurrentDeviceOperatorTree();
   }
 
@@ -100,8 +101,7 @@ public class DeviceIteratorScanOperator extends AbstractDataSourceOperator {
     queryDataSource.reset();
     initQueryDataSource(queryDataSource);
     this.operatorContext.recordSpecifiedInfo(
-        AbstractTableScanOperator.CURRENT_DEVICE_INDEX_STRING,
-        Integer.toString(currentDeviceIndex));
+        CommonOperatorUtils.CURRENT_DEVICE_INDEX_STRING, Integer.toString(currentDeviceIndex));
   }
 
   private void constructCurrentDeviceOperatorTree() {

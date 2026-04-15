@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator;
 
-import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.array.IntArrayFIFOQueue;
+import org.apache.iotdb.db.calc_commons.execution.operator.source.relational.aggregation.grouped.array.IntArrayFIFOQueue;
 
 import org.apache.tsfile.utils.RamUsageEstimator;
 

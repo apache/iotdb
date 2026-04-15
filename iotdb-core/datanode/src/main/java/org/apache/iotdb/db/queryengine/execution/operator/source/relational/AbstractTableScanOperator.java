@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational;
 
 import org.apache.iotdb.commons.path.AlignedFullPath;
+import org.apache.iotdb.db.calc_commons.execution.operator.CommonOperatorUtils;
 import org.apache.iotdb.db.node_commons.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
@@ -36,7 +37,6 @@ import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
-import org.apache.tsfile.read.common.block.column.LongColumn;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 
@@ -55,10 +55,6 @@ import static org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanGraphPr
 public abstract class AbstractTableScanOperator extends AbstractSeriesScanOperator {
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(TableScanOperator.class);
-
-  public static final String CURRENT_DEVICE_INDEX_STRING = "CurrentDeviceIndex";
-  public static final LongColumn TIME_COLUMN_TEMPLATE =
-      new LongColumn(1, Optional.empty(), new long[] {0});
 
   private final List<ColumnSchema> columnSchemas;
 
@@ -108,7 +104,8 @@ public abstract class AbstractTableScanOperator extends AbstractSeriesScanOperat
             .map(IMeasurementSchema::getType)
             .collect(Collectors.toList());
     this.currentDeviceIndex = 0;
-    this.operatorContext.recordSpecifiedInfo(CURRENT_DEVICE_INDEX_STRING, Integer.toString(0));
+    this.operatorContext.recordSpecifiedInfo(
+        CommonOperatorUtils.CURRENT_DEVICE_INDEX_STRING, Integer.toString(0));
 
     // allSensors include time and all field columns
     this.maxReturnSize =
@@ -263,7 +260,7 @@ public abstract class AbstractTableScanOperator extends AbstractSeriesScanOperat
       queryDataSource.reset();
       this.seriesScanUtil.initQueryDataSource(queryDataSource);
       this.operatorContext.recordSpecifiedInfo(
-          CURRENT_DEVICE_INDEX_STRING, Integer.toString(currentDeviceIndex));
+          CommonOperatorUtils.CURRENT_DEVICE_INDEX_STRING, Integer.toString(currentDeviceIndex));
     }
   }
 

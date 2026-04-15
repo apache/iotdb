@@ -19,11 +19,12 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.function;
 
+import org.apache.iotdb.db.calc_commons.execution.operator.CommonOperatorUtils;
+import org.apache.iotdb.db.calc_commons.execution.operator.Operator;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.db.node_commons.execution.MemoryEstimationHelper;
-import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.process.AggregationMergeSortOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.function.partition.PartitionCache;
 import org.apache.iotdb.db.queryengine.execution.operator.process.function.partition.PartitionState;
 import org.apache.iotdb.db.queryengine.execution.operator.process.function.partition.Slice;
@@ -51,8 +52,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Queue;
-
-import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator.TIME_COLUMN_TEMPLATE;
 
 // only one input source is supported now
 public class TableFunctionOperator implements ProcessOperator {
@@ -216,7 +215,8 @@ public class TableFunctionOperator implements ProcessOperator {
     }
     properBlockBuilder.declarePositions(positionCount);
     TsBlock properBlock =
-        properBlockBuilder.build(new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, positionCount));
+        properBlockBuilder.build(
+            new RunLengthEncodedColumn(CommonOperatorUtils.TIME_COLUMN_TEMPLATE, positionCount));
     List<TsBlock> result = new ArrayList<>();
     if (needPassThrough) {
       // handle pass through column only if needed

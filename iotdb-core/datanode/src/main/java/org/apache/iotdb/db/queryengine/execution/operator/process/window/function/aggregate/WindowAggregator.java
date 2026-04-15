@@ -19,9 +19,10 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.window.function.aggregate;
 
+import org.apache.iotdb.db.calc_commons.execution.operator.CommonOperatorUtils;
+import org.apache.iotdb.db.calc_commons.execution.operator.source.relational.aggregation.AggregationMask;
+import org.apache.iotdb.db.calc_commons.execution.operator.source.relational.aggregation.TableAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.Partition;
-import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.AggregationMask;
-import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.TableAccumulator;
 
 import com.google.common.primitives.Ints;
 import org.apache.tsfile.block.column.Column;
@@ -33,7 +34,6 @@ import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
 import java.util.List;
 
 import static java.util.Objects.requireNonNull;
-import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator.TIME_COLUMN_TEMPLATE;
 
 public class WindowAggregator {
   private final TableAccumulator accumulator;
@@ -67,7 +67,10 @@ public class WindowAggregator {
     // Process count(*)
     int count = columns[0].getPositionCount();
     if (arguments.length == 0) {
-      arguments = new Column[] {new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, count)};
+      arguments =
+          new Column[] {
+            new RunLengthEncodedColumn(CommonOperatorUtils.TIME_COLUMN_TEMPLATE, count)
+          };
     }
 
     AggregationMask mask = AggregationMask.createSelectAll(count);
@@ -90,7 +93,10 @@ public class WindowAggregator {
     // Process count(*)
     int count = columns[0].getPositionCount();
     if (arguments.length == 0) {
-      arguments = new Column[] {new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, count)};
+      arguments =
+          new Column[] {
+            new RunLengthEncodedColumn(CommonOperatorUtils.TIME_COLUMN_TEMPLATE, count)
+          };
     }
 
     accumulator.removeInput(arguments);

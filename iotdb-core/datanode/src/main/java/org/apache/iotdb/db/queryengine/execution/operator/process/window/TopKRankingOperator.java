@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.window;
 
+import org.apache.iotdb.db.calc_commons.execution.operator.Operator;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.db.node_commons.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.node_commons.execution.operator.source.relational.aggregation.grouped.UpdateMemory;
 import org.apache.iotdb.db.node_commons.execution.operator.source.relational.aggregation.grouped.hash.hash.GroupByHash;
@@ -28,11 +30,9 @@ import org.apache.iotdb.db.node_commons.plan.relational.planner.node.TopKRanking
 import org.apache.iotdb.db.node_commons.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.queryengine.execution.operator.GroupedTopNBuilder;
 import org.apache.iotdb.db.queryengine.execution.operator.GroupedTopNRowNumberBuilder;
-import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.SimpleTsBlockWithPositionComparator;
 import org.apache.iotdb.db.queryengine.execution.operator.TsBlockWithPositionComparator;
-import org.apache.iotdb.db.queryengine.execution.operator.process.ProcessOperator;
 
 import com.google.common.base.Supplier;
 import com.google.common.base.Suppliers;

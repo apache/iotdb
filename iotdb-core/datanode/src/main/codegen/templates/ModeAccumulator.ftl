@@ -21,9 +21,9 @@
 <#list allDataTypes.types as type>
 
     <#assign className = "${type.dataType?cap_first}ModeAccumulator">
-    <@pp.changeOutputFile name="/org/apache/iotdb/db/queryengine/execution/aggregation/${className}.java" />
+    <@pp.changeOutputFile name="/org/apache/iotdb/db/calc_commons/execution/aggregation/${className}.java" />
 
-package org.apache.iotdb.db.queryengine.execution.aggregation;
+package org.apache.iotdb.db.calc_commons.execution.aggregation;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.external.commons.collections4.comparators.ComparatorChain;

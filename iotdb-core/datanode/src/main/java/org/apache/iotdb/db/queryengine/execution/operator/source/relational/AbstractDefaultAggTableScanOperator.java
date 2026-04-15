@@ -30,7 +30,7 @@ import org.apache.tsfile.utils.RamUsageEstimator;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
-import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.AbstractTableScanOperator.TIME_COLUMN_TEMPLATE;
+import static org.apache.iotdb.db.calc_commons.execution.operator.CommonOperatorUtils.TIME_COLUMN_TEMPLATE;
 
 public abstract class AbstractDefaultAggTableScanOperator extends AbstractAggTableScanOperator {
 

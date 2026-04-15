@@ -19,7 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process;
 
-import org.apache.iotdb.db.queryengine.execution.operator.Operator;
+import org.apache.iotdb.db.calc_commons.execution.operator.CommonOperatorUtils;
+import org.apache.iotdb.db.calc_commons.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.utils.datastructure.SortKey;
 
@@ -30,8 +31,6 @@ import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
 
 import java.util.Comparator;
 import java.util.List;
-
-import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator.TIME_COLUMN_TEMPLATE;
 
 public class TableTopKOperator extends TopKOperator {
   public TableTopKOperator(
@@ -46,7 +45,9 @@ public class TableTopKOperator extends TopKOperator {
 
   @Override
   protected TsBlock constrcutResultTsBlock(int positionCount, Column[] columns) {
-    return new TsBlock(new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, positionCount), columns);
+    return new TsBlock(
+        new RunLengthEncodedColumn(CommonOperatorUtils.TIME_COLUMN_TEMPLATE, positionCount),
+        columns);
   }
 
   @Override

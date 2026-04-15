@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process;
 
-import org.apache.iotdb.db.queryengine.execution.operator.Operator;
+import org.apache.iotdb.db.calc_commons.execution.operator.CommonOperatorUtils;
+import org.apache.iotdb.db.calc_commons.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
-import org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.read.common.block.TsBlock;
@@ -61,7 +61,7 @@ public class MappingCollectOperator extends CollectOperator {
         return TsBlock.wrapBlocksWithoutCopy(
             tsBlock.getPositionCount(),
             new RunLengthEncodedColumn(
-                TableScanOperator.TIME_COLUMN_TEMPLATE, tsBlock.getPositionCount()),
+                CommonOperatorUtils.TIME_COLUMN_TEMPLATE, tsBlock.getPositionCount()),
             columns);
       }
     } else {

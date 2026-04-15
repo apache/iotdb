@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator;
 
+import org.apache.iotdb.db.calc_commons.execution.operator.source.relational.aggregation.grouped.array.LongBigArray;
 import org.apache.iotdb.db.node_commons.execution.operator.source.relational.aggregation.grouped.hash.hash.GroupByHash;
-import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.array.LongBigArray;
 
 import com.google.common.collect.AbstractIterator;
 import com.google.common.collect.ImmutableList;
@@ -35,7 +35,7 @@ import org.apache.tsfile.utils.RamUsageEstimator;
 import java.util.Iterator;
 import java.util.List;
 
-import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.AbstractTableScanOperator.TIME_COLUMN_TEMPLATE;
+import static org.apache.iotdb.db.calc_commons.execution.operator.CommonOperatorUtils.TIME_COLUMN_TEMPLATE;
 
 public class GroupedTopNRowNumberBuilder implements GroupedTopNBuilder {
   private static final long INSTANCE_SIZE =

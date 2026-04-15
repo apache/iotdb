@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator;
 
-import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.array.LongBigArray;
-import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.array.LongBigArrayFIFOQueue;
+import org.apache.iotdb.db.calc_commons.execution.operator.source.relational.aggregation.grouped.array.LongBigArray;
+import org.apache.iotdb.db.calc_commons.execution.operator.source.relational.aggregation.grouped.array.LongBigArrayFIFOQueue;
 import org.apache.iotdb.db.utils.HeapTraversal;
 
 import org.apache.tsfile.read.common.block.TsBlock;

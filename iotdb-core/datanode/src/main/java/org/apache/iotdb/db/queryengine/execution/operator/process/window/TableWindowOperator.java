@@ -19,10 +19,12 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.window;
 
+import org.apache.iotdb.db.calc_commons.execution.operator.CommonOperatorUtils;
+import org.apache.iotdb.db.calc_commons.execution.operator.Operator;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.ProcessOperator;
+import org.apache.iotdb.db.calc_commons.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.db.node_commons.execution.MemoryEstimationHelper;
-import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
-import org.apache.iotdb.db.queryengine.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.function.PartitionRecognizer;
 import org.apache.iotdb.db.queryengine.execution.operator.process.function.partition.PartitionCache;
 import org.apache.iotdb.db.queryengine.execution.operator.process.function.partition.PartitionState;
@@ -31,7 +33,6 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.window.functio
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.Partition;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.PartitionExecutor;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.frame.FrameInfo;
-import org.apache.iotdb.db.queryengine.plan.planner.memory.MemoryReservationManager;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.ListenableFuture;
@@ -48,8 +49,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator.TIME_COLUMN_TEMPLATE;
-import static org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanGraphPrinter.MAX_RESERVED_MEMORY;
+import static org.apache.iotdb.db.calc_commons.execution.operator.CommonOperatorUtils.MAX_RESERVED_MEMORY;
 
 public class TableWindowOperator implements ProcessOperator {
   private static final long INSTANCE_SIZE =
@@ -245,7 +245,8 @@ public class TableWindowOperator implements ProcessOperator {
   private TsBlock getTsBlockFromTsBlockBuilder() {
     TsBlock result =
         tsBlockBuilder.build(
-            new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, tsBlockBuilder.getPositionCount()));
+            new RunLengthEncodedColumn(
+                CommonOperatorUtils.TIME_COLUMN_TEMPLATE, tsBlockBuilder.getPositionCount()));
     tsBlockBuilder.reset();
     return result;
   }

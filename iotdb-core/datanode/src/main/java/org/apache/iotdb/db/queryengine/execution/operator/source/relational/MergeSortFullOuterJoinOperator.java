@@ -19,8 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational;
 
+import org.apache.iotdb.db.calc_commons.execution.operator.CommonOperatorUtils;
+import org.apache.iotdb.db.calc_commons.execution.operator.Operator;
 import org.apache.iotdb.db.node_commons.execution.MemoryEstimationHelper;
-import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.comparator.JoinKeyComparator;
 
@@ -32,8 +33,6 @@ import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.List;
 import java.util.function.BiFunction;
-
-import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator.TIME_COLUMN_TEMPLATE;
 
 public class MergeSortFullOuterJoinOperator extends AbstractMergeSortJoinOperator {
   private static final long INSTANCE_SIZE =
@@ -190,7 +189,7 @@ public class MergeSortFullOuterJoinOperator extends AbstractMergeSortJoinOperato
               .get(i)
               .apply(leftBlock.getColumn(leftJoinKeyPositions[i]), leftIndex);
     }
-    lastMatchedRightBlock = new TsBlock(1, TIME_COLUMN_TEMPLATE, valueColumns);
+    lastMatchedRightBlock = new TsBlock(1, CommonOperatorUtils.TIME_COLUMN_TEMPLATE, valueColumns);
   }
 
   private void buildUseRemainingBlocks() {

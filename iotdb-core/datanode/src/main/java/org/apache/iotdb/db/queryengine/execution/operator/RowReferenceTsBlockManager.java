@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator;
 
-import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.array.IntBigArray;
-import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.array.LongBigArrayFIFOQueue;
+import org.apache.iotdb.db.calc_commons.execution.operator.source.relational.aggregation.grouped.array.IntBigArray;
+import org.apache.iotdb.db.calc_commons.execution.operator.source.relational.aggregation.grouped.array.LongBigArrayFIFOQueue;
 
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.utils.RamUsageEstimator;

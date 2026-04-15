@@ -19,12 +19,12 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern;
 
+import org.apache.iotdb.db.calc_commons.execution.operator.source.relational.aggregation.AggregationMask;
+import org.apache.iotdb.db.calc_commons.execution.operator.source.relational.aggregation.TableAccumulator;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.node_commons.plan.relational.function.BoundSignature;
 import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.matcher.ArrayView;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.Partition;
-import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.AggregationMask;
-import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.TableAccumulator;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
@@ -33,7 +33,7 @@ import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
 import java.util.List;
 
 import static java.util.Objects.requireNonNull;
-import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.AbstractTableScanOperator.TIME_COLUMN_TEMPLATE;
+import static org.apache.iotdb.db.calc_commons.execution.operator.CommonOperatorUtils.TIME_COLUMN_TEMPLATE;
 
 /**
  * This class computes an aggregate function result in row pattern recognition context.

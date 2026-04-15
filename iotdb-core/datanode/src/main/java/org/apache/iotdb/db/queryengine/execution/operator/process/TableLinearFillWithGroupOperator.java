@@ -19,8 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process;
 
+import org.apache.iotdb.db.calc_commons.execution.operator.CommonOperatorUtils;
+import org.apache.iotdb.db.calc_commons.execution.operator.Operator;
 import org.apache.iotdb.db.calc_commons.execution.operator.process.fill.ILinearFill;
-import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.utils.datastructure.SortKey;
 
@@ -34,8 +35,6 @@ import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-
-import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator.TIME_COLUMN_TEMPLATE;
 
 public class TableLinearFillWithGroupOperator extends TableLinearFillOperator {
 
@@ -86,7 +85,8 @@ public class TableLinearFillWithGroupOperator extends TableLinearFillOperator {
     TsBlock result = null;
     if (!resultBuilder.isEmpty()) {
       Column timeColumn =
-          new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, resultBuilder.getPositionCount());
+          new RunLengthEncodedColumn(
+              CommonOperatorUtils.TIME_COLUMN_TEMPLATE, resultBuilder.getPositionCount());
       result = resultBuilder.build(timeColumn);
       resultBuilder.reset();
     }
