@@ -86,7 +86,8 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSourceTest {
           new ArrayDeque<PersistentResource>(Arrays.asList(firstResource, secondResource)));
 
       Assert.assertNull(source.supply());
-      Assert.assertEquals(Arrays.asList(firstResource.getTsFilePath()), source.getSuppliedTsFiles());
+      Assert.assertEquals(
+          Arrays.asList(firstResource.getTsFilePath()), source.getSuppliedTsFiles());
       Assert.assertEquals(1, source.getPendingQueueSize());
     } finally {
       FileUtils.deleteFileOrDirectory(tempDir);
@@ -137,7 +138,8 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSourceTest {
     }
 
     @Override
-    protected boolean consumeSkippedHistoricalTsFileEventIfNecessary(final TsFileResource resource) {
+    protected boolean consumeSkippedHistoricalTsFileEventIfNecessary(
+        final TsFileResource resource) {
       if (!skippedTsFilePaths.contains(resource.getTsFilePath())) {
         return false;
       }

@@ -203,8 +203,10 @@ public class PipeTsFileInsertionEventTest {
               .bindTsFileDedupScopeID(scopeA);
 
       sourceEvent.eliminateProgressIndex();
-      Assert.assertFalse(keeper.containsTsFile(dataRegionId, scopeA, sourceResource.getTsFilePath()));
-      Assert.assertTrue(keeper.containsTsFile(dataRegionId, scopeB, sourceResource.getTsFilePath()));
+      Assert.assertFalse(
+          keeper.containsTsFile(dataRegionId, scopeA, sourceResource.getTsFilePath()));
+      Assert.assertTrue(
+          keeper.containsTsFile(dataRegionId, scopeB, sourceResource.getTsFilePath()));
 
       keeper.registerProgressIndex(dataRegionId, scopeA, sourceResource);
       final PipeTsFileInsertionEvent copiedEvent =
@@ -212,8 +214,10 @@ public class PipeTsFileInsertionEventTest {
               "pipe", 2L, null, null, null, null, null, null, true, Long.MIN_VALUE, Long.MAX_VALUE);
       Assert.assertEquals(scopeA, copiedEvent.getTsFileDedupScopeID());
       copiedEvent.eliminateProgressIndex();
-      Assert.assertFalse(keeper.containsTsFile(dataRegionId, scopeA, sourceResource.getTsFilePath()));
-      Assert.assertTrue(keeper.containsTsFile(dataRegionId, scopeB, sourceResource.getTsFilePath()));
+      Assert.assertFalse(
+          keeper.containsTsFile(dataRegionId, scopeA, sourceResource.getTsFilePath()));
+      Assert.assertTrue(
+          keeper.containsTsFile(dataRegionId, scopeB, sourceResource.getTsFilePath()));
 
       keeper.registerProgressIndex(dataRegionId, scopeA, sourceResource);
       final TsFileResource compactedResource =
@@ -227,8 +231,10 @@ public class PipeTsFileInsertionEventTest {
               true);
       Assert.assertEquals(scopeA, compactedEvent.getTsFileDedupScopeID());
       compactedEvent.eliminateProgressIndex();
-      Assert.assertFalse(keeper.containsTsFile(dataRegionId, scopeA, sourceResource.getTsFilePath()));
-      Assert.assertTrue(keeper.containsTsFile(dataRegionId, scopeB, sourceResource.getTsFilePath()));
+      Assert.assertFalse(
+          keeper.containsTsFile(dataRegionId, scopeA, sourceResource.getTsFilePath()));
+      Assert.assertTrue(
+          keeper.containsTsFile(dataRegionId, scopeB, sourceResource.getTsFilePath()));
     } finally {
       keeper.clearProgressIndex(dataRegionId, scopeA);
       keeper.clearProgressIndex(dataRegionId, scopeB);
