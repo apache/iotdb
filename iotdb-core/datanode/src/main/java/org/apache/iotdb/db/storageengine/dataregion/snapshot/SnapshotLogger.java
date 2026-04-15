@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.storageengine.dataregion.snapshot;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
+
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -74,7 +76,7 @@ public class SnapshotLogger implements AutoCloseable {
     os.write(SPLIT_CHAR.getBytes(StandardCharsets.UTF_8));
     os.write(middlePath.getBytes(StandardCharsets.UTF_8));
     os.write(SPLIT_CHAR.getBytes(StandardCharsets.UTF_8));
-    os.write("object".getBytes(StandardCharsets.UTF_8));
+    os.write(IoTDBConstant.OBJECT_FOLDER_NAME.getBytes(StandardCharsets.UTF_8));
     os.write("\n".getBytes(StandardCharsets.UTF_8));
     os.flush();
   }
