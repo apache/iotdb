@@ -28,17 +28,24 @@ import org.apache.iotdb.db.storageengine.dataregion.flush.CompressionRatio;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
+import org.apache.iotdb.db.utils.ObjectTypeUtils;
 
+import org.apache.tsfile.fileSystem.FSFactoryProducer;
+import org.apache.tsfile.fileSystem.fsFactory.FSFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * SnapshotTaker takes data snapshot for a DataRegion in one time. It does so by creating hard link
@@ -48,6 +55,7 @@ import java.util.concurrent.TimeUnit;
  */
 public class SnapshotTaker {
   private static final Logger LOGGER = LoggerFactory.getLogger(SnapshotTaker.class);
+  private static final FSFactory FS_FACTORY = FSFactoryProducer.getFSFactory();
   private final DataRegion dataRegion;
   private SnapshotLogger snapshotLogger;
   private List<TsFileResource> seqFiles;
@@ -101,6 +109,7 @@ public class SnapshotTaker {
         }
         success = createSnapshot(seqFiles, tempSnapshotId);
         success = success && createSnapshot(unseqFiles, tempSnapshotId);
+        success = success && snapshotObjectFiles(tempSnapshotId);
         success = success && snapshotCompressionRatio(snapshotDirPath);
       } finally {
         readUnlockTheFile();
@@ -265,6 +274,87 @@ public class SnapshotTaker {
       LOGGER.error("Catch IOException when creating snapshot", e);
       return false;
     }
+  }
+
+  private boolean snapshotObjectFiles(String tempSnapshotId) {
+    try {
+      String dataRegionIdString = dataRegion.getDataRegionIdString();
+      for (String objectFolder : TierManager.getInstance().getAllObjectFileFolders()) {
+        File objectRegionDir = FS_FACTORY.getFile(objectFolder, dataRegionIdString);
+        if (!objectRegionDir.exists()) {
+          continue;
+        }
+        if (!snapshotSingleObjectRegionDir(objectRegionDir, tempSnapshotId)) {
+          return false;
+        }
+      }
+      return true;
+    } catch (IOException e) {
+      LOGGER.error("Failed to snapshot object files", e);
+      return false;
+    }
+  }
+
+  private boolean snapshotSingleObjectRegionDir(File objectRegionDir, String tempSnapshotId)
+      throws IOException {
+    Path regionRoot = objectRegionDir.toPath();
+    Path objectRoot = regionRoot.getParent();
+    if (objectRoot == null) {
+      return false;
+    }
+
+    Path dataRoot = objectRoot.getParent();
+    if (dataRoot == null) {
+      LOGGER.error("Cannot locate data root for object dir {}", objectRegionDir.getAbsolutePath());
+      return false;
+    }
+
+    Path snapshotBaseDir =
+        dataRoot
+            .resolve(IoTDBConstant.SNAPSHOT_FOLDER_NAME)
+            .resolve(
+                dataRegion.getDatabaseName()
+                    + IoTDBConstant.FILE_NAME_SEPARATOR
+                    + dataRegion.getDataRegionIdString())
+            .resolve(tempSnapshotId)
+            .resolve(IoTDBConstant.OBJECT_FOLDER_NAME);
+
+    try (Stream<Path> paths = Files.walk(regionRoot)) {
+      for (Path file :
+          paths
+              .filter(Files::isRegularFile)
+              .filter(path -> isObjectSnapshotCandidate(path.getFileName().toString()))
+              .collect(Collectors.toList())) {
+        Path relPath = objectRoot.relativize(file);
+        Path targetPath = snapshotBaseDir.resolve(relPath);
+        createObjectHardLink(targetPath.toFile(), file.toFile(), relPath);
+      }
+    }
+    return true;
+  }
+
+  private boolean isObjectSnapshotCandidate(String fileName) {
+    return fileName.endsWith(ObjectTypeUtils.OBJECT_FILE_SUFFIX)
+        || fileName.endsWith(ObjectTypeUtils.OBJECT_TEMP_FILE_SUFFIX)
+        || fileName.endsWith(ObjectTypeUtils.OBJECT_BACK_FILE_SUFFIX);
+  }
+
+  private void createObjectHardLink(File target, File source, Path relativePathForLog)
+      throws IOException {
+    File parentDir = target.getParentFile();
+    if (parentDir != null && !parentDir.exists() && !parentDir.mkdirs()) {
+      LOGGER.error("Cannot create snapshot object dir {}", parentDir);
+      throw new IOException("Failed to create directory " + parentDir);
+    }
+
+    if (!checkHardLinkSourceFile(source)) {
+      return;
+    }
+
+    Files.deleteIfExists(target.toPath());
+    Files.createLink(target.toPath(), source.toPath());
+
+    snapshotLogger.logObjectRelativePath(relativePathForLog);
   }
 
   private void createHardLink(File target, File source) throws IOException {

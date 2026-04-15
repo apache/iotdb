@@ -48,6 +48,9 @@ public class ObjectTypeUtils {
 
   private static final Logger logger = LoggerFactory.getLogger(ObjectTypeUtils.class);
   private static final TierManager TIER_MANAGER = TierManager.getInstance();
+  public static final String OBJECT_FILE_SUFFIX = ".bin";
+  public static final String OBJECT_TEMP_FILE_SUFFIX = ".tmp";
+  public static final String OBJECT_BACK_FILE_SUFFIX = ".back";
 
   private ObjectTypeUtils() {}
 

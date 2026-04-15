@@ -26,7 +26,9 @@ import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.flush.CompressionRatio;
 import org.apache.iotdb.db.storageengine.rescon.disk.FolderManager;
+import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
 import org.apache.iotdb.db.storageengine.rescon.disk.strategy.DirectoryStrategyType;
+import org.apache.iotdb.db.utils.ObjectTypeUtils;
 
 import org.apache.tsfile.external.commons.io.FileUtils;
 import org.slf4j.Logger;
@@ -38,6 +40,8 @@ import java.nio.file.FileVisitResult;
 import java.nio.file.FileVisitor;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -46,6 +50,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class SnapshotLoader {
   private Logger LOGGER = LoggerFactory.getLogger(SnapshotLoader.class);
@@ -231,6 +236,15 @@ public class SnapshotLoader {
           timePartitions.addAll(Arrays.asList(files));
         }
       }
+
+      File objectRegionDir =
+          Paths.get(dataDirPath)
+              .resolve(IoTDBConstant.OBJECT_FOLDER_NAME)
+              .resolve(dataRegionId)
+              .toFile();
+      if (objectRegionDir.exists()) {
+        timePartitions.add(objectRegionDir);
+      }
     }
 
     try {
@@ -312,6 +326,78 @@ public class SnapshotLoader {
         createLinksFromSnapshotToSourceDir(targetSuffix, files, folderManager);
       }
     }
+
+    File snapshotObjectDir = new File(sourceDir, IoTDBConstant.OBJECT_FOLDER_NAME);
+    if (snapshotObjectDir.exists()) {
+      FolderManager objectFolderManager =
+          new FolderManager(
+              TierManager.getInstance().getAllObjectFileFolders(),
+              DirectoryStrategyType.SEQUENCE_STRATEGY);
+      linkObjectTreeFromSnapshotToObjectDirs(snapshotObjectDir, objectFolderManager);
+    }
+  }
+
+  private void linkObjectTreeFromSnapshotToObjectDirs(
+      File sourceObjectRoot, FolderManager folderManager)
+      throws DiskSpaceInsufficientException, IOException {
+    Path sourceRootPath = sourceObjectRoot.toPath();
+    // Process files during traversal to avoid loading all object file paths into memory.
+    Files.walkFileTree(
+        sourceRootPath,
+        new SimpleFileVisitor<Path>() {
+          @Override
+          public FileVisitResult visitFile(Path file, BasicFileAttributes attrs)
+              throws IOException {
+            if (!isObjectSnapshotCandidate(file.getFileName().toString())) {
+              return FileVisitResult.CONTINUE;
+            }
+            final Path sourceFile = file;
+            final Path targetRelPath = sourceRootPath.relativize(file);
+            try {
+              folderManager.getNextWithRetry(
+                  currentObjectDir -> {
+                    File targetFile =
+                        new File(currentObjectDir).toPath().resolve(targetRelPath).toFile();
+                    try {
+                      if (!targetFile.getParentFile().exists()
+                          && !targetFile.getParentFile().mkdirs()) {
+                        throw new IOException(
+                            String.format(
+                                "Cannot create directory %s",
+                                targetFile.getParentFile().getAbsolutePath()));
+                      }
+                      try {
+                        Files.createLink(targetFile.toPath(), sourceFile);
+                        LOGGER.debug("Created hard link from {} to {}", sourceFile, targetFile);
+                        return targetFile;
+                      } catch (IOException e) {
+                        LOGGER.info(
+                            "Cannot create link from {} to {}, fallback to copy",
+                            sourceFile,
+                            targetFile);
+                      }
+                      Files.copy(sourceFile, targetFile.toPath());
+                      return targetFile;
+                    } catch (Exception e) {
+                      LOGGER.warn(
+                          "Failed to process file {} in dir {}: {}",
+                          sourceFile.getFileName(),
+                          currentObjectDir,
+                          e.getMessage(),
+                          e);
+                      throw e;
+                    }
+                  });
+            } catch (Exception e) {
+              throw new IOException(
+                  String.format(
+                      "Failed to process object file after retries. Source: %s",
+                      sourceFile.toAbsolutePath()),
+                  e);
+            }
+            return FileVisitResult.CONTINUE;
+          }
+        });
   }
 
   private void createLinksFromSnapshotToSourceDir(
@@ -470,7 +556,94 @@ public class SnapshotLoader {
       }
     }
 
+    File objectSnapshotRoot =
+        new File(
+            snapshotFolder.getAbsolutePath() + File.separator + IoTDBConstant.OBJECT_FOLDER_NAME);
+    if (objectSnapshotRoot.exists()) {
+      cnt += linkObjectSnapshotTreeToDataDir(objectSnapshotRoot, fileInfoSet);
+    }
+
     return cnt;
+  }
+
+  private int linkObjectSnapshotTreeToDataDir(File objectSnapshotRoot, Set<String> fileInfoSet)
+      throws IOException {
+    final FolderManager folderManager;
+    try {
+      folderManager =
+          new FolderManager(
+              TierManager.getInstance().getAllObjectFileFolders(),
+              DirectoryStrategyType.SEQUENCE_STRATEGY);
+    } catch (DiskSpaceInsufficientException e) {
+      throw new IOException("Failed to initialize object folder manager", e);
+    }
+    Path rootPath = objectSnapshotRoot.toPath();
+    AtomicInteger cnt = new AtomicInteger(0);
+    // Process files during traversal to avoid loading all object file paths into memory.
+    Files.walkFileTree(
+        rootPath,
+        new SimpleFileVisitor<Path>() {
+          @Override
+          public FileVisitResult visitFile(Path file, BasicFileAttributes attrs)
+              throws IOException {
+            if (!isObjectSnapshotCandidate(file.getFileName().toString())) {
+              return FileVisitResult.CONTINUE;
+            }
+            String infoStr = getFileInfoString(file.toFile());
+            if (!fileInfoSet.contains(infoStr)) {
+              throw new IOException(
+                  String.format("File %s is not in the log file list", file.toAbsolutePath()));
+            }
+            final Path sourceFile = file;
+            final Path targetRelPath = rootPath.relativize(file);
+            try {
+              folderManager.getNextWithRetry(
+                  currentObjectDir -> {
+                    File targetFile =
+                        new File(currentObjectDir).toPath().resolve(targetRelPath).toFile();
+                    try {
+                      if (!targetFile.getParentFile().exists()
+                          && !targetFile.getParentFile().mkdirs()) {
+                        throw new IOException(
+                            String.format(
+                                "Cannot create directory %s",
+                                targetFile.getParentFile().getAbsolutePath()));
+                      }
+                      try {
+                        Files.createLink(targetFile.toPath(), sourceFile);
+                        LOGGER.debug("Created hard link from {} to {}", sourceFile, targetFile);
+                        return targetFile;
+                      } catch (IOException e) {
+                        LOGGER.info(
+                            "Cannot create link from {} to {}, fallback to copy",
+                            sourceFile,
+                            targetFile);
+                      }
+                      Files.copy(sourceFile, targetFile.toPath());
+                      return targetFile;
+                    } catch (Exception e) {
+                      LOGGER.warn(
+                          "Failed to process file {} in dir {}: {}",
+                          sourceFile.getFileName(),
+                          currentObjectDir,
+                          e.getMessage(),
+                          e);
+                      throw e;
+                    }
+                  });
+            } catch (Exception e) {
+              throw new IOException(
+                  String.format(
+                      "Failed to process object snapshot file after retries. Source: %s",
+                      sourceFile.toAbsolutePath()),
+                  e);
+            }
+            cnt.incrementAndGet();
+            return FileVisitResult.CONTINUE;
+          }
+        });
+
+    return cnt.get();
   }
 
   private void createLinksFromSourceToTarget(File targetDir, File[] files, Set<String> fileInfoSet)
@@ -492,6 +665,33 @@ public class SnapshotLoader {
   }
 
   private String getFileInfoString(File file) {
+    Path filePath = file.toPath();
+    int objectDirIndex = -1;
+    int nameCount = filePath.getNameCount();
+    for (int i = 0; i < nameCount; i++) {
+      if (IoTDBConstant.OBJECT_FOLDER_NAME.equals(filePath.getName(i).toString())) {
+        objectDirIndex = i;
+        break;
+      }
+    }
+    if (objectDirIndex >= 0 && objectDirIndex < nameCount - 1) {
+      Path relativeToObject = filePath.subpath(objectDirIndex + 1, nameCount);
+      String fileName = relativeToObject.getFileName().toString();
+      Path parentPath = relativeToObject.getParent();
+      String middlePath = "";
+      if (parentPath != null) {
+        List<String> pathElements = new ArrayList<>();
+        for (Path element : parentPath) {
+          pathElements.add(element.toString());
+        }
+        middlePath = String.join("/", pathElements);
+      }
+      return fileName
+          + SnapshotLogger.SPLIT_CHAR
+          + middlePath
+          + SnapshotLogger.SPLIT_CHAR
+          + "object";
+    }
     String[] splittedStr = file.getAbsolutePath().split(File.separator.equals("\\") ? "\\\\" : "/");
     int length = splittedStr.length;
     return splittedStr[length - SnapshotLogger.FILE_NAME_OFFSET]
@@ -499,6 +699,12 @@ public class SnapshotLoader {
         + splittedStr[length - SnapshotLogger.TIME_PARTITION_OFFSET]
         + SnapshotLogger.SPLIT_CHAR
         + splittedStr[length - SnapshotLogger.SEQUENCE_OFFSET];
+  }
+
+  private boolean isObjectSnapshotCandidate(String fileName) {
+    return fileName.endsWith(ObjectTypeUtils.OBJECT_FILE_SUFFIX)
+        || fileName.endsWith(ObjectTypeUtils.OBJECT_TEMP_FILE_SUFFIX)
+        || fileName.endsWith(ObjectTypeUtils.OBJECT_BACK_FILE_SUFFIX);
   }
 
   public List<File> getSnapshotFileInfo() throws IOException {

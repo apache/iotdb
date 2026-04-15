@@ -24,6 +24,9 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 
 public class SnapshotLogger implements AutoCloseable {
   public static final String SNAPSHOT_LOG_NAME = "snapshot.log";
@@ -54,6 +57,26 @@ public class SnapshotLogger implements AutoCloseable {
     fos.flush();
     fos.getFD().sync();
     os.close();
+  }
+
+  public void logObjectRelativePath(Path relativePathFromObjectRoot) throws IOException {
+    String fileName = relativePathFromObjectRoot.getFileName().toString();
+    Path parentPath = relativePathFromObjectRoot.getParent();
+    String middlePath = "";
+    if (parentPath != null) {
+      List<String> pathElements = new ArrayList<>();
+      for (Path element : parentPath) {
+        pathElements.add(element.toString());
+      }
+      middlePath = String.join("/", pathElements);
+    }
+    os.write(fileName.getBytes(StandardCharsets.UTF_8));
+    os.write(SPLIT_CHAR.getBytes(StandardCharsets.UTF_8));
+    os.write(middlePath.getBytes(StandardCharsets.UTF_8));
+    os.write(SPLIT_CHAR.getBytes(StandardCharsets.UTF_8));
+    os.write("object".getBytes(StandardCharsets.UTF_8));
+    os.write("\n".getBytes(StandardCharsets.UTF_8));
+    os.flush();
   }
 
   /**
