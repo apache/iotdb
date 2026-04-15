@@ -21,6 +21,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.rest.IoTDBRestServiceDescriptor;
+import org.apache.iotdb.db.node_commons.common.SqlDialect;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
@@ -156,7 +157,7 @@ public class RestApiServiceImpl extends RestApiService {
           StatementConstructionHandler.constructInsertTabletStatement(insertTabletRequest);
       IClientSession clientSession = SESSION_MANAGER.getCurrSession();
       clientSession.setDatabaseName(insertTabletRequest.getDatabase());
-      clientSession.setSqlDialect(IClientSession.SqlDialect.TABLE);
+      clientSession.setSqlDialect(SqlDialect.TABLE);
       queryId = SESSION_MANAGER.requestQueryId();
       Metadata metadata = LocalExecutionPlanner.getInstance().metadata;
 
@@ -286,7 +287,7 @@ public class RestApiServiceImpl extends RestApiService {
       clientSession.setDatabaseName(sql.getDatabase());
     }
 
-    clientSession.setSqlDialect(IClientSession.SqlDialect.TABLE);
+    clientSession.setSqlDialect(SqlDialect.TABLE);
     return relationSqlParser.createStatement(sql.getSql(), ZoneId.systemDefault(), clientSession);
   }
 
