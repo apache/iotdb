@@ -22,19 +22,38 @@ package org.apache.iotdb.db.service.metrics;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.MetricConstant;
+import org.apache.iotdb.metrics.config.MetricConfig;
+import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 import org.apache.iotdb.metrics.utils.SystemMetric;
 
 import com.sun.management.OperatingSystemMXBean;
+import com.sun.jna.Library;
+import com.sun.jna.Native;
+import com.sun.jna.Structure;
+import com.sun.jna.platform.win32.BaseTSD.SIZE_T;
+import com.sun.jna.platform.win32.Kernel32;
+import com.sun.jna.platform.win32.WinNT;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.lang.management.ManagementFactory;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 public class ProcessMetrics implements IMetricSet {
+  private static final Logger LOGGER = LoggerFactory.getLogger(ProcessMetrics.class);
+  private static final MetricConfig CONFIG = MetricConfigDescriptor.getInstance().getMetricConfig();
   private final OperatingSystemMXBean sunOsMxBean;
   private final Runtime runtime;
   private static final String PROCESS = "process";
+  private static final String LINUX_RSS_PREFIX = "VmRSS:";
   private long lastUpdateTime = 0L;
   private volatile long processCpuLoad = 0L;
   private volatile long processCpuTime = 0L;
@@ -213,7 +232,69 @@ public class ProcessMetrics implements IMetricSet {
   }
 
   private long getProcessUsedMemory() {
-    return runtime.totalMemory() - runtime.freeMemory();
+    long residentMemory = getResidentMemory();
+    return residentMemory > 0 ? residentMemory : runtime.totalMemory() - runtime.freeMemory();
+  }
+
+  private long getResidentMemory() {
+    if (CONFIG.getPid().isEmpty()) {
+      return 0L;
+    }
+    try {
+      switch (CONFIG.getSystemType()) {
+        case LINUX:
+          return getLinuxResidentMemory();
+        case MAC:
+          return getMacResidentMemory();
+        case WINDOWS:
+          return getWindowsResidentMemory();
+        default:
+          return 0L;
+      }
+    } catch (Exception e) {
+      LOGGER.debug("Failed to get process resident memory for pid {}", CONFIG.getPid(), e);
+      return 0L;
+    }
+  }
+
+  private long getLinuxResidentMemory() throws IOException {
+    Path statusPath = Paths.get(String.format("/proc/%s/status", CONFIG.getPid()));
+    if (!Files.exists(statusPath)) {
+      return 0L;
+    }
+    for (String line : Files.readAllLines(statusPath)) {
+      if (line.startsWith(LINUX_RSS_PREFIX)) {
+        String[] parts = line.trim().split("\\s+");
+        if (parts.length >= 2) {
+          return Long.parseLong(parts[1]) * 1024L;
+        }
+      }
+    }
+    return 0L;
+  }
+
+  private long getMacResidentMemory() throws IOException, InterruptedException {
+    Process process = runtime.exec(new String[] {"ps", "-o", "rss=", "-p", CONFIG.getPid()});
+    try (BufferedReader input =
+        new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+      String line = input.readLine();
+      int exitCode = process.waitFor();
+      if (exitCode == 0 && line != null && !line.trim().isEmpty()) {
+        return Long.parseLong(line.trim()) * 1024L;
+      }
+    }
+    return 0L;
+  }
+
+  private long getWindowsResidentMemory() {
+    WinNT.HANDLE hProcess = Kernel32.INSTANCE.GetCurrentProcess();
+    ProcessMemoryCounters counters = new ProcessMemoryCounters();
+    boolean success =
+        PsapiExt.INSTANCE.GetProcessMemoryInfo(hProcess, counters, counters.size());
+    if (!success) {
+      return 0L;
+    }
+    return counters.workingSetSize.longValue();
   }
 
   private long getProcessStatus() {
@@ -232,5 +313,37 @@ public class ProcessMetrics implements IMetricSet {
     long processUsedMemory = getProcessUsedMemory();
     long totalPhysicalMemorySize = sunOsMxBean.getTotalPhysicalMemorySize();
     return (double) processUsedMemory / (double) totalPhysicalMemorySize * 100;
+  }
+
+  public interface PsapiExt extends Library {
+    PsapiExt INSTANCE = Native.load("psapi", PsapiExt.class);
+
+    boolean GetProcessMemoryInfo(
+        WinNT.HANDLE process, ProcessMemoryCounters counters, int size);
+  }
+
+  @Structure.FieldOrder({
+    "cb",
+    "pageFaultCount",
+    "peakWorkingSetSize",
+    "workingSetSize",
+    "quotaPeakPagedPoolUsage",
+    "quotaPagedPoolUsage",
+    "quotaPeakNonPagedPoolUsage",
+    "quotaNonPagedPoolUsage",
+    "pagefileUsage",
+    "peakPagefileUsage"
+  })
+  public static class ProcessMemoryCounters extends Structure {
+    public int cb = size();
+    public int pageFaultCount;
+    public SIZE_T peakWorkingSetSize;
+    public SIZE_T workingSetSize;
+    public SIZE_T quotaPeakPagedPoolUsage;
+    public SIZE_T quotaPagedPoolUsage;
+    public SIZE_T quotaPeakNonPagedPoolUsage;
+    public SIZE_T quotaNonPagedPoolUsage;
+    public SIZE_T pagefileUsage;
+    public SIZE_T peakPagefileUsage;
   }
 }
