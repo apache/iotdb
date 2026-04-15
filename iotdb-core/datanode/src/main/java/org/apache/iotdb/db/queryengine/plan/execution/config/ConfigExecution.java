@@ -306,7 +306,7 @@ public class ConfigExecution implements IQueryExecution {
 
   @Override
   public boolean isQuery() {
-    return context.getQueryType() != QueryType.WRITE;
+    return context.isQuery();
   }
 
   @Override
