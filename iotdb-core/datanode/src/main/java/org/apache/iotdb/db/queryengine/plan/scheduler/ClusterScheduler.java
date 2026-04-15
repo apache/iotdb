@@ -175,6 +175,6 @@ public class ClusterScheduler implements IScheduler {
   }
 
   private boolean isQuery() {
-    return queryType != QueryType.WRITE;
+    return queryType == QueryType.READ || queryType == QueryType.READ_WRITE;
   }
 }
