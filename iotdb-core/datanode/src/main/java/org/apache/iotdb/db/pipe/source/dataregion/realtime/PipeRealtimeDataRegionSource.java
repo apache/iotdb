@@ -375,7 +375,11 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
     // Since the batch and retry queue no longer need the heartbeat event to trigger
     // And the progress report event can trigger the processor calculation because it's not reported
     // yet
-    while (((PipeRealtimeEvent) pendingQueue.peekLast()).getEvent() instanceof PipeHeartbeatEvent) {
+    while (true) {
+      final PipeRealtimeEvent lastEvent = ((PipeRealtimeEvent) pendingQueue.peekLast());
+      if (lastEvent == null || !(lastEvent.getEvent() instanceof PipeHeartbeatEvent)) {
+        break;
+      }
       pendingQueue.pollLast();
     }
     if (pendingQueue.peekLast() instanceof ProgressReportEvent) {
