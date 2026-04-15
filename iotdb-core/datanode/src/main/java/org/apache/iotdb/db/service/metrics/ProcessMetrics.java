@@ -29,13 +29,13 @@ import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 import org.apache.iotdb.metrics.utils.SystemMetric;
 
-import com.sun.management.OperatingSystemMXBean;
 import com.sun.jna.Library;
 import com.sun.jna.Native;
 import com.sun.jna.Structure;
 import com.sun.jna.platform.win32.BaseTSD.SIZE_T;
 import com.sun.jna.platform.win32.Kernel32;
 import com.sun.jna.platform.win32.WinNT;
+import com.sun.management.OperatingSystemMXBean;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -289,8 +289,7 @@ public class ProcessMetrics implements IMetricSet {
   private long getWindowsResidentMemory() {
     WinNT.HANDLE hProcess = Kernel32.INSTANCE.GetCurrentProcess();
     ProcessMemoryCounters counters = new ProcessMemoryCounters();
-    boolean success =
-        PsapiExt.INSTANCE.GetProcessMemoryInfo(hProcess, counters, counters.size());
+    boolean success = PsapiExt.INSTANCE.GetProcessMemoryInfo(hProcess, counters, counters.size());
     if (!success) {
       return 0L;
     }
@@ -318,8 +317,7 @@ public class ProcessMetrics implements IMetricSet {
   public interface PsapiExt extends Library {
     PsapiExt INSTANCE = Native.load("psapi", PsapiExt.class);
 
-    boolean GetProcessMemoryInfo(
-        WinNT.HANDLE process, ProcessMemoryCounters counters, int size);
+    boolean GetProcessMemoryInfo(WinNT.HANDLE process, ProcessMemoryCounters counters, int size);
   }
 
   @Structure.FieldOrder({
