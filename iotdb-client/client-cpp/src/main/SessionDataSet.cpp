@@ -51,59 +51,65 @@ std::string RowRecord::toString() {
         if (i != 0) {
             ret.append("\t");
         }
-        TSDataType::TSDataType dataType = fields[i].dataType;
-        switch (dataType) {
+        const Field& f = fields[i];
+        switch (f.dataType) {
         case TSDataType::BOOLEAN:
-            if (!fields[i].boolV.is_initialized()) {
+            if (f.isNull()) {
                 ret.append("null");
             } else {
-                ret.append(fields[i].boolV.value() ? "true" : "false");
+                ret.append(f.boolV.value() ? "true" : "false");
             }
             break;
         case TSDataType::INT32:
-            if (!fields[i].intV.is_initialized()) {
+            if (f.isNull()) {
                 ret.append("null");
             } else {
-                ret.append(std::to_string(fields[i].intV.value()));
+                ret.append(std::to_string(f.intV.value()));
             }
             break;
         case TSDataType::DATE:
-            if (!fields[i].dateV.is_initialized()) {
+            if (f.isNull()) {
                 ret.append("null");
             } else {
-                ret.append(boost::gregorian::to_iso_extended_string(fields[i].dateV.value()));
+                ret.append(boost::gregorian::to_iso_extended_string(f.dateV.value()));
             }
             break;
         case TSDataType::TIMESTAMP:
         case TSDataType::INT64:
-            if (!fields[i].longV.is_initialized()) {
+            if (f.isNull()) {
                 ret.append("null");
             } else {
-                ret.append(std::to_string(fields[i].longV.value()));
+                ret.append(std::to_string(f.longV.value()));
             }
             break;
         case TSDataType::FLOAT:
-            if (!fields[i].floatV.is_initialized()) {
+            if (f.isNull()) {
                 ret.append("null");
             } else {
-                ret.append(std::to_string(fields[i].floatV.value()));
+                ret.append(std::to_string(f.floatV.value()));
             }
             break;
         case TSDataType::DOUBLE:
-            if (!fields[i].doubleV.is_initialized()) {
+            if (f.isNull()) {
                 ret.append("null");
             } else {
-                ret.append(std::to_string(fields[i].doubleV.value()));
+                ret.append(std::to_string(f.doubleV.value()));
             }
             break;
         case TSDataType::BLOB:
         case TSDataType::STRING:
-        case TSDataType::OBJECT:
         case TSDataType::TEXT:
-            if (!fields[i].stringV.is_initialized()) {
+            if (f.isNull()) {
                 ret.append("null");
             } else {
-                ret.append(fields[i].stringV.value());
+                ret.append(f.stringV.value());
+            }
+            break;
+        case TSDataType::OBJECT:
+            if (!f.stringV.is_initialized()) {
+                ret.append("null");
+            } else {
+                ret.append(f.stringV.value());
             }
             break;
         default:

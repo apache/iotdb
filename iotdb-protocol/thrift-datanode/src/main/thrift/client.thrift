@@ -82,6 +82,15 @@ enum TSProtocolVersion {
   IOTDB_SERVICE_PROTOCOL_V3,//V3 is incompatible with V2
 }
 
+// Defined before TSOpenSessionResp so Thrift C++ codegen emits a complete type for the embedded field.
+struct TSVisitHistoryResp{
+    1: optional i64 lastSuccessloginTime;
+    2: optional i64 lastFailedLoginTime;
+    3: optional string lastSuccessIp;
+    4: optional string lastFailedIp;
+    5: optional i32 failedAttempts;
+}
+
 struct TSOpenSessionResp {
   1: required common.TSStatus status
 
@@ -94,14 +103,6 @@ struct TSOpenSessionResp {
   // The configuration settings for this session.
   4: optional map<string, string> configuration
   5: optional TSVisitHistoryResp visitHistory;
-}
-
-struct TSVisitHistoryResp{
-    1: optional i64 lastSuccessloginTime;
-    2: optional i64 lastFailedLoginTime;
-    3: optional string lastSuccessIp;
-    4: optional string lastFailedIp;
-    5: optional i32 failedAttempts;
 }
 
 // OpenSession()
