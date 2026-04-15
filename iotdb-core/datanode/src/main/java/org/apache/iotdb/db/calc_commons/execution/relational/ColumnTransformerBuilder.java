@@ -17,10 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.execution.relational;
+package org.apache.iotdb.db.calc_commons.execution.relational;
 
 import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
+import org.apache.iotdb.db.calc_commons.plan.udf.TableUDFUtils;
 import org.apache.iotdb.db.calc_commons.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.calc_commons.transformation.dag.column.FailFunctionColumnTransformer;
 import org.apache.iotdb.db.calc_commons.transformation.dag.column.TableCaseWhenThenColumnTransformer;
@@ -196,7 +197,6 @@ import org.apache.iotdb.db.node_commons.plan.relational.type.TypeNotFoundExcepti
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
-import org.apache.iotdb.db.queryengine.plan.udf.TableUDFUtils;
 import org.apache.iotdb.udf.api.customizer.analysis.ScalarFunctionAnalysis;
 import org.apache.iotdb.udf.api.customizer.parameter.FunctionArguments;
 import org.apache.iotdb.udf.api.relational.ScalarFunction;
@@ -238,9 +238,9 @@ import static org.apache.iotdb.db.calc_commons.transformation.dag.column.binary.
 import static org.apache.iotdb.db.calc_commons.transformation.dag.column.binary.factory.HmacStrategiesFactory.createConstantKeyHmacSha256Strategy;
 import static org.apache.iotdb.db.calc_commons.transformation.dag.column.binary.factory.HmacStrategiesFactory.createConstantKeyHmacSha512Strategy;
 import static org.apache.iotdb.db.calc_commons.transformation.dag.util.CommonTransformUtils.getEscapeCharacter;
+import static org.apache.iotdb.db.calc_commons.transformation.dag.util.CommonTransformUtils.isStringLiteral;
 import static org.apache.iotdb.db.node_commons.plan.relational.type.InternalTypeManager.getTSDataType;
 import static org.apache.iotdb.db.node_commons.plan.relational.type.TypeSignatureTranslator.toTypeSignature;
-import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicatePushIntoMetadataChecker.isStringLiteral;
 import static org.apache.tsfile.read.common.type.BlobType.BLOB;
 import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
 import static org.apache.tsfile.read.common.type.DoubleType.DOUBLE;

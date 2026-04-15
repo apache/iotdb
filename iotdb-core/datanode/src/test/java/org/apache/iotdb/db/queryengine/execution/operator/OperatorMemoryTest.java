@@ -25,6 +25,8 @@ import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.fill.IFill;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.fill.linear.LinearFill;
 import org.apache.iotdb.db.calc_commons.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.calc_commons.transformation.dag.column.binary.ArithmeticAdditionColumnTransformer;
 import org.apache.iotdb.db.calc_commons.transformation.dag.column.binary.CompareLessEqualColumnTransformer;
@@ -52,8 +54,6 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.TreeFillOperat
 import org.apache.iotdb.db.queryengine.execution.operator.process.TreeIntoOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TreeLinearFillOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TreeSortOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.process.fill.IFill;
-import org.apache.iotdb.db.queryengine.execution.operator.process.fill.linear.LinearFill;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.FullOuterTimeJoinOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.HorizontallyConcatOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.last.LastQueryCollectOperator;

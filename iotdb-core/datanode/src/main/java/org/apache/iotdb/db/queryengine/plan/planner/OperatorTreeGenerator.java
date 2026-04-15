@@ -28,6 +28,15 @@ import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.fill.IFill;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.fill.constant.BinaryConstantFill;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.fill.constant.BooleanConstantFill;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.fill.constant.DoubleConstantFill;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.fill.constant.FloatConstantFill;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.fill.constant.IntConstantFill;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.fill.constant.LongConstantFill;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.fill.identity.IdentityFill;
+import org.apache.iotdb.db.calc_commons.plan.planner.OperatorGeneratorUtils;
 import org.apache.iotdb.db.calc_commons.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.calc_commons.transformation.dag.column.leaf.LeafColumnTransformer;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -85,37 +94,6 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.TreeLinearFill
 import org.apache.iotdb.db.queryengine.execution.operator.process.TreeMergeSortOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TreeSortOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TreeTopKOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.process.fill.IFill;
-import org.apache.iotdb.db.queryengine.execution.operator.process.fill.IFillFilter;
-import org.apache.iotdb.db.queryengine.execution.operator.process.fill.ILinearFill;
-import org.apache.iotdb.db.queryengine.execution.operator.process.fill.constant.BinaryConstantFill;
-import org.apache.iotdb.db.queryengine.execution.operator.process.fill.constant.BooleanConstantFill;
-import org.apache.iotdb.db.queryengine.execution.operator.process.fill.constant.DoubleConstantFill;
-import org.apache.iotdb.db.queryengine.execution.operator.process.fill.constant.FloatConstantFill;
-import org.apache.iotdb.db.queryengine.execution.operator.process.fill.constant.IntConstantFill;
-import org.apache.iotdb.db.queryengine.execution.operator.process.fill.constant.LongConstantFill;
-import org.apache.iotdb.db.queryengine.execution.operator.process.fill.filter.FixedIntervalFillFilter;
-import org.apache.iotdb.db.queryengine.execution.operator.process.fill.filter.MonthIntervalMSFillFilter;
-import org.apache.iotdb.db.queryengine.execution.operator.process.fill.filter.MonthIntervalNSFillFilter;
-import org.apache.iotdb.db.queryengine.execution.operator.process.fill.filter.MonthIntervalUSFillFilter;
-import org.apache.iotdb.db.queryengine.execution.operator.process.fill.identity.IdentityFill;
-import org.apache.iotdb.db.queryengine.execution.operator.process.fill.identity.IdentityLinearFill;
-import org.apache.iotdb.db.queryengine.execution.operator.process.fill.linear.DoubleLinearFill;
-import org.apache.iotdb.db.queryengine.execution.operator.process.fill.linear.FloatLinearFill;
-import org.apache.iotdb.db.queryengine.execution.operator.process.fill.linear.IntLinearFill;
-import org.apache.iotdb.db.queryengine.execution.operator.process.fill.linear.LongLinearFill;
-import org.apache.iotdb.db.queryengine.execution.operator.process.fill.previous.BinaryPreviousFill;
-import org.apache.iotdb.db.queryengine.execution.operator.process.fill.previous.BinaryPreviousFillWithTimeDuration;
-import org.apache.iotdb.db.queryengine.execution.operator.process.fill.previous.BooleanPreviousFill;
-import org.apache.iotdb.db.queryengine.execution.operator.process.fill.previous.BooleanPreviousFillWithTimeDuration;
-import org.apache.iotdb.db.queryengine.execution.operator.process.fill.previous.DoublePreviousFill;
-import org.apache.iotdb.db.queryengine.execution.operator.process.fill.previous.DoublePreviousFillWithTimeDuration;
-import org.apache.iotdb.db.queryengine.execution.operator.process.fill.previous.FloatPreviousFill;
-import org.apache.iotdb.db.queryengine.execution.operator.process.fill.previous.FloatPreviousFillWithTimeDuration;
-import org.apache.iotdb.db.queryengine.execution.operator.process.fill.previous.IntPreviousFill;
-import org.apache.iotdb.db.queryengine.execution.operator.process.fill.previous.IntPreviousFillWithTimeDuration;
-import org.apache.iotdb.db.queryengine.execution.operator.process.fill.previous.LongPreviousFill;
-import org.apache.iotdb.db.queryengine.execution.operator.process.fill.previous.LongPreviousFillWithTimeDuration;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.FullOuterTimeJoinOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.HorizontallyConcatOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.InnerTimeJoinOperator;
@@ -291,7 +269,6 @@ import org.apache.tsfile.read.filter.operator.TimeFilterOperators.TimeGtEq;
 import org.apache.tsfile.read.reader.series.PaginationController;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
-import org.apache.tsfile.utils.TimeDuration;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
@@ -328,7 +305,6 @@ import static org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOper
 import static org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationDescriptor.getAggregationTypeByFuncName;
 import static org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions.updateFilterUsingTTL;
 import static org.apache.iotdb.db.queryengine.plan.statement.component.Ordering.ASC;
-import static org.apache.iotdb.db.utils.TimestampPrecisionUtils.TIMESTAMP_PRECISION;
 
 /** This Visitor is responsible for transferring PlanNode Tree to Operator Tree. */
 public class OperatorTreeGenerator implements PlanVisitor<Operator, LocalExecutionPlanContext> {
@@ -347,13 +323,9 @@ public class OperatorTreeGenerator implements PlanVisitor<Operator, LocalExecuti
 
   public static final IdentityFill IDENTITY_FILL = new IdentityFill();
 
-  private static final IdentityLinearFill IDENTITY_LINEAR_FILL = new IdentityLinearFill();
-
   private static final Comparator<Binary> ASC_BINARY_COMPARATOR = Comparator.naturalOrder();
 
   private static final Comparator<Binary> DESC_BINARY_COMPARATOR = Comparator.reverseOrder();
-
-  public static final String UNKNOWN_DATATYPE = "Unknown data type: ";
 
   @Override
   public Operator visitPlan(PlanNode node, LocalExecutionPlanContext context) {
@@ -1350,7 +1322,7 @@ public class OperatorTreeGenerator implements PlanVisitor<Operator, LocalExecuti
       case PREVIOUS:
         return new TreeFillOperator(
             operatorContext,
-            getPreviousFill(
+            OperatorGeneratorUtils.getPreviousFill(
                 inputColumns,
                 inputDataTypes,
                 descriptor.getTimeDurationThreshold(),
@@ -1358,7 +1330,9 @@ public class OperatorTreeGenerator implements PlanVisitor<Operator, LocalExecuti
             child);
       case LINEAR:
         return new TreeLinearFillOperator(
-            operatorContext, getLinearFill(inputColumns, inputDataTypes), child);
+            operatorContext,
+            OperatorGeneratorUtils.getLinearFill(inputColumns, inputDataTypes),
+            child);
       default:
         throw new IllegalArgumentException("Unknown fill policy: " + fillPolicy);
     }
@@ -1398,131 +1372,11 @@ public class OperatorTreeGenerator implements PlanVisitor<Operator, LocalExecuti
           constantFill[i] = new DoubleConstantFill(literal.getDouble());
           break;
         default:
-          throw new IllegalArgumentException(UNKNOWN_DATATYPE + inputDataTypes.get(i));
+          throw new IllegalArgumentException(
+              OperatorGeneratorUtils.UNKNOWN_DATATYPE + inputDataTypes.get(i));
       }
     }
     return constantFill;
-  }
-
-  public static IFill[] getPreviousFill(
-      int inputColumns,
-      List<TSDataType> inputDataTypes,
-      TimeDuration timeDurationThreshold,
-      ZoneId zoneId) {
-    IFillFilter filter;
-    if (timeDurationThreshold == null) {
-      filter = null;
-    } else if (!timeDurationThreshold.containsMonth()) {
-      filter = new FixedIntervalFillFilter(timeDurationThreshold.nonMonthDuration);
-    } else {
-      switch (TIMESTAMP_PRECISION) {
-        case "ms":
-          filter =
-              new MonthIntervalMSFillFilter(
-                  timeDurationThreshold.monthDuration,
-                  timeDurationThreshold.nonMonthDuration,
-                  zoneId);
-          break;
-        case "us":
-          filter =
-              new MonthIntervalUSFillFilter(
-                  timeDurationThreshold.monthDuration,
-                  timeDurationThreshold.nonMonthDuration,
-                  zoneId);
-          break;
-        case "ns":
-          filter =
-              new MonthIntervalNSFillFilter(
-                  timeDurationThreshold.monthDuration,
-                  timeDurationThreshold.nonMonthDuration,
-                  zoneId);
-          break;
-        default:
-          // this case will never reach
-          throw new UnsupportedOperationException(
-              "not supported time_precision: " + TIMESTAMP_PRECISION);
-      }
-    }
-
-    IFill[] previousFill = new IFill[inputColumns];
-    for (int i = 0; i < inputColumns; i++) {
-      switch (inputDataTypes.get(i)) {
-        case BOOLEAN:
-          previousFill[i] =
-              filter == null
-                  ? new BooleanPreviousFill()
-                  : new BooleanPreviousFillWithTimeDuration(filter);
-          break;
-        case TEXT:
-        case STRING:
-        case BLOB:
-        case OBJECT:
-          previousFill[i] =
-              filter == null
-                  ? new BinaryPreviousFill()
-                  : new BinaryPreviousFillWithTimeDuration(filter);
-          break;
-        case INT32:
-        case DATE:
-          previousFill[i] =
-              filter == null ? new IntPreviousFill() : new IntPreviousFillWithTimeDuration(filter);
-          break;
-        case INT64:
-        case TIMESTAMP:
-          previousFill[i] =
-              filter == null
-                  ? new LongPreviousFill()
-                  : new LongPreviousFillWithTimeDuration(filter);
-          break;
-        case FLOAT:
-          previousFill[i] =
-              filter == null
-                  ? new FloatPreviousFill()
-                  : new FloatPreviousFillWithTimeDuration(filter);
-          break;
-        case DOUBLE:
-          previousFill[i] =
-              filter == null
-                  ? new DoublePreviousFill()
-                  : new DoublePreviousFillWithTimeDuration(filter);
-          break;
-        default:
-          throw new IllegalArgumentException(UNKNOWN_DATATYPE + inputDataTypes.get(i));
-      }
-    }
-    return previousFill;
-  }
-
-  public static ILinearFill[] getLinearFill(int inputColumns, List<TSDataType> inputDataTypes) {
-    ILinearFill[] linearFill = new ILinearFill[inputColumns];
-    for (int i = 0; i < inputColumns; i++) {
-      switch (inputDataTypes.get(i)) {
-        case INT32:
-        case DATE:
-          linearFill[i] = new IntLinearFill();
-          break;
-        case INT64:
-        case TIMESTAMP:
-          linearFill[i] = new LongLinearFill();
-          break;
-        case FLOAT:
-          linearFill[i] = new FloatLinearFill();
-          break;
-        case DOUBLE:
-          linearFill[i] = new DoubleLinearFill();
-          break;
-        case BOOLEAN:
-        case TEXT:
-        case STRING:
-        case BLOB:
-        case OBJECT:
-          linearFill[i] = IDENTITY_LINEAR_FILL;
-          break;
-        default:
-          throw new IllegalArgumentException(UNKNOWN_DATATYPE + inputDataTypes.get(i));
-      }
-    }
-    return linearFill;
   }
 
   @Override

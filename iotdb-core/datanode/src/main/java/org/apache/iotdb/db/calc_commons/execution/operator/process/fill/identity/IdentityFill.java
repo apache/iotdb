@@ -17,30 +17,17 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.execution.operator.process.fill.identity;
+package org.apache.iotdb.db.calc_commons.execution.operator.process.fill.identity;
 
-import org.apache.iotdb.db.queryengine.execution.operator.process.fill.ILinearFill;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.fill.IFill;
 
 import org.apache.tsfile.block.column.Column;
 
-public class IdentityLinearFill implements ILinearFill {
+public class IdentityFill implements IFill {
 
   @Override
-  public Column fill(Column timeColumn, Column valueColumn, long currentRowIndex) {
+  public Column fill(Column timeColumn, Column valueColumn) {
     return valueColumn;
-  }
-
-  @Override
-  public boolean needPrepareForNext(
-      long rowIndex, Column valueColumn, int lastRowIndexForNonNullHelperColumn) {
-    return false;
-  }
-
-  @Override
-  public boolean prepareForNext(
-      long startRowIndex, long endRowIndex, Column nextTimeColumn, Column nextValueColumn) {
-    throw new UnsupportedOperationException(
-        "IdentityLinearFill's needPrepareForNext() method should always return false.");
   }
 
   @Override

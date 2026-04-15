@@ -19,6 +19,15 @@
 
 package org.apache.iotdb.db.calc_commons.plan.planner;
 
+import org.apache.iotdb.db.calc_commons.execution.operator.process.fill.IFill;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.fill.ILinearFill;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.fill.constant.BinaryConstantFill;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.fill.constant.BooleanConstantFill;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.fill.constant.DoubleConstantFill;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.fill.constant.FloatConstantFill;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.fill.constant.IntConstantFill;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.fill.constant.LongConstantFill;
+import org.apache.iotdb.db.calc_commons.execution.relational.ColumnTransformerBuilder;
 import org.apache.iotdb.db.calc_commons.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.calc_commons.transformation.dag.column.leaf.LeafColumnTransformer;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -98,14 +107,6 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.TableSortOpera
 import org.apache.iotdb.db.queryengine.execution.operator.process.TableStreamSortOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TableTopKOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.ValuesOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.process.fill.IFill;
-import org.apache.iotdb.db.queryengine.execution.operator.process.fill.ILinearFill;
-import org.apache.iotdb.db.queryengine.execution.operator.process.fill.constant.BinaryConstantFill;
-import org.apache.iotdb.db.queryengine.execution.operator.process.fill.constant.BooleanConstantFill;
-import org.apache.iotdb.db.queryengine.execution.operator.process.fill.constant.DoubleConstantFill;
-import org.apache.iotdb.db.queryengine.execution.operator.process.fill.constant.FloatConstantFill;
-import org.apache.iotdb.db.queryengine.execution.operator.process.fill.constant.IntConstantFill;
-import org.apache.iotdb.db.queryengine.execution.operator.process.fill.constant.LongConstantFill;
 import org.apache.iotdb.db.queryengine.execution.operator.process.function.TableFunctionLeafOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.function.TableFunctionOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.gapfill.GapFillWGroupWMoOperator;
@@ -152,7 +153,6 @@ import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggr
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.HashAggregationOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.StreamingAggregationOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.StreamingHashAggregationOperator;
-import org.apache.iotdb.db.queryengine.execution.relational.ColumnTransformerBuilder;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanContext;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
@@ -210,6 +210,9 @@ import static com.google.common.collect.ImmutableList.toImmutableList;
 import static com.google.common.collect.Iterables.getOnlyElement;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFunction.getAggregationTypeByFuncName;
+import static org.apache.iotdb.db.calc_commons.plan.planner.OperatorGeneratorUtils.UNKNOWN_DATATYPE;
+import static org.apache.iotdb.db.calc_commons.plan.planner.OperatorGeneratorUtils.getLinearFill;
+import static org.apache.iotdb.db.calc_commons.plan.planner.OperatorGeneratorUtils.getPreviousFill;
 import static org.apache.iotdb.db.node_commons.execution.operator.source.relational.aggregation.grouped.hash.hash.GroupByHash.DEFAULT_GROUP_NUMBER;
 import static org.apache.iotdb.db.node_commons.plan.relational.planner.SortOrder.ASC_NULLS_FIRST;
 import static org.apache.iotdb.db.node_commons.plan.relational.planner.SortOrder.ASC_NULLS_LAST;
@@ -226,9 +229,6 @@ import static org.apache.iotdb.db.queryengine.execution.operator.source.relation
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.AccumulatorFactory.createBuiltinAccumulator;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.AccumulatorFactory.createGroupedAccumulator;
 import static org.apache.iotdb.db.queryengine.plan.planner.OperatorTreeGenerator.IDENTITY_FILL;
-import static org.apache.iotdb.db.queryengine.plan.planner.OperatorTreeGenerator.UNKNOWN_DATATYPE;
-import static org.apache.iotdb.db.queryengine.plan.planner.OperatorTreeGenerator.getLinearFill;
-import static org.apache.iotdb.db.queryengine.plan.planner.OperatorTreeGenerator.getPreviousFill;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.FIRST_AGGREGATION;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.FIRST_BY_AGGREGATION;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.LAST_AGGREGATION;

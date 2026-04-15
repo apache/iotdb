@@ -259,8 +259,4 @@ public class PredicatePushIntoMetadataChecker extends AstVisitor<Boolean, Void> 
   protected Boolean visitNullIfExpression(final NullIfExpression node, final Void context) {
     return Boolean.FALSE;
   }
-
-  public static boolean isStringLiteral(final Expression expression) {
-    return expression instanceof StringLiteral;
-  }
 }

@@ -17,9 +17,9 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.execution.operator.process.fill.linear;
+package org.apache.iotdb.db.calc_commons.execution.operator.process.fill.linear;
 
-import org.apache.iotdb.db.queryengine.execution.operator.process.fill.ILinearFill;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.fill.ILinearFill;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;

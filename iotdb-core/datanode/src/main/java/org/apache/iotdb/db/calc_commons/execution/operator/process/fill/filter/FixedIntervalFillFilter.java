@@ -17,14 +17,23 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.execution.operator.process.fill;
+package org.apache.iotdb.db.calc_commons.execution.operator.process.fill.filter;
 
-public interface IFillFilter {
+import org.apache.iotdb.db.calc_commons.execution.operator.process.fill.IFillFilter;
 
-  /**
-   * @param time current timestamp
-   * @param previousTime previous timestamp
-   * @return true if we can fill, otherwise we keep null
-   */
-  boolean needFill(long time, long previousTime);
+public class FixedIntervalFillFilter implements IFillFilter {
+
+  // the time precision of this field is same as the system time_precision configuration.
+  private final long timeInterval;
+
+  public FixedIntervalFillFilter(long timeInterval) {
+    this.timeInterval = timeInterval;
+  }
+
+  @Override
+  public boolean needFill(long time, long previousTime) {
+    // the reason that we use Math.abs is that we may use order by time desc which will cause
+    // previousTime is larger than time
+    return Math.abs(time - previousTime) <= timeInterval;
+  }
 }

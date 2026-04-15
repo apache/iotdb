@@ -17,13 +17,25 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.execution.operator.process.fill;
+package org.apache.iotdb.db.calc_commons.execution.operator.process.fill.filter;
 
-import org.apache.tsfile.block.column.Column;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.fill.IFillFilter;
 
-public interface IFill {
+import java.time.ZoneId;
 
-  Column fill(Column timeColumn, Column valueColumn);
+public abstract class AbstractMonthIntervalFillFilter implements IFillFilter {
 
-  void reset();
+  // month part of time duration
+  protected final int monthDuration;
+
+  protected final ZoneId zone;
+
+  // non-month part of time duration, its precision is same as current time_precision
+  protected final long nonMonthDuration;
+
+  AbstractMonthIntervalFillFilter(int monthDuration, long nonMonthDuration, ZoneId zone) {
+    this.monthDuration = monthDuration;
+    this.nonMonthDuration = nonMonthDuration;
+    this.zone = zone;
+  }
 }

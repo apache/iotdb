@@ -19,6 +19,10 @@
 package org.apache.iotdb.db.queryengine.execution.operator;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.fill.ILinearFill;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.fill.identity.IdentityLinearFill;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.fill.linear.FloatLinearFill;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.fill.linear.LinearFill;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
@@ -27,10 +31,6 @@ import org.apache.iotdb.db.queryengine.execution.driver.DriverContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceStateMachine;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TreeLinearFillOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.process.fill.ILinearFill;
-import org.apache.iotdb.db.queryengine.execution.operator.process.fill.identity.IdentityLinearFill;
-import org.apache.iotdb.db.queryengine.execution.operator.process.fill.linear.FloatLinearFill;
-import org.apache.iotdb.db.queryengine.execution.operator.process.fill.linear.LinearFill;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.enums.TSDataType;

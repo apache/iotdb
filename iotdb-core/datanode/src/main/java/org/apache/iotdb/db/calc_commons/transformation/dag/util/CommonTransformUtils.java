@@ -15,6 +15,8 @@
 package org.apache.iotdb.db.calc_commons.transformation.dag.util;
 
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.StringLiteral;
 
 import org.apache.tsfile.utils.Binary;
 
@@ -36,5 +38,9 @@ public class CommonTransformUtils {
     } else {
       throw new SemanticException("Escape string must be a single character");
     }
+  }
+
+  public static boolean isStringLiteral(final Expression expression) {
+    return expression instanceof StringLiteral;
   }
 }

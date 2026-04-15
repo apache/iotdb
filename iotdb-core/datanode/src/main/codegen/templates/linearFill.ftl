@@ -21,8 +21,8 @@
 <#list decimalDataTypes.types as type>
 
   <#assign className = "${type.dataType?cap_first}LinearFill">
-  <@pp.changeOutputFile name="/org/apache/iotdb/db/queryengine/execution/operator/process/fill/linear/${className}.java" />
-package org.apache.iotdb.db.queryengine.execution.operator.process.fill.linear;
+  <@pp.changeOutputFile name="/org/apache/iotdb/db/calc_commons/execution/operator/process/fill/linear/${className}.java" />
+package org.apache.iotdb.db.calc_commons.execution.operator.process.fill.linear;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.read.common.block.column.${type.column};
