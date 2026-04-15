@@ -581,69 +581,78 @@ public class SnapshotLoader {
     AtomicInteger cnt = new AtomicInteger(0);
     // Process files during traversal to avoid loading all object file paths into memory.
     Files.walkFileTree(
-        rootPath,
-        new SimpleFileVisitor<Path>() {
-          @Override
-          public FileVisitResult visitFile(Path file, BasicFileAttributes attrs)
-              throws IOException {
-            if (!isObjectSnapshotCandidate(file.getFileName().toString())) {
-              return FileVisitResult.CONTINUE;
-            }
-            String infoStr = getFileInfoString(file.toFile());
-            if (!fileInfoSet.contains(infoStr)) {
-              throw new IOException(
-                  String.format("File %s is not in the log file list", file.toAbsolutePath()));
-            }
-            final Path sourceFile = file;
-            final Path targetRelPath = rootPath.relativize(file);
-            try {
-              folderManager.getNextWithRetry(
-                  currentObjectDir -> {
-                    File targetFile =
-                        new File(currentObjectDir).toPath().resolve(targetRelPath).toFile();
-                    try {
-                      if (!targetFile.getParentFile().exists()
-                          && !targetFile.getParentFile().mkdirs()) {
-                        throw new IOException(
-                            String.format(
-                                "Cannot create directory %s",
-                                targetFile.getParentFile().getAbsolutePath()));
-                      }
-                      try {
-                        Files.createLink(targetFile.toPath(), sourceFile);
-                        LOGGER.debug("Created hard link from {} to {}", sourceFile, targetFile);
-                        return targetFile;
-                      } catch (IOException e) {
-                        LOGGER.info(
-                            "Cannot create link from {} to {}, fallback to copy",
-                            sourceFile,
-                            targetFile);
-                      }
-                      Files.copy(sourceFile, targetFile.toPath());
-                      return targetFile;
-                    } catch (Exception e) {
-                      LOGGER.warn(
-                          "Failed to process file {} in dir {}: {}",
-                          sourceFile.getFileName(),
-                          currentObjectDir,
-                          e.getMessage(),
-                          e);
-                      throw e;
-                    }
-                  });
-            } catch (Exception e) {
-              throw new IOException(
-                  String.format(
-                      "Failed to process object snapshot file after retries. Source: %s",
-                      sourceFile.toAbsolutePath()),
-                  e);
-            }
-            cnt.incrementAndGet();
-            return FileVisitResult.CONTINUE;
-          }
-        });
+        rootPath, new ObjectSnapshotLinkFileVisitor(rootPath, fileInfoSet, folderManager, cnt));
 
     return cnt.get();
+  }
+
+  private final class ObjectSnapshotLinkFileVisitor extends SimpleFileVisitor<Path> {
+    private final Path rootPath;
+    private final Set<String> fileInfoSet;
+    private final FolderManager folderManager;
+    private final AtomicInteger cnt;
+
+    private ObjectSnapshotLinkFileVisitor(
+        Path rootPath, Set<String> fileInfoSet, FolderManager folderManager, AtomicInteger cnt) {
+      this.rootPath = rootPath;
+      this.fileInfoSet = fileInfoSet;
+      this.folderManager = folderManager;
+      this.cnt = cnt;
+    }
+
+    @Override
+    public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+      if (!isObjectSnapshotCandidate(file.getFileName().toString())) {
+        return FileVisitResult.CONTINUE;
+      }
+      String infoStr = getFileInfoString(file.toFile());
+      if (!fileInfoSet.contains(infoStr)) {
+        throw new IOException(
+            String.format("File %s is not in the log file list", file.toAbsolutePath()));
+      }
+      final Path sourceFile = file;
+      final Path targetRelPath = rootPath.relativize(file);
+      try {
+        folderManager.getNextWithRetry(
+            currentObjectDir -> {
+              File targetFile = new File(currentObjectDir).toPath().resolve(targetRelPath).toFile();
+              try {
+                if (!targetFile.getParentFile().exists() && !targetFile.getParentFile().mkdirs()) {
+                  throw new IOException(
+                      String.format(
+                          "Cannot create directory %s",
+                          targetFile.getParentFile().getAbsolutePath()));
+                }
+                try {
+                  Files.createLink(targetFile.toPath(), sourceFile);
+                  LOGGER.debug("Created hard link from {} to {}", sourceFile, targetFile);
+                  return targetFile;
+                } catch (IOException e) {
+                  LOGGER.info(
+                      "Cannot create link from {} to {}, fallback to copy", sourceFile, targetFile);
+                }
+                Files.copy(sourceFile, targetFile.toPath());
+                return targetFile;
+              } catch (Exception e) {
+                LOGGER.warn(
+                    "Failed to process file {} in dir {}: {}",
+                    sourceFile.getFileName(),
+                    currentObjectDir,
+                    e.getMessage(),
+                    e);
+                throw e;
+              }
+            });
+      } catch (Exception e) {
+        throw new IOException(
+            String.format(
+                "Failed to process object snapshot file after retries. Source: %s",
+                sourceFile.toAbsolutePath()),
+            e);
+      }
+      cnt.incrementAndGet();
+      return FileVisitResult.CONTINUE;
+    }
   }
 
   private void createLinksFromSourceToTarget(File targetDir, File[] files, Set<String> fileInfoSet)
