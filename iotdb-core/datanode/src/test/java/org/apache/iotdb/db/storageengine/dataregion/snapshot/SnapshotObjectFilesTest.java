@@ -261,7 +261,6 @@ public class SnapshotObjectFilesTest {
     }
   }
 
-
   private boolean existsInStorageTiers(Path originalAbsPath) {
     // Check all configured tiers for the existence of the file relative to the tier root
     Path relativePath =
