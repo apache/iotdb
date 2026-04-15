@@ -138,6 +138,7 @@ import org.apache.iotdb.confignode.consensus.request.write.table.AlterColumnData
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.PreAlterColumnDataTypePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteTablePlan;
@@ -1539,6 +1540,24 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void PreAlterTableColumnDataTypePlanTest() throws IOException {
+    final PreAlterColumnDataTypePlan alterColumnDataTypePlan =
+        new PreAlterColumnDataTypePlan("database1", "table1", "field", TSDataType.FLOAT);
+    final PreAlterColumnDataTypePlan alterColumnDataTypePlan1 =
+        (PreAlterColumnDataTypePlan)
+            ConfigPhysicalPlan.Factory.create(alterColumnDataTypePlan.serializeToByteBuffer());
+    Assert.assertEquals(
+        alterColumnDataTypePlan.getDatabase(), alterColumnDataTypePlan1.getDatabase());
+    Assert.assertEquals(
+        alterColumnDataTypePlan.getTableName(), alterColumnDataTypePlan1.getTableName());
+    Assert.assertEquals(
+        alterColumnDataTypePlan.getColumnName(), alterColumnDataTypePlan1.getColumnName());
+    Assert.assertEquals(alterColumnDataTypePlan.getType(), alterColumnDataTypePlan1.getType());
+    Assert.assertEquals(
+        alterColumnDataTypePlan.getNewType(), alterColumnDataTypePlan1.getNewType());
+  }
+
+  @Test
+  public void AlterTableColumnDataTypePlanTest() throws IOException {
     final AlterColumnDataTypePlan alterColumnDataTypePlan =
         new AlterColumnDataTypePlan("database1", "table1", "field", TSDataType.FLOAT);
     final AlterColumnDataTypePlan alterColumnDataTypePlan1 =
