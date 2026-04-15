@@ -113,6 +113,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsOfOneDeviceStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateMultiTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateTimeSeriesStatement;
@@ -1170,7 +1171,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
     try {
       final long queryId = SESSION_MANAGER.requestQueryId(clientSession, req.statementId);
-      // 1. Map<Device, String[] measurements> ISchemaFetcher.getAllSensors(prefix) ~= 50ms
+      // 1.1 Map<Device, String[] measurements> ISchemaFetcher.getAllSensors(prefix) ~= 50ms
 
       final PartialPath prefixPath = new PartialPath(req.getPrefixes().toArray(new String[0]));
       if (prefixPath.hasWildcard()) {
@@ -1184,23 +1185,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           new HashMap<>();
       int sensorNum = 0;
 
-      final String prefixString = prefixPath.toString();
-      for (final ISchemaRegion region : SchemaEngine.getInstance().getAllSchemaRegions()) {
-        if (!prefixString.startsWith(region.getDatabaseFullPath())
-            && !region.getDatabaseFullPath().startsWith(prefixString)) {
-          continue;
-        }
-        sensorNum += region.fillLastQueryMap(prefixPath, resultMap);
-      }
-
-      // 2.DATA_NODE_SCHEMA_CACHE.getLastCache()
-      if (!TableDeviceSchemaCache.getInstance().getLastCache(resultMap)) {
-        // 2.1 any sensor miss cache, construct last query sql, then return
-        return executeLastDataQueryInternal(convert(req), SELECT_RESULT);
-      }
-
-      // 2.2 Check permission, the cost is rather low because the req only contains one prefix path
-      final Statement s = StatementGenerator.createStatement(convert(req));
+      // 1.2 Check permission, the cost is rather low because the req only contains one prefix path
+      final QueryStatement s = StatementGenerator.createStatement(convert(req));
       final TSStatus status =
           AuthorityChecker.checkAuthority(
               s,
@@ -1212,7 +1198,22 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         return RpcUtils.getTSExecuteStatementResp(status);
       }
 
-      // 2.3 all sensors hit cache, return response ~= 20ms
+      final String prefixString = prefixPath.toString();
+      for (final ISchemaRegion region : SchemaEngine.getInstance().getAllSchemaRegions()) {
+        if (!prefixString.startsWith(region.getDatabaseFullPath())
+            && !region.getDatabaseFullPath().startsWith(prefixString)) {
+          continue;
+        }
+        sensorNum += region.fillLastQueryMap(prefixPath, resultMap, s.getAuthorityScope());
+      }
+
+      // 2.DATA_NODE_SCHEMA_CACHE.getLastCache()
+      if (!TableDeviceSchemaCache.getInstance().getLastCache(resultMap)) {
+        // 2.1 any sensor miss cache, construct last query sql, then return
+        return executeLastDataQueryInternal(convert(req), SELECT_RESULT);
+      }
+
+      // 2.2 all sensors hit cache, return response ~= 20ms
       final TsBlockBuilder builder = LastQueryUtil.createTsBlockBuilder(sensorNum);
 
       for (final Map.Entry<TableId, Map<IDeviceID, Map<String, Pair<TSDataType, TimeValuePair>>>>

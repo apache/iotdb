@@ -40,6 +40,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.schemaengine.SchemaEngine;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.utils.CommonUtils;
@@ -111,7 +112,7 @@ public class RestApiServiceImpl extends RestApiService {
   public Response executeFastLastQueryStatement(
       PrefixPathList prefixPathList, SecurityContext securityContext) {
     Long queryId = null;
-    Statement statement = null;
+    QueryStatement statement = null;
     boolean finish = false;
     long startTime = System.nanoTime();
     Throwable t = null;
@@ -124,15 +125,6 @@ public class RestApiServiceImpl extends RestApiService {
       final Map<TableId, Map<IDeviceID, Map<String, Pair<TSDataType, TimeValuePair>>>> resultMap =
           new HashMap<>();
 
-      final String prefixString = prefixPath.toString();
-      for (final ISchemaRegion region : SchemaEngine.getInstance().getAllSchemaRegions()) {
-        if (!prefixString.startsWith(region.getDatabaseFullPath())
-            && !region.getDatabaseFullPath().startsWith(prefixString)) {
-          continue;
-        }
-        region.fillLastQueryMap(prefixPath, resultMap);
-      }
-
       // Check permission, the cost is rather low because the req only contains one prefix path
       final IClientSession clientSession = SESSION_MANAGER.getCurrSession();
       final TSLastDataQueryReq tsLastDataQueryReq =
@@ -142,6 +134,15 @@ public class RestApiServiceImpl extends RestApiService {
       final Response response = authorizationHandler.checkAuthority(securityContext, statement);
       if (response != null) {
         return response;
+      }
+
+      final String prefixString = prefixPath.toString();
+      for (final ISchemaRegion region : SchemaEngine.getInstance().getAllSchemaRegions()) {
+        if (!prefixString.startsWith(region.getDatabaseFullPath())
+            && !region.getDatabaseFullPath().startsWith(prefixString)) {
+          continue;
+        }
+        region.fillLastQueryMap(prefixPath, resultMap, statement.getAuthorityScope());
       }
 
       // Check cache first
