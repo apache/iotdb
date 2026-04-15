@@ -706,6 +706,12 @@ public class InformationSchemaContentSupplierFactory {
       } else {
         columnBuilders[3].appendNull();
       }
+      if (Objects.nonNull(pipePluginMeta.getPluginLoadingExceptionMessage())) {
+        columnBuilders[4].writeBinary(
+            BytesUtils.valueOf(pipePluginMeta.getPluginLoadingExceptionMessage()));
+      } else {
+        columnBuilders[4].appendNull();
+      }
       resultBuilder.declarePosition();
     }
 

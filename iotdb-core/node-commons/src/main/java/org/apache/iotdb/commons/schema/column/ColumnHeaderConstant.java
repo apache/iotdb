@@ -579,7 +579,8 @@ public class ColumnHeaderConstant {
           new ColumnHeader(PLUGIN_NAME, TSDataType.TEXT),
           new ColumnHeader(PLUGIN_TYPE, TSDataType.TEXT),
           new ColumnHeader(CLASS_NAME, TSDataType.TEXT),
-          new ColumnHeader(PLUGIN_JAR, TSDataType.TEXT));
+          new ColumnHeader(PLUGIN_JAR, TSDataType.TEXT),
+          new ColumnHeader(EXCEPTION_MESSAGE, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showSchemaTemplateHeaders =
       ImmutableList.of(new ColumnHeader(TEMPLATE_NAME, TSDataType.TEXT));

@@ -412,6 +412,15 @@ public class PipePluginInfo implements SnapshotProcessor {
                 Class.forName(pipePluginMeta.getClassName(), true, pipePluginClassLoader);
             pipePluginMetaKeeper.addPipePluginVisibility(
                 pluginName, VisibilityUtils.calculateFromPluginClass(pluginClass));
+            pipePluginMetaKeeper.addPipePluginMeta(
+                pluginName,
+                new PipePluginMeta(
+                    pipePluginMeta.getPluginName(),
+                    pipePluginMeta.getClassName(),
+                    pipePluginMeta.isBuiltin(),
+                    pipePluginMeta.getJarName(),
+                    pipePluginMeta.getJarMD5(),
+                    null));
             classLoaderManager.addPluginAndClassLoader(pluginName, pipePluginClassLoader);
           } catch (final Throwable e) {
             try {
@@ -421,6 +430,15 @@ public class PipePluginInfo implements SnapshotProcessor {
             throw e;
           }
         } catch (final Throwable e) {
+          pipePluginMetaKeeper.addPipePluginMeta(
+              pluginName,
+              new PipePluginMeta(
+                  pipePluginMeta.getPluginName(),
+                  pipePluginMeta.getClassName(),
+                  pipePluginMeta.isBuiltin(),
+                  pipePluginMeta.getJarName(),
+                  pipePluginMeta.getJarMD5(),
+                  getRootCauseMessage(e)));
           LOGGER.warn(
               "Failed to load plugin class for plugin [{}] when loading snapshot [{}] ",
               pluginName,
@@ -431,6 +449,15 @@ public class PipePluginInfo implements SnapshotProcessor {
     } finally {
       releasePipePluginInfoLock();
     }
+  }
+
+  private String getRootCauseMessage(final Throwable throwable) {
+    Throwable current = throwable;
+    while (current.getCause() != null && current.getCause() != current) {
+      current = current.getCause();
+    }
+    final String message = current.getMessage();
+    return current.getClass().getSimpleName() + (message == null ? "" : (": " + message));
   }
 
   /////////////////////////////// hashCode & equals ///////////////////////////////
