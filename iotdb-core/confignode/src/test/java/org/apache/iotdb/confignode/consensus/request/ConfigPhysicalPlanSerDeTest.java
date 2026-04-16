@@ -699,6 +699,86 @@ public class ConfigPhysicalPlanSerDeTest {
             -1);
     req1 = (AuthorRelationalPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
+
+    // update user max session (tree model)
+    req0 =
+        new AuthorTreePlan(
+            ConfigPhysicalPlanType.UpdateUserMaxSession,
+            "user01",
+            "",
+            "",
+            "",
+            new HashSet<>(),
+            false,
+            new ArrayList<>(),
+            -1,
+            "",
+            7,
+            -1);
+    req1 = (AuthorTreePlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
+    Assert.assertEquals(req0, req1);
+    Assert.assertEquals(7, req1.getMaxSessionPerUser());
+    Assert.assertEquals(-1, req1.getMinSessionPerUser());
+
+    // update user max session (relational model)
+    req0 =
+        new AuthorRelationalPlan(
+            ConfigPhysicalPlanType.RUpdateUserMaxSession,
+            "user01",
+            "",
+            "",
+            "",
+            new HashSet<>(),
+            false,
+            "",
+            -1,
+            "",
+            7,
+            -1);
+    req1 = (AuthorRelationalPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
+    Assert.assertEquals(req0, req1);
+    Assert.assertEquals(7, req1.getMaxSessionPerUser());
+    Assert.assertEquals(-1, req1.getMinSessionPerUser());
+
+    // update user min session (tree model)
+    req0 =
+        new AuthorTreePlan(
+            ConfigPhysicalPlanType.UpdateUserMinSession,
+            "user01",
+            "",
+            "",
+            "",
+            new HashSet<>(),
+            false,
+            new ArrayList<>(),
+            -1,
+            "",
+            -1,
+            3);
+    req1 = (AuthorTreePlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
+    Assert.assertEquals(req0, req1);
+    Assert.assertEquals(-1, req1.getMaxSessionPerUser());
+    Assert.assertEquals(3, req1.getMinSessionPerUser());
+
+    // update user min session (relational model)
+    req0 =
+        new AuthorRelationalPlan(
+            ConfigPhysicalPlanType.RUpdateUserMinSession,
+            "user01",
+            "",
+            "",
+            "",
+            new HashSet<>(),
+            false,
+            "",
+            -1,
+            "",
+            -1,
+            3);
+    req1 = (AuthorRelationalPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
+    Assert.assertEquals(req0, req1);
+    Assert.assertEquals(-1, req1.getMaxSessionPerUser());
+    Assert.assertEquals(3, req1.getMinSessionPerUser());
   }
 
   @Test

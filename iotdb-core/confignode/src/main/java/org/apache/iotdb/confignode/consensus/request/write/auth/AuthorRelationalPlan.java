@@ -181,8 +181,8 @@ public class AuthorRelationalPlan extends AuthorPlan {
     BasicStructureSerDeUtil.write(roleName, stream);
     BasicStructureSerDeUtil.write(password, stream);
     ConfigPhysicalPlanType authorType = getAuthorType();
-    if (authorType == ConfigPhysicalPlanType.UpdateUserMaxSession
-        || authorType == ConfigPhysicalPlanType.UpdateUserMinSession) {
+    if (authorType == ConfigPhysicalPlanType.RUpdateUserMaxSession
+        || authorType == ConfigPhysicalPlanType.RUpdateUserMinSession) {
       BasicStructureSerDeUtil.write(maxSessionPerUser, stream);
       BasicStructureSerDeUtil.write(minSessionPerUser, stream);
     }
@@ -209,8 +209,8 @@ public class AuthorRelationalPlan extends AuthorPlan {
     roleName = BasicStructureSerDeUtil.readString(buffer);
     password = BasicStructureSerDeUtil.readString(buffer);
     ConfigPhysicalPlanType authorType = getAuthorType();
-    if (authorType == ConfigPhysicalPlanType.UpdateUserMaxSession
-        || authorType == ConfigPhysicalPlanType.UpdateUserMinSession) {
+    if (authorType == ConfigPhysicalPlanType.RUpdateUserMaxSession
+        || authorType == ConfigPhysicalPlanType.RUpdateUserMinSession) {
       maxSessionPerUser = buffer.getInt();
       minSessionPerUser = buffer.getInt();
     }

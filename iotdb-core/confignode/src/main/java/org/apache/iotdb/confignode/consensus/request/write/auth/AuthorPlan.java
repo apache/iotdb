@@ -150,13 +150,23 @@ public abstract class AuthorPlan extends ConfigPhysicalReadPlan {
         && Objects.equals(password, that.password)
         && Objects.equals(newPassword, that.newPassword)
         && grantOpt == that.grantOpt
-        && Objects.equals(newUsername, that.newUsername);
+        && Objects.equals(newUsername, that.newUsername)
+        && maxSessionPerUser == that.maxSessionPerUser
+        && minSessionPerUser == that.minSessionPerUser;
   }
 
   @Override
   public int hashCode() {
     return Objects.hash(
-        super.getType(), userName, roleName, password, newPassword, grantOpt, newUsername);
+        super.getType(),
+        userName,
+        roleName,
+        password,
+        newPassword,
+        grantOpt,
+        newUsername,
+        maxSessionPerUser,
+        minSessionPerUser);
   }
 
   @Override
