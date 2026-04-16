@@ -1089,16 +1089,35 @@ public class IoTDBDescriptor {
     loadQuerySampleThroughput(properties);
     // update trusted_uri_pattern
     loadTrustedUriPattern(properties);
-    conf.setPartitionTableRecoverWorkerNum(
+    int partitionTableRecoverWorkerNum =
         Integer.parseInt(
             properties.getProperty(
                 "partition_table_recover_worker_num",
-                String.valueOf(conf.getPartitionTableRecoverWorkerNum()))));
-    conf.setPartitionTableRecoverMaxReadMBsPerSecond(
+                String.valueOf(conf.getPartitionTableRecoverWorkerNum())));
+    if (partitionTableRecoverWorkerNum <= 0) {
+      LOGGER.warn(
+          "partition_table_recover_worker_num should be greater than 0, "
+              + "but current value is {}, ignore that and use the default value {}",
+          partitionTableRecoverWorkerNum,
+          conf.getPartitionTableRecoverWorkerNum());
+      partitionTableRecoverWorkerNum = conf.getPartitionTableRecoverWorkerNum();
+    }
+    conf.setPartitionTableRecoverWorkerNum(partitionTableRecoverWorkerNum);
+    int partitionTableRecoverMaxReadMBsPerSecond =
         Integer.parseInt(
             properties.getProperty(
                 "partition_table_recover_max_read_mb_per_sec",
-                String.valueOf(conf.getPartitionTableRecoverMaxReadMBsPerSecond()))));
+                String.valueOf(conf.getPartitionTableRecoverMaxReadMBsPerSecond())));
+    if (partitionTableRecoverMaxReadMBsPerSecond <= 0) {
+      LOGGER.warn(
+          "partition_table_recover_max_read_mb_per_sec should be greater than 0, "
+              + "but current value is {}, ignore that and use the default value {}",
+          partitionTableRecoverMaxReadMBsPerSecond,
+          conf.getPartitionTableRecoverMaxReadMBsPerSecond());
+      partitionTableRecoverMaxReadMBsPerSecond =
+          conf.getPartitionTableRecoverMaxReadMBsPerSecond();
+    }
+    conf.setPartitionTableRecoverMaxReadMBsPerSecond(partitionTableRecoverMaxReadMBsPerSecond);
   }
 
   private void loadFixedSizeLimitForQuery(
