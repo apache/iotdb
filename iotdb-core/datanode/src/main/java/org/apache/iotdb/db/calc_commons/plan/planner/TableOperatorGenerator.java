@@ -236,7 +236,7 @@ import static org.apache.tsfile.read.common.type.StringType.STRING;
 import static org.apache.tsfile.read.common.type.TimestampType.TIMESTAMP;
 
 /** This Visitor is responsible for transferring Table PlanNode Tree to Table Operator Tree. */
-public class TableOperatorGenerator
+public abstract class TableOperatorGenerator
     implements ICoreQueryPlanVisitor<Operator, LocalExecutionPlanContext> {
 
   protected final Metadata metadata;
@@ -333,8 +333,8 @@ public class TableOperatorGenerator
                           ImmutableList.of(),
                           0,
                           context.getTypeProvider(),
-                          metadata,
-                          fragmentInstanceContext);
+                          metadata
+                      );
 
                   return visitor.process(p, filterColumnTransformerContext);
                 })
@@ -361,8 +361,8 @@ public class TableOperatorGenerator
             filterOutputDataTypes,
             inputLocations.size(),
             context.getTypeProvider(),
-            metadata,
-            fragmentInstanceContext);
+            metadata
+        );
 
     for (Expression expression : projectExpressions) {
       projectOutputTransformerList.add(
@@ -855,7 +855,7 @@ public class TableOperatorGenerator
         context.getTypeProvider());
 
     String filePrefix =
-        IoTDBDescriptor.getInstance().getConfig().getSortTmpDir()
+        getSortTmpDir()
             + File.separator
             + operatorContext.getDriverContext().getFragmentInstanceContext().getId().getFullId()
             + File.separator
@@ -875,6 +875,8 @@ public class TableOperatorGenerator
         getComparatorForTable(
             node.getOrderingScheme().getOrderingList(), sortItemIndexList, sortItemDataTypeList));
   }
+
+  protected abstract String getSortTmpDir();
 
   @Override
   public Operator visitTopK(TopKNode node, LocalExecutionPlanContext context) {

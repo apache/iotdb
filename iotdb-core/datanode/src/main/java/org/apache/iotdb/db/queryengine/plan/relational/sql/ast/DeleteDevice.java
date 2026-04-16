@@ -233,8 +233,8 @@ public class DeleteDevice extends AbstractTraverseDevice {
                     ImmutableList.of(),
                     0,
                     mockTypeProvider,
-                    metadata,
-                    null))
+                    metadata
+                ))
             : null;
 
     return new DeviceBlackListConstructor(

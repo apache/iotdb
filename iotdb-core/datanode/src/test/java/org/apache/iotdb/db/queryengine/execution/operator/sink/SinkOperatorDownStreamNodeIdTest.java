@@ -22,7 +22,6 @@ package org.apache.iotdb.db.queryengine.execution.operator.sink;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.calc_commons.execution.operator.Operator;
-import org.apache.iotdb.db.calc_commons.plan.planner.TableOperatorGenerator;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
@@ -33,6 +32,7 @@ import org.apache.iotdb.db.queryengine.execution.fragment.DataNodeQueryContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceStateMachine;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
+import org.apache.iotdb.db.queryengine.plan.planner.DataNodeTableOperatorGenerator;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanContext;
 import org.apache.iotdb.db.queryengine.plan.planner.OperatorTreeGenerator;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkNode;
@@ -40,7 +40,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
-
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -97,7 +96,7 @@ public class SinkOperatorDownStreamNodeIdTest {
     LocalExecutionPlanContext context =
         createLocalExecutionPlanContext(
             new TypeProvider(), "query_name_sink_operator_downstream_id_1", 10001);
-    TableOperatorGenerator tableOperatorGenerator = new TableOperatorGenerator(metadata);
+    DataNodeTableOperatorGenerator tableOperatorGenerator = new DataNodeTableOperatorGenerator(metadata);
     Mockito.when(mockedPlanNode.accept(tableOperatorGenerator, context))
         .thenReturn(Mockito.mock(Operator.class));
 

@@ -194,13 +194,11 @@ import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Trim;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.WhenClause;
 import org.apache.iotdb.db.node_commons.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.node_commons.plan.relational.type.TypeNotFoundException;
-import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.udf.api.customizer.analysis.ScalarFunctionAnalysis;
 import org.apache.iotdb.udf.api.customizer.parameter.FunctionArguments;
 import org.apache.iotdb.udf.api.relational.ScalarFunction;
-
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.regexp.LikePattern;
 import org.apache.tsfile.enums.TSDataType;
@@ -215,8 +213,6 @@ import org.apache.tsfile.read.common.type.TimestampType;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.common.type.TypeEnum;
 import org.apache.tsfile.utils.Binary;
-
-import javax.annotation.Nullable;
 
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -1947,8 +1943,6 @@ public class ColumnTransformerBuilder
 
     private final Metadata metadata;
 
-    private final Optional<FragmentInstanceContext> fragmentInstanceContext;
-
     public Context(
         SessionInfo sessionInfo,
         List<LeafColumnTransformer> leafList,
@@ -1959,8 +1953,7 @@ public class ColumnTransformerBuilder
         List<TSDataType> inputDataTypes,
         int originSize,
         TypeProvider typeProvider,
-        Metadata metadata,
-        @Nullable FragmentInstanceContext fragmentInstanceContext) {
+        Metadata metadata) {
       this.sessionInfo = sessionInfo;
       this.leafList = leafList;
       this.inputLocations = inputLocations;
@@ -1971,7 +1964,6 @@ public class ColumnTransformerBuilder
       this.originSize = originSize;
       this.typeProvider = typeProvider;
       this.metadata = metadata;
-      this.fragmentInstanceContext = Optional.ofNullable(fragmentInstanceContext);
     }
 
     public Type getType(SymbolReference symbolReference) {

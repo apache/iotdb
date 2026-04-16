@@ -1573,8 +1573,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
                     ImmutableList.of(),
                     0,
                     mockTypeProvider,
-                    metadata,
-                    null))
+                    metadata
+                ))
             : null;
 
     final List<TSDataType> filterOutputDataTypes =
@@ -1601,8 +1601,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
             filterOutputDataTypes,
             inputLocations.size(),
             mockTypeProvider,
-            metadata,
-            null);
+            metadata
+        );
 
     final List<String> attributeNames =
         updateNode.getAssignments().stream()
