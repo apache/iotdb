@@ -96,7 +96,8 @@ public class CreatePipeProcedureV2Test {
 
     CreatePipeProcedureV2.checkAndEnrichSourceAuthentication(env, sourceAttributes);
 
-    assertEquals("encrypted-password", sourceAttributes.get("password"));
+    assertEquals(
+        "encrypted-password", sourceAttributes.get(PipeSourceConstant.SOURCE_IOTDB_PASSWORD_KEY));
     Mockito.verify(permissionManager).login("user", "encrypted-password", true);
     Mockito.verify(permissionManager, Mockito.never())
         .login4Pipe(Mockito.anyString(), Mockito.any());
@@ -123,7 +124,8 @@ public class CreatePipeProcedureV2Test {
 
     CreatePipeProcedureV2.checkAndEnrichSourceAuthentication(env, sourceAttributes);
 
-    assertEquals("hashed-password", sourceAttributes.get("password"));
+    assertEquals(
+        "hashed-password", sourceAttributes.get(PipeSourceConstant.SOURCE_IOTDB_PASSWORD_KEY));
     Mockito.verify(permissionManager).login("user", "raw-password", true);
     Mockito.verify(permissionManager).login4Pipe("user", "raw-password");
   }
