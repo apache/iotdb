@@ -187,7 +187,7 @@ public class PipePluginInfo implements SnapshotProcessor {
       LOGGER.info(exceptionMessage);
       throw new PipeException(exceptionMessage);
     }
-    checkPipePluginAvailabilityForPipeCreation(sourcePluginName, "extractor");
+    checkPipePluginAvailabilityForPipeCreation(sourcePluginName, "source");
 
     final PipeParameters processorParameters = new PipeParameters(processorAttributes);
     final String processorPluginName =
@@ -216,7 +216,7 @@ public class PipePluginInfo implements SnapshotProcessor {
       LOGGER.warn(exceptionMessage);
       throw new PipeException(exceptionMessage);
     }
-    checkPipePluginAvailabilityForPipeCreation(sinkPluginName, "connector");
+    checkPipePluginAvailabilityForPipeCreation(sinkPluginName, "sink");
   }
 
   /////////////////////////////// Pipe Plugin Management ///////////////////////////////
