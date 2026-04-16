@@ -26,7 +26,6 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.runtime.MemoryLeakException;
 
 import com.google.common.util.concurrent.AbstractFuture;
-import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.external.commons.lang3.Validate;
 import org.apache.tsfile.utils.Pair;
@@ -42,6 +41,8 @@ import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.stream.Collectors;
+
+import static com.google.common.util.concurrent.Futures.immediateVoidFuture;
 
 /** A thread-safe memory pool. */
 public class MemoryPool {
@@ -110,6 +111,31 @@ public class MemoryPool {
     @Override
     public boolean set(@Nullable V value) {
       return super.set(value);
+    }
+  }
+
+  public static class MemoryReservationResult {
+    private final ListenableFuture<Void> future;
+    private final boolean reserveSuccess;
+    private final long reservedBytes;
+
+    public MemoryReservationResult(
+        ListenableFuture<Void> future, boolean reserveSuccess, long reservedBytes) {
+      this.future = future;
+      this.reserveSuccess = reserveSuccess;
+      this.reservedBytes = reservedBytes;
+    }
+
+    public ListenableFuture<Void> getFuture() {
+      return future;
+    }
+
+    public boolean isReserveSuccess() {
+      return reserveSuccess;
+    }
+
+    public long getReservedBytes() {
+      return reservedBytes;
     }
   }
 
@@ -236,6 +262,19 @@ public class MemoryPool {
       String planNodeId,
       long bytesToReserve,
       long maxBytesCanReserve) {
+    MemoryReservationResult result =
+        reserveWithPriority(
+            queryId, fragmentInstanceId, planNodeId, bytesToReserve, maxBytesCanReserve, false);
+    return new Pair<>(result.getFuture(), result.isReserveSuccess());
+  }
+
+  public MemoryReservationResult reserveWithPriority(
+      String queryId,
+      String fragmentInstanceId,
+      String planNodeId,
+      long bytesToReserve,
+      long maxBytesCanReserve,
+      boolean needSetHighestPriority) {
     Validate.notNull(queryId, "queryId can not be null.");
     Validate.notNull(fragmentInstanceId, "fragmentInstanceId can not be null.");
     Validate.notNull(planNodeId, "planNodeId can not be null.");
@@ -256,19 +295,21 @@ public class MemoryPool {
               bytesToReserve, maxBytesCanReserve));
     }
 
-    ListenableFuture<Void> result;
     if (tryReserve(queryId, fragmentInstanceId, planNodeId, bytesToReserve, maxBytesCanReserve)) {
-      result = Futures.immediateFuture(null);
-      return new Pair<>(result, Boolean.TRUE);
+      return new MemoryReservationResult(immediateVoidFuture(), true, bytesToReserve);
     } else {
+      rollbackReserve(queryId, fragmentInstanceId, planNodeId, bytesToReserve);
+      if (needSetHighestPriority) {
+        // SHOW QUERIES etc.: treat as success with zero bytes reserved from pool when insufficient.
+        return new MemoryReservationResult(immediateVoidFuture(), true, 0L);
+      }
       LOGGER.debug(
           "Blocked reserve request: {} bytes memory for planNodeId{}", bytesToReserve, planNodeId);
-      rollbackReserve(queryId, fragmentInstanceId, planNodeId, bytesToReserve);
-      result =
+      ListenableFuture<Void> result =
           MemoryReservationFuture.create(
               queryId, fragmentInstanceId, planNodeId, bytesToReserve, maxBytesCanReserve);
       memoryReservationFutures.add((MemoryReservationFuture<Void>) result);
-      return new Pair<>(result, Boolean.FALSE);
+      return new MemoryReservationResult(result, false, bytesToReserve);
     }
   }
 
@@ -299,7 +340,8 @@ public class MemoryPool {
   /**
    * Cancel the specified memory reservation. If the reservation has finished, do nothing.
    *
-   * @param future The future returned from {@link #reserve(String, String, String, long, long)}
+   * @param future The future returned from {@link #reserveWithPriority(String, String, String,
+   *     long, long, boolean)}
    * @return If the future has not complete, return the number of bytes being reserved. Otherwise,
    *     return 0.
    */
