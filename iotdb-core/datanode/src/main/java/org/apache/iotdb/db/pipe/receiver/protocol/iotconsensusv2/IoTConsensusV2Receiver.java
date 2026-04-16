@@ -1019,9 +1019,12 @@ public class IoTConsensusV2Receiver {
           final Optional<IoTConsensusV2TsFileWriter> idleWriter =
               iotConsensusV2TsFileWriterPool.stream().filter(item -> !item.isUsed()).findFirst();
           if (idleWriter.isPresent()) {
-            idleWriter.get().setUsed(true);
-            idleWriter.get().setCommitIdOfCorrespondingHolderEvent(commitId);
-            return idleWriter.get().refreshLastUsedTs();
+            final IoTConsensusV2TsFileWriter writer = idleWriter.get();
+            // Publish commitId before marking the writer as used so lock-free lookup callers
+            // observing isUsed=true can always see the bound commitId as well.
+            writer.setCommitIdOfCorrespondingHolderEvent(commitId);
+            writer.setUsed(true);
+            return writer.refreshLastUsedTs();
           }
 
           condition.await(RETRY_WAIT_TIME, TimeUnit.MILLISECONDS);
