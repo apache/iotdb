@@ -42,7 +42,9 @@ import org.junit.runner.RunWith;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import static org.apache.iotdb.db.it.utils.TestUtils.assertResultSetEqual;
 import static org.junit.Assert.fail;
@@ -293,7 +295,7 @@ public class IoTDBSessionQueryIT {
                 "40,root.sg1.d1.s5,aligned_test40,TEXT",
                 "23,root.sg1.d1.s1,230000.0,FLOAT",
                 "40,root.sg1.d1.s2,40,INT32"));
-    TestUtils.executeNonQuery(EnvFactory.getEnv(), "create user abcd 'veryComplexPassword@123'");
+    TestUtils.executeNonQuery("create user abcd 'veryComplexPassword@123'");
 
     try (final ISession session =
             EnvFactory.getEnv().getSessionConnection("abcd", "veryComplexPassword@123");
