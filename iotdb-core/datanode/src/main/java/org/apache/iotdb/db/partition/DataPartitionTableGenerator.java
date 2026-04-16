@@ -213,6 +213,12 @@ public class DataPartitionTableGenerator {
       Map<TSeriesPartitionSlot, SeriesPartitionTable> dataPartitionMap) {
     Set<Long> timeSlotIds = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
+    if (IoTDBDescriptor.getInstance().getConfig().getPartitionTableRecoverMaxReadMBsPerSecond()
+        <= 0) {
+      throw new IllegalArgumentException(
+          "The partition_table_recover_max_read_megabytes_per_second config param value is invalid, must be larger than 0");
+    }
+
     for (TsFileResource tsFileResource : seqTsFileList) {
       long timeSlotId = tsFileResource.getTsFileID().timePartitionId;
       try {

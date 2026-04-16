@@ -237,7 +237,12 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
                     () -> {
                       LOGGER.info(
                           "[DataPartitionIntegrity] Prepare to start dataPartitionTableIntegrityCheck after all datanodes started up");
-                      Thread.sleep(CONF.getPartitionTableRecoverWaitAllDnUpTimeoutInMs());
+                      if (CONF.getPartitionTableRecoverWaitAllDnUpTimeoutInMs() < 0) {
+                        LOGGER.info(
+                            "[DataPartitionIntegrity] The partition_table_recover_wait_all_dn_up_timeout_ms config param value is invalid, must be larger than 0");
+                      } else {
+                        Thread.sleep(CONF.getPartitionTableRecoverWaitAllDnUpTimeoutInMs());
+                      }
 
                       while (true) {
                         List<Integer> dnList =
