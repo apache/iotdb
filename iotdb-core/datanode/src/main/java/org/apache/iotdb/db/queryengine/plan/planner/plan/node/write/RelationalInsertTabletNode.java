@@ -443,10 +443,17 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
         if (dataTypes[i] != null) {
           if (dataTypes[i] == TSDataType.OBJECT) {
             handleObjectValue(i, start, end, entry, result);
+          } else {
+            System.arraycopy(columns[i], start, subNode.columns[i], destLoc, length);
           }
-          System.arraycopy(columns[i], start, subNode.columns[i], destLoc, length);
         }
-        if (subNode.bitMaps != null && this.bitMaps[i] != null) {
+        if (this.bitMaps != null && this.bitMaps[i] != null) {
+          if (subNode.bitMaps == null) {
+            subNode.bitMaps = new BitMap[subNode.columns.length];
+          }
+          if (subNode.bitMaps[i] == null) {
+            subNode.bitMaps[i] = new BitMap(count);
+          }
           BitMap.copyOfRange(this.bitMaps[i], start, subNode.bitMaps[i], destLoc, length);
         }
       }

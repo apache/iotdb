@@ -53,6 +53,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
 
@@ -191,6 +192,129 @@ public class IoTDBObjectInsertIT {
       }
     }
     Assert.assertTrue(success);
+  }
+
+  @Test
+  public void insertObjectsWithDifferentDevicesInOneTabletTest()
+      throws IoTDBConnectionException, StatementExecutionException, IOException {
+    String testObject =
+        System.getProperty("user.dir")
+            + File.separator
+            + "target"
+            + File.separator
+            + "test-classes"
+            + File.separator
+            + "object-example.pt";
+    File object = new File(testObject);
+
+    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
+      session.executeNonQueryStatement("USE \"db1\"");
+      // insert table data by tablet
+      List<String> columnNameList =
+          Arrays.asList("region_id", "plant_id", "device_id", "temperature", "file");
+      List<TSDataType> dataTypeList =
+          Arrays.asList(
+              TSDataType.STRING,
+              TSDataType.STRING,
+              TSDataType.STRING,
+              TSDataType.FLOAT,
+              TSDataType.OBJECT);
+      List<ColumnCategory> columnTypeList =
+          new ArrayList<>(
+              Arrays.asList(
+                  ColumnCategory.TAG,
+                  ColumnCategory.TAG,
+                  ColumnCategory.TAG,
+                  ColumnCategory.FIELD,
+                  ColumnCategory.FIELD));
+      Tablet tablet = new Tablet("object_table", columnNameList, dataTypeList, columnTypeList, 2);
+      int rowIndex = tablet.getRowSize();
+      tablet.addTimestamp(rowIndex, 1);
+      tablet.addValue(rowIndex, 0, "1");
+      tablet.addValue(rowIndex, 1, "5");
+      tablet.addValue(rowIndex, 2, "3");
+      tablet.addValue(rowIndex, 3, 37.6F);
+      tablet.addValue(rowIndex, 4, true, 0, Files.readAllBytes(Paths.get(testObject)));
+
+      // insert another row with different device
+      rowIndex = tablet.getRowSize();
+      tablet.addTimestamp(rowIndex, 2);
+      tablet.addValue(rowIndex, 0, "2");
+      tablet.addValue(rowIndex, 1, "6");
+      tablet.addValue(rowIndex, 2, "4");
+      tablet.addValue(rowIndex, 3, 37.6F);
+      tablet.addValue(rowIndex, 4, true, 0, Files.readAllBytes(Paths.get(testObject)));
+
+      // force remove bitmaps to reproduce the issue
+      // that bitmaps are not properly handled when multiple devices exist in one tablet
+      tablet.setBitMaps(null);
+      session.insert(tablet);
+      tablet.reset();
+
+      try (SessionDataSet dataSet =
+          session.executeQueryStatement("select * from object_table order by time")) {
+        SessionDataSet.DataIterator iterator = dataSet.iterator();
+        int cnt = 0;
+        while (iterator.next()) {
+          Assert.assertEquals(
+              BytesUtils.parseObjectByteArrayToString(BytesUtils.longToBytes(object.length())),
+              iterator.getString("file"));
+          cnt++;
+        }
+        assertEquals(2, cnt);
+      }
+    }
+    // test object file path
+    int successCnt = 0;
+    for (DataNodeWrapper dataNodeWrapper : EnvFactory.getEnv().getDataNodeWrapperList()) {
+      String objectDirStr = dataNodeWrapper.getDataNodeObjectDir();
+      File objectDir = new File(objectDirStr);
+      if (objectDir.exists() && objectDir.isDirectory()) {
+        File[] regionDirs = objectDir.listFiles();
+        if (regionDirs != null) {
+          for (File regionDir : regionDirs) {
+            if (regionDir.isDirectory()) {
+              File objectFile1 =
+                  new File(
+                      regionDir,
+                      convertPathString("object_table")
+                          + File.separator
+                          + convertPathString("1")
+                          + File.separator
+                          + convertPathString("5")
+                          + File.separator
+                          + convertPathString("3")
+                          + File.separator
+                          + convertPathString("file")
+                          + File.separator
+                          + "1.bin");
+              if (objectFile1.exists() && objectFile1.isFile()) {
+                successCnt++;
+              }
+
+              File objectFile2 =
+                  new File(
+                      regionDir,
+                      convertPathString("object_table")
+                          + File.separator
+                          + convertPathString("2")
+                          + File.separator
+                          + convertPathString("6")
+                          + File.separator
+                          + convertPathString("4")
+                          + File.separator
+                          + convertPathString("file")
+                          + File.separator
+                          + "2.bin");
+              if (objectFile1.exists() && objectFile1.isFile()) {
+                successCnt++;
+              }
+            }
+          }
+        }
+      }
+    }
+    Assert.assertEquals(2, successCnt);
   }
 
   @Test
