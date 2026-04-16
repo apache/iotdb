@@ -17,13 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
-
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.AstMemoryEstimationHelper;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.IAstVisitor;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Identifier;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Node;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.NodeLocation;
+package org.apache.iotdb.db.node_commons.plan.relational.sql.ast;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -34,29 +28,43 @@ import java.util.Objects;
 import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Objects.requireNonNull;
 
-public class PatternVariable extends RowPattern {
+public final class Intersect extends SetOperation {
   private static final long INSTANCE_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(PatternVariable.class);
+      RamUsageEstimator.shallowSizeOfInstance(Intersect.class);
 
-  private final Identifier name;
+  private final List<Relation> relations;
 
-  public PatternVariable(NodeLocation location, Identifier name) {
-    super(location);
-    this.name = requireNonNull(name, "name is null");
+  public Intersect(List<Relation> relations, boolean distinct) {
+    super(null, distinct);
+    this.relations = ImmutableList.copyOf(requireNonNull(relations, "relations is null"));
   }
 
-  public Identifier getName() {
-    return name;
+  public Intersect(NodeLocation location, List<Relation> relations, boolean distinct) {
+    super(requireNonNull(location, "location is null"), distinct);
+    this.relations = ImmutableList.copyOf(requireNonNull(relations, "relations is null"));
+  }
+
+  @Override
+  public List<Relation> getRelations() {
+    return relations;
   }
 
   @Override
   public <R, C> R accept(IAstVisitor<R, C> visitor, C context) {
-    return ((AstVisitor<R, C>) visitor).visitPatternVariable(this, context);
+    return ((CommonQueryAstVisitor<R, C>) visitor).visitIntersect(this, context);
   }
 
   @Override
-  public List<Node> getChildren() {
-    return ImmutableList.of(name);
+  public List<? extends Node> getChildren() {
+    return relations;
+  }
+
+  @Override
+  public String toString() {
+    return toStringHelper(this)
+        .add("relations", relations)
+        .add("distinct", isDistinct())
+        .toString();
   }
 
   @Override
@@ -67,30 +75,29 @@ public class PatternVariable extends RowPattern {
     if ((obj == null) || (getClass() != obj.getClass())) {
       return false;
     }
-    PatternVariable o = (PatternVariable) obj;
-    return Objects.equals(name, o.name);
+    Intersect o = (Intersect) obj;
+    return Objects.equals(relations, o.relations) && Objects.equals(isDistinct(), o.isDistinct());
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(name);
-  }
-
-  @Override
-  public String toString() {
-    return toStringHelper(this).add("name", name).toString();
+    return Objects.hash(relations, isDistinct());
   }
 
   @Override
   public boolean shallowEquals(Node other) {
-    return sameClass(this, other);
+    if (!sameClass(this, other)) {
+      return false;
+    }
+
+    return this.isDistinct() == ((Intersect) other).isDistinct();
   }
 
   @Override
   public long ramBytesUsed() {
     long size = INSTANCE_SIZE;
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
-    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(name);
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeList(relations);
     return size;
   }
 }

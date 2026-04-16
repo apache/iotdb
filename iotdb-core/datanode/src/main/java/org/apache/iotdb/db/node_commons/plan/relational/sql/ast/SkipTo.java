@@ -17,13 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
-
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.AstMemoryEstimationHelper;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.IAstVisitor;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Identifier;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Node;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.NodeLocation;
+package org.apache.iotdb.db.node_commons.plan.relational.sql.ast;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -35,10 +29,10 @@ import java.util.Optional;
 import static com.google.common.base.MoreObjects.toStringHelper;
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SkipTo.Position.FIRST;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SkipTo.Position.LAST;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SkipTo.Position.NEXT;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SkipTo.Position.PAST_LAST;
+import static org.apache.iotdb.db.node_commons.plan.relational.sql.ast.SkipTo.Position.FIRST;
+import static org.apache.iotdb.db.node_commons.plan.relational.sql.ast.SkipTo.Position.LAST;
+import static org.apache.iotdb.db.node_commons.plan.relational.sql.ast.SkipTo.Position.NEXT;
+import static org.apache.iotdb.db.node_commons.plan.relational.sql.ast.SkipTo.Position.PAST_LAST;
 
 public class SkipTo extends Node {
   private static final long INSTANCE_SIZE = RamUsageEstimator.shallowSizeOfInstance(SkipTo.class);
@@ -96,7 +90,7 @@ public class SkipTo extends Node {
 
   @Override
   public <R, C> R accept(IAstVisitor<R, C> visitor, C context) {
-    return ((AstVisitor<R, C>) visitor).visitSkipTo(this, context);
+    return ((CommonQueryAstVisitor<R, C>) visitor).visitSkipTo(this, context);
   }
 
   @Override

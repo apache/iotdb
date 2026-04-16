@@ -26,6 +26,7 @@ import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.IAstVisitor;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Node;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.NodeLocation;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Statement;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Table;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
 
 import com.google.common.collect.ImmutableList;

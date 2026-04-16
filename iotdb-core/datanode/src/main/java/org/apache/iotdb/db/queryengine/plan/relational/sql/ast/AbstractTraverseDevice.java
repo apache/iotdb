@@ -29,6 +29,7 @@ import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.LogicalExpressio
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Node;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.NodeLocation;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Statement;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Table;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.MetadataUtil;

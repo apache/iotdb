@@ -17,45 +17,30 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
-
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.AstMemoryEstimationHelper;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.IAstVisitor;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Node;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.NodeLocation;
+package org.apache.iotdb.db.node_commons.plan.relational.sql.ast;
 
 import com.google.common.collect.ImmutableList;
-import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.List;
 import java.util.Objects;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
-import static java.util.Objects.requireNonNull;
 
-public class AnchorPattern extends RowPattern {
-  public enum Type {
-    PARTITION_START,
-    PARTITION_END
-  }
+public abstract class PatternQuantifier extends Node {
+  private final boolean greedy;
 
-  private static final long INSTANCE_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(AnchorPattern.class);
-
-  private final Type type;
-
-  public AnchorPattern(NodeLocation location, Type type) {
+  protected PatternQuantifier(NodeLocation location, boolean greedy) {
     super(location);
-    this.type = requireNonNull(type, "type is null");
+    this.greedy = greedy;
   }
 
-  public Type getType() {
-    return type;
+  public boolean isGreedy() {
+    return greedy;
   }
 
   @Override
   public <R, C> R accept(IAstVisitor<R, C> visitor, C context) {
-    return ((AstVisitor<R, C>) visitor).visitAnchorPattern(this, context);
+    return ((CommonQueryAstVisitor<R, C>) visitor).visitPatternQuantifier(this, context);
   }
 
   @Override
@@ -71,29 +56,27 @@ public class AnchorPattern extends RowPattern {
     if ((obj == null) || (getClass() != obj.getClass())) {
       return false;
     }
-    AnchorPattern o = (AnchorPattern) obj;
-    return Objects.equals(type, o.type);
+    PatternQuantifier o = (PatternQuantifier) obj;
+    return greedy == o.greedy;
   }
 
   @Override
   public int hashCode() {
-    return getClass().hashCode();
-  }
-
-  @Override
-  public String toString() {
-    return toStringHelper(this).add("type", type).toString();
+    return Objects.hash(greedy);
   }
 
   @Override
   public boolean shallowEquals(Node other) {
-    return sameClass(this, other);
+    if (!sameClass(this, other)) {
+      return false;
+    }
+
+    PatternQuantifier otherNode = (PatternQuantifier) other;
+    return greedy == otherNode.greedy;
   }
 
   @Override
-  public long ramBytesUsed() {
-    long size = INSTANCE_SIZE;
-    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
-    return size;
+  public String toString() {
+    return toStringHelper(this).add("greedy", greedy).toString();
   }
 }

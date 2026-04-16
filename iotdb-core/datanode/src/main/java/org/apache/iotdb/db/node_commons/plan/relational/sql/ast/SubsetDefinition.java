@@ -17,14 +17,8 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
+package org.apache.iotdb.db.node_commons.plan.relational.sql.ast;
 
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.AstMemoryEstimationHelper;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.IAstVisitor;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Node;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.NodeLocation;
-
-import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.List;
@@ -34,64 +28,77 @@ import static com.google.common.base.MoreObjects.toStringHelper;
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
 
-public class PatternConcatenation extends RowPattern {
+public class SubsetDefinition extends Node {
   private static final long INSTANCE_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(PatternConcatenation.class);
+      RamUsageEstimator.shallowSizeOfInstance(SubsetDefinition.class);
 
-  private final List<RowPattern> patterns;
+  private final Identifier name;
+  private final List<Identifier> identifiers;
 
-  public PatternConcatenation(NodeLocation location, List<RowPattern> patterns) {
+  public SubsetDefinition(NodeLocation location, Identifier name, List<Identifier> identifiers) {
     super(location);
-    this.patterns = requireNonNull(patterns, "patterns is null");
-    checkArgument(!patterns.isEmpty(), "patterns list is empty");
+    this.name = requireNonNull(name, "name is null");
+    requireNonNull(identifiers, "identifiers is null");
+    checkArgument(!identifiers.isEmpty(), "identifiers is empty");
+    this.identifiers = identifiers;
   }
 
-  public List<RowPattern> getPatterns() {
-    return patterns;
+  public Identifier getName() {
+    return name;
+  }
+
+  public List<Identifier> getIdentifiers() {
+    return identifiers;
   }
 
   @Override
   public <R, C> R accept(IAstVisitor<R, C> visitor, C context) {
-    return ((AstVisitor<R, C>) visitor).visitPatternConcatenation(this, context);
+    return ((CommonQueryAstVisitor<R, C>) visitor).visitSubsetDefinition(this, context);
   }
 
   @Override
-  public List<Node> getChildren() {
-    return ImmutableList.copyOf(patterns);
-  }
-
-  @Override
-  public boolean equals(Object obj) {
-    if (this == obj) {
-      return true;
-    }
-    if ((obj == null) || (getClass() != obj.getClass())) {
-      return false;
-    }
-    PatternConcatenation o = (PatternConcatenation) obj;
-    return Objects.equals(patterns, o.patterns);
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(patterns);
+  public List<? extends Node> getChildren() {
+    return identifiers;
   }
 
   @Override
   public String toString() {
-    return toStringHelper(this).add("patterns", patterns).toString();
+    return toStringHelper(this).add("name", name).add("identifiers", identifiers).toString();
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+
+    SubsetDefinition that = (SubsetDefinition) o;
+    return Objects.equals(name, that.name) && Objects.equals(identifiers, that.identifiers);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(name, identifiers);
   }
 
   @Override
   public boolean shallowEquals(Node other) {
-    return sameClass(this, other);
+    if (!sameClass(this, other)) {
+      return false;
+    }
+
+    return Objects.equals(name, ((SubsetDefinition) other).name);
   }
 
   @Override
   public long ramBytesUsed() {
     long size = INSTANCE_SIZE;
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
-    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeList(patterns);
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(name);
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeList(identifiers);
     return size;
   }
 }

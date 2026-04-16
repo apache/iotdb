@@ -17,59 +17,51 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
+package org.apache.iotdb.db.node_commons.plan.relational.sql.ast;
 
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.AstMemoryEstimationHelper;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.IAstVisitor;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Identifier;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Node;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.NodeLocation;
-
+import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.List;
 import java.util.Objects;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
-import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
 
-public class SubsetDefinition extends Node {
+public class VariableDefinition extends Node {
   private static final long INSTANCE_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(SubsetDefinition.class);
+      RamUsageEstimator.shallowSizeOfInstance(VariableDefinition.class);
 
   private final Identifier name;
-  private final List<Identifier> identifiers;
+  private final Expression expression;
 
-  public SubsetDefinition(NodeLocation location, Identifier name, List<Identifier> identifiers) {
+  public VariableDefinition(NodeLocation location, Identifier name, Expression expression) {
     super(location);
     this.name = requireNonNull(name, "name is null");
-    requireNonNull(identifiers, "identifiers is null");
-    checkArgument(!identifiers.isEmpty(), "identifiers is empty");
-    this.identifiers = identifiers;
+    this.expression = requireNonNull(expression, "expression is null");
   }
 
   public Identifier getName() {
     return name;
   }
 
-  public List<Identifier> getIdentifiers() {
-    return identifiers;
+  public Expression getExpression() {
+    return expression;
   }
 
   @Override
   public <R, C> R accept(IAstVisitor<R, C> visitor, C context) {
-    return ((AstVisitor<R, C>) visitor).visitSubsetDefinition(this, context);
+    return ((CommonQueryAstVisitor<R, C>) visitor).visitVariableDefinition(this, context);
   }
 
   @Override
   public List<? extends Node> getChildren() {
-    return identifiers;
+    return ImmutableList.of(expression);
   }
 
   @Override
   public String toString() {
-    return toStringHelper(this).add("name", name).add("identifiers", identifiers).toString();
+    return toStringHelper(this).add("name", name).add("expression", expression).toString();
   }
 
   @Override
@@ -81,13 +73,13 @@ public class SubsetDefinition extends Node {
       return false;
     }
 
-    SubsetDefinition that = (SubsetDefinition) o;
-    return Objects.equals(name, that.name) && Objects.equals(identifiers, that.identifiers);
+    VariableDefinition that = (VariableDefinition) o;
+    return Objects.equals(name, that.name) && Objects.equals(expression, that.expression);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(name, identifiers);
+    return Objects.hash(name, expression);
   }
 
   @Override
@@ -96,7 +88,7 @@ public class SubsetDefinition extends Node {
       return false;
     }
 
-    return Objects.equals(name, ((SubsetDefinition) other).name);
+    return Objects.equals(name, ((VariableDefinition) other).name);
   }
 
   @Override
@@ -104,7 +96,7 @@ public class SubsetDefinition extends Node {
     long size = INSTANCE_SIZE;
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
     size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(name);
-    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeList(identifiers);
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(expression);
     return size;
   }
 }

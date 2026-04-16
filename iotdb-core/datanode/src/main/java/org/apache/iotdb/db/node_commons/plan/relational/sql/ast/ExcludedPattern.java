@@ -17,12 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
-
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.AstMemoryEstimationHelper;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.IAstVisitor;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Node;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.NodeLocation;
+package org.apache.iotdb.db.node_commons.plan.relational.sql.ast;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -33,36 +28,29 @@ import java.util.Objects;
 import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Objects.requireNonNull;
 
-public class QuantifiedPattern extends RowPattern {
+public class ExcludedPattern extends RowPattern {
   private static final long INSTANCE_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(QuantifiedPattern.class);
+      RamUsageEstimator.shallowSizeOfInstance(ExcludedPattern.class);
 
   private final RowPattern pattern;
-  private final PatternQuantifier patternQuantifier;
 
-  public QuantifiedPattern(
-      NodeLocation location, RowPattern pattern, PatternQuantifier patternQuantifier) {
+  public ExcludedPattern(NodeLocation location, RowPattern pattern) {
     super(location);
     this.pattern = requireNonNull(pattern, "pattern is null");
-    this.patternQuantifier = requireNonNull(patternQuantifier, "patternQuantifier is null");
   }
 
   public RowPattern getPattern() {
     return pattern;
   }
 
-  public PatternQuantifier getPatternQuantifier() {
-    return patternQuantifier;
-  }
-
   @Override
   public <R, C> R accept(IAstVisitor<R, C> visitor, C context) {
-    return ((AstVisitor<R, C>) visitor).visitQuantifiedPattern(this, context);
+    return ((CommonQueryAstVisitor<R, C>) visitor).visitExcludedPattern(this, context);
   }
 
   @Override
   public List<Node> getChildren() {
-    return ImmutableList.of(pattern, patternQuantifier);
+    return ImmutableList.of(pattern);
   }
 
   @Override
@@ -73,22 +61,18 @@ public class QuantifiedPattern extends RowPattern {
     if ((obj == null) || (getClass() != obj.getClass())) {
       return false;
     }
-    QuantifiedPattern o = (QuantifiedPattern) obj;
-    return Objects.equals(pattern, o.pattern)
-        && Objects.equals(patternQuantifier, o.patternQuantifier);
+    ExcludedPattern o = (ExcludedPattern) obj;
+    return Objects.equals(pattern, o.pattern);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(pattern, patternQuantifier);
+    return Objects.hash(pattern);
   }
 
   @Override
   public String toString() {
-    return toStringHelper(this)
-        .add("pattern", pattern)
-        .add("patternQuantifier", patternQuantifier)
-        .toString();
+    return toStringHelper(this).add("pattern", pattern).toString();
   }
 
   @Override
@@ -101,7 +85,6 @@ public class QuantifiedPattern extends RowPattern {
     long size = INSTANCE_SIZE;
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
     size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(pattern);
-    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(patternQuantifier);
     return size;
   }
 }

@@ -82,6 +82,7 @@ import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Window;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.WindowFrame;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.WindowReference;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.WindowSpecification;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.util.CommonQuerySqlFormatter;
 
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
@@ -99,9 +100,8 @@ import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toList;
 import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction.DATE_BIN;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.util.CommonQuerySqlFormatter.formatName;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.util.ReservedIdentifiers.reserved;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.util.SqlFormatter.formatName;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.util.SqlFormatter.formatSql;
 
 public final class ExpressionFormatter {
 
@@ -114,6 +114,12 @@ public final class ExpressionFormatter {
 
   public static String formatExpression(Expression expression) {
     return new Formatter(Optional.empty(), Optional.empty()).process(expression, null);
+  }
+
+  private static String formatSql(Node root) {
+    StringBuilder builder = new StringBuilder();
+    new CommonQuerySqlFormatter(builder).process(root, 0);
+    return builder.toString();
   }
 
   public static class Formatter implements CommonQueryAstVisitor<String, Void> {

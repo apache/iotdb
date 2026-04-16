@@ -17,13 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
-
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.AstMemoryEstimationHelper;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.IAstVisitor;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Node;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.NodeLocation;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Relation;
+package org.apache.iotdb.db.node_commons.plan.relational.sql.ast;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -34,18 +28,18 @@ import java.util.Objects;
 import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Objects.requireNonNull;
 
-public final class Intersect extends SetOperation {
-  private static final long INSTANCE_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(Intersect.class);
+public class Union extends SetOperation {
+
+  private static final long INSTANCE_SIZE = RamUsageEstimator.shallowSizeOfInstance(Union.class);
 
   private final List<Relation> relations;
 
-  public Intersect(List<Relation> relations, boolean distinct) {
+  public Union(List<Relation> relations, boolean distinct) {
     super(null, distinct);
     this.relations = ImmutableList.copyOf(requireNonNull(relations, "relations is null"));
   }
 
-  public Intersect(NodeLocation location, List<Relation> relations, boolean distinct) {
+  public Union(NodeLocation location, List<Relation> relations, boolean distinct) {
     super(requireNonNull(location, "location is null"), distinct);
     this.relations = ImmutableList.copyOf(requireNonNull(relations, "relations is null"));
   }
@@ -57,7 +51,7 @@ public final class Intersect extends SetOperation {
 
   @Override
   public <R, C> R accept(IAstVisitor<R, C> visitor, C context) {
-    return ((AstVisitor<R, C>) visitor).visitIntersect(this, context);
+    return ((CommonQueryAstVisitor<R, C>) visitor).visitUnion(this, context);
   }
 
   @Override
@@ -81,7 +75,7 @@ public final class Intersect extends SetOperation {
     if ((obj == null) || (getClass() != obj.getClass())) {
       return false;
     }
-    Intersect o = (Intersect) obj;
+    Union o = (Union) obj;
     return Objects.equals(relations, o.relations) && Objects.equals(isDistinct(), o.isDistinct());
   }
 
@@ -96,7 +90,7 @@ public final class Intersect extends SetOperation {
       return false;
     }
 
-    return this.isDistinct() == ((Intersect) other).isDistinct();
+    return this.isDistinct() == ((Union) other).isDistinct();
   }
 
   @Override

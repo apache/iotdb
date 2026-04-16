@@ -31,13 +31,13 @@ import org.apache.iotdb.db.node_commons.common.SessionInfo;
 import org.apache.iotdb.db.node_commons.plan.relational.analyzer.NodeRef;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Identifier;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Query;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Table;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.analyze.lock.SchemaLockType;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.NotThreadSafeMemoryReservationManager;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
 import org.apache.iotdb.db.queryengine.statistics.QueryPlanStatistics;
 import org.apache.iotdb.db.utils.cte.CteDataStore;
 

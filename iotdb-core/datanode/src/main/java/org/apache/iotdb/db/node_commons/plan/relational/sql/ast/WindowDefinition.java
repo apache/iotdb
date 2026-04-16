@@ -17,14 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
-
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.AstMemoryEstimationHelper;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.IAstVisitor;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Identifier;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Node;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.NodeLocation;
+package org.apache.iotdb.db.node_commons.plan.relational.sql.ast;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -35,58 +28,57 @@ import java.util.Objects;
 import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Objects.requireNonNull;
 
-public class VariableDefinition extends Node {
+public class WindowDefinition extends Node {
   private static final long INSTANCE_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(VariableDefinition.class);
+      RamUsageEstimator.shallowSizeOfInstance(WindowDefinition.class);
 
   private final Identifier name;
-  private final Expression expression;
+  private final WindowSpecification window;
 
-  public VariableDefinition(NodeLocation location, Identifier name, Expression expression) {
+  public WindowDefinition(NodeLocation location, Identifier name, WindowSpecification window) {
     super(location);
     this.name = requireNonNull(name, "name is null");
-    this.expression = requireNonNull(expression, "expression is null");
+    this.window = requireNonNull(window, "window is null");
   }
 
   public Identifier getName() {
     return name;
   }
 
-  public Expression getExpression() {
-    return expression;
+  public WindowSpecification getWindow() {
+    return window;
   }
 
   @Override
   public <R, C> R accept(IAstVisitor<R, C> visitor, C context) {
-    return ((AstVisitor<R, C>) visitor).visitVariableDefinition(this, context);
+    return ((CommonQueryAstVisitor<R, C>) visitor).visitWindowDefinition(this, context);
   }
 
   @Override
-  public List<? extends Node> getChildren() {
-    return ImmutableList.of(expression);
+  public List<Node> getChildren() {
+    return ImmutableList.of(window);
   }
 
   @Override
-  public String toString() {
-    return toStringHelper(this).add("name", name).add("expression", expression).toString();
-  }
-
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) {
+  public boolean equals(Object obj) {
+    if (this == obj) {
       return true;
     }
-    if (o == null || getClass() != o.getClass()) {
+    if ((obj == null) || (getClass() != obj.getClass())) {
       return false;
     }
-
-    VariableDefinition that = (VariableDefinition) o;
-    return Objects.equals(name, that.name) && Objects.equals(expression, that.expression);
+    WindowDefinition o = (WindowDefinition) obj;
+    return Objects.equals(name, o.name) && Objects.equals(window, o.window);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(name, expression);
+    return Objects.hash(name, window);
+  }
+
+  @Override
+  public String toString() {
+    return toStringHelper(this).add("name", name).add("window", window).toString();
   }
 
   @Override
@@ -95,7 +87,7 @@ public class VariableDefinition extends Node {
       return false;
     }
 
-    return Objects.equals(name, ((VariableDefinition) other).name);
+    return name.equals(((WindowDefinition) other).name);
   }
 
   @Override
@@ -103,7 +95,7 @@ public class VariableDefinition extends Node {
     long size = INSTANCE_SIZE;
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
     size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(name);
-    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(expression);
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(window);
     return size;
   }
 }

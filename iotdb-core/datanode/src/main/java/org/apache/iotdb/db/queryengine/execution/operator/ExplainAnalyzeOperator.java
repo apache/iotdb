@@ -30,12 +30,12 @@ import org.apache.iotdb.db.calc_commons.execution.operator.process.ProcessOperat
 import org.apache.iotdb.db.exception.mpp.FragmentInstanceFetchException;
 import org.apache.iotdb.db.node_commons.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.node_commons.plan.relational.analyzer.NodeRef;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Table;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.execution.QueryExecution;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
 import org.apache.iotdb.db.queryengine.statistics.FragmentInstanceStatisticsDrawer;
 import org.apache.iotdb.db.queryengine.statistics.QueryStatisticsFetcher;
 import org.apache.iotdb.db.queryengine.statistics.StatisticLine;

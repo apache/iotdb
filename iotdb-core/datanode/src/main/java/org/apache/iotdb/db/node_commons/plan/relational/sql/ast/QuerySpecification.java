@@ -17,19 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
-
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.AstMemoryEstimationHelper;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Fill;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.GroupBy;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.IAstVisitor;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Node;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.NodeLocation;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Offset;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.OrderBy;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.QueryBody;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Relation;
+package org.apache.iotdb.db.node_commons.plan.relational.sql.ast;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -139,7 +127,7 @@ public class QuerySpecification extends QueryBody {
 
   @Override
   public <R, C> R accept(IAstVisitor<R, C> visitor, C context) {
-    return ((AstVisitor<R, C>) visitor).visitQuerySpecification(this, context);
+    return ((CommonQueryAstVisitor<R, C>) visitor).visitQuerySpecification(this, context);
   }
 
   @Override

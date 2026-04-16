@@ -17,12 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
-
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.AstMemoryEstimationHelper;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.IAstVisitor;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Node;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.NodeLocation;
+package org.apache.iotdb.db.node_commons.plan.relational.sql.ast;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -34,13 +29,13 @@ import static com.google.common.base.MoreObjects.toStringHelper;
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
 
-public class PatternAlternation extends RowPattern {
+public class PatternConcatenation extends RowPattern {
   private static final long INSTANCE_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(PatternAlternation.class);
+      RamUsageEstimator.shallowSizeOfInstance(PatternConcatenation.class);
 
   private final List<RowPattern> patterns;
 
-  public PatternAlternation(NodeLocation location, List<RowPattern> patterns) {
+  public PatternConcatenation(NodeLocation location, List<RowPattern> patterns) {
     super(location);
     this.patterns = requireNonNull(patterns, "patterns is null");
     checkArgument(!patterns.isEmpty(), "patterns list is empty");
@@ -52,7 +47,7 @@ public class PatternAlternation extends RowPattern {
 
   @Override
   public <R, C> R accept(IAstVisitor<R, C> visitor, C context) {
-    return ((AstVisitor<R, C>) visitor).visitPatternAlternation(this, context);
+    return ((CommonQueryAstVisitor<R, C>) visitor).visitPatternConcatenation(this, context);
   }
 
   @Override
@@ -68,7 +63,7 @@ public class PatternAlternation extends RowPattern {
     if ((obj == null) || (getClass() != obj.getClass())) {
       return false;
     }
-    PatternAlternation o = (PatternAlternation) obj;
+    PatternConcatenation o = (PatternConcatenation) obj;
     return Objects.equals(patterns, o.patterns);
   }
 

@@ -30,23 +30,23 @@ import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpa
 import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpattern.IrQuantified;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpattern.IrQuantifier;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpattern.IrRowPattern;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.AnchorPattern;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.EmptyPattern;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.ExcludedPattern;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.OneOrMoreQuantifier;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.PatternAlternation;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.PatternConcatenation;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.PatternPermutation;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.PatternQuantifier;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.PatternVariable;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.QuantifiedPattern;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.RangeQuantifier;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.RowPattern;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.ZeroOrMoreQuantifier;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.ZeroOrOneQuantifier;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis.Range;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AnchorPattern;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.EmptyPattern;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExcludedPattern;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.OneOrMoreQuantifier;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PatternAlternation;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PatternConcatenation;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PatternPermutation;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PatternQuantifier;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PatternVariable;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QuantifiedPattern;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RangeQuantifier;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RowPattern;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ZeroOrMoreQuantifier;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ZeroOrOneQuantifier;
 
 import java.util.List;
 

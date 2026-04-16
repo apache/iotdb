@@ -17,12 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
-
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.AstMemoryEstimationHelper;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.IAstVisitor;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Node;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.NodeLocation;
+package org.apache.iotdb.db.node_commons.plan.relational.sql.ast;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -31,33 +26,36 @@ import java.util.List;
 import java.util.Objects;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
-import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
 
-public class PatternPermutation extends RowPattern {
-  private static final long INSTANCE_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(PatternPermutation.class);
-
-  private final List<RowPattern> patterns;
-
-  public PatternPermutation(NodeLocation location, List<RowPattern> patterns) {
-    super(location);
-    this.patterns = requireNonNull(patterns, "patterns is null");
-    checkArgument(!patterns.isEmpty(), "patterns list is empty");
+public class AnchorPattern extends RowPattern {
+  public enum Type {
+    PARTITION_START,
+    PARTITION_END
   }
 
-  public List<RowPattern> getPatterns() {
-    return patterns;
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(AnchorPattern.class);
+
+  private final Type type;
+
+  public AnchorPattern(NodeLocation location, Type type) {
+    super(location);
+    this.type = requireNonNull(type, "type is null");
+  }
+
+  public Type getType() {
+    return type;
   }
 
   @Override
   public <R, C> R accept(IAstVisitor<R, C> visitor, C context) {
-    return ((AstVisitor<R, C>) visitor).visitPatternPermutation(this, context);
+    return ((CommonQueryAstVisitor<R, C>) visitor).visitAnchorPattern(this, context);
   }
 
   @Override
   public List<Node> getChildren() {
-    return ImmutableList.copyOf(patterns);
+    return ImmutableList.of();
   }
 
   @Override
@@ -68,18 +66,18 @@ public class PatternPermutation extends RowPattern {
     if ((obj == null) || (getClass() != obj.getClass())) {
       return false;
     }
-    PatternPermutation o = (PatternPermutation) obj;
-    return Objects.equals(patterns, o.patterns);
+    AnchorPattern o = (AnchorPattern) obj;
+    return Objects.equals(type, o.type);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(patterns);
+    return getClass().hashCode();
   }
 
   @Override
   public String toString() {
-    return toStringHelper(this).add("patterns", patterns).toString();
+    return toStringHelper(this).add("type", type).toString();
   }
 
   @Override
@@ -91,7 +89,6 @@ public class PatternPermutation extends RowPattern {
   public long ramBytesUsed() {
     long size = INSTANCE_SIZE;
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
-    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeList(patterns);
     return size;
   }
 }

@@ -17,14 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
-
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.AstMemoryEstimationHelper;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.IAstVisitor;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Identifier;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Node;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.NodeLocation;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.WindowSpecification;
+package org.apache.iotdb.db.node_commons.plan.relational.sql.ast;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -33,37 +26,33 @@ import java.util.List;
 import java.util.Objects;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
+import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
 
-public class WindowDefinition extends Node {
+public class PatternPermutation extends RowPattern {
   private static final long INSTANCE_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(WindowDefinition.class);
+      RamUsageEstimator.shallowSizeOfInstance(PatternPermutation.class);
 
-  private final Identifier name;
-  private final WindowSpecification window;
+  private final List<RowPattern> patterns;
 
-  public WindowDefinition(NodeLocation location, Identifier name, WindowSpecification window) {
+  public PatternPermutation(NodeLocation location, List<RowPattern> patterns) {
     super(location);
-    this.name = requireNonNull(name, "name is null");
-    this.window = requireNonNull(window, "window is null");
+    this.patterns = requireNonNull(patterns, "patterns is null");
+    checkArgument(!patterns.isEmpty(), "patterns list is empty");
   }
 
-  public Identifier getName() {
-    return name;
-  }
-
-  public WindowSpecification getWindow() {
-    return window;
+  public List<RowPattern> getPatterns() {
+    return patterns;
   }
 
   @Override
   public <R, C> R accept(IAstVisitor<R, C> visitor, C context) {
-    return ((AstVisitor<R, C>) visitor).visitWindowDefinition(this, context);
+    return ((CommonQueryAstVisitor<R, C>) visitor).visitPatternPermutation(this, context);
   }
 
   @Override
   public List<Node> getChildren() {
-    return ImmutableList.of(window);
+    return ImmutableList.copyOf(patterns);
   }
 
   @Override
@@ -74,35 +63,30 @@ public class WindowDefinition extends Node {
     if ((obj == null) || (getClass() != obj.getClass())) {
       return false;
     }
-    WindowDefinition o = (WindowDefinition) obj;
-    return Objects.equals(name, o.name) && Objects.equals(window, o.window);
+    PatternPermutation o = (PatternPermutation) obj;
+    return Objects.equals(patterns, o.patterns);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(name, window);
+    return Objects.hash(patterns);
   }
 
   @Override
   public String toString() {
-    return toStringHelper(this).add("name", name).add("window", window).toString();
+    return toStringHelper(this).add("patterns", patterns).toString();
   }
 
   @Override
   public boolean shallowEquals(Node other) {
-    if (!sameClass(this, other)) {
-      return false;
-    }
-
-    return name.equals(((WindowDefinition) other).name);
+    return sameClass(this, other);
   }
 
   @Override
   public long ramBytesUsed() {
     long size = INSTANCE_SIZE;
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
-    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(name);
-    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(window);
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeList(patterns);
     return size;
   }
 }

@@ -17,19 +17,26 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
+package org.apache.iotdb.db.node_commons.plan.relational.sql.ast;
 
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.IAstVisitor;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Node;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.NodeLocation;
+import java.util.List;
 
-public abstract class RowPattern extends Node {
-  protected RowPattern(NodeLocation location) {
+public abstract class SetOperation extends QueryBody {
+  private final boolean distinct;
+
+  protected SetOperation(NodeLocation location, boolean distinct) {
     super(location);
+    this.distinct = distinct;
+  }
+
+  public boolean isDistinct() {
+    return distinct;
   }
 
   @Override
   public <R, C> R accept(IAstVisitor<R, C> visitor, C context) {
-    return ((AstVisitor<R, C>) visitor).visitRowPattern(this, context);
+    return ((CommonQueryAstVisitor<R, C>) visitor).visitSetOperation(this, context);
   }
+
+  public abstract List<Relation> getRelations();
 }

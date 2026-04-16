@@ -17,25 +17,21 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
-
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.AstMemoryEstimationHelper;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.IAstVisitor;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.NodeLocation;
+package org.apache.iotdb.db.node_commons.plan.relational.sql.ast;
 
 import org.apache.tsfile.utils.RamUsageEstimator;
 
-public class OneOrMoreQuantifier extends PatternQuantifier {
+public class ZeroOrMoreQuantifier extends PatternQuantifier {
   private static final long INSTANCE_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(OneOrMoreQuantifier.class);
+      RamUsageEstimator.shallowSizeOfInstance(ZeroOrMoreQuantifier.class);
 
-  public OneOrMoreQuantifier(NodeLocation location, boolean greedy) {
+  public ZeroOrMoreQuantifier(NodeLocation location, boolean greedy) {
     super(location, greedy);
   }
 
   @Override
   public <R, C> R accept(IAstVisitor<R, C> visitor, C context) {
-    return ((AstVisitor<R, C>) visitor).visitOneOrMoreQuantifier(this, context);
+    return ((CommonQueryAstVisitor<R, C>) visitor).visitZeroOrMoreQuantifier(this, context);
   }
 
   @Override

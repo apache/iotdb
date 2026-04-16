@@ -17,13 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
-
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.AstMemoryEstimationHelper;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.IAstVisitor;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Node;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.NodeLocation;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.SelectItem;
+package org.apache.iotdb.db.node_commons.plan.relational.sql.ast;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -34,50 +28,39 @@ import java.util.Objects;
 import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Objects.requireNonNull;
 
-public class Select extends Node {
+public class Table extends QueryBody {
 
-  private static final long INSTANCE_SIZE = RamUsageEstimator.shallowSizeOfInstance(Select.class);
+  private static final long INSTANCE_SIZE = RamUsageEstimator.shallowSizeOfInstance(Table.class);
 
-  private final boolean distinct;
-  private final List<SelectItem> selectItems;
+  private final QualifiedName name;
 
-  public Select(boolean distinct, List<SelectItem> selectItems) {
+  public Table(QualifiedName name) {
     super(null);
-    this.distinct = distinct;
-    this.selectItems = ImmutableList.copyOf(requireNonNull(selectItems, "selectItems"));
+    this.name = requireNonNull(name, "name is null");
   }
 
-  public Select(NodeLocation location, boolean distinct, List<SelectItem> selectItems) {
+  public Table(NodeLocation location, QualifiedName name) {
     super(requireNonNull(location, "location is null"));
-    this.distinct = distinct;
-    this.selectItems = ImmutableList.copyOf(requireNonNull(selectItems, "selectItems"));
+    this.name = requireNonNull(name, "name is null");
   }
 
-  public boolean isDistinct() {
-    return distinct;
-  }
-
-  public List<SelectItem> getSelectItems() {
-    return selectItems;
+  public QualifiedName getName() {
+    return name;
   }
 
   @Override
   public <R, C> R accept(IAstVisitor<R, C> visitor, C context) {
-    return ((AstVisitor<R, C>) visitor).visitSelect(this, context);
+    return ((CommonQueryAstVisitor<R, C>) visitor).visitTable(this, context);
   }
 
   @Override
-  public List<? extends Node> getChildren() {
-    return selectItems;
+  public List<Node> getChildren() {
+    return ImmutableList.of();
   }
 
   @Override
   public String toString() {
-    return toStringHelper(this)
-        .add("distinct", distinct)
-        .add("selectItems", selectItems)
-        .omitNullValues()
-        .toString();
+    return toStringHelper(this).addValue(name).toString();
   }
 
   @Override
@@ -89,13 +72,13 @@ public class Select extends Node {
       return false;
     }
 
-    Select select = (Select) o;
-    return (distinct == select.distinct) && Objects.equals(selectItems, select.selectItems);
+    Table table = (Table) o;
+    return Objects.equals(name, table.name);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(distinct, selectItems);
+    return Objects.hash(name);
   }
 
   @Override
@@ -104,13 +87,14 @@ public class Select extends Node {
       return false;
     }
 
-    return distinct == ((Select) other).distinct;
+    Table otherTable = (Table) other;
+    return name.equals(otherTable.name);
   }
 
   @Override
   public long ramBytesUsed() {
     return INSTANCE_SIZE
         + AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal())
-        + AstMemoryEstimationHelper.getEstimatedSizeOfNodeList(selectItems);
+        + (name == null ? 0L : name.ramBytesUsed());
   }
 }

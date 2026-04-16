@@ -28,6 +28,7 @@ import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.IAstVisitor;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Node;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.NodeLocation;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Offset;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Table;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.source.TableDeviceQuerySource;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
