@@ -280,9 +280,6 @@ public class PipePluginInfo implements SnapshotProcessor {
 
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (final Throwable e) {
-      if (shouldRecordLoadingFailure) {
-        savePipePluginLoadingFailure(pipePluginMeta, e);
-      }
       final String errorMessage =
           String.format(
               "Failed to execute createPipePlugin(%s) on config nodes, because of %s",
@@ -461,21 +458,6 @@ public class PipePluginInfo implements SnapshotProcessor {
     }
     final String message = current.getMessage();
     return current.getClass().getSimpleName() + (message == null ? "" : (": " + message));
-  }
-
-  private void savePipePluginLoadingFailure(
-      final PipePluginMeta pipePluginMeta, final Throwable throwable) {
-    final String pluginName = pipePluginMeta.getPluginName();
-    pipePluginMetaKeeper.addPipePluginMeta(
-        pluginName,
-        new PipePluginMeta(
-            pipePluginMeta.getPluginName(),
-            pipePluginMeta.getClassName(),
-            pipePluginMeta.isBuiltin(),
-            pipePluginMeta.getJarName(),
-            pipePluginMeta.getJarMD5(),
-            getRootCauseMessage(throwable)));
-    pipePluginMetaKeeper.addPipePluginVisibility(pluginName, Visibility.BOTH);
   }
 
   private void checkPipePluginAvailabilityForPipeCreation(
