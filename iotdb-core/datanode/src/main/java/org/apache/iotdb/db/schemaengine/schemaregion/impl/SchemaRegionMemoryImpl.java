@@ -1339,7 +1339,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       final Map<PartialPath, Map<String, TimeValuePair>> mapToFill,
       final PathPatternTree scope)
       throws MetadataException {
-    return mTree.fillLastQueryMap(pattern, mapToFill, scope);
+    return mtree.fillLastQueryMap(pattern, mapToFill, scope);
   }
 
   @Override
