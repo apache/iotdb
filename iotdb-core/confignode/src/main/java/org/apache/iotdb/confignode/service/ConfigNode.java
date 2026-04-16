@@ -196,6 +196,9 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
         configManager.initConsensusManager();
         upgrade();
         TConfigNodeLocation leaderNodeLocation = waitForLeaderElected();
+        if (leaderNodeLocation == null) {
+          leaderNodeLocation = configManager.getConsensusManager().getNotNullLeaderLocation();
+        }
         setUpMetricService();
         // Notice: We always set up Seed-ConfigNode's RPC service lastly to ensure
         // that the external service is not provided until ConfigNode is fully available
