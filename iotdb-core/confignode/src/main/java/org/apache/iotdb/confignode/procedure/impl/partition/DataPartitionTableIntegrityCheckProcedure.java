@@ -521,11 +521,13 @@ public class DataPartitionTableIntegrityCheckProcedure
 
       if (!dataPartitionTables.containsKey(dataNodeId)) {
         try {
+          TGenerateDataPartitionTableReq req = new TGenerateDataPartitionTableReq();
+          req.setDatabases(databasesWithLostDataPartition);
           Object response =
               SyncDataNodeClientPool.getInstance()
                   .sendSyncRequestToDataNodeWithGivenRetry(
                       dataNode.getLocation().getInternalEndPoint(),
-                      null,
+                      req,
                       CnToDnSyncRequestType.GENERATE_DATA_PARTITION_TABLE_HEART_BEAT,
                       MAX_RETRY_COUNT);
 

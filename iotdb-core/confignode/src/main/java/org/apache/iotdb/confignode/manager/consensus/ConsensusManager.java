@@ -388,6 +388,25 @@ public class ConsensusManager {
     return null;
   }
 
+  public TConfigNodeLocation getNotNullLeaderLocation() {
+    Peer leaderPeer = getLeaderPeer();
+
+    while (leaderPeer == null) {
+      try {
+        Thread.sleep(1000);
+      } catch (InterruptedException ignored) {
+
+      }
+      leaderPeer = getLeaderPeer();
+    }
+
+    Peer finalLeaderPeer = leaderPeer;
+    return getNodeManager().getRegisteredConfigNodes().stream()
+        .filter(leader -> leader.getConfigNodeId() == finalLeaderPeer.getNodeId())
+        .findFirst()
+        .orElse(null);
+  }
+
   /**
    * @return true if ConfigNode-leader is elected, false otherwise.
    */
