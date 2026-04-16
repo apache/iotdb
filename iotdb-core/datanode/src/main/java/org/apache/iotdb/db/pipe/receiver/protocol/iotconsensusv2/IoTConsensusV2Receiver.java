@@ -1001,47 +1001,43 @@ public class IoTConsensusV2Receiver {
       return tsFileWriter.orElse(null);
     }
 
-    @SuppressWarnings("java:S3655")
     public IoTConsensusV2TsFileWriter borrowCorrespondingWriter(TCommitId commitId) {
-      Optional<IoTConsensusV2TsFileWriter> tsFileWriter =
-          iotConsensusV2TsFileWriterPool.stream()
-              .filter(
-                  item ->
-                      item.isUsed()
-                          && Objects.equals(commitId, item.getCommitIdOfCorrespondingHolderEvent()))
-              .findFirst();
-
-      // If the TsFileInsertionEvent is first using tsFileWriter, we will find the first available
-      // buffer for it.
-      if (!tsFileWriter.isPresent()) {
-        // We should synchronously find the idle writer to avoid concurrency issues.
-        lock.lock();
-        try {
-          // We need to check tsFileWriter.isPresent() here. Since there may be both retry-sent
-          // tsfile
-          // events and real-time-sent tsfile events, causing the receiver's tsFileWriter load to
-          // exceed IOTDB_CONFIG.getIoTConsensusV2PipelineSize().
-          while (!tsFileWriter.isPresent()) {
-            tsFileWriter =
-                iotConsensusV2TsFileWriterPool.stream().filter(item -> !item.isUsed()).findFirst();
-            condition.await(RETRY_WAIT_TIME, TimeUnit.MILLISECONDS);
+      lock.lock();
+      try {
+        while (true) {
+          final Optional<IoTConsensusV2TsFileWriter> correspondingWriter =
+              iotConsensusV2TsFileWriterPool.stream()
+                  .filter(
+                      item ->
+                          item.isUsed()
+                              && Objects.equals(
+                                  commitId, item.getCommitIdOfCorrespondingHolderEvent()))
+                  .findFirst();
+          if (correspondingWriter.isPresent()) {
+            return correspondingWriter.get().refreshLastUsedTs();
           }
-          tsFileWriter.get().setUsed(true);
-          tsFileWriter.get().setCommitIdOfCorrespondingHolderEvent(commitId);
-        } catch (final InterruptedException e) {
-          Thread.currentThread().interrupt();
-          final String errorStr =
-              String.format(
-                  "IoTConsensusV2%s: receiver thread get interrupted when waiting for borrowing tsFileWriter.",
-                  consensusPipeName);
-          LOGGER.warn(errorStr);
-          throw new RuntimeException(errorStr);
-        } finally {
-          lock.unlock();
-        }
-      }
 
-      return tsFileWriter.get().refreshLastUsedTs();
+          final Optional<IoTConsensusV2TsFileWriter> idleWriter =
+              iotConsensusV2TsFileWriterPool.stream().filter(item -> !item.isUsed()).findFirst();
+          if (idleWriter.isPresent()) {
+            idleWriter.get().setUsed(true);
+            idleWriter.get().setCommitIdOfCorrespondingHolderEvent(commitId);
+            return idleWriter.get().refreshLastUsedTs();
+          }
+
+          condition.await(RETRY_WAIT_TIME, TimeUnit.MILLISECONDS);
+        }
+      } catch (final InterruptedException e) {
+        Thread.currentThread().interrupt();
+        final String errorStr =
+            String.format(
+                "IoTConsensusV2%s: receiver thread get interrupted when waiting for borrowing tsFileWriter.",
+                consensusPipeName);
+        LOGGER.warn(errorStr);
+        throw new RuntimeException(errorStr);
+      } finally {
+        lock.unlock();
+      }
     }
 
     private void checkZombieTsFileWriter() {
