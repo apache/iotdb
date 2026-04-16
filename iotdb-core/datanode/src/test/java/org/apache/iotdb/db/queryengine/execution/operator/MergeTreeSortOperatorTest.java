@@ -1913,6 +1913,11 @@ public class MergeTreeSortOperatorTest {
     }
 
     @Override
+    public boolean isInsert() {
+      return false;
+    }
+
+    @Override
     public QueryType getQueryType() {
       return QueryType.READ;
     }

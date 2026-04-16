@@ -310,6 +310,11 @@ public class ConfigExecution implements IQueryExecution {
   }
 
   @Override
+  public boolean isInsert() {
+    return false;
+  }
+
+  @Override
   public QueryType getQueryType() {
     return context.getQueryType();
   }

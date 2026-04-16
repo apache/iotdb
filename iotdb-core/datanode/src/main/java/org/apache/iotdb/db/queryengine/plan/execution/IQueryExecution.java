@@ -56,6 +56,8 @@ public interface IQueryExecution {
 
   boolean isQuery();
 
+  boolean isInsert();
+
   boolean isUserQuery();
 
   String getQueryId();

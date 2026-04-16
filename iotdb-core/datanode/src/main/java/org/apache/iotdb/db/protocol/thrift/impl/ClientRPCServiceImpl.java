@@ -1356,7 +1356,9 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
                 clientSession.getClientAddress(),
                 AuditEventType.SLOW_OPERATION,
                 AuditLogOperation.QUERY,
-                PrivilegeType.READ_DATA,
+                clientSession.getSqlDialect() == IClientSession.SqlDialect.TREE
+                    ? PrivilegeType.READ_DATA
+                    : PrivilegeType.SELECT,
                 true,
                 clientSession.getDatabaseName(),
                 null);

@@ -675,6 +675,11 @@ public class QueryExecution implements IQueryExecution {
   }
 
   @Override
+  public boolean isInsert() {
+    return context.isWrite();
+  }
+
+  @Override
   public QueryType getQueryType() {
     return context.getQueryType();
   }

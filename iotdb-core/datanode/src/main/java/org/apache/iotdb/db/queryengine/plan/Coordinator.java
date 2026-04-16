@@ -318,6 +318,10 @@ public class Coordinator {
       boolean debug,
       BiFunction<MPPQueryContext, Long, IQueryExecution> iQueryExecutionFactory) {
     long startTime = System.currentTimeMillis();
+    boolean isWrite = false;
+    boolean isTreeModel = false;
+    IQueryExecution execution = null;
+    String statusString;
     QueryId globalQueryId = queryIdGenerator.createNextQueryId();
     MPPQueryContext queryContext = null;
     try (SetThreadName queryName = new SetThreadName(globalQueryId.getId())) {
@@ -334,12 +338,16 @@ public class Coordinator {
               DataNodeEndPoints.LOCAL_HOST_INTERNAL_ENDPOINT);
       queryContext.setUserQuery(userQuery);
       queryContext.setDebug(debug);
-      IQueryExecution execution = iQueryExecutionFactory.apply(queryContext, startTime);
+      execution = iQueryExecutionFactory.apply(queryContext, startTime);
       if (execution.isQuery()) {
         queryExecutionMap.put(queryId, execution);
       } else {
+        isWrite = execution.isInsert();
         // we won't limit write operation's execution time
         queryContext.setTimeOut(Long.MAX_VALUE);
+      }
+      if (isWrite) {
+        isTreeModel = execution.getSQLDialect() == IClientSession.SqlDialect.TREE;
       }
       execution.start();
       ExecutionResult result = execution.getStatus();
@@ -349,6 +357,37 @@ public class Coordinator {
       }
       return result;
     } finally {
+      long executionTime = System.currentTimeMillis() - startTime;
+      if (execution != null && isWrite && executionTime >= CONFIG.getSlowQueryThreshold()) {
+        // Audit slow write operations
+        PrivilegeType curType = isTreeModel ? PrivilegeType.WRITE_DATA : PrivilegeType.INSERT;
+        statusString =
+            execution.getStatus().status == null ? "null" : execution.getStatus().status.toString();
+        AuditLogFields auditLogFields =
+            new AuditLogFields(
+                execution.getContext().getUserId(),
+                execution.getUser(),
+                execution.getClientHostname(),
+                AuditEventType.SLOW_OPERATION,
+                AuditLogOperation.DML,
+                curType,
+                execution.getStatus().status != null
+                    && (execution.getStatus().status.getCode()
+                            == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+                        || execution.getStatus().status.getCode()
+                            == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()),
+                execution.getContext().getDatabaseName().orElse(""),
+                execution.getExecuteSQL().orElse(""));
+        String sqlForLog = auditLogFields.getSqlString();
+        String finalStatusString = statusString;
+        DNAuditLogger.getInstance()
+            .log(
+                auditLogFields,
+                () ->
+                    String.format(
+                        "Execution: %s cost %d ms, with status code: %s",
+                        sqlForLog, executionTime, finalStatusString));
+      }
       if (queryContext != null) {
         queryContext.releaseAllMemoryReservedForFrontEnd();
       }
@@ -896,7 +935,9 @@ public class Coordinator {
                 queryExecution.getClientHostname(),
                 AuditEventType.SLOW_OPERATION,
                 AuditLogOperation.QUERY,
-                PrivilegeType.READ_DATA,
+                queryExecution.getSQLDialect() == IClientSession.SqlDialect.TREE
+                    ? PrivilegeType.READ_DATA
+                    : PrivilegeType.SELECT,
                 queryExecution.getStatus().status != null
                     && queryExecution.getStatus().status.getCode()
                         == TSStatusCode.SUCCESS_STATUS.getStatusCode(),

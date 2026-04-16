@@ -257,7 +257,9 @@ public class RestApiServiceImpl extends RestApiService {
                   clientSession.getClientAddress(),
                   AuditEventType.SLOW_OPERATION,
                   AuditLogOperation.QUERY,
-                  PrivilegeType.READ_DATA,
+                  clientSession.getSqlDialect() == IClientSession.SqlDialect.TREE
+                      ? PrivilegeType.READ_DATA
+                      : PrivilegeType.SELECT,
                   t == null,
                   clientSession.getDatabaseName(),
                   null);
