@@ -685,7 +685,7 @@ public class InformationSchemaContentSupplierFactory {
           ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
         iterator =
             client.getPipePluginTable().getAllPipePluginMeta().stream()
-                .map(PipePluginMeta::deserialize)
+                .map(PipePluginMeta::deserializeForShowPipePlugin)
                 .filter(
                     pipePluginMeta ->
                         !BuiltinPipePlugin.SHOW_PIPE_PLUGINS_BLACKLIST.contains(

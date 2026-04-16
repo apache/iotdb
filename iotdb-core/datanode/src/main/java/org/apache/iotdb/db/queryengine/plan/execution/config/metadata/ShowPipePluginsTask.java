@@ -75,7 +75,8 @@ public class ShowPipePluginsTask implements IConfigTask {
     final List<PipePluginMeta> pipePluginMetaList = new ArrayList<>();
     if (allPipePluginsInformation != null) {
       for (final ByteBuffer pipePluginInformationByteBuffer : allPipePluginsInformation) {
-        pipePluginMetaList.add(PipePluginMeta.deserialize(pipePluginInformationByteBuffer));
+        pipePluginMetaList.add(
+            PipePluginMeta.deserializeForShowPipePlugin(pipePluginInformationByteBuffer));
       }
     }
     pipePluginMetaList.sort(Comparator.comparing(PipePluginMeta::getPluginName));
