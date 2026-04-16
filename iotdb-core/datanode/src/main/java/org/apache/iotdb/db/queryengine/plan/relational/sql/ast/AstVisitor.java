@@ -77,6 +77,10 @@ public abstract class AstVisitor<R, C> {
     return visitLiteral(node, context);
   }
 
+  protected R visitTimeDurationLiteral(TimeDurationLiteral node, C context) {
+    return visitLiteral(node, context);
+  }
+
   protected R visitStatement(Statement node, C context) {
     return visitNode(node, context);
   }

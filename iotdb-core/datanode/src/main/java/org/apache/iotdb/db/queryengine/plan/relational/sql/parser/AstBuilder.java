@@ -235,6 +235,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableFunctionArgu
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableFunctionInvocation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableFunctionTableArgument;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableSubquery;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TimeDurationLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Trim;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TypeParameter;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Union;
@@ -344,7 +345,6 @@ import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SkipTo.ski
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SkipTo.skipToNextRow;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.util.QueryUtil.selectList;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.util.QueryUtil.table;
-import static org.apache.iotdb.db.utils.TimestampPrecisionUtils.currPrecision;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.APPROX_COUNT_DISTINCT;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.APPROX_MOST_FREQUENT;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.APPROX_PERCENTILE;
@@ -3136,15 +3136,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     if (ctx.expression() != null) {
       return visit(ctx.expression());
     } else {
-      TimeDuration timeDuration = DateTimeUtils.constructTimeDuration(ctx.timeDuration().getText());
-
-      if (timeDuration.monthDuration != 0) {
-        throw new SemanticException("Setting monthly intervals is not supported.");
-      }
-
-      return new LongLiteral(
-          getLocation(ctx.timeDuration()),
-          String.valueOf(timeDuration.getTotalDuration(currPrecision)));
+      return new TimeDurationLiteral(
+          DateTimeUtils.constructTimeDuration(ctx.timeDuration().getText()));
     }
   }
 

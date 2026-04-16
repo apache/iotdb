@@ -75,6 +75,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SortItem;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StringLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubqueryExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TimeDurationLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Trim;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TypeParameter;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WhenClause;
@@ -261,6 +262,11 @@ public final class ExpressionFormatter {
     @Override
     protected String visitNullLiteral(NullLiteral node, Void context) {
       return literalFormatter.map(formatter -> formatter.apply(node)).orElse("null");
+    }
+
+    @Override
+    public String visitTimeDurationLiteral(TimeDurationLiteral node, Void context) {
+      return node.getValue().toString();
     }
 
     @Override
