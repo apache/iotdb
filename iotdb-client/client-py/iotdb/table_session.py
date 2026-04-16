@@ -15,12 +15,13 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-from typing import Union
+from typing import Dict, List, Tuple, Union
 
 from iotdb.Session import Session
 from iotdb.utils.NumpyTablet import NumpyTablet
 from iotdb.utils.SessionDataSet import SessionDataSet
-from iotdb.utils.Tablet import Tablet
+from iotdb.utils.IoTDBConstants import TSDataType
+from iotdb.utils.Tablet import Tablet, ColumnType
 
 
 class TableSessionConfig(object):
@@ -109,6 +110,12 @@ class TableSession(object):
         Raises:
             IoTDBConnectionException: If there is an issue with the database connection.
         """
+        if isinstance(tablet, Tablet):
+            split_tablets = _split_tablet_by_device_for_object(tablet)
+            if split_tablets is not None:
+                for split_tablet in split_tablets:
+                    self.__session.insert_relational_tablet(split_tablet)
+                return
         self.__session.insert_relational_tablet(tablet)
 
     def execute_non_query_statement(self, sql: str):
@@ -154,3 +161,45 @@ class TableSession(object):
             self.__session.close()
         else:
             self.__session_pool.put_back(self.__session)
+
+
+def _split_tablet_by_device_for_object(tablet: Tablet):
+    data_types = tablet.get_data_types()
+
+    column_types = tablet.get_column_categories()
+    tag_indexes = [i for i, c in enumerate(column_types) if c == ColumnType.TAG]
+    if not tag_indexes:
+        return None
+
+    values = tablet.get_values()
+    timestamps = tablet.get_timestamps()
+    if len(values) <= 1:
+        return None
+
+    grouped_rows: Dict[Tuple[object, ...], List[int]] = {}
+    for row_index, row in enumerate(values):
+        key = tuple(row[i] for i in tag_indexes)
+        if key not in grouped_rows:
+            grouped_rows[key] = []
+        grouped_rows[key].append(row_index)
+
+    if len(grouped_rows) <= 1:
+        return None
+
+    split_tablets = []
+    table_name = tablet.get_insert_target_name()
+    column_names = tablet.get_measurements()
+    for row_indexes in grouped_rows.values():
+        sub_values = [values[i] for i in row_indexes]
+        sub_timestamps = [timestamps[i] for i in row_indexes]
+        split_tablets.append(
+            Tablet(
+                table_name,
+                column_names,
+                data_types,
+                sub_values,
+                sub_timestamps,
+                column_types,
+            )
+        )
+    return split_tablets

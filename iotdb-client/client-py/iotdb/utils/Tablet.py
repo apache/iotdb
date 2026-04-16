@@ -157,6 +157,12 @@ class Tablet(object):
     def get_insert_target_name(self):
         return self.__insert_target_name
 
+    def get_timestamps(self):
+        return self.__timestamps
+
+    def get_values(self):
+        return self.__values
+
     def get_binary_timestamps(self):
         format_str_list = [">"]
         values_tobe_packed = []
