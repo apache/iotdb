@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.relational.sql.util;
+package org.apache.iotdb.db.node_commons.plan.relational.sql.util;
 
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.AliasedRelation;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.AllColumns;
@@ -29,7 +29,10 @@ import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Identifier;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Intersect;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Join;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.JoinCriteria;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.JoinOn;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.JoinUsing;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Limit;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.NaturalJoin;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Node;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Offset;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.OrderBy;
@@ -50,11 +53,7 @@ import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.TableSubquery;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Union;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Values;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.WithQuery;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.util.ExpressionFormatter;
 import org.apache.iotdb.db.node_commons.plan.statement.component.FillPolicy;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.JoinOn;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.JoinUsing;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NaturalJoin;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
@@ -70,7 +69,7 @@ import static com.google.common.collect.Iterables.getOnlyElement;
 import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.joining;
 import static org.apache.iotdb.db.node_commons.plan.relational.sql.util.ExpressionFormatter.formatOrderBy;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.util.RowPatternFormatter.formatPattern;
+import static org.apache.iotdb.db.node_commons.plan.relational.sql.util.RowPatternFormatter.formatPattern;
 
 public class CommonQuerySqlFormatter implements CommonQueryAstVisitor<Void, Integer> {
 
@@ -654,8 +653,7 @@ public class CommonQuerySqlFormatter implements CommonQueryAstVisitor<Void, Inte
               "missing identifier in AFTER MATCH SKIP TO LAST");
           skipTo =
               "AFTER MATCH SKIP TO LAST "
-                  + formatExpression(
-                  node.getAfterMatchSkipTo().get().getIdentifier().get());
+                  + formatExpression(node.getAfterMatchSkipTo().get().getIdentifier().get());
           break;
         case FIRST:
           checkState(
@@ -663,8 +661,7 @@ public class CommonQuerySqlFormatter implements CommonQueryAstVisitor<Void, Inte
               "missing identifier in AFTER MATCH SKIP TO FIRST");
           skipTo =
               "AFTER MATCH SKIP TO FIRST "
-                  + formatExpression(
-                  node.getAfterMatchSkipTo().get().getIdentifier().get());
+                  + formatExpression(node.getAfterMatchSkipTo().get().getIdentifier().get());
           break;
         default:
           throw new IllegalStateException("unexpected skipTo: " + node.getAfterMatchSkipTo().get());
@@ -681,11 +678,11 @@ public class CommonQuerySqlFormatter implements CommonQueryAstVisitor<Void, Inte
                       formatExpression(subset.getName())
                           + " = "
                           + subset.getIdentifiers().stream()
-                          .map(
-                              org.apache.iotdb.db.node_commons.plan.relational.sql.util
-                                  .ExpressionFormatter
-                                  ::formatExpression)
-                          .collect(joining(", ", "(", ")")))
+                              .map(
+                                  org.apache.iotdb.db.node_commons.plan.relational.sql.util
+                                          .ExpressionFormatter
+                                      ::formatExpression)
+                              .collect(joining(", ", "(", ")")))
               .collect(com.google.common.collect.ImmutableList.toImmutableList()),
           indent + 2);
     }

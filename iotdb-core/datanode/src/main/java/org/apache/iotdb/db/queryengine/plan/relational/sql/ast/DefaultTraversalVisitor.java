@@ -43,6 +43,7 @@ import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.InPredicate;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.IsNotNullPredicate;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.IsNullPredicate;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Join;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.JoinOn;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.LikePredicate;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Limit;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.LogicalExpression;

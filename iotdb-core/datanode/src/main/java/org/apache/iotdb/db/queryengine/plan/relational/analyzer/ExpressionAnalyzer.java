@@ -78,7 +78,6 @@ import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.RowPattern;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.SearchedCaseExpression;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.SimpleCaseExpression;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.SortItem;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.StackableAstVisitor;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.StringLiteral;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.SubqueryExpression;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.SubsetDefinition;
@@ -102,6 +101,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.OperatorNotFoundException;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StackableAstVisitor;
 
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.ImmutableList;

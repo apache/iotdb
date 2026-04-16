@@ -24,6 +24,7 @@ import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Node;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.PatternRecognitionRelation;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Relation;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Table;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.util.CommonQuerySqlFormatter;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AddColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterPipe;

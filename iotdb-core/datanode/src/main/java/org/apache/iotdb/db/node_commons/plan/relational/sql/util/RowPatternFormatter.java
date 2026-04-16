@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.relational.sql.util;
+package org.apache.iotdb.db.node_commons.plan.relational.sql.util;
 
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.AnchorPattern;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.CommonQueryAstVisitor;
@@ -34,7 +34,6 @@ import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.RangeQuantifier;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.RowPattern;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.ZeroOrMoreQuantifier;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.ZeroOrOneQuantifier;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.util.ExpressionFormatter;
 
 import static java.util.stream.Collectors.joining;
 

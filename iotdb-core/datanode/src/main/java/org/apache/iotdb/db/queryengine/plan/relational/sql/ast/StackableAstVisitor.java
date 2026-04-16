@@ -19,45 +19,49 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.JoinCriteria;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Node;
 
-import com.google.common.collect.ImmutableList;
-import org.apache.tsfile.utils.RamUsageEstimator;
+import java.util.LinkedList;
+import java.util.Optional;
 
-import java.util.List;
-
-import static com.google.common.base.MoreObjects.toStringHelper;
-
-public class NaturalJoin extends JoinCriteria {
-  private static final long INSTANCE_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(NaturalJoin.class);
+public class StackableAstVisitor<R, C>
+    implements AstVisitor<R, StackableAstVisitor.StackableAstVisitorContext<C>> {
 
   @Override
-  public boolean equals(Object obj) {
-    if (this == obj) {
-      return true;
+  public R process(Node node, StackableAstVisitorContext<C> context) {
+    context.push(node);
+    try {
+      return AstVisitor.super.process(node, context);
+    } finally {
+      context.pop();
     }
-    return (obj != null) && (getClass() == obj.getClass());
   }
 
-  @Override
-  public int hashCode() {
-    return getClass().hashCode();
-  }
+  public static class StackableAstVisitorContext<C> {
+    private final LinkedList<Node> stack = new LinkedList<>();
+    private final C context;
 
-  @Override
-  public String toString() {
-    return toStringHelper(this).toString();
-  }
+    public StackableAstVisitorContext(C context) {
+      this.context = context;
+    }
 
-  @Override
-  public List<Node> getNodes() {
-    return ImmutableList.of();
-  }
+    public C getContext() {
+      return context;
+    }
 
-  @Override
-  public long ramBytesUsed() {
-    return INSTANCE_SIZE;
+    private void pop() {
+      stack.pop();
+    }
+
+    void push(Node node) {
+      stack.push(node);
+    }
+
+    public Optional<Node> getPreviousNode() {
+      if (stack.size() > 1) {
+        return Optional.of(stack.get(1));
+      }
+      return Optional.empty();
+    }
   }
 }
