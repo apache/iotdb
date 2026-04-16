@@ -21,10 +21,12 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.AstMemoryEstimationHelper;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Fill;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.GroupBy;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.IAstVisitor;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Node;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.NodeLocation;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Offset;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.OrderBy;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.QueryBody;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Relation;

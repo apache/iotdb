@@ -72,7 +72,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
-import static org.apache.iotdb.db.calc_commons.execution.operator.CommonOperatorUtils.TIME_COLUMN_TEMPLATE;
+import static org.apache.iotdb.db.calc_commons.plan.planner.CommonOperatorUtils.TIME_COLUMN_TEMPLATE;
 import static org.apache.iotdb.db.node_commons.plan.relational.planner.node.AggregationNode.Step.FINAL;
 import static org.apache.iotdb.db.node_commons.plan.relational.planner.node.AggregationNode.Step.PARTIAL;
 import static org.apache.iotdb.db.node_commons.plan.relational.planner.node.JoinNode.JoinType.INNER;

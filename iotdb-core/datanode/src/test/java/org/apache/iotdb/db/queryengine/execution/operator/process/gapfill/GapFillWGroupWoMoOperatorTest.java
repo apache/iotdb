@@ -20,10 +20,12 @@
 package org.apache.iotdb.db.queryengine.execution.operator.process.gapfill;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
-import org.apache.iotdb.db.calc_commons.execution.operator.CommonOperatorUtils;
 import org.apache.iotdb.db.calc_commons.execution.operator.Operator;
 import org.apache.iotdb.db.calc_commons.execution.operator.OperatorContext;
 import org.apache.iotdb.db.calc_commons.execution.operator.process.MergeSortOperator;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.gapfill.gapfill.GapFillWGroupWoMoOperator;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.gapfill.gapfill.GapFillWoGroupWoMoOperator;
+import org.apache.iotdb.db.calc_commons.plan.planner.CommonOperatorUtils;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.SortOrder;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
@@ -51,8 +53,8 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 
+import static org.apache.iotdb.db.calc_commons.execution.operator.process.join.merge.MergeSortComparator.getComparatorForTable;
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
-import static org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.MergeSortComparator.getComparatorForTable;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.fail;

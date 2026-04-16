@@ -18,9 +18,9 @@
  */
 package org.apache.iotdb.db.node_commons.plan.relational.utils;
 
-import org.apache.iotdb.db.node_commons.execution.operator.source.relational.aggregation.grouped.hash.hash.FlatHashStrategy;
-import org.apache.iotdb.db.node_commons.execution.operator.source.relational.aggregation.grouped.hash.hash.HashStrategy;
-import org.apache.iotdb.db.node_commons.execution.operator.source.relational.aggregation.grouped.hash.hash.XxHash64;
+import org.apache.iotdb.db.node_commons.execution.operator.source.relational.aggregation.grouped.hash.FlatHashStrategy;
+import org.apache.iotdb.db.node_commons.execution.operator.source.relational.aggregation.grouped.hash.HashStrategy;
+import org.apache.iotdb.db.node_commons.execution.operator.source.relational.aggregation.grouped.hash.XxHash64;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
@@ -48,8 +48,8 @@ import java.util.List;
 
 import static java.lang.Double.doubleToLongBits;
 import static java.lang.Float.floatToIntBits;
-import static org.apache.iotdb.db.node_commons.execution.operator.source.relational.aggregation.grouped.hash.hash.XxHash64.FALSE_XX_HASH;
-import static org.apache.iotdb.db.node_commons.execution.operator.source.relational.aggregation.grouped.hash.hash.XxHash64.TRUE_XX_HASH;
+import static org.apache.iotdb.db.node_commons.execution.operator.source.relational.aggregation.grouped.hash.XxHash64.FALSE_XX_HASH;
+import static org.apache.iotdb.db.node_commons.execution.operator.source.relational.aggregation.grouped.hash.XxHash64.TRUE_XX_HASH;
 import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
 import static org.apache.tsfile.read.common.type.DateType.DATE;
 import static org.apache.tsfile.read.common.type.IntType.INT32;

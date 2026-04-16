@@ -19,13 +19,13 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.iterative;
 
+import org.apache.iotdb.db.calc_commons.plan.relational.utils.matching.Captures;
+import org.apache.iotdb.db.calc_commons.plan.relational.utils.matching.Pattern;
 import org.apache.iotdb.db.node_commons.common.SessionInfo;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
-import org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Captures;
-import org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Pattern;
 
 import java.util.Optional;
 

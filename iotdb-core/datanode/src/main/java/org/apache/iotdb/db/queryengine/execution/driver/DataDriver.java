@@ -31,7 +31,7 @@ import javax.annotation.concurrent.NotThreadSafe;
 
 import java.util.List;
 
-import static org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet.QUERY_RESOURCE_INIT;
+import static org.apache.iotdb.db.calc_commons.metric.QueryExecutionMetricSet.QUERY_RESOURCE_INIT;
 import static org.apache.iotdb.db.storageengine.dataregion.VirtualDataRegion.UNFINISHED_QUERY_DATA_SOURCE;
 
 /**

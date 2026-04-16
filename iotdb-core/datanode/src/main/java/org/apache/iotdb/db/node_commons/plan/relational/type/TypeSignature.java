@@ -19,10 +19,6 @@
 
 package org.apache.iotdb.db.node_commons.plan.relational.type;
 
-import org.apache.iotdb.db.queryengine.plan.relational.type.ParameterKind;
-import org.apache.iotdb.db.queryengine.plan.relational.type.StandardTypes;
-import org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignatureParameter;
-
 import com.google.errorprone.annotations.FormatMethod;
 import com.google.errorprone.annotations.Immutable;
 
@@ -35,8 +31,8 @@ import java.util.stream.Collectors;
 
 import static java.lang.String.format;
 import static java.util.Arrays.asList;
-import static org.apache.iotdb.db.queryengine.plan.relational.type.StandardTypes.TIME_WITH_TIME_ZONE;
-import static org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignatureParameter.typeParameter;
+import static org.apache.iotdb.db.node_commons.plan.relational.type.StandardTypes.TIME_WITH_TIME_ZONE;
+import static org.apache.iotdb.db.node_commons.plan.relational.type.TypeSignatureParameter.typeParameter;
 
 @Immutable
 public class TypeSignature {

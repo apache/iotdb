@@ -49,8 +49,8 @@ import java.util.Set;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static com.google.common.collect.ImmutableSet.toImmutableSet;
+import static org.apache.iotdb.db.node_commons.plan.relational.sql.ast.ProcessingMode.Mode.FINAL;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.ExpressionTreeUtils.extractExpressions;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ProcessingMode.Mode.FINAL;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.util.AstUtil.preOrder;
 
 public class PatternRecognitionAnalyzer {

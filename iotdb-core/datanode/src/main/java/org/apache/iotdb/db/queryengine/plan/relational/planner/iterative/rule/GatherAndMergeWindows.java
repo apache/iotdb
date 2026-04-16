@@ -19,6 +19,10 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule;
 
+import org.apache.iotdb.db.calc_commons.plan.relational.utils.matching.Capture;
+import org.apache.iotdb.db.calc_commons.plan.relational.utils.matching.Captures;
+import org.apache.iotdb.db.calc_commons.plan.relational.utils.matching.Pattern;
+import org.apache.iotdb.db.calc_commons.plan.relational.utils.matching.PropertyPattern;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.Assignments;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.OrderingScheme;
@@ -28,10 +32,6 @@ import org.apache.iotdb.db.node_commons.plan.relational.planner.node.WindowNode;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolsExtractor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Rule;
-import org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Capture;
-import org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Captures;
-import org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Pattern;
-import org.apache.iotdb.db.queryengine.plan.relational.utils.matching.PropertyPattern;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -49,13 +49,13 @@ import java.util.stream.Stream;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static com.google.common.collect.ImmutableSet.toImmutableSet;
+import static org.apache.iotdb.db.calc_commons.plan.relational.utils.matching.Capture.newCapture;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.Util.restrictOutputs;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.Util.transpose;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.groupNode;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.project;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.source;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.window;
-import static org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Capture.newCapture;
 
 public class GatherAndMergeWindows {
   private GatherAndMergeWindows() {}

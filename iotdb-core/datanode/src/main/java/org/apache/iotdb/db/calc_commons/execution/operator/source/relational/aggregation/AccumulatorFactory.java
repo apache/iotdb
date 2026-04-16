@@ -52,7 +52,7 @@ import org.apache.iotdb.db.calc_commons.execution.operator.source.relational.agg
 import org.apache.iotdb.db.calc_commons.execution.operator.source.relational.aggregation.grouped.LongGroupedApproxMostFrequentAccumulator;
 import org.apache.iotdb.db.calc_commons.plan.udf.TableUDFUtils;
 import org.apache.iotdb.db.node_commons.execution.operator.source.relational.aggregation.grouped.UpdateMemory;
-import org.apache.iotdb.db.node_commons.execution.operator.source.relational.aggregation.grouped.hash.hash.MarkDistinctHash;
+import org.apache.iotdb.db.node_commons.execution.operator.source.relational.aggregation.grouped.hash.MarkDistinctHash;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.node_commons.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.udf.api.customizer.parameter.FunctionArguments;

@@ -33,7 +33,7 @@ import org.apache.iotdb.db.queryengine.execution.driver.DriverContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceStateMachine;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TreeSortOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.MergeSortComparator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.MergeSortComparatorUtils;
 import org.apache.iotdb.db.queryengine.execution.operator.source.SeriesScanOperator;
 import org.apache.iotdb.db.queryengine.plan.statement.component.OrderByKey;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
@@ -177,7 +177,7 @@ public class SortOperatorSortBranchTest {
 
     OperatorContext operatorContext = driverContext.getOperatorContexts().get(1);
     Comparator<SortKey> comparator =
-        MergeSortComparator.getComparator(
+        MergeSortComparatorUtils.getComparator(
             Arrays.asList(new SortItem(OrderByKey.DATANODEID, Ordering.ASC)),
             ImmutableList.of(0),
             outputTypes);

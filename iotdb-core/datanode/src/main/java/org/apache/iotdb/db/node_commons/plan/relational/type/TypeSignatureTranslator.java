@@ -26,7 +26,6 @@ import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.GenericDataType;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Identifier;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.NumericParameter;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.TypeParameter;
-import org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignatureParameter;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.read.common.type.Type;
@@ -36,9 +35,9 @@ import java.util.Locale;
 import java.util.Set;
 
 import static com.google.common.base.Preconditions.checkArgument;
-import static org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignatureParameter.numericParameter;
-import static org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignatureParameter.typeParameter;
-import static org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignatureParameter.typeVariable;
+import static org.apache.iotdb.db.node_commons.plan.relational.type.TypeSignatureParameter.numericParameter;
+import static org.apache.iotdb.db.node_commons.plan.relational.type.TypeSignatureParameter.typeParameter;
+import static org.apache.iotdb.db.node_commons.plan.relational.type.TypeSignatureParameter.typeVariable;
 
 public class TypeSignatureTranslator {
 

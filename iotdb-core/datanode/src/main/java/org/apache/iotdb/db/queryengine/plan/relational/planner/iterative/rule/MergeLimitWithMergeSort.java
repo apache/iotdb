@@ -19,21 +19,21 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule;
 
+import org.apache.iotdb.db.calc_commons.plan.relational.utils.matching.Capture;
+import org.apache.iotdb.db.calc_commons.plan.relational.utils.matching.Captures;
+import org.apache.iotdb.db.calc_commons.plan.relational.utils.matching.Pattern;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.MergeSortNode;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.TopKNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Rule;
-import org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Capture;
-import org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Captures;
-import org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Pattern;
 
 import java.util.Optional;
 
+import static org.apache.iotdb.db.calc_commons.plan.relational.utils.matching.Capture.newCapture;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.limit;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.mergeSort;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.source;
-import static org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Capture.newCapture;
 
 /**
  * <b>Optimization phase:</b> Distributed plan planning.

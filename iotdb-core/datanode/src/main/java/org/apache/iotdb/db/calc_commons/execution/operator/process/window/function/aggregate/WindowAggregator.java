@@ -19,10 +19,10 @@
 
 package org.apache.iotdb.db.calc_commons.execution.operator.process.window.function.aggregate;
 
-import org.apache.iotdb.db.calc_commons.execution.operator.CommonOperatorUtils;
 import org.apache.iotdb.db.calc_commons.execution.operator.process.window.partition.Partition;
 import org.apache.iotdb.db.calc_commons.execution.operator.source.relational.aggregation.AggregationMask;
 import org.apache.iotdb.db.calc_commons.execution.operator.source.relational.aggregation.TableAccumulator;
+import org.apache.iotdb.db.calc_commons.plan.planner.CommonOperatorUtils;
 
 import com.google.common.primitives.Ints;
 import org.apache.tsfile.block.column.Column;

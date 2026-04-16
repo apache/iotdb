@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule;
 
 import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction;
+import org.apache.iotdb.db.calc_commons.plan.relational.utils.matching.Captures;
+import org.apache.iotdb.db.calc_commons.plan.relational.utils.matching.Pattern;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.Assignments;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.IntersectNode;
@@ -30,8 +32,6 @@ import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.QualifiedName;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Rule;
-import org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Captures;
-import org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Pattern;
 
 import com.google.common.collect.ImmutableList;
 

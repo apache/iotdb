@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.util;
 
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Identifier;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.ParsingException;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.parser.ParsingException;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 
 import java.time.ZoneId;

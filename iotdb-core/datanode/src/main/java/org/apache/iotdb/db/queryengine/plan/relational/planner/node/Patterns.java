@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.node;
 
+import org.apache.iotdb.db.calc_commons.plan.relational.utils.matching.Pattern;
+import org.apache.iotdb.db.calc_commons.plan.relational.utils.matching.Property;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.AggregationNode;
@@ -52,17 +54,15 @@ import org.apache.iotdb.db.node_commons.plan.relational.planner.node.UnionNode;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.WindowNode;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Lookup;
-import org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Pattern;
-import org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Property;
 
 import java.util.List;
 import java.util.Optional;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static com.google.common.collect.Iterables.getOnlyElement;
-import static org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Pattern.typeOf;
-import static org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Property.optionalProperty;
-import static org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Property.property;
+import static org.apache.iotdb.db.calc_commons.plan.relational.utils.matching.Pattern.typeOf;
+import static org.apache.iotdb.db.calc_commons.plan.relational.utils.matching.Property.optionalProperty;
+import static org.apache.iotdb.db.calc_commons.plan.relational.utils.matching.Property.property;
 
 public final class Patterns {
   private Patterns() {}

@@ -25,6 +25,7 @@ import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Node;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.NodeLocation;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Statement;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.parser.ParsingException;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlBaseListener;
 import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlLexer;

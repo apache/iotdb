@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.calc_commons.execution.operator.process.rowpattern.matcher;
 
-import org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Captures;
+import org.apache.iotdb.db.calc_commons.plan.relational.utils.matching.Captures;
 
 import org.apache.tsfile.utils.RamUsageEstimator;
 

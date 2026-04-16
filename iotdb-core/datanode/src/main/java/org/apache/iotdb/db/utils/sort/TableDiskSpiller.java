@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.utils.sort;
 
-import org.apache.iotdb.db.calc_commons.execution.operator.CommonOperatorUtils;
+import org.apache.iotdb.db.calc_commons.plan.planner.CommonOperatorUtils;
 
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;

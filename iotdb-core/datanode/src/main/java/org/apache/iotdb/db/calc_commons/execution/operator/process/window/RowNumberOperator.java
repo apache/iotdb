@@ -23,7 +23,7 @@ import org.apache.iotdb.db.calc_commons.execution.operator.OperatorContext;
 import org.apache.iotdb.db.calc_commons.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.db.node_commons.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.node_commons.execution.operator.source.relational.aggregation.grouped.UpdateMemory;
-import org.apache.iotdb.db.node_commons.execution.operator.source.relational.aggregation.grouped.hash.hash.GroupByHash;
+import org.apache.iotdb.db.node_commons.execution.operator.source.relational.aggregation.grouped.hash.GroupByHash;
 import org.apache.iotdb.db.node_commons.plan.relational.type.InternalTypeManager;
 
 import com.google.common.collect.ImmutableList;
@@ -44,8 +44,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-import static org.apache.iotdb.db.calc_commons.execution.operator.CommonOperatorUtils.TIME_COLUMN_TEMPLATE;
-import static org.apache.iotdb.db.node_commons.execution.operator.source.relational.aggregation.grouped.hash.hash.GroupByHash.createGroupByHash;
+import static org.apache.iotdb.db.calc_commons.plan.planner.CommonOperatorUtils.TIME_COLUMN_TEMPLATE;
+import static org.apache.iotdb.db.node_commons.execution.operator.source.relational.aggregation.grouped.hash.GroupByHash.createGroupByHash;
 
 public class RowNumberOperator implements ProcessOperator {
   private static final long INSTANCE_SIZE =

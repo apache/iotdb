@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.calc_commons.execution.operator.process.window;
 
-import org.apache.iotdb.db.calc_commons.execution.operator.CommonOperatorUtils;
 import org.apache.iotdb.db.calc_commons.execution.operator.Operator;
 import org.apache.iotdb.db.calc_commons.execution.operator.OperatorContext;
 import org.apache.iotdb.db.calc_commons.execution.operator.process.ProcessOperator;
@@ -30,6 +29,7 @@ import org.apache.iotdb.db.calc_commons.execution.operator.process.window.functi
 import org.apache.iotdb.db.calc_commons.execution.operator.process.window.partition.Partition;
 import org.apache.iotdb.db.calc_commons.execution.operator.process.window.partition.PartitionExecutor;
 import org.apache.iotdb.db.calc_commons.execution.operator.process.window.partition.frame.FrameInfo;
+import org.apache.iotdb.db.calc_commons.plan.planner.CommonOperatorUtils;
 import org.apache.iotdb.db.calc_commons.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.db.node_commons.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.process.function.PartitionRecognizer;
@@ -49,7 +49,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-import static org.apache.iotdb.db.calc_commons.execution.operator.CommonOperatorUtils.MAX_RESERVED_MEMORY;
+import static org.apache.iotdb.db.calc_commons.plan.planner.CommonOperatorUtils.MAX_RESERVED_MEMORY;
 
 public class TableWindowOperator implements ProcessOperator {
   private static final long INSTANCE_SIZE =

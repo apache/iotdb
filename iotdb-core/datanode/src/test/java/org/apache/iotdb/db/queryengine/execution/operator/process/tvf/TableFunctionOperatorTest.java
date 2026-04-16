@@ -49,7 +49,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 
-import static org.apache.iotdb.db.calc_commons.execution.operator.CommonOperatorUtils.TIME_COLUMN_TEMPLATE;
+import static org.apache.iotdb.db.calc_commons.plan.planner.CommonOperatorUtils.TIME_COLUMN_TEMPLATE;
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;

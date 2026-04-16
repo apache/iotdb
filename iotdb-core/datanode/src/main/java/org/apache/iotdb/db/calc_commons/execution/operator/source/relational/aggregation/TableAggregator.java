@@ -19,7 +19,8 @@
 
 package org.apache.iotdb.db.calc_commons.execution.operator.source.relational.aggregation;
 
-import org.apache.iotdb.db.calc_commons.execution.operator.CommonOperatorUtils;
+import org.apache.iotdb.db.calc_commons.metric.QueryExecutionMetricSet;
+import org.apache.iotdb.db.calc_commons.plan.planner.CommonOperatorUtils;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.AggregationNode;
 
 import com.google.common.primitives.Ints;
@@ -35,10 +36,13 @@ import java.util.OptionalInt;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
-import static org.apache.iotdb.db.queryengine.execution.aggregation.TreeAggregator.QUERY_EXECUTION_METRICS;
-import static org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet.AGGREGATION_FROM_RAW_DATA;
+import static org.apache.iotdb.db.calc_commons.metric.QueryExecutionMetricSet.AGGREGATION_FROM_RAW_DATA;
 
 public class TableAggregator {
+
+  public static final QueryExecutionMetricSet QUERY_EXECUTION_METRICS =
+      QueryExecutionMetricSet.getInstance();
+
   private final TableAccumulator accumulator;
   private final AggregationNode.Step step;
   private final TSDataType outputType;

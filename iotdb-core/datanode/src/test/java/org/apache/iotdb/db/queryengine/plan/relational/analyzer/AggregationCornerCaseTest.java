@@ -57,11 +57,11 @@ import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggreg
 import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFunction.LAST;
 import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFunction.SUM;
 import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFunction.getAggregationTypeByFuncName;
-import static org.apache.iotdb.db.calc_commons.execution.operator.CommonOperatorUtils.TIME_COLUMN_TEMPLATE;
+import static org.apache.iotdb.db.calc_commons.execution.operator.process.join.merge.MergeSortComparator.getComparatorForTable;
 import static org.apache.iotdb.db.calc_commons.execution.operator.source.relational.aggregation.AccumulatorFactory.createGroupedAccumulator;
-import static org.apache.iotdb.db.node_commons.execution.operator.source.relational.aggregation.grouped.hash.hash.GroupByHash.DEFAULT_GROUP_NUMBER;
+import static org.apache.iotdb.db.calc_commons.plan.planner.CommonOperatorUtils.TIME_COLUMN_TEMPLATE;
+import static org.apache.iotdb.db.node_commons.execution.operator.source.relational.aggregation.grouped.hash.GroupByHash.DEFAULT_GROUP_NUMBER;
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
-import static org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.MergeSortComparator.getComparatorForTable;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 

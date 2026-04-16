@@ -19,13 +19,13 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
-import org.apache.iotdb.db.calc_commons.plan.expression.UnknownExpressionTypeException;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Identifier;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.InPredicate;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.LogicalExpression;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.LongLiteral;
+import org.apache.iotdb.db.queryengine.plan.expression.UnknownExpressionTypeException;
 
 import org.apache.tsfile.utils.Pair;
 

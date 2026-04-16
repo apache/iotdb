@@ -38,8 +38,8 @@ import org.apache.tsfile.utils.RamUsageEstimator;
 import java.util.List;
 import java.util.Optional;
 
-import static org.apache.iotdb.db.calc_commons.execution.operator.CommonOperatorUtils.CURRENT_DEVICE_INDEX_STRING;
-import static org.apache.iotdb.db.calc_commons.execution.operator.CommonOperatorUtils.TIME_COLUMN_TEMPLATE;
+import static org.apache.iotdb.db.calc_commons.plan.planner.CommonOperatorUtils.CURRENT_DEVICE_INDEX_STRING;
+import static org.apache.iotdb.db.calc_commons.plan.planner.CommonOperatorUtils.TIME_COLUMN_TEMPLATE;
 
 public class TreeNonAlignedDeviceViewAggregationScanOperator
     extends AbstractDefaultAggTableScanOperator {

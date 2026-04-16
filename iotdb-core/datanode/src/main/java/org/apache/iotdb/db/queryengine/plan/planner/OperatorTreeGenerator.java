@@ -44,8 +44,7 @@ import org.apache.iotdb.db.calc_commons.execution.operator.process.fill.constant
 import org.apache.iotdb.db.calc_commons.execution.operator.process.fill.constant.FloatConstantFill;
 import org.apache.iotdb.db.calc_commons.execution.operator.process.fill.constant.IntConstantFill;
 import org.apache.iotdb.db.calc_commons.execution.operator.process.fill.constant.LongConstantFill;
-import org.apache.iotdb.db.calc_commons.execution.operator.process.fill.identity.IdentityFill;
-import org.apache.iotdb.db.calc_commons.plan.planner.OperatorGeneratorUtils;
+import org.apache.iotdb.db.calc_commons.plan.planner.CommonOperatorUtils;
 import org.apache.iotdb.db.calc_commons.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.calc_commons.transformation.dag.column.leaf.LeafColumnTransformer;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -56,6 +55,7 @@ import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.process.MultiChildProcessNode;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.process.TwoChildProcessNode;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.parameter.InputLocation;
+import org.apache.iotdb.db.node_commons.plan.statement.component.FillPolicy;
 import org.apache.iotdb.db.queryengine.common.DeviceContext;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.TimeseriesContext;
@@ -240,7 +240,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOpt
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.model.ModelInferenceDescriptor;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceLastCache;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TreeDeviceSchemaCacheManager;
-import org.apache.iotdb.db.queryengine.plan.statement.component.FillPolicy;
 import org.apache.iotdb.db.queryengine.plan.statement.component.OrderByKey;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.queryengine.plan.statement.component.SortItem;
@@ -297,7 +296,7 @@ import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil
 import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil.calculateMaxAggregationResultSizeForLastQuery;
 import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil.getOutputColumnSizePerLine;
 import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil.initTimeRangeIterator;
-import static org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.MergeSortComparator.getComparator;
+import static org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.MergeSortComparatorUtils.getComparator;
 import static org.apache.iotdb.db.queryengine.execution.operator.sink.IdentitySinkOperator.DELIMITER_BETWEEN_ID;
 import static org.apache.iotdb.db.queryengine.execution.operator.sink.IdentitySinkOperator.DOWNSTREAM_PLAN_NODE_ID;
 import static org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils.convertPredicateToFilter;
@@ -320,8 +319,6 @@ public class OperatorTreeGenerator implements PlanVisitor<Operator, LocalExecuti
   public static final TimeComparator ASC_TIME_COMPARATOR = new AscTimeComparator();
 
   private static final TimeComparator DESC_TIME_COMPARATOR = new DescTimeComparator();
-
-  public static final IdentityFill IDENTITY_FILL = new IdentityFill();
 
   private static final Comparator<Binary> ASC_BINARY_COMPARATOR = Comparator.naturalOrder();
 
@@ -1322,7 +1319,7 @@ public class OperatorTreeGenerator implements PlanVisitor<Operator, LocalExecuti
       case PREVIOUS:
         return new TreeFillOperator(
             operatorContext,
-            OperatorGeneratorUtils.getPreviousFill(
+            CommonOperatorUtils.getPreviousFill(
                 inputColumns,
                 inputDataTypes,
                 descriptor.getTimeDurationThreshold(),
@@ -1331,7 +1328,7 @@ public class OperatorTreeGenerator implements PlanVisitor<Operator, LocalExecuti
       case LINEAR:
         return new TreeLinearFillOperator(
             operatorContext,
-            OperatorGeneratorUtils.getLinearFill(inputColumns, inputDataTypes),
+            CommonOperatorUtils.getLinearFill(inputColumns, inputDataTypes),
             child);
       default:
         throw new IllegalArgumentException("Unknown fill policy: " + fillPolicy);
@@ -1343,7 +1340,7 @@ public class OperatorTreeGenerator implements PlanVisitor<Operator, LocalExecuti
     IFill[] constantFill = new IFill[inputColumns];
     for (int i = 0; i < inputColumns; i++) {
       if (!literal.isDataTypeConsistency(inputDataTypes.get(i))) {
-        constantFill[i] = IDENTITY_FILL;
+        constantFill[i] = CommonOperatorUtils.IDENTITY_FILL;
         continue;
       }
       switch (inputDataTypes.get(i)) {
@@ -1373,7 +1370,7 @@ public class OperatorTreeGenerator implements PlanVisitor<Operator, LocalExecuti
           break;
         default:
           throw new IllegalArgumentException(
-              OperatorGeneratorUtils.UNKNOWN_DATATYPE + inputDataTypes.get(i));
+              CommonOperatorUtils.UNKNOWN_DATATYPE + inputDataTypes.get(i));
       }
     }
     return constantFill;

@@ -41,7 +41,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.TreeTopKOperat
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.FullOuterTimeJoinOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.AscTimeComparator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.DescTimeComparator;
-import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.MergeSortComparator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.MergeSortComparatorUtils;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.SingleColumnMerger;
 import org.apache.iotdb.db.queryengine.execution.operator.source.SeriesScanOperator;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
@@ -340,7 +340,7 @@ public class TreeTopKOperatorTest {
             Arrays.asList(
                 singleDeviceViewOperator1, singleDeviceViewOperator2, singleDeviceViewOperator3),
             tsDataTypes,
-            MergeSortComparator.getComparator(
+            MergeSortComparatorUtils.getComparator(
                 Arrays.asList(
                     new SortItem(OrderByKey.TIME, timeOrdering),
                     new SortItem(OrderByKey.DEVICE, deviceOrdering)),
@@ -710,7 +710,7 @@ public class TreeTopKOperatorTest {
             driverContext.getOperatorContexts().get(14),
             Arrays.asList(singleDeviceViewOperator1, singleDeviceViewOperator2),
             tsDataTypes,
-            MergeSortComparator.getComparator(
+            MergeSortComparatorUtils.getComparator(
                 Arrays.asList(
                     new SortItem(OrderByKey.TIME, timeOrdering),
                     new SortItem(OrderByKey.DEVICE, deviceOrdering)),
@@ -724,7 +724,7 @@ public class TreeTopKOperatorTest {
             driverContext.getOperatorContexts().get(15),
             Arrays.asList(singleDeviceViewOperator3, singleDeviceViewOperator4),
             tsDataTypes,
-            MergeSortComparator.getComparator(
+            MergeSortComparatorUtils.getComparator(
                 Arrays.asList(
                     new SortItem(OrderByKey.TIME, timeOrdering),
                     new SortItem(OrderByKey.DEVICE, deviceOrdering)),
@@ -739,7 +739,7 @@ public class TreeTopKOperatorTest {
             driverContext.getOperatorContexts().get(16),
             Arrays.asList(topKOperator1, topKOperator2),
             tsDataTypes,
-            MergeSortComparator.getComparator(
+            MergeSortComparatorUtils.getComparator(
                 Arrays.asList(
                     new SortItem(OrderByKey.TIME, timeOrdering),
                     new SortItem(OrderByKey.DEVICE, deviceOrdering)),
@@ -1093,7 +1093,7 @@ public class TreeTopKOperatorTest {
             driverContext.getOperatorContexts().get(12),
             Arrays.asList(deviceViewOperator1, deviceViewOperator2),
             tsDataTypes,
-            MergeSortComparator.getComparator(
+            MergeSortComparatorUtils.getComparator(
                 Arrays.asList(
                     new SortItem(OrderByKey.DEVICE, deviceOrdering),
                     new SortItem(OrderByKey.TIME, timeOrdering)),
@@ -1322,7 +1322,7 @@ public class TreeTopKOperatorTest {
             driverContext.getOperatorContexts().get(0),
             Arrays.asList(childOperator1, childOperator2),
             Collections.singletonList(TSDataType.INT64),
-            MergeSortComparator.getComparator(
+            MergeSortComparatorUtils.getComparator(
                 Collections.singletonList(new SortItem(OrderByKey.TIME, Ordering.ASC)),
                 Collections.singletonList(-1),
                 Collections.singletonList(TSDataType.INT64)),
@@ -1547,7 +1547,7 @@ public class TreeTopKOperatorTest {
             Arrays.asList(
                 singleDeviceViewOperator1, singleDeviceViewOperator2, singleDeviceViewOperator3),
             tsDataTypes,
-            MergeSortComparator.getComparator(
+            MergeSortComparatorUtils.getComparator(
                 Arrays.asList(
                     new SortItem(OrderByKey.TIME, timeOrdering),
                     new SortItem(OrderByKey.DEVICE, deviceOrdering)),

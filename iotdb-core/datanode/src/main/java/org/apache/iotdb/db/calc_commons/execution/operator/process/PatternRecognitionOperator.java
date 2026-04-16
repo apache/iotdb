@@ -50,8 +50,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
-import static org.apache.iotdb.db.calc_commons.execution.operator.CommonOperatorUtils.MAX_RESERVED_MEMORY;
-import static org.apache.iotdb.db.calc_commons.execution.operator.CommonOperatorUtils.TIME_COLUMN_TEMPLATE;
+import static org.apache.iotdb.db.calc_commons.plan.planner.CommonOperatorUtils.MAX_RESERVED_MEMORY;
+import static org.apache.iotdb.db.calc_commons.plan.planner.CommonOperatorUtils.TIME_COLUMN_TEMPLATE;
 
 public class PatternRecognitionOperator implements ProcessOperator {
 

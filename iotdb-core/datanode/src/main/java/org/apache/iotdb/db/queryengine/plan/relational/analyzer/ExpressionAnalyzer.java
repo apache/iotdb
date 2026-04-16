@@ -69,6 +69,7 @@ import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.NullIfExpression
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.NullLiteral;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.OrderBy;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Parameter;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.ProcessingMode;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.QualifiedName;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.QuantifiedComparisonExpression;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Row;
@@ -98,7 +99,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.OperatorNotFoundException;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ProcessingMode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RangeQuantifier;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RowPattern;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubsetDefinition;

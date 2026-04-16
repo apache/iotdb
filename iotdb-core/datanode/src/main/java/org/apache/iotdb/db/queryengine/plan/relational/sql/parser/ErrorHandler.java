@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.parser;
 
+import org.apache.iotdb.db.node_commons.plan.relational.sql.parser.ParsingException;
+
 import com.google.common.collect.ImmutableSet;
 import org.antlr.v4.runtime.BaseErrorListener;
 import org.antlr.v4.runtime.NoViableAltException;

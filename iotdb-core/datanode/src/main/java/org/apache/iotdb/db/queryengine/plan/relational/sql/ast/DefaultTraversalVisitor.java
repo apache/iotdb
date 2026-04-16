@@ -31,6 +31,7 @@ import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.DereferenceExpre
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.ExistsPredicate;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Extract;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Fill;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.GroupBy;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.GroupingElement;
@@ -42,10 +43,12 @@ import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.IsNotNullPredica
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.IsNullPredicate;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Join;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.LikePredicate;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Limit;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.LogicalExpression;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Node;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.NotExpression;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.NullIfExpression;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Offset;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.OrderBy;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.QuantifiedComparisonExpression;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Query;
@@ -62,6 +65,8 @@ import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.TableSubquery;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Trim;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Values;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.WhenClause;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.With;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.WithQuery;
 
 public abstract class DefaultTraversalVisitor<C> extends AstVisitor<Void, C> {
   @Override

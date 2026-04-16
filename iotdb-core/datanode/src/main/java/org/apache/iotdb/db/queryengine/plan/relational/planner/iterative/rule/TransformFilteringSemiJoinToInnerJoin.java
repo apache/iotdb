@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule;
 
+import org.apache.iotdb.db.calc_commons.plan.relational.utils.matching.Capture;
+import org.apache.iotdb.db.calc_commons.plan.relational.utils.matching.Captures;
+import org.apache.iotdb.db.calc_commons.plan.relational.utils.matching.Pattern;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.Assignments;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.Symbol;
@@ -28,9 +31,6 @@ import org.apache.iotdb.db.node_commons.plan.relational.planner.node.ProjectNode
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.SemiJoinNode;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Rule;
-import org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Capture;
-import org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Captures;
-import org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Pattern;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -40,6 +40,7 @@ import java.util.Optional;
 import java.util.function.Predicate;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
+import static org.apache.iotdb.db.calc_commons.plan.relational.utils.matching.Capture.newCapture;
 import static org.apache.iotdb.db.node_commons.plan.relational.planner.node.AggregationNode.singleAggregation;
 import static org.apache.iotdb.db.node_commons.plan.relational.planner.node.AggregationNode.singleGroupingSet;
 import static org.apache.iotdb.db.node_commons.plan.relational.planner.node.JoinNode.JoinType.INNER;
@@ -50,7 +51,6 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.filter;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.semiJoin;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.source;
-import static org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Capture.newCapture;
 
 /**
  * Rewrite filtering semi-join to inner join.

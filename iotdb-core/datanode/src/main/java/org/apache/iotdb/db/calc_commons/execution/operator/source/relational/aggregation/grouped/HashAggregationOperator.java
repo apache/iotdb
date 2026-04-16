@@ -38,7 +38,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static com.google.common.base.Preconditions.checkState;
-import static org.apache.iotdb.db.calc_commons.execution.operator.CommonOperatorUtils.CURRENT_USED_MEMORY;
+import static org.apache.iotdb.db.calc_commons.plan.planner.CommonOperatorUtils.CURRENT_USED_MEMORY;
 import static org.apache.iotdb.db.node_commons.execution.operator.source.relational.aggregation.grouped.UpdateMemory.NOOP;
 
 public class HashAggregationOperator extends AbstractOperator {

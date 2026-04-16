@@ -33,7 +33,7 @@ import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
 import java.util.List;
 
 import static java.util.Objects.requireNonNull;
-import static org.apache.iotdb.db.calc_commons.execution.operator.CommonOperatorUtils.TIME_COLUMN_TEMPLATE;
+import static org.apache.iotdb.db.calc_commons.plan.planner.CommonOperatorUtils.TIME_COLUMN_TEMPLATE;
 
 /**
  * This class computes an aggregate function result in row pattern recognition context.

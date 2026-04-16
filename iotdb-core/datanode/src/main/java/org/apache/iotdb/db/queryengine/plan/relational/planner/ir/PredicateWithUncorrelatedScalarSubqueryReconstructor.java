@@ -36,6 +36,8 @@ import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.NotExpression;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Query;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.StringLiteral;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.SubqueryExpression;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.With;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.WithQuery;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext.ExplainType;
@@ -44,8 +46,6 @@ import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.With;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WithQuery;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.apache.iotdb.rpc.TSStatusCode;
 

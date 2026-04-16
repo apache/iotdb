@@ -25,7 +25,7 @@ import org.apache.iotdb.db.calc_commons.execution.operator.process.ProcessOperat
 import org.apache.iotdb.db.calc_commons.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.db.node_commons.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.node_commons.execution.operator.source.relational.aggregation.grouped.UpdateMemory;
-import org.apache.iotdb.db.node_commons.execution.operator.source.relational.aggregation.grouped.hash.hash.MarkDistinctHash;
+import org.apache.iotdb.db.node_commons.execution.operator.source.relational.aggregation.grouped.hash.MarkDistinctHash;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.primitives.Ints;
@@ -40,7 +40,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static java.util.Objects.requireNonNull;
-import static org.apache.iotdb.db.calc_commons.execution.operator.CommonOperatorUtils.CURRENT_USED_MEMORY;
+import static org.apache.iotdb.db.calc_commons.plan.planner.CommonOperatorUtils.CURRENT_USED_MEMORY;
 
 public class MarkDistinctOperator implements ProcessOperator {
 

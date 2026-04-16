@@ -55,27 +55,7 @@ public abstract class AstVisitor<R, C> extends CommonQueryAstVisitor<R, C> {
     return visitStatement(node, context);
   }
 
-  protected R visitWith(With node, C context) {
-    return visitNode(node, context);
-  }
-
-  protected R visitWithQuery(WithQuery node, C context) {
-    return visitNode(node, context);
-  }
-
   protected R visitSelect(Select node, C context) {
-    return visitNode(node, context);
-  }
-
-  protected R visitFill(Fill node, C context) {
-    return visitNode(node, context);
-  }
-
-  protected R visitOffset(Offset node, C context) {
-    return visitNode(node, context);
-  }
-
-  protected R visitLimit(Limit node, C context) {
     return visitNode(node, context);
   }
 
@@ -97,10 +77,6 @@ public abstract class AstVisitor<R, C> extends CommonQueryAstVisitor<R, C> {
 
   protected R visitExcept(Except node, C context) {
     return visitSetOperation(node, context);
-  }
-
-  protected R visitProcessingMode(ProcessingMode node, C context) {
-    return visitNode(node, context);
   }
 
   protected R visitWindowDefinition(WindowDefinition node, C context) {

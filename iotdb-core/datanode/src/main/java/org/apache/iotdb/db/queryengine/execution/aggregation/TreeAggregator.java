@@ -20,8 +20,8 @@
 package org.apache.iotdb.db.queryengine.execution.aggregation;
 
 import org.apache.iotdb.db.calc_commons.execution.aggregation.Accumulator;
+import org.apache.iotdb.db.calc_commons.metric.QueryExecutionMetricSet;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.parameter.InputLocation;
-import org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationStep;
 
 import org.apache.tsfile.block.column.Column;
@@ -35,8 +35,8 @@ import java.util.Collections;
 import java.util.List;
 
 import static com.google.common.base.Preconditions.checkArgument;
-import static org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet.AGGREGATION_FROM_RAW_DATA;
-import static org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet.AGGREGATION_FROM_STATISTICS;
+import static org.apache.iotdb.db.calc_commons.metric.QueryExecutionMetricSet.AGGREGATION_FROM_RAW_DATA;
+import static org.apache.iotdb.db.calc_commons.metric.QueryExecutionMetricSet.AGGREGATION_FROM_STATISTICS;
 
 public class TreeAggregator {
 

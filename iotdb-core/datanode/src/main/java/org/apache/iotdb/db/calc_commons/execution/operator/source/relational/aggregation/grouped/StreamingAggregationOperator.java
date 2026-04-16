@@ -20,10 +20,10 @@
 package org.apache.iotdb.db.calc_commons.execution.operator.source.relational.aggregation.grouped;
 
 import org.apache.iotdb.db.calc_commons.execution.operator.AbstractOperator;
-import org.apache.iotdb.db.calc_commons.execution.operator.CommonOperatorUtils;
 import org.apache.iotdb.db.calc_commons.execution.operator.Operator;
 import org.apache.iotdb.db.calc_commons.execution.operator.OperatorContext;
 import org.apache.iotdb.db.calc_commons.execution.operator.source.relational.aggregation.TableAggregator;
+import org.apache.iotdb.db.calc_commons.plan.planner.CommonOperatorUtils;
 import org.apache.iotdb.db.node_commons.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.node_commons.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.utils.datastructure.SortKey;

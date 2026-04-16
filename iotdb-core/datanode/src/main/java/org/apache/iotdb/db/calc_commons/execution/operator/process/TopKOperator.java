@@ -22,7 +22,6 @@ package org.apache.iotdb.db.calc_commons.execution.operator.process;
 import org.apache.iotdb.db.calc_commons.execution.operator.Operator;
 import org.apache.iotdb.db.calc_commons.execution.operator.OperatorContext;
 import org.apache.iotdb.db.node_commons.execution.MemoryEstimationHelper;
-import org.apache.iotdb.db.queryengine.execution.operator.process.TreeTopKOperator;
 import org.apache.iotdb.db.utils.datastructure.MergeSortHeap;
 import org.apache.iotdb.db.utils.datastructure.MergeSortKey;
 import org.apache.iotdb.db.utils.datastructure.SortKey;
@@ -55,7 +54,7 @@ import static com.google.common.util.concurrent.Futures.successfulAsList;
 public abstract class TopKOperator implements ProcessOperator {
 
   private static final long INSTANCE_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(TreeTopKOperator.class);
+      RamUsageEstimator.shallowSizeOfInstance(TopKOperator.class);
   private final OperatorContext operatorContext;
 
   private final List<Operator> childrenOperators;

@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.calc_commons.plan.relational.planner.ir;
 
-import org.apache.iotdb.db.calc_commons.plan.expression.UnknownExpressionTypeException;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.ArithmeticBinaryExpression;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.BetweenPredicate;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.CommonQueryAstVisitor;
@@ -63,7 +62,6 @@ public class GlobalTimePredicateExtractVisitor
    *
    * @param predicate raw query predicate
    * @return Pair, left is globalTimePredicate, right is if hasValueFilter.
-   * @throws UnknownExpressionTypeException unknown expression type
    */
   public static Pair<Expression, Boolean> extractGlobalTimeFilter(
       Expression predicate, String timeColumnName) {

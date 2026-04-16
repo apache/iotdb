@@ -319,4 +319,28 @@ public abstract class CommonQueryAstVisitor<R, C> implements IAstVisitor<R, C> {
   protected R visitSingleColumn(SingleColumn node, C context) {
     return visitSelectItem(node, context);
   }
+
+  protected R visitProcessingMode(ProcessingMode node, C context) {
+    return visitNode(node, context);
+  }
+
+  protected R visitWithQuery(WithQuery node, C context) {
+    return visitNode(node, context);
+  }
+
+  protected R visitWith(With node, C context) {
+    return visitNode(node, context);
+  }
+
+  protected R visitFill(Fill node, C context) {
+    return visitNode(node, context);
+  }
+
+  protected R visitOffset(Offset node, C context) {
+    return visitNode(node, context);
+  }
+
+  protected R visitLimit(Limit node, C context) {
+    return visitNode(node, context);
+  }
 }

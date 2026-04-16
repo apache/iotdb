@@ -42,7 +42,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 
-import static org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.MergeSortComparator.getComparator;
+import static org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.MergeSortComparatorUtils.getComparator;
 import static org.junit.Assert.assertEquals;
 
 public class AggregationMergeSortOperatorTest {

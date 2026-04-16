@@ -19,10 +19,6 @@
 
 package org.apache.iotdb.db.node_commons.plan.relational.sql.ast;
 
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Fill;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Limit;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Offset;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.With;
 import org.apache.iotdb.db.utils.cte.CteDataStore;
 
 import com.google.common.collect.ImmutableList;
