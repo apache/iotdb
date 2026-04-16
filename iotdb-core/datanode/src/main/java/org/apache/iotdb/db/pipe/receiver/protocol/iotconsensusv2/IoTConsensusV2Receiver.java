@@ -1002,21 +1002,20 @@ public class IoTConsensusV2Receiver {
     }
 
     public IoTConsensusV2TsFileWriter borrowCorrespondingWriter(TCommitId commitId) {
+      final Optional<IoTConsensusV2TsFileWriter> correspondingWriter =
+          iotConsensusV2TsFileWriterPool.stream()
+              .filter(
+                  item ->
+                      item.isUsed()
+                          && Objects.equals(commitId, item.getCommitIdOfCorrespondingHolderEvent()))
+              .findFirst();
+      if (correspondingWriter.isPresent()) {
+        return correspondingWriter.get().refreshLastUsedTs();
+      }
+
       lock.lock();
       try {
         while (true) {
-          final Optional<IoTConsensusV2TsFileWriter> correspondingWriter =
-              iotConsensusV2TsFileWriterPool.stream()
-                  .filter(
-                      item ->
-                          item.isUsed()
-                              && Objects.equals(
-                                  commitId, item.getCommitIdOfCorrespondingHolderEvent()))
-                  .findFirst();
-          if (correspondingWriter.isPresent()) {
-            return correspondingWriter.get().refreshLastUsedTs();
-          }
-
           final Optional<IoTConsensusV2TsFileWriter> idleWriter =
               iotConsensusV2TsFileWriterPool.stream().filter(item -> !item.isUsed()).findFirst();
           if (idleWriter.isPresent()) {
