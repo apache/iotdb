@@ -665,7 +665,7 @@ public class WALNode implements IWALNode {
       AtomicBoolean notFirstFile = new AtomicBoolean(false);
       AtomicBoolean hasCollectedSufficientData = new AtomicBoolean(false);
       // V3: track writer progress metadata for current entry group
-      AtomicLong currentEntrySyncIndex = new AtomicLong(-1);
+      AtomicLong currentEntryLocalSeq = new AtomicLong(-1);
       AtomicLong currentEntryPhysicalTime = new AtomicLong(0);
       AtomicLong currentEntryWriterEpoch = new AtomicLong(0);
       AtomicLong currentEntryNodeId = new AtomicLong(-1);
@@ -677,10 +677,10 @@ public class WALNode implements IWALNode {
       Runnable tryToCollectInsertNodeAndBumpIndex =
           () -> {
             if (!tmpNodes.get().isEmpty()) {
-              long syncIdx = currentEntrySyncIndex.get();
+              long localSeq = currentEntryLocalSeq.get();
               IndexedConsensusRequest req =
-                  (syncIdx >= 0)
-                      ? new IndexedConsensusRequest(nextSearchIndex, syncIdx, tmpNodes.get())
+                  (localSeq >= 0)
+                      ? new IndexedConsensusRequest(nextSearchIndex, localSeq, tmpNodes.get())
                       : new IndexedConsensusRequest(nextSearchIndex, tmpNodes.get());
               req.setPhysicalTime(currentEntryPhysicalTime.get())
                   .setNodeId((int) currentEntryNodeId.get())
@@ -718,7 +718,7 @@ public class WALNode implements IWALNode {
               } else if (currentWalEntryIndex < nextSearchIndex) {
                 // WAL entry is outdated, do nothing, continue to see next WAL entry
               } else if (currentWalEntryIndex == nextSearchIndex) {
-                currentEntrySyncIndex.set(walByteBufReader.getCurrentEntrySyncIndex());
+                currentEntryLocalSeq.set(walByteBufReader.getCurrentEntryLocalSeq());
                 currentEntryPhysicalTime.set(walByteBufReader.getCurrentEntryPhysicalTime());
                 currentEntryWriterEpoch.set(walByteBufReader.getCurrentEntryWriterEpoch());
                 currentEntryNodeId.set(walByteBufReader.getCurrentEntryNodeId());
@@ -750,7 +750,7 @@ public class WALNode implements IWALNode {
                       currentWalEntryIndex);
                   nextSearchIndex = currentWalEntryIndex;
                 }
-                currentEntrySyncIndex.set(walByteBufReader.getCurrentEntrySyncIndex());
+                currentEntryLocalSeq.set(walByteBufReader.getCurrentEntryLocalSeq());
                 currentEntryPhysicalTime.set(walByteBufReader.getCurrentEntryPhysicalTime());
                 currentEntryWriterEpoch.set(walByteBufReader.getCurrentEntryWriterEpoch());
                 currentEntryNodeId.set(walByteBufReader.getCurrentEntryNodeId());

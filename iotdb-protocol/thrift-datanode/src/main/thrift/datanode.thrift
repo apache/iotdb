@@ -609,8 +609,8 @@ struct TSyncSubscriptionProgressReq {
   1: required string consumerGroupId
   2: required string topicName
   3: required string regionId
-  4: required i64 epoch
-  5: required i64 syncIndex
+  4: required i64 physicalTime
+  5: required i64 localSeq
   6: optional i32 writerNodeId
   7: optional i64 writerEpoch
 }
@@ -1393,4 +1393,3 @@ service MPPDataExchangeService {
   /** Empty rpc, only for connection test */
   common.TSStatus testConnectionEmptyRPC()
 }
-

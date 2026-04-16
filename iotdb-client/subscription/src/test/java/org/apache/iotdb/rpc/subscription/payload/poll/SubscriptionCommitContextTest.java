@@ -34,8 +34,10 @@ import static org.junit.Assert.assertTrue;
 public class SubscriptionCommitContextTest {
 
   @Test
-  public void testDeserializeV1Compatibility() throws IOException {
-    final ByteBuffer buffer = buildV1Buffer(1, 2, "topic", "group", 3L);
+  public void testDeserializeCurrentCommitIdContext() throws IOException {
+    final SubscriptionCommitContext original =
+        new SubscriptionCommitContext(1, 2, "topic", "group", 3L);
+    final ByteBuffer buffer = SubscriptionCommitContext.serialize(original);
 
     final SubscriptionCommitContext context = SubscriptionCommitContext.deserialize(buffer);
 
@@ -48,12 +50,11 @@ public class SubscriptionCommitContextTest {
     assertEquals("", context.getRegionId());
     assertEquals(0L, context.getPhysicalTime());
     assertFalse(context.hasWriterProgress());
-    assertTrue(context.hasLegacyCommitId());
     assertTrue(context.isCommittable());
   }
 
   @Test
-  public void testDeserializeV2() throws IOException {
+  public void testDeserializeCurrentPhysicalTimeContext() throws IOException {
     final SubscriptionCommitContext original =
         new SubscriptionCommitContext(1, 2, "topic", "group", 3L, 4L, "region", 5L);
 
@@ -62,11 +63,11 @@ public class SubscriptionCommitContextTest {
 
     assertEquals(original, parsed);
     assertFalse(parsed.hasWriterProgress());
-    assertTrue(parsed.hasLegacyCommitId());
+    assertTrue(parsed.isCommittable());
   }
 
   @Test
-  public void testDeserializeV3() throws IOException {
+  public void testDeserializeV2() throws IOException {
     final WriterId writerId = new WriterId("region", 7, 8L);
     final WriterProgress writerProgress = new WriterProgress(9L, 10L);
     final SubscriptionCommitContext original =
@@ -82,28 +83,27 @@ public class SubscriptionCommitContextTest {
     assertEquals(9L, parsed.getPhysicalTime());
     assertEquals(10L, parsed.getLocalSeq());
     assertTrue(parsed.hasWriterProgress());
-    assertFalse(parsed.hasLegacyCommitId());
     assertTrue(parsed.isCommittable());
   }
 
   @Test(expected = IllegalArgumentException.class)
   public void testDeserializeUnsupportedVersion() throws IOException {
-    final ByteBuffer buffer = buildV1BufferWithVersion((byte) 4, 1, 2, "topic", "group", 3L);
+    final ByteBuffer buffer = buildCurrentBufferWithVersion((byte) 1, 1, 2, "topic", "group", 3L);
     SubscriptionCommitContext.deserialize(buffer);
   }
 
-  private static ByteBuffer buildV1Buffer(
+  private static ByteBuffer buildCurrentBuffer(
       final int dataNodeId,
       final int rebootTimes,
       final String topicName,
       final String consumerGroupId,
       final long commitId)
       throws IOException {
-    return buildV1BufferWithVersion(
-        (byte) 1, dataNodeId, rebootTimes, topicName, consumerGroupId, commitId);
+    return buildCurrentBufferWithVersion(
+        (byte) 2, dataNodeId, rebootTimes, topicName, consumerGroupId, commitId);
   }
 
-  private static ByteBuffer buildV1BufferWithVersion(
+  private static ByteBuffer buildCurrentBufferWithVersion(
       final byte version,
       final int dataNodeId,
       final int rebootTimes,
@@ -119,6 +119,10 @@ public class SubscriptionCommitContextTest {
       ReadWriteIOUtils.write(topicName, outputStream);
       ReadWriteIOUtils.write(consumerGroupId, outputStream);
       ReadWriteIOUtils.write(commitId, outputStream);
+      ReadWriteIOUtils.write(0L, outputStream);
+      ReadWriteIOUtils.write("", outputStream);
+      ReadWriteIOUtils.write(0L, outputStream);
+      ReadWriteIOUtils.write((byte) 0, outputStream);
       return ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
     }
   }

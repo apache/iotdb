@@ -41,13 +41,12 @@ public class ProgressWALReaderTest {
       try (WALWriter writer = new WALWriter(walFile, WALFileVersion.V3)) {
         writer.write(
             entryBuffer((byte) 1, (byte) 2, (byte) 3),
-            singleEntryMeta(3, 10L, 1L, 1000L, 10L, 10000L, 1, 2L, 10L));
+            singleEntryMeta(3, 10L, 1L, 10000L, 1, 2L, 10L));
         writer.write(
-            entryBuffer((byte) 4, (byte) 5),
-            singleEntryMeta(2, 11L, 1L, 1000L, 11L, 10010L, 1, 2L, 11L));
+            entryBuffer((byte) 4, (byte) 5), singleEntryMeta(2, 11L, 1L, 10010L, 1, 2L, 11L));
         writer.write(
             entryBuffer((byte) 6, (byte) 7, (byte) 8, (byte) 9),
-            singleEntryMeta(4, 12L, 2L, 2000L, 1L, 20000L, 4, 1L, 1L));
+            singleEntryMeta(4, 12L, 2L, 20000L, 4, 1L, 1L));
       }
 
       try (ProgressWALReader reader = new ProgressWALReader(walFile)) {
@@ -85,20 +84,6 @@ public class ProgressWALReaderTest {
     ByteBuffer buffer = ByteBuffer.allocate(bytes.length);
     buffer.put(bytes);
     return buffer;
-  }
-
-  private static WALMetaData singleEntryMeta(
-      int size,
-      long searchIndex,
-      long memTableId,
-      long epoch,
-      long syncIndex,
-      long physicalTime,
-      int nodeId,
-      long writerEpoch,
-      long localSeq) {
-    return singleEntryMeta(
-        size, searchIndex, memTableId, physicalTime, nodeId, writerEpoch, localSeq);
   }
 
   private static WALMetaData singleEntryMeta(

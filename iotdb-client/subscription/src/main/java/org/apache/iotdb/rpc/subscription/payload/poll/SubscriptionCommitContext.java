@@ -30,12 +30,7 @@ import java.util.Objects;
 
 public class SubscriptionCommitContext implements Comparable<SubscriptionCommitContext> {
 
-  /**
-   * Version 1: original 5 fields (dataNodeId, rebootTimes, topicName, consumerGroupId, commitId).
-   * Version 2: added regionId + physicalTime (serialized in the legacy epoch slot). Version 3:
-   * added writerId + writerProgress.
-   */
-  private static final byte SERIALIZATION_VERSION = 3;
+  private static final byte SERIALIZATION_VERSION = 2;
 
   private final int dataNodeId;
 
@@ -51,7 +46,7 @@ public class SubscriptionCommitContext implements Comparable<SubscriptionCommitC
 
   private final String regionId;
 
-  private final long epoch;
+  private final long physicalTime;
 
   private final WriterId writerId;
 
@@ -75,7 +70,7 @@ public class SubscriptionCommitContext implements Comparable<SubscriptionCommitC
       final String consumerGroupId,
       final long commitId,
       final String regionId,
-      final long epoch) {
+      final long physicalTime) {
     this(
         dataNodeId,
         rebootTimes,
@@ -84,7 +79,28 @@ public class SubscriptionCommitContext implements Comparable<SubscriptionCommitC
         commitId,
         0L,
         regionId,
-        epoch,
+        physicalTime,
+        null,
+        null);
+  }
+
+  public SubscriptionCommitContext(
+      final int dataNodeId,
+      final int rebootTimes,
+      final String topicName,
+      final String consumerGroupId,
+      final long commitId,
+      final long seekGeneration,
+      final String regionId) {
+    this(
+        dataNodeId,
+        rebootTimes,
+        topicName,
+        consumerGroupId,
+        commitId,
+        seekGeneration,
+        regionId,
+        0L,
         null,
         null);
   }
@@ -97,7 +113,7 @@ public class SubscriptionCommitContext implements Comparable<SubscriptionCommitC
       final long commitId,
       final long seekGeneration,
       final String regionId,
-      final long epoch) {
+      final long physicalTime) {
     this(
         dataNodeId,
         rebootTimes,
@@ -106,7 +122,7 @@ public class SubscriptionCommitContext implements Comparable<SubscriptionCommitC
         commitId,
         seekGeneration,
         regionId,
-        epoch,
+        physicalTime,
         null,
         null);
   }
@@ -140,7 +156,7 @@ public class SubscriptionCommitContext implements Comparable<SubscriptionCommitC
       final long commitId,
       final long seekGeneration,
       final String regionId,
-      final long epoch,
+      final long physicalTime,
       final WriterId writerId,
       final WriterProgress writerProgress) {
     this.dataNodeId = dataNodeId;
@@ -150,7 +166,7 @@ public class SubscriptionCommitContext implements Comparable<SubscriptionCommitC
     this.commitId = commitId;
     this.seekGeneration = seekGeneration;
     this.regionId = regionId;
-    this.epoch = epoch;
+    this.physicalTime = physicalTime;
     this.writerId = writerId;
     this.writerProgress = writerProgress;
   }
@@ -188,7 +204,7 @@ public class SubscriptionCommitContext implements Comparable<SubscriptionCommitC
   }
 
   public long getPhysicalTime() {
-    return Objects.nonNull(writerProgress) ? writerProgress.getPhysicalTime() : epoch;
+    return Objects.nonNull(writerProgress) ? writerProgress.getPhysicalTime() : physicalTime;
   }
 
   public WriterId getWriterId() {
@@ -203,12 +219,8 @@ public class SubscriptionCommitContext implements Comparable<SubscriptionCommitC
     return Objects.nonNull(writerId) && Objects.nonNull(writerProgress);
   }
 
-  public boolean hasLegacyCommitId() {
-    return !hasWriterProgress() && commitId != INVALID_COMMIT_ID;
-  }
-
   public boolean isCommittable() {
-    return hasWriterProgress() || hasLegacyCommitId();
+    return hasWriterProgress() || commitId != INVALID_COMMIT_ID;
   }
 
   /////////////////////////////// de/ser ///////////////////////////////
@@ -231,7 +243,7 @@ public class SubscriptionCommitContext implements Comparable<SubscriptionCommitC
     ReadWriteIOUtils.write(commitId, stream);
     ReadWriteIOUtils.write(seekGeneration, stream);
     ReadWriteIOUtils.write(regionId, stream);
-    ReadWriteIOUtils.write(epoch, stream);
+    ReadWriteIOUtils.write(physicalTime, stream);
     final boolean hasWriterProgress = Objects.nonNull(writerId) && Objects.nonNull(writerProgress);
     ReadWriteIOUtils.write((byte) (hasWriterProgress ? 1 : 0), stream);
     if (hasWriterProgress) {
@@ -242,55 +254,33 @@ public class SubscriptionCommitContext implements Comparable<SubscriptionCommitC
 
   public static SubscriptionCommitContext deserialize(final ByteBuffer buffer) {
     final byte version = ReadWriteIOUtils.readByte(buffer);
+    if (version != SERIALIZATION_VERSION) {
+      throw new IllegalArgumentException(
+          "Unsupported SubscriptionCommitContext version: " + version);
+    }
     final int dataNodeId = ReadWriteIOUtils.readInt(buffer);
     final int rebootTimes = ReadWriteIOUtils.readInt(buffer);
     final String topicName = ReadWriteIOUtils.readString(buffer);
     final String consumerGroupId = ReadWriteIOUtils.readString(buffer);
     final long commitId = ReadWriteIOUtils.readLong(buffer);
-
-    if (version == 1) {
-      // V1 did not carry seekGeneration/regionId/epoch.
-      return new SubscriptionCommitContext(
-          dataNodeId, rebootTimes, topicName, consumerGroupId, commitId);
-    }
-
-    if (version == 2) {
-      final long seekGeneration = ReadWriteIOUtils.readLong(buffer);
-      final String regionId = ReadWriteIOUtils.readString(buffer);
-      final long epoch = ReadWriteIOUtils.readLong(buffer);
-      return new SubscriptionCommitContext(
-          dataNodeId,
-          rebootTimes,
-          topicName,
-          consumerGroupId,
-          commitId,
-          seekGeneration,
-          regionId,
-          epoch);
-    }
-
-    if (version == 3) {
-      final long seekGeneration = ReadWriteIOUtils.readLong(buffer);
-      final String regionId = ReadWriteIOUtils.readString(buffer);
-      final long epoch = ReadWriteIOUtils.readLong(buffer);
-      final boolean hasWriterProgress = ReadWriteIOUtils.readByte(buffer) != 0;
-      final WriterId writerId = hasWriterProgress ? WriterId.deserialize(buffer) : null;
-      final WriterProgress writerProgress =
-          hasWriterProgress ? WriterProgress.deserialize(buffer) : null;
-      return new SubscriptionCommitContext(
-          dataNodeId,
-          rebootTimes,
-          topicName,
-          consumerGroupId,
-          commitId,
-          seekGeneration,
-          regionId,
-          epoch,
-          writerId,
-          writerProgress);
-    }
-
-    throw new IllegalArgumentException("Unsupported SubscriptionCommitContext version: " + version);
+    final long seekGeneration = ReadWriteIOUtils.readLong(buffer);
+    final String regionId = ReadWriteIOUtils.readString(buffer);
+    final long physicalTime = ReadWriteIOUtils.readLong(buffer);
+    final boolean hasWriterProgress = ReadWriteIOUtils.readByte(buffer) != 0;
+    final WriterId writerId = hasWriterProgress ? WriterId.deserialize(buffer) : null;
+    final WriterProgress writerProgress =
+        hasWriterProgress ? WriterProgress.deserialize(buffer) : null;
+    return new SubscriptionCommitContext(
+        dataNodeId,
+        rebootTimes,
+        topicName,
+        consumerGroupId,
+        commitId,
+        seekGeneration,
+        regionId,
+        physicalTime,
+        writerId,
+        writerProgress);
   }
 
   /////////////////////////////// Object ///////////////////////////////
@@ -311,7 +301,7 @@ public class SubscriptionCommitContext implements Comparable<SubscriptionCommitC
         && this.commitId == that.commitId
         && this.seekGeneration == that.seekGeneration
         && Objects.equals(this.regionId, that.regionId)
-        && this.epoch == that.epoch
+        && this.physicalTime == that.physicalTime
         && Objects.equals(this.writerId, that.writerId)
         && Objects.equals(this.writerProgress, that.writerProgress);
   }
@@ -326,7 +316,7 @@ public class SubscriptionCommitContext implements Comparable<SubscriptionCommitC
         commitId,
         seekGeneration,
         regionId,
-        epoch,
+        physicalTime,
         writerId,
         writerProgress);
   }

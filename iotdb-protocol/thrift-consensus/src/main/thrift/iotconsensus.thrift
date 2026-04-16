@@ -27,7 +27,7 @@ struct TLogEntry {
   2: required i64 searchIndex
   3: required bool fromWAL
   4: required i64 memorySize
-  5: optional i64 epoch
+  5: optional i64 routingEpoch
   6: optional i64 physicalTime
   7: optional i16 writerEpoch
 }

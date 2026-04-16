@@ -2966,8 +2966,7 @@ public class ConsensusPrefetchingQueue {
         brokerId,
         INVALID_COMMIT_ID,
         seekGeneration.get(),
-        consensusGroupId.toString(),
-        runtimeVersion);
+        consensusGroupId.toString());
   }
 
   public boolean isCommitContextOutdated(final SubscriptionCommitContext commitContext) {

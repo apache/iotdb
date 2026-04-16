@@ -244,7 +244,7 @@ public class IoTConsensusServerImpl {
           writeToStateMachineStartTime - getStateMachineLockTime);
       IndexedConsensusRequest indexedConsensusRequest =
           buildIndexedConsensusRequestForLocalRequest(request);
-      indexedConsensusRequest.setEpoch(currentRoutingEpoch);
+      indexedConsensusRequest.setRoutingEpoch(currentRoutingEpoch);
       lastConsensusRequest = indexedConsensusRequest;
       if (indexedConsensusRequest.getSearchIndex() % 100000 == 0) {
         logger.info(
@@ -822,7 +822,7 @@ public class IoTConsensusServerImpl {
 
   public IndexedConsensusRequest buildIndexedConsensusRequestForRemoteRequest(
       long syncIndex,
-      long epoch,
+      long routingEpoch,
       long physicalTime,
       int nodeId,
       long writerEpoch,
@@ -830,7 +830,7 @@ public class IoTConsensusServerImpl {
     observePhysicalTimeLowerBound(physicalTime);
     IndexedConsensusRequest req =
         new IndexedConsensusRequest(ConsensusReqReader.DEFAULT_SEARCH_INDEX, syncIndex, requests);
-    req.setEpoch(epoch);
+    req.setRoutingEpoch(routingEpoch);
     req.setPhysicalTime(physicalTime);
     req.setNodeId(nodeId);
     req.setWriterEpoch(writerEpoch);

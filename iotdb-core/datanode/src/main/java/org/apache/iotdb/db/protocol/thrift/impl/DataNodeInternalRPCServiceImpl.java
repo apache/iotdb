@@ -1583,8 +1583,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
               req.getConsumerGroupId(),
               req.getTopicName(),
               req.getRegionId(),
-              req.getEpoch(),
-              req.getSyncIndex(),
+              req.getPhysicalTime(),
+              req.getLocalSeq(),
               req.isSetWriterNodeId() ? req.getWriterNodeId() : -1,
               req.isSetWriterEpoch() ? req.getWriterEpoch() : 0L);
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
@@ -2378,7 +2378,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         ConsensusSubscriptionSetupHandler.onRegionRouteChanged(
             req.getRegionRouteMap(), req.getTimestamp());
       } catch (final Exception e) {
-        LOGGER.warn("Failed to process epoch ordering on region route change", e);
+        LOGGER.warn("Failed to process consensus subscription route update", e);
       }
       return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
     } else {

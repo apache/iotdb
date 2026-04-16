@@ -34,7 +34,7 @@ public class IndexedConsensusRequest implements IConsensusRequest {
   private final long syncIndex;
 
   /** routing epoch from ConfigNode broadcast for ordered consensus subscription */
-  private long epoch = 0;
+  private long routingEpoch = 0;
 
   /** Millisecond physical time used as the first ordering key in the new subscription progress. */
   private long physicalTime = 0;
@@ -109,12 +109,12 @@ public class IndexedConsensusRequest implements IConsensusRequest {
     return syncIndex >= 0 ? syncIndex : searchIndex;
   }
 
-  public long getEpoch() {
-    return epoch;
+  public long getRoutingEpoch() {
+    return routingEpoch;
   }
 
-  public IndexedConsensusRequest setEpoch(long epoch) {
-    this.epoch = epoch;
+  public IndexedConsensusRequest setRoutingEpoch(long routingEpoch) {
+    this.routingEpoch = routingEpoch;
     return this;
   }
 

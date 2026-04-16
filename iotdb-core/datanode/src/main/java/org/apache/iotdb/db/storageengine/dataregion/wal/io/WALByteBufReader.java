@@ -37,7 +37,7 @@ public class WALByteBufReader implements Closeable {
   private WALMetaData metaData;
   private DataInputStream logStream;
   private Iterator<Integer> sizeIterator;
-  // V3: track current entry index to provide per-entry epoch/syncIndex
+  // V3: track current entry index to provide per-entry progress metadata
   private int currentEntryIndex = -1;
 
   public WALByteBufReader(File logFile) throws IOException {
@@ -99,16 +99,6 @@ public class WALByteBufReader implements Closeable {
 
   public long getFirstSearchIndex() {
     return metaData.getFirstSearchIndex();
-  }
-
-  /** Returns a compatibility epoch view of the current entry, mirrored from physicalTime. */
-  public long getCurrentEntryEpoch() {
-    return getCurrentEntryPhysicalTime();
-  }
-
-  /** Returns a compatibility syncIndex view of the current entry, mirrored from localSeq. */
-  public long getCurrentEntrySyncIndex() {
-    return getCurrentEntryLocalSeq();
   }
 
   public long getCurrentEntryPhysicalTime() {

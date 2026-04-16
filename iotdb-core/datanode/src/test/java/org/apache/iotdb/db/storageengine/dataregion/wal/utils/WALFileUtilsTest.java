@@ -264,15 +264,15 @@ public class WALFileUtilsTest {
 
     try {
       try (final WALWriter writer = new WALWriter(wal0, WALFileVersion.V3)) {
-        writer.write(entryBuffer(10L), singleEntryMeta(19, 10L, 1L, 0L, 10L, 10000L, 1, 2L, 110L));
-        writer.write(entryBuffer(11L), singleEntryMeta(19, 11L, 1L, 0L, 11L, 10010L, 1, 2L, 111L));
+        writer.write(entryBuffer(10L), singleEntryMeta(19, 10L, 1L, 10000L, 1, 2L, 110L));
+        writer.write(entryBuffer(11L), singleEntryMeta(19, 11L, 1L, 10010L, 1, 2L, 111L));
       }
       try (final WALWriter writer = new WALWriter(wal1, WALFileVersion.V3)) {
-        writer.write(entryBuffer(13L), singleEntryMeta(19, 13L, 1L, 0L, 13L, 10020L, 1, 2L, 113L));
+        writer.write(entryBuffer(13L), singleEntryMeta(19, 13L, 1L, 10020L, 1, 2L, 113L));
       }
       // Leave wal2 as the active file placeholder; helper methods only scan sealed files.
       try (final WALWriter writer = new WALWriter(wal2, WALFileVersion.V3)) {
-        writer.write(entryBuffer(20L), singleEntryMeta(19, 20L, 1L, 0L, 20L, 20000L, 4, 1L, 120L));
+        writer.write(entryBuffer(20L), singleEntryMeta(19, 20L, 1L, 20000L, 4, 1L, 120L));
       }
 
       Assert.assertArrayEquals(
@@ -341,20 +341,6 @@ public class WALFileUtilsTest {
     buffer.putShort(PlanNodeType.INSERT_ROW.getNodeType());
     buffer.putLong(bodySearchIndex);
     return buffer;
-  }
-
-  private static WALMetaData singleEntryMeta(
-      final int size,
-      final long searchIndex,
-      final long memTableId,
-      final long epoch,
-      final long syncIndex,
-      final long physicalTime,
-      final int nodeId,
-      final long writerEpoch,
-      final long localSeq) {
-    return singleEntryMeta(
-        size, searchIndex, memTableId, physicalTime, nodeId, writerEpoch, localSeq);
   }
 
   private static WALMetaData singleEntryMeta(

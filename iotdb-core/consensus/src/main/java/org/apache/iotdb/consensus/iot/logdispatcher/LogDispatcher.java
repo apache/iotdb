@@ -628,7 +628,7 @@ public class LogDispatcher {
         TLogEntry logEntry =
             new TLogEntry(
                 data.getSerializedRequests(), data.getSearchIndex(), true, data.getMemorySize());
-        logEntry.setEpoch(data.getEpoch());
+        logEntry.setRoutingEpoch(data.getRoutingEpoch());
         logEntry.setPhysicalTime(data.getPhysicalTime());
         logEntry.setWriterEpoch(writerEpochToShort(data.getWriterEpoch()));
         logBatches.addTLogEntry(logEntry);
@@ -646,7 +646,7 @@ public class LogDispatcher {
               request.getSearchIndex(),
               false,
               request.getMemorySize());
-      logEntry.setEpoch(request.getEpoch());
+      logEntry.setRoutingEpoch(request.getRoutingEpoch());
       logEntry.setPhysicalTime(request.getPhysicalTime());
       logEntry.setWriterEpoch(writerEpochToShort(request.getWriterEpoch()));
       logBatches.addTLogEntry(logEntry);

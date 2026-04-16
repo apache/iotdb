@@ -25,7 +25,7 @@ import java.nio.ByteBuffer;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-/** Tests for WALMetaData V3 serialization/deserialization roundtrip and V2->V3 compatibility. */
+/** Tests for WALMetaData V3 serialization/deserialization roundtrip and V2 file handling. */
 public class WALMetaDataV3CompatibilityTest {
 
   @Test
@@ -94,8 +94,8 @@ public class WALMetaDataV3CompatibilityTest {
   @Test
   public void testV2DeserializationHasEmptyV3Fields() {
     WALMetaData original = new WALMetaData();
-    original.add(100, 10, 1, 1000L, 10);
-    original.add(200, 11, 1, 2000L, 11);
+    original.add(100, 10, 1);
+    original.add(200, 11, 1);
 
     int size = original.serializedSize(WALFileVersion.V2);
     ByteBuffer buffer = ByteBuffer.allocate(size);

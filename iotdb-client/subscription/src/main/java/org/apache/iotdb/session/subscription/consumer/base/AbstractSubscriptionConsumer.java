@@ -664,7 +664,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
 
   /**
    * Returns the set of DataNode IDs for providers that are currently available. Used by subclasses
-   * to detect unavailable DataNodes and notify the epoch ordering processor.
+   * to detect unavailable DataNodes and notify the progress ordering processor.
    */
   protected Set<Integer> getAvailableDataNodeIds() {
     providers.acquireReadLock();
@@ -1803,9 +1803,13 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
     }
   }
 
-  private boolean isNewerPosition(
-      final long newEpoch, final long newSyncIndex, final long oldEpoch, final long oldSyncIndex) {
-    return newEpoch > oldEpoch || (newEpoch == oldEpoch && newSyncIndex > oldSyncIndex);
+  private boolean isNewerWriterProgress(
+      final long newPhysicalTime,
+      final long newLocalSeq,
+      final long oldPhysicalTime,
+      final long oldLocalSeq) {
+    return newPhysicalTime > oldPhysicalTime
+        || (newPhysicalTime == oldPhysicalTime && newLocalSeq > oldLocalSeq);
   }
 
   private void clearCurrentPositions(final String topicName) {
@@ -1928,7 +1932,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
               writerId,
               writerProgress,
               (oldVal, newVal) ->
-                  isNewerPosition(
+                  isNewerWriterProgress(
                           newVal.getPhysicalTime(),
                           newVal.getLocalSeq(),
                           oldVal.getPhysicalTime(),

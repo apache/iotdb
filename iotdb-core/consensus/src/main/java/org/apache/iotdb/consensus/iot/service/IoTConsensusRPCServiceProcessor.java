@@ -112,13 +112,13 @@ public class IoTConsensusRPCServiceProcessor implements IoTConsensusIService.Ifa
     final int sourceNodeId = req.peerId;
     // We use synchronized to ensure atomicity of executing multiple logs
     for (TLogEntry entry : req.getLogEntries()) {
-      long epoch = entry.isSetEpoch() ? entry.getEpoch() : 0L;
+      long routingEpoch = entry.isSetRoutingEpoch() ? entry.getRoutingEpoch() : 0L;
       long physicalTime = entry.isSetPhysicalTime() ? entry.getPhysicalTime() : 0L;
       long writerEpoch = entry.isSetWriterEpoch() ? entry.getWriterEpoch() : 0L;
       logEntriesInThisBatch.add(
           impl.buildIndexedConsensusRequestForRemoteRequest(
               entry.getSearchIndex(),
-              epoch,
+              routingEpoch,
               physicalTime,
               sourceNodeId,
               writerEpoch,

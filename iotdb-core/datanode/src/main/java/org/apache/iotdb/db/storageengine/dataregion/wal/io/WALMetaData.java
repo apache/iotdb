@@ -87,24 +87,9 @@ public class WALMetaData implements SerializedSize {
     this.localSeqs = new ArrayList<>();
   }
 
-  /** V2-compatible add without explicit writer progress metadata. */
+  /** Adds an entry without explicit writer progress metadata. */
   public void add(int size, long searchIndex, long memTableId) {
     add(size, searchIndex, memTableId, 0L, DEFAULT_NODE_ID, DEFAULT_WRITER_EPOCH, searchIndex);
-  }
-
-  /**
-   * Compatibility add using the old (epoch, syncIndex) signature. The values are now interpreted as
-   * (physicalTime, localSeq).
-   */
-  public void add(int size, long searchIndex, long memTableId, long epoch, long syncIndex) {
-    add(
-        size,
-        searchIndex,
-        memTableId,
-        epoch,
-        DEFAULT_NODE_ID,
-        DEFAULT_WRITER_EPOCH,
-        syncIndex >= 0 ? syncIndex : searchIndex);
   }
 
   public void add(
