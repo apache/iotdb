@@ -176,6 +176,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableFunctionArgu
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableFunctionInvocation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableFunctionTableArgument;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableSubquery;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TimeDurationLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Trim;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Union;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Update;
@@ -5260,6 +5261,12 @@ public class StatementAnalyzer {
 
     private ArgumentAnalysis analyzeScalarArgument(
         Expression expression, ScalarParameterSpecification argumentSpecification) {
+      if (expression instanceof TimeDurationLiteral) {
+        if (((TimeDurationLiteral) expression).getValue().monthDuration != 0) {
+          throw new SemanticException("Setting monthly intervals is not supported.");
+        }
+      }
+
       // currently, only constant arguments are supported
       Object constantValue =
           evaluateConstantExpression(
