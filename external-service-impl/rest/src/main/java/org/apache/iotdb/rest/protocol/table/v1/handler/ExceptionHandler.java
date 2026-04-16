@@ -27,7 +27,7 @@ import org.apache.iotdb.db.exception.metadata.DatabaseNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.ParsingException;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.parser.ParsingException;
 import org.apache.iotdb.rest.protocol.model.ExecutionStatus;
 import org.apache.iotdb.rpc.TSStatusCode;
 
