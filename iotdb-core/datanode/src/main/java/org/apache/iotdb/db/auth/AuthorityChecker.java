@@ -138,11 +138,11 @@ public class AuthorityChecker {
   }
 
   public static User getUser(String username) {
-    return authorityFetcher.get().getUser(username);
+    return authorityFetcher.get().getUser(username, false);
   }
 
   public static Optional<Long> getUserId(String username) {
-    User user = authorityFetcher.get().getUser(username);
+    User user = authorityFetcher.get().getUser(username, false);
     return Optional.ofNullable(user == null ? null : user.getUserId());
   }
 
