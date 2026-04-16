@@ -27,7 +27,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateOrUpdateDev
 import java.util.Optional;
 
 public class PipeStatementTablePatternParseVisitor
-    extends AstVisitor<Optional<Statement>, TablePattern> {
+    implements AstVisitor<Optional<Statement>, TablePattern> {
 
   @Override
   public Optional<Statement> visitCreateOrUpdateDevice(

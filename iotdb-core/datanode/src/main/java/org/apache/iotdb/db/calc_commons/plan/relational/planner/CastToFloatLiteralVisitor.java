@@ -31,35 +31,35 @@ import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.NullLiteral;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.StringLiteral;
 
 // return NULL, if we cannot parse literal to float type
-public class CastToFloatLiteralVisitor extends CommonQueryAstVisitor<Float, Void> {
+public class CastToFloatLiteralVisitor implements CommonQueryAstVisitor<Float, Void> {
 
   @Override
-  protected Float visitLiteral(Literal node, Void context) {
+  public Float visitLiteral(Literal node, Void context) {
     throw new UnsupportedOperationException("Unhandled literal type: " + node);
   }
 
   @Override
-  protected Float visitBooleanLiteral(BooleanLiteral node, Void context) {
+  public Float visitBooleanLiteral(BooleanLiteral node, Void context) {
     return node.getValue() ? 1.0f : 0.0f;
   }
 
   @Override
-  protected Float visitLongLiteral(LongLiteral node, Void context) {
+  public Float visitLongLiteral(LongLiteral node, Void context) {
     return (float) node.getParsedValue();
   }
 
   @Override
-  protected Float visitDoubleLiteral(DoubleLiteral node, Void context) {
+  public Float visitDoubleLiteral(DoubleLiteral node, Void context) {
     return (float) node.getValue();
   }
 
   @Override
-  protected Float visitFloatLiteral(FloatLiteral node, Void context) {
+  public Float visitFloatLiteral(FloatLiteral node, Void context) {
     return node.getValue();
   }
 
   @Override
-  protected Float visitStringLiteral(StringLiteral node, Void context) {
+  public Float visitStringLiteral(StringLiteral node, Void context) {
     try {
       return Float.parseFloat(node.getValue());
     } catch (Exception e) {
@@ -68,12 +68,12 @@ public class CastToFloatLiteralVisitor extends CommonQueryAstVisitor<Float, Void
   }
 
   @Override
-  protected Float visitBinaryLiteral(BinaryLiteral node, Void context) {
+  public Float visitBinaryLiteral(BinaryLiteral node, Void context) {
     return null;
   }
 
   @Override
-  protected Float visitGenericLiteral(GenericLiteral node, Void context) {
+  public Float visitGenericLiteral(GenericLiteral node, Void context) {
     try {
       return Float.parseFloat(node.getValue());
     } catch (Exception e) {
@@ -82,7 +82,7 @@ public class CastToFloatLiteralVisitor extends CommonQueryAstVisitor<Float, Void
   }
 
   @Override
-  protected Float visitNullLiteral(NullLiteral node, Void context) {
+  public Float visitNullLiteral(NullLiteral node, Void context) {
     return null;
   }
 }

@@ -45,14 +45,14 @@ public final class RowPatternFormatter {
     return new Formatter().process(pattern, null);
   }
 
-  public static class Formatter extends AstVisitor<String, Void> {
+  public static class Formatter implements AstVisitor<String, Void> {
     @Override
-    protected String visitNode(Node node, Void context) {
+    public String visitNode(Node node, Void context) {
       throw new UnsupportedOperationException();
     }
 
     @Override
-    protected String visitRowPattern(RowPattern node, Void context) {
+    public String visitRowPattern(RowPattern node, Void context) {
       throw new UnsupportedOperationException(
           String.format(
               "not yet implemented: %s.visit%s",
@@ -60,21 +60,21 @@ public final class RowPatternFormatter {
     }
 
     @Override
-    protected String visitPatternAlternation(PatternAlternation node, Void context) {
+    public String visitPatternAlternation(PatternAlternation node, Void context) {
       return node.getPatterns().stream()
           .map(child -> process(child, context))
           .collect(joining(" | ", "(", ")"));
     }
 
     @Override
-    protected String visitPatternConcatenation(PatternConcatenation node, Void context) {
+    public String visitPatternConcatenation(PatternConcatenation node, Void context) {
       return node.getPatterns().stream()
           .map(child -> process(child, context))
           .collect(joining(" ", "(", ")"));
     }
 
     @Override
-    protected String visitQuantifiedPattern(QuantifiedPattern node, Void context) {
+    public String visitQuantifiedPattern(QuantifiedPattern node, Void context) {
       return "("
           + process(node.getPattern(), context)
           + process(node.getPatternQuantifier(), context)
@@ -82,24 +82,24 @@ public final class RowPatternFormatter {
     }
 
     @Override
-    protected String visitPatternVariable(PatternVariable node, Void context) {
+    public String visitPatternVariable(PatternVariable node, Void context) {
       return ExpressionFormatter.formatExpression(node.getName());
     }
 
     @Override
-    protected String visitEmptyPattern(EmptyPattern node, Void context) {
+    public String visitEmptyPattern(EmptyPattern node, Void context) {
       return "()";
     }
 
     @Override
-    protected String visitPatternPermutation(PatternPermutation node, Void context) {
+    public String visitPatternPermutation(PatternPermutation node, Void context) {
       return node.getPatterns().stream()
           .map(child -> process(child, context))
           .collect(joining(", ", "PERMUTE(", ")"));
     }
 
     @Override
-    protected String visitAnchorPattern(AnchorPattern node, Void context) {
+    public String visitAnchorPattern(AnchorPattern node, Void context) {
       switch (node.getType()) {
         case PARTITION_START:
           return "^";
@@ -111,30 +111,30 @@ public final class RowPatternFormatter {
     }
 
     @Override
-    protected String visitExcludedPattern(ExcludedPattern node, Void context) {
+    public String visitExcludedPattern(ExcludedPattern node, Void context) {
       return "{-" + process(node.getPattern(), context) + "-}";
     }
 
     @Override
-    protected String visitZeroOrMoreQuantifier(ZeroOrMoreQuantifier node, Void context) {
+    public String visitZeroOrMoreQuantifier(ZeroOrMoreQuantifier node, Void context) {
       String greedy = node.isGreedy() ? "" : "?";
       return "*" + greedy;
     }
 
     @Override
-    protected String visitOneOrMoreQuantifier(OneOrMoreQuantifier node, Void context) {
+    public String visitOneOrMoreQuantifier(OneOrMoreQuantifier node, Void context) {
       String greedy = node.isGreedy() ? "" : "?";
       return "+" + greedy;
     }
 
     @Override
-    protected String visitZeroOrOneQuantifier(ZeroOrOneQuantifier node, Void context) {
+    public String visitZeroOrOneQuantifier(ZeroOrOneQuantifier node, Void context) {
       String greedy = node.isGreedy() ? "" : "?";
       return "?" + greedy;
     }
 
     @Override
-    protected String visitRangeQuantifier(RangeQuantifier node, Void context) {
+    public String visitRangeQuantifier(RangeQuantifier node, Void context) {
       String greedy = node.isGreedy() ? "" : "?";
       String atLeast = node.getAtLeast().map(ExpressionFormatter::formatExpression).orElse("");
       String atMost = node.getAtMost().map(ExpressionFormatter::formatExpression).orElse("");

@@ -287,7 +287,7 @@ import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.rel
 import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask.TTL_KEY;
 import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
-public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryContext> {
+public class TableConfigTaskVisitor implements AstVisitor<IConfigTask, MPPQueryContext> {
 
   public static final String DATABASE_NOT_SPECIFIED = "database is not specified";
 
@@ -311,20 +311,20 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   }
 
   @Override
-  protected IConfigTask visitNode(final Node node, final MPPQueryContext context) {
+  public IConfigTask visitNode(final Node node, final MPPQueryContext context) {
     throw new UnsupportedOperationException(
         "Unsupported statement type: " + node.getClass().getName());
   }
 
   @Override
-  protected IConfigTask visitCreateDB(final CreateDB node, final MPPQueryContext context) {
+  public IConfigTask visitCreateDB(final CreateDB node, final MPPQueryContext context) {
     accessControl.checkCanCreateDatabase(
         context.getSession().getUserName(), node.getDbName(), context);
     return visitDatabaseStatement(node, context);
   }
 
   @Override
-  protected IConfigTask visitAlterDB(final AlterDB node, final MPPQueryContext context) {
+  public IConfigTask visitAlterDB(final AlterDB node, final MPPQueryContext context) {
     accessControl.checkCanAlterDatabase(
         context.getSession().getUserName(), node.getDbName(), context);
     return visitDatabaseStatement(node, context);
@@ -398,7 +398,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   }
 
   @Override
-  protected IConfigTask visitUse(final Use node, final MPPQueryContext context) {
+  public IConfigTask visitUse(final Use node, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     accessControl.checkCanShowOrUseDatabase(
         context.getSession().getUserName(), node.getDatabaseId().getValue(), context);
@@ -406,7 +406,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   }
 
   @Override
-  protected IConfigTask visitDropDB(final DropDB node, final MPPQueryContext context) {
+  public IConfigTask visitDropDB(final DropDB node, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     accessControl.checkCanDropDatabase(
         context.getSession().getUserName(), node.getDbName().getValue(), context);
@@ -414,7 +414,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   }
 
   @Override
-  protected IConfigTask visitShowDB(final ShowDB node, final MPPQueryContext context) {
+  public IConfigTask visitShowDB(final ShowDB node, final MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
     return new ShowDBTask(
         node,
@@ -436,7 +436,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   }
 
   @Override
-  protected IConfigTask visitShowCluster(
+  public IConfigTask visitShowCluster(
       final ShowCluster showCluster, final MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
     accessControl.checkUserGlobalSysPrivilege(context);
@@ -448,7 +448,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   }
 
   @Override
-  protected IConfigTask visitShowRegions(
+  public IConfigTask visitShowRegions(
       final ShowRegions showRegions, final MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
     accessControl.checkUserGlobalSysPrivilege(context);
@@ -465,7 +465,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   }
 
   @Override
-  protected IConfigTask visitRemoveDataNode(
+  public IConfigTask visitRemoveDataNode(
       final RemoveDataNode removeDataNode, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     accessControl.checkUserGlobalSysPrivilege(context);
@@ -477,7 +477,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   }
 
   @Override
-  protected IConfigTask visitRemoveConfigNode(
+  public IConfigTask visitRemoveConfigNode(
       final RemoveConfigNode removeConfigNode, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     accessControl.checkUserGlobalSysPrivilege(context);
@@ -489,7 +489,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   }
 
   @Override
-  protected IConfigTask visitRemoveAINode(
+  public IConfigTask visitRemoveAINode(
       final RemoveAINode removeAINode, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     accessControl.checkUserGlobalSysPrivilege(context);
@@ -499,7 +499,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   }
 
   @Override
-  protected IConfigTask visitShowDataNodes(
+  public IConfigTask visitShowDataNodes(
       final ShowDataNodes showDataNodesStatement, final MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
     accessControl.checkUserGlobalSysPrivilege(context);
@@ -507,7 +507,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   }
 
   @Override
-  protected IConfigTask visitShowAvailableUrls(
+  public IConfigTask visitShowAvailableUrls(
       final ShowAvailableUrls showAvailableUrls, final MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
     DNAuditLogger.getInstance()
@@ -517,7 +517,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   }
 
   @Override
-  protected IConfigTask visitShowConfigNodes(
+  public IConfigTask visitShowConfigNodes(
       final ShowConfigNodes showConfigNodesStatement, final MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
     accessControl.checkUserGlobalSysPrivilege(context);
@@ -525,7 +525,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   }
 
   @Override
-  protected IConfigTask visitShowAINodes(
+  public IConfigTask visitShowAINodes(
       final ShowAINodes showAINodesStatement, final MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
     accessControl.checkUserGlobalSysPrivilege(context);
@@ -533,7 +533,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   }
 
   @Override
-  protected IConfigTask visitClearCache(
+  public IConfigTask visitClearCache(
       final ClearCache clearCacheStatement, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     accessControl.checkUserGlobalSysPrivilege(context);
@@ -541,14 +541,14 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   }
 
   @Override
-  protected IConfigTask visitCreateTable(final CreateTable node, final MPPQueryContext context) {
+  public IConfigTask visitCreateTable(final CreateTable node, final MPPQueryContext context) {
     final Pair<String, TsTable> databaseTablePair = parseTable4CreateTableOrView(node, context);
     return new CreateTableTask(
         databaseTablePair.getRight(), databaseTablePair.getLeft(), node.isIfNotExists());
   }
 
   @Override
-  protected IConfigTask visitCreateView(final CreateView node, final MPPQueryContext context) {
+  public IConfigTask visitCreateView(final CreateView node, final MPPQueryContext context) {
     final Pair<String, TsTable> databaseTablePair = parseTable4CreateTableOrView(node, context);
     final TsTable table = databaseTablePair.getRight();
     accessControl.checkCanCreateViewFromTreePath(node.getPrefixPath(), context);
@@ -664,8 +664,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   }
 
   @Override
-  protected IConfigTask visitAlterColumnDataType(
-      AlterColumnDataType node, MPPQueryContext context) {
+  public IConfigTask visitAlterColumnDataType(AlterColumnDataType node, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     final Pair<String, String> databaseTablePair = splitQualifiedName(node.getTableName());
     final String columnName = node.getColumnName().getValue();
@@ -688,7 +687,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   }
 
   @Override
-  protected IConfigTask visitRenameTable(final RenameTable node, final MPPQueryContext context) {
+  public IConfigTask visitRenameTable(final RenameTable node, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     final Pair<String, String> databaseTablePair = splitQualifiedName(node.getSource());
     final String database = databaseTablePair.getLeft();
@@ -712,7 +711,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   }
 
   @Override
-  protected IConfigTask visitAddColumn(final AddColumn node, final MPPQueryContext context) {
+  public IConfigTask visitAddColumn(final AddColumn node, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     final Pair<String, String> databaseTablePair = splitQualifiedName(node.getTableName());
     final String database = databaseTablePair.getLeft();
@@ -745,7 +744,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   }
 
   @Override
-  protected IConfigTask visitRenameColumn(final RenameColumn node, final MPPQueryContext context) {
+  public IConfigTask visitRenameColumn(final RenameColumn node, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     final Pair<String, String> databaseTablePair = splitQualifiedName(node.getTable());
     final String database = databaseTablePair.getLeft();
@@ -772,7 +771,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   }
 
   @Override
-  protected IConfigTask visitDropColumn(final DropColumn node, final MPPQueryContext context) {
+  public IConfigTask visitDropColumn(final DropColumn node, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     final Pair<String, String> databaseTablePair = splitQualifiedName(node.getTable());
     final String database = databaseTablePair.getLeft();
@@ -792,8 +791,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   }
 
   @Override
-  protected IConfigTask visitSetProperties(
-      final SetProperties node, final MPPQueryContext context) {
+  public IConfigTask visitSetProperties(final SetProperties node, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     final Pair<String, String> databaseTablePair = splitQualifiedName(node.getName());
     final String database = databaseTablePair.getLeft();
@@ -812,7 +810,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   }
 
   @Override
-  protected IConfigTask visitSetTableComment(
+  public IConfigTask visitSetTableComment(
       final SetTableComment node, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     final Pair<String, String> databaseTablePair = splitQualifiedName(node.getTableName());
@@ -832,7 +830,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   }
 
   @Override
-  protected IConfigTask visitSetColumnComment(
+  public IConfigTask visitSetColumnComment(
       final SetColumnComment node, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     final Pair<String, String> databaseTablePair = splitQualifiedName(node.getTable());
@@ -919,7 +917,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   }
 
   @Override
-  protected IConfigTask visitDropTable(final DropTable node, final MPPQueryContext context) {
+  public IConfigTask visitDropTable(final DropTable node, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     final Pair<String, String> databaseTablePair = splitQualifiedName(node.getTableName());
     final String database = databaseTablePair.getLeft();
@@ -933,7 +931,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   }
 
   @Override
-  protected IConfigTask visitDeleteDevice(final DeleteDevice node, final MPPQueryContext context) {
+  public IConfigTask visitDeleteDevice(final DeleteDevice node, final MPPQueryContext context) {
     new Analyzer(
             context,
             context.getSession(),
@@ -952,7 +950,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   }
 
   @Override
-  protected IConfigTask visitShowTables(final ShowTables node, final MPPQueryContext context) {
+  public IConfigTask visitShowTables(final ShowTables node, final MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
     String database = clientSession.getDatabaseName();
     if (node.getDbName().isPresent()) {
@@ -991,8 +989,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   }
 
   @Override
-  protected IConfigTask visitDescribeTable(
-      final DescribeTable node, final MPPQueryContext context) {
+  public IConfigTask visitDescribeTable(final DescribeTable node, final MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
     final Pair<String, String> databaseTablePair = splitQualifiedName(node.getTable());
     final String database = databaseTablePair.getLeft();
@@ -1012,14 +1009,14 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   }
 
   @Override
-  protected IConfigTask visitFlush(final Flush node, final MPPQueryContext context) {
+  public IConfigTask visitFlush(final Flush node, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     accessControl.checkUserGlobalSysPrivilege(context);
     return new FlushTask(((FlushStatement) node.getInnerTreeStatement()));
   }
 
   @Override
-  protected IConfigTask visitSetConfiguration(SetConfiguration node, MPPQueryContext context) {
+  public IConfigTask visitSetConfiguration(SetConfiguration node, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     SetConfigurationStatement setConfigurationStatement =
         (SetConfigurationStatement) node.getInnerTreeStatement();
@@ -1036,7 +1033,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   }
 
   @Override
-  protected IConfigTask visitShowConfiguration(ShowConfiguration node, MPPQueryContext context) {
+  public IConfigTask visitShowConfiguration(ShowConfiguration node, MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
     ShowConfigurationStatement showConfigurationStatement =
         (ShowConfigurationStatement) node.getInnerTreeStatement();
@@ -1049,28 +1046,28 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   }
 
   @Override
-  protected IConfigTask visitStartRepairData(StartRepairData node, MPPQueryContext context) {
+  public IConfigTask visitStartRepairData(StartRepairData node, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     accessControl.checkUserGlobalSysPrivilege(context);
     return new StartRepairDataTask(((StartRepairDataStatement) node.getInnerTreeStatement()));
   }
 
   @Override
-  protected IConfigTask visitStopRepairData(StopRepairData node, MPPQueryContext context) {
+  public IConfigTask visitStopRepairData(StopRepairData node, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     accessControl.checkUserGlobalSysPrivilege(context);
     return new StopRepairDataTask(((StopRepairDataStatement) node.getInnerTreeStatement()));
   }
 
   @Override
-  protected IConfigTask visitLoadConfiguration(LoadConfiguration node, MPPQueryContext context) {
+  public IConfigTask visitLoadConfiguration(LoadConfiguration node, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     accessControl.checkUserIsAdmin(context.getSession().getUserEntity());
     return new LoadConfigurationTask(((LoadConfigurationStatement) node.getInnerTreeStatement()));
   }
 
   @Override
-  protected IConfigTask visitSetSystemStatus(SetSystemStatus node, MPPQueryContext context) {
+  public IConfigTask visitSetSystemStatus(SetSystemStatus node, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     accessControl.checkUserGlobalSysPrivilege(context);
     return new SetSystemStatusTask(((SetSystemStatusStatement) node.getInnerTreeStatement()));
@@ -1121,7 +1118,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   }
 
   @Override
-  protected IConfigTask visitCreatePipe(final CreatePipe node, final MPPQueryContext context) {
+  public IConfigTask visitCreatePipe(final CreatePipe node, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     accessControl.checkUserGlobalSysPrivilege(context);
 
@@ -1268,7 +1265,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   }
 
   @Override
-  protected IConfigTask visitAlterPipe(final AlterPipe node, final MPPQueryContext context) {
+  public IConfigTask visitAlterPipe(final AlterPipe node, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
 
     final String userName = context.getSession().getUserName();
@@ -1315,34 +1312,34 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   }
 
   @Override
-  protected IConfigTask visitDropPipe(DropPipe node, MPPQueryContext context) {
+  public IConfigTask visitDropPipe(DropPipe node, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     accessControl.checkUserGlobalSysPrivilege(context);
     return new DropPipeTask(node);
   }
 
   @Override
-  protected IConfigTask visitStartPipe(StartPipe node, MPPQueryContext context) {
+  public IConfigTask visitStartPipe(StartPipe node, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     accessControl.checkUserGlobalSysPrivilege(context);
     return new StartPipeTask(node);
   }
 
   @Override
-  protected IConfigTask visitStopPipe(StopPipe node, MPPQueryContext context) {
+  public IConfigTask visitStopPipe(StopPipe node, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     accessControl.checkUserGlobalSysPrivilege(context);
     return new StopPipeTask(node);
   }
 
   @Override
-  protected IConfigTask visitShowPipes(ShowPipes node, MPPQueryContext context) {
+  public IConfigTask visitShowPipes(ShowPipes node, MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
     return new ShowPipeTask(node, context.getSession().getUserName());
   }
 
   @Override
-  protected IConfigTask visitCreatePipePlugin(CreatePipePlugin node, MPPQueryContext context) {
+  public IConfigTask visitCreatePipePlugin(CreatePipePlugin node, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     accessControl.checkUserGlobalSysPrivilege(context);
     if (node.getUriString() != null && isUriTrusted(node.getUriString())) {
@@ -1356,21 +1353,21 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   }
 
   @Override
-  protected IConfigTask visitDropPipePlugin(DropPipePlugin node, MPPQueryContext context) {
+  public IConfigTask visitDropPipePlugin(DropPipePlugin node, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     accessControl.checkUserGlobalSysPrivilege(context);
     return new DropPipePluginTask(node);
   }
 
   @Override
-  protected IConfigTask visitShowPipePlugins(ShowPipePlugins node, MPPQueryContext context) {
+  public IConfigTask visitShowPipePlugins(ShowPipePlugins node, MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
     accessControl.checkUserGlobalSysPrivilege(context);
     return new ShowPipePluginsTask(node);
   }
 
   @Override
-  protected IConfigTask visitCreateTopic(CreateTopic node, MPPQueryContext context) {
+  public IConfigTask visitCreateTopic(CreateTopic node, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     accessControl.checkUserGlobalSysPrivilege(context);
 
@@ -1382,100 +1379,98 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   }
 
   @Override
-  protected IConfigTask visitDropTopic(DropTopic node, MPPQueryContext context) {
+  public IConfigTask visitDropTopic(DropTopic node, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     accessControl.checkUserGlobalSysPrivilege(context);
     return new DropTopicTask(node);
   }
 
   @Override
-  protected IConfigTask visitShowTopics(ShowTopics node, MPPQueryContext context) {
+  public IConfigTask visitShowTopics(ShowTopics node, MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
     accessControl.checkUserGlobalSysPrivilege(context);
     return new ShowTopicsTask(node);
   }
 
   @Override
-  protected IConfigTask visitShowSubscriptions(ShowSubscriptions node, MPPQueryContext context) {
+  public IConfigTask visitShowSubscriptions(ShowSubscriptions node, MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
     accessControl.checkUserGlobalSysPrivilege(context);
     return new ShowSubscriptionsTask(node);
   }
 
   @Override
-  protected IConfigTask visitDropSubscription(DropSubscription node, MPPQueryContext context) {
+  public IConfigTask visitDropSubscription(DropSubscription node, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     accessControl.checkUserGlobalSysPrivilege(context);
     return new DropSubscriptionTask(node);
   }
 
   @Override
-  protected IConfigTask visitShowCurrentUser(ShowCurrentUser node, MPPQueryContext context) {
+  public IConfigTask visitShowCurrentUser(ShowCurrentUser node, MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
     return new ShowCurrentUserTask(context.getSession().getUserName());
   }
 
   @Override
-  protected IConfigTask visitShowCurrentSqlDialect(
+  public IConfigTask visitShowCurrentSqlDialect(
       ShowCurrentSqlDialect node, MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
     return new ShowCurrentSqlDialectTask(context.getSession().getSqlDialect().name());
   }
 
   @Override
-  protected IConfigTask visitSetSqlDialect(SetSqlDialect node, MPPQueryContext context) {
+  public IConfigTask visitSetSqlDialect(SetSqlDialect node, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     return new SetSqlDialectTask(node.getSqlDialect());
   }
 
   @Override
-  protected IConfigTask visitPrepare(Prepare node, MPPQueryContext context) {
+  public IConfigTask visitPrepare(Prepare node, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     return new PrepareTask(node.getStatementName().getValue(), node.getSql());
   }
 
   @Override
-  protected IConfigTask visitDeallocate(Deallocate node, MPPQueryContext context) {
+  public IConfigTask visitDeallocate(Deallocate node, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     return new DeallocateTask(node.getStatementName().getValue());
   }
 
   @Override
-  protected IConfigTask visitShowCurrentDatabase(
-      ShowCurrentDatabase node, MPPQueryContext context) {
+  public IConfigTask visitShowCurrentDatabase(ShowCurrentDatabase node, MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
     return new ShowCurrentDatabaseTask(context.getSession().getDatabaseName().orElse(null));
   }
 
   @Override
-  protected IConfigTask visitShowVersion(ShowVersion node, MPPQueryContext context) {
+  public IConfigTask visitShowVersion(ShowVersion node, MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
     return new ShowVersionTask();
   }
 
   @Override
-  protected IConfigTask visitShowVariables(ShowVariables node, MPPQueryContext context) {
+  public IConfigTask visitShowVariables(ShowVariables node, MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
     accessControl.checkUserGlobalSysPrivilege(context);
     return new ShowVariablesTask();
   }
 
   @Override
-  protected IConfigTask visitShowClusterId(ShowClusterId node, MPPQueryContext context) {
+  public IConfigTask visitShowClusterId(ShowClusterId node, MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
     accessControl.checkUserGlobalSysPrivilege(context);
     return new ShowClusterIdTask();
   }
 
   @Override
-  protected IConfigTask visitShowCurrentTimestamp(
-      ShowCurrentTimestamp node, MPPQueryContext context) {
+  public IConfigTask visitShowCurrentTimestamp(ShowCurrentTimestamp node, MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
     return new ShowCurrentTimestampTask();
   }
 
   @Override
-  protected IConfigTask visitRelationalAuthorPlan(
+  public IConfigTask visitRelationalAuthorPlan(
       RelationalAuthorStatement node, MPPQueryContext context) {
     context.setQueryType(node.getQueryType());
     node.setExecutedByUserId(context.getUserId());
@@ -1501,7 +1496,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   }
 
   @Override
-  protected IConfigTask visitKillQuery(KillQuery node, MPPQueryContext context) {
+  public IConfigTask visitKillQuery(KillQuery node, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     String allowedUsername = context.getSession().getUserName();
     if (accessControl.hasGlobalPrivilege(
@@ -1512,7 +1507,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   }
 
   @Override
-  protected IConfigTask visitCreateFunction(CreateFunction node, MPPQueryContext context) {
+  public IConfigTask visitCreateFunction(CreateFunction node, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     accessControl.checkUserGlobalSysPrivilege(context);
     if (node.getUriString().map(ExecutableManager::isUriTrusted).orElse(true)) {
@@ -1526,20 +1521,20 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   }
 
   @Override
-  protected IConfigTask visitShowFunctions(ShowFunctions node, MPPQueryContext context) {
+  public IConfigTask visitShowFunctions(ShowFunctions node, MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
     return new ShowFunctionsTask(Model.TABLE);
   }
 
   @Override
-  protected IConfigTask visitDropFunction(DropFunction node, MPPQueryContext context) {
+  public IConfigTask visitDropFunction(DropFunction node, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     accessControl.checkUserGlobalSysPrivilege(context);
     return new DropFunctionTask(Model.TABLE, node.getUdfName());
   }
 
   @Override
-  protected IConfigTask visitCreateExternalService(
+  public IConfigTask visitCreateExternalService(
       CreateExternalService node, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     accessControl.checkUserGlobalSysPrivilege(context);
@@ -1547,31 +1542,28 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   }
 
   @Override
-  protected IConfigTask visitStartExternalService(
-      StartExternalService node, MPPQueryContext context) {
+  public IConfigTask visitStartExternalService(StartExternalService node, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     accessControl.checkUserGlobalSysPrivilege(context);
     return new StartExternalServiceTask(node.getServiceName());
   }
 
   @Override
-  protected IConfigTask visitStopExternalService(
-      StopExternalService node, MPPQueryContext context) {
+  public IConfigTask visitStopExternalService(StopExternalService node, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     accessControl.checkUserGlobalSysPrivilege(context);
     return new StopExternalServiceTask(node.getServiceName());
   }
 
   @Override
-  protected IConfigTask visitDropExternalService(
-      DropExternalService node, MPPQueryContext context) {
+  public IConfigTask visitDropExternalService(DropExternalService node, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     accessControl.checkUserGlobalSysPrivilege(context);
     return new DropExternalServiceTask(node.getServiceName(), node.isForcedly());
   }
 
   @Override
-  protected IConfigTask visitMigrateRegion(MigrateRegion migrateRegion, MPPQueryContext context) {
+  public IConfigTask visitMigrateRegion(MigrateRegion migrateRegion, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     accessControl.checkUserGlobalSysPrivilege(context);
     // As the implementation is identical, we'll simply translate to the
@@ -1580,7 +1572,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   }
 
   @Override
-  protected IConfigTask visitReconstructRegion(
+  public IConfigTask visitReconstructRegion(
       ReconstructRegion reconstructRegion, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     accessControl.checkUserGlobalSysPrivilege(context);
@@ -1590,7 +1582,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   }
 
   @Override
-  protected IConfigTask visitExtendRegion(ExtendRegion extendRegion, MPPQueryContext context) {
+  public IConfigTask visitExtendRegion(ExtendRegion extendRegion, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     accessControl.checkUserGlobalSysPrivilege(context);
     // As the implementation is identical, we'll simply translate to the
@@ -1599,7 +1591,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   }
 
   @Override
-  protected IConfigTask visitRemoveRegion(RemoveRegion removeRegion, MPPQueryContext context) {
+  public IConfigTask visitRemoveRegion(RemoveRegion removeRegion, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     accessControl.checkUserGlobalSysPrivilege(context);
     // As the implementation is identical, we'll simply translate to the
@@ -1608,7 +1600,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   }
 
   @Override
-  protected IConfigTask visitCreateTraining(CreateTraining node, MPPQueryContext context) {
+  public IConfigTask visitCreateTraining(CreateTraining node, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     accessControl.checkUserGlobalSysPrivilege(context);
     return new CreateTuningTask(
@@ -1616,7 +1608,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   }
 
   @Override
-  protected IConfigTask visitCreateModel(CreateModel node, MPPQueryContext context) {
+  public IConfigTask visitCreateModel(CreateModel node, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     accessControl.checkUserGlobalSysPrivilege(context);
     String uri = node.getUri();
@@ -1629,40 +1621,40 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   }
 
   @Override
-  protected IConfigTask visitShowModels(ShowModels node, MPPQueryContext context) {
+  public IConfigTask visitShowModels(ShowModels node, MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
     return new ShowModelsTask(node.getModelId());
   }
 
   @Override
-  protected IConfigTask visitDropModel(DropModel node, MPPQueryContext context) {
+  public IConfigTask visitDropModel(DropModel node, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     accessControl.checkUserGlobalSysPrivilege(context);
     return new DropModelTask(node.getModelId());
   }
 
   @Override
-  protected IConfigTask visitShowLoadedModels(ShowLoadedModels node, MPPQueryContext context) {
+  public IConfigTask visitShowLoadedModels(ShowLoadedModels node, MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
     accessControl.checkUserGlobalSysPrivilege(context);
     return new ShowLoadedModelsTask(node.getDeviceIdList());
   }
 
   @Override
-  protected IConfigTask visitShowAIDevices(ShowAIDevices node, MPPQueryContext context) {
+  public IConfigTask visitShowAIDevices(ShowAIDevices node, MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
     return new ShowAIDevicesTask();
   }
 
   @Override
-  protected IConfigTask visitLoadModel(LoadModel node, MPPQueryContext context) {
+  public IConfigTask visitLoadModel(LoadModel node, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     accessControl.checkUserGlobalSysPrivilege(context);
     return new LoadModelTask(node.getModelId(), node.getDeviceIdList());
   }
 
   @Override
-  protected IConfigTask visitUnloadModel(UnloadModel node, MPPQueryContext context) {
+  public IConfigTask visitUnloadModel(UnloadModel node, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     accessControl.checkUserGlobalSysPrivilege(context);
     return new UnloadModelTask(node.getModelId(), node.getDeviceIdList());

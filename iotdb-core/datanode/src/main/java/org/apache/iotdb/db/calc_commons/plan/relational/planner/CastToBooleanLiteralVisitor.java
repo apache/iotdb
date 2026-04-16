@@ -31,35 +31,35 @@ import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.NullLiteral;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.StringLiteral;
 
 // return NULL, if we cannot parse literal to boolean type
-public class CastToBooleanLiteralVisitor extends CommonQueryAstVisitor<Boolean, Void> {
+public class CastToBooleanLiteralVisitor implements CommonQueryAstVisitor<Boolean, Void> {
 
   @Override
-  protected Boolean visitLiteral(Literal node, Void context) {
+  public Boolean visitLiteral(Literal node, Void context) {
     throw new UnsupportedOperationException("Unhandled literal type: " + node);
   }
 
   @Override
-  protected Boolean visitBooleanLiteral(BooleanLiteral node, Void context) {
+  public Boolean visitBooleanLiteral(BooleanLiteral node, Void context) {
     return node.getValue();
   }
 
   @Override
-  protected Boolean visitLongLiteral(LongLiteral node, Void context) {
+  public Boolean visitLongLiteral(LongLiteral node, Void context) {
     return node.getParsedValue() != 0;
   }
 
   @Override
-  protected Boolean visitDoubleLiteral(DoubleLiteral node, Void context) {
+  public Boolean visitDoubleLiteral(DoubleLiteral node, Void context) {
     return node.getValue() != 0;
   }
 
   @Override
-  protected Boolean visitFloatLiteral(FloatLiteral node, Void context) {
+  public Boolean visitFloatLiteral(FloatLiteral node, Void context) {
     return node.getValue() != 0;
   }
 
   @Override
-  protected Boolean visitStringLiteral(StringLiteral node, Void context) {
+  public Boolean visitStringLiteral(StringLiteral node, Void context) {
     try {
       return Boolean.parseBoolean(node.getValue());
     } catch (Exception e) {
@@ -68,12 +68,12 @@ public class CastToBooleanLiteralVisitor extends CommonQueryAstVisitor<Boolean, 
   }
 
   @Override
-  protected Boolean visitBinaryLiteral(BinaryLiteral node, Void context) {
+  public Boolean visitBinaryLiteral(BinaryLiteral node, Void context) {
     return null;
   }
 
   @Override
-  protected Boolean visitGenericLiteral(GenericLiteral node, Void context) {
+  public Boolean visitGenericLiteral(GenericLiteral node, Void context) {
     try {
       return Boolean.parseBoolean(node.getValue());
     } catch (Exception e) {
@@ -82,7 +82,7 @@ public class CastToBooleanLiteralVisitor extends CommonQueryAstVisitor<Boolean, 
   }
 
   @Override
-  protected Boolean visitNullLiteral(NullLiteral node, Void context) {
+  public Boolean visitNullLiteral(NullLiteral node, Void context) {
     return null;
   }
 }

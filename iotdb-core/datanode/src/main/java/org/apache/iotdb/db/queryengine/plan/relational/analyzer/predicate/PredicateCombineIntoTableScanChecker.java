@@ -61,17 +61,17 @@ public class PredicateCombineIntoTableScanChecker extends PredicateVisitor<Boole
   }
 
   @Override
-  protected Boolean visitNotExpression(NotExpression node, Void context) {
+  public Boolean visitNotExpression(NotExpression node, Void context) {
     return Boolean.FALSE;
   }
 
   @Override
-  protected Boolean visitIsNullPredicate(IsNullPredicate node, Void context) {
+  public Boolean visitIsNullPredicate(IsNullPredicate node, Void context) {
     return Boolean.FALSE;
   }
 
   @Override
-  protected Boolean visitInPredicate(InPredicate node, Void context) {
+  public Boolean visitInPredicate(InPredicate node, Void context) {
     return isTimeOrMeasurementColumn(node.getValue()) && isInListAllLiteral(node);
   }
 
@@ -90,14 +90,14 @@ public class PredicateCombineIntoTableScanChecker extends PredicateVisitor<Boole
   }
 
   @Override
-  protected Boolean visitLikePredicate(LikePredicate node, Void context) {
+  public Boolean visitLikePredicate(LikePredicate node, Void context) {
     return isTimeOrMeasurementColumn(node.getValue())
         && isLiteral(node.getPattern())
         && node.getEscape().map(PredicatePushIntoScanChecker::isLiteral).orElse(true);
   }
 
   @Override
-  protected Boolean visitLogicalExpression(LogicalExpression node, Void context) {
+  public Boolean visitLogicalExpression(LogicalExpression node, Void context) {
     List<Expression> children = node.getTerms();
     for (Expression child : children) {
       Boolean result = process(child, context);
@@ -114,7 +114,7 @@ public class PredicateCombineIntoTableScanChecker extends PredicateVisitor<Boole
   }
 
   @Override
-  protected Boolean visitComparisonExpression(ComparisonExpression node, Void context) {
+  public Boolean visitComparisonExpression(ComparisonExpression node, Void context) {
     return (isTimeOrMeasurementColumn(node.getLeft()) && isLiteral(node.getRight()))
         || (isTimeOrMeasurementColumn(node.getRight()) && isLiteral(node.getLeft()))
         || (isExtractTimeOrMeasurementColumn(node.getLeft()) && isLiteral(node.getRight()))
@@ -122,7 +122,7 @@ public class PredicateCombineIntoTableScanChecker extends PredicateVisitor<Boole
   }
 
   @Override
-  protected Boolean visitBetweenPredicate(BetweenPredicate node, Void context) {
+  public Boolean visitBetweenPredicate(BetweenPredicate node, Void context) {
     return (isTimeOrMeasurementColumn(node.getValue())
             && isLiteral(node.getMin())
             && isLiteral(node.getMax()))
@@ -139,28 +139,28 @@ public class PredicateCombineIntoTableScanChecker extends PredicateVisitor<Boole
   }
 
   @Override
-  protected Boolean visitIsNotNullPredicate(IsNotNullPredicate node, Void context) {
+  public Boolean visitIsNotNullPredicate(IsNotNullPredicate node, Void context) {
     return isTimeOrMeasurementColumn(node.getValue());
   }
 
   // expression below will be supported later
   @Override
-  protected Boolean visitSimpleCaseExpression(SimpleCaseExpression node, Void context) {
+  public Boolean visitSimpleCaseExpression(SimpleCaseExpression node, Void context) {
     return Boolean.FALSE;
   }
 
   @Override
-  protected Boolean visitSearchedCaseExpression(SearchedCaseExpression node, Void context) {
+  public Boolean visitSearchedCaseExpression(SearchedCaseExpression node, Void context) {
     return Boolean.FALSE;
   }
 
   @Override
-  protected Boolean visitIfExpression(IfExpression node, Void context) {
+  public Boolean visitIfExpression(IfExpression node, Void context) {
     return Boolean.FALSE;
   }
 
   @Override
-  protected Boolean visitNullIfExpression(NullIfExpression node, Void context) {
+  public Boolean visitNullIfExpression(NullIfExpression node, Void context) {
     return Boolean.FALSE;
   }
 

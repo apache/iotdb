@@ -31,35 +31,35 @@ import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.NullLiteral;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.StringLiteral;
 
 // return NULL, if we cannot parse literal to INT32 type
-public class CastToInt32LiteralVisitor extends CommonQueryAstVisitor<Integer, Void> {
+public class CastToInt32LiteralVisitor implements CommonQueryAstVisitor<Integer, Void> {
 
   @Override
-  protected Integer visitLiteral(Literal node, Void context) {
+  public Integer visitLiteral(Literal node, Void context) {
     throw new UnsupportedOperationException("Unhandled literal type: " + node);
   }
 
   @Override
-  protected Integer visitBooleanLiteral(BooleanLiteral node, Void context) {
+  public Integer visitBooleanLiteral(BooleanLiteral node, Void context) {
     return node.getValue() ? 1 : 0;
   }
 
   @Override
-  protected Integer visitLongLiteral(LongLiteral node, Void context) {
+  public Integer visitLongLiteral(LongLiteral node, Void context) {
     return (int) node.getParsedValue();
   }
 
   @Override
-  protected Integer visitDoubleLiteral(DoubleLiteral node, Void context) {
+  public Integer visitDoubleLiteral(DoubleLiteral node, Void context) {
     return (int) node.getValue();
   }
 
   @Override
-  protected Integer visitFloatLiteral(FloatLiteral node, Void context) {
+  public Integer visitFloatLiteral(FloatLiteral node, Void context) {
     return (int) node.getValue();
   }
 
   @Override
-  protected Integer visitStringLiteral(StringLiteral node, Void context) {
+  public Integer visitStringLiteral(StringLiteral node, Void context) {
     try {
       return Integer.parseInt(node.getValue());
     } catch (Exception e) {
@@ -68,12 +68,12 @@ public class CastToInt32LiteralVisitor extends CommonQueryAstVisitor<Integer, Vo
   }
 
   @Override
-  protected Integer visitBinaryLiteral(BinaryLiteral node, Void context) {
+  public Integer visitBinaryLiteral(BinaryLiteral node, Void context) {
     return null;
   }
 
   @Override
-  protected Integer visitGenericLiteral(GenericLiteral node, Void context) {
+  public Integer visitGenericLiteral(GenericLiteral node, Void context) {
     try {
       return Integer.parseInt(node.getValue());
     } catch (Exception e) {
@@ -82,7 +82,7 @@ public class CastToInt32LiteralVisitor extends CommonQueryAstVisitor<Integer, Vo
   }
 
   @Override
-  protected Integer visitNullLiteral(NullLiteral node, Void context) {
+  public Integer visitNullLiteral(NullLiteral node, Void context) {
     return null;
   }
 }

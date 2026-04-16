@@ -51,7 +51,7 @@ import static org.apache.iotdb.db.node_commons.plan.relational.sql.ast.LogicalEx
 import static org.apache.iotdb.db.node_commons.plan.relational.sql.ast.LogicalExpression.Operator.OR;
 
 public class GlobalTimePredicateExtractVisitor
-    extends CommonQueryAstVisitor<
+    implements CommonQueryAstVisitor<
         Pair<Expression, Boolean>, GlobalTimePredicateExtractVisitor.Context> {
 
   private static final String NOT_SUPPORTED =
@@ -70,14 +70,13 @@ public class GlobalTimePredicateExtractVisitor
             predicate, new GlobalTimePredicateExtractVisitor.Context(true, true, timeColumnName));
   }
 
-  protected Pair<Expression, Boolean> visitExpression(
+  public Pair<Expression, Boolean> visitExpression(
       Pair<Expression, Boolean> node, Context context) {
     throw new IllegalStateException(String.format(NOT_SUPPORTED, node.getClass()));
   }
 
   @Override
-  protected Pair<Expression, Boolean> visitLogicalExpression(
-      LogicalExpression node, Context context) {
+  public Pair<Expression, Boolean> visitLogicalExpression(LogicalExpression node, Context context) {
     if (node.getOperator() == AND) {
       List<Pair<Expression, Boolean>> resultPairs = new ArrayList<>();
       for (Expression term : node.getTerms()) {
@@ -157,7 +156,7 @@ public class GlobalTimePredicateExtractVisitor
   }
 
   @Override
-  protected Pair<Expression, Boolean> visitComparisonExpression(
+  public Pair<Expression, Boolean> visitComparisonExpression(
       ComparisonExpression node, Context context) {
     Expression leftExpression = node.getLeft();
     Expression rightExpression = node.getRight();
@@ -169,30 +168,29 @@ public class GlobalTimePredicateExtractVisitor
   }
 
   @Override
-  protected Pair<Expression, Boolean> visitIsNullPredicate(IsNullPredicate node, Context context) {
+  public Pair<Expression, Boolean> visitIsNullPredicate(IsNullPredicate node, Context context) {
     // time filter don't support IS_NULL
     return new Pair<>(null, true);
   }
 
   @Override
-  protected Pair<Expression, Boolean> visitIsNotNullPredicate(
+  public Pair<Expression, Boolean> visitIsNotNullPredicate(
       IsNotNullPredicate node, Context context) {
     return new Pair<>(null, true);
   }
 
   @Override
-  protected Pair<Expression, Boolean> visitFunctionCall(FunctionCall node, Context context) {
+  public Pair<Expression, Boolean> visitFunctionCall(FunctionCall node, Context context) {
     return new Pair<>(null, true);
   }
 
   @Override
-  protected Pair<Expression, Boolean> visitLikePredicate(LikePredicate node, Context context) {
+  public Pair<Expression, Boolean> visitLikePredicate(LikePredicate node, Context context) {
     return new Pair<>(null, true);
   }
 
   @Override
-  protected Pair<Expression, Boolean> visitBetweenPredicate(
-      BetweenPredicate node, Context context) {
+  public Pair<Expression, Boolean> visitBetweenPredicate(BetweenPredicate node, Context context) {
     Expression firstExpression = node.getValue();
     Expression secondExpression = node.getMin();
     Expression thirdExpression = node.getMax();
@@ -215,7 +213,7 @@ public class GlobalTimePredicateExtractVisitor
   }
 
   @Override
-  protected Pair<Expression, Boolean> visitInPredicate(InPredicate node, Context context) {
+  public Pair<Expression, Boolean> visitInPredicate(InPredicate node, Context context) {
     if (isTimeColumn(node.getValue(), context.timeColumnName)) {
       return new Pair<>(node, false);
     }
@@ -224,7 +222,7 @@ public class GlobalTimePredicateExtractVisitor
   }
 
   @Override
-  protected Pair<Expression, Boolean> visitNotExpression(NotExpression node, Context context) {
+  public Pair<Expression, Boolean> visitNotExpression(NotExpression node, Context context) {
     Pair<Expression, Boolean> result =
         process(
             node.getValue(),
@@ -238,31 +236,30 @@ public class GlobalTimePredicateExtractVisitor
   // ============================ not implemented =======================================
 
   @Override
-  protected Pair<Expression, Boolean> visitArithmeticBinary(
+  public Pair<Expression, Boolean> visitArithmeticBinary(
       ArithmeticBinaryExpression node, Context context) {
     throw new IllegalStateException(String.format(NOT_SUPPORTED, node.getClass()));
   }
 
   @Override
-  protected Pair<Expression, Boolean> visitSimpleCaseExpression(
+  public Pair<Expression, Boolean> visitSimpleCaseExpression(
       SimpleCaseExpression node, Context context) {
     throw new IllegalStateException(String.format(NOT_SUPPORTED, node.getClass()));
   }
 
   @Override
-  protected Pair<Expression, Boolean> visitSearchedCaseExpression(
+  public Pair<Expression, Boolean> visitSearchedCaseExpression(
       SearchedCaseExpression node, Context context) {
     throw new IllegalStateException(String.format(NOT_SUPPORTED, node.getClass()));
   }
 
   @Override
-  protected Pair<Expression, Boolean> visitIfExpression(IfExpression node, Context context) {
+  public Pair<Expression, Boolean> visitIfExpression(IfExpression node, Context context) {
     throw new IllegalStateException(String.format(NOT_SUPPORTED, node.getClass()));
   }
 
   @Override
-  protected Pair<Expression, Boolean> visitNullIfExpression(
-      NullIfExpression node, Context context) {
+  public Pair<Expression, Boolean> visitNullIfExpression(NullIfExpression node, Context context) {
     throw new IllegalStateException(String.format(NOT_SUPPORTED, node.getClass()));
   }
 

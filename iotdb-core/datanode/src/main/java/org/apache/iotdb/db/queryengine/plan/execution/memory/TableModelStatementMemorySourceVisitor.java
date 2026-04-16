@@ -56,7 +56,7 @@ import static org.apache.iotdb.db.queryengine.execution.warnings.WarningCollecto
 import static org.apache.iotdb.db.queryengine.plan.execution.memory.StatementMemorySourceVisitor.getStatementMemorySource;
 
 public class TableModelStatementMemorySourceVisitor
-    extends AstVisitor<StatementMemorySource, TableModelStatementMemorySourceContext> {
+    implements AstVisitor<StatementMemorySource, TableModelStatementMemorySourceContext> {
 
   @Override
   public StatementMemorySource visitNode(

@@ -34,7 +34,7 @@ import org.apache.iotdb.db.utils.DateTimeUtils;
 import java.time.ZoneId;
 
 // return NULL, if we cannot parse literal to timestamp type
-public class CastToTimestampLiteralVisitor extends CommonQueryAstVisitor<Long, Void> {
+public class CastToTimestampLiteralVisitor implements CommonQueryAstVisitor<Long, Void> {
 
   private final ZoneId zoneId;
 
@@ -43,32 +43,32 @@ public class CastToTimestampLiteralVisitor extends CommonQueryAstVisitor<Long, V
   }
 
   @Override
-  protected Long visitLiteral(Literal node, Void context) {
+  public Long visitLiteral(Literal node, Void context) {
     throw new UnsupportedOperationException("Unhandled literal type: " + node);
   }
 
   @Override
-  protected Long visitBooleanLiteral(BooleanLiteral node, Void context) {
+  public Long visitBooleanLiteral(BooleanLiteral node, Void context) {
     return null;
   }
 
   @Override
-  protected Long visitLongLiteral(LongLiteral node, Void context) {
+  public Long visitLongLiteral(LongLiteral node, Void context) {
     return node.getParsedValue();
   }
 
   @Override
-  protected Long visitDoubleLiteral(DoubleLiteral node, Void context) {
+  public Long visitDoubleLiteral(DoubleLiteral node, Void context) {
     return (long) node.getValue();
   }
 
   @Override
-  protected Long visitFloatLiteral(FloatLiteral node, Void context) {
+  public Long visitFloatLiteral(FloatLiteral node, Void context) {
     return (long) node.getValue();
   }
 
   @Override
-  protected Long visitStringLiteral(StringLiteral node, Void context) {
+  public Long visitStringLiteral(StringLiteral node, Void context) {
     try {
       return DateTimeUtils.convertDatetimeStrToLong(node.getValue(), zoneId);
     } catch (Exception e) {
@@ -77,12 +77,12 @@ public class CastToTimestampLiteralVisitor extends CommonQueryAstVisitor<Long, V
   }
 
   @Override
-  protected Long visitBinaryLiteral(BinaryLiteral node, Void context) {
+  public Long visitBinaryLiteral(BinaryLiteral node, Void context) {
     return null;
   }
 
   @Override
-  protected Long visitGenericLiteral(GenericLiteral node, Void context) {
+  public Long visitGenericLiteral(GenericLiteral node, Void context) {
     try {
       return DateTimeUtils.convertDatetimeStrToLong(node.getValue(), zoneId);
     } catch (Exception e) {
@@ -91,7 +91,7 @@ public class CastToTimestampLiteralVisitor extends CommonQueryAstVisitor<Long, V
   }
 
   @Override
-  protected Long visitNullLiteral(NullLiteral node, Void context) {
+  public Long visitNullLiteral(NullLiteral node, Void context) {
     return null;
   }
 }

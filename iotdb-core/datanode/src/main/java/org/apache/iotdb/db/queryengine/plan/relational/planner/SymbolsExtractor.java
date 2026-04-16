@@ -150,14 +150,13 @@ public final class SymbolsExtractor {
   private static class SymbolBuilderVisitor
       extends DefaultExpressionTraversalVisitor<ImmutableList.Builder<Symbol>> {
     @Override
-    protected Void visitSymbolReference(
-        SymbolReference node, ImmutableList.Builder<Symbol> builder) {
+    public Void visitSymbolReference(SymbolReference node, ImmutableList.Builder<Symbol> builder) {
       builder.add(Symbol.from(node));
       return null;
     }
 
     /*@Override
-    protected Void visitLambdaExpression(LambdaExpression node, ImmutableList.Builder<Symbol> context)
+    public Void visitLambdaExpression(LambdaExpression node, ImmutableList.Builder<Symbol> context)
     {
         // Symbols in lambda expression are bound to lambda arguments, so no need to extract them
         return null;
@@ -176,7 +175,7 @@ public final class SymbolsExtractor {
     }
 
     @Override
-    protected Void visitDereferenceExpression(
+    public Void visitDereferenceExpression(
         DereferenceExpression node, ImmutableSet.Builder<QualifiedName> builder) {
       if (columnReferences.contains(NodeRef.<Expression>of(node))) {
         builder.add(DereferenceExpression.getQualifiedName(node));
@@ -187,13 +186,13 @@ public final class SymbolsExtractor {
     }
 
     @Override
-    protected Void visitIdentifier(Identifier node, ImmutableSet.Builder<QualifiedName> builder) {
+    public Void visitIdentifier(Identifier node, ImmutableSet.Builder<QualifiedName> builder) {
       builder.add(QualifiedName.of(node.getValue()));
       return null;
     }
 
     @Override
-    protected Void visitSubqueryExpression(
+    public Void visitSubqueryExpression(
         SubqueryExpression node, ImmutableSet.Builder<QualifiedName> context) {
       if (!recurseIntoSubqueries) {
         return null;

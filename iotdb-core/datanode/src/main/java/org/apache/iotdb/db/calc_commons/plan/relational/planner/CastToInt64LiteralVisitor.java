@@ -31,35 +31,35 @@ import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.NullLiteral;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.StringLiteral;
 
 // return NULL, if we cannot parse literal to INT64 type
-public class CastToInt64LiteralVisitor extends CommonQueryAstVisitor<Long, Void> {
+public class CastToInt64LiteralVisitor implements CommonQueryAstVisitor<Long, Void> {
 
   @Override
-  protected Long visitLiteral(Literal node, Void context) {
+  public Long visitLiteral(Literal node, Void context) {
     throw new UnsupportedOperationException("Unhandled literal type: " + node);
   }
 
   @Override
-  protected Long visitBooleanLiteral(BooleanLiteral node, Void context) {
+  public Long visitBooleanLiteral(BooleanLiteral node, Void context) {
     return node.getValue() ? 1L : 0L;
   }
 
   @Override
-  protected Long visitLongLiteral(LongLiteral node, Void context) {
+  public Long visitLongLiteral(LongLiteral node, Void context) {
     return node.getParsedValue();
   }
 
   @Override
-  protected Long visitDoubleLiteral(DoubleLiteral node, Void context) {
+  public Long visitDoubleLiteral(DoubleLiteral node, Void context) {
     return (long) node.getValue();
   }
 
   @Override
-  protected Long visitFloatLiteral(FloatLiteral node, Void context) {
+  public Long visitFloatLiteral(FloatLiteral node, Void context) {
     return (long) node.getValue();
   }
 
   @Override
-  protected Long visitStringLiteral(StringLiteral node, Void context) {
+  public Long visitStringLiteral(StringLiteral node, Void context) {
     try {
       return Long.parseLong(node.getValue());
     } catch (Exception e) {
@@ -68,12 +68,12 @@ public class CastToInt64LiteralVisitor extends CommonQueryAstVisitor<Long, Void>
   }
 
   @Override
-  protected Long visitBinaryLiteral(BinaryLiteral node, Void context) {
+  public Long visitBinaryLiteral(BinaryLiteral node, Void context) {
     return null;
   }
 
   @Override
-  protected Long visitGenericLiteral(GenericLiteral node, Void context) {
+  public Long visitGenericLiteral(GenericLiteral node, Void context) {
     try {
       return Long.parseLong(node.getValue());
     } catch (Exception e) {
@@ -82,7 +82,7 @@ public class CastToInt64LiteralVisitor extends CommonQueryAstVisitor<Long, Void>
   }
 
   @Override
-  protected Long visitNullLiteral(NullLiteral node, Void context) {
+  public Long visitNullLiteral(NullLiteral node, Void context) {
     return null;
   }
 }

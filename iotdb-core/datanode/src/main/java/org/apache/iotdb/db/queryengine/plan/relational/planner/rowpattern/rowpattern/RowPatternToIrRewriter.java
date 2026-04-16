@@ -57,7 +57,7 @@ import static org.apache.iotdb.db.node_commons.plan.relational.planner.rowpatter
 import static org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpattern.IrQuantifier.zeroOrMore;
 import static org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpattern.IrQuantifier.zeroOrOne;
 
-public class RowPatternToIrRewriter extends AstVisitor<IrRowPattern, Void> {
+public class RowPatternToIrRewriter implements AstVisitor<IrRowPattern, Void> {
   private final Analysis analysis;
 
   public RowPatternToIrRewriter(Analysis analysis) {
@@ -69,7 +69,7 @@ public class RowPatternToIrRewriter extends AstVisitor<IrRowPattern, Void> {
   }
 
   @Override
-  protected IrRowPattern visitPatternAlternation(PatternAlternation node, Void context) {
+  public IrRowPattern visitPatternAlternation(PatternAlternation node, Void context) {
     List<IrRowPattern> patterns =
         node.getPatterns().stream().map(this::process).collect(toImmutableList());
 
@@ -77,7 +77,7 @@ public class RowPatternToIrRewriter extends AstVisitor<IrRowPattern, Void> {
   }
 
   @Override
-  protected IrRowPattern visitPatternConcatenation(PatternConcatenation node, Void context) {
+  public IrRowPattern visitPatternConcatenation(PatternConcatenation node, Void context) {
     List<IrRowPattern> patterns =
         node.getPatterns().stream().map(this::process).collect(toImmutableList());
 
@@ -85,7 +85,7 @@ public class RowPatternToIrRewriter extends AstVisitor<IrRowPattern, Void> {
   }
 
   @Override
-  protected IrRowPattern visitQuantifiedPattern(QuantifiedPattern node, Void context) {
+  public IrRowPattern visitQuantifiedPattern(QuantifiedPattern node, Void context) {
     IrRowPattern pattern = process(node.getPattern());
     IrQuantifier quantifier = rewritePatternQuantifier(node.getPatternQuantifier());
 
@@ -115,7 +115,7 @@ public class RowPatternToIrRewriter extends AstVisitor<IrRowPattern, Void> {
   }
 
   @Override
-  protected IrRowPattern visitAnchorPattern(AnchorPattern node, Void context) {
+  public IrRowPattern visitAnchorPattern(AnchorPattern node, Void context) {
     Type type;
     switch (node.getType()) {
       case PARTITION_START:
@@ -132,19 +132,19 @@ public class RowPatternToIrRewriter extends AstVisitor<IrRowPattern, Void> {
   }
 
   @Override
-  protected IrRowPattern visitEmptyPattern(EmptyPattern node, Void context) {
+  public IrRowPattern visitEmptyPattern(EmptyPattern node, Void context) {
     return new IrEmpty();
   }
 
   @Override
-  protected IrRowPattern visitExcludedPattern(ExcludedPattern node, Void context) {
+  public IrRowPattern visitExcludedPattern(ExcludedPattern node, Void context) {
     IrRowPattern pattern = process(node.getPattern());
 
     return new IrExclusion(pattern);
   }
 
   @Override
-  protected IrRowPattern visitPatternPermutation(PatternPermutation node, Void context) {
+  public IrRowPattern visitPatternPermutation(PatternPermutation node, Void context) {
     List<IrRowPattern> patterns =
         node.getPatterns().stream().map(this::process).collect(toImmutableList());
 
@@ -152,7 +152,7 @@ public class RowPatternToIrRewriter extends AstVisitor<IrRowPattern, Void> {
   }
 
   @Override
-  protected IrRowPattern visitPatternVariable(PatternVariable node, Void context) {
+  public IrRowPattern visitPatternVariable(PatternVariable node, Void context) {
     return new IrLabel(node.getName().getCanonicalValue());
   }
 }

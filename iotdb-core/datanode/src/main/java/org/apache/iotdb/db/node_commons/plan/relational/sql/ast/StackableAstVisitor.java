@@ -25,7 +25,7 @@ import java.util.LinkedList;
 import java.util.Optional;
 
 public class StackableAstVisitor<R, C>
-    extends AstVisitor<R, StackableAstVisitor.StackableAstVisitorContext<C>> {
+    implements AstVisitor<R, StackableAstVisitor.StackableAstVisitorContext<C>> {
 
   @Override
   public R process(Node node, StackableAstVisitorContext<C> context) {

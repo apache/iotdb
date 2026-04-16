@@ -366,7 +366,7 @@ public class StatementAnalyzer {
    * Visitor context represents local query scope (if exists). The invariant is that the local query
    * scopes hierarchy should always have outer query scope (if provided) as ancestor.
    */
-  private final class Visitor extends AstVisitor<Scope, Optional<Scope>> {
+  private final class Visitor implements AstVisitor<Scope, Optional<Scope>> {
 
     private final boolean isTopLevel;
     private final Optional<Scope> outerQueryScope;
@@ -386,7 +386,7 @@ public class StatementAnalyzer {
 
     @Override
     public Scope process(Node node, final Optional<Scope> scope) {
-      final Scope returnScope = super.process(node, scope);
+      final Scope returnScope = AstVisitor.super.process(node, scope);
       if (node instanceof PipeEnriched) {
         node = ((PipeEnriched) node).getInnerStatement();
       }
@@ -414,100 +414,100 @@ public class StatementAnalyzer {
     }
 
     @Override
-    protected Scope visitNode(Node node, Optional<Scope> context) {
+    public Scope visitNode(Node node, Optional<Scope> context) {
       throw new IllegalStateException("Unsupported node type: " + node.getClass().getName());
     }
 
     @Override
-    protected Scope visitCreateDB(CreateDB node, Optional<Scope> context) {
+    public Scope visitCreateDB(CreateDB node, Optional<Scope> context) {
       throw new SemanticException("Create Database statement is not supported yet.");
     }
 
     @Override
-    protected Scope visitAlterDB(AlterDB node, Optional<Scope> context) {
+    public Scope visitAlterDB(AlterDB node, Optional<Scope> context) {
       throw new SemanticException("Alter Database statement is not supported yet.");
     }
 
     @Override
-    protected Scope visitDropDB(DropDB node, Optional<Scope> context) {
+    public Scope visitDropDB(DropDB node, Optional<Scope> context) {
       throw new SemanticException("Drop Database statement is not supported yet.");
     }
 
     @Override
-    protected Scope visitShowDB(ShowDB node, Optional<Scope> context) {
+    public Scope visitShowDB(ShowDB node, Optional<Scope> context) {
       throw new SemanticException("Show Database statement is not supported yet.");
     }
 
     @Override
-    protected Scope visitCreateTable(final CreateTable node, final Optional<Scope> context) {
+    public Scope visitCreateTable(final CreateTable node, final Optional<Scope> context) {
       validateProperties(node.getProperties(), context);
       return createAndAssignScope(node, context);
     }
 
     @Override
-    protected Scope visitCreateView(final CreateView node, final Optional<Scope> context) {
+    public Scope visitCreateView(final CreateView node, final Optional<Scope> context) {
       validateProperties(node.getProperties(), context);
       return createAndAssignScope(node, context);
     }
 
     @Override
-    protected Scope visitDropTable(final DropTable node, final Optional<Scope> context) {
+    public Scope visitDropTable(final DropTable node, final Optional<Scope> context) {
       return createAndAssignScope(node, context);
     }
 
     @Override
-    protected Scope visitShowTables(ShowTables node, Optional<Scope> context) {
+    public Scope visitShowTables(ShowTables node, Optional<Scope> context) {
       throw new SemanticException("Show Tables statement is not supported yet.");
     }
 
     @Override
-    protected Scope visitRenameTable(RenameTable node, Optional<Scope> context) {
+    public Scope visitRenameTable(RenameTable node, Optional<Scope> context) {
       return createAndAssignScope(node, context);
     }
 
     @Override
-    protected Scope visitDescribeTable(DescribeTable node, Optional<Scope> context) {
+    public Scope visitDescribeTable(DescribeTable node, Optional<Scope> context) {
       throw new SemanticException("Describe Table statement is not supported yet.");
     }
 
     @Override
-    protected Scope visitSetProperties(final SetProperties node, final Optional<Scope> context) {
+    public Scope visitSetProperties(final SetProperties node, final Optional<Scope> context) {
       validateProperties(node.getProperties(), context);
       return createAndAssignScope(node, context);
     }
 
     @Override
-    protected Scope visitRenameColumn(RenameColumn node, Optional<Scope> context) {
+    public Scope visitRenameColumn(RenameColumn node, Optional<Scope> context) {
       return createAndAssignScope(node, context);
     }
 
     @Override
-    protected Scope visitDropColumn(DropColumn node, Optional<Scope> context) {
+    public Scope visitDropColumn(DropColumn node, Optional<Scope> context) {
       return createAndAssignScope(node, context);
     }
 
     @Override
-    protected Scope visitAddColumn(AddColumn node, Optional<Scope> context) {
+    public Scope visitAddColumn(AddColumn node, Optional<Scope> context) {
       throw new SemanticException("Add Column statement is not supported yet.");
     }
 
     @Override
-    protected Scope visitCreateIndex(CreateIndex node, Optional<Scope> context) {
+    public Scope visitCreateIndex(CreateIndex node, Optional<Scope> context) {
       throw new SemanticException("Create Index statement is not supported yet.");
     }
 
     @Override
-    protected Scope visitDropIndex(DropIndex node, Optional<Scope> context) {
+    public Scope visitDropIndex(DropIndex node, Optional<Scope> context) {
       throw new SemanticException("Drop Index statement is not supported yet.");
     }
 
     @Override
-    protected Scope visitShowIndex(ShowIndex node, Optional<Scope> context) {
+    public Scope visitShowIndex(ShowIndex node, Optional<Scope> context) {
       throw new SemanticException("Show Index statement is not supported yet.");
     }
 
     @Override
-    protected Scope visitUpdate(final Update node, final Optional<Scope> context) {
+    public Scope visitUpdate(final Update node, final Optional<Scope> context) {
       queryContext.setQueryType(QueryType.WRITE);
       node.parseTable(sessionContext);
       accessControl.checkCanInsertIntoTable(
@@ -589,7 +589,7 @@ public class StatementAnalyzer {
     }
 
     @Override
-    protected Scope visitDeleteDevice(final DeleteDevice node, final Optional<Scope> context) {
+    public Scope visitDeleteDevice(final DeleteDevice node, final Optional<Scope> context) {
       // Actually write, but will return the result
       queryContext.setQueryType(QueryType.READ);
       node.parseTable(sessionContext);
@@ -616,17 +616,17 @@ public class StatementAnalyzer {
     }
 
     @Override
-    protected Scope visitDropFunction(DropFunction node, Optional<Scope> context) {
+    public Scope visitDropFunction(DropFunction node, Optional<Scope> context) {
       throw new SemanticException("Drop Function statement is not supported yet.");
     }
 
     @Override
-    protected Scope visitShowFunctions(ShowFunctions node, Optional<Scope> context) {
+    public Scope visitShowFunctions(ShowFunctions node, Optional<Scope> context) {
       throw new SemanticException("Show Function statement is not supported yet.");
     }
 
     @Override
-    protected Scope visitUse(Use node, Optional<Scope> scope) {
+    public Scope visitUse(Use node, Optional<Scope> scope) {
       throw new SemanticException("USE statement is not supported yet.");
     }
 
@@ -657,7 +657,7 @@ public class StatementAnalyzer {
     }
 
     @Override
-    protected Scope visitInsert(Insert insert, Optional<Scope> scope) {
+    public Scope visitInsert(Insert insert, Optional<Scope> scope) {
       queryContext.setQueryType(QueryType.READ_WRITE);
       // analyze the query that creates the data
       Scope queryScope = analyze(insert.getQuery(), Optional.empty(), false);
@@ -761,16 +761,16 @@ public class StatementAnalyzer {
     }
 
     @Override
-    protected Scope visitInsertRow(InsertRow node, Optional<Scope> context) {
+    public Scope visitInsertRow(InsertRow node, Optional<Scope> context) {
       return visitInsert(node, context);
     }
 
-    protected Scope visitInsertTablet(InsertTablet insert, Optional<Scope> scope) {
+    public Scope visitInsertTablet(InsertTablet insert, Optional<Scope> scope) {
       return visitInsert(insert, scope);
     }
 
     @Override
-    protected Scope visitInsertRows(InsertRows node, Optional<Scope> context) {
+    public Scope visitInsertRows(InsertRows node, Optional<Scope> context) {
       return visitInsert(node, context);
     }
 
@@ -798,7 +798,7 @@ public class StatementAnalyzer {
     }
 
     @Override
-    protected Scope visitDelete(Delete node, Optional<Scope> scope) {
+    public Scope visitDelete(Delete node, Optional<Scope> scope) {
       final Scope ret = Scope.create();
       accessControl.checkCanDeleteFromTable(
           sessionContext.getUserName(),
@@ -813,7 +813,7 @@ public class StatementAnalyzer {
     }
 
     @Override
-    protected Scope visitPipeEnriched(PipeEnriched node, Optional<Scope> scope) {
+    public Scope visitPipeEnriched(PipeEnriched node, Optional<Scope> scope) {
       // The LoadTsFile statement is a special case, it needs isGeneratedByPipe information
       // in the analyzer to execute the tsfile-tablet conversion in some cases.
       if (node.getInnerStatement() instanceof LoadTsFile) {
@@ -827,7 +827,7 @@ public class StatementAnalyzer {
     }
 
     @Override
-    protected Scope visitLoadTsFile(final LoadTsFile node, final Optional<Scope> scope) {
+    public Scope visitLoadTsFile(final LoadTsFile node, final Optional<Scope> scope) {
       queryContext.setQueryType(QueryType.WRITE);
 
       try (final LoadTsFileAnalyzer loadTsFileAnalyzer =
@@ -846,14 +846,14 @@ public class StatementAnalyzer {
     }
 
     @Override
-    protected Scope visitExplain(Explain node, Optional<Scope> context) {
+    public Scope visitExplain(Explain node, Optional<Scope> context) {
       queryContext.setExplainType(ExplainType.EXPLAIN);
       analysis.setFinishQueryAfterAnalyze();
       return visitQuery((Query) node.getStatement(), context);
     }
 
     @Override
-    protected Scope visitCopyTo(CopyTo node, Optional<Scope> context) {
+    public Scope visitCopyTo(CopyTo node, Optional<Scope> context) {
       accessControl.checkUserGlobalSysPrivilege(queryContext);
       Scope innerQueryScope = visitQuery((Query) node.getQueryStatement(), context);
       analysis.setScope(node, innerQueryScope);
@@ -861,14 +861,14 @@ public class StatementAnalyzer {
     }
 
     @Override
-    protected Scope visitExplainAnalyze(ExplainAnalyze node, Optional<Scope> context) {
+    public Scope visitExplainAnalyze(ExplainAnalyze node, Optional<Scope> context) {
       queryContext.setExplainType(ExplainType.EXPLAIN_ANALYZE);
       queryContext.setVerbose(node.isVerbose());
       return visitQuery((Query) node.getStatement(), context);
     }
 
     @Override
-    protected Scope visitQuery(Query node, Optional<Scope> context) {
+    public Scope visitQuery(Query node, Optional<Scope> context) {
       analysis.setQuery(true);
       Scope withScope = analyzeWith(node, context);
       hasFillInParentScope = node.getFill().isPresent() || hasFillInParentScope;
@@ -1138,7 +1138,7 @@ public class StatementAnalyzer {
     }
 
     @Override
-    protected Scope visitTableSubquery(TableSubquery node, Optional<Scope> scope) {
+    public Scope visitTableSubquery(TableSubquery node, Optional<Scope> scope) {
       StatementAnalyzer analyzer =
           statementAnalyzerFactory.createStatementAnalyzer(
               analysis, queryContext, sessionContext, warningCollector, CorrelationSupport.ALLOWED);
@@ -1151,7 +1151,7 @@ public class StatementAnalyzer {
     }
 
     @Override
-    protected Scope visitQuerySpecification(QuerySpecification node, Optional<Scope> scope) {
+    public Scope visitQuerySpecification(QuerySpecification node, Optional<Scope> scope) {
       // TODO: extract candidate names from SELECT, WHERE, HAVING, GROUP BY and ORDER BY expressions
       // to pass down to analyzeFrom
       hasFillInParentScope = node.getFill().isPresent() || hasFillInParentScope;
@@ -1583,7 +1583,7 @@ public class StatementAnalyzer {
       return target;
     }
 
-    private class ExpandColumnsVisitor extends AstVisitor<List<Expression>, Scope> {
+    private class ExpandColumnsVisitor implements AstVisitor<List<Expression>, Scope> {
       private final Identifier alias;
       // Record Columns expanded result in process, not always equals with final result
       private List<Expression> expandedExpressions;
@@ -1598,12 +1598,12 @@ public class StatementAnalyzer {
         return accordingColumnNames;
       }
 
-      protected List<Expression> visitNode(Node node, Scope scope) {
+      public List<Expression> visitNode(Node node, Scope scope) {
         throw new UnsupportedOperationException(
             "This Visitor only supported process of Expression");
       }
 
-      protected List<Expression> visitExpression(Expression node, Scope scope) {
+      public List<Expression> visitExpression(Expression node, Scope scope) {
         if (node.getChildren().isEmpty()) {
           return Collections.singletonList(node);
         }
@@ -1680,7 +1680,7 @@ public class StatementAnalyzer {
       }
 
       @Override
-      protected List<Expression> visitArithmeticBinary(
+      public List<Expression> visitArithmeticBinary(
           ArithmeticBinaryExpression node, Scope context) {
         List<Expression> leftResult = process(node.getLeft(), context);
         List<Expression> rightResult = process(node.getRight(), context);
@@ -1713,8 +1713,7 @@ public class StatementAnalyzer {
       }
 
       @Override
-      protected List<Expression> visitArithmeticUnary(
-          ArithmeticUnaryExpression node, Scope context) {
+      public List<Expression> visitArithmeticUnary(ArithmeticUnaryExpression node, Scope context) {
         List<Expression> childResult = process(node.getValue(), context);
         if (expandedExpressions == null) {
           // no Columns need to be expanded
@@ -1730,7 +1729,7 @@ public class StatementAnalyzer {
       }
 
       @Override
-      protected List<Expression> visitBetweenPredicate(BetweenPredicate node, Scope context) {
+      public List<Expression> visitBetweenPredicate(BetweenPredicate node, Scope context) {
         List<Expression> valueResult = process(node.getValue(), context);
         List<Expression> minResult = process(node.getMin(), context);
         List<Expression> maxResult = process(node.getMax(), context);
@@ -1764,7 +1763,7 @@ public class StatementAnalyzer {
       }
 
       @Override
-      protected List<Expression> visitCast(Cast node, Scope context) {
+      public List<Expression> visitCast(Cast node, Scope context) {
         List<Expression> childResult = process(node.getExpression(), context);
         if (expandedExpressions == null) {
           // no Columns need to be expanded
@@ -1780,7 +1779,7 @@ public class StatementAnalyzer {
       }
 
       @Override
-      protected List<Expression> visitCoalesceExpression(CoalesceExpression node, Scope context) {
+      public List<Expression> visitCoalesceExpression(CoalesceExpression node, Scope context) {
         ImmutableList.Builder<List<Expression>> childrenResultListBuilder =
             new ImmutableList.Builder<>();
         node.getOperands()
@@ -1815,8 +1814,7 @@ public class StatementAnalyzer {
       }
 
       @Override
-      protected List<Expression> visitComparisonExpression(
-          ComparisonExpression node, Scope context) {
+      public List<Expression> visitComparisonExpression(ComparisonExpression node, Scope context) {
         List<Expression> leftResult = process(node.getLeft(), context);
         List<Expression> rightResult = process(node.getRight(), context);
 
@@ -1848,7 +1846,7 @@ public class StatementAnalyzer {
       }
 
       @Override
-      protected List<Expression> visitDereferenceExpression(
+      public List<Expression> visitDereferenceExpression(
           DereferenceExpression node, Scope context) {
         process(node.getBase(), context);
         if (expandedExpressions == null) {
@@ -1858,13 +1856,13 @@ public class StatementAnalyzer {
       }
 
       @Override
-      protected List<Expression> visitExists(ExistsPredicate node, Scope context) {
+      public List<Expression> visitExists(ExistsPredicate node, Scope context) {
         // We don't need to process Query here
         return Collections.singletonList(node);
       }
 
       @Override
-      protected List<Expression> visitFunctionCall(FunctionCall node, Scope context) {
+      public List<Expression> visitFunctionCall(FunctionCall node, Scope context) {
         ImmutableList.Builder<List<Expression>> childrenResultListBuilder =
             new ImmutableList.Builder<>();
         node.getArguments()
@@ -1899,12 +1897,12 @@ public class StatementAnalyzer {
       }
 
       @Override
-      protected List<Expression> visitIdentifier(Identifier node, Scope context) {
+      public List<Expression> visitIdentifier(Identifier node, Scope context) {
         return Collections.singletonList(node);
       }
 
       @Override
-      protected List<Expression> visitIfExpression(IfExpression node, Scope context) {
+      public List<Expression> visitIfExpression(IfExpression node, Scope context) {
         List<Expression> firstResult = process(node.getCondition(), context);
         List<Expression> secondResult = process(node.getTrueValue(), context);
         List<Expression> thirdResult =
@@ -1939,7 +1937,7 @@ public class StatementAnalyzer {
       }
 
       @Override
-      protected List<Expression> visitInListExpression(InListExpression node, Scope context) {
+      public List<Expression> visitInListExpression(InListExpression node, Scope context) {
         ImmutableList.Builder<List<Expression>> childrenResultListBuilder =
             new ImmutableList.Builder<>();
         node.getValues()
@@ -1974,7 +1972,7 @@ public class StatementAnalyzer {
       }
 
       @Override
-      protected List<Expression> visitInPredicate(InPredicate node, Scope context) {
+      public List<Expression> visitInPredicate(InPredicate node, Scope context) {
         List<Expression> leftResult = process(node.getValue(), context);
         List<Expression> rightResult = process(node.getValueList(), context);
 
@@ -2003,7 +2001,7 @@ public class StatementAnalyzer {
       }
 
       @Override
-      protected List<Expression> visitIsNotNullPredicate(IsNotNullPredicate node, Scope context) {
+      public List<Expression> visitIsNotNullPredicate(IsNotNullPredicate node, Scope context) {
         List<Expression> childResult = process(node.getValue(), context);
         if (expandedExpressions == null) {
           // no Columns need to be expanded
@@ -2019,7 +2017,7 @@ public class StatementAnalyzer {
       }
 
       @Override
-      protected List<Expression> visitIsNullPredicate(IsNullPredicate node, Scope context) {
+      public List<Expression> visitIsNullPredicate(IsNullPredicate node, Scope context) {
         List<Expression> childResult = process(node.getValue(), context);
         if (expandedExpressions == null) {
           // no Columns need to be expanded
@@ -2035,7 +2033,7 @@ public class StatementAnalyzer {
       }
 
       @Override
-      protected List<Expression> visitLikePredicate(LikePredicate node, Scope context) {
+      public List<Expression> visitLikePredicate(LikePredicate node, Scope context) {
         List<Expression> firstResult = process(node.getValue(), context);
         List<Expression> secondResult = process(node.getPattern(), context);
         List<Expression> thirdResult =
@@ -2070,12 +2068,12 @@ public class StatementAnalyzer {
       }
 
       @Override
-      protected List<Expression> visitLiteral(Literal node, Scope context) {
+      public List<Expression> visitLiteral(Literal node, Scope context) {
         return Collections.singletonList(node);
       }
 
       @Override
-      protected List<Expression> visitLogicalExpression(LogicalExpression node, Scope context) {
+      public List<Expression> visitLogicalExpression(LogicalExpression node, Scope context) {
         ImmutableList.Builder<List<Expression>> childrenResultListBuilder =
             new ImmutableList.Builder<>();
         node.getTerms()
@@ -2110,7 +2108,7 @@ public class StatementAnalyzer {
       }
 
       @Override
-      protected List<Expression> visitNotExpression(NotExpression node, Scope context) {
+      public List<Expression> visitNotExpression(NotExpression node, Scope context) {
         List<Expression> childResult = process(node.getValue(), context);
         if (expandedExpressions == null) {
           // no Columns need to be expanded
@@ -2126,13 +2124,13 @@ public class StatementAnalyzer {
       }
 
       @Override
-      protected List<Expression> visitNullIfExpression(NullIfExpression node, Scope context) {
+      public List<Expression> visitNullIfExpression(NullIfExpression node, Scope context) {
         throw new SemanticException(
             String.format("%s are not supported now", node.getClass().getSimpleName()));
       }
 
       @Override
-      protected List<Expression> visitQuantifiedComparisonExpression(
+      public List<Expression> visitQuantifiedComparisonExpression(
           QuantifiedComparisonExpression node, Scope context) {
         List<Expression> childResult = process(node.getValue(), context);
         if (expandedExpressions == null) {
@@ -2151,13 +2149,13 @@ public class StatementAnalyzer {
       }
 
       @Override
-      protected List<Expression> visitRow(Row node, Scope context) {
+      public List<Expression> visitRow(Row node, Scope context) {
         throw new SemanticException(
             String.format("%s are not supported now", node.getClass().getSimpleName()));
       }
 
       @Override
-      protected List<Expression> visitExtract(Extract node, Scope context) {
+      public List<Expression> visitExtract(Extract node, Scope context) {
         List<Expression> childResult = process(node.getExpression(), context);
         if (expandedExpressions == null) {
           // no Columns need to be expanded
@@ -2173,7 +2171,7 @@ public class StatementAnalyzer {
       }
 
       @Override
-      protected List<Expression> visitSearchedCaseExpression(
+      public List<Expression> visitSearchedCaseExpression(
           SearchedCaseExpression node, Scope context) {
         ImmutableList.Builder<List<Expression>> firstChildResultListBuilder =
             new ImmutableList.Builder<>();
@@ -2222,8 +2220,7 @@ public class StatementAnalyzer {
       }
 
       @Override
-      protected List<Expression> visitSimpleCaseExpression(
-          SimpleCaseExpression node, Scope context) {
+      public List<Expression> visitSimpleCaseExpression(SimpleCaseExpression node, Scope context) {
         List<Expression> firstResult = process(node.getOperand(), context);
         ImmutableList.Builder<List<Expression>> whenResultListBuilder =
             new ImmutableList.Builder<>();
@@ -2273,13 +2270,13 @@ public class StatementAnalyzer {
       }
 
       @Override
-      protected List<Expression> visitSubqueryExpression(SubqueryExpression node, Scope context) {
+      public List<Expression> visitSubqueryExpression(SubqueryExpression node, Scope context) {
         // We don't need to process Query here
         return Collections.singletonList(node);
       }
 
       @Override
-      protected List<Expression> visitTrim(Trim node, Scope context) {
+      public List<Expression> visitTrim(Trim node, Scope context) {
         List<Expression> firstResult = process(node.getTrimSource(), context);
         List<Expression> secondResult =
             node.getTrimCharacter().isPresent()
@@ -2313,7 +2310,7 @@ public class StatementAnalyzer {
       }
 
       @Override
-      protected List<Expression> visitWhenClause(WhenClause node, Scope context) {
+      public List<Expression> visitWhenClause(WhenClause node, Scope context) {
         List<Expression> leftResult = process(node.getOperand(), context);
         List<Expression> rightResult = process(node.getResult(), context);
 
@@ -2993,12 +2990,12 @@ public class StatementAnalyzer {
     }
 
     @Override
-    protected Scope visitSubqueryExpression(SubqueryExpression node, Optional<Scope> context) {
+    public Scope visitSubqueryExpression(SubqueryExpression node, Optional<Scope> context) {
       return process(node.getQuery(), context);
     }
 
     @Override
-    protected Scope visitSetOperation(SetOperation node, Optional<Scope> scope) {
+    public Scope visitSetOperation(SetOperation node, Optional<Scope> scope) {
       checkState(node.getRelations().size() >= 2);
 
       List<RelationType> childrenTypes =
@@ -3088,7 +3085,7 @@ public class StatementAnalyzer {
     }
 
     @Override
-    protected Scope visitTable(Table table, Optional<Scope> scope) {
+    public Scope visitTable(Table table, Optional<Scope> scope) {
       if (!table.getName().getPrefix().isPresent()) {
         scope.ifPresent(s -> s.addTable(table));
         // is this a reference to a WITH query?
@@ -3289,7 +3286,7 @@ public class StatementAnalyzer {
     // accessControlScope, filter));
     //    }
 
-    protected Scope visitPatternRecognitionRelation(
+    public Scope visitPatternRecognitionRelation(
         PatternRecognitionRelation relation, Optional<Scope> scope) {
       Scope inputScope = process(relation.getInput(), scope);
 
@@ -3501,7 +3498,7 @@ public class StatementAnalyzer {
     }
 
     @Override
-    protected Scope visitValues(Values node, Optional<Scope> scope) {
+    public Scope visitValues(Values node, Optional<Scope> scope) {
       checkState(!node.getRows().isEmpty());
 
       List<Type> rowTypes =
@@ -3600,7 +3597,7 @@ public class StatementAnalyzer {
     }
 
     @Override
-    protected Scope visitAliasedRelation(AliasedRelation relation, Optional<Scope> scope) {
+    public Scope visitAliasedRelation(AliasedRelation relation, Optional<Scope> scope) {
       analysis.setRelationName(relation, QualifiedName.of(ImmutableList.of(relation.getAlias())));
       analysis.addAliased(relation.getRelation());
       Scope relationScope = process(relation.getRelation(), scope);
@@ -3647,7 +3644,7 @@ public class StatementAnalyzer {
     }
 
     @Override
-    protected Scope visitJoin(Join node, Optional<Scope> scope) {
+    public Scope visitJoin(Join node, Optional<Scope> scope) {
       JoinCriteria criteria = node.getCriteria().orElse(null);
 
       joinConditionCheck(criteria);
@@ -4547,7 +4544,7 @@ public class StatementAnalyzer {
     }
 
     @Override
-    protected Scope visitCreateOrUpdateDevice(
+    public Scope visitCreateOrUpdateDevice(
         final CreateOrUpdateDevice node, final Optional<Scope> context) {
       queryContext.setQueryType(QueryType.WRITE);
       DataNodeSchemaLockManager.getInstance()
@@ -4558,12 +4555,12 @@ public class StatementAnalyzer {
     }
 
     @Override
-    protected Scope visitFetchDevice(final FetchDevice node, final Optional<Scope> context) {
+    public Scope visitFetchDevice(final FetchDevice node, final Optional<Scope> context) {
       return null;
     }
 
     @Override
-    protected Scope visitShowDevice(final ShowDevice node, final Optional<Scope> context) {
+    public Scope visitShowDevice(final ShowDevice node, final Optional<Scope> context) {
       analyzeQueryDevice(node, context);
       // TODO: use real scope when parameter in offset and limit is supported
       if (Objects.nonNull(node.getOffset())) {
@@ -4576,7 +4573,7 @@ public class StatementAnalyzer {
     }
 
     @Override
-    protected Scope visitCountDevice(final CountDevice node, final Optional<Scope> context) {
+    public Scope visitCountDevice(final CountDevice node, final Optional<Scope> context) {
       analyzeQueryDevice(node, context);
       return null;
     }
@@ -4697,72 +4694,72 @@ public class StatementAnalyzer {
     }
 
     @Override
-    protected Scope visitCreatePipe(CreatePipe node, Optional<Scope> context) {
+    public Scope visitCreatePipe(CreatePipe node, Optional<Scope> context) {
       return createAndAssignScope(node, context);
     }
 
     @Override
-    protected Scope visitAlterPipe(AlterPipe node, Optional<Scope> context) {
+    public Scope visitAlterPipe(AlterPipe node, Optional<Scope> context) {
       return createAndAssignScope(node, context);
     }
 
     @Override
-    protected Scope visitDropPipe(DropPipe node, Optional<Scope> context) {
+    public Scope visitDropPipe(DropPipe node, Optional<Scope> context) {
       return createAndAssignScope(node, context);
     }
 
     @Override
-    protected Scope visitStartPipe(StartPipe node, Optional<Scope> context) {
+    public Scope visitStartPipe(StartPipe node, Optional<Scope> context) {
       return createAndAssignScope(node, context);
     }
 
     @Override
-    protected Scope visitStopPipe(StopPipe node, Optional<Scope> context) {
+    public Scope visitStopPipe(StopPipe node, Optional<Scope> context) {
       return createAndAssignScope(node, context);
     }
 
     @Override
-    protected Scope visitShowPipes(ShowPipes node, Optional<Scope> context) {
+    public Scope visitShowPipes(ShowPipes node, Optional<Scope> context) {
       return createAndAssignScope(node, context);
     }
 
     @Override
-    protected Scope visitCreatePipePlugin(CreatePipePlugin node, Optional<Scope> context) {
+    public Scope visitCreatePipePlugin(CreatePipePlugin node, Optional<Scope> context) {
       return createAndAssignScope(node, context);
     }
 
     @Override
-    protected Scope visitDropPipePlugin(DropPipePlugin node, Optional<Scope> context) {
+    public Scope visitDropPipePlugin(DropPipePlugin node, Optional<Scope> context) {
       return createAndAssignScope(node, context);
     }
 
     @Override
-    protected Scope visitShowPipePlugins(ShowPipePlugins node, Optional<Scope> context) {
+    public Scope visitShowPipePlugins(ShowPipePlugins node, Optional<Scope> context) {
       return createAndAssignScope(node, context);
     }
 
     @Override
-    protected Scope visitCreateTopic(CreateTopic node, Optional<Scope> context) {
+    public Scope visitCreateTopic(CreateTopic node, Optional<Scope> context) {
       return createAndAssignScope(node, context);
     }
 
     @Override
-    protected Scope visitDropTopic(DropTopic node, Optional<Scope> context) {
+    public Scope visitDropTopic(DropTopic node, Optional<Scope> context) {
       return createAndAssignScope(node, context);
     }
 
     @Override
-    protected Scope visitShowTopics(ShowTopics node, Optional<Scope> context) {
+    public Scope visitShowTopics(ShowTopics node, Optional<Scope> context) {
       return createAndAssignScope(node, context);
     }
 
     @Override
-    protected Scope visitShowSubscriptions(ShowSubscriptions node, Optional<Scope> context) {
+    public Scope visitShowSubscriptions(ShowSubscriptions node, Optional<Scope> context) {
       return createAndAssignScope(node, context);
     }
 
     @Override
-    protected Scope visitDropSubscription(DropSubscription node, Optional<Scope> context) {
+    public Scope visitDropSubscription(DropSubscription node, Optional<Scope> context) {
       return createAndAssignScope(node, context);
     }
 

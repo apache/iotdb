@@ -33,35 +33,35 @@ import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.StringLiteral;
 import org.apache.tsfile.utils.DateUtils;
 
 // return NULL, if we cannot parse literal to date type
-public class CastToDateLiteralVisitor extends CommonQueryAstVisitor<Integer, Void> {
+public class CastToDateLiteralVisitor implements CommonQueryAstVisitor<Integer, Void> {
 
   @Override
-  protected Integer visitLiteral(Literal node, Void context) {
+  public Integer visitLiteral(Literal node, Void context) {
     throw new UnsupportedOperationException("Unhandled literal type: " + node);
   }
 
   @Override
-  protected Integer visitBooleanLiteral(BooleanLiteral node, Void context) {
+  public Integer visitBooleanLiteral(BooleanLiteral node, Void context) {
     return null;
   }
 
   @Override
-  protected Integer visitLongLiteral(LongLiteral node, Void context) {
+  public Integer visitLongLiteral(LongLiteral node, Void context) {
     return (int) node.getParsedValue();
   }
 
   @Override
-  protected Integer visitDoubleLiteral(DoubleLiteral node, Void context) {
+  public Integer visitDoubleLiteral(DoubleLiteral node, Void context) {
     return (int) node.getValue();
   }
 
   @Override
-  protected Integer visitFloatLiteral(FloatLiteral node, Void context) {
+  public Integer visitFloatLiteral(FloatLiteral node, Void context) {
     return (int) node.getValue();
   }
 
   @Override
-  protected Integer visitStringLiteral(StringLiteral node, Void context) {
+  public Integer visitStringLiteral(StringLiteral node, Void context) {
     try {
       return DateUtils.parseDateExpressionToInt(node.getValue());
     } catch (Exception e) {
@@ -70,12 +70,12 @@ public class CastToDateLiteralVisitor extends CommonQueryAstVisitor<Integer, Voi
   }
 
   @Override
-  protected Integer visitBinaryLiteral(BinaryLiteral node, Void context) {
+  public Integer visitBinaryLiteral(BinaryLiteral node, Void context) {
     return null;
   }
 
   @Override
-  protected Integer visitGenericLiteral(GenericLiteral node, Void context) {
+  public Integer visitGenericLiteral(GenericLiteral node, Void context) {
     try {
       return DateUtils.parseDateExpressionToInt(node.getValue());
     } catch (Exception e) {
@@ -84,7 +84,7 @@ public class CastToDateLiteralVisitor extends CommonQueryAstVisitor<Integer, Voi
   }
 
   @Override
-  protected Integer visitNullLiteral(NullLiteral node, Void context) {
+  public Integer visitNullLiteral(NullLiteral node, Void context) {
     return null;
   }
 }

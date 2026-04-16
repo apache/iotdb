@@ -116,7 +116,7 @@ public final class ExpressionFormatter {
     return new Formatter(Optional.empty(), Optional.empty()).process(expression, null);
   }
 
-  public static class Formatter extends CommonQueryAstVisitor<String, Void> {
+  public static class Formatter implements CommonQueryAstVisitor<String, Void> {
     private final Optional<Function<Literal, String>> literalFormatter;
     private final Optional<Function<SymbolReference, String>> symbolReferenceFormatter;
 
@@ -129,19 +129,19 @@ public final class ExpressionFormatter {
     }
 
     @Override
-    protected String visitNode(Node node, Void context) {
+    public String visitNode(Node node, Void context) {
       throw new UnsupportedOperationException();
     }
 
     @Override
-    protected String visitRow(Row node, Void context) {
+    public String visitRow(Row node, Void context) {
       return node.getItems().stream()
           .map(child -> process(child, context))
           .collect(joining(", ", "ROW (", ")"));
     }
 
     @Override
-    protected String visitExpression(Expression node, Void context) {
+    public String visitExpression(Expression node, Void context) {
       throw new UnsupportedOperationException(
           String.format(
               "not yet implemented: %s.visit%s",
@@ -149,17 +149,17 @@ public final class ExpressionFormatter {
     }
 
     @Override
-    protected String visitCurrentDatabase(CurrentDatabase node, Void context) {
+    public String visitCurrentDatabase(CurrentDatabase node, Void context) {
       return "CURRENT_DATABASE";
     }
 
     @Override
-    protected String visitCurrentUser(CurrentUser node, Void context) {
+    public String visitCurrentUser(CurrentUser node, Void context) {
       return "CURRENT_USER";
     }
 
     @Override
-    protected String visitTrim(Trim node, Void context) {
+    public String visitTrim(Trim node, Void context) {
       if (!node.getTrimCharacter().isPresent()) {
         return String.format(
             "trim(%s FROM %s)", node.getSpecification(), process(node.getTrimSource(), context));
@@ -173,7 +173,7 @@ public final class ExpressionFormatter {
     }
 
     @Override
-    protected String visitCurrentTime(CurrentTime node, Void context) {
+    public String visitCurrentTime(CurrentTime node, Void context) {
       StringBuilder builder = new StringBuilder();
 
       builder.append(node.getFunction().getName());
@@ -186,48 +186,48 @@ public final class ExpressionFormatter {
     }
 
     @Override
-    protected String visitExtract(Extract node, Void context) {
+    public String visitExtract(Extract node, Void context) {
       return "EXTRACT(" + node.getField() + " FROM " + process(node.getExpression(), context) + ")";
     }
 
     @Override
-    protected String visitBooleanLiteral(BooleanLiteral node, Void context) {
+    public String visitBooleanLiteral(BooleanLiteral node, Void context) {
       return literalFormatter
           .map(formatter -> formatter.apply(node))
           .orElseGet(() -> String.valueOf(node.getValue()));
     }
 
     @Override
-    protected String visitStringLiteral(StringLiteral node, Void context) {
+    public String visitStringLiteral(StringLiteral node, Void context) {
       return literalFormatter
           .map(formatter -> formatter.apply(node))
           .orElseGet(() -> formatStringLiteral(node.getValue()));
     }
 
     @Override
-    protected String visitBinaryLiteral(BinaryLiteral node, Void context) {
+    public String visitBinaryLiteral(BinaryLiteral node, Void context) {
       return literalFormatter
           .map(formatter -> formatter.apply(node))
           .orElseGet(() -> "X'" + node.toHexString() + "'");
     }
 
     @Override
-    protected String visitParameter(Parameter node, Void context) {
+    public String visitParameter(Parameter node, Void context) {
       return "?";
     }
 
     @Override
-    protected String visitAllRows(AllRows node, Void context) {
+    public String visitAllRows(AllRows node, Void context) {
       return "ALL";
     }
 
     @Override
-    protected String visitLongLiteral(LongLiteral node, Void context) {
+    public String visitLongLiteral(LongLiteral node, Void context) {
       return literalFormatter.map(formatter -> formatter.apply(node)).orElseGet(node::getValue);
     }
 
     @Override
-    protected String visitDoubleLiteral(DoubleLiteral node, Void context) {
+    public String visitDoubleLiteral(DoubleLiteral node, Void context) {
       return literalFormatter
           .map(formatter -> formatter.apply(node))
           .orElseGet(() -> doubleFormatter.get().format(node.getValue()));
@@ -235,14 +235,14 @@ public final class ExpressionFormatter {
 
     // do not use doubleFormatter, to prevent from introducing the precision noise
     @Override
-    protected String visitFloatLiteral(FloatLiteral node, Void context) {
+    public String visitFloatLiteral(FloatLiteral node, Void context) {
       return literalFormatter
           .map(formatter -> formatter.apply(node))
           .orElseGet(() -> String.valueOf(node.getValue()));
     }
 
     @Override
-    protected String visitDecimalLiteral(DecimalLiteral node, Void context) {
+    public String visitDecimalLiteral(DecimalLiteral node, Void context) {
       return literalFormatter
           .map(formatter -> formatter.apply(node))
           // TODO return node value without "DECIMAL '..'" when
@@ -251,29 +251,29 @@ public final class ExpressionFormatter {
     }
 
     @Override
-    protected String visitGenericLiteral(GenericLiteral node, Void context) {
+    public String visitGenericLiteral(GenericLiteral node, Void context) {
       return literalFormatter
           .map(formatter -> formatter.apply(node))
           .orElseGet(() -> node.getType() + " " + formatStringLiteral(node.getValue()));
     }
 
     @Override
-    protected String visitNullLiteral(NullLiteral node, Void context) {
+    public String visitNullLiteral(NullLiteral node, Void context) {
       return literalFormatter.map(formatter -> formatter.apply(node)).orElse("null");
     }
 
     @Override
-    protected String visitSubqueryExpression(SubqueryExpression node, Void context) {
+    public String visitSubqueryExpression(SubqueryExpression node, Void context) {
       return "(" + formatSql(node.getQuery()) + ")";
     }
 
     @Override
-    protected String visitExists(ExistsPredicate node, Void context) {
+    public String visitExists(ExistsPredicate node, Void context) {
       return "(EXISTS " + formatSql(node.getSubquery()) + ")";
     }
 
     @Override
-    protected String visitIdentifier(Identifier node, Void context) {
+    public String visitIdentifier(Identifier node, Void context) {
       if (node.isDelimited() || reserved(node.getValue())) {
         return '"' + node.getValue().replace("\"", "\"\"") + '"';
       }
@@ -281,7 +281,7 @@ public final class ExpressionFormatter {
     }
 
     @Override
-    protected String visitSymbolReference(SymbolReference node, Void context) {
+    public String visitSymbolReference(SymbolReference node, Void context) {
       if (symbolReferenceFormatter.isPresent()) {
         return symbolReferenceFormatter.get().apply(node);
       }
@@ -293,7 +293,7 @@ public final class ExpressionFormatter {
     }
 
     @Override
-    protected String visitDereferenceExpression(DereferenceExpression node, Void context) {
+    public String visitDereferenceExpression(DereferenceExpression node, Void context) {
       String baseString = process(node.getBase(), context);
       return baseString + "." + node.getField().map(this::process).orElse("*");
     }
@@ -305,7 +305,7 @@ public final class ExpressionFormatter {
     }
 
     @Override
-    protected String visitFunctionCall(FunctionCall node, Void context) {
+    public String visitFunctionCall(FunctionCall node, Void context) {
       if (QualifiedName.of("LISTAGG").equals(node.getName())) {
         return visitListagg(node);
       }
@@ -345,7 +345,7 @@ public final class ExpressionFormatter {
     }
 
     @Override
-    protected String visitLogicalExpression(LogicalExpression node, Void context) {
+    public String visitLogicalExpression(LogicalExpression node, Void context) {
       return "("
           + node.getTerms().stream()
               .map(term -> process(term, context))
@@ -354,27 +354,27 @@ public final class ExpressionFormatter {
     }
 
     @Override
-    protected String visitNotExpression(NotExpression node, Void context) {
+    public String visitNotExpression(NotExpression node, Void context) {
       return "(NOT " + process(node.getValue(), context) + ")";
     }
 
     @Override
-    protected String visitComparisonExpression(ComparisonExpression node, Void context) {
+    public String visitComparisonExpression(ComparisonExpression node, Void context) {
       return formatBinaryExpression(node.getOperator().getValue(), node.getLeft(), node.getRight());
     }
 
     @Override
-    protected String visitIsNullPredicate(IsNullPredicate node, Void context) {
+    public String visitIsNullPredicate(IsNullPredicate node, Void context) {
       return "(" + process(node.getValue(), context) + " IS NULL)";
     }
 
     @Override
-    protected String visitIsNotNullPredicate(IsNotNullPredicate node, Void context) {
+    public String visitIsNotNullPredicate(IsNotNullPredicate node, Void context) {
       return "(" + process(node.getValue(), context) + " IS NOT NULL)";
     }
 
     @Override
-    protected String visitNullIfExpression(NullIfExpression node, Void context) {
+    public String visitNullIfExpression(NullIfExpression node, Void context) {
       return "NULLIF("
           + process(node.getFirst(), context)
           + ", "
@@ -383,7 +383,7 @@ public final class ExpressionFormatter {
     }
 
     @Override
-    protected String visitIfExpression(IfExpression node, Void context) {
+    public String visitIfExpression(IfExpression node, Void context) {
       StringBuilder builder = new StringBuilder();
       builder
           .append("IF(")
@@ -397,12 +397,12 @@ public final class ExpressionFormatter {
     }
 
     @Override
-    protected String visitCoalesceExpression(CoalesceExpression node, Void context) {
+    public String visitCoalesceExpression(CoalesceExpression node, Void context) {
       return "COALESCE(" + joinExpressions(node.getOperands()) + ")";
     }
 
     @Override
-    protected String visitArithmeticUnary(ArithmeticUnaryExpression node, Void context) {
+    public String visitArithmeticUnary(ArithmeticUnaryExpression node, Void context) {
       String value = process(node.getValue(), context);
 
       switch (node.getSign()) {
@@ -419,12 +419,12 @@ public final class ExpressionFormatter {
     }
 
     @Override
-    protected String visitArithmeticBinary(ArithmeticBinaryExpression node, Void context) {
+    public String visitArithmeticBinary(ArithmeticBinaryExpression node, Void context) {
       return formatBinaryExpression(node.getOperator().getValue(), node.getLeft(), node.getRight());
     }
 
     @Override
-    protected String visitLikePredicate(LikePredicate node, Void context) {
+    public String visitLikePredicate(LikePredicate node, Void context) {
       StringBuilder builder = new StringBuilder();
 
       builder
@@ -442,7 +442,7 @@ public final class ExpressionFormatter {
     }
 
     @Override
-    protected String visitAllColumns(AllColumns node, Void context) {
+    public String visitAllColumns(AllColumns node, Void context) {
       StringBuilder builder = new StringBuilder();
       if (node.getTarget().isPresent()) {
         builder.append(process(node.getTarget().get(), context));
@@ -474,7 +474,7 @@ public final class ExpressionFormatter {
     }
 
     @Override
-    protected String visitSearchedCaseExpression(SearchedCaseExpression node, Void context) {
+    public String visitSearchedCaseExpression(SearchedCaseExpression node, Void context) {
       ImmutableList.Builder<String> parts = ImmutableList.builder();
       parts.add("CASE");
       for (WhenClause whenClause : node.getWhenClauses()) {
@@ -489,7 +489,7 @@ public final class ExpressionFormatter {
     }
 
     @Override
-    protected String visitSimpleCaseExpression(SimpleCaseExpression node, Void context) {
+    public String visitSimpleCaseExpression(SimpleCaseExpression node, Void context) {
       ImmutableList.Builder<String> parts = ImmutableList.builder();
 
       parts.add("CASE").add(process(node.getOperand(), context));
@@ -506,7 +506,7 @@ public final class ExpressionFormatter {
     }
 
     @Override
-    protected String visitWhenClause(WhenClause node, Void context) {
+    public String visitWhenClause(WhenClause node, Void context) {
       return "WHEN "
           + process(node.getOperand(), context)
           + " THEN "
@@ -514,7 +514,7 @@ public final class ExpressionFormatter {
     }
 
     @Override
-    protected String visitBetweenPredicate(BetweenPredicate node, Void context) {
+    public String visitBetweenPredicate(BetweenPredicate node, Void context) {
       return "("
           + process(node.getValue(), context)
           + " BETWEEN "
@@ -525,7 +525,7 @@ public final class ExpressionFormatter {
     }
 
     @Override
-    protected String visitInPredicate(InPredicate node, Void context) {
+    public String visitInPredicate(InPredicate node, Void context) {
       return "("
           + process(node.getValue(), context)
           + " IN "
@@ -534,12 +534,12 @@ public final class ExpressionFormatter {
     }
 
     @Override
-    protected String visitInListExpression(InListExpression node, Void context) {
+    public String visitInListExpression(InListExpression node, Void context) {
       return "(" + joinExpressions(node.getValues()) + ")";
     }
 
     @Override
-    protected String visitQuantifiedComparisonExpression(
+    public String visitQuantifiedComparisonExpression(
         QuantifiedComparisonExpression node, Void context) {
       return String.format(
           "(%s %s %s %s)",
@@ -550,7 +550,7 @@ public final class ExpressionFormatter {
     }
 
     @Override
-    protected String visitGenericDataType(GenericDataType node, Void context) {
+    public String visitGenericDataType(GenericDataType node, Void context) {
       StringBuilder result = new StringBuilder();
       result.append(node.getName());
 
@@ -563,17 +563,17 @@ public final class ExpressionFormatter {
     }
 
     @Override
-    protected String visitTypeParameter(TypeParameter node, Void context) {
+    public String visitTypeParameter(TypeParameter node, Void context) {
       return process(node.getValue(), context);
     }
 
     @Override
-    protected String visitNumericTypeParameter(NumericParameter node, Void context) {
+    public String visitNumericTypeParameter(NumericParameter node, Void context) {
       return node.getValue();
     }
 
     @Override
-    protected String visitColumns(Columns node, Void context) {
+    public String visitColumns(Columns node, Void context) {
       return "COLUMNS(" + (node.isColumnsAsterisk() ? "*" : node.getPattern()) + ")";
     }
 

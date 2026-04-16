@@ -29,7 +29,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 public class LoadTableConvertedInsertTabletStatementExceptionVisitor
-    extends AstVisitor<TSStatus, Exception> {
+    implements AstVisitor<TSStatus, Exception> {
   @Override
   public TSStatus visitNode(final Node node, final Exception context) {
     if (context instanceof AccessDeniedException) {

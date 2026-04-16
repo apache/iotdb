@@ -166,15 +166,15 @@ class AggregationAnalyzer {
   }
 
   /** visitor returns true if all expressions are constant with respect to the group. */
-  private class Visitor extends AstVisitor<Boolean, Void> {
+  private class Visitor implements AstVisitor<Boolean, Void> {
     @Override
-    protected Boolean visitExpression(Expression node, Void context) {
+    public Boolean visitExpression(Expression node, Void context) {
       throw new UnsupportedOperationException(
           "aggregation analysis not yet implemented for: " + node.getClass().getName());
     }
 
     @Override
-    protected Boolean visitSubqueryExpression(SubqueryExpression node, Void context) {
+    public Boolean visitSubqueryExpression(SubqueryExpression node, Void context) {
       /*
        * Column reference can resolve to (a) some subquery's scope, (b) a projection (ORDER BY scope),
        * (c) source scope or (d) outer query scope (effectively a constant).
@@ -194,98 +194,98 @@ class AggregationAnalyzer {
     }
 
     @Override
-    protected Boolean visitExists(ExistsPredicate node, Void context) {
+    public Boolean visitExists(ExistsPredicate node, Void context) {
       checkState(node.getSubquery() instanceof SubqueryExpression);
       return process(node.getSubquery(), context);
     }
 
     @Override
-    protected Boolean visitCast(Cast node, Void context) {
+    public Boolean visitCast(Cast node, Void context) {
       return process(node.getExpression(), context);
     }
 
     @Override
-    protected Boolean visitCoalesceExpression(CoalesceExpression node, Void context) {
+    public Boolean visitCoalesceExpression(CoalesceExpression node, Void context) {
       return node.getOperands().stream().allMatch(expression -> process(expression, context));
     }
 
     @Override
-    protected Boolean visitNullIfExpression(NullIfExpression node, Void context) {
+    public Boolean visitNullIfExpression(NullIfExpression node, Void context) {
       return process(node.getFirst(), context) && process(node.getSecond(), context);
     }
 
     @Override
-    protected Boolean visitExtract(Extract node, Void context) {
+    public Boolean visitExtract(Extract node, Void context) {
       return process(node.getExpression(), context);
     }
 
     @Override
-    protected Boolean visitBetweenPredicate(BetweenPredicate node, Void context) {
+    public Boolean visitBetweenPredicate(BetweenPredicate node, Void context) {
       return process(node.getMin(), context)
           && process(node.getValue(), context)
           && process(node.getMax(), context);
     }
 
     @Override
-    protected Boolean visitCurrentTime(CurrentTime node, Void context) {
+    public Boolean visitCurrentTime(CurrentTime node, Void context) {
       return true;
     }
 
     @Override
-    protected Boolean visitArithmeticBinary(ArithmeticBinaryExpression node, Void context) {
+    public Boolean visitArithmeticBinary(ArithmeticBinaryExpression node, Void context) {
       return process(node.getLeft(), context) && process(node.getRight(), context);
     }
 
     @Override
-    protected Boolean visitComparisonExpression(ComparisonExpression node, Void context) {
+    public Boolean visitComparisonExpression(ComparisonExpression node, Void context) {
       return process(node.getLeft(), context) && process(node.getRight(), context);
     }
 
     @Override
-    protected Boolean visitLiteral(Literal node, Void context) {
+    public Boolean visitLiteral(Literal node, Void context) {
       return true;
     }
 
     @Override
-    protected Boolean visitIsNotNullPredicate(IsNotNullPredicate node, Void context) {
+    public Boolean visitIsNotNullPredicate(IsNotNullPredicate node, Void context) {
       return process(node.getValue(), context);
     }
 
     @Override
-    protected Boolean visitIsNullPredicate(IsNullPredicate node, Void context) {
+    public Boolean visitIsNullPredicate(IsNullPredicate node, Void context) {
       return process(node.getValue(), context);
     }
 
     @Override
-    protected Boolean visitLikePredicate(LikePredicate node, Void context) {
+    public Boolean visitLikePredicate(LikePredicate node, Void context) {
       return process(node.getValue(), context) && process(node.getPattern(), context);
     }
 
     @Override
-    protected Boolean visitInListExpression(InListExpression node, Void context) {
+    public Boolean visitInListExpression(InListExpression node, Void context) {
       return node.getValues().stream().allMatch(expression -> process(expression, context));
     }
 
     @Override
-    protected Boolean visitInPredicate(InPredicate node, Void context) {
+    public Boolean visitInPredicate(InPredicate node, Void context) {
       return process(node.getValue(), context) && process(node.getValueList(), context);
     }
 
     @Override
-    protected Boolean visitQuantifiedComparisonExpression(
+    public Boolean visitQuantifiedComparisonExpression(
         QuantifiedComparisonExpression node, Void context) {
       return process(node.getValue(), context) && process(node.getSubquery(), context);
     }
 
     @Override
-    protected Boolean visitTrim(Trim node, Void context) {
+    public Boolean visitTrim(Trim node, Void context) {
       return process(node.getTrimSource(), context)
           && (!node.getTrimCharacter().isPresent()
               || process(node.getTrimCharacter().get(), context));
     }
 
     @Override
-    protected Boolean visitFunctionCall(FunctionCall node, Void context) {
+    public Boolean visitFunctionCall(FunctionCall node, Void context) {
       if (isAggregationFunction(node.getName().toString())) {
         List<FunctionCall> aggregateFunctions = extractAggregateFunctions(node.getArguments());
 
@@ -303,7 +303,7 @@ class AggregationAnalyzer {
     }
 
     @Override
-    protected Boolean visitIdentifier(Identifier node, Void context) {
+    public Boolean visitIdentifier(Identifier node, Void context) {
       //      if (analysis.getLambdaArgumentReferences().containsKey(NodeRef.of(node))) {
       //        return true;
       //      }
@@ -317,7 +317,7 @@ class AggregationAnalyzer {
     }
 
     @Override
-    protected Boolean visitDereferenceExpression(DereferenceExpression node, Void context) {
+    public Boolean visitDereferenceExpression(DereferenceExpression node, Void context) {
 
       if (!hasReferencesToScope(node, analysis, sourceScope)) {
         // reference to outer scope is group-invariant
@@ -345,7 +345,7 @@ class AggregationAnalyzer {
     }
 
     @Override
-    protected Boolean visitFieldReference(FieldReference node, Void context) {
+    public Boolean visitFieldReference(FieldReference node, Void context) {
       if (orderByScope.isPresent()) {
         return true;
       }
@@ -372,22 +372,22 @@ class AggregationAnalyzer {
     }
 
     @Override
-    protected Boolean visitArithmeticUnary(ArithmeticUnaryExpression node, Void context) {
+    public Boolean visitArithmeticUnary(ArithmeticUnaryExpression node, Void context) {
       return process(node.getValue(), context);
     }
 
     @Override
-    protected Boolean visitNotExpression(NotExpression node, Void context) {
+    public Boolean visitNotExpression(NotExpression node, Void context) {
       return process(node.getValue(), context);
     }
 
     @Override
-    protected Boolean visitLogicalExpression(LogicalExpression node, Void context) {
+    public Boolean visitLogicalExpression(LogicalExpression node, Void context) {
       return node.getTerms().stream().allMatch(item -> process(item, context));
     }
 
     @Override
-    protected Boolean visitIfExpression(IfExpression node, Void context) {
+    public Boolean visitIfExpression(IfExpression node, Void context) {
       ImmutableList.Builder<Expression> expressions =
           ImmutableList.<Expression>builder().add(node.getCondition()).add(node.getTrueValue());
 
@@ -399,7 +399,7 @@ class AggregationAnalyzer {
     }
 
     @Override
-    protected Boolean visitSimpleCaseExpression(SimpleCaseExpression node, Void context) {
+    public Boolean visitSimpleCaseExpression(SimpleCaseExpression node, Void context) {
       if (!process(node.getOperand(), context)) {
         return false;
       }
@@ -415,7 +415,7 @@ class AggregationAnalyzer {
     }
 
     @Override
-    protected Boolean visitSearchedCaseExpression(SearchedCaseExpression node, Void context) {
+    public Boolean visitSearchedCaseExpression(SearchedCaseExpression node, Void context) {
       for (WhenClause whenClause : node.getWhenClauses()) {
         if (!process(whenClause.getOperand(), context)
             || !process(whenClause.getResult(), context)) {
@@ -427,12 +427,12 @@ class AggregationAnalyzer {
     }
 
     @Override
-    protected Boolean visitRow(Row node, Void context) {
+    public Boolean visitRow(Row node, Void context) {
       return node.getItems().stream().allMatch(item -> process(item, context));
     }
 
     @Override
-    protected Boolean visitParameter(Parameter node, Void context) {
+    public Boolean visitParameter(Parameter node, Void context) {
       //      if (analysis.isDescribe()) {
       //        return true;
       //      }
@@ -453,7 +453,7 @@ class AggregationAnalyzer {
         return true;
       }
 
-      return super.process(node, context);
+      return AstVisitor.super.process(node, context);
     }
 
     private boolean hasOrderByReferencesToOutputColumns(Node node) {

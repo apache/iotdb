@@ -36,7 +36,7 @@ import org.apache.tsfile.utils.BytesUtils;
 import java.nio.charset.Charset;
 
 // return NULL, if we cannot parse literal to string/text type
-public class CastToStringLiteralVisitor extends CommonQueryAstVisitor<Binary, Void> {
+public class CastToStringLiteralVisitor implements CommonQueryAstVisitor<Binary, Void> {
 
   private final Charset charset;
 
@@ -45,42 +45,42 @@ public class CastToStringLiteralVisitor extends CommonQueryAstVisitor<Binary, Vo
   }
 
   @Override
-  protected Binary visitLiteral(Literal node, Void context) {
+  public Binary visitLiteral(Literal node, Void context) {
     throw new UnsupportedOperationException("Unhandled literal type: " + node);
   }
 
   @Override
-  protected Binary visitBooleanLiteral(BooleanLiteral node, Void context) {
+  public Binary visitBooleanLiteral(BooleanLiteral node, Void context) {
     return new Binary(String.valueOf(node.getValue()), charset);
   }
 
   @Override
-  protected Binary visitLongLiteral(LongLiteral node, Void context) {
+  public Binary visitLongLiteral(LongLiteral node, Void context) {
     return new Binary(node.getValue(), charset);
   }
 
   @Override
-  protected Binary visitDoubleLiteral(DoubleLiteral node, Void context) {
+  public Binary visitDoubleLiteral(DoubleLiteral node, Void context) {
     return new Binary(String.valueOf(node.getValue()), charset);
   }
 
   @Override
-  protected Binary visitFloatLiteral(FloatLiteral node, Void context) {
+  public Binary visitFloatLiteral(FloatLiteral node, Void context) {
     return new Binary(String.valueOf(node.getValue()), charset);
   }
 
   @Override
-  protected Binary visitStringLiteral(StringLiteral node, Void context) {
+  public Binary visitStringLiteral(StringLiteral node, Void context) {
     return new Binary(node.getValue(), charset);
   }
 
   @Override
-  protected Binary visitBinaryLiteral(BinaryLiteral node, Void context) {
+  public Binary visitBinaryLiteral(BinaryLiteral node, Void context) {
     return new Binary(BytesUtils.parseBlobByteArrayToString(node.getValue()), charset);
   }
 
   @Override
-  protected Binary visitGenericLiteral(GenericLiteral node, Void context) {
+  public Binary visitGenericLiteral(GenericLiteral node, Void context) {
     try {
       return new Binary(node.getValue(), charset);
     } catch (Exception e) {
@@ -89,7 +89,7 @@ public class CastToStringLiteralVisitor extends CommonQueryAstVisitor<Binary, Vo
   }
 
   @Override
-  protected Binary visitNullLiteral(NullLiteral node, Void context) {
+  public Binary visitNullLiteral(NullLiteral node, Void context) {
     return null;
   }
 }

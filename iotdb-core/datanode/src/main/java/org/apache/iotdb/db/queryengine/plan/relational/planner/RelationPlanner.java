@@ -184,7 +184,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.utils.NodeUtils.ge
 import static org.apache.tsfile.read.common.type.LongType.INT64;
 import static org.apache.tsfile.read.common.type.StringType.STRING;
 
-public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
+public class RelationPlanner implements AstVisitor<RelationPlan, Void> {
 
   private final Analysis analysis;
   private final SymbolAllocator symbolAllocator;
@@ -238,7 +238,7 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
   }
 
   @Override
-  protected RelationPlan visitQuery(final Query node, final Void context) {
+  public RelationPlan visitQuery(final Query node, final Void context) {
     return new QueryPlanner(
             analysis,
             symbolAllocator,
@@ -251,7 +251,7 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
   }
 
   @Override
-  protected RelationPlan visitTable(final Table table, final Void context) {
+  public RelationPlan visitTable(final Table table, final Void context) {
     // is this a recursive reference in expandable named query? If so, there's base relation already
     // planned.
     final RelationPlan expansion = recursiveSubqueries.get(NodeRef.of(table));
@@ -408,8 +408,7 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
   }
 
   @Override
-  protected RelationPlan visitQuerySpecification(
-      final QuerySpecification node, final Void context) {
+  public RelationPlan visitQuerySpecification(final QuerySpecification node, final Void context) {
     return new QueryPlanner(
             analysis,
             symbolAllocator,
@@ -422,19 +421,19 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
   }
 
   @Override
-  protected RelationPlan visitNode(final Node node, final Void context) {
+  public RelationPlan visitNode(final Node node, final Void context) {
     throw new IllegalStateException("Unsupported node type: " + node.getClass().getName());
   }
 
   @Override
-  protected RelationPlan visitTableSubquery(final TableSubquery node, final Void context) {
+  public RelationPlan visitTableSubquery(final TableSubquery node, final Void context) {
     final RelationPlan plan = process(node.getQuery(), context);
     return new RelationPlan(
         plan.getRoot(), analysis.getScope(node), plan.getFieldMappings(), outerContext);
   }
 
   @Override
-  protected RelationPlan visitJoin(final Join node, final Void context) {
+  public RelationPlan visitJoin(final Join node, final Void context) {
     final RelationPlan leftPlan = process(node.getLeft(), context);
     final RelationPlan rightPlan = process(node.getRight(), context);
 
@@ -864,7 +863,7 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
   }
 
   @Override
-  protected RelationPlan visitAliasedRelation(AliasedRelation node, Void context) {
+  public RelationPlan visitAliasedRelation(AliasedRelation node, Void context) {
     RelationPlan subPlan = process(node.getRelation(), context);
 
     PlanNode root = subPlan.getRoot();
@@ -887,12 +886,12 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
   }
 
   @Override
-  protected RelationPlan visitSubqueryExpression(SubqueryExpression node, Void context) {
+  public RelationPlan visitSubqueryExpression(SubqueryExpression node, Void context) {
     return process(node.getQuery(), context);
   }
 
   @Override
-  protected RelationPlan visitPatternRecognitionRelation(
+  public RelationPlan visitPatternRecognitionRelation(
       PatternRecognitionRelation node, Void context) {
     RelationPlan subPlan = process(node.getInput(), context);
 
@@ -1213,7 +1212,7 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
   }
 
   @Override
-  protected RelationPlan visitUnion(Union node, Void context) {
+  public RelationPlan visitUnion(Union node, Void context) {
     Preconditions.checkArgument(!node.getRelations().isEmpty(), "No relations specified for UNION");
 
     SetOperationPlan setOperationPlan = process(node);
@@ -1232,7 +1231,7 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
   }
 
   @Override
-  protected RelationPlan visitIntersect(Intersect node, Void context) {
+  public RelationPlan visitIntersect(Intersect node, Void context) {
     Preconditions.checkArgument(
         !node.getRelations().isEmpty(), "No relations specified for intersect");
     SetOperationPlan setOperationPlan = process(node);
@@ -1250,7 +1249,7 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
   }
 
   @Override
-  protected RelationPlan visitExcept(Except node, Void context) {
+  public RelationPlan visitExcept(Except node, Void context) {
     Preconditions.checkArgument(
         !node.getRelations().isEmpty(), "No relations specified for except");
     SetOperationPlan setOperationPlan = process(node);
@@ -1309,12 +1308,12 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
   // ================================ Implemented later =====================================
 
   @Override
-  protected RelationPlan visitValues(Values node, Void context) {
+  public RelationPlan visitValues(Values node, Void context) {
     throw new IllegalStateException("Values is not supported in current version.");
   }
 
   @Override
-  protected RelationPlan visitInsertTablet(InsertTablet node, Void context) {
+  public RelationPlan visitInsertTablet(InsertTablet node, Void context) {
     final InsertTabletStatement insertTabletStatement = node.getInnerTreeStatement();
 
     String[] measurements = insertTabletStatement.getMeasurements();
@@ -1343,14 +1342,14 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
   }
 
   @Override
-  protected RelationPlan visitInsertRow(InsertRow node, Void context) {
+  public RelationPlan visitInsertRow(InsertRow node, Void context) {
     InsertRowStatement insertRowStatement = node.getInnerTreeStatement();
     RelationalInsertRowNode insertNode = fromInsertRowStatement(insertRowStatement);
     return new RelationPlan(
         insertNode, analysis.getRootScope(), Collections.emptyList(), outerContext);
   }
 
-  protected RelationalInsertRowNode fromInsertRowStatement(
+  public RelationalInsertRowNode fromInsertRowStatement(
       final InsertRowStatement insertRowStatement) {
 
     String[] measurements = insertRowStatement.getMeasurements();
@@ -1374,7 +1373,7 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
   }
 
   @Override
-  protected RelationPlan visitInsertRows(final InsertRows node, final Void context) {
+  public RelationPlan visitInsertRows(final InsertRows node, final Void context) {
     final InsertRowsStatement insertRowsStatement = node.getInnerTreeStatement();
     final List<Integer> indices = new ArrayList<>();
     final List<InsertRowNode> insertRowStatements = new ArrayList<>();
@@ -1390,7 +1389,7 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
   }
 
   @Override
-  protected RelationPlan visitLoadTsFile(final LoadTsFile node, final Void context) {
+  public RelationPlan visitLoadTsFile(final LoadTsFile node, final Void context) {
     final List<Boolean> isTableModel = new ArrayList<>();
     for (int i = 0; i < node.getResources().size(); i++) {
       isTableModel.add(node.getIsTableModel().get(i));
@@ -1408,7 +1407,7 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
   }
 
   @Override
-  protected RelationPlan visitPipeEnriched(final PipeEnriched node, final Void context) {
+  public RelationPlan visitPipeEnriched(final PipeEnriched node, final Void context) {
     final RelationPlan relationPlan = node.getInnerStatement().accept(this, context);
 
     if (relationPlan.getRoot() instanceof LoadTsFileNode) {
@@ -1435,7 +1434,7 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
   }
 
   @Override
-  protected RelationPlan visitDelete(final Delete node, final Void context) {
+  public RelationPlan visitDelete(final Delete node, final Void context) {
     return new RelationPlan(
         new RelationalDeleteDataNode(idAllocator.genPlanNodeId(), node),
         analysis.getRootScope(),

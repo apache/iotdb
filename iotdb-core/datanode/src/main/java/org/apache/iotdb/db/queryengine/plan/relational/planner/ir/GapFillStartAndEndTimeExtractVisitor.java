@@ -43,7 +43,7 @@ import static org.apache.iotdb.db.node_commons.plan.relational.sql.ast.LogicalEx
 import static org.apache.iotdb.db.node_commons.plan.relational.sql.ast.LogicalExpression.Operator.OR;
 
 public class GapFillStartAndEndTimeExtractVisitor
-    extends AstVisitor<Boolean, GapFillStartAndEndTimeExtractVisitor.Context> {
+    implements AstVisitor<Boolean, GapFillStartAndEndTimeExtractVisitor.Context> {
 
   private static final String UPDATE_START_TIME_ERROR_MSG =
       "Operator of updateStatTime should only be GREATER_THAN and GREATER_THAN_OR_EQUAL, now is %s";
@@ -63,7 +63,7 @@ public class GapFillStartAndEndTimeExtractVisitor
   @Override
   public Boolean visitNode(Node node, GapFillStartAndEndTimeExtractVisitor.Context context) {
     for (Node child : node.getChildren()) {
-      if (Boolean.TRUE.equals(super.process(child, context))) {
+      if (Boolean.TRUE.equals(AstVisitor.super.process(child, context))) {
         throw new SemanticException(CAN_NOT_INFER_TIME_RANGE);
       }
     }
@@ -71,13 +71,13 @@ public class GapFillStartAndEndTimeExtractVisitor
   }
 
   @Override
-  protected Boolean visitSymbolReference(
+  public Boolean visitSymbolReference(
       SymbolReference node, GapFillStartAndEndTimeExtractVisitor.Context context) {
     return isTimeIdentifier(node);
   }
 
   @Override
-  protected Boolean visitLogicalExpression(
+  public Boolean visitLogicalExpression(
       LogicalExpression node, GapFillStartAndEndTimeExtractVisitor.Context context) {
     if (node.getOperator() == AND) {
       boolean hasMeetGapFillTimeFilter = false;
@@ -98,7 +98,7 @@ public class GapFillStartAndEndTimeExtractVisitor
   }
 
   @Override
-  protected Boolean visitComparisonExpression(
+  public Boolean visitComparisonExpression(
       ComparisonExpression node, GapFillStartAndEndTimeExtractVisitor.Context context) {
     Expression leftExpression = node.getLeft();
     Expression rightExpression = node.getRight();
@@ -117,7 +117,7 @@ public class GapFillStartAndEndTimeExtractVisitor
   }
 
   @Override
-  protected Boolean visitBetweenPredicate(
+  public Boolean visitBetweenPredicate(
       BetweenPredicate node, GapFillStartAndEndTimeExtractVisitor.Context context) {
     Expression firstExpression = node.getValue();
     Expression secondExpression = node.getMin();

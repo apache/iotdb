@@ -143,7 +143,7 @@ public class IrExpressionInterpreter {
     return new Visitor(true).processWithExceptionHandling(expression, inputs);
   }
 
-  private class Visitor extends AstVisitor<Object, Object> {
+  private class Visitor implements AstVisitor<Object, Object> {
     private final boolean optimize;
 
     private Visitor(boolean optimize) {
@@ -173,17 +173,17 @@ public class IrExpressionInterpreter {
     }
 
     @Override
-    protected Object visitSymbolReference(SymbolReference node, Object context) {
+    public Object visitSymbolReference(SymbolReference node, Object context) {
       return ((SymbolResolver) context).getValue(Symbol.from(node));
     }
 
     @Override
-    protected Object visitLiteral(Literal node, Object context) {
+    public Object visitLiteral(Literal node, Object context) {
       return literalInterpreter.evaluate(node, type(node));
     }
 
     @Override
-    protected Object visitIsNullPredicate(IsNullPredicate node, Object context) {
+    public Object visitIsNullPredicate(IsNullPredicate node, Object context) {
       Object value = processWithExceptionHandling(node.getValue(), context);
 
       if (value instanceof Expression) {
@@ -194,7 +194,7 @@ public class IrExpressionInterpreter {
     }
 
     @Override
-    protected Object visitIsNotNullPredicate(IsNotNullPredicate node, Object context) {
+    public Object visitIsNotNullPredicate(IsNotNullPredicate node, Object context) {
       Object value = processWithExceptionHandling(node.getValue(), context);
 
       if (value instanceof Expression) {
@@ -205,7 +205,7 @@ public class IrExpressionInterpreter {
     }
 
     @Override
-    protected Object visitSearchedCaseExpression(SearchedCaseExpression node, Object context) {
+    public Object visitSearchedCaseExpression(SearchedCaseExpression node, Object context) {
       Object newDefault = null;
       boolean foundNewDefault = false;
 
@@ -248,7 +248,7 @@ public class IrExpressionInterpreter {
     }
 
     @Override
-    protected Object visitIfExpression(IfExpression node, Object context) {
+    public Object visitIfExpression(IfExpression node, Object context) {
       Object condition = processWithExceptionHandling(node.getCondition(), context);
 
       if (condition instanceof Expression) {
@@ -269,7 +269,7 @@ public class IrExpressionInterpreter {
     }
 
     @Override
-    protected Object visitSimpleCaseExpression(SimpleCaseExpression node, Object context) {
+    public Object visitSimpleCaseExpression(SimpleCaseExpression node, Object context) {
       Object operand = processWithExceptionHandling(node.getOperand(), context);
       Type operandType = type(node.getOperand());
 
@@ -336,7 +336,7 @@ public class IrExpressionInterpreter {
     }
 
     @Override
-    protected Object visitCoalesceExpression(CoalesceExpression node, Object context) {
+    public Object visitCoalesceExpression(CoalesceExpression node, Object context) {
       List<Object> newOperands = processOperands(node, context);
       if (newOperands.isEmpty()) {
         return null;
@@ -391,7 +391,7 @@ public class IrExpressionInterpreter {
     }
 
     @Override
-    protected Object visitInPredicate(InPredicate node, Object context) {
+    public Object visitInPredicate(InPredicate node, Object context) {
       Object value = processWithExceptionHandling(node.getValue(), context);
 
       InListExpression valueList = (InListExpression) node.getValueList();
@@ -494,7 +494,7 @@ public class IrExpressionInterpreter {
     }
 
     @Override
-    protected Object visitArithmeticUnary(ArithmeticUnaryExpression node, Object context) {
+    public Object visitArithmeticUnary(ArithmeticUnaryExpression node, Object context) {
       Object value = processWithExceptionHandling(node.getValue(), context);
       if (value == null) {
         return null;
@@ -535,7 +535,7 @@ public class IrExpressionInterpreter {
     }
 
     @Override
-    protected Object visitArithmeticBinary(ArithmeticBinaryExpression node, Object context) {
+    public Object visitArithmeticBinary(ArithmeticBinaryExpression node, Object context) {
       Object left = processWithExceptionHandling(node.getLeft(), context);
       if (left == null) {
         return null;
@@ -563,7 +563,7 @@ public class IrExpressionInterpreter {
     }
 
     @Override
-    protected Object visitComparisonExpression(ComparisonExpression node, Object context) {
+    public Object visitComparisonExpression(ComparisonExpression node, Object context) {
       ComparisonExpression.Operator operator = node.getOperator();
       Expression left = node.getLeft();
       Expression right = node.getRight();
@@ -747,7 +747,7 @@ public class IrExpressionInterpreter {
     }
 
     @Override
-    protected Object visitBetweenPredicate(BetweenPredicate node, Object context) {
+    public Object visitBetweenPredicate(BetweenPredicate node, Object context) {
       Object value = processWithExceptionHandling(node.getValue(), context);
       if (value == null) {
         return null;
@@ -792,7 +792,7 @@ public class IrExpressionInterpreter {
     }
 
     @Override
-    protected Object visitNotExpression(NotExpression node, Object context) {
+    public Object visitNotExpression(NotExpression node, Object context) {
       Object value = processWithExceptionHandling(node.getValue(), context);
       if (value == null) {
         return null;
@@ -806,7 +806,7 @@ public class IrExpressionInterpreter {
     }
 
     @Override
-    protected Object visitLogicalExpression(LogicalExpression node, Object context) {
+    public Object visitLogicalExpression(LogicalExpression node, Object context) {
       List<Object> terms = new ArrayList<>();
       List<Type> types = new ArrayList<>();
 
@@ -859,12 +859,12 @@ public class IrExpressionInterpreter {
     }
 
     @Override
-    protected Object visitBooleanLiteral(BooleanLiteral node, Object context) {
+    public Object visitBooleanLiteral(BooleanLiteral node, Object context) {
       return node.equals(BooleanLiteral.TRUE_LITERAL);
     }
 
     @Override
-    protected Object visitFunctionCall(FunctionCall node, Object context) {
+    public Object visitFunctionCall(FunctionCall node, Object context) {
       List<Type> argumentTypes = new ArrayList<>();
       List<Object> argumentValues = new ArrayList<>();
       for (Expression expr : node.getArguments()) {
@@ -920,7 +920,7 @@ public class IrExpressionInterpreter {
     }
 
     @Override
-    protected Object visitExtract(Extract node, Object context) {
+    public Object visitExtract(Extract node, Object context) {
       Object value = processWithExceptionHandling(node.getExpression(), context);
       if (value == null) {
         return null;
@@ -937,7 +937,7 @@ public class IrExpressionInterpreter {
     }
 
     @Override
-    protected Object visitExpression(Expression node, Object context) {
+    public Object visitExpression(Expression node, Object context) {
       throw new SemanticException("not yet implemented: " + node.getClass().getName());
     }
 

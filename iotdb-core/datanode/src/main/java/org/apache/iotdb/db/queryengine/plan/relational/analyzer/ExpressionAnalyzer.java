@@ -481,7 +481,7 @@ public class ExpressionAnalyzer {
     }
 
     @Override
-    protected Type visitRow(Row node, StackableAstVisitorContext<Context> context) {
+    public Type visitRow(Row node, StackableAstVisitorContext<Context> context) {
       List<Type> types =
           node.getItems().stream().map(child -> process(child, context)).collect(toImmutableList());
 
@@ -490,7 +490,7 @@ public class ExpressionAnalyzer {
     }
 
     @Override
-    protected Type visitCurrentTime(CurrentTime node, StackableAstVisitorContext<Context> context) {
+    public Type visitCurrentTime(CurrentTime node, StackableAstVisitorContext<Context> context) {
       if (requireNonNull(node.getFunction()) == CurrentTime.Function.TIMESTAMP) {
         return setExpressionType(node, INT64);
       }
@@ -498,7 +498,7 @@ public class ExpressionAnalyzer {
     }
 
     @Override
-    protected Type visitSymbolReference(
+    public Type visitSymbolReference(
         SymbolReference node, StackableAstVisitorContext<Context> context) {
       //      if (context.getContext().isInLambda()) {
       //        Optional<ResolvedField> resolvedField =
@@ -515,7 +515,7 @@ public class ExpressionAnalyzer {
     }
 
     @Override
-    protected Type visitIdentifier(Identifier node, StackableAstVisitorContext<Context> context) {
+    public Type visitIdentifier(Identifier node, StackableAstVisitorContext<Context> context) {
       ResolvedField resolvedField =
           context.getContext().getScope().resolveField(node, QualifiedName.of(node.getValue()));
 
@@ -576,7 +576,7 @@ public class ExpressionAnalyzer {
     }
 
     @Override
-    protected Type visitDereferenceExpression(
+    public Type visitDereferenceExpression(
         DereferenceExpression node, StackableAstVisitorContext<Context> context) {
       if (isQualifiedAllFieldsReference(node)) {
         throw new SemanticException("<identifier>.* not allowed in this context");
@@ -677,7 +677,7 @@ public class ExpressionAnalyzer {
     }
 
     @Override
-    protected Type visitNotExpression(
+    public Type visitNotExpression(
         NotExpression node, StackableAstVisitorContext<Context> context) {
       coerceType(context, node.getValue(), BOOLEAN, "Value of logical NOT expression");
 
@@ -685,7 +685,7 @@ public class ExpressionAnalyzer {
     }
 
     @Override
-    protected Type visitLogicalExpression(
+    public Type visitLogicalExpression(
         LogicalExpression node, StackableAstVisitorContext<Context> context) {
       for (Expression term : node.getTerms()) {
         coerceType(context, term, BOOLEAN, "Logical expression term");
@@ -695,7 +695,7 @@ public class ExpressionAnalyzer {
     }
 
     @Override
-    protected Type visitComparisonExpression(
+    public Type visitComparisonExpression(
         ComparisonExpression node, StackableAstVisitorContext<Context> context) {
       OperatorType operatorType = null;
       switch (node.getOperator()) {
@@ -720,7 +720,7 @@ public class ExpressionAnalyzer {
     }
 
     @Override
-    protected Type visitIsNullPredicate(
+    public Type visitIsNullPredicate(
         IsNullPredicate node, StackableAstVisitorContext<Context> context) {
       process(node.getValue(), context);
 
@@ -728,7 +728,7 @@ public class ExpressionAnalyzer {
     }
 
     @Override
-    protected Type visitIsNotNullPredicate(
+    public Type visitIsNotNullPredicate(
         IsNotNullPredicate node, StackableAstVisitorContext<Context> context) {
       process(node.getValue(), context);
 
@@ -736,7 +736,7 @@ public class ExpressionAnalyzer {
     }
 
     @Override
-    protected Type visitNullIfExpression(
+    public Type visitNullIfExpression(
         NullIfExpression node, StackableAstVisitorContext<Context> context) {
       Type firstType = process(node.getFirst(), context);
       Type secondType = process(node.getSecond(), context);
@@ -750,8 +750,7 @@ public class ExpressionAnalyzer {
     }
 
     @Override
-    protected Type visitIfExpression(
-        IfExpression node, StackableAstVisitorContext<Context> context) {
+    public Type visitIfExpression(IfExpression node, StackableAstVisitorContext<Context> context) {
       coerceType(context, node.getCondition(), BOOLEAN, "IF condition");
 
       Type type;
@@ -771,7 +770,7 @@ public class ExpressionAnalyzer {
     }
 
     @Override
-    protected Type visitSearchedCaseExpression(
+    public Type visitSearchedCaseExpression(
         SearchedCaseExpression node, StackableAstVisitorContext<Context> context) {
       for (WhenClause whenClause : node.getWhenClauses()) {
         coerceType(context, whenClause.getOperand(), BOOLEAN, "CASE WHEN clause");
@@ -793,7 +792,7 @@ public class ExpressionAnalyzer {
     }
 
     @Override
-    protected Type visitSimpleCaseExpression(
+    public Type visitSimpleCaseExpression(
         SimpleCaseExpression node, StackableAstVisitorContext<Context> context) {
       coerceCaseOperandToToSingleType(node, context);
 
@@ -856,7 +855,7 @@ public class ExpressionAnalyzer {
     }
 
     @Override
-    protected Type visitCoalesceExpression(
+    public Type visitCoalesceExpression(
         CoalesceExpression node, StackableAstVisitorContext<Context> context) {
       Type type = coerceToSingleType(context, "All COALESCE operands", node.getOperands());
 
@@ -864,7 +863,7 @@ public class ExpressionAnalyzer {
     }
 
     @Override
-    protected Type visitArithmeticUnary(
+    public Type visitArithmeticUnary(
         ArithmeticUnaryExpression node, StackableAstVisitorContext<Context> context) {
       switch (node.getSign()) {
         case PLUS:
@@ -887,7 +886,7 @@ public class ExpressionAnalyzer {
     }
 
     @Override
-    protected Type visitArithmeticBinary(
+    public Type visitArithmeticBinary(
         ArithmeticBinaryExpression node, StackableAstVisitorContext<Context> context) {
       return getOperator(
           context,
@@ -898,7 +897,7 @@ public class ExpressionAnalyzer {
     }
 
     @Override
-    protected Type visitLikePredicate(
+    public Type visitLikePredicate(
         LikePredicate node, StackableAstVisitorContext<Context> context) {
       Type valueType = process(node.getValue(), context);
       if (!isCharType(valueType)) {
@@ -930,19 +929,19 @@ public class ExpressionAnalyzer {
     }
 
     @Override
-    protected Type visitStringLiteral(
+    public Type visitStringLiteral(
         StringLiteral node, StackableAstVisitorContext<Context> context) {
       return setExpressionType(node, STRING);
     }
 
     @Override
-    protected Type visitBinaryLiteral(
+    public Type visitBinaryLiteral(
         BinaryLiteral node, StackableAstVisitorContext<Context> context) {
       return setExpressionType(node, BLOB);
     }
 
     @Override
-    protected Type visitLongLiteral(LongLiteral node, StackableAstVisitorContext<Context> context) {
+    public Type visitLongLiteral(LongLiteral node, StackableAstVisitorContext<Context> context) {
       if (node.getParsedValue() >= Integer.MIN_VALUE
           && node.getParsedValue() <= Integer.MAX_VALUE) {
         return setExpressionType(node, INT32);
@@ -952,43 +951,41 @@ public class ExpressionAnalyzer {
     }
 
     @Override
-    protected Type visitDoubleLiteral(
+    public Type visitDoubleLiteral(
         DoubleLiteral node, StackableAstVisitorContext<Context> context) {
       return setExpressionType(node, DOUBLE);
     }
 
     @Override
-    protected Type visitFloatLiteral(
-        FloatLiteral node, StackableAstVisitorContext<Context> context) {
+    public Type visitFloatLiteral(FloatLiteral node, StackableAstVisitorContext<Context> context) {
       return setExpressionType(node, FLOAT);
     }
 
     @Override
-    protected Type visitDecimalLiteral(
+    public Type visitDecimalLiteral(
         DecimalLiteral node, StackableAstVisitorContext<Context> context) {
       throw new SemanticException("DecimalLiteral is not supported yet.");
     }
 
     @Override
-    protected Type visitBooleanLiteral(
+    public Type visitBooleanLiteral(
         BooleanLiteral node, StackableAstVisitorContext<Context> context) {
       return setExpressionType(node, BOOLEAN);
     }
 
     @Override
-    protected Type visitGenericLiteral(
+    public Type visitGenericLiteral(
         GenericLiteral node, StackableAstVisitorContext<Context> context) {
       throw new SemanticException("GenericLiteral is not supported yet.");
     }
 
     @Override
-    protected Type visitNullLiteral(NullLiteral node, StackableAstVisitorContext<Context> context) {
+    public Type visitNullLiteral(NullLiteral node, StackableAstVisitorContext<Context> context) {
       return setExpressionType(node, UNKNOWN);
     }
 
     @Override
-    protected Type visitFunctionCall(
-        FunctionCall node, StackableAstVisitorContext<Context> context) {
+    public Type visitFunctionCall(FunctionCall node, StackableAstVisitorContext<Context> context) {
       String functionName = node.getName().getSuffix();
       boolean isAggregation = metadata.isAggregationFunction(session, functionName, accessControl);
       boolean isRowPatternCount =
@@ -1617,18 +1614,18 @@ public class ExpressionAnalyzer {
     }
 
     @Override
-    protected Type visitCurrentDatabase(
+    public Type visitCurrentDatabase(
         CurrentDatabase node, StackableAstVisitorContext<Context> context) {
       return setExpressionType(node, STRING);
     }
 
     @Override
-    protected Type visitCurrentUser(CurrentUser node, StackableAstVisitorContext<Context> context) {
+    public Type visitCurrentUser(CurrentUser node, StackableAstVisitorContext<Context> context) {
       return setExpressionType(node, STRING);
     }
 
     @Override
-    protected Type visitTrim(Trim node, StackableAstVisitorContext<Context> context) {
+    public Type visitTrim(Trim node, StackableAstVisitorContext<Context> context) {
       ImmutableList.Builder<Type> argumentTypes = ImmutableList.builder();
 
       argumentTypes.add(process(node.getTrimSource(), context));
@@ -1643,7 +1640,7 @@ public class ExpressionAnalyzer {
     }
 
     @Override
-    protected Type visitParameter(Parameter node, StackableAstVisitorContext<Context> context) {
+    public Type visitParameter(Parameter node, StackableAstVisitorContext<Context> context) {
 
       if (parameters.isEmpty()) {
         throw new SemanticException("Query takes no parameters");
@@ -1664,7 +1661,7 @@ public class ExpressionAnalyzer {
     }
 
     @Override
-    protected Type visitExtract(Extract node, StackableAstVisitorContext<Context> context) {
+    public Type visitExtract(Extract node, StackableAstVisitorContext<Context> context) {
       if (node.getExpression() instanceof LongLiteral) {
         // Don't visit child here to avoid setting its Type to INT32
         setExpressionType(node.getExpression(), INT64);
@@ -1680,7 +1677,7 @@ public class ExpressionAnalyzer {
     }
 
     @Override
-    protected Type visitBetweenPredicate(
+    public Type visitBetweenPredicate(
         BetweenPredicate node, StackableAstVisitorContext<Context> context) {
       Type valueType = process(node.getValue(), context);
       Type minType = process(node.getMin(), context);
@@ -1723,7 +1720,7 @@ public class ExpressionAnalyzer {
     }
 
     @Override
-    protected Type visitInPredicate(InPredicate node, StackableAstVisitorContext<Context> context) {
+    public Type visitInPredicate(InPredicate node, StackableAstVisitorContext<Context> context) {
       Expression value = node.getValue();
       // Attention: remove this check after supporting RowType
       if (value instanceof Row) {
@@ -1775,7 +1772,7 @@ public class ExpressionAnalyzer {
     }
 
     @Override
-    protected Type visitSubqueryExpression(
+    public Type visitSubqueryExpression(
         SubqueryExpression node, StackableAstVisitorContext<Context> context) {
       Type type = analyzeSubquery(node, context);
 
@@ -2037,7 +2034,7 @@ public class ExpressionAnalyzer {
     }
 
     @Override
-    protected Type visitExists(ExistsPredicate node, StackableAstVisitorContext<Context> context) {
+    public Type visitExists(ExistsPredicate node, StackableAstVisitorContext<Context> context) {
       StatementAnalyzer analyzer =
           statementAnalyzerFactory.apply(node, context.getContext().getCorrelationSupport());
       Scope subqueryScope = Scope.builder().withParent(context.getContext().getScope()).build();
@@ -2067,7 +2064,7 @@ public class ExpressionAnalyzer {
     }
 
     @Override
-    protected Type visitQuantifiedComparisonExpression(
+    public Type visitQuantifiedComparisonExpression(
         QuantifiedComparisonExpression node, StackableAstVisitorContext<Context> context) {
       quantifiedComparisons.add(NodeRef.of(node));
 
@@ -2113,19 +2110,19 @@ public class ExpressionAnalyzer {
     }
 
     @Override
-    protected Type visitExpression(Expression node, StackableAstVisitorContext<Context> context) {
+    public Type visitExpression(Expression node, StackableAstVisitorContext<Context> context) {
       throw new SemanticException(
           String.format("not yet implemented: %s", node.getClass().getName()));
     }
 
     @Override
-    protected Type visitNode(Node node, StackableAstVisitorContext<Context> context) {
+    public Type visitNode(Node node, StackableAstVisitorContext<Context> context) {
       throw new SemanticException(
           String.format("not yet implemented: %s", node.getClass().getName()));
     }
 
     @Override
-    protected Type visitColumns(Columns node, StackableAstVisitorContext<Context> context) {
+    public Type visitColumns(Columns node, StackableAstVisitorContext<Context> context) {
       throw new SemanticException("Columns only support to be used in SELECT and WHERE clause");
     }
 

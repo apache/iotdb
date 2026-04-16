@@ -31,35 +31,35 @@ import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.NullLiteral;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.StringLiteral;
 
 // return NULL, if we cannot parse literal to double type
-public class CastToDoubleLiteralVisitor extends CommonQueryAstVisitor<Double, Void> {
+public class CastToDoubleLiteralVisitor implements CommonQueryAstVisitor<Double, Void> {
 
   @Override
-  protected Double visitLiteral(Literal node, Void context) {
+  public Double visitLiteral(Literal node, Void context) {
     throw new UnsupportedOperationException("Unhandled literal type: " + node);
   }
 
   @Override
-  protected Double visitBooleanLiteral(BooleanLiteral node, Void context) {
+  public Double visitBooleanLiteral(BooleanLiteral node, Void context) {
     return node.getValue() ? 1.0d : 0.0d;
   }
 
   @Override
-  protected Double visitLongLiteral(LongLiteral node, Void context) {
+  public Double visitLongLiteral(LongLiteral node, Void context) {
     return (double) node.getParsedValue();
   }
 
   @Override
-  protected Double visitDoubleLiteral(DoubleLiteral node, Void context) {
+  public Double visitDoubleLiteral(DoubleLiteral node, Void context) {
     return node.getValue();
   }
 
   @Override
-  protected Double visitFloatLiteral(FloatLiteral node, Void context) {
+  public Double visitFloatLiteral(FloatLiteral node, Void context) {
     return (double) node.getValue();
   }
 
   @Override
-  protected Double visitStringLiteral(StringLiteral node, Void context) {
+  public Double visitStringLiteral(StringLiteral node, Void context) {
     try {
       return Double.parseDouble(node.getValue());
     } catch (Exception e) {
@@ -68,12 +68,12 @@ public class CastToDoubleLiteralVisitor extends CommonQueryAstVisitor<Double, Vo
   }
 
   @Override
-  protected Double visitBinaryLiteral(BinaryLiteral node, Void context) {
+  public Double visitBinaryLiteral(BinaryLiteral node, Void context) {
     return null;
   }
 
   @Override
-  protected Double visitGenericLiteral(GenericLiteral node, Void context) {
+  public Double visitGenericLiteral(GenericLiteral node, Void context) {
     try {
       return Double.parseDouble(node.getValue());
     } catch (Exception e) {
@@ -82,7 +82,7 @@ public class CastToDoubleLiteralVisitor extends CommonQueryAstVisitor<Double, Vo
   }
 
   @Override
-  protected Double visitNullLiteral(NullLiteral node, Void context) {
+  public Double visitNullLiteral(NullLiteral node, Void context) {
     return null;
   }
 }

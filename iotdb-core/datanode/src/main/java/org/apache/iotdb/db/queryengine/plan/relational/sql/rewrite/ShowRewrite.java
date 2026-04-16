@@ -64,15 +64,15 @@ public final class ShowRewrite implements StatementRewrite.Rewrite {
     return (Statement) visitor.process(node, null);
   }
 
-  private static class Visitor extends AstVisitor<Node, Void> {
+  private static class Visitor implements AstVisitor<Node, Void> {
 
     @Override
-    protected Node visitShowQueriesStatement(ShowQueriesStatement node, Void context) {
+    public Node visitShowQueriesStatement(ShowQueriesStatement node, Void context) {
       return visitShowStatement(node, context);
     }
 
     @Override
-    protected Node visitShowStatement(final ShowStatement showStatement, final Void context) {
+    public Node visitShowStatement(final ShowStatement showStatement, final Void context) {
       return simpleQuery(
           selectList(new AllColumns()),
           from(INFORMATION_DATABASE, showStatement.getTableName()),
@@ -86,7 +86,7 @@ public final class ShowRewrite implements StatementRewrite.Rewrite {
     }
 
     @Override
-    protected Node visitShowExternalService(ShowExternalService node, Void context) {
+    public Node visitShowExternalService(ShowExternalService node, Void context) {
       return simpleQuery(
           selectList(new AllColumns()),
           from(INFORMATION_DATABASE, node.getTableName()),
@@ -100,7 +100,7 @@ public final class ShowRewrite implements StatementRewrite.Rewrite {
     }
 
     @Override
-    protected Node visitCountStatement(final CountStatement countStatement, final Void context) {
+    public Node visitCountStatement(final CountStatement countStatement, final Void context) {
       return simpleQuery(
           new Select(
               false,
@@ -125,7 +125,7 @@ public final class ShowRewrite implements StatementRewrite.Rewrite {
     }
 
     @Override
-    protected Node visitNode(final Node node, final Void context) {
+    public Node visitNode(final Node node, final Void context) {
       return node;
     }
   }

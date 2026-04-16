@@ -110,7 +110,7 @@ public final class ParameterExtractor {
     }
 
     @Override
-    protected Void visitParameter(Parameter node, Void context) {
+    public Void visitParameter(Parameter node, Void context) {
       parameters.add(node);
       return null;
     }

@@ -41,7 +41,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
  * @param <R> The return type of the visit operation.
  * @param <C> The context information during visiting.
  */
-public abstract class PredicateVisitor<R, C> extends AstVisitor<R, C> {
+public abstract class PredicateVisitor<R, C> implements AstVisitor<R, C> {
 
   @Override
   public R visitExpression(Expression expression, C context) {
@@ -50,38 +50,38 @@ public abstract class PredicateVisitor<R, C> extends AstVisitor<R, C> {
   }
 
   @Override
-  protected abstract R visitInPredicate(InPredicate node, C context);
+  public abstract R visitInPredicate(InPredicate node, C context);
 
   @Override
-  protected abstract R visitIsNullPredicate(IsNullPredicate node, C context);
+  public abstract R visitIsNullPredicate(IsNullPredicate node, C context);
 
   @Override
-  protected abstract R visitIsNotNullPredicate(IsNotNullPredicate node, C context);
+  public abstract R visitIsNotNullPredicate(IsNotNullPredicate node, C context);
 
   @Override
-  protected abstract R visitLikePredicate(LikePredicate node, C context);
+  public abstract R visitLikePredicate(LikePredicate node, C context);
 
   @Override
-  protected abstract R visitLogicalExpression(LogicalExpression node, C context);
+  public abstract R visitLogicalExpression(LogicalExpression node, C context);
 
   @Override
-  protected abstract R visitNotExpression(NotExpression node, C context);
+  public abstract R visitNotExpression(NotExpression node, C context);
 
   @Override
-  protected abstract R visitComparisonExpression(ComparisonExpression node, C context);
+  public abstract R visitComparisonExpression(ComparisonExpression node, C context);
 
   @Override
-  protected abstract R visitSimpleCaseExpression(SimpleCaseExpression node, C context);
+  public abstract R visitSimpleCaseExpression(SimpleCaseExpression node, C context);
 
   @Override
-  protected abstract R visitSearchedCaseExpression(SearchedCaseExpression node, C context);
+  public abstract R visitSearchedCaseExpression(SearchedCaseExpression node, C context);
 
   @Override
-  protected abstract R visitIfExpression(IfExpression node, C context);
+  public abstract R visitIfExpression(IfExpression node, C context);
 
   @Override
-  protected abstract R visitNullIfExpression(NullIfExpression node, C context);
+  public abstract R visitNullIfExpression(NullIfExpression node, C context);
 
   @Override
-  protected abstract R visitBetweenPredicate(BetweenPredicate node, C context);
+  public abstract R visitBetweenPredicate(BetweenPredicate node, C context);
 }

@@ -250,7 +250,7 @@ import static org.apache.tsfile.read.common.type.LongType.INT64;
 import static org.apache.tsfile.read.common.type.StringType.STRING;
 
 public class ColumnTransformerBuilder
-    extends CommonQueryAstVisitor<ColumnTransformer, ColumnTransformerBuilder.Context> {
+    implements CommonQueryAstVisitor<ColumnTransformer, ColumnTransformerBuilder.Context> {
 
   private static final String UNSUPPORTED_EXPRESSION = "Unsupported expression: %s";
 
@@ -261,8 +261,7 @@ public class ColumnTransformerBuilder
   }
 
   @Override
-  protected ColumnTransformer visitArithmeticBinary(
-      ArithmeticBinaryExpression node, Context context) {
+  public ColumnTransformer visitArithmeticBinary(ArithmeticBinaryExpression node, Context context) {
     if (!context.cache.containsKey(node)) {
       if (context.hasSeen.containsKey(node)) {
         ColumnTransformer left = process(node.getLeft(), context);
@@ -324,8 +323,7 @@ public class ColumnTransformerBuilder
   }
 
   @Override
-  protected ColumnTransformer visitArithmeticUnary(
-      ArithmeticUnaryExpression node, Context context) {
+  public ColumnTransformer visitArithmeticUnary(ArithmeticUnaryExpression node, Context context) {
     switch (node.getSign()) {
       case PLUS:
         return process(node.getValue(), context);
@@ -347,7 +345,7 @@ public class ColumnTransformerBuilder
   }
 
   @Override
-  protected ColumnTransformer visitBetweenPredicate(BetweenPredicate node, Context context) {
+  public ColumnTransformer visitBetweenPredicate(BetweenPredicate node, Context context) {
     if (!context.cache.containsKey(node)) {
       if (context.hasSeen.containsKey(node)) {
         appendIdentityColumnTransformer(node, BOOLEAN, TSDataType.BOOLEAN, context);
@@ -362,7 +360,7 @@ public class ColumnTransformerBuilder
   }
 
   @Override
-  protected ColumnTransformer visitCast(Cast node, Context context) {
+  public ColumnTransformer visitCast(Cast node, Context context) {
 
     if (!context.cache.containsKey(node)) {
       if (context.hasSeen.containsKey(node)) {
@@ -392,7 +390,7 @@ public class ColumnTransformerBuilder
   }
 
   @Override
-  protected ColumnTransformer visitExtract(Extract node, Context context) {
+  public ColumnTransformer visitExtract(Extract node, Context context) {
     if (!context.cache.containsKey(node)) {
       if (context.hasSeen.containsKey(node)) {
         ColumnTransformer columnTransformer = context.hasSeen.get(node);
@@ -413,7 +411,7 @@ public class ColumnTransformerBuilder
   }
 
   @Override
-  protected ColumnTransformer visitBooleanLiteral(BooleanLiteral node, Context context) {
+  public ColumnTransformer visitBooleanLiteral(BooleanLiteral node, Context context) {
     ColumnTransformer res =
         context.cache.computeIfAbsent(
             node,
@@ -430,7 +428,7 @@ public class ColumnTransformerBuilder
   }
 
   @Override
-  protected ColumnTransformer visitBinaryLiteral(BinaryLiteral node, Context context) {
+  public ColumnTransformer visitBinaryLiteral(BinaryLiteral node, Context context) {
     ColumnTransformer res =
         context.cache.computeIfAbsent(
             node,
@@ -448,7 +446,7 @@ public class ColumnTransformerBuilder
   }
 
   @Override
-  protected ColumnTransformer visitStringLiteral(StringLiteral node, Context context) {
+  public ColumnTransformer visitStringLiteral(StringLiteral node, Context context) {
     ColumnTransformer res =
         context.cache.computeIfAbsent(
             node,
@@ -468,7 +466,7 @@ public class ColumnTransformerBuilder
   }
 
   @Override
-  protected ColumnTransformer visitLongLiteral(LongLiteral node, Context context) {
+  public ColumnTransformer visitLongLiteral(LongLiteral node, Context context) {
     ColumnTransformer res =
         context.cache.computeIfAbsent(
             node,
@@ -495,7 +493,7 @@ public class ColumnTransformerBuilder
   }
 
   @Override
-  protected ColumnTransformer visitDoubleLiteral(DoubleLiteral node, Context context) {
+  public ColumnTransformer visitDoubleLiteral(DoubleLiteral node, Context context) {
     ColumnTransformer res =
         context.cache.computeIfAbsent(
             node,
@@ -512,7 +510,7 @@ public class ColumnTransformerBuilder
   }
 
   @Override
-  protected ColumnTransformer visitFloatLiteral(FloatLiteral node, Context context) {
+  public ColumnTransformer visitFloatLiteral(FloatLiteral node, Context context) {
     ColumnTransformer res =
         context.cache.computeIfAbsent(
             node,
@@ -528,12 +526,12 @@ public class ColumnTransformerBuilder
   }
 
   @Override
-  protected ColumnTransformer visitDecimalLiteral(DecimalLiteral node, Context context) {
+  public ColumnTransformer visitDecimalLiteral(DecimalLiteral node, Context context) {
     throw new UnsupportedOperationException();
   }
 
   @Override
-  protected ColumnTransformer visitGenericLiteral(GenericLiteral node, Context context) {
+  public ColumnTransformer visitGenericLiteral(GenericLiteral node, Context context) {
     ColumnTransformer res =
         context.cache.computeIfAbsent(
             node,
@@ -570,7 +568,7 @@ public class ColumnTransformerBuilder
   }
 
   @Override
-  protected ColumnTransformer visitNullLiteral(NullLiteral node, Context context) {
+  public ColumnTransformer visitNullLiteral(NullLiteral node, Context context) {
     ColumnTransformer res =
         context.cache.computeIfAbsent(
             node,
@@ -584,8 +582,7 @@ public class ColumnTransformerBuilder
   }
 
   @Override
-  protected ColumnTransformer visitComparisonExpression(
-      ComparisonExpression node, Context context) {
+  public ColumnTransformer visitComparisonExpression(ComparisonExpression node, Context context) {
     ColumnTransformer comparisonTransformer;
     if (context.cache.containsKey(node)) {
       comparisonTransformer = context.cache.get(node);
@@ -632,7 +629,7 @@ public class ColumnTransformerBuilder
   }
 
   @Override
-  protected ColumnTransformer visitCurrentDatabase(CurrentDatabase node, Context context) {
+  public ColumnTransformer visitCurrentDatabase(CurrentDatabase node, Context context) {
     Optional<String> currentDatabase = context.sessionInfo.getDatabaseName();
     ColumnTransformer res;
     res =
@@ -666,12 +663,12 @@ public class ColumnTransformerBuilder
   }
 
   @Override
-  protected ColumnTransformer visitCurrentTime(CurrentTime node, Context context) {
+  public ColumnTransformer visitCurrentTime(CurrentTime node, Context context) {
     throw new UnsupportedOperationException(String.format(UNSUPPORTED_EXPRESSION, node));
   }
 
   @Override
-  protected ColumnTransformer visitCurrentUser(CurrentUser node, Context context) {
+  public ColumnTransformer visitCurrentUser(CurrentUser node, Context context) {
     String currentUser = context.sessionInfo.getUserName();
     ColumnTransformer res =
         context.cache.computeIfAbsent(
@@ -692,7 +689,7 @@ public class ColumnTransformerBuilder
   }
 
   @Override
-  protected ColumnTransformer visitFunctionCall(FunctionCall node, Context context) {
+  public ColumnTransformer visitFunctionCall(FunctionCall node, Context context) {
     if (!context.cache.containsKey(node)) {
       if (context.hasSeen.containsKey(node)) {
         ColumnTransformer columnTransformer = context.hasSeen.get(node);
@@ -1504,7 +1501,7 @@ public class ColumnTransformerBuilder
   }
 
   @Override
-  protected ColumnTransformer visitInPredicate(InPredicate node, Context context) {
+  public ColumnTransformer visitInPredicate(InPredicate node, Context context) {
     if (!context.cache.containsKey(node)) {
       if (context.hasSeen.containsKey(node)) {
         appendIdentityColumnTransformer(node, BOOLEAN, TSDataType.BOOLEAN, context);
@@ -1638,7 +1635,7 @@ public class ColumnTransformerBuilder
   }
 
   @Override
-  protected ColumnTransformer visitNotExpression(NotExpression node, Context context) {
+  public ColumnTransformer visitNotExpression(NotExpression node, Context context) {
     if (!context.cache.containsKey(node)) {
       if (context.hasSeen.containsKey(node)) {
         appendIdentityColumnTransformer(node, BOOLEAN, TSDataType.BOOLEAN, context);
@@ -1651,7 +1648,7 @@ public class ColumnTransformerBuilder
   }
 
   @Override
-  protected ColumnTransformer visitLikePredicate(LikePredicate node, Context context) {
+  public ColumnTransformer visitLikePredicate(LikePredicate node, Context context) {
     if (!context.cache.containsKey(node)) {
       if (context.hasSeen.containsKey(node)) {
         appendIdentityColumnTransformer(node, BOOLEAN, TSDataType.BOOLEAN, context);
@@ -1693,7 +1690,7 @@ public class ColumnTransformerBuilder
   }
 
   @Override
-  protected ColumnTransformer visitIsNotNullPredicate(IsNotNullPredicate node, Context context) {
+  public ColumnTransformer visitIsNotNullPredicate(IsNotNullPredicate node, Context context) {
     if (!context.cache.containsKey(node)) {
       if (context.hasSeen.containsKey(node)) {
         appendIdentityColumnTransformer(node, BOOLEAN, TSDataType.BOOLEAN, context);
@@ -1706,7 +1703,7 @@ public class ColumnTransformerBuilder
   }
 
   @Override
-  protected ColumnTransformer visitIsNullPredicate(IsNullPredicate node, Context context) {
+  public ColumnTransformer visitIsNullPredicate(IsNullPredicate node, Context context) {
     if (!context.cache.containsKey(node)) {
       if (context.hasSeen.containsKey(node)) {
         appendIdentityColumnTransformer(node, BOOLEAN, TSDataType.BOOLEAN, context);
@@ -1720,7 +1717,7 @@ public class ColumnTransformerBuilder
   }
 
   @Override
-  protected ColumnTransformer visitLogicalExpression(LogicalExpression node, Context context) {
+  public ColumnTransformer visitLogicalExpression(LogicalExpression node, Context context) {
     ColumnTransformer logicalTransformer;
     if (context.cache.containsKey(node)) {
       logicalTransformer = context.cache.get(node);
@@ -1759,7 +1756,7 @@ public class ColumnTransformerBuilder
   }
 
   @Override
-  protected ColumnTransformer visitSymbolReference(SymbolReference node, Context context) {
+  public ColumnTransformer visitSymbolReference(SymbolReference node, Context context) {
     ColumnTransformer res =
         context.cache.computeIfAbsent(
             node,
@@ -1782,7 +1779,7 @@ public class ColumnTransformerBuilder
   }
 
   @Override
-  protected ColumnTransformer visitCoalesceExpression(CoalesceExpression node, Context context) {
+  public ColumnTransformer visitCoalesceExpression(CoalesceExpression node, Context context) {
     if (!context.cache.containsKey(node)) {
       if (context.hasSeen.containsKey(node)) {
         ColumnTransformer columnTransformer = context.hasSeen.get(node);
@@ -1804,8 +1801,7 @@ public class ColumnTransformerBuilder
   }
 
   @Override
-  protected ColumnTransformer visitSimpleCaseExpression(
-      SimpleCaseExpression node, Context context) {
+  public ColumnTransformer visitSimpleCaseExpression(SimpleCaseExpression node, Context context) {
     if (!context.cache.containsKey(node)) {
       if (context.hasSeen.containsKey(node)) {
         ColumnTransformer columnTransformer = context.hasSeen.get(node);
@@ -1841,7 +1837,7 @@ public class ColumnTransformerBuilder
   }
 
   @Override
-  protected ColumnTransformer visitSearchedCaseExpression(
+  public ColumnTransformer visitSearchedCaseExpression(
       SearchedCaseExpression node, Context context) {
     if (!context.cache.containsKey(node)) {
       if (context.hasSeen.containsKey(node)) {
@@ -1873,17 +1869,17 @@ public class ColumnTransformerBuilder
   }
 
   @Override
-  protected ColumnTransformer visitTrim(Trim node, Context context) {
+  public ColumnTransformer visitTrim(Trim node, Context context) {
     throw new UnsupportedOperationException(String.format(UNSUPPORTED_EXPRESSION, node));
   }
 
   @Override
-  protected ColumnTransformer visitIfExpression(IfExpression node, Context context) {
+  public ColumnTransformer visitIfExpression(IfExpression node, Context context) {
     throw new UnsupportedOperationException(String.format(UNSUPPORTED_EXPRESSION, node));
   }
 
   @Override
-  protected ColumnTransformer visitNullIfExpression(NullIfExpression node, Context context) {
+  public ColumnTransformer visitNullIfExpression(NullIfExpression node, Context context) {
     throw new UnsupportedOperationException(String.format(UNSUPPORTED_EXPRESSION, node));
   }
 

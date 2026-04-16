@@ -42,7 +42,7 @@ import java.util.Optional;
 import static org.apache.iotdb.db.storageengine.load.converter.LoadTreeStatementDataTypeConvertExecutionVisitor.handleTSStatus;
 
 public class LoadTableStatementDataTypeConvertExecutionVisitor
-    extends AstVisitor<Optional<TSStatus>, String> {
+    implements AstVisitor<Optional<TSStatus>, String> {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(LoadTableStatementDataTypeConvertExecutionVisitor.class);

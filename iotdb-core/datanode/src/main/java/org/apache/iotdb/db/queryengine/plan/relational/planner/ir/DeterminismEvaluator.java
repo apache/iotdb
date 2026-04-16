@@ -35,7 +35,7 @@ public final class DeterminismEvaluator {
 
   private static class Visitor extends DefaultTraversalVisitor<AtomicBoolean> {
     @Override
-    protected Void visitFunctionCall(FunctionCall node, AtomicBoolean deterministic) {
+    public Void visitFunctionCall(FunctionCall node, AtomicBoolean deterministic) {
       //            if (!node.getFunction().isDeterministic()) {
       //                deterministic.set(false);
       //                return null;
