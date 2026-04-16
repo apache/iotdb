@@ -101,18 +101,38 @@ public class PipePluginMeta {
   }
 
   public ByteBuffer serialize() throws IOException {
+    return serialize(true);
+  }
+
+  public ByteBuffer serializeForState() throws IOException {
+    return serialize(false);
+  }
+
+  private ByteBuffer serialize(final boolean includeExceptionMessage) throws IOException {
     PublicBAOS byteArrayOutputStream = new PublicBAOS();
     DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
-    serialize(outputStream);
+    serialize(outputStream, includeExceptionMessage);
     return ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
   }
 
   public void serialize(DataOutputStream outputStream) throws IOException {
+    serialize(outputStream, true);
+  }
+
+  public void serializeForState(DataOutputStream outputStream) throws IOException {
+    serialize(outputStream, false);
+  }
+
+  private void serialize(DataOutputStream outputStream, boolean includeExceptionMessage)
+      throws IOException {
     ReadWriteIOUtils.write(pluginName, outputStream);
     ReadWriteIOUtils.write(className, outputStream);
     ReadWriteIOUtils.write(isBuiltin, outputStream);
     ReadWriteIOUtils.write(jarName, outputStream);
     ReadWriteIOUtils.write(jarMD5, outputStream);
+    if (includeExceptionMessage) {
+      ReadWriteIOUtils.write(pluginLoadingExceptionMessage, outputStream);
+    }
   }
 
   public static PipePluginMeta deserialize(ByteBuffer byteBuffer) {
@@ -121,7 +141,10 @@ public class PipePluginMeta {
     final boolean isBuiltin = ReadWriteIOUtils.readBool(byteBuffer);
     final String jarName = ReadWriteIOUtils.readString(byteBuffer);
     final String jarMD5 = ReadWriteIOUtils.readString(byteBuffer);
-    return new PipePluginMeta(pluginName, className, isBuiltin, jarName, jarMD5, null);
+    final String pluginLoadingExceptionMessage =
+        byteBuffer.hasRemaining() ? ReadWriteIOUtils.readString(byteBuffer) : null;
+    return new PipePluginMeta(
+        pluginName, className, isBuiltin, jarName, jarMD5, pluginLoadingExceptionMessage);
   }
 
   public static PipePluginMeta deserialize(InputStream inputStream) throws IOException {

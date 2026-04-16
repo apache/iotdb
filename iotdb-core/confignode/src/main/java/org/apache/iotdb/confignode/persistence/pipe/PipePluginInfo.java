@@ -222,7 +222,6 @@ public class PipePluginInfo implements SnapshotProcessor {
   /////////////////////////////// Pipe Plugin Management ///////////////////////////////
 
   public TSStatus createPipePlugin(final CreatePipePluginPlan createPipePluginPlan) {
-    boolean shouldRecordLoadingFailure = false;
     final PipePluginMeta pipePluginMeta = createPipePluginPlan.getPipePluginMeta();
     try {
       final String pluginName = pipePluginMeta.getPluginName();
@@ -230,7 +229,6 @@ public class PipePluginInfo implements SnapshotProcessor {
       final String jarName = pipePluginMeta.getJarName();
 
       if (createPipePluginPlan.getJarFile() != null) {
-        shouldRecordLoadingFailure = true;
         savePipePluginWithRollback(createPipePluginPlan);
       } else {
         final String existed = pipePluginMetaKeeper.getPluginNameByJarName(jarName);
@@ -240,16 +238,6 @@ public class PipePluginInfo implements SnapshotProcessor {
           final String existedLoadingFailureMessage =
               existedPipePluginMeta.getPluginLoadingExceptionMessage();
           if (existedLoadingFailureMessage != null) {
-            pipePluginMetaKeeper.addPipePluginMeta(
-                pluginName,
-                new PipePluginMeta(
-                    pipePluginMeta.getPluginName(),
-                    pipePluginMeta.getClassName(),
-                    pipePluginMeta.isBuiltin(),
-                    pipePluginMeta.getJarName(),
-                    pipePluginMeta.getJarMD5(),
-                    existedLoadingFailureMessage));
-            pipePluginMetaKeeper.addPipePluginVisibility(pluginName, Visibility.BOTH);
             throw new PipeException(
                 String.format(
                     "Failed to create PipePlugin [%s], source PipePlugin [%s] failed to load: %s",
@@ -261,7 +249,6 @@ public class PipePluginInfo implements SnapshotProcessor {
                     "Failed to create PipePlugin [%s], source PipePlugin [%s] jar [%s] does not exist in install dir.",
                     pluginName, existed, jarName));
           }
-          shouldRecordLoadingFailure = true;
           pipePluginExecutableManager.linkExistedPlugin(existed, pluginName, jarName);
           computeFromPluginClass(pluginName, className);
         } else {

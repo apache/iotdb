@@ -125,16 +125,7 @@ public abstract class PipePluginMetaKeeper {
       if (pipePluginMeta.isBuiltin()) {
         continue;
       }
-      ReadWriteIOUtils.write(
-          new PipePluginMeta(
-                  pipePluginMeta.getPluginName(),
-                  pipePluginMeta.getClassName(),
-                  pipePluginMeta.isBuiltin(),
-                  pipePluginMeta.getJarName(),
-                  pipePluginMeta.getJarMD5(),
-                  null)
-              .serialize(),
-          outputStream);
+      ReadWriteIOUtils.write(pipePluginMeta.serializeForState(), outputStream);
     }
   }
 
