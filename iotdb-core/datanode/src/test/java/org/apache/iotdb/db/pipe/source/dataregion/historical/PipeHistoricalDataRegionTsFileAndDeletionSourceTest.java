@@ -139,11 +139,16 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSourceTest {
       return suppliedTsFiles;
     }
 
-    private int getPendingQueueSize() throws ReflectiveOperationException {
-      final Field field =
-          PipeHistoricalDataRegionTsFileAndDeletionSource.class.getDeclaredField("pendingQueue");
-      field.setAccessible(true);
-      return ((ArrayDeque<?>) field.get(this)).size();
+    @Override
+    public int getPendingQueueSize() {
+      try {
+        final Field field =
+            PipeHistoricalDataRegionTsFileAndDeletionSource.class.getDeclaredField("pendingQueue");
+        field.setAccessible(true);
+        return ((ArrayDeque<?>) field.get(this)).size();
+      } catch (final ReflectiveOperationException e) {
+        throw new AssertionError(e);
+      }
     }
 
     private void setSuppliedEvent(final Event suppliedEvent) {
