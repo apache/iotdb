@@ -3192,13 +3192,6 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       String seriesPartitionExecutorClass =
           IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionExecutorClass();
 
-      if (IoTDBDescriptor.getInstance().getConfig().getPartitionTableRecoverWorkerNum() <= 0) {
-        resp.setErrorCode(DataPartitionTableGeneratorState.UNKNOWN.getCode());
-        resp.setMessage(
-            "The partition_table_recover_worker_num config param value is invalid, must be larger than 0");
-        resp.setStatus(RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR));
-        return resp;
-      }
       final ExecutorService partitionTableRecoverExecutor =
           new WrappedThreadPoolExecutor(
               0,
@@ -3368,10 +3361,6 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
           }
         };
     List<CompletableFuture<Void>> futures = new ArrayList<>();
-    if (IoTDBDescriptor.getInstance().getConfig().getPartitionTableRecoverWorkerNum() <= 0) {
-      throw new IllegalArgumentException(
-          "The partition_table_recover_worker_num config param value is invalid, must be larger than 0.");
-    }
     final ExecutorService findEarliestTimeSlotExecutor =
         new WrappedThreadPoolExecutor(
             0,
