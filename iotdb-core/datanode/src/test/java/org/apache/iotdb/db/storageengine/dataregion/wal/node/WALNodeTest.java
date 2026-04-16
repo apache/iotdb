@@ -52,6 +52,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -63,6 +64,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -150,6 +152,56 @@ public class WALNodeTest {
     assertEquals(expectedInsertTabletNodes, actualInsertTabletNodes);
   }
 
+  @Test
+  public void testGetRetentionBoundaryByLastModifiedTime() throws Exception {
+    final String timeRetentionDirectory = logDirectory + File.separator + "time-retention";
+    EnvironmentUtils.cleanDir(timeRetentionDirectory);
+
+    final long now = System.currentTimeMillis();
+    createWalFile(
+        timeRetentionDirectory,
+        0,
+        0,
+        now - TimeUnit.HOURS.toMillis(3),
+        WALFileStatus.CONTAINS_SEARCH_INDEX);
+    createWalFile(
+        timeRetentionDirectory,
+        1,
+        10,
+        now - TimeUnit.HOURS.toMillis(2),
+        WALFileStatus.CONTAINS_SEARCH_INDEX);
+    createWalFile(
+        timeRetentionDirectory,
+        2,
+        20,
+        now - TimeUnit.MINUTES.toMillis(10),
+        WALFileStatus.CONTAINS_SEARCH_INDEX);
+
+    final WALNode timeRetentionNode =
+        new WALNode("time-retention-node", timeRetentionDirectory, 3, 30);
+    try {
+      final long cutoffTimeMs = now - TimeUnit.HOURS.toMillis(1);
+      assertEquals(20L, timeRetentionNode.getSearchIndexToFreeBeforeTimestamp(cutoffTimeMs));
+      assertEquals(2L, timeRetentionNode.getVersionIdToFreeBeforeTimestamp(cutoffTimeMs));
+
+      final long futureCutoffTimeMs = now + TimeUnit.MINUTES.toMillis(1);
+      assertEquals(
+          Long.MAX_VALUE,
+          timeRetentionNode.getSearchIndexToFreeBeforeTimestamp(futureCutoffTimeMs));
+      assertEquals(
+          Long.MAX_VALUE, timeRetentionNode.getVersionIdToFreeBeforeTimestamp(futureCutoffTimeMs));
+
+      final long earlyCutoffTimeMs = now - TimeUnit.DAYS.toMillis(1);
+      assertEquals(
+          Long.MIN_VALUE + 1,
+          timeRetentionNode.getSearchIndexToFreeBeforeTimestamp(earlyCutoffTimeMs));
+      assertEquals(0L, timeRetentionNode.getVersionIdToFreeBeforeTimestamp(earlyCutoffTimeMs));
+    } finally {
+      timeRetentionNode.close();
+      EnvironmentUtils.cleanDir(timeRetentionDirectory);
+    }
+  }
+
   private void writeInsertTabletNode(
       int memTableId,
       Set<InsertTabletNode> expectedInsertTabletNodes,
@@ -219,6 +271,20 @@ public class WALNodeTest {
         bitMaps,
         columns,
         times.length);
+  }
+
+  private static void createWalFile(
+      final String directory,
+      final long versionId,
+      final long startSearchIndex,
+      final long lastModifiedTime,
+      final WALFileStatus status)
+      throws IOException {
+    assertTrue(new File(directory).mkdirs() || new File(directory).exists());
+    final File walFile =
+        new File(directory, WALFileUtils.getLogFileName(versionId, startSearchIndex, status));
+    assertTrue(walFile.createNewFile());
+    assertTrue(walFile.setLastModified(lastModifiedTime));
   }
 
   @Test

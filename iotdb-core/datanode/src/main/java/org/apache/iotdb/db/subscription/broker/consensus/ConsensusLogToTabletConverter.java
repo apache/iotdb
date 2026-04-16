@@ -21,6 +21,7 @@ package org.apache.iotdb.db.subscription.broker.consensus;
 
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertMultiTabletsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
@@ -32,6 +33,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalIn
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 
+import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Binary;
@@ -47,6 +49,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.regex.Pattern;
 
 /** Converts IoTConsensus WAL log entries (InsertNode) to Tablet format for subscription. */
 public class ConsensusLogToTabletConverter {
@@ -55,6 +58,7 @@ public class ConsensusLogToTabletConverter {
 
   private final TreePattern treePattern;
   private final TablePattern tablePattern;
+  private final Pattern tableColumnPattern;
 
   /**
    * The actual database name of the DataRegion this converter processes (table-model format without
@@ -63,9 +67,13 @@ public class ConsensusLogToTabletConverter {
   private final String databaseName;
 
   public ConsensusLogToTabletConverter(
-      final TreePattern treePattern, final TablePattern tablePattern, final String databaseName) {
+      final TreePattern treePattern,
+      final TablePattern tablePattern,
+      final Pattern tableColumnPattern,
+      final String databaseName) {
     this.treePattern = treePattern;
     this.tablePattern = tablePattern;
+    this.tableColumnPattern = tableColumnPattern;
     this.databaseName = databaseName;
   }
 
@@ -171,6 +179,10 @@ public class ConsensusLogToTabletConverter {
   }
 
   private List<Tablet> convertInsertTabletNode(final InsertTabletNode node) {
+    if (node instanceof RelationalInsertTabletNode) {
+      return convertRelationalInsertTabletNode((RelationalInsertTabletNode) node);
+    }
+
     final IDeviceID deviceId = node.getDeviceID();
 
     // Device-level path filtering
@@ -246,7 +258,14 @@ public class ConsensusLogToTabletConverter {
   private List<Tablet> convertInsertMultiTabletsNode(final InsertMultiTabletsNode node) {
     final List<Tablet> tablets = new ArrayList<>();
     for (final InsertTabletNode tabletNode : node.getInsertTabletNodeList()) {
-      tablets.addAll(convertInsertTabletNode(tabletNode));
+      // Handle merge bug: RelationalInsertTabletNode.mergeInsertNode() is not overridden,
+      // so merged relational tablets arrive as InsertMultiTabletsNode (tree) with
+      // RelationalInsertTabletNode children. Dispatch correctly by checking the actual child type.
+      if (tabletNode instanceof RelationalInsertTabletNode) {
+        tablets.addAll(convertRelationalInsertTabletNode((RelationalInsertTabletNode) tabletNode));
+      } else {
+        tablets.addAll(convertInsertTabletNode(tabletNode));
+      }
     }
     return tablets;
   }
@@ -270,25 +289,36 @@ public class ConsensusLogToTabletConverter {
     final String[] measurements = node.getMeasurements();
     final TSDataType[] dataTypes = node.getDataTypes();
     final Object[] values = node.getValues();
-
-    final int columnCount = measurements.length;
-    final List<IMeasurementSchema> schemas = new ArrayList<>(columnCount);
-    for (int i = 0; i < columnCount; i++) {
-      schemas.add(new MeasurementSchema(measurements[i], dataTypes[i]));
+    final List<Integer> matchedColumnIndices = getMatchedTableColumnIndices(measurements);
+    if (matchedColumnIndices.isEmpty()) {
+      return Collections.emptyList();
     }
 
-    final Tablet tablet = new Tablet(tableName != null ? tableName : "", schemas, 1);
+    final int columnCount = matchedColumnIndices.size();
+    final List<String> columnNames = new ArrayList<>(columnCount);
+    final List<TSDataType> columnDataTypes = new ArrayList<>(columnCount);
+    final List<ColumnCategory> columnTypes = new ArrayList<>(columnCount);
+    for (final int originalColIdx : matchedColumnIndices) {
+      columnNames.add(measurements[originalColIdx]);
+      columnDataTypes.add(dataTypes[originalColIdx]);
+      columnTypes.add(toTsFileColumnCategory(node.getColumnCategories(), originalColIdx));
+    }
+
+    final Tablet tablet =
+        new Tablet(
+            tableName != null ? tableName : "", columnNames, columnDataTypes, columnTypes, 1);
     tablet.addTimestamp(0, time);
 
     for (int i = 0; i < columnCount; i++) {
-      final Object value = values[i];
+      final int originalColIdx = matchedColumnIndices.get(i);
+      final Object value = values[originalColIdx];
       if (value == null) {
         if (tablet.getBitMaps() == null) {
           tablet.initBitMaps();
         }
         tablet.getBitMaps()[i].mark(0);
       } else {
-        addValueToTablet(tablet, 0, i, dataTypes[i], value);
+        addValueToTablet(tablet, 0, i, dataTypes[originalColIdx], value);
       }
     }
     tablet.setRowSize(1);
@@ -315,11 +345,18 @@ public class ConsensusLogToTabletConverter {
     final Object[] columns = node.getColumns();
     final BitMap[] bitMaps = node.getBitMaps();
     final int rowCount = node.getRowCount();
+    final List<Integer> matchedColumnIndices = getMatchedTableColumnIndices(measurements);
+    if (matchedColumnIndices.isEmpty()) {
+      return Collections.emptyList();
+    }
 
-    final int columnCount = measurements.length;
+    final int columnCount = matchedColumnIndices.size();
+    final boolean allColumnsMatch = columnCount == measurements.length;
     final List<IMeasurementSchema> schemas = new ArrayList<>(columnCount);
-    for (int i = 0; i < columnCount; i++) {
-      schemas.add(new MeasurementSchema(measurements[i], dataTypes[i]));
+    final List<ColumnCategory> columnTypes = new ArrayList<>(columnCount);
+    for (final int originalColIdx : matchedColumnIndices) {
+      schemas.add(new MeasurementSchema(measurements[originalColIdx], dataTypes[originalColIdx]));
+      columnTypes.add(toTsFileColumnCategory(node.getColumnCategories(), originalColIdx));
     }
 
     // Build column arrays and bitmaps using bulk copy
@@ -328,10 +365,12 @@ public class ConsensusLogToTabletConverter {
     final BitMap[] newBitMaps = new BitMap[columnCount];
 
     for (int colIdx = 0; colIdx < columnCount; colIdx++) {
-      newColumns[colIdx] = copyColumnArray(dataTypes[colIdx], columns[colIdx], rowCount);
-      if (bitMaps != null && bitMaps[colIdx] != null) {
+      final int originalColIdx = allColumnsMatch ? colIdx : matchedColumnIndices.get(colIdx);
+      newColumns[colIdx] =
+          copyColumnArray(dataTypes[originalColIdx], columns[originalColIdx], rowCount);
+      if (bitMaps != null && bitMaps[originalColIdx] != null) {
         newBitMaps[colIdx] = new BitMap(rowCount);
-        BitMap.copyOfRange(bitMaps[colIdx], 0, newBitMaps[colIdx], 0, rowCount);
+        BitMap.copyOfRange(bitMaps[originalColIdx], 0, newBitMaps[colIdx], 0, rowCount);
       }
     }
 
@@ -339,6 +378,7 @@ public class ConsensusLogToTabletConverter {
         new Tablet(
             tableName != null ? tableName : "",
             schemas,
+            columnTypes,
             newTimes,
             newColumns,
             newBitMaps,
@@ -381,6 +421,30 @@ public class ConsensusLogToTabletConverter {
       }
     }
     return matchedIndices;
+  }
+
+  /**
+   * Returns indices of table columns that match the configured column pattern. If no table column
+   * pattern is specified, all non-null columns are returned.
+   */
+  private List<Integer> getMatchedTableColumnIndices(final String[] measurements) {
+    final List<Integer> matchedIndices = new ArrayList<>(measurements.length);
+    for (int i = 0; i < measurements.length; i++) {
+      if (measurements[i] == null) {
+        continue;
+      }
+      if (tableColumnPattern == null || tableColumnPattern.matcher(measurements[i]).matches()) {
+        matchedIndices.add(i);
+      }
+    }
+    return matchedIndices;
+  }
+
+  private ColumnCategory toTsFileColumnCategory(
+      final TsTableColumnCategory[] columnCategories, final int columnIndex) {
+    return columnCategories != null && columnCategories[columnIndex] != null
+        ? columnCategories[columnIndex].toTsFileColumnType()
+        : ColumnCategory.FIELD;
   }
 
   /**

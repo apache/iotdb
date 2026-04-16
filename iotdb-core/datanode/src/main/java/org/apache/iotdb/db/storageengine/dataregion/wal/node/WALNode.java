@@ -994,6 +994,52 @@ public class WALNode implements IWALNode {
     return Long.MAX_VALUE;
   }
 
+  @Override
+  public long getSearchIndexToFreeBeforeTimestamp(long cutoffTimeMs) {
+    File[] walFiles = WALFileUtils.listAllWALFiles(logDirectory);
+    if (walFiles == null || walFiles.length <= 1) {
+      return Long.MIN_VALUE + 1;
+    }
+    WALFileUtils.ascSortByVersionId(walFiles);
+    int expiredPrefixLength = countExpiredRolledWalFiles(walFiles, cutoffTimeMs);
+    if (expiredPrefixLength == 0) {
+      return Long.MIN_VALUE + 1;
+    }
+    if (expiredPrefixLength >= walFiles.length - 1) {
+      return Long.MAX_VALUE;
+    }
+    return WALFileUtils.parseStartSearchIndex(walFiles[expiredPrefixLength].getName());
+  }
+
+  @Override
+  public long getVersionIdToFreeBeforeTimestamp(long cutoffTimeMs) {
+    File[] walFiles = WALFileUtils.listAllWALFiles(logDirectory);
+    if (walFiles == null || walFiles.length <= 1) {
+      return 0;
+    }
+    WALFileUtils.ascSortByVersionId(walFiles);
+    int expiredPrefixLength = countExpiredRolledWalFiles(walFiles, cutoffTimeMs);
+    if (expiredPrefixLength == 0) {
+      return 0;
+    }
+    if (expiredPrefixLength >= walFiles.length - 1) {
+      return Long.MAX_VALUE;
+    }
+    return WALFileUtils.parseVersionId(walFiles[expiredPrefixLength].getName());
+  }
+
+  private int countExpiredRolledWalFiles(File[] walFiles, long cutoffTimeMs) {
+    int expiredPrefixLength = 0;
+    for (int i = 0; i < walFiles.length - 1; i++) {
+      if (walFiles[i].lastModified() < cutoffTimeMs) {
+        expiredPrefixLength++;
+      } else {
+        break;
+      }
+    }
+    return expiredPrefixLength;
+  }
+
   // endregion
 
   @Override

@@ -22,6 +22,7 @@ package org.apache.iotdb.db.subscription.broker;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.consensus.iot.IoTConsensusServerImpl;
+import org.apache.iotdb.consensus.iot.SubscriptionWalRetentionPolicy;
 import org.apache.iotdb.db.subscription.broker.consensus.ConsensusLogToTabletConverter;
 import org.apache.iotdb.db.subscription.broker.consensus.ConsensusPrefetchingQueue;
 import org.apache.iotdb.db.subscription.broker.consensus.ConsensusRegionRuntimeState;
@@ -550,6 +551,7 @@ public class ConsensusSubscriptionBroker implements ISubscriptionBroker {
       final String orderMode,
       final ConsensusGroupId consensusGroupId,
       final IoTConsensusServerImpl serverImpl,
+      final SubscriptionWalRetentionPolicy retentionPolicy,
       final ConsensusLogToTabletConverter converter,
       final ConsensusSubscriptionCommitManager commitManager,
       final RegionProgress fallbackCommittedRegionProgress,
@@ -582,6 +584,7 @@ public class ConsensusSubscriptionBroker implements ISubscriptionBroker {
             orderMode,
             consensusGroupId,
             serverImpl,
+            retentionPolicy,
             converter,
             commitManager,
             fallbackCommittedRegionProgress,

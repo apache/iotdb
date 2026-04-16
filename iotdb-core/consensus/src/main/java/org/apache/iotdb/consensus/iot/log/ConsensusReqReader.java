@@ -134,4 +134,29 @@ public interface ConsensusReqReader {
   default long getVersionIdToFreeAtLeast(long bytesToFree) {
     return bytesToFree > 0 ? Long.MAX_VALUE : 0;
   }
+
+  /**
+   * Calculate the search index boundary that, if used as safelyDeletedSearchIndex, would free the
+   * oldest rolled WAL files whose lastModified time is earlier than {@code cutoffTimeMs}. The
+   * currently written WAL file is never considered deletable by this method.
+   *
+   * @param cutoffTimeMs files strictly older than this timestamp may be freed
+   * @return the search index boundary of the first retained file, or Long.MIN_VALUE + 1 when no
+   *     rolled WAL files are old enough to be freed
+   */
+  default long getSearchIndexToFreeBeforeTimestamp(long cutoffTimeMs) {
+    return Long.MIN_VALUE + 1;
+  }
+
+  /**
+   * Calculate the minimum retained WAL versionId after freeing the oldest rolled WAL files whose
+   * lastModified time is earlier than {@code cutoffTimeMs}.
+   *
+   * @param cutoffTimeMs files strictly older than this timestamp may be freed
+   * @return the versionId boundary of the first retained file, or 0 when no rolled WAL files are
+   *     old enough to be freed
+   */
+  default long getVersionIdToFreeBeforeTimestamp(long cutoffTimeMs) {
+    return 0;
+  }
 }

@@ -67,6 +67,16 @@ public class FakeConsensusReqReader implements ConsensusReqReader, DataSet {
     return bytesToFree > 0 ? Long.MAX_VALUE : DEFAULT_SAFELY_DELETED_SEARCH_INDEX;
   }
 
+  @Override
+  public long getSearchIndexToFreeBeforeTimestamp(long cutoffTimeMs) {
+    return Long.MIN_VALUE + 1;
+  }
+
+  @Override
+  public long getVersionIdToFreeBeforeTimestamp(long cutoffTimeMs) {
+    return 0;
+  }
+
   private class FakeConsensusReqIterator implements ConsensusReqReader.ReqIterator {
 
     private long nextSearchIndex;

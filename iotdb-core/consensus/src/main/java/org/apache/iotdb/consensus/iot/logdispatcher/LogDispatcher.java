@@ -177,10 +177,10 @@ public class LogDispatcher {
             IndexController controller = thread.getController();
             controller.update(controller.getCurrentIndex(), true);
           });
-      // Use subscription-aware safe-delete to avoid deleting WAL entries
-      // still needed by subscription consumers.
-      impl.checkAndUpdateSafeDeletedSearchIndex();
     }
+    // Single-replica regions do not have dispatcher threads, but still need periodic retention
+    // recalculation for subscription-aware WAL cleanup.
+    impl.checkAndUpdateSafeDeletedSearchIndex();
   }
 
   public void offer(IndexedConsensusRequest request) {

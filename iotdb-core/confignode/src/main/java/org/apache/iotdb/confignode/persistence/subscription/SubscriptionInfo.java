@@ -67,6 +67,8 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Predicate;
+import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
@@ -260,6 +262,9 @@ public class SubscriptionInfo implements SnapshotProcessor {
     validateTopicConfig(topicMeta.getConfig());
 
     if (isTopicExisted(topicMeta.getTopicName())) {
+      final TopicMeta existedTopicMeta = topicMetaKeeper.getTopicMeta(topicMeta.getTopicName());
+      validateUnsupportedHotUpdatedTopicConfig(
+          topicMeta.getTopicName(), existedTopicMeta.getConfig(), topicMeta.getConfig());
       return;
     }
 
@@ -276,20 +281,164 @@ public class SubscriptionInfo implements SnapshotProcessor {
 
   private void validateTopicConfig(final TopicConfig topicConfig) throws SubscriptionException {
     final String orderMode = topicConfig.getOrderMode();
-    if (TopicConfig.isValidOrderMode(orderMode)) {
+    if (!TopicConfig.isValidOrderMode(orderMode)) {
+      final String exceptionMessage =
+          String.format(
+              "Failed to create or alter topic, unsupported %s=%s, expected one of [%s, %s, %s]",
+              TopicConstant.ORDER_MODE_KEY,
+              orderMode,
+              TopicConstant.ORDER_MODE_LEADER_ONLY_VALUE,
+              TopicConstant.ORDER_MODE_MULTI_WRITER_VALUE,
+              TopicConstant.ORDER_MODE_PER_WRITER_VALUE);
+      LOGGER.warn(exceptionMessage);
+      throw new SubscriptionException(exceptionMessage);
+    }
+
+    validateConsensusTableColumnPattern(topicConfig);
+    validateConsensusTopicRetentionConfig(topicConfig);
+  }
+
+  private void validateConsensusTableColumnPattern(final TopicConfig topicConfig)
+      throws SubscriptionException {
+    if (!topicConfig.hasAttribute(TopicConstant.COLUMN_KEY)) {
       return;
     }
 
-    final String exceptionMessage =
-        String.format(
-            "Failed to create or alter topic, unsupported %s=%s, expected one of [%s, %s, %s]",
-            TopicConstant.ORDER_MODE_KEY,
-            orderMode,
-            TopicConstant.ORDER_MODE_LEADER_ONLY_VALUE,
-            TopicConstant.ORDER_MODE_MULTI_WRITER_VALUE,
-            TopicConstant.ORDER_MODE_PER_WRITER_VALUE);
-    LOGGER.warn(exceptionMessage);
-    throw new SubscriptionException(exceptionMessage);
+    if (!topicConfig.isTableTopic()) {
+      final String exceptionMessage =
+          String.format(
+              "Failed to create or alter topic, %s is only supported for table topics",
+              TopicConstant.COLUMN_KEY);
+      LOGGER.warn(exceptionMessage);
+      throw new SubscriptionException(exceptionMessage);
+    }
+
+    if (!isConsensusBasedTopicConfig(topicConfig)) {
+      final String exceptionMessage =
+          String.format(
+              "Failed to create or alter topic, %s is only supported for consensus-based live table topics",
+              TopicConstant.COLUMN_KEY);
+      LOGGER.warn(exceptionMessage);
+      throw new SubscriptionException(exceptionMessage);
+    }
+
+    final String columnPattern =
+        topicConfig.getStringOrDefault(
+            TopicConstant.COLUMN_KEY, TopicConstant.COLUMN_DEFAULT_VALUE);
+    try {
+      Pattern.compile(columnPattern);
+    } catch (final PatternSyntaxException e) {
+      final String exceptionMessage =
+          String.format(
+              "Failed to create or alter topic, illegal %s=%s, detail: %s",
+              TopicConstant.COLUMN_KEY, columnPattern, e.getMessage());
+      LOGGER.warn(exceptionMessage, e);
+      throw new SubscriptionException(exceptionMessage);
+    }
+  }
+
+  private boolean isConsensusBasedTopicConfig(final TopicConfig topicConfig) {
+    final String mode =
+        topicConfig.getStringOrDefault(TopicConstant.MODE_KEY, TopicConstant.MODE_DEFAULT_VALUE);
+    final String format =
+        topicConfig.getStringOrDefault(
+            TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_DEFAULT_VALUE);
+    return TopicConstant.MODE_LIVE_VALUE.equalsIgnoreCase(mode)
+        && !TopicConstant.FORMAT_TS_FILE_VALUE.equalsIgnoreCase(format);
+  }
+
+  private void validateConsensusTopicRetentionConfig(final TopicConfig topicConfig)
+      throws SubscriptionException {
+    if (!topicConfig.hasAttribute(TopicConstant.RETENTION_BYTES_KEY)
+        && !topicConfig.hasAttribute(TopicConstant.RETENTION_MS_KEY)) {
+      return;
+    }
+
+    if (!isConsensusBasedTopicConfig(topicConfig)) {
+      final String exceptionMessage =
+          String.format(
+              "Failed to create or alter topic, %s and %s are only supported for consensus-based live topics",
+              TopicConstant.RETENTION_BYTES_KEY, TopicConstant.RETENTION_MS_KEY);
+      LOGGER.warn(exceptionMessage);
+      throw new SubscriptionException(exceptionMessage);
+    }
+
+    validateRetentionValue(topicConfig, TopicConstant.RETENTION_BYTES_KEY);
+    validateRetentionValue(topicConfig, TopicConstant.RETENTION_MS_KEY);
+  }
+
+  private void validateRetentionValue(final TopicConfig topicConfig, final String key)
+      throws SubscriptionException {
+    if (!topicConfig.hasAttribute(key)) {
+      return;
+    }
+
+    final String rawValue = topicConfig.getAttribute().get(key);
+    try {
+      final long parsedValue = Long.parseLong(rawValue);
+      if (parsedValue == 0 || parsedValue < -1) {
+        throw new SubscriptionException(
+            String.format(
+                "Failed to create or alter topic, illegal %s=%s, expected -1 or a positive long value",
+                key, rawValue));
+      }
+    } catch (final NumberFormatException e) {
+      final String exceptionMessage =
+          String.format(
+              "Failed to create or alter topic, illegal %s=%s, expected a long value",
+              key, rawValue);
+      LOGGER.warn(exceptionMessage, e);
+      throw new SubscriptionException(exceptionMessage);
+    } catch (final SubscriptionException e) {
+      LOGGER.warn(e.getMessage());
+      throw e;
+    }
+  }
+
+  private void validateUnsupportedHotUpdatedTopicConfig(
+      final String topicName, final TopicConfig existedConfig, final TopicConfig updatedConfig)
+      throws SubscriptionException {
+    final String existedColumnPattern =
+        existedConfig.getStringOrDefault(
+            TopicConstant.COLUMN_KEY, TopicConstant.COLUMN_DEFAULT_VALUE);
+    final String updatedColumnPattern =
+        updatedConfig.getStringOrDefault(
+            TopicConstant.COLUMN_KEY, TopicConstant.COLUMN_DEFAULT_VALUE);
+    if (!Objects.equals(existedColumnPattern, updatedColumnPattern)) {
+      final String exceptionMessage =
+          String.format(
+              "Failed to alter topic %s, changing %s is not supported because existing consensus queues do not hot-refresh converter state",
+              topicName, TopicConstant.COLUMN_KEY);
+      LOGGER.warn(exceptionMessage);
+      throw new SubscriptionException(exceptionMessage);
+    }
+
+    validateUnsupportedHotUpdatedRetentionConfig(
+        topicName,
+        existedConfig,
+        updatedConfig,
+        TopicConstant.RETENTION_BYTES_KEY,
+        TopicConstant.RETENTION_MS_KEY);
+  }
+
+  private void validateUnsupportedHotUpdatedRetentionConfig(
+      final String topicName,
+      final TopicConfig existedConfig,
+      final TopicConfig updatedConfig,
+      final String... retentionKeys)
+      throws SubscriptionException {
+    for (final String retentionKey : retentionKeys) {
+      final String existedValue = existedConfig.getAttribute().get(retentionKey);
+      final String updatedValue = updatedConfig.getAttribute().get(retentionKey);
+      if (!Objects.equals(existedValue, updatedValue)) {
+        final String exceptionMessage =
+            String.format(
+                "Failed to alter topic %s, changing %s is not supported because existing consensus queues do not hot-refresh retention state",
+                topicName, retentionKey);
+        LOGGER.warn(exceptionMessage);
+        throw new SubscriptionException(exceptionMessage);
+      }
+    }
   }
 
   public boolean isTopicExisted(String topicName) {

@@ -163,6 +163,16 @@ public class WALFakeNode implements IWALNode {
     return bytesToFree > 0 ? Long.MAX_VALUE : 0;
   }
 
+  @Override
+  public long getSearchIndexToFreeBeforeTimestamp(long cutoffTimeMs) {
+    return Long.MIN_VALUE + 1;
+  }
+
+  @Override
+  public long getVersionIdToFreeBeforeTimestamp(long cutoffTimeMs) {
+    return 0;
+  }
+
   public static WALFakeNode getFailureInstance(Exception e) {
     return new WALFakeNode(
         Status.FAILURE, new WALException("Cannot write wal into a fake node. ", e));

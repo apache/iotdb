@@ -438,6 +438,16 @@ public class CommonDescriptor {
             properties.getProperty(
                 "subscription_consensus_batch_max_tablet_count",
                 String.valueOf(config.getSubscriptionConsensusBatchMaxTabletCount()))));
+    config.setSubscriptionConsensusWalRetentionSizeInBytes(
+        Long.parseLong(
+            properties.getProperty(
+                "subscription_consensus_wal_retention_size_in_bytes",
+                String.valueOf(config.getSubscriptionConsensusWalRetentionSizeInBytes()))));
+    config.setSubscriptionConsensusWalRetentionTimeMs(
+        Long.parseLong(
+            properties.getProperty(
+                "subscription_consensus_wal_retention_time_ms",
+                String.valueOf(config.getSubscriptionConsensusWalRetentionTimeMs()))));
     config.setSubscriptionConsensusBatchMaxWalEntries(
         Integer.parseInt(
             properties.getProperty(

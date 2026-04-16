@@ -28,8 +28,12 @@ public class TopicConstant {
 
   public static final String DATABASE_KEY = "database";
   public static final String TABLE_KEY = "table";
+  public static final String COLUMN_KEY = "column";
+  public static final String RETENTION_BYTES_KEY = "retention.bytes";
+  public static final String RETENTION_MS_KEY = "retention.ms";
   public static final String DATABASE_DEFAULT_VALUE = ".*";
   public static final String TABLE_DEFAULT_VALUE = ".*";
+  public static final String COLUMN_DEFAULT_VALUE = ".*";
 
   public static final String START_TIME_KEY = "start-time";
   public static final String END_TIME_KEY = "end-time";

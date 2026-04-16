@@ -22,6 +22,7 @@ package org.apache.iotdb.db.subscription.broker.consensus;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 import org.apache.iotdb.consensus.iot.IoTConsensusServerImpl;
+import org.apache.iotdb.consensus.iot.SubscriptionWalRetentionPolicy;
 import org.apache.iotdb.consensus.iot.WriterSafeFrontierTracker;
 import org.apache.iotdb.consensus.iot.log.ConsensusReqReader;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -562,6 +563,7 @@ public class ConsensusPrefetchingQueueRuntimeStateTest {
         TopicConstant.ORDER_MODE_MULTI_WRITER_VALUE,
         new DataRegionId(11),
         server,
+        new SubscriptionWalRetentionPolicy("topic", 1024L, -1L),
         mock(ConsensusLogToTabletConverter.class),
         mock(ConsensusSubscriptionCommitManager.class),
         null,
@@ -702,6 +704,7 @@ public class ConsensusPrefetchingQueueRuntimeStateTest {
           TopicConstant.ORDER_MODE_MULTI_WRITER_VALUE,
           new DataRegionId(11),
           server,
+          new SubscriptionWalRetentionPolicy("topic", 1024L, -1L),
           converter,
           commitManager,
           fallbackCommittedRegionProgress,

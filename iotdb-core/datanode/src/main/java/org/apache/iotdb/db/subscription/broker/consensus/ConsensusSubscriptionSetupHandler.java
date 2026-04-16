@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.iot.IoTConsensus;
 import org.apache.iotdb.consensus.iot.IoTConsensusServerImpl;
+import org.apache.iotdb.consensus.iot.SubscriptionWalRetentionPolicy;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
@@ -50,6 +51,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.regex.Pattern;
 
 /**
  * Handles the setup and teardown of consensus-based subscription queues on DataNode. When a
@@ -165,21 +167,15 @@ public class ConsensusSubscriptionSetupHandler {
           final String dbRaw = dataRegion.getDatabaseName();
           final String dbTableModel = dbRaw.startsWith("root.") ? dbRaw.substring(5) : dbRaw;
 
-          // For table topics, skip if this region's database doesn't match the topic filter
-          if (topicConfig.isTableTopic()) {
-            final String topicDb =
-                topicConfig.getStringOrDefault(
-                    TopicConstant.DATABASE_KEY, TopicConstant.DATABASE_DEFAULT_VALUE);
-            if (topicDb != null
-                && !topicDb.isEmpty()
-                && !TopicConstant.DATABASE_DEFAULT_VALUE.equals(topicDb)
-                && !topicDb.equalsIgnoreCase(dbTableModel)) {
-              continue;
-            }
+          // For table topics, skip if this region's database doesn't match the topic filter.
+          if (!matchesTopicDatabase(topicConfig, dbTableModel)) {
+            continue;
           }
 
           final String actualDbName = topicConfig.isTableTopic() ? dbTableModel : null;
           final ConsensusLogToTabletConverter converter = buildConverter(topicConfig, actualDbName);
+          final SubscriptionWalRetentionPolicy retentionPolicy =
+              buildSubscriptionWalRetentionPolicy(topicName, topicConfig, serverImpl);
 
           // Recover from persisted per-writer region progress when available. The queue will
           // resolve a replay start from that progress on first poll via the region-level locator.
@@ -228,6 +224,7 @@ public class ConsensusSubscriptionSetupHandler {
                   topicConfig.getOrderMode(),
                   groupId,
                   serverImpl,
+                  retentionPolicy,
                   converter,
                   commitManager,
                   committedRegionProgress,
@@ -367,13 +364,6 @@ public class ConsensusSubscriptionSetupHandler {
         topicConfig.getOrderMode(),
         topicConfig.getAttribute());
 
-    // For table topics, extract the database filter from topic config
-    final String topicDatabaseFilter =
-        topicConfig.isTableTopic()
-            ? topicConfig.getStringOrDefault(
-                TopicConstant.DATABASE_KEY, TopicConstant.DATABASE_DEFAULT_VALUE)
-            : null;
-
     final List<ConsensusGroupId> allGroupIds = ioTConsensus.getAllConsensusGroupIds();
     LOGGER.info(
         "Discovered {} consensus group(s) for topic [{}] in consumer group [{}]: {}",
@@ -402,21 +392,21 @@ public class ConsensusSubscriptionSetupHandler {
       final String dbRaw = dataRegion.getDatabaseName();
       final String dbTableModel = dbRaw.startsWith("root.") ? dbRaw.substring(5) : dbRaw;
 
-      if (topicDatabaseFilter != null
-          && !topicDatabaseFilter.isEmpty()
-          && !TopicConstant.DATABASE_DEFAULT_VALUE.equals(topicDatabaseFilter)
-          && !topicDatabaseFilter.equalsIgnoreCase(dbTableModel)) {
+      if (!matchesTopicDatabase(topicConfig, dbTableModel)) {
         LOGGER.info(
             "Skipping region {} (database={}) for table topic [{}] (DATABASE_KEY={})",
             groupId,
             dbTableModel,
             topicName,
-            topicDatabaseFilter);
+            topicConfig.getStringOrDefault(
+                TopicConstant.DATABASE_KEY, TopicConstant.DATABASE_DEFAULT_VALUE));
         continue;
       }
 
       final String actualDbName = topicConfig.isTableTopic() ? dbTableModel : null;
       final ConsensusLogToTabletConverter converter = buildConverter(topicConfig, actualDbName);
+      final SubscriptionWalRetentionPolicy retentionPolicy =
+          buildSubscriptionWalRetentionPolicy(topicName, topicConfig, serverImpl);
 
       // Recover from persisted per-writer region progress when available. The queue will resolve a
       // replay start from that progress on first poll via the region-level locator.
@@ -466,6 +456,7 @@ public class ConsensusSubscriptionSetupHandler {
               topicConfig.getOrderMode(),
               groupId,
               serverImpl,
+              retentionPolicy,
               converter,
               commitManager,
               committedRegionProgress,
@@ -497,13 +488,14 @@ public class ConsensusSubscriptionSetupHandler {
 
     if (isTableTopic) {
       // Table model: database + table name pattern
-      final String database =
+      final String column =
           topicConfig.getStringOrDefault(
-              TopicConstant.DATABASE_KEY, TopicConstant.DATABASE_DEFAULT_VALUE);
-      final String table =
-          topicConfig.getStringOrDefault(
-              TopicConstant.TABLE_KEY, TopicConstant.TABLE_DEFAULT_VALUE);
-      tablePattern = new TablePattern(true, database, table);
+              TopicConstant.COLUMN_KEY, TopicConstant.COLUMN_DEFAULT_VALUE);
+      tablePattern = buildTablePattern(topicConfig);
+      final Pattern columnPattern =
+          TopicConstant.COLUMN_DEFAULT_VALUE.equals(column) ? null : Pattern.compile(column);
+      return new ConsensusLogToTabletConverter(
+          null, tablePattern, columnPattern, actualDatabaseName);
     } else {
       // Tree model: path or pattern
       if (topicConfig.getAttribute().containsKey(TopicConstant.PATTERN_KEY)) {
@@ -517,7 +509,54 @@ public class ConsensusSubscriptionSetupHandler {
       }
     }
 
-    return new ConsensusLogToTabletConverter(treePattern, tablePattern, actualDatabaseName);
+    return new ConsensusLogToTabletConverter(treePattern, tablePattern, null, actualDatabaseName);
+  }
+
+  private static boolean matchesTopicDatabase(
+      final TopicConfig topicConfig, final String actualDatabaseName) {
+    return !topicConfig.isTableTopic()
+        || buildTablePattern(topicConfig).matchesDatabase(actualDatabaseName);
+  }
+
+  private static TablePattern buildTablePattern(final TopicConfig topicConfig) {
+    return new TablePattern(
+        true,
+        topicConfig.getStringOrDefault(
+            TopicConstant.DATABASE_KEY, TopicConstant.DATABASE_DEFAULT_VALUE),
+        topicConfig.getStringOrDefault(TopicConstant.TABLE_KEY, TopicConstant.TABLE_DEFAULT_VALUE));
+  }
+
+  private static SubscriptionWalRetentionPolicy buildSubscriptionWalRetentionPolicy(
+      final String topicName,
+      final TopicConfig topicConfig,
+      final IoTConsensusServerImpl serverImpl) {
+    return new SubscriptionWalRetentionPolicy(
+        topicName,
+        resolveRetentionValue(
+            topicConfig,
+            TopicConstant.RETENTION_BYTES_KEY,
+            serverImpl.getConfig().getReplication().getSubscriptionWalRetentionSizeInBytes()),
+        resolveRetentionValue(
+            topicConfig,
+            TopicConstant.RETENTION_MS_KEY,
+            serverImpl.getConfig().getReplication().getSubscriptionWalRetentionTimeMs()));
+  }
+
+  private static long resolveRetentionValue(
+      final TopicConfig topicConfig, final String key, final long defaultValue) {
+    if (!topicConfig.hasAttribute(key)) {
+      return normalizeRetentionValue(defaultValue);
+    }
+    final long parsedValue = Long.parseLong(topicConfig.getAttribute().get(key));
+    if (parsedValue == 0 || parsedValue < SubscriptionWalRetentionPolicy.UNBOUNDED) {
+      throw new IllegalArgumentException(
+          String.format("Illegal %s=%s", key, topicConfig.getAttribute().get(key)));
+    }
+    return normalizeRetentionValue(parsedValue);
+  }
+
+  private static long normalizeRetentionValue(final long retentionValue) {
+    return retentionValue <= 0 ? SubscriptionWalRetentionPolicy.UNBOUNDED : retentionValue;
   }
 
   public static void teardownConsensusSubscriptions(

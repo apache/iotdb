@@ -394,6 +394,7 @@ public class CommonConfig {
   private int subscriptionConsensusBatchMaxWalEntries = 128;
 
   private long subscriptionConsensusWalRetentionSizeInBytes = 512 * MB;
+  private long subscriptionConsensusWalRetentionTimeMs = -1L;
 
   private int subscriptionConsensusCommitPersistInterval = 100;
   private boolean subscriptionConsensusCommitFsyncEnabled = false;
@@ -2638,6 +2639,15 @@ public class CommonConfig {
       final long subscriptionConsensusWalRetentionSizeInBytes) {
     this.subscriptionConsensusWalRetentionSizeInBytes =
         subscriptionConsensusWalRetentionSizeInBytes;
+  }
+
+  public long getSubscriptionConsensusWalRetentionTimeMs() {
+    return subscriptionConsensusWalRetentionTimeMs;
+  }
+
+  public void setSubscriptionConsensusWalRetentionTimeMs(
+      final long subscriptionConsensusWalRetentionTimeMs) {
+    this.subscriptionConsensusWalRetentionTimeMs = subscriptionConsensusWalRetentionTimeMs;
   }
 
   public void setSubscriptionMetaSyncerSyncIntervalMinutes(

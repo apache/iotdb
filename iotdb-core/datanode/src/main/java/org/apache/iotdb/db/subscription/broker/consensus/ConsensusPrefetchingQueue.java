@@ -25,6 +25,7 @@ import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IoTConsensusRequest;
 import org.apache.iotdb.consensus.iot.IoTConsensusServerImpl;
+import org.apache.iotdb.consensus.iot.SubscriptionWalRetentionPolicy;
 import org.apache.iotdb.consensus.iot.WriterSafeFrontierTracker;
 import org.apache.iotdb.consensus.iot.log.ConsensusReqReader;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -104,6 +105,8 @@ public class ConsensusPrefetchingQueue {
   private final IoTConsensusServerImpl serverImpl;
 
   private final ConsensusReqReader consensusReqReader;
+
+  private final SubscriptionWalRetentionPolicy retentionPolicy;
 
   private final WakeableIndexedConsensusQueue pendingEntries;
 
@@ -400,6 +403,7 @@ public class ConsensusPrefetchingQueue {
       final String orderMode,
       final ConsensusGroupId consensusGroupId,
       final IoTConsensusServerImpl serverImpl,
+      final SubscriptionWalRetentionPolicy retentionPolicy,
       final ConsensusLogToTabletConverter converter,
       final ConsensusSubscriptionCommitManager commitManager,
       final RegionProgress fallbackCommittedRegionProgress,
@@ -411,6 +415,7 @@ public class ConsensusPrefetchingQueue {
     this.consensusGroupId = consensusGroupId;
     this.serverImpl = serverImpl;
     this.consensusReqReader = serverImpl.getConsensusReqReader();
+    this.retentionPolicy = retentionPolicy;
     this.converter = converter;
     this.commitManager = commitManager;
     this.fallbackCommittedRegionProgress = fallbackCommittedRegionProgress;
@@ -429,7 +434,7 @@ public class ConsensusPrefetchingQueue {
     // Register pending queue early so we don't miss real-time writes
     this.pendingEntries =
         new WakeableIndexedConsensusQueue(PENDING_QUEUE_CAPACITY, this::requestPrefetch);
-    serverImpl.registerSubscriptionQueue(pendingEntries);
+    serverImpl.registerSubscriptionQueue(pendingEntries, retentionPolicy);
 
     LOGGER.info(
         "ConsensusPrefetchingQueue created (dormant): brokerId={}, topicName={}, "
