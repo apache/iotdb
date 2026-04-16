@@ -33,6 +33,7 @@ import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Limit;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Node;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Offset;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.OrderBy;
+import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.PatternRecognitionRelation;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.QualifiedName;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Query;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.QuerySpecification;
@@ -63,6 +64,7 @@ import java.util.Iterator;
 import java.util.List;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkState;
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static com.google.common.collect.Iterables.getOnlyElement;
 import static java.util.Objects.requireNonNull;
@@ -584,5 +586,122 @@ public class CommonQuerySqlFormatter implements CommonQueryAstVisitor<Void, Inte
       builder.append(c);
       return this;
     }
+  }
+
+  @Override
+  public Void visitPatternRecognitionRelation(PatternRecognitionRelation node, Integer indent) {
+    processRelationSuffix(node.getInput(), indent);
+
+    builder.append(" MATCH_RECOGNIZE (\n");
+    if (!node.getPartitionBy().isEmpty()) {
+      append(indent + 1, "PARTITION BY ")
+          .append(
+              node.getPartitionBy().stream()
+                  .map(
+                      org.apache.iotdb.db.node_commons.plan.relational.sql.util.ExpressionFormatter
+                          ::formatExpression)
+                  .collect(joining(", ")))
+          .append("\n");
+    }
+    if (node.getOrderBy().isPresent()) {
+      process(node.getOrderBy().get(), indent + 1);
+    }
+    if (!node.getMeasures().isEmpty()) {
+      append(indent + 1, "MEASURES");
+      formatDefinitionList(
+          node.getMeasures().stream()
+              .map(
+                  measure ->
+                      formatExpression(measure.getExpression())
+                          + " AS "
+                          + formatExpression(measure.getName()))
+              .collect(com.google.common.collect.ImmutableList.toImmutableList()),
+          indent + 2);
+    }
+    if (node.getRowsPerMatch().isPresent()) {
+      String rowsPerMatch;
+      switch (node.getRowsPerMatch().get()) {
+        case ONE:
+          rowsPerMatch = "ONE ROW PER MATCH";
+          break;
+        case ALL_SHOW_EMPTY:
+          rowsPerMatch = "ALL ROWS PER MATCH SHOW EMPTY MATCHES";
+          break;
+        case ALL_OMIT_EMPTY:
+          rowsPerMatch = "ALL ROWS PER MATCH OMIT EMPTY MATCHES";
+          break;
+        case ALL_WITH_UNMATCHED:
+          rowsPerMatch = "ALL ROWS PER MATCH WITH UNMATCHED ROWS";
+          break;
+        default:
+          throw new IllegalStateException(
+              "unexpected rowsPerMatch: " + node.getRowsPerMatch().get());
+      }
+      append(indent + 1, rowsPerMatch).append("\n");
+    }
+    if (node.getAfterMatchSkipTo().isPresent()) {
+      String skipTo;
+      switch (node.getAfterMatchSkipTo().get().getPosition()) {
+        case PAST_LAST:
+          skipTo = "AFTER MATCH SKIP PAST LAST ROW";
+          break;
+        case NEXT:
+          skipTo = "AFTER MATCH SKIP TO NEXT ROW";
+          break;
+        case LAST:
+          checkState(
+              node.getAfterMatchSkipTo().get().getIdentifier().isPresent(),
+              "missing identifier in AFTER MATCH SKIP TO LAST");
+          skipTo =
+              "AFTER MATCH SKIP TO LAST "
+                  + formatExpression(
+                  node.getAfterMatchSkipTo().get().getIdentifier().get());
+          break;
+        case FIRST:
+          checkState(
+              node.getAfterMatchSkipTo().get().getIdentifier().isPresent(),
+              "missing identifier in AFTER MATCH SKIP TO FIRST");
+          skipTo =
+              "AFTER MATCH SKIP TO FIRST "
+                  + formatExpression(
+                  node.getAfterMatchSkipTo().get().getIdentifier().get());
+          break;
+        default:
+          throw new IllegalStateException("unexpected skipTo: " + node.getAfterMatchSkipTo().get());
+      }
+      append(indent + 1, skipTo).append("\n");
+    }
+    append(indent + 1, "PATTERN (").append(formatPattern(node.getPattern())).append(")\n");
+    if (!node.getSubsets().isEmpty()) {
+      append(indent + 1, "SUBSET");
+      formatDefinitionList(
+          node.getSubsets().stream()
+              .map(
+                  subset ->
+                      formatExpression(subset.getName())
+                          + " = "
+                          + subset.getIdentifiers().stream()
+                          .map(
+                              org.apache.iotdb.db.node_commons.plan.relational.sql.util
+                                  .ExpressionFormatter
+                                  ::formatExpression)
+                          .collect(joining(", ", "(", ")")))
+              .collect(com.google.common.collect.ImmutableList.toImmutableList()),
+          indent + 2);
+    }
+    append(indent + 1, "DEFINE");
+    formatDefinitionList(
+        node.getVariableDefinitions().stream()
+            .map(
+                variable ->
+                    formatExpression(variable.getName())
+                        + " AS "
+                        + formatExpression(variable.getExpression()))
+            .collect(com.google.common.collect.ImmutableList.toImmutableList()),
+        indent + 2);
+
+    builder.append(")");
+
+    return null;
   }
 }
