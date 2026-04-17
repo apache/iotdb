@@ -272,9 +272,8 @@ public class Analysis implements IAnalysis {
     if (needSetHighestPriority) {
       return;
     }
-    needSetHighestPriority =
-        InformationSchema.INFORMATION_DATABASE.equals(tableName.getDatabaseName())
-            && InformationSchema.QUERIES.equals(tableName.getObjectName());
+    //  the database of table has been judged to be 'information_schema' in outer
+    needSetHighestPriority = InformationSchema.QUERIES.equals(tableName.getObjectName());
   }
 
   public Map<NodeRef<Parameter>, Expression> getParameters() {

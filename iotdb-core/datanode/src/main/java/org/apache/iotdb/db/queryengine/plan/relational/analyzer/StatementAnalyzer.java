@@ -3115,7 +3115,6 @@ public class StatementAnalyzer {
         }
       }
       QualifiedObjectName name = createQualifiedObjectName(sessionContext, table.getName());
-      analysis.updateNeedSetHighestPriority(name);
 
       // access control
       accessControl.checkCanSelectFromTable(sessionContext.getUserName(), name, queryContext);
