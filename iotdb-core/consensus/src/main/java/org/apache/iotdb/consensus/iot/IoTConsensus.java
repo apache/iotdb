@@ -273,7 +273,7 @@ public class IoTConsensus implements IConsensus {
 
                   String path = buildPeerDir(storageDir, groupId);
                   File file = new File(path);
-                  if (!file.mkdirs()) {
+                  if (!file.exists() && !file.mkdirs()) {
                     logger.warn("Unable to create consensus dir for group {} at {}", groupId, path);
                     return null;
                   }

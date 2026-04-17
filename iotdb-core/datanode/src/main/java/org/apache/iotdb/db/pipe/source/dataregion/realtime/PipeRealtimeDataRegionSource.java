@@ -32,12 +32,16 @@ import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
+import org.apache.iotdb.consensus.pipe.IoTConsensusV2;
+import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
+import org.apache.iotdb.db.pipe.consensus.ReplicateProgressDataNodeManager;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.metric.source.PipeDataRegionEventCounter;
+import org.apache.iotdb.db.pipe.processor.iotconsensusv2.IoTConsensusV2Processor;
 import org.apache.iotdb.db.pipe.source.dataregion.DataRegionListeningFilter;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.assigner.PipeTsFileEpochProgressIndexKeeper;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.listener.PipeInsertionDataNodeListener;
@@ -458,6 +462,36 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
         || event.getEvent() instanceof PipeInsertNodeTabletInsertionEvent) {
       maySkipProgressIndexForRealtimeEvent(event);
     }
+  }
+
+  protected Event assignReplicateIndexIfNeeded(
+      final PipeRealtimeEvent realtimeEvent, final Event suppliedEvent) {
+    if (!(suppliedEvent instanceof EnrichedEvent) || !shouldAssignReplicateIndex(suppliedEvent)) {
+      return suppliedEvent;
+    }
+
+    final EnrichedEvent enrichedEvent = (EnrichedEvent) suppliedEvent;
+    if (enrichedEvent.getReplicateIndexForIoTV2() != EnrichedEvent.NO_COMMIT_ID) {
+      return suppliedEvent;
+    }
+
+    enrichedEvent.setReplicateIndexForIoTV2(assignReplicateIndexForRealtimeEvent());
+    LOGGER.debug(
+        "[{}]Set {} for realtime event {}",
+        pipeName,
+        enrichedEvent.getReplicateIndexForIoTV2(),
+        realtimeEvent.coreReportMessage());
+    return suppliedEvent;
+  }
+
+  protected boolean shouldAssignReplicateIndex(final Event suppliedEvent) {
+    return !(suppliedEvent instanceof ProgressReportEvent)
+        && DataRegionConsensusImpl.getInstance() instanceof IoTConsensusV2
+        && IoTConsensusV2Processor.isShouldReplicate((EnrichedEvent) suppliedEvent);
+  }
+
+  protected long assignReplicateIndexForRealtimeEvent() {
+    return ReplicateProgressDataNodeManager.assignReplicateIndexForIoTV2(pipeName);
   }
 
   protected Event supplyHeartbeat(final PipeRealtimeEvent event) {
