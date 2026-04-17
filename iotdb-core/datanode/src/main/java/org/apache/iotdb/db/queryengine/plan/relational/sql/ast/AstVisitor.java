@@ -517,6 +517,10 @@ public abstract class AstVisitor<R, C> {
     return visitStatement(node, context);
   }
 
+  protected R visitRepairDataPartitionTable(RepairDataPartitionTable node, C context) {
+    return visitStatement(node, context);
+  }
+
   protected R visitStopRepairData(StopRepairData node, C context) {
     return visitStatement(node, context);
   }

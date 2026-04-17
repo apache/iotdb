@@ -147,6 +147,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowCurrentUserStateme
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowDiskUsageStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowVersionStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.RepairDataPartitionTableStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StartRepairDataStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StopRepairDataStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.TestConnectionStatement;
@@ -518,6 +519,10 @@ public abstract class StatementVisitor<R, C> {
 
   public R visitStopRepairData(StopRepairDataStatement stopRepairDataStatement, C context) {
     return visitStatement(stopRepairDataStatement, context);
+  }
+
+  public R visitRepairDataPartitionTable(RepairDataPartitionTableStatement repairDataPartitionTableStatement, C context) {
+    return visitStatement(repairDataPartitionTableStatement, context);
   }
 
   public R visitLoadConfiguration(

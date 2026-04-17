@@ -216,6 +216,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SingleColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SkipTo;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SortItem;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StartPipe;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RepairDataPartitionTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StartRepairData;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StopPipe;
@@ -261,6 +262,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.LoadConfigurationState
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetConfigurationStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSystemStatusStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowConfigurationStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.RepairDataPartitionTableStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StartRepairDataStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StopRepairDataStatement;
 import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlBaseVisitor;
@@ -1785,6 +1787,14 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     stopRepairDataStatement.setOnCluster(
         ctx.localOrClusterMode() == null || ctx.localOrClusterMode().LOCAL() == null);
     return new StopRepairData(stopRepairDataStatement, null);
+  }
+
+  @Override
+  public Node visitRepairDataPartitionTableStatement(
+      RelationalSqlParser.RepairDataPartitionTableStatementContext ctx) {
+    RepairDataPartitionTableStatement repairDataPartitionTableStatement =
+        new RepairDataPartitionTableStatement();
+    return new RepairDataPartitionTable(repairDataPartitionTableStatement, null);
   }
 
   @Override
