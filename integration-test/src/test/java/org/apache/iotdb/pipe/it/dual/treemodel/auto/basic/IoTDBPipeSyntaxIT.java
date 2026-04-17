@@ -26,6 +26,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.it.env.cluster.env.AbstractEnv;
+import org.apache.iotdb.it.env.cluster.node.ConfigNodeWrapper;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2DualTreeAutoBasic;
@@ -56,6 +57,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -920,7 +922,7 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualTreeModelAutoIT {
     senderEnv.shutdownAllDataNodes();
     senderEnv.shutdownAllConfigNodes();
 
-    deletePluginJarUnderDataNodes("test-missing-jar-processor.jar");
+    deletePluginJarUnderConfigNodes(pluginName);
 
     senderEnv.startAllConfigNodes();
     senderEnv.startAllDataNodes();
@@ -932,7 +934,7 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualTreeModelAutoIT {
     for (int retry = 0; retry < 10; retry++) {
       try (final Connection connection = senderEnv.getConnection();
           final Statement statement = connection.createStatement();
-          final ResultSet resultSet = statement.executeQuery("show pipe plugins")) {
+          final ResultSet resultSet = statement.executeQuery("show pipeplugins")) {
         while (resultSet.next()) {
           if (pluginName.equalsIgnoreCase(resultSet.getString("PluginName"))) {
             pluginFound = true;
@@ -961,8 +963,7 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualTreeModelAutoIT {
         final Statement statement = connection.createStatement()) {
       statement.execute(String.format("drop pipePlugin %s", pluginName));
     } finally {
-      Files.deleteIfExists(pluginJarPath);
-      Files.deleteIfExists(temporaryDir);
+      cleanupTemporaryDirectory(temporaryDir);
     }
   }
 
@@ -1026,25 +1027,45 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualTreeModelAutoIT {
     }
   }
 
-  private void deletePluginJarUnderDataNodes(final String targetJarFileName) throws IOException {
-    for (final DataNodeWrapper dataNodeWrapper : senderEnv.getDataNodeWrapperList()) {
-      final Path extPipePath = Paths.get(dataNodeWrapper.getNodePath(), "extPipe");
-      if (!Files.exists(extPipePath)) {
+  private void deletePluginJarUnderConfigNodes(final String pluginName) throws IOException {
+    for (final ConfigNodeWrapper configNodeWrapper : senderEnv.getConfigNodeWrapperList()) {
+      final Path pluginJarDirPath =
+          Paths.get(
+              configNodeWrapper.getNodePath(), "ext", "pipe", "install", pluginName.toUpperCase());
+      if (!Files.exists(pluginJarDirPath)) {
         continue;
       }
-      try (final java.util.stream.Stream<Path> paths = Files.walk(extPipePath)) {
-        paths
-            .filter(Files::isRegularFile)
-            .filter(path -> path.getFileName().toString().equals(targetJarFileName))
+      try (final java.util.stream.Stream<Path> children = Files.walk(pluginJarDirPath)) {
+        children
+            .filter(path -> !path.equals(pluginJarDirPath))
+            .sorted(Comparator.reverseOrder())
             .forEach(
                 path -> {
                   try {
                     Files.deleteIfExists(path);
-                  } catch (IOException e) {
+                  } catch (final IOException e) {
                     throw new RuntimeException(e);
                   }
                 });
       }
+    }
+  }
+
+  private void cleanupTemporaryDirectory(final Path temporaryDir) throws IOException {
+    if (!Files.exists(temporaryDir)) {
+      return;
+    }
+    try (final java.util.stream.Stream<Path> paths = Files.walk(temporaryDir)) {
+      paths
+          .sorted(Comparator.reverseOrder())
+          .forEach(
+              path -> {
+                try {
+                  Files.deleteIfExists(path);
+                } catch (final IOException e) {
+                  throw new RuntimeException(e);
+                }
+              });
     }
   }
 }
