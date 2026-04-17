@@ -22,7 +22,6 @@ package org.apache.iotdb.db.node_commons.plan.planner.plan.node;
 import org.apache.iotdb.commons.exception.runtime.SerializationRunTimeException;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.Symbol;
-import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -158,8 +157,7 @@ public abstract class PlanNode implements IConsensusRequest {
     }
   }
 
-  public void serializeUseTemplate(DataOutputStream stream, TypeProvider typeProvider)
-      throws IOException {
+  public void serializeUseTemplate(DataOutputStream stream) throws IOException {
     serializeAttributes(stream);
     id.serialize(stream);
     List<PlanNode> planNodes = getChildren();
@@ -168,7 +166,7 @@ public abstract class PlanNode implements IConsensusRequest {
     } else {
       ReadWriteIOUtils.write(planNodes.size(), stream);
       for (PlanNode planNode : planNodes) {
-        planNode.serializeUseTemplate(stream, typeProvider);
+        planNode.serializeUseTemplate(stream);
       }
     }
   }

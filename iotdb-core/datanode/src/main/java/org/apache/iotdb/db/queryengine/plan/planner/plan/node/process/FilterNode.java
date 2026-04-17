@@ -123,8 +123,7 @@ public class FilterNode extends TransformNode {
   }
 
   @Override
-  public void serializeUseTemplate(DataOutputStream stream, TypeProvider typeProvider)
-      throws IOException {
+  public void serializeUseTemplate(DataOutputStream stream) throws IOException {
     PlanNodeType.FILTER.serialize(stream);
     id.serialize(stream);
     ReadWriteIOUtils.write(fromWhere, stream);
@@ -140,7 +139,7 @@ public class FilterNode extends TransformNode {
     }
     ReadWriteIOUtils.write(getChildren().size(), stream);
     for (PlanNode planNode : getChildren()) {
-      planNode.serializeUseTemplate(stream, typeProvider);
+      planNode.serializeUseTemplate(stream);
     }
   }
 

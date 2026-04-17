@@ -215,8 +215,7 @@ public class DeviceViewNode extends MultiChildProcessNode {
   }
 
   @Override
-  public void serializeUseTemplate(DataOutputStream stream, TypeProvider typeProvider)
-      throws IOException {
+  public void serializeUseTemplate(DataOutputStream stream) throws IOException {
     PlanNodeType.DEVICE_VIEW.serialize(stream);
     id.serialize(stream);
     mergeOrderParameter.serializeAttributes(stream);
@@ -227,7 +226,7 @@ public class DeviceViewNode extends MultiChildProcessNode {
 
     ReadWriteIOUtils.write(getChildren().size(), stream);
     for (PlanNode planNode : getChildren()) {
-      planNode.serializeUseTemplate(stream, typeProvider);
+      planNode.serializeUseTemplate(stream);
     }
   }
 

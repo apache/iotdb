@@ -200,8 +200,7 @@ public class AlignedSeriesScanNode extends SeriesScanSourceNode {
   }
 
   @Override
-  public void serializeUseTemplate(DataOutputStream stream, TypeProvider typeProvider)
-      throws IOException {
+  public void serializeUseTemplate(DataOutputStream stream) throws IOException {
     PlanNodeType.ALIGNED_SERIES_SCAN.serialize(stream);
     id.serialize(stream);
     ReadWriteIOUtils.write(alignedPath.getNodes().length, stream);

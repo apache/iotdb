@@ -199,7 +199,7 @@ public class PlanFragment {
       // so there is no need to serialize all the SeriesScanNode repeated
       if (typeProvider.getTemplatedInfo() != null) {
         typeProvider.serialize(stream);
-        planNodeTree.serializeUseTemplate(stream, typeProvider);
+        planNodeTree.serializeUseTemplate(stream);
         return;
       }
 
