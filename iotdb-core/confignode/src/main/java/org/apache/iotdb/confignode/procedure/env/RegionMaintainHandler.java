@@ -96,6 +96,7 @@ import static org.apache.iotdb.consensus.ConsensusFactory.RATIS_CONSENSUS;
 public class RegionMaintainHandler {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(RegionMaintainHandler.class);
+  private static final int DELETE_OLD_REGION_PEER_RPC_RETRY_NUM = 3;
 
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
 
@@ -175,7 +176,10 @@ public class RegionMaintainHandler {
             || IOT_CONSENSUS_V2.equals(CONF.getDataRegionConsensusProtocolClass()))) {
       // parameter of createPeer for MultiLeader should be all peers
       currentPeerNodes = new ArrayList<>(regionReplicaNodes);
-      currentPeerNodes.add(destDataNode);
+      if (currentPeerNodes.stream()
+          .noneMatch(node -> node.getDataNodeId() == destDataNode.getDataNodeId())) {
+        currentPeerNodes.add(destDataNode);
+      }
     } else {
       // parameter of createPeer for Ratis can be empty
       currentPeerNodes = Collections.emptyList();
@@ -299,15 +303,17 @@ public class RegionMaintainHandler {
     TMaintainPeerReq maintainPeerReq =
         new TMaintainPeerReq(regionId, originalDataNode, procedureId);
 
-    // Always use full retries regardless of node status, because after a cluster crash the
-    // target DataNode may be Unknown but still in the process of restarting.
+    // RemoveRegionPeerProcedure already retries DELETE_OLD_REGION_PEER at the procedure level.
+    // Keep each RPC attempt bounded so a permanently down original DataNode does not block the
+    // procedure for minutes, while still tolerating a briefly restarting node after cluster crash.
     status =
         (TSStatus)
             SyncDataNodeClientPool.getInstance()
-                .sendSyncRequestToDataNodeWithRetry(
+                .sendSyncRequestToDataNodeWithGivenRetry(
                     originalDataNode.getInternalEndPoint(),
                     maintainPeerReq,
-                    CnToDnSyncRequestType.DELETE_OLD_REGION_PEER);
+                    CnToDnSyncRequestType.DELETE_OLD_REGION_PEER,
+                    DELETE_OLD_REGION_PEER_RPC_RETRY_NUM);
     LOGGER.info(
         "{}, Send action deleteOldRegionPeer finished, regionId: {}, dataNodeId: {}",
         REGION_MIGRATE_PROCESS,
