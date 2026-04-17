@@ -256,6 +256,7 @@ public class MemoryPool {
    * @throws IllegalArgumentException throw exception if current query requests more memory than can
    *     be allocated.
    */
+  @TestOnly
   public Pair<ListenableFuture<Void>, Boolean> reserve(
       String queryId,
       String fragmentInstanceId,
@@ -268,13 +269,21 @@ public class MemoryPool {
     return new Pair<>(result.getFuture(), result.isReserveSuccess());
   }
 
+  /**
+   * Reserve memory with bytesToReserve respect priority.
+   *
+   * @return if reserve succeed, reservedBytes may be zero or equals with bytesToReserve; if reserve
+   *     failed, reservedBytes must be equals with bytesToReserve
+   * @throws IllegalArgumentException throw exception if current query requests more memory than can
+   *     be allocated.
+   */
   public MemoryReservationResult reserveWithPriority(
       String queryId,
       String fragmentInstanceId,
       String planNodeId,
       long bytesToReserve,
       long maxBytesCanReserve,
-      boolean needSetHighestPriority) {
+      boolean isHighestPriority) {
     Validate.notNull(queryId, "queryId can not be null.");
     Validate.notNull(fragmentInstanceId, "fragmentInstanceId can not be null.");
     Validate.notNull(planNodeId, "planNodeId can not be null.");
@@ -299,8 +308,8 @@ public class MemoryPool {
       return new MemoryReservationResult(immediateVoidFuture(), true, bytesToReserve);
     } else {
       rollbackReserve(queryId, fragmentInstanceId, planNodeId, bytesToReserve);
-      if (needSetHighestPriority) {
-        // SHOW QUERIES etc.: treat as success with zero bytes reserved from pool when insufficient.
+      if (isHighestPriority) {
+        // SHOW QUERIES: treat as success with zero bytes reserved from pool when insufficient.
         return new MemoryReservationResult(immediateVoidFuture(), true, 0L);
       }
       LOGGER.debug(
