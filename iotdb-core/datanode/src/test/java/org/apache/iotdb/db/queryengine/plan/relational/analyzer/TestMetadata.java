@@ -319,11 +319,6 @@ public class TestMetadata implements Metadata {
   }
 
   @Override
-  public IPartitionFetcher getPartitionFetcher() {
-    return getFakePartitionFetcher();
-  }
-
-  @Override
   public Map<String, List<DeviceEntry>> indexScan(
       final QualifiedObjectName tableName,
       final List<Expression> expressionList,

@@ -279,11 +279,6 @@ public class TSBSMetadata implements Metadata {
   }
 
   @Override
-  public IPartitionFetcher getPartitionFetcher() {
-    return getFakePartitionFetcher();
-  }
-
-  @Override
   public Map<String, List<DeviceEntry>> indexScan(
       QualifiedObjectName tableName,
       List<Expression> expressionList,

@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.node_commons.plan.relational.planner.node;
 
-import org.apache.iotdb.db.node_commons.common.SessionInfo;
 import org.apache.iotdb.db.node_commons.plan.expression.multi.FunctionType;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.ICoreQueryPlanVisitor;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.IPlanVisitor;
@@ -32,7 +31,6 @@ import org.apache.iotdb.db.node_commons.plan.relational.planner.OrderingScheme;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.SymbolReference;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -340,38 +338,6 @@ public class AggregationNode extends SingleChildProcessNode {
         && !groupingSets.getGroupingKeys().isEmpty()
         && outputs.size() == groupingSets.getGroupingKeys().size()
         && outputs.containsAll(new HashSet<>(groupingSets.getGroupingKeys()));
-  }
-
-  public boolean isDecomposable(SessionInfo session, Metadata metadata) {
-    boolean hasOrderBy =
-        getAggregations().values().stream()
-            .map(Aggregation::getOrderingScheme)
-            .anyMatch(Optional::isPresent);
-
-    boolean hasDistinct = getAggregations().values().stream().anyMatch(Aggregation::isDistinct);
-
-    /*boolean decomposableFunctions = getAggregations().values().stream()
-    .map(Aggregation::getResolvedFunction)
-    .map(resolvedFunction -> metadata.getAggregationFunctionMetadata(session, resolvedFunction))
-    .allMatch(AggregationFunctionMetadata::isDecomposable);*/
-
-    return !hasOrderBy && !hasDistinct;
-  }
-
-  public boolean hasSingleNodeExecutionPreference(SessionInfo session, Metadata metadata) {
-    // There are two kinds of aggregations the have single node execution preference:
-    //
-    // 1. aggregations with only empty grouping sets like
-    //
-    // SELECT count(*) FROM lineitem;
-    //
-    // there is no need for distributed aggregation. Single node FINAL aggregation will suffice,
-    // since all input have to be aggregated into one line output.
-    //
-    // 2. aggregations that must produce default output and are not decomposable, we cannot
-    // distribute them.
-    return (hasEmptyGroupingSet() && !hasNonEmptyGroupingSet())
-        || (hasDefaultOutput() && !isDecomposable(session, metadata));
   }
 
   public boolean isStreamable() {

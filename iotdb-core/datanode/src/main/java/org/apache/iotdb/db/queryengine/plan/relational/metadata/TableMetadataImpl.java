@@ -34,7 +34,6 @@ import org.apache.iotdb.db.exception.load.LoadAnalyzeTableColumnDisorderExceptio
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.node_commons.common.SessionInfo;
 import org.apache.iotdb.db.node_commons.plan.relational.function.OperatorType;
-import org.apache.iotdb.db.node_commons.plan.relational.function.TableBuiltinTableFunction;
 import org.apache.iotdb.db.node_commons.plan.relational.function.arithmetic.AdditionResolver;
 import org.apache.iotdb.db.node_commons.plan.relational.function.arithmetic.DivisionResolver;
 import org.apache.iotdb.db.node_commons.plan.relational.function.arithmetic.ModulusResolver;
@@ -59,7 +58,6 @@ import org.apache.iotdb.udf.api.customizer.analysis.ScalarFunctionAnalysis;
 import org.apache.iotdb.udf.api.customizer.parameter.FunctionArguments;
 import org.apache.iotdb.udf.api.relational.AggregateFunction;
 import org.apache.iotdb.udf.api.relational.ScalarFunction;
-import org.apache.iotdb.udf.api.relational.TableFunction;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.type.ObjectType;
@@ -1418,11 +1416,6 @@ public class TableMetadataImpl implements Metadata {
   }
 
   @Override
-  public IPartitionFetcher getPartitionFetcher() {
-    return ClusterPartitionFetcher.getInstance();
-  }
-
-  @Override
   public Map<String, List<DeviceEntry>> indexScan(
       final QualifiedObjectName tableName,
       final List<Expression> expressionList,
@@ -1515,16 +1508,5 @@ public class TableMetadataImpl implements Metadata {
       String database, List<DataPartitionQueryParam> sgNameToQueryParamsMap) {
     return partitionFetcher.getDataPartitionWithUnclosedTimeRange(
         Collections.singletonMap(database, sgNameToQueryParamsMap));
-  }
-
-  @Override
-  public TableFunction getTableFunction(String functionName) {
-    if (TableBuiltinTableFunction.isBuiltInTableFunction(functionName)) {
-      return TableBuiltinTableFunction.getBuiltinTableFunction(functionName);
-    } else if (TableUDFUtils.isTableFunction(functionName)) {
-      return TableUDFUtils.getTableFunction(functionName);
-    } else {
-      throw new SemanticException("Unknown function: " + functionName);
-    }
   }
 }

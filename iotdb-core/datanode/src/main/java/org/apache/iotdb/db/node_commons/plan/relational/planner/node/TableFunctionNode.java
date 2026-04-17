@@ -25,9 +25,9 @@ import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.process.MultiChildProcessNode;
+import org.apache.iotdb.db.node_commons.plan.relational.function.TableFunctionFactory;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.DataOrganizationSpecification;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.Symbol;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
 import org.apache.iotdb.udf.api.relational.table.TableFunctionHandle;
 
 import com.google.common.collect.ImmutableList;
@@ -198,7 +198,7 @@ public class TableFunctionNode extends MultiChildProcessNode {
     int size = ReadWriteIOUtils.readInt(byteBuffer);
     byte[] bytes = ReadWriteIOUtils.readBytes(byteBuffer, size);
     TableFunctionHandle tableFunctionHandle =
-        new TableMetadataImpl().getTableFunction(name).createTableFunctionHandle();
+        TableFunctionFactory.getTableFunction(name).createTableFunctionHandle();
     tableFunctionHandle.deserialize(bytes);
     size = ReadWriteIOUtils.readInt(byteBuffer);
     ImmutableList.Builder<Symbol> properOutputs = ImmutableList.builder();

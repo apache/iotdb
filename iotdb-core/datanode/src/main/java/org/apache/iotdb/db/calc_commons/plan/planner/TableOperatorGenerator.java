@@ -92,6 +92,7 @@ import org.apache.iotdb.db.calc_commons.execution.operator.source.relational.agg
 import org.apache.iotdb.db.calc_commons.execution.operator.source.relational.aggregation.grouped.StreamingAggregationOperator;
 import org.apache.iotdb.db.calc_commons.execution.operator.source.relational.aggregation.grouped.StreamingHashAggregationOperator;
 import org.apache.iotdb.db.calc_commons.execution.relational.ColumnTransformerBuilder;
+import org.apache.iotdb.db.calc_commons.plan.relational.metadata.ITypeMetadata;
 import org.apache.iotdb.db.calc_commons.plan.relational.planner.CastToBlobLiteralVisitor;
 import org.apache.iotdb.db.calc_commons.plan.relational.planner.CastToBooleanLiteralVisitor;
 import org.apache.iotdb.db.calc_commons.plan.relational.planner.CastToDateLiteralVisitor;
@@ -113,6 +114,7 @@ import org.apache.iotdb.db.node_commons.plan.planner.plan.node.process.SingleChi
 import org.apache.iotdb.db.node_commons.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.node_commons.plan.relational.function.BoundSignature;
 import org.apache.iotdb.db.node_commons.plan.relational.function.FunctionKind;
+import org.apache.iotdb.db.node_commons.plan.relational.function.ITableFunctionFactory;
 import org.apache.iotdb.db.node_commons.plan.relational.metadata.ResolvedFunction;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.OrderingScheme;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.SortOrder;
@@ -161,7 +163,6 @@ import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Literal;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.node_commons.plan.relational.type.InternalTypeManager;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.utils.datastructure.SortKey;
 import org.apache.iotdb.udf.api.relational.TableFunction;
 import org.apache.iotdb.udf.api.relational.table.TableFunctionProcessorProvider;
@@ -233,12 +234,13 @@ import static org.apache.tsfile.read.common.type.StringType.STRING;
 import static org.apache.tsfile.read.common.type.TimestampType.TIMESTAMP;
 
 /** This Visitor is responsible for transferring Table PlanNode Tree to Table Operator Tree. */
-public abstract class TableOperatorGenerator<C extends ITableOperatorGeneratorContext>
+public abstract class TableOperatorGenerator<
+        C extends ITableOperatorGeneratorContext, M extends ITypeMetadata & ITableFunctionFactory>
     implements ICoreQueryPlanVisitor<Operator, C> {
 
-  protected final Metadata metadata;
+  protected final M metadata;
 
-  public TableOperatorGenerator(Metadata metadata) {
+  public TableOperatorGenerator(M metadata) {
     this.metadata = metadata;
   }
 

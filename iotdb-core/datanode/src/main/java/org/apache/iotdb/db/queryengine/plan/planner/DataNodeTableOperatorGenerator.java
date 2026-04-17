@@ -197,7 +197,7 @@ import static org.apache.iotdb.db.utils.constant.SqlConstant.SUM;
 import static org.apache.tsfile.read.common.type.TimestampType.TIMESTAMP;
 
 public class DataNodeTableOperatorGenerator
-    extends TableOperatorGenerator<LocalExecutionPlanContext>
+    extends TableOperatorGenerator<LocalExecutionPlanContext, Metadata>
     implements PlanVisitor<Operator, LocalExecutionPlanContext> {
 
   private static final MPPDataExchangeManager MPP_DATA_EXCHANGE_MANAGER =

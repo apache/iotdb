@@ -21,6 +21,7 @@ package org.apache.iotdb.db.calc_commons.execution.relational;
 
 import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
+import org.apache.iotdb.db.calc_commons.plan.relational.metadata.ITypeMetadata;
 import org.apache.iotdb.db.calc_commons.plan.udf.TableUDFUtils;
 import org.apache.iotdb.db.calc_commons.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.calc_commons.transformation.dag.column.FailFunctionColumnTransformer;
@@ -195,7 +196,6 @@ import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Trim;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.WhenClause;
 import org.apache.iotdb.db.node_commons.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.node_commons.plan.relational.type.TypeNotFoundException;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.udf.api.customizer.analysis.ScalarFunctionAnalysis;
 import org.apache.iotdb.udf.api.customizer.parameter.FunctionArguments;
 import org.apache.iotdb.udf.api.relational.ScalarFunction;
@@ -1942,7 +1942,7 @@ public class ColumnTransformerBuilder
 
     private final ITableTypeProvider typeProvider;
 
-    private final Metadata metadata;
+    private final ITypeMetadata metadata;
 
     public Context(
         SessionInfo sessionInfo,
@@ -1954,7 +1954,7 @@ public class ColumnTransformerBuilder
         List<TSDataType> inputDataTypes,
         int originSize,
         ITableTypeProvider typeProvider,
-        Metadata metadata) {
+        ITypeMetadata metadata) {
       this.sessionInfo = sessionInfo;
       this.leafList = leafList;
       this.inputLocations = inputLocations;

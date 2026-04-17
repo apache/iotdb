@@ -24,18 +24,18 @@ import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.schema.table.InsertNodeMeasurementInfo;
 import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinWindowFunction;
+import org.apache.iotdb.db.calc_commons.plan.relational.metadata.ITypeMetadata;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeTableColumnDisorderException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.node_commons.common.SessionInfo;
+import org.apache.iotdb.db.node_commons.plan.relational.function.ITableFunctionFactory;
 import org.apache.iotdb.db.node_commons.plan.relational.function.OperatorType;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.node_commons.plan.relational.type.TypeNotFoundException;
 import org.apache.iotdb.db.node_commons.plan.relational.type.TypeSignature;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
-import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableHeaderSchemaValidator;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
-import org.apache.iotdb.udf.api.relational.TableFunction;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.type.Type;
@@ -46,7 +46,7 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 // All the input databases shall not contain "root"
-public interface Metadata {
+public interface Metadata extends ITypeMetadata, ITableFunctionFactory {
 
   boolean tableExists(final QualifiedObjectName name);
 
@@ -75,8 +75,6 @@ public interface Metadata {
   Type getType(final TypeSignature signature) throws TypeNotFoundException;
 
   boolean canCoerce(final Type from, final Type to);
-
-  IPartitionFetcher getPartitionFetcher();
 
   /**
    * Get all device ids and corresponding attributes from schema region
@@ -212,6 +210,4 @@ public interface Metadata {
    */
   DataPartition getDataPartitionWithUnclosedTimeRange(
       final String database, final List<DataPartitionQueryParam> sgNameToQueryParamsMap);
-
-  TableFunction getTableFunction(final String functionName);
 }
