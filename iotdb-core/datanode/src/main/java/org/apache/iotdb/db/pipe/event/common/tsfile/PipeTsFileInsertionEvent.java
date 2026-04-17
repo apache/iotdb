@@ -35,6 +35,7 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.resource.ref.PipePhantomReferenceManager.PipeEventResource;
 import org.apache.iotdb.db.auth.AuthorityChecker;
+import org.apache.iotdb.db.pipe.consensus.deletion.PipeTsFileDeletionBarrier;
 import org.apache.iotdb.db.pipe.event.ReferenceTrackableEvent;
 import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
@@ -48,6 +49,7 @@ import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.assigner.PipeTsFileEpochProgressIndexKeeper;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
@@ -81,10 +83,20 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   private File tsFile;
   private long extractTime = 0;
 
+  // Whether this event should transfer mod files if they exist.
+  private boolean shouldTransferModFile;
+  // Whether the assigner-side first retain should delay mod snapshotting until replicateIndex is
+  // assigned to the pipe-specific copy.
+  private boolean shouldDelayModSnapshotUntilReplicateIndex;
+  // Whether this event should consult the live TsFileResource for mod visibility before pinning.
+  private boolean shouldRefreshModFileStateFromResource;
+  // Whether the current modFile is already pinned and should no longer be overwritten by refresh.
+  private boolean isModPinned;
   // This is true iff the modFile exists and should be transferred
   private boolean isWithMod;
   private File modFile;
   private final File sharedModFile;
+  private long snapshotUpperBoundForDelayedMod = NO_COMMIT_ID;
 
   protected final boolean isLoaded;
   protected final boolean isGeneratedByPipe;
@@ -114,6 +126,8 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         databaseNameFromDataRegion,
         resource,
         null,
+        null,
+        true,
         true,
         isLoaded,
         false,
@@ -128,7 +142,8 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         null,
         true,
         Long.MIN_VALUE,
-        Long.MAX_VALUE);
+        Long.MAX_VALUE,
+        false);
   }
 
   public PipeTsFileInsertionEvent(
@@ -136,6 +151,8 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
       final String databaseNameFromDataRegion,
       final TsFileResource resource,
       final File tsFile,
+      final File modFile,
+      final boolean shouldRefreshModFileStateFromResource,
       final boolean isWithMod,
       final boolean isLoaded,
       final boolean isGeneratedByHistoricalExtractor,
@@ -151,6 +168,54 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
       final boolean skipIfNoPrivileges,
       final long startTime,
       final long endTime) {
+    this(
+        isTableModelEvent,
+        databaseNameFromDataRegion,
+        resource,
+        tsFile,
+        modFile,
+        shouldRefreshModFileStateFromResource,
+        isWithMod,
+        isLoaded,
+        isGeneratedByHistoricalExtractor,
+        tableNames,
+        pipeName,
+        creationTime,
+        pipeTaskMeta,
+        treePattern,
+        tablePattern,
+        userId,
+        userName,
+        cliHostname,
+        skipIfNoPrivileges,
+        startTime,
+        endTime,
+        false);
+  }
+
+  private PipeTsFileInsertionEvent(
+      final Boolean isTableModelEvent,
+      final String databaseNameFromDataRegion,
+      final TsFileResource resource,
+      final File tsFile,
+      final File modFile,
+      final boolean shouldRefreshModFileStateFromResource,
+      final boolean isWithMod,
+      final boolean isLoaded,
+      final boolean isGeneratedByHistoricalExtractor,
+      final Set<String> tableNames,
+      final String pipeName,
+      final long creationTime,
+      final PipeTaskMeta pipeTaskMeta,
+      final TreePattern treePattern,
+      final TablePattern tablePattern,
+      final String userId,
+      final String userName,
+      final String cliHostname,
+      final boolean skipIfNoPrivileges,
+      final long startTime,
+      final long endTime,
+      final boolean shouldDelayModSnapshotUntilReplicateIndex) {
     super(
         pipeName,
         creationTime,
@@ -174,8 +239,20 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     // hard-link it to each pipe dir
     this.tsFile = Objects.isNull(tsFile) ? resource.getTsFile() : tsFile;
 
-    this.isWithMod = isWithMod && resource.anyModFileExists();
-    this.modFile = this.isWithMod ? resource.getExclusiveModFile().getFile() : null;
+    this.shouldTransferModFile = isWithMod;
+    this.shouldDelayModSnapshotUntilReplicateIndex = shouldDelayModSnapshotUntilReplicateIndex;
+    this.shouldRefreshModFileStateFromResource =
+        this.shouldTransferModFile && shouldRefreshModFileStateFromResource;
+    this.modFile = modFile;
+    this.isModPinned =
+        this.shouldTransferModFile
+            && !this.shouldRefreshModFileStateFromResource
+            && Objects.nonNull(this.modFile);
+    if (this.shouldRefreshModFileStateFromResource) {
+      refreshModFileState();
+    } else {
+      this.isWithMod = this.shouldTransferModFile && Objects.nonNull(this.modFile);
+    }
     // TODO: process the shared mod file
     this.sharedModFile =
         resource.getSharedModFile() != null ? resource.getSharedModFile().getFile() : null;
@@ -276,6 +353,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   }
 
   public File getModFile() {
+    refreshModFileState();
     return modFile;
   }
 
@@ -284,13 +362,21 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   }
 
   public boolean isWithMod() {
+    refreshModFileState();
     return isWithMod;
   }
 
-  // If the previous "isWithMod" is false, the modFile has been set to "null", then the isWithMod
-  // can't be set to true
-  public void disableMod4NonTransferPipes(final boolean isWithMod) {
-    this.isWithMod = isWithMod && this.isWithMod;
+  public void disableMod4NonTransferPipes(final boolean shouldTransferModFile) {
+    this.shouldTransferModFile = shouldTransferModFile && this.shouldTransferModFile;
+    refreshModFileState();
+  }
+
+  public void enableDelayModSnapshotUntilReplicateIndex() {
+    shouldDelayModSnapshotUntilReplicateIndex = true;
+  }
+
+  public boolean isModPinned() {
+    return isModPinned;
   }
 
   public boolean isLoaded() {
@@ -320,16 +406,32 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   /////////////////////////// EnrichedEvent ///////////////////////////
 
   @Override
+  public void setReplicateIndexForIoTV2(final long replicateIndexForIoTV2) {
+    super.setReplicateIndexForIoTV2(replicateIndexForIoTV2);
+
+    if (!shouldDelayModSnapshotUntilReplicateIndex
+        || !shouldTransferModFile
+        || Objects.isNull(resource)
+        || Objects.isNull(pipeName)
+        || snapshotUpperBoundForDelayedMod != NO_COMMIT_ID) {
+      return;
+    }
+
+    snapshotUpperBoundForDelayedMod =
+        PipeTsFileDeletionBarrier.getInstance()
+            .beginSnapshot(Integer.parseInt(resource.getDataRegionId()), resource.getTsFilePath());
+  }
+
+  @Override
   public boolean internallyIncreaseResourceReferenceCount(final String holderMessage) {
     extractTime = System.nanoTime();
     try {
-      tsFile = PipeDataNodeResourceManager.tsfile().increaseFileReference(tsFile, true, pipeName);
-      if (isWithMod) {
-        modFile =
-            PipeDataNodeResourceManager.tsfile().increaseFileReference(modFile, false, pipeName);
-      }
+      pinSnapshotForFirstReference();
       return true;
     } catch (final Exception e) {
+      if (e instanceof InterruptedException) {
+        Thread.currentThread().interrupt();
+      }
       LOGGER.warn(
           String.format(
               "Increase reference count for TsFile %s or modFile %s error. Holder Message: %s",
@@ -348,7 +450,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   public boolean internallyDecreaseResourceReferenceCount(final String holderMessage) {
     try {
       PipeDataNodeResourceManager.tsfile().decreaseFileReference(tsFile, pipeName);
-      if (isWithMod) {
+      if (isModPinned && Objects.nonNull(modFile)) {
         PipeDataNodeResourceManager.tsfile().decreaseFileReference(modFile, pipeName);
       }
       close();
@@ -423,7 +525,9 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         getSourceDatabaseNameFromDataRegion(),
         resource,
         tsFile,
-        isWithMod,
+        modFile,
+        shouldRefreshModFileStateFromResource,
+        shouldTransferModFile,
         isLoaded,
         isGeneratedByHistoricalExtractor,
         tableNames,
@@ -437,7 +541,8 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         cliHostname,
         skipIfNoPrivileges,
         startTime,
-        endTime);
+        endTime,
+        shouldDelayModSnapshotUntilReplicateIndex);
   }
 
   @Override
@@ -765,6 +870,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
 
   private TsFileInsertionEventParser initEventParser() {
     try {
+      refreshModFileState();
       eventParser.compareAndSet(
           null,
           new TsFileInsertionEventParserProvider(
@@ -859,23 +965,220 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
 
   @Override
   public PipeEventResource eventResourceBuilder() {
+    refreshModFileState();
     return new PipeTsFileInsertionEventResource(
         this.isReleased,
         this.referenceCount,
         this.pipeName,
         this.tsFile,
-        this.isWithMod,
+        this.isModPinned,
         this.modFile,
-        this.sharedModFile,
         this.eventParser);
+  }
+
+  private void refreshModFileState() {
+    if (!shouldTransferModFile) {
+      isWithMod = false;
+      if (!isModPinned) {
+        modFile = null;
+      }
+      return;
+    }
+
+    if (isModPinned || !shouldRefreshModFileStateFromResource) {
+      isWithMod = Objects.nonNull(modFile);
+      return;
+    }
+
+    if (Objects.isNull(resource)) {
+      isWithMod = Objects.nonNull(modFile);
+      return;
+    }
+
+    isWithMod = resource.anyModFileExists();
+    modFile = isWithMod ? resource.getExclusiveModFile().getFile() : null;
+  }
+
+  private void pinSnapshotForFirstReference() throws Exception {
+    final SnapshotPinResult snapshotPinResult =
+        Objects.nonNull(resource)
+            ? pinResourceBackedSnapshotForFirstReference()
+            : pinStandaloneSnapshotForFirstReference();
+
+    tsFile = snapshotPinResult.tsFile;
+    modFile = snapshotPinResult.modFile;
+    isWithMod = snapshotPinResult.isWithMod;
+    isModPinned = snapshotPinResult.isModPinned;
+    shouldRefreshModFileStateFromResource = snapshotPinResult.shouldRefreshModFileStateFromResource;
+  }
+
+  private SnapshotPinResult pinResourceBackedSnapshotForFirstReference() throws Exception {
+    final File pinnedTsFile = pinTsFileUnderResourceReadLock();
+    final boolean shouldFinishSnapshotBarrier = shouldDelayModSnapshotForPipeCopy();
+    boolean modSnapshotAttempted = false;
+    try {
+      if (shouldOnlyPinTsFileOnFirstReference()) {
+        refreshModFileState();
+        return new SnapshotPinResult(
+            pinnedTsFile, modFile, isWithMod, false, shouldRefreshModFileStateFromResource);
+      }
+
+      if (shouldFinishSnapshotBarrier) {
+        awaitDelayedDeletionMaterializationBeforeModSnapshot();
+      }
+
+      modSnapshotAttempted = true;
+      return pinModSnapshotUnderResourceReadLock(pinnedTsFile);
+    } catch (final Exception e) {
+      if (!modSnapshotAttempted) {
+        releasePinnedSnapshotQuietly(pinnedTsFile, null);
+      }
+      throw e;
+    } finally {
+      if (shouldFinishSnapshotBarrier) {
+        finishDelayedSnapshotBarrier();
+      }
+    }
+  }
+
+  private SnapshotPinResult pinStandaloneSnapshotForFirstReference() throws IOException {
+    final File pinnedTsFile =
+        PipeDataNodeResourceManager.tsfile().increaseFileReference(tsFile, true, pipeName);
+
+    if (Objects.isNull(modFile)) {
+      return new SnapshotPinResult(
+          pinnedTsFile, null, false, false, shouldRefreshModFileStateFromResource);
+    }
+
+    File pinnedModFile = null;
+    try {
+      pinnedModFile =
+          PipeDataNodeResourceManager.tsfile().increaseFileReference(modFile, false, pipeName);
+      return new SnapshotPinResult(pinnedTsFile, pinnedModFile, true, true, false);
+    } catch (final Exception e) {
+      releasePinnedSnapshotQuietly(pinnedTsFile, pinnedModFile);
+      throw e;
+    }
+  }
+
+  private File pinTsFileUnderResourceReadLock() throws IOException {
+    resource.readLock();
+    try {
+      return PipeDataNodeResourceManager.tsfile().increaseFileReference(tsFile, true, pipeName);
+    } finally {
+      resource.readUnlock();
+    }
+  }
+
+  private void awaitDelayedDeletionMaterializationBeforeModSnapshot() throws InterruptedException {
+    final int regionId = Integer.parseInt(resource.getDataRegionId());
+    final PipeTsFileDeletionBarrier barrier = PipeTsFileDeletionBarrier.getInstance();
+    barrier.awaitDeletionResolutionUpTo(regionId, snapshotUpperBoundForDelayedMod);
+    barrier.awaitPendingDeletionsUpTo(resource.getTsFilePath(), snapshotUpperBoundForDelayedMod);
+  }
+
+  private SnapshotPinResult pinModSnapshotUnderResourceReadLock(final File pinnedTsFile)
+      throws IOException {
+    File pinnedModFile = null;
+    boolean withMod = false;
+
+    resource.readLock();
+    try {
+      final ModificationFile resourceExclusiveModFile = resource.getExclusiveModFile();
+      resourceExclusiveModFile.writeLock();
+      try {
+        if (!shouldTransferModFile) {
+          return new SnapshotPinResult(pinnedTsFile, null, false, false, false);
+        }
+
+        if (!shouldRefreshModFileStateFromResource && Objects.nonNull(modFile)) {
+          pinnedModFile =
+              PipeDataNodeResourceManager.tsfile().increaseFileReference(modFile, false, pipeName);
+          withMod = true;
+        } else if (resourceExclusiveModFile.exists()) {
+          pinnedModFile =
+              PipeDataNodeResourceManager.tsfile()
+                  .increaseFileReference(resourceExclusiveModFile.getFile(), false, pipeName);
+          withMod = true;
+        }
+      } finally {
+        resourceExclusiveModFile.writeUnlock();
+      }
+    } catch (final Exception e) {
+      releasePinnedSnapshotQuietly(pinnedTsFile, pinnedModFile);
+      throw e;
+    } finally {
+      resource.readUnlock();
+    }
+
+    return new SnapshotPinResult(
+        pinnedTsFile, pinnedModFile, withMod, Objects.nonNull(pinnedModFile), false);
+  }
+
+  private boolean shouldOnlyPinTsFileOnFirstReference() {
+    return shouldDelayModSnapshotUntilReplicateIndex && Objects.isNull(pipeName);
+  }
+
+  private boolean shouldDelayModSnapshotForPipeCopy() {
+    return shouldDelayModSnapshotUntilReplicateIndex
+        && Objects.nonNull(pipeName)
+        && snapshotUpperBoundForDelayedMod != NO_COMMIT_ID;
+  }
+
+  private void finishDelayedSnapshotBarrier() {
+    if (!shouldDelayModSnapshotForPipeCopy()) {
+      return;
+    }
+
+    PipeTsFileDeletionBarrier.getInstance()
+        .finishSnapshot(resource.getTsFilePath(), snapshotUpperBoundForDelayedMod);
+    snapshotUpperBoundForDelayedMod = NO_COMMIT_ID;
+  }
+
+  private void releasePinnedSnapshotQuietly(final File pinnedTsFile, final File pinnedModFile) {
+    try {
+      if (Objects.nonNull(pinnedModFile)) {
+        PipeDataNodeResourceManager.tsfile().decreaseFileReference(pinnedModFile, pipeName);
+      }
+    } catch (final Exception e) {
+      LOGGER.warn("Decrease reference count for modFile {} error.", pinnedModFile, e);
+    }
+
+    try {
+      if (Objects.nonNull(pinnedTsFile)) {
+        PipeDataNodeResourceManager.tsfile().decreaseFileReference(pinnedTsFile, pipeName);
+      }
+    } catch (final Exception e) {
+      LOGGER.warn("Decrease reference count for TsFile {} error.", pinnedTsFile, e);
+    }
+  }
+
+  private static class SnapshotPinResult {
+    private final File tsFile;
+    private final File modFile;
+    private final boolean isWithMod;
+    private final boolean isModPinned;
+    private final boolean shouldRefreshModFileStateFromResource;
+
+    private SnapshotPinResult(
+        final File tsFile,
+        final File modFile,
+        final boolean isWithMod,
+        final boolean isModPinned,
+        final boolean shouldRefreshModFileStateFromResource) {
+      this.tsFile = tsFile;
+      this.modFile = modFile;
+      this.isWithMod = isWithMod;
+      this.isModPinned = isModPinned;
+      this.shouldRefreshModFileStateFromResource = shouldRefreshModFileStateFromResource;
+    }
   }
 
   private static class PipeTsFileInsertionEventResource extends PipeEventResource {
 
     private final File tsFile;
-    private final boolean isWithMod;
+    private final boolean isModPinned;
     private final File modFile;
-    private final File sharedModFile; // unused now
     private final AtomicReference<TsFileInsertionEventParser> eventParser;
     private final String pipeName;
 
@@ -884,16 +1187,14 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         final AtomicInteger referenceCount,
         final String pipeName,
         final File tsFile,
-        final boolean isWithMod,
+        final boolean isModPinned,
         final File modFile,
-        final File sharedModFile,
         final AtomicReference<TsFileInsertionEventParser> eventParser) {
       super(isReleased, referenceCount);
       this.pipeName = pipeName;
       this.tsFile = tsFile;
-      this.isWithMod = isWithMod;
+      this.isModPinned = isModPinned;
       this.modFile = modFile;
-      this.sharedModFile = sharedModFile;
       this.eventParser = eventParser;
     }
 
@@ -902,7 +1203,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
       try {
         // decrease reference count
         PipeDataNodeResourceManager.tsfile().decreaseFileReference(tsFile, pipeName);
-        if (isWithMod) {
+        if (isModPinned && Objects.nonNull(modFile)) {
           PipeDataNodeResourceManager.tsfile().decreaseFileReference(modFile, pipeName);
         }
 

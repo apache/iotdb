@@ -370,7 +370,7 @@ public class IoTConsensusV2SyncSink extends IoTDBSink {
           new TConsensusGroupId(TConsensusGroupType.DataRegion, consensusGroupId);
 
       // 1. Transfer tsFile, and mod file if exists
-      if (pipeTsFileInsertionEvent.isWithMod()) {
+      if (modFile != null) {
         transferFilePieces(
             modFile, syncIoTConsensusV2ServiceClient, true, tCommitId, tConsensusGroupId);
         transferFilePieces(
