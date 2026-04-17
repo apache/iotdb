@@ -161,6 +161,10 @@ public class PlanTester {
     return plan;
   }
 
+  public Analysis getAnalysis() {
+    return analysis;
+  }
+
   public LogicalQueryPlan createPlan(
       SessionInfo sessionInfo,
       String sql,
