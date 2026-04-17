@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
-import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
-import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlanTester;
 
 import org.junit.Test;
@@ -31,28 +29,28 @@ public class NeedSetHighestPriorityTest {
 
   @Test
   public void testShowQueriesNeedSetHighestPriority() {
-    final Analysis analysis = analyze("show queries");
+    final Analysis analysis = planAndGetAnalysis("show queries");
     assertTrue(analysis.needSetHighestPriority());
   }
 
   @Test
   public void testInformationSchemaQueriesNeedSetHighestPriority() {
-    final Analysis analysis = analyze("select query_id from information_schema.queries");
+    final Analysis analysis = planAndGetAnalysis("select query_id from information_schema.queries");
     assertTrue(analysis.needSetHighestPriority());
   }
 
   @Test
   public void testNestedInformationSchemaQueriesNeedSetHighestPriority() {
     final Analysis analysis =
-        analyze(
+        planAndGetAnalysis(
             "select * from (select query_id from information_schema.queries) t "
                 + "where t.query_id is not null");
     assertTrue(analysis.needSetHighestPriority());
   }
 
-  private Analysis analyze(final String sql) {
-    final MPPQueryContext context =
-        new MPPQueryContext(sql, new QueryId("need_set_highest_priority_test"), null, null, null);
-    return PlanTester.analyze(sql, new TestMetadata(), context);
+  private Analysis planAndGetAnalysis(final String sql) {
+    PlanTester planTester = new PlanTester();
+    planTester.createPlan(sql);
+    return planTester.getAnalysis();
   }
 }
