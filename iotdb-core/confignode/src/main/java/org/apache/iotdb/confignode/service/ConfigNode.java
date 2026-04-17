@@ -55,6 +55,7 @@ import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.manager.pipe.agent.PipeConfigNodeAgent;
 import org.apache.iotdb.confignode.manager.pipe.metric.PipeConfigNodeMetrics;
+import org.apache.iotdb.confignode.procedure.impl.partition.DataPartitionTableIntegrityCheckProcedure;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TNodeVersionInfo;
@@ -195,6 +196,9 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
         configManager.initConsensusManager();
         upgrade();
         TConfigNodeLocation leaderNodeLocation = waitForLeaderElected();
+        if (leaderNodeLocation == null) {
+          leaderNodeLocation = configManager.getConsensusManager().getNotNullLeaderLocation();
+        }
         setUpMetricService();
         // Notice: We always set up Seed-ConfigNode's RPC service lastly to ensure
         // that the external service is not provided until ConfigNode is fully available
@@ -225,36 +229,42 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
 
         /* After the ConfigNode leader election, a leader switch may occur, which could cause the procedure not to be created. This can happen if the original leader has not yet executed the procedure creation, while the other followers have already finished starting up. Therefore, having the original leader (before the leader switch) initiate the process ensures that only one procedure will be created. */
         if (leaderNodeLocation.getConfigNodeId() == configNodeId) {
-          dataPartitionTableCheckFuture =
-              dataPartitionTableCheckExecutor.submit(
-                  () -> {
-                    LOGGER.info(
-                        "[DataPartitionIntegrity] Prepare to start dataPartitionTableIntegrityCheck after all datanodes started up");
-                    Thread.sleep(CONF.getPartitionTableRecoverWaitAllDnUpTimeoutInMs());
+          if (!configManager
+              .getProcedureManager()
+              .isExistUnfinishedProcedure(DataPartitionTableIntegrityCheckProcedure.class)) {
+            dataPartitionTableCheckFuture =
+                dataPartitionTableCheckExecutor.submit(
+                    () -> {
+                      LOGGER.info(
+                          "[DataPartitionIntegrity] Prepare to start dataPartitionTableIntegrityCheck after all datanodes started up");
+                      Thread.sleep(CONF.getPartitionTableRecoverWaitAllDnUpTimeoutInMs());
 
-                    while (true) {
-                      List<Integer> dnList =
-                          configManager
-                              .getLoadManager()
-                              .filterDataNodeThroughStatus(NodeStatus.Running);
-                      if (dnList != null && !dnList.isEmpty()) {
-                        LOGGER.info("Starting dataPartitionTableIntegrityCheck...");
-                        TSStatus status =
-                            configManager.getProcedureManager().dataPartitionTableIntegrityCheck();
-                        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-                          LOGGER.error(
-                              "Data partition table integrity check failed! Current status code is {}, status message is {}",
-                              status.getCode(),
-                              status.getMessage());
+                      while (true) {
+                        List<Integer> dnList =
+                            configManager
+                                .getLoadManager()
+                                .filterDataNodeThroughStatus(NodeStatus.Running);
+                        if (dnList != null && !dnList.isEmpty()) {
+                          LOGGER.info("Starting dataPartitionTableIntegrityCheck...");
+                          TSStatus status =
+                              configManager
+                                  .getProcedureManager()
+                                  .dataPartitionTableIntegrityCheck();
+                          if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+                            LOGGER.error(
+                                "Data partition table integrity check failed! Current status code is {}, status message is {}",
+                                status.getCode(),
+                                status.getMessage());
+                          }
+                          break;
+                        } else {
+                          LOGGER.info("No running datanodes found, waiting...");
+                          Thread.sleep(5000);
                         }
-                        break;
-                      } else {
-                        LOGGER.info("No running datanodes found, waiting...");
-                        Thread.sleep(5000);
                       }
-                    }
-                    return null;
-                  });
+                      return null;
+                    });
+          }
         }
         return;
       } else {

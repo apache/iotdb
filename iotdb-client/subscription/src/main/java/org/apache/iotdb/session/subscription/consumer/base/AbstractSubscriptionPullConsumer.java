@@ -21,6 +21,7 @@ package org.apache.iotdb.session.subscription.consumer.base;
 
 import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
+import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 import org.apache.iotdb.rpc.subscription.payload.poll.TopicProgress;
 import org.apache.iotdb.session.subscription.consumer.AsyncCommitCallback;
 import org.apache.iotdb.session.subscription.payload.PollResult;
@@ -70,7 +71,7 @@ public abstract class AbstractSubscriptionPullConsumer extends AbstractSubscript
 
   private final List<SubscriptionMessageProcessor> processors = new ArrayList<>();
 
-  private SortedMap<Long, Set<SubscriptionMessage>> uncommittedMessages;
+  private SortedMap<Long, Set<SubscriptionCommitContext>> uncommittedCommitContexts;
 
   private final AtomicBoolean isClosed = new AtomicBoolean(true);
 
@@ -129,7 +130,7 @@ public abstract class AbstractSubscriptionPullConsumer extends AbstractSubscript
 
     // submit auto poll worker if enabling auto commit
     if (autoCommit) {
-      uncommittedMessages = new ConcurrentSkipListMap<>();
+      uncommittedCommitContexts = new ConcurrentSkipListMap<>();
       submitAutoCommitWorker();
     }
   }
@@ -254,9 +255,12 @@ public abstract class AbstractSubscriptionPullConsumer extends AbstractSubscript
       if (currentTimestamp % autoCommitIntervalMs == 0) {
         index -= 1;
       }
-      uncommittedMessages
+      uncommittedCommitContexts
           .computeIfAbsent(index, o -> new ConcurrentSkipListSet<>())
-          .addAll(processed);
+          .addAll(
+              processed.stream()
+                  .map(SubscriptionMessage::getCommitContext)
+                  .collect(Collectors.toList()));
     }
 
     return processed;
@@ -345,7 +349,7 @@ public abstract class AbstractSubscriptionPullConsumer extends AbstractSubscript
   public void seekToBeginning(final String topicName) throws SubscriptionException {
     super.seekToBeginning(topicName);
     if (autoCommit) {
-      uncommittedMessages.clear();
+      uncommittedCommitContexts.clear();
     }
   }
 
@@ -353,7 +357,7 @@ public abstract class AbstractSubscriptionPullConsumer extends AbstractSubscript
   public void seekToEnd(final String topicName) throws SubscriptionException {
     super.seekToEnd(topicName);
     if (autoCommit) {
-      uncommittedMessages.clear();
+      uncommittedCommitContexts.clear();
     }
   }
 
@@ -362,7 +366,7 @@ public abstract class AbstractSubscriptionPullConsumer extends AbstractSubscript
       throws SubscriptionException {
     super.seek(topicName, topicProgress);
     if (autoCommit) {
-      uncommittedMessages.clear();
+      uncommittedCommitContexts.clear();
     }
   }
 
@@ -371,7 +375,7 @@ public abstract class AbstractSubscriptionPullConsumer extends AbstractSubscript
       throws SubscriptionException {
     super.seekAfter(topicName, topicProgress);
     if (autoCommit) {
-      uncommittedMessages.clear();
+      uncommittedCommitContexts.clear();
     }
   }
 
@@ -408,21 +412,21 @@ public abstract class AbstractSubscriptionPullConsumer extends AbstractSubscript
         index -= 1;
       }
 
-      for (final Map.Entry<Long, Set<SubscriptionMessage>> entry :
-          uncommittedMessages.headMap(index).entrySet()) {
+      for (final Map.Entry<Long, Set<SubscriptionCommitContext>> entry :
+          uncommittedCommitContexts.headMap(index).entrySet()) {
         try {
-          final Set<SubscriptionMessage> removableMessages =
-              ackWithPartialProgress(entry.getValue());
-          if (removableMessages.isEmpty()) {
+          final Set<SubscriptionCommitContext> removableCommitContexts =
+              ackCommitContextsWithPartialProgress(entry.getValue());
+          if (removableCommitContexts.isEmpty()) {
             continue;
           }
-          if (removableMessages.size() == entry.getValue().size()) {
-            uncommittedMessages.remove(entry.getKey());
+          if (removableCommitContexts.size() == entry.getValue().size()) {
+            uncommittedCommitContexts.remove(entry.getKey());
             continue;
           }
-          entry.getValue().removeAll(removableMessages);
+          entry.getValue().removeAll(removableCommitContexts);
           if (entry.getValue().isEmpty()) {
-            uncommittedMessages.remove(entry.getKey());
+            uncommittedCommitContexts.remove(entry.getKey());
           }
         } catch (final Exception e) {
           LOGGER.warn("something unexpected happened when auto commit messages...", e);
@@ -432,19 +436,21 @@ public abstract class AbstractSubscriptionPullConsumer extends AbstractSubscript
   }
 
   private void commitAllUncommittedMessages() {
-    for (final Map.Entry<Long, Set<SubscriptionMessage>> entry : uncommittedMessages.entrySet()) {
+    for (final Map.Entry<Long, Set<SubscriptionCommitContext>> entry :
+        uncommittedCommitContexts.entrySet()) {
       try {
-        final Set<SubscriptionMessage> removableMessages = ackWithPartialProgress(entry.getValue());
-        if (removableMessages.isEmpty()) {
+        final Set<SubscriptionCommitContext> removableCommitContexts =
+            ackCommitContextsWithPartialProgress(entry.getValue());
+        if (removableCommitContexts.isEmpty()) {
           continue;
         }
-        if (removableMessages.size() == entry.getValue().size()) {
-          uncommittedMessages.remove(entry.getKey());
+        if (removableCommitContexts.size() == entry.getValue().size()) {
+          uncommittedCommitContexts.remove(entry.getKey());
           continue;
         }
-        entry.getValue().removeAll(removableMessages);
+        entry.getValue().removeAll(removableCommitContexts);
         if (entry.getValue().isEmpty()) {
-          uncommittedMessages.remove(entry.getKey());
+          uncommittedCommitContexts.remove(entry.getKey());
         }
       } catch (final Exception e) {
         LOGGER.warn("something unexpected happened when commit messages during close", e);
@@ -472,7 +478,7 @@ public abstract class AbstractSubscriptionPullConsumer extends AbstractSubscript
     allReportMessage.put("autoCommit", String.valueOf(autoCommit));
     allReportMessage.put("autoCommitIntervalMs", String.valueOf(autoCommitIntervalMs));
     if (autoCommit) {
-      allReportMessage.put("uncommittedMessages", uncommittedMessages.toString());
+      allReportMessage.put("uncommittedCommitContexts", uncommittedCommitContexts.toString());
     }
     return allReportMessage;
   }

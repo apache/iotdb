@@ -72,8 +72,8 @@ import java.util.concurrent.Executors;
  *
  * <p>Committed progress is represented in per-writer terms via {@link WriterId} and {@link
  * WriterProgress}. Outstanding deliveries are tracked by writer-local slots, while commit
- * advancement is computed with ordered progress keys derived from {@code physicalTime},
- * {@code writerNodeId}, {@code writerEpoch}, and {@code localSeq}. {@code searchIndex} is not the
+ * advancement is computed with ordered progress keys derived from {@code physicalTime}, {@code
+ * writerNodeId}, {@code writerEpoch}, and {@code localSeq}. {@code searchIndex} is not the
  * committed frontier here; it only remains an implementation aid for WAL positioning elsewhere.
  *
  * <p>Key responsibilities:

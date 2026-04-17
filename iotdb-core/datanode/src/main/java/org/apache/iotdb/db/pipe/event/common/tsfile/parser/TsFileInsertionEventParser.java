@@ -22,9 +22,9 @@ package org.apache.iotdb.db.pipe.event.common.tsfile.parser;
 import org.apache.iotdb.commons.audit.IAuditEntity;
 import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
-import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
 import org.apache.iotdb.db.pipe.metric.overview.PipeTsFileToTabletsMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
@@ -106,7 +106,7 @@ public abstract class TsFileInsertionEventParser implements AutoCloseable {
     this.allocatedMemoryBlockForTablet =
         PipeDataNodeResourceManager.memory()
             .forceAllocateForTabletWithRetry(
-                PipeConfig.getInstance().getPipeDataStructureTabletSizeInBytes());
+                IoTDBDescriptor.getInstance().getConfig().getPipeDataStructureTabletSizeInBytes());
   }
 
   /**

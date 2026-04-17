@@ -1310,46 +1310,86 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
   /////////////////////////////// commit sync (ack & nack) ///////////////////////////////
 
   protected void ack(final Iterable<SubscriptionMessage> messages) throws SubscriptionException {
+    ackCommitContexts(extractCommitContexts(messages));
+  }
+
+  protected void ackCommitContexts(final Iterable<SubscriptionCommitContext> commitContexts)
+      throws SubscriptionException {
+    commit(commitContexts, false);
+  }
+
+  private Iterable<SubscriptionCommitContext> extractCommitContexts(
+      final Iterable<SubscriptionMessage> messages) {
+    final List<SubscriptionCommitContext> commitContexts = new ArrayList<>();
+    for (final SubscriptionMessage message : messages) {
+      commitContexts.add(message.getCommitContext());
+    }
+    return commitContexts;
+  }
+
+  private void commit(final Iterable<SubscriptionCommitContext> commitContexts, final boolean nack)
+      throws SubscriptionException {
     final Map<Integer, List<SubscriptionCommitContext>> dataNodeIdToSubscriptionCommitContexts =
         new HashMap<>();
-    for (final SubscriptionMessage message : messages) {
+    for (final SubscriptionCommitContext commitContext : commitContexts) {
       dataNodeIdToSubscriptionCommitContexts
-          .computeIfAbsent(message.getCommitContext().getDataNodeId(), (id) -> new ArrayList<>())
-          .add(message.getCommitContext());
+          .computeIfAbsent(commitContext.getDataNodeId(), (id) -> new ArrayList<>())
+          .add(commitContext);
     }
     for (final Entry<Integer, List<SubscriptionCommitContext>> entry :
         dataNodeIdToSubscriptionCommitContexts.entrySet()) {
-      commitInternal(entry.getKey(), entry.getValue(), false);
-      advanceCommittedPositions(entry.getValue());
+      commitInternal(entry.getKey(), entry.getValue(), nack);
+      if (!nack) {
+        advanceCommittedPositions(entry.getValue());
+      }
     }
   }
 
   protected Set<SubscriptionMessage> ackWithPartialProgress(
       final Iterable<SubscriptionMessage> messages) throws SubscriptionException {
-    final Map<Integer, List<SubscriptionMessage>> dataNodeIdToMessages = new HashMap<>();
+    final List<SubscriptionMessage> bufferedMessages = new ArrayList<>();
+    final List<SubscriptionCommitContext> commitContexts = new ArrayList<>();
     for (final SubscriptionMessage message : messages) {
-      dataNodeIdToMessages
-          .computeIfAbsent(message.getCommitContext().getDataNodeId(), ignored -> new ArrayList<>())
-          .add(message);
+      bufferedMessages.add(message);
+      commitContexts.add(message.getCommitContext());
     }
 
+    final Set<SubscriptionCommitContext> removableCommitContexts =
+        ackCommitContextsWithPartialProgress(commitContexts);
     final Set<SubscriptionMessage> removableMessages = new HashSet<>();
-    for (final Entry<Integer, List<SubscriptionMessage>> entry : dataNodeIdToMessages.entrySet()) {
-      final List<SubscriptionCommitContext> commitContexts =
-          entry.getValue().stream()
-              .map(SubscriptionMessage::getCommitContext)
-              .collect(Collectors.toList());
+    for (final SubscriptionMessage message : bufferedMessages) {
+      if (removableCommitContexts.contains(message.getCommitContext())) {
+        removableMessages.add(message);
+      }
+    }
+    return removableMessages;
+  }
+
+  protected Set<SubscriptionCommitContext> ackCommitContextsWithPartialProgress(
+      final Iterable<SubscriptionCommitContext> commitContexts) throws SubscriptionException {
+    final Map<Integer, List<SubscriptionCommitContext>> dataNodeIdToCommitContexts =
+        new HashMap<>();
+    for (final SubscriptionCommitContext commitContext : commitContexts) {
+      dataNodeIdToCommitContexts
+          .computeIfAbsent(commitContext.getDataNodeId(), ignored -> new ArrayList<>())
+          .add(commitContext);
+    }
+
+    final Set<SubscriptionCommitContext> removableCommitContexts = new HashSet<>();
+    for (final Entry<Integer, List<SubscriptionCommitContext>> entry :
+        dataNodeIdToCommitContexts.entrySet()) {
+      final List<SubscriptionCommitContext> groupedCommitContexts = entry.getValue();
       try {
-        commitInternal(entry.getKey(), commitContexts, false);
-        advanceCommittedPositions(commitContexts);
-        removableMessages.addAll(entry.getValue());
+        commitInternal(entry.getKey(), groupedCommitContexts, false);
+        advanceCommittedPositions(groupedCommitContexts);
+        removableCommitContexts.addAll(groupedCommitContexts);
       } catch (final SubscriptionConnectionException e) {
         int stagedCount = 0;
         int retainedCount = 0;
-        for (final SubscriptionMessage message : entry.getValue()) {
-          if (isConsensusCommitContext(message.getCommitContext())) {
-            stagePendingRedirectAck(message.getCommitContext());
-            removableMessages.add(message);
+        for (final SubscriptionCommitContext commitContext : groupedCommitContexts) {
+          if (isConsensusCommitContext(commitContext)) {
+            stagePendingRedirectAck(commitContext);
+            removableCommitContexts.add(commitContext);
             stagedCount++;
           } else {
             retainedCount++;
@@ -1372,12 +1412,11 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
         }
       }
     }
-    return removableMessages;
+    return removableCommitContexts;
   }
 
   protected void nack(final Iterable<SubscriptionMessage> messages) throws SubscriptionException {
-    final Map<Integer, List<SubscriptionCommitContext>> dataNodeIdToSubscriptionCommitContexts =
-        new HashMap<>();
+    final List<SubscriptionCommitContext> commitContexts = new ArrayList<>();
     for (final SubscriptionMessage message : messages) {
       // make every effort to delete stale intermediate file
       if (Objects.equals(SubscriptionMessageType.TS_FILE.getType(), message.getMessageType())
@@ -1389,29 +1428,18 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
         } catch (final Exception ignored) {
         }
       }
-      dataNodeIdToSubscriptionCommitContexts
-          .computeIfAbsent(message.getCommitContext().getDataNodeId(), (id) -> new ArrayList<>())
-          .add(message.getCommitContext());
+      commitContexts.add(message.getCommitContext());
     }
-    for (final Entry<Integer, List<SubscriptionCommitContext>> entry :
-        dataNodeIdToSubscriptionCommitContexts.entrySet()) {
-      commitInternal(entry.getKey(), entry.getValue(), true);
-    }
+    commit(commitContexts, true);
   }
 
   private void nack(final List<SubscriptionPollResponse> responses) throws SubscriptionException {
-    final Map<Integer, List<SubscriptionCommitContext>> dataNodeIdToSubscriptionCommitContexts =
-        new HashMap<>();
+    final List<SubscriptionCommitContext> commitContexts = new ArrayList<>();
     for (final SubscriptionPollResponse response : responses) {
       // there is no stale intermediate file here
-      dataNodeIdToSubscriptionCommitContexts
-          .computeIfAbsent(response.getCommitContext().getDataNodeId(), (id) -> new ArrayList<>())
-          .add(response.getCommitContext());
+      commitContexts.add(response.getCommitContext());
     }
-    for (final Entry<Integer, List<SubscriptionCommitContext>> entry :
-        dataNodeIdToSubscriptionCommitContexts.entrySet()) {
-      commitInternal(entry.getKey(), entry.getValue(), true);
-    }
+    commit(commitContexts, true);
   }
 
   private void commitInternal(

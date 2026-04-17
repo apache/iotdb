@@ -3369,7 +3369,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TGenerateDataPartitionTableHeartbeatResp generateDataPartitionTableHeartbeat() {
+  public TGenerateDataPartitionTableHeartbeatResp generateDataPartitionTableHeartbeat(
+      TGenerateDataPartitionTableReq req) {
     TGenerateDataPartitionTableHeartbeatResp resp = new TGenerateDataPartitionTableHeartbeatResp();
     // Must be lower than the RPC request timeout, in milliseconds
     final long timeoutMs = 50000;
@@ -3379,10 +3380,13 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       // To resolve this situation that the DataNode is registered and didn't request
       // generateDataPartitionTable interface yet.
       if (currentGeneratorFuture == null || currentGenerator == null) {
-        resp.setErrorCode(DataPartitionTableGeneratorState.UNKNOWN.getCode());
-        resp.setMessage("No DataPartitionTable generation task found");
-        resp.setStatus(RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR));
-        return resp;
+        generateDataPartitionTable(req);
+        if (currentGeneratorFuture == null || currentGenerator == null) {
+          resp.setErrorCode(DataPartitionTableGeneratorState.UNKNOWN.getCode());
+          resp.setMessage("No DataPartitionTable generation task found");
+          resp.setStatus(RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR));
+          return resp;
+        }
       }
 
       currentGeneratorFuture.get(timeoutMs, TimeUnit.MILLISECONDS);

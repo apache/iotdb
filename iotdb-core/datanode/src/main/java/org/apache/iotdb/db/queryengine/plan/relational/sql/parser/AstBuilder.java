@@ -229,6 +229,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableFunctionArgu
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableFunctionInvocation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableFunctionTableArgument;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableSubquery;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TimeDurationLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Trim;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TypeParameter;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Union;
@@ -338,7 +339,6 @@ import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SkipTo.ski
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SkipTo.skipToNextRow;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.util.QueryUtil.selectList;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.util.QueryUtil.table;
-import static org.apache.iotdb.db.utils.TimestampPrecisionUtils.currPrecision;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.APPROX_COUNT_DISTINCT;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.APPROX_MOST_FREQUENT;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.APPROX_PERCENTILE;
@@ -2438,31 +2438,79 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
   @Override
   public Node visitQuerySpecification(RelationalSqlParser.QuerySpecificationContext ctx) {
-    Optional<Relation> from = Optional.empty();
-    List<SelectItem> selectItems = visit(ctx.selectItem(), SelectItem.class);
+    return buildQuerySpecification(
+        ctx,
+        ctx.selectItem(),
+        ctx.relation(),
+        ctx.SELECT(),
+        ctx.setQuantifier(),
+        ctx.where,
+        ctx.groupBy(),
+        ctx.having,
+        ctx.windowDefinition());
+  }
 
-    List<Relation> relations = visit(ctx.relation(), Relation.class);
+  @Override
+  public Node visitFromFirstQuerySpecification(
+      RelationalSqlParser.FromFirstQuerySpecificationContext ctx) {
+    return buildQuerySpecification(
+        ctx,
+        ctx.selectItem(),
+        ctx.relation(),
+        ctx.SELECT(),
+        ctx.setQuantifier(),
+        ctx.where,
+        ctx.groupBy(),
+        ctx.having,
+        ctx.windowDefinition());
+  }
+
+  private Node buildQuerySpecification(
+      ParserRuleContext parserRuleContext,
+      List<RelationalSqlParser.SelectItemContext> selectItemContexts,
+      List<RelationalSqlParser.RelationContext> relationContexts,
+      TerminalNode selectNode,
+      RelationalSqlParser.SetQuantifierContext setQuantifier,
+      RelationalSqlParser.BooleanExpressionContext where,
+      RelationalSqlParser.GroupByContext groupBy,
+      RelationalSqlParser.BooleanExpressionContext having,
+      List<RelationalSqlParser.WindowDefinitionContext> windowDefinitions) {
+
+    Optional<Relation> from = Optional.empty();
+    List<SelectItem> selectItems = visit(selectItemContexts, SelectItem.class);
+
+    List<Relation> relations = visit(relationContexts, Relation.class);
     if (!relations.isEmpty()) {
       // synthesize implicit join nodes
       Iterator<Relation> iterator = relations.iterator();
       Relation relation = iterator.next();
 
       while (iterator.hasNext()) {
-        relation = new Join(getLocation(ctx), Join.Type.IMPLICIT, relation, iterator.next());
+        relation =
+            new Join(getLocation(parserRuleContext), Join.Type.IMPLICIT, relation, iterator.next());
       }
 
       from = Optional.of(relation);
     }
 
+    // If no SELECT items provided (FROM-first without SELECT clause), default to SELECT *
+    if (selectItems.isEmpty()) {
+      selectItems =
+          ImmutableList.of(new AllColumns(getLocation(parserRuleContext), ImmutableList.of()));
+    }
+
+    NodeLocation selectLocation =
+        selectNode != null ? getLocation(selectNode) : getLocation(parserRuleContext);
+
     return new QuerySpecification(
-        getLocation(ctx),
-        new Select(getLocation(ctx.SELECT()), isDistinct(ctx.setQuantifier()), selectItems),
+        getLocation(parserRuleContext),
+        new Select(selectLocation, isDistinct(setQuantifier), selectItems),
         from,
-        visitIfPresent(ctx.where, Expression.class),
-        visitIfPresent(ctx.groupBy(), GroupBy.class),
-        visitIfPresent(ctx.having, Expression.class),
+        visitIfPresent(where, Expression.class),
+        visitIfPresent(groupBy, GroupBy.class),
+        visitIfPresent(having, Expression.class),
         Optional.empty(),
-        visit(ctx.windowDefinition(), WindowDefinition.class),
+        visit(windowDefinitions, WindowDefinition.class),
         Optional.empty(),
         Optional.empty(),
         Optional.empty());
@@ -3009,15 +3057,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     if (ctx.expression() != null) {
       return visit(ctx.expression());
     } else {
-      TimeDuration timeDuration = DateTimeUtils.constructTimeDuration(ctx.timeDuration().getText());
-
-      if (timeDuration.monthDuration != 0) {
-        throw new SemanticException("Setting monthly intervals is not supported.");
-      }
-
-      return new LongLiteral(
-          getLocation(ctx.timeDuration()),
-          String.valueOf(timeDuration.getTotalDuration(currPrecision)));
+      return new TimeDurationLiteral(
+          DateTimeUtils.constructTimeDuration(ctx.timeDuration().getText()));
     }
   }
 

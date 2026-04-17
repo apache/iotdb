@@ -1252,6 +1252,120 @@ public class AnalyzerTest {
     assertEquals(1, distributedQueryPlan.getInstances().size());
   }
 
+  @Test
+  public void fromFirstQueryTest() throws OperatorNotFoundException {
+    final String sqlSelectFirst = "SELECT * FROM table1";
+    final String sqlFromFirst = "FROM table1 SELECT *";
+
+    final Analysis analysisSelectFirst = analyzeSQL(sqlSelectFirst, TEST_MATADATA, QUERY_CONTEXT);
+    final SymbolAllocator symbolAllocatorSelectFirst = new SymbolAllocator();
+    final LogicalQueryPlan logicalQueryPlanSelectFirst =
+        new TableLogicalPlanner(
+                QUERY_CONTEXT,
+                TEST_MATADATA,
+                SESSION_INFO,
+                symbolAllocatorSelectFirst,
+                DEFAULT_WARNING)
+            .plan(analysisSelectFirst);
+    final PlanNode rootNodeSelectFirst = logicalQueryPlanSelectFirst.getRootNode();
+    final DeviceTableScanNode deviceTableScanNodeSelectFirst =
+        (DeviceTableScanNode) ((OutputNode) rootNodeSelectFirst).getChild();
+
+    final Analysis analysisFromFirst = analyzeSQL(sqlFromFirst, TEST_MATADATA, QUERY_CONTEXT);
+    final SymbolAllocator symbolAllocatorFromFirst = new SymbolAllocator();
+    final LogicalQueryPlan logicalQueryPlanFromFirst =
+        new TableLogicalPlanner(
+                QUERY_CONTEXT,
+                TEST_MATADATA,
+                SESSION_INFO,
+                symbolAllocatorFromFirst,
+                DEFAULT_WARNING)
+            .plan(analysisFromFirst);
+    final PlanNode rootNodeFromFirst = logicalQueryPlanFromFirst.getRootNode();
+    final DeviceTableScanNode deviceTableScanNodeFromFirst =
+        (DeviceTableScanNode) ((OutputNode) rootNodeFromFirst).getChild();
+
+    assertEquals(
+        deviceTableScanNodeSelectFirst.getOutputColumnNames(),
+        deviceTableScanNodeFromFirst.getOutputColumnNames());
+
+    assertEquals(
+        deviceTableScanNodeSelectFirst.getQualifiedObjectName(),
+        deviceTableScanNodeFromFirst.getQualifiedObjectName());
+  }
+
+  @Test
+  public void fromFirstImplicitSelectTest() throws OperatorNotFoundException {
+    final String sqlFromFirst = "FROM table1";
+    final String sqlSelectFirst = "SELECT * FROM table1";
+
+    final Analysis analysisFromFirst = analyzeSQL(sqlFromFirst, TEST_MATADATA, QUERY_CONTEXT);
+    final SymbolAllocator symbolAllocatorFromFirst = new SymbolAllocator();
+    final LogicalQueryPlan logicalQueryPlanFromFirst =
+        new TableLogicalPlanner(
+                QUERY_CONTEXT,
+                TEST_MATADATA,
+                SESSION_INFO,
+                symbolAllocatorFromFirst,
+                DEFAULT_WARNING)
+            .plan(analysisFromFirst);
+    final PlanNode rootNodeFromFirst = logicalQueryPlanFromFirst.getRootNode();
+    final DeviceTableScanNode deviceTableScanNodeFromFirst =
+        (DeviceTableScanNode) ((OutputNode) rootNodeFromFirst).getChild();
+
+    final Analysis analysisSelectFirst = analyzeSQL(sqlSelectFirst, TEST_MATADATA, QUERY_CONTEXT);
+    final SymbolAllocator symbolAllocatorSelectFirst = new SymbolAllocator();
+    final LogicalQueryPlan logicalQueryPlanSelectFirst =
+        new TableLogicalPlanner(
+                QUERY_CONTEXT,
+                TEST_MATADATA,
+                SESSION_INFO,
+                symbolAllocatorSelectFirst,
+                DEFAULT_WARNING)
+            .plan(analysisSelectFirst);
+    final PlanNode rootNodeSelectFirst = logicalQueryPlanSelectFirst.getRootNode();
+    final DeviceTableScanNode deviceTableScanNodeSelectFirst =
+        (DeviceTableScanNode) ((OutputNode) rootNodeSelectFirst).getChild();
+
+    assertEquals(
+        deviceTableScanNodeSelectFirst.getOutputColumnNames(),
+        deviceTableScanNodeFromFirst.getOutputColumnNames());
+
+    assertEquals(
+        Arrays.asList("time", "tag1", "tag2", "tag3", "attr1", "attr2", "s1", "s2", "s3"),
+        deviceTableScanNodeFromFirst.getOutputColumnNames());
+  }
+
+  @Test
+  public void fromFirstWithFilterTest() throws OperatorNotFoundException {
+    final String sql = "FROM table1 SELECT tag1, s1 WHERE s1 > 1";
+
+    final Analysis analysis = analyzeSQL(sql, TEST_MATADATA, QUERY_CONTEXT);
+    final SymbolAllocator symbolAllocator = new SymbolAllocator();
+    final LogicalQueryPlan logicalQueryPlan =
+        new TableLogicalPlanner(
+                QUERY_CONTEXT, TEST_MATADATA, SESSION_INFO, symbolAllocator, DEFAULT_WARNING)
+            .plan(analysis);
+
+    final PlanNode rootNode = logicalQueryPlan.getRootNode();
+    assertTrue(rootNode instanceof OutputNode);
+    assertTrue(rootNode.getChildren().get(0) instanceof DeviceTableScanNode);
+
+    final DeviceTableScanNode deviceTableScanNode =
+        (DeviceTableScanNode) rootNode.getChildren().get(0);
+
+    assertEquals(Arrays.asList("tag1", "s1"), deviceTableScanNode.getOutputColumnNames());
+
+    assertNotNull(deviceTableScanNode.getPushDownPredicate());
+    assertEquals("(\"s1\" > 1)", deviceTableScanNode.getPushDownPredicate().toString());
+
+    assertEquals(
+        ImmutableSet.of("tag1", "s1"),
+        deviceTableScanNode.getAssignments().keySet().stream()
+            .map(Symbol::toString)
+            .collect(Collectors.toSet()));
+  }
+
   public static Analysis analyzeSQL(String sql, Metadata metadata, final MPPQueryContext context) {
     SqlParser sqlParser = new SqlParser();
     Statement statement =

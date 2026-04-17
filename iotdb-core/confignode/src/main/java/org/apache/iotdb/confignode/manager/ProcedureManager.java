@@ -62,6 +62,7 @@ import org.apache.iotdb.confignode.procedure.ProcedureMetrics;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.env.RegionMaintainHandler;
 import org.apache.iotdb.confignode.procedure.env.RemoveDataNodeHandler;
+import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.impl.cq.CreateCQProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.AddConfigNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveAINodeProcedure;
@@ -1384,7 +1385,7 @@ public class ProcedureManager {
       procedure = new DataPartitionTableIntegrityCheckProcedure();
       executor.submitProcedure(procedure);
     }
-    return waitingProcedureFinished(procedure);
+    return waitingProcedureFinished(procedure, 86400000);
   }
 
   /**
@@ -2361,6 +2362,25 @@ public class ProcedureManager {
       }
     }
     return new Pair<>(-1L, false);
+  }
+
+  public boolean isExistUnfinishedProcedure(
+      Class<? extends StateMachineProcedure<?, ?>> procedureClass) {
+    if (procedureClass == null) {
+      return false;
+    }
+
+    for (Procedure<ConfigNodeProcedureEnv> procedure : getExecutor().getProcedures().values()) {
+      if (!procedure.isFinished() && procedureClass.isInstance(procedure)) {
+        LOGGER.info(
+            "[{}] procedure details are {}",
+            procedureClass.getSimpleName(),
+            procedure.toStringDetails());
+        return true;
+      }
+    }
+
+    return false;
   }
 
   // ======================================================

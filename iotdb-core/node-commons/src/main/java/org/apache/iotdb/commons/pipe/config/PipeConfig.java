@@ -361,6 +361,10 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeReceiverReqDecompressedMaxLengthInBytes();
   }
 
+  public int getPipeAirGapReceiverMaxPayloadSizeInBytes() {
+    return COMMON_CONFIG.getPipeAirGapReceiverMaxPayloadSizeInBytes();
+  }
+
   public boolean isPipeReceiverLoadConversionEnabled() {
     return COMMON_CONFIG.isPipeReceiverLoadConversionEnabled();
   }
@@ -627,6 +631,9 @@ public class PipeConfig {
     LOGGER.info(
         "PipeReceiverReqDecompressedMaxLengthInBytes: {}",
         getPipeReceiverReqDecompressedMaxLengthInBytes());
+    LOGGER.info(
+        "PipeAirGapReceiverMaxPayloadSizeInBytes: {}",
+        getPipeAirGapReceiverMaxPayloadSizeInBytes());
     LOGGER.info("PipeReceiverLoadConversionEnabled: {}", isPipeReceiverLoadConversionEnabled());
     LOGGER.info(
         "PipePeriodicalLogMinIntervalSeconds: {}", getPipePeriodicalLogMinIntervalSeconds());

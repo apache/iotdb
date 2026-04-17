@@ -1376,7 +1376,7 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
     Map<String, Map<Integer, List<TRegionReplicaSet>>> cachedRegionReplicas = new HashMap<>();
     for (PlanNode child : node.getChildren()) {
       if (child instanceof SeriesSourceNode) {
-        // If the child is SeriesScanNode, we need to check whether this node should be seperated
+        // If the child is SeriesScanNode, we need to check whether this node should be separated
         // into several splits.
         SeriesSourceNode sourceNode = (SeriesSourceNode) child;
         List<TRegionReplicaSet> dataDistribution =
@@ -1389,7 +1389,7 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
           // If there is some series which is distributed in multi DataRegions
           context.setOneSeriesInMultiRegion(true);
         }
-        // If the size of dataDistribution is N, this SeriesScanNode should be seperated into N
+        // If the size of dataDistribution is N, this SeriesScanNode should be separated into N
         // SeriesScanNode.
         for (TRegionReplicaSet dataRegion : dataDistribution) {
           SeriesSourceNode split =

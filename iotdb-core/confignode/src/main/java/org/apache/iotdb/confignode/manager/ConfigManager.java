@@ -452,14 +452,14 @@ public class ConfigManager implements IManager {
   }
 
   public void close() throws IOException {
-    if (consensusManager.get() != null) {
-      consensusManager.get().close();
-    }
     if (partitionManager != null) {
       partitionManager.getRegionMaintainer().shutdown();
     }
     if (procedureManager != null) {
       procedureManager.stopExecutor();
+    }
+    if (consensusManager.get() != null) {
+      consensusManager.get().close();
     }
   }
 

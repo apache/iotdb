@@ -176,6 +176,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableFunctionArgu
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableFunctionInvocation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableFunctionTableArgument;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableSubquery;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TimeDurationLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Trim;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Union;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Update;
@@ -827,7 +828,7 @@ public class StatementAnalyzer {
 
     @Override
     protected Scope visitLoadTsFile(final LoadTsFile node, final Optional<Scope> scope) {
-      queryContext.setQueryType(QueryType.WRITE);
+      queryContext.setQueryType(QueryType.OTHER);
 
       try (final LoadTsFileAnalyzer loadTsFileAnalyzer =
           new LoadTsFileAnalyzer(node, node.isGeneratedByPipe(), queryContext)) {
@@ -4548,7 +4549,7 @@ public class StatementAnalyzer {
     @Override
     protected Scope visitCreateOrUpdateDevice(
         final CreateOrUpdateDevice node, final Optional<Scope> context) {
-      queryContext.setQueryType(QueryType.WRITE);
+      queryContext.setQueryType(QueryType.OTHER);
       DataNodeSchemaLockManager.getInstance()
           .takeReadLock(queryContext, SchemaLockType.VALIDATE_VS_DELETION_TABLE);
       // Check if the table exists
@@ -5260,6 +5261,12 @@ public class StatementAnalyzer {
 
     private ArgumentAnalysis analyzeScalarArgument(
         Expression expression, ScalarParameterSpecification argumentSpecification) {
+      if (expression instanceof TimeDurationLiteral) {
+        if (((TimeDurationLiteral) expression).getValue().monthDuration != 0) {
+          throw new SemanticException("Setting monthly intervals is not supported.");
+        }
+      }
+
       // currently, only constant arguments are supported
       Object constantValue =
           evaluateConstantExpression(

@@ -666,7 +666,7 @@ public class ProcedureExecutor<Env> {
     } catch (IOException e) {
       LOG.error("Roll back failed for {}", procedure, e);
     } catch (InterruptedException e) {
-      LOG.warn("Interrupted exception occured for {}", procedure, e);
+      LOG.warn("Interrupted exception occurred for {}", procedure, e);
     } catch (Throwable t) {
       LOG.error("CODE-BUG: runtime exception for {}", procedure, t);
     }

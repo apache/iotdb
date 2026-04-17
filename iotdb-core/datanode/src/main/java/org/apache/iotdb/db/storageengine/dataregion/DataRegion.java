@@ -3733,7 +3733,11 @@ public class DataRegion implements IDataRegionForQuery {
       if (!regionObjectDir.isDirectory()) {
         continue;
       }
-      CompactionUtils.executeTTLCheckObjectFilesForTableModel(regionObjectDir, databaseName);
+      try {
+        CompactionUtils.executeTTLCheckObjectFilesForTableModel(regionObjectDir, databaseName);
+      } catch (Exception e) {
+        logger.error("Failed to execute object ttl check", e);
+      }
     }
     CompactionMetrics.getInstance()
         .updateTTLCheckForObjectFileCost(System.currentTimeMillis() - startTime);
