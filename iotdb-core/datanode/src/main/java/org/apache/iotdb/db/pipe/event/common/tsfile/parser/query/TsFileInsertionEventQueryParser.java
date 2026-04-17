@@ -131,6 +131,7 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
       final boolean isWithMod)
       throws IOException, IllegalPathException {
     super(
+        tsFile,
         pipeName,
         creationTime,
         pattern,
@@ -140,7 +141,8 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
         pipeTaskMeta,
         entity,
         skipIfNoPrivileges,
-        sourceEvent);
+        sourceEvent,
+        isWithMod);
 
     try {
       currentModifications =
