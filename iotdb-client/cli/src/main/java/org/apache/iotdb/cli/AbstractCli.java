@@ -55,6 +55,59 @@ import static org.apache.iotdb.jdbc.Config.SQL_DIALECT;
 
 public abstract class AbstractCli {
 
+  /**
+   * Returns true if the SQLException is likely due to connection loss. Used so that CLI can rethrow
+   * and trigger reconnection.
+   */
+  static boolean isConnectionRelated(SQLException e) {
+    if (e == null) {
+      return false;
+    }
+    if (matchesConnectionFailure(e.getMessage())) {
+      return true;
+    }
+    Throwable cause = e.getCause();
+    return cause != null && matchesConnectionFailure(cause.getMessage());
+  }
+
+  private static boolean matchesConnectionFailure(String msg) {
+    if (msg == null) {
+      return false;
+    }
+    String lower = msg.toLowerCase();
+    return lower.contains("connection")
+        || lower.contains("refused")
+        || lower.contains("timeout")
+        || lower.contains("closed")
+        || lower.contains("reset")
+        || lower.contains("network")
+        || lower.contains("broken pipe");
+  }
+
+  /**
+   * Returns true if the SQLException indicates a session/statement state error (e.g. statement ID
+   * no longer valid after reconnect). Used to show a friendly message instead of the raw exception.
+   */
+  static boolean isSessionOrStatementError(SQLException e) {
+    if (e == null) {
+      return false;
+    }
+    if (e.getMessage() != null && matchesSessionOrStatementFailure(e.getMessage())) {
+      return true;
+    }
+    Throwable cause = e.getCause();
+    return cause != null
+        && cause.getMessage() != null
+        && matchesSessionOrStatementFailure(cause.getMessage());
+  }
+
+  private static boolean matchesSessionOrStatementFailure(String msg) {
+    String lower = msg.toLowerCase();
+    return lower.contains("doesn't exist in this session")
+        || lower.contains("statementid")
+        || lower.contains("statement id");
+  }
+
   static final String HOST_ARGS = "h";
   static final String HOST_NAME = "host";
 
@@ -394,7 +447,8 @@ public abstract class AbstractCli {
     ctx.getPrinter().println("---------------------");
   }
 
-  static OperationResult handleInputCmd(CliContext ctx, String cmd, IoTDBConnection connection) {
+  static OperationResult handleInputCmd(CliContext ctx, String cmd, IoTDBConnection connection)
+      throws SQLException {
     lastProcessStatus = CODE_OK;
     String specialCmd = cmd.toLowerCase().trim();
 
@@ -495,7 +549,8 @@ public abstract class AbstractCli {
    * @return execute result code
    */
   private static int setTimeZone(
-      CliContext ctx, String specialCmd, String cmd, IoTDBConnection connection) {
+      CliContext ctx, String specialCmd, String cmd, IoTDBConnection connection)
+      throws SQLException {
     String[] values = specialCmd.split("=");
     if (values.length != 2) {
       ctx.getPrinter()
@@ -505,6 +560,12 @@ public abstract class AbstractCli {
     }
     try {
       connection.setTimeZone(cmd.split("=")[1].trim());
+    } catch (SQLException e) {
+      if (isConnectionRelated(e)) {
+        throw e;
+      }
+      ctx.getPrinter().println(String.format("Time zone format error: %s", e.getMessage()));
+      return CODE_ERROR;
     } catch (Exception e) {
       ctx.getPrinter().println(String.format("Time zone format error: %s", e.getMessage()));
       return CODE_ERROR;
@@ -513,10 +574,13 @@ public abstract class AbstractCli {
     return CODE_OK;
   }
 
-  private static int showTimeZone(CliContext ctx, IoTDBConnection connection) {
+  private static int showTimeZone(CliContext ctx, IoTDBConnection connection) throws SQLException {
     try {
       ctx.getPrinter().println("Current time zone: " + connection.getTimeZone());
     } catch (Exception e) {
+      if (e instanceof SQLException && isConnectionRelated((SQLException) e)) {
+        throw (SQLException) e;
+      }
       ctx.getPrinter().println("Cannot get time zone from server side because: " + e.getMessage());
       return CODE_ERROR;
     }
@@ -549,7 +613,8 @@ public abstract class AbstractCli {
   }
 
   @SuppressWarnings({"squid:S3776"}) // Suppress high Cognitive Complexity warning
-  private static int executeQuery(CliContext ctx, IoTDBConnection connection, String cmd) {
+  private static int executeQuery(CliContext ctx, IoTDBConnection connection, String cmd)
+      throws SQLException {
     int executeStatus = CODE_OK;
     long startTime = System.currentTimeMillis();
     try (Statement statement = connection.createStatement()) {
@@ -610,6 +675,18 @@ public abstract class AbstractCli {
       } else {
         ctx.getPrinter().println("Msg: " + SUCCESS_MESSAGE);
       }
+    } catch (SQLException e) {
+      if (isConnectionRelated(e)) {
+        throw e;
+      }
+      if (isSessionOrStatementError(e)) {
+        ctx.getPrinter()
+            .println(
+                "Reconnected, but the previous command could not be completed. Please run your command again.");
+      } else {
+        ctx.getPrinter().println("Msg: " + e);
+      }
+      executeStatus = CODE_ERROR;
     } catch (Exception e) {
       ctx.getPrinter().println("Msg: " + e);
       executeStatus = CODE_ERROR;
@@ -858,7 +935,8 @@ public abstract class AbstractCli {
     NO_OPER
   }
 
-  static boolean processCommand(CliContext ctx, String s, IoTDBConnection connection) {
+  static boolean processCommand(CliContext ctx, String s, IoTDBConnection connection)
+      throws SQLException {
     if (s == null) {
       return true;
     }
