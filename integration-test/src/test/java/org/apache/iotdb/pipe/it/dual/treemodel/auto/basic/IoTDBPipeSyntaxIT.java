@@ -55,6 +55,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 
 import static org.junit.Assert.fail;
 
@@ -969,7 +970,7 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualTreeModelAutoIT {
       if (!Files.exists(pluginJarDirPath)) {
         continue;
       }
-      try (final java.util.stream.Stream<Path> children = Files.walk(pluginJarDirPath)) {
+      try (final Stream<Path> children = Files.walk(pluginJarDirPath)) {
         children
             .filter(path -> !path.equals(pluginJarDirPath))
             .sorted(Comparator.reverseOrder())
