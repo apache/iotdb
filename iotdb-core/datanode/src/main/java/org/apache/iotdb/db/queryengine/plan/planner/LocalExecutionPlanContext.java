@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.planner;
 import org.apache.iotdb.db.calc_commons.execution.operator.Operator;
 import org.apache.iotdb.db.calc_commons.plan.planner.ITableOperatorGeneratorContext;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.node_commons.plan.analyze.ITableTypeProvider;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
@@ -305,6 +306,11 @@ public class LocalExecutionPlanContext implements ITableOperatorGeneratorContext
   }
 
   public TypeProvider getTypeProvider() {
+    return typeProvider;
+  }
+
+  @Override
+  public ITableTypeProvider getTableTypeProvider() {
     return typeProvider;
   }
 

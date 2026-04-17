@@ -148,6 +148,7 @@ import org.apache.iotdb.db.calc_commons.transformation.dag.column.unary.scalar.f
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.node_commons.common.SessionInfo;
+import org.apache.iotdb.db.node_commons.plan.analyze.ITableTypeProvider;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.node_commons.plan.relational.function.arithmetic.AdditionResolver;
 import org.apache.iotdb.db.node_commons.plan.relational.function.arithmetic.DivisionResolver;
@@ -194,7 +195,6 @@ import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Trim;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.WhenClause;
 import org.apache.iotdb.db.node_commons.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.node_commons.plan.relational.type.TypeNotFoundException;
-import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.udf.api.customizer.analysis.ScalarFunctionAnalysis;
 import org.apache.iotdb.udf.api.customizer.parameter.FunctionArguments;
@@ -1940,7 +1940,7 @@ public class ColumnTransformerBuilder
 
     private final int originSize;
 
-    private final TypeProvider typeProvider;
+    private final ITableTypeProvider typeProvider;
 
     private final Metadata metadata;
 
@@ -1953,7 +1953,7 @@ public class ColumnTransformerBuilder
         List<ColumnTransformer> commonTransformerList,
         List<TSDataType> inputDataTypes,
         int originSize,
-        TypeProvider typeProvider,
+        ITableTypeProvider typeProvider,
         Metadata metadata) {
       this.sessionInfo = sessionInfo;
       this.leafList = leafList;

@@ -14,16 +14,6 @@
 
 package org.apache.iotdb.db.node_commons.plan.planner.plan.node;
 
-import java.io.DataInputStream;
-import java.io.IOException;
-import java.nio.ByteBuffer;
-
-public interface IPlanNodeDeserializer {
-  PlanNode deserializeFromWAL(DataInputStream stream) throws IOException;
-
-  PlanNode deserializeFromWAL(ByteBuffer buffer);
-
-  PlanNode deserialize(ByteBuffer buffer);
-
-  PlanNode deserialize(ByteBuffer buffer, short nodeType);
+public interface IPlanNodeDeserializerProvider {
+  IPlanNodeDeserializer getDeserializer();
 }

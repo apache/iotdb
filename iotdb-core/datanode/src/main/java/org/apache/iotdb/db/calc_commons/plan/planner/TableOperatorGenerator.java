@@ -105,6 +105,7 @@ import org.apache.iotdb.db.calc_commons.transformation.dag.column.ColumnTransfor
 import org.apache.iotdb.db.calc_commons.transformation.dag.column.leaf.LeafColumnTransformer;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.node_commons.common.SessionInfo;
+import org.apache.iotdb.db.node_commons.plan.analyze.ITableTypeProvider;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.ICoreQueryPlanVisitor;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNodeId;
@@ -160,7 +161,6 @@ import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Literal;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.node_commons.plan.relational.type.InternalTypeManager;
-import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.utils.datastructure.SortKey;
 import org.apache.iotdb.udf.api.relational.TableFunction;
@@ -278,7 +278,7 @@ public abstract class TableOperatorGenerator<C extends ITableOperatorGeneratorCo
 
   @Override
   public Operator visitFilter(FilterNode node, C context) {
-    TypeProvider typeProvider = context.getTypeProvider();
+    ITableTypeProvider typeProvider = context.getTableTypeProvider();
     Optional<Expression> predicate = Optional.of(node.getPredicate());
     Operator inputOperator = node.getChild().accept(this, context);
     List<TSDataType> inputDataTypes = getInputColumnTypes(node, typeProvider);
@@ -328,7 +328,7 @@ public abstract class TableOperatorGenerator<C extends ITableOperatorGeneratorCo
                           ImmutableList.of(),
                           ImmutableList.of(),
                           0,
-                          context.getTypeProvider(),
+                          context.getTableTypeProvider(),
                           metadata);
 
                   return visitor.process(p, filterColumnTransformerContext);
@@ -355,7 +355,7 @@ public abstract class TableOperatorGenerator<C extends ITableOperatorGeneratorCo
             commonTransformerList,
             filterOutputDataTypes,
             inputLocations.size(),
-            context.getTypeProvider(),
+            context.getTableTypeProvider(),
             metadata);
 
     for (Expression expression : projectExpressions) {
@@ -382,7 +382,7 @@ public abstract class TableOperatorGenerator<C extends ITableOperatorGeneratorCo
 
   @Override
   public Operator visitProject(ProjectNode node, C context) {
-    TypeProvider typeProvider = context.getTypeProvider();
+    ITableTypeProvider typeProvider = context.getTableTypeProvider();
     Optional<Expression> predicate;
     Operator inputOperator;
     List<TSDataType> inputDataTypes;
@@ -410,7 +410,7 @@ public abstract class TableOperatorGenerator<C extends ITableOperatorGeneratorCo
         context);
   }
 
-  private List<TSDataType> getInputColumnTypes(PlanNode node, TypeProvider typeProvider) {
+  private List<TSDataType> getInputColumnTypes(PlanNode node, ITableTypeProvider typeProvider) {
     // ignore "time" column
     return node.getChildren().stream()
         .map(PlanNode::getOutputSymbols)
@@ -423,7 +423,7 @@ public abstract class TableOperatorGenerator<C extends ITableOperatorGeneratorCo
   public Operator visitGapFill(GapFillNode node, C context) {
     Operator child = node.getChild().accept(this, context);
     List<TSDataType> inputDataTypes =
-        getOutputColumnTypes(node.getChild(), context.getTypeProvider());
+        getOutputColumnTypes(node.getChild(), context.getTableTypeProvider());
     int timeColumnIndex = getColumnIndex(node.getGapFillColumn(), node.getChild());
     if (node.getGapFillGroupingKeys().isEmpty()) { // without group keys
       if (node.getMonthDuration() == 0) { // without month interval
@@ -496,7 +496,7 @@ public abstract class TableOperatorGenerator<C extends ITableOperatorGeneratorCo
     Operator child = node.getChild().accept(this, context);
 
     List<TSDataType> inputDataTypes =
-        getOutputColumnTypes(node.getChild(), context.getTypeProvider());
+        getOutputColumnTypes(node.getChild(), context.getTableTypeProvider());
     int inputColumnCount = inputDataTypes.size();
     int helperColumnIndex = -1;
     if (node.getHelperColumn().isPresent()) {
@@ -572,7 +572,7 @@ public abstract class TableOperatorGenerator<C extends ITableOperatorGeneratorCo
     Operator child = node.getChild().accept(this, context);
 
     List<TSDataType> inputDataTypes =
-        getOutputColumnTypes(node.getChild(), context.getTypeProvider());
+        getOutputColumnTypes(node.getChild(), context.getTableTypeProvider());
     int inputColumnCount = inputDataTypes.size();
     int helperColumnIndex = getColumnIndex(node.getHelperColumn(), node.getChild());
     ILinearFill[] fillArray = getLinearFill(inputColumnCount, inputDataTypes);
@@ -605,7 +605,7 @@ public abstract class TableOperatorGenerator<C extends ITableOperatorGeneratorCo
     OperatorContext operatorContext =
         addOperatorContext(context, node.getPlanNodeId(), TableFillOperator.class.getSimpleName());
     List<TSDataType> inputDataTypes =
-        getOutputColumnTypes(node.getChild(), context.getTypeProvider());
+        getOutputColumnTypes(node.getChild(), context.getTableTypeProvider());
     int inputColumnCount = inputDataTypes.size();
     Literal filledValue = node.getFilledValue();
     return new TableFillOperator(
@@ -745,7 +745,7 @@ public abstract class TableOperatorGenerator<C extends ITableOperatorGeneratorCo
     for (PlanNode child : node.getChildren()) {
       children.add(this.process(child, context));
     }
-    List<TSDataType> dataTypes = getOutputColumnTypes(node, context.getTypeProvider());
+    List<TSDataType> dataTypes = getOutputColumnTypes(node, context.getTableTypeProvider());
     int sortItemsCount = node.getOrderingScheme().getOrderBy().size();
 
     List<Integer> sortItemIndexList = new ArrayList<>(sortItemsCount);
@@ -755,7 +755,7 @@ public abstract class TableOperatorGenerator<C extends ITableOperatorGeneratorCo
         node.getOrderingScheme(),
         sortItemIndexList,
         sortItemDataTypeList,
-        context.getTypeProvider());
+        context.getTableTypeProvider());
 
     return new TableMergeSortOperator(
         operatorContext,
@@ -769,7 +769,7 @@ public abstract class TableOperatorGenerator<C extends ITableOperatorGeneratorCo
   public Operator visitSort(SortNode node, C context) {
     OperatorContext operatorContext =
         addOperatorContext(context, node.getPlanNodeId(), TableSortOperator.class.getSimpleName());
-    List<TSDataType> dataTypes = getOutputColumnTypes(node, context.getTypeProvider());
+    List<TSDataType> dataTypes = getOutputColumnTypes(node, context.getTableTypeProvider());
     int sortItemsCount = node.getOrderingScheme().getOrderBy().size();
 
     List<Integer> sortItemIndexList = new ArrayList<>(sortItemsCount);
@@ -779,7 +779,7 @@ public abstract class TableOperatorGenerator<C extends ITableOperatorGeneratorCo
         node.getOrderingScheme(),
         sortItemIndexList,
         sortItemDataTypeList,
-        context.getTypeProvider());
+        context.getTableTypeProvider());
 
     Operator child = node.getChild().accept(this, context);
 
@@ -805,7 +805,7 @@ public abstract class TableOperatorGenerator<C extends ITableOperatorGeneratorCo
     for (PlanNode child : node.getChildren()) {
       children.add(this.process(child, context));
     }
-    List<TSDataType> dataTypes = getOutputColumnTypes(node, context.getTypeProvider());
+    List<TSDataType> dataTypes = getOutputColumnTypes(node, context.getTableTypeProvider());
     int sortItemsCount = node.getOrderingScheme().getOrderBy().size();
 
     List<Integer> sortItemIndexList = new ArrayList<>(sortItemsCount);
@@ -815,7 +815,7 @@ public abstract class TableOperatorGenerator<C extends ITableOperatorGeneratorCo
         node.getOrderingScheme(),
         sortItemIndexList,
         sortItemDataTypeList,
-        context.getTypeProvider());
+        context.getTableTypeProvider());
     return new TableTopKOperator(
         operatorContext,
         children,
@@ -826,7 +826,7 @@ public abstract class TableOperatorGenerator<C extends ITableOperatorGeneratorCo
         node.isChildrenDataInOrder());
   }
 
-  protected List<TSDataType> getOutputColumnTypes(PlanNode node, TypeProvider typeProvider) {
+  protected List<TSDataType> getOutputColumnTypes(PlanNode node, ITableTypeProvider typeProvider) {
     return node.getOutputSymbols().stream()
         .map(s -> getTSDataType(typeProvider.getTableModelType(s)))
         .collect(Collectors.toList());
@@ -837,7 +837,7 @@ public abstract class TableOperatorGenerator<C extends ITableOperatorGeneratorCo
       OrderingScheme orderingScheme,
       List<Integer> sortItemIndexList,
       List<TSDataType> sortItemDataTypeList,
-      TypeProvider typeProvider) {
+      ITableTypeProvider typeProvider) {
     Map<Symbol, Integer> columnIndex = new HashMap<>();
     int index = 0;
     for (Symbol symbol : outputSymbols) {
@@ -863,7 +863,7 @@ public abstract class TableOperatorGenerator<C extends ITableOperatorGeneratorCo
     OperatorContext operatorContext =
         addOperatorContext(
             context, node.getPlanNodeId(), TableStreamSortOperator.class.getSimpleName());
-    List<TSDataType> dataTypes = getOutputColumnTypes(node, context.getTypeProvider());
+    List<TSDataType> dataTypes = getOutputColumnTypes(node, context.getTableTypeProvider());
     int sortItemsCount = node.getOrderingScheme().getOrderBy().size();
 
     List<Integer> sortItemIndexList = new ArrayList<>(sortItemsCount);
@@ -873,7 +873,7 @@ public abstract class TableOperatorGenerator<C extends ITableOperatorGeneratorCo
         node.getOrderingScheme(),
         sortItemIndexList,
         sortItemDataTypeList,
-        context.getTypeProvider());
+        context.getTableTypeProvider());
 
     Operator child = node.getChild().accept(this, context);
 
@@ -915,7 +915,7 @@ public abstract class TableOperatorGenerator<C extends ITableOperatorGeneratorCo
 
   @Override
   public Operator visitJoin(JoinNode node, C context) {
-    List<TSDataType> dataTypes = getOutputColumnTypes(node, context.getTypeProvider());
+    List<TSDataType> dataTypes = getOutputColumnTypes(node, context.getTableTypeProvider());
 
     Operator leftChild = node.getLeftChild().accept(this, context);
     Operator rightChild = node.getRightChild().accept(this, context);
@@ -986,10 +986,10 @@ public abstract class TableOperatorGenerator<C extends ITableOperatorGeneratorCo
       rightJoinKeyPositions[i] = rightJoinKeyPosition;
 
       Type leftJoinKeyType =
-          context.getTypeProvider().getTableModelType(node.getCriteria().get(i).getLeft());
+          context.getTableTypeProvider().getTableModelType(node.getCriteria().get(i).getLeft());
       checkIfJoinKeyTypeMatches(
           leftJoinKeyType,
-          context.getTypeProvider().getTableModelType(node.getCriteria().get(i).getRight()));
+          context.getTableTypeProvider().getTableModelType(node.getCriteria().get(i).getRight()));
       joinKeyTypes.add(leftJoinKeyType);
     }
 
@@ -1007,10 +1007,11 @@ public abstract class TableOperatorGenerator<C extends ITableOperatorGeneratorCo
       }
       rightJoinKeyPositions[equiSize] = rightAsofJoinKeyPosition;
 
-      if (context.getTypeProvider().getTableModelType(asofJoinClause.getLeft()) != TIMESTAMP) {
+      if (context.getTableTypeProvider().getTableModelType(asofJoinClause.getLeft()) != TIMESTAMP) {
         throw new IllegalStateException("Type of left ASOF Join key is not TIMESTAMP");
       }
-      if (context.getTypeProvider().getTableModelType(asofJoinClause.getRight()) != TIMESTAMP) {
+      if (context.getTableTypeProvider().getTableModelType(asofJoinClause.getRight())
+          != TIMESTAMP) {
         throw new IllegalStateException("Type of right ASOF Join key is not TIMESTAMP");
       }
 
@@ -1158,7 +1159,7 @@ public abstract class TableOperatorGenerator<C extends ITableOperatorGeneratorCo
 
   @Override
   public Operator visitSemiJoin(SemiJoinNode node, C context) {
-    List<TSDataType> dataTypes = getOutputColumnTypes(node, context.getTypeProvider());
+    List<TSDataType> dataTypes = getOutputColumnTypes(node, context.getTableTypeProvider());
 
     Operator leftChild = node.getLeftChild().accept(this, context);
     Operator rightChild = node.getRightChild().accept(this, context);
@@ -1186,11 +1187,11 @@ public abstract class TableOperatorGenerator<C extends ITableOperatorGeneratorCo
         "FilteringSource of SemiJoinNode doesn't contain filteringSourceJoinSymbol.");
 
     Type sourceJoinKeyType =
-        context.getTypeProvider().getTableModelType(node.getSourceJoinSymbol());
+        context.getTableTypeProvider().getTableModelType(node.getSourceJoinSymbol());
 
     checkIfJoinKeyTypeMatches(
         sourceJoinKeyType,
-        context.getTypeProvider().getTableModelType(node.getFilteringSourceJoinSymbol()));
+        context.getTableTypeProvider().getTableModelType(node.getFilteringSourceJoinSymbol()));
 
     OperatorContext operatorContext =
         addOperatorContext(
@@ -1242,14 +1243,14 @@ public abstract class TableOperatorGenerator<C extends ITableOperatorGeneratorCo
     Operator child = node.getChild().accept(this, context);
 
     if (node.getGroupingKeys().isEmpty()) {
-      return planGlobalAggregation(node, child, context.getTypeProvider(), context);
+      return planGlobalAggregation(node, child, context.getTableTypeProvider(), context);
     }
 
-    return planGroupByAggregation(node, child, context.getTypeProvider(), context);
+    return planGroupByAggregation(node, child, context.getTableTypeProvider(), context);
   }
 
   private Operator planGlobalAggregation(
-      AggregationNode node, Operator child, TypeProvider typeProvider, C context) {
+      AggregationNode node, Operator child, ITableTypeProvider typeProvider, C context) {
     OperatorContext operatorContext =
         addOperatorContext(
             context, node.getPlanNodeId(), AggregationOperator.class.getSimpleName());
@@ -1281,7 +1282,7 @@ public abstract class TableOperatorGenerator<C extends ITableOperatorGeneratorCo
       Symbol symbol,
       AggregationNode.Aggregation aggregation,
       AggregationNode.Step step,
-      TypeProvider typeProvider,
+      ITableTypeProvider typeProvider,
       boolean scanAscending,
       boolean isAggTableScan,
       String timeColumnName,
@@ -1324,7 +1325,7 @@ public abstract class TableOperatorGenerator<C extends ITableOperatorGeneratorCo
   }
 
   protected Operator planGroupByAggregation(
-      AggregationNode node, Operator child, TypeProvider typeProvider, C context) {
+      AggregationNode node, Operator child, ITableTypeProvider typeProvider, C context) {
     Map<Symbol, Integer> childLayout =
         makeLayoutFromOutputSymbols(node.getChild().getOutputSymbols());
 
@@ -1464,7 +1465,7 @@ public abstract class TableOperatorGenerator<C extends ITableOperatorGeneratorCo
       Symbol symbol,
       AggregationNode.Aggregation aggregation,
       AggregationNode.Step step,
-      TypeProvider typeProvider) {
+      ITableTypeProvider typeProvider) {
     List<Integer> argumentChannels = new ArrayList<>();
     for (Expression argument : aggregation.getArguments()) {
       Symbol argumentSymbol = Symbol.from(argument);
@@ -1507,7 +1508,7 @@ public abstract class TableOperatorGenerator<C extends ITableOperatorGeneratorCo
     if (node.getChildren().isEmpty()) {
       List<TSDataType> outputDataTypes =
           node.getOutputSymbols().stream()
-              .map(context.getTypeProvider()::getTableModelType)
+              .map(context.getTableTypeProvider()::getTableModelType)
               .map(InternalTypeManager::getTSDataType)
               .collect(Collectors.toList());
       OperatorContext operatorContext =
@@ -1522,13 +1523,13 @@ public abstract class TableOperatorGenerator<C extends ITableOperatorGeneratorCo
 
       List<TSDataType> inputDataTypes =
           node.getChild().getOutputSymbols().stream()
-              .map(context.getTypeProvider()::getTableModelType)
+              .map(context.getTableTypeProvider()::getTableModelType)
               .map(InternalTypeManager::getTSDataType)
               .collect(Collectors.toList());
 
       List<TSDataType> outputDataTypes =
           node.getOutputSymbols().stream()
-              .map(context.getTypeProvider()::getTableModelType)
+              .map(context.getTableTypeProvider()::getTableModelType)
               .map(InternalTypeManager::getTSDataType)
               .collect(Collectors.toList());
 
@@ -1626,7 +1627,7 @@ public abstract class TableOperatorGenerator<C extends ITableOperatorGeneratorCo
 
     // all output column types of the input table
     List<TSDataType> inputDataTypes =
-        getOutputColumnTypes(node.getChild(), context.getTypeProvider());
+        getOutputColumnTypes(node.getChild(), context.getTableTypeProvider());
 
     // input channels to be passed directly to output, excluding MEASURES columns
     ImmutableList.Builder<Integer> outputChannels = ImmutableList.builder();
@@ -1716,7 +1717,7 @@ public abstract class TableOperatorGenerator<C extends ITableOperatorGeneratorCo
                   getOnlyElement(
                       getChannelsForSymbols(
                           ImmutableList.of(scalarPointer.getInputSymbol()), childLayout)),
-                  context.getTypeProvider().getTableModelType(scalarPointer.getInputSymbol()),
+                  context.getTableTypeProvider().getTableModelType(scalarPointer.getInputSymbol()),
                   scalarPointer.getLogicalIndexPointer().toLogicalIndexNavigation(mapping)));
         } else if (pointer instanceof AggregationValuePointer) {
           AggregationValuePointer aggregationPointer = (AggregationValuePointer) pointer;
@@ -1807,7 +1808,7 @@ public abstract class TableOperatorGenerator<C extends ITableOperatorGeneratorCo
                   getOnlyElement(
                       getChannelsForSymbols(
                           ImmutableList.of(scalarPointer.getInputSymbol()), childLayout)),
-                  context.getTypeProvider().getTableModelType(scalarPointer.getInputSymbol()),
+                  context.getTableTypeProvider().getTableModelType(scalarPointer.getInputSymbol()),
                   scalarPointer.getLogicalIndexPointer().toLogicalIndexNavigation(mapping)));
         } else if (pointer instanceof AggregationValuePointer) {
           AggregationValuePointer aggregationPointer = (AggregationValuePointer) pointer;
@@ -1962,7 +1963,7 @@ public abstract class TableOperatorGenerator<C extends ITableOperatorGeneratorCo
         addOperatorContext(
             context, node.getPlanNodeId(), MarkDistinctOperator.class.getSimpleName());
 
-    TypeProvider typeProvider = context.getTypeProvider();
+    ITableTypeProvider typeProvider = context.getTableTypeProvider();
     Map<Symbol, Integer> childLayout =
         makeLayoutFromOutputSymbols(node.getChild().getOutputSymbols());
 
@@ -1978,7 +1979,7 @@ public abstract class TableOperatorGenerator<C extends ITableOperatorGeneratorCo
 
   @Override
   public Operator visitWindowFunction(WindowNode node, C context) {
-    TypeProvider typeProvider = context.getTypeProvider();
+    ITableTypeProvider typeProvider = context.getTableTypeProvider();
     Operator child = node.getChild().accept(this, context);
     OperatorContext operatorContext =
         addOperatorContext(
@@ -2005,7 +2006,7 @@ public abstract class TableOperatorGenerator<C extends ITableOperatorGeneratorCo
     ImmutableList.Builder<Integer> outputChannels = ImmutableList.builder();
     List<TSDataType> outputDataTypes = new ArrayList<>();
     List<TSDataType> inputDataTypes =
-        getOutputColumnTypes(node.getChild(), context.getTypeProvider());
+        getOutputColumnTypes(node.getChild(), context.getTableTypeProvider());
     for (int i = 0; i < inputDataTypes.size(); i++) {
       outputChannels.add(i);
       outputDataTypes.add(inputDataTypes.get(i));
@@ -2120,7 +2121,7 @@ public abstract class TableOperatorGenerator<C extends ITableOperatorGeneratorCo
   private WindowAggregator buildWindowAggregator(
       Symbol symbol,
       WindowNode.Function function,
-      TypeProvider typeProvider,
+      ITableTypeProvider typeProvider,
       List<Integer> argumentChannels) {
     // Create accumulator first
     String functionName = function.getResolvedFunction().getSignature().getName();
@@ -2185,7 +2186,7 @@ public abstract class TableOperatorGenerator<C extends ITableOperatorGeneratorCo
         makeLayoutFromOutputSymbols(node.getChild().getOutputSymbols());
     List<Integer> partitionChannels = getChannelsForSymbols(partitionBySymbols, childLayout);
     List<TSDataType> inputDataTypes =
-        getOutputColumnTypes(node.getChild(), context.getTypeProvider());
+        getOutputColumnTypes(node.getChild(), context.getTableTypeProvider());
 
     ImmutableList.Builder<Integer> outputChannels = ImmutableList.builder();
     for (int i = 0; i < inputDataTypes.size(); i++) {
@@ -2222,7 +2223,7 @@ public abstract class TableOperatorGenerator<C extends ITableOperatorGeneratorCo
         makeLayoutFromOutputSymbols(node.getChild().getOutputSymbols());
     List<Integer> partitionChannels = getChannelsForSymbols(partitionBySymbols, childLayout);
     List<TSDataType> inputDataTypes =
-        getOutputColumnTypes(node.getChild(), context.getTypeProvider());
+        getOutputColumnTypes(node.getChild(), context.getTableTypeProvider());
     List<TSDataType> partitionTypes =
         partitionChannels.stream().map(inputDataTypes::get).collect(toImmutableList());
 

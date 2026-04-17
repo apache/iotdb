@@ -17,14 +17,20 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.calc_commons.plan.planner;
+package org.apache.iotdb.db.node_commons.plan.analyze;
 
-import org.apache.iotdb.db.node_commons.plan.analyze.ITableTypeProvider;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.Symbol;
 
-import java.time.ZoneId;
+import org.apache.tsfile.read.common.type.Type;
 
-public interface ITableOperatorGeneratorContext {
-  ITableTypeProvider getTableTypeProvider();
+import java.util.Map;
 
-  ZoneId getZoneId();
+public interface ITableTypeProvider {
+  Type getTableModelType(Symbol symbol);
+
+  boolean isSymbolExist(Symbol symbol);
+
+  void putTableModelType(Symbol symbol, Type type);
+
+  Map<Symbol, Type> allTableModelTypes();
 }

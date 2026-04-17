@@ -37,13 +37,14 @@ import org.apache.iotdb.db.node_commons.plan.relational.planner.node.UnionNode;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.ValueFillNode;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.ValuesNode;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.WindowNode;
-import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
 public class CommonPlanNodeDeserializer implements IPlanNodeDeserializer {
+  public static final CommonPlanNodeDeserializer INSTANCE = new CommonPlanNodeDeserializer();
+
   @Override
   public PlanNode deserializeFromWAL(DataInputStream stream) throws IOException {
     throw new UnsupportedOperationException("Not supported for CommonPlanNodeDeserializer");
@@ -136,10 +137,5 @@ public class CommonPlanNodeDeserializer implements IPlanNodeDeserializer {
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
     }
-  }
-
-  @Override
-  public PlanNode deserializeWithTemplate(ByteBuffer buffer, TypeProvider typeProvider) {
-    throw new UnsupportedOperationException("Not supported for CommonPlanNodeDeserializer");
   }
 }

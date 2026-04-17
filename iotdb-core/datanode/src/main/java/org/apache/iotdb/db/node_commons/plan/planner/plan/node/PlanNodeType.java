@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.node_commons.plan.planner.plan.node;
 
-import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
-
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataInputStream;
@@ -208,14 +206,19 @@ public enum PlanNodeType {
   OBJECT_FILE_NODE((short) 2004),
   ;
 
-  private static IPlanNodeDeserializer deserializer;
+  private static final IPlanNodeDeserializer DESERIALIZER;
 
   static {
-    ServiceLoader<IPlanNodeDeserializer> loader = ServiceLoader.load(IPlanNodeDeserializer.class);
-    for (IPlanNodeDeserializer element : loader) {
-      deserializer = element;
+    IPlanNodeDeserializer deserializer = null;
+    ServiceLoader<IPlanNodeDeserializerProvider> loader =
+        ServiceLoader.load(IPlanNodeDeserializerProvider.class);
+    for (IPlanNodeDeserializerProvider provider : loader) {
+      if (deserializer != null) {
+        throw new IllegalStateException("Multiple IPlanNodeDeserializerProvider found");
+      }
+      deserializer = provider.getDeserializer();
     }
-    deserializer = deserializer == null ? new CommonPlanNodeDeserializer() : deserializer;
+    DESERIALIZER = deserializer == null ? CommonPlanNodeDeserializer.INSTANCE : deserializer;
   }
 
   public static final int BYTES = Short.BYTES;
@@ -239,22 +242,18 @@ public enum PlanNodeType {
   }
 
   public static PlanNode deserializeFromWAL(DataInputStream stream) throws IOException {
-    return deserializer.deserializeFromWAL(stream);
+    return DESERIALIZER.deserializeFromWAL(stream);
   }
 
   public static PlanNode deserializeFromWAL(ByteBuffer buffer) {
-    return deserializer.deserializeFromWAL(buffer);
+    return DESERIALIZER.deserializeFromWAL(buffer);
   }
 
   public static PlanNode deserialize(ByteBuffer buffer) {
-    return deserializer.deserialize(buffer);
+    return DESERIALIZER.deserialize(buffer);
   }
 
   public static PlanNode deserialize(ByteBuffer buffer, short nodeType) {
-    return deserializer.deserialize(buffer, nodeType);
-  }
-
-  public static PlanNode deserializeWithTemplate(ByteBuffer buffer, TypeProvider typeProvider) {
-    return deserializer.deserializeWithTemplate(buffer, typeProvider);
+    return DESERIALIZER.deserialize(buffer, nodeType);
   }
 }

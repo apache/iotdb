@@ -12,18 +12,14 @@
  * limitations under the License.
  */
 
-package org.apache.iotdb.db.node_commons.plan.planner.plan.node;
+package org.apache.iotdb.db.queryengine.plan.planner.plan.node;
 
-import java.io.DataInputStream;
-import java.io.IOException;
-import java.nio.ByteBuffer;
+import org.apache.iotdb.db.node_commons.plan.planner.plan.node.IPlanNodeDeserializer;
+import org.apache.iotdb.db.node_commons.plan.planner.plan.node.IPlanNodeDeserializerProvider;
 
-public interface IPlanNodeDeserializer {
-  PlanNode deserializeFromWAL(DataInputStream stream) throws IOException;
-
-  PlanNode deserializeFromWAL(ByteBuffer buffer);
-
-  PlanNode deserialize(ByteBuffer buffer);
-
-  PlanNode deserialize(ByteBuffer buffer, short nodeType);
+public class DataNodePlanNodeDeserializerProvider implements IPlanNodeDeserializerProvider {
+  @Override
+  public IPlanNodeDeserializer getDeserializer() {
+    return DataNodePlanNodeDeserializer.INSTANCE;
+  }
 }

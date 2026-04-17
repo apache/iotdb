@@ -140,6 +140,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 
 public class DataNodePlanNodeDeserializer extends CommonPlanNodeDeserializer {
+  public static final DataNodePlanNodeDeserializer INSTANCE = new DataNodePlanNodeDeserializer();
 
   @Override
   public PlanNode deserializeFromWAL(DataInputStream stream) throws IOException {
@@ -474,7 +475,6 @@ public class DataNodePlanNodeDeserializer extends CommonPlanNodeDeserializer {
     }
   }
 
-  @Override
   public PlanNode deserializeWithTemplate(ByteBuffer buffer, TypeProvider typeProvider) {
     short nodeType = buffer.getShort();
     switch (nodeType) {
