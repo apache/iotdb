@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.expression;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.calc_commons.transformation.dag.udf.UDTFExecutor;
 import org.apache.iotdb.db.node_commons.common.NodeRef;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.AdditionExpression;
@@ -53,7 +54,6 @@ import org.apache.iotdb.db.queryengine.plan.expression.unary.RegularExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.ExpressionVisitor;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementNode;
 import org.apache.iotdb.db.queryengine.transformation.dag.memory.LayerMemoryAssigner;
-import org.apache.iotdb.db.queryengine.transformation.dag.udf.UDTFExecutor;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Accountable;

@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.calc_commons.execution.operator;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.node_commons.common.SessionInfo;
 import org.apache.iotdb.db.node_commons.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNodeId;
@@ -46,7 +46,7 @@ public class OperatorContext implements Accountable {
 
   private static Duration maxRunTime =
       new Duration(
-          IoTDBDescriptor.getInstance().getConfig().getDriverTaskExecutionTimeSliceInMs(),
+          CommonDescriptor.getInstance().getConfig().getDriverTaskExecutionTimeSliceInMs(),
           TimeUnit.MILLISECONDS);
 
   private static final long INSTANCE_SIZE =

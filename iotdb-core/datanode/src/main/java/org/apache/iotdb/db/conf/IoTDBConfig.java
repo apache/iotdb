@@ -441,9 +441,6 @@ public class IoTDBConfig {
   /** Enable auto repair compaction */
   private volatile boolean enableAutoRepairCompaction = true;
 
-  /** The buffer for sort operation */
-  private long sortBufferSize = 32 * 1024 * 1024L;
-
   /** The buffer for cte scan operation */
   private long cteBufferSize = 128 * 1024L;
 
@@ -814,12 +811,6 @@ public class IoTDBConfig {
   private boolean enable13DataInsertAdapt = false;
 
   /**
-   * Used to estimate the memory usage of text fields in a UDF query. It is recommended to set this
-   * value to be slightly larger than the average length of all text records.
-   */
-  private int udfInitialByteArrayLengthForMemoryControl = 48;
-
-  /**
    * How much memory may be used in ONE UDF query (in MB).
    *
    * <p>The upper limit is 20% of allocated memory for read.
@@ -1030,9 +1021,6 @@ public class IoTDBConfig {
   private int schemaThreadCount = 5;
 
   private ReadConsistencyLevel readConsistencyLevel = ReadConsistencyLevel.STRONG;
-
-  /** Maximum execution time of a DriverTask */
-  private int driverTaskExecutionTimeSliceInMs = 200;
 
   /** Maximum size of wal buffer used in IoTConsensus. Unit: byte */
   private long throttleThreshold = 200 * 1024 * 1024 * 1024L;
@@ -1342,15 +1330,6 @@ public class IoTDBConfig {
 
   public void setUdfCollectorMemoryBudgetInMB(float udfCollectorMemoryBudgetInMB) {
     this.udfCollectorMemoryBudgetInMB = udfCollectorMemoryBudgetInMB;
-  }
-
-  public int getUdfInitialByteArrayLengthForMemoryControl() {
-    return udfInitialByteArrayLengthForMemoryControl;
-  }
-
-  public void setUdfInitialByteArrayLengthForMemoryControl(
-      int udfInitialByteArrayLengthForMemoryControl) {
-    this.udfInitialByteArrayLengthForMemoryControl = udfInitialByteArrayLengthForMemoryControl;
   }
 
   public int getDefaultFillInterval() {
@@ -3483,14 +3462,6 @@ public class IoTDBConfig {
     }
   }
 
-  public int getDriverTaskExecutionTimeSliceInMs() {
-    return driverTaskExecutionTimeSliceInMs;
-  }
-
-  public void setDriverTaskExecutionTimeSliceInMs(int driverTaskExecutionTimeSliceInMs) {
-    this.driverTaskExecutionTimeSliceInMs = driverTaskExecutionTimeSliceInMs;
-  }
-
   public static String getEnvironmentVariables() {
     return "\n\t"
         + IoTDBConstant.IOTDB_HOME
@@ -4253,14 +4224,6 @@ public class IoTDBConfig {
 
   public void setRateLimiterType(String rateLimiterType) {
     RateLimiterType = rateLimiterType;
-  }
-
-  public void setSortBufferSize(long sortBufferSize) {
-    this.sortBufferSize = sortBufferSize;
-  }
-
-  public long getSortBufferSize() {
-    return sortBufferSize;
   }
 
   public void setCteBufferSize(long cteBufferSize) {

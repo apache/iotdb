@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.udf;
+package org.apache.iotdb.db.calc_commons.plan.udf;
 
 import org.apache.iotdb.commons.udf.builtin.String.UDTFConcat;
 import org.apache.iotdb.commons.udf.builtin.String.UDTFEndsWith;

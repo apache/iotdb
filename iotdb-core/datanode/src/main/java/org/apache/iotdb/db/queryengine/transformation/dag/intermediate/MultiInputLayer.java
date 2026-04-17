@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.intermediate;
 
+import org.apache.iotdb.db.calc_commons.transformation.datastructure.iterator.RowListForwardIterator;
+import org.apache.iotdb.db.calc_commons.transformation.datastructure.row.ElasticSerializableRowList;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
@@ -28,8 +30,6 @@ import org.apache.iotdb.db.queryengine.transformation.dag.adapter.ElasticSeriali
 import org.apache.iotdb.db.queryengine.transformation.dag.input.IUDFInputDataSet;
 import org.apache.iotdb.db.queryengine.transformation.dag.util.LayerCacheUtils;
 import org.apache.iotdb.db.queryengine.transformation.datastructure.TVColumns;
-import org.apache.iotdb.db.queryengine.transformation.datastructure.iterator.RowListForwardIterator;
-import org.apache.iotdb.db.queryengine.transformation.datastructure.row.ElasticSerializableRowList;
 import org.apache.iotdb.db.utils.datastructure.TimeSelector;
 import org.apache.iotdb.udf.api.access.RowWindow;
 import org.apache.iotdb.udf.api.customizer.strategy.SessionTimeWindowAccessStrategy;

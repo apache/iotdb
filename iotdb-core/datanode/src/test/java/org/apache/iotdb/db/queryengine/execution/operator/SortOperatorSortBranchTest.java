@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.execution.operator;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.calc_commons.execution.operator.Operator;
 import org.apache.iotdb.db.calc_commons.execution.operator.OperatorContext;
@@ -75,10 +76,10 @@ public class SortOperatorSortBranchTest {
   public void setUp() throws MetadataException, IOException, WriteProcessException {
     dataNodeId = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
     maxTsBlockSizeInBytes = TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
-    sortBufferSize = IoTDBDescriptor.getInstance().getConfig().getSortBufferSize();
+    sortBufferSize = CommonDescriptor.getInstance().getConfig().getSortBufferSize();
     IoTDBDescriptor.getInstance().getConfig().setDataNodeId(0);
     TSFileDescriptor.getInstance().getConfig().setMaxTsBlockSizeInBytes(15);
-    IoTDBDescriptor.getInstance().getConfig().setSortBufferSize(150);
+    CommonDescriptor.getInstance().getConfig().setSortBufferSize(150);
   }
 
   @After
@@ -86,7 +87,7 @@ public class SortOperatorSortBranchTest {
     cleanDir(sortDir);
     IoTDBDescriptor.getInstance().getConfig().setDataNodeId(dataNodeId);
     TSFileDescriptor.getInstance().getConfig().setMaxTsBlockSizeInBytes(maxTsBlockSizeInBytes);
-    IoTDBDescriptor.getInstance().getConfig().setSortBufferSize(sortBufferSize);
+    CommonDescriptor.getInstance().getConfig().setSortBufferSize(sortBufferSize);
   }
 
   private SortOperator genSortOperator() {

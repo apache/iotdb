@@ -21,6 +21,8 @@ package org.apache.iotdb.db.queryengine.execution.fragment;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.audit.UserEntity;
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.path.AlignedFullPath;
@@ -91,6 +93,7 @@ public class FragmentInstanceContext extends QueryContext {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(FragmentInstanceContext.class);
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
+  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
   private static final long END_TIME_INITIAL_VALUE = -1L;
   // wait over 5s for driver to close is abnormal
   private static final long LONG_WAIT_DURATION = 5_000_000_000L;
@@ -641,7 +644,7 @@ public class FragmentInstanceContext extends QueryContext {
       }
     }
 
-    long waitForLockTime = CONFIG.getDriverTaskExecutionTimeSliceInMs();
+    long waitForLockTime = COMMON_CONFIG.getDriverTaskExecutionTimeSliceInMs();
     long startAcquireLockTime = System.nanoTime();
     if (dataRegion.tryReadLock(waitForLockTime)) {
       try {
@@ -694,7 +697,7 @@ public class FragmentInstanceContext extends QueryContext {
       return true;
     }
 
-    long waitForLockTime = CONFIG.getDriverTaskExecutionTimeSliceInMs();
+    long waitForLockTime = COMMON_CONFIG.getDriverTaskExecutionTimeSliceInMs();
     if (dataRegion.tryReadLock(waitForLockTime)) {
       try {
         // minus already consumed time
@@ -736,7 +739,7 @@ public class FragmentInstanceContext extends QueryContext {
     if (pathList == null) {
       return true;
     }
-    long waitForLockTime = CONFIG.getDriverTaskExecutionTimeSliceInMs();
+    long waitForLockTime = COMMON_CONFIG.getDriverTaskExecutionTimeSliceInMs();
     if (dataRegion.tryReadLock(waitForLockTime)) {
       // minus already consumed time
       waitForLockTime -= (System.nanoTime() - startTime) / 1_000_000;

@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.execution.operator;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.db.calc_commons.execution.operator.Operator;
@@ -237,8 +238,8 @@ public class TreeSortOperatorTest {
   // with data spilling
   @Test
   public void sortOperatorSpillingTest() throws Exception {
-    IoTDBDescriptor.getInstance().getConfig().setSortBufferSize(5000);
-    long sortBufferSize = IoTDBDescriptor.getInstance().getConfig().getSortBufferSize();
+    CommonDescriptor.getInstance().getConfig().setSortBufferSize(5000);
+    long sortBufferSize = CommonDescriptor.getInstance().getConfig().getSortBufferSize();
     try (TreeSortOperator root = (TreeSortOperator) genSortOperator(Ordering.ASC, true)) {
       int lastValue = -1;
       int count = 0;
@@ -258,7 +259,7 @@ public class TreeSortOperatorTest {
       }
       assertEquals(500, count);
     } finally {
-      IoTDBDescriptor.getInstance().getConfig().setSortBufferSize(sortBufferSize);
+      CommonDescriptor.getInstance().getConfig().setSortBufferSize(sortBufferSize);
     }
   }
 

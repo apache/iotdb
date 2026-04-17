@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.transformation.dag.adapter;
+package org.apache.iotdb.db.calc_commons.transformation.dag.adapter;
 
 import org.apache.iotdb.commons.udf.utils.UDFBinaryTransformer;
 import org.apache.iotdb.udf.api.collector.PointCollector;

@@ -19,10 +19,10 @@
 
 package org.apache.iotdb.db.calc_commons.execution.operator.process;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.db.calc_commons.execution.operator.Operator;
 import org.apache.iotdb.db.calc_commons.execution.operator.OperatorContext;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.utils.datastructure.MergeSortHeap;
 import org.apache.iotdb.db.utils.datastructure.MergeSortKey;
 import org.apache.iotdb.db.utils.datastructure.SortKey;
@@ -95,7 +95,7 @@ public abstract class AbstractSortOperator implements ProcessOperator {
     this.sortBufferManager =
         new SortBufferManager(
             TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes(),
-            IoTDBDescriptor.getInstance().getConfig().getSortBufferSize());
+            CommonDescriptor.getInstance().getConfig().getSortBufferSize());
   }
 
   protected void buildResult() throws IoTDBException {

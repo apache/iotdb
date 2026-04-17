@@ -22,6 +22,7 @@ package org.apache.iotdb.db.calc_commons.execution.operator.process.window;
 import org.apache.iotdb.db.calc_commons.execution.operator.Operator;
 import org.apache.iotdb.db.calc_commons.execution.operator.OperatorContext;
 import org.apache.iotdb.db.calc_commons.execution.operator.process.ProcessOperator;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.function.PartitionRecognizer;
 import org.apache.iotdb.db.calc_commons.execution.operator.process.function.partition.PartitionCache;
 import org.apache.iotdb.db.calc_commons.execution.operator.process.function.partition.PartitionState;
 import org.apache.iotdb.db.calc_commons.execution.operator.process.function.partition.Slice;
@@ -32,7 +33,6 @@ import org.apache.iotdb.db.calc_commons.execution.operator.process.window.partit
 import org.apache.iotdb.db.calc_commons.plan.planner.CommonOperatorUtils;
 import org.apache.iotdb.db.calc_commons.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.db.node_commons.execution.MemoryEstimationHelper;
-import org.apache.iotdb.db.queryengine.execution.operator.process.function.PartitionRecognizer;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.ListenableFuture;

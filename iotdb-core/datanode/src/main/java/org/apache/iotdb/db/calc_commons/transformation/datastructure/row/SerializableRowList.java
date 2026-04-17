@@ -17,10 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.transformation.datastructure.row;
+package org.apache.iotdb.db.calc_commons.transformation.datastructure.row;
 
+import org.apache.iotdb.db.calc_commons.transformation.datastructure.SerializableList;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.queryengine.transformation.datastructure.SerializableList;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.enums.TSDataType;
@@ -36,8 +36,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MB;
-import static org.apache.iotdb.db.queryengine.transformation.datastructure.util.BinaryUtils.MIN_ARRAY_HEADER_SIZE;
-import static org.apache.iotdb.db.queryengine.transformation.datastructure.util.BinaryUtils.MIN_OBJECT_HEADER_SIZE;
+import static org.apache.iotdb.db.calc_commons.transformation.datastructure.util.BinaryUtils.MIN_ARRAY_HEADER_SIZE;
+import static org.apache.iotdb.db.calc_commons.transformation.datastructure.util.BinaryUtils.MIN_OBJECT_HEADER_SIZE;
 
 public class SerializableRowList implements SerializableList {
   private final SerializationRecorder serializationRecorder;

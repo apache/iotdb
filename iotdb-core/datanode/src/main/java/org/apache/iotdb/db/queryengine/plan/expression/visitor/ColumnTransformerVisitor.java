@@ -49,6 +49,7 @@ import org.apache.iotdb.db.calc_commons.transformation.dag.column.unary.IsNullCo
 import org.apache.iotdb.db.calc_commons.transformation.dag.column.unary.LikeColumnTransformer;
 import org.apache.iotdb.db.calc_commons.transformation.dag.column.unary.LogicNotColumnTransformer;
 import org.apache.iotdb.db.calc_commons.transformation.dag.column.unary.RegularColumnTransformer;
+import org.apache.iotdb.db.calc_commons.transformation.dag.udf.UDTFExecutor;
 import org.apache.iotdb.db.node_commons.common.NodeRef;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
@@ -70,7 +71,6 @@ import org.apache.iotdb.db.queryengine.plan.expression.unary.LikeExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.RegularExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.UnaryExpression;
 import org.apache.iotdb.db.queryengine.transformation.dag.udf.UDTFContext;
-import org.apache.iotdb.db.queryengine.transformation.dag.udf.UDTFExecutor;
 import org.apache.iotdb.db.queryengine.transformation.dag.util.TransformUtils;
 
 import org.apache.tsfile.common.regexp.LikePattern;

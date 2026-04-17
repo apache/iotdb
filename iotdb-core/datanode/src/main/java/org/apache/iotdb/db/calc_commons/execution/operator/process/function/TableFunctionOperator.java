@@ -28,7 +28,6 @@ import org.apache.iotdb.db.calc_commons.execution.operator.process.function.part
 import org.apache.iotdb.db.calc_commons.execution.operator.process.function.partition.Slice;
 import org.apache.iotdb.db.calc_commons.plan.planner.CommonOperatorUtils;
 import org.apache.iotdb.db.node_commons.execution.MemoryEstimationHelper;
-import org.apache.iotdb.db.queryengine.execution.operator.process.function.PartitionRecognizer;
 import org.apache.iotdb.udf.api.relational.access.Record;
 import org.apache.iotdb.udf.api.relational.table.TableFunctionProcessorProvider;
 import org.apache.iotdb.udf.api.relational.table.processor.TableFunctionDataProcessor;

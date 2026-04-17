@@ -20,8 +20,8 @@
 package org.apache.iotdb.db.queryengine.transformation.dag.transformer.multi;
 
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
+import org.apache.iotdb.db.calc_commons.transformation.dag.udf.UDTFExecutor;
 import org.apache.iotdb.db.queryengine.transformation.dag.transformer.Transformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.udf.UDTFExecutor;
 import org.apache.iotdb.db.queryengine.transformation.dag.util.TypeUtils;
 
 import org.apache.tsfile.block.column.ColumnBuilder;

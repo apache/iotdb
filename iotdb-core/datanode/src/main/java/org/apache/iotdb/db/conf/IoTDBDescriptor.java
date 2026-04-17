@@ -101,6 +101,7 @@ public class IoTDBDescriptor {
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBDescriptor.class);
 
   private static final CommonDescriptor commonDescriptor = CommonDescriptor.getInstance();
+  private static final CommonConfig commonConfig = commonDescriptor.getConfig();
 
   private static final IoTDBConfig conf = new IoTDBConfig();
   private static final DataNodeMemoryConfig memoryConfig = new DataNodeMemoryConfig();
@@ -1050,7 +1051,12 @@ public class IoTDBDescriptor {
             properties.getProperty("quota_enable", String.valueOf(conf.isQuotaEnable()))));
 
     // The buffer for sort operator to calculate
-    loadFixedSizeLimitForQuery(properties, "sort_buffer_size_in_bytes", conf::setSortBufferSize);
+    loadFixedSizeLimitForQuery(
+        properties,
+        "sort_buffer_size_in_bytes",
+        (v) -> {
+          commonDescriptor.getConfig().setSortBufferSize(v);
+        });
 
     // The buffer for cte materialization.
     long cteBufferSizeInBytes =
@@ -2246,7 +2252,10 @@ public class IoTDBDescriptor {
                   ConfigurationFileUtils.getConfigurationDefaultValue("tvlist_sort_threshold"))));
 
       // sort_buffer_size_in_bytes
-      loadFixedSizeLimitForQuery(properties, "sort_buffer_size_in_bytes", conf::setSortBufferSize);
+      loadFixedSizeLimitForQuery(
+          properties,
+          "sort_buffer_size_in_bytes",
+          v -> commonDescriptor.getConfig().setSortBufferSize(v));
 
       loadFixedSizeLimitForQuery(
           properties, "mods_cache_size_limit_per_fi_in_bytes", conf::setModsCacheSizeLimitPerFI);
@@ -2610,8 +2619,10 @@ public class IoTDBDescriptor {
     String initialByteArrayLengthForMemoryControl =
         properties.getProperty("udf_initial_byte_array_length_for_memory_control");
     if (initialByteArrayLengthForMemoryControl != null) {
-      conf.setUdfInitialByteArrayLengthForMemoryControl(
-          Integer.parseInt(initialByteArrayLengthForMemoryControl.trim()));
+      commonDescriptor
+          .getConfig()
+          .setUdfInitialByteArrayLengthForMemoryControl(
+              Integer.parseInt(initialByteArrayLengthForMemoryControl.trim()));
     }
 
     conf.setUdfDir(properties.getProperty("udf_lib_dir", conf.getUdfDir()));
@@ -2820,11 +2831,11 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "partition_cache_size", Integer.toString(conf.getPartitionCacheSize()))));
 
-    conf.setDriverTaskExecutionTimeSliceInMs(
+    commonConfig.setDriverTaskExecutionTimeSliceInMs(
         Integer.parseInt(
             properties.getProperty(
                 "driver_task_execution_time_slice_in_ms",
-                Integer.toString(conf.getDriverTaskExecutionTimeSliceInMs()))));
+                Integer.toString(commonConfig.getDriverTaskExecutionTimeSliceInMs()))));
   }
 
   /** Get default encode algorithm by data type */

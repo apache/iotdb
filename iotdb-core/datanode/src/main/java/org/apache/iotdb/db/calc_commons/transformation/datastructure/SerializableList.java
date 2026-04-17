@@ -17,10 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.transformation.datastructure;
+package org.apache.iotdb.db.calc_commons.transformation.datastructure;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.file.SystemFileFactory;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.TemporaryQueryDataFileService;
 
 import org.apache.tsfile.utils.PublicBAOS;
@@ -33,7 +33,7 @@ import java.nio.channels.FileChannel;
 public interface SerializableList {
 
   int INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL =
-      IoTDBDescriptor.getInstance().getConfig().getUdfInitialByteArrayLengthForMemoryControl();
+      CommonDescriptor.getInstance().getConfig().getUdfInitialByteArrayLengthForMemoryControl();
 
   default void serialize() throws IOException {
     SerializationRecorder recorder = getSerializationRecorder();

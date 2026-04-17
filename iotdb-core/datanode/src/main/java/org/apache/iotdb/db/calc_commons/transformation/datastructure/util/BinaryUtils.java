@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.transformation.datastructure.util;
+package org.apache.iotdb.db.calc_commons.transformation.datastructure.util;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.utils.ReadWriteIOUtils;

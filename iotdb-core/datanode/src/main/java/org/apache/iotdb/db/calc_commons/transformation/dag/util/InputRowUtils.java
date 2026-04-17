@@ -17,9 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.transformation.dag.util;
-
-import org.apache.iotdb.db.queryengine.transformation.dag.input.IUDFInputDataSet;
+package org.apache.iotdb.db.calc_commons.transformation.dag.util;
 
 public class InputRowUtils {
 
@@ -31,7 +29,8 @@ public class InputRowUtils {
    * this method checks whether the row returned by IUDFInputDataSet.nextRowInObjects() has all null
    * fields except the timestamp
    *
-   * @param row the returned row by calling {@link IUDFInputDataSet#nextRowInObjects()}
+   * @param row the returned row by calling {@link
+   *     org.apache.iotdb.db.queryengine.transformation.dag.input.IUDFInputDataSet#nextRowInObjects()}
    * @return true if all row fields are null.
    */
   public static boolean isAllNull(Object[] row) {
@@ -50,7 +49,8 @@ public class InputRowUtils {
    * this method checks whether the row returned by IUDFInputDataSet.nextRowInObjects() has any null
    * fields except the timestamp
    *
-   * @param row the returned row by calling {@link IUDFInputDataSet#nextRowInObjects()}
+   * @param row the returned row by calling {@link
+   *     org.apache.iotdb.db.queryengine.transformation.dag.input.IUDFInputDataSet#nextRowInObjects()}
    * @return true if any row field is null.
    */
   public static boolean hasNullField(Object[] row) {

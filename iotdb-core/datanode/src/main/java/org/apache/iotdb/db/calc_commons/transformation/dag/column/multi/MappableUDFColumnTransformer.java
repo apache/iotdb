@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.calc_commons.transformation.dag.column.multi;
 
 import org.apache.iotdb.db.calc_commons.transformation.dag.column.ColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.udf.UDTFExecutor;
+import org.apache.iotdb.db.calc_commons.transformation.dag.udf.UDTFExecutor;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;

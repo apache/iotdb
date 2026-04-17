@@ -19,11 +19,11 @@
 package org.apache.iotdb.db.queryengine.execution;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.db.calc_commons.execution.operator.process.LimitOperator;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.parameter.InputLocation;
@@ -91,12 +91,12 @@ public class DataDriverTest {
 
   private static final Duration EXECUTION_TIME_SLICE =
       new Duration(
-          IoTDBDescriptor.getInstance().getConfig().getDriverTaskExecutionTimeSliceInMs(),
+          CommonDescriptor.getInstance().getConfig().getDriverTaskExecutionTimeSliceInMs(),
           TimeUnit.MILLISECONDS);
 
   @Before
   public void setUp() throws MetadataException, IOException, WriteProcessException {
-    IoTDBDescriptor.getInstance().getConfig().setDriverTaskExecutionTimeSliceInMs(10000);
+    CommonDescriptor.getInstance().getConfig().setDriverTaskExecutionTimeSliceInMs(10000);
     SeriesReaderTestUtil.setUp(
         measurementSchemas, deviceIds, seqResources, unSeqResources, DATA_DRIVER_TEST_SG);
   }

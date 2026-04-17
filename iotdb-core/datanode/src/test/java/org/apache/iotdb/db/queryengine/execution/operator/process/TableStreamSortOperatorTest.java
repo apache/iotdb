@@ -20,11 +20,11 @@
 package org.apache.iotdb.db.queryengine.execution.operator.process;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.db.calc_commons.execution.operator.Operator;
 import org.apache.iotdb.db.calc_commons.execution.operator.OperatorContext;
 import org.apache.iotdb.db.calc_commons.execution.operator.process.TableStreamSortOperator;
 import org.apache.iotdb.db.calc_commons.plan.planner.CommonOperatorUtils;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.SortOrder;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
@@ -241,10 +241,10 @@ public class TableStreamSortOperatorTest {
   @Test
   public void someInDiskTest() {
 
-    long sortBufferSize = IoTDBDescriptor.getInstance().getConfig().getSortBufferSize();
+    long sortBufferSize = CommonDescriptor.getInstance().getConfig().getSortBufferSize();
     int maxTsBlockSizeInBytes =
         TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
-    IoTDBDescriptor.getInstance().getConfig().setSortBufferSize(510);
+    CommonDescriptor.getInstance().getConfig().setSortBufferSize(510);
     TSFileDescriptor.getInstance().getConfig().setMaxTsBlockSizeInBytes(50);
     try (TableStreamSortOperator tableStreamSortOperator = genStreamSortOperator(1000)) {
       int count = 0;
@@ -282,18 +282,18 @@ public class TableStreamSortOperatorTest {
       e.printStackTrace();
       fail(e.getMessage());
     } finally {
-      IoTDBDescriptor.getInstance().getConfig().setSortBufferSize(sortBufferSize);
+      CommonDescriptor.getInstance().getConfig().setSortBufferSize(sortBufferSize);
       TSFileDescriptor.getInstance().getConfig().setMaxTsBlockSizeInBytes(maxTsBlockSizeInBytes);
     }
   }
 
   @Test
   public void someInDiskTest2() {
-    long sortBufferSize = IoTDBDescriptor.getInstance().getConfig().getSortBufferSize();
+    long sortBufferSize = CommonDescriptor.getInstance().getConfig().getSortBufferSize();
     int maxTsBlockSizeInBytes =
         TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
     int maxTsBlockLineNumber = TSFileDescriptor.getInstance().getConfig().getMaxTsBlockLineNumber();
-    IoTDBDescriptor.getInstance().getConfig().setSortBufferSize(1000);
+    CommonDescriptor.getInstance().getConfig().setSortBufferSize(1000);
     TSFileDescriptor.getInstance().getConfig().setMaxTsBlockSizeInBytes(100);
     TSFileDescriptor.getInstance().getConfig().setMaxTsBlockLineNumber(2);
     try (TableStreamSortOperator tableStreamSortOperator = genStreamSortOperator(2)) {
@@ -333,7 +333,7 @@ public class TableStreamSortOperatorTest {
       e.printStackTrace();
       fail(e.getMessage());
     } finally {
-      IoTDBDescriptor.getInstance().getConfig().setSortBufferSize(sortBufferSize);
+      CommonDescriptor.getInstance().getConfig().setSortBufferSize(sortBufferSize);
       TSFileDescriptor.getInstance().getConfig().setMaxTsBlockSizeInBytes(maxTsBlockSizeInBytes);
       TSFileDescriptor.getInstance().getConfig().setMaxTsBlockLineNumber(maxTsBlockLineNumber);
     }

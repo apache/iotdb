@@ -20,6 +20,7 @@ package org.apache.iotdb.db.queryengine.execution.operator;
 
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.commons.path.IFullPath;
@@ -37,7 +38,6 @@ import org.apache.iotdb.db.calc_commons.transformation.dag.column.binary.Arithme
 import org.apache.iotdb.db.calc_commons.transformation.dag.column.binary.CompareLessEqualColumnTransformer;
 import org.apache.iotdb.db.calc_commons.transformation.dag.column.leaf.ConstantColumnTransformer;
 import org.apache.iotdb.db.calc_commons.transformation.dag.column.leaf.TimeColumnTransformer;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
@@ -530,13 +530,13 @@ public class OperatorMemoryTest {
             null);
 
     assertEquals(
-        2048 + 512 + IoTDBDescriptor.getInstance().getConfig().getSortBufferSize(),
+        2048 + 512 + CommonDescriptor.getInstance().getConfig().getSortBufferSize(),
         treeSortOperator.calculateMaxPeekMemory());
     assertEquals(
         TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes(),
         treeSortOperator.calculateMaxReturnSize());
     assertEquals(
-        512 + IoTDBDescriptor.getInstance().getConfig().getSortBufferSize(),
+        512 + CommonDescriptor.getInstance().getConfig().getSortBufferSize(),
         treeSortOperator.calculateRetainedSizeAfterCallingNext());
   }
 
