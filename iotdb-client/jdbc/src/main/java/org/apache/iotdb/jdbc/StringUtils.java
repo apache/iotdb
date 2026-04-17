@@ -42,6 +42,18 @@ public class StringUtils {
 
   static final int WILD_COMPARE_NO_MATCH = -1;
 
+  /**
+   * Maximum absolute {@link BigDecimal#scale()} accepted by {@link
+   * #consistentToString(BigDecimal)} before it falls back to scientific notation.
+   *
+   * <p>{@link BigDecimal#toPlainString()} expands the value to a non-scientific decimal string
+   * whose length grows with {@code |scale|}. A value such as {@code 1e1000000000} would therefore
+   * materialize a ~1GB {@link String}, causing {@link OutOfMemoryError} / denial of service on the
+   * client. Any scale beyond this bound is rejected for expansion and the caller gets the scientific
+   * form instead, which is a few dozen characters at most.
+   */
+  static final int MAX_PLAIN_STRING_SCALE = 10_000;
+
   static {
     for (int i = -128; i <= 127; i++) {
       allBytes[i - -128] = (byte) i;
@@ -63,9 +75,16 @@ public class StringUtils {
     if (decimal == null) {
       return null;
     }
+    // Guard against CVE-style DoS: BigDecimal values constructed from extreme scientific
+    // notation (e.g. "1e1000000000") have a huge |scale| and would otherwise cause
+    // toPlainString() to allocate a multi-GB String and OOM the JVM. Fall back to the
+    // scientific form, which is always short.
+    if (decimal.scale() > MAX_PLAIN_STRING_SCALE || decimal.scale() < -MAX_PLAIN_STRING_SCALE) {
+      return decimal.toString();
+    }
     if (toPlainStringMethod != null) {
       try {
-        return (String) toPlainStringMethod.invoke(decimal, null);
+        return (String) toPlainStringMethod.invoke(decimal, (Object[]) null);
       } catch (InvocationTargetException | IllegalAccessException e) {
         LOGGER.warn("consistent to String Error:", e);
       }
