@@ -20,6 +20,7 @@
 package org.apache.iotdb.session.subscription.payload;
 
 import org.apache.iotdb.isession.ISessionDataSet;
+import org.apache.iotdb.rpc.subscription.exception.SubscriptionRuntimeException;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.Field;
@@ -64,6 +65,11 @@ public class SubscriptionRecordHandler
     return resultSets.iterator();
   }
 
+  @Override
+  public void removeUserData() {
+    resultSets.forEach(SubscriptionResultSet::removeUserData);
+  }
+
   public static class SubscriptionResultSet implements ISessionDataSet {
 
     private Tablet tablet;
@@ -76,17 +82,21 @@ public class SubscriptionRecordHandler
 
     private List<String> columnTypeList;
 
+    private volatile boolean userDataRemoved = false;
+
     private SubscriptionResultSet(final Tablet tablet) {
       this.tablet = tablet;
       this.sortedRowPositions = generateSortedRowPositions(tablet);
     }
 
     public Tablet getTablet() {
+      ensureUserDataAvailable();
       return tablet;
     }
 
     @Override
     public List<String> getColumnNames() {
+      ensureUserDataAvailable();
       if (Objects.nonNull(columnNameList)) {
         return columnNameList;
       }
@@ -105,6 +115,7 @@ public class SubscriptionRecordHandler
 
     @Override
     public List<String> getColumnTypes() {
+      ensureUserDataAvailable();
       if (Objects.nonNull(columnTypeList)) {
         return columnTypeList;
       }
@@ -119,11 +130,13 @@ public class SubscriptionRecordHandler
     }
 
     public boolean hasNext() {
+      ensureUserDataAvailable();
       return Objects.nonNull(tablet) && rowIndex + 1 < sortedRowPositions.size();
     }
 
     @Override
     public RowRecord next() {
+      ensureUserDataAvailable();
       final RowPosition position = sortedRowPositions.get(++rowIndex);
       return generateRowRecord(position.timestamp, position.rowIndex);
     }
@@ -131,6 +144,16 @@ public class SubscriptionRecordHandler
     @Override
     public void close() {
       tablet = null;
+    }
+
+    private void removeUserData() {
+      if (userDataRemoved) {
+        return;
+      }
+
+      userDataRemoved = true;
+      sortedRowPositions.clear();
+      close();
     }
 
     private RowRecord generateRowRecord(final long timestamp, final int rowPosition) {
@@ -209,6 +232,13 @@ public class SubscriptionRecordHandler
       private RowPosition(final long timestamp, final int rowIndex) {
         this.timestamp = timestamp;
         this.rowIndex = rowIndex;
+      }
+    }
+
+    private void ensureUserDataAvailable() {
+      if (userDataRemoved) {
+        throw new SubscriptionRuntimeException(
+            String.format("User data has been removed from %s.", getClass().getSimpleName()));
       }
     }
   }
