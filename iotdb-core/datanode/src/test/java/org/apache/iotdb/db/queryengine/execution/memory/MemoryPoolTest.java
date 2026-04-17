@@ -99,7 +99,9 @@ public class MemoryPoolTest {
   public void testReserve() {
 
     ListenableFuture<Void> future =
-        pool.reserve(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 256L, Long.MAX_VALUE).left;
+        pool.reserveWithPriority(
+                QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 256L, Long.MAX_VALUE, false)
+            .getFuture();
     Assert.assertTrue(future.isDone());
     Assert.assertEquals(256L, pool.getQueryMemoryReservedBytes(QUERY_ID));
     Assert.assertEquals(256L, pool.getReservedBytes());
@@ -109,7 +111,8 @@ public class MemoryPoolTest {
   public void tesReserveZero() {
 
     try {
-      pool.reserve(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 0L, Long.MAX_VALUE);
+      pool.reserveWithPriority(
+          QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 0L, Long.MAX_VALUE, false);
       Assert.fail("Expect IllegalArgumentException");
     } catch (IllegalArgumentException ignore) {
     }
@@ -119,7 +122,8 @@ public class MemoryPoolTest {
   public void testReserveNegative() {
 
     try {
-      pool.reserve(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, -1L, Long.MAX_VALUE);
+      pool.reserveWithPriority(
+          QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, -1L, Long.MAX_VALUE, false);
       Assert.fail("Expect IllegalArgumentException");
     } catch (IllegalArgumentException ignore) {
     }
@@ -129,7 +133,9 @@ public class MemoryPoolTest {
   public void testReserveAll() {
 
     ListenableFuture<Void> future =
-        pool.reserve(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 512L, Long.MAX_VALUE).left;
+        pool.reserveWithPriority(
+                QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 512L, Long.MAX_VALUE, false)
+            .getFuture();
     Assert.assertTrue(future.isDone());
     Assert.assertEquals(512L, pool.getQueryMemoryReservedBytes(QUERY_ID));
     Assert.assertEquals(512L, pool.getReservedBytes());
@@ -139,11 +145,15 @@ public class MemoryPoolTest {
   public void testOverReserve() {
 
     ListenableFuture<Void> future =
-        pool.reserve(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 256L, Long.MAX_VALUE).left;
+        pool.reserveWithPriority(
+                QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 256L, Long.MAX_VALUE, false)
+            .getFuture();
     Assert.assertTrue(future.isDone());
     Assert.assertEquals(256L, pool.getQueryMemoryReservedBytes(QUERY_ID));
     Assert.assertEquals(256L, pool.getReservedBytes());
-    future = pool.reserve(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 512L, 513L).left;
+    future =
+        pool.reserveWithPriority(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 512L, 513L, false)
+            .getFuture();
     Assert.assertFalse(future.isDone());
     Assert.assertEquals(256L, pool.getQueryMemoryReservedBytes(QUERY_ID));
     Assert.assertEquals(256L, pool.getReservedBytes());
@@ -153,11 +163,13 @@ public class MemoryPoolTest {
   public void testReserveAndFree() {
 
     Assert.assertTrue(
-        pool.reserve(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 512L, Long.MAX_VALUE)
-            .left
+        pool.reserveWithPriority(
+                QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 512L, Long.MAX_VALUE, false)
+            .getFuture()
             .isDone());
     ListenableFuture<Void> future =
-        pool.reserve(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 512L, 513L).left;
+        pool.reserveWithPriority(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 512L, 513L, false)
+            .getFuture();
     Assert.assertFalse(future.isDone());
     Assert.assertEquals(512L, pool.getQueryMemoryReservedBytes(QUERY_ID));
     Assert.assertEquals(512L, pool.getReservedBytes());
@@ -171,18 +183,22 @@ public class MemoryPoolTest {
   public void testMultiReserveAndFree() {
 
     Assert.assertTrue(
-        pool.reserve(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 256L, Long.MAX_VALUE)
-            .left
+        pool.reserveWithPriority(
+                QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 256L, Long.MAX_VALUE, false)
+            .getFuture()
             .isDone());
     Assert.assertEquals(256L, pool.getQueryMemoryReservedBytes(QUERY_ID));
     Assert.assertEquals(256L, pool.getReservedBytes());
 
     ListenableFuture<Void> future1 =
-        pool.reserve(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 512L, 513L).left;
+        pool.reserveWithPriority(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 512L, 513L, false)
+            .getFuture();
     ListenableFuture<Void> future2 =
-        pool.reserve(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 512L, 513L).left;
+        pool.reserveWithPriority(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 512L, 513L, false)
+            .getFuture();
     ListenableFuture<Void> future3 =
-        pool.reserve(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 512L, 513L).left;
+        pool.reserveWithPriority(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 512L, 513L, false)
+            .getFuture();
     Assert.assertFalse(future1.isDone());
     Assert.assertFalse(future2.isDone());
     Assert.assertFalse(future3.isDone());
@@ -289,7 +305,8 @@ public class MemoryPoolTest {
         pool.tryReserveForTest(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 512L, Long.MAX_VALUE));
 
     ListenableFuture<Void> f =
-        pool.reserve(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 256L, 512L).left;
+        pool.reserveWithPriority(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 256L, 512L, false)
+            .getFuture();
     Assert.assertFalse(f.isDone());
     // Cancel the reservation.
     Assert.assertEquals(256L, pool.tryCancel(f));
@@ -301,7 +318,9 @@ public class MemoryPoolTest {
   public void testTryCancelCompletedReservation() {
 
     ListenableFuture<Void> f =
-        pool.reserve(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 256L, Long.MAX_VALUE).left;
+        pool.reserveWithPriority(
+                QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 256L, Long.MAX_VALUE, false)
+            .getFuture();
     Assert.assertTrue(f.isDone());
     // Cancel the reservation.
     Assert.assertEquals(0L, pool.tryCancel(f));

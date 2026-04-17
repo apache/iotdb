@@ -22,13 +22,13 @@ package org.apache.iotdb.db.queryengine.execution.exchange;
 import org.apache.iotdb.commons.memory.MemoryManager;
 import org.apache.iotdb.db.queryengine.execution.memory.LocalMemoryManager;
 import org.apache.iotdb.db.queryengine.execution.memory.MemoryPool;
+import org.apache.iotdb.db.queryengine.execution.memory.MemoryPool.MemoryReservationResult;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
 import org.apache.tsfile.external.commons.lang3.Validate;
 import org.apache.tsfile.read.common.block.TsBlock;
-import org.apache.tsfile.utils.Pair;
 import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
@@ -63,15 +63,16 @@ public class SharedTsBlockQueueTest {
     MemoryPool mockMemoryPool = Mockito.mock(MemoryPool.class);
     Mockito.when(mockLocalMemoryManager.getQueryPool()).thenReturn(mockMemoryPool);
 
-    // reserve() returns (manualFuture, false) — simulating memory blocked
+    // reserveWithPriority() returns blocked future and reserve failure.
     Mockito.when(
-            mockMemoryPool.reserve(
+            mockMemoryPool.reserveWithPriority(
                 Mockito.anyString(),
                 Mockito.anyString(),
                 Mockito.anyString(),
                 Mockito.anyLong(),
-                Mockito.anyLong()))
-        .thenReturn(new Pair<>(manualFuture, Boolean.FALSE));
+                Mockito.anyLong(),
+                Mockito.anyBoolean()))
+        .thenReturn(new MemoryReservationResult(manualFuture, false, 1024L));
     // tryCancel returns 0 — simulating future already completed (can't cancel)
     Mockito.when(mockMemoryPool.tryCancel(Mockito.any())).thenReturn(0L);
 

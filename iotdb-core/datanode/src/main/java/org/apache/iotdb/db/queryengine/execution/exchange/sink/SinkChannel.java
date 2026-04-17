@@ -481,7 +481,7 @@ public class SinkChannel implements ISinkChannel {
     // at first this SinkChannel has not reserved memory.
     this.blocked = reserveResult.getFuture();
     this.bufferRetainedSizeInBytes = reserveResult.getReservedBytes();
-    this.currentTsBlockSize = maxBytesCanReserve;
+    this.currentTsBlockSize = reserveResult.getReservedBytes();
   }
 
   @Override

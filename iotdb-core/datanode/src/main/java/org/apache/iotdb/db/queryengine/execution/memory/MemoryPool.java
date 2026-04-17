@@ -28,7 +28,6 @@ import org.apache.iotdb.db.exception.runtime.MemoryLeakException;
 import com.google.common.util.concurrent.AbstractFuture;
 import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.external.commons.lang3.Validate;
-import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -247,26 +246,6 @@ public class MemoryPool {
                 queryId, fragmentInstanceId, invalidEntryList));
       }
     }
-  }
-
-  /**
-   * Reserve memory with bytesToReserve.
-   *
-   * @return if reserve succeed, pair.right will be true, otherwise false
-   * @throws IllegalArgumentException throw exception if current query requests more memory than can
-   *     be allocated.
-   */
-  @TestOnly
-  public Pair<ListenableFuture<Void>, Boolean> reserve(
-      String queryId,
-      String fragmentInstanceId,
-      String planNodeId,
-      long bytesToReserve,
-      long maxBytesCanReserve) {
-    MemoryReservationResult result =
-        reserveWithPriority(
-            queryId, fragmentInstanceId, planNodeId, bytesToReserve, maxBytesCanReserve, false);
-    return new Pair<>(result.getFuture(), result.isReserveSuccess());
   }
 
   /**
