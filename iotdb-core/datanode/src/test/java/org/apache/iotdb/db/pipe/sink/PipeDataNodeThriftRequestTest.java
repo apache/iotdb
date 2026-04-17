@@ -21,6 +21,8 @@ package org.apache.iotdb.db.pipe.sink;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.response.PipeTransferFilePieceResp;
+import org.apache.iotdb.db.pipe.processor.twostage.exchange.payload.CombineRequest;
+import org.apache.iotdb.db.pipe.processor.twostage.state.CountState;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferDataNodeHandshakeV1Req;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferPlanNodeReq;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferSchemaSnapshotPieceReq;
@@ -37,6 +39,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.Cre
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
@@ -61,6 +64,61 @@ import java.util.List;
 public class PipeDataNodeThriftRequestTest {
 
   private static final String TIME_PRECISION = "ms";
+
+  @Test
+  public void testCombineRequest() throws Exception {
+    final CombineRequest req =
+        CombineRequest.toTPipeTransferReq("pipe", 1L, 2, "combine", new CountState(123L));
+    final CombineRequest deserializeReq = CombineRequest.fromTPipeTransferReq(req);
+
+    Assert.assertEquals(req.getVersion(), deserializeReq.getVersion());
+    Assert.assertEquals(req.getType(), deserializeReq.getType());
+    Assert.assertEquals("pipe", deserializeReq.getPipeName());
+    Assert.assertEquals(1L, deserializeReq.getCreationTime());
+    Assert.assertEquals(2, deserializeReq.getRegionId());
+    Assert.assertEquals("combine", deserializeReq.getCombineId());
+    Assert.assertTrue(deserializeReq.getState() instanceof CountState);
+    Assert.assertEquals(123L, ((CountState) deserializeReq.getState()).getCount());
+  }
+
+  @Test
+  public void testCombineRequestWithUnexpectedStateClassName() throws Exception {
+    final CombineRequest req =
+        CombineRequest.toTPipeTransferReq("pipe", 1L, 2, "combine", new CountState(123L));
+
+    final ByteBuffer bodyBuffer = req.body.duplicate();
+    final String pipeName = ReadWriteIOUtils.readString(bodyBuffer);
+    final long creationTime = ReadWriteIOUtils.readLong(bodyBuffer);
+    final int regionId = ReadWriteIOUtils.readInt(bodyBuffer);
+    final String combineId = ReadWriteIOUtils.readString(bodyBuffer);
+    ReadWriteIOUtils.readString(bodyBuffer);
+    final long count = ReadWriteIOUtils.readLong(bodyBuffer);
+
+    final ByteBuffer tamperedBody;
+    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+        final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+      ReadWriteIOUtils.write(pipeName, outputStream);
+      ReadWriteIOUtils.write(creationTime, outputStream);
+      ReadWriteIOUtils.write(regionId, outputStream);
+      ReadWriteIOUtils.write(combineId, outputStream);
+      ReadWriteIOUtils.write("java.lang.String", outputStream);
+      ReadWriteIOUtils.write(count, outputStream);
+      tamperedBody =
+          ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+    }
+
+    final TPipeTransferReq tamperedReq = new TPipeTransferReq();
+    tamperedReq.version = req.version;
+    tamperedReq.type = req.type;
+    tamperedReq.body = tamperedBody;
+
+    try {
+      CombineRequest.fromTPipeTransferReq(tamperedReq);
+      Assert.fail("Expected IllegalArgumentException");
+    } catch (final IllegalArgumentException e) {
+      Assert.assertTrue(e.getMessage().contains("Unexpected state class"));
+    }
+  }
 
   @Test
   public void testPipeTransferDataNodeHandshakeReq() throws IOException {
