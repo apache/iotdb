@@ -550,42 +550,38 @@ public class OpcUaSink implements PipeConnector {
 
   @Override
   public void close() throws Exception {
-    if (serverKey == null) {
-      return;
-    }
+    if (serverKey != null) {
+      synchronized (SERVER_KEY_TO_REFERENCE_COUNT_AND_NAME_SPACE_MAP) {
+        final Pair<AtomicInteger, OpcUaNameSpace> pair =
+            SERVER_KEY_TO_REFERENCE_COUNT_AND_NAME_SPACE_MAP.get(serverKey);
+        if (pair == null) {
+          return;
+        }
 
-    synchronized (SERVER_KEY_TO_REFERENCE_COUNT_AND_NAME_SPACE_MAP) {
-      final Pair<AtomicInteger, OpcUaNameSpace> pair =
-          SERVER_KEY_TO_REFERENCE_COUNT_AND_NAME_SPACE_MAP.get(serverKey);
-      if (pair == null) {
-        return;
-      }
-
-      if (pair.getLeft().decrementAndGet() <= 0) {
-        try {
-          pair.getRight().shutdown();
-        } finally {
-          SERVER_KEY_TO_REFERENCE_COUNT_AND_NAME_SPACE_MAP.remove(serverKey);
+        if (pair.getLeft().decrementAndGet() <= 0) {
+          try {
+            pair.getRight().shutdown();
+          } finally {
+            SERVER_KEY_TO_REFERENCE_COUNT_AND_NAME_SPACE_MAP.remove(serverKey);
+          }
         }
       }
     }
 
-    if (nodeUrl == null) {
-      return;
-    }
+    if (nodeUrl != null) {
+      synchronized (CLIENT_KEY_TO_REFERENCE_COUNT_AND_CLIENT_MAP) {
+        final Pair<AtomicInteger, IoTDBOpcUaClient> pair =
+            CLIENT_KEY_TO_REFERENCE_COUNT_AND_CLIENT_MAP.get(nodeUrl);
+        if (pair == null) {
+          return;
+        }
 
-    synchronized (CLIENT_KEY_TO_REFERENCE_COUNT_AND_CLIENT_MAP) {
-      final Pair<AtomicInteger, IoTDBOpcUaClient> pair =
-          CLIENT_KEY_TO_REFERENCE_COUNT_AND_CLIENT_MAP.get(nodeUrl);
-      if (pair == null) {
-        return;
-      }
-
-      if (pair.getLeft().decrementAndGet() <= 0) {
-        try {
-          pair.getRight().disconnect();
-        } finally {
-          CLIENT_KEY_TO_REFERENCE_COUNT_AND_CLIENT_MAP.remove(nodeUrl);
+        if (pair.getLeft().decrementAndGet() <= 0) {
+          try {
+            pair.getRight().disconnect();
+          } finally {
+            CLIENT_KEY_TO_REFERENCE_COUNT_AND_CLIENT_MAP.remove(nodeUrl);
+          }
         }
       }
     }
