@@ -57,10 +57,10 @@ public class IoTDBEncryptedPasswordPullConsumerIT extends AbstractSubscriptionTr
   private static final String DEVICE = DATABASE + ".d_0";
   private static final String TOPIC_NAME = "TestEncryptedPasswordPullConsumerTopic";
   private static final String USERNAME = "encrypted_user";
-  private static final String PASSWORD = "encrypted_user_123";
+  private static final String PASSWORD = "EncryptedUser@123";
   private static final String ENCRYPTED_PASSWORD = AuthUtils.encryptPassword(PASSWORD);
   private static final String WRONG_ENCRYPTED_PASSWORD =
-      AuthUtils.encryptPassword("wrong_encrypted_user_123");
+      AuthUtils.encryptPassword("WrongEncryptedUser@123");
 
   private static final List<IMeasurementSchema> SCHEMA_LIST = new ArrayList<>();
 
