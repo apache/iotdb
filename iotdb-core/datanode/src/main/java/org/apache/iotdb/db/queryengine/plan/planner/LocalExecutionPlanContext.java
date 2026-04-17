@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.queryengine.plan.planner;
 
 import org.apache.iotdb.db.calc_commons.execution.operator.Operator;
+import org.apache.iotdb.db.calc_commons.plan.planner.ITableOperatorGeneratorContext;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNodeId;
@@ -64,7 +65,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
 
 // Attention: We should use thread-safe data structure for members that are shared by all pipelines
-public class LocalExecutionPlanContext {
+public class LocalExecutionPlanContext implements ITableOperatorGeneratorContext {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(LocalExecutionPlanContext.class);
   // Save operators in this pipeline, a new one will be created when creating another pipeline

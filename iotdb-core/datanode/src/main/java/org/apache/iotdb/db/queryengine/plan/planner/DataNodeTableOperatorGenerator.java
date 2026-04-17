@@ -38,6 +38,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.node_commons.common.SessionInfo;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.AggregationNode;
@@ -195,7 +196,8 @@ import static org.apache.iotdb.db.utils.constant.SqlConstant.MIN;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.SUM;
 import static org.apache.tsfile.read.common.type.TimestampType.TIMESTAMP;
 
-public class DataNodeTableOperatorGenerator extends TableOperatorGenerator
+public class DataNodeTableOperatorGenerator
+    extends TableOperatorGenerator<LocalExecutionPlanContext>
     implements PlanVisitor<Operator, LocalExecutionPlanContext> {
 
   private static final MPPDataExchangeManager MPP_DATA_EXCHANGE_MANAGER =
@@ -218,14 +220,17 @@ public class DataNodeTableOperatorGenerator extends TableOperatorGenerator
   }
 
   @Override
+  protected OperatorContext addOperatorContext(
+      LocalExecutionPlanContext context, PlanNodeId planNodeId, String operatorType) {
+    return context
+        .getDriverContext()
+        .addOperatorContext(context.getNextOperatorId(), planNodeId, operatorType);
+  }
+
+  @Override
   public Operator visitCteScan(CteScanNode node, LocalExecutionPlanContext context) {
     OperatorContext operatorContext =
-        context
-            .getDriverContext()
-            .addOperatorContext(
-                context.getNextOperatorId(),
-                node.getPlanNodeId(),
-                CteScanOperator.class.getSimpleName());
+        addOperatorContext(context, node.getPlanNodeId(), CteScanOperator.class.getSimpleName());
     return new CteScanOperator(
         operatorContext,
         node.getPlanNodeId(),
@@ -237,12 +242,8 @@ public class DataNodeTableOperatorGenerator extends TableOperatorGenerator
   public Operator visitIdentitySink(IdentitySinkNode node, LocalExecutionPlanContext context) {
     context.addExchangeSumNum(1);
     OperatorContext operatorContext =
-        context
-            .getDriverContext()
-            .addOperatorContext(
-                context.getNextOperatorId(),
-                node.getPlanNodeId(),
-                IdentitySinkOperator.class.getSimpleName());
+        addOperatorContext(
+            context, node.getPlanNodeId(), IdentitySinkOperator.class.getSimpleName());
     String downStreamPlanNodeId =
         node.getDownStreamChannelLocationList().stream()
             .map(DownStreamChannelLocation::getRemotePlanNodeId)
@@ -280,12 +281,7 @@ public class DataNodeTableOperatorGenerator extends TableOperatorGenerator
   @Override
   public Operator visitTableExchange(ExchangeNode node, LocalExecutionPlanContext context) {
     OperatorContext operatorContext =
-        context
-            .getDriverContext()
-            .addOperatorContext(
-                context.getNextOperatorId(),
-                node.getPlanNodeId(),
-                ExchangeOperator.class.getSimpleName());
+        addOperatorContext(context, node.getPlanNodeId(), ExchangeOperator.class.getSimpleName());
 
     FragmentInstanceId localInstanceId = context.getInstanceContext().getId();
     FragmentInstanceId remoteInstanceId = node.getUpstreamInstanceId();
@@ -377,12 +373,8 @@ public class DataNodeTableOperatorGenerator extends TableOperatorGenerator
     // can be obtained, so an empty result set is returned.
     if (!containsFieldColumn || node.getDeviceEntries().isEmpty()) {
       OperatorContext operatorContext =
-          context
-              .getDriverContext()
-              .addOperatorContext(
-                  context.getNextOperatorId(),
-                  node.getPlanNodeId(),
-                  EmptyDataOperator.class.getSimpleName());
+          addOperatorContext(
+              context, node.getPlanNodeId(), EmptyDataOperator.class.getSimpleName());
       return new EmptyDataOperator(operatorContext);
     }
     String treePrefixPath = DataNodeTreeViewSchemaUtils.getPrefixPath(tsTable);
@@ -447,10 +439,7 @@ public class DataNodeTableOperatorGenerator extends TableOperatorGenerator
 
     boolean isSingleColumn = measurementSchemas.size() == 1;
 
-    OperatorContext operatorContext =
-        context
-            .getDriverContext()
-            .addOperatorContext(context.getNextOperatorId(), node.getPlanNodeId(), className);
+    OperatorContext operatorContext = addOperatorContext(context, node.getPlanNodeId(), className);
 
     Set<String> allSensors = new HashSet<>(measurementColumnNames);
 
@@ -1037,10 +1026,7 @@ public class DataNodeTableOperatorGenerator extends TableOperatorGenerator
     seriesScanOptions.setTTLForTableView(viewTTL);
     seriesScanOptions.setIsTableViewForTreeModel(node instanceof TreeDeviceViewScanNode);
 
-    OperatorContext operatorContext =
-        context
-            .getDriverContext()
-            .addOperatorContext(context.getNextOperatorId(), node.getPlanNodeId(), className);
+    OperatorContext operatorContext = addOperatorContext(context, node.getPlanNodeId(), className);
 
     int maxTsBlockLineNum = TSFileDescriptor.getInstance().getConfig().getMaxTsBlockLineNumber();
     if (context.getTypeProvider().getTemplatedInfo() != null) {
@@ -1085,12 +1071,8 @@ public class DataNodeTableOperatorGenerator extends TableOperatorGenerator
       TreeDeviceViewScanNode node, LocalExecutionPlanContext context) {
     if (node.getDeviceEntries().isEmpty() || node.getTreeDBName() == null) {
       OperatorContext operatorContext =
-          context
-              .getDriverContext()
-              .addOperatorContext(
-                  context.getNextOperatorId(),
-                  node.getPlanNodeId(),
-                  EmptyDataOperator.class.getSimpleName());
+          addOperatorContext(
+              context, node.getPlanNodeId(), EmptyDataOperator.class.getSimpleName());
       return new EmptyDataOperator(operatorContext);
     }
     throw new IllegalArgumentException("Valid TreeDeviceViewScanNode is not expected here.");
@@ -1138,12 +1120,10 @@ public class DataNodeTableOperatorGenerator extends TableOperatorGenerator
   public Operator visitInformationSchemaTableScan(
       final InformationSchemaTableScanNode node, final LocalExecutionPlanContext context) {
     final OperatorContext operatorContext =
-        context
-            .getDriverContext()
-            .addOperatorContext(
-                context.getNextOperatorId(),
-                node.getPlanNodeId(),
-                InformationSchemaTableScanOperator.class.getSimpleName());
+        addOperatorContext(
+            context,
+            node.getPlanNodeId(),
+            InformationSchemaTableScanOperator.class.getSimpleName());
 
     final List<TSDataType> dataTypes =
         node.getOutputSymbols().stream()
@@ -1160,12 +1140,7 @@ public class DataNodeTableOperatorGenerator extends TableOperatorGenerator
   public Operator visitCountMerge(
       final CountSchemaMergeNode node, final LocalExecutionPlanContext context) {
     final OperatorContext operatorContext =
-        context
-            .getDriverContext()
-            .addOperatorContext(
-                context.getNextOperatorId(),
-                node.getPlanNodeId(),
-                CountMergeOperator.class.getSimpleName());
+        addOperatorContext(context, node.getPlanNodeId(), CountMergeOperator.class.getSimpleName());
     final List<Operator> children = new ArrayList<>(node.getChildren().size());
     for (final PlanNode child : node.getChildren()) {
       children.add(this.process(child, context));
@@ -1177,12 +1152,8 @@ public class DataNodeTableOperatorGenerator extends TableOperatorGenerator
   public Operator visitTableDeviceFetch(
       final TableDeviceFetchNode node, final LocalExecutionPlanContext context) {
     final OperatorContext operatorContext =
-        context
-            .getDriverContext()
-            .addOperatorContext(
-                context.getNextOperatorId(),
-                node.getPlanNodeId(),
-                SchemaQueryScanOperator.class.getSimpleName());
+        addOperatorContext(
+            context, node.getPlanNodeId(), SchemaQueryScanOperator.class.getSimpleName());
     return new SchemaQueryScanOperator<>(
         node.getPlanNodeId(),
         operatorContext,
@@ -1202,12 +1173,8 @@ public class DataNodeTableOperatorGenerator extends TableOperatorGenerator
     final SchemaQueryScanOperator<IDeviceSchemaInfo> operator =
         new SchemaQueryScanOperator<>(
             node.getPlanNodeId(),
-            context
-                .getDriverContext()
-                .addOperatorContext(
-                    context.getNextOperatorId(),
-                    node.getPlanNodeId(),
-                    SchemaQueryScanOperator.class.getSimpleName()),
+            addOperatorContext(
+                context, node.getPlanNodeId(), SchemaQueryScanOperator.class.getSimpleName()),
             SchemaSourceFactory.getTableDeviceQuerySource(
                 node.getDatabase(),
                 table,
@@ -1236,12 +1203,8 @@ public class DataNodeTableOperatorGenerator extends TableOperatorGenerator
     final List<LeafColumnTransformer> filterLeafColumnTransformerList = new ArrayList<>();
     return new SchemaCountOperator<>(
         node.getPlanNodeId(),
-        context
-            .getDriverContext()
-            .addOperatorContext(
-                context.getNextOperatorId(),
-                node.getPlanNodeId(),
-                SchemaCountOperator.class.getSimpleName()),
+        addOperatorContext(
+            context, node.getPlanNodeId(), SchemaCountOperator.class.getSimpleName()),
         SchemaSourceFactory.getTableDeviceQuerySource(
             database,
             table,
@@ -1532,9 +1495,7 @@ public class DataNodeTableOperatorGenerator extends TableOperatorGenerator
     }
 
     final OperatorContext operatorContext =
-        context
-            .getDriverContext()
-            .addOperatorContext(context.getNextOperatorId(), node.getPlanNodeId(), className);
+        addOperatorContext(context, node.getPlanNodeId(), className);
     SeriesScanOptions seriesScanOptions =
         buildSeriesScanOptions(
             context,
@@ -1883,12 +1844,8 @@ public class DataNodeTableOperatorGenerator extends TableOperatorGenerator
   public Operator visitExplainAnalyze(ExplainAnalyzeNode node, LocalExecutionPlanContext context) {
     Operator operator = node.getChild().accept(this, context);
     OperatorContext operatorContext =
-        context
-            .getDriverContext()
-            .addOperatorContext(
-                context.getNextOperatorId(),
-                node.getPlanNodeId(),
-                ExplainAnalyzeOperator.class.getSimpleName());
+        addOperatorContext(
+            context, node.getPlanNodeId(), ExplainAnalyzeOperator.class.getSimpleName());
     return new ExplainAnalyzeOperator(
         operatorContext, operator, node.getQueryId(), node.isVerbose(), node.getTimeout());
   }
@@ -1912,12 +1869,8 @@ public class DataNodeTableOperatorGenerator extends TableOperatorGenerator
     Operator operator = childNode.accept(this, context);
 
     OperatorContext operatorContext =
-        context
-            .getDriverContext()
-            .addOperatorContext(
-                context.getNextOperatorId(),
-                node.getPlanNodeId(),
-                TableCopyToOperator.class.getSimpleName());
+        addOperatorContext(
+            context, node.getPlanNodeId(), TableCopyToOperator.class.getSimpleName());
     return new TableCopyToOperator(
         operatorContext,
         operator,
@@ -1931,12 +1884,7 @@ public class DataNodeTableOperatorGenerator extends TableOperatorGenerator
   public Operator visitInto(IntoNode node, LocalExecutionPlanContext context) {
     Operator child = node.getChild().accept(this, context);
     OperatorContext operatorContext =
-        context
-            .getDriverContext()
-            .addOperatorContext(
-                context.getNextOperatorId(),
-                node.getPlanNodeId(),
-                TableIntoOperator.class.getSimpleName());
+        addOperatorContext(context, node.getPlanNodeId(), TableIntoOperator.class.getSimpleName());
 
     PartialPath targetTable = new PartialPath(node.getTable(), false);
 
