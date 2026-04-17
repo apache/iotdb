@@ -27,4 +27,4 @@ import org.apache.iotdb.commons.pipe.agent.plugin.builtin.processor.PlaceHolderP
  * be imported here. The pipe agent in the server module will replace this class with the real
  * implementation when initializing the changing-value-sampling-processor.
  */
-public class ChangingValueSamplingProcessor extends PlaceHolderProcessor {}
+public class ChangingPointSamplingProcessor extends PlaceHolderProcessor {}

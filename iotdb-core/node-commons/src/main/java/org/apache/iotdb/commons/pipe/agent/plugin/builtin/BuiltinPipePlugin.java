@@ -23,7 +23,7 @@ import org.apache.iotdb.commons.pipe.agent.plugin.builtin.processor.aggregate.Ag
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.processor.aggregate.StandardStatisticsProcessor;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.processor.aggregate.TumblingWindowingProcessor;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.processor.donothing.DoNothingProcessor;
-import org.apache.iotdb.commons.pipe.agent.plugin.builtin.processor.downsampling.ChangingValueSamplingProcessor;
+import org.apache.iotdb.commons.pipe.agent.plugin.builtin.processor.downsampling.ChangingPointSamplingProcessor;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.processor.downsampling.SwingingDoorTrendingSamplingProcessor;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.processor.downsampling.TumblingTimeSamplingProcessor;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.processor.iotconsensusv2.IoTConsensusV2Processor;
@@ -65,7 +65,9 @@ public enum BuiltinPipePlugin {
       "tumbling-time-sampling-processor", TumblingTimeSamplingProcessor.class),
   SDT_SAMPLING_PROCESSOR("sdt-sampling-processor", SwingingDoorTrendingSamplingProcessor.class),
   CHANGING_VALUE_SAMPLING_PROCESSOR(
-      "changing-value-sampling-processor", ChangingValueSamplingProcessor.class),
+      "changing-value-sampling-processor", ChangingPointSamplingProcessor.class),
+  CHANGING_POINT_SAMPLING_PROCESSOR(
+      "changing-point-sampling-processor", ChangingPointSamplingProcessor.class),
   THROWING_EXCEPTION_PROCESSOR("throwing-exception-processor", ThrowingExceptionProcessor.class),
   AGGREGATE_PROCESSOR("aggregate-processor", AggregateProcessor.class),
   COUNT_POINT_PROCESSOR("count-point-processor", TwoStageCountProcessor.class),
@@ -158,6 +160,7 @@ public enum BuiltinPipePlugin {
                   TUMBLING_TIME_SAMPLING_PROCESSOR.getPipePluginName().toUpperCase(),
                   SDT_SAMPLING_PROCESSOR.getPipePluginName().toUpperCase(),
                   CHANGING_VALUE_SAMPLING_PROCESSOR.getPipePluginName().toUpperCase(),
+                  CHANGING_POINT_SAMPLING_PROCESSOR.getPipePluginName().toUpperCase(),
                   THROWING_EXCEPTION_PROCESSOR.getPipePluginName().toUpperCase(),
                   AGGREGATE_PROCESSOR.getPipePluginName().toUpperCase(),
                   COUNT_POINT_PROCESSOR.getPipePluginName().toUpperCase(),
