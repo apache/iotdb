@@ -62,7 +62,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QuerySpecificatio
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RangeQuantifier;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Relation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RowPattern;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubqueryExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubsetDefinition;
@@ -118,6 +117,7 @@ public class Analysis implements IAnalysis {
   private List<TEndPoint> redirectNodeList;
 
   @Nullable private Statement root;
+  private boolean needSetHighestPriority;
 
   private final Map<NodeRef<Parameter>, Expression> parameters;
 
@@ -266,6 +266,15 @@ public class Analysis implements IAnalysis {
   public Analysis(@Nullable Statement root, Map<NodeRef<Parameter>, Expression> parameters) {
     this.root = root;
     this.parameters = ImmutableMap.copyOf(requireNonNull(parameters, "parameters is null"));
+  }
+
+  public void updateNeedSetHighestPriority(QualifiedObjectName tableName) {
+    if (needSetHighestPriority) {
+      return;
+    }
+    needSetHighestPriority =
+        InformationSchema.INFORMATION_DATABASE.equals(tableName.getDatabaseName())
+            && InformationSchema.QUERIES.equals(tableName.getObjectName());
   }
 
   public Map<NodeRef<Parameter>, Expression> getParameters() {
@@ -960,8 +969,7 @@ public class Analysis implements IAnalysis {
 
   @Override
   public boolean needSetHighestPriority() {
-    return root instanceof ShowStatement
-        && ((ShowStatement) root).getTableName().equals(InformationSchema.QUERIES);
+    return needSetHighestPriority;
   }
 
   @Override
