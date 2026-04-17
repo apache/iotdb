@@ -154,8 +154,36 @@ public class SessionConnection {
     } catch (StatementExecutionException e) {
       throw new IoTDBConnectionException(e.getMessage());
     } catch (IoTDBConnectionException e) {
-      throw new IoTDBConnectionException(logForReconnectionFailure());
+      if (isExpectedConnectionException(e.getMessage())) {
+        throw e;
+      } else {
+        throw new IoTDBConnectionException(logForReconnectionFailure());
+      }
     }
+  }
+
+  private static boolean isExpectedConnectionException(String msg) {
+    if (msg == null) {
+      return false;
+    }
+
+    // 1.Connection pool resources are insufficient
+    if (msg.contains("Insufficient connection pool resources")) {
+      return true;
+    }
+
+    // 2.User connection limit exceeded (username is dynamic)
+    if (msg.contains("The current number of connections for user")
+        && msg.contains("has reached its maximum limit")) {
+      return true;
+    }
+
+    // 3. Network connection reset (Connection reset)
+    if (msg.contains("Connection reset")) {
+      return true;
+    }
+
+    return false;
   }
 
   public SessionConnection(
@@ -269,7 +297,11 @@ public class SessionConnection {
       } catch (IoTDBConnectionException e) {
         if (!reconnect()) {
           logger.error("Cluster has no nodes to connect");
-          throw new IoTDBConnectionException(logForReconnectionFailure());
+          if (isExpectedConnectionException(e.getMessage())) {
+            throw e;
+          } else {
+            throw new IoTDBConnectionException(logForReconnectionFailure());
+          }
         }
       } catch (StatementExecutionException e) {
         throw new IoTDBConnectionException(e.getMessage());
@@ -1086,10 +1118,11 @@ public class SessionConnection {
             init(endPoint, session.useSSL, session.trustStore, session.trustStorePwd);
             connectedSuccess = true;
           } catch (IoTDBConnectionException e) {
-            logger.warn("The current node may have been down {}, try next node", endPoint);
+            logger.warn(
+                "Failed to connect to {}, reason: {}, try next node", endPoint, e.getMessage());
             continue;
           } catch (StatementExecutionException e) {
-            logger.warn("login in failed, because {}", e.getMessage());
+            logger.warn("login failed, because {}", e.getMessage());
           }
           break;
         }
