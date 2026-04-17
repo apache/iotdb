@@ -74,21 +74,15 @@ public class AuthorPlanExecutor implements IAuthorPlanExecutor {
 
   @Override
   public TPermissionInfoResp login(
-      String username, final String password, final boolean useEncryptedPassword) {
-    boolean status;
-    String loginMessage = null;
-    TSStatus tsStatus = new TSStatus();
+      final String username, final String password, final boolean useEncryptedPassword) {
+    final String loginMessage;
+    final TSStatus tsStatus = new TSStatus();
     TPermissionInfoResp result = new TPermissionInfoResp();
     try {
-      status = authorizer.login(username, password, useEncryptedPassword);
-      if (status) {
-        result = getUserPermissionInfo(username, ModelType.ALL);
-
-        result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Login successfully"));
-      } else {
-        result = AuthUtils.generateEmptyPermissionInfoResp();
-      }
-    } catch (AuthException e) {
+      authorizer.login(username, password, useEncryptedPassword);
+      result = getUserPermissionInfo(username, ModelType.ALL);
+      result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Login successfully"));
+    } catch (final AuthException e) {
       LOGGER.error("meet error while logging in.", e);
       loginMessage = e.getMessage();
       tsStatus.setCode(e.getCode().getStatusCode());
