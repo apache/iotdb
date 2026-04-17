@@ -42,6 +42,7 @@ public class TopicConstant {
   public static final String MODE_KEY = "mode";
   public static final String MODE_LIVE_VALUE = "live";
   public static final String MODE_SNAPSHOT_VALUE = "snapshot";
+  public static final String MODE_CONSENSUS_VALUE = "consensus";
   public static final String MODE_DEFAULT_VALUE = MODE_LIVE_VALUE;
 
   public static final String ORDER_MODE_KEY = "order-mode";

@@ -37,7 +37,6 @@ import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsubscribeReq;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -102,28 +101,16 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionAndPip
 
     for (final String topic : unsubscribeReq.getTopicNames()) {
       if (topicsUnsubByGroup.contains(topic)) {
-        // Check if this topic uses consensus-based subscription (same detection as
-        // CreateSubscriptionProcedure). Consensus topics have no pipe to drop.
         final TopicMeta topicMeta = subscriptionInfo.get().deepCopyTopicMeta(topic);
-        final String topicMode =
-            topicMeta
-                .getConfig()
-                .getStringOrDefault(TopicConstant.MODE_KEY, TopicConstant.MODE_DEFAULT_VALUE);
-        final String topicFormat =
-            topicMeta
-                .getConfig()
-                .getStringOrDefault(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_DEFAULT_VALUE);
-        final boolean isConsensusBasedTopic =
-            TopicConstant.MODE_LIVE_VALUE.equalsIgnoreCase(topicMode)
-                && !TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE.equalsIgnoreCase(topicFormat);
+        final String topicMode = topicMeta.getConfig().getMode();
+        final boolean isConsensusBasedTopic = topicMeta.getConfig().isConsensusMode();
 
         if (isConsensusBasedTopic) {
           LOGGER.info(
-              "DropSubscriptionProcedure: topic [{}] is consensus-based (mode={}, format={}), "
-                  + "skipping pipe removal",
+              "DropSubscriptionProcedure: topic [{}] uses consensus subscription mode "
+                  + "(mode={}), skipping pipe removal",
               topic,
-              topicMode,
-              topicFormat);
+              topicMode);
           continue;
         }
 

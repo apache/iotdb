@@ -269,15 +269,11 @@ public class ConsensusSubscriptionSetupHandler {
   public static boolean isConsensusBasedTopic(final String topicName) {
     try {
       final String topicMode = SubscriptionAgent.topic().getTopicMode(topicName);
-      final String topicFormat = SubscriptionAgent.topic().getTopicFormat(topicName);
-      final boolean result =
-          TopicConstant.MODE_LIVE_VALUE.equalsIgnoreCase(topicMode)
-              && !TopicConstant.FORMAT_TS_FILE_VALUE.equalsIgnoreCase(topicFormat);
+      final boolean result = TopicConstant.MODE_CONSENSUS_VALUE.equalsIgnoreCase(topicMode);
       LOGGER.debug(
-          "isConsensusBasedTopic check for topic [{}]: mode={}, format={}, result={}",
+          "isConsensusBasedTopic check for topic [{}]: mode={}, result={}",
           topicName,
           topicMode,
-          topicFormat,
           result);
       return result;
     } catch (final Exception e) {

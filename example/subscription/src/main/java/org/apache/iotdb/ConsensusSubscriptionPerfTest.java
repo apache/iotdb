@@ -67,7 +67,8 @@ import java.util.concurrent.locks.LockSupport;
  * </pre>
  *
  * <p>This tool is designed to be started before a benchmark writer (for example iot-benchmark). It
- * creates a live topic by default and continuously prints subscription throughput statistics.
+ * creates a consensus-mode topic by default and continuously prints subscription throughput
+ * statistics.
  */
 public class ConsensusSubscriptionPerfTest {
 
@@ -265,7 +266,7 @@ public class ConsensusSubscriptionPerfTest {
       session.open();
 
       final Properties topicConfig = new Properties();
-      topicConfig.put(TopicConstant.MODE_KEY, TopicConstant.MODE_LIVE_VALUE);
+      topicConfig.put(TopicConstant.MODE_KEY, TopicConstant.MODE_CONSENSUS_VALUE);
       topicConfig.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_RECORD_HANDLER_VALUE);
       topicConfig.put(TopicConstant.PATH_KEY, config.path);
       topicConfig.put(TopicConstant.ORDER_MODE_KEY, config.orderMode);

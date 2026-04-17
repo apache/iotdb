@@ -203,7 +203,7 @@ public class ConsensusSubscriptionTest {
       }
 
       Properties topicConfig = new Properties();
-      topicConfig.put(TopicConstant.MODE_KEY, TopicConstant.MODE_LIVE_VALUE);
+      topicConfig.put(TopicConstant.MODE_KEY, TopicConstant.MODE_CONSENSUS_VALUE);
       topicConfig.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_RECORD_HANDLER_VALUE);
       topicConfig.put(TopicConstant.PATH_KEY, path);
       topicConfig.put(TopicConstant.ORDER_MODE_KEY, TopicConstant.ORDER_MODE_PER_WRITER_VALUE);

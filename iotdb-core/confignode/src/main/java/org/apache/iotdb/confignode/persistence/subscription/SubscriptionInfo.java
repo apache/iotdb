@@ -280,6 +280,35 @@ public class SubscriptionInfo implements SnapshotProcessor {
   }
 
   private void validateTopicConfig(final TopicConfig topicConfig) throws SubscriptionException {
+    final String mode = topicConfig.getMode();
+    if (!TopicConfig.isValidMode(mode)) {
+      final String exceptionMessage =
+          String.format(
+              "Failed to create or alter topic, unsupported %s=%s, expected one of [%s, %s, %s]",
+              TopicConstant.MODE_KEY,
+              mode,
+              TopicConstant.MODE_SNAPSHOT_VALUE,
+              TopicConstant.MODE_LIVE_VALUE,
+              TopicConstant.MODE_CONSENSUS_VALUE);
+      LOGGER.warn(exceptionMessage);
+      throw new SubscriptionException(exceptionMessage);
+    }
+
+    if (topicConfig.isConsensusMode()
+        && TopicConstant.FORMAT_TS_FILE_VALUE.equalsIgnoreCase(
+            topicConfig.getStringOrDefault(
+                TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_DEFAULT_VALUE))) {
+      final String exceptionMessage =
+          String.format(
+              "Failed to create or alter topic, %s=%s does not support %s=%s",
+              TopicConstant.MODE_KEY,
+              TopicConstant.MODE_CONSENSUS_VALUE,
+              TopicConstant.FORMAT_KEY,
+              TopicConstant.FORMAT_TS_FILE_VALUE);
+      LOGGER.warn(exceptionMessage);
+      throw new SubscriptionException(exceptionMessage);
+    }
+
     final String orderMode = topicConfig.getOrderMode();
     if (!TopicConfig.isValidOrderMode(orderMode)) {
       final String exceptionMessage =
@@ -316,7 +345,7 @@ public class SubscriptionInfo implements SnapshotProcessor {
     if (!isConsensusBasedTopicConfig(topicConfig)) {
       final String exceptionMessage =
           String.format(
-              "Failed to create or alter topic, %s is only supported for consensus-based live table topics",
+              "Failed to create or alter topic, %s is only supported for consensus table topics",
               TopicConstant.COLUMN_KEY);
       LOGGER.warn(exceptionMessage);
       throw new SubscriptionException(exceptionMessage);
@@ -338,13 +367,7 @@ public class SubscriptionInfo implements SnapshotProcessor {
   }
 
   private boolean isConsensusBasedTopicConfig(final TopicConfig topicConfig) {
-    final String mode =
-        topicConfig.getStringOrDefault(TopicConstant.MODE_KEY, TopicConstant.MODE_DEFAULT_VALUE);
-    final String format =
-        topicConfig.getStringOrDefault(
-            TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_DEFAULT_VALUE);
-    return TopicConstant.MODE_LIVE_VALUE.equalsIgnoreCase(mode)
-        && !TopicConstant.FORMAT_TS_FILE_VALUE.equalsIgnoreCase(format);
+    return topicConfig.isConsensusMode();
   }
 
   private void validateConsensusTopicRetentionConfig(final TopicConfig topicConfig)
@@ -357,7 +380,7 @@ public class SubscriptionInfo implements SnapshotProcessor {
     if (!isConsensusBasedTopicConfig(topicConfig)) {
       final String exceptionMessage =
           String.format(
-              "Failed to create or alter topic, %s and %s are only supported for consensus-based live topics",
+              "Failed to create or alter topic, %s and %s are only supported for consensus topics",
               TopicConstant.RETENTION_BYTES_KEY, TopicConstant.RETENTION_MS_KEY);
       LOGGER.warn(exceptionMessage);
       throw new SubscriptionException(exceptionMessage);
@@ -398,6 +421,17 @@ public class SubscriptionInfo implements SnapshotProcessor {
   private void validateUnsupportedHotUpdatedTopicConfig(
       final String topicName, final TopicConfig existedConfig, final TopicConfig updatedConfig)
       throws SubscriptionException {
+    final String existedMode = existedConfig.getMode();
+    final String updatedMode = updatedConfig.getMode();
+    if (!Objects.equals(existedMode, updatedMode)) {
+      final String exceptionMessage =
+          String.format(
+              "Failed to alter topic %s, changing %s is not supported because existing subscription runtimes do not hot-refresh source mode",
+              topicName, TopicConstant.MODE_KEY);
+      LOGGER.warn(exceptionMessage);
+      throw new SubscriptionException(exceptionMessage);
+    }
+
     final String existedColumnPattern =
         existedConfig.getStringOrDefault(
             TopicConstant.COLUMN_KEY, TopicConstant.COLUMN_DEFAULT_VALUE);

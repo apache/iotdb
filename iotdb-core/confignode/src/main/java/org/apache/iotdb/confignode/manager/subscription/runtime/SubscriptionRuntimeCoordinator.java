@@ -8,7 +8,6 @@ import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.load.cache.node.NodeStatistics;
 import org.apache.iotdb.confignode.manager.load.subscriber.ConsensusGroupStatisticsChangeEvent;
 import org.apache.iotdb.confignode.manager.load.subscriber.NodeStatisticsChangeEvent;
-import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 
 import org.apache.tsfile.utils.Pair;
 
@@ -82,16 +81,7 @@ public class SubscriptionRuntimeCoordinator {
             .getSubscriptionCoordinator()
             .getSubscriptionInfo()
             .getAllTopicMeta()) {
-      final String topicMode =
-          topicMeta
-              .getConfig()
-              .getStringOrDefault(TopicConstant.MODE_KEY, TopicConstant.MODE_DEFAULT_VALUE);
-      final String topicFormat =
-          topicMeta
-              .getConfig()
-              .getStringOrDefault(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_DEFAULT_VALUE);
-      if (TopicConstant.MODE_LIVE_VALUE.equalsIgnoreCase(topicMode)
-          && !TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE.equalsIgnoreCase(topicFormat)) {
+      if (topicMeta.getConfig().isConsensusMode()) {
         return true;
       }
     }

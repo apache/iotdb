@@ -166,10 +166,7 @@ public class SubscriptionTopicAgent {
     acquireReadLock();
     try {
       return topicMetaKeeper.containsTopicMeta(topicName)
-          ? topicMetaKeeper
-              .getTopicMeta(topicName)
-              .getConfig()
-              .getStringOrDefault(TopicConstant.MODE_KEY, TopicConstant.MODE_DEFAULT_VALUE)
+          ? topicMetaKeeper.getTopicMeta(topicName).getConfig().getMode()
           : null;
     } finally {
       releaseReadLock();

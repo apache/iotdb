@@ -39,7 +39,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSubscribeReq;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -111,28 +110,17 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionAndP
     for (final String topicName : subscribeReq.getTopicNames()) {
       final TopicMeta topicMeta = subscriptionInfo.get().deepCopyTopicMeta(topicName);
 
-      // Check if this topic should use consensus subscription: mode is live, format is Tablet
-      final String topicMode =
-          topicMeta
-              .getConfig()
-              .getStringOrDefault(TopicConstant.MODE_KEY, TopicConstant.MODE_DEFAULT_VALUE);
-      final String topicFormat =
-          topicMeta
-              .getConfig()
-              .getStringOrDefault(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_DEFAULT_VALUE);
-      final boolean isConsensusBasedTopic =
-          TopicConstant.MODE_LIVE_VALUE.equalsIgnoreCase(topicMode)
-              && !TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE.equalsIgnoreCase(topicFormat);
+      final String topicMode = topicMeta.getConfig().getMode();
+      final boolean isConsensusBasedTopic = topicMeta.getConfig().isConsensusMode();
 
       if (isConsensusBasedTopic) {
         // skip pipe creation
         consensusTopicNames.add(topicName);
         LOGGER.info(
-            "CreateSubscriptionProcedure: topic [{}] uses consensus-based subscription "
-                + "(mode={}, format={}), skipping pipe creation",
+            "CreateSubscriptionProcedure: topic [{}] uses consensus subscription mode "
+                + "(mode={}), skipping pipe creation",
             topicName,
-            topicMode,
-            topicFormat);
+            topicMode);
         continue;
       }
 

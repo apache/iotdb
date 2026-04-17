@@ -154,7 +154,7 @@ public class SubscriptionConsumerAgent {
     consumerGroupMetaKeeper.removeConsumerGroupMeta(consumerGroupId);
     consumerGroupMetaKeeper.addConsumerGroupMeta(consumerGroupId, metaFromCoordinator);
 
-    // Set up consensus-based subscription for newly subscribed live-mode topics.
+    // Set up consensus-based subscription for newly subscribed consensus-mode topics.
     // This must happen after the meta is updated so that the broker can find the topic config.
     if (!newlySubscribedTopics.isEmpty()) {
       ConsensusSubscriptionSetupHandler.handleNewSubscriptions(

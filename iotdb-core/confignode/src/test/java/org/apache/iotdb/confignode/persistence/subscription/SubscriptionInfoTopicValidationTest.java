@@ -37,7 +37,7 @@ public class SubscriptionInfoTopicValidationTest {
   @Test
   public void testValidateConsensusTableColumnPatternOnCreate() throws Exception {
     final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
-    final Map<String, String> attributes = newLiveTableTopicAttributes();
+    final Map<String, String> attributes = newConsensusTableTopicAttributes();
     attributes.put(TopicConstant.COLUMN_KEY, "(id1|m1)");
 
     Assert.assertTrue(
@@ -57,18 +57,17 @@ public class SubscriptionInfoTopicValidationTest {
   @Test
   public void testRejectColumnPatternOnTsFileTopic() {
     final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
-    final Map<String, String> attributes = newLiveTableTopicAttributes();
+    final Map<String, String> attributes = newConsensusTableTopicAttributes();
     attributes.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_TS_FILE_VALUE);
     attributes.put(TopicConstant.COLUMN_KEY, "id1");
 
-    assertCreateRejected(
-        subscriptionInfo, attributes, "only supported for consensus-based live table topics");
+    assertCreateRejected(subscriptionInfo, attributes, "mode=consensus does not support format");
   }
 
   @Test
   public void testRejectIllegalColumnRegex() {
     final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
-    final Map<String, String> attributes = newLiveTableTopicAttributes();
+    final Map<String, String> attributes = newConsensusTableTopicAttributes();
     attributes.put(TopicConstant.COLUMN_KEY, "[");
 
     assertCreateRejected(subscriptionInfo, attributes, "illegal column");
@@ -77,12 +76,12 @@ public class SubscriptionInfoTopicValidationTest {
   @Test
   public void testRejectAlteringColumnPattern() throws Exception {
     final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
-    final Map<String, String> originalAttributes = newLiveTableTopicAttributes();
+    final Map<String, String> originalAttributes = newConsensusTableTopicAttributes();
     originalAttributes.put(TopicConstant.COLUMN_KEY, "id1");
     subscriptionInfo.createTopic(
         new CreateTopicPlan(new TopicMeta("table_topic", 1L, originalAttributes)));
 
-    final Map<String, String> updatedAttributes = newLiveTableTopicAttributes();
+    final Map<String, String> updatedAttributes = newConsensusTableTopicAttributes();
     updatedAttributes.put(TopicConstant.COLUMN_KEY, "m1");
 
     try {
@@ -97,7 +96,7 @@ public class SubscriptionInfoTopicValidationTest {
   @Test
   public void testValidateRetentionConfigOnCreate() throws Exception {
     final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
-    final Map<String, String> attributes = newLiveTableTopicAttributes();
+    final Map<String, String> attributes = newConsensusTableTopicAttributes();
     attributes.put(TopicConstant.RETENTION_BYTES_KEY, "1048576");
     attributes.put(TopicConstant.RETENTION_MS_KEY, "-1");
 
@@ -109,20 +108,17 @@ public class SubscriptionInfoTopicValidationTest {
   @Test
   public void testRejectRetentionOnTsFileTopic() {
     final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
-    final Map<String, String> attributes = newLiveTableTopicAttributes();
+    final Map<String, String> attributes = newConsensusTableTopicAttributes();
     attributes.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_TS_FILE_VALUE);
     attributes.put(TopicConstant.RETENTION_BYTES_KEY, "1024");
 
-    assertCreateRejected(
-        subscriptionInfo,
-        attributes,
-        "retention.bytes and retention.ms are only supported for consensus-based live topics");
+    assertCreateRejected(subscriptionInfo, attributes, "mode=consensus does not support format");
   }
 
   @Test
   public void testRejectIllegalRetentionValue() {
     final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
-    final Map<String, String> attributes = newLiveTableTopicAttributes();
+    final Map<String, String> attributes = newConsensusTableTopicAttributes();
     attributes.put(TopicConstant.RETENTION_BYTES_KEY, "0");
 
     assertCreateRejected(subscriptionInfo, attributes, "expected -1 or a positive long value");
@@ -131,7 +127,7 @@ public class SubscriptionInfoTopicValidationTest {
   @Test
   public void testRejectIllegalRetentionFormat() {
     final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
-    final Map<String, String> attributes = newLiveTableTopicAttributes();
+    final Map<String, String> attributes = newConsensusTableTopicAttributes();
     attributes.put(TopicConstant.RETENTION_MS_KEY, "1h");
 
     assertCreateRejected(subscriptionInfo, attributes, "expected a long value");
@@ -140,12 +136,12 @@ public class SubscriptionInfoTopicValidationTest {
   @Test
   public void testRejectAlteringRetentionConfig() throws Exception {
     final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
-    final Map<String, String> originalAttributes = newLiveTableTopicAttributes();
+    final Map<String, String> originalAttributes = newConsensusTableTopicAttributes();
     originalAttributes.put(TopicConstant.RETENTION_BYTES_KEY, "1024");
     subscriptionInfo.createTopic(
         new CreateTopicPlan(new TopicMeta("table_topic", 1L, originalAttributes)));
 
-    final Map<String, String> updatedAttributes = newLiveTableTopicAttributes();
+    final Map<String, String> updatedAttributes = newConsensusTableTopicAttributes();
     updatedAttributes.put(TopicConstant.RETENTION_BYTES_KEY, "2048");
 
     try {
@@ -155,6 +151,41 @@ public class SubscriptionInfoTopicValidationTest {
     } catch (final SubscriptionException e) {
       Assert.assertTrue(e.getMessage().contains("changing retention.bytes is not supported"));
     }
+  }
+
+  @Test
+  public void testRejectIllegalMode() {
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    final Map<String, String> attributes = new HashMap<>();
+    attributes.put(TopicConstant.MODE_KEY, "wal");
+
+    assertCreateRejected(subscriptionInfo, attributes, "unsupported mode");
+  }
+
+  @Test
+  public void testRejectConsensusOnlyColumnOnLiveTopic() {
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    final Map<String, String> attributes = newLiveTableTopicAttributes();
+    attributes.put(TopicConstant.COLUMN_KEY, "id1");
+
+    assertCreateRejected(subscriptionInfo, attributes, "only supported for consensus table topics");
+  }
+
+  @Test
+  public void testRejectConsensusOnlyRetentionOnLiveTopic() {
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    final Map<String, String> attributes = newLiveTableTopicAttributes();
+    attributes.put(TopicConstant.RETENTION_BYTES_KEY, "1024");
+
+    assertCreateRejected(subscriptionInfo, attributes, "only supported for consensus topics");
+  }
+
+  private static Map<String, String> newConsensusTableTopicAttributes() {
+    final Map<String, String> attributes = new HashMap<>();
+    attributes.put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TABLE_VALUE);
+    attributes.put(TopicConstant.MODE_KEY, TopicConstant.MODE_CONSENSUS_VALUE);
+    attributes.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_RECORD_HANDLER_VALUE);
+    return attributes;
   }
 
   private static Map<String, String> newLiveTableTopicAttributes() {

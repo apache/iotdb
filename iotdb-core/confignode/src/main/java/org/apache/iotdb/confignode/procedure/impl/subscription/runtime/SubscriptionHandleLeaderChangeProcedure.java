@@ -34,7 +34,6 @@ import org.apache.iotdb.mpp.rpc.thrift.TPullCommitProgressResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPushConsumerGroupMetaResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPushTopicMetaResp;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 import org.apache.iotdb.rpc.subscription.payload.poll.RegionProgress;
 import org.apache.iotdb.rpc.subscription.payload.poll.WriterId;
@@ -93,16 +92,7 @@ public class SubscriptionHandleLeaderChangeProcedure extends AbstractOperateSubs
       return false;
     }
     for (final TopicMeta topicMeta : subscriptionInfo.get().getAllTopicMeta()) {
-      final String topicMode =
-          topicMeta
-              .getConfig()
-              .getStringOrDefault(TopicConstant.MODE_KEY, TopicConstant.MODE_DEFAULT_VALUE);
-      final String topicFormat =
-          topicMeta
-              .getConfig()
-              .getStringOrDefault(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_DEFAULT_VALUE);
-      if (TopicConstant.MODE_LIVE_VALUE.equalsIgnoreCase(topicMode)
-          && !TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE.equalsIgnoreCase(topicFormat)) {
+      if (topicMeta.getConfig().isConsensusMode()) {
         return true;
       }
     }
