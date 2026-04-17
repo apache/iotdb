@@ -274,7 +274,9 @@ public class RestApiServiceImpl extends RestApiService {
     boolean finish = false;
     try {
       RequestValidationHandler.validateSQL(sql);
-      statement = StatementGenerator.createStatement(sql.getSql(), ZoneId.systemDefault());
+      IClientSession session = SESSION_MANAGER.getCurrSession();
+      ZoneId zoneId = (session != null) ? session.getZoneId() : ZoneId.systemDefault();
+      statement = StatementGenerator.createStatement(sql.getSql(), zoneId);
       if (statement == null) {
         return Response.ok()
             .entity(
@@ -314,9 +316,10 @@ public class RestApiServiceImpl extends RestApiService {
       return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
     } finally {
       long costTime = System.nanoTime() - startTime;
-      if (statement != null)
+      if (statement != null) {
         CommonUtils.addStatementExecutionLatency(
             OperationType.EXECUTE_NON_QUERY_PLAN, statement.getType().name(), costTime);
+      }
       if (queryId != null) {
         if (finish) {
           long executionTime = COORDINATOR.getTotalExecutionTime(queryId);
@@ -336,7 +339,9 @@ public class RestApiServiceImpl extends RestApiService {
     boolean finish = false;
     try {
       RequestValidationHandler.validateSQL(sql);
-      statement = StatementGenerator.createStatement(sql.getSql(), ZoneId.systemDefault());
+      IClientSession session = SESSION_MANAGER.getCurrSession();
+      ZoneId zoneId = (session != null) ? session.getZoneId() : ZoneId.systemDefault();
+      statement = StatementGenerator.createStatement(sql.getSql(), zoneId);
 
       if (statement == null) {
         return Response.ok()
