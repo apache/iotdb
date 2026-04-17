@@ -180,7 +180,9 @@ public class RenameTableColumnProcedure
         env.getConfigManager()
             .getClusterSchemaManager()
             .executePlan(
-                new RenameTableColumnPlan(database, tableName, newName, oldName),
+                this instanceof RenameViewColumnProcedure
+                    ? new RenameViewColumnPlan(database, tableName, newName, oldName)
+                    : new RenameTableColumnPlan(database, tableName, newName, oldName),
                 isGeneratedByPipe);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setFailure(new ProcedureException(new IoTDBException(status)));

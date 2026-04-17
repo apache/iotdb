@@ -1451,8 +1451,9 @@ public class TestUtils {
   public static void assertResultSetEqual(
       SessionDataSet actualResultSet,
       List<String> expectedColumnNames,
-      Set<String> expectedRetArray,
+      Set<String> expectedRetSet,
       boolean ignoreTimeStamp) {
+    final Set<String> copiedSet = new HashSet<>(expectedRetSet);
     try {
       List<String> actualColumnNames = actualResultSet.getColumnNames();
       if (ignoreTimeStamp) {
@@ -1462,12 +1463,11 @@ public class TestUtils {
         assertEquals(expectedColumnNames, actualColumnNames.subList(1, actualColumnNames.size()));
       }
 
-      int count = 0;
       while (actualResultSet.hasNext()) {
         RowRecord rowRecord = actualResultSet.next();
-        assertTrue(expectedRetArray.remove(rowRecord.toString().replace('\t', ',')));
+        assertTrue(copiedSet.remove(rowRecord.toString().replace('\t', ',')));
       }
-      assertEquals(expectedRetArray.size(), count);
+      assertEquals(0, copiedSet.size());
     } catch (IoTDBConnectionException | StatementExecutionException e) {
       e.printStackTrace();
       fail(e.getMessage());

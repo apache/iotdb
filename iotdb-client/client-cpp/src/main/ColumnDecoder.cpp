@@ -151,6 +151,9 @@ std::unique_ptr<Column> BinaryArrayColumnDecoder::readColumn(
         if (!nullIndicators.empty() && nullIndicators[i]) continue;
 
         int32_t length = buffer.getInt();
+        if (length < 0) {
+            throw IoTDBException("BinaryArrayColumnDecoder: negative TEXT length");
+        }
 
         std::vector<uint8_t> value(length);
         for (int32_t j = 0; j < length; j++) {

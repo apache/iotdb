@@ -105,6 +105,15 @@ public class PatternMatchTableFunction implements TableFunction {
             expectedDataName,
             ImmutableSet.of(Type.INT32, Type.INT64, Type.FLOAT, Type.DOUBLE));
 
+    Double smoothValue = (Double) ((ScalarArgument) arguments.get(SMOOTH_PARAM)).getValue();
+    Double thresholdValue = (Double) ((ScalarArgument) arguments.get(THRESHOLD_PARAM)).getValue();
+    if (smoothValue < 0) {
+      throw new UDFException("smooth must be a non-negative number, but got: " + smoothValue);
+    }
+    if (thresholdValue < 0) {
+      throw new UDFException("threshold must be a non-negative number, but got: " + thresholdValue);
+    }
+
     // outputColumnSchema description
     DescribedSchema properColumnSchema =
         new DescribedSchema.Builder()

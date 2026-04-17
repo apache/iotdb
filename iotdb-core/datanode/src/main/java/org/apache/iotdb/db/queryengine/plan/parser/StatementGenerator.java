@@ -176,7 +176,7 @@ public class StatementGenerator {
     return queryStatement;
   }
 
-  public static Statement createStatement(TSLastDataQueryReq lastDataQueryReq)
+  public static QueryStatement createStatement(TSLastDataQueryReq lastDataQueryReq)
       throws IllegalPathException {
     final long startTime = System.nanoTime();
     // construct query statement

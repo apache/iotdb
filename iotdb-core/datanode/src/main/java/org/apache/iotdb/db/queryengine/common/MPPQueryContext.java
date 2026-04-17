@@ -506,7 +506,7 @@ public class MPPQueryContext implements IAuditEntity {
   }
 
   public boolean isQuery() {
-    return queryType != QueryType.WRITE;
+    return queryType == QueryType.READ || queryType == QueryType.READ_WRITE;
   }
 
   public void setUserQuery(boolean userQuery) {
