@@ -83,11 +83,6 @@ public class IoTDBFileReceiverTest {
     }
 
     @Override
-    protected void markFileBaseDirStateAbnormal(final String dir) {
-      // noop for unit test
-    }
-
-    @Override
     protected String getSenderHost() {
       return "127.0.0.1";
     }
