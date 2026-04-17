@@ -14,8 +14,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner;
 
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
@@ -38,6 +36,7 @@ import org.apache.iotdb.db.calc_commons.transformation.dag.column.leaf.LeafColum
 import org.apache.iotdb.db.calc_commons.transformation.dag.column.unary.scalar.DateBinFunctionColumnTransformer;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.node_commons.common.SessionInfo;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.Symbol;
@@ -58,7 +57,6 @@ import org.apache.iotdb.db.queryengine.execution.exchange.sink.DownStreamChannel
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.ISinkHandle;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.ShuffleSinkHandle;
 import org.apache.iotdb.db.queryengine.execution.exchange.source.ISourceHandle;
-import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceManager;
 import org.apache.iotdb.db.queryengine.execution.operator.EmptyDataOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.ExplainAnalyzeOperator;
@@ -129,6 +127,9 @@ import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchem
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTreeViewSchemaUtils;
 import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
+
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -151,6 +152,8 @@ import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import javax.validation.constraints.NotNull;
+
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -203,8 +206,15 @@ public class DataNodeTableOperatorGenerator extends TableOperatorGenerator
   }
 
   @Override
-  protected String getSortTmpDir() {
-    return IoTDBDescriptor.getInstance().getConfig().getSortTmpDir();
+  protected String getSortTmpDir(OperatorContext operatorContext) {
+    operatorContext.getDriverContext().setHaveTmpFile(true);
+    operatorContext.getDriverContext().getFragmentInstanceContext().setMayHaveTmpFile(true);
+    return IoTDBDescriptor.getInstance().getConfig().getSortTmpDir()
+        + File.separator
+        + operatorContext.getDriverContext().getFragmentInstanceContext().getId().getFullId()
+        + File.separator
+        + operatorContext.getDriverContext().getPipelineId()
+        + File.separator;
   }
 
   @Override
@@ -1143,15 +1153,7 @@ public class DataNodeTableOperatorGenerator extends TableOperatorGenerator
     return new InformationSchemaTableScanOperator(
         operatorContext,
         node.getPlanNodeId(),
-        getSupplier(
-            operatorContext,
-            dataTypes,
-            context
-                .getDriverContext()
-                .getFragmentInstanceContext()
-                .getSessionInfo()
-                .getUserEntity(),
-            node));
+        getSupplier(operatorContext, dataTypes, getSessionInfo(context).getUserEntity(), node));
   }
 
   @Override
@@ -1232,8 +1234,6 @@ public class DataNodeTableOperatorGenerator extends TableOperatorGenerator
 
     // In "count" we have to reuse filter operator per "next"
     final List<LeafColumnTransformer> filterLeafColumnTransformerList = new ArrayList<>();
-    FragmentInstanceContext fragmentInstanceContext =
-        context.getDriverContext().getFragmentInstanceContext();
     return new SchemaCountOperator<>(
         node.getPlanNodeId(),
         context
@@ -1255,7 +1255,7 @@ public class DataNodeTableOperatorGenerator extends TableOperatorGenerator
                         .process(
                             node.getTagFuzzyPredicate(),
                             new ColumnTransformerBuilder.Context(
-                                fragmentInstanceContext.getSessionInfo(),
+                                getSessionInfo(context),
                                 filterLeafColumnTransformerList,
                                 makeLayout(Collections.singletonList(node)),
                                 new HashMap<>(),
@@ -1264,8 +1264,7 @@ public class DataNodeTableOperatorGenerator extends TableOperatorGenerator
                                 ImmutableList.of(),
                                 0,
                                 context.getTypeProvider(),
-                                metadata
-                            )),
+                                metadata)),
                     columnSchemaList,
                     database,
                     table)
@@ -2121,5 +2120,10 @@ public class DataNodeTableOperatorGenerator extends TableOperatorGenerator
     }
 
     return OptimizeType.NOOP;
+  }
+
+  @Override
+  protected SessionInfo getSessionInfo(LocalExecutionPlanContext context) {
+    return context.getDriverContext().getFragmentInstanceContext().getSessionInfo();
   }
 }

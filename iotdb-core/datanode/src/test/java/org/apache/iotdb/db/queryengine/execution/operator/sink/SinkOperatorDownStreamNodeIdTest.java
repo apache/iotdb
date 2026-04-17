@@ -40,6 +40,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
+
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -96,7 +97,8 @@ public class SinkOperatorDownStreamNodeIdTest {
     LocalExecutionPlanContext context =
         createLocalExecutionPlanContext(
             new TypeProvider(), "query_name_sink_operator_downstream_id_1", 10001);
-    DataNodeTableOperatorGenerator tableOperatorGenerator = new DataNodeTableOperatorGenerator(metadata);
+    DataNodeTableOperatorGenerator tableOperatorGenerator =
+        new DataNodeTableOperatorGenerator(metadata);
     Mockito.when(mockedPlanNode.accept(tableOperatorGenerator, context))
         .thenReturn(Mockito.mock(Operator.class));
 

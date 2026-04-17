@@ -103,8 +103,8 @@ import org.apache.iotdb.db.calc_commons.plan.relational.planner.CastToStringLite
 import org.apache.iotdb.db.calc_commons.plan.relational.planner.CastToTimestampLiteralVisitor;
 import org.apache.iotdb.db.calc_commons.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.calc_commons.transformation.dag.column.leaf.LeafColumnTransformer;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.node_commons.common.SessionInfo;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.ICoreQueryPlanVisitor;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNodeId;
@@ -160,7 +160,6 @@ import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Literal;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.node_commons.plan.relational.type.InternalTypeManager;
-import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanContext;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
@@ -185,7 +184,6 @@ import org.apache.tsfile.read.common.block.column.LongColumn;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
 
-import java.io.File;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -316,15 +314,14 @@ public abstract class TableOperatorGenerator
 
     ColumnTransformerBuilder visitor = new ColumnTransformerBuilder();
 
-    FragmentInstanceContext fragmentInstanceContext =
-        context.getDriverContext().getFragmentInstanceContext();
+    SessionInfo sessionInfo = getSessionInfo(context);
     ColumnTransformer filterOutputTransformer =
         predicate
             .map(
                 p -> {
                   ColumnTransformerBuilder.Context filterColumnTransformerContext =
                       new ColumnTransformerBuilder.Context(
-                          fragmentInstanceContext.getSessionInfo(),
+                          sessionInfo,
                           filterLeafColumnTransformerList,
                           inputLocations,
                           filterExpressionColumnTransformerMap,
@@ -333,8 +330,7 @@ public abstract class TableOperatorGenerator
                           ImmutableList.of(),
                           0,
                           context.getTypeProvider(),
-                          metadata
-                      );
+                          metadata);
 
                   return visitor.process(p, filterColumnTransformerContext);
                 })
@@ -352,7 +348,7 @@ public abstract class TableOperatorGenerator
 
     ColumnTransformerBuilder.Context projectColumnTransformerContext =
         new ColumnTransformerBuilder.Context(
-            fragmentInstanceContext.getSessionInfo(),
+            sessionInfo,
             projectLeafColumnTransformerList,
             inputLocations,
             projectExpressionColumnTransformerMap,
@@ -361,8 +357,7 @@ public abstract class TableOperatorGenerator
             filterOutputDataTypes,
             inputLocations.size(),
             context.getTypeProvider(),
-            metadata
-        );
+            metadata);
 
     for (Expression expression : projectExpressions) {
       projectOutputTransformerList.add(
@@ -854,29 +849,18 @@ public abstract class TableOperatorGenerator
         sortItemDataTypeList,
         context.getTypeProvider());
 
-    String filePrefix =
-        getSortTmpDir()
-            + File.separator
-            + operatorContext.getDriverContext().getFragmentInstanceContext().getId().getFullId()
-            + File.separator
-            + operatorContext.getDriverContext().getPipelineId()
-            + File.separator;
-
-    context.getDriverContext().setHaveTmpFile(true);
-    context.getDriverContext().getFragmentInstanceContext().setMayHaveTmpFile(true);
-
     Operator child = node.getChild().accept(this, context);
 
     return new TableSortOperator(
         operatorContext,
         child,
         dataTypes,
-        filePrefix,
+        getSortTmpDir(operatorContext),
         getComparatorForTable(
             node.getOrderingScheme().getOrderingList(), sortItemIndexList, sortItemDataTypeList));
   }
 
-  protected abstract String getSortTmpDir();
+  protected abstract String getSortTmpDir(OperatorContext operatorContext);
 
   @Override
   public Operator visitTopK(TopKNode node, LocalExecutionPlanContext context) {
@@ -965,24 +949,13 @@ public abstract class TableOperatorGenerator
         sortItemDataTypeList,
         context.getTypeProvider());
 
-    String filePrefix =
-        IoTDBDescriptor.getInstance().getConfig().getSortTmpDir()
-            + File.separator
-            + operatorContext.getDriverContext().getFragmentInstanceContext().getId().getFullId()
-            + File.separator
-            + operatorContext.getDriverContext().getPipelineId()
-            + File.separator;
-
-    context.getDriverContext().setHaveTmpFile(true);
-    context.getDriverContext().getFragmentInstanceContext().setMayHaveTmpFile(true);
-
     Operator child = node.getChild().accept(this, context);
 
     return new TableStreamSortOperator(
         operatorContext,
         child,
         dataTypes,
-        filePrefix,
+        getSortTmpDir(operatorContext),
         getComparatorForTable(
             node.getOrderingScheme().getOrderingList(), sortItemIndexList, sortItemDataTypeList),
         getComparatorForTable(
@@ -2464,4 +2437,6 @@ public abstract class TableOperatorGenerator
         1000,
         Optional.empty());
   }
+
+  protected abstract SessionInfo getSessionInfo(LocalExecutionPlanContext context);
 }
