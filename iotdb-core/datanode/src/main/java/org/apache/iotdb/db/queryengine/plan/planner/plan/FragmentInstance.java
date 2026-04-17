@@ -72,6 +72,9 @@ public class FragmentInstance implements IConsensusRequest {
 
   private boolean isHighestPriority;
 
+  // parallel hint
+  private int parallelism = 0;
+
   // indicate which index we are retrying
   private transient int nextRetryIndex = 0;
 
@@ -101,6 +104,7 @@ public class FragmentInstance implements IConsensusRequest {
     this.timeOut = timeOut > 0 ? timeOut : CONFIG.getQueryTimeoutThreshold();
     this.isRoot = false;
     this.sessionInfo = sessionInfo;
+    this.parallelism = 0;
     this.debug = debug;
     this.verbose = verbose;
   }
@@ -213,6 +217,14 @@ public class FragmentInstance implements IConsensusRequest {
     this.dataNodeFINum = dataNodeFINum;
   }
 
+  public int getParallelism() {
+    return parallelism;
+  }
+
+  public void setParallelism(int parallelism) {
+    this.parallelism = parallelism;
+  }
+
   public boolean isDebug() {
     return debug;
   }
@@ -250,6 +262,7 @@ public class FragmentInstance implements IConsensusRequest {
     TimePredicate globalTimePredicate = hasTimePredicate ? TimePredicate.deserialize(buffer) : null;
     QueryType queryType = QueryType.values()[ReadWriteIOUtils.readInt(buffer)];
     int dataNodeFINum = ReadWriteIOUtils.readInt(buffer);
+    int parallelism = ReadWriteIOUtils.readInt(buffer);
     boolean debug = ReadWriteIOUtils.readBool(buffer);
     boolean verbose = ReadWriteIOUtils.readBool(buffer);
     FragmentInstance fragmentInstance =
@@ -263,6 +276,7 @@ public class FragmentInstance implements IConsensusRequest {
             dataNodeFINum,
             debug,
             verbose);
+    fragmentInstance.setParallelism(parallelism);
     boolean hasHostDataNode = ReadWriteIOUtils.readBool(buffer);
     fragmentInstance.hostDataNode =
         hasHostDataNode ? ThriftCommonsSerDeUtils.deserializeTDataNodeLocation(buffer) : null;
@@ -286,6 +300,7 @@ public class FragmentInstance implements IConsensusRequest {
       }
       ReadWriteIOUtils.write(type.ordinal(), outputStream);
       ReadWriteIOUtils.write(dataNodeFINum, outputStream);
+      ReadWriteIOUtils.write(parallelism, outputStream);
       ReadWriteIOUtils.write(debug, outputStream);
       ReadWriteIOUtils.write(verbose, outputStream);
       ReadWriteIOUtils.write(hostDataNode != null, outputStream);

@@ -1026,7 +1026,7 @@ sortItem
     ;
 
 querySpecification
-    : SELECT setQuantifier? selectItem (',' selectItem)*
+    : SELECT selectHint? setQuantifier? selectItem (',' selectItem)*
       (FROM relation (',' relation)*)?
       (WHERE where=booleanExpression)?
       (GROUP BY groupBy)?
@@ -1114,6 +1114,35 @@ joinType
 joinCriteria
     : ON booleanExpression
     | USING '(' identifier (',' identifier)* ')'
+    ;
+
+selectHint
+    : HINT_START hintItem+ HINT_END
+    ;
+
+hintItem
+    : leaderHint
+    | followerHint
+    | parallelHint
+    ;
+
+leaderHint
+    : LEADER
+    | LEADER '(' identifier (',' identifier)* ')'
+    ;
+
+followerHint
+    : FOLLOWER
+    | FOLLOWER '(' followerParameter (',' followerParameter)* ')'
+    ;
+
+followerParameter
+    : identifier
+    | identifier '(' number (',' number)* ')'
+    ;
+
+parallelHint
+    : PARALLEL '(' number ')'
     ;
 
 patternRecognition
@@ -1508,6 +1537,7 @@ nonReserved
     | WEEK | WHILE | WINDOW | WITHIN | WITHOUT | WORK | WRAPPER | WRITE
     | YEAR
     | ZONE
+    | HINT_START | HINT_END
     ;
 
 ABSENT: 'ABSENT';
@@ -1920,6 +1950,9 @@ WRITE: 'WRITE';
 YEAR: 'YEAR' | 'Y';
 ZONE: 'ZONE';
 AUDIT: 'AUDIT';
+LEADER: 'LEADER';
+FOLLOWER: 'FOLLOWER';
+PARALLEL: 'PARALLEL';
 
 AT_SIGN: '@';
 EQ: '=';
@@ -1938,6 +1971,8 @@ CONCAT: '||';
 QUESTION_MARK: '?';
 SEMICOLON: ';';
 
+HINT_START: '/*+';
+HINT_END: '*/';
 
 STRING
     : '\'' ( ~'\'' | '\'\'' )* '\''
@@ -2034,9 +2069,12 @@ SIMPLE_COMMENT
     ;
 
 BRACKETED_COMMENT
-    : '/*' .*? '*/' -> channel(HIDDEN)
+    : '/*' (~[+] .*?)? '*/' -> channel(HIDDEN)
     ;
 
+EMPTY_HINT
+    : '/*+' [ \r\n\t]* '*/' -> channel(HIDDEN)
+    ;
 WS
     : [ \r\n\t]+ -> channel(HIDDEN)
     ;

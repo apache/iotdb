@@ -100,6 +100,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Extract;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FetchDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FieldReference;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Fill;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FollowerHintItem;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FrameBound;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupBy;
@@ -120,6 +121,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.JoinCriteria;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.JoinOn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.JoinUsing;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LeaderHintItem;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LikePredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Limit;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
@@ -133,6 +135,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NotExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullIfExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Offset;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.OrderBy;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ParallelHintItem;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Parameter;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PatternRecognitionRelation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PipeEnriched;
@@ -147,6 +150,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RenameTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Row;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SearchedCaseExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Select;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SelectHint;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SelectItem;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetOperation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetProperties;
@@ -195,6 +199,10 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WithQuery;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WrappedInsertStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.type.CompatibleResolver;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeManager;
+import org.apache.iotdb.db.queryengine.plan.relational.utils.hint.FollowerHint;
+import org.apache.iotdb.db.queryengine.plan.relational.utils.hint.Hint;
+import org.apache.iotdb.db.queryengine.plan.relational.utils.hint.LeaderHint;
+import org.apache.iotdb.db.queryengine.plan.relational.utils.hint.ParallelHint;
 import org.apache.iotdb.db.queryengine.plan.statement.component.FillPolicy;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
@@ -1248,6 +1256,8 @@ public class StatementAnalyzer {
             orderByScope.orElseThrow(() -> new NoSuchElementException("No value present")));
       }
 
+      // select hint
+      analyzeHint(node, sourceScope);
       return outputScope;
     }
 
@@ -1499,6 +1509,85 @@ public class StatementAnalyzer {
       }
 
       analysis.setWhere(node, predicate);
+    }
+
+    private void analyzeHint(QuerySpecification node, Scope scope) {
+      Optional<SelectHint> selectHint = node.getSelectHint();
+      selectHint.ifPresent(hint -> process(hint, scope));
+    }
+
+    @Override
+    public Scope visitSelectHint(SelectHint node, final Optional<Scope> context) {
+      Map<String, Hint> hintMap = new HashMap<>();
+      for (Node hintItem : node.getHintItems()) {
+        if (hintItem instanceof LeaderHintItem) {
+          LeaderHintItem leaderHintItem = (LeaderHintItem) hintItem;
+          List<String> tables = leaderHintItem.getTables();
+          addLeaderHints(tables, hintMap);
+        } else if (hintItem instanceof FollowerHintItem) {
+          FollowerHintItem followerHintItem = (FollowerHintItem) hintItem;
+          List<String> tables = followerHintItem.getTables();
+          List<List<Integer>> nodeIds = followerHintItem.getNodeIds();
+          addFollowerHints(tables, nodeIds, hintMap);
+        } else if (hintItem instanceof ParallelHintItem) {
+          ParallelHintItem parallelHintItem = (ParallelHintItem) hintItem;
+          int parallelism = parallelHintItem.getParallelism();
+          if (parallelism > 0) {
+            Hint hint = new ParallelHint(parallelism);
+            hintMap.putIfAbsent(hint.getKey(), hint);
+          }
+        }
+      }
+      analysis.setHintMap(hintMap);
+      return createAndAssignScope(node, context);
+    }
+
+    private void addLeaderHints(List<String> tables, Map<String, Hint> hintMap) {
+      List<String> existingTables =
+          analysis.getRelationNames().values().stream()
+              .map(QualifiedName::getSuffix)
+              .collect(toImmutableList());
+
+      if (tables == null || tables.isEmpty()) {
+        existingTables.forEach(
+            table -> {
+              Hint hint = new LeaderHint(table);
+              hintMap.putIfAbsent(hint.getKey(), hint);
+            });
+      } else {
+        for (String table : tables) {
+          if (!existingTables.contains(table)) {
+            continue;
+          }
+          Hint hint = new LeaderHint(table);
+          hintMap.putIfAbsent(hint.getKey(), hint);
+        }
+      }
+    }
+
+    private void addFollowerHints(
+        List<String> tables, List<List<Integer>> nodeIds, Map<String, Hint> hintMap) {
+      List<String> existingTables =
+          analysis.getRelationNames().values().stream()
+              .map(QualifiedName::getSuffix)
+              .collect(toImmutableList());
+
+      if (tables == null || tables.isEmpty()) {
+        existingTables.forEach(
+            table -> {
+              Hint hint = new FollowerHint(table, ImmutableList.of());
+              hintMap.putIfAbsent(hint.getKey(), hint);
+            });
+      } else {
+        for (int i = 0; i < tables.size(); i++) {
+          String table = tables.get(i);
+          if (!existingTables.contains(table)) {
+            continue;
+          }
+          Hint hint = new FollowerHint(table, nodeIds.get(i));
+          hintMap.putIfAbsent(hint.getKey(), hint);
+        }
+      }
     }
 
     private List<Expression> analyzeSelect(QuerySpecification node, Scope scope) {
@@ -3602,7 +3691,7 @@ public class StatementAnalyzer {
     @Override
     protected Scope visitAliasedRelation(AliasedRelation relation, Optional<Scope> scope) {
       analysis.setRelationName(relation, QualifiedName.of(ImmutableList.of(relation.getAlias())));
-      analysis.addAliased(relation.getRelation());
+      analysis.addAliased(relation.getRelation(), relation.getAlias());
       Scope relationScope = process(relation.getRelation(), scope);
       RelationType relationType = relationScope.getRelationType();
 
@@ -3653,7 +3742,7 @@ public class StatementAnalyzer {
       joinConditionCheck(criteria);
 
       // Remember original tables before processing left
-      List<Identifier> originalTables = new ArrayList<>();
+      Set<Identifier> originalTables = new HashSet<>();
       scope.ifPresent(s -> originalTables.addAll(s.getTables()));
 
       Scope left = process(node.getLeft(), scope);

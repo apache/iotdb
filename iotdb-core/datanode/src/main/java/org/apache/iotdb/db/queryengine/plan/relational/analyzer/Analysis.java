@@ -71,6 +71,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableFunctionInvo
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WindowFrame;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.With;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
+import org.apache.iotdb.db.queryengine.plan.relational.utils.hint.Hint;
 import org.apache.iotdb.db.queryengine.plan.statement.component.FillPolicy;
 
 import com.google.common.collect.ArrayListMultimap;
@@ -217,7 +218,7 @@ public class Analysis implements IAnalysis {
 
   private final Map<NodeRef<Relation>, QualifiedName> relationNames = new LinkedHashMap<>();
 
-  private final Set<NodeRef<Relation>> aliasedRelations = new LinkedHashSet<>();
+  private final Map<NodeRef<Relation>, Identifier> aliasedRelations = new LinkedHashMap<>();
 
   private final Map<NodeRef<TableFunctionInvocation>, TableFunctionInvocationAnalysis>
       tableFunctionAnalyses = new LinkedHashMap<>();
@@ -258,6 +259,9 @@ public class Analysis implements IAnalysis {
 
   private boolean isQuery = false;
 
+  // Hint map
+  private Map<String, Hint> hintMap = new HashMap<>();
+
   // SqlParser is needed during query planning phase for executing uncorrelated scalar subqueries
   // in advance (predicate folding). The planner needs to parse and execute these subqueries
   // independently to utilize predicate pushdown optimization.
@@ -266,6 +270,14 @@ public class Analysis implements IAnalysis {
   public Analysis(@Nullable Statement root, Map<NodeRef<Parameter>, Expression> parameters) {
     this.root = root;
     this.parameters = ImmutableMap.copyOf(requireNonNull(parameters, "parameters is null"));
+  }
+
+  public void setHintMap(Map<String, Hint> hintMap) {
+    this.hintMap = hintMap;
+  }
+
+  public Map<String, Hint> getHintMap() {
+    return hintMap;
   }
 
   public Map<NodeRef<Parameter>, Expression> getParameters() {
@@ -850,12 +862,20 @@ public class Analysis implements IAnalysis {
     return relationNames.get(NodeRef.of(relation));
   }
 
-  public void addAliased(final Relation relation) {
-    aliasedRelations.add(NodeRef.of(relation));
+  public Map<NodeRef<Relation>, QualifiedName> getRelationNames() {
+    return relationNames;
+  }
+
+  public void addAliased(final Relation relation, Identifier alias) {
+    aliasedRelations.put(NodeRef.of(relation), alias);
+  }
+
+  public Identifier getAliased(Relation relation) {
+    return aliasedRelations.get(NodeRef.of(relation));
   }
 
   public boolean isAliased(Relation relation) {
-    return aliasedRelations.contains(NodeRef.of(relation));
+    return aliasedRelations.containsKey(NodeRef.of(relation));
   }
 
   public void addTableSchema(

@@ -66,6 +66,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -108,7 +109,7 @@ public class CteMaterializer {
     try {
       Query q = query;
       if (with != null) {
-        List<Identifier> tables = context.getTables(query);
+        Set<Identifier> tables = context.getTables(query);
         List<WithQuery> withQueries =
             with.getQueries().stream()
                 .filter(

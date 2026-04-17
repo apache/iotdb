@@ -92,7 +92,7 @@ public class TableModelStatementMemorySourceVisitor
 
     // Generate table model distributed plan
     final TableDistributedPlanGenerator.PlanContext planContext =
-        new TableDistributedPlanGenerator.PlanContext();
+        new TableDistributedPlanGenerator.PlanContext(context.getAnalysis().getHintMap());
     final PlanNode outputNodeWithExchange =
         new TableDistributedPlanner(
                 context.getAnalysis(),
