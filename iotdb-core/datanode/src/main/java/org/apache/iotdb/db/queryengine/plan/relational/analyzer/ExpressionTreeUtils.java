@@ -105,6 +105,37 @@ public final class ExpressionTreeUtils {
     return name;
   }
 
+  /**
+   * Extracts column references (Identifiers and DereferenceExpressions) that appear outside of
+   * aggregate and window function call boundaries. For example, in {@code s1 + avg(s2)}, this
+   * returns {@code [s1]}, skipping {@code s2} inside the aggregate.
+   */
+  static List<Expression> extractNonAggregateColumnReferences(Expression expression) {
+    ImmutableList.Builder<Expression> result = ImmutableList.builder();
+    new DefaultExpressionTraversalVisitor<Void>() {
+      @Override
+      protected Void visitFunctionCall(FunctionCall node, Void context) {
+        if (isAggregation(node) || isWindowFunction(node)) {
+          return null;
+        }
+        return super.visitFunctionCall(node, context);
+      }
+
+      @Override
+      protected Void visitIdentifier(Identifier node, Void context) {
+        result.add(node);
+        return null;
+      }
+
+      @Override
+      protected Void visitDereferenceExpression(DereferenceExpression node, Void context) {
+        result.add(node);
+        return null;
+      }
+    }.process(expression, null);
+    return result.build();
+  }
+
   static boolean isAggregationFunction(String functionName) {
     return TableBuiltinAggregationFunction.getBuiltInAggregateFunctionName()
             .contains(functionName.toLowerCase())

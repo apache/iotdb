@@ -1044,7 +1044,8 @@ fromFirstQuerySpecification
     ;
 
 groupBy
-    : setQuantifier? groupingElement (',' groupingElement)*
+    : ALL
+    | setQuantifier? groupingElement (',' groupingElement)*
     ;
 
 groupingElement

@@ -249,13 +249,18 @@ public final class SqlFormatter {
 
       node.getGroupBy()
           .ifPresent(
-              groupBy ->
+              groupBy -> {
+                if (groupBy.isAll()) {
+                  append(indent, "GROUP BY ALL").append('\n');
+                } else {
                   append(
                           indent,
                           "GROUP BY "
                               + (groupBy.isDistinct() ? " DISTINCT " : "")
                               + formatGroupBy(groupBy.getGroupingElements()))
-                      .append('\n'));
+                      .append('\n');
+                }
+              });
 
       node.getHaving()
           .ifPresent(having -> append(indent, "HAVING " + formatExpression(having)).append('\n'));
