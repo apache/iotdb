@@ -117,6 +117,15 @@ public:
 
     std::unique_ptr<SessionDataSet> executeQueryStatement(const std::string& sql, int64_t timeoutInMs = -1);
 
+    int32_t prepareStatement(const std::string& sql, const std::string& statementName);
+
+    std::unique_ptr<SessionDataSet> executePreparedStatement(const std::string& sqlForDisplay,
+                                                             const std::string& statementName,
+                                                             const std::string& parametersBinary,
+                                                             int64_t timeoutInMs);
+
+    void deallocatePreparedStatement(const std::string& statementName);
+
     std::shared_ptr<IClientRPCServiceClient> getSessionClient() {
         return client;
     }

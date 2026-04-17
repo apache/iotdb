@@ -22,6 +22,7 @@
 #ifndef IOTDB_TABLESESSION_H
 #define IOTDB_TABLESESSION_H
 
+#include "PreparedParameterBinary.h"
 #include "Session.h"
 
 class TableSession {
@@ -38,6 +39,39 @@ public:
     void executeNonQueryStatement(const std::string& sql);
     unique_ptr<SessionDataSet> executeQueryStatement(const std::string& sql);
     unique_ptr<SessionDataSet> executeQueryStatement(const std::string& sql, int64_t timeoutInMs);
+
+    /**
+     * Prepare a table-model SQL with '?' placeholders on server side.
+     *
+     * @param sql SQL text for server execution.
+     * @param statementName user-defined unique identifier in this session.
+     * @return parameter count (number of '?' placeholders).
+     */
+    int32_t prepareStatement(const std::string& sql, const std::string& statementName);
+
+    /**
+     * Execute a prepared statement with already-serialized binary parameters.
+     *
+     * @param sqlForDisplay SQL text for logs / tracing.
+     * @param statementName prepared statement identifier returned by prepare flow.
+     * @param parametersBinary binary payload that matches server prepared-parameter codec.
+     * @param timeoutInMs query timeout in milliseconds; -1 means server default behavior.
+     */
+    unique_ptr<SessionDataSet> executePreparedStatement(const std::string& sqlForDisplay,
+                                                        const std::string& statementName,
+                                                        const std::string& parametersBinary,
+                                                        int64_t timeoutInMs = -1);
+    /**
+     * Execute a prepared statement with typed parameter slots.
+     * This overload serializes params internally to reduce caller-side boilerplate.
+     */
+    unique_ptr<SessionDataSet> executePreparedStatement(
+        const std::string& sqlForDisplay, const std::string& statementName,
+        const std::vector<iotdb::prepared::ParamSlot>& params,
+        int64_t timeoutInMs = -1);
+
+    /** Deallocate a server-side prepared statement by name. */
+    void deallocatePreparedStatement(const std::string& statementName);
     void open(bool enableRPCCompression = false);
     void close();
 };

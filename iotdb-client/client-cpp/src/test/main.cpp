@@ -22,6 +22,7 @@
 #include <catch.hpp>
 #include "Session.h"
 #include "SessionBuilder.h"
+#include "TestCredentials.h"
 
 std::shared_ptr<Session> session;
 
@@ -34,8 +35,8 @@ struct SessionListener : Catch::TestEventListenerBase {
             SessionBuilder builder;
             session = builder.host("127.0.0.1")
                           ->rpcPort(6667)
-                          ->username("root")
-                          ->password("TimechoDB@2021")
+                          ->username(iotdb::integration_test::kUsername)
+                          ->password(iotdb::integration_test::kPassword)
                           ->useSSL(false)
                           ->build();
         } else {

@@ -21,6 +21,7 @@
 
 #include <catch.hpp>
 #include "SessionC.h"
+#include "TestCredentials.h"
 
 // Global table session handle used by the C API table-model tests
 CTableSession* g_table_session = nullptr;
@@ -29,7 +30,8 @@ struct CTableSessionListener : Catch::TestEventListenerBase {
     using TestEventListenerBase::TestEventListenerBase;
 
     void testCaseStarting(Catch::TestCaseInfo const& testInfo) override {
-        g_table_session = ts_table_session_new("127.0.0.1", 6667, "root", "TimechoDB@2021", "");
+        g_table_session = ts_table_session_new("127.0.0.1", 6667, iotdb::integration_test::kUsername,
+                                                 iotdb::integration_test::kPassword, "");
         REQUIRE(g_table_session != nullptr);
         TsStatus st = ts_table_session_open(g_table_session);
         if (st != TS_OK) {

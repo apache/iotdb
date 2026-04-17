@@ -20,11 +20,18 @@
 #include "catch.hpp"
 #include "TableSession.h"
 #include "TableSessionBuilder.h"
+#include "TestCredentials.h"
 #include <math.h>
 
 using namespace std;
 
 extern std::shared_ptr<TableSession> session;
+
+/** IoTDB builds without the prepareStatement Thrift RPC return an "Invalid method name" error. */
+static bool isPreparedStatementUnsupportedByServer(const std::exception& e) {
+    std::string m(e.what());
+    return m.find("prepareStatement") != std::string::npos || m.find("Invalid method name") != std::string::npos;
+}
 
 static int global_test_tag = 0;
 
@@ -76,8 +83,8 @@ TEST_CASE("Test TableSession builder with nodeUrls", "[SessionBuilderInit]") {
     std::shared_ptr<TableSession> session =
         std::shared_ptr<TableSession>(
             builder
-            ->username("root")
-            ->password("root")
+            ->username(iotdb::integration_test::kUsername)
+            ->password(iotdb::integration_test::kPassword)
             ->nodeUrls(nodeUrls)
             ->build()
         );
@@ -275,4 +282,103 @@ TEST_CASE("Test RelationalTabletTsblockRead", "[testRelationalTabletTsblockRead]
         rowNum++;
     }
     REQUIRE(rowNum == maxRowNumber);
+}
+
+TEST_CASE("TableSession prepared statement all supported parameter types", "[tablePreparedStatement][tablePreparedAllTypes]") {
+    CaseReporter cr("tablePreparedStatementAllTypes");
+    session->executeNonQueryStatement("DROP DATABASE IF EXISTS db_prep_cpp_types");
+    session->executeNonQueryStatement("CREATE DATABASE db_prep_cpp_types");
+    session->executeNonQueryStatement("USE \"db_prep_cpp_types\"");
+    session->executeNonQueryStatement(
+        "CREATE TABLE t_ps_types ("
+        "tag1 string tag,"
+        "b boolean field,"
+        "i32 int32 field,"
+        "i64 int64 field,"
+        "f float field,"
+        "d double field,"
+        "s string field)");
+
+    vector<pair<string, TSDataType::TSDataType>> schemaList;
+    schemaList.push_back(make_pair("tag1", TSDataType::STRING));
+    schemaList.push_back(make_pair("b", TSDataType::BOOLEAN));
+    schemaList.push_back(make_pair("i32", TSDataType::INT32));
+    schemaList.push_back(make_pair("i64", TSDataType::INT64));
+    schemaList.push_back(make_pair("f", TSDataType::FLOAT));
+    schemaList.push_back(make_pair("d", TSDataType::DOUBLE));
+    schemaList.push_back(make_pair("s", TSDataType::STRING));
+    vector<ColumnCategory> columnTypes = {
+        ColumnCategory::TAG, ColumnCategory::FIELD, ColumnCategory::FIELD, ColumnCategory::FIELD,
+        ColumnCategory::FIELD, ColumnCategory::FIELD, ColumnCategory::FIELD
+    };
+    Tablet tablet("t_ps_types", schemaList, columnTypes, 10);
+
+    int rowIndex = tablet.rowSize++;
+    tablet.timestamps[rowIndex] = 1;
+    tablet.addValue(0, rowIndex, string("dev1"));
+    tablet.addValue(1, rowIndex, true);
+    tablet.addValue(2, rowIndex, static_cast<int32_t>(123));
+    tablet.addValue(3, rowIndex, static_cast<int64_t>(123456789LL));
+    tablet.addValue(4, rowIndex, static_cast<float>(1.5f));
+    tablet.addValue(5, rowIndex, static_cast<double>(2.5));
+    tablet.addValue(6, rowIndex, string("alpha"));
+
+    rowIndex = tablet.rowSize++;
+    tablet.timestamps[rowIndex] = 2;
+    tablet.addValue(0, rowIndex, string("dev2"));
+    tablet.addValue(1, rowIndex, false);
+    tablet.addValue(2, rowIndex, static_cast<int32_t>(456));
+    tablet.addValue(3, rowIndex, static_cast<int64_t>(987654321LL));
+    tablet.addValue(4, rowIndex, static_cast<float>(3.5f));
+    tablet.addValue(5, rowIndex, static_cast<double>(4.5));
+    tablet.addValue(6, rowIndex, string("beta"));
+    session->insert(tablet, true);
+
+    try {
+        const std::string sql =
+            "SELECT i64 FROM db_prep_cpp_types.t_ps_types "
+            "WHERE tag1 = ? AND b = ? AND i32 = ? AND i64 = ? AND f = ? AND d = ? AND s = ?";
+        const std::string statementName = "cpp_ps_all_types";
+        const int32_t paramCount = session->prepareStatement(sql, statementName);
+        REQUIRE(paramCount == 7);
+
+        std::vector<iotdb::prepared::ParamSlot> params(static_cast<size_t>(paramCount));
+        params[0].kind = iotdb::prepared::ParamKind::kString;
+        params[0].stringOrBlob = "dev1";
+        params[1].kind = iotdb::prepared::ParamKind::kBool;
+        params[1].boolVal = true;
+        params[2].kind = iotdb::prepared::ParamKind::kInt32;
+        params[2].int32Val = 123;
+        params[3].kind = iotdb::prepared::ParamKind::kInt64;
+        params[3].int64Val = 123456789LL;
+        params[4].kind = iotdb::prepared::ParamKind::kFloat;
+        params[4].floatVal = 1.5f;
+        params[5].kind = iotdb::prepared::ParamKind::kDouble;
+        params[5].doubleVal = 2.5;
+        params[6].kind = iotdb::prepared::ParamKind::kString;
+        params[6].stringOrBlob = "alpha";
+
+        unique_ptr<SessionDataSet> sessionDataSet = session->executePreparedStatement(sql, statementName, params, -1);
+        int cnt = 0;
+        while (sessionDataSet->hasNext()) {
+            auto row = sessionDataSet->next();
+            REQUIRE(row->fields[0].longV.value() == 123456789LL);
+            cnt++;
+        }
+        REQUIRE(cnt == 1);
+
+        session->deallocatePreparedStatement(statementName);
+
+        // Smoke-check NULL parameter encoding path on client side.
+        std::vector<iotdb::prepared::ParamSlot> nullParams(1);
+        nullParams[0].kind = iotdb::prepared::ParamKind::kNull;
+        REQUIRE_FALSE(iotdb::prepared::serializeParameters(nullParams).empty());
+    } catch (const std::exception& e) {
+        if (isPreparedStatementUnsupportedByServer(e)) {
+            WARN("Skipping: server does not expose prepareStatement RPC (use a build that includes table-model "
+                 "prepared statements)");
+            return;
+        }
+        throw;
+    }
 }

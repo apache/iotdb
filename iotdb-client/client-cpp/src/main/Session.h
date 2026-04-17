@@ -953,6 +953,15 @@ public:
 
     std::unique_ptr<SessionDataSet> executeQueryStatementMayRedirect(const std::string& sql, int64_t timeoutInMs);
 
+    int32_t prepareStatementMayRedirect(const std::string& sql, const std::string& statementName);
+
+    std::unique_ptr<SessionDataSet> executePreparedStatementMayRedirect(const std::string& sqlForDisplay,
+                                                                        const std::string& statementName,
+                                                                        const std::string& parametersBinary,
+                                                                        int64_t timeoutInMs);
+
+    void deallocatePreparedStatementMayRedirect(const std::string& statementName);
+
     void executeNonQueryStatement(const std::string& sql);
 
     std::unique_ptr<SessionDataSet> executeRawDataQuery(const std::vector<std::string>& paths, int64_t startTime,

@@ -213,6 +213,90 @@ std::unique_ptr<SessionDataSet> SessionConnection::executeQueryStatement(const s
                                                               timeFactor, resp.columnIndex2TsBlockColumnIndexList));
 }
 
+int32_t SessionConnection::prepareStatement(const std::string& sql, const std::string& statementName) {
+    TSPrepareReq req;
+    req.__set_sessionId(sessionId);
+    req.__set_sql(sql);
+    req.__set_statementName(statementName);
+
+    auto result = callWithRetryAndReconnect<TSPrepareResp>(
+        [this, &req]() {
+            TSPrepareResp resp;
+            client->prepareStatement(resp, req);
+            return resp;
+        },
+        [](const TSPrepareResp& r) {
+            return r.status;
+        });
+    if (result.getException()) {
+        try {
+            std::rethrow_exception(result.getException());
+        } catch (const std::exception& e) {
+            throw IoTDBConnectionException(e.what());
+        }
+    }
+    TSPrepareResp resp = result.getResult();
+    RpcUtils::verifySuccess(resp.status);
+    if (resp.__isset.parameterCount) {
+        return resp.parameterCount;
+    }
+    return 0;
+}
+
+std::unique_ptr<SessionDataSet> SessionConnection::executePreparedStatement(const std::string& sqlForDisplay,
+                                                                            const std::string& statementName,
+                                                                            const std::string& parametersBinary,
+                                                                            int64_t timeoutInMs) {
+    TSExecutePreparedReq req;
+    req.__set_sessionId(sessionId);
+    req.__set_statementName(statementName);
+    req.__set_parameters(parametersBinary);
+    req.__set_statementId(statementId);
+    req.__set_fetchSize(fetchSize);
+    if (timeoutInMs >= 0) {
+        req.__set_timeout(timeoutInMs);
+    }
+
+    auto result = callWithRetryAndReconnect<TSExecuteStatementResp>(
+        [this, &req]() {
+            TSExecuteStatementResp resp;
+            client->executePreparedStatement(resp, req);
+            return resp;
+        },
+        [](const TSExecuteStatementResp& r) {
+            return r.status;
+        });
+    TSExecuteStatementResp resp = result.getResult();
+    if (result.getRetryAttempts() == 0) {
+        RpcUtils::verifySuccessWithRedirection(resp.status);
+    } else {
+        RpcUtils::verifySuccess(resp.status);
+    }
+
+    return std::unique_ptr<SessionDataSet>(new SessionDataSet(
+        sqlForDisplay, resp.columns, resp.dataTypeList, resp.columnNameIndexMap, resp.queryId, statementId, client,
+        sessionId, resp.queryResult, resp.ignoreTimeStamp, timeoutInMs, resp.moreData, fetchSize, zoneId, timeFactor,
+        resp.columnIndex2TsBlockColumnIndexList));
+}
+
+void SessionConnection::deallocatePreparedStatement(const std::string& statementName) {
+    TSDeallocatePreparedReq req;
+    req.__set_sessionId(sessionId);
+    req.__set_statementName(statementName);
+
+    auto result = callWithRetryAndReconnect<TSStatus>(
+        [this, &req]() {
+            TSStatus status;
+            client->deallocatePreparedStatement(status, req);
+            return status;
+        },
+        [](const TSStatus& st) {
+            return st;
+        });
+    TSStatus status = result.getResult();
+    RpcUtils::verifySuccess(status);
+}
+
 std::unique_ptr<SessionDataSet> SessionConnection::executeRawDataQuery(const std::vector<std::string>& paths,
                                                                        int64_t startTime, int64_t endTime) {
     TSRawDataQueryReq req;

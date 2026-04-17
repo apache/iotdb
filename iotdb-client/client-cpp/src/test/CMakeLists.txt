@@ -49,6 +49,8 @@ ENDIF()
 
 # Add Boost include path for MacOS
 INCLUDE_DIRECTORIES(/usr/local/include)
+# Shared test credentials (TestCredentials.h) live next to main.cpp under this directory
+INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR})
 # Add Session related include files
 INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/../main/generated-sources-cpp)
 # Add Thrift include directory

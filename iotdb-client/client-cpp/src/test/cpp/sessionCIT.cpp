@@ -19,6 +19,7 @@
 
 #include "catch.hpp"
 #include "SessionC.h"
+#include "TestCredentials.h"
 #include <cmath>
 #include <cstring>
 #include <iostream>
@@ -113,7 +114,8 @@ TEST_CASE("C API - Delete timeseries", "[c_deleteTimeseries]") {
 
 TEST_CASE("C API - Login failure", "[c_Authentication]") {
     CaseReporter cr("c_LoginTest");
-    CSession* badSession = ts_session_new("127.0.0.1", 6667, "root", "wrong-password");
+    CSession* badSession =
+        ts_session_new("127.0.0.1", 6667, iotdb::integration_test::kUsername, iotdb::integration_test::kWrongPassword);
     REQUIRE(badSession != nullptr);
     TsStatus status = ts_session_open(badSession);
     REQUIRE(status != TS_OK);
@@ -366,7 +368,8 @@ TEST_CASE("C API - Timezone", "[c_timezone]") {
 TEST_CASE("C API - Multi-node session", "[c_multiNode]") {
     CaseReporter cr("c_multiNode");
     const char* urls[] = {"127.0.0.1:6667"};
-    CSession* localSession = ts_session_new_multi_node(urls, 1, "root", "root");
+    CSession* localSession =
+        ts_session_new_multi_node(urls, 1, iotdb::integration_test::kUsername, iotdb::integration_test::kPassword);
     REQUIRE(localSession != nullptr);
 
     TsStatus status = ts_session_open(localSession);
@@ -423,13 +426,15 @@ TEST_CASE("C API - Dataset column info", "[c_datasetColumns]") {
 TEST_CASE("C API - Session lifecycle variants", "[c_sessionLifecycle]") {
     CaseReporter cr("c_sessionLifecycle");
 
-    CSession* s1 = ts_session_new_with_zone("127.0.0.1", 6667, "root", "root", "Asia/Shanghai", 1024);
+    CSession* s1 = ts_session_new_with_zone("127.0.0.1", 6667, iotdb::integration_test::kUsername,
+                                            iotdb::integration_test::kPassword, "Asia/Shanghai", 1024);
     REQUIRE(s1 != nullptr);
     REQUIRE(ts_session_open(s1) == TS_OK);
     ts_session_close(s1);
     ts_session_destroy(s1);
 
-    CSession* s2 = ts_session_new("127.0.0.1", 6667, "root", "root");
+    CSession* s2 = ts_session_new("127.0.0.1", 6667, iotdb::integration_test::kUsername,
+                                  iotdb::integration_test::kPassword);
     REQUIRE(s2 != nullptr);
     REQUIRE(ts_session_open_with_compression(s2, true) == TS_OK);
     ts_session_close(s2);

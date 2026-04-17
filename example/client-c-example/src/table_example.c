@@ -118,6 +118,40 @@ int main(void) {
     }
     ts_tablet_destroy(tablet);
 
+    /* Table-model prepared statement: SELECT ... WHERE tag1 = ? */
+    {
+        int pc = 0;
+        char prepSql[256];
+        snprintf(prepSql, sizeof(prepSql), "SELECT m1 FROM %s WHERE tag1 = ?", TABLE_NAME);
+        CTablePreparedStmt* ps = ts_table_prepared_statement_new(session, prepSql, "cdemo_ps1", &pc);
+        if (ps) {
+            if (pc == 1 && ts_table_prepared_statement_set_string(ps, 0, "device_A") == TS_OK) {
+                CSessionDataSet* psDs = NULL;
+                if (ts_table_prepared_statement_execute_query(ps, -1, &psDs) == TS_OK && psDs) {
+                    ts_dataset_set_fetch_size(psDs, 1024);
+                    int pr = 0;
+                    while (ts_dataset_has_next(psDs)) {
+                        CRowRecord* r = ts_dataset_next(psDs);
+                        if (r) {
+                            pr++;
+                            ts_row_record_destroy(r);
+                        }
+                    }
+                    printf("[table_example] prepared statement returned %d row(s).\n", pr);
+                    ts_dataset_destroy(psDs);
+                }
+            }
+            ts_table_prepared_statement_free(ps);
+        } else {
+            const char* err = ts_get_last_error();
+            if (err && (strstr(err, "prepareStatement") != NULL || strstr(err, "Invalid method name") != NULL)) {
+                printf("[table_example] prepared statement RPC not available; skipped.\n");
+            } else {
+                fprintf(stderr, "[table_example] ts_table_prepared_statement_new: %s\n", err ? err : "(null)");
+            }
+        }
+    }
+
     CSessionDataSet* dataSet = NULL;
     if (ts_table_session_execute_query(session, "SELECT * FROM " TABLE_NAME, &dataSet) != TS_OK) {
         fail("ts_table_session_execute_query", session);

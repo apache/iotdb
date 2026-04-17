@@ -23,6 +23,7 @@
 #include "TableSessionBuilder.h"
 #include "SessionBuilder.h"
 #include "SessionDataSet.h"
+#include "PreparedParameterBinary.h"
 
 #include <cstring>
 #include <string>
@@ -41,6 +42,15 @@ struct CSession_ {
 
 struct CTableSession_ {
     std::shared_ptr<TableSession> cpp;
+};
+
+struct CTablePreparedStmt_ {
+    std::shared_ptr<TableSession> tableSession;
+    std::string sql;
+    std::string statementName;
+    int32_t paramCount{0};
+    std::vector<iotdb::prepared::ParamSlot> params;
+    std::vector<bool> isBound;
 };
 
 struct CTablet_ {
@@ -1260,6 +1270,199 @@ TsStatus ts_table_session_execute_non_query(CTableSession* session, const char* 
     if (!session) return setError(TS_ERR_NULL_PTR, "session is null");
     try {
         session->cpp->executeNonQueryStatement(std::string(sql));
+        return TS_OK;
+    } catch (const std::exception& e) {
+        return handleException(e);
+    }
+}
+
+CTablePreparedStmt* ts_table_prepared_statement_new(CTableSession* session, const char* sql,
+                                                    const char* statement_name, int* out_param_count) {
+    clearError();
+    if (!session) {
+        if (out_param_count) {
+            *out_param_count = 0;
+        }
+        (void)setError(TS_ERR_NULL_PTR, "session is null");
+        return nullptr;
+    }
+    if (!sql || !statement_name || !out_param_count) {
+        if (out_param_count) {
+            *out_param_count = 0;
+        }
+        (void)setError(TS_ERR_INVALID_PARAM, "sql, statement_name, or out_param_count is null");
+        return nullptr;
+    }
+    try {
+        auto* ps = new CTablePreparedStmt_();
+        ps->tableSession = session->cpp;
+        ps->sql = sql;
+        ps->statementName = statement_name;
+        ps->paramCount = ps->tableSession->prepareStatement(ps->sql, ps->statementName);
+        ps->params.resize(static_cast<size_t>(ps->paramCount));
+        ps->isBound.assign(static_cast<size_t>(ps->paramCount), false);
+        for (int32_t i = 0; i < ps->paramCount; ++i) {
+            ps->params[static_cast<size_t>(i)].kind = iotdb::prepared::ParamKind::kNull;
+        }
+        *out_param_count = ps->paramCount;
+        return ps;
+    } catch (const std::exception& e) {
+        if (out_param_count) {
+            *out_param_count = 0;
+        }
+        handleException(e);
+        return nullptr;
+    }
+}
+
+void ts_table_prepared_statement_free(CTablePreparedStmt* ps) {
+    if (!ps) {
+        return;
+    }
+    clearError();
+    try {
+        if (ps->tableSession) {
+            ps->tableSession->deallocatePreparedStatement(ps->statementName);
+        }
+    } catch (const std::exception& e) {
+        (void)handleException(e);
+    }
+    delete ps;
+}
+
+TsStatus ts_table_prepared_statement_clear_parameters(CTablePreparedStmt* ps) {
+    clearError();
+    if (!ps) {
+        return setError(TS_ERR_NULL_PTR, "prepared statement is null");
+    }
+    for (int32_t i = 0; i < ps->paramCount; ++i) {
+        ps->params[static_cast<size_t>(i)].kind = iotdb::prepared::ParamKind::kNull;
+        ps->isBound[static_cast<size_t>(i)] = false;
+    }
+    return TS_OK;
+}
+
+static TsStatus bindCheckIndex(CTablePreparedStmt* ps, int index) {
+    if (!ps) {
+        return setError(TS_ERR_NULL_PTR, "prepared statement is null");
+    }
+    if (index < 0 || index >= ps->paramCount) {
+        return setError(TS_ERR_INVALID_PARAM, "parameter index out of range");
+    }
+    return TS_OK;
+}
+
+TsStatus ts_table_prepared_statement_set_null(CTablePreparedStmt* ps, int index) {
+    clearError();
+    TsStatus st = bindCheckIndex(ps, index);
+    if (st != TS_OK) {
+        return st;
+    }
+    ps->params[static_cast<size_t>(index)].kind = iotdb::prepared::ParamKind::kNull;
+    ps->isBound[static_cast<size_t>(index)] = true;
+    return TS_OK;
+}
+
+TsStatus ts_table_prepared_statement_set_bool(CTablePreparedStmt* ps, int index, bool value) {
+    clearError();
+    TsStatus st = bindCheckIndex(ps, index);
+    if (st != TS_OK) {
+        return st;
+    }
+    ps->params[static_cast<size_t>(index)].kind = iotdb::prepared::ParamKind::kBool;
+    ps->params[static_cast<size_t>(index)].boolVal = value;
+    ps->isBound[static_cast<size_t>(index)] = true;
+    return TS_OK;
+}
+
+TsStatus ts_table_prepared_statement_set_int32(CTablePreparedStmt* ps, int index, int32_t value) {
+    clearError();
+    TsStatus st = bindCheckIndex(ps, index);
+    if (st != TS_OK) {
+        return st;
+    }
+    ps->params[static_cast<size_t>(index)].kind = iotdb::prepared::ParamKind::kInt32;
+    ps->params[static_cast<size_t>(index)].int32Val = value;
+    ps->isBound[static_cast<size_t>(index)] = true;
+    return TS_OK;
+}
+
+TsStatus ts_table_prepared_statement_set_int64(CTablePreparedStmt* ps, int index, int64_t value) {
+    clearError();
+    TsStatus st = bindCheckIndex(ps, index);
+    if (st != TS_OK) {
+        return st;
+    }
+    ps->params[static_cast<size_t>(index)].kind = iotdb::prepared::ParamKind::kInt64;
+    ps->params[static_cast<size_t>(index)].int64Val = value;
+    ps->isBound[static_cast<size_t>(index)] = true;
+    return TS_OK;
+}
+
+TsStatus ts_table_prepared_statement_set_float(CTablePreparedStmt* ps, int index, float value) {
+    clearError();
+    TsStatus st = bindCheckIndex(ps, index);
+    if (st != TS_OK) {
+        return st;
+    }
+    ps->params[static_cast<size_t>(index)].kind = iotdb::prepared::ParamKind::kFloat;
+    ps->params[static_cast<size_t>(index)].floatVal = value;
+    ps->isBound[static_cast<size_t>(index)] = true;
+    return TS_OK;
+}
+
+TsStatus ts_table_prepared_statement_set_double(CTablePreparedStmt* ps, int index, double value) {
+    clearError();
+    TsStatus st = bindCheckIndex(ps, index);
+    if (st != TS_OK) {
+        return st;
+    }
+    ps->params[static_cast<size_t>(index)].kind = iotdb::prepared::ParamKind::kDouble;
+    ps->params[static_cast<size_t>(index)].doubleVal = value;
+    ps->isBound[static_cast<size_t>(index)] = true;
+    return TS_OK;
+}
+
+TsStatus ts_table_prepared_statement_set_string(CTablePreparedStmt* ps, int index, const char* value) {
+    clearError();
+    TsStatus st = bindCheckIndex(ps, index);
+    if (st != TS_OK) {
+        return st;
+    }
+    if (!value) {
+        return setError(TS_ERR_INVALID_PARAM,
+                        std::string("value is null (index=") + std::to_string(index) + ")");
+    }
+    ps->params[static_cast<size_t>(index)].kind = iotdb::prepared::ParamKind::kString;
+    ps->params[static_cast<size_t>(index)].stringOrBlob = value;
+    ps->isBound[static_cast<size_t>(index)] = true;
+    return TS_OK;
+}
+
+TsStatus ts_table_prepared_statement_execute_query(CTablePreparedStmt* ps, int64_t timeout_in_ms,
+                                                   CSessionDataSet** out) {
+    clearError();
+    if (!ps) {
+        return setError(TS_ERR_NULL_PTR, "prepared statement is null");
+    }
+    if (!out) {
+        return setError(TS_ERR_INVALID_PARAM, "out pointer is null");
+    }
+    *out = nullptr;
+    for (int32_t i = 0; i < ps->paramCount; ++i) {
+        if (!ps->isBound[static_cast<size_t>(i)]) {
+            return setError(TS_ERR_INVALID_PARAM,
+                            std::string("parameter at index ") + std::to_string(i) + " is not bound");
+        }
+    }
+    try {
+        std::string bin = iotdb::prepared::serializeParameters(ps->params);
+        auto ds = ps->tableSession->executePreparedStatement(ps->sql, ps->statementName, bin, timeout_in_ms);
+        CSessionDataSet_ tmp{};
+        tmp.cpp = std::move(ds);
+        auto* cds = new CSessionDataSet_();
+        cds->cpp = std::move(tmp.cpp);
+        *out = cds;
         return TS_OK;
     } catch (const std::exception& e) {
         return handleException(e);

@@ -20,6 +20,7 @@
 #include "catch.hpp"
 #include "Session.h"
 #include "SessionBuilder.h"
+#include "TestCredentials.h"
 #include "TsBlock.h"
 
 using namespace std;
@@ -68,7 +69,8 @@ TEST_CASE("Login Test - Authentication failed with error code 801", "[Authentica
     CaseReporter cr("Login Test");
 
     try {
-        Session session("127.0.0.1", 6667, "root", "wrong-password");
+        Session session("127.0.0.1", 6667, iotdb::integration_test::kUsername,
+                        iotdb::integration_test::kWrongPassword);
         session.open(false);
         FAIL("Expected authentication exception"); // Test fails if no exception
     } catch (const std::exception& e) {
@@ -81,7 +83,8 @@ TEST_CASE("Test Session constructor with nodeUrls", "[SessionInitAndOperate]") {
     CaseReporter cr("SessionInitWithNodeUrls");
 
     std::vector<std::string> nodeUrls = {"127.0.0.1:6667"};
-    std::shared_ptr<Session> localSession = std::make_shared<Session>(nodeUrls, "root", "root");
+    std::shared_ptr<Session> localSession =
+        std::make_shared<Session>(nodeUrls, iotdb::integration_test::kUsername, iotdb::integration_test::kPassword);
     localSession->open();
     if (!localSession->checkTimeseriesExists("root.test.d1.s1")) {
         localSession->createTimeseries("root.test.d1.s1", TSDataType::INT64, TSEncoding::RLE, CompressionType::SNAPPY);
@@ -99,8 +102,8 @@ TEST_CASE("Test Session builder with nodeUrls", "[SessionBuilderInit]") {
     std::shared_ptr<Session> session =
         std::shared_ptr<Session>(
             builder
-            ->username("root")
-            ->password("root")
+            ->username(iotdb::integration_test::kUsername)
+            ->password(iotdb::integration_test::kPassword)
             ->nodeUrls(nodeUrls)
             ->build()
         );

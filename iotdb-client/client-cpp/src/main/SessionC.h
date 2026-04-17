@@ -56,6 +56,7 @@ typedef struct CTableSession_   CTableSession;
 typedef struct CTablet_         CTablet;
 typedef struct CSessionDataSet_ CSessionDataSet;
 typedef struct CRowRecord_      CRowRecord;
+typedef struct CTablePreparedStmt_ CTablePreparedStmt;
 
 /* ============================================================
  *  Enums  (values match C++ TSDataType / TSEncoding / CompressionType)
@@ -389,6 +390,51 @@ TsStatus ts_table_session_execute_query_with_timeout(CTableSession* session, con
                                                       CSessionDataSet** dataSet);
 
 TsStatus ts_table_session_execute_non_query(CTableSession* session, const char* sql);
+
+/* ============================================================
+ *  Prepared statement  —  Table model
+ * ============================================================ */
+
+/**
+ * Prepares a table-model SQL statement with '?' placeholders. On success, writes parameter count to *out_param_count.
+ * Returns NULL on failure; see ts_get_last_error().
+ */
+CTablePreparedStmt* ts_table_prepared_statement_new(CTableSession* session, const char* sql,
+                                                     const char* statement_name, int* out_param_count);
+
+/** Releases prepared statement handle and deallocates server-side prepared resource. */
+void ts_table_prepared_statement_free(CTablePreparedStmt* ps);
+
+/** Clears all previously bound parameter values on this prepared statement. */
+TsStatus ts_table_prepared_statement_clear_parameters(CTablePreparedStmt* ps);
+
+/** Binds parameter at index (0-based, left-to-right for '?'). */
+TsStatus ts_table_prepared_statement_set_null(CTablePreparedStmt* ps, int index);
+
+/** Binds BOOLEAN parameter. */
+TsStatus ts_table_prepared_statement_set_bool(CTablePreparedStmt* ps, int index, bool value);
+
+/** Binds INT32 parameter. */
+TsStatus ts_table_prepared_statement_set_int32(CTablePreparedStmt* ps, int index, int32_t value);
+
+/** Binds INT64 parameter. */
+TsStatus ts_table_prepared_statement_set_int64(CTablePreparedStmt* ps, int index, int64_t value);
+
+/** Binds FLOAT parameter. */
+TsStatus ts_table_prepared_statement_set_float(CTablePreparedStmt* ps, int index, float value);
+
+/** Binds DOUBLE parameter. */
+TsStatus ts_table_prepared_statement_set_double(CTablePreparedStmt* ps, int index, double value);
+
+/** Binds STRING/TEXT parameter (UTF-8 bytes in char*). */
+TsStatus ts_table_prepared_statement_set_string(CTablePreparedStmt* ps, int index, const char* value);
+
+/**
+ * Executes the prepared query with current bound parameters.
+ * On success, *out receives a dataset handle owned by caller (destroy via ts_dataset_destroy).
+ */
+TsStatus ts_table_prepared_statement_execute_query(CTablePreparedStmt* ps, int64_t timeout_in_ms,
+                                                   CSessionDataSet** out);
 
 /* ============================================================
  *  SessionDataSet & RowRecord  —  Result Iteration

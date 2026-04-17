@@ -17,6 +17,7 @@
  * under the License.
  */
 
+#include "PreparedParameterBinary.h"
 #include "TableSession.h"
 #include "TableSessionBuilder.h"
 
@@ -76,6 +77,56 @@ void Output(unique_ptr<SessionDataSet> &dataSet) {
         cout << dataSet->next()->toString();
     }
     cout << endl;
+}
+
+static bool preparedStatementUnsupported(const string& msg) {
+    return msg.find("prepareStatement") != string::npos || msg.find("Invalid method name") != string::npos;
+}
+
+/** Table-model prepared statement: prepare → ParamSlot bind → execute → deallocate. */
+void tableModelPreparedStatementExample() {
+    cout << "[Table prepared statement]\n" << endl;
+    try {
+        session->executeNonQueryStatement("DROP DATABASE IF EXISTS db_cpp_prep_ex");
+        session->executeNonQueryStatement("CREATE DATABASE db_cpp_prep_ex");
+        session->executeNonQueryStatement("USE \"db_cpp_prep_ex\"");
+        session->executeNonQueryStatement("CREATE TABLE t_ps_ex (tag1 string tag, m1 double field)");
+
+        vector<pair<string, TSDataType::TSDataType>> schemaList;
+        schemaList.push_back(make_pair("tag1", TSDataType::STRING));
+        schemaList.push_back(make_pair("m1", TSDataType::DOUBLE));
+        vector<ColumnCategory> columnTypes = {ColumnCategory::TAG, ColumnCategory::FIELD};
+        Tablet tablet("t_ps_ex", schemaList, columnTypes, 10);
+        for (int row = 0; row < 3; row++) {
+            int rowIndex = tablet.rowSize++;
+            tablet.timestamps[rowIndex] = row;
+            tablet.addValue(0, rowIndex, string("A"));
+            tablet.addValue(1, rowIndex, static_cast<double>(row));
+        }
+        session->insert(tablet, true);
+
+        const string sql = "SELECT m1 FROM db_cpp_prep_ex.t_ps_ex WHERE tag1 = ?";
+        const string stmtName = "cpp_ex_ps_1";
+        const int32_t pc = session->prepareStatement(sql, stmtName);
+        vector<iotdb::prepared::ParamSlot> params(static_cast<size_t>(pc));
+        params[0].kind = iotdb::prepared::ParamKind::kString;
+        params[0].stringOrBlob = "A";
+        unique_ptr<SessionDataSet> ds = session->executePreparedStatement(sql, stmtName, params, -1);
+        int n = 0;
+        while (ds->hasNext()) {
+            (void)ds->next();
+            n++;
+        }
+        cout << "prepared statement result rows: " << n << endl;
+        session->deallocatePreparedStatement(stmtName);
+        session->executeNonQueryStatement("DROP DATABASE IF EXISTS db_cpp_prep_ex");
+    } catch (IoTDBException& e) {
+        if (preparedStatementUnsupported(string(e.what()))) {
+            cout << "Server has no table-model prepared statement RPC; skip example.\n" << endl;
+        } else {
+            throw;
+        }
+    }
 }
 
 void OutputWithType(unique_ptr<SessionDataSet> &dataSet) {
@@ -154,6 +205,12 @@ int main() {
             unique_ptr<SessionDataSet> dataSet = session->executeQueryStatement("SELECT * FROM table1"
                 " where region_id = '1' and plant_id in ('3', '5') and device_id = '3'");
             OutputWithType(dataSet);
+        } catch (IoTDBException &e) {
+            cout << e.what() << endl;
+        }
+
+        try {
+            tableModelPreparedStatementExample();
         } catch (IoTDBException &e) {
             cout << e.what() << endl;
         }
