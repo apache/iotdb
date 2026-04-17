@@ -25,6 +25,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.isession.SessionConfig;
+import org.apache.iotdb.it.env.cluster.env.AbstractEnv;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2DualTreeAutoBasic;
@@ -38,8 +39,19 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
+import javax.tools.JavaCompiler;
+import javax.tools.ToolProvider;
+
 import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.sql.Connection;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
@@ -47,6 +59,9 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.jar.JarEntry;
+import java.util.jar.JarOutputStream;
 
 import static org.junit.Assert.fail;
 
@@ -882,6 +897,154 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualTreeModelAutoIT {
     } catch (final SQLException e) {
       e.printStackTrace();
       fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testShowPipePluginAfterJarDeletedAndClusterRestart() throws Exception {
+    final String pluginName = "TEST_MISSING_JAR_PROCESSOR";
+    final String pluginClassName = "org.apache.iotdb.pipe.it.plugin.TestMissingJarProcessor";
+    final Path temporaryDir = Files.createTempDirectory("pipe-plugin-it-");
+    final Path pluginJarPath = temporaryDir.resolve("test-missing-jar-processor.jar");
+
+    buildTestPipePluginJar(temporaryDir, pluginJarPath, pluginClassName);
+
+    try (final Connection connection = senderEnv.getConnection();
+        final Statement statement = connection.createStatement()) {
+      statement.execute(
+          String.format(
+              "create pipePlugin %s as '%s' USING URI '%s'",
+              pluginName, pluginClassName, pluginJarPath.toUri()));
+    }
+
+    senderEnv.shutdownAllDataNodes();
+    senderEnv.shutdownAllConfigNodes();
+
+    deletePluginJarUnderDataNodes("test-missing-jar-processor.jar");
+
+    senderEnv.startAllConfigNodes();
+    senderEnv.startAllDataNodes();
+    ((AbstractEnv) senderEnv).checkClusterStatusWithoutUnknown();
+
+    boolean pluginFound = false;
+    boolean exceptionMessageFound = false;
+    SQLException lastException = null;
+    for (int retry = 0; retry < 10; retry++) {
+      try (final Connection connection = senderEnv.getConnection();
+          final Statement statement = connection.createStatement();
+          final ResultSet resultSet = statement.executeQuery("show pipe plugins")) {
+        while (resultSet.next()) {
+          if (pluginName.equalsIgnoreCase(resultSet.getString("PluginName"))) {
+            pluginFound = true;
+            final String exceptionMessage = resultSet.getString("ExceptionMessage");
+            exceptionMessageFound = exceptionMessage != null && !exceptionMessage.trim().isEmpty();
+            break;
+          }
+        }
+        lastException = null;
+        break;
+      } catch (final SQLException e) {
+        lastException = e;
+        Thread.sleep(1000);
+      }
+    }
+    if (lastException != null) {
+      throw lastException;
+    }
+
+    Assert.assertTrue("Expected plugin in show pipe plugins result.", pluginFound);
+    Assert.assertTrue(
+        "Expected non-empty ExceptionMessage after deleting plugin jar and restarting cluster.",
+        exceptionMessageFound);
+
+    try (final Connection connection = senderEnv.getConnection();
+        final Statement statement = connection.createStatement()) {
+      statement.execute(String.format("drop pipePlugin %s", pluginName));
+    } finally {
+      Files.deleteIfExists(pluginJarPath);
+      Files.deleteIfExists(temporaryDir);
+    }
+  }
+
+  private void buildTestPipePluginJar(
+      final Path tempDir, final Path jarPath, final String pluginClassName) throws IOException {
+    final int lastDot = pluginClassName.lastIndexOf('.');
+    final String packageName = pluginClassName.substring(0, lastDot);
+    final String simpleClassName = pluginClassName.substring(lastDot + 1);
+    final Path packageDir = tempDir.resolve(packageName.replace('.', File.separatorChar));
+    Files.createDirectories(packageDir);
+
+    final Path sourcePath = packageDir.resolve(simpleClassName + ".java");
+    final String sourceCode =
+        "package "
+            + packageName
+            + ";\n"
+            + "import org.apache.iotdb.pipe.api.PipeProcessor;\n"
+            + "import org.apache.iotdb.pipe.api.collector.EventCollector;\n"
+            + "import org.apache.iotdb.pipe.api.customizer.configuration.PipeProcessorRuntimeConfiguration;\n"
+            + "import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;\n"
+            + "import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;\n"
+            + "import org.apache.iotdb.pipe.api.event.Event;\n"
+            + "import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;\n"
+            + "import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;\n"
+            + "import java.io.IOException;\n"
+            + "public class "
+            + simpleClassName
+            + " implements PipeProcessor {\n"
+            + "  @Override public void validate(PipeParameterValidator validator) {}\n"
+            + "  @Override public void customize(PipeParameters parameters, PipeProcessorRuntimeConfiguration configuration) {}\n"
+            + "  @Override public void process(TabletInsertionEvent tabletInsertionEvent, EventCollector eventCollector) throws IOException { eventCollector.collect(tabletInsertionEvent); }\n"
+            + "  @Override public void process(TsFileInsertionEvent tsFileInsertionEvent, EventCollector eventCollector) throws IOException { eventCollector.collect(tsFileInsertionEvent); }\n"
+            + "  @Override public void process(Event event, EventCollector eventCollector) throws IOException { eventCollector.collect(event); }\n"
+            + "  @Override public void close() {}\n"
+            + "}\n";
+    Files.write(sourcePath, sourceCode.getBytes(StandardCharsets.UTF_8));
+
+    final JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+    Objects.requireNonNull(compiler, "JDK compiler is required for this test.");
+
+    final int compileStatus =
+        compiler.run(
+            null,
+            null,
+            null,
+            "-cp",
+            System.getProperty("java.class.path"),
+            "-d",
+            tempDir.toString(),
+            sourcePath.toString());
+    Assert.assertEquals("Failed to compile test pipe plugin class.", 0, compileStatus);
+
+    final String classEntry = pluginClassName.replace('.', '/') + ".class";
+    final Path classPath = tempDir.resolve(Paths.get(classEntry));
+    try (final OutputStream fos = new FileOutputStream(jarPath.toFile());
+        final JarOutputStream jos = new JarOutputStream(fos)) {
+      final JarEntry jarEntry = new JarEntry(classEntry);
+      jos.putNextEntry(jarEntry);
+      jos.write(Files.readAllBytes(classPath));
+      jos.closeEntry();
+    }
+  }
+
+  private void deletePluginJarUnderDataNodes(final String targetJarFileName) throws IOException {
+    for (final DataNodeWrapper dataNodeWrapper : senderEnv.getDataNodeWrapperList()) {
+      final Path extPipePath = Paths.get(dataNodeWrapper.getNodePath(), "extPipe");
+      if (!Files.exists(extPipePath)) {
+        continue;
+      }
+      try (final java.util.stream.Stream<Path> paths = Files.walk(extPipePath)) {
+        paths
+            .filter(Files::isRegularFile)
+            .filter(path -> path.getFileName().toString().equals(targetJarFileName))
+            .forEach(
+                path -> {
+                  try {
+                    Files.deleteIfExists(path);
+                  } catch (IOException e) {
+                    throw new RuntimeException(e);
+                  }
+                });
+      }
     }
   }
 }
