@@ -48,6 +48,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -460,8 +461,18 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
             receiverFileDirWithIdSuffix.get().getPath());
       }
     }
+    Path baseDir = receiverFileDirWithIdSuffix.get().toPath().toAbsolutePath().normalize();
+    Path targetPath = baseDir.resolve(fileName).toAbsolutePath().normalize();
 
-    writingFile = new File(receiverFileDirWithIdSuffix.get(), fileName);
+    if (!targetPath.startsWith(baseDir)) {
+      LOGGER.error(
+          "Receiver id = {}: Path traversal attempt detected! Filename: {}",
+          receiverId.get(),
+          fileName);
+      throw new IOException("Illegal fileName: " + fileName + " (Path traversal detected)");
+    }
+
+    writingFile = targetPath.toFile();
     writingFileWriter = new RandomAccessFile(writingFile, "rw");
     LOGGER.info(
         "Receiver id = {}: Writing file {} was created. Ready to write file pieces.",
