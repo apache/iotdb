@@ -65,22 +65,23 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /**
- * Manages commit state for consensus-based subscriptions.
+ * Manages committed progress for consensus-based subscriptions.
  *
- * <p>This manager tracks which events have been committed by consumers using their end search
- * indices directly (no intermediate commitId mapping). It maintains the progress for each
- * (consumerGroup, topic, region) triple and supports persistence and recovery.
+ * <p>State is maintained per {@code (consumerGroup, topic, region)} so each DataRegion can recover
+ * independently.
  *
- * <p>Progress is tracked <b>per-region</b> because searchIndex is region-local — each DataRegion
- * has its own independent WAL with its own searchIndex namespace. Using a single state per topic
- * would cause TreeSet deduplication bugs when different regions emit the same searchIndex value.
+ * <p>Committed progress is represented in per-writer terms via {@link WriterId} and {@link
+ * WriterProgress}. Outstanding deliveries are tracked by writer-local slots, while commit
+ * advancement is computed with ordered progress keys derived from {@code physicalTime},
+ * {@code writerNodeId}, {@code writerEpoch}, and {@code localSeq}. {@code searchIndex} is not the
+ * committed frontier here; it only remains an implementation aid for WAL positioning elsewhere.
  *
  * <p>Key responsibilities:
  *
  * <ul>
- *   <li>Track outstanding (dispatched but not-yet-committed) events by searchIndex
- *   <li>Handle commit/ack from consumers
- *   <li>Persist and recover progress state
+ *   <li>Track dispatched but uncommitted mappings per writer
+ *   <li>Advance committed progress idempotently and contiguously on ack/commit
+ *   <li>Persist, recover, and broadcast committed region progress
  * </ul>
  */
 public class ConsensusSubscriptionCommitManager {

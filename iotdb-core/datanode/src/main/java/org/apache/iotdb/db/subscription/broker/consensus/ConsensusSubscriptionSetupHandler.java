@@ -54,9 +54,11 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
 
 /**
- * Handles the setup and teardown of consensus-based subscription queues on DataNode. When a
- * real-time subscription is detected, this handler finds the local IoTConsensus data regions,
- * creates the appropriate converter, and binds prefetching queues to the subscription broker.
+ * Handles setup and teardown of consensus-based subscription queues on DataNode.
+ *
+ * <p>For each consensus-mode topic subscribed by a consumer group, this handler discovers matching
+ * local IoTConsensus DataRegions, builds the appropriate log-to-tablet converter, and binds one
+ * queue per region to the consensus subscription broker.
  */
 public class ConsensusSubscriptionSetupHandler {
 
@@ -327,13 +329,15 @@ public class ConsensusSubscriptionSetupHandler {
   }
 
   /**
-   * Set up consensus queue for a single topic. Discovers all local data region consensus groups and
-   * binds a ConsensusReqReader-based prefetching queue to every matching region.
+   * Sets up consensus queues for a single topic.
+   *
+   * <p>This method discovers local DataRegion consensus groups that match the topic filter and
+   * binds one consensus subscription queue to each matching region.
    *
    * <p>For table-model topics, only regions whose database matches the topic's {@code DATABASE_KEY}
-   * filter are bound. For tree-model topics, all local data regions are bound. Additionally, the
-   * {@link #onNewRegionCreated} callback ensures that regions created after this method runs are
-   * also automatically bound.
+   * filter are bound. For tree-model topics, all local data regions are candidates. Additionally,
+   * the {@link #onNewRegionCreated} callback ensures that regions created after this method runs
+   * are also automatically bound.
    */
   private static void setupConsensusQueueForTopic(
       final String consumerGroupId,
@@ -352,7 +356,7 @@ public class ConsensusSubscriptionSetupHandler {
       return;
     }
 
-    // Build the converter based on topic config (path pattern, time range, tree/table model)
+    // Build the converter from the currently supported topic filters.
     LOGGER.info(
         "Setting up consensus queue for topic [{}]: isTableTopic={}, orderMode={}, config={}",
         topicName,

@@ -497,7 +497,7 @@ public class IoTConsensusServerImpl {
   public void inactivatePeer(Peer peer, boolean forDeletionPurpose)
       throws ConsensusGroupModifyPeerException {
     ConsensusGroupModifyPeerException lastException = null;
-    // In region migration, if the target node restarts before the 閳ユ竵ddRegionPeer閳?phase within 1
+    // In region migration, if the target node restarts before the "addRegionPeer" phase within 1
     // minutes,
     // the client in the ClientManager will become invalid.
     // This PR adds 1 retry at this point to ensure that region migration can still proceed
