@@ -173,4 +173,17 @@ BUILTIN_HF_TRANSFORMERS_MODEL_MAP = {
         },
         transformers_registered=True,
     ),
+    "moment": ModelInfo(
+        model_id="moment",
+        category=ModelCategory.BUILTIN,
+        state=ModelStates.INACTIVE,
+        model_type="moment",
+        pipeline_cls="pipeline_moment.MomentPipeline",
+        repo_id="AutonLab/MOMENT-1-large",
+        auto_map={
+            "AutoConfig": "configuration_moment.MomentConfig",
+            "AutoModelForCausalLM": "modeling_moment.MomentForPrediction",
+        },
+        transformers_registered=True,
+    ),
 }
