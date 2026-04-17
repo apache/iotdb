@@ -131,8 +131,6 @@ public class MPPQueryContext implements IAuditEntity {
 
   private boolean debug = false;
 
-  private Map<String, Hint> hintMap = new HashMap<>();
-
   private Map<NodeRef<Table>, Query> cteQueries = new HashMap<>();
 
   // Stores the EXPLAIN/EXPLAIN ANALYZE results for Common Table Expressions (CTEs)

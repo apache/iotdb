@@ -276,7 +276,6 @@ public class FragmentInstance implements IConsensusRequest {
             dataNodeFINum,
             debug,
             verbose);
-            planFragment, id, globalTimePredicate, queryType, timeOut, sessionInfo, dataNodeFINum);
     fragmentInstance.setParallelism(parallelism);
     boolean hasHostDataNode = ReadWriteIOUtils.readBool(buffer);
     fragmentInstance.hostDataNode =

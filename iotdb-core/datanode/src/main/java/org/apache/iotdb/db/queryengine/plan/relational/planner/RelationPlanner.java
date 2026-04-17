@@ -398,7 +398,7 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
               outputSymbols,
               tableColumnSchema,
               tagAndAttributeIndexMap,
-                  analysis.getAliased(table));
+              analysis.getAliased(table));
     }
     return new RelationPlan(tableScanNode, scope, outputSymbols, outerContext);
   }

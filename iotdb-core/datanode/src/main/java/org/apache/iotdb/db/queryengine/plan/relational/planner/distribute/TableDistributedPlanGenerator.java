@@ -1728,7 +1728,7 @@ public class TableDistributedPlanGenerator
                           partialAggTableScanNode.getPreGroupedSymbols(),
                           partialAggTableScanNode.getStep(),
                           partialAggTableScanNode.getGroupIdSymbol(),
-                              partialAggTableScanNode.getAlias());
+                          partialAggTableScanNode.getAlias());
                   scanNode.setRegionReplicaSet(regionReplicaSet);
                   return scanNode;
                 });
@@ -2225,10 +2225,10 @@ public class TableDistributedPlanGenerator
     TRegionReplicaSet mostUsedRegion;
     boolean deviceCrossRegion;
 
-      public PlanContext() {
-          this.nodeDistributionMap = new HashMap<>();
-          this.hintMap = new HashMap<>();
-      }
+    public PlanContext() {
+      this.nodeDistributionMap = new HashMap<>();
+      this.hintMap = new HashMap<>();
+    }
 
     public PlanContext(Map<String, Hint> hintMap) {
       this.nodeDistributionMap = new HashMap<>();

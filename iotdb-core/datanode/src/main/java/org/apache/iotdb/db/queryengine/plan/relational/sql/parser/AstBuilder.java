@@ -2452,7 +2452,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
         ctx.where,
         ctx.groupBy(),
         ctx.having,
-        ctx.windowDefinition());
+        ctx.windowDefinition(),
+        ctx.selectHint());
   }
 
   @Override
@@ -2467,7 +2468,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
         ctx.where,
         ctx.groupBy(),
         ctx.having,
-        ctx.windowDefinition());
+        ctx.windowDefinition(),
+        null);
   }
 
   private Node buildQuerySpecification(
@@ -2479,7 +2481,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       RelationalSqlParser.BooleanExpressionContext where,
       RelationalSqlParser.GroupByContext groupBy,
       RelationalSqlParser.BooleanExpressionContext having,
-      List<RelationalSqlParser.WindowDefinitionContext> windowDefinitions) {
+      List<RelationalSqlParser.WindowDefinitionContext> windowDefinitions,
+      RelationalSqlParser.SelectHintContext selectHintContext) {
 
     Optional<Relation> from = Optional.empty();
     List<SelectItem> selectItems = visit(selectItemContexts, SelectItem.class);
@@ -2509,8 +2512,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
     // Hint Map
     Optional<SelectHint> selectHint =
-        ctx.selectHint() != null
-            ? Optional.of((SelectHint) visitSelectHint(ctx.selectHint()))
+        selectHintContext != null
+            ? Optional.of((SelectHint) visitSelectHint(selectHintContext))
             : Optional.empty();
 
     return new QuerySpecification(
