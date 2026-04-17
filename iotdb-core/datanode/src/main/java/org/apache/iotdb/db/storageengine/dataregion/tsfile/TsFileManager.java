@@ -65,8 +65,8 @@ public class TsFileManager {
     this.dataRegionId = dataRegionId;
   }
 
-  public List<TsFileResource> getTsFileList(boolean sequence) {
-    return getTsFileList(sequence, null, null);
+  public List<TsFileResource> getTsFileList(boolean sequence, String database) {
+    return getTsFileList(sequence, null, null, database);
   }
 
   /**
@@ -74,7 +74,7 @@ public class TsFileManager {
    * @param timePartitions {@code null} for all time partitions, empty for zero time partitions
    */
   public List<TsFileResource> getTsFileList(
-      boolean sequence, List<Long> timePartitions, Filter timeFilter) {
+      boolean sequence, List<Long> timePartitions, Filter timeFilter, String database) {
     // the iteration of ConcurrentSkipListMap is not concurrent secure
     // so we must add read lock here
     readLock();
@@ -83,7 +83,7 @@ public class TsFileManager {
       Map<Long, TsFileResourceList> chosenMap = sequence ? sequenceFiles : unsequenceFiles;
       if (timePartitions == null) {
         for (Map.Entry<Long, TsFileResourceList> entry : chosenMap.entrySet()) {
-          if (TimePartitionUtils.satisfyTimePartition(timeFilter, entry.getKey())) {
+          if (TimePartitionUtils.satisfyTimePartition(timeFilter, entry.getKey(), database)) {
             allResources.addAll(entry.getValue().getArrayList());
           }
         }
@@ -107,17 +107,17 @@ public class TsFileManager {
    * @return left is seq resource list, right is unSeq resource list
    */
   public Pair<List<TsFileResource>, List<TsFileResource>> getAllTsFileListForQuery(
-      List<Long> timePartitions, Filter timeFilter) {
+      List<Long> timePartitions, Filter timeFilter, String database) {
     List<TsFileResource> seq = new ArrayList<>();
     List<TsFileResource> unSeq = new ArrayList<>();
     if (timePartitions == null) {
       for (Map.Entry<Long, TsFileResourceList> entry : sequenceFiles.entrySet()) {
-        if (TimePartitionUtils.satisfyTimePartition(timeFilter, entry.getKey())) {
+        if (TimePartitionUtils.satisfyTimePartition(timeFilter, entry.getKey(), database)) {
           seq.addAll(entry.getValue().getArrayList());
         }
       }
       for (Map.Entry<Long, TsFileResourceList> entry : unsequenceFiles.entrySet()) {
-        if (TimePartitionUtils.satisfyTimePartition(timeFilter, entry.getKey())) {
+        if (TimePartitionUtils.satisfyTimePartition(timeFilter, entry.getKey(), database)) {
           unSeq.addAll(entry.getValue().getArrayList());
         }
       }
@@ -158,7 +158,8 @@ public class TsFileManager {
     }
   }
 
-  public List<TsFileResource> getTsFileList(boolean sequence, long startTime, long endTime) {
+  public List<TsFileResource> getTsFileList(
+      boolean sequence, long startTime, long endTime, String database) {
     // the iteration of ConcurrentSkipListMap is not concurrent secure
     // so we must add read lock here
     readLock();
@@ -166,7 +167,7 @@ public class TsFileManager {
       List<TsFileResource> allResources = new ArrayList<>();
       Map<Long, TsFileResourceList> chosenMap = sequence ? sequenceFiles : unsequenceFiles;
       for (Map.Entry<Long, TsFileResourceList> entry : chosenMap.entrySet()) {
-        if (TimePartitionUtils.satisfyPartitionId(startTime, endTime, entry.getKey())) {
+        if (TimePartitionUtils.satisfyPartitionId(startTime, endTime, entry.getKey(), database)) {
           allResources.addAll(entry.getValue().getArrayList());
         }
       }
@@ -194,10 +195,10 @@ public class TsFileManager {
     }
   }
 
-  public Iterator<TsFileResource> getIterator(boolean sequence) {
+  public Iterator<TsFileResource> getIterator(boolean sequence, String database) {
     readLock();
     try {
-      return getTsFileList(sequence).iterator();
+      return getTsFileList(sequence, database).iterator();
     } finally {
       readUnlock();
     }

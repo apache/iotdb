@@ -268,11 +268,11 @@ public class ArrayDeviceTimeIndex implements ITimeIndex {
   }
 
   @Override
-  public long getTimePartition(String tsFilePath) {
+  public long getTimePartition(String tsFilePath, String database) {
     try {
       if (deviceToIndex != null && !deviceToIndex.isEmpty()) {
         return TimePartitionUtils.getTimePartitionId(
-            startTimes[deviceToIndex.values().iterator().next()]);
+            startTimes[deviceToIndex.values().iterator().next()], database);
       }
       String[] filePathSplits = FilePathUtils.splitTsFilePath(tsFilePath);
       return Long.parseLong(filePathSplits[filePathSplits.length - 2]);
@@ -282,30 +282,33 @@ public class ArrayDeviceTimeIndex implements ITimeIndex {
   }
 
   @Override
-  public long getTimePartitionWithCheck(String tsFilePath) throws PartitionViolationException {
+  public long getTimePartitionWithCheck(String tsFilePath, String database)
+      throws PartitionViolationException {
     try {
-      return getTimePartitionWithCheck();
+      return getTimePartitionWithCheck(database);
     } catch (PartitionViolationException e) {
       throw new PartitionViolationException(tsFilePath);
     }
   }
 
   @Override
-  public boolean isSpanMultiTimePartitions() {
+  public boolean isSpanMultiTimePartitions(String database) {
     try {
-      getTimePartitionWithCheck();
+      getTimePartitionWithCheck(database);
       return false;
     } catch (PartitionViolationException e) {
       return true;
     }
   }
 
-  private long getTimePartitionWithCheck() throws PartitionViolationException {
+  private long getTimePartitionWithCheck(String database) throws PartitionViolationException {
     Long partitionId = null;
 
     for (final int index : deviceToIndex.values()) {
-      final long startTimePartitionId = TimePartitionUtils.getTimePartitionId(startTimes[index]);
-      final long endTimePartitionId = TimePartitionUtils.getTimePartitionId(endTimes[index]);
+      final long startTimePartitionId =
+          TimePartitionUtils.getTimePartitionId(startTimes[index], database);
+      final long endTimePartitionId =
+          TimePartitionUtils.getTimePartitionId(endTimes[index], database);
 
       if (startTimePartitionId != endTimePartitionId) {
         throw new PartitionViolationException();

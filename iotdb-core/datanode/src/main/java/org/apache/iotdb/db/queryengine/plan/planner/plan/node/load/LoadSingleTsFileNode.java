@@ -103,10 +103,14 @@ public class LoadSingleTsFileNode extends WritePlanNode {
               // iterating the index, must present
               slotList.add(
                   new Pair<>(
-                      o, TimePartitionUtils.getTimePartitionSlot(resource.getStartTime(o).get())));
+                      o,
+                      TimePartitionUtils.getTimePartitionSlot(
+                          resource.getStartTime(o).get(), database)));
               slotList.add(
                   new Pair<>(
-                      o, TimePartitionUtils.getTimePartitionSlot(resource.getEndTime(o).get())));
+                      o,
+                      TimePartitionUtils.getTimePartitionSlot(
+                          resource.getEndTime(o).get(), database)));
             });
 
     if (slotList.isEmpty()) {

@@ -232,8 +232,9 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
 
     final DataRegion dataRegion =
         StorageEngine.getInstance().getDataRegion(new DataRegionId(environment.getRegionId()));
+    final String databaseName;
     if (dataRegion != null) {
-      final String databaseName = dataRegion.getDatabaseName();
+      databaseName = dataRegion.getDatabaseName();
       if (databaseName != null) {
         if (PathUtils.isTableModelDatabase(databaseName)) {
           isDbNameCoveredByPattern = tablePattern.coversDb(databaseName);
@@ -241,16 +242,22 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
           isDbNameCoveredByPattern = treePattern.coversDb(databaseName);
         }
       }
+    } else {
+      databaseName = null;
     }
 
     startTimePartitionIdLowerBound =
-        (realtimeDataExtractionStartTime % TimePartitionUtils.getTimePartitionInterval() == 0)
-            ? TimePartitionUtils.getTimePartitionId(realtimeDataExtractionStartTime)
-            : TimePartitionUtils.getTimePartitionId(realtimeDataExtractionStartTime) + 1;
+        (realtimeDataExtractionStartTime % TimePartitionUtils.getTimePartitionInterval(databaseName)
+                == 0)
+            ? TimePartitionUtils.getTimePartitionId(realtimeDataExtractionStartTime, databaseName)
+            : TimePartitionUtils.getTimePartitionId(realtimeDataExtractionStartTime, databaseName)
+                + 1;
     endTimePartitionIdUpperBound =
-        (realtimeDataExtractionEndTime % TimePartitionUtils.getTimePartitionInterval() == 0)
-            ? TimePartitionUtils.getTimePartitionId(realtimeDataExtractionEndTime)
-            : TimePartitionUtils.getTimePartitionId(realtimeDataExtractionEndTime) - 1;
+        (realtimeDataExtractionEndTime % TimePartitionUtils.getTimePartitionInterval(databaseName)
+                == 0)
+            ? TimePartitionUtils.getTimePartitionId(realtimeDataExtractionEndTime, databaseName)
+            : TimePartitionUtils.getTimePartitionId(realtimeDataExtractionEndTime, databaseName)
+                - 1;
 
     final boolean isDoubleLiving =
         parameters.getBooleanOrDefault(

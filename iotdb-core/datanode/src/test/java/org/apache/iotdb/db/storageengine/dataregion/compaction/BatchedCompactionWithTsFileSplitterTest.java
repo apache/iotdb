@@ -302,7 +302,7 @@ public class BatchedCompactionWithTsFileSplitterTest extends AbstractCompactionT
               }
               return true;
             });
-    splitter.splitTsFileByDataPartition();
+    splitter.splitTsFileByDataPartition(resource.getDatabaseName());
     List<TsFileResource> splitResources = new ArrayList<>();
     for (Map.Entry<TTimePartitionSlot, TestLoadTsFileIOWriter> entry : writerMap.entrySet()) {
       TestLoadTsFileIOWriter writer = entry.getValue();

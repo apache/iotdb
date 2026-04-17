@@ -2130,7 +2130,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     long startTime = System.nanoTime();
     try {
       Pair<List<TTimePartitionSlot>, Pair<Boolean, Boolean>> res =
-          getTimePartitionSlotList(context.getGlobalTimeFilter(), context);
+          getTimePartitionSlotList(
+              context.getGlobalTimeFilter(), context, context.getDatabaseName().orElse(null));
       // there is no satisfied time range
       if (res.left.isEmpty() && Boolean.FALSE.equals(res.right.left)) {
         return new DataPartition(
@@ -2168,7 +2169,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static Pair<List<TTimePartitionSlot>, Pair<Boolean, Boolean>> getTimePartitionSlotList(
-      Filter timeFilter, MPPQueryContext context) {
+      Filter timeFilter, MPPQueryContext context, String database) {
     if (timeFilter == null) {
       // (-oo, +oo)
       return new Pair<>(Collections.emptyList(), new Pair<>(true, true));
@@ -2193,11 +2194,15 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     if (timeRangeList.get(0).getMin() == Long.MIN_VALUE) {
       needLeftAll = true;
-      endTime = TimePartitionUtils.getTimePartitionUpperBound(timeRangeList.get(0).getMax());
-      timePartitionSlot = TimePartitionUtils.getTimePartitionSlot(timeRangeList.get(0).getMax());
+      endTime =
+          TimePartitionUtils.getTimePartitionUpperBound(timeRangeList.get(0).getMax(), database);
+      timePartitionSlot =
+          TimePartitionUtils.getTimePartitionSlot(timeRangeList.get(0).getMax(), database);
     } else {
-      endTime = TimePartitionUtils.getTimePartitionUpperBound(timeRangeList.get(0).getMin());
-      timePartitionSlot = TimePartitionUtils.getTimePartitionSlot(timeRangeList.get(0).getMin());
+      endTime =
+          TimePartitionUtils.getTimePartitionUpperBound(timeRangeList.get(0).getMin(), database);
+      timePartitionSlot =
+          TimePartitionUtils.getTimePartitionSlot(timeRangeList.get(0).getMin(), database);
       needLeftAll = false;
     }
 
@@ -2211,30 +2216,30 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     List<TTimePartitionSlot> result = new ArrayList<>();
     TimeRange currentTimeRange = timeRangeList.get(index);
     reserveMemoryForTimePartitionSlot(
-        currentTimeRange.getMax(), currentTimeRange.getMin(), context);
+        currentTimeRange.getMax(), currentTimeRange.getMin(), context, database);
     while (index < size) {
       long curLeft = timeRangeList.get(index).getMin();
       long curRight = timeRangeList.get(index).getMax();
       if (curLeft >= endTime) {
         result.add(timePartitionSlot);
         // next init
-        endTime = TimePartitionUtils.getTimePartitionUpperBound(curLeft);
-        timePartitionSlot = TimePartitionUtils.getTimePartitionSlot(curLeft);
+        endTime = TimePartitionUtils.getTimePartitionUpperBound(curLeft, database);
+        timePartitionSlot = TimePartitionUtils.getTimePartitionSlot(curLeft, database);
       } else if (curRight >= endTime) {
         result.add(timePartitionSlot);
         // next init
         timePartitionSlot = new TTimePartitionSlot(endTime);
         // beware of overflow
         endTime =
-            endTime + TimePartitionUtils.getTimePartitionInterval() > endTime
-                ? endTime + TimePartitionUtils.getTimePartitionInterval()
+            endTime + TimePartitionUtils.getTimePartitionInterval(database) > endTime
+                ? endTime + TimePartitionUtils.getTimePartitionInterval(database)
                 : Long.MAX_VALUE;
       } else {
         index++;
         if (index < size) {
           currentTimeRange = timeRangeList.get(index);
           reserveMemoryForTimePartitionSlot(
-              currentTimeRange.getMax(), currentTimeRange.getMin(), context);
+              currentTimeRange.getMax(), currentTimeRange.getMin(), context, database);
         }
       }
     }
@@ -2243,7 +2248,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     if (needRightAll) {
       TTimePartitionSlot lastTimePartitionSlot =
           TimePartitionUtils.getTimePartitionSlot(
-              timeRangeList.get(timeRangeList.size() - 1).getMin());
+              timeRangeList.get(timeRangeList.size() - 1).getMin(), database);
       if (lastTimePartitionSlot.startTime != timePartitionSlot.startTime) {
         result.add(lastTimePartitionSlot);
       }
@@ -2252,11 +2257,11 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   }
 
   private static void reserveMemoryForTimePartitionSlot(
-      long maxTime, long minTime, MPPQueryContext context) {
+      long maxTime, long minTime, MPPQueryContext context, String database) {
     if (maxTime == Long.MAX_VALUE || minTime == Long.MIN_VALUE) {
       return;
     }
-    long size = TimePartitionUtils.getEstimateTimePartitionSize(minTime, maxTime);
+    long size = TimePartitionUtils.getEstimateTimePartitionSize(minTime, maxTime, database);
     context.reserveMemoryForFrontEnd(
         RamUsageEstimator.shallowSizeOfInstance(TTimePartitionSlot.class) * size);
   }
@@ -2774,7 +2779,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       dataPartitionQueryParam.setDeviceID(
           realInsertRowStatement.getDevicePath().getIDeviceIDAsFullDevice());
       dataPartitionQueryParam.setTimePartitionSlotList(
-          Collections.singletonList(realInsertRowStatement.getTimePartitionSlot()));
+          Collections.singletonList(
+              realInsertRowStatement.getTimePartitionSlot(context.getDatabaseName().orElse(null))));
 
       AnalyzeUtils.analyzeDataPartition(
           analysis,

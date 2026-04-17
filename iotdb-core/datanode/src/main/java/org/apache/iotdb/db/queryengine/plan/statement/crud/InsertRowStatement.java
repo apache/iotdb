@@ -175,8 +175,8 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
     }
   }
 
-  public TTimePartitionSlot getTimePartitionSlot() {
-    return TimePartitionUtils.getTimePartitionSlot(time);
+  public TTimePartitionSlot getTimePartitionSlot(String database) {
+    return TimePartitionUtils.getTimePartitionSlot(time, database);
   }
 
   @Override

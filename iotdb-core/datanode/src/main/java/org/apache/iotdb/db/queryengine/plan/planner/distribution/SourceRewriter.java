@@ -1236,7 +1236,8 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
         InnerTimeJoinNode innerTimeJoinNode = (InnerTimeJoinNode) node.clone();
         innerTimeJoinNode.setPlanNodeId(context.queryContext.getQueryId().genPlanNodeId());
 
-        List<Long> timePartitionIds = convertToTimePartitionIds(oneRegion);
+        List<Long> timePartitionIds =
+            convertToTimePartitionIds(oneRegion, analysis.getDatabaseName());
         innerTimeJoinNode.setTimePartitions(timePartitionIds);
 
         // region group id -> parent InnerTimeJoinNode
@@ -1285,10 +1286,11 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
     return subInnerJoinNode;
   }
 
-  private List<Long> convertToTimePartitionIds(List<TTimePartitionSlot> timePartitionSlotList) {
+  private List<Long> convertToTimePartitionIds(
+      List<TTimePartitionSlot> timePartitionSlotList, String database) {
     List<Long> res = new ArrayList<>(timePartitionSlotList.size());
     for (TTimePartitionSlot timePartitionSlot : timePartitionSlotList) {
-      res.add(TimePartitionUtils.getTimePartitionId(timePartitionSlot.startTime));
+      res.add(TimePartitionUtils.getTimePartitionId(timePartitionSlot.startTime, database));
     }
     return res;
   }
@@ -1452,14 +1454,18 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
         tSeriesPartitionSlot.slotId,
         k ->
             getDataRegionReplicaSetWithTimeFilter(
-                finalSeriesPartitionMap, tSeriesPartitionSlot, timeFilter));
+                finalSeriesPartitionMap,
+                tSeriesPartitionSlot,
+                timeFilter,
+                analysis.getDatabaseName()));
   }
 
   public List<TRegionReplicaSet> getDataRegionReplicaSetWithTimeFilter(
       Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
           seriesPartitionMap,
       TSeriesPartitionSlot tSeriesPartitionSlot,
-      Filter timeFilter) {
+      Filter timeFilter,
+      String database) {
     Map<TTimePartitionSlot, List<TRegionReplicaSet>> regionReplicaSetMap =
         seriesPartitionMap.getOrDefault(tSeriesPartitionSlot, Collections.emptyMap());
     if (regionReplicaSetMap.isEmpty()) {
@@ -1469,7 +1475,8 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
     Set<TRegionReplicaSet> uniqueValues = new HashSet<>();
     for (Map.Entry<TTimePartitionSlot, List<TRegionReplicaSet>> entry :
         regionReplicaSetMap.entrySet()) {
-      if (!TimePartitionUtils.satisfyPartitionStartTime(timeFilter, entry.getKey().startTime)) {
+      if (!TimePartitionUtils.satisfyPartitionStartTime(
+          timeFilter, entry.getKey().startTime, database)) {
         continue;
       }
       for (TRegionReplicaSet tRegionReplicaSet : entry.getValue()) {

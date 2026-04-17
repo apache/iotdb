@@ -376,7 +376,7 @@ public class DataPartitionTableIntegrityCheckProcedure
       }
 
       if (localEarliestSlotStartTime
-          > TimePartitionUtils.getStartTimeByPartitionId(earliestTimeslot)) {
+          > TimePartitionUtils.getStartTimeByPartitionId(earliestTimeslot, database)) {
         databasesWithLostDataPartition.add(database);
         LOG.warn(
             "[DataPartitionIntegrity] Database {} has lost timeslot {} in its data table partition, and this issue needs to be repaired",

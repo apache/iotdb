@@ -492,6 +492,9 @@ public class MPPQueryContext implements IAuditEntity {
   }
 
   public Optional<String> getDatabaseName() {
+    if (session == null) {
+      return Optional.empty();
+    }
     return session.getDatabaseName();
   }
 

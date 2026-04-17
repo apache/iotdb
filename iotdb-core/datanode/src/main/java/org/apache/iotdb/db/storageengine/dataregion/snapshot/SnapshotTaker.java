@@ -194,11 +194,12 @@ public class SnapshotTaker {
   }
 
   private void readLockTheFile() {
+    String database = dataRegion.getDatabaseName();
     TsFileManager manager = dataRegion.getTsFileManager();
     manager.readLock();
     try {
-      seqFiles = manager.getTsFileList(true);
-      unseqFiles = manager.getTsFileList(false);
+      seqFiles = manager.getTsFileList(true, database);
+      unseqFiles = manager.getTsFileList(false, database);
       for (TsFileResource resource : seqFiles) {
         resource.readLock();
       }

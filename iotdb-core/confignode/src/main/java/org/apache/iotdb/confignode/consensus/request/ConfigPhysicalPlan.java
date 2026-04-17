@@ -43,6 +43,7 @@ import org.apache.iotdb.confignode.consensus.request.write.database.SetDataRepli
 import org.apache.iotdb.confignode.consensus.request.write.database.SetSchemaReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTimePartitionIntervalPlan;
+import org.apache.iotdb.confignode.consensus.request.write.database.SetTimePartitionOriginPlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.UpdateDataNodePlan;
@@ -232,6 +233,9 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           break;
         case SetTimePartitionInterval:
           plan = new SetTimePartitionIntervalPlan();
+          break;
+        case SetTimePartitionOrigin:
+          plan = new SetTimePartitionOriginPlan();
           break;
         case AdjustMaxRegionGroupNum:
           plan = new AdjustMaxRegionGroupNumPlan();

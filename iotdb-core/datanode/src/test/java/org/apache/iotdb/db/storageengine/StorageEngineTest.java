@@ -74,14 +74,16 @@ public class StorageEngineTest {
 
   @Test
   public void testGetTimePartitionId() {
-    long timePartitionInterval = TimePartitionUtils.getTimePartitionInterval();
-    Assert.assertEquals(-2, TimePartitionUtils.getTimePartitionId(-timePartitionInterval - 1));
-    Assert.assertEquals(-1, TimePartitionUtils.getTimePartitionId(-timePartitionInterval));
-    Assert.assertEquals(-1, TimePartitionUtils.getTimePartitionId(-1));
-    Assert.assertEquals(0, TimePartitionUtils.getTimePartitionId(0));
-    Assert.assertEquals(0, TimePartitionUtils.getTimePartitionId(1));
-    Assert.assertEquals(0, TimePartitionUtils.getTimePartitionId(timePartitionInterval / 2));
-    Assert.assertEquals(1, TimePartitionUtils.getTimePartitionId(timePartitionInterval * 2 - 1));
-    Assert.assertEquals(2, TimePartitionUtils.getTimePartitionId(timePartitionInterval * 2 + 1));
+    long timePartitionInterval = TimePartitionUtils.getTimePartitionInterval("root.db");
+    long interval = TimePartitionUtils.getTimePartitionInterval("root.db");
+    Assert.assertEquals(-2, TimePartitionUtils.getTimePartitionId(-interval - 1, "root.db"));
+    Assert.assertEquals(-1, TimePartitionUtils.getTimePartitionId(-interval, "root.db"));
+    Assert.assertEquals(-1, TimePartitionUtils.getTimePartitionId(-1, "root.db"));
+    Assert.assertEquals(0, TimePartitionUtils.getTimePartitionId(0, "root.db"));
+    Assert.assertEquals(0, TimePartitionUtils.getTimePartitionId(1, "root.db"));
+    Assert.assertEquals(0, TimePartitionUtils.getTimePartitionId(interval / 2, "root.db"));
+    Assert.assertEquals(1, TimePartitionUtils.getTimePartitionId(interval * 2 - 1, "root.db"));
+    Assert.assertEquals(
+        2, TimePartitionUtils.getTimePartitionId(timePartitionInterval * 2 + 1, "root.db"));
   }
 }

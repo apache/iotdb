@@ -41,6 +41,7 @@ import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 
 import java.io.DataOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
@@ -226,7 +227,7 @@ public class ThriftCommonsSerDeUtils {
   }
 
   public static void serializeTTimePartitionSlot(
-      TTimePartitionSlot timePartitionSlot, DataOutputStream stream) {
+      TTimePartitionSlot timePartitionSlot, DataOutputStream stream) throws IOException {
     try {
       timePartitionSlot.write(generateWriteProtocol(stream));
     } catch (TException e) {

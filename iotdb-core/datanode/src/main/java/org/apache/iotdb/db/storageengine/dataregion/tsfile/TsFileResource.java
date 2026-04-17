@@ -1124,12 +1124,7 @@ public class TsFileResource implements PersistentResource, Cloneable {
    * @throws PartitionViolationException if the data of the file spans partitions or it is empty
    */
   public long getTimePartitionWithCheck() throws PartitionViolationException {
-    return timeIndex.getTimePartitionWithCheck(file.toString());
-  }
-
-  /** Check whether the tsFile spans multiple time partitions. */
-  public boolean isSpanMultiTimePartitions() {
-    return timeIndex.isSpanMultiTimePartitions();
+    return timeIndex.getTimePartitionWithCheck(file.toString(), getDatabaseName());
   }
 
   public void setExclusiveModFile(ModificationFile exclusiveModFile) {

@@ -20,10 +20,13 @@ package org.apache.iotdb.commons.utils;
 
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 
 import org.apache.tsfile.read.filter.basic.Filter;
 
 import java.math.BigInteger;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class TimePartitionUtils {
 
@@ -38,6 +41,10 @@ public class TimePartitionUtils {
   private static long timePartitionInterval =
       CommonDescriptor.getInstance().getConfig().getTimePartitionInterval();
 
+  // Database-specific time partition settings cache
+  private static final Map<String, DatabaseTimePartitionConfig> databaseConfigCache =
+      new ConcurrentHashMap<>();
+
   private static final BigInteger bigTimePartitionOrigin = BigInteger.valueOf(timePartitionOrigin);
   private static final BigInteger bigTimePartitionInterval =
       BigInteger.valueOf(timePartitionInterval);
@@ -46,8 +53,12 @@ public class TimePartitionUtils {
   private static final long timePartitionUpperBoundWithoutOverflow;
 
   static {
-    long minPartition = getTimePartitionIdWithoutOverflow(Long.MIN_VALUE);
-    long maxPartition = getTimePartitionIdWithoutOverflow(Long.MAX_VALUE);
+    long minPartition =
+        getTimePartitionIdWithoutOverflow(
+            Long.MIN_VALUE, timePartitionOrigin, timePartitionInterval);
+    long maxPartition =
+        getTimePartitionIdWithoutOverflow(
+            Long.MAX_VALUE, timePartitionOrigin, timePartitionInterval);
     BigInteger minPartitionStartTime =
         BigInteger.valueOf(minPartition)
             .multiply(bigTimePartitionInterval)
@@ -71,111 +82,251 @@ public class TimePartitionUtils {
     }
   }
 
-  public static TTimePartitionSlot getTimePartitionSlot(long time) {
+  // Database-specific time partition configuration class
+  public static class DatabaseTimePartitionConfig {
+    private final long timePartitionOrigin;
+    private final long timePartitionInterval;
+    private final BigInteger bigTimePartitionOrigin;
+    private final BigInteger bigTimePartitionInterval;
+    private final boolean originMayCauseOverflow;
+    private final long timePartitionLowerBoundWithoutOverflow;
+    private final long timePartitionUpperBoundWithoutOverflow;
+
+    public DatabaseTimePartitionConfig(long timePartitionOrigin, long timePartitionInterval) {
+      this.timePartitionOrigin = timePartitionOrigin;
+      this.timePartitionInterval = timePartitionInterval;
+      this.bigTimePartitionOrigin = BigInteger.valueOf(timePartitionOrigin);
+      this.bigTimePartitionInterval = BigInteger.valueOf(timePartitionInterval);
+      this.originMayCauseOverflow = (timePartitionOrigin != 0);
+
+      // Calculate bounds for overflow handling
+      long minPartition =
+          getTimePartitionIdWithoutOverflow(
+              Long.MIN_VALUE, timePartitionOrigin, timePartitionInterval);
+      long maxPartition =
+          getTimePartitionIdWithoutOverflow(
+              Long.MAX_VALUE, timePartitionOrigin, timePartitionInterval);
+      BigInteger minPartitionStartTime =
+          BigInteger.valueOf(minPartition)
+              .multiply(this.bigTimePartitionInterval)
+              .add(this.bigTimePartitionOrigin);
+      BigInteger maxPartitionEndTime =
+          BigInteger.valueOf(maxPartition)
+              .multiply(this.bigTimePartitionInterval)
+              .add(this.bigTimePartitionInterval)
+              .add(this.bigTimePartitionOrigin);
+      if (minPartitionStartTime.compareTo(BigInteger.valueOf(Long.MIN_VALUE)) < 0) {
+        this.timePartitionLowerBoundWithoutOverflow =
+            minPartitionStartTime.add(this.bigTimePartitionInterval).longValue();
+      } else {
+        this.timePartitionLowerBoundWithoutOverflow = minPartitionStartTime.longValue();
+      }
+      if (maxPartitionEndTime.compareTo(BigInteger.valueOf(Long.MAX_VALUE)) > 0) {
+        this.timePartitionUpperBoundWithoutOverflow =
+            maxPartitionEndTime.subtract(this.bigTimePartitionInterval).longValue();
+      } else {
+        this.timePartitionUpperBoundWithoutOverflow = maxPartitionEndTime.longValue();
+      }
+    }
+
+    // Getters for database-specific configuration
+    public long getTimePartitionOrigin() {
+      return timePartitionOrigin;
+    }
+
+    public long getTimePartitionInterval() {
+      return timePartitionInterval;
+    }
+
+    public boolean isOriginMayCauseOverflow() {
+      return originMayCauseOverflow;
+    }
+
+    public long getTimePartitionLowerBoundWithoutOverflow() {
+      return timePartitionLowerBoundWithoutOverflow;
+    }
+
+    public long getTimePartitionUpperBoundWithoutOverflow() {
+      return timePartitionUpperBoundWithoutOverflow;
+    }
+
+    public BigInteger getBigTimePartitionOrigin() {
+      return bigTimePartitionOrigin;
+    }
+
+    public BigInteger getBigTimePartitionInterval() {
+      return bigTimePartitionInterval;
+    }
+  }
+
+  // Update or add database-specific time partition configuration
+  public static void updateDatabaseTimePartitionConfig(String database, TDatabaseSchema schema) {
+    long interval =
+        schema.isSetTimePartitionInterval()
+            ? schema.getTimePartitionInterval()
+            : timePartitionInterval;
+    long origin =
+        schema.isSetTimePartitionOrigin() ? schema.getTimePartitionOrigin() : timePartitionOrigin;
+    databaseConfigCache.put(database, new DatabaseTimePartitionConfig(origin, interval));
+  }
+
+  // Remove database-specific time partition configuration
+  public static void removeDatabaseTimePartitionConfig(String database) {
+    databaseConfigCache.remove(database);
+  }
+
+  // Get database-specific configuration, fallback to global if not found
+  private static DatabaseTimePartitionConfig getDatabaseConfig(String database) {
+    if (database == null) {
+      return new DatabaseTimePartitionConfig(timePartitionOrigin, timePartitionInterval);
+    }
+    DatabaseTimePartitionConfig config = databaseConfigCache.get(database);
+    return config != null
+        ? config
+        : new DatabaseTimePartitionConfig(timePartitionOrigin, timePartitionInterval);
+  }
+
+  // Database-specific time partition methods
+  public static TTimePartitionSlot getTimePartitionSlot(long time, String database) {
+    DatabaseTimePartitionConfig config = getDatabaseConfig(database);
     TTimePartitionSlot timePartitionSlot = new TTimePartitionSlot();
-    timePartitionSlot.setStartTime(getTimePartitionLowerBound(time));
+    timePartitionSlot.setStartTime(getTimePartitionLowerBoundInternal(time, config));
     return timePartitionSlot;
   }
 
-  public static long getTimePartitionInterval() {
-    return timePartitionInterval;
+  public static long getTimePartitionInterval(String database) {
+    return getDatabaseConfig(database).getTimePartitionInterval();
   }
 
-  public static long getTimePartitionLowerBound(long time) {
-    if (time < timePartitionLowerBoundWithoutOverflow) {
-      return Long.MIN_VALUE;
-    }
-    if (originMayCauseOverflow) {
-      return BigInteger.valueOf(getTimePartitionIdWithoutOverflow(time))
-          .multiply(bigTimePartitionInterval)
-          .add(bigTimePartitionOrigin)
-          .longValue();
-    } else {
-      return getTimePartitionId(time) * timePartitionInterval + timePartitionOrigin;
-    }
+  public static long getTimePartitionOrigin(String database) {
+    return getDatabaseConfig(database).getTimePartitionOrigin();
   }
 
-  public static long getTimePartitionUpperBound(long time) {
-    if (time >= timePartitionUpperBoundWithoutOverflow) {
-      return Long.MAX_VALUE;
-    }
-    long lowerBound = getTimePartitionLowerBound(time);
-    return lowerBound == Long.MIN_VALUE
-        ? timePartitionLowerBoundWithoutOverflow
-        : lowerBound + timePartitionInterval;
+  public static long getTimePartitionLowerBound(long time, String database) {
+    return getTimePartitionLowerBoundInternal(time, getDatabaseConfig(database));
   }
 
-  public static long getTimePartitionId(long time) {
-    time -= timePartitionOrigin;
-    return time > 0 || time % timePartitionInterval == 0
-        ? time / timePartitionInterval
-        : time / timePartitionInterval - 1;
+  public static long getTimePartitionUpperBound(long time, String database) {
+    return getTimePartitionUpperBoundInternal(time, getDatabaseConfig(database));
   }
 
-  public static long getTimePartitionIdWithoutOverflow(long time) {
-    BigInteger bigTime = BigInteger.valueOf(time).subtract(bigTimePartitionOrigin);
-    BigInteger partitionId =
-        bigTime.compareTo(BigInteger.ZERO) > 0
-                || bigTime.remainder(bigTimePartitionInterval).equals(BigInteger.ZERO)
-            ? bigTime.divide(bigTimePartitionInterval)
-            : bigTime.divide(bigTimePartitionInterval).subtract(BigInteger.ONE);
-    return partitionId.longValue();
+  public static long getTimePartitionId(long time, String database) {
+    DatabaseTimePartitionConfig config = getDatabaseConfig(database);
+    time -= config.getTimePartitionOrigin();
+    return time > 0 || time % config.getTimePartitionInterval() == 0
+        ? time / config.getTimePartitionInterval()
+        : time / config.getTimePartitionInterval() - 1;
   }
 
-  public static long getStartTimeByPartitionId(long partitionId) {
-    return (partitionId * timePartitionInterval) + timePartitionOrigin;
+  public static long getStartTimeByPartitionId(long partitionId, String database) {
+    DatabaseTimePartitionConfig config = getDatabaseConfig(database);
+    return (partitionId * config.getTimePartitionInterval()) + config.getTimePartitionOrigin();
   }
 
-  public static boolean satisfyPartitionId(long startTime, long endTime, long partitionId) {
+  public static boolean satisfyPartitionId(
+      long startTime, long endTime, long partitionId, String database) {
+    DatabaseTimePartitionConfig config = getDatabaseConfig(database);
     long startPartition =
-        originMayCauseOverflow
-            ? getTimePartitionIdWithoutOverflow(startTime)
-            : getTimePartitionId(startTime);
+        config.isOriginMayCauseOverflow()
+            ? getTimePartitionIdWithoutOverflow(
+                startTime, config.getTimePartitionOrigin(), config.getTimePartitionInterval())
+            : getTimePartitionId(
+                startTime, config.getTimePartitionOrigin(), config.getTimePartitionInterval());
     long endPartition =
-        originMayCauseOverflow
-            ? getTimePartitionIdWithoutOverflow(endTime)
-            : getTimePartitionId(endTime);
+        config.isOriginMayCauseOverflow()
+            ? getTimePartitionIdWithoutOverflow(
+                endTime, config.getTimePartitionOrigin(), config.getTimePartitionInterval())
+            : getTimePartitionId(
+                endTime, config.getTimePartitionOrigin(), config.getTimePartitionInterval());
     return startPartition <= partitionId && endPartition >= partitionId;
   }
 
-  public static boolean satisfyPartitionStartTime(Filter timeFilter, long partitionStartTime) {
+  public static boolean satisfyPartitionStartTime(
+      Filter timeFilter, long partitionStartTime, String database) {
     if (timeFilter == null) {
       return true;
     }
-
+    DatabaseTimePartitionConfig config = getDatabaseConfig(database);
     long partitionEndTime =
-        partitionStartTime >= timePartitionLowerBoundWithoutOverflow
+        partitionStartTime >= config.getTimePartitionLowerBoundWithoutOverflow()
             ? Long.MAX_VALUE
-            : (partitionStartTime + timePartitionInterval - 1);
+            : (partitionStartTime + config.getTimePartitionInterval() - 1);
     return timeFilter.satisfyStartEndTime(partitionStartTime, partitionEndTime);
   }
 
-  public static boolean satisfyTimePartition(Filter timeFilter, long partitionId) {
+  public static boolean satisfyTimePartition(Filter timeFilter, long partitionId, String database) {
+    DatabaseTimePartitionConfig config = getDatabaseConfig(database);
     long partitionStartTime;
-    if (originMayCauseOverflow) {
+    if (config.isOriginMayCauseOverflow()) {
       partitionStartTime =
           BigInteger.valueOf(partitionId)
-              .multiply(bigTimePartitionInterval)
-              .add(bigTimePartitionOrigin)
+              .multiply(config.getBigTimePartitionInterval())
+              .add(config.getBigTimePartitionOrigin())
               .longValue();
     } else {
-      partitionStartTime = partitionId * timePartitionInterval + timePartitionOrigin;
+      partitionStartTime =
+          partitionId * config.getTimePartitionInterval() + config.getTimePartitionOrigin();
     }
-    return satisfyPartitionStartTime(timeFilter, partitionStartTime);
+    return satisfyPartitionStartTime(timeFilter, partitionStartTime, database);
   }
 
-  public static void setTimePartitionInterval(long timePartitionInterval) {
-    TimePartitionUtils.timePartitionInterval = timePartitionInterval;
-  }
-
-  public static long getEstimateTimePartitionSize(long startTime, long endTime) {
+  public static long getEstimateTimePartitionSize(long startTime, long endTime, String database) {
+    DatabaseTimePartitionConfig config = getDatabaseConfig(database);
     if (endTime > 0 && startTime < 0) {
       return BigInteger.valueOf(endTime)
               .subtract(BigInteger.valueOf(startTime))
-              .divide(bigTimePartitionInterval)
+              .divide(config.getBigTimePartitionInterval())
               .longValue()
           + 1;
     }
-    return (endTime - startTime) / timePartitionInterval + 1;
+    return (endTime - startTime) / config.getTimePartitionInterval() + 1;
+  }
+
+  // Helper methods for database-specific calculations
+  private static long getTimePartitionLowerBoundInternal(
+      long time, DatabaseTimePartitionConfig config) {
+    if (time < config.getTimePartitionLowerBoundWithoutOverflow()) {
+      return Long.MIN_VALUE;
+    }
+    if (config.isOriginMayCauseOverflow()) {
+      return BigInteger.valueOf(
+              getTimePartitionIdWithoutOverflow(
+                  time, config.getTimePartitionOrigin(), config.getTimePartitionInterval()))
+          .multiply(config.getBigTimePartitionInterval())
+          .add(config.getBigTimePartitionOrigin())
+          .longValue();
+    } else {
+      return getTimePartitionId(
+                  time, config.getTimePartitionOrigin(), config.getTimePartitionInterval())
+              * config.getTimePartitionInterval()
+          + config.getTimePartitionOrigin();
+    }
+  }
+
+  private static long getTimePartitionUpperBoundInternal(
+      long time, DatabaseTimePartitionConfig config) {
+    if (time >= config.getTimePartitionUpperBoundWithoutOverflow()) {
+      return Long.MAX_VALUE;
+    }
+    long lowerBound = getTimePartitionLowerBoundInternal(time, config);
+    return lowerBound == Long.MIN_VALUE
+        ? config.getTimePartitionLowerBoundWithoutOverflow()
+        : lowerBound + config.getTimePartitionInterval();
+  }
+
+  private static long getTimePartitionId(long time, long origin, long interval) {
+    time -= origin;
+    return time > 0 || time % interval == 0 ? time / interval : time / interval - 1;
+  }
+
+  private static long getTimePartitionIdWithoutOverflow(long time, long origin, long interval) {
+    BigInteger bigTime = BigInteger.valueOf(time).subtract(BigInteger.valueOf(origin));
+    BigInteger bigInterval = BigInteger.valueOf(interval);
+    BigInteger partitionId =
+        bigTime.compareTo(BigInteger.ZERO) > 0
+                || bigTime.remainder(bigInterval).equals(BigInteger.ZERO)
+            ? bigTime.divide(bigInterval)
+            : bigTime.divide(bigInterval).subtract(BigInteger.ONE);
+    return partitionId.longValue();
   }
 }
