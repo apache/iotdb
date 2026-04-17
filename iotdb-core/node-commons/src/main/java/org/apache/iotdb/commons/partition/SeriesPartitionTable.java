@@ -54,7 +54,7 @@ public class SeriesPartitionTable {
 
   // should only be used in CN scope, in DN scope should directly use
   // TimePartitionUtils.getTimePartitionInterval()
-  private static final long TIME_PARTITION_INTERVAL =
+  private final long timePartitionInterval =
       CommonDateTimeUtils.convertMilliTimeWithPrecision(
           TimePartitionUtils.getTimePartitionInterval(),
           CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
@@ -269,7 +269,7 @@ public class SeriesPartitionTable {
     while (iterator.hasNext()) {
       Map.Entry<TTimePartitionSlot, List<TConsensusGroupId>> entry = iterator.next();
       TTimePartitionSlot timePartitionSlot = entry.getKey();
-      if (timePartitionSlot.getStartTime() + TIME_PARTITION_INTERVAL + TTL
+      if (timePartitionSlot.getStartTime() + timePartitionInterval + TTL
           <= currentTimeSlot.getStartTime()) {
         removedTimePartitions.add(timePartitionSlot);
         iterator.remove();
