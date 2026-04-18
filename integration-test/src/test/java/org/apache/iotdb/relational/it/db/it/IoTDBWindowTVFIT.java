@@ -881,5 +881,17 @@ public class IoTDBWindowTVFIT {
         "select * from pattern_match(data => t1 ORDER BY time, time_col => 'time', data_col => 'value', pattern => '1.0,2.0,1.0', smooth => 0.5, threshold => -1.1, width => 1000.0, height => 500.0, smooth_on_pattern => false)",
         "threshold must be a non-negative number",
         DATABASE_NAME);
+
+    // test negative width should be rejected
+    tableAssertTestFail(
+        "select * from pattern_match(data => t1 ORDER BY time, time_col => 'time', data_col => 'value', pattern => '1.0,2.0,1.0', smooth => 0.5, threshold => 10.0, width => -1.0, height => 500.0, smooth_on_pattern => false)",
+        "width must be a non-negative number",
+        DATABASE_NAME);
+
+    // test negative height should be rejected
+    tableAssertTestFail(
+        "select * from pattern_match(data => t1 ORDER BY time, time_col => 'time', data_col => 'value', pattern => '1.0,2.0,1.0', smooth => 0.5, threshold => 10.0, width => 1000.0, height => -10.0, smooth_on_pattern => false)",
+        "height must be a non-negative number",
+        DATABASE_NAME);
   }
 }
