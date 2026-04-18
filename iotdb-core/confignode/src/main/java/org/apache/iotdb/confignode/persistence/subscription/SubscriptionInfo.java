@@ -27,6 +27,8 @@ import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMetaKeep
 import org.apache.iotdb.commons.subscription.meta.subscription.SubscriptionMeta;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMetaKeeper;
+import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.consumer.AlterConsumerGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.consumer.runtime.CommitProgressHandleMetaChangePlan;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.consumer.runtime.ConsumerGroupHandleMetaChangePlan;
@@ -42,6 +44,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreateConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSubscribeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsubscribeReq;
+import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.rpc.subscription.config.TopicConfig;
@@ -76,7 +79,11 @@ public class SubscriptionInfo implements SnapshotProcessor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionInfo.class);
 
+  private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
+
   private static final String SNAPSHOT_FILE_NAME = "subscription_info.bin";
+  private static final String DATA_REGION_CONSENSUS_PROTOCOL_CLASS_KEY =
+      "data_region_consensus_protocol_class";
 
   private final TopicMetaKeeper topicMetaKeeper;
   private final ConsumerGroupMetaKeeper consumerGroupMetaKeeper;
@@ -294,6 +301,8 @@ public class SubscriptionInfo implements SnapshotProcessor {
       throw new SubscriptionException(exceptionMessage);
     }
 
+    validateConsensusProtocolSupport(topicConfig);
+
     if (topicConfig.isConsensusMode()
         && TopicConstant.FORMAT_TS_FILE_VALUE.equalsIgnoreCase(
             topicConfig.getStringOrDefault(
@@ -325,6 +334,29 @@ public class SubscriptionInfo implements SnapshotProcessor {
 
     validateConsensusTableColumnPattern(topicConfig);
     validateConsensusTopicRetentionConfig(topicConfig);
+  }
+
+  private void validateConsensusProtocolSupport(final TopicConfig topicConfig)
+      throws SubscriptionException {
+    if (!topicConfig.isConsensusMode()) {
+      return;
+    }
+
+    final String actualProtocol = String.valueOf(CONF.getDataRegionConsensusProtocolClass());
+    if (ConsensusFactory.IOT_CONSENSUS.equals(actualProtocol)) {
+      return;
+    }
+
+    final String exceptionMessage =
+        String.format(
+            "Failed to create or alter topic, %s=%s is only supported when %s=%s, but current value is %s",
+            TopicConstant.MODE_KEY,
+            TopicConstant.MODE_CONSENSUS_VALUE,
+            DATA_REGION_CONSENSUS_PROTOCOL_CLASS_KEY,
+            ConsensusFactory.IOT_CONSENSUS,
+            actualProtocol);
+    LOGGER.warn(exceptionMessage);
+    throw new SubscriptionException(exceptionMessage);
   }
 
   private void validateConsensusTableColumnPattern(final TopicConfig topicConfig)

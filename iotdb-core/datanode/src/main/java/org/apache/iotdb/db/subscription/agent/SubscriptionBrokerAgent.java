@@ -20,8 +20,13 @@
 package org.apache.iotdb.db.subscription.agent;
 
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.consensus.ConsensusFactory;
+import org.apache.iotdb.consensus.IConsensus;
+import org.apache.iotdb.consensus.iot.IoTConsensus;
 import org.apache.iotdb.consensus.iot.IoTConsensusServerImpl;
 import org.apache.iotdb.consensus.iot.SubscriptionWalRetentionPolicy;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.subscription.broker.ConsensusSubscriptionBroker;
 import org.apache.iotdb.db.subscription.broker.SubscriptionBroker;
 import org.apache.iotdb.db.subscription.broker.consensus.ConsensusLogToTabletConverter;
@@ -83,6 +88,15 @@ public class SubscriptionBrokerAgent {
       final Map<String, TopicProgress> progressByTopic) {
     final String consumerGroupId = consumerConfig.getConsumerGroupId();
     final String consumerId = consumerConfig.getConsumerId();
+    final List<String> unsupportedConsensusTopics = getUnsupportedConsensusTopics(topicNames);
+    if (!unsupportedConsensusTopics.isEmpty()) {
+      final String errorMessage =
+          buildUnsupportedConsensusRuntimeMessage(
+              consumerGroupId, unsupportedConsensusTopics, "poll");
+      LOGGER.warn(errorMessage);
+      throw new SubscriptionException(errorMessage);
+    }
+
     final List<SubscriptionEvent> allEvents = new ArrayList<>();
     long remainingBytes = maxBytes;
 
@@ -246,6 +260,13 @@ public class SubscriptionBrokerAgent {
       return;
     }
 
+    if (isConsensusRuntimeUnsupported(topicName)) {
+      final String errorMessage =
+          buildUnsupportedConsensusRuntimeMessage(consumerGroupId, topicName, "seek");
+      LOGGER.warn(errorMessage);
+      throw new SubscriptionException(errorMessage);
+    }
+
     final String errorMessage =
         String.format(
             "Subscription: seek is only supported for consensus-based subscriptions, "
@@ -267,6 +288,14 @@ public class SubscriptionBrokerAgent {
       ensureConsensusSeekRuntimeAvailable(consumerGroupId, topicName, "seek(topicProgress)");
       consensusBroker.seek(topicName, topicProgress);
       return;
+    }
+
+    if (isConsensusRuntimeUnsupported(topicName)) {
+      final String errorMessage =
+          buildUnsupportedConsensusRuntimeMessage(
+              consumerGroupId, topicName, "seek(topicProgress)");
+      LOGGER.warn(errorMessage);
+      throw new SubscriptionException(errorMessage);
     }
 
     final String errorMessage =
@@ -292,6 +321,14 @@ public class SubscriptionBrokerAgent {
       return;
     }
 
+    if (isConsensusRuntimeUnsupported(topicName)) {
+      final String errorMessage =
+          buildUnsupportedConsensusRuntimeMessage(
+              consumerGroupId, topicName, "seekAfter(topicProgress)");
+      LOGGER.warn(errorMessage);
+      throw new SubscriptionException(errorMessage);
+    }
+
     final String errorMessage =
         String.format(
             "Subscription: seekAfter(topicProgress) is only supported for consensus-based subscriptions, "
@@ -313,6 +350,50 @@ public class SubscriptionBrokerAgent {
       LOGGER.warn(errorMessage);
       throw new SubscriptionException(errorMessage);
     }
+  }
+
+  private boolean isConsensusRuntimeUnsupported(final String topicName) {
+    return !(DataRegionConsensusImpl.getInstance() instanceof IoTConsensus)
+        && ConsensusSubscriptionSetupHandler.isConsensusBasedTopic(topicName);
+  }
+
+  private List<String> getUnsupportedConsensusTopics(final Set<String> topicNames) {
+    if (DataRegionConsensusImpl.getInstance() instanceof IoTConsensus) {
+      return Collections.emptyList();
+    }
+
+    final List<String> unsupportedConsensusTopics = new ArrayList<>();
+    for (final String topicName : topicNames) {
+      if (ConsensusSubscriptionSetupHandler.isConsensusBasedTopic(topicName)) {
+        unsupportedConsensusTopics.add(topicName);
+      }
+    }
+    return unsupportedConsensusTopics;
+  }
+
+  private String buildUnsupportedConsensusRuntimeMessage(
+      final String consumerGroupId, final String topicName, final String operation) {
+    return buildUnsupportedConsensusRuntimeMessage(
+        consumerGroupId, Collections.singletonList(topicName), operation);
+  }
+
+  private String buildUnsupportedConsensusRuntimeMessage(
+      final String consumerGroupId, final List<String> topicNames, final String operation) {
+    final IConsensus dataRegionConsensus = DataRegionConsensusImpl.getInstance();
+    final String configuredProtocol =
+        IoTDBDescriptor.getInstance().getConfig().getDataRegionConsensusProtocolClass();
+    final String runtimeConsensusImplementation =
+        Objects.nonNull(dataRegionConsensus) ? dataRegionConsensus.getClass().getName() : "null";
+    return String.format(
+        "Subscription: cannot %s consensus-based topic(s) %s in consumer group [%s] because "
+            + "mode=consensus only supports data_region_consensus_protocol_class=%s, but current "
+            + "configured value is %s (runtime consensus implementation: %s)",
+        operation,
+        topicNames,
+        consumerGroupId,
+        ConsensusFactory.IOT_CONSENSUS,
+        configuredProtocol,
+        runtimeConsensusImplementation);
   }
 
   public boolean isCommitContextOutdated(final SubscriptionCommitContext commitContext) {

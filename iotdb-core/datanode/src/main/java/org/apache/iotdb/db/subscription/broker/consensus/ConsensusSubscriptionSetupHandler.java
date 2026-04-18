@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.PrefixTreePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
+import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.iot.IoTConsensus;
 import org.apache.iotdb.consensus.iot.IoTConsensusServerImpl;
@@ -49,6 +50,7 @@ import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
@@ -289,11 +291,17 @@ public class ConsensusSubscriptionSetupHandler {
       final String consumerGroupId, final Set<String> topicNames) {
     final IConsensus dataRegionConsensus = DataRegionConsensusImpl.getInstance();
     if (!(dataRegionConsensus instanceof IoTConsensus)) {
+      final String configuredProtocol = IOTDB_CONFIG.getDataRegionConsensusProtocolClass();
+      final String runtimeConsensusImplementation =
+          Objects.nonNull(dataRegionConsensus) ? dataRegionConsensus.getClass().getName() : "null";
       LOGGER.warn(
-          "Data region consensus is not IoTConsensus (actual: {}), "
-              + "cannot set up consensus-based subscription for consumer group [{}]",
-          dataRegionConsensus.getClass().getSimpleName(),
-          consumerGroupId);
+          "Skipping setup of consensus-based subscriptions for consumer group [{}] because "
+              + "mode=consensus only supports data_region_consensus_protocol_class={}, but "
+              + "current configured value is {} (runtime consensus implementation: {})",
+          consumerGroupId,
+          ConsensusFactory.IOT_CONSENSUS,
+          configuredProtocol,
+          runtimeConsensusImplementation);
       return;
     }
 
