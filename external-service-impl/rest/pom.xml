@@ -171,6 +171,28 @@
             <artifactId>antlr4-runtime</artifactId>
             <scope>provided</scope>
         </dependency>
+        <!-- OpenTelemetry Protocol support: generated Java classes for OTLP protobuf messages
+             (traces, metrics, logs). Transitively brings com.google.protobuf:protobuf-java at
+             runtime. Bundled via jar-with-dependencies. -->
+        <dependency>
+            <groupId>io.opentelemetry.proto</groupId>
+            <artifactId>opentelemetry-proto</artifactId>
+            <version>1.3.2-alpha</version>
+        </dependency>
+        <!-- Required by the OTLP endpoint to parse application/json bodies into protobuf messages
+             via JsonFormat; version must match the protobuf-java brought in by opentelemetry-proto. -->
+        <dependency>
+            <groupId>com.google.protobuf</groupId>
+            <artifactId>protobuf-java-util</artifactId>
+            <version>3.25.3</version>
+            <exclusions>
+                <!-- guava is already provided by the datanode runtime -->
+                <exclusion>
+                    <groupId>com.google.guava</groupId>
+                    <artifactId>guava</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
     </dependencies>
     <build>
         <plugins>

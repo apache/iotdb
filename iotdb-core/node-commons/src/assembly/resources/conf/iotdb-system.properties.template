@@ -595,6 +595,33 @@ client_auth=false
 idle_timeout_in_seconds=50000
 
 ####################
+### OpenTelemetry (OTLP) Receiver configuration
+####################
+# The OTLP receiver is exposed under the REST service on port rest_service_port at base
+# path /rest/v1/otlp. It accepts OTLP/HTTP requests at:
+#   POST /rest/v1/otlp/v1/traces
+#   POST /rest/v1/otlp/v1/metrics
+#   POST /rest/v1/otlp/v1/logs
+# Both application/x-protobuf (default OTLP encoding) and application/json are accepted.
+# The receiver is only active while enable_rest_service=true.
+#
+# Each OTLP request's resource attribute `service.name` is translated into a database name
+# (e.g. "claude-code" -> claude_code, "codex" -> codex, "Gemini CLI" -> gemini_cli; missing
+# service.name falls back to `unknown_service`). Database and tables are created on first
+# use of each distinct service.
+
+# IoTDB user the OTLP receiver logs in as when writing telemetry data.
+# effectiveMode: restart
+# Datatype: String
+otlp_username=root
+
+# Password paired with otlp_username. Leave the default if you are running an unchanged
+# root/root installation; override in production.
+# effectiveMode: restart
+# Datatype: String
+otlp_password=root
+
+####################
 ### Load balancing configuration
 ####################
 
