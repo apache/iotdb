@@ -293,6 +293,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
         sendRestartRequestToConfigNode();
       }
       if (isEncryptConfigFile()) {
+        IoTDBDescriptor.getInstance().getConfig().validateEncryptedFileWithConfig();
         try {
           loadSecretKey();
           loadHardwareCode();
@@ -318,6 +319,8 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
                           SecretKey.getInstance().getRealSecretKey()))));
         }
         encryptConfigFile();
+      } else {
+        IoTDBDescriptor.getInstance().getConfig().validateEncryptedFileWithConfig();
       }
       // TierManager need DataNodeId to do some operations so the reset method need to be invoked
       // after DataNode adding

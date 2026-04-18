@@ -23,7 +23,12 @@ import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.auth.AuthException;
+import org.apache.iotdb.commons.auth.role.LocalFileRoleManager;
+import org.apache.iotdb.commons.auth.user.LocalFileUserManager;
 import org.apache.iotdb.commons.client.property.ClientPoolProperty.DefaultProperty;
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.confignode.manager.load.balancer.RegionBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.router.leader.AbstractLeaderBalancer;
@@ -33,11 +38,14 @@ import org.apache.iotdb.confignode.manager.partition.RegionGroupExtensionPolicy;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 
+import com.timecho.iotdb.commons.secret.SecretKey;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.io.IOException;
 import java.lang.reflect.Field;
+import java.net.URL;
 import java.util.Arrays;
 
 public class ConfigNodeConfig {
@@ -1306,5 +1314,36 @@ public class ConfigNodeConfig {
   public void setPartitionTableRecoverWaitAllDnUpTimeoutInMs(
       long partitionTableRecoverWaitAllDnUpTimeoutInMs) {
     this.partitionTableRecoverWaitAllDnUpTimeoutInMs = partitionTableRecoverWaitAllDnUpTimeoutInMs;
+  }
+
+  /**
+   * Check situation that encrypted config file or encrypted permission files exist when encrypt
+   * switch is disable
+   */
+  public void validateEncryptedFileWithConfig() throws AuthException, IOException {
+    URL configFileUrl =
+        ConfigNodeDescriptor.getPropsUrl(
+            SecretKey.CN_FILE_ENCRYPTED_PREFIX
+                + CommonConfig.SYSTEM_CONFIG_NAME
+                + SecretKey.FILE_ENCRYPTED_SUFFIX);
+    LocalFileUserManager userManager =
+        new LocalFileUserManager(CommonDescriptor.getInstance().getConfig().getUserFolder());
+    LocalFileRoleManager roleManager =
+        new LocalFileRoleManager(CommonDescriptor.getInstance().getConfig().getRoleFolder());
+    if ((configFileUrl != null && (new File(configFileUrl.getPath()).exists()))
+        && !CommonDescriptor.getInstance().getConfig().isEnableEncryptConfigFile()) {
+      throw new IOException(
+          "Config file is encrypted. The parameter enable_encrypt_config_file must be set to true");
+    }
+    if (userManager.existsEncryptedFile()
+        && !CommonDescriptor.getInstance().getConfig().isEnableEncryptPermissionFile()) {
+      throw new IOException(
+          "User files are encrypted. The parameter enable_encrypt_permission_file must be set to true");
+    }
+    if (roleManager.existsEncryptedFile()
+        && !CommonDescriptor.getInstance().getConfig().isEnableEncryptPermissionFile()) {
+      throw new IOException(
+          "Role fils are encrypted. The parameter enable_encrypt_permission_file must be set to true");
+    }
   }
 }

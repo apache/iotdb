@@ -164,6 +164,7 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
 
     try {
       if (isNeedEncrypt()) {
+        ConfigNodeDescriptor.getInstance().getConf().validateEncryptedFileWithConfig();
         try {
           loadSecretKey();
           loadHardwareCode();
@@ -177,6 +178,8 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
         if (isEncryptConfigFile()) {
           encryptConfigFile();
         }
+      } else {
+        ConfigNodeDescriptor.getInstance().getConf().validateEncryptedFileWithConfig();
       }
       processPid();
       // Add shutdown hook

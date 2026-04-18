@@ -22,6 +22,7 @@ package org.apache.iotdb.db.conf;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.property.ClientPoolProperty.DefaultProperty;
+import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.enums.ReadConsistencyLevel;
@@ -48,6 +49,7 @@ import org.apache.iotdb.rpc.BaseRpcTransportFactory;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.ZeroCopyRpcTransportFactory;
 
+import com.timecho.iotdb.commons.secret.SecretKey;
 import com.timecho.iotdb.os.conf.ObjectStorageConfig;
 import com.timecho.iotdb.os.conf.ObjectStorageDescriptor;
 import com.timecho.iotdb.os.utils.ObjectStorageType;
@@ -65,6 +67,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Field;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -4776,5 +4779,19 @@ public class IoTDBConfig {
   public void setPartitionTableRecoverMaxReadMBsPerSecond(
       int partitionTableRecoverMaxReadMBsPerSecond) {
     this.partitionTableRecoverMaxReadMBsPerSecond = partitionTableRecoverMaxReadMBsPerSecond;
+  }
+
+  /** Check situation that encrypted config file when encrypt switch is disable */
+  public void validateEncryptedFileWithConfig() throws IOException {
+    URL configFileUrl =
+        IoTDBDescriptor.getPropsUrl(
+            SecretKey.DN_FILE_ENCRYPTED_PREFIX
+                + CommonConfig.SYSTEM_CONFIG_NAME
+                + SecretKey.FILE_ENCRYPTED_SUFFIX);
+    if ((configFileUrl != null && (new File(configFileUrl.getPath()).exists()))
+        && !CommonDescriptor.getInstance().getConfig().isEnableEncryptConfigFile()) {
+      throw new IOException(
+          "Config file is encrypted. The parameter enable_encrypt_config_file must be set to true");
+    }
   }
 }
