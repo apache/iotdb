@@ -83,7 +83,8 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
     if (canNotUseTabletAnymore(event)) {
       event.getTsFileEpoch().migrateState(this, curState -> TsFileEpoch.State.USING_TSFILE);
       PipeTsFileEpochProgressIndexAndFlushManager.getInstance()
-          .registerResource(dataRegionId, pipeName, event.getTsFileEpoch().getResource());
+          .registerResource(
+              dataRegionId, getTsFileDedupScopeID(), event.getTsFileEpoch().getResource());
     } else {
       event
           .getTsFileEpoch()
@@ -156,7 +157,8 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
       case USING_TABLET:
         // If the state is USING_TABLET, discard the event
         PipeTsFileEpochProgressIndexAndFlushManager.getInstance()
-            .eliminateProgressIndex(dataRegionId, pipeName, event.getTsFileEpoch().getFilePath());
+            .eliminateProgressIndex(
+                dataRegionId, getTsFileDedupScopeID(), event.getTsFileEpoch().getFilePath());
         event.decreaseReferenceCount(PipeRealtimeDataRegionHybridSource.class.getName(), false);
         return;
       case EMPTY:
@@ -286,7 +288,8 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
       PipeDataNodeAgent.runtime()
           .report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
       PipeTsFileEpochProgressIndexAndFlushManager.getInstance()
-          .eliminateProgressIndex(dataRegionId, pipeName, event.getTsFileEpoch().getFilePath());
+          .eliminateProgressIndex(
+              dataRegionId, getTsFileDedupScopeID(), event.getTsFileEpoch().getFilePath());
       return null;
     }
   }

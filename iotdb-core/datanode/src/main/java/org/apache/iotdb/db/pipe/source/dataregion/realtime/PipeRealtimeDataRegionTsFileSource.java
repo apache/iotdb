@@ -52,7 +52,8 @@ public class PipeRealtimeDataRegionTsFileSource extends PipeRealtimeDataRegionSo
 
     event.getTsFileEpoch().migrateState(this, state -> TsFileEpoch.State.USING_TSFILE);
     PipeTsFileEpochProgressIndexAndFlushManager.getInstance()
-        .registerResource(dataRegionId, pipeName, event.getTsFileEpoch().getResource());
+        .registerResource(
+            dataRegionId, getTsFileDedupScopeID(), event.getTsFileEpoch().getResource());
 
     if (!(event.getEvent() instanceof TsFileInsertionEvent)) {
       event.decreaseReferenceCount(PipeRealtimeDataRegionTsFileSource.class.getName(), false);
@@ -108,7 +109,9 @@ public class PipeRealtimeDataRegionTsFileSource extends PipeRealtimeDataRegionSo
             .report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
         PipeTsFileEpochProgressIndexAndFlushManager.getInstance()
             .eliminateProgressIndex(
-                dataRegionId, pipeName, realtimeEvent.getTsFileEpoch().getFilePath());
+                dataRegionId,
+                getTsFileDedupScopeID(),
+                realtimeEvent.getTsFileEpoch().getFilePath());
       }
 
       realtimeEvent.decreaseReferenceCount(
