@@ -28,11 +28,11 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
-import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.client.sync.CnToDnSyncRequestType;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.manager.ConfigManager;
-import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.manager.ProcedureManager;
+import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.manager.pipe.coordinator.PipeManager;
 import org.apache.iotdb.confignode.manager.pipe.coordinator.task.PipeTaskCoordinator;
@@ -336,7 +336,10 @@ public class RegionMaintainHandlerConsensusPipeTest {
 
     @Override
     protected TSStatus submitDataNodeSyncRequest(
-        TEndPoint endPoint, Object request, CnToDnSyncRequestType requestType, boolean useFullRetry) {
+        TEndPoint endPoint,
+        Object request,
+        CnToDnSyncRequestType requestType,
+        boolean useFullRetry) {
       lastEndPoint = endPoint;
       lastRequestType = requestType;
       lastUseFullRetry = useFullRetry;
