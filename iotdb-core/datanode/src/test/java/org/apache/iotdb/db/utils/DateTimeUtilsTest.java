@@ -27,12 +27,14 @@ import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
 
+import java.time.DateTimeException;
+import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
-import java.time.ZonedDateTime;
 import java.util.TimeZone;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.fail;
 
 public class DateTimeUtilsTest {
@@ -47,7 +49,7 @@ public class DateTimeUtilsTest {
   /** Test convertDatetimeStrToLong() method with different time precision. */
   @Test
   public void convertDatetimeStrToLongTest1() {
-    zoneOffset = ZonedDateTime.now().getOffset();
+    zoneOffset = Instant.ofEpochMilli(timestamp).atZone(ZoneId.systemDefault()).getOffset();
     zoneId = ZoneId.systemDefault();
     if (zoneOffset.toString().equals("Z")) {
       delta = 8 * 3600000;
@@ -337,5 +339,96 @@ public class DateTimeUtilsTest {
 
     timeDuration = DateTimeUtils.constructTimeDuration("10000000000ms");
     Assert.assertEquals(10000000000L, timeDuration.nonMonthDuration);
+  }
+
+  @Test
+  public void testToZoneOffsetForWinterTime() {
+    ZoneId zoneId = ZoneId.of("Europe/Warsaw");
+    ZoneOffset offset = DateTimeUtils.toZoneOffset("2024-01-15 12:00:00", zoneId);
+    Assert.assertEquals(ZoneOffset.ofHours(1), offset);
+  }
+
+  @Test
+  public void testToZoneOffsetForSummerTime() {
+    ZoneId zoneId = ZoneId.of("Europe/Warsaw");
+    ZoneOffset offset = DateTimeUtils.toZoneOffset("2024-06-15 12:00:00", zoneId);
+    Assert.assertEquals(ZoneOffset.ofHours(2), offset);
+  }
+
+  @Test
+  public void testToZoneOffsetJustBeforeSpringDST() {
+    ZoneId zoneId = ZoneId.of("Europe/Warsaw");
+    ZoneOffset offset = DateTimeUtils.toZoneOffset("2024-03-31 02:00:00", zoneId);
+    Assert.assertEquals(ZoneOffset.ofHours(1), offset);
+  }
+
+  @Test
+  public void testToZoneOffsetJustAfterSpringDST() {
+    ZoneId zoneId = ZoneId.of("Europe/Warsaw");
+    ZoneOffset offset = DateTimeUtils.toZoneOffset("2024-03-31 03:00:00", zoneId);
+    Assert.assertEquals(ZoneOffset.ofHours(2), offset);
+  }
+
+  @Test
+  public void testToZoneOffsetDuringSpringDSTGap() {
+    ZoneId zoneId = ZoneId.of("Europe/Warsaw");
+    ZoneOffset offset = DateTimeUtils.toZoneOffset("2024-03-31 02:30:00", zoneId);
+    Assert.assertEquals(ZoneOffset.ofHours(1), offset);
+  }
+
+  @Test
+  public void testToZoneOffsetDuringAutumnDSTTransition() {
+    ZoneId zoneId = ZoneId.of("Europe/Warsaw");
+    ZoneOffset offset = DateTimeUtils.toZoneOffset("2024-10-27 02:30:00", zoneId);
+    Assert.assertEquals(ZoneOffset.ofHours(2), offset);
+  }
+
+  @Test
+  public void testToZoneOffsetAfterAutumnDST() {
+    ZoneId zoneId = ZoneId.of("Europe/Warsaw");
+    ZoneOffset offset = DateTimeUtils.toZoneOffset("2024-10-27 03:00:00", zoneId);
+    Assert.assertEquals(ZoneOffset.ofHours(1), offset);
+  }
+
+  @Test
+  public void testToZoneOffsetWithExplicitOffsetInString() {
+    ZoneId zoneId = ZoneId.of("Europe/Warsaw");
+    ZoneOffset offset = DateTimeUtils.toZoneOffset("2024-06-15 12:00:00+02:00", zoneId);
+    Assert.assertEquals(ZoneOffset.ofHours(2), offset);
+    offset = DateTimeUtils.toZoneOffset("2024-06-15 12:00:00Z", zoneId);
+    Assert.assertEquals(ZoneOffset.UTC, offset);
+    offset = DateTimeUtils.toZoneOffset("2024-06-15 12:00:00-08:00", zoneId);
+    Assert.assertEquals(ZoneOffset.ofHours(-8), offset);
+  }
+
+  @Test
+  public void testToZoneOffsetWithUTCZoneId() {
+    ZoneId utc = ZoneId.of("UTC");
+    Assert.assertEquals(ZoneOffset.UTC, DateTimeUtils.toZoneOffset("2024-06-15 12:00:00", utc));
+  }
+
+  @Test
+  public void testToZoneOffsetWithBrokenDate() {
+    ZoneId zoneId = ZoneId.of("Europe/Warsaw");
+    DateTimeException exception =
+        assertThrows(
+            DateTimeException.class,
+            () -> {
+              DateTimeUtils.toZoneOffset("2024-12-31 10", zoneId);
+            });
+  }
+
+  @Test
+  public void testToZoneOffsetHistoricalLMT() {
+    ZoneId zoneId = ZoneId.of("Europe/Warsaw");
+    ZoneOffset offset = DateTimeUtils.toZoneOffset("0001-01-01 00:00:00", zoneId);
+    Assert.assertEquals(ZoneOffset.ofHoursMinutes(1, 24), offset);
+
+    ZoneId shanghaiId = ZoneId.of("Asia/Shanghai");
+    ZoneOffset shanghaiOffset = DateTimeUtils.toZoneOffset("0001-01-01 00:00:00", shanghaiId);
+    Assert.assertEquals(ZoneOffset.ofHoursMinutes(8, 5), shanghaiOffset);
+
+    ZoneId utcId = ZoneId.of("UTC");
+    Assert.assertEquals(ZoneOffset.UTC, DateTimeUtils.toZoneOffset("0001-01-01 00:00:00", utcId));
   }
 }

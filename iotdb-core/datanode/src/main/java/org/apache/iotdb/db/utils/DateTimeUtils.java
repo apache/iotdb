@@ -558,14 +558,14 @@ public class DateTimeUtils {
   public static long convertDatetimeStrToLong(String str, ZoneId zoneId) {
     return convertDatetimeStrToLong(
         str,
-        toZoneOffset(zoneId),
+        toZoneOffset(str, zoneId),
         0,
         CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
   }
 
   public static long convertDatetimeStrToLong(
       String str, ZoneId zoneId, String timestampPrecision) {
-    return convertDatetimeStrToLong(str, toZoneOffset(zoneId), 0, timestampPrecision);
+    return convertDatetimeStrToLong(str, toZoneOffset(str, zoneId), 0, timestampPrecision);
   }
 
   public static long getInstantWithPrecision(String str, String timestampPrecision) {
@@ -821,8 +821,22 @@ public class DateTimeUtils {
     return ZonedDateTime.ofInstant(Instant.ofEpochMilli(timestamp), zoneId);
   }
 
-  public static ZoneOffset toZoneOffset(ZoneId zoneId) {
-    return zoneId.getRules().getOffset(Instant.now());
+  /** Converts string to ZoneOffset. Truncates seconds for HH:mm database compatibility. */
+  public static ZoneOffset toZoneOffset(String str, ZoneId zoneId) {
+    if (str.endsWith("Z")) {
+      return ZoneOffset.UTC;
+    }
+
+    int offsetIndex = Math.max(str.lastIndexOf('+'), str.lastIndexOf('-'));
+    if (offsetIndex != -1 && str.length() - offsetIndex == 6) {
+      return ZoneOffset.of(str.substring(offsetIndex));
+    }
+
+    long millis = convertDatetimeStrToLong(str, ZoneOffset.UTC, 0, "ms");
+    LocalDateTime localDateTime =
+        LocalDateTime.ofInstant(Instant.ofEpochMilli(millis), ZoneOffset.UTC);
+    ZoneOffset offset = zoneId.getRules().getOffset(localDateTime);
+    return ZoneOffset.ofTotalSeconds((offset.getTotalSeconds() / 60) * 60);
   }
 
   public static ZonedDateTime convertMillsecondToZonedDateTime(long millisecond) {
