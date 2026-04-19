@@ -32,6 +32,7 @@ import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
@@ -172,7 +173,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
       return posList;
     }
     checkCacheAvailable();
-    User user = getUser(username);
+    User user = getUser(username, true);
     if (user.isOpenIdUser()) {
       return posList;
     }
@@ -443,13 +444,12 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
       Object authorStatement, String username, boolean isRelational, Runnable successCallback) {
 
     if (isUnlockStatement(authorStatement, isRelational)) {
-      SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-      User user = getUser(username);
-      if (user == null) {
-        future.setException(
-            new IoTDBException(
-                String.format("User %s does not exist", username),
-                TSStatusCode.USER_NOT_EXIST.getStatusCode()));
+      final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+      final User user;
+      try {
+        user = getUser(username, false);
+      } catch (final IoTDBRuntimeException e) {
+        future.setException(e);
         return future;
       }
       String loginAddr =
@@ -593,7 +593,8 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
     }
   }
 
-  public User getUser(String userName) {
+  @Override
+  public User getUser(String userName, final boolean force) {
     checkCacheAvailable();
     User user = iAuthorCache.getUserCache(userName);
     if (user != null) {
@@ -615,6 +616,10 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
           iAuthorCache.putUserCache(userName, user);
         }
       }
+    }
+    if (user == null && force) {
+      throw new IoTDBRuntimeException(
+          "User " + userName + " does not exist", TSStatusCode.USER_NOT_EXIST.getStatusCode());
     }
     return user;
   }
