@@ -274,12 +274,14 @@ import org.apache.tsfile.file.metadata.idcolumn.ThreeLevelDBExtractor;
 import org.apache.tsfile.file.metadata.idcolumn.TwoLevelDBExtractor;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.TimeRange;
+import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.column.BinaryColumn;
 import org.apache.tsfile.read.common.block.column.BooleanColumn;
 import org.apache.tsfile.read.common.block.column.DoubleColumn;
 import org.apache.tsfile.read.common.block.column.FloatColumn;
 import org.apache.tsfile.read.common.block.column.IntColumn;
 import org.apache.tsfile.read.common.block.column.LongColumn;
+import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
 import org.apache.tsfile.read.common.type.BinaryType;
 import org.apache.tsfile.read.common.type.BlobType;
 import org.apache.tsfile.read.common.type.BooleanType;
@@ -4403,9 +4405,23 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                 node.getPlanNodeId(),
                 MappingCollectOperator.class.getSimpleName());
 
-    // Currently we only support empty values operator
-    assert node.getRowCount() == 0;
-    return new ValuesOperator(operatorContext, ImmutableList.of());
+    if (node.getRowCount() == 0) {
+      return new ValuesOperator(operatorContext, ImmutableList.of());
+    }
+
+    // No-FROM query (e.g. SELECT 1+1): produce rowCount rows with no value columns so that the
+    // upstream ProjectNode can evaluate expressions once per row.
+    if (node.getRowCount() == 1) {
+      TsBlock oneRowWithoutColumnsBlock =
+          new TsBlock(
+              node.getRowCount(),
+              new RunLengthEncodedColumn(
+                  AbstractTableScanOperator.TIME_COLUMN_TEMPLATE, node.getRowCount()),
+              new Column[0]);
+      return new ValuesOperator(operatorContext, ImmutableList.of(oneRowWithoutColumnsBlock));
+    } else {
+      throw new IllegalArgumentException("Row count must be 0 or 1");
+    }
   }
 
   @Override
