@@ -22,9 +22,7 @@ package org.apache.iotdb.commons.schema.table;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.exception.runtime.SchemaExecutionException;
-import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
-import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
-import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.TimeColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchemaUtil;
@@ -93,6 +91,9 @@ public class TsTable {
   private transient int tagNums = 0;
   private transient int fieldNum = 0;
 
+  // Initiated during creation and never changed the reference
+  private transient TsTableColumnSchema timeColumnSchema;
+
   public TsTable(final String tableName) {
     this.tableName = tableName;
   }
@@ -101,7 +102,12 @@ public class TsTable {
   public TsTable(String tableName, ImmutableList<TsTableColumnSchema> columnSchemas) {
     this.tableName = tableName;
     columnSchemas.forEach(
-        columnSchema -> columnSchemaMap.put(columnSchema.getColumnName(), columnSchema));
+        columnSchema -> {
+          columnSchemaMap.put(columnSchema.getColumnName(), columnSchema);
+          if (columnSchema instanceof TimeColumnSchema) {
+            timeColumnSchema = columnSchema;
+          }
+        });
   }
 
   public TsTable(TsTable origin) {
@@ -139,6 +145,19 @@ public class TsTable {
     } finally {
       readWriteLock.readLock().unlock();
     }
+  }
+
+  // No need to acquire lock, because the time column is fixed after table creation
+  // And the inner name is protected by the volatile keyword
+  public TsTableColumnSchema getTimeColumnSchema() {
+    if (Objects.isNull(timeColumnSchema)) {
+      timeColumnSchema =
+          columnSchemaMap.values().stream()
+              .filter(column -> column instanceof TimeColumnSchema)
+              .findFirst()
+              .orElse(null);
+    }
+    return timeColumnSchema;
   }
 
   /**
@@ -215,33 +234,10 @@ public class TsTable {
         () -> {
           // Ensures idempotency
           if (columnSchemaMap.containsKey(oldName)) {
-            final TsTableColumnSchema schema = columnSchemaMap.remove(oldName);
+            final TsTableColumnSchema schema = columnSchemaMap.get(oldName);
             final Map<String, String> oldProps = schema.getProps();
             oldProps.computeIfAbsent(TreeViewSchema.ORIGINAL_NAME, k -> schema.getColumnName());
-            switch (schema.getColumnCategory()) {
-              case TAG:
-                columnSchemaMap.put(
-                    newName, new TagColumnSchema(newName, schema.getDataType(), oldProps));
-                break;
-              case FIELD:
-                columnSchemaMap.put(
-                    newName,
-                    new FieldColumnSchema(
-                        newName,
-                        schema.getDataType(),
-                        ((FieldColumnSchema) schema).getEncoding(),
-                        ((FieldColumnSchema) schema).getCompressor(),
-                        oldProps));
-                break;
-              case ATTRIBUTE:
-                columnSchemaMap.put(
-                    newName, new AttributeColumnSchema(newName, schema.getDataType(), oldProps));
-                break;
-              case TIME:
-              default:
-                // Do nothing
-                columnSchemaMap.put(oldName, schema);
-            }
+            schema.setColumnName(newName);
           }
         });
   }

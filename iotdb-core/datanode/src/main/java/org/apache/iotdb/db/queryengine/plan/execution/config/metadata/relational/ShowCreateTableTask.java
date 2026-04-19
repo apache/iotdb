@@ -96,7 +96,13 @@ public class ShowCreateTableTask extends AbstractTableTask {
               .append("TAG");
           break;
         case TIME:
-          continue;
+          builder
+              .append(getIdentifier(schema.getColumnName()))
+              .append(" ")
+              .append(schema.getDataType())
+              .append(" ")
+              .append("TIME");
+          break;
         case FIELD:
           builder
               .append(getIdentifier(schema.getColumnName()))
@@ -123,7 +129,7 @@ public class ShowCreateTableTask extends AbstractTableTask {
       builder.append(",");
     }
 
-    if (table.getColumnList().size() > 1) {
+    if (!table.getColumnList().isEmpty()) {
       builder.deleteCharAt(builder.length() - 1);
     }
 

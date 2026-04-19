@@ -34,7 +34,7 @@ import static com.google.common.base.MoreObjects.toStringHelper;
 
 public abstract class TsTableColumnSchema {
 
-  protected String columnName;
+  protected volatile String columnName;
 
   protected TSDataType dataType;
 
@@ -50,6 +50,12 @@ public abstract class TsTableColumnSchema {
     this.columnName = columnName;
     this.dataType = dataType;
     this.props = props;
+  }
+
+  // Only used for column renaming
+  public TsTableColumnSchema setColumnName(String columnName) {
+    this.columnName = columnName;
+    return this;
   }
 
   public String getColumnName() {
