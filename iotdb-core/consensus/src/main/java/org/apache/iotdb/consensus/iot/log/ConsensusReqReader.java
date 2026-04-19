@@ -90,4 +90,73 @@ public interface ConsensusReqReader {
 
   /** Get total size of wal files. */
   long getTotalSize();
+
+  /**
+   * Get disk usage of this specific WAL node (region-local), as opposed to {@link #getTotalSize()}
+   * which returns the global WAL disk usage across all WAL nodes.
+   */
+  default long getRegionDiskUsage() {
+    return getTotalSize();
+  }
+
+  /**
+   * Calculate the search index boundary that, if used as safelyDeletedSearchIndex, would free at
+   * least {@code bytesToFree} bytes of WAL files from the oldest files of this WAL node.
+   *
+   * @param bytesToFree the minimum number of bytes to free
+   * @return the startSearchIndex of the WAL file just after the freed range, or {@link
+   *     #DEFAULT_SAFELY_DELETED_SEARCH_INDEX} if no files need to be freed
+   */
+  default long getSearchIndexToFreeAtLeast(long bytesToFree) {
+    // Default implementation: if any freeing is needed, allow deleting everything.
+    return bytesToFree > 0 ? Long.MAX_VALUE : DEFAULT_SAFELY_DELETED_SEARCH_INDEX;
+  }
+
+  /**
+   * Set the minimum WAL file versionId that must be retained for subscription consumers. Files with
+   * versionId >= this value will not be deleted, regardless of their WALFileStatus. This protects
+   * Follower WAL files (CONTAINS_NONE_SEARCH_INDEX) from being deleted while subscriptions need
+   * them.
+   *
+   * @param minVersionId the minimum versionId to retain; Long.MAX_VALUE means no retention
+   */
+  default void setSubscriptionRetainedMinVersionId(long minVersionId) {
+    // no-op by default
+  }
+
+  /**
+   * Calculate the minimum WAL file versionId to retain such that freeing all files with versionId
+   * below that value would release at least {@code bytesToFree} bytes.
+   *
+   * @param bytesToFree the minimum number of bytes to free
+   * @return the versionId boundary; files with versionId < this can be freed
+   */
+  default long getVersionIdToFreeAtLeast(long bytesToFree) {
+    return bytesToFree > 0 ? Long.MAX_VALUE : 0;
+  }
+
+  /**
+   * Calculate the search index boundary that, if used as safelyDeletedSearchIndex, would free the
+   * oldest rolled WAL files whose lastModified time is earlier than {@code cutoffTimeMs}. The
+   * currently written WAL file is never considered deletable by this method.
+   *
+   * @param cutoffTimeMs files strictly older than this timestamp may be freed
+   * @return the search index boundary of the first retained file, or Long.MIN_VALUE + 1 when no
+   *     rolled WAL files are old enough to be freed
+   */
+  default long getSearchIndexToFreeBeforeTimestamp(long cutoffTimeMs) {
+    return Long.MIN_VALUE + 1;
+  }
+
+  /**
+   * Calculate the minimum retained WAL versionId after freeing the oldest rolled WAL files whose
+   * lastModified time is earlier than {@code cutoffTimeMs}.
+   *
+   * @param cutoffTimeMs files strictly older than this timestamp may be freed
+   * @return the versionId boundary of the first retained file, or 0 when no rolled WAL files are
+   *     old enough to be freed
+   */
+  default long getVersionIdToFreeBeforeTimestamp(long cutoffTimeMs) {
+    return 0;
+  }
 }

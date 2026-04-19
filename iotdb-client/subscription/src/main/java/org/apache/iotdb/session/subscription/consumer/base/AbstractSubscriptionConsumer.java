@@ -34,11 +34,17 @@ import org.apache.iotdb.rpc.subscription.payload.poll.ErrorPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.FileInitPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.FilePiecePayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.FileSealPayload;
+import org.apache.iotdb.rpc.subscription.payload.poll.RegionProgress;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType;
 import org.apache.iotdb.rpc.subscription.payload.poll.TabletsPayload;
+import org.apache.iotdb.rpc.subscription.payload.poll.TopicProgress;
+import org.apache.iotdb.rpc.subscription.payload.poll.WatermarkPayload;
+import org.apache.iotdb.rpc.subscription.payload.poll.WriterId;
+import org.apache.iotdb.rpc.subscription.payload.poll.WriterProgress;
+import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeSeekReq;
 import org.apache.iotdb.session.subscription.consumer.AsyncCommitCallback;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessageType;
@@ -77,6 +83,7 @@ import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledFuture;
@@ -88,6 +95,7 @@ import static org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollRes
 import static org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType.FILE_INIT;
 import static org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType.TABLETS;
 import static org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType.TERMINATION;
+import static org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType.WATERMARK;
 import static org.apache.iotdb.session.subscription.util.SetPartitioner.partition;
 
 abstract class AbstractSubscriptionConsumer implements AutoCloseable {
@@ -120,6 +128,26 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
   private final int thriftMaxFrameSize;
   private final int connectionTimeoutInMs;
   private final int maxPollParallelism;
+
+  /**
+   * The latest watermark timestamp received from the server. Updated when WATERMARK events are
+   * processed and stripped. Consumer users can query this to check timestamp progress.
+   */
+  protected volatile long latestWatermarkTimestamp = Long.MIN_VALUE;
+
+  /** Per-topic current positions used as the consumer-guided positioning hint in poll requests. */
+  private final Map<String, TopicProgress> currentPositionsByTopic = new ConcurrentHashMap<>();
+
+  /** Per-topic committed positions used as durable recovery points for explicit seek/checkpoint. */
+  private final Map<String, TopicProgress> committedPositionsByTopic = new ConcurrentHashMap<>();
+
+  /**
+   * Ack contexts for consensus messages that were already processed locally but could not be
+   * committed because the original provider became unavailable. They are flushed after the same
+   * topic+region is observed again from a live provider.
+   */
+  private final Map<String, Set<SubscriptionCommitContext>> pendingRedirectAcksByTopicRegion =
+      new ConcurrentHashMap<>();
 
   @SuppressWarnings("java:S3077")
   protected volatile Map<String, TopicConfig> subscribedTopics = new HashMap<>();
@@ -376,6 +404,106 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
     providers.acquireReadLock();
     try {
       unsubscribeWithRedirection(topicNames);
+      topicNames.forEach(this::clearPendingRedirectAcks);
+    } finally {
+      providers.releaseReadLock();
+    }
+  }
+
+  /////////////////////////////// seek ///////////////////////////////
+
+  /**
+   * Seeks to the earliest available WAL position. Actual position depends on WAL retention — old
+   * segments may have been reclaimed.
+   */
+  public void seekToBeginning(final String topicName) throws SubscriptionException {
+    checkIfOpened();
+    seekInternal(topicName, PipeSubscribeSeekReq.SEEK_TO_BEGINNING, 0);
+    clearCurrentPositions(topicName);
+    clearCommittedPositions(topicName);
+    clearPendingRedirectAcks(topicName);
+  }
+
+  /** Seeks to the current WAL tail. Only newly written data will be consumed after this. */
+  public void seekToEnd(final String topicName) throws SubscriptionException {
+    checkIfOpened();
+    seekInternal(topicName, PipeSubscribeSeekReq.SEEK_TO_END, 0);
+    clearCurrentPositions(topicName);
+    clearCommittedPositions(topicName);
+    clearPendingRedirectAcks(topicName);
+  }
+
+  /**
+   * Returns the latest observed per-region positions for the given topic. This is the consumer's
+   * current fetch position hint and is sent back to the server on subsequent poll requests.
+   */
+  public TopicProgress positions(final String topicName) throws SubscriptionException {
+    checkIfOpened();
+    final TopicProgress progress = currentPositionsByTopic.get(topicName);
+    return Objects.nonNull(progress)
+        ? new TopicProgress(progress.getRegionProgress())
+        : new TopicProgress(Collections.emptyMap());
+  }
+
+  /**
+   * Returns the latest committed per-region positions for the given topic. This is the recoverable
+   * checkpoint position that should be persisted by callers.
+   */
+  public TopicProgress committedPositions(final String topicName) throws SubscriptionException {
+    checkIfOpened();
+    final TopicProgress progress = committedPositionsByTopic.get(topicName);
+    return Objects.nonNull(progress)
+        ? new TopicProgress(progress.getRegionProgress())
+        : new TopicProgress(Collections.emptyMap());
+  }
+
+  public void seek(final String topicName, final TopicProgress topicProgress)
+      throws SubscriptionException {
+    checkIfOpened();
+    final TopicProgress safeProgress =
+        Objects.nonNull(topicProgress) ? topicProgress : new TopicProgress(Collections.emptyMap());
+    seekInternalTopicProgress(topicName, safeProgress);
+    overlayCurrentPositions(topicName, safeProgress);
+    overlayCommittedPositions(topicName, safeProgress);
+    clearPendingRedirectAcks(topicName);
+  }
+
+  public void seekAfter(final String topicName, final TopicProgress topicProgress)
+      throws SubscriptionException {
+    checkIfOpened();
+    final TopicProgress safeProgress =
+        Objects.nonNull(topicProgress) ? topicProgress : new TopicProgress(Collections.emptyMap());
+    seekAfterInternalTopicProgress(topicName, safeProgress);
+    overlayCurrentPositions(topicName, safeProgress);
+    overlayCommittedPositions(topicName, safeProgress);
+    clearPendingRedirectAcks(topicName);
+  }
+
+  private void seekInternal(final String topicName, final short seekType, final long timestamp)
+      throws SubscriptionException {
+    providers.acquireReadLock();
+    try {
+      seekWithRedirection(topicName, seekType, timestamp);
+    } finally {
+      providers.releaseReadLock();
+    }
+  }
+
+  private void seekInternalTopicProgress(final String topicName, final TopicProgress topicProgress)
+      throws SubscriptionException {
+    providers.acquireReadLock();
+    try {
+      seekWithRedirectionTopicProgress(topicName, topicProgress);
+    } finally {
+      providers.releaseReadLock();
+    }
+  }
+
+  private void seekAfterInternalTopicProgress(
+      final String topicName, final TopicProgress topicProgress) throws SubscriptionException {
+    providers.acquireReadLock();
+    try {
+      seekAfterWithRedirectionTopicProgress(topicName, topicProgress);
     } finally {
       providers.releaseReadLock();
     }
@@ -522,8 +650,43 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
                         unsubscribe(Collections.singleton(topicNameToUnsubscribe), false);
                         return Optional.empty();
                       });
+                  put(
+                      WATERMARK,
+                      (resp, timer) -> {
+                        final SubscriptionCommitContext commitContext = resp.getCommitContext();
+                        final WatermarkPayload payload = (WatermarkPayload) resp.getPayload();
+                        return Optional.of(
+                            new SubscriptionMessage(
+                                commitContext, payload.getWatermarkTimestamp()));
+                      });
                 }
               });
+
+  /**
+   * Returns the set of DataNode IDs for providers that are currently available. Used by subclasses
+   * to detect unavailable DataNodes and notify the progress ordering processor.
+   */
+  protected Set<Integer> getAvailableDataNodeIds() {
+    providers.acquireReadLock();
+    try {
+      final Set<Integer> ids = new HashSet<>();
+      for (final AbstractSubscriptionProvider provider : providers.getAllAvailableProviders()) {
+        ids.add(provider.getDataNodeId());
+      }
+      return ids;
+    } finally {
+      providers.releaseReadLock();
+    }
+  }
+
+  /**
+   * Returns the latest watermark timestamp received from the server. This tracks the maximum data
+   * timestamp observed across all polled regions. Returns {@code Long.MIN_VALUE} if no watermark
+   * has been received yet.
+   */
+  public long getLatestWatermarkTimestamp() {
+    return latestWatermarkTimestamp;
+  }
 
   protected List<SubscriptionMessage> multiplePoll(
       /* @NotNull */ final Set<String> topicNames, final long timeoutMs) {
@@ -685,6 +848,8 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
 
         // add all current messages to result messages
         messages.addAll(currentMessages);
+        advanceCurrentPositions(currentMessages);
+        flushPendingRedirectAcks(currentMessages);
 
         // TODO: maybe we can poll a few more times
         if (!messages.isEmpty()) {
@@ -1079,7 +1244,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
       }
       // ignore SubscriptionConnectionException to improve poll auto retry
       try {
-        return provider.poll(topicNames, timeoutMs);
+        return provider.poll(topicNames, timeoutMs, buildCurrentProgressByTopic(topicNames));
       } catch (final SubscriptionConnectionException ignored) {
         return Collections.emptyList();
       }
@@ -1174,7 +1339,80 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
     for (final Entry<Integer, List<SubscriptionCommitContext>> entry :
         dataNodeIdToSubscriptionCommitContexts.entrySet()) {
       commitInternal(entry.getKey(), entry.getValue(), nack);
+      if (!nack) {
+        advanceCommittedPositions(entry.getValue());
+      }
     }
+  }
+
+  protected Set<SubscriptionMessage> ackWithPartialProgress(
+      final Iterable<SubscriptionMessage> messages) throws SubscriptionException {
+    final List<SubscriptionMessage> bufferedMessages = new ArrayList<>();
+    final List<SubscriptionCommitContext> commitContexts = new ArrayList<>();
+    for (final SubscriptionMessage message : messages) {
+      bufferedMessages.add(message);
+      commitContexts.add(message.getCommitContext());
+    }
+
+    final Set<SubscriptionCommitContext> removableCommitContexts =
+        ackCommitContextsWithPartialProgress(commitContexts);
+    final Set<SubscriptionMessage> removableMessages = new HashSet<>();
+    for (final SubscriptionMessage message : bufferedMessages) {
+      if (removableCommitContexts.contains(message.getCommitContext())) {
+        removableMessages.add(message);
+      }
+    }
+    return removableMessages;
+  }
+
+  protected Set<SubscriptionCommitContext> ackCommitContextsWithPartialProgress(
+      final Iterable<SubscriptionCommitContext> commitContexts) throws SubscriptionException {
+    final Map<Integer, List<SubscriptionCommitContext>> dataNodeIdToCommitContexts =
+        new HashMap<>();
+    for (final SubscriptionCommitContext commitContext : commitContexts) {
+      dataNodeIdToCommitContexts
+          .computeIfAbsent(commitContext.getDataNodeId(), ignored -> new ArrayList<>())
+          .add(commitContext);
+    }
+
+    final Set<SubscriptionCommitContext> removableCommitContexts = new HashSet<>();
+    for (final Entry<Integer, List<SubscriptionCommitContext>> entry :
+        dataNodeIdToCommitContexts.entrySet()) {
+      final List<SubscriptionCommitContext> groupedCommitContexts = entry.getValue();
+      try {
+        commitInternal(entry.getKey(), groupedCommitContexts, false);
+        advanceCommittedPositions(groupedCommitContexts);
+        removableCommitContexts.addAll(groupedCommitContexts);
+      } catch (final SubscriptionConnectionException e) {
+        int stagedCount = 0;
+        int retainedCount = 0;
+        for (final SubscriptionCommitContext commitContext : groupedCommitContexts) {
+          if (isConsensusCommitContext(commitContext)) {
+            stagePendingRedirectAck(commitContext);
+            removableCommitContexts.add(commitContext);
+            stagedCount++;
+          } else {
+            retainedCount++;
+          }
+        }
+        if (stagedCount > 0) {
+          LOGGER.warn(
+              "{} staged {} consensus ack(s) for redirect after provider {} became unavailable",
+              this,
+              stagedCount,
+              entry.getKey());
+        }
+        if (retainedCount > 0) {
+          LOGGER.warn(
+              "{} keep {} non-consensus ack(s) pending after provider {} commit failure",
+              this,
+              retainedCount,
+              entry.getKey(),
+              e);
+        }
+      }
+    }
+    return removableCommitContexts;
   }
 
   protected void nack(final Iterable<SubscriptionMessage> messages) throws SubscriptionException {
@@ -1388,6 +1626,365 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
             this, topicNames, providers);
     LOGGER.warn(errorMessage);
     throw new SubscriptionRuntimeCriticalException(errorMessage);
+  }
+
+  /**
+   * Sends seek request to ALL available providers. Unlike subscribe/unsubscribe, seek is only
+   * considered successful if every available provider acknowledges it because data regions for the
+   * topic may be distributed across different nodes.
+   */
+  private void seekWithRedirection(
+      final String topicName, final short seekType, final long timestamp)
+      throws SubscriptionException {
+    final List<AbstractSubscriptionProvider> providers = this.providers.getAllAvailableProviders();
+    if (providers.isEmpty()) {
+      throw new SubscriptionConnectionException(
+          String.format(
+              "Cluster has no available subscription providers when %s seek topic %s",
+              this, topicName));
+    }
+    final List<AbstractSubscriptionProvider> failedProviders = new ArrayList<>();
+    Throwable firstFailure = null;
+    for (final AbstractSubscriptionProvider provider : providers) {
+      try {
+        provider.seek(topicName, seekType, timestamp);
+      } catch (final Exception e) {
+        failedProviders.add(provider);
+        if (Objects.isNull(firstFailure)) {
+          firstFailure = e;
+        }
+        LOGGER.warn(
+            "{} failed to seek topic {} from subscription provider {}; seek requires every provider to succeed, so the client will continue notifying the remaining providers before failing this seek.",
+            this,
+            topicName,
+            provider,
+            e);
+      }
+    }
+    if (!failedProviders.isEmpty()) {
+      final String errorMessage =
+          String.format(
+              "%s failed to seek topic %s on subscription providers %s; seek requires every available provider to succeed",
+              this, topicName, failedProviders);
+      LOGGER.warn(errorMessage);
+      throw new SubscriptionRuntimeCriticalException(errorMessage, firstFailure);
+    }
+  }
+
+  /** Same all-provider success requirement as {@link #seekWithRedirection(String, short, long)}. */
+  private void seekWithRedirectionTopicProgress(
+      final String topicName, final TopicProgress topicProgress) throws SubscriptionException {
+    final List<AbstractSubscriptionProvider> providers = this.providers.getAllAvailableProviders();
+    if (providers.isEmpty()) {
+      throw new SubscriptionConnectionException(
+          String.format(
+              "Cluster has no available subscription providers when %s seek topic %s",
+              this, topicName));
+    }
+    final List<AbstractSubscriptionProvider> failedProviders = new ArrayList<>();
+    Throwable firstFailure = null;
+    for (final AbstractSubscriptionProvider provider : providers) {
+      try {
+        provider.seekToTopicProgress(topicName, topicProgress);
+      } catch (final Exception e) {
+        failedProviders.add(provider);
+        if (Objects.isNull(firstFailure)) {
+          firstFailure = e;
+        }
+        LOGGER.warn(
+            "{} failed to seek topic {} to topicProgress(regionCount={}) from provider {}; seek requires every provider to succeed, so the client will continue notifying the remaining providers before failing this seek.",
+            this,
+            topicName,
+            topicProgress.getRegionProgress().size(),
+            provider,
+            e);
+      }
+    }
+    if (!failedProviders.isEmpty()) {
+      final String errorMessage =
+          String.format(
+              "%s failed to seek topic %s to topicProgress(regionCount=%d) on subscription providers %s; seek requires every available provider to succeed",
+              this, topicName, topicProgress.getRegionProgress().size(), failedProviders);
+      LOGGER.warn(errorMessage);
+      throw new SubscriptionRuntimeCriticalException(errorMessage, firstFailure);
+    }
+  }
+
+  /** Same all-provider success requirement as {@link #seekWithRedirection(String, short, long)}. */
+  private void seekAfterWithRedirectionTopicProgress(
+      final String topicName, final TopicProgress topicProgress) throws SubscriptionException {
+    final List<AbstractSubscriptionProvider> providers = this.providers.getAllAvailableProviders();
+    if (providers.isEmpty()) {
+      throw new SubscriptionConnectionException(
+          String.format(
+              "Cluster has no available subscription providers when %s seekAfter topic %s",
+              this, topicName));
+    }
+    final List<AbstractSubscriptionProvider> failedProviders = new ArrayList<>();
+    Throwable firstFailure = null;
+    for (final AbstractSubscriptionProvider provider : providers) {
+      try {
+        provider.seekAfterTopicProgress(topicName, topicProgress);
+      } catch (final Exception e) {
+        failedProviders.add(provider);
+        if (Objects.isNull(firstFailure)) {
+          firstFailure = e;
+        }
+        LOGGER.warn(
+            "{} failed to seekAfter topic {} to topicProgress(regionCount={}) from provider {}; seek requires every provider to succeed, so the client will continue notifying the remaining providers before failing this seekAfter.",
+            this,
+            topicName,
+            topicProgress.getRegionProgress().size(),
+            provider,
+            e);
+      }
+    }
+    if (!failedProviders.isEmpty()) {
+      final String errorMessage =
+          String.format(
+              "%s failed to seekAfter topic %s to topicProgress(regionCount=%d) on subscription providers %s; seek requires every available provider to succeed",
+              this, topicName, topicProgress.getRegionProgress().size(), failedProviders);
+      LOGGER.warn(errorMessage);
+      throw new SubscriptionRuntimeCriticalException(errorMessage, firstFailure);
+    }
+  }
+
+  private Map<String, TopicProgress> buildCurrentProgressByTopic(final Set<String> topicNames) {
+    final Map<String, TopicProgress> result = new HashMap<>();
+    for (final String topicName : topicNames) {
+      final TopicProgress topicProgress = currentPositionsByTopic.get(topicName);
+      if (Objects.isNull(topicProgress) || topicProgress.getRegionProgress().isEmpty()) {
+        continue;
+      }
+      result.put(topicName, new TopicProgress(topicProgress.getRegionProgress()));
+    }
+    return result;
+  }
+
+  private void advanceCurrentPositions(final List<SubscriptionMessage> messages) {
+    for (final SubscriptionMessage message : messages) {
+      final SubscriptionCommitContext commitContext = message.getCommitContext();
+      if (Objects.isNull(commitContext) || Objects.isNull(commitContext.getTopicName())) {
+        continue;
+      }
+      mergeTopicProgress(
+          currentPositionsByTopic,
+          commitContext.getTopicName(),
+          extractWriterId(commitContext),
+          extractWriterProgress(commitContext));
+    }
+  }
+
+  private void advanceCommittedPositions(
+      final List<SubscriptionCommitContext> subscriptionCommitContexts) {
+    for (final SubscriptionCommitContext commitContext : subscriptionCommitContexts) {
+      if (Objects.isNull(commitContext) || Objects.isNull(commitContext.getTopicName())) {
+        continue;
+      }
+      mergeTopicProgress(
+          committedPositionsByTopic,
+          commitContext.getTopicName(),
+          extractWriterId(commitContext),
+          extractWriterProgress(commitContext));
+    }
+  }
+
+  private boolean isConsensusCommitContext(final SubscriptionCommitContext commitContext) {
+    return Objects.nonNull(commitContext)
+        && Objects.nonNull(commitContext.getWriterId())
+        && Objects.nonNull(commitContext.getWriterProgress())
+        && Objects.nonNull(commitContext.getRegionId())
+        && !commitContext.getRegionId().isEmpty();
+  }
+
+  private String buildTopicRegionKey(final SubscriptionCommitContext commitContext) {
+    return commitContext.getTopicName() + '\u0001' + commitContext.getRegionId();
+  }
+
+  private void stagePendingRedirectAck(final SubscriptionCommitContext commitContext) {
+    pendingRedirectAcksByTopicRegion
+        .computeIfAbsent(
+            buildTopicRegionKey(commitContext), ignored -> ConcurrentHashMap.newKeySet())
+        .add(commitContext);
+  }
+
+  private void flushPendingRedirectAcks(final List<SubscriptionMessage> currentMessages) {
+    final Map<String, Integer> redirectTargetByTopicRegion = new HashMap<>();
+    for (final SubscriptionMessage message : currentMessages) {
+      final SubscriptionCommitContext commitContext = message.getCommitContext();
+      if (!isConsensusCommitContext(commitContext)) {
+        continue;
+      }
+      redirectTargetByTopicRegion.put(
+          buildTopicRegionKey(commitContext), commitContext.getDataNodeId());
+    }
+
+    for (final Entry<String, Integer> entry : redirectTargetByTopicRegion.entrySet()) {
+      final Set<SubscriptionCommitContext> pendingContexts =
+          pendingRedirectAcksByTopicRegion.get(entry.getKey());
+      if (Objects.isNull(pendingContexts) || pendingContexts.isEmpty()) {
+        continue;
+      }
+
+      final List<SubscriptionCommitContext> contextsToRedirect = new ArrayList<>(pendingContexts);
+      try {
+        commitInternal(entry.getValue(), contextsToRedirect, false);
+        advanceCommittedPositions(contextsToRedirect);
+        contextsToRedirect.forEach(pendingContexts::remove);
+        if (pendingContexts.isEmpty()) {
+          pendingRedirectAcksByTopicRegion.remove(entry.getKey(), pendingContexts);
+        }
+      } catch (final SubscriptionException e) {
+        LOGGER.warn(
+            "{} failed to redirect {} pending consensus ack(s) for {} via provider {}",
+            this,
+            contextsToRedirect.size(),
+            entry.getKey(),
+            entry.getValue(),
+            e);
+      }
+    }
+  }
+
+  private boolean isNewerWriterProgress(
+      final long newPhysicalTime,
+      final long newLocalSeq,
+      final long oldPhysicalTime,
+      final long oldLocalSeq) {
+    return newPhysicalTime > oldPhysicalTime
+        || (newPhysicalTime == oldPhysicalTime && newLocalSeq > oldLocalSeq);
+  }
+
+  private void clearCurrentPositions(final String topicName) {
+    currentPositionsByTopic.remove(topicName);
+  }
+
+  private void clearCommittedPositions(final String topicName) {
+    committedPositionsByTopic.remove(topicName);
+  }
+
+  private void clearPendingRedirectAcks(final String topicName) {
+    final String prefix = topicName + '\u0001';
+    pendingRedirectAcksByTopicRegion.keySet().removeIf(key -> key.startsWith(prefix));
+  }
+
+  private void setCurrentPositions(final String topicName, final TopicProgress topicProgress) {
+    if (Objects.isNull(topicProgress) || topicProgress.getRegionProgress().isEmpty()) {
+      currentPositionsByTopic.remove(topicName);
+      return;
+    }
+    currentPositionsByTopic.put(topicName, new TopicProgress(topicProgress.getRegionProgress()));
+  }
+
+  private void setCommittedPositions(final String topicName, final TopicProgress topicProgress) {
+    if (Objects.isNull(topicProgress) || topicProgress.getRegionProgress().isEmpty()) {
+      committedPositionsByTopic.remove(topicName);
+      return;
+    }
+    committedPositionsByTopic.put(topicName, new TopicProgress(topicProgress.getRegionProgress()));
+  }
+
+  private void overlayCurrentPositions(final String topicName, final TopicProgress topicProgress) {
+    overlayTopicProgress(currentPositionsByTopic, topicName, topicProgress);
+  }
+
+  private void overlayCommittedPositions(
+      final String topicName, final TopicProgress topicProgress) {
+    overlayTopicProgress(committedPositionsByTopic, topicName, topicProgress);
+  }
+
+  private void overlayTopicProgress(
+      final Map<String, TopicProgress> progressByTopic,
+      final String topicName,
+      final TopicProgress topicProgress) {
+    if (Objects.isNull(topicName)
+        || topicName.isEmpty()
+        || Objects.isNull(topicProgress)
+        || topicProgress.getRegionProgress().isEmpty()) {
+      return;
+    }
+    progressByTopic.compute(
+        topicName,
+        (ignored, oldTopicProgress) -> {
+          final Map<String, RegionProgress> mergedRegionProgress =
+              Objects.nonNull(oldTopicProgress)
+                  ? new HashMap<>(oldTopicProgress.getRegionProgress())
+                  : new HashMap<>();
+          topicProgress
+              .getRegionProgress()
+              .forEach(
+                  (regionId, regionProgress) -> {
+                    if (Objects.isNull(regionId)
+                        || regionId.isEmpty()
+                        || Objects.isNull(regionProgress)
+                        || regionProgress.getWriterPositions().isEmpty()) {
+                      return;
+                    }
+                    mergedRegionProgress.put(
+                        regionId,
+                        new RegionProgress(new HashMap<>(regionProgress.getWriterPositions())));
+                  });
+          return mergedRegionProgress.isEmpty() ? null : new TopicProgress(mergedRegionProgress);
+        });
+  }
+
+  private WriterId extractWriterId(final SubscriptionCommitContext commitContext) {
+    if (Objects.nonNull(commitContext.getWriterId())) {
+      return commitContext.getWriterId();
+    }
+    if (Objects.isNull(commitContext.getRegionId()) || commitContext.getRegionId().isEmpty()) {
+      return null;
+    }
+    return new WriterId(commitContext.getRegionId(), commitContext.getDataNodeId(), 0L);
+  }
+
+  private WriterProgress extractWriterProgress(final SubscriptionCommitContext commitContext) {
+    if (Objects.nonNull(commitContext.getWriterProgress())) {
+      return commitContext.getWriterProgress();
+    }
+    if (commitContext.getLocalSeq() < 0) {
+      return null;
+    }
+    return new WriterProgress(commitContext.getPhysicalTime(), commitContext.getLocalSeq());
+  }
+
+  private void mergeTopicProgress(
+      final Map<String, TopicProgress> progressByTopic,
+      final String topicName,
+      final WriterId writerId,
+      final WriterProgress writerProgress) {
+    if (Objects.isNull(writerId)
+        || Objects.isNull(writerProgress)
+        || Objects.isNull(topicName)
+        || topicName.isEmpty()) {
+      return;
+    }
+    progressByTopic.compute(
+        topicName,
+        (key, oldTopicProgress) -> {
+          final Map<String, RegionProgress> regionProgressById =
+              Objects.nonNull(oldTopicProgress)
+                  ? new HashMap<>(oldTopicProgress.getRegionProgress())
+                  : new HashMap<>();
+          final RegionProgress oldRegionProgress = regionProgressById.get(writerId.getRegionId());
+          final Map<WriterId, WriterProgress> writerPositions =
+              Objects.nonNull(oldRegionProgress)
+                  ? new HashMap<>(oldRegionProgress.getWriterPositions())
+                  : new HashMap<>();
+          writerPositions.merge(
+              writerId,
+              writerProgress,
+              (oldVal, newVal) ->
+                  isNewerWriterProgress(
+                          newVal.getPhysicalTime(),
+                          newVal.getLocalSeq(),
+                          oldVal.getPhysicalTime(),
+                          oldVal.getLocalSeq())
+                      ? newVal
+                      : oldVal);
+          regionProgressById.put(writerId.getRegionId(), new RegionProgress(writerPositions));
+          return new TopicProgress(regionProgressById);
+        });
   }
 
   Map<Integer, TEndPoint> fetchAllEndPointsWithRedirection() throws SubscriptionException {

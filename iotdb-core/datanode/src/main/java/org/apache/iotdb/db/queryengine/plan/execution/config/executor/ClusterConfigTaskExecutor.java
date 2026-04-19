@@ -2818,19 +2818,21 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     // Validate topic config
     final TopicMeta temporaryTopicMeta =
         new TopicMeta(topicName, System.currentTimeMillis(), topicAttributes);
-    try {
-      PipeDataNodeAgent.plugin()
-          .validate(
-              "fakePipeName",
-              // TODO: currently use root to create topic
-              temporaryTopicMeta.generateExtractorAttributes(
-                  CommonDescriptor.getInstance().getConfig().getDefaultAdminName()),
-              temporaryTopicMeta.generateProcessorAttributes(),
-              temporaryTopicMeta.generateConnectorAttributes("fakeConsumerGroupId"));
-    } catch (final Exception e) {
-      future.setException(
-          new IoTDBException(e.getMessage(), TSStatusCode.CREATE_TOPIC_ERROR.getStatusCode()));
-      return future;
+    if (!temporaryTopicMeta.getConfig().isConsensusMode()) {
+      try {
+        PipeDataNodeAgent.plugin()
+            .validate(
+                "fakePipeName",
+                // TODO: currently use root to create topic
+                temporaryTopicMeta.generateExtractorAttributes(
+                    CommonDescriptor.getInstance().getConfig().getDefaultAdminName()),
+                temporaryTopicMeta.generateProcessorAttributes(),
+                temporaryTopicMeta.generateConnectorAttributes("fakeConsumerGroupId"));
+      } catch (final Exception e) {
+        future.setException(
+            new IoTDBException(e.getMessage(), TSStatusCode.CREATE_TOPIC_ERROR.getStatusCode()));
+        return future;
+      }
     }
 
     try (final ConfigNodeClient configNodeClient =

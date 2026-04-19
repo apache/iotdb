@@ -21,12 +21,14 @@ package org.apache.iotdb.db.subscription.agent;
 
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMetaKeeper;
+import org.apache.iotdb.db.subscription.broker.consensus.ConsensusSubscriptionSetupHandler;
 import org.apache.iotdb.mpp.rpc.thrift.TPushConsumerGroupMetaRespExceptionMessage;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -128,14 +130,46 @@ public class SubscriptionConsumerAgent {
     // remove prefetching queues for topics unsubscribed by the consumer group
     final Set<String> topicsUnsubByGroup =
         ConsumerGroupMeta.getTopicsUnsubByGroup(metaInAgent, metaFromCoordinator);
+    final Set<String> pipeTopicsUnsubByGroup = new LinkedHashSet<>();
+    final Set<String> consensusTopicsUnsubByGroup = new LinkedHashSet<>();
     for (final String topicName : topicsUnsubByGroup) {
+      if (ConsensusSubscriptionSetupHandler.isConsensusBasedTopic(topicName)) {
+        consensusTopicsUnsubByGroup.add(topicName);
+        continue;
+      }
+      pipeTopicsUnsubByGroup.add(topicName);
+    }
+    for (final String topicName : pipeTopicsUnsubByGroup) {
       SubscriptionAgent.broker().removePrefetchingQueue(consumerGroupId, topicName);
     }
+    // Tear down consensus-based subscriptions for unsubscribed topics
+    if (!consensusTopicsUnsubByGroup.isEmpty()) {
+      ConsensusSubscriptionSetupHandler.teardownConsensusSubscriptions(
+          consumerGroupId, consensusTopicsUnsubByGroup);
+    }
+
+    // Detect newly subscribed topics (present in new meta but not in old meta)
+    final Set<String> newlySubscribedTopics =
+        ConsumerGroupMeta.getTopicsNewlySubByGroup(metaInAgent, metaFromCoordinator);
+
+    LOGGER.info(
+        "Subscription: consumer group [{}] meta change detected, "
+            + "topicsUnsubByGroup={}, newlySubscribedTopics={}",
+        consumerGroupId,
+        topicsUnsubByGroup,
+        newlySubscribedTopics);
 
     // TODO: Currently we fully replace the entire ConsumerGroupMeta without carefully checking the
     //       changes in its fields.
     consumerGroupMetaKeeper.removeConsumerGroupMeta(consumerGroupId);
     consumerGroupMetaKeeper.addConsumerGroupMeta(consumerGroupId, metaFromCoordinator);
+
+    // Set up consensus-based subscription for newly subscribed consensus-mode topics.
+    // This must happen after the meta is updated so that the broker can find the topic config.
+    if (!newlySubscribedTopics.isEmpty()) {
+      ConsensusSubscriptionSetupHandler.handleNewSubscriptions(
+          consumerGroupId, newlySubscribedTopics);
+    }
   }
 
   public TPushConsumerGroupMetaRespExceptionMessage handleConsumerGroupMetaChanges(
@@ -217,6 +251,26 @@ public class SubscriptionConsumerAgent {
     acquireReadLock();
     try {
       return consumerGroupMetaKeeper.getTopicsSubscribedByConsumer(consumerGroupId, consumerId);
+    } finally {
+      releaseReadLock();
+    }
+  }
+
+  /**
+   * Get all active subscriptions: consumerGroupId → set of subscribed topic names. Used by
+   * consensus subscription auto-binding when a new DataRegion is created.
+   */
+  public java.util.Map<String, Set<String>> getAllSubscriptions() {
+    acquireReadLock();
+    try {
+      final java.util.Map<String, Set<String>> result = new java.util.HashMap<>();
+      for (final ConsumerGroupMeta meta : consumerGroupMetaKeeper.getAllConsumerGroupMeta()) {
+        final Set<String> topics = meta.getSubscribedTopicNames();
+        if (!topics.isEmpty()) {
+          result.put(meta.getConsumerGroupId(), new java.util.HashSet<>(topics));
+        }
+      }
+      return result;
     } finally {
       releaseReadLock();
     }

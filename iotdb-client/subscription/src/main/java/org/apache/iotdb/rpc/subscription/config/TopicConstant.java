@@ -28,8 +28,12 @@ public class TopicConstant {
 
   public static final String DATABASE_KEY = "database";
   public static final String TABLE_KEY = "table";
+  public static final String COLUMN_KEY = "column";
+  public static final String RETENTION_BYTES_KEY = "retention.bytes";
+  public static final String RETENTION_MS_KEY = "retention.ms";
   public static final String DATABASE_DEFAULT_VALUE = ".*";
   public static final String TABLE_DEFAULT_VALUE = ".*";
+  public static final String COLUMN_DEFAULT_VALUE = ".*";
 
   public static final String START_TIME_KEY = "start-time";
   public static final String END_TIME_KEY = "end-time";
@@ -38,7 +42,14 @@ public class TopicConstant {
   public static final String MODE_KEY = "mode";
   public static final String MODE_LIVE_VALUE = "live";
   public static final String MODE_SNAPSHOT_VALUE = "snapshot";
+  public static final String MODE_CONSENSUS_VALUE = "consensus";
   public static final String MODE_DEFAULT_VALUE = MODE_LIVE_VALUE;
+
+  public static final String ORDER_MODE_KEY = "order-mode";
+  public static final String ORDER_MODE_LEADER_ONLY_VALUE = "leader-only";
+  public static final String ORDER_MODE_MULTI_WRITER_VALUE = "multi-writer";
+  public static final String ORDER_MODE_PER_WRITER_VALUE = "per-writer";
+  public static final String ORDER_MODE_DEFAULT_VALUE = ORDER_MODE_LEADER_ONLY_VALUE;
 
   public static final String FORMAT_KEY = "format";
   public static final String FORMAT_RECORD_HANDLER_VALUE = "SubscriptionRecordHandler";

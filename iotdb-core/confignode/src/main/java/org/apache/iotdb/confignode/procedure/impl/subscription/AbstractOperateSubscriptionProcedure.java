@@ -240,6 +240,7 @@ public abstract class AbstractOperateSubscriptionProcedure
                 String.format(
                     "ProcedureId %s: Fail to %s because %s",
                     getProcId(), getOperation().name(), e.getMessage())));
+        return Flow.NO_MORE_STATE;
       }
     }
 

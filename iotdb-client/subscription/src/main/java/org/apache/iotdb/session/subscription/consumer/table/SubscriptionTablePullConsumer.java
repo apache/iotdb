@@ -25,6 +25,8 @@ import org.apache.iotdb.session.subscription.consumer.AsyncCommitCallback;
 import org.apache.iotdb.session.subscription.consumer.ISubscriptionTablePullConsumer;
 import org.apache.iotdb.session.subscription.consumer.base.AbstractSubscriptionProvider;
 import org.apache.iotdb.session.subscription.consumer.base.AbstractSubscriptionPullConsumer;
+import org.apache.iotdb.session.subscription.consumer.base.SubscriptionMessageProcessor;
+import org.apache.iotdb.session.subscription.payload.PollResult;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
 
 import java.time.Duration;
@@ -172,5 +174,25 @@ public class SubscriptionTablePullConsumer extends AbstractSubscriptionPullConsu
   @Override
   public boolean allTopicMessagesHaveBeenConsumed() {
     return super.allTopicMessagesHaveBeenConsumed();
+  }
+
+  /////////////////////////////// processor ///////////////////////////////
+
+  public SubscriptionTablePullConsumer addProcessor(final SubscriptionMessageProcessor processor) {
+    super.addProcessor(processor);
+    return this;
+  }
+
+  public PollResult pollWithInfo(final long timeoutMs) throws SubscriptionException {
+    return super.pollWithInfo(timeoutMs);
+  }
+
+  public PollResult pollWithInfo(final Duration timeout) throws SubscriptionException {
+    return super.pollWithInfo(timeout.toMillis());
+  }
+
+  public PollResult pollWithInfo(final Set<String> topicNames, final long timeoutMs)
+      throws SubscriptionException {
+    return super.pollWithInfo(topicNames, timeoutMs);
   }
 }

@@ -143,6 +143,34 @@ public class InsertMultiTabletsNode extends InsertNode {
   }
 
   @Override
+  public SearchNode setPhysicalTime(long physicalTime) {
+    this.physicalTime = physicalTime;
+    insertTabletNodeList.forEach(plan -> plan.setPhysicalTime(physicalTime));
+    return this;
+  }
+
+  @Override
+  public SearchNode setNodeId(int nodeId) {
+    this.nodeId = nodeId;
+    insertTabletNodeList.forEach(plan -> plan.setNodeId(nodeId));
+    return this;
+  }
+
+  @Override
+  public SearchNode setWriterEpoch(long writerEpoch) {
+    this.writerEpoch = writerEpoch;
+    insertTabletNodeList.forEach(plan -> plan.setWriterEpoch(writerEpoch));
+    return this;
+  }
+
+  @Override
+  public SearchNode setSyncIndex(long syncIndex) {
+    this.syncIndex = syncIndex;
+    insertTabletNodeList.forEach(plan -> plan.setSyncIndex(syncIndex));
+    return this;
+  }
+
+  @Override
   public List<WritePlanNode> splitByPartition(IAnalysis analysis) {
     Map<TRegionReplicaSet, InsertMultiTabletsNode> splitMap = new HashMap<>();
     for (int i = 0; i < insertTabletNodeList.size(); i++) {
@@ -156,6 +184,10 @@ public class InsertMultiTabletsNode extends InsertNode {
         } else {
           tmpNode = new InsertMultiTabletsNode(this.getPlanNodeId());
           tmpNode.setDataRegionReplicaSet(dataRegionReplicaSet);
+          tmpNode.setPhysicalTime(getPhysicalTime());
+          tmpNode.setNodeId(getNodeId());
+          tmpNode.setWriterEpoch(getWriterEpoch());
+          tmpNode.setSyncIndex(getSyncIndex());
           tmpNode.addInsertTabletNode((InsertTabletNode) subNode, i);
           splitMap.put(dataRegionReplicaSet, tmpNode);
         }

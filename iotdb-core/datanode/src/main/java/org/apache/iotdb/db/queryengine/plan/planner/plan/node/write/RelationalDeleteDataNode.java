@@ -330,6 +330,10 @@ public class RelationalDeleteDataNode extends AbstractDeleteDataNode {
             .flatMap(Collection::stream)
             .collect(Collectors.toList());
     return new RelationalDeleteDataNode(this.getPlanNodeId(), allTableDeletionEntries, databaseName)
-        .setSearchIndex(getSearchIndex());
+        .setSearchIndex(getSearchIndex())
+        .setPhysicalTime(getPhysicalTime())
+        .setNodeId(getNodeId())
+        .setWriterEpoch(getWriterEpoch())
+        .setSyncIndex(getSyncIndex());
   }
 }

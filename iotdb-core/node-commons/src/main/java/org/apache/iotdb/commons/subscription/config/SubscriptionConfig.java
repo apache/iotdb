@@ -30,7 +30,7 @@ public class SubscriptionConfig {
   private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
 
   public boolean getSubscriptionEnabled() {
-    return false;
+    return COMMON_CONFIG.getSubscriptionEnabled();
   }
 
   public float getSubscriptionCacheMemoryUsagePercentage() {
@@ -39,6 +39,10 @@ public class SubscriptionConfig {
 
   public int getSubscriptionSubtaskExecutorMaxThreadNum() {
     return COMMON_CONFIG.getSubscriptionSubtaskExecutorMaxThreadNum();
+  }
+
+  public int getSubscriptionConsensusPrefetchExecutorMaxThreadNum() {
+    return COMMON_CONFIG.getSubscriptionConsensusPrefetchExecutorMaxThreadNum();
   }
 
   public int getSubscriptionPrefetchTabletBatchMaxDelayInMs() {
@@ -137,16 +141,68 @@ public class SubscriptionConfig {
     return COMMON_CONFIG.getSubscriptionMetaSyncerSyncIntervalMinutes();
   }
 
+  // Consensus subscription batching parameters
+  public int getSubscriptionConsensusBatchMaxDelayInMs() {
+    return COMMON_CONFIG.getSubscriptionConsensusBatchMaxDelayInMs();
+  }
+
+  public long getSubscriptionConsensusBatchMaxSizeInBytes() {
+    return COMMON_CONFIG.getSubscriptionConsensusBatchMaxSizeInBytes();
+  }
+
+  public int getSubscriptionConsensusBatchMaxTabletCount() {
+    return COMMON_CONFIG.getSubscriptionConsensusBatchMaxTabletCount();
+  }
+
+  public int getSubscriptionConsensusBatchMaxWalEntries() {
+    return COMMON_CONFIG.getSubscriptionConsensusBatchMaxWalEntries();
+  }
+
+  public int getSubscriptionConsensusCommitPersistInterval() {
+    return COMMON_CONFIG.getSubscriptionConsensusCommitPersistInterval();
+  }
+
+  public boolean isSubscriptionConsensusCommitFsyncEnabled() {
+    return COMMON_CONFIG.isSubscriptionConsensusCommitFsyncEnabled();
+  }
+
+  public long getSubscriptionConsensusConsumerEvictionTimeoutMs() {
+    return COMMON_CONFIG.getSubscriptionConsensusConsumerEvictionTimeoutMs();
+  }
+
+  public boolean isSubscriptionConsensusLagBasedPriority() {
+    return COMMON_CONFIG.isSubscriptionConsensusLagBasedPriority();
+  }
+
+  public int getSubscriptionConsensusPrefetchingQueueCapacity() {
+    return COMMON_CONFIG.getSubscriptionConsensusPrefetchingQueueCapacity();
+  }
+
+  public long getSubscriptionConsensusWatermarkIntervalMs() {
+    if (!COMMON_CONFIG.isSubscriptionConsensusWatermarkEnabled()) {
+      return -1;
+    }
+    return COMMON_CONFIG.getSubscriptionConsensusWatermarkIntervalMs();
+  }
+
+  public long getSubscriptionConsensusIdleSafeHlcIntervalMs() {
+    return COMMON_CONFIG.getSubscriptionConsensusIdleSafeHlcIntervalMs();
+  }
+
   /////////////////////////////// Utils ///////////////////////////////
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionConfig.class);
 
   public void printAllConfigs() {
+    LOGGER.info("SubscriptionEnabled: {}", getSubscriptionEnabled());
     LOGGER.info(
         "SubscriptionCacheMemoryUsagePercentage: {}", getSubscriptionCacheMemoryUsagePercentage());
     LOGGER.info(
         "SubscriptionSubtaskExecutorMaxThreadNum: {}",
         getSubscriptionSubtaskExecutorMaxThreadNum());
+    LOGGER.info(
+        "SubscriptionConsensusPrefetchExecutorMaxThreadNum: {}",
+        getSubscriptionConsensusPrefetchExecutorMaxThreadNum());
 
     LOGGER.info(
         "SubscriptionPrefetchTabletBatchMaxDelayInMs: {}",
@@ -207,6 +263,21 @@ public class SubscriptionConfig {
     LOGGER.info(
         "SubscriptionMetaSyncerSyncIntervalMinutes: {}",
         getSubscriptionMetaSyncerSyncIntervalMinutes());
+
+    LOGGER.info(
+        "SubscriptionConsensusBatchMaxDelayInMs: {}", getSubscriptionConsensusBatchMaxDelayInMs());
+    LOGGER.info(
+        "SubscriptionConsensusBatchMaxSizeInBytes: {}",
+        getSubscriptionConsensusBatchMaxSizeInBytes());
+    LOGGER.info(
+        "SubscriptionConsensusBatchMaxTabletCount: {}",
+        getSubscriptionConsensusBatchMaxTabletCount());
+    LOGGER.info(
+        "SubscriptionConsensusBatchMaxWalEntries: {}",
+        getSubscriptionConsensusBatchMaxWalEntries());
+    LOGGER.info(
+        "SubscriptionConsensusIdleSafeHlcIntervalMs: {}",
+        getSubscriptionConsensusIdleSafeHlcIntervalMs());
   }
 
   /////////////////////////////// Singleton ///////////////////////////////

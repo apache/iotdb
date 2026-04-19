@@ -52,6 +52,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.checkpoint.CheckpointMan
 import org.apache.iotdb.db.storageengine.dataregion.wal.checkpoint.CheckpointType;
 import org.apache.iotdb.db.storageengine.dataregion.wal.checkpoint.MemTableInfo;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALByteBufReader;
+import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALMetaData;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALFileStatus;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALFileUtils;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.AbstractResultListener;
@@ -82,6 +83,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
@@ -112,6 +114,8 @@ public class WALNode implements IWALNode {
   private final Map<Long, Integer> memTableSnapshotCount = new ConcurrentHashMap<>();
   // insert nodes whose search index are before this value can be deleted safely
   private volatile long safelyDeletedSearchIndex = DEFAULT_SAFELY_DELETED_SEARCH_INDEX;
+  // WAL files with versionId >= this value are retained for subscription consumers
+  private volatile long subscriptionRetainedMinVersionId = Long.MAX_VALUE;
 
   private volatile boolean deleted = false;
 
@@ -572,6 +576,7 @@ public class WALNode implements IWALNode {
     private boolean canDeleteFile(long fileArrIdx, WALFileStatus walFileStatus, long versionId) {
       return (fileArrIdx < fileIndexAfterFilterSafelyDeleteIndex
               || walFileStatus == WALFileStatus.CONTAINS_NONE_SEARCH_INDEX)
+          && versionId < subscriptionRetainedMinVersionId
           && !isContainsActiveOrPinnedMemTable(versionId);
     }
   }
@@ -582,6 +587,11 @@ public class WALNode implements IWALNode {
   @Override
   public void setSafelyDeletedSearchIndex(long safelyDeletedSearchIndex) {
     this.safelyDeletedSearchIndex = safelyDeletedSearchIndex;
+  }
+
+  @Override
+  public void setSubscriptionRetainedMinVersionId(long minVersionId) {
+    this.subscriptionRetainedMinVersionId = minVersionId;
   }
 
   /** This iterator is not concurrency-safe, cannot read the current-writing wal file. */
@@ -654,6 +664,11 @@ public class WALNode implements IWALNode {
       AtomicReference<List<IConsensusRequest>> tmpNodes = new AtomicReference<>(new ArrayList<>());
       AtomicBoolean notFirstFile = new AtomicBoolean(false);
       AtomicBoolean hasCollectedSufficientData = new AtomicBoolean(false);
+      // V3: track writer progress metadata for current entry group
+      AtomicLong currentEntryLocalSeq = new AtomicLong(-1);
+      AtomicLong currentEntryPhysicalTime = new AtomicLong(0);
+      AtomicLong currentEntryWriterEpoch = new AtomicLong(0);
+      AtomicLong currentEntryNodeId = new AtomicLong(-1);
 
       long memorySize = 0;
 
@@ -662,7 +677,15 @@ public class WALNode implements IWALNode {
       Runnable tryToCollectInsertNodeAndBumpIndex =
           () -> {
             if (!tmpNodes.get().isEmpty()) {
-              insertNodes.add(new IndexedConsensusRequest(nextSearchIndex, tmpNodes.get()));
+              long localSeq = currentEntryLocalSeq.get();
+              IndexedConsensusRequest req =
+                  (localSeq >= 0)
+                      ? new IndexedConsensusRequest(nextSearchIndex, localSeq, tmpNodes.get())
+                      : new IndexedConsensusRequest(nextSearchIndex, tmpNodes.get());
+              req.setPhysicalTime(currentEntryPhysicalTime.get())
+                  .setNodeId((int) currentEntryNodeId.get())
+                  .setWriterEpoch(currentEntryWriterEpoch.get());
+              insertNodes.add(req);
               tmpNodes.set(new ArrayList<>());
               nextSearchIndex++;
               if (notFirstFile.get()) {
@@ -695,6 +718,10 @@ public class WALNode implements IWALNode {
               } else if (currentWalEntryIndex < nextSearchIndex) {
                 // WAL entry is outdated, do nothing, continue to see next WAL entry
               } else if (currentWalEntryIndex == nextSearchIndex) {
+                currentEntryLocalSeq.set(walByteBufReader.getCurrentEntryLocalSeq());
+                currentEntryPhysicalTime.set(walByteBufReader.getCurrentEntryPhysicalTime());
+                currentEntryWriterEpoch.set(walByteBufReader.getCurrentEntryWriterEpoch());
+                currentEntryNodeId.set(walByteBufReader.getCurrentEntryNodeId());
                 if (type == WALEntryType.OBJECT_FILE_NODE) {
                   WALEntry walEntry =
                       WALEntry.deserialize(
@@ -723,6 +750,10 @@ public class WALNode implements IWALNode {
                       currentWalEntryIndex);
                   nextSearchIndex = currentWalEntryIndex;
                 }
+                currentEntryLocalSeq.set(walByteBufReader.getCurrentEntryLocalSeq());
+                currentEntryPhysicalTime.set(walByteBufReader.getCurrentEntryPhysicalTime());
+                currentEntryWriterEpoch.set(walByteBufReader.getCurrentEntryWriterEpoch());
+                currentEntryNodeId.set(walByteBufReader.getCurrentEntryNodeId());
                 if (type == WALEntryType.OBJECT_FILE_NODE) {
                   WALEntry walEntry =
                       WALEntry.deserialize(
@@ -898,9 +929,115 @@ public class WALNode implements IWALNode {
     return buffer.getCurrentWALFileVersion();
   }
 
+  public WALMetaData getCurrentWALMetaDataSnapshot() {
+    return buffer.getCurrentWALMetaDataSnapshot();
+  }
+
   @Override
   public long getTotalSize() {
     return WALManager.getInstance().getTotalDiskUsage();
+  }
+
+  @Override
+  public long getRegionDiskUsage() {
+    return buffer.getDiskUsage();
+  }
+
+  @Override
+  public long getSearchIndexToFreeAtLeast(long bytesToFree) {
+    if (bytesToFree <= 0) {
+      return DEFAULT_SAFELY_DELETED_SEARCH_INDEX;
+    }
+    File[] walFiles = WALFileUtils.listAllWALFiles(logDirectory);
+    if (walFiles == null || walFiles.length <= 1) {
+      // No files or only the current-writing file — cannot free anything
+      return DEFAULT_SAFELY_DELETED_SEARCH_INDEX;
+    }
+    WALFileUtils.ascSortByVersionId(walFiles);
+    // Exclude the last file (currently being written)
+    long accumulated = 0;
+    for (int i = 0; i < walFiles.length - 1; i++) {
+      accumulated += walFiles[i].length();
+      if (accumulated >= bytesToFree) {
+        // The next file's startSearchIndex is the boundary: everything before it can be deleted
+        if (i + 1 < walFiles.length) {
+          return WALFileUtils.parseStartSearchIndex(walFiles[i + 1].getName());
+        }
+        break;
+      }
+    }
+    // Could not free enough even by deleting all non-current files — allow deleting all
+    return Long.MAX_VALUE;
+  }
+
+  @Override
+  public long getVersionIdToFreeAtLeast(long bytesToFree) {
+    if (bytesToFree <= 0) {
+      return 0;
+    }
+    File[] walFiles = WALFileUtils.listAllWALFiles(logDirectory);
+    if (walFiles == null || walFiles.length <= 1) {
+      return 0;
+    }
+    WALFileUtils.ascSortByVersionId(walFiles);
+    long accumulated = 0;
+    for (int i = 0; i < walFiles.length - 1; i++) {
+      accumulated += walFiles[i].length();
+      if (accumulated >= bytesToFree) {
+        // Return the versionId of the next file — files before it can be freed
+        if (i + 1 < walFiles.length) {
+          return WALFileUtils.parseVersionId(walFiles[i + 1].getName());
+        }
+        break;
+      }
+    }
+    return Long.MAX_VALUE;
+  }
+
+  @Override
+  public long getSearchIndexToFreeBeforeTimestamp(long cutoffTimeMs) {
+    File[] walFiles = WALFileUtils.listAllWALFiles(logDirectory);
+    if (walFiles == null || walFiles.length <= 1) {
+      return Long.MIN_VALUE + 1;
+    }
+    WALFileUtils.ascSortByVersionId(walFiles);
+    int expiredPrefixLength = countExpiredRolledWalFiles(walFiles, cutoffTimeMs);
+    if (expiredPrefixLength == 0) {
+      return Long.MIN_VALUE + 1;
+    }
+    if (expiredPrefixLength >= walFiles.length - 1) {
+      return Long.MAX_VALUE;
+    }
+    return WALFileUtils.parseStartSearchIndex(walFiles[expiredPrefixLength].getName());
+  }
+
+  @Override
+  public long getVersionIdToFreeBeforeTimestamp(long cutoffTimeMs) {
+    File[] walFiles = WALFileUtils.listAllWALFiles(logDirectory);
+    if (walFiles == null || walFiles.length <= 1) {
+      return 0;
+    }
+    WALFileUtils.ascSortByVersionId(walFiles);
+    int expiredPrefixLength = countExpiredRolledWalFiles(walFiles, cutoffTimeMs);
+    if (expiredPrefixLength == 0) {
+      return 0;
+    }
+    if (expiredPrefixLength >= walFiles.length - 1) {
+      return Long.MAX_VALUE;
+    }
+    return WALFileUtils.parseVersionId(walFiles[expiredPrefixLength].getName());
+  }
+
+  private int countExpiredRolledWalFiles(File[] walFiles, long cutoffTimeMs) {
+    int expiredPrefixLength = 0;
+    for (int i = 0; i < walFiles.length - 1; i++) {
+      if (walFiles[i].lastModified() < cutoffTimeMs) {
+        expiredPrefixLength++;
+      } else {
+        break;
+      }
+    }
+    return expiredPrefixLength;
   }
 
   // endregion

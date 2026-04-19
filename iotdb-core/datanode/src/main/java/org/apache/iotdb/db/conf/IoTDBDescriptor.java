@@ -2206,6 +2206,11 @@ public class IoTDBDescriptor {
       conf.setWALCompressionAlgorithm(
           enableWALCompression ? CompressionType.LZ4 : CompressionType.UNCOMPRESSED);
 
+      // update subscription consensus config:
+      // - batching properties take effect on running queues because they are read dynamically
+      // - retention defaults only affect queues created after reload
+      commonDescriptor.loadHotModifiedSubscriptionConsensusProps(properties);
+
       // update Consensus config
       reloadConsensusProps(properties);
 

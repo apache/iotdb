@@ -22,6 +22,7 @@ package org.apache.iotdb.confignode.procedure.impl.subscription.subscription;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
+import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePlanV2;
@@ -100,6 +101,19 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionAndPip
 
     for (final String topic : unsubscribeReq.getTopicNames()) {
       if (topicsUnsubByGroup.contains(topic)) {
+        final TopicMeta topicMeta = subscriptionInfo.get().deepCopyTopicMeta(topic);
+        final String topicMode = topicMeta.getConfig().getMode();
+        final boolean isConsensusBasedTopic = topicMeta.getConfig().isConsensusMode();
+
+        if (isConsensusBasedTopic) {
+          LOGGER.info(
+              "DropSubscriptionProcedure: topic [{}] uses consensus subscription mode "
+                  + "(mode={}), skipping pipe removal",
+              topic,
+              topicMode);
+          continue;
+        }
+
         // Topic will be subscribed by no consumers in this group
         dropPipeProcedures.add(
             new DropPipeProcedureV2(

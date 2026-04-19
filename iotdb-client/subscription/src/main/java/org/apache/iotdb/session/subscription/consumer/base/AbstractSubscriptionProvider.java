@@ -37,11 +37,13 @@ import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollRequest;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollRequestType;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
+import org.apache.iotdb.rpc.subscription.payload.poll.TopicProgress;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeCloseReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeCommitReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeHandshakeReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeHeartbeatReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribePollReq;
+import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeSeekReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeSubscribeReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeUnsubscribeReq;
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeHandshakeResp;
@@ -59,6 +61,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -332,14 +335,107 @@ public abstract class AbstractSubscriptionProvider {
     return unsubscribeResp.getTopics();
   }
 
+  void seek(final String topicName, final short seekType, final long timestamp)
+      throws SubscriptionException {
+    final PipeSubscribeSeekReq req;
+    try {
+      req = PipeSubscribeSeekReq.toTPipeSubscribeReq(topicName, seekType, timestamp);
+    } catch (final IOException e) {
+      LOGGER.warn(
+          "IOException occurred when SubscriptionProvider {} serialize seek request for topic {}",
+          this,
+          topicName,
+          e);
+      throw new SubscriptionRuntimeNonCriticalException(e.getMessage(), e);
+    }
+    final TPipeSubscribeResp resp;
+    try {
+      resp = getSessionConnection().pipeSubscribe(req);
+    } catch (final TException | IoTDBConnectionException e) {
+      LOGGER.warn(
+          "TException/IoTDBConnectionException occurred when SubscriptionProvider {} seek with request for topic {}, set SubscriptionProvider unavailable",
+          this,
+          topicName,
+          e);
+      setUnavailable();
+      throw new SubscriptionConnectionException(e.getMessage(), e);
+    }
+    verifyPipeSubscribeSuccess(resp.status);
+  }
+
+  void seekToTopicProgress(final String topicName, final TopicProgress topicProgress)
+      throws SubscriptionException {
+    final PipeSubscribeSeekReq req;
+    try {
+      req = PipeSubscribeSeekReq.toTPipeSubscribeReq(topicName, topicProgress);
+    } catch (final IOException e) {
+      LOGGER.warn(
+          "IOException occurred when SubscriptionProvider {} serialize seek(topicProgress) for topic {}",
+          this,
+          topicName,
+          e);
+      throw new SubscriptionRuntimeNonCriticalException(e.getMessage(), e);
+    }
+    final TPipeSubscribeResp resp;
+    try {
+      resp = getSessionConnection().pipeSubscribe(req);
+    } catch (final TException | IoTDBConnectionException e) {
+      LOGGER.warn(
+          "TException/IoTDBConnectionException occurred when SubscriptionProvider {} seek(topicProgress) for topic {}, set SubscriptionProvider unavailable",
+          this,
+          topicName,
+          e);
+      setUnavailable();
+      throw new SubscriptionConnectionException(e.getMessage(), e);
+    }
+    verifyPipeSubscribeSuccess(resp.status);
+  }
+
+  void seekAfterTopicProgress(final String topicName, final TopicProgress topicProgress)
+      throws SubscriptionException {
+    final PipeSubscribeSeekReq req;
+    try {
+      req = PipeSubscribeSeekReq.toTPipeSubscribeSeekAfterReq(topicName, topicProgress);
+    } catch (final IOException e) {
+      LOGGER.warn(
+          "IOException occurred when SubscriptionProvider {} serialize seekAfter(topicProgress) for topic {}",
+          this,
+          topicName,
+          e);
+      throw new SubscriptionRuntimeNonCriticalException(e.getMessage(), e);
+    }
+    final TPipeSubscribeResp resp;
+    try {
+      resp = getSessionConnection().pipeSubscribe(req);
+    } catch (final TException | IoTDBConnectionException e) {
+      LOGGER.warn(
+          "TException/IoTDBConnectionException occurred when SubscriptionProvider {} seekAfter(topicProgress) for topic {}, set SubscriptionProvider unavailable",
+          this,
+          topicName,
+          e);
+      setUnavailable();
+      throw new SubscriptionConnectionException(e.getMessage(), e);
+    }
+    verifyPipeSubscribeSuccess(resp.status);
+  }
+
   List<SubscriptionPollResponse> poll(final Set<String> topicNames, final long timeoutMs)
+      throws SubscriptionException {
+    return poll(topicNames, timeoutMs, Collections.emptyMap());
+  }
+
+  List<SubscriptionPollResponse> poll(
+      final Set<String> topicNames,
+      final long timeoutMs,
+      final Map<String, TopicProgress> progressByTopic)
       throws SubscriptionException {
     return poll(
         new SubscriptionPollRequest(
             SubscriptionPollRequestType.POLL.getType(),
             new PollPayload(topicNames),
             timeoutMs,
-            session.getThriftMaxFrameSize()));
+            session.getThriftMaxFrameSize(),
+            progressByTopic));
   }
 
   List<SubscriptionPollResponse> pollFile(
@@ -447,7 +543,7 @@ public abstract class AbstractSubscriptionProvider {
             String.format(SUBSCRIPTION_PIPE_TIMEOUT_FORMATTER, status.code, status.message));
       case 1900: // SUBSCRIPTION_VERSION_ERROR
       case 1901: // SUBSCRIPTION_TYPE_ERROR
-      case 1909: // SUBSCRIPTION_MISSING_CUSTOMER
+      case 1909: // SUBSCRIPTION_MISSING_CONSUMER
       case 1912: // SUBSCRIPTION_NOT_ENABLED_ERROR
       default:
         {

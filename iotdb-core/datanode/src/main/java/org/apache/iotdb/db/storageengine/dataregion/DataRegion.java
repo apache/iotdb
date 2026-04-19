@@ -87,6 +87,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNo
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.SearchNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.LastCacheLoadStrategy;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
@@ -1729,6 +1730,10 @@ public class DataRegion implements IDataRegionForQuery {
             if (v == null) {
               v = insertRowsNode.emptyClone();
               v.setSearchIndex(insertRowNode.getSearchIndex());
+              v.setPhysicalTime(insertRowsNode.getPhysicalTime());
+              v.setNodeId(insertRowsNode.getNodeId());
+              v.setWriterEpoch(insertRowsNode.getWriterEpoch());
+              v.setSyncIndex(insertRowsNode.getSyncIndex());
               v.setAligned(insertRowNode.isAligned());
               if (insertRowNode.isGeneratedByPipe()) {
                 v.markAsGeneratedByPipe();
@@ -2852,8 +2857,7 @@ public class DataRegion implements IDataRegionForQuery {
       }
       TreeDeviceSchemaCacheManager.getInstance().invalidateLastCache(pattern);
       // write log to impacted working TsFileProcessors
-      List<WALFlushListener> walListeners =
-          logDeletionInWAL(startTime, endTime, searchIndex, pattern);
+      List<WALFlushListener> walListeners = logDeletionInWAL(node, pattern);
 
       for (WALFlushListener walFlushListener : walListeners) {
         if (walFlushListener.waitForResult() == WALFlushListener.Status.FAILURE) {
@@ -3018,8 +3022,7 @@ public class DataRegion implements IDataRegionForQuery {
       }
       TreeDeviceSchemaCacheManager.getInstance().invalidateDatabaseLastCache(getDatabaseName());
       // write log to impacted working TsFileProcessors
-      List<WALFlushListener> walListeners =
-          logDeletionInWAL(startTime, endTime, searchIndex, pathToDelete);
+      List<WALFlushListener> walListeners = logDeletionInWAL(node, pathToDelete);
 
       for (WALFlushListener walFlushListener : walListeners) {
         if (walFlushListener.waitForResult() == WALFlushListener.Status.FAILURE) {
@@ -3095,22 +3098,37 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   private List<WALFlushListener> logDeletionInWAL(
-      long startTime, long endTime, long searchIndex, MeasurementPath path) {
+      DeleteDataNode templateDeleteDataNode, MeasurementPath path) {
     if (config.getWalMode() == WALMode.DISABLE) {
       return Collections.emptyList();
     }
     List<WALFlushListener> walFlushListeners = new ArrayList<>();
     DeleteDataNode deleteDataNode =
-        new DeleteDataNode(new PlanNodeId(""), Collections.singletonList(path), startTime, endTime);
-    deleteDataNode.setSearchIndex(searchIndex);
+        new DeleteDataNode(
+            new PlanNodeId(""),
+            Collections.singletonList(path),
+            templateDeleteDataNode.getDeleteStartTime(),
+            templateDeleteDataNode.getDeleteEndTime());
+    deleteDataNode
+        .setSearchIndex(templateDeleteDataNode.getSearchIndex())
+        .setPhysicalTime(templateDeleteDataNode.getPhysicalTime())
+        .setNodeId(templateDeleteDataNode.getNodeId())
+        .setWriterEpoch(templateDeleteDataNode.getWriterEpoch())
+        .setSyncIndex(templateDeleteDataNode.getSyncIndex());
     for (Map.Entry<Long, TsFileProcessor> entry : workSequenceTsFileProcessors.entrySet()) {
-      if (TimePartitionUtils.satisfyPartitionId(startTime, endTime, entry.getKey())) {
+      if (TimePartitionUtils.satisfyPartitionId(
+          templateDeleteDataNode.getDeleteStartTime(),
+          templateDeleteDataNode.getDeleteEndTime(),
+          entry.getKey())) {
         WALFlushListener walFlushListener = entry.getValue().logDeleteDataNodeInWAL(deleteDataNode);
         walFlushListeners.add(walFlushListener);
       }
     }
     for (Map.Entry<Long, TsFileProcessor> entry : workUnsequenceTsFileProcessors.entrySet()) {
-      if (TimePartitionUtils.satisfyPartitionId(startTime, endTime, entry.getKey())) {
+      if (TimePartitionUtils.satisfyPartitionId(
+          templateDeleteDataNode.getDeleteStartTime(),
+          templateDeleteDataNode.getDeleteEndTime(),
+          entry.getKey())) {
         WALFlushListener walFlushListener = entry.getValue().logDeleteDataNodeInWAL(deleteDataNode);
         walFlushListeners.add(walFlushListener);
       }
@@ -3187,17 +3205,27 @@ public class DataRegion implements IDataRegionForQuery {
    * request</a> for details.
    */
   public void insertSeparatorToWAL() {
+    insertSeparatorToWAL(null);
+  }
+
+  public void insertSeparatorToWAL(final SearchNode sourceNode) {
     writeLock("insertSeparatorToWAL");
     try {
       if (deleted) {
         return;
       }
+      final ContinuousSameSearchIndexSeparatorNode separatorNode =
+          new ContinuousSameSearchIndexSeparatorNode();
+      if (Objects.nonNull(sourceNode)) {
+        separatorNode
+            .setRoutingEpoch(sourceNode.getRoutingEpoch())
+            .setPhysicalTime(sourceNode.getPhysicalTime())
+            .setNodeId(sourceNode.getNodeId())
+            .setWriterEpoch(sourceNode.getWriterEpoch())
+            .setSyncIndex(sourceNode.getSyncIndex());
+      }
       getWALNode()
-          .ifPresent(
-              walNode ->
-                  walNode.log(
-                      TsFileProcessor.MEMTABLE_NOT_EXIST,
-                      new ContinuousSameSearchIndexSeparatorNode()));
+          .ifPresent(walNode -> walNode.log(TsFileProcessor.MEMTABLE_NOT_EXIST, separatorNode));
     } finally {
       writeUnlock();
     }
@@ -4501,6 +4529,10 @@ public class DataRegion implements IDataRegionForQuery {
               if (v == null) {
                 v = new InsertRowsNode(insertRowsOfOneDeviceNode.getPlanNodeId());
                 v.setSearchIndex(insertRowNode.getSearchIndex());
+                v.setPhysicalTime(insertRowsOfOneDeviceNode.getPhysicalTime());
+                v.setNodeId(insertRowsOfOneDeviceNode.getNodeId());
+                v.setWriterEpoch(insertRowsOfOneDeviceNode.getWriterEpoch());
+                v.setSyncIndex(insertRowsOfOneDeviceNode.getSyncIndex());
                 v.setAligned(insertRowNode.isAligned());
                 if (insertRowNode.isGeneratedByPipe()) {
                   v.markAsGeneratedByPipe();

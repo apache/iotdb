@@ -24,6 +24,7 @@ import org.apache.iotdb.db.pipe.agent.task.execution.PipeSinkSubtaskExecutor;
 import org.apache.iotdb.db.pipe.agent.task.subtask.sink.PipeSinkSubtask;
 import org.apache.iotdb.db.pipe.agent.task.subtask.sink.PipeSinkSubtaskLifeCycle;
 import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
+import org.apache.iotdb.db.subscription.broker.consensus.ConsensusSubscriptionSetupHandler;
 import org.apache.iotdb.pipe.api.event.Event;
 
 import org.slf4j.Logger;
@@ -48,8 +49,10 @@ public class SubscriptionSinkSubtaskLifeCycle extends PipeSinkSubtaskLifeCycle {
     }
 
     if (registeredTaskCount == 0) {
-      // bind prefetching queue
-      SubscriptionAgent.broker().bindPrefetchingQueue((SubscriptionSinkSubtask) subtask);
+      if (!ConsensusSubscriptionSetupHandler.isConsensusBasedTopic(
+          ((SubscriptionSinkSubtask) subtask).getTopicName())) {
+        SubscriptionAgent.broker().bindPrefetchingQueue((SubscriptionSinkSubtask) subtask);
+      }
       executor.register(subtask);
       runningTaskCount = 0;
     }
@@ -97,6 +100,8 @@ public class SubscriptionSinkSubtaskLifeCycle extends PipeSinkSubtaskLifeCycle {
     // when dropping the subscription.
     final String consumerGroupId = ((SubscriptionSinkSubtask) subtask).getConsumerGroupId();
     final String topicName = ((SubscriptionSinkSubtask) subtask).getTopicName();
-    SubscriptionAgent.broker().unbindPrefetchingQueue(consumerGroupId, topicName);
+    if (!ConsensusSubscriptionSetupHandler.isConsensusBasedTopic(topicName)) {
+      SubscriptionAgent.broker().unbindPrefetchingQueue(consumerGroupId, topicName);
+    }
   }
 }

@@ -22,8 +22,11 @@ package org.apache.iotdb.session.subscription.consumer.base;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
+import org.apache.iotdb.rpc.subscription.payload.poll.TopicProgress;
 import org.apache.iotdb.session.subscription.consumer.AsyncCommitCallback;
+import org.apache.iotdb.session.subscription.payload.PollResult;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
+import org.apache.iotdb.session.subscription.payload.SubscriptionMessageType;
 import org.apache.iotdb.session.subscription.util.CollectionUtils;
 import org.apache.iotdb.session.subscription.util.IdentifierUtils;
 
@@ -31,6 +34,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -64,6 +68,8 @@ public abstract class AbstractSubscriptionPullConsumer extends AbstractSubscript
 
   private final boolean autoCommit;
   private final long autoCommitIntervalMs;
+
+  private final List<SubscriptionMessageProcessor> processors = new ArrayList<>();
 
   private SortedMap<Long, Set<SubscriptionCommitContext>> uncommittedCommitContexts;
 
@@ -135,6 +141,24 @@ public abstract class AbstractSubscriptionPullConsumer extends AbstractSubscript
       return;
     }
 
+    // flush all processors and commit any remaining buffered messages
+    if (!processors.isEmpty()) {
+      final List<SubscriptionMessage> flushed = new ArrayList<>();
+      for (final SubscriptionMessageProcessor processor : processors) {
+        final List<SubscriptionMessage> out = processor.flush();
+        if (out != null) {
+          flushed.addAll(out);
+        }
+      }
+      if (!flushed.isEmpty() && autoCommit) {
+        try {
+          commitSync(flushed);
+        } catch (final SubscriptionException e) {
+          LOGGER.warn("Failed to commit flushed processor messages on close", e);
+        }
+      }
+    }
+
     if (autoCommit) {
       // commit all uncommitted messages
       commitAllUncommittedMessages();
@@ -186,13 +210,42 @@ public abstract class AbstractSubscriptionPullConsumer extends AbstractSubscript
     }
 
     final List<SubscriptionMessage> messages = multiplePoll(parsedTopicNames, timeoutMs);
-    if (messages.isEmpty()) {
+    if (messages.isEmpty() && processors.isEmpty()) {
       LOGGER.info(
           "SubscriptionPullConsumer {} poll empty message from topics {} after {} millisecond(s)",
           this,
           CollectionUtils.getLimitedString(parsedTopicNames, 32),
           timeoutMs);
       return messages;
+    }
+
+    // Apply processor chain if configured
+    List<SubscriptionMessage> processed = messages;
+    if (!processors.isEmpty()) {
+      for (final SubscriptionMessageProcessor processor : processors) {
+        processed = processor.process(processed);
+      }
+    }
+
+    // Update watermark timestamp before stripping watermark events
+    for (final SubscriptionMessage m : processed) {
+      if (m.getMessageType() == SubscriptionMessageType.WATERMARK.getType()) {
+        final long ts = m.getWatermarkTimestamp();
+        if (ts > latestWatermarkTimestamp) {
+          latestWatermarkTimestamp = ts;
+        }
+      }
+    }
+
+    // Strip system messages — they are only for processors, not for users
+    processed.removeIf(
+        m -> {
+          final short type = m.getMessageType();
+          return type == SubscriptionMessageType.WATERMARK.getType();
+        });
+
+    if (processed.isEmpty()) {
+      return processed;
     }
 
     // add to uncommitted messages
@@ -205,12 +258,56 @@ public abstract class AbstractSubscriptionPullConsumer extends AbstractSubscript
       uncommittedCommitContexts
           .computeIfAbsent(index, o -> new ConcurrentSkipListSet<>())
           .addAll(
-              messages.stream()
+              processed.stream()
                   .map(SubscriptionMessage::getCommitContext)
                   .collect(Collectors.toList()));
     }
 
-    return messages;
+    return processed;
+  }
+
+  /////////////////////////////// processor ///////////////////////////////
+
+  /**
+   * Adds a message processor to the pipeline. Processors are applied in order on each poll() call.
+   *
+   * @param processor the processor to add
+   */
+  protected AbstractSubscriptionPullConsumer addProcessor(
+      final SubscriptionMessageProcessor processor) {
+    processors.add(processor);
+    return this;
+  }
+
+  /**
+   * Polls with processor metadata. Returns a {@link PollResult} containing the messages, the total
+   * number of buffered messages across all processors, and the current watermark.
+   */
+  protected PollResult pollWithInfo(final long timeoutMs) throws SubscriptionException {
+    final List<SubscriptionMessage> messages = poll(timeoutMs);
+    int totalBuffered = 0;
+    long watermark = -1;
+    for (final SubscriptionMessageProcessor processor : processors) {
+      totalBuffered += processor.getBufferedCount();
+      if (processor instanceof WatermarkProcessor) {
+        watermark = ((WatermarkProcessor) processor).getWatermark();
+      }
+    }
+    return new PollResult(messages, totalBuffered, watermark);
+  }
+
+  protected PollResult pollWithInfo(final Set<String> topicNames, final long timeoutMs)
+      throws SubscriptionException {
+    final List<SubscriptionMessage> messages = poll(topicNames, timeoutMs);
+    int totalBuffered = 0;
+    long watermark = -1;
+    for (final SubscriptionMessageProcessor processor : processors) {
+      totalBuffered += processor.getBufferedCount();
+      if (processor instanceof WatermarkProcessor) {
+        watermark = ((WatermarkProcessor) processor).getWatermark();
+      }
+    }
+    return new PollResult(messages, totalBuffered, watermark);
   }
 
   /////////////////////////////// commit ///////////////////////////////
@@ -240,6 +337,46 @@ public abstract class AbstractSubscriptionPullConsumer extends AbstractSubscript
   protected void commitAsync(
       final Iterable<SubscriptionMessage> messages, final AsyncCommitCallback callback) {
     super.commitAsync(messages, callback);
+  }
+
+  /////////////////////////////// seek ///////////////////////////////
+
+  /**
+   * Clears uncommitted auto-commit messages after seek to prevent stale acks from committing events
+   * that belonged to the pre-seek position.
+   */
+  @Override
+  public void seekToBeginning(final String topicName) throws SubscriptionException {
+    super.seekToBeginning(topicName);
+    if (autoCommit) {
+      uncommittedCommitContexts.clear();
+    }
+  }
+
+  @Override
+  public void seekToEnd(final String topicName) throws SubscriptionException {
+    super.seekToEnd(topicName);
+    if (autoCommit) {
+      uncommittedCommitContexts.clear();
+    }
+  }
+
+  @Override
+  public void seek(final String topicName, final TopicProgress topicProgress)
+      throws SubscriptionException {
+    super.seek(topicName, topicProgress);
+    if (autoCommit) {
+      uncommittedCommitContexts.clear();
+    }
+  }
+
+  @Override
+  public void seekAfter(final String topicName, final TopicProgress topicProgress)
+      throws SubscriptionException {
+    super.seekAfter(topicName, topicProgress);
+    if (autoCommit) {
+      uncommittedCommitContexts.clear();
+    }
   }
 
   /////////////////////////////// auto commit ///////////////////////////////
@@ -278,8 +415,19 @@ public abstract class AbstractSubscriptionPullConsumer extends AbstractSubscript
       for (final Map.Entry<Long, Set<SubscriptionCommitContext>> entry :
           uncommittedCommitContexts.headMap(index).entrySet()) {
         try {
-          ackCommitContexts(entry.getValue());
-          uncommittedCommitContexts.remove(entry.getKey());
+          final Set<SubscriptionCommitContext> removableCommitContexts =
+              ackCommitContextsWithPartialProgress(entry.getValue());
+          if (removableCommitContexts.isEmpty()) {
+            continue;
+          }
+          if (removableCommitContexts.size() == entry.getValue().size()) {
+            uncommittedCommitContexts.remove(entry.getKey());
+            continue;
+          }
+          entry.getValue().removeAll(removableCommitContexts);
+          if (entry.getValue().isEmpty()) {
+            uncommittedCommitContexts.remove(entry.getKey());
+          }
         } catch (final Exception e) {
           LOGGER.warn("something unexpected happened when auto commit messages...", e);
         }
@@ -291,8 +439,19 @@ public abstract class AbstractSubscriptionPullConsumer extends AbstractSubscript
     for (final Map.Entry<Long, Set<SubscriptionCommitContext>> entry :
         uncommittedCommitContexts.entrySet()) {
       try {
-        ackCommitContexts(entry.getValue());
-        uncommittedCommitContexts.remove(entry.getKey());
+        final Set<SubscriptionCommitContext> removableCommitContexts =
+            ackCommitContextsWithPartialProgress(entry.getValue());
+        if (removableCommitContexts.isEmpty()) {
+          continue;
+        }
+        if (removableCommitContexts.size() == entry.getValue().size()) {
+          uncommittedCommitContexts.remove(entry.getKey());
+          continue;
+        }
+        entry.getValue().removeAll(removableCommitContexts);
+        if (entry.getValue().isEmpty()) {
+          uncommittedCommitContexts.remove(entry.getKey());
+        }
       } catch (final Exception e) {
         LOGGER.warn("something unexpected happened when commit messages during close", e);
       }

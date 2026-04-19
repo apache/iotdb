@@ -40,6 +40,9 @@ public class SubscriptionMessage implements Comparable<SubscriptionMessage> {
 
   private final SubscriptionMessageHandler handler;
 
+  /** Watermark timestamp, valid only when messageType == WATERMARK. */
+  private final long watermarkTimestamp;
+
   private volatile boolean userDataRemoved = false;
 
   public SubscriptionMessage(
@@ -47,6 +50,7 @@ public class SubscriptionMessage implements Comparable<SubscriptionMessage> {
     this.commitContext = commitContext;
     this.messageType = SubscriptionMessageType.RECORD_HANDLER.getType();
     this.handler = new SubscriptionRecordHandler(tablets);
+    this.watermarkTimestamp = Long.MIN_VALUE;
   }
 
   public SubscriptionMessage(
@@ -56,6 +60,16 @@ public class SubscriptionMessage implements Comparable<SubscriptionMessage> {
     this.commitContext = commitContext;
     this.messageType = SubscriptionMessageType.TS_FILE.getType();
     this.handler = new SubscriptionTsFileHandler(absolutePath, databaseName);
+    this.watermarkTimestamp = Long.MIN_VALUE;
+  }
+
+  /** Watermark message carrying server-side timestamp progress for a region. */
+  public SubscriptionMessage(
+      final SubscriptionCommitContext commitContext, final long watermarkTimestamp) {
+    this.commitContext = commitContext;
+    this.messageType = SubscriptionMessageType.WATERMARK.getType();
+    this.handler = null;
+    this.watermarkTimestamp = watermarkTimestamp;
   }
 
   public SubscriptionCommitContext getCommitContext() {
@@ -66,12 +80,42 @@ public class SubscriptionMessage implements Comparable<SubscriptionMessage> {
     return messageType;
   }
 
+  /**
+   * Returns the watermark timestamp carried by this message. Only valid when {@code
+   * getMessageType() == SubscriptionMessageType.WATERMARK.getType()}.
+   *
+   * @return the watermark timestamp, or {@code Long.MIN_VALUE} if not a watermark message
+   */
+  public long getWatermarkTimestamp() {
+    return watermarkTimestamp;
+  }
+
+  /**
+   * Estimates the heap memory occupied by this message in bytes. For tablet-based messages, this
+   * delegates to {@link Tablet#ramBytesUsed()} for accurate per-column estimation.
+   *
+   * @return estimated byte size
+   */
+  public long estimateSize() {
+    // Object header + references + primitives (rough constant)
+    long size = 64;
+    if (handler instanceof SubscriptionRecordHandler) {
+      final Iterator<Tablet> it = getRecordTabletIterator();
+      while (it.hasNext()) {
+        size += it.next().ramBytesUsed();
+      }
+    }
+    return size;
+  }
+
   public void removeUserData() {
     if (userDataRemoved) {
       return;
     }
 
-    handler.removeUserData();
+    if (Objects.nonNull(handler)) {
+      handler.removeUserData();
+    }
     if (handler instanceof SubscriptionRecordHandler) {
       userDataRemoved = true;
     }
@@ -89,13 +133,14 @@ public class SubscriptionMessage implements Comparable<SubscriptionMessage> {
     }
     final SubscriptionMessage that = (SubscriptionMessage) obj;
     return Objects.equals(this.commitContext, that.commitContext)
+        && this.watermarkTimestamp == that.watermarkTimestamp
         && Objects.equals(this.messageType, that.messageType)
         && Objects.equals(this.handler, that.handler);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(commitContext, messageType, handler);
+    return Objects.hash(commitContext, messageType, handler, watermarkTimestamp);
   }
 
   @Override
@@ -109,6 +154,8 @@ public class SubscriptionMessage implements Comparable<SubscriptionMessage> {
         + commitContext
         + ", messageType="
         + SubscriptionMessageType.valueOf(messageType).toString()
+        + ", watermarkTimestamp="
+        + watermarkTimestamp
         + "}";
   }
 

@@ -106,6 +106,34 @@ public class InsertRowsOfOneDeviceNode extends InsertNode {
     return this;
   }
 
+  @Override
+  public SearchNode setPhysicalTime(long physicalTime) {
+    this.physicalTime = physicalTime;
+    insertRowNodeList.forEach(plan -> plan.setPhysicalTime(physicalTime));
+    return this;
+  }
+
+  @Override
+  public SearchNode setNodeId(int nodeId) {
+    this.nodeId = nodeId;
+    insertRowNodeList.forEach(plan -> plan.setNodeId(nodeId));
+    return this;
+  }
+
+  @Override
+  public SearchNode setWriterEpoch(long writerEpoch) {
+    this.writerEpoch = writerEpoch;
+    insertRowNodeList.forEach(plan -> plan.setWriterEpoch(writerEpoch));
+    return this;
+  }
+
+  @Override
+  public SearchNode setSyncIndex(long syncIndex) {
+    this.syncIndex = syncIndex;
+    insertRowNodeList.forEach(plan -> plan.setSyncIndex(syncIndex));
+    return this;
+  }
+
   public TSStatus[] getFailingStatus() {
     return StatusUtils.getFailingStatus(results, insertRowNodeList.size());
   }

@@ -324,6 +324,8 @@ public enum ConfigPhysicalPlanType {
 
   ShowSubscription((short) 2000),
 
+  CommitProgressHandleMetaChange((short) 2001),
+
   // Authority version after and equal 2.0
   DropUserV2((short) 2100),
   UpdateUserV2((short) 2101),

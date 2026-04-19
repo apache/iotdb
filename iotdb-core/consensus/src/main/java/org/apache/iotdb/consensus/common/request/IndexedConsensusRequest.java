@@ -32,6 +32,19 @@ public class IndexedConsensusRequest implements IConsensusRequest {
   private final long searchIndex;
 
   private final long syncIndex;
+
+  /** routing epoch from ConfigNode broadcast for ordered consensus subscription */
+  private long routingEpoch = 0;
+
+  /** Millisecond physical time used as the first ordering key in the new subscription progress. */
+  private long physicalTime = 0;
+
+  /** Writer node id used as the second ordering key across multiple writers. */
+  private int nodeId = -1;
+
+  /** Writer-local lifecycle id. */
+  private long writerEpoch = 0;
+
   private final List<IConsensusRequest> requests;
   private final List<ByteBuffer> serializedRequests;
   private long memorySize = 0;
@@ -84,6 +97,56 @@ public class IndexedConsensusRequest implements IConsensusRequest {
 
   public long getSyncIndex() {
     return syncIndex;
+  }
+
+  /**
+   * Returns the writer-local sequence used by the new subscription progress model.
+   *
+   * <p>For locally generated requests this is the request searchIndex. For replicated requests this
+   * is the source leader's propagated localSeq carried in syncIndex.
+   */
+  public long getProgressLocalSeq() {
+    return syncIndex >= 0 ? syncIndex : searchIndex;
+  }
+
+  public long getRoutingEpoch() {
+    return routingEpoch;
+  }
+
+  public IndexedConsensusRequest setRoutingEpoch(long routingEpoch) {
+    this.routingEpoch = routingEpoch;
+    return this;
+  }
+
+  public long getPhysicalTime() {
+    return physicalTime;
+  }
+
+  public IndexedConsensusRequest setPhysicalTime(long physicalTime) {
+    this.physicalTime = physicalTime;
+    return this;
+  }
+
+  public int getNodeId() {
+    return nodeId;
+  }
+
+  public IndexedConsensusRequest setNodeId(int nodeId) {
+    this.nodeId = nodeId;
+    return this;
+  }
+
+  public long getWriterEpoch() {
+    return writerEpoch;
+  }
+
+  public IndexedConsensusRequest setWriterEpoch(long writerEpoch) {
+    this.writerEpoch = writerEpoch;
+    return this;
+  }
+
+  public long getLocalSeq() {
+    return searchIndex;
   }
 
   @Override

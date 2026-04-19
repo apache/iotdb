@@ -33,6 +33,13 @@ public enum SubscriptionPollResponseType {
   FILE_SEAL((short) 4),
 
   TERMINATION((short) 5),
+
+  /**
+   * Periodic timestamp-progress signal from the server-side {@code ConsensusPrefetchingQueue}.
+   * Carries the maximum data timestamp observed so far for a region, enabling client-side watermark
+   * computation even when a region is idle (no new data).
+   */
+  WATERMARK((short) 7),
   ;
 
   private final short type;

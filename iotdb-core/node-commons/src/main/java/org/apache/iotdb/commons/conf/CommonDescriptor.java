@@ -283,6 +283,10 @@ public class CommonDescriptor {
   }
 
   private void loadSubscriptionProps(TrimProperties properties) {
+    config.setSubscriptionEnabled(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "subscription_enabled", String.valueOf(config.getSubscriptionEnabled()))));
     config.setSubscriptionCacheMemoryUsagePercentage(
         Float.parseFloat(
             properties.getProperty(
@@ -293,6 +297,11 @@ public class CommonDescriptor {
             properties.getProperty(
                 "subscription_subtask_executor_max_thread_num",
                 Integer.toString(config.getSubscriptionSubtaskExecutorMaxThreadNum()))));
+    config.setSubscriptionConsensusPrefetchExecutorMaxThreadNum(
+        Integer.parseInt(
+            properties.getProperty(
+                "subscription_consensus_prefetch_executor_max_thread_num",
+                Integer.toString(config.getSubscriptionConsensusPrefetchExecutorMaxThreadNum()))));
 
     config.setSubscriptionPrefetchTabletBatchMaxDelayInMs(
         Integer.parseInt(
@@ -417,6 +426,77 @@ public class CommonDescriptor {
             properties.getProperty(
                 "subscription_meta_syncer_sync_interval_minutes",
                 String.valueOf(config.getSubscriptionMetaSyncerSyncIntervalMinutes()))));
+
+    config.setSubscriptionConsensusBatchMaxDelayInMs(
+        Integer.parseInt(
+            properties.getProperty(
+                "subscription_consensus_batch_max_delay_in_ms",
+                String.valueOf(config.getSubscriptionConsensusBatchMaxDelayInMs()))));
+    config.setSubscriptionConsensusBatchMaxSizeInBytes(
+        Long.parseLong(
+            properties.getProperty(
+                "subscription_consensus_batch_max_size_in_bytes",
+                String.valueOf(config.getSubscriptionConsensusBatchMaxSizeInBytes()))));
+    config.setSubscriptionConsensusBatchMaxTabletCount(
+        Integer.parseInt(
+            properties.getProperty(
+                "subscription_consensus_batch_max_tablet_count",
+                String.valueOf(config.getSubscriptionConsensusBatchMaxTabletCount()))));
+    config.setSubscriptionConsensusWalRetentionSizeInBytes(
+        Long.parseLong(
+            properties.getProperty(
+                "subscription_consensus_wal_retention_size_in_bytes",
+                String.valueOf(config.getSubscriptionConsensusWalRetentionSizeInBytes()))));
+    config.setSubscriptionConsensusWalRetentionTimeMs(
+        Long.parseLong(
+            properties.getProperty(
+                "subscription_consensus_wal_retention_time_ms",
+                String.valueOf(config.getSubscriptionConsensusWalRetentionTimeMs()))));
+    config.setSubscriptionConsensusBatchMaxWalEntries(
+        Integer.parseInt(
+            properties.getProperty(
+                "subscription_consensus_batch_max_wal_entries",
+                String.valueOf(config.getSubscriptionConsensusBatchMaxWalEntries()))));
+    config.setSubscriptionConsensusCommitPersistInterval(
+        Integer.parseInt(
+            properties.getProperty(
+                "subscription_consensus_commit_persist_interval",
+                String.valueOf(config.getSubscriptionConsensusCommitPersistInterval()))));
+    config.setSubscriptionConsensusCommitFsyncEnabled(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "subscription_consensus_commit_fsync_enabled",
+                String.valueOf(config.isSubscriptionConsensusCommitFsyncEnabled()))));
+    config.setSubscriptionConsensusConsumerEvictionTimeoutMs(
+        Long.parseLong(
+            properties.getProperty(
+                "subscription_consensus_consumer_eviction_timeout_ms",
+                String.valueOf(config.getSubscriptionConsensusConsumerEvictionTimeoutMs()))));
+    config.setSubscriptionConsensusLagBasedPriority(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "subscription_consensus_lag_based_priority",
+                String.valueOf(config.isSubscriptionConsensusLagBasedPriority()))));
+    config.setSubscriptionConsensusPrefetchingQueueCapacity(
+        Integer.parseInt(
+            properties.getProperty(
+                "subscription_consensus_prefetching_queue_capacity",
+                String.valueOf(config.getSubscriptionConsensusPrefetchingQueueCapacity()))));
+    config.setSubscriptionConsensusWatermarkEnabled(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "subscription_consensus_watermark_enabled",
+                String.valueOf(config.isSubscriptionConsensusWatermarkEnabled()))));
+    config.setSubscriptionConsensusWatermarkIntervalMs(
+        Long.parseLong(
+            properties.getProperty(
+                "subscription_consensus_watermark_interval_ms",
+                String.valueOf(config.getSubscriptionConsensusWatermarkIntervalMs()))));
+    config.setSubscriptionConsensusIdleSafeHlcIntervalMs(
+        Long.parseLong(
+            properties.getProperty(
+                "subscription_consensus_idle_safe_hlc_interval_ms",
+                String.valueOf(config.getSubscriptionConsensusIdleSafeHlcIntervalMs()))));
   }
 
   public void loadRetryProperties(TrimProperties properties) throws IOException {
@@ -433,6 +513,48 @@ public class CommonDescriptor {
                 "enable_retry_for_unknown_error",
                 ConfigurationFileUtils.getConfigurationDefaultValue(
                     "enable_retry_for_unknown_error"))));
+  }
+
+  /**
+   * Reload only the subscription consensus properties that are intended to take effect on hot
+   * configuration reload.
+   *
+   * <p>Batching related properties are read dynamically by running consensus subscription queues
+   * and therefore take effect immediately after this method updates {@link CommonConfig}. Retention
+   * defaults are only used when new consensus subscription queues are created, so hot reload
+   * affects future topics / bindings and does not retroactively mutate existing queue policies.
+   */
+  public void loadHotModifiedSubscriptionConsensusProps(final TrimProperties properties) {
+    config.setSubscriptionConsensusBatchMaxDelayInMs(
+        Integer.parseInt(
+            properties.getProperty(
+                "subscription_consensus_batch_max_delay_in_ms",
+                String.valueOf(config.getSubscriptionConsensusBatchMaxDelayInMs()))));
+    config.setSubscriptionConsensusBatchMaxSizeInBytes(
+        Long.parseLong(
+            properties.getProperty(
+                "subscription_consensus_batch_max_size_in_bytes",
+                String.valueOf(config.getSubscriptionConsensusBatchMaxSizeInBytes()))));
+    config.setSubscriptionConsensusBatchMaxTabletCount(
+        Integer.parseInt(
+            properties.getProperty(
+                "subscription_consensus_batch_max_tablet_count",
+                String.valueOf(config.getSubscriptionConsensusBatchMaxTabletCount()))));
+    config.setSubscriptionConsensusBatchMaxWalEntries(
+        Integer.parseInt(
+            properties.getProperty(
+                "subscription_consensus_batch_max_wal_entries",
+                String.valueOf(config.getSubscriptionConsensusBatchMaxWalEntries()))));
+    config.setSubscriptionConsensusWalRetentionSizeInBytes(
+        Long.parseLong(
+            properties.getProperty(
+                "subscription_consensus_wal_retention_size_in_bytes",
+                String.valueOf(config.getSubscriptionConsensusWalRetentionSizeInBytes()))));
+    config.setSubscriptionConsensusWalRetentionTimeMs(
+        Long.parseLong(
+            properties.getProperty(
+                "subscription_consensus_wal_retention_time_ms",
+                String.valueOf(config.getSubscriptionConsensusWalRetentionTimeMs()))));
   }
 
   public void loadBinaryAllocatorProps(TrimProperties properties) {

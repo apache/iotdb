@@ -35,6 +35,23 @@ import java.util.stream.Collectors;
 
 public class TopicConfig extends PipeParameters {
 
+  private static final Set<String> MODE_VALUE_SET;
+  private static final Set<String> ORDER_MODE_VALUE_SET;
+
+  static {
+    final Set<String> modes = new HashSet<>(3);
+    modes.add(TopicConstant.MODE_SNAPSHOT_VALUE);
+    modes.add(TopicConstant.MODE_LIVE_VALUE);
+    modes.add(TopicConstant.MODE_CONSENSUS_VALUE);
+    MODE_VALUE_SET = Collections.unmodifiableSet(modes);
+
+    final Set<String> orderModes = new HashSet<>(3);
+    orderModes.add(TopicConstant.ORDER_MODE_LEADER_ONLY_VALUE);
+    orderModes.add(TopicConstant.ORDER_MODE_MULTI_WRITER_VALUE);
+    orderModes.add(TopicConstant.ORDER_MODE_PER_WRITER_VALUE);
+    ORDER_MODE_VALUE_SET = Collections.unmodifiableSet(orderModes);
+  }
+
   public TopicConfig() {
     super(Collections.emptyMap());
   }
@@ -97,6 +114,47 @@ public class TopicConfig extends PipeParameters {
         attributes.getOrDefault(SQL_DIALECT_KEY, SQL_DIALECT_TREE_VALUE));
   }
 
+  public String getMode() {
+    return normalizeMode(
+        attributes.getOrDefault(TopicConstant.MODE_KEY, TopicConstant.MODE_DEFAULT_VALUE));
+  }
+
+  public boolean isSnapshotMode() {
+    return TopicConstant.MODE_SNAPSHOT_VALUE.equalsIgnoreCase(getMode());
+  }
+
+  public boolean isLiveMode() {
+    return TopicConstant.MODE_LIVE_VALUE.equalsIgnoreCase(getMode());
+  }
+
+  public boolean isConsensusMode() {
+    return TopicConstant.MODE_CONSENSUS_VALUE.equalsIgnoreCase(getMode());
+  }
+
+  public static boolean isValidMode(final String mode) {
+    return MODE_VALUE_SET.contains(normalizeMode(mode));
+  }
+
+  public static String normalizeMode(final String mode) {
+    return mode == null ? TopicConstant.MODE_DEFAULT_VALUE : mode.trim().toLowerCase();
+  }
+
+  public String getOrderMode() {
+    return normalizeOrderMode(
+        attributes.getOrDefault(
+            TopicConstant.ORDER_MODE_KEY, TopicConstant.ORDER_MODE_DEFAULT_VALUE));
+  }
+
+  public static boolean isValidOrderMode(final String orderMode) {
+    return ORDER_MODE_VALUE_SET.contains(normalizeOrderMode(orderMode));
+  }
+
+  public static String normalizeOrderMode(final String orderMode) {
+    return orderMode == null
+        ? TopicConstant.ORDER_MODE_DEFAULT_VALUE
+        : orderMode.trim().toLowerCase();
+  }
+
   /////////////////////////////// extractor attributes mapping ///////////////////////////////
 
   public Map<String, String> getAttributeWithSqlDialect() {
@@ -146,10 +204,11 @@ public class TopicConfig extends PipeParameters {
   }
 
   public Map<String, String> getAttributesWithSourceMode() {
-    return TopicConstant.MODE_SNAPSHOT_VALUE.equalsIgnoreCase(
-            attributes.getOrDefault(TopicConstant.MODE_KEY, TopicConstant.MODE_DEFAULT_VALUE))
-        ? SNAPSHOT_MODE_CONFIG
-        : LIVE_MODE_CONFIG;
+    if (isConsensusMode()) {
+      throw new IllegalArgumentException(
+          "Consensus mode topic should not generate pipe source attributes");
+    }
+    return isSnapshotMode() ? SNAPSHOT_MODE_CONFIG : LIVE_MODE_CONFIG;
   }
 
   public Map<String, String> getAttributesWithSourceLooseRangeOrStrict() {
@@ -195,19 +254,31 @@ public class TopicConfig extends PipeParameters {
 
   /////////////////////////////// connector attributes mapping ///////////////////////////////
 
+  public boolean isRecordFormat() {
+    return isRecordFormat(
+        attributes.getOrDefault(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_DEFAULT_VALUE));
+  }
+
+  private boolean isTsFileFormat() {
+    return isTsFileFormat(
+        attributes.getOrDefault(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_DEFAULT_VALUE));
+  }
+
   public Map<String, String> getAttributesWithSinkFormat() {
     // refer to
     // org.apache.iotdb.db.pipe.agent.task.connection.PipeEventCollector.parseAndCollectEvent(org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent)
-    return isTsFileFormat(
-            attributes.getOrDefault(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_DEFAULT_VALUE))
-        ? SINK_TS_FILE_FORMAT_CONFIG
-        : SINK_TABLET_FORMAT_CONFIG;
+    return isTsFileFormat() ? SINK_TS_FILE_FORMAT_CONFIG : SINK_TABLET_FORMAT_CONFIG;
   }
 
-  private boolean isTsFileFormat(final String formatValue) {
+  private static boolean isTsFileFormat(final String formatValue) {
     return TopicConstant.FORMAT_TS_FILE_VALUE.equalsIgnoreCase(formatValue)
         || TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE.equalsIgnoreCase(formatValue)
         || LEGACY_FORMAT_TS_FILE_HANDLER_VALUE.equalsIgnoreCase(formatValue);
+  }
+
+  private static boolean isRecordFormat(final String formatValue) {
+    return TopicConstant.FORMAT_RECORD_HANDLER_VALUE.equalsIgnoreCase(formatValue)
+        || TopicConstant.FORMAT_SESSION_DATA_SETS_HANDLER_VALUE.equalsIgnoreCase(formatValue);
   }
 
   public Map<String, String> getAttributesWithSinkPrefix() {

@@ -20,14 +20,17 @@
 package org.apache.iotdb.consensus.iot.logdispatcher;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.service.metric.MetricService;
+import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 import org.apache.iotdb.consensus.config.IoTConsensusConfig;
 import org.apache.iotdb.consensus.iot.IoTConsensusServerImpl;
+import org.apache.iotdb.consensus.iot.WriterSafeFrontierTracker;
 import org.apache.iotdb.consensus.iot.client.AsyncIoTConsensusServiceClient;
 import org.apache.iotdb.consensus.iot.client.DispatchLogHandler;
 import org.apache.iotdb.consensus.iot.log.ConsensusReqReader;
@@ -167,16 +170,17 @@ public class LogDispatcher {
     return threads.stream().mapToLong(LogDispatcherThread::getLastFlushedSyncIndex).min();
   }
 
-  public void checkAndFlushIndex() {
+  public synchronized void checkAndFlushIndex() {
     if (!threads.isEmpty()) {
       threads.forEach(
           thread -> {
             IndexController controller = thread.getController();
             controller.update(controller.getCurrentIndex(), true);
           });
-      // do not set SafelyDeletedSearchIndex as it is Long.MAX_VALUE when replica is 1
-      reader.setSafelyDeletedSearchIndex(impl.getMinFlushedSyncIndex());
     }
+    // Single-replica regions do not have dispatcher threads, but still need periodic retention
+    // recalculation for subscription-aware WAL cleanup.
+    impl.checkAndUpdateSafeDeletedSearchIndex();
   }
 
   public void offer(IndexedConsensusRequest request) {
@@ -213,7 +217,7 @@ public class LogDispatcher {
 
   public class LogDispatcherThread implements Runnable {
 
-    private static final long PENDING_REQUEST_TAKING_TIME_OUT_IN_SEC = 10;
+    private static final long PENDING_REQUEST_TAKING_TIME_OUT_IN_MS = 10_000L;
     private static final long START_INDEX = 1;
     private final IoTConsensusConfig config;
     private final Peer peer;
@@ -236,6 +240,7 @@ public class LogDispatcher {
     private final LogDispatcherThreadMetrics logDispatcherThreadMetrics;
 
     private final CountDownLatch runFinished = new CountDownLatch(1);
+    private volatile long lastIdleSafeHlcSentTimeMs = 0L;
 
     public LogDispatcherThread(Peer peer, IoTConsensusConfig config, long initialSyncIndex) {
       this.peer = peer;
@@ -354,9 +359,10 @@ public class LogDispatcher {
         while (!Thread.interrupted() && !stopped) {
           long startTime = System.nanoTime();
           while ((batch = getBatch()).isEmpty()) {
+            maybeSendIdleSafeHlc();
             // we may block here if there is no requests in the queue
             IndexedConsensusRequest request =
-                pendingEntries.poll(PENDING_REQUEST_TAKING_TIME_OUT_IN_SEC, TimeUnit.SECONDS);
+                pendingEntries.poll(calculateIdlePollTimeoutInMs(), TimeUnit.MILLISECONDS);
             if (request != null) {
               bufferedEntries.add(request);
               // If write pressure is low, we simply sleep a little to reduce the number of RPC
@@ -364,6 +370,8 @@ public class LogDispatcher {
                   && bufferedEntries.isEmpty()) {
                 Thread.sleep(config.getReplication().getMaxWaitingTimeForAccumulatingBatchInMs());
               }
+            } else {
+              maybeSendIdleSafeHlc();
             }
             // Immediately check for interrupts after poll and sleep
             if (Thread.interrupted() || stopped) {
@@ -397,8 +405,9 @@ public class LogDispatcher {
       // indicating that insert nodes whose search index are before this value can be deleted
       // safely.
       //
-      // Use minFlushedSyncIndex here to reserve the WAL which are not flushed and support kill -9.
-      reader.setSafelyDeletedSearchIndex(impl.getMinFlushedSyncIndex());
+      // Use subscription-aware safe-delete to avoid deleting WAL entries
+      // still needed by subscription consumers.
+      impl.checkAndUpdateSafeDeletedSearchIndex();
       // notify
       if (impl.unblockWrite()) {
         impl.signal();
@@ -406,6 +415,7 @@ public class LogDispatcher {
     }
 
     public Batch getBatch() {
+
       long startIndex = syncStatus.getNextSendingIndex();
       long maxIndex;
       synchronized (impl.getIndexObject()) {
@@ -504,6 +514,56 @@ public class LogDispatcher {
       return batches;
     }
 
+    private void maybeSendIdleSafeHlc() {
+      if (!shouldSendIdleSafeHlc()) {
+        return;
+      }
+      final long now = System.currentTimeMillis();
+      if (now - lastIdleSafeHlcSentTimeMs
+          < SubscriptionConfig.getInstance().getSubscriptionConsensusIdleSafeHlcIntervalMs()) {
+        return;
+      }
+      final WriterSafeFrontierTracker.SafeHlc safeHlc = impl.createIdleSafeHlcForCurrentWriter();
+      final TSStatus status =
+          impl.syncSafeHlcToPeer(
+              peer,
+              impl.getThisNode().getNodeId(),
+              impl.getCurrentWriterEpoch(),
+              safeHlc.getSafePhysicalTime(),
+              safeHlc.getBarrierLocalSeq());
+      if (status.getCode() == org.apache.iotdb.rpc.TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        lastIdleSafeHlcSentTimeMs = now;
+      } else {
+        logger.debug(
+            "{}: Failed to send idle safeHLC to {}. status={}",
+            impl.getThisNode().getGroupId(),
+            peer,
+            status);
+      }
+    }
+
+    private long calculateIdlePollTimeoutInMs() {
+      if (!shouldSendIdleSafeHlc()) {
+        return PENDING_REQUEST_TAKING_TIME_OUT_IN_MS;
+      }
+      final long elapsedSinceLastIdleSafeHlcMs =
+          System.currentTimeMillis() - lastIdleSafeHlcSentTimeMs;
+      final long untilNextIdleSafeHlcMs =
+          Math.max(
+              1L,
+              SubscriptionConfig.getInstance().getSubscriptionConsensusIdleSafeHlcIntervalMs()
+                  - elapsedSinceLastIdleSafeHlcMs);
+      return Math.min(PENDING_REQUEST_TAKING_TIME_OUT_IN_MS, untilNextIdleSafeHlcMs);
+    }
+
+    private boolean shouldSendIdleSafeHlc() {
+      return impl.hasSubscriptionConsumers()
+          && pendingEntries.isEmpty()
+          && bufferedEntries.isEmpty()
+          && !syncStatus.hasPendingBatches()
+          && syncStatus.getNextSendingIndex() > impl.getSearchIndex();
+    }
+
     public void sendBatchAsync(Batch batch, DispatchLogHandler handler) {
       try {
         AsyncIoTConsensusServiceClient client = clientManager.borrowClient(peer.getEndpoint());
@@ -565,9 +625,13 @@ public class LogDispatcher {
         targetIndex = data.getSearchIndex() + 1;
         data.buildSerializedRequests();
         // construct request from wal
-        logBatches.addTLogEntry(
+        TLogEntry logEntry =
             new TLogEntry(
-                data.getSerializedRequests(), data.getSearchIndex(), true, data.getMemorySize()));
+                data.getSerializedRequests(), data.getSearchIndex(), true, data.getMemorySize());
+        logEntry.setRoutingEpoch(data.getRoutingEpoch());
+        logEntry.setPhysicalTime(data.getPhysicalTime());
+        logEntry.setWriterEpoch(writerEpochToShort(data.getWriterEpoch()));
+        logBatches.addTLogEntry(logEntry);
       }
       // In the case of corrupt Data, we return true so that we can send a batch as soon as
       // possible, avoiding potential duplication
@@ -576,12 +640,16 @@ public class LogDispatcher {
 
     private void constructBatchIndexedFromConsensusRequest(
         IndexedConsensusRequest request, Batch logBatches) {
-      logBatches.addTLogEntry(
+      TLogEntry logEntry =
           new TLogEntry(
               request.getSerializedRequests(),
               request.getSearchIndex(),
               false,
-              request.getMemorySize()));
+              request.getMemorySize());
+      logEntry.setRoutingEpoch(request.getRoutingEpoch());
+      logEntry.setPhysicalTime(request.getPhysicalTime());
+      logEntry.setWriterEpoch(writerEpochToShort(request.getWriterEpoch()));
+      logBatches.addTLogEntry(logEntry);
     }
   }
 
@@ -591,5 +659,12 @@ public class LogDispatcher {
 
   public static AtomicLong getSenderMemSizeSum() {
     return senderMemSizeSum;
+  }
+
+  private static short writerEpochToShort(long writerEpoch) {
+    if (writerEpoch < Short.MIN_VALUE || writerEpoch > Short.MAX_VALUE) {
+      throw new IllegalArgumentException("writerEpoch exceeds short range: " + writerEpoch);
+    }
+    return (short) writerEpoch;
   }
 }

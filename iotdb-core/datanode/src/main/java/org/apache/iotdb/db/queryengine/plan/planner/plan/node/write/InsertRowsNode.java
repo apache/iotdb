@@ -136,6 +136,34 @@ public class InsertRowsNode extends InsertNode implements WALEntryValue {
     return this;
   }
 
+  @Override
+  public SearchNode setPhysicalTime(long physicalTime) {
+    this.physicalTime = physicalTime;
+    insertRowNodeList.forEach(plan -> plan.setPhysicalTime(physicalTime));
+    return this;
+  }
+
+  @Override
+  public SearchNode setNodeId(int nodeId) {
+    this.nodeId = nodeId;
+    insertRowNodeList.forEach(plan -> plan.setNodeId(nodeId));
+    return this;
+  }
+
+  @Override
+  public SearchNode setWriterEpoch(long writerEpoch) {
+    this.writerEpoch = writerEpoch;
+    insertRowNodeList.forEach(plan -> plan.setWriterEpoch(writerEpoch));
+    return this;
+  }
+
+  @Override
+  public SearchNode setSyncIndex(long syncIndex) {
+    this.syncIndex = syncIndex;
+    insertRowNodeList.forEach(plan -> plan.setSyncIndex(syncIndex));
+    return this;
+  }
+
   public Map<Integer, TSStatus> getResults() {
     return results;
   }
@@ -287,6 +315,10 @@ public class InsertRowsNode extends InsertNode implements WALEntryValue {
       } else {
         tmpNode = new InsertRowsNode(this.getPlanNodeId());
         tmpNode.setDataRegionReplicaSet(dataRegionReplicaSet);
+        tmpNode.setPhysicalTime(getPhysicalTime());
+        tmpNode.setNodeId(getNodeId());
+        tmpNode.setWriterEpoch(getWriterEpoch());
+        tmpNode.setSyncIndex(getSyncIndex());
         tmpNode.addOneInsertRowNode(insertRowNode, i);
         splitMap.put(dataRegionReplicaSet, tmpNode);
       }

@@ -20,6 +20,7 @@
 package org.apache.iotdb.session.subscription.consumer;
 
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
+import org.apache.iotdb.rpc.subscription.payload.poll.TopicProgress;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
 
 import java.time.Duration;
@@ -178,6 +179,19 @@ public interface ISubscriptionTablePullConsumer extends AutoCloseable {
    */
   void commitAsync(
       final Iterable<SubscriptionMessage> messages, final AsyncCommitCallback callback);
+
+  void seekToBeginning(final String topicName) throws SubscriptionException;
+
+  void seekToEnd(final String topicName) throws SubscriptionException;
+
+  TopicProgress positions(final String topicName) throws SubscriptionException;
+
+  TopicProgress committedPositions(final String topicName) throws SubscriptionException;
+
+  void seek(final String topicName, final TopicProgress topicProgress) throws SubscriptionException;
+
+  void seekAfter(final String topicName, final TopicProgress topicProgress)
+      throws SubscriptionException;
 
   /**
    * Retrieves the unique identifier of this consumer. If no consumer ID was provided at the time of

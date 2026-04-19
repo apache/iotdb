@@ -362,10 +362,11 @@ public class CommonConfig {
 
   private boolean pipeAutoSplitFullEnabled = true;
 
-  private boolean subscriptionEnabled = false;
+  private boolean subscriptionEnabled = true;
 
   private float subscriptionCacheMemoryUsagePercentage = 0.2F;
   private int subscriptionSubtaskExecutorMaxThreadNum = 2;
+  private int subscriptionConsensusPrefetchExecutorMaxThreadNum = 2;
 
   private int subscriptionPrefetchTabletBatchMaxDelayInMs = 20;
   private long subscriptionPrefetchTabletBatchMaxSizeInBytes = MB;
@@ -393,6 +394,29 @@ public class CommonConfig {
 
   private long subscriptionMetaSyncerInitialSyncDelayMinutes = 3;
   private long subscriptionMetaSyncerSyncIntervalMinutes = 3;
+
+  private int subscriptionConsensusBatchMaxDelayInMs = 50;
+  private long subscriptionConsensusBatchMaxSizeInBytes = 8 * MB;
+  private int subscriptionConsensusBatchMaxTabletCount = 64;
+  private int subscriptionConsensusBatchMaxWalEntries = 128;
+
+  private long subscriptionConsensusWalRetentionSizeInBytes = 512 * MB;
+  private long subscriptionConsensusWalRetentionTimeMs = -1L;
+
+  private int subscriptionConsensusCommitPersistInterval = 100;
+  private boolean subscriptionConsensusCommitFsyncEnabled = false;
+
+  private long subscriptionConsensusConsumerEvictionTimeoutMs = 60_000;
+
+  private boolean subscriptionConsensusLagBasedPriority = true;
+
+  private int subscriptionConsensusPrefetchingQueueCapacity = 256;
+
+  private boolean subscriptionConsensusWatermarkEnabled = false;
+
+  private long subscriptionConsensusWatermarkIntervalMs = 1000;
+
+  private long subscriptionConsensusIdleSafeHlcIntervalMs = 1_000;
 
   /** Whether to use persistent schema mode. */
   private String schemaEngineMode = "Memory";
@@ -2281,6 +2305,14 @@ public class CommonConfig {
     this.pipeAutoSplitFullEnabled = pipeAutoSplitFullEnabled;
   }
 
+  public boolean getSubscriptionEnabled() {
+    return subscriptionEnabled;
+  }
+
+  public void setSubscriptionEnabled(boolean subscriptionEnabled) {
+    this.subscriptionEnabled = subscriptionEnabled;
+  }
+
   public float getSubscriptionCacheMemoryUsagePercentage() {
     return subscriptionCacheMemoryUsagePercentage;
   }
@@ -2297,6 +2329,16 @@ public class CommonConfig {
   public void setSubscriptionSubtaskExecutorMaxThreadNum(
       int subscriptionSubtaskExecutorMaxThreadNum) {
     this.subscriptionSubtaskExecutorMaxThreadNum = subscriptionSubtaskExecutorMaxThreadNum;
+  }
+
+  public int getSubscriptionConsensusPrefetchExecutorMaxThreadNum() {
+    return subscriptionConsensusPrefetchExecutorMaxThreadNum;
+  }
+
+  public void setSubscriptionConsensusPrefetchExecutorMaxThreadNum(
+      int subscriptionConsensusPrefetchExecutorMaxThreadNum) {
+    this.subscriptionConsensusPrefetchExecutorMaxThreadNum =
+        subscriptionConsensusPrefetchExecutorMaxThreadNum;
   }
 
   public int getSubscriptionPrefetchTabletBatchMaxDelayInMs() {
@@ -2510,6 +2552,135 @@ public class CommonConfig {
 
   public long getSubscriptionMetaSyncerSyncIntervalMinutes() {
     return subscriptionMetaSyncerSyncIntervalMinutes;
+  }
+
+  public int getSubscriptionConsensusBatchMaxDelayInMs() {
+    return subscriptionConsensusBatchMaxDelayInMs;
+  }
+
+  public void setSubscriptionConsensusBatchMaxDelayInMs(
+      final int subscriptionConsensusBatchMaxDelayInMs) {
+    this.subscriptionConsensusBatchMaxDelayInMs = subscriptionConsensusBatchMaxDelayInMs;
+  }
+
+  public long getSubscriptionConsensusBatchMaxSizeInBytes() {
+    return subscriptionConsensusBatchMaxSizeInBytes;
+  }
+
+  public void setSubscriptionConsensusBatchMaxSizeInBytes(
+      final long subscriptionConsensusBatchMaxSizeInBytes) {
+    this.subscriptionConsensusBatchMaxSizeInBytes = subscriptionConsensusBatchMaxSizeInBytes;
+  }
+
+  public int getSubscriptionConsensusBatchMaxTabletCount() {
+    return subscriptionConsensusBatchMaxTabletCount;
+  }
+
+  public int getSubscriptionConsensusCommitPersistInterval() {
+    return subscriptionConsensusCommitPersistInterval;
+  }
+
+  public void setSubscriptionConsensusCommitPersistInterval(
+      final int subscriptionConsensusCommitPersistInterval) {
+    this.subscriptionConsensusCommitPersistInterval = subscriptionConsensusCommitPersistInterval;
+  }
+
+  public boolean isSubscriptionConsensusCommitFsyncEnabled() {
+    return subscriptionConsensusCommitFsyncEnabled;
+  }
+
+  public void setSubscriptionConsensusCommitFsyncEnabled(
+      final boolean subscriptionConsensusCommitFsyncEnabled) {
+    this.subscriptionConsensusCommitFsyncEnabled = subscriptionConsensusCommitFsyncEnabled;
+  }
+
+  public long getSubscriptionConsensusConsumerEvictionTimeoutMs() {
+    return subscriptionConsensusConsumerEvictionTimeoutMs;
+  }
+
+  public void setSubscriptionConsensusConsumerEvictionTimeoutMs(
+      final long subscriptionConsensusConsumerEvictionTimeoutMs) {
+    this.subscriptionConsensusConsumerEvictionTimeoutMs =
+        subscriptionConsensusConsumerEvictionTimeoutMs;
+  }
+
+  public boolean isSubscriptionConsensusLagBasedPriority() {
+    return subscriptionConsensusLagBasedPriority;
+  }
+
+  public void setSubscriptionConsensusLagBasedPriority(
+      final boolean subscriptionConsensusLagBasedPriority) {
+    this.subscriptionConsensusLagBasedPriority = subscriptionConsensusLagBasedPriority;
+  }
+
+  public int getSubscriptionConsensusPrefetchingQueueCapacity() {
+    return subscriptionConsensusPrefetchingQueueCapacity;
+  }
+
+  public void setSubscriptionConsensusPrefetchingQueueCapacity(
+      final int subscriptionConsensusPrefetchingQueueCapacity) {
+    this.subscriptionConsensusPrefetchingQueueCapacity =
+        subscriptionConsensusPrefetchingQueueCapacity;
+  }
+
+  public boolean isSubscriptionConsensusWatermarkEnabled() {
+    return subscriptionConsensusWatermarkEnabled;
+  }
+
+  public void setSubscriptionConsensusWatermarkEnabled(
+      final boolean subscriptionConsensusWatermarkEnabled) {
+    this.subscriptionConsensusWatermarkEnabled = subscriptionConsensusWatermarkEnabled;
+  }
+
+  public long getSubscriptionConsensusWatermarkIntervalMs() {
+    return subscriptionConsensusWatermarkIntervalMs;
+  }
+
+  public void setSubscriptionConsensusWatermarkIntervalMs(
+      final long subscriptionConsensusWatermarkIntervalMs) {
+    this.subscriptionConsensusWatermarkIntervalMs = subscriptionConsensusWatermarkIntervalMs;
+  }
+
+  public long getSubscriptionConsensusIdleSafeHlcIntervalMs() {
+    return subscriptionConsensusIdleSafeHlcIntervalMs;
+  }
+
+  public void setSubscriptionConsensusIdleSafeHlcIntervalMs(
+      final long subscriptionConsensusIdleSafeHlcIntervalMs) {
+    this.subscriptionConsensusIdleSafeHlcIntervalMs = subscriptionConsensusIdleSafeHlcIntervalMs;
+  }
+
+  public void setSubscriptionConsensusBatchMaxTabletCount(
+      final int subscriptionConsensusBatchMaxTabletCount) {
+    this.subscriptionConsensusBatchMaxTabletCount = subscriptionConsensusBatchMaxTabletCount;
+  }
+
+  public int getSubscriptionConsensusBatchMaxWalEntries() {
+    return subscriptionConsensusBatchMaxWalEntries;
+  }
+
+  public void setSubscriptionConsensusBatchMaxWalEntries(
+      final int subscriptionConsensusBatchMaxWalEntries) {
+    this.subscriptionConsensusBatchMaxWalEntries = subscriptionConsensusBatchMaxWalEntries;
+  }
+
+  public long getSubscriptionConsensusWalRetentionSizeInBytes() {
+    return subscriptionConsensusWalRetentionSizeInBytes;
+  }
+
+  public void setSubscriptionConsensusWalRetentionSizeInBytes(
+      final long subscriptionConsensusWalRetentionSizeInBytes) {
+    this.subscriptionConsensusWalRetentionSizeInBytes =
+        subscriptionConsensusWalRetentionSizeInBytes;
+  }
+
+  public long getSubscriptionConsensusWalRetentionTimeMs() {
+    return subscriptionConsensusWalRetentionTimeMs;
+  }
+
+  public void setSubscriptionConsensusWalRetentionTimeMs(
+      final long subscriptionConsensusWalRetentionTimeMs) {
+    this.subscriptionConsensusWalRetentionTimeMs = subscriptionConsensusWalRetentionTimeMs;
   }
 
   public void setSubscriptionMetaSyncerSyncIntervalMinutes(

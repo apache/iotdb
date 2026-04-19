@@ -234,6 +234,61 @@ public class PipeEnrichedInsertNode extends InsertNode {
   }
 
   @Override
+  public long getRoutingEpoch() {
+    return insertNode.getRoutingEpoch();
+  }
+
+  @Override
+  public SearchNode setRoutingEpoch(final long routingEpoch) {
+    insertNode.setRoutingEpoch(routingEpoch);
+    return this;
+  }
+
+  @Override
+  public long getPhysicalTime() {
+    return insertNode.getPhysicalTime();
+  }
+
+  @Override
+  public SearchNode setPhysicalTime(final long physicalTime) {
+    insertNode.setPhysicalTime(physicalTime);
+    return this;
+  }
+
+  @Override
+  public int getNodeId() {
+    return insertNode.getNodeId();
+  }
+
+  @Override
+  public SearchNode setNodeId(final int nodeId) {
+    insertNode.setNodeId(nodeId);
+    return this;
+  }
+
+  @Override
+  public long getWriterEpoch() {
+    return insertNode.getWriterEpoch();
+  }
+
+  @Override
+  public SearchNode setWriterEpoch(final long writerEpoch) {
+    insertNode.setWriterEpoch(writerEpoch);
+    return this;
+  }
+
+  @Override
+  public long getSyncIndex() {
+    return insertNode.getSyncIndex();
+  }
+
+  @Override
+  public SearchNode setSyncIndex(final long syncIndex) {
+    insertNode.setSyncIndex(syncIndex);
+    return this;
+  }
+
+  @Override
   protected void serializeAttributes(final ByteBuffer byteBuffer) {
     PlanNodeType.PIPE_ENRICHED_INSERT_DATA.serialize(byteBuffer);
     insertNode.serialize(byteBuffer);

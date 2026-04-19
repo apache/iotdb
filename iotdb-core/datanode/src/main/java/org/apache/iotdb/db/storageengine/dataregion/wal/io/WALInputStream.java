@@ -82,7 +82,7 @@ public class WALInputStream extends InputStream implements AutoCloseable {
       }
       ByteBuffer metadataSizeBuf = ByteBuffer.allocate(Integer.BYTES);
       long position;
-      if (version == WALFileVersion.V2) {
+      if (version == WALFileVersion.V2 || version == WALFileVersion.V3) {
         // New Version
         ByteBuffer magicStringBuffer = ByteBuffer.allocate(version.getVersionBytes().length);
         channel.read(magicStringBuffer, channel.size() - version.getVersionBytes().length);
@@ -122,7 +122,7 @@ public class WALInputStream extends InputStream implements AutoCloseable {
       int metadataSize = metadataSizeBuf.getInt();
       endOffset = channel.size() - version.getVersionBytes().length - Integer.BYTES - metadataSize;
     } finally {
-      if (version == WALFileVersion.V2) {
+      if (version == WALFileVersion.V2 || version == WALFileVersion.V3) {
         // Set the position back to the end of head magic string
         channel.position(version.getVersionBytes().length);
       } else {
@@ -191,7 +191,7 @@ public class WALInputStream extends InputStream implements AutoCloseable {
     }
     long startTime = System.nanoTime();
     long startPosition = channel.position();
-    if (version == WALFileVersion.V2) {
+    if (version == WALFileVersion.V2 || version == WALFileVersion.V3) {
       loadNextSegmentV2();
     } else if (version == WALFileVersion.V1) {
       loadNextSegmentV1();
@@ -295,7 +295,7 @@ public class WALInputStream extends InputStream implements AutoCloseable {
    * @throws IOException If the file is broken or the given position is invalid
    */
   public void skipToGivenLogicalPosition(long pos) throws IOException {
-    if (version == WALFileVersion.V2) {
+    if (version == WALFileVersion.V2 || version == WALFileVersion.V3) {
       channel.position(version.getVersionBytes().length);
       long posRemain = pos;
       SegmentInfo segmentInfo;

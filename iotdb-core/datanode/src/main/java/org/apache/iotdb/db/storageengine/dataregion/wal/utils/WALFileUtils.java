@@ -19,8 +19,18 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.wal.utils;
 
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryType;
+import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALInfoEntry;
+import org.apache.iotdb.db.storageengine.dataregion.wal.io.ProgressWALReader;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -35,6 +45,11 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.WAL_STATUS_CODE;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.WAL_VERSION_ID;
 
 public class WALFileUtils {
+
+  private static final Logger logger = LoggerFactory.getLogger(WALFileUtils.class);
+  private static final int SEARCH_INDEX_OFFSET =
+      WALInfoEntry.FIXED_SERIALIZED_SIZE + PlanNodeType.BYTES;
+
   /**
    * versionId is a self-incremented id number, helping to maintain the order of wal files.
    * startSearchIndex is the valid search index of last flushed wal entry. statusCode is the. For
@@ -181,5 +196,268 @@ public class WALFileUtils {
   public static String getTsFileRelativePath(String absolutePath) {
     Path path = new File(absolutePath).toPath();
     return path.subpath(path.getNameCount() - 5, path.getNameCount()).toString();
+  }
+
+  /**
+   * Locate the first local searchIndex whose writer progress is equal to or strictly greater than
+   * the given writer-local frontier. This is currently used by single-writer recovery paths, so it
+   * matches only entries from the supplied (nodeId, writerEpoch) pair.
+   *
+   * @return [targetSearchIndex, exactMatchFlag], or null if no matching/later entry exists
+   */
+  public static long[] locateByWriterProgress(
+      final File logDir,
+      final int nodeId,
+      final long writerEpoch,
+      final long physicalTime,
+      final long localSeq) {
+    final long[] exactSearchIndex = new long[] {-1L};
+    final long[] firstAfterSearchIndex = new long[] {-1L};
+    final long[] firstAfterPhysicalTime = new long[] {Long.MAX_VALUE};
+    final long[] firstAfterLocalSeq = new long[] {Long.MAX_VALUE};
+
+    forEachSealedSearchableRequest(
+        logDir,
+        request -> {
+          if (request.nodeId != nodeId || request.writerEpoch != writerEpoch) {
+            return true;
+          }
+          final int cmp =
+              compareWriterProgress(
+                  request.physicalTime,
+                  request.nodeId,
+                  request.localSeq,
+                  physicalTime,
+                  nodeId,
+                  localSeq);
+          if (cmp == 0) {
+            exactSearchIndex[0] = request.searchIndex;
+            return false;
+          }
+          if (cmp > 0
+              && (firstAfterSearchIndex[0] < 0L
+                  || compareWriterProgress(
+                          request.physicalTime,
+                          request.nodeId,
+                          request.localSeq,
+                          firstAfterPhysicalTime[0],
+                          nodeId,
+                          firstAfterLocalSeq[0])
+                      < 0)) {
+            firstAfterSearchIndex[0] = request.searchIndex;
+            firstAfterPhysicalTime[0] = request.physicalTime;
+            firstAfterLocalSeq[0] = request.localSeq;
+          }
+          return true;
+        });
+
+    if (exactSearchIndex[0] >= 0L) {
+      return new long[] {exactSearchIndex[0], 1L};
+    }
+    if (firstAfterSearchIndex[0] >= 0L) {
+      return new long[] {firstAfterSearchIndex[0], 0L};
+    }
+    return null;
+  }
+
+  public static long findSearchIndexByWriterProgress(
+      final File logDir,
+      final int nodeId,
+      final long writerEpoch,
+      final long physicalTime,
+      final long localSeq) {
+    final long[] located =
+        locateByWriterProgress(logDir, nodeId, writerEpoch, physicalTime, localSeq);
+    return located != null && located[1] == 1L ? located[0] : -1L;
+  }
+
+  public static long findSearchIndexAfterWriterProgress(
+      final File logDir,
+      final int nodeId,
+      final long writerEpoch,
+      final long physicalTime,
+      final long localSeq) {
+    final long[] bestSearchIndex = new long[] {-1L};
+    final long[] bestPhysicalTime = new long[] {Long.MAX_VALUE};
+    final long[] bestLocalSeq = new long[] {Long.MAX_VALUE};
+    forEachSealedSearchableRequest(
+        logDir,
+        request -> {
+          if (request.nodeId != nodeId || request.writerEpoch != writerEpoch) {
+            return true;
+          }
+          if (compareWriterProgress(
+                  request.physicalTime,
+                  request.nodeId,
+                  request.localSeq,
+                  physicalTime,
+                  nodeId,
+                  localSeq)
+              <= 0) {
+            return true;
+          }
+          if (bestSearchIndex[0] < 0L
+              || compareWriterProgress(
+                      request.physicalTime,
+                      request.nodeId,
+                      request.localSeq,
+                      bestPhysicalTime[0],
+                      nodeId,
+                      bestLocalSeq[0])
+                  < 0) {
+            bestSearchIndex[0] = request.searchIndex;
+            bestPhysicalTime[0] = request.physicalTime;
+            bestLocalSeq[0] = request.localSeq;
+          }
+          return true;
+        });
+    return bestSearchIndex[0];
+  }
+
+  private interface SearchableRequestVisitor {
+    boolean onRequest(SearchableRequestMeta request);
+  }
+
+  private static final class SearchableRequestMeta {
+    private final long searchIndex;
+    private final long physicalTime;
+    private final int nodeId;
+    private final long writerEpoch;
+    private final long localSeq;
+
+    private SearchableRequestMeta(
+        final long searchIndex,
+        final long physicalTime,
+        final int nodeId,
+        final long writerEpoch,
+        final long localSeq) {
+      this.searchIndex = searchIndex;
+      this.physicalTime = physicalTime;
+      this.nodeId = nodeId;
+      this.writerEpoch = writerEpoch;
+      this.localSeq = localSeq;
+    }
+  }
+
+  private static void forEachSealedSearchableRequest(
+      final File logDir, final SearchableRequestVisitor visitor) {
+    final File[] walFiles = listSealedWALFiles(logDir);
+    if (walFiles == null || walFiles.length == 0) {
+      return;
+    }
+
+    for (final File walFile : walFiles) {
+      try (final ProgressWALReader reader = new ProgressWALReader(walFile)) {
+        long pendingSearchIndex = Long.MIN_VALUE;
+        long pendingPhysicalTime = 0L;
+        int pendingNodeId = -1;
+        long pendingWriterEpoch = 0L;
+        long pendingLocalSeq = Long.MIN_VALUE;
+        boolean hasPending = false;
+
+        while (reader.hasNext()) {
+          final ByteBuffer buffer = reader.next();
+          final WALEntryType type = WALEntryType.valueOf(buffer.get());
+          buffer.clear();
+          if (!type.needSearch()) {
+            continue;
+          }
+
+          final long currentLocalSeq = reader.getCurrentEntryLocalSeq();
+          final long currentPhysicalTime = reader.getCurrentEntryPhysicalTime();
+          final int currentNodeId = reader.getCurrentEntryNodeId();
+          final long currentWriterEpoch = reader.getCurrentEntryWriterEpoch();
+
+          buffer.position(SEARCH_INDEX_OFFSET);
+          final long bodySearchIndex = buffer.getLong();
+          buffer.clear();
+          final long currentSearchIndex = bodySearchIndex >= 0 ? bodySearchIndex : currentLocalSeq;
+
+          if (hasPending
+              && pendingLocalSeq == currentLocalSeq
+              && pendingNodeId == currentNodeId
+              && pendingWriterEpoch == currentWriterEpoch) {
+            if (pendingSearchIndex < 0 && currentSearchIndex >= 0) {
+              pendingSearchIndex = currentSearchIndex;
+            }
+            continue;
+          }
+
+          if (hasPending
+              && !visitor.onRequest(
+                  new SearchableRequestMeta(
+                      pendingSearchIndex >= 0 ? pendingSearchIndex : pendingLocalSeq,
+                      pendingPhysicalTime,
+                      pendingNodeId,
+                      pendingWriterEpoch,
+                      pendingLocalSeq))) {
+            return;
+          }
+
+          hasPending = true;
+          pendingSearchIndex = currentSearchIndex;
+          pendingPhysicalTime = currentPhysicalTime;
+          pendingNodeId = currentNodeId;
+          pendingWriterEpoch = currentWriterEpoch;
+          pendingLocalSeq = currentLocalSeq;
+        }
+
+        if (hasPending
+            && !visitor.onRequest(
+                new SearchableRequestMeta(
+                    pendingSearchIndex >= 0 ? pendingSearchIndex : pendingLocalSeq,
+                    pendingPhysicalTime,
+                    pendingNodeId,
+                    pendingWriterEpoch,
+                    pendingLocalSeq))) {
+          return;
+        }
+      } catch (final IOException e) {
+        logger.warn("Failed to scan WAL file {} for searchable request metadata", walFile, e);
+      }
+    }
+  }
+
+  private static int compareCompatibleProgress(
+      final long leftPhysicalTime,
+      final int leftNodeId,
+      final long leftLocalSeq,
+      final long rightPhysicalTime,
+      final long rightLocalSeq) {
+    if (leftPhysicalTime != rightPhysicalTime) {
+      return Long.compare(leftPhysicalTime, rightPhysicalTime);
+    }
+    if (leftLocalSeq != rightLocalSeq) {
+      return Long.compare(leftLocalSeq, rightLocalSeq);
+    }
+    return 0;
+  }
+
+  private static int compareWriterProgress(
+      final long leftPhysicalTime,
+      final int leftNodeId,
+      final long leftLocalSeq,
+      final long rightPhysicalTime,
+      final int rightNodeId,
+      final long rightLocalSeq) {
+    if (leftPhysicalTime != rightPhysicalTime) {
+      return Long.compare(leftPhysicalTime, rightPhysicalTime);
+    }
+    if (leftNodeId != rightNodeId) {
+      return Integer.compare(leftNodeId, rightNodeId);
+    }
+    return Long.compare(leftLocalSeq, rightLocalSeq);
+  }
+
+  private static File[] listSealedWALFiles(final File logDir) {
+    final File[] walFiles = listAllWALFiles(logDir);
+    if (walFiles == null || walFiles.length == 0) {
+      return walFiles;
+    }
+    ascSortByVersionId(walFiles);
+    if (walFiles.length == 1) {
+      return new File[0];
+    }
+    return Arrays.copyOf(walFiles, walFiles.length - 1);
   }
 }
