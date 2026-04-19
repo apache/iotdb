@@ -48,6 +48,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeUtil;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.PlanCacheManager;
 import org.apache.iotdb.db.queryengine.plan.scheduler.IScheduler;
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
@@ -696,10 +697,30 @@ public class QueryExecution implements IQueryExecution {
 
   @Override
   public synchronized void recordExecutionTime(long executionTime) {
+    boolean isFirstRpc = (totalExecutionTime == 0);
     totalExecutionTime += executionTime;
     // recordExecutionTime is called after current rpc finished, so we need to set
     // startTimeOfCurrentRpc to -1
     this.startTimeOfCurrentRpc = -1;
+
+    // On the first RPC completion, use the real server-side RPC time as firstResponseLatency
+    // and feed it to PlanCacheManager for accurate benefit ratio calculation.
+    if (isFirstRpc) {
+      String cachedKey = context.getPlanCacheCachedKey();
+      if (cachedKey != null && !cachedKey.isEmpty()) {
+        long reusablePlanningCost = context.getReusablePlanningCost();
+        boolean lookupAttempted = context.isPlanCacheLookupAttempted();
+
+        // executionTime is the total server-side time for the first executeQueryStatement RPC,
+        // which is the real firstResponseLatency (from coordinator entry to first response).
+        context.setFirstResponseLatency(executionTime);
+
+        PlanCacheManager.PlanCacheState newState =
+            PlanCacheManager.getInstance()
+                .recordExecution(cachedKey, reusablePlanningCost, executionTime, lookupAttempted);
+        context.setPlanCacheState(newState.name());
+      }
+    }
   }
 
   @Override

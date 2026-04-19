@@ -615,6 +615,32 @@ public class IoTDBConfig {
   /** the max time to live of a session in ms. Unit: millisecond */
   private int sessionTimeoutThreshold = 0;
 
+  // ================== Smart Plan Cache Configuration ==================
+
+  /** Maximum number of cached plan entries. */
+  private int smartPlanCacheCapacity = 1000;
+
+  /** Maximum memory in bytes for plan cache. */
+  private long smartPlanCacheMaxMemoryBytes = 64L * 1024 * 1024;
+
+  /** Minimum sample count before state transition from MONITOR. */
+  private int smartPlanCacheMinSamples = 5;
+
+  /** Minimum reusable planning cost (in nanoseconds) to be considered for caching. */
+  private long smartPlanCacheMinReusablePlanningCostNanos = 1_000_000L;
+
+  /** Benefit ratio threshold for MONITOR → ACTIVE transition. */
+  private double smartPlanCacheAdmitRatio = 0.30d;
+
+  /** Benefit ratio threshold for MONITOR → BYPASS transition. */
+  private double smartPlanCacheBypassRatio = 0.20d;
+
+  /** Cooldown time in minutes for BYPASS state before returning to MONITOR. */
+  private long smartPlanCacheBypassCooldownMinutes = 10L;
+
+  /** Default plan cache mode: OFF, MONITOR, AUTO, FORCE. */
+  private String smartPlanCacheMode = "AUTO";
+
   /** Replace implementation class of JDBC service */
   private String rpcImplClassName = ClientRPCServiceImpl.class.getName();
 
@@ -1912,6 +1938,73 @@ public class IoTDBConfig {
 
   public void setQueryTimeoutThreshold(long queryTimeoutThreshold) {
     this.queryTimeoutThreshold = queryTimeoutThreshold;
+  }
+
+  // ================== Smart Plan Cache Getters/Setters ==================
+
+  public int getSmartPlanCacheCapacity() {
+    return smartPlanCacheCapacity;
+  }
+
+  public void setSmartPlanCacheCapacity(int smartPlanCacheCapacity) {
+    this.smartPlanCacheCapacity = smartPlanCacheCapacity;
+  }
+
+  public long getSmartPlanCacheMaxMemoryBytes() {
+    return smartPlanCacheMaxMemoryBytes;
+  }
+
+  public void setSmartPlanCacheMaxMemoryBytes(long smartPlanCacheMaxMemoryBytes) {
+    this.smartPlanCacheMaxMemoryBytes = smartPlanCacheMaxMemoryBytes;
+  }
+
+  public int getSmartPlanCacheMinSamples() {
+    return smartPlanCacheMinSamples;
+  }
+
+  public void setSmartPlanCacheMinSamples(int smartPlanCacheMinSamples) {
+    this.smartPlanCacheMinSamples = smartPlanCacheMinSamples;
+  }
+
+  public long getSmartPlanCacheMinReusablePlanningCostNanos() {
+    return smartPlanCacheMinReusablePlanningCostNanos;
+  }
+
+  public void setSmartPlanCacheMinReusablePlanningCostNanos(
+      long smartPlanCacheMinReusablePlanningCostNanos) {
+    this.smartPlanCacheMinReusablePlanningCostNanos = smartPlanCacheMinReusablePlanningCostNanos;
+  }
+
+  public double getSmartPlanCacheAdmitRatio() {
+    return smartPlanCacheAdmitRatio;
+  }
+
+  public void setSmartPlanCacheAdmitRatio(double smartPlanCacheAdmitRatio) {
+    this.smartPlanCacheAdmitRatio = smartPlanCacheAdmitRatio;
+  }
+
+  public double getSmartPlanCacheBypassRatio() {
+    return smartPlanCacheBypassRatio;
+  }
+
+  public void setSmartPlanCacheBypassRatio(double smartPlanCacheBypassRatio) {
+    this.smartPlanCacheBypassRatio = smartPlanCacheBypassRatio;
+  }
+
+  public long getSmartPlanCacheBypassCooldownMinutes() {
+    return smartPlanCacheBypassCooldownMinutes;
+  }
+
+  public void setSmartPlanCacheBypassCooldownMinutes(long smartPlanCacheBypassCooldownMinutes) {
+    this.smartPlanCacheBypassCooldownMinutes = smartPlanCacheBypassCooldownMinutes;
+  }
+
+  public String getSmartPlanCacheMode() {
+    return smartPlanCacheMode;
+  }
+
+  public void setSmartPlanCacheMode(String smartPlanCacheMode) {
+    this.smartPlanCacheMode = smartPlanCacheMode;
   }
 
   public int getSessionTimeoutThreshold() {

@@ -102,7 +102,7 @@ public class ExplainAnalyzeOperator implements ProcessOperator {
     QueryExecution queryExecution = (QueryExecution) coordinator.getQueryExecution(queryId);
     this.instances = queryExecution.getDistributedPlan().getInstances();
     mppQueryContext = queryExecution.getContext();
-    fragmentInstanceStatisticsDrawer.renderPlanStatistics(mppQueryContext);
+    fragmentInstanceStatisticsDrawer.renderPlanStatistics(mppQueryContext, verbose);
 
     // The time interval guarantees the result of EXPLAIN ANALYZE will be printed at least three
     // times.

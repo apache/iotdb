@@ -34,6 +34,9 @@ import org.apache.iotdb.db.queryengine.plan.analyze.lock.SchemaLockType;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.NotThreadSafeMemoryReservationManager;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
@@ -45,6 +48,7 @@ import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.Pair;
 
 import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -445,6 +449,172 @@ public class MPPQueryContext implements IAuditEntity {
     queryPlanStatistics.setLogicalOptimizationCost(logicalOptimizeCost);
   }
 
+  public void setPlanCacheStatus(String planCacheStatus) {
+    if (queryPlanStatistics == null) {
+      queryPlanStatistics = new QueryPlanStatistics();
+    }
+    queryPlanStatistics.setPlanCacheStatus(planCacheStatus);
+  }
+
+  public void setPlanCacheStatus(String planCacheStatus, String planCacheReason) {
+    if (queryPlanStatistics == null) {
+      queryPlanStatistics = new QueryPlanStatistics();
+    }
+    queryPlanStatistics.setPlanCacheStatus(planCacheStatus, planCacheReason);
+  }
+
+  public String getPlanCacheStatus() {
+    if (queryPlanStatistics == null) {
+      return "DISABLED";
+    }
+    return queryPlanStatistics.getPlanCacheStatus();
+  }
+
+  public void setPlanCacheState(String planCacheState) {
+    if (queryPlanStatistics == null) {
+      queryPlanStatistics = new QueryPlanStatistics();
+    }
+    queryPlanStatistics.setPlanCacheState(planCacheState);
+  }
+
+  public String getPlanCacheState() {
+    if (queryPlanStatistics == null) {
+      return "N/A";
+    }
+    return queryPlanStatistics.getPlanCacheState();
+  }
+
+  public String getPlanCacheReason() {
+    if (queryPlanStatistics == null) {
+      return "";
+    }
+    return queryPlanStatistics.getPlanCacheReason();
+  }
+
+  public void setPlanCacheLookupCost(long planCacheLookupCost) {
+    if (queryPlanStatistics == null) {
+      queryPlanStatistics = new QueryPlanStatistics();
+    }
+    queryPlanStatistics.setPlanCacheLookupCost(planCacheLookupCost);
+  }
+
+  public long getPlanCacheLookupCost() {
+    if (queryPlanStatistics == null) {
+      return 0;
+    }
+    return queryPlanStatistics.getPlanCacheLookupCost();
+  }
+
+  public void setSavedLogicalPlanningCost(long savedLogicalPlanningCost) {
+    if (queryPlanStatistics == null) {
+      queryPlanStatistics = new QueryPlanStatistics();
+    }
+    queryPlanStatistics.setSavedLogicalPlanningCost(savedLogicalPlanningCost);
+  }
+
+  public long getSavedLogicalPlanningCost() {
+    if (queryPlanStatistics == null) {
+      return 0;
+    }
+    return queryPlanStatistics.getSavedLogicalPlanningCost();
+  }
+
+  public void setReusablePlanningCost(long reusablePlanningCost) {
+    if (queryPlanStatistics == null) {
+      queryPlanStatistics = new QueryPlanStatistics();
+    }
+    queryPlanStatistics.setReusablePlanningCost(reusablePlanningCost);
+  }
+
+  public long getReusablePlanningCost() {
+    if (queryPlanStatistics == null) {
+      return 0;
+    }
+    return queryPlanStatistics.getReusablePlanningCost();
+  }
+
+  public void setFirstResponseLatency(long firstResponseLatency) {
+    if (queryPlanStatistics == null) {
+      queryPlanStatistics = new QueryPlanStatistics();
+    }
+    queryPlanStatistics.setFirstResponseLatency(firstResponseLatency);
+  }
+
+  public long getFirstResponseLatency() {
+    if (queryPlanStatistics == null) {
+      return 0;
+    }
+    return queryPlanStatistics.getFirstResponseLatency();
+  }
+
+  public void setPlanCacheDiagnostics(
+      double ewmaReusablePlanningCost,
+      double ewmaFirstResponseLatency,
+      double ewmaBenefitRatio,
+      long sampleCount,
+      long hitCount,
+      long missCount,
+      long bypassCount,
+      long minReusablePlanningCostThreshold,
+      double admitRatioThreshold,
+      double bypassRatioThreshold) {
+    if (queryPlanStatistics == null) {
+      queryPlanStatistics = new QueryPlanStatistics();
+    }
+    queryPlanStatistics.setEwmaReusablePlanningCost(ewmaReusablePlanningCost);
+    queryPlanStatistics.setEwmaFirstResponseLatency(ewmaFirstResponseLatency);
+    queryPlanStatistics.setEwmaBenefitRatio(ewmaBenefitRatio);
+    queryPlanStatistics.setProfileSampleCount(sampleCount);
+    queryPlanStatistics.setProfileHitCount(hitCount);
+    queryPlanStatistics.setProfileMissCount(missCount);
+    queryPlanStatistics.setProfileBypassCount(bypassCount);
+    queryPlanStatistics.setMinReusablePlanningCostThreshold(minReusablePlanningCostThreshold);
+    queryPlanStatistics.setAdmitRatioThreshold(admitRatioThreshold);
+    queryPlanStatistics.setBypassRatioThreshold(bypassRatioThreshold);
+  }
+
+  public double getEwmaReusablePlanningCost() {
+    return queryPlanStatistics == null ? 0 : queryPlanStatistics.getEwmaReusablePlanningCost();
+  }
+
+  public double getEwmaFirstResponseLatency() {
+    return queryPlanStatistics == null ? 0 : queryPlanStatistics.getEwmaFirstResponseLatency();
+  }
+
+  public double getEwmaBenefitRatio() {
+    return queryPlanStatistics == null ? 0 : queryPlanStatistics.getEwmaBenefitRatio();
+  }
+
+  public long getProfileSampleCount() {
+    return queryPlanStatistics == null ? 0 : queryPlanStatistics.getProfileSampleCount();
+  }
+
+  public long getProfileHitCount() {
+    return queryPlanStatistics == null ? 0 : queryPlanStatistics.getProfileHitCount();
+  }
+
+  public long getProfileMissCount() {
+    return queryPlanStatistics == null ? 0 : queryPlanStatistics.getProfileMissCount();
+  }
+
+  public long getProfileBypassCount() {
+    return queryPlanStatistics == null ? 0 : queryPlanStatistics.getProfileBypassCount();
+  }
+
+  public long getMinReusablePlanningCostThreshold() {
+    return queryPlanStatistics == null
+        ? 0
+        : queryPlanStatistics.getMinReusablePlanningCostThreshold();
+  }
+
+  public double getAdmitRatioThreshold() {
+    return queryPlanStatistics == null ? 0 : queryPlanStatistics.getAdmitRatioThreshold();
+  }
+
+  public double getBypassRatioThreshold() {
+    return queryPlanStatistics == null ? 0 : queryPlanStatistics.getBypassRatioThreshold();
+  }
+
   // region =========== FE memory related, make sure its not called concurrently ===========
 
   /**
@@ -675,4 +845,58 @@ public class MPPQueryContext implements IAuditEntity {
   }
 
   // ================= Authentication Interfaces =========================
+
+  // ================== Plan cache related ==================
+
+  /** The cache key (fingerprint) for this query, set during planning. Empty if not cacheable. */
+  private String planCacheCachedKey = "";
+
+  /** Whether a cache lookup was attempted for this query during planning. */
+  private boolean planCacheLookupAttempted = false;
+
+  // the outer list corresponds one-to-one with scanNodes
+  private final List<List<Expression>> metadataExpressionLists = new ArrayList<>();
+  private final List<List<String>> attributeColumnsLists = new ArrayList<>();
+  private final List<Map<Symbol, ColumnSchema>> assignmentsLists = new ArrayList<>();
+
+  public List<List<Expression>> getMetadataExpressionLists() {
+    return metadataExpressionLists;
+  }
+
+  public List<List<String>> getAttributeColumnsLists() {
+    return attributeColumnsLists;
+  }
+
+  public List<Map<Symbol, ColumnSchema>> getAssignmentsLists() {
+    return assignmentsLists;
+  }
+
+  public void addMetadataExpressionList(List<Expression> expressions) {
+    metadataExpressionLists.add(
+        expressions != null ? new ArrayList<>(expressions) : Collections.emptyList());
+  }
+
+  public void addAttributeColumnsList(List<String> columns) {
+    attributeColumnsLists.add(columns != null ? new ArrayList<>(columns) : Collections.emptyList());
+  }
+
+  public void addAssignmentsList(Map<Symbol, ColumnSchema> assignments) {
+    assignmentsLists.add(assignments != null ? assignments : Collections.emptyMap());
+  }
+
+  public String getPlanCacheCachedKey() {
+    return planCacheCachedKey;
+  }
+
+  public void setPlanCacheCachedKey(String planCacheCachedKey) {
+    this.planCacheCachedKey = planCacheCachedKey;
+  }
+
+  public boolean isPlanCacheLookupAttempted() {
+    return planCacheLookupAttempted;
+  }
+
+  public void setPlanCacheLookupAttempted(boolean planCacheLookupAttempted) {
+    this.planCacheLookupAttempted = planCacheLookupAttempted;
+  }
 }
