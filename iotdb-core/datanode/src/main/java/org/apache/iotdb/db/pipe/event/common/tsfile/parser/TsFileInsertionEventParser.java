@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
+import org.apache.iotdb.db.pipe.event.common.tsfile.parser.table.TsFileInsertionEventTableParser;
 import org.apache.iotdb.db.pipe.metric.overview.PipeTsFileToTabletsMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
@@ -41,6 +42,7 @@ import org.apache.tsfile.write.record.Tablet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
 
 public abstract class TsFileInsertionEventParser implements AutoCloseable {
@@ -76,6 +78,7 @@ public abstract class TsFileInsertionEventParser implements AutoCloseable {
   protected Iterable<TabletInsertionEvent> tabletInsertionIterable;
 
   protected TsFileInsertionEventParser(
+      final File tsFile,
       final String pipeName,
       final long creationTime,
       final TreePattern treePattern,
@@ -85,7 +88,8 @@ public abstract class TsFileInsertionEventParser implements AutoCloseable {
       final PipeTaskMeta pipeTaskMeta,
       final IAuditEntity entity,
       final boolean skipIfNoPrivileges,
-      final PipeInsertionEvent sourceEvent) {
+      final PipeInsertionEvent sourceEvent,
+      final boolean isWithMod) {
     this.pipeName = pipeName;
     this.creationTime = creationTime;
     this.entity = entity;
@@ -107,6 +111,17 @@ public abstract class TsFileInsertionEventParser implements AutoCloseable {
         PipeDataNodeResourceManager.memory()
             .forceAllocateForTabletWithRetry(
                 IoTDBDescriptor.getInstance().getConfig().getPipeDataStructureTabletSizeInBytes());
+
+    LOGGER.info(
+        "TsFile {} has initialized {}, pipeName: {}, creation time: {}, pattern: {}, startTime: {}, endTime: {}, withMod: {}",
+        tsFile,
+        getClass().getSimpleName(),
+        pipeName,
+        creationTime,
+        this instanceof TsFileInsertionEventTableParser ? tablePattern : treePattern,
+        startTime,
+        endTime,
+        isWithMod);
   }
 
   /**

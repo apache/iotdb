@@ -118,6 +118,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
       final boolean isWithMod)
       throws IOException, IllegalPathException {
     super(
+        tsFile,
         pipeName,
         creationTime,
         pattern,
@@ -127,7 +128,8 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
         pipeTaskMeta,
         entity,
         skipIfNoPrivileges,
-        sourceEvent);
+        sourceEvent,
+        isWithMod);
 
     this.startTime = startTime;
     this.endTime = endTime;
