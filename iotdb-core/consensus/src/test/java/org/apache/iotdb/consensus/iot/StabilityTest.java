@@ -186,6 +186,19 @@ public class StabilityTest {
     consensusImpl.deleteLocalPeer(dataRegionId);
   }
 
+  @Test
+  public void createLocalPeerShouldAllowExistingConsensusDir() throws Exception {
+    File existingPeerDir = new File(IoTConsensus.buildPeerDir(storageDir, dataRegionId));
+    Assert.assertTrue(existingPeerDir.mkdirs());
+
+    consensusImpl.createLocalPeer(
+        dataRegionId,
+        Collections.singletonList(new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", basePort))));
+
+    Assert.assertEquals(1, consensusImpl.getReplicationNum(dataRegionId));
+    consensusImpl.deleteLocalPeer(dataRegionId);
+  }
+
   public void transferLeader() {
     try {
       consensusImpl.transferLeader(
