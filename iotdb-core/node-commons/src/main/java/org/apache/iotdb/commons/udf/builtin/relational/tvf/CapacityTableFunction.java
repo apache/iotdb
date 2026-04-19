@@ -42,9 +42,12 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
+import static org.apache.iotdb.udf.api.relational.table.argument.ScalarArgumentChecker.POSITIVE_LONG_CHECKER;
+
 public class CapacityTableFunction implements TableFunction {
   private static final String DATA_PARAMETER_NAME = "DATA";
   private static final String SIZE_PARAMETER_NAME = "SIZE";
+  private static final String SLIDE_PARAMETER_NAME = "SLIDE";
 
   @Override
   public List<ParameterSpecification> getArgumentsSpecifications() {
@@ -53,7 +56,17 @@ public class CapacityTableFunction implements TableFunction {
             .name(DATA_PARAMETER_NAME)
             .passThroughColumns()
             .build(),
-        ScalarParameterSpecification.builder().name(SIZE_PARAMETER_NAME).type(Type.INT64).build());
+        ScalarParameterSpecification.builder()
+            .name(SIZE_PARAMETER_NAME)
+            .addChecker(POSITIVE_LONG_CHECKER)
+            .type(Type.INT64)
+            .build(),
+        ScalarParameterSpecification.builder()
+            .name(SLIDE_PARAMETER_NAME)
+            .addChecker(POSITIVE_LONG_CHECKER)
+            .type(Type.INT64)
+            .defaultValue(-1L)
+            .build());
   }
 
   @Override
@@ -62,8 +75,16 @@ public class CapacityTableFunction implements TableFunction {
     if (size <= 0) {
       throw new UDFException("Size must be greater than 0");
     }
+    long slide = (long) ((ScalarArgument) arguments.get(SLIDE_PARAMETER_NAME)).getValue();
+    // default SLIDE to SIZE when not specified (sentinel value -1)
+    if (slide == -1L) {
+      slide = size;
+    }
     MapTableFunctionHandle handle =
-        new MapTableFunctionHandle.Builder().addProperty(SIZE_PARAMETER_NAME, size).build();
+        new MapTableFunctionHandle.Builder()
+            .addProperty(SIZE_PARAMETER_NAME, size)
+            .addProperty(SLIDE_PARAMETER_NAME, slide)
+            .build();
     return TableFunctionAnalysis.builder()
         .properColumnSchema(
             new DescribedSchema.Builder().addField("window_index", Type.INT64).build())
@@ -81,12 +102,13 @@ public class CapacityTableFunction implements TableFunction {
   @Override
   public TableFunctionProcessorProvider getProcessorProvider(
       TableFunctionHandle tableFunctionHandle) {
-    long sz =
-        (long) ((MapTableFunctionHandle) tableFunctionHandle).getProperty(SIZE_PARAMETER_NAME);
+    MapTableFunctionHandle handle = (MapTableFunctionHandle) tableFunctionHandle;
+    long size = (long) handle.getProperty(SIZE_PARAMETER_NAME);
+    long slide = (long) handle.getProperty(SLIDE_PARAMETER_NAME);
     return new TableFunctionProcessorProvider() {
       @Override
       public TableFunctionDataProcessor getDataProcessor() {
-        return new CapacityDataProcessor(sz);
+        return new CapacityDataProcessor(size, slide);
       }
     };
   }
@@ -94,12 +116,12 @@ public class CapacityTableFunction implements TableFunction {
   private static class CapacityDataProcessor implements TableFunctionDataProcessor {
 
     private final long size;
-    private long currentStartIndex = 0;
+    private final long slide;
     private long curIndex = 0;
-    private long windowIndex = 0;
 
-    public CapacityDataProcessor(long size) {
+    public CapacityDataProcessor(long size, long slide) {
       this.size = size;
+      this.slide = slide;
     }
 
     @Override
@@ -107,26 +129,21 @@ public class CapacityTableFunction implements TableFunction {
         Record input,
         List<ColumnBuilder> properColumnBuilders,
         ColumnBuilder passThroughIndexBuilder) {
-      if (curIndex - currentStartIndex == size) {
-        outputWindow(properColumnBuilders, passThroughIndexBuilder);
-        currentStartIndex = curIndex;
+      // For each row at curIndex, find all windows k such that:
+      //   k * slide <= curIndex < k * slide + size, and k >= 0
+      // The first valid k: max(0, ceil((curIndex - size + 1) / slide))
+      // The last valid k: floor(curIndex / slide)
+      long firstWindow = Math.max(0, (curIndex - size + slide) / slide);
+      long lastWindow = curIndex / slide;
+      for (long k = firstWindow; k <= lastWindow; k++) {
+        // Verify: k * slide <= curIndex < k * slide + size
+        long windowStart = k * slide;
+        if (windowStart <= curIndex && curIndex < windowStart + size) {
+          properColumnBuilders.get(0).writeLong(k);
+          passThroughIndexBuilder.writeLong(curIndex);
+        }
       }
       curIndex++;
-    }
-
-    @Override
-    public void finish(
-        List<ColumnBuilder> properColumnBuilders, ColumnBuilder passThroughIndexBuilder) {
-      outputWindow(properColumnBuilders, passThroughIndexBuilder);
-    }
-
-    private void outputWindow(
-        List<ColumnBuilder> properColumnBuilders, ColumnBuilder passThroughIndexBuilder) {
-      for (long i = currentStartIndex; i < curIndex; i++) {
-        properColumnBuilders.get(0).writeLong(windowIndex);
-        passThroughIndexBuilder.writeLong(i);
-      }
-      windowIndex++;
     }
   }
 }
