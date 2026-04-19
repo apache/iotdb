@@ -17,6 +17,7 @@
 
 package org.apache.iotdb.rest.protocol.table.v1.handler;
 
+import org.apache.iotdb.rest.protocol.handler.RequestLimitChecker;
 import org.apache.iotdb.rest.protocol.table.v1.model.InsertTabletRequest;
 import org.apache.iotdb.rest.protocol.table.v1.model.SQL;
 
@@ -61,6 +62,13 @@ public class RequestValidationHandler {
     if (insertTabletRequest.getTimestamps().size() != insertTabletRequest.getValues().size()) {
       errorMessages.add("values and timestamps should have the same size");
     }
+
+    int rowCount = insertTabletRequest.getTimestamps().size();
+    int columnCount = insertTabletRequest.getColumnNames().size();
+    RequestLimitChecker.checkRowCount("table insertTablet request", rowCount);
+    RequestLimitChecker.checkColumnCount("table insertTablet request", columnCount);
+    RequestLimitChecker.checkValueCount(
+        "table insertTablet request", (long) rowCount * columnCount);
 
     for (int i = 0; i < insertTabletRequest.getDataTypes().size(); i++) {
       String dataType = insertTabletRequest.getDataTypes().get(i);

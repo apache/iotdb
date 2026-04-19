@@ -584,6 +584,26 @@ enable_swagger=false
 # Datatype: int
 rest_query_default_row_size_limit=10000
 
+# Maximum REST request body size in bytes. Set to 0 or a negative value to disable the limit.
+# effectiveMode: restart
+# Datatype: long
+rest_max_request_body_size_in_bytes=16777216
+
+# Maximum rows accepted by a single REST write request. Set to 0 or a negative value to disable the limit.
+# effectiveMode: restart
+# Datatype: int
+rest_max_insert_rows=100000
+
+# Maximum columns accepted by a single REST write request. Set to 0 or a negative value to disable the limit.
+# effectiveMode: restart
+# Datatype: int
+rest_max_insert_columns=1024
+
+# Maximum values accepted by a single REST write request. Set to 0 or a negative value to disable the limit.
+# effectiveMode: restart
+# Datatype: long
+rest_max_insert_values=1000000
+
 # Is client authentication required
 # effectiveMode: restart
 # Datatype: boolean

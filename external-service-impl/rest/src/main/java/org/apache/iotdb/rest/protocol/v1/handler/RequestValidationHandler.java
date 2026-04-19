@@ -17,12 +17,14 @@
 
 package org.apache.iotdb.rest.protocol.v1.handler;
 
+import org.apache.iotdb.rest.protocol.handler.RequestLimitChecker;
 import org.apache.iotdb.rest.protocol.v1.model.ExpressionRequest;
 import org.apache.iotdb.rest.protocol.v1.model.InsertTabletRequest;
 import org.apache.iotdb.rest.protocol.v1.model.SQL;
 
 import org.apache.tsfile.external.commons.lang3.Validate;
 
+import java.util.List;
 import java.util.Objects;
 
 public class RequestValidationHandler {
@@ -40,8 +42,30 @@ public class RequestValidationHandler {
     Objects.requireNonNull(insertTabletRequest.getTimestamps(), "timestamps should not be null");
     Objects.requireNonNull(insertTabletRequest.getIsAligned(), "isAligned should not be null");
     Objects.requireNonNull(insertTabletRequest.getDeviceId(), "deviceId should not be null");
+    Objects.requireNonNull(
+        insertTabletRequest.getMeasurements(), "measurements should not be null");
     Objects.requireNonNull(insertTabletRequest.getDataTypes(), "dataTypes should not be null");
     Objects.requireNonNull(insertTabletRequest.getValues(), "values should not be null");
+
+    if (insertTabletRequest.getMeasurements().size() != insertTabletRequest.getDataTypes().size()) {
+      throw new IllegalArgumentException("measurements and dataTypes should have the same size");
+    }
+    if (insertTabletRequest.getValues().size() != insertTabletRequest.getDataTypes().size()) {
+      throw new IllegalArgumentException("values and dataTypes should have the same size");
+    }
+
+    int rowCount = insertTabletRequest.getTimestamps().size();
+    int columnCount = insertTabletRequest.getMeasurements().size();
+    RequestLimitChecker.checkRowCount("insertTablet request", rowCount);
+    RequestLimitChecker.checkColumnCount("insertTablet request", columnCount);
+    RequestLimitChecker.checkValueCount("insertTablet request", (long) rowCount * columnCount);
+
+    for (List<Object> column : insertTabletRequest.getValues()) {
+      if (column.size() != rowCount) {
+        throw new IllegalArgumentException(
+            "Each value column should have the same size as timestamps");
+      }
+    }
   }
 
   public static void validateExpressionRequest(ExpressionRequest expressionRequest) {
