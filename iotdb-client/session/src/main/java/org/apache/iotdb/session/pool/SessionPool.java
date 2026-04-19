@@ -84,7 +84,8 @@ import static org.apache.iotdb.rpc.RpcUtils.isUseDatabase;
  * when you call SessionDataSetWrapper.hasNext() or next()
  */
 
-// ignore Generic exceptions & Throwable should never be throw, ignore Either log or rethrow this
+// ignore Generic exceptions & Throwable should never be throw, ignore Either
+// log or rethrow this
 // exception.
 @SuppressWarnings({"squid:S112", "java:S1181", "java:S2139"})
 public class SessionPool implements ISessionPool {
@@ -116,13 +117,18 @@ public class SessionPool implements ISessionPool {
 
   private String trustStorePwd;
   private ZoneId zoneId;
-  // this field only take effect in write request, nothing to do with any other type requests,
+  // this field only take effect in write request, nothing to do with any other
+  // type requests,
   // like query, load and so on.
-  // if set to true, it means that we may redirect the write request to its corresponding leader
-  // if set to false, it means that we will only send write request to first available DataNode(it
-  // may be changed while current DataNode is not available, for example, we may retry to connect
+  // if set to true, it means that we may redirect the write request to its
+  // corresponding leader
+  // if set to false, it means that we will only send write request to first
+  // available DataNode(it
+  // may be changed while current DataNode is not available, for example, we may
+  // retry to connect
   // to another available DataNode)
-  // so even if enableRedirection is set to false, we may also send write request to another
+  // so even if enableRedirection is set to false, we may also send write request
+  // to another
   // datanode while encountering retriable errors in current DataNode
   private boolean enableRedirection;
   private boolean enableRecordsAutoConvertTablet;
@@ -154,7 +160,8 @@ public class SessionPool implements ISessionPool {
   // Redirect-able SessionPool
   private final List<String> nodeUrls;
 
-  // formatted nodeUrls for logging e.g. "host:port" or "[host:port, host:port, host:port]"
+  // formatted nodeUrls for logging e.g. "host:port" or "[host:port, host:port,
+  // host:port]"
   private final String formattedNodeUrls;
 
   // used to update datanodeList periodically
@@ -163,12 +170,15 @@ public class SessionPool implements ISessionPool {
 
   private INodeSupplier availableNodes;
 
-  // set to true, means that we will start a background thread to fetch all available (Status is
-  // not Removing) datanodes in cluster, and these available nodes will be used in retrying stage
+  // set to true, means that we will start a background thread to fetch all
+  // available (Status is
+  // not Removing) datanodes in cluster, and these available nodes will be used in
+  // retrying stage
   private boolean enableAutoFetch = true;
 
   // max retry count, if set to 0, means that we won't do any retry
-  // we can use any available DataNodes(fetched in background thread if enableAutoFetch is true,
+  // we can use any available DataNodes(fetched in background thread if
+  // enableAutoFetch is true,
   // or nodeUrls user specified) to retry, even if enableRedirection is false
   protected int maxRetryCount = SessionConfig.MAX_RETRY_COUNT;
 
@@ -209,6 +219,15 @@ public class SessionPool implements ISessionPool {
 
   private static final String CREATE_SCHEMA_TEMPLATE_FAIL = "createSchemaTemplate failed";
 
+  /**
+   * Constructs a SessionPool for a single node connection.
+   *
+   * @param host Target node host
+   * @param port Target node port
+   * @param user Username for authentication
+   * @param password Password for authentication
+   * @param maxSize Maximum pool size
+   */
   public SessionPool(String host, int port, String user, String password, int maxSize) {
     this(
         host,
@@ -227,6 +246,14 @@ public class SessionPool implements ISessionPool {
         SessionConfig.DEFAULT_MAX_FRAME_SIZE);
   }
 
+  /**
+   * Constructs a SessionPool for a cluster connection.
+   *
+   * @param nodeUrls List of node URLs (host:port) to connect
+   * @param user Username for authentication
+   * @param password Password for authentication
+   * @param maxSize Maximum pool size
+   */
   public SessionPool(List<String> nodeUrls, String user, String password, int maxSize) {
     this(
         nodeUrls,
@@ -244,6 +271,16 @@ public class SessionPool implements ISessionPool {
         SessionConfig.DEFAULT_MAX_FRAME_SIZE);
   }
 
+  /**
+   * Constructs a SessionPool for a single node connection with Thrift compression.
+   *
+   * @param host Target node host
+   * @param port Target node port
+   * @param user Username for authentication
+   * @param password Password for authentication
+   * @param maxSize Maximum pool size
+   * @param enableThriftCompression True to enable Thrift compression
+   */
   public SessionPool(
       String host,
       int port,
@@ -268,6 +305,15 @@ public class SessionPool implements ISessionPool {
         SessionConfig.DEFAULT_MAX_FRAME_SIZE);
   }
 
+  /**
+   * Constructs a SessionPool for a cluster connection with Thrift compression.
+   *
+   * @param nodeUrls List of node URLs (host:port) to connect
+   * @param user Username for authentication
+   * @param password Password for authentication
+   * @param maxSize Maximum pool size
+   * @param enableThriftCompression True to enable Thrift compression
+   */
   public SessionPool(
       List<String> nodeUrls,
       String user,
@@ -290,6 +336,18 @@ public class SessionPool implements ISessionPool {
         SessionConfig.DEFAULT_MAX_FRAME_SIZE);
   }
 
+  /**
+   * Constructs a SessionPool for a single node connection with Thrift compression and redirection
+   * options.
+   *
+   * @param host Target node host
+   * @param port Target node port
+   * @param user Username for authentication
+   * @param password Password for authentication
+   * @param maxSize Maximum pool size
+   * @param enableThriftCompression True to enable Thrift compression
+   * @param enableRedirection True to enable query redirection
+   */
   public SessionPool(
       String host,
       int port,
@@ -315,6 +373,17 @@ public class SessionPool implements ISessionPool {
         SessionConfig.DEFAULT_MAX_FRAME_SIZE);
   }
 
+  /**
+   * Constructs a SessionPool for a cluster connection with Thrift compression and redirection
+   * options.
+   *
+   * @param nodeUrls List of node URLs (host:port) to connect
+   * @param user Username for authentication
+   * @param password Password for authentication
+   * @param maxSize Maximum pool size
+   * @param enableThriftCompression True to enable Thrift compression
+   * @param enableRedirection True to enable query redirection
+   */
   public SessionPool(
       List<String> nodeUrls,
       String user,
@@ -338,6 +407,16 @@ public class SessionPool implements ISessionPool {
         SessionConfig.DEFAULT_MAX_FRAME_SIZE);
   }
 
+  /**
+   * Constructs a SessionPool for a single node connection with a specific timezone.
+   *
+   * @param host Target node host
+   * @param port Target node port
+   * @param user Username for authentication
+   * @param password Password for authentication
+   * @param maxSize Maximum pool size
+   * @param zoneId Timezone ID
+   */
   public SessionPool(
       String host, int port, String user, String password, int maxSize, ZoneId zoneId) {
     this(
@@ -357,6 +436,15 @@ public class SessionPool implements ISessionPool {
         SessionConfig.DEFAULT_MAX_FRAME_SIZE);
   }
 
+  /**
+   * Constructs a SessionPool for a cluster connection with a specific timezone.
+   *
+   * @param nodeUrls List of node URLs (host:port) to connect
+   * @param user Username for authentication
+   * @param password Password for authentication
+   * @param maxSize Maximum pool size
+   * @param zoneId Timezone ID
+   */
   public SessionPool(
       List<String> nodeUrls, String user, String password, int maxSize, ZoneId zoneId) {
     this(
@@ -375,6 +463,24 @@ public class SessionPool implements ISessionPool {
         SessionConfig.DEFAULT_MAX_FRAME_SIZE);
   }
 
+  /**
+   * Constructs a SessionPool for a single node with detailed configuration.
+   *
+   * @param host Target node host
+   * @param port Target node port
+   * @param user Username for authentication
+   * @param password Password for authentication
+   * @param maxSize Maximum number of connections in the pool
+   * @param fetchSize Default fetch size for queries
+   * @param waitToGetSessionTimeoutInMs Maximum time to wait for a session from the pool
+   * @param enableThriftCompression Whether to enable Thrift compression
+   * @param zoneId Timezone ID
+   * @param enableRedirection Whether to enable query redirection
+   * @param connectionTimeoutInMs Connection timeout in milliseconds
+   * @param version Protocol version
+   * @param thriftDefaultBufferSize Default buffer size for Thrift
+   * @param thriftMaxFrameSize Maximum frame size for Thrift
+   */
   @SuppressWarnings("squid:S107")
   public SessionPool(
       String host,
@@ -416,6 +522,27 @@ public class SessionPool implements ISessionPool {
     initAvailableNodes(Collections.singletonList(new TEndPoint(host, port)));
   }
 
+  /**
+   * Constructs a SessionPool with SSL enabled for a single node.
+   *
+   * @param host Target node host
+   * @param port Target node port
+   * @param user Username for authentication
+   * @param password Password for authentication
+   * @param maxSize Maximum number of connections in the pool
+   * @param fetchSize Default fetch size for queries
+   * @param waitToGetSessionTimeoutInMs Maximum time to wait for a session from the pool
+   * @param enableThriftCompression Whether to enable Thrift compression
+   * @param zoneId Timezone ID
+   * @param enableRedirection Whether to enable query redirection
+   * @param connectionTimeoutInMs Connection timeout in milliseconds
+   * @param version Protocol version
+   * @param thriftDefaultBufferSize Default buffer size for Thrift
+   * @param thriftMaxFrameSize Maximum frame size for Thrift
+   * @param useSSL Whether to use SSL for connection
+   * @param trustStore Trust store path
+   * @param trustStorePwd Trust store password
+   */
   public SessionPool(
       String host,
       int port,
@@ -462,6 +589,23 @@ public class SessionPool implements ISessionPool {
     initAvailableNodes(Collections.singletonList(new TEndPoint(host, port)));
   }
 
+  /**
+   * Constructs a SessionPool for cluster nodes with detailed configuration.
+   *
+   * @param nodeUrls List of node URLs (host:port)
+   * @param user Username for authentication
+   * @param password Password for authentication
+   * @param maxSize Maximum number of connections in the pool
+   * @param fetchSize Default fetch size for queries
+   * @param waitToGetSessionTimeoutInMs Maximum time to wait for a session from the pool
+   * @param enableThriftCompression Whether to enable Thrift compression
+   * @param zoneId Timezone ID
+   * @param enableRedirection Whether to enable query redirection
+   * @param connectionTimeoutInMs Connection timeout in milliseconds
+   * @param version Protocol version
+   * @param thriftDefaultBufferSize Default buffer size for Thrift
+   * @param thriftMaxFrameSize Maximum frame size for Thrift
+   */
   @SuppressWarnings("squid:S107") // ignore Methods should not have too many parameters
   public SessionPool(
       List<String> nodeUrls,
@@ -505,6 +649,11 @@ public class SessionPool implements ISessionPool {
     initAvailableNodes(SessionUtils.parseSeedNodeUrls(nodeUrls));
   }
 
+  /**
+   * Constructs a SessionPool using a builder.
+   *
+   * @param builder Session pool builder
+   */
   public SessionPool(AbstractSessionPoolBuilder builder) {
     this.maxSize = builder.maxSize;
     this.user = builder.username;
@@ -658,8 +807,16 @@ public class SessionPool implements ISessionPool {
             version.toString());
   }
 
-  // if this method throws an exception, either the server is broken, or the ip/port/user/password
+  // if this method throws an exception, either the server is broken, or the
+  // ip/port/user/password
   // is incorrect.
+  /**
+   * Retrieves a session from the pool. If no session is available and the pool is not full, a new
+   * session is created. If the pool is full, it waits until a session is returned.
+   *
+   * @return A session instance
+   * @throws IoTDBConnectionException If the pool is closed or connection fails
+   */
   @SuppressWarnings({"squid:S3776", "squid:S2446"}) // Suppress high Cognitive Complexity warning
   private ISession getSession() throws IoTDBConnectionException {
     ISession session = queue.poll();
@@ -679,7 +836,8 @@ public class SessionPool implements ISessionPool {
           // we can create more session
           size++;
           shouldCreate = true;
-          // but we do it after skip synchronized block because connection a session is time
+          // but we do it after skip synchronized block because connection a session is
+          // time
           // consuming.
           break;
         }
@@ -746,7 +904,8 @@ public class SessionPool implements ISessionPool {
         // Meanwhile, we have to set size--
         synchronized (this) {
           size--;
-          // we do not need to notifyAll as any waited thread can continue to work after waked up.
+          // we do not need to notifyAll as any waited thread can continue to work after
+          // waked up.
           this.notify();
         }
         throw e;
@@ -770,17 +929,23 @@ public class SessionPool implements ISessionPool {
     return occupied.size();
   }
 
+  /**
+   * Returns a session to the pool and notifies waiting threads.
+   *
+   * @param session The session to return
+   */
   @SuppressWarnings({"squid:S2446"})
   protected void putBack(ISession session) {
     queue.push(session);
     synchronized (this) {
-      // we do not need to notifyAll as any waited thread can continue to work after waked up.
+      // we do not need to notifyAll as any waited thread can continue to work after
+      // waked up.
       this.notify();
       // comment the following codes as putBack is too frequently called.
-      //      if (logger.isTraceEnabled()) {
-      //        logger.trace("put a session back and notify others..., queue.size = {}",
+      // if (logger.isTraceEnabled()) {
+      // logger.trace("put a session back and notify others..., queue.size = {}",
       // queue.size());
-      //      }
+      // }
     }
   }
 
@@ -788,7 +953,7 @@ public class SessionPool implements ISessionPool {
     occupied.put(session, session);
   }
 
-  /** close all connections in the pool */
+  /** Closes all connections in the pool and releases resources. */
   @Override
   public synchronized void close() {
     for (ISession session : queue) {
@@ -821,6 +986,11 @@ public class SessionPool implements ISessionPool {
     occupied.clear();
   }
 
+  /**
+   * Closes the result set and returns the associated session to the pool.
+   *
+   * @param wrapper The dataset wrapper to close
+   */
   @Override
   public void closeResultSet(SessionDataSetWrapper wrapper) {
     boolean putback = true;
@@ -860,7 +1030,8 @@ public class SessionPool implements ISessionPool {
     } catch (IoTDBConnectionException e) {
       synchronized (this) {
         size--;
-        // we do not need to notifyAll as any waited thread can continue to work after waked up.
+        // we do not need to notifyAll as any waited thread can continue to work after
+        // waked up.
         this.notify();
       }
     }
@@ -904,12 +1075,12 @@ public class SessionPool implements ISessionPool {
   public void insertTablet(Tablet tablet)
       throws IoTDBConnectionException, StatementExecutionException {
     /*
-     *  A Tablet example:
-     *        device1
-     *     time s1, s2, s3
-     *     1,   1,  1,  1
-     *     2,   2,  2,  2
-     *     3,   3,  3,  3
+     * A Tablet example:
+     * device1
+     * time s1, s2, s3
+     * 1, 1, 1, 1
+     * 2, 2, 2, 2
+     * 3, 3, 3, 3
      *
      * times in Tablet may be not in ascending orde
      */
@@ -929,12 +1100,12 @@ public class SessionPool implements ISessionPool {
   public void insertTablet(Tablet tablet, boolean sorted)
       throws IoTDBConnectionException, StatementExecutionException {
     /*
-     *  A Tablet example:
-     *        device1
-     *     time s1, s2, s3
-     *     1,   1,  1,  1
-     *     2,   2,  2,  2
-     *     3,   3,  3,  3
+     * A Tablet example:
+     * device1
+     * time s1, s2, s3
+     * 1, 1, 1, 1
+     * 2, 2, 2, 2
+     * 3, 3, 3, 3
      */
 
     ISession session = getSession();
@@ -999,9 +1170,11 @@ public class SessionPool implements ISessionPool {
   }
 
   /**
-   * use batch interface to insert data
+   * Inserts multiple tablets.
    *
-   * @param tablets multiple batch
+   * @param tablets Map of device IDs to tablets
+   * @throws IoTDBConnectionException If connection fails
+   * @throws StatementExecutionException If execution fails
    */
   @Override
   public void insertTablets(Map<String, Tablet> tablets)
@@ -1023,7 +1196,10 @@ public class SessionPool implements ISessionPool {
   /**
    * use batch interface to insert aligned data
    *
-   * @param tablets multiple batch
+   * @param tablets Map of device IDs to tablets
+   * @param sorted Whether the tablets are already sorted by time
+   * @throws IoTDBConnectionException If connection fails
+   * @throws StatementExecutionException If execution fails
    */
   @SuppressWarnings({"squid:S112"}) // ignore Generic exceptions should never be throw
   @Override
@@ -1178,12 +1354,18 @@ public class SessionPool implements ISessionPool {
   }
 
   /**
-   * Insert data that belong to the same device in batch format, which can reduce the overhead of
-   * network. This method is just like jdbc batch insert, we pack some insert request in batch and
-   * send them to server If you want improve your performance, please see insertTablet method
+   * Inserts multiple records for a single device. This performs the same operation as {@link
+   * #insertRecordsOfOneDevice}.
    *
-   * @see Session#insertTablet(Tablet)
-   * @deprecated
+   * @param deviceId Device ID
+   * @param times List of timestamps
+   * @param measurementsList List of measurement names for each timestamp
+   * @param typesList List of data types for each timestamp
+   * @param valuesList List of values for each timestamp
+   * @throws IoTDBConnectionException If connection fails
+   * @throws StatementExecutionException If execution fails
+   * @see Session#insertRecordsOfOneDevice(String, List, List, List, List)
+   * @deprecated Use {@link #insertRecordsOfOneDevice} instead.
    */
   @Deprecated
   @Override
@@ -1283,13 +1465,19 @@ public class SessionPool implements ISessionPool {
   }
 
   /**
-   * Insert data that belong to the same device in batch format, which can reduce the overhead of
-   * network. This method is just like jdbc batch insert, we pack some insert request in batch and
-   * send them to server If you want improve your performance, please see insertTablet method
+   * Inserts multiple records for a single device with a sort option. This performs the same
+   * operation as {@link #insertRecordsOfOneDevice}.
    *
-   * @param haveSorted whether the times list has been ordered.
-   * @see Session#insertTablet(Tablet)
-   * @deprecated
+   * @param deviceId Device ID
+   * @param times List of timestamps
+   * @param measurementsList List of measurement names for each timestamp
+   * @param typesList List of data types for each timestamp
+   * @param valuesList List of values for each timestamp
+   * @param haveSorted Whether the timestamps are already sorted
+   * @throws IoTDBConnectionException If connection fails
+   * @throws StatementExecutionException If execution fails
+   * @see Session#insertRecordsOfOneDevice(String, List, List, List, List, boolean)
+   * @deprecated Use {@link #insertRecordsOfOneDevice} instead.
    */
   @Override
   @Deprecated
@@ -1567,6 +1755,11 @@ public class SessionPool implements ISessionPool {
    * insert data in one row, if you want improve your performance, please use insertRecords method
    * or insertTablet method
    *
+   * @param deviceId Device ID
+   * @param time Timestamp
+   * @param measurements List of measurement names
+   * @param types List of data types
+   * @param values Values to insert
    * @see Session#insertRecords(List, List, List, List, List)
    * @see Session#insertTablet(Tablet)
    */
@@ -1600,6 +1793,11 @@ public class SessionPool implements ISessionPool {
    * insert data in one row, if you want improve your performance, please use insertRecords method
    * or insertTablet method
    *
+   * @param deviceId Device ID
+   * @param time Timestamp
+   * @param measurements List of measurement names
+   * @param types List of data types
+   * @param values List of values to insert
    * @see Session#insertRecords(List, List, List, List, List)
    * @see Session#insertTablet(Tablet)
    */
@@ -3092,13 +3290,16 @@ public class SessionPool implements ISessionPool {
   /**
    * execute non query statement
    *
-   * @param sql non query statement
+   * @param sql Non-query statement
+   * @throws IoTDBConnectionException If connection fails
+   * @throws StatementExecutionException If execution fails
    */
   @Override
   public void executeNonQueryStatement(String sql)
       throws StatementExecutionException, IoTDBConnectionException {
 
-    // 'use XXX' and 'set sql_dialect' is forbidden in SessionPool.executeNonQueryStatement
+    // 'use XXX' and 'set sql_dialect' is forbidden in
+    // SessionPool.executeNonQueryStatement
     if (isUseDatabase(sql) || isSetSqlDialect(sql)) {
       throw new IllegalArgumentException(
           String.format("SessionPool doesn't support executing %s directly", sql));
@@ -3122,6 +3323,17 @@ public class SessionPool implements ISessionPool {
     }
   }
 
+  /**
+   * Executes a raw data query for multiple paths over a time range.
+   *
+   * @param paths List of time series paths
+   * @param startTime Start time
+   * @param endTime End time
+   * @param timeOut Timeout in milliseconds
+   * @return Result set wrapper
+   * @throws IoTDBConnectionException If connection fails
+   * @throws StatementExecutionException If execution fails
+   */
   @SuppressWarnings("squid:S2095") // Suppress wrapper not closed warning
   @Override
   public SessionDataSetWrapper executeRawDataQuery(
