@@ -685,7 +685,7 @@ public class InformationSchemaContentSupplierFactory {
           ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
         iterator =
             client.getPipePluginTable().getAllPipePluginMeta().stream()
-                .map(PipePluginMeta::deserialize)
+                .map(PipePluginMeta::deserializeForShowPipePlugin)
                 .filter(
                     pipePluginMeta ->
                         !BuiltinPipePlugin.SHOW_PIPE_PLUGINS_BLACKLIST.contains(
@@ -705,6 +705,12 @@ public class InformationSchemaContentSupplierFactory {
         columnBuilders[3].writeBinary(BytesUtils.valueOf(pipePluginMeta.getJarName()));
       } else {
         columnBuilders[3].appendNull();
+      }
+      if (Objects.nonNull(pipePluginMeta.getPluginLoadingExceptionMessage())) {
+        columnBuilders[4].writeBinary(
+            BytesUtils.valueOf(pipePluginMeta.getPluginLoadingExceptionMessage()));
+      } else {
+        columnBuilders[4].appendNull();
       }
       resultBuilder.declarePosition();
     }

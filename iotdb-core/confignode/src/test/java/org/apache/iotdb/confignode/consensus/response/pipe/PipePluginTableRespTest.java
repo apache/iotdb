@@ -49,7 +49,7 @@ public class PipePluginTableRespTest {
 
     final List<ByteBuffer> pipePluginByteBuffers = new ArrayList<>();
     for (PipePluginMeta pipePluginMeta : pipePluginMetaList) {
-      pipePluginByteBuffers.add(pipePluginMeta.serialize());
+      pipePluginByteBuffers.add(pipePluginMeta.serializeForShowPipePlugin());
     }
     TGetPipePluginTableResp getPipePluginTableResp =
         new TGetPipePluginTableResp(status, pipePluginByteBuffers);
