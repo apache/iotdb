@@ -2694,14 +2694,16 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 node.getUpstreamPlanNodeId().getId(),
                 remoteInstanceId.toThrift(),
                 node.getIndexOfUpstreamSinkHandle(),
-                context.getInstanceContext()::failed)
+                context.getInstanceContext()::failed,
+                context.getInstanceContext().isHighestPriority())
             : MPP_DATA_EXCHANGE_MANAGER.createSourceHandle(
                 localInstanceId.toThrift(),
                 node.getPlanNodeId().getId(),
                 node.getIndexOfUpstreamSinkHandle(),
                 upstreamEndPoint,
                 remoteInstanceId.toThrift(),
-                context.getInstanceContext()::failed);
+                context.getInstanceContext()::failed,
+                context.getInstanceContext().isHighestPriority());
     if (!isSameNode) {
       context.addExchangeSumNum(1);
     }
