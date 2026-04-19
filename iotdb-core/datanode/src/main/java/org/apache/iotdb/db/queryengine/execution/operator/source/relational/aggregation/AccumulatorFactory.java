@@ -21,6 +21,10 @@ package org.apache.iotdb.db.queryengine.execution.operator.source.relational.agg
 
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
+import org.apache.iotdb.db.queryengine.execution.aggregation.CentralMomentAccumulator;
+import org.apache.iotdb.db.queryengine.execution.aggregation.CorrelationAccumulator;
+import org.apache.iotdb.db.queryengine.execution.aggregation.CovarianceAccumulator;
+import org.apache.iotdb.db.queryengine.execution.aggregation.RegressionAccumulator;
 import org.apache.iotdb.db.queryengine.execution.aggregation.VarianceAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.BinaryGroupedApproxMostFrequentAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.BlobGroupedApproxMostFrequentAccumulator;
@@ -32,9 +36,12 @@ import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggr
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedApproxPercentileAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedApproxPercentileWithWeightAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedAvgAccumulator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedCentralMomentAccumulator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedCorrelationAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedCountAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedCountAllAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedCountIfAccumulator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedCovarianceAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedExtremeAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedFirstAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedFirstByAccumulator;
@@ -45,6 +52,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggr
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedMinAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedMinByAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedModeAccumulator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedRegressionAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedSumAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedUserDefinedAggregateAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedVarianceAccumulator;
@@ -290,6 +298,37 @@ public class AccumulatorFactory {
         } else {
           return new GroupedApproxPercentileWithWeightAccumulator(inputDataTypes.get(0));
         }
+      case CORR:
+        return new GroupedCorrelationAccumulator(
+            inputDataTypes.get(0),
+            inputDataTypes.get(1),
+            CorrelationAccumulator.CorrelationType.CORR);
+      case COVAR_POP:
+        return new GroupedCovarianceAccumulator(
+            inputDataTypes.get(0),
+            inputDataTypes.get(1),
+            CovarianceAccumulator.CovarianceType.COVAR_POP);
+      case COVAR_SAMP:
+        return new GroupedCovarianceAccumulator(
+            inputDataTypes.get(0),
+            inputDataTypes.get(1),
+            CovarianceAccumulator.CovarianceType.COVAR_SAMP);
+      case REGR_SLOPE:
+        return new GroupedRegressionAccumulator(
+            inputDataTypes.get(0),
+            inputDataTypes.get(1),
+            RegressionAccumulator.RegressionType.REGR_SLOPE);
+      case REGR_INTERCEPT:
+        return new GroupedRegressionAccumulator(
+            inputDataTypes.get(0),
+            inputDataTypes.get(1),
+            RegressionAccumulator.RegressionType.REGR_INTERCEPT);
+      case SKEWNESS:
+        return new GroupedCentralMomentAccumulator(
+            inputDataTypes.get(0), CentralMomentAccumulator.MomentType.SKEWNESS);
+      case KURTOSIS:
+        return new GroupedCentralMomentAccumulator(
+            inputDataTypes.get(0), CentralMomentAccumulator.MomentType.KURTOSIS);
       default:
         throw new IllegalArgumentException("Invalid Aggregation function: " + aggregationType);
     }
@@ -353,6 +392,37 @@ public class AccumulatorFactory {
         } else {
           return new ApproxPercentileWithWeightAccumulator(inputDataTypes.get(0));
         }
+      case CORR:
+        return new TableCorrelationAccumulator(
+            inputDataTypes.get(0),
+            inputDataTypes.get(1),
+            CorrelationAccumulator.CorrelationType.CORR);
+      case COVAR_POP:
+        return new TableCovarianceAccumulator(
+            inputDataTypes.get(0),
+            inputDataTypes.get(1),
+            CovarianceAccumulator.CovarianceType.COVAR_POP);
+      case COVAR_SAMP:
+        return new TableCovarianceAccumulator(
+            inputDataTypes.get(0),
+            inputDataTypes.get(1),
+            CovarianceAccumulator.CovarianceType.COVAR_SAMP);
+      case REGR_SLOPE:
+        return new TableRegressionAccumulator(
+            inputDataTypes.get(0),
+            inputDataTypes.get(1),
+            RegressionAccumulator.RegressionType.REGR_SLOPE);
+      case REGR_INTERCEPT:
+        return new TableRegressionAccumulator(
+            inputDataTypes.get(0),
+            inputDataTypes.get(1),
+            RegressionAccumulator.RegressionType.REGR_INTERCEPT);
+      case SKEWNESS:
+        return new TableCentralMomentAccumulator(
+            inputDataTypes.get(0), CentralMomentAccumulator.MomentType.SKEWNESS);
+      case KURTOSIS:
+        return new TableCentralMomentAccumulator(
+            inputDataTypes.get(0), CentralMomentAccumulator.MomentType.KURTOSIS);
       default:
         throw new IllegalArgumentException("Invalid Aggregation function: " + aggregationType);
     }
@@ -414,6 +484,12 @@ public class AccumulatorFactory {
     switch (aggregationType) {
       case MAX_BY:
       case MIN_BY:
+        return true;
+      case CORR:
+      case COVAR_POP:
+      case COVAR_SAMP:
+      case REGR_SLOPE:
+      case REGR_INTERCEPT:
         return true;
       default:
         return false;

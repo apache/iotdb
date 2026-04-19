@@ -310,6 +310,13 @@ enum TAggregationType {
   APPROX_COUNT_DISTINCT,
   APPROX_MOST_FREQUENT,
   APPROX_PERCENTILE,
+  CORR,
+  COVAR_POP,
+  COVAR_SAMP,
+  REGR_SLOPE,
+  REGR_INTERCEPT,
+  SKEWNESS,
+  KURTOSIS
 }
 
 struct TShowConfigurationTemplateResp {

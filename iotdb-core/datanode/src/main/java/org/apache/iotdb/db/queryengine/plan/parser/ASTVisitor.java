@@ -3443,6 +3443,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       case SqlConstant.VARIANCE:
       case SqlConstant.VAR_POP:
       case SqlConstant.VAR_SAMP:
+      case SqlConstant.SKEWNESS:
+      case SqlConstant.KURTOSIS:
         checkFunctionExpressionInputSize(
             functionExpression.getExpressionString(),
             functionExpression.getExpressions().size(),
@@ -3451,6 +3453,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       case SqlConstant.COUNT_IF:
       case SqlConstant.MAX_BY:
       case SqlConstant.MIN_BY:
+      case SqlConstant.CORR:
+      case SqlConstant.COVAR_POP:
+      case SqlConstant.COVAR_SAMP:
+      case SqlConstant.REGR_SLOPE:
+      case SqlConstant.REGR_INTERCEPT:
         checkFunctionExpressionInputSize(
             functionExpression.getExpressionString(),
             functionExpression.getExpressions().size(),

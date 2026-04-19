@@ -135,6 +135,13 @@ public class SchemaUtils {
       case SqlConstant.VARIANCE:
       case SqlConstant.VAR_POP:
       case SqlConstant.VAR_SAMP:
+      case SqlConstant.CORR:
+      case SqlConstant.COVAR_POP:
+      case SqlConstant.COVAR_SAMP:
+      case SqlConstant.REGR_SLOPE:
+      case SqlConstant.REGR_INTERCEPT:
+      case SqlConstant.SKEWNESS:
+      case SqlConstant.KURTOSIS:
         return TSDataType.DOUBLE;
       // Partial aggregation names
       case SqlConstant.STDDEV + "_partial":
@@ -143,6 +150,13 @@ public class SchemaUtils {
       case SqlConstant.VARIANCE + "_partial":
       case SqlConstant.VAR_POP + "_partial":
       case SqlConstant.VAR_SAMP + "_partial":
+      case SqlConstant.CORR + "_partial":
+      case SqlConstant.COVAR_POP + "_partial":
+      case SqlConstant.COVAR_SAMP + "_partial":
+      case SqlConstant.REGR_SLOPE + "_partial":
+      case SqlConstant.REGR_INTERCEPT + "_partial":
+      case SqlConstant.SKEWNESS + "_partial":
+      case SqlConstant.KURTOSIS + "_partial":
       case SqlConstant.MAX_BY + "_partial":
       case SqlConstant.MIN_BY + "_partial":
         return TSDataType.TEXT;
@@ -210,6 +224,20 @@ public class SchemaUtils {
         return SqlConstant.VAR_POP;
       case VAR_SAMP:
         return SqlConstant.VAR_SAMP;
+      case CORR:
+        return SqlConstant.CORR;
+      case COVAR_POP:
+        return SqlConstant.COVAR_POP;
+      case COVAR_SAMP:
+        return SqlConstant.COVAR_SAMP;
+      case REGR_SLOPE:
+        return SqlConstant.REGR_SLOPE;
+      case REGR_INTERCEPT:
+        return SqlConstant.REGR_INTERCEPT;
+      case SKEWNESS:
+        return SqlConstant.SKEWNESS;
+      case KURTOSIS:
+        return SqlConstant.KURTOSIS;
       default:
         return null;
     }
@@ -245,6 +273,13 @@ public class SchemaUtils {
       case VAR_SAMP:
       case MAX_BY:
       case MIN_BY:
+      case CORR:
+      case COVAR_POP:
+      case COVAR_SAMP:
+      case REGR_SLOPE:
+      case REGR_INTERCEPT:
+      case SKEWNESS:
+      case KURTOSIS:
       case UDAF:
         return true;
       default:
@@ -279,6 +314,20 @@ public class SchemaUtils {
         return Collections.singletonList(addPartialSuffix(SqlConstant.VAR_POP));
       case VAR_SAMP:
         return Collections.singletonList(addPartialSuffix(SqlConstant.VAR_SAMP));
+      case CORR:
+        return Collections.singletonList(addPartialSuffix(SqlConstant.CORR));
+      case COVAR_POP:
+        return Collections.singletonList(addPartialSuffix(SqlConstant.COVAR_POP));
+      case COVAR_SAMP:
+        return Collections.singletonList(addPartialSuffix(SqlConstant.COVAR_SAMP));
+      case REGR_SLOPE:
+        return Collections.singletonList(addPartialSuffix(SqlConstant.REGR_SLOPE));
+      case REGR_INTERCEPT:
+        return Collections.singletonList(addPartialSuffix(SqlConstant.REGR_INTERCEPT));
+      case SKEWNESS:
+        return Collections.singletonList(addPartialSuffix(SqlConstant.SKEWNESS));
+      case KURTOSIS:
+        return Collections.singletonList(addPartialSuffix(SqlConstant.KURTOSIS));
       case MAX_BY:
         return Collections.singletonList(addPartialSuffix(SqlConstant.MAX_BY));
       case MIN_BY:

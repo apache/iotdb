@@ -361,6 +361,7 @@ public class ExpressionTypeAnalyzer {
       }
 
       if (functionExpression.isBuiltInAggregationFunctionExpression()) {
+
         return setExpressionType(
             functionExpression,
             TypeInferenceUtils.getBuiltinAggregationDataType(
@@ -542,8 +543,20 @@ public class ExpressionTypeAnalyzer {
       case SqlConstant.VARIANCE:
       case SqlConstant.VAR_POP:
       case SqlConstant.VAR_SAMP:
+      case SqlConstant.SKEWNESS:
+      case SqlConstant.KURTOSIS:
       case SqlConstant.MAX_BY:
       case SqlConstant.MIN_BY:
+        return expressionTypes.get(NodeRef.of(inputExpressions.get(0)));
+      case SqlConstant.CORR:
+      case SqlConstant.COVAR_POP:
+      case SqlConstant.COVAR_SAMP:
+      case SqlConstant.REGR_SLOPE:
+      case SqlConstant.REGR_INTERCEPT:
+        TypeInferenceUtils.verifyIsAggregationDataTypeMatchedForBothInputs(
+            aggregateFunctionName,
+            expressionTypes.get(NodeRef.of(inputExpressions.get(0))),
+            expressionTypes.get(NodeRef.of(inputExpressions.get(1))));
         return expressionTypes.get(NodeRef.of(inputExpressions.get(0)));
       default:
         throw new IllegalArgumentException(

@@ -110,6 +110,28 @@ public class IoTDBTableAggregationIT {
         "INSERT INTO table1(time,province,city,region,device_id,color,type,s3,s5,s7,s9,s10) values (2024-09-24T06:15:30.000+00:00,'beijing','beijing','haidian','d16','yellow','BBBBBBBBBBBBBBBB',30.0,true,'beijing_haidian_yellow_B_d16_30',2024-09-24T06:15:30.000+00:00,'2024-09-24')",
         "INSERT INTO table1(time,province,city,region,device_id,color,type,s2,s9) values (2024-09-24T06:15:40.000+00:00,'beijing','beijing','haidian','d16','yellow','BBBBBBBBBBBBBBBB',40000,2024-09-24T06:15:40.000+00:00)",
         "INSERT INTO table1(time,province,city,region,device_id,color,type,s1,s4,s6,s8,s9) values (2024-09-24T06:15:55.000+00:00,'beijing','beijing','haidian','d16','yellow','BBBBBBBBBBBBBBBB',55,55.0,'beijing_haidian_yellow_B_d16_55',X'cafebabe55',2024-09-24T06:15:55.000+00:00)",
+        // stat_table for statistical aggregation function tests (CORR, COVAR_POP, COVAR_SAMP,
+        // REGR_SLOPE, REGR_INTERCEPT, KURTOSIS, SKEWNESS)
+        "CREATE TABLE stat_table(device_id STRING TAG, s1 INT32 FIELD, s2 INT64 FIELD, s3 FLOAT FIELD, s4 DOUBLE FIELD, s5 BOOLEAN FIELD, s6 TEXT FIELD, s7 TIMESTAMP FIELD)",
+        "INSERT INTO stat_table(time, device_id, s1, s2, s3, s4, s5, s6, s7) VALUES (1, 'd1', 1, 1, 1.0, 1.0, true, 'a', '2026-04-13T09:15:30.000+00:00')",
+        "INSERT INTO stat_table(time, device_id, s1, s2, s3, s4, s5, s6, s7) VALUES (2, 'd1', 2, 2, 2.0, 2.0, false, 'b', '2026-04-13T09:30:30.000+00:00')",
+        "INSERT INTO stat_table(time, device_id, s1, s2, s3, s4, s5, s6, s7) VALUES (3, 'd1', 3, 2, 3.0, 2.0, false, 'c', '2026-04-13T09:45:30.000+00:00')",
+        "INSERT INTO stat_table(time, device_id, s1, s2, s3, s4, s5, s6, s7) VALUES (4, 'd1', 4, 1, 4.0, 1.0, true, 'd', '2026-04-13T10:00:30.000+00:00')",
+        "INSERT INTO stat_table(time, device_id, s1, s2, s3, s4, s5, s6, s7) VALUES (5, 'd1', 5, 1, 5.0, 1.0, true, 'e', '2026-04-13T10:15:30.000+00:00')",
+        "INSERT INTO stat_table(time, device_id, s1, s2, s3, s4) VALUES (1, 'd2', 1, 2, 1.0, 2.0)",
+        "INSERT INTO stat_table(time, device_id, s1, s2, s3, s4) VALUES (2, 'd2', 1, 2, 1.0, 2.0)",
+        "INSERT INTO stat_table(time, device_id, s1, s2, s3, s4) VALUES (3, 'd2', 1, 2, 1.0, 2.0)",
+        "INSERT INTO stat_table(time, device_id, s1, s2, s3, s4) VALUES (4, 'd2', 1, 2, 1.0, 2.0)",
+        "INSERT INTO stat_table(time, device_id, s1, s2, s3, s4) VALUES (5, 'd2', 1, 2, 1.0, 2.0)",
+        "INSERT INTO stat_table(time, device_id, s1, s2, s3, s4) VALUES (1, 'd3', 10, 100, 10.0, 100.0)",
+        "INSERT INTO stat_table(time, device_id, s1, s2, s3, s4) VALUES (2, 'd3', 20, 200, 20.0, 200.0)",
+        "INSERT INTO stat_table(time, device_id, s1, s2, s3, s4) VALUES (1, 'd4', 42, 99, 42.0, 99.0)",
+        "INSERT INTO stat_table(time, device_id, s1, s2, s3, s4) VALUES (1, 'n1', 10, 50, 10.0, 50.0)",
+        "INSERT INTO stat_table(time, device_id, s1, s2, s3, s4) VALUES (2, 'n1', 20, 40, 20.0, 40.0)",
+        "INSERT INTO stat_table(time, device_id, s1, s2, s3, s4) VALUES (3, 'n1', 30, 30, 30.0, 30.0)",
+        "INSERT INTO stat_table(time, device_id, s2, s3, s4) VALUES (4, 'n1', 20, 20.0, 20.0)",
+        "INSERT INTO stat_table(time, device_id, s1, s3, s4) VALUES (5, 'n1', 50, 50.0, 50.0)",
+        "INSERT INTO stat_table(time, device_id, s1, s2, s3, s4) VALUES (6, 'n1', 40, 20, 40.0, 20.0)",
         "FLUSH",
         "CLEAR ATTRIBUTE CACHE",
       };
@@ -5515,6 +5537,42 @@ public class IoTDBTableAggregationIT {
   }
 
   @Test
+  public void statFunctionsBasicAndCrossTypeTest() {
+    String[] expectedHeader =
+        new String[] {
+          "_col0", "_col1", "_col2", "_col3", "_col4", "_col5", "_col6", "_col7", "_col8",
+          "_col9", "_col10", "_col11", "_col12", "_col13", "_col14", "_col15", "_col16", "_col17"
+        };
+    String[] retArray =
+        new String[] {
+          "-0.28867513459481287,-0.19999999999999998,-0.24999999999999997,-0.8333333333333334,4.166666666666667,0.0,0.4082482904638631,-1.2000000000000002,-3.333333333333333,"
+              + "-0.28867513459481287,-0.19999999999999998,-0.24999999999999997,-0.8333333333333334,4.166666666666667,0.0,0.4082482904638631,-1.2000000000000002,-3.333333333333333,"
+        };
+    tableResultSetEqualTest(
+        "select corr(s1, s2), covar_pop(s1, s2), covar_samp(s1, s2), regr_slope(s1, s2), regr_intercept(s1, s2), "
+            + "skewness(s1), skewness(s2), kurtosis(s1), kurtosis(s2), "
+            + "corr(s3, s4), covar_pop(s3, s4), covar_samp(s3, s4), regr_slope(s3, s4), regr_intercept(s3, s4), "
+            + "skewness(s3), skewness(s4), kurtosis(s3), kurtosis(s4) "
+            + "from stat_table where device_id = 'd1'",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    expectedHeader = new String[] {"_col0", "_col1", "_col2", "_col3", "_col4", "_col5", "_col6"};
+    retArray =
+        new String[] {
+          "1.0,1800000.0,2250000.0,1.111111111111111E-6,-1973412.0333333332,0.0,-1.1999999999999993,"
+        };
+    tableResultSetEqualTest(
+        "select corr(s1, s7), covar_pop(s1, s7), covar_samp(s1, s7), regr_slope(s1, s7), regr_intercept(s1, s7), "
+            + "skewness(s7), kurtosis(s7) "
+            + "from stat_table where device_id = 'd1'",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
   public void emptyTimeRangeQueryTest() {
     String[] expectedHeader = new String[] {"_col0"};
     String[] retArray = new String[] {"0,"};
@@ -5536,5 +5594,124 @@ public class IoTDBTableAggregationIT {
         expectedHeader,
         retArray,
         DATABASE_NAME);
+  }
+
+  @Test
+  public void statFunctionsSampleSizeAndFilterEdgeTest() {
+    String[] expectedHeader =
+        new String[] {"_col0", "_col1", "_col2", "_col3", "_col4", "_col5", "_col6"};
+
+    String[] filteredHeader =
+        new String[] {"_col0", "_col1", "_col2", "_col3", "_col4", "_col5", "_col6", "_col7"};
+    String[] filteredRetArray =
+        new String[] {
+          "0.8660254037844386,0.3333333333333333,0.49999999999999994,1.5,-0.5,0.0,-0.7071067811865475,null,"
+        };
+    tableResultSetEqualTest(
+        "select corr(s1, s2), covar_pop(s1, s2), covar_samp(s1, s2), regr_slope(s1, s2), regr_intercept(s1, s2), "
+            + "skewness(s1), skewness(s2), kurtosis(s1) "
+            + "from stat_table where device_id = 'd1' and time <= 3",
+        filteredHeader,
+        filteredRetArray,
+        DATABASE_NAME);
+
+    String[] retArray = new String[] {"null,0.0,null,null,null,null,null,"};
+    tableResultSetEqualTest(
+        "select corr(s1, s2), covar_pop(s1, s2), covar_samp(s1, s2), regr_slope(s1, s2), regr_intercept(s1, s2), skewness(s1), kurtosis(s1) "
+            + "from stat_table where device_id = 'd4'",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    retArray = new String[] {"1.0,250.0,500.0,0.1,0.0,null,null,"};
+    tableResultSetEqualTest(
+        "select corr(s1, s2), covar_pop(s1, s2), covar_samp(s1, s2), regr_slope(s1, s2), regr_intercept(s1, s2), skewness(s1), kurtosis(s1) "
+            + "from stat_table where device_id = 'd3'",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void statFunctionsNullAndZeroVarianceTest() {
+    String[] expectedHeader =
+        new String[] {"_col0", "_col1", "_col2", "_col3", "_col4", "_col5", "_col6"};
+
+    String[] retArray =
+        new String[] {"-1.0,-125.0,-166.66666666666666,-1.0,60.0,0.0,-1.2000000000000002,"};
+    tableResultSetEqualTest(
+        "select corr(s1, s2), covar_pop(s1, s2), covar_samp(s1, s2), regr_slope(s1, s2), regr_intercept(s1, s2), skewness(s1), kurtosis(s1) "
+            + "from stat_table where device_id = 'n1'",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    retArray = new String[] {"null,0.0,0.0,null,null,null,null,"};
+    tableResultSetEqualTest(
+        "select corr(s1, s2), covar_pop(s1, s2), covar_samp(s1, s2), regr_slope(s1, s2), regr_intercept(s1, s2), skewness(s1), kurtosis(s1) "
+            + "from stat_table where device_id = 'd2'",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void statFunctionsInHavingTest() {
+    String[] expectedHeader = new String[] {"device_id", "_col1", "_col2", "_col3", "_col4"};
+    String[] retArray =
+        new String[] {"d1,-0.28867513459481287,-0.24999999999999997,0.0,-1.2000000000000002,"};
+    tableResultSetEqualTest(
+        "select device_id, corr(s1, s2), covar_samp(s1, s2), skewness(s1), kurtosis(s1) "
+            + "from stat_table where device_id in ('d1', 'd2') group by device_id "
+            + "having corr(s1, s2) < 0 and covar_samp(s1, s2) < 0 order by device_id",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void statFunctionsErrorTest() {
+    String typeError = "only support numeric data types [INT32, INT64, FLOAT, DOUBLE, TIMESTAMP]";
+    String argError = "Error size of input expressions";
+
+    tableAssertTestFail(
+        "select corr(s5, s1) from stat_table where device_id = 'd1'", typeError, DATABASE_NAME);
+    tableAssertTestFail(
+        "select covar_pop(s1, s6) from stat_table where device_id = 'd1'",
+        typeError,
+        DATABASE_NAME);
+    tableAssertTestFail(
+        "select covar_samp(s6, s1) from stat_table where device_id = 'd1'",
+        typeError,
+        DATABASE_NAME);
+    tableAssertTestFail(
+        "select regr_slope(s6, s1) from stat_table where device_id = 'd1'",
+        typeError,
+        DATABASE_NAME);
+    tableAssertTestFail(
+        "select regr_intercept(s5, s1) from stat_table where device_id = 'd1'",
+        typeError,
+        DATABASE_NAME);
+    tableAssertTestFail(
+        "select skewness(s5) from stat_table where device_id = 'd1'", typeError, DATABASE_NAME);
+    tableAssertTestFail(
+        "select kurtosis(s6) from stat_table where device_id = 'd1'", typeError, DATABASE_NAME);
+
+    tableAssertTestFail(
+        "select corr(s1) from stat_table where device_id = 'd1'", argError, DATABASE_NAME);
+    tableAssertTestFail(
+        "select covar_pop(s1) from stat_table where device_id = 'd1'", argError, DATABASE_NAME);
+    tableAssertTestFail(
+        "select covar_samp(s1) from stat_table where device_id = 'd1'", argError, DATABASE_NAME);
+    tableAssertTestFail(
+        "select regr_slope(s1) from stat_table where device_id = 'd1'", argError, DATABASE_NAME);
+    tableAssertTestFail(
+        "select regr_intercept(s1) from stat_table where device_id = 'd1'",
+        argError,
+        DATABASE_NAME);
+    tableAssertTestFail(
+        "select skewness(s1, s2) from stat_table where device_id = 'd1'", argError, DATABASE_NAME);
+    tableAssertTestFail(
+        "select kurtosis(s1, s2) from stat_table where device_id = 'd1'", argError, DATABASE_NAME);
   }
 }

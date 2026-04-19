@@ -69,6 +69,11 @@ public class AccumulatorFactory {
     switch (aggregationType) {
       case MAX_BY:
       case MIN_BY:
+      case CORR:
+      case COVAR_POP:
+      case COVAR_SAMP:
+      case REGR_SLOPE:
+      case REGR_INTERCEPT:
         return true;
       default:
         return false;
@@ -84,6 +89,31 @@ public class AccumulatorFactory {
       case MIN_BY:
         checkState(inputDataTypes.size() == 2, "Wrong inputDataTypes size.");
         return new MinByAccumulator(inputDataTypes.get(0), inputDataTypes.get(1));
+      case CORR:
+        checkState(inputDataTypes.size() == 2, "Wrong inputDataTypes size.");
+        return new CorrelationAccumulator(
+            new TSDataType[] {inputDataTypes.get(0), inputDataTypes.get(1)},
+            CorrelationAccumulator.CorrelationType.CORR);
+      case COVAR_POP:
+        checkState(inputDataTypes.size() == 2, "Wrong inputDataTypes size.");
+        return new CovarianceAccumulator(
+            new TSDataType[] {inputDataTypes.get(0), inputDataTypes.get(1)},
+            CovarianceAccumulator.CovarianceType.COVAR_POP);
+      case COVAR_SAMP:
+        checkState(inputDataTypes.size() == 2, "Wrong inputDataTypes size.");
+        return new CovarianceAccumulator(
+            new TSDataType[] {inputDataTypes.get(0), inputDataTypes.get(1)},
+            CovarianceAccumulator.CovarianceType.COVAR_SAMP);
+      case REGR_SLOPE:
+        checkState(inputDataTypes.size() == 2, "Wrong inputDataTypes size.");
+        return new RegressionAccumulator(
+            new TSDataType[] {inputDataTypes.get(0), inputDataTypes.get(1)},
+            RegressionAccumulator.RegressionType.REGR_SLOPE);
+      case REGR_INTERCEPT:
+        checkState(inputDataTypes.size() == 2, "Wrong inputDataTypes size.");
+        return new RegressionAccumulator(
+            new TSDataType[] {inputDataTypes.get(0), inputDataTypes.get(1)},
+            RegressionAccumulator.RegressionType.REGR_INTERCEPT);
       default:
         throw new IllegalArgumentException("Invalid Aggregation function: " + aggregationType);
     }
@@ -140,6 +170,12 @@ public class AccumulatorFactory {
         return new VarianceAccumulator(tsDataType, VarianceAccumulator.VarianceType.VAR_SAMP);
       case VAR_POP:
         return new VarianceAccumulator(tsDataType, VarianceAccumulator.VarianceType.VAR_POP);
+      case SKEWNESS:
+        return new CentralMomentAccumulator(
+            tsDataType, CentralMomentAccumulator.MomentType.SKEWNESS);
+      case KURTOSIS:
+        return new CentralMomentAccumulator(
+            tsDataType, CentralMomentAccumulator.MomentType.KURTOSIS);
       default:
         throw new IllegalArgumentException("Invalid Aggregation function: " + aggregationType);
     }

@@ -42,7 +42,14 @@ public enum BuiltinAggregationFunctionEnum {
   AVG("avg"),
   SUM("sum"),
   MAX_BY("max_by"),
-  MIN_BY("min_by");
+  MIN_BY("min_by"),
+  CORR("corr"),
+  COVAR_POP("covar_pop"),
+  COVAR_SAMP("covar_samp"),
+  REGR_SLOPE("regr_slope"),
+  REGR_INTERCEPT("regr_intercept"),
+  SKEWNESS("skewness"),
+  KURTOSIS("kurtosis");
 
   private final String functionName;
 
