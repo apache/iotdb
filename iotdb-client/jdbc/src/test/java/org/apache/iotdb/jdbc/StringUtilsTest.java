@@ -60,9 +60,7 @@ public class StringUtilsTest {
     BigDecimal malicious = new BigDecimal("1e1000000000");
     String out = StringUtils.consistentToString(malicious);
     // Must be short (scientific notation), never the ~1e9-char plain form.
-    assertTrue(
-        "expected scientific form, got length " + out.length(),
-        out.length() < 64);
+    assertTrue("expected scientific form, got length " + out.length(), out.length() < 64);
     assertTrue(out.contains("E") || out.contains("e"));
   }
 
@@ -71,8 +69,6 @@ public class StringUtilsTest {
     // Very large positive scale -> also produces a long plain string; must be refused.
     BigDecimal malicious = new BigDecimal("1e-1000000000");
     String out = StringUtils.consistentToString(malicious);
-    assertTrue(
-        "expected scientific form, got length " + out.length(),
-        out.length() < 64);
+    assertTrue("expected scientific form, got length " + out.length(), out.length() < 64);
   }
 }
