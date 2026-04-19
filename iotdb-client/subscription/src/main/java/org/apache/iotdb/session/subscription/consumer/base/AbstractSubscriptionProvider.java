@@ -543,7 +543,7 @@ public abstract class AbstractSubscriptionProvider {
             String.format(SUBSCRIPTION_PIPE_TIMEOUT_FORMATTER, status.code, status.message));
       case 1900: // SUBSCRIPTION_VERSION_ERROR
       case 1901: // SUBSCRIPTION_TYPE_ERROR
-      case 1909: // SUBSCRIPTION_MISSING_CUSTOMER
+      case 1909: // SUBSCRIPTION_MISSING_CONSUMER
       case 1912: // SUBSCRIPTION_NOT_ENABLED_ERROR
       default:
         {

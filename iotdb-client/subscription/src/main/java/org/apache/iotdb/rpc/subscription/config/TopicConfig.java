@@ -254,19 +254,31 @@ public class TopicConfig extends PipeParameters {
 
   /////////////////////////////// connector attributes mapping ///////////////////////////////
 
+  public boolean isRecordFormat() {
+    return isRecordFormat(
+        attributes.getOrDefault(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_DEFAULT_VALUE));
+  }
+
+  private boolean isTsFileFormat() {
+    return isTsFileFormat(
+        attributes.getOrDefault(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_DEFAULT_VALUE));
+  }
+
   public Map<String, String> getAttributesWithSinkFormat() {
     // refer to
     // org.apache.iotdb.db.pipe.agent.task.connection.PipeEventCollector.parseAndCollectEvent(org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent)
-    return isTsFileFormat(
-            attributes.getOrDefault(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_DEFAULT_VALUE))
-        ? SINK_TS_FILE_FORMAT_CONFIG
-        : SINK_TABLET_FORMAT_CONFIG;
+    return isTsFileFormat() ? SINK_TS_FILE_FORMAT_CONFIG : SINK_TABLET_FORMAT_CONFIG;
   }
 
-  private boolean isTsFileFormat(final String formatValue) {
+  private static boolean isTsFileFormat(final String formatValue) {
     return TopicConstant.FORMAT_TS_FILE_VALUE.equalsIgnoreCase(formatValue)
         || TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE.equalsIgnoreCase(formatValue)
         || LEGACY_FORMAT_TS_FILE_HANDLER_VALUE.equalsIgnoreCase(formatValue);
+  }
+
+  private static boolean isRecordFormat(final String formatValue) {
+    return TopicConstant.FORMAT_RECORD_HANDLER_VALUE.equalsIgnoreCase(formatValue)
+        || TopicConstant.FORMAT_SESSION_DATA_SETS_HANDLER_VALUE.equalsIgnoreCase(formatValue);
   }
 
   public Map<String, String> getAttributesWithSinkPrefix() {

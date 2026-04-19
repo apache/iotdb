@@ -303,17 +303,14 @@ public class SubscriptionInfo implements SnapshotProcessor {
 
     validateConsensusProtocolSupport(topicConfig);
 
-    if (topicConfig.isConsensusMode()
-        && TopicConstant.FORMAT_TS_FILE_VALUE.equalsIgnoreCase(
-            topicConfig.getStringOrDefault(
-                TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_DEFAULT_VALUE))) {
+    if (topicConfig.isConsensusMode() && !topicConfig.isRecordFormat()) {
       final String exceptionMessage =
           String.format(
-              "Failed to create or alter topic, %s=%s does not support %s=%s",
+              "Failed to create or alter topic, %s=%s only supports %s=%s",
               TopicConstant.MODE_KEY,
               TopicConstant.MODE_CONSENSUS_VALUE,
               TopicConstant.FORMAT_KEY,
-              TopicConstant.FORMAT_TS_FILE_VALUE);
+              TopicConstant.FORMAT_RECORD_HANDLER_VALUE);
       LOGGER.warn(exceptionMessage);
       throw new SubscriptionException(exceptionMessage);
     }

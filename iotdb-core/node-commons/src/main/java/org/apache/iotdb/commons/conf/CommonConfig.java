@@ -362,7 +362,7 @@ public class CommonConfig {
 
   private boolean pipeAutoSplitFullEnabled = true;
 
-  private boolean subscriptionEnabled = false;
+  private boolean subscriptionEnabled = true;
 
   private float subscriptionCacheMemoryUsagePercentage = 0.2F;
   private int subscriptionSubtaskExecutorMaxThreadNum = 2;
@@ -2303,6 +2303,14 @@ public class CommonConfig {
 
   public void setPipeAutoSplitFullEnabled(boolean pipeAutoSplitFullEnabled) {
     this.pipeAutoSplitFullEnabled = pipeAutoSplitFullEnabled;
+  }
+
+  public boolean getSubscriptionEnabled() {
+    return subscriptionEnabled;
+  }
+
+  public void setSubscriptionEnabled(boolean subscriptionEnabled) {
+    this.subscriptionEnabled = subscriptionEnabled;
   }
 
   public float getSubscriptionCacheMemoryUsagePercentage() {

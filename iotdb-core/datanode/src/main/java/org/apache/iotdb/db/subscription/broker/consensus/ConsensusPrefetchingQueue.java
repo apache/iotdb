@@ -2896,10 +2896,10 @@ public class ConsensusPrefetchingQueue {
       }
 
       try {
-        // Unregister from IoTConsensusServerImpl (stop receiving in-memory data).
-        serverImpl.unregisterSubscriptionQueue(pendingEntries);
+        // Deregister from IoTConsensusServerImpl (stop receiving in-memory data).
+        serverImpl.deregisterSubscriptionQueue(pendingEntries);
       } catch (final Exception e) {
-        LOGGER.warn("ConsensusPrefetchingQueue {}: error during unregister", this, e);
+        LOGGER.warn("ConsensusPrefetchingQueue {}: error during deregister", this, e);
       } finally {
         try {
           cleanUp();

@@ -133,7 +133,6 @@ public class PipeSubscribeSeekReq extends TPipeSubscribeReq {
 
     req.version = seekReq.version;
     req.type = seekReq.type;
-    req.body = seekReq.body;
 
     return req;
   }

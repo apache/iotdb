@@ -1021,12 +1021,12 @@ public class IoTConsensusServerImpl {
         System.identityHashCode(this));
   }
 
-  public void unregisterSubscriptionQueue(final BlockingQueue<IndexedConsensusRequest> queue) {
+  public void deregisterSubscriptionQueue(final BlockingQueue<IndexedConsensusRequest> queue) {
     subscriptionQueueRegistry.unregister(queue);
     // Re-evaluate: with fewer subscribers, more WAL may be deletable
     checkAndUpdateSafeDeletedSearchIndex();
     logger.info(
-        "Unregistered subscription queue for group {}, remaining subscription queues: {}",
+        "Deregistered subscription queue for group {}, remaining subscription queues: {}",
         consensusGroupId,
         subscriptionQueueRegistry.size());
   }

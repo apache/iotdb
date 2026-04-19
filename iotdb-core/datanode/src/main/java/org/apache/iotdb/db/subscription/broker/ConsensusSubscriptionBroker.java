@@ -394,7 +394,10 @@ public class ConsensusSubscriptionBroker implements ISubscriptionBroker {
     if (Objects.isNull(queues)) {
       return 0;
     }
-    return queues.stream().mapToInt(ConsensusPrefetchingQueue::getPrefetchedEventCount).sum();
+    return queues.stream()
+        .filter(queue -> !queue.isClosed())
+        .mapToInt(ConsensusPrefetchingQueue::getPrefetchedEventCount)
+        .sum();
   }
 
   @Override
@@ -619,27 +622,7 @@ public class ConsensusSubscriptionBroker implements ISubscriptionBroker {
   }
 
   public void unbindConsensusPrefetchingQueue(final String topicName) {
-    final List<ConsensusPrefetchingQueue> queues =
-        topicNameToConsensusPrefetchingQueues.get(topicName);
-    if (Objects.isNull(queues) || queues.isEmpty()) {
-      LOGGER.warn(
-          "Subscription: consensus prefetching queues bound to topic [{}] for consumer group [{}] do not exist",
-          topicName,
-          brokerId);
-      return;
-    }
-
-    for (final ConsensusPrefetchingQueue q : queues) {
-      q.close();
-    }
-    topicNameToConsensusPrefetchingQueues.remove(topicName);
-    topicConsumerLastPollMs.remove(topicName);
-    topicOwnershipSnapshots.remove(topicName);
-    LOGGER.info(
-        "Subscription: drop all {} consensus prefetching queue(s) bound to topic [{}] for consumer group [{}]",
-        queues.size(),
-        topicName,
-        brokerId);
+    closeAndRemoveConsensusPrefetchingQueues(topicName, true);
   }
 
   public int unbindByRegion(final ConsensusGroupId regionId) {
@@ -736,8 +719,35 @@ public class ConsensusSubscriptionBroker implements ISubscriptionBroker {
           "Subscription: consensus prefetching queue(s) bound to topic [{}] for consumer group [{}] still exist, unbind before closing",
           topicName,
           brokerId);
-      unbindConsensusPrefetchingQueue(topicName);
     }
+    closeAndRemoveConsensusPrefetchingQueues(topicName, false);
+  }
+
+  private void closeAndRemoveConsensusPrefetchingQueues(
+      final String topicName, final boolean warnIfMissing) {
+    final List<ConsensusPrefetchingQueue> queues =
+        topicNameToConsensusPrefetchingQueues.get(topicName);
+    if (Objects.isNull(queues) || queues.isEmpty()) {
+      if (warnIfMissing) {
+        LOGGER.warn(
+            "Subscription: consensus prefetching queues bound to topic [{}] for consumer group [{}] do not exist",
+            topicName,
+            brokerId);
+      }
+      return;
+    }
+
+    for (final ConsensusPrefetchingQueue q : queues) {
+      q.close();
+    }
+    topicNameToConsensusPrefetchingQueues.remove(topicName);
+    topicConsumerLastPollMs.remove(topicName);
+    topicOwnershipSnapshots.remove(topicName);
+    LOGGER.info(
+        "Subscription: drop all {} consensus prefetching queue(s) bound to topic [{}] for consumer group [{}]",
+        queues.size(),
+        topicName,
+        brokerId);
   }
 
   private static final class TopicOwnershipSnapshot {

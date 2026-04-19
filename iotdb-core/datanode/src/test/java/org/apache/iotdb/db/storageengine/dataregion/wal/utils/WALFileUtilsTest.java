@@ -293,46 +293,6 @@ public class WALFileUtilsTest {
     }
   }
 
-  @Test
-  public void testFindSearchIndexAfterCompatibleProgress() throws Exception {
-    final Path dir = Files.createTempDirectory("wal-compatible-progress-utils");
-    final File wal0 =
-        dir.resolve(WALFileUtils.getLogFileName(0, 0, WALFileStatus.CONTAINS_SEARCH_INDEX))
-            .toFile();
-    final File wal1 =
-        dir.resolve(WALFileUtils.getLogFileName(1, 12, WALFileStatus.CONTAINS_SEARCH_INDEX))
-            .toFile();
-    final File wal2 =
-        dir.resolve(WALFileUtils.getLogFileName(2, 20, WALFileStatus.CONTAINS_SEARCH_INDEX))
-            .toFile();
-
-    try {
-      try (final WALWriter writer = new WALWriter(wal0, WALFileVersion.V3)) {
-        writer.write(entryBuffer(10L), singleEntryMeta(19, 10L, 1L, 10000L, 1, 2L, 110L));
-        writer.write(entryBuffer(11L), singleEntryMeta(19, 11L, 1L, 10010L, 1, 2L, 111L));
-      }
-      try (final WALWriter writer = new WALWriter(wal1, WALFileVersion.V3)) {
-        writer.write(entryBuffer(13L), singleEntryMeta(19, 13L, 1L, 10010L, 4, 1L, 113L));
-        writer.write(entryBuffer(14L), singleEntryMeta(19, 14L, 1L, 10020L, 1, 2L, 114L));
-      }
-      try (final WALWriter writer = new WALWriter(wal2, WALFileVersion.V3)) {
-        writer.write(entryBuffer(20L), singleEntryMeta(19, 20L, 1L, 20000L, 4, 1L, 120L));
-      }
-
-      Assert.assertEquals(
-          14L, WALFileUtils.findSearchIndexAfterCompatibleProgress(dir.toFile(), 10010L, 111L));
-      Assert.assertEquals(
-          10L, WALFileUtils.findSearchIndexAfterCompatibleProgress(dir.toFile(), 9999L, 109L));
-      Assert.assertEquals(
-          -1L, WALFileUtils.findSearchIndexAfterCompatibleProgress(dir.toFile(), 20000L, 120L));
-    } finally {
-      Files.deleteIfExists(wal0.toPath());
-      Files.deleteIfExists(wal1.toPath());
-      Files.deleteIfExists(wal2.toPath());
-      Files.deleteIfExists(dir);
-    }
-  }
-
   private static ByteBuffer entryBuffer(final long bodySearchIndex) {
     final ByteBuffer buffer =
         ByteBuffer.allocate(WALInfoEntry.FIXED_SERIALIZED_SIZE + PlanNodeType.BYTES + Long.BYTES);

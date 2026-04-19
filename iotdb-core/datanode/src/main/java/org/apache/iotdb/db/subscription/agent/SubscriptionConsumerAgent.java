@@ -28,6 +28,7 @@ import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -129,13 +130,22 @@ public class SubscriptionConsumerAgent {
     // remove prefetching queues for topics unsubscribed by the consumer group
     final Set<String> topicsUnsubByGroup =
         ConsumerGroupMeta.getTopicsUnsubByGroup(metaInAgent, metaFromCoordinator);
+    final Set<String> pipeTopicsUnsubByGroup = new LinkedHashSet<>();
+    final Set<String> consensusTopicsUnsubByGroup = new LinkedHashSet<>();
     for (final String topicName : topicsUnsubByGroup) {
+      if (ConsensusSubscriptionSetupHandler.isConsensusBasedTopic(topicName)) {
+        consensusTopicsUnsubByGroup.add(topicName);
+        continue;
+      }
+      pipeTopicsUnsubByGroup.add(topicName);
+    }
+    for (final String topicName : pipeTopicsUnsubByGroup) {
       SubscriptionAgent.broker().removePrefetchingQueue(consumerGroupId, topicName);
     }
     // Tear down consensus-based subscriptions for unsubscribed topics
-    if (!topicsUnsubByGroup.isEmpty()) {
+    if (!consensusTopicsUnsubByGroup.isEmpty()) {
       ConsensusSubscriptionSetupHandler.teardownConsensusSubscriptions(
-          consumerGroupId, topicsUnsubByGroup);
+          consumerGroupId, consensusTopicsUnsubByGroup);
     }
 
     // Detect newly subscribed topics (present in new meta but not in old meta)

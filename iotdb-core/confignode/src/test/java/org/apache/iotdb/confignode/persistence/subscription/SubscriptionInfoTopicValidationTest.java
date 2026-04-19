@@ -61,7 +61,16 @@ public class SubscriptionInfoTopicValidationTest {
     attributes.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_TS_FILE_VALUE);
     attributes.put(TopicConstant.COLUMN_KEY, "id1");
 
-    assertCreateRejected(subscriptionInfo, attributes, "mode=consensus does not support format");
+    assertCreateRejected(subscriptionInfo, attributes, "mode=consensus only supports format");
+  }
+
+  @Test
+  public void testRejectLegacyTsFileAliasOnConsensusTopic() {
+    final SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    final Map<String, String> attributes = newConsensusTableTopicAttributes();
+    attributes.put(TopicConstant.FORMAT_KEY, "TsFileHandler");
+
+    assertCreateRejected(subscriptionInfo, attributes, "mode=consensus only supports format");
   }
 
   @Test
@@ -112,7 +121,7 @@ public class SubscriptionInfoTopicValidationTest {
     attributes.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_TS_FILE_VALUE);
     attributes.put(TopicConstant.RETENTION_BYTES_KEY, "1024");
 
-    assertCreateRejected(subscriptionInfo, attributes, "mode=consensus does not support format");
+    assertCreateRejected(subscriptionInfo, attributes, "mode=consensus only supports format");
   }
 
   @Test

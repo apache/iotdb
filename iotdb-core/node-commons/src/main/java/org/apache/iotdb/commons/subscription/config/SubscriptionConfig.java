@@ -30,7 +30,7 @@ public class SubscriptionConfig {
   private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
 
   public boolean getSubscriptionEnabled() {
-    return true; // TODO: make it configurable after subscription is stable
+    return COMMON_CONFIG.getSubscriptionEnabled();
   }
 
   public float getSubscriptionCacheMemoryUsagePercentage() {
@@ -194,6 +194,7 @@ public class SubscriptionConfig {
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionConfig.class);
 
   public void printAllConfigs() {
+    LOGGER.info("SubscriptionEnabled: {}", getSubscriptionEnabled());
     LOGGER.info(
         "SubscriptionCacheMemoryUsagePercentage: {}", getSubscriptionCacheMemoryUsagePercentage());
     LOGGER.info(

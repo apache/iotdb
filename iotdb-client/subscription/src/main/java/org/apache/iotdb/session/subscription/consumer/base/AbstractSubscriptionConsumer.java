@@ -1629,8 +1629,9 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
   }
 
   /**
-   * Sends seek request to ALL available providers. Unlike subscribe/unsubscribe, seek must reach
-   * every node because data regions for the topic may be distributed across different nodes.
+   * Sends seek request to ALL available providers. Unlike subscribe/unsubscribe, seek is only
+   * considered successful if every available provider acknowledges it because data regions for the
+   * topic may be distributed across different nodes.
    */
   private void seekWithRedirection(
       final String topicName, final short seekType, final long timestamp)
@@ -1642,30 +1643,35 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
               "Cluster has no available subscription providers when %s seek topic %s",
               this, topicName));
     }
-    boolean anySuccess = false;
+    final List<AbstractSubscriptionProvider> failedProviders = new ArrayList<>();
+    Throwable firstFailure = null;
     for (final AbstractSubscriptionProvider provider : providers) {
       try {
         provider.seek(topicName, seekType, timestamp);
-        anySuccess = true;
       } catch (final Exception e) {
+        failedProviders.add(provider);
+        if (Objects.isNull(firstFailure)) {
+          firstFailure = e;
+        }
         LOGGER.warn(
-            "{} failed to seek topic {} from subscription provider {}, continuing with other providers...",
+            "{} failed to seek topic {} from subscription provider {}; seek requires every provider to succeed, so the client will continue notifying the remaining providers before failing this seek.",
             this,
             topicName,
             provider,
             e);
       }
     }
-    if (!anySuccess) {
+    if (!failedProviders.isEmpty()) {
       final String errorMessage =
           String.format(
-              "%s failed to seek topic %s from all available subscription providers %s",
-              this, topicName, providers);
+              "%s failed to seek topic %s on subscription providers %s; seek requires every available provider to succeed",
+              this, topicName, failedProviders);
       LOGGER.warn(errorMessage);
-      throw new SubscriptionRuntimeCriticalException(errorMessage);
+      throw new SubscriptionRuntimeCriticalException(errorMessage, firstFailure);
     }
   }
 
+  /** Same all-provider success requirement as {@link #seekWithRedirection(String, short, long)}. */
   private void seekWithRedirectionTopicProgress(
       final String topicName, final TopicProgress topicProgress) throws SubscriptionException {
     final List<AbstractSubscriptionProvider> providers = this.providers.getAllAvailableProviders();
@@ -1675,14 +1681,18 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
               "Cluster has no available subscription providers when %s seek topic %s",
               this, topicName));
     }
-    boolean anySuccess = false;
+    final List<AbstractSubscriptionProvider> failedProviders = new ArrayList<>();
+    Throwable firstFailure = null;
     for (final AbstractSubscriptionProvider provider : providers) {
       try {
         provider.seekToTopicProgress(topicName, topicProgress);
-        anySuccess = true;
       } catch (final Exception e) {
+        failedProviders.add(provider);
+        if (Objects.isNull(firstFailure)) {
+          firstFailure = e;
+        }
         LOGGER.warn(
-            "{} failed to seek topic {} to topicProgress(regionCount={}) from provider {}, continuing...",
+            "{} failed to seek topic {} to topicProgress(regionCount={}) from provider {}; seek requires every provider to succeed, so the client will continue notifying the remaining providers before failing this seek.",
             this,
             topicName,
             topicProgress.getRegionProgress().size(),
@@ -1690,16 +1700,17 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
             e);
       }
     }
-    if (!anySuccess) {
+    if (!failedProviders.isEmpty()) {
       final String errorMessage =
           String.format(
-              "%s failed to seek topic %s to topicProgress(regionCount=%d) from all providers %s",
-              this, topicName, topicProgress.getRegionProgress().size(), providers);
+              "%s failed to seek topic %s to topicProgress(regionCount=%d) on subscription providers %s; seek requires every available provider to succeed",
+              this, topicName, topicProgress.getRegionProgress().size(), failedProviders);
       LOGGER.warn(errorMessage);
-      throw new SubscriptionRuntimeCriticalException(errorMessage);
+      throw new SubscriptionRuntimeCriticalException(errorMessage, firstFailure);
     }
   }
 
+  /** Same all-provider success requirement as {@link #seekWithRedirection(String, short, long)}. */
   private void seekAfterWithRedirectionTopicProgress(
       final String topicName, final TopicProgress topicProgress) throws SubscriptionException {
     final List<AbstractSubscriptionProvider> providers = this.providers.getAllAvailableProviders();
@@ -1709,14 +1720,18 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
               "Cluster has no available subscription providers when %s seekAfter topic %s",
               this, topicName));
     }
-    boolean anySuccess = false;
+    final List<AbstractSubscriptionProvider> failedProviders = new ArrayList<>();
+    Throwable firstFailure = null;
     for (final AbstractSubscriptionProvider provider : providers) {
       try {
         provider.seekAfterTopicProgress(topicName, topicProgress);
-        anySuccess = true;
       } catch (final Exception e) {
+        failedProviders.add(provider);
+        if (Objects.isNull(firstFailure)) {
+          firstFailure = e;
+        }
         LOGGER.warn(
-            "{} failed to seekAfter topic {} to topicProgress(regionCount={}) from provider {}, continuing...",
+            "{} failed to seekAfter topic {} to topicProgress(regionCount={}) from provider {}; seek requires every provider to succeed, so the client will continue notifying the remaining providers before failing this seekAfter.",
             this,
             topicName,
             topicProgress.getRegionProgress().size(),
@@ -1724,13 +1739,13 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
             e);
       }
     }
-    if (!anySuccess) {
+    if (!failedProviders.isEmpty()) {
       final String errorMessage =
           String.format(
-              "%s failed to seekAfter topic %s to topicProgress(regionCount=%d) from all providers %s",
-              this, topicName, topicProgress.getRegionProgress().size(), providers);
+              "%s failed to seekAfter topic %s to topicProgress(regionCount=%d) on subscription providers %s; seek requires every available provider to succeed",
+              this, topicName, topicProgress.getRegionProgress().size(), failedProviders);
       LOGGER.warn(errorMessage);
-      throw new SubscriptionRuntimeCriticalException(errorMessage);
+      throw new SubscriptionRuntimeCriticalException(errorMessage, firstFailure);
     }
   }
 

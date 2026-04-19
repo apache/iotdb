@@ -110,10 +110,10 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
   private static final IClientManager<ConfigRegionId, ConfigNodeClient> CONFIG_NODE_CLIENT_MANAGER =
       ConfigNodeClientManager.getInstance();
 
-  private static final TPipeSubscribeResp SUBSCRIPTION_MISSING_CUSTOMER_RESP =
+  private static final TPipeSubscribeResp SUBSCRIPTION_MISSING_CONSUMER_RESP =
       new TPipeSubscribeResp(
           RpcUtils.getStatus(
-              TSStatusCode.SUBSCRIPTION_MISSING_CUSTOMER,
+              TSStatusCode.SUBSCRIPTION_MISSING_CONSUMER,
               "Missing consumer config, please handshake first."),
           PipeSubscribeResponseVersion.VERSION_1.getVersion(),
           PipeSubscribeResponseType.ACK.getType());
@@ -330,7 +330,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     if (Objects.isNull(consumerConfig)) {
       LOGGER.warn(
           "Subscription: missing consumer config when handling PipeSubscribeHeartbeatReq: {}", req);
-      return SUBSCRIPTION_MISSING_CUSTOMER_RESP;
+      return SUBSCRIPTION_MISSING_CONSUMER_RESP;
     }
 
     // TODO: do something
@@ -409,7 +409,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     if (Objects.isNull(consumerConfig)) {
       LOGGER.warn(
           "Subscription: missing consumer config when handling PipeSubscribeSubscribeReq: {}", req);
-      return SUBSCRIPTION_MISSING_CUSTOMER_RESP;
+      return SUBSCRIPTION_MISSING_CONSUMER_RESP;
     }
 
     // subscribe topics
@@ -451,7 +451,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
       LOGGER.warn(
           "Subscription: missing consumer config when handling PipeSubscribeUnsubscribeReq: {}",
           req);
-      return SUBSCRIPTION_MISSING_CUSTOMER_RESP;
+      return SUBSCRIPTION_MISSING_CONSUMER_RESP;
     }
 
     // unsubscribe topics
@@ -492,7 +492,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     if (Objects.isNull(consumerConfig)) {
       LOGGER.warn(
           "Subscription: missing consumer config when handling PipeSubscribePollReq: {}", req);
-      return SUBSCRIPTION_MISSING_CUSTOMER_RESP;
+      return SUBSCRIPTION_MISSING_CONSUMER_RESP;
     }
 
     final List<SubscriptionEvent> events;
@@ -689,7 +689,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     if (Objects.isNull(consumerConfig)) {
       LOGGER.warn(
           "Subscription: missing consumer config when handling PipeSubscribeCommitReq: {}", req);
-      return SUBSCRIPTION_MISSING_CUSTOMER_RESP;
+      return SUBSCRIPTION_MISSING_CONSUMER_RESP;
     }
 
     // commit (ack or nack)
@@ -804,7 +804,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     if (Objects.isNull(consumerConfig)) {
       LOGGER.warn(
           "Subscription: missing consumer config when handling PipeSubscribeCloseReq: {}", req);
-      return SUBSCRIPTION_MISSING_CUSTOMER_RESP;
+      return SUBSCRIPTION_MISSING_CONSUMER_RESP;
     }
 
     closeConsumer(consumerConfig);
@@ -834,7 +834,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     if (Objects.isNull(consumerConfig)) {
       LOGGER.warn(
           "Subscription: missing consumer config when handling PipeSubscribeSeekReq: {}", req);
-      return SUBSCRIPTION_MISSING_CUSTOMER_RESP;
+      return SUBSCRIPTION_MISSING_CONSUMER_RESP;
     }
 
     final String topicName = req.getTopicName();

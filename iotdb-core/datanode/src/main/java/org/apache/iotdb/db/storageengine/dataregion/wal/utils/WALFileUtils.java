@@ -199,45 +199,6 @@ public class WALFileUtils {
   }
 
   /**
-   * Find the earliest local searchIndex strictly after the given compatibility frontier. This
-   * fallback path is only used when the caller has a coarse (physicalTime, localSeq) pair but no
-   * writer identity.
-   */
-  public static long findSearchIndexAfterCompatibleProgress(
-      final File logDir, final long physicalTime, final long localSeq) {
-    final long[] bestSearchIndex = new long[] {-1L};
-    final long[] bestPhysicalTime = new long[] {Long.MAX_VALUE};
-    final long[] bestLocalSeq = new long[] {Long.MAX_VALUE};
-    final int[] bestNodeId = new int[] {Integer.MAX_VALUE};
-
-    forEachSealedSearchableRequest(
-        logDir,
-        request -> {
-          if (compareCompatibleProgress(
-                  request.physicalTime, request.nodeId, request.localSeq, physicalTime, localSeq)
-              <= 0) {
-            return true;
-          }
-          if (bestSearchIndex[0] < 0L
-              || compareWriterProgress(
-                      request.physicalTime,
-                      request.nodeId,
-                      request.localSeq,
-                      bestPhysicalTime[0],
-                      bestNodeId[0],
-                      bestLocalSeq[0])
-                  < 0) {
-            bestSearchIndex[0] = request.searchIndex;
-            bestPhysicalTime[0] = request.physicalTime;
-            bestLocalSeq[0] = request.localSeq;
-            bestNodeId[0] = request.nodeId;
-          }
-          return true;
-        });
-    return bestSearchIndex[0];
-  }
-
-  /**
    * Locate the first local searchIndex whose writer progress is equal to or strictly greater than
    * the given writer-local frontier. This is currently used by single-writer recovery paths, so it
    * matches only entries from the supplied (nodeId, writerEpoch) pair.

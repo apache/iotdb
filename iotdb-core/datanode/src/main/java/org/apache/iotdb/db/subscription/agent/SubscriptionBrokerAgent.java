@@ -656,7 +656,7 @@ public class SubscriptionBrokerAgent {
     final ConsensusSubscriptionBroker consensusBroker =
         consumerGroupIdToConsensusBroker.get(consumerGroupId);
     if (Objects.nonNull(consensusBroker) && consensusBroker.hasQueue(topicName)) {
-      consensusBroker.removeQueue(topicName);
+      consensusBroker.unbindConsensusPrefetchingQueue(topicName);
       prefetchingQueueCount.invalidate();
       return;
     }
