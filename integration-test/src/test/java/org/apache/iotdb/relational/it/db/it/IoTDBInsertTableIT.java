@@ -1280,10 +1280,10 @@ public class IoTDBInsertTableIT {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       statement.execute("use \"test\"");
-      statement.execute("create table sg22 (tag1 string tag, s1 int64 field)");
+      statement.execute("create table sg23 (tag1 string tag, s1 int64 field)");
       statement.execute(
           String.format(
-              "insert into root.test.sg22(tag1,time,s1) values('d1',%s,2)",
+              "insert into root.test.sg23(tag1,time,s1) values('d1',%s,2)",
               System.currentTimeMillis()));
       fail();
     } catch (Exception e) {
