@@ -340,8 +340,6 @@ public class IoTDBConfig {
 
   private int mergeThresholdOfExplainAnalyze = 10;
 
-  private int modeMapSizeThreshold = 10000;
-
   /** How many queries can be concurrently executed. When <= 0, use 1000. */
   private int maxAllowedConcurrentQueries = 1000;
 
@@ -3241,6 +3239,7 @@ public class IoTDBConfig {
 
   public void setDataNodeId(int dataNodeId) {
     this.dataNodeId = dataNodeId;
+    CommonDescriptor.getInstance().getConfig().setNodeId(dataNodeId);
   }
 
   public int getPartitionCacheSize() {
@@ -3862,14 +3861,6 @@ public class IoTDBConfig {
 
   public void setCandidateCompactionTaskQueueSize(int candidateCompactionTaskQueueSize) {
     this.candidateCompactionTaskQueueSize = candidateCompactionTaskQueueSize;
-  }
-
-  public void setModeMapSizeThreshold(int modeMapSizeThreshold) {
-    this.modeMapSizeThreshold = modeMapSizeThreshold;
-  }
-
-  public int getModeMapSizeThreshold() {
-    return modeMapSizeThreshold;
   }
 
   public double getMaxAllocateMemoryRatioForLoad() {

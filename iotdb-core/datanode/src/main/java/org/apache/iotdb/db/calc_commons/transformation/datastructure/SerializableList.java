@@ -21,7 +21,7 @@ package org.apache.iotdb.db.calc_commons.transformation.datastructure;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.file.SystemFileFactory;
-import org.apache.iotdb.db.service.TemporaryQueryDataFileService;
+import org.apache.iotdb.db.node_commons.service.AbstractTemporaryQueryDataFileService;
 
 import org.apache.tsfile.utils.PublicBAOS;
 
@@ -129,7 +129,7 @@ public interface SerializableList {
     public RandomAccessFile getFile() throws IOException {
       if (file == null) {
         if (fileName == null) {
-          fileName = TemporaryQueryDataFileService.getInstance().register(this);
+          fileName = AbstractTemporaryQueryDataFileService.getInstance().register(this);
         }
         file = new RandomAccessFile(SystemFileFactory.INSTANCE.getFile(fileName), "rw");
       }

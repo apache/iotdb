@@ -78,6 +78,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.IoTDBStartCheck;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
+import org.apache.iotdb.db.node_commons.service.AbstractTemporaryQueryDataFileService;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
@@ -995,7 +996,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
   }
 
   private void registerUdfServices() throws StartupException {
-    registerManager.register(TemporaryQueryDataFileService.getInstance());
+    registerManager.register(AbstractTemporaryQueryDataFileService.getInstance());
     registerManager.register(UDFClassLoaderManager.setupAndGetInstance(config.getUdfDir()));
   }
 

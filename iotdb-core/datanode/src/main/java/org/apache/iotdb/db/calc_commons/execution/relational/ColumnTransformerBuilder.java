@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.calc_commons.execution.relational;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.db.calc_commons.plan.relational.metadata.ITypeMetadata;
@@ -146,7 +147,6 @@ import org.apache.iotdb.db.calc_commons.transformation.dag.column.unary.scalar.T
 import org.apache.iotdb.db.calc_commons.transformation.dag.column.unary.scalar.UpperColumnTransformer;
 import org.apache.iotdb.db.calc_commons.transformation.dag.column.unary.scalar.factory.CodecStrategiesFactory;
 import org.apache.iotdb.db.calc_commons.transformation.dag.column.unary.scalar.factory.NumericCodecStrategiesFactory;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.node_commons.common.SessionInfo;
 import org.apache.iotdb.db.node_commons.plan.analyze.ITableTypeProvider;
@@ -1493,8 +1493,8 @@ public class ColumnTransformerBuilder
     }
     throw new IllegalArgumentException(
         String.format(
-            "Unknown function %s on DataNode: %d.",
-            functionName, IoTDBDescriptor.getInstance().getConfig().getDataNodeId()));
+            "Unknown function %s on Node: %d.",
+            functionName, CommonDescriptor.getInstance().getConfig().getNodeId()));
   }
 
   @Override

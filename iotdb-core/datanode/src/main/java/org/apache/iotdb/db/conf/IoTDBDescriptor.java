@@ -538,13 +538,14 @@ public class IoTDBDescriptor {
                 "merge_threshold_of_explain_analyze",
                 Integer.toString(conf.getMergeThresholdOfExplainAnalyze()))));
 
-    conf.setModeMapSizeThreshold(
+    commonConfig.setModeMapSizeThreshold(
         Integer.parseInt(
             properties.getProperty(
-                "mode_map_size_threshold", Integer.toString(conf.getModeMapSizeThreshold()))));
+                "mode_map_size_threshold",
+                Integer.toString(commonConfig.getModeMapSizeThreshold()))));
 
-    if (conf.getModeMapSizeThreshold() <= 0) {
-      conf.setModeMapSizeThreshold(10000);
+    if (commonConfig.getModeMapSizeThreshold() <= 0) {
+      commonConfig.setModeMapSizeThreshold(10000);
     }
 
     conf.setMaxAllowedConcurrentQueries(

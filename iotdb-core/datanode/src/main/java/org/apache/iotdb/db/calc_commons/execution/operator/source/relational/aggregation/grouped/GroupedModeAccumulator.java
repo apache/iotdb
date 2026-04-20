@@ -19,10 +19,10 @@
 
 package org.apache.iotdb.db.calc_commons.execution.operator.source.relational.aggregation.grouped;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.db.calc_commons.execution.operator.source.relational.aggregation.AggregationMask;
 import org.apache.iotdb.db.calc_commons.execution.operator.source.relational.aggregation.grouped.array.LongBigArray;
 import org.apache.iotdb.db.calc_commons.execution.operator.source.relational.aggregation.grouped.array.MapBigArray;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
@@ -48,7 +48,7 @@ import static org.apache.tsfile.utils.TsPrimitiveType.getByType;
 public class GroupedModeAccumulator implements GroupedAccumulator {
 
   private final int MAP_SIZE_THRESHOLD =
-      IoTDBDescriptor.getInstance().getConfig().getModeMapSizeThreshold();
+      CommonDescriptor.getInstance().getConfig().getModeMapSizeThreshold();
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(GroupedModeAccumulator.class);
   private final TSDataType seriesDataType;

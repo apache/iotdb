@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.calc_commons.execution.operator.source.relational.aggregation;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
@@ -44,7 +44,7 @@ import static org.apache.tsfile.utils.BytesUtils.bytesToLongFromOffset;
 public class TableModeAccumulator implements TableAccumulator {
 
   private final int MAP_SIZE_THRESHOLD =
-      IoTDBDescriptor.getInstance().getConfig().getModeMapSizeThreshold();
+      CommonDescriptor.getInstance().getConfig().getModeMapSizeThreshold();
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(TableModeAccumulator.class);
   private final TSDataType seriesDataType;
