@@ -870,7 +870,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
 
   @Override
   public PrivilegeType fetchAnyPrivilegeForSpecifiedDB(String username, String database) {
-    User user = getUser(username);
+    User user = getUser(username, false);
     if (user == null) {
       return null;
     }
@@ -889,7 +889,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
   @Override
   public PrivilegeType fetchAnyPrivilegeForSpecifiedTable(
       String username, String database, String tbName) {
-    User user = getUser(username);
+    User user = getUser(username, false);
     if (user == null) {
       return null;
     }
