@@ -75,6 +75,8 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
@@ -85,9 +87,18 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
   // Do not use subscription model because the original subscription model has some bugs
   private final ConcurrentMap<NodeId, List<DataItem>> nodeSubscriptions = new ConcurrentHashMap<>();
 
+  // Debounce task cache: used to merge updates within a short period of time, avoiding unnecessary
+  // duplicate pushes
+  private final ConcurrentMap<NodeId, ScheduledFuture<?>> debounceTasks = new ConcurrentHashMap<>();
+  // Debounce interval: within 10ms, the same node is updated multiple times, and only the last one
+  // will be pushed (can be adjusted according to your site delay requirements, the minimum can be
+  // set to 1ms)
+  private final long debounceIntervalMs;
+
   public OpcUaNameSpace(final OpcUaServer server, final OpcUaServerBuilder builder) {
     super(server, NAMESPACE_URI);
     this.builder = builder;
+    debounceIntervalMs = builder.getDebounceTimeMs();
 
     getLifecycleManager()
         .addLifecycle(
@@ -563,24 +574,51 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
    */
   public void notifyNodeValueChange(
       NodeId nodeId, DataValue newValue, UaVariableNode variableNode) {
-    // 1. Update the local value of the node first, to ensure that the latest value can be obtained
-    // directly when the client calls the Read service
+    // 1. Update the local cached value of the node
     variableNode.setValue(newValue);
 
-    // 2. Proactively push the change to all subscribed clients
+    // 2. If there are no subscribers, return directly without doing any extra operations
     List<DataItem> subscribedItems = nodeSubscriptions.get(nodeId);
-    if (subscribedItems != null && !subscribedItems.isEmpty()) {
-      for (DataItem item : subscribedItems) {
-        try {
-          // Proactively push, the client will immediately receive the change notification, no need
-          // to wait for polling
-          item.setValue(newValue);
-        } catch (Exception e) {
-          // Single client push failure does not affect other clients, just log it
-          LOGGER.warn("Failed to push value change to subscription client, nodeId={}", nodeId, e);
-        }
-      }
+    if (subscribedItems == null || subscribedItems.isEmpty()) {
+      return;
     }
+
+    // 2. Debounce+Async Push: Asynchronously push the expensive push operation, while merging
+    // high-frequency repeated updates
+    debounceTasks.compute(
+        nodeId,
+        (k, oldTask) -> {
+          // If there is already a pending push task, cancel it, we only need the latest value
+          if (oldTask != null && !oldTask.isDone()) {
+            oldTask.cancel(false);
+          }
+
+          // Submit the push task to the Milo's scheduled thread pool, delay DEBOUNCE_INTERVAL_MS
+          // execution
+          return getServer()
+              .getScheduledExecutorService()
+              .schedule(
+                  () -> {
+                    try {
+                      // Batch push changes to all subscribers, this time-consuming operation is put
+                      // into the thread pool, not blocking your data update thread
+                      for (DataItem item : subscribedItems) {
+                        try {
+                          item.setValue(newValue);
+                        } catch (Exception e) {
+                          // Single client push failure does not affect other clients
+                          LOGGER.warn(
+                              "Failed to push value change to client, nodeId={}", nodeId, e);
+                        }
+                      }
+                    } finally {
+                      // Task execution completed, clean up the debounce cache
+                      debounceTasks.remove(nodeId);
+                    }
+                  },
+                  debounceIntervalMs,
+                  TimeUnit.MILLISECONDS);
+        });
   }
 
   @Override
@@ -659,8 +697,14 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
       final String password,
       final String securityDir,
       final boolean enableAnonymousAccess,
-      final Set<SecurityPolicy> securityPolicies) {
+      final Set<SecurityPolicy> securityPolicies,
+      final long debounceTimeMs) {
     builder.checkEquals(
-        user, password, Paths.get(securityDir), enableAnonymousAccess, securityPolicies);
+        user,
+        password,
+        Paths.get(securityDir),
+        enableAnonymousAccess,
+        securityPolicies,
+        debounceTimeMs);
   }
 }
