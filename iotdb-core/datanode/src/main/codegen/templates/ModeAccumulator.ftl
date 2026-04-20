@@ -26,8 +26,8 @@
 package org.apache.iotdb.db.calc_commons.execution.aggregation;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.tsfile.external.commons.collections4.comparators.ComparatorChain;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.block.column.Column;
@@ -56,7 +56,7 @@ public class ${className} implements Accumulator {
   private final Map<${type.javaBoxName}, Pair<Long, Long>> countMap = new HashMap<>();
 
   <#if type.dataType != "boolean">
-  private final int MAP_SIZE_THRESHOLD = IoTDBDescriptor.getInstance().getConfig().getModeMapSizeThreshold();
+  private final int MAP_SIZE_THRESHOLD = CommonDescriptor.getInstance().getConfig().getModeMapSizeThreshold();
 
   </#if>
   @Override
