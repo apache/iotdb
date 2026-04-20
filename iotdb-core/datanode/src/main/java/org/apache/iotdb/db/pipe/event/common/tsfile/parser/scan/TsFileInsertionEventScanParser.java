@@ -120,6 +120,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
       final boolean objectPathsOnly)
       throws IOException, IllegalPathException {
     super(
+        tsFile,
         pipeName,
         creationTime,
         pattern,
@@ -131,7 +132,8 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
         skipIfNoPrivileges,
         sourceEvent,
         null,
-        objectPathsOnly);
+        objectPathsOnly,
+        isWithMod);
 
     this.startTime = startTime;
     this.endTime = endTime;

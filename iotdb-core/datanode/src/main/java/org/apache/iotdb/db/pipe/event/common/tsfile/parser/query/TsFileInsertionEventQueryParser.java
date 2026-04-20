@@ -134,6 +134,7 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
       final boolean objectPathsOnly)
       throws IOException, IllegalPathException {
     super(
+        tsFile,
         pipeName,
         creationTime,
         pattern,
@@ -145,7 +146,8 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
         skipIfNoPrivileges,
         sourceEvent,
         null,
-        objectPathsOnly); // tsFileResource will be obtained from sourceEvent
+        objectPathsOnly,
+        isWithMod); // tsFileResource will be obtained from sourceEvent
 
     try {
       currentModifications =

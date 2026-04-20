@@ -1275,6 +1275,23 @@ public class IoTDBInsertTableIT {
     }
   }
 
+  @Test
+  public void testInsertWithTree() {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("use \"test\"");
+      statement.execute("create table sg24 (tag1 string tag, s1 int64 field)");
+      statement.execute(
+          String.format(
+              "insert into root.test.sg24(tag1,time,s1) values('d1',%s,2)",
+              System.currentTimeMillis()));
+      fail();
+    } catch (Exception e) {
+      Assert.assertEquals(
+          "701: The tree model database shall not be specified in table model.", e.getMessage());
+    }
+  }
+
   private List<Integer> checkHeader(
       ResultSetMetaData resultSetMetaData, String expectedHeaderStrings, int[] expectedTypes)
       throws SQLException {

@@ -72,6 +72,7 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
       final boolean objectPathsOnly)
       throws IOException {
     super(
+        tsFile,
         pipeName,
         creationTime,
         null,
@@ -83,7 +84,8 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
         true,
         sourceEvent,
         null,
-        objectPathsOnly);
+        objectPathsOnly,
+        isWithMod);
 
     this.isWithMod = isWithMod;
     try {
