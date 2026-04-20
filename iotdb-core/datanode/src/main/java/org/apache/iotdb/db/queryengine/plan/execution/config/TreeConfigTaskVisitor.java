@@ -357,16 +357,16 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
     if (user == null) {
       throw new SemanticException("User " + statement.getUserName() + " not found");
     }
-    statement.setPassWord(user.getPassword());
+    statement.setPassWord(
+        AuthorityChecker.getAuthorityFetcher()
+            .getUser(statement.getUserName(), true)
+            .getPassword());
     DataNodeAuthUtils.verifyPasswordReuse(
         statement.getAssociatedUsedId(), statement.getNewPassword());
   }
 
   private void visitRenameUser(AuthorStatement statement) {
-    User user = AuthorityChecker.getAuthorityFetcher().getUser(statement.getUserName());
-    if (user == null) {
-      throw new SemanticException("User " + statement.getUserName() + " not found");
-    }
+    AuthorityChecker.getAuthorityFetcher().getUser(statement.getUserName(), true);
   }
 
   @Override
