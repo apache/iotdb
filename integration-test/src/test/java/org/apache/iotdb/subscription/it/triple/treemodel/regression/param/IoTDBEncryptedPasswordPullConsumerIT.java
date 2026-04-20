@@ -36,7 +36,6 @@ import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -48,7 +47,6 @@ import java.util.List;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-@Ignore("TODO: enable after encrypted password subscription IT stabilizes")
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2SubscriptionTreeRegressionMisc.class})
 public class IoTDBEncryptedPasswordPullConsumerIT extends AbstractSubscriptionTreeRegressionIT {
@@ -152,7 +150,6 @@ public class IoTDBEncryptedPasswordPullConsumerIT extends AbstractSubscriptionTr
         .host(SRC_HOST)
         .port(SRC_PORT)
         .username(USERNAME)
-        .password(PASSWORD)
         .encryptedPassword(encryptedPassword)
         .consumerId("consumer_" + consumerGroupId)
         .consumerGroupId(consumerGroupId)
