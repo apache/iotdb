@@ -116,7 +116,16 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
       final EnrichedEvent sourceEvent,
       final boolean isWithMod)
       throws IOException {
-    super(pipeName, creationTime, pattern, startTime, endTime, pipeTaskMeta, sourceEvent);
+    super(
+        tsFile,
+        pipeName,
+        creationTime,
+        pattern,
+        startTime,
+        endTime,
+        pipeTaskMeta,
+        sourceEvent,
+        isWithMod);
 
     this.startTime = startTime;
     this.endTime = endTime;
