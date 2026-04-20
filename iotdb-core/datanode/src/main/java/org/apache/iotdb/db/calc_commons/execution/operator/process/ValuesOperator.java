@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.calc_commons.execution.operator.process;
 
+import org.apache.iotdb.db.calc_commons.execution.operator.CommonOperatorContext;
 import org.apache.iotdb.db.calc_commons.execution.operator.Operator;
-import org.apache.iotdb.db.calc_commons.execution.operator.OperatorContext;
 import org.apache.iotdb.db.node_commons.execution.MemoryEstimationHelper;
 
 import com.google.common.collect.ImmutableList;
@@ -37,12 +37,12 @@ public class ValuesOperator implements Operator {
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(ValuesOperator.class);
 
-  private final OperatorContext operatorContext;
+  private final CommonOperatorContext operatorContext;
   private final Iterator<TsBlock> tsBlocks;
   private final long maxTsBlockSize;
   private long currentRetainedSize;
 
-  public ValuesOperator(OperatorContext operatorContext, List<TsBlock> tsBlocks) {
+  public ValuesOperator(CommonOperatorContext operatorContext, List<TsBlock> tsBlocks) {
     this.operatorContext = requireNonNull(operatorContext, "operatorContext is null");
     requireNonNull(tsBlocks, "tsBlocks is null");
 
@@ -61,7 +61,7 @@ public class ValuesOperator implements Operator {
   }
 
   @Override
-  public OperatorContext getOperatorContext() {
+  public CommonOperatorContext getOperatorContext() {
     return operatorContext;
   }
 

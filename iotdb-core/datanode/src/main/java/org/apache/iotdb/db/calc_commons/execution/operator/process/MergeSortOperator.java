@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.calc_commons.execution.operator.process;
 
+import org.apache.iotdb.db.calc_commons.execution.operator.CommonOperatorContext;
 import org.apache.iotdb.db.calc_commons.execution.operator.Operator;
-import org.apache.iotdb.db.calc_commons.execution.operator.OperatorContext;
 import org.apache.iotdb.db.node_commons.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.utils.datastructure.MergeSortHeap;
 import org.apache.iotdb.db.utils.datastructure.MergeSortKey;
@@ -56,7 +56,7 @@ public abstract class MergeSortOperator extends AbstractConsumeAllOperator {
   private boolean finished;
 
   protected MergeSortOperator(
-      OperatorContext operatorContext,
+      CommonOperatorContext operatorContext,
       List<Operator> inputOperators,
       List<TSDataType> dataTypes,
       Comparator<SortKey> comparator) {

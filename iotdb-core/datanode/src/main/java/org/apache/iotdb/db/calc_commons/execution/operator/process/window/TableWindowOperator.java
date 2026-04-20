@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.calc_commons.execution.operator.process.window;
 
+import org.apache.iotdb.db.calc_commons.execution.operator.CommonOperatorContext;
 import org.apache.iotdb.db.calc_commons.execution.operator.Operator;
-import org.apache.iotdb.db.calc_commons.execution.operator.OperatorContext;
 import org.apache.iotdb.db.calc_commons.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.db.calc_commons.execution.operator.process.function.PartitionRecognizer;
 import org.apache.iotdb.db.calc_commons.execution.operator.process.function.partition.PartitionCache;
@@ -56,7 +56,7 @@ public class TableWindowOperator implements ProcessOperator {
       RamUsageEstimator.shallowSizeOfInstance(TableWindowOperator.class);
 
   // Common fields
-  private final OperatorContext operatorContext;
+  private final CommonOperatorContext operatorContext;
   private final Operator inputOperator;
   private final List<TSDataType> inputDataTypes;
   private final List<Integer> outputChannels;
@@ -84,7 +84,7 @@ public class TableWindowOperator implements ProcessOperator {
   private boolean noMoreDataSignaled;
 
   public TableWindowOperator(
-      OperatorContext operatorContext,
+      CommonOperatorContext operatorContext,
       Operator inputOperator,
       List<TSDataType> inputDataTypes,
       List<TSDataType> outputDataTypes,
@@ -119,15 +119,11 @@ public class TableWindowOperator implements ProcessOperator {
     this.totalMemorySize = 0;
     this.maxUsedMemory = 0;
     this.noMoreDataSignaled = false;
-    this.memoryReservationManager =
-        operatorContext
-            .getDriverContext()
-            .getFragmentInstanceContext()
-            .getMemoryReservationContext();
+    this.memoryReservationManager = operatorContext.getMemoryReservationContext();
   }
 
   @Override
-  public OperatorContext getOperatorContext() {
+  public CommonOperatorContext getOperatorContext() {
     return operatorContext;
   }
 

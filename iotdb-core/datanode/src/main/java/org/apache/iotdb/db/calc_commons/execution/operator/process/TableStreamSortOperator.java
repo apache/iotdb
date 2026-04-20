@@ -20,8 +20,8 @@
 package org.apache.iotdb.db.calc_commons.execution.operator.process;
 
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.db.calc_commons.execution.operator.CommonOperatorContext;
 import org.apache.iotdb.db.calc_commons.execution.operator.Operator;
-import org.apache.iotdb.db.calc_commons.execution.operator.OperatorContext;
 import org.apache.iotdb.db.calc_commons.plan.planner.CommonOperatorUtils;
 import org.apache.iotdb.db.node_commons.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.utils.datastructure.SortKey;
@@ -60,7 +60,7 @@ public class TableStreamSortOperator extends AbstractSortOperator {
   private SortKey lastRow = null;
 
   public TableStreamSortOperator(
-      OperatorContext operatorContext,
+      CommonOperatorContext operatorContext,
       Operator inputOperator,
       List<TSDataType> dataTypes,
       String folderPath,

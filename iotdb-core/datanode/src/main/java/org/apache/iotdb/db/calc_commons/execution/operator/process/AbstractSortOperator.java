@@ -21,8 +21,8 @@ package org.apache.iotdb.db.calc_commons.execution.operator.process;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.db.calc_commons.execution.operator.CommonOperatorContext;
 import org.apache.iotdb.db.calc_commons.execution.operator.Operator;
-import org.apache.iotdb.db.calc_commons.execution.operator.OperatorContext;
 import org.apache.iotdb.db.utils.datastructure.MergeSortHeap;
 import org.apache.iotdb.db.utils.datastructure.MergeSortKey;
 import org.apache.iotdb.db.utils.datastructure.SortKey;
@@ -51,7 +51,7 @@ public abstract class AbstractSortOperator implements ProcessOperator {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(AbstractSortOperator.class);
 
-  protected final OperatorContext operatorContext;
+  protected final CommonOperatorContext operatorContext;
   protected final Operator inputOperator;
   protected final TsBlockBuilder tsBlockBuilder;
 
@@ -80,7 +80,7 @@ public abstract class AbstractSortOperator implements ProcessOperator {
   private long sortCost = 0;
 
   AbstractSortOperator(
-      OperatorContext operatorContext,
+      CommonOperatorContext operatorContext,
       Operator inputOperator,
       List<TSDataType> dataTypes,
       DiskSpiller diskSpiller,
@@ -119,7 +119,7 @@ public abstract class AbstractSortOperator implements ProcessOperator {
   }
 
   @Override
-  public OperatorContext getOperatorContext() {
+  public CommonOperatorContext getOperatorContext() {
     return operatorContext;
   }
 

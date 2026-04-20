@@ -21,71 +21,47 @@ package org.apache.iotdb.db.calc_commons.execution.operator;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.node_commons.common.SessionInfo;
-import org.apache.iotdb.db.node_commons.execution.MemoryEstimationHelper;
+import org.apache.iotdb.db.calc_commons.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.execution.driver.DriverContext;
-import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 
 import io.airlift.units.Duration;
 import org.apache.tsfile.utils.Accountable;
-import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.Map;
-import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Contains information about {@link org.apache.iotdb.db.calc_commons.execution.operator.Operator}
- * execution.
+ * Contains common information about {@link Operator} execution.
  *
  * <p>Not thread-safe.
  */
-public class OperatorContext implements Accountable {
+public abstract class CommonOperatorContext implements Accountable {
 
-  private static Duration maxRunTime =
+  protected static Duration maxRunTime =
       new Duration(
           CommonDescriptor.getInstance().getConfig().getDriverTaskExecutionTimeSliceInMs(),
           TimeUnit.MILLISECONDS);
 
-  private static final long INSTANCE_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(OperatorContext.class);
-
-  private final int operatorId;
+  protected final int operatorId;
   // It seems it's never used.
-  private final PlanNodeId planNodeId;
-  private String operatorType;
-  private DriverContext driverContext;
+  protected final PlanNodeId planNodeId;
+  protected String operatorType;
 
-  private long totalExecutionTimeInNanos = 0L;
-  private long nextCalledCount = 0L;
-  private long hasNextCalledCount = 0L;
+  protected long totalExecutionTimeInNanos = 0L;
+  protected long nextCalledCount = 0L;
+  protected long hasNextCalledCount = 0L;
 
   // SpecifiedInfo is used to record some custom information for the operator,
   // which will be shown in the result of EXPLAIN ANALYZE to analyze the query.
-  private final Map<String, Object> specifiedInfo = new ConcurrentHashMap<>();
-  private long output = 0;
-  private long estimatedMemorySize;
+  protected final Map<String, Object> specifiedInfo = new ConcurrentHashMap<>();
+  protected long output = 0;
+  protected long estimatedMemorySize;
 
-  public OperatorContext(
-      int operatorId, PlanNodeId planNodeId, String operatorType, DriverContext driverContext) {
+  protected CommonOperatorContext(int operatorId, PlanNodeId planNodeId, String operatorType) {
     this.operatorId = operatorId;
     this.planNodeId = planNodeId;
     this.operatorType = operatorType;
-    this.driverContext = driverContext;
-  }
-
-  @TestOnly
-  public OperatorContext(
-      int operatorId,
-      PlanNodeId planNodeId,
-      String operatorType,
-      FragmentInstanceContext fragmentInstanceContext) {
-    this.operatorId = operatorId;
-    this.planNodeId = planNodeId;
-    this.operatorType = operatorType;
-    this.driverContext = new DriverContext(fragmentInstanceContext, 0);
   }
 
   public int getOperatorId() {
@@ -100,18 +76,6 @@ public class OperatorContext implements Accountable {
     this.operatorType = operatorType;
   }
 
-  public DriverContext getDriverContext() {
-    return driverContext;
-  }
-
-  public void setDriverContext(DriverContext driverContext) {
-    this.driverContext = driverContext;
-  }
-
-  public FragmentInstanceContext getInstanceContext() {
-    return driverContext.getFragmentInstanceContext();
-  }
-
   public static Duration getMaxRunTime() {
     return maxRunTime;
   }
@@ -122,16 +86,18 @@ public class OperatorContext implements Accountable {
   }
 
   public static void setMaxRunTime(Duration maxRunTime) {
-    OperatorContext.maxRunTime = maxRunTime;
-  }
-
-  public SessionInfo getSessionInfo() {
-    return getInstanceContext().getSessionInfo();
+    CommonOperatorContext.maxRunTime = maxRunTime;
   }
 
   public PlanNodeId getPlanNodeId() {
     return planNodeId;
   }
+
+  public abstract MemoryReservationManager getMemoryReservationContext();
+
+  public abstract int getFragmentId();
+
+  public abstract int getPipelineId();
 
   public void recordExecutionTime(long executionTimeInNanos) {
     this.totalExecutionTimeInNanos += executionTimeInNanos;
@@ -179,29 +145,5 @@ public class OperatorContext implements Accountable {
 
   public Map<String, Object> getSpecifiedInfo() {
     return specifiedInfo;
-  }
-
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) {
-      return true;
-    }
-    if (o == null || getClass() != o.getClass()) {
-      return false;
-    }
-    OperatorContext that = (OperatorContext) o;
-    return operatorId == that.operatorId;
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(operatorId);
-  }
-
-  @Override
-  public long ramBytesUsed() {
-    return INSTANCE_SIZE
-        + RamUsageEstimator.sizeOf(operatorType)
-        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(planNodeId);
   }
 }

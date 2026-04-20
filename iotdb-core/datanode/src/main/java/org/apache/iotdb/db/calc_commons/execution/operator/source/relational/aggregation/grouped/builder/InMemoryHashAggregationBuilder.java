@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.calc_commons.execution.operator.source.relational.aggregation.grouped.builder;
 
-import org.apache.iotdb.db.calc_commons.execution.operator.OperatorContext;
+import org.apache.iotdb.db.calc_commons.execution.operator.CommonOperatorContext;
 import org.apache.iotdb.db.calc_commons.execution.operator.source.relational.aggregation.grouped.GroupedAggregator;
 import org.apache.iotdb.db.calc_commons.plan.planner.CommonOperatorUtils;
 import org.apache.iotdb.db.node_commons.execution.operator.source.relational.aggregation.grouped.UpdateMemory;
@@ -66,7 +66,7 @@ public class InMemoryHashAggregationBuilder implements HashAggregationBuilder {
   private final int expectedGroups;
   private final Optional<Integer> hashChannel;
 
-  private final OperatorContext operatorContext;
+  private final CommonOperatorContext operatorContext;
 
   private static final String CURRENT_GROUP_NUMBER = "CurrentGroupNumber";
   private static final String MAX_GROUP_NUMBER = "MaxGroupNumber";
@@ -79,7 +79,7 @@ public class InMemoryHashAggregationBuilder implements HashAggregationBuilder {
       List<Type> groupByTypes,
       List<Integer> groupByChannels,
       Optional<Integer> hashChannel,
-      OperatorContext operatorContext,
+      CommonOperatorContext operatorContext,
       long maxPartialMemory,
       UpdateMemory updateMemory) {
     this(
@@ -102,7 +102,7 @@ public class InMemoryHashAggregationBuilder implements HashAggregationBuilder {
       List<Type> groupByTypes,
       List<Integer> groupByChannels,
       Optional<Integer> hashChannel,
-      OperatorContext operatorContext,
+      CommonOperatorContext operatorContext,
       long maxPartialMemory,
       Optional<Integer> unspillIntermediateChannelOffset,
       UpdateMemory updateMemory) {

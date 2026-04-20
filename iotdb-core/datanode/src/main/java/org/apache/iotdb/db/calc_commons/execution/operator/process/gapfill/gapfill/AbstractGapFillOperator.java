@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.calc_commons.execution.operator.process.gapfill.gapfill;
 
+import org.apache.iotdb.db.calc_commons.execution.operator.CommonOperatorContext;
 import org.apache.iotdb.db.calc_commons.execution.operator.Operator;
-import org.apache.iotdb.db.calc_commons.execution.operator.OperatorContext;
 import org.apache.iotdb.db.calc_commons.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.db.calc_commons.plan.planner.CommonOperatorUtils;
 import org.apache.iotdb.db.node_commons.execution.MemoryEstimationHelper;
@@ -44,7 +44,7 @@ abstract class AbstractGapFillOperator implements ProcessOperator {
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(AbstractGapFillOperator.class);
 
-  private final OperatorContext operatorContext;
+  private final CommonOperatorContext operatorContext;
   private final Operator child;
   protected final int outputColumnCount;
   private final int timeColumnIndex;
@@ -61,7 +61,7 @@ abstract class AbstractGapFillOperator implements ProcessOperator {
   private SortKey lastGroupKey = null;
 
   AbstractGapFillOperator(
-      OperatorContext operatorContext,
+      CommonOperatorContext operatorContext,
       Operator child,
       int timeColumnIndex,
       long startTime,
@@ -186,7 +186,7 @@ abstract class AbstractGapFillOperator implements ProcessOperator {
   abstract void nextTime();
 
   @Override
-  public OperatorContext getOperatorContext() {
+  public CommonOperatorContext getOperatorContext() {
     return operatorContext;
   }
 

@@ -20,8 +20,8 @@
 package org.apache.iotdb.db.calc_commons.execution.operator.source.relational.aggregation.grouped;
 
 import org.apache.iotdb.db.calc_commons.execution.operator.AbstractOperator;
+import org.apache.iotdb.db.calc_commons.execution.operator.CommonOperatorContext;
 import org.apache.iotdb.db.calc_commons.execution.operator.Operator;
-import org.apache.iotdb.db.calc_commons.execution.operator.OperatorContext;
 import org.apache.iotdb.db.calc_commons.execution.operator.source.relational.aggregation.grouped.builder.HashAggregationBuilder;
 import org.apache.iotdb.db.calc_commons.execution.operator.source.relational.aggregation.grouped.builder.InMemoryHashAggregationBuilder;
 import org.apache.iotdb.db.calc_commons.plan.planner.memory.MemoryReservationManager;
@@ -87,7 +87,7 @@ public class StreamingHashAggregationOperator extends AbstractOperator {
   private long maxUsedMemory;
 
   public StreamingHashAggregationOperator(
-      OperatorContext operatorContext,
+      CommonOperatorContext operatorContext,
       Operator child,
       List<Integer> preGroupedChannels,
       List<Integer> preGroupedIndexInResult,
@@ -127,11 +127,7 @@ public class StreamingHashAggregationOperator extends AbstractOperator {
             operatorContext,
             maxPartialMemory,
             NOOP);
-    this.memoryReservationManager =
-        operatorContext
-            .getDriverContext()
-            .getFragmentInstanceContext()
-            .getMemoryReservationContext();
+    this.memoryReservationManager = operatorContext.getMemoryReservationContext();
     updateOccupiedMemorySize();
   }
 
@@ -327,7 +323,7 @@ public class StreamingHashAggregationOperator extends AbstractOperator {
   }
 
   @Override
-  public OperatorContext getOperatorContext() {
+  public CommonOperatorContext getOperatorContext() {
     return operatorContext;
   }
 

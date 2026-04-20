@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.calc_commons.execution.operator.process.function;
 
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
-import org.apache.iotdb.db.calc_commons.execution.operator.OperatorContext;
+import org.apache.iotdb.db.calc_commons.execution.operator.CommonOperatorContext;
 import org.apache.iotdb.db.calc_commons.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.db.calc_commons.plan.planner.CommonOperatorUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -43,14 +43,14 @@ import java.util.List;
 public class TableFunctionLeafOperator implements ProcessOperator {
   private static final Logger LOGGER = LoggerFactory.getLogger(TableFunctionLeafOperator.class);
 
-  private final OperatorContext operatorContext;
+  private final CommonOperatorContext operatorContext;
   private final TsBlockBuilder blockBuilder;
 
   private final TableFunctionLeafProcessor processor;
   private volatile boolean init = false;
 
   public TableFunctionLeafOperator(
-      OperatorContext operatorContext,
+      CommonOperatorContext operatorContext,
       TableFunctionProcessorProvider processorProvider,
       List<TSDataType> outputDataTypes) {
     this.operatorContext = operatorContext;
@@ -68,7 +68,7 @@ public class TableFunctionLeafOperator implements ProcessOperator {
   }
 
   @Override
-  public OperatorContext getOperatorContext() {
+  public CommonOperatorContext getOperatorContext() {
     return this.operatorContext;
   }
 

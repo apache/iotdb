@@ -20,8 +20,8 @@
 package org.apache.iotdb.db.calc_commons.execution.operator.process;
 
 import org.apache.iotdb.db.calc_commons.execution.operator.AbstractOperator;
+import org.apache.iotdb.db.calc_commons.execution.operator.CommonOperatorContext;
 import org.apache.iotdb.db.calc_commons.execution.operator.Operator;
-import org.apache.iotdb.db.calc_commons.execution.operator.OperatorContext;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.read.common.block.TsBlock;
@@ -50,7 +50,8 @@ public abstract class AbstractConsumeAllOperator extends AbstractOperator
   /** Indicate whether we found an empty child input in one loop */
   protected boolean hasEmptyChildInput = false;
 
-  protected AbstractConsumeAllOperator(OperatorContext operatorContext, List<Operator> children) {
+  protected AbstractConsumeAllOperator(
+      CommonOperatorContext operatorContext, List<Operator> children) {
     this.operatorContext = operatorContext;
     this.children = children;
     this.inputOperatorsCount = children.size();

@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.calc_commons.execution.operator.process.gapfill.gapfill;
 
+import org.apache.iotdb.db.calc_commons.execution.operator.CommonOperatorContext;
 import org.apache.iotdb.db.calc_commons.execution.operator.Operator;
-import org.apache.iotdb.db.calc_commons.execution.operator.OperatorContext;
 import org.apache.iotdb.db.utils.datastructure.SortKey;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -36,7 +36,7 @@ abstract class AbstractGapFillWGroupOperator extends AbstractGapFillOperator {
   private final Set<Integer> groupKeyIndexSet;
 
   AbstractGapFillWGroupOperator(
-      OperatorContext operatorContext,
+      CommonOperatorContext operatorContext,
       Operator child,
       int timeColumnIndex,
       long startTime,

@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.calc_commons.execution.operator.process;
 
+import org.apache.iotdb.db.calc_commons.execution.operator.CommonOperatorContext;
 import org.apache.iotdb.db.calc_commons.execution.operator.Operator;
-import org.apache.iotdb.db.calc_commons.execution.operator.OperatorContext;
 import org.apache.iotdb.db.calc_commons.execution.operator.process.fill.ILinearFill;
 
 import org.apache.tsfile.block.column.Column;
@@ -33,7 +33,7 @@ public class TableLinearFillOperator extends AbstractLinearFillOperator {
   private final int helperColumnIndex;
 
   public TableLinearFillOperator(
-      OperatorContext operatorContext,
+      CommonOperatorContext operatorContext,
       ILinearFill[] fillArray,
       Operator child,
       int helperColumnIndex) {

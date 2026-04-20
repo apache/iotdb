@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.calc_commons.execution.operator.process;
 
+import org.apache.iotdb.db.calc_commons.execution.operator.CommonOperatorContext;
 import org.apache.iotdb.db.calc_commons.execution.operator.Operator;
-import org.apache.iotdb.db.calc_commons.execution.operator.OperatorContext;
 import org.apache.iotdb.db.calc_commons.plan.planner.CommonOperatorUtils;
 import org.apache.iotdb.db.utils.datastructure.SortKey;
 import org.apache.iotdb.db.utils.sort.TableDiskSpiller;
@@ -36,7 +36,7 @@ import java.util.List;
 
 public class TableSortOperator extends SortOperator {
   public TableSortOperator(
-      OperatorContext operatorContext,
+      CommonOperatorContext operatorContext,
       Operator inputOperator,
       List<TSDataType> dataTypes,
       String folderPath,

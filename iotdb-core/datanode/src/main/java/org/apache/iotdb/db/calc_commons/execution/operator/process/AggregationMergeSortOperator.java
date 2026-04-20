@@ -20,8 +20,8 @@
 package org.apache.iotdb.db.calc_commons.execution.operator.process;
 
 import org.apache.iotdb.db.calc_commons.execution.aggregation.Accumulator;
+import org.apache.iotdb.db.calc_commons.execution.operator.CommonOperatorContext;
 import org.apache.iotdb.db.calc_commons.execution.operator.Operator;
-import org.apache.iotdb.db.calc_commons.execution.operator.OperatorContext;
 import org.apache.iotdb.db.node_commons.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.utils.datastructure.MergeSortHeap;
 import org.apache.iotdb.db.utils.datastructure.MergeSortKey;
@@ -69,7 +69,7 @@ public class AggregationMergeSortOperator extends AbstractConsumeAllOperator {
   private long lastTime;
 
   public AggregationMergeSortOperator(
-      OperatorContext operatorContext,
+      CommonOperatorContext operatorContext,
       List<Operator> children,
       List<TSDataType> dataTypes,
       List<Accumulator> accumulators,

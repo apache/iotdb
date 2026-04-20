@@ -19,10 +19,10 @@
 
 package org.apache.iotdb.db.calc_commons.execution.operator.process.window;
 
+import org.apache.iotdb.db.calc_commons.execution.operator.CommonOperatorContext;
 import org.apache.iotdb.db.calc_commons.execution.operator.GroupedTopNBuilder;
 import org.apache.iotdb.db.calc_commons.execution.operator.GroupedTopNRowNumberBuilder;
 import org.apache.iotdb.db.calc_commons.execution.operator.Operator;
-import org.apache.iotdb.db.calc_commons.execution.operator.OperatorContext;
 import org.apache.iotdb.db.calc_commons.execution.operator.SimpleTsBlockWithPositionComparator;
 import org.apache.iotdb.db.calc_commons.execution.operator.TsBlockWithPositionComparator;
 import org.apache.iotdb.db.calc_commons.execution.operator.process.ProcessOperator;
@@ -51,7 +51,7 @@ public class TopKRankingOperator implements ProcessOperator {
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(TopKRankingOperator.class);
 
-  private final OperatorContext operatorContext;
+  private final CommonOperatorContext operatorContext;
   private final Operator inputOperator;
   private final TopKRankingNode.RankingType rankingType;
   private final List<TSDataType> inputTypes;
@@ -78,7 +78,7 @@ public class TopKRankingOperator implements ProcessOperator {
   private java.util.Iterator<TsBlock> outputIterator;
 
   public TopKRankingOperator(
-      OperatorContext operatorContext,
+      CommonOperatorContext operatorContext,
       Operator inputOperator,
       TopKRankingNode.RankingType rankingType,
       List<TSDataType> inputTypes,
@@ -169,7 +169,7 @@ public class TopKRankingOperator implements ProcessOperator {
   }
 
   @Override
-  public OperatorContext getOperatorContext() {
+  public CommonOperatorContext getOperatorContext() {
     return operatorContext;
   }
 

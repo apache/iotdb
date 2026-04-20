@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.calc_commons.execution.operator.process;
 
+import org.apache.iotdb.db.calc_commons.execution.operator.CommonOperatorContext;
 import org.apache.iotdb.db.calc_commons.execution.operator.Operator;
-import org.apache.iotdb.db.calc_commons.execution.operator.OperatorContext;
 import org.apache.iotdb.db.node_commons.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.utils.datastructure.MergeSortHeap;
 import org.apache.iotdb.db.utils.datastructure.MergeSortKey;
@@ -55,7 +55,7 @@ public abstract class TopKOperator implements ProcessOperator {
 
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(TopKOperator.class);
-  private final OperatorContext operatorContext;
+  private final CommonOperatorContext operatorContext;
 
   private final List<Operator> childrenOperators;
   private int childIndex;
@@ -87,7 +87,7 @@ public abstract class TopKOperator implements ProcessOperator {
   public static final int OPERATOR_BATCH_UPPER_BOUND = 100000;
 
   protected TopKOperator(
-      OperatorContext operatorContext,
+      CommonOperatorContext operatorContext,
       List<Operator> childrenOperators,
       List<TSDataType> dataTypes,
       Comparator<SortKey> comparator,
@@ -112,7 +112,7 @@ public abstract class TopKOperator implements ProcessOperator {
   }
 
   @Override
-  public OperatorContext getOperatorContext() {
+  public CommonOperatorContext getOperatorContext() {
     return operatorContext;
   }
 

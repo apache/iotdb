@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.calc_commons.execution.operator.process;
 
+import org.apache.iotdb.db.calc_commons.execution.operator.CommonOperatorContext;
 import org.apache.iotdb.db.calc_commons.execution.operator.Operator;
-import org.apache.iotdb.db.calc_commons.execution.operator.OperatorContext;
 import org.apache.iotdb.db.calc_commons.plan.planner.CommonOperatorUtils;
 import org.apache.iotdb.db.utils.datastructure.SortKey;
 
@@ -34,7 +34,7 @@ import java.util.List;
 
 public class TableTopKOperator extends TopKOperator {
   public TableTopKOperator(
-      OperatorContext operatorContext,
+      CommonOperatorContext operatorContext,
       List<Operator> childrenOperators,
       List<TSDataType> dataTypes,
       Comparator<SortKey> comparator,

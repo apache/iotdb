@@ -19,10 +19,9 @@
 
 package org.apache.iotdb.db.calc_commons.execution.operator.process;
 
+import org.apache.iotdb.db.calc_commons.execution.operator.CommonOperatorContext;
 import org.apache.iotdb.db.calc_commons.execution.operator.Operator;
-import org.apache.iotdb.db.calc_commons.execution.operator.OperatorContext;
 import org.apache.iotdb.db.node_commons.execution.MemoryEstimationHelper;
-import org.apache.iotdb.db.queryengine.execution.schedule.task.DriverTaskId;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.block.column.Column;
@@ -43,7 +42,7 @@ public class AssignUniqueIdOperator implements ProcessOperator {
   private static final long ROW_IDS_PER_REQUEST = 1L << 20L;
   private static final long MAX_ROW_ID = 1L << 40L;
 
-  private final OperatorContext operatorContext;
+  private final CommonOperatorContext operatorContext;
   private final Operator child;
 
   private final AtomicLong rowIdPool = new AtomicLong();
@@ -52,13 +51,13 @@ public class AssignUniqueIdOperator implements ProcessOperator {
   private long rowIdCounter;
   private long maxRowIdCounterValue;
 
-  public AssignUniqueIdOperator(OperatorContext operatorContext, Operator child) {
+  public AssignUniqueIdOperator(CommonOperatorContext operatorContext, Operator child) {
     this.operatorContext = operatorContext;
     this.child = child;
 
-    DriverTaskId id = operatorContext.getDriverContext().getDriverTaskID();
     this.uniqueValueMask =
-        (((long) id.getFragmentId().getId()) << 54) | (((long) id.getPipelineId()) << 40);
+        (((long) operatorContext.getFragmentId()) << 54)
+            | (((long) operatorContext.getPipelineId()) << 40);
     requestValues();
   }
 
@@ -117,7 +116,7 @@ public class AssignUniqueIdOperator implements ProcessOperator {
   }
 
   @Override
-  public OperatorContext getOperatorContext() {
+  public CommonOperatorContext getOperatorContext() {
     return operatorContext;
   }
 

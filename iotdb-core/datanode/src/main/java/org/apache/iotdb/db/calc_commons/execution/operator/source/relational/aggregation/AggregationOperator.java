@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.calc_commons.execution.operator.source.relational.aggregation;
 
+import org.apache.iotdb.db.calc_commons.execution.operator.CommonOperatorContext;
 import org.apache.iotdb.db.calc_commons.execution.operator.Operator;
-import org.apache.iotdb.db.calc_commons.execution.operator.OperatorContext;
 import org.apache.iotdb.db.calc_commons.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.db.calc_commons.plan.planner.CommonOperatorUtils;
 import org.apache.iotdb.db.calc_commons.plan.planner.memory.MemoryReservationManager;
@@ -43,7 +43,7 @@ public class AggregationOperator implements ProcessOperator {
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(AggregationOperator.class);
 
-  private final OperatorContext operatorContext;
+  private final CommonOperatorContext operatorContext;
 
   private final Operator child;
 
@@ -61,7 +61,7 @@ public class AggregationOperator implements ProcessOperator {
   private boolean finished = false;
 
   public AggregationOperator(
-      OperatorContext operatorContext, Operator child, List<TableAggregator> aggregators) {
+      CommonOperatorContext operatorContext, Operator child, List<TableAggregator> aggregators) {
     this.operatorContext = operatorContext;
     this.child = child;
     this.aggregators = aggregators;
@@ -69,11 +69,7 @@ public class AggregationOperator implements ProcessOperator {
         new TsBlockBuilder(
             aggregators.stream().map(TableAggregator::getType).collect(toImmutableList()));
     this.resultColumnsBuilder = resultBuilder.getValueColumnBuilders();
-    this.memoryReservationManager =
-        operatorContext
-            .getDriverContext()
-            .getFragmentInstanceContext()
-            .getMemoryReservationContext();
+    this.memoryReservationManager = operatorContext.getMemoryReservationContext();
   }
 
   @Override
@@ -127,7 +123,7 @@ public class AggregationOperator implements ProcessOperator {
   }
 
   @Override
-  public OperatorContext getOperatorContext() {
+  public CommonOperatorContext getOperatorContext() {
     return operatorContext;
   }
 

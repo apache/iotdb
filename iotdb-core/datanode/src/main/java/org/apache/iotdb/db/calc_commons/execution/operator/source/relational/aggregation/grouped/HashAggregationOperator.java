@@ -20,8 +20,8 @@
 package org.apache.iotdb.db.calc_commons.execution.operator.source.relational.aggregation.grouped;
 
 import org.apache.iotdb.db.calc_commons.execution.operator.AbstractOperator;
+import org.apache.iotdb.db.calc_commons.execution.operator.CommonOperatorContext;
 import org.apache.iotdb.db.calc_commons.execution.operator.Operator;
-import org.apache.iotdb.db.calc_commons.execution.operator.OperatorContext;
 import org.apache.iotdb.db.calc_commons.execution.operator.source.relational.aggregation.grouped.builder.HashAggregationBuilder;
 import org.apache.iotdb.db.calc_commons.execution.operator.source.relational.aggregation.grouped.builder.InMemoryHashAggregationBuilder;
 import org.apache.iotdb.db.calc_commons.plan.planner.memory.MemoryReservationManager;
@@ -69,7 +69,7 @@ public class HashAggregationOperator extends AbstractOperator {
   private boolean finished = false;
 
   public HashAggregationOperator(
-      OperatorContext operatorContext,
+      CommonOperatorContext operatorContext,
       Operator child,
       List<Type> groupByTypes,
       List<Integer> groupByChannels,
@@ -89,11 +89,7 @@ public class HashAggregationOperator extends AbstractOperator {
     this.maxPartialMemory = maxPartialMemory;
     this.spillEnabled = spillEnabled;
     this.unspillMemoryLimit = unspillMemoryLimit;
-    this.memoryReservationManager =
-        operatorContext
-            .getDriverContext()
-            .getFragmentInstanceContext()
-            .getMemoryReservationContext();
+    this.memoryReservationManager = operatorContext.getMemoryReservationContext();
   }
 
   @Override
@@ -199,7 +195,7 @@ public class HashAggregationOperator extends AbstractOperator {
   }
 
   @Override
-  public OperatorContext getOperatorContext() {
+  public CommonOperatorContext getOperatorContext() {
     return operatorContext;
   }
 

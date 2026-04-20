@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.calc_commons.execution.operator.process;
 
+import org.apache.iotdb.db.calc_commons.execution.operator.CommonOperatorContext;
 import org.apache.iotdb.db.calc_commons.execution.operator.Operator;
-import org.apache.iotdb.db.calc_commons.execution.operator.OperatorContext;
 import org.apache.iotdb.db.calc_commons.execution.operator.process.fill.IFill;
 import org.apache.iotdb.db.node_commons.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.utils.datastructure.SortKey;
@@ -44,7 +44,7 @@ public class PreviousFillWithGroupOperator implements ProcessOperator {
 
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(PreviousFillWithGroupOperator.class);
-  private final OperatorContext operatorContext;
+  private final CommonOperatorContext operatorContext;
   private final IFill[] fillArray;
   private final Operator child;
   private final int outputColumnCount;
@@ -59,7 +59,7 @@ public class PreviousFillWithGroupOperator implements ProcessOperator {
   private SortKey lastRow = null;
 
   public PreviousFillWithGroupOperator(
-      OperatorContext operatorContext,
+      CommonOperatorContext operatorContext,
       IFill[] fillArray,
       Operator child,
       int helperColumnIndex,
@@ -166,7 +166,7 @@ public class PreviousFillWithGroupOperator implements ProcessOperator {
   }
 
   @Override
-  public OperatorContext getOperatorContext() {
+  public CommonOperatorContext getOperatorContext() {
     return operatorContext;
   }
 

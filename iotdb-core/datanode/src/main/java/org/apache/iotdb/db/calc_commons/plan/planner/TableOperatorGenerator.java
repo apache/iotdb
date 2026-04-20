@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.calc_commons.plan.planner;
 
+import org.apache.iotdb.db.calc_commons.execution.operator.CommonOperatorContext;
 import org.apache.iotdb.db.calc_commons.execution.operator.Operator;
-import org.apache.iotdb.db.calc_commons.execution.operator.OperatorContext;
 import org.apache.iotdb.db.calc_commons.execution.operator.process.AssignUniqueIdOperator;
 import org.apache.iotdb.db.calc_commons.execution.operator.process.CollectOperator;
 import org.apache.iotdb.db.calc_commons.execution.operator.process.EnforceSingleRowOperator;
@@ -365,7 +365,7 @@ public abstract class TableOperatorGenerator<
           visitor.process(expression, projectColumnTransformerContext));
     }
 
-    final OperatorContext operatorContext =
+    final CommonOperatorContext operatorContext =
         addOperatorContext(context, planNodeId, FilterAndProjectOperator.class.getSimpleName());
 
     // Project expressions don't contain Non-Mappable UDF, TransformOperator is not needed
@@ -429,7 +429,7 @@ public abstract class TableOperatorGenerator<
     int timeColumnIndex = getColumnIndex(node.getGapFillColumn(), node.getChild());
     if (node.getGapFillGroupingKeys().isEmpty()) { // without group keys
       if (node.getMonthDuration() == 0) { // without month interval
-        OperatorContext operatorContext =
+        CommonOperatorContext operatorContext =
             addOperatorContext(
                 context, node.getPlanNodeId(), GapFillWoGroupWoMoOperator.class.getSimpleName());
         return new GapFillWoGroupWoMoOperator(
@@ -441,7 +441,7 @@ public abstract class TableOperatorGenerator<
             inputDataTypes,
             node.getNonMonthDuration());
       } else { // with month interval
-        OperatorContext operatorContext =
+        CommonOperatorContext operatorContext =
             addOperatorContext(
                 context, node.getPlanNodeId(), GapFillWoGroupWMoOperator.class.getSimpleName());
         return new GapFillWoGroupWMoOperator(
@@ -461,7 +461,7 @@ public abstract class TableOperatorGenerator<
           genFillGroupKeyComparator(
               node.getGapFillGroupingKeys(), node, inputDataTypes, groupingKeysIndexSet);
       if (node.getMonthDuration() == 0) { // without month interval
-        OperatorContext operatorContext =
+        CommonOperatorContext operatorContext =
             addOperatorContext(
                 context, node.getPlanNodeId(), GapFillWGroupWoMoOperator.class.getSimpleName());
         return new GapFillWGroupWoMoOperator(
@@ -475,7 +475,7 @@ public abstract class TableOperatorGenerator<
             groupingKeysIndexSet,
             node.getNonMonthDuration());
       } else { // with month interval
-        OperatorContext operatorContext =
+        CommonOperatorContext operatorContext =
             addOperatorContext(
                 context, node.getPlanNodeId(), GapFillWGroupWMoOperator.class.getSimpleName());
         return new GapFillWGroupWMoOperator(
@@ -512,7 +512,7 @@ public abstract class TableOperatorGenerator<
             context.getZoneId());
 
     if (node.getGroupingKeys().isPresent()) {
-      OperatorContext operatorContext =
+      CommonOperatorContext operatorContext =
           addOperatorContext(
               context, node.getPlanNodeId(), PreviousFillWithGroupOperator.class.getSimpleName());
       return new PreviousFillWithGroupOperator(
@@ -524,7 +524,7 @@ public abstract class TableOperatorGenerator<
               node.getGroupingKeys().get(), node, inputDataTypes, new HashSet<>()),
           inputDataTypes);
     } else {
-      OperatorContext operatorContext =
+      CommonOperatorContext operatorContext =
           addOperatorContext(
               context, node.getPlanNodeId(), TableFillOperator.class.getSimpleName());
       return new TableFillOperator(operatorContext, fillArray, child, helperColumnIndex);
@@ -580,7 +580,7 @@ public abstract class TableOperatorGenerator<
     ILinearFill[] fillArray = getLinearFill(inputColumnCount, inputDataTypes);
 
     if (node.getGroupingKeys().isPresent()) {
-      OperatorContext operatorContext =
+      CommonOperatorContext operatorContext =
           addOperatorContext(
               context,
               node.getPlanNodeId(),
@@ -594,7 +594,7 @@ public abstract class TableOperatorGenerator<
               node.getGroupingKeys().get(), node, inputDataTypes, new HashSet<>()),
           inputDataTypes);
     } else {
-      OperatorContext operatorContext =
+      CommonOperatorContext operatorContext =
           addOperatorContext(
               context, node.getPlanNodeId(), TableLinearFillOperator.class.getSimpleName());
       return new TableLinearFillOperator(operatorContext, fillArray, child, helperColumnIndex);
@@ -604,7 +604,7 @@ public abstract class TableOperatorGenerator<
   @Override
   public Operator visitValueFill(ValueFillNode node, C context) {
     Operator child = node.getChild().accept(this, context);
-    OperatorContext operatorContext =
+    CommonOperatorContext operatorContext =
         addOperatorContext(context, node.getPlanNodeId(), TableFillOperator.class.getSimpleName());
     List<TSDataType> inputDataTypes =
         getOutputColumnTypes(node.getChild(), context.getTableTypeProvider());
@@ -707,7 +707,7 @@ public abstract class TableOperatorGenerator<
   @Override
   public Operator visitLimit(LimitNode node, C context) {
     Operator child = node.getChild().accept(this, context);
-    OperatorContext operatorContext =
+    CommonOperatorContext operatorContext =
         addOperatorContext(context, node.getPlanNodeId(), LimitOperator.class.getSimpleName());
 
     return new LimitOperator(operatorContext, node.getCount(), child);
@@ -716,7 +716,7 @@ public abstract class TableOperatorGenerator<
   @Override
   public Operator visitOffset(OffsetNode node, C context) {
     Operator child = node.getChild().accept(this, context);
-    OperatorContext operatorContext =
+    CommonOperatorContext operatorContext =
         addOperatorContext(context, node.getPlanNodeId(), OffsetOperator.class.getSimpleName());
 
     return new OffsetOperator(operatorContext, node.getCount(), child);
@@ -729,7 +729,7 @@ public abstract class TableOperatorGenerator<
 
   @Override
   public Operator visitCollect(CollectNode node, C context) {
-    OperatorContext operatorContext =
+    CommonOperatorContext operatorContext =
         addOperatorContext(context, node.getPlanNodeId(), CollectOperator.class.getSimpleName());
     List<Operator> children = new ArrayList<>(node.getChildren().size());
     for (PlanNode child : node.getChildren()) {
@@ -740,7 +740,7 @@ public abstract class TableOperatorGenerator<
 
   @Override
   public Operator visitMergeSort(MergeSortNode node, C context) {
-    OperatorContext operatorContext =
+    CommonOperatorContext operatorContext =
         addOperatorContext(
             context, node.getPlanNodeId(), TableMergeSortOperator.class.getSimpleName());
     List<Operator> children = new ArrayList<>(node.getChildren().size());
@@ -769,7 +769,7 @@ public abstract class TableOperatorGenerator<
 
   @Override
   public Operator visitSort(SortNode node, C context) {
-    OperatorContext operatorContext =
+    CommonOperatorContext operatorContext =
         addOperatorContext(context, node.getPlanNodeId(), TableSortOperator.class.getSimpleName());
     List<TSDataType> dataTypes = getOutputColumnTypes(node, context.getTableTypeProvider());
     int sortItemsCount = node.getOrderingScheme().getOrderBy().size();
@@ -794,14 +794,14 @@ public abstract class TableOperatorGenerator<
             node.getOrderingScheme().getOrderingList(), sortItemIndexList, sortItemDataTypeList));
   }
 
-  protected abstract String getSortTmpDir(OperatorContext operatorContext);
+  protected abstract String getSortTmpDir(CommonOperatorContext operatorContext);
 
-  protected abstract OperatorContext addOperatorContext(
+  protected abstract CommonOperatorContext addOperatorContext(
       C context, PlanNodeId planNodeId, String operatorType);
 
   @Override
   public Operator visitTopK(TopKNode node, C context) {
-    OperatorContext operatorContext =
+    CommonOperatorContext operatorContext =
         addOperatorContext(context, node.getPlanNodeId(), TableTopKOperator.class.getSimpleName());
     List<Operator> children = new ArrayList<>(node.getChildren().size());
     for (PlanNode child : node.getChildren()) {
@@ -862,7 +862,7 @@ public abstract class TableOperatorGenerator<
 
   @Override
   public Operator visitStreamSort(StreamSortNode node, C context) {
-    OperatorContext operatorContext =
+    CommonOperatorContext operatorContext =
         addOperatorContext(
             context, node.getPlanNodeId(), TableStreamSortOperator.class.getSimpleName());
     List<TSDataType> dataTypes = getOutputColumnTypes(node, context.getTableTypeProvider());
@@ -950,7 +950,7 @@ public abstract class TableOperatorGenerator<
 
     // cross join does not need time column
     if (node.isCrossJoin()) {
-      OperatorContext operatorContext =
+      CommonOperatorContext operatorContext =
           addOperatorContext(
               context,
               node.getPlanNodeId(),
@@ -1020,7 +1020,7 @@ public abstract class TableOperatorGenerator<
       ComparisonExpression.Operator asofOperator = asofJoinClause.getOperator();
 
       if (requireNonNull(node.getJoinType()) == JoinNode.JoinType.INNER) {
-        OperatorContext operatorContext =
+        CommonOperatorContext operatorContext =
             addOperatorContext(
                 context,
                 node.getPlanNodeId(),
@@ -1040,7 +1040,7 @@ public abstract class TableOperatorGenerator<
                 !asofJoinClause.isOperatorContainsGreater()),
             dataTypes);
       } else if (requireNonNull(node.getJoinType()) == JoinNode.JoinType.LEFT) {
-        OperatorContext operatorContext =
+        CommonOperatorContext operatorContext =
             addOperatorContext(
                 context, node.getPlanNodeId(), AsofMergeSortLeftJoinOperator.class.getSimpleName());
         return new AsofMergeSortLeftJoinOperator(
@@ -1063,7 +1063,7 @@ public abstract class TableOperatorGenerator<
     }
 
     if (requireNonNull(node.getJoinType()) == JoinNode.JoinType.INNER) {
-      OperatorContext operatorContext =
+      CommonOperatorContext operatorContext =
           addOperatorContext(
               context, node.getPlanNodeId(), MergeSortInnerJoinOperator.class.getSimpleName());
       return new MergeSortInnerJoinOperator(
@@ -1077,7 +1077,7 @@ public abstract class TableOperatorGenerator<
           JoinKeyComparatorFactory.getComparators(joinKeyTypes, true),
           dataTypes);
     } else if (requireNonNull(node.getJoinType()) == JoinNode.JoinType.FULL) {
-      OperatorContext operatorContext =
+      CommonOperatorContext operatorContext =
           addOperatorContext(
               context, node.getPlanNodeId(), MergeSortFullOuterJoinOperator.class.getSimpleName());
       return new MergeSortFullOuterJoinOperator(
@@ -1092,7 +1092,7 @@ public abstract class TableOperatorGenerator<
           dataTypes,
           joinKeyTypes.stream().map(this::buildUpdateLastRowFunction).collect(Collectors.toList()));
     } else if (requireNonNull(node.getJoinType()) == JoinNode.JoinType.LEFT) {
-      OperatorContext operatorContext =
+      CommonOperatorContext operatorContext =
           addOperatorContext(
               context, node.getPlanNodeId(), MergeSortLeftJoinOperator.class.getSimpleName());
       return new MergeSortLeftJoinOperator(
@@ -1195,7 +1195,7 @@ public abstract class TableOperatorGenerator<
         sourceJoinKeyType,
         context.getTableTypeProvider().getTableModelType(node.getFilteringSourceJoinSymbol()));
 
-    OperatorContext operatorContext =
+    CommonOperatorContext operatorContext =
         addOperatorContext(
             context, node.getPlanNodeId(), MergeSortSemiJoinOperator.class.getSimpleName());
     return new MergeSortSemiJoinOperator(
@@ -1222,7 +1222,7 @@ public abstract class TableOperatorGenerator<
   @Override
   public Operator visitEnforceSingleRow(EnforceSingleRowNode node, C context) {
     Operator child = node.getChild().accept(this, context);
-    OperatorContext operatorContext =
+    CommonOperatorContext operatorContext =
         addOperatorContext(
             context, node.getPlanNodeId(), EnforceSingleRowOperator.class.getSimpleName());
 
@@ -1232,7 +1232,7 @@ public abstract class TableOperatorGenerator<
   @Override
   public Operator visitAssignUniqueId(AssignUniqueId node, C context) {
     Operator child = node.getChild().accept(this, context);
-    OperatorContext operatorContext =
+    CommonOperatorContext operatorContext =
         addOperatorContext(
             context, node.getPlanNodeId(), EnforceSingleRowOperator.class.getSimpleName());
 
@@ -1253,7 +1253,7 @@ public abstract class TableOperatorGenerator<
 
   private Operator planGlobalAggregation(
       AggregationNode node, Operator child, ITableTypeProvider typeProvider, C context) {
-    OperatorContext operatorContext =
+    CommonOperatorContext operatorContext =
         addOperatorContext(
             context, node.getPlanNodeId(), AggregationOperator.class.getSimpleName());
     Map<Symbol, AggregationNode.Aggregation> aggregationMap = node.getAggregations();
@@ -1355,7 +1355,7 @@ public abstract class TableOperatorGenerator<
                             null,
                             Collections.emptySet())));
 
-        OperatorContext operatorContext =
+        CommonOperatorContext operatorContext =
             addOperatorContext(
                 context, node.getPlanNodeId(), StreamingAggregationOperator.class.getSimpleName());
         return new StreamingAggregationOperator(
@@ -1399,7 +1399,7 @@ public abstract class TableOperatorGenerator<
       }
 
       List<Integer> preGroupedChannels = preGroupedChannelsBuilder.build();
-      OperatorContext operatorContext =
+      CommonOperatorContext operatorContext =
           addOperatorContext(
               context,
               node.getPlanNodeId(),
@@ -1427,7 +1427,7 @@ public abstract class TableOperatorGenerator<
             (k, v) ->
                 aggregatorBuilder.add(
                     buildGroupByAggregator(childLayout, k, v, node.getStep(), typeProvider)));
-    OperatorContext operatorContext =
+    CommonOperatorContext operatorContext =
         addOperatorContext(
             context, node.getPlanNodeId(), HashAggregationOperator.class.getSimpleName());
 
@@ -1513,13 +1513,13 @@ public abstract class TableOperatorGenerator<
               .map(context.getTableTypeProvider()::getTableModelType)
               .map(InternalTypeManager::getTSDataType)
               .collect(Collectors.toList());
-      OperatorContext operatorContext =
+      CommonOperatorContext operatorContext =
           addOperatorContext(
               context, node.getPlanNodeId(), TableFunctionLeafOperator.class.getSimpleName());
       return new TableFunctionLeafOperator(operatorContext, processorProvider, outputDataTypes);
     } else {
       Operator operator = node.getChild().accept(this, context);
-      OperatorContext operatorContext =
+      CommonOperatorContext operatorContext =
           addOperatorContext(
               context, node.getPlanNodeId(), TableFunctionOperator.class.getSimpleName());
 
@@ -1600,7 +1600,7 @@ public abstract class TableOperatorGenerator<
 
   @Override
   public Operator visitPatternRecognition(PatternRecognitionNode node, C context) {
-    OperatorContext operatorContext =
+    CommonOperatorContext operatorContext =
         addOperatorContext(
             context, node.getPlanNodeId(), PatternRecognitionOperator.class.getSimpleName());
 
@@ -1961,7 +1961,7 @@ public abstract class TableOperatorGenerator<
   @Override
   public Operator visitMarkDistinct(MarkDistinctNode node, C context) {
     Operator child = node.getChild().accept(this, context);
-    OperatorContext operatorContext =
+    CommonOperatorContext operatorContext =
         addOperatorContext(
             context, node.getPlanNodeId(), MarkDistinctOperator.class.getSimpleName());
 
@@ -1983,7 +1983,7 @@ public abstract class TableOperatorGenerator<
   public Operator visitWindowFunction(WindowNode node, C context) {
     ITableTypeProvider typeProvider = context.getTableTypeProvider();
     Operator child = node.getChild().accept(this, context);
-    OperatorContext operatorContext =
+    CommonOperatorContext operatorContext =
         addOperatorContext(
             context, node.getPlanNodeId(), TableWindowOperator.class.getSimpleName());
 
@@ -2145,7 +2145,7 @@ public abstract class TableOperatorGenerator<
         node.getChildren().stream()
             .map(child -> child.accept(this, context))
             .collect(Collectors.toList());
-    OperatorContext operatorContext =
+    CommonOperatorContext operatorContext =
         addOperatorContext(
             context, node.getPlanNodeId(), MappingCollectOperator.class.getSimpleName());
 
@@ -2167,7 +2167,7 @@ public abstract class TableOperatorGenerator<
 
   @Override
   public Operator visitValuesNode(ValuesNode node, C context) {
-    OperatorContext operatorContext =
+    CommonOperatorContext operatorContext =
         addOperatorContext(
             context, node.getPlanNodeId(), MappingCollectOperator.class.getSimpleName());
 
@@ -2179,7 +2179,7 @@ public abstract class TableOperatorGenerator<
   @Override
   public Operator visitRowNumber(RowNumberNode node, C context) {
     Operator child = node.getChild().accept(this, context);
-    OperatorContext operatorContext =
+    CommonOperatorContext operatorContext =
         addOperatorContext(
             context, node.getPlanNodeId(), MappingCollectOperator.class.getSimpleName());
 
@@ -2216,7 +2216,7 @@ public abstract class TableOperatorGenerator<
   @Override
   public Operator visitTopKRanking(TopKRankingNode node, C context) {
     Operator child = node.getChild().accept(this, context);
-    OperatorContext operatorContext =
+    CommonOperatorContext operatorContext =
         addOperatorContext(
             context, node.getPlanNodeId(), MappingCollectOperator.class.getSimpleName());
 

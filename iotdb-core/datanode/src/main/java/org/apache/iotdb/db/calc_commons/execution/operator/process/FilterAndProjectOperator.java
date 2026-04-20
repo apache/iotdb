@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.calc_commons.execution.operator.process;
 
+import org.apache.iotdb.db.calc_commons.execution.operator.CommonOperatorContext;
 import org.apache.iotdb.db.calc_commons.execution.operator.Operator;
-import org.apache.iotdb.db.calc_commons.execution.operator.OperatorContext;
 import org.apache.iotdb.db.calc_commons.transformation.dag.column.AbstractCaseWhenThenColumnTransformer;
 import org.apache.iotdb.db.calc_commons.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.calc_commons.transformation.dag.column.FailFunctionColumnTransformer;
@@ -70,7 +70,7 @@ public class FilterAndProjectOperator implements ProcessOperator {
 
   private final boolean hasNonMappableUDF;
 
-  private final OperatorContext operatorContext;
+  private final CommonOperatorContext operatorContext;
 
   // false when we only need to do projection
   private final boolean hasFilter;
@@ -79,7 +79,7 @@ public class FilterAndProjectOperator implements ProcessOperator {
 
   @SuppressWarnings("squid:S107")
   public FilterAndProjectOperator(
-      OperatorContext operatorContext,
+      CommonOperatorContext operatorContext,
       Operator inputOperator,
       List<TSDataType> filterOutputDataTypes,
       List<LeafColumnTransformer> filterLeafColumnTransformerList,
@@ -117,7 +117,7 @@ public class FilterAndProjectOperator implements ProcessOperator {
   }
 
   @Override
-  public OperatorContext getOperatorContext() {
+  public CommonOperatorContext getOperatorContext() {
     return operatorContext;
   }
 

@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.calc_commons.execution.operator.process;
 
+import org.apache.iotdb.db.calc_commons.execution.operator.CommonOperatorContext;
 import org.apache.iotdb.db.calc_commons.execution.operator.Operator;
-import org.apache.iotdb.db.calc_commons.execution.operator.OperatorContext;
 import org.apache.iotdb.db.node_commons.execution.MemoryEstimationHelper;
 
 import com.google.common.util.concurrent.ListenableFuture;
@@ -34,11 +34,11 @@ public class LimitOperator implements ProcessOperator {
 
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(LimitOperator.class);
-  private final OperatorContext operatorContext;
+  private final CommonOperatorContext operatorContext;
   private long remainingLimit;
   private final Operator child;
 
-  public LimitOperator(OperatorContext operatorContext, long limit, Operator child) {
+  public LimitOperator(CommonOperatorContext operatorContext, long limit, Operator child) {
     this.operatorContext = requireNonNull(operatorContext, "operatorContext is null");
     checkArgument(limit >= 0, "limit must be at least zero");
     this.remainingLimit = limit;
@@ -52,7 +52,7 @@ public class LimitOperator implements ProcessOperator {
   }
 
   @Override
-  public OperatorContext getOperatorContext() {
+  public CommonOperatorContext getOperatorContext() {
     return operatorContext;
   }
 

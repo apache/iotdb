@@ -21,7 +21,6 @@ package org.apache.iotdb.db.queryengine.execution.operator.process.window;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.calc_commons.execution.operator.Operator;
-import org.apache.iotdb.db.calc_commons.execution.operator.OperatorContext;
 import org.apache.iotdb.db.calc_commons.execution.operator.process.window.TableWindowOperator;
 import org.apache.iotdb.db.calc_commons.execution.operator.process.window.function.WindowFunction;
 import org.apache.iotdb.db.calc_commons.execution.operator.process.window.function.rank.RankFunction;
@@ -34,6 +33,7 @@ import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.execution.driver.DriverContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceStateMachine;
+import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TreeLinearFillOperator;
 
 import com.google.common.util.concurrent.ListenableFuture;

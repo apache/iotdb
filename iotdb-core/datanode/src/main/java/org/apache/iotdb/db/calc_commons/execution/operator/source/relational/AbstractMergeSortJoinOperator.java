@@ -20,8 +20,8 @@
 package org.apache.iotdb.db.calc_commons.execution.operator.source.relational;
 
 import org.apache.iotdb.db.calc_commons.execution.operator.AbstractOperator;
+import org.apache.iotdb.db.calc_commons.execution.operator.CommonOperatorContext;
 import org.apache.iotdb.db.calc_commons.execution.operator.Operator;
-import org.apache.iotdb.db.calc_commons.execution.operator.OperatorContext;
 import org.apache.iotdb.db.calc_commons.execution.operator.process.join.merge.comparator.JoinKeyComparator;
 import org.apache.iotdb.db.calc_commons.plan.planner.CommonOperatorUtils;
 import org.apache.iotdb.db.calc_commons.plan.planner.memory.MemoryReservationManager;
@@ -67,7 +67,7 @@ public abstract class AbstractMergeSortJoinOperator extends AbstractOperator {
   protected long usedMemory;
 
   protected AbstractMergeSortJoinOperator(
-      OperatorContext operatorContext,
+      CommonOperatorContext operatorContext,
       Operator leftChild,
       int[] leftJoinKeyPositions,
       int[] leftOutputSymbolIdx,
@@ -85,11 +85,7 @@ public abstract class AbstractMergeSortJoinOperator extends AbstractOperator {
     this.rightOutputSymbolIdx = rightOutputSymbolIdx;
     this.comparators = comparators;
 
-    this.memoryReservationManager =
-        operatorContext
-            .getDriverContext()
-            .getFragmentInstanceContext()
-            .getMemoryReservationContext();
+    this.memoryReservationManager = operatorContext.getMemoryReservationContext();
 
     this.resultBuilder = new TsBlockBuilder(dataTypes);
   }

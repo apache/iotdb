@@ -20,8 +20,8 @@
 package org.apache.iotdb.db.calc_commons.execution.operator.process.join;
 
 import org.apache.iotdb.db.calc_commons.execution.operator.AbstractOperator;
+import org.apache.iotdb.db.calc_commons.execution.operator.CommonOperatorContext;
 import org.apache.iotdb.db.calc_commons.execution.operator.Operator;
-import org.apache.iotdb.db.calc_commons.execution.operator.OperatorContext;
 import org.apache.iotdb.db.calc_commons.plan.planner.CommonOperatorUtils;
 import org.apache.iotdb.db.calc_commons.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.db.node_commons.execution.MemoryEstimationHelper;
@@ -72,7 +72,7 @@ public class SimpleNestedLoopCrossJoinOperator extends AbstractOperator {
   private boolean buildFinished = false;
 
   public SimpleNestedLoopCrossJoinOperator(
-      OperatorContext operatorContext,
+      CommonOperatorContext operatorContext,
       Operator probeSource,
       Operator buildSource,
       int[] leftOutputSymbolIdx,
@@ -85,11 +85,7 @@ public class SimpleNestedLoopCrossJoinOperator extends AbstractOperator {
     this.rightOutputSymbolIdx = rightOutputSymbolIdx;
     this.buildBlocks = new ArrayList<>();
     this.resultBuilder = new TsBlockBuilder(dataTypes);
-    this.memoryReservationManager =
-        operatorContext
-            .getDriverContext()
-            .getFragmentInstanceContext()
-            .getMemoryReservationContext();
+    this.memoryReservationManager = operatorContext.getMemoryReservationContext();
   }
 
   @Override

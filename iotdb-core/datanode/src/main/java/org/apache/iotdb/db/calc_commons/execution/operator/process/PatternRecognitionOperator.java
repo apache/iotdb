@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.calc_commons.execution.operator.process;
 
+import org.apache.iotdb.db.calc_commons.execution.operator.CommonOperatorContext;
 import org.apache.iotdb.db.calc_commons.execution.operator.Operator;
-import org.apache.iotdb.db.calc_commons.execution.operator.OperatorContext;
 import org.apache.iotdb.db.calc_commons.execution.operator.process.rowpattern.LogicalIndexNavigation;
 import org.apache.iotdb.db.calc_commons.execution.operator.process.rowpattern.PatternAggregator;
 import org.apache.iotdb.db.calc_commons.execution.operator.process.rowpattern.PatternPartitionExecutor;
@@ -58,7 +58,7 @@ public class PatternRecognitionOperator implements ProcessOperator {
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(PatternRecognitionOperator.class);
 
-  private final OperatorContext operatorContext;
+  private final CommonOperatorContext operatorContext;
   private final Operator child;
   private final List<TSDataType> inputDataTypes;
   private final List<Integer> outputChannels;
@@ -93,7 +93,7 @@ public class PatternRecognitionOperator implements ProcessOperator {
   private final long maxRuntime;
 
   public PatternRecognitionOperator(
-      OperatorContext operatorContext,
+      CommonOperatorContext operatorContext,
       Operator child,
       List<TSDataType> inputDataTypes,
       List<TSDataType> outputDataTypes,
@@ -145,15 +145,11 @@ public class PatternRecognitionOperator implements ProcessOperator {
     this.maxRuntime = this.operatorContext.getMaxRunTime().roundTo(TimeUnit.NANOSECONDS);
     this.totalMemorySize = 0;
     this.maxUsedMemory = 0;
-    this.memoryReservationManager =
-        operatorContext
-            .getDriverContext()
-            .getFragmentInstanceContext()
-            .getMemoryReservationContext();
+    this.memoryReservationManager = operatorContext.getMemoryReservationContext();
   }
 
   @Override
-  public OperatorContext getOperatorContext() {
+  public CommonOperatorContext getOperatorContext() {
     return operatorContext;
   }
 

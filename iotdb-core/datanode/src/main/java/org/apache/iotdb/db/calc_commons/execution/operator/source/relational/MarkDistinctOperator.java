@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.calc_commons.execution.operator.source.relational;
 
+import org.apache.iotdb.db.calc_commons.execution.operator.CommonOperatorContext;
 import org.apache.iotdb.db.calc_commons.execution.operator.Operator;
-import org.apache.iotdb.db.calc_commons.execution.operator.OperatorContext;
 import org.apache.iotdb.db.calc_commons.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.db.calc_commons.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.db.node_commons.execution.MemoryEstimationHelper;
@@ -46,7 +46,7 @@ public class MarkDistinctOperator implements ProcessOperator {
 
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(MarkDistinctOperator.class);
-  private final OperatorContext operatorContext;
+  private final CommonOperatorContext operatorContext;
 
   private final Operator child;
 
@@ -61,7 +61,7 @@ public class MarkDistinctOperator implements ProcessOperator {
       TSFileDescriptor.getInstance().getConfig().getMaxTsBlockLineNumber();
 
   public MarkDistinctOperator(
-      OperatorContext operatorContext,
+      CommonOperatorContext operatorContext,
       Operator child,
       List<Type> types,
       List<Integer> markDistinctChannels,
@@ -88,15 +88,11 @@ public class MarkDistinctOperator implements ProcessOperator {
 
     this.markDistinctHash =
         new MarkDistinctHash(distinctTypes.build(), hashChannel.isPresent(), UpdateMemory.NOOP);
-    this.memoryReservationManager =
-        operatorContext
-            .getDriverContext()
-            .getFragmentInstanceContext()
-            .getMemoryReservationContext();
+    this.memoryReservationManager = operatorContext.getMemoryReservationContext();
   }
 
   @Override
-  public OperatorContext getOperatorContext() {
+  public CommonOperatorContext getOperatorContext() {
     return operatorContext;
   }
 

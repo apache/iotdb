@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.calc_commons.execution.operator.process;
 
+import org.apache.iotdb.db.calc_commons.execution.operator.CommonOperatorContext;
 import org.apache.iotdb.db.calc_commons.execution.operator.Operator;
-import org.apache.iotdb.db.calc_commons.execution.operator.OperatorContext;
 import org.apache.iotdb.db.calc_commons.execution.operator.process.fill.IFill;
 import org.apache.iotdb.db.node_commons.execution.MemoryEstimationHelper;
 
@@ -37,13 +37,13 @@ public abstract class AbstractFillOperator implements ProcessOperator {
 
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(AbstractFillOperator.class);
-  private final OperatorContext operatorContext;
+  private final CommonOperatorContext operatorContext;
   private final IFill[] fillArray;
   private final Operator child;
   private final int outputColumnCount;
 
   protected AbstractFillOperator(
-      OperatorContext operatorContext, IFill[] fillArray, Operator child) {
+      CommonOperatorContext operatorContext, IFill[] fillArray, Operator child) {
     this.operatorContext = requireNonNull(operatorContext, "operatorContext is null");
     checkArgument(
         fillArray != null && fillArray.length > 0, "fillArray should not be null or empty");
@@ -53,7 +53,7 @@ public abstract class AbstractFillOperator implements ProcessOperator {
   }
 
   @Override
-  public OperatorContext getOperatorContext() {
+  public CommonOperatorContext getOperatorContext() {
     return operatorContext;
   }
 

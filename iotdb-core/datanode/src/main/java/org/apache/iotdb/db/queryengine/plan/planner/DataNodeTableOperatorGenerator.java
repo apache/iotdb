@@ -23,8 +23,8 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
+import org.apache.iotdb.db.calc_commons.execution.operator.CommonOperatorContext;
 import org.apache.iotdb.db.calc_commons.execution.operator.Operator;
-import org.apache.iotdb.db.calc_commons.execution.operator.OperatorContext;
 import org.apache.iotdb.db.calc_commons.execution.operator.process.FilterAndProjectOperator;
 import org.apache.iotdb.db.calc_commons.execution.operator.process.LimitOperator;
 import org.apache.iotdb.db.calc_commons.execution.operator.process.OffsetOperator;
@@ -61,6 +61,7 @@ import org.apache.iotdb.db.queryengine.execution.exchange.source.ISourceHandle;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceManager;
 import org.apache.iotdb.db.queryengine.execution.operator.EmptyDataOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.ExplainAnalyzeOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TableIntoOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.copyto.TableCopyToOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.FullOuterTimeJoinOperator;
@@ -208,14 +209,19 @@ public class DataNodeTableOperatorGenerator
   }
 
   @Override
-  protected String getSortTmpDir(OperatorContext operatorContext) {
-    operatorContext.getDriverContext().setHaveTmpFile(true);
-    operatorContext.getDriverContext().getFragmentInstanceContext().setMayHaveTmpFile(true);
+  protected String getSortTmpDir(CommonOperatorContext operatorContext) {
+    OperatorContext dataNodeOperatorContext = (OperatorContext) operatorContext;
+    dataNodeOperatorContext.getDriverContext().setHaveTmpFile(true);
+    dataNodeOperatorContext.getDriverContext().getFragmentInstanceContext().setMayHaveTmpFile(true);
     return IoTDBDescriptor.getInstance().getConfig().getSortTmpDir()
         + File.separator
-        + operatorContext.getDriverContext().getFragmentInstanceContext().getId().getFullId()
+        + dataNodeOperatorContext
+            .getDriverContext()
+            .getFragmentInstanceContext()
+            .getId()
+            .getFullId()
         + File.separator
-        + operatorContext.getDriverContext().getPipelineId()
+        + dataNodeOperatorContext.getDriverContext().getPipelineId()
         + File.separator;
   }
 

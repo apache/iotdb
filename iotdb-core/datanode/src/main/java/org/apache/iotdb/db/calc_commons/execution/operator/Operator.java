@@ -29,7 +29,7 @@ public interface Operator extends AutoCloseable, Accountable {
 
   ListenableFuture<?> NOT_BLOCKED = immediateVoidFuture();
 
-  OperatorContext getOperatorContext();
+  CommonOperatorContext getOperatorContext();
 
   /**
    * Returns a future that will be completed when the operator becomes unblocked. If the operator is
@@ -41,7 +41,7 @@ public interface Operator extends AutoCloseable, Accountable {
   }
 
   default TsBlock nextWithTimer() throws Exception {
-    OperatorContext context = getOperatorContext();
+    CommonOperatorContext context = getOperatorContext();
     long startTime = System.nanoTime();
     TsBlock output = null;
     try {
@@ -65,7 +65,7 @@ public interface Operator extends AutoCloseable, Accountable {
   TsBlock next() throws Exception;
 
   default boolean hasNextWithTimer() throws Exception {
-    OperatorContext context = getOperatorContext();
+    CommonOperatorContext context = getOperatorContext();
     long startTime = System.nanoTime();
 
     try {

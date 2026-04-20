@@ -27,7 +27,7 @@ import org.slf4j.LoggerFactory;
 public abstract class AbstractOperator implements Operator {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(AbstractOperator.class);
-  protected OperatorContext operatorContext;
+  protected CommonOperatorContext operatorContext;
 
   protected long maxReturnSize =
       TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
@@ -104,7 +104,7 @@ public abstract class AbstractOperator implements Operator {
   }
 
   @Override
-  public OperatorContext getOperatorContext() {
+  public CommonOperatorContext getOperatorContext() {
     return operatorContext;
   }
 }

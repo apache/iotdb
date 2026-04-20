@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.calc_commons.execution.operator.process;
 
+import org.apache.iotdb.db.calc_commons.execution.operator.CommonOperatorContext;
 import org.apache.iotdb.db.calc_commons.execution.operator.Operator;
-import org.apache.iotdb.db.calc_commons.execution.operator.OperatorContext;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.node_commons.execution.MemoryEstimationHelper;
 
@@ -38,12 +38,12 @@ public class EnforceSingleRowOperator implements ProcessOperator {
 
   private static final String NO_RESULT_ERROR_MESSAGE = "Scalar sub-query does not have output.";
 
-  private final OperatorContext operatorContext;
+  private final CommonOperatorContext operatorContext;
   private final Operator child;
 
   private boolean finished = false;
 
-  public EnforceSingleRowOperator(OperatorContext operatorContext, Operator child) {
+  public EnforceSingleRowOperator(CommonOperatorContext operatorContext, Operator child) {
     this.operatorContext = operatorContext;
     this.child = child;
   }
@@ -117,7 +117,7 @@ public class EnforceSingleRowOperator implements ProcessOperator {
   }
 
   @Override
-  public OperatorContext getOperatorContext() {
+  public CommonOperatorContext getOperatorContext() {
     return operatorContext;
   }
 }

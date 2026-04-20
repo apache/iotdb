@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.calc_commons.execution.operator.process;
 
+import org.apache.iotdb.db.calc_commons.execution.operator.CommonOperatorContext;
 import org.apache.iotdb.db.calc_commons.execution.operator.Operator;
-import org.apache.iotdb.db.calc_commons.execution.operator.OperatorContext;
 import org.apache.iotdb.db.calc_commons.plan.planner.CommonOperatorUtils;
 
 import org.apache.tsfile.block.column.Column;
@@ -40,7 +40,9 @@ public class MappingCollectOperator extends CollectOperator {
   private final int outputColumnsCount;
 
   public MappingCollectOperator(
-      OperatorContext operatorContext, List<Operator> children, List<List<Integer>> mappings) {
+      CommonOperatorContext operatorContext,
+      List<Operator> children,
+      List<List<Integer>> mappings) {
     super(operatorContext, children);
     this.mappings = mappings;
     outputColumnsCount = mappings.get(0).size();

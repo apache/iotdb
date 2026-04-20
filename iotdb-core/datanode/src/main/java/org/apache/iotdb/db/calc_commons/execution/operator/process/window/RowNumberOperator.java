@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.db.calc_commons.execution.operator.process.window;
 
+import org.apache.iotdb.db.calc_commons.execution.operator.CommonOperatorContext;
 import org.apache.iotdb.db.calc_commons.execution.operator.Operator;
-import org.apache.iotdb.db.calc_commons.execution.operator.OperatorContext;
 import org.apache.iotdb.db.calc_commons.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.db.node_commons.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.node_commons.execution.operator.source.relational.aggregation.grouped.UpdateMemory;
@@ -51,7 +51,7 @@ public class RowNumberOperator implements ProcessOperator {
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(RowNumberOperator.class);
 
-  private final OperatorContext operatorContext;
+  private final CommonOperatorContext operatorContext;
   private final Operator inputOperator;
   private final List<Integer> outputChannels;
   private final List<Integer> partitionChannels;
@@ -62,7 +62,7 @@ public class RowNumberOperator implements ProcessOperator {
   private final Map<Integer, Long> partitionRowCounts;
 
   public RowNumberOperator(
-      OperatorContext operatorContext,
+      CommonOperatorContext operatorContext,
       Operator inputOperator,
       List<TSDataType> inputDataTypes,
       List<Integer> outputChannels,
@@ -103,7 +103,7 @@ public class RowNumberOperator implements ProcessOperator {
   }
 
   @Override
-  public OperatorContext getOperatorContext() {
+  public CommonOperatorContext getOperatorContext() {
     return operatorContext;
   }
 

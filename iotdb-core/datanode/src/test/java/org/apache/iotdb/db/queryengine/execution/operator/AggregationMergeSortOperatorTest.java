@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator;
 
-import org.apache.iotdb.db.calc_commons.execution.operator.OperatorContext;
 import org.apache.iotdb.db.calc_commons.execution.operator.process.AggregationMergeSortOperator;
 import org.apache.iotdb.db.calc_commons.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNodeId;

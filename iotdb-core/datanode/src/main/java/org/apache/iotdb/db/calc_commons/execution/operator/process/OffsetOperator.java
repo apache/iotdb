@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.calc_commons.execution.operator.process;
 
+import org.apache.iotdb.db.calc_commons.execution.operator.CommonOperatorContext;
 import org.apache.iotdb.db.calc_commons.execution.operator.Operator;
-import org.apache.iotdb.db.calc_commons.execution.operator.OperatorContext;
 import org.apache.iotdb.db.node_commons.execution.MemoryEstimationHelper;
 
 import com.google.common.util.concurrent.ListenableFuture;
@@ -34,11 +34,11 @@ public class OffsetOperator implements ProcessOperator {
 
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(OffsetOperator.class);
-  private final OperatorContext operatorContext;
+  private final CommonOperatorContext operatorContext;
   private long remainingOffset;
   private final Operator child;
 
-  public OffsetOperator(OperatorContext operatorContext, long offset, Operator child) {
+  public OffsetOperator(CommonOperatorContext operatorContext, long offset, Operator child) {
     this.operatorContext = requireNonNull(operatorContext, "operatorContext is null");
     checkArgument(offset >= 0, "offset must be at least zero");
     this.remainingOffset = offset;
@@ -52,7 +52,7 @@ public class OffsetOperator implements ProcessOperator {
   }
 
   @Override
-  public OperatorContext getOperatorContext() {
+  public CommonOperatorContext getOperatorContext() {
     return operatorContext;
   }
 

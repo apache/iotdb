@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.calc_commons.execution.operator.process.function;
 
+import org.apache.iotdb.db.calc_commons.execution.operator.CommonOperatorContext;
 import org.apache.iotdb.db.calc_commons.execution.operator.Operator;
-import org.apache.iotdb.db.calc_commons.execution.operator.OperatorContext;
 import org.apache.iotdb.db.calc_commons.execution.operator.process.AggregationMergeSortOperator;
 import org.apache.iotdb.db.calc_commons.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.db.calc_commons.execution.operator.process.function.partition.PartitionCache;
@@ -62,7 +62,7 @@ public class TableFunctionOperator implements ProcessOperator {
   private static final int DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES =
       TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
 
-  private final OperatorContext operatorContext;
+  private final CommonOperatorContext operatorContext;
   private final Operator inputOperator;
   private final TableFunctionProcessorProvider processorProvider;
   private final PartitionRecognizer partitionRecognizer;
@@ -81,7 +81,7 @@ public class TableFunctionOperator implements ProcessOperator {
   private final Queue<TsBlock> resultTsBlocks;
 
   public TableFunctionOperator(
-      OperatorContext operatorContext,
+      CommonOperatorContext operatorContext,
       TableFunctionProcessorProvider processorProvider,
       Operator inputOperator,
       List<TSDataType> inputDataTypes,
@@ -109,7 +109,7 @@ public class TableFunctionOperator implements ProcessOperator {
   }
 
   @Override
-  public OperatorContext getOperatorContext() {
+  public CommonOperatorContext getOperatorContext() {
     return this.operatorContext;
   }
 

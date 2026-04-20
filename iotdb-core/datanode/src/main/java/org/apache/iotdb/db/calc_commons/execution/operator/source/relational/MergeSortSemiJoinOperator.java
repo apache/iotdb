@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.calc_commons.execution.operator.source.relational;
 
+import org.apache.iotdb.db.calc_commons.execution.operator.CommonOperatorContext;
 import org.apache.iotdb.db.calc_commons.execution.operator.Operator;
-import org.apache.iotdb.db.calc_commons.execution.operator.OperatorContext;
 import org.apache.iotdb.db.calc_commons.execution.operator.process.join.merge.comparator.JoinKeyComparator;
 import org.apache.iotdb.db.node_commons.execution.MemoryEstimationHelper;
 
@@ -40,7 +40,7 @@ public class MergeSortSemiJoinOperator extends AbstractMergeSortJoinOperator {
   private boolean rightHasNullValue = false;
 
   public MergeSortSemiJoinOperator(
-      OperatorContext operatorContext,
+      CommonOperatorContext operatorContext,
       Operator leftChild,
       int leftJoinKeyPosition,
       int[] leftOutputSymbolIdx,

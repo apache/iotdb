@@ -21,8 +21,8 @@ package org.apache.iotdb.db.calc_commons.execution.operator.process.gapfill.gapf
 
 // without month interval
 
+import org.apache.iotdb.db.calc_commons.execution.operator.CommonOperatorContext;
 import org.apache.iotdb.db.calc_commons.execution.operator.Operator;
-import org.apache.iotdb.db.calc_commons.execution.operator.OperatorContext;
 import org.apache.iotdb.db.utils.datastructure.SortKey;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -40,7 +40,7 @@ public class GapFillWGroupWoMoOperator extends AbstractGapFillWGroupOperator {
   private final long nonMonthDuration;
 
   public GapFillWGroupWoMoOperator(
-      OperatorContext operatorContext,
+      CommonOperatorContext operatorContext,
       Operator child,
       int timeColumnIndex,
       long startTime,

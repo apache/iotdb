@@ -27,7 +27,6 @@ import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.db.calc_commons.execution.operator.Operator;
-import org.apache.iotdb.db.calc_commons.execution.operator.OperatorContext;
 import org.apache.iotdb.db.calc_commons.execution.operator.process.FilterAndProjectOperator;
 import org.apache.iotdb.db.calc_commons.execution.operator.process.LimitOperator;
 import org.apache.iotdb.db.calc_commons.execution.operator.process.OffsetOperator;
