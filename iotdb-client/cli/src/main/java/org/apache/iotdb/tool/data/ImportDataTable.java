@@ -160,6 +160,16 @@ public class ImportDataTable extends AbstractImportData {
     loadFileSuccessfulNum.increment();
   }
 
+  private static String extractDbFromSql(String sql) {
+    String regex = "into\\s+(?:\"([^\"]+)\"|(\\w+))\\.(?:\"([^\"]+)\"|(\\w+))";
+    Pattern pattern = Pattern.compile(regex, Pattern.CASE_INSENSITIVE);
+    Matcher matcher = pattern.matcher(sql);
+    if (matcher.find()) {
+      return matcher.group(1) != null ? matcher.group(1) : matcher.group(2);
+    }
+    return null;
+  }
+
   @SuppressWarnings("java:S2259")
   protected void importFromSqlFile(File file) {
     ArrayList<List<Object>> failedRecords = new ArrayList<>();
@@ -174,6 +184,15 @@ public class ImportDataTable extends AbstractImportData {
       while ((sql = br.readLine()) != null) {
         try (ITableSession session = sessionPool.getSession()) {
           sql = sql.replace(";", "");
+          String dbName = extractDbFromSql(sql);
+          if (dbName != null && !dbName.equalsIgnoreCase(database)) {
+            ioTPrinter.println(
+                String.format(
+                    "The database in SQL statement '%s' does not match the target database '%s'",
+                    dbName, database));
+            failedRecords.add(Collections.singletonList(sql));
+            continue;
+          }
           session.executeNonQueryStatement(sql);
         } catch (IoTDBConnectionException | StatementExecutionException e) {
           ioTPrinter.println(e.getMessage());
