@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.procedure.impl.pipe.plugin;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.DropPipePluginPlan;
 import org.apache.iotdb.confignode.manager.pipe.coordinator.plugin.PipePluginCoordinator;
 import org.apache.iotdb.confignode.manager.pipe.coordinator.task.PipeTaskCoordinator;
@@ -35,7 +36,6 @@ import org.apache.iotdb.confignode.procedure.state.pipe.plugin.DropPipePluginSta
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
-import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -45,6 +45,7 @@ import org.slf4j.LoggerFactory;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -162,14 +163,26 @@ public class DropPipePluginProcedure extends AbstractNodeProcedure<DropPipePlugi
   private Flow executeFromDropOnDataNodes(ConfigNodeProcedureEnv env) {
     LOGGER.info("DropPipePluginProcedure: executeFromDropOnDataNodes({})", pluginName);
 
-    if (RpcUtils.squashResponseStatusList(env.dropPipePluginOnDataNodes(pluginName, true)).getCode()
-        == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    final List<TSStatus> dropStatusList = env.dropPipePluginOnDataNodes(pluginName, true);
+    if (dropStatusList.stream().allMatch(this::isDropPipePluginSuccessOrNotExists)) {
       setNextState(DropPipePluginState.DROP_ON_CONFIG_NODES);
       return Flow.HAS_MORE_STATE;
     }
 
     throw new PipeException(
         String.format("Failed to drop pipe plugin %s on data nodes", pluginName));
+  }
+
+  private boolean isDropPipePluginSuccessOrNotExists(final TSStatus status) {
+    if (status == null) {
+      return false;
+    }
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return true;
+    }
+    final String message = status.getMessage();
+    return message != null
+        && (message.contains("does not exist") || message.contains("not been created"));
   }
 
   private Flow executeFromDropOnConfigNodes(ConfigNodeProcedureEnv env) {

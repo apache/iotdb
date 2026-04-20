@@ -230,6 +230,9 @@ public class InformationSchema {
         new AttributeColumnSchema(ColumnHeaderConstant.CLASS_NAME_TABLE_MODEL, TSDataType.STRING));
     pipePluginTable.addColumnSchema(
         new AttributeColumnSchema(ColumnHeaderConstant.PLUGIN_JAR_TABLE_MODEL, TSDataType.STRING));
+    pipePluginTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.EXCEPTION_MESSAGE_TABLE_MODEL, TSDataType.STRING));
     schemaTables.put(PIPE_PLUGINS, pipePluginTable);
 
     final TsTable topicTable = new TsTable(TOPICS);
