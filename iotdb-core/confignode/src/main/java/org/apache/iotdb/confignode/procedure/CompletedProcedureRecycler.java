@@ -70,15 +70,30 @@ public class CompletedProcedureRecycler<Env> extends InternalProcedure<Env> {
         // Failed procedures aren't persisted in WAL.
         batchIds[batchCount++] = entry.getKey();
         if (batchCount == batchIds.length) {
-          store.delete(batchIds, 0, batchCount);
-          batchCount = 0;
+          try {
+            store.delete(batchIds, 0, batchCount);
+          } catch (Exception e) {
+            LOG.error("Error deleting completed procedures {}.", proc, e);
+            // Do not remove from the completed map. Even this procedure may be restored
+            // unexpectedly in another new CN leader, we do not need to do anything else since
+            // procedures are idempotent.
+            continue;
+          } finally {
+            batchCount = 0;
+          }
         }
         it.remove();
         LOG.trace("Evict completed {}", proc);
       }
     }
     if (batchCount > 0) {
-      store.delete(batchIds, 0, batchCount);
+      try {
+        store.delete(batchIds, 0, batchCount);
+      } catch (Exception e) {
+        // Even this procedure may be restored unexpectedly in another new CN leader, we do not need
+        // to do anything else since procedures are idempotent.
+        LOG.error("Error deleting completed procedures {}.", batchIds, e);
+      }
     }
   }
 }
