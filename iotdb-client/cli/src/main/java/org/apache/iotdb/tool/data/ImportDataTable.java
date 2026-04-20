@@ -161,11 +161,18 @@ public class ImportDataTable extends AbstractImportData {
   }
 
   private static String extractDbFromSql(String sql) {
-    String regex = "into\\s+(?:\"([^\"]+)\"|(\\w+))\\.(?:\"([^\"]+)\"|(\\w+))";
+    // group N:   双引号标识符 (""转义)
+    // group N+1: 反引号标识符 (``转义)
+    // group N+2: 普通标识符
+    String id = "(?:\"((?:[^\"]|\"\")*)\"" + "|`((?:[^`]|``)*)`" + "|(\\w+))";
+    String regex = "into\\s+" + id + "\\s*\\.\\s*" + id;
     Pattern pattern = Pattern.compile(regex, Pattern.CASE_INSENSITIVE);
     Matcher matcher = pattern.matcher(sql);
     if (matcher.find()) {
-      return matcher.group(1) != null ? matcher.group(1) : matcher.group(2);
+      // db name: group 1 (双引号), group 2 (反引号), group 3 (普通)
+      if (matcher.group(1) != null) return matcher.group(1).replace("\"\"", "\"");
+      if (matcher.group(2) != null) return matcher.group(2).replace("``", "`");
+      return matcher.group(3);
     }
     return null;
   }
@@ -183,7 +190,10 @@ public class ImportDataTable extends AbstractImportData {
       String sql;
       while ((sql = br.readLine()) != null) {
         try (ITableSession session = sessionPool.getSession()) {
-          sql = sql.replace(";", "");
+          sql = sql.trim();
+          if (sql.endsWith(";")) {
+            sql = sql.substring(0, sql.length() - 1);
+          }
           String dbName = extractDbFromSql(sql);
           if (database != null && dbName != null && !dbName.equalsIgnoreCase(database)) {
             ioTPrinter.println(
