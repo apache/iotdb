@@ -28,7 +28,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
 import org.apache.iotdb.confignode.rpc.thrift.TTestOperation;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDatabaseStatement;
-import org.apache.iotdb.db.utils.constant.SqlConstant;
+import org.apache.iotdb.db.calc_commons.utils.constant.SqlConstant;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;

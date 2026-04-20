@@ -27,8 +27,8 @@ import org.apache.iotdb.db.calc_commons.execution.operator.process.rowpattern.ma
 import org.apache.iotdb.db.calc_commons.execution.operator.process.rowpattern.matcher.Matcher;
 import org.apache.iotdb.db.calc_commons.execution.operator.process.rowpattern.matcher.Program;
 import org.apache.iotdb.db.calc_commons.execution.operator.process.window.partition.Partition;
-import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpattern.IrLabel;
-import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpattern.IrRowPattern;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.IrLabel;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.IrRowPattern;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -38,15 +38,15 @@ import org.junit.Test;
 
 import java.util.Map;
 
-import static org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpattern.Patterns.alternation;
-import static org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpattern.Patterns.concatenation;
-import static org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpattern.Patterns.end;
-import static org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpattern.Patterns.excluded;
-import static org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpattern.Patterns.label;
-import static org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpattern.Patterns.permutation;
-import static org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpattern.Patterns.questionMarkQuantified;
-import static org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpattern.Patterns.starQuantified;
-import static org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpattern.Patterns.start;
+import static org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.Patterns.alternation;
+import static org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.Patterns.concatenation;
+import static org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.Patterns.end;
+import static org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.Patterns.excluded;
+import static org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.Patterns.label;
+import static org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.Patterns.permutation;
+import static org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.Patterns.questionMarkQuantified;
+import static org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.Patterns.starQuantified;
+import static org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.Patterns.start;
 import static org.mockito.Mockito.mock;
 
 public class MatcherTest {

@@ -27,9 +27,9 @@ import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.process.SingleChildProcessNode;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.OrderingScheme;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.Symbol;
-import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpattern.ExpressionAndValuePointers;
-import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpattern.IrLabel;
-import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpattern.IrRowPattern;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.ExpressionAndValuePointers;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.IrLabel;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.IrRowPattern;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;

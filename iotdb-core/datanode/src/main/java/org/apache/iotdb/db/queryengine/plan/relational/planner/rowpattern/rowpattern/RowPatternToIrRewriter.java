@@ -19,17 +19,17 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.rowpattern;
 
-import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpattern.IrAlternation;
-import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpattern.IrAnchor;
-import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpattern.IrAnchor.Type;
-import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpattern.IrConcatenation;
-import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpattern.IrEmpty;
-import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpattern.IrExclusion;
-import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpattern.IrLabel;
-import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpattern.IrPermutation;
-import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpattern.IrQuantified;
-import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpattern.IrQuantifier;
-import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpattern.IrRowPattern;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.IrAlternation;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.IrAnchor;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.IrAnchor.Type;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.IrConcatenation;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.IrEmpty;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.IrExclusion;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.IrLabel;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.IrPermutation;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.IrQuantified;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.IrQuantifier;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.IrRowPattern;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.AnchorPattern;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.EmptyPattern;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.ExcludedPattern;
@@ -52,10 +52,10 @@ import java.util.List;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static java.util.Objects.requireNonNull;
-import static org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpattern.IrQuantifier.oneOrMore;
-import static org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpattern.IrQuantifier.range;
-import static org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpattern.IrQuantifier.zeroOrMore;
-import static org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpattern.IrQuantifier.zeroOrOne;
+import static org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.IrQuantifier.oneOrMore;
+import static org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.IrQuantifier.range;
+import static org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.IrQuantifier.zeroOrMore;
+import static org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.IrQuantifier.zeroOrOne;
 
 public class RowPatternToIrRewriter implements AstVisitor<IrRowPattern, Void> {
   private final Analysis analysis;

@@ -24,7 +24,7 @@ import org.apache.iotdb.db.calc_commons.plan.relational.utils.matching.Pattern;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.Measure;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.PatternRecognitionNode;
-import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpattern.ExpressionAndValuePointers;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.ExpressionAndValuePointers;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Rule;
 
 import com.google.common.collect.ImmutableSet;

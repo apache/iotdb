@@ -20,10 +20,10 @@
 package org.apache.iotdb.db.calc_commons.transformation.dag.udf;
 
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
-import org.apache.iotdb.db.calc_commons.plan.udf.UDFManagementService;
 import org.apache.iotdb.db.calc_commons.transformation.dag.adapter.PointCollectorAdaptor;
 import org.apache.iotdb.db.calc_commons.transformation.dag.util.InputRowUtils;
 import org.apache.iotdb.db.calc_commons.transformation.datastructure.tv.ElasticSerializableTVList;
+import org.apache.iotdb.db.node_commons.plan.udf.UDFManagementService;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.access.RowWindow;

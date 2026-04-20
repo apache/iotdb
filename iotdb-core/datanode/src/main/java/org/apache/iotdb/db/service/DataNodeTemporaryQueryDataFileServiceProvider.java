@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.service;
 
-import org.apache.iotdb.db.node_commons.service.AbstractTemporaryQueryDataFileService;
-import org.apache.iotdb.db.node_commons.service.ITemporaryQueryDataFileServiceProvider;
+import org.apache.iotdb.db.calc_commons.service.AbstractTemporaryQueryDataFileService;
+import org.apache.iotdb.db.calc_commons.service.ITemporaryQueryDataFileServiceProvider;
 
 public class DataNodeTemporaryQueryDataFileServiceProvider
     implements ITemporaryQueryDataFileServiceProvider {

@@ -21,7 +21,7 @@ package org.apache.iotdb.db.calc_commons.transformation.datastructure;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.file.SystemFileFactory;
-import org.apache.iotdb.db.node_commons.service.AbstractTemporaryQueryDataFileService;
+import org.apache.iotdb.db.calc_commons.service.AbstractTemporaryQueryDataFileService;
 
 import org.apache.tsfile.utils.PublicBAOS;
 

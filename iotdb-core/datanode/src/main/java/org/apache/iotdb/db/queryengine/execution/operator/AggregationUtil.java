@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator;
 
-import org.apache.iotdb.db.calc_commons.plan.udf.BuiltinAggregationFunction;
+import org.apache.iotdb.db.node_commons.plan.udf.BuiltinAggregationFunction;
 import org.apache.iotdb.db.queryengine.execution.aggregation.TreeAggregator;
 import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.ITimeRangeIterator;
 import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.SingleTimeWindowIterator;

@@ -27,8 +27,6 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.table.InsertNodeMeasurementInfo;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
-import org.apache.iotdb.db.calc_commons.plan.udf.BuiltinAggregationFunction;
-import org.apache.iotdb.db.calc_commons.plan.udf.TableUDFUtils;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.node_commons.common.SessionInfo;
 import org.apache.iotdb.db.node_commons.plan.relational.function.OperatorType;
@@ -45,6 +43,8 @@ import org.apache.iotdb.db.node_commons.plan.relational.type.InternalTypeManager
 import org.apache.iotdb.db.node_commons.plan.relational.type.TypeManager;
 import org.apache.iotdb.db.node_commons.plan.relational.type.TypeNotFoundException;
 import org.apache.iotdb.db.node_commons.plan.relational.type.TypeSignature;
+import org.apache.iotdb.db.node_commons.plan.udf.BuiltinAggregationFunction;
+import org.apache.iotdb.db.node_commons.plan.udf.TableUDFUtils;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.function.Exclude;

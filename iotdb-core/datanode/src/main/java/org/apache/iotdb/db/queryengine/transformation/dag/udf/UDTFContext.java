@@ -20,8 +20,8 @@
 package org.apache.iotdb.db.queryengine.transformation.dag.udf;
 
 import org.apache.iotdb.commons.udf.service.UDFClassLoaderManager;
+import org.apache.iotdb.db.calc_commons.service.AbstractTemporaryQueryDataFileService;
 import org.apache.iotdb.db.calc_commons.transformation.dag.udf.UDTFExecutor;
-import org.apache.iotdb.db.node_commons.service.AbstractTemporaryQueryDataFileService;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
 

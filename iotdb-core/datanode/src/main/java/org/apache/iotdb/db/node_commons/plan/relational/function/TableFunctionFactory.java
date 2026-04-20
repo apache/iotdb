@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.node_commons.plan.relational.function;
 
-import org.apache.iotdb.db.calc_commons.plan.udf.TableUDFUtils;
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.node_commons.plan.udf.TableUDFUtils;
 import org.apache.iotdb.udf.api.relational.TableFunction;
 
 public class TableFunctionFactory {

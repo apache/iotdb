@@ -29,7 +29,6 @@ import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFu
 import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.db.calc_commons.plan.relational.metadata.CommonMetadataUtils;
-import org.apache.iotdb.db.calc_commons.plan.udf.TableUDFUtils;
 import org.apache.iotdb.db.calc_commons.utils.constant.SqlConstant;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeTableColumnDisorderException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
@@ -47,6 +46,7 @@ import org.apache.iotdb.db.node_commons.plan.relational.type.InternalTypeManager
 import org.apache.iotdb.db.node_commons.plan.relational.type.TypeManager;
 import org.apache.iotdb.db.node_commons.plan.relational.type.TypeNotFoundException;
 import org.apache.iotdb.db.node_commons.plan.relational.type.TypeSignature;
+import org.apache.iotdb.db.node_commons.plan.udf.TableUDFUtils;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;

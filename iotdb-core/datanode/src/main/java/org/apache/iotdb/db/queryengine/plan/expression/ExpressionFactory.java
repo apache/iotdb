@@ -23,7 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.calc_commons.plan.udf.BuiltinTimeSeriesGeneratingFunction;
+import org.apache.iotdb.db.node_commons.plan.udf.BuiltinTimeSeriesGeneratingFunction;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.AdditionExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.EqualToExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.GreaterEqualExpression;

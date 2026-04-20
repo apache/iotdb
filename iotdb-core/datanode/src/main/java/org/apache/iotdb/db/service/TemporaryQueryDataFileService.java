@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.service;
 
+import org.apache.iotdb.db.calc_commons.service.AbstractTemporaryQueryDataFileService;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.node_commons.service.AbstractTemporaryQueryDataFileService;
 
 import java.io.File;
 

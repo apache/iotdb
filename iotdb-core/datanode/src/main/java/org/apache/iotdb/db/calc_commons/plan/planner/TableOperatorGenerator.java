@@ -48,10 +48,10 @@ import org.apache.iotdb.db.calc_commons.execution.operator.process.fill.constant
 import org.apache.iotdb.db.calc_commons.execution.operator.process.fill.constant.LongConstantFill;
 import org.apache.iotdb.db.calc_commons.execution.operator.process.function.TableFunctionLeafOperator;
 import org.apache.iotdb.db.calc_commons.execution.operator.process.function.TableFunctionOperator;
-import org.apache.iotdb.db.calc_commons.execution.operator.process.gapfill.gapfill.GapFillWGroupWMoOperator;
-import org.apache.iotdb.db.calc_commons.execution.operator.process.gapfill.gapfill.GapFillWGroupWoMoOperator;
-import org.apache.iotdb.db.calc_commons.execution.operator.process.gapfill.gapfill.GapFillWoGroupWMoOperator;
-import org.apache.iotdb.db.calc_commons.execution.operator.process.gapfill.gapfill.GapFillWoGroupWoMoOperator;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.gapfill.GapFillWGroupWMoOperator;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.gapfill.GapFillWGroupWoMoOperator;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.gapfill.GapFillWoGroupWMoOperator;
+import org.apache.iotdb.db.calc_commons.execution.operator.process.gapfill.GapFillWoGroupWoMoOperator;
 import org.apache.iotdb.db.calc_commons.execution.operator.process.join.SimpleNestedLoopCrossJoinOperator;
 import org.apache.iotdb.db.calc_commons.execution.operator.process.join.merge.comparator.JoinKeyComparatorFactory;
 import org.apache.iotdb.db.calc_commons.execution.operator.process.rowpattern.LogicalIndexNavigation;
@@ -150,15 +150,15 @@ import org.apache.iotdb.db.node_commons.plan.relational.planner.node.UnionNode;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.ValueFillNode;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.ValuesNode;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.WindowNode;
-import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpattern.AggregationLabelSet;
-import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpattern.AggregationValuePointer;
-import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpattern.ClassifierValuePointer;
-import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpattern.ExpressionAndValuePointers;
-import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpattern.IrLabel;
-import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpattern.LogicalIndexPointer;
-import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpattern.MatchNumberValuePointer;
-import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpattern.ScalarValuePointer;
-import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpattern.ValuePointer;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.AggregationLabelSet;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.AggregationValuePointer;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.ClassifierValuePointer;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.ExpressionAndValuePointers;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.IrLabel;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.LogicalIndexPointer;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.MatchNumberValuePointer;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.ScalarValuePointer;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.ValuePointer;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Literal;
@@ -1711,7 +1711,7 @@ public abstract class TableOperatorGenerator<
               new PhysicalValuePointer(
                   CLASSIFIER,
                   STRING,
-                  classifierPointer.getLogicalIndexPointer().toLogicalIndexNavigation(mapping)));
+                  new LogicalIndexNavigation(classifierPointer.getLogicalIndexPointer(), mapping)));
         } else if (pointer instanceof ScalarValuePointer) {
           ScalarValuePointer scalarPointer = (ScalarValuePointer) pointer;
           valueAccessors.add(
@@ -1720,7 +1720,7 @@ public abstract class TableOperatorGenerator<
                       getChannelsForSymbols(
                           ImmutableList.of(scalarPointer.getInputSymbol()), childLayout)),
                   context.getTableTypeProvider().getTableModelType(scalarPointer.getInputSymbol()),
-                  scalarPointer.getLogicalIndexPointer().toLogicalIndexNavigation(mapping)));
+                  new LogicalIndexNavigation(scalarPointer.getLogicalIndexPointer(), mapping)));
         } else if (pointer instanceof AggregationValuePointer) {
           AggregationValuePointer aggregationPointer = (AggregationValuePointer) pointer;
 
@@ -1802,7 +1802,7 @@ public abstract class TableOperatorGenerator<
               new PhysicalValuePointer(
                   CLASSIFIER,
                   STRING,
-                  classifierPointer.getLogicalIndexPointer().toLogicalIndexNavigation(mapping)));
+                  new LogicalIndexNavigation(classifierPointer.getLogicalIndexPointer(), mapping)));
         } else if (pointer instanceof ScalarValuePointer) {
           ScalarValuePointer scalarPointer = (ScalarValuePointer) pointer;
           valueAccessors.add(
@@ -1811,7 +1811,7 @@ public abstract class TableOperatorGenerator<
                       getChannelsForSymbols(
                           ImmutableList.of(scalarPointer.getInputSymbol()), childLayout)),
                   context.getTableTypeProvider().getTableModelType(scalarPointer.getInputSymbol()),
-                  scalarPointer.getLogicalIndexPointer().toLogicalIndexNavigation(mapping)));
+                  new LogicalIndexNavigation(scalarPointer.getLogicalIndexPointer(), mapping)));
         } else if (pointer instanceof AggregationValuePointer) {
           AggregationValuePointer aggregationPointer = (AggregationValuePointer) pointer;
 
@@ -1871,8 +1871,8 @@ public abstract class TableOperatorGenerator<
       boolean last = node.getSkipToPosition().equals(LAST);
       skipToNavigation =
           Optional.of(
-              new LogicalIndexPointer(node.getSkipToLabels(), last, false, 0, 0)
-                  .toLogicalIndexNavigation(mapping));
+              new LogicalIndexNavigation(
+                  new LogicalIndexPointer(node.getSkipToLabels(), last, false, 0, 0), mapping));
     }
 
     return new PatternRecognitionOperator(

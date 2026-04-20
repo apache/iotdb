@@ -20,12 +20,16 @@
 package org.apache.iotdb.db.calc_commons.execution.operator.process.rowpattern;
 
 import org.apache.iotdb.db.calc_commons.execution.operator.process.rowpattern.matcher.ArrayView;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.IrLabel;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.LogicalIndexPointer;
 
 import java.util.Collections;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.collect.ImmutableSet.toImmutableSet;
 import static java.util.Objects.requireNonNull;
 
 public class LogicalIndexNavigation {
@@ -52,6 +56,16 @@ public class LogicalIndexNavigation {
     checkArgument(logicalOffset >= 0, "logical offset must be >= 0, actual: %s", logicalOffset);
     this.logicalOffset = logicalOffset;
     this.physicalOffset = physicalOffset;
+  }
+
+  public LogicalIndexNavigation(
+      LogicalIndexPointer logicalIndexPointer, Map<IrLabel, Integer> mapping) {
+    this(
+        logicalIndexPointer.getLabels().stream().map(mapping::get).collect(toImmutableSet()),
+        logicalIndexPointer.isLast(),
+        logicalIndexPointer.isRunning(),
+        logicalIndexPointer.getLogicalOffset(),
+        logicalIndexPointer.getPhysicalOffset());
   }
 
   public Set<Integer> getLabels() {

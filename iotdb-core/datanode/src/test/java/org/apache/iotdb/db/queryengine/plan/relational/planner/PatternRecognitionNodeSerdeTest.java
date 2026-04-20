@@ -30,11 +30,11 @@ import org.apache.iotdb.db.node_commons.plan.relational.planner.node.Measure;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.PatternRecognitionNode;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.RowsPerMatch;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.node.SkipToPosition;
-import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpattern.ExpressionAndValuePointers;
-import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpattern.IrLabel;
-import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpattern.IrRowPattern;
-import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpattern.LogicalIndexPointer;
-import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpattern.ScalarValuePointer;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.ExpressionAndValuePointers;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.IrLabel;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.IrRowPattern;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.LogicalIndexPointer;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.ScalarValuePointer;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Identifier;
@@ -60,10 +60,10 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
-import static org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpattern.Patterns.concatenation;
-import static org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpattern.Patterns.excluded;
-import static org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpattern.Patterns.label;
-import static org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpattern.Patterns.starQuantified;
+import static org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.Patterns.concatenation;
+import static org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.Patterns.excluded;
+import static org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.Patterns.label;
+import static org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.Patterns.starQuantified;
 import static org.junit.Assert.assertEquals;
 
 public class PatternRecognitionNodeSerdeTest {

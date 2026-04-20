@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.calc_commons.execution.operator.process.function.partition;
 
-import org.apache.iotdb.db.node_commons.utils.ObjectTypeUtils;
+import org.apache.iotdb.db.calc_commons.utils.ObjectTypeUtils;
 import org.apache.iotdb.udf.api.relational.access.Record;
 import org.apache.iotdb.udf.api.type.Type;
 

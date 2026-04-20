@@ -20,9 +20,9 @@
 package org.apache.iotdb.db.queryengine.transformation.dag.udf;
 
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
-import org.apache.iotdb.db.calc_commons.plan.udf.UDFManagementService;
 import org.apache.iotdb.db.calc_commons.transformation.dag.udf.UDFParametersFactory;
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.node_commons.plan.udf.UDFManagementService;
 import org.apache.iotdb.udf.api.UDAF;
 import org.apache.iotdb.udf.api.customizer.config.UDAFConfigurations;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameterValidator;

@@ -21,14 +21,10 @@ package org.apache.iotdb.db.node_commons.plan.relational.function.tvf;
 
 import org.apache.iotdb.ainode.rpc.thrift.TForecastReq;
 import org.apache.iotdb.ainode.rpc.thrift.TForecastResp;
-import org.apache.iotdb.commons.client.IClientManager;
-import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
-import org.apache.iotdb.db.exception.ainode.AINodeConnectionException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.node_commons.plan.relational.utils.ResultColumnAppender;
-import org.apache.iotdb.db.protocol.client.an.AINodeClient;
-import org.apache.iotdb.db.protocol.client.an.AINodeClientManager;
+import org.apache.iotdb.db.node_commons.plan.udf.TableUDFUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.udf.api.relational.TableFunction;
 import org.apache.iotdb.udf.api.relational.access.Record;
@@ -45,7 +41,6 @@ import org.apache.iotdb.udf.api.relational.table.specification.ScalarParameterSp
 import org.apache.iotdb.udf.api.relational.table.specification.TableParameterSpecification;
 import org.apache.iotdb.udf.api.type.Type;
 
-import org.apache.thrift.TException;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
@@ -359,8 +354,6 @@ public class ForecastTableFunction implements TableFunction {
   protected static class ForecastDataProcessor implements TableFunctionDataProcessor {
 
     protected static final TsBlockSerde SERDE = new TsBlockSerde();
-    protected static final IClientManager<Integer, AINodeClient> CLIENT_MANAGER =
-        AINodeClientManager.getInstance();
 
     protected final String modelId;
     private final int maxInputLength;
@@ -517,14 +510,12 @@ public class ForecastTableFunction implements TableFunction {
       TsBlock inputData = inputTsBlockBuilder.build();
 
       TForecastResp resp;
-      try (AINodeClient client =
-          CLIENT_MANAGER.borrowClient(AINodeClientManager.AINODE_ID_PLACEHOLDER)) {
+      try {
         resp =
-            client.forecast(
-                new TForecastReq(modelId, SERDE.serialize(inputData), outputLength)
-                    .setOptions(options));
-      } catch (ClientManagerException | TException e) {
-        throw new AINodeConnectionException(e);
+            TableUDFUtils.getTableFunctionAINodeService()
+                .forecast(
+                    new TForecastReq(modelId, SERDE.serialize(inputData), outputLength)
+                        .setOptions(options));
       } catch (IOException e) {
         throw new RuntimeException(e);
       }

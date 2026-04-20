@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.node_commons.plan.relational.planner.node;
 
-import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.rowpattern.ExpressionAndValuePointers;
+import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.ExpressionAndValuePointers;
 import org.apache.iotdb.db.node_commons.plan.relational.utils.TypeUtil;
 
 import org.apache.tsfile.read.common.type.Type;
