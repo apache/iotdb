@@ -32,6 +32,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.io.LogWriter;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALByteBufReader;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALFileVersion;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALInputStream;
+import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALMetaData;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALReader;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALWriter;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALFileStatus;
@@ -202,6 +203,7 @@ public class WALCompressionTest {
   @Test
   public void testUncompressedWALStructure()
       throws QueryProcessException, IllegalPathException, IOException {
+    final WALFileVersion version = WALFileVersion.V3;
     PublicBAOS baos = new PublicBAOS();
     DataOutputStream dataOutputStream = new DataOutputStream(baos);
     List<InsertRowNode> insertRowNodes = new ArrayList<>();
@@ -216,17 +218,17 @@ public class WALCompressionTest {
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setWALCompressionAlgorithm(CompressionType.UNCOMPRESSED);
-    try (WALWriter writer = new WALWriter(walFile)) {
+    try (WALWriter writer = new WALWriter(walFile, version)) {
       buf.position(buf.limit());
       writer.write(buf);
     }
 
     try (DataInputStream dataInputStream =
         new DataInputStream(new BufferedInputStream(Files.newInputStream(walFile.toPath())))) {
-      byte[] magicStringBytes = new byte[WALFileVersion.V2.getVersionBytes().length];
+      byte[] magicStringBytes = new byte[version.getVersionBytes().length];
       // head magic string
       dataInputStream.readFully(magicStringBytes);
-      Assert.assertEquals(WALFileVersion.V2.getVersionString(), new String(magicStringBytes));
+      Assert.assertEquals(version.getVersionString(), new String(magicStringBytes));
       Assert.assertEquals(
           CompressionType.UNCOMPRESSED, CompressionType.deserialize(dataInputStream.readByte()));
       Assert.assertEquals(buf.array().length, dataInputStream.readInt());
@@ -238,11 +240,19 @@ public class WALCompressionTest {
       Assert.assertEquals(
           new WALSignalEntry(WALEntryType.WAL_FILE_INFO_END_MARKER),
           WALEntry.deserialize(dataInputStream));
-      ByteBuffer metadataBuf = ByteBuffer.allocate(12 + Integer.BYTES);
+      final int metadataSize = new WALMetaData().serializedSize(version);
+      final ByteBuffer metadataBuf = ByteBuffer.allocate(metadataSize);
       dataInputStream.readFully(metadataBuf.array());
+      final WALMetaData metadata = WALMetaData.deserialize(metadataBuf, version);
+      Assert.assertTrue(metadata.getBuffersSize().isEmpty());
+      Assert.assertTrue(metadata.getPhysicalTimes().isEmpty());
+      Assert.assertTrue(metadata.getNodeIds().isEmpty());
+      Assert.assertTrue(metadata.getWriterEpochs().isEmpty());
+      Assert.assertTrue(metadata.getLocalSeqs().isEmpty());
+      Assert.assertEquals(metadataSize, dataInputStream.readInt());
       // Tail magic string
       dataInputStream.readFully(magicStringBytes);
-      Assert.assertEquals(WALFileVersion.V2.getVersionString(), new String(magicStringBytes));
+      Assert.assertEquals(version.getVersionString(), new String(magicStringBytes));
     }
   }
 
@@ -254,6 +264,7 @@ public class WALCompressionTest {
           NoSuchFieldException,
           ClassNotFoundException,
           IllegalAccessException {
+    final WALFileVersion version = WALFileVersion.V3;
     PublicBAOS baos = new PublicBAOS();
     DataOutputStream dataOutputStream = new DataOutputStream(baos);
     List<InsertRowNode> insertRowNodes = new ArrayList<>();
@@ -267,7 +278,7 @@ public class WALCompressionTest {
     // Compress it
     IoTDBDescriptor.getInstance().getConfig().setWALCompressionAlgorithm(CompressionType.LZ4);
     WALTestUtils.setMinCompressionSize(0);
-    try (WALWriter writer = new WALWriter(walFile)) {
+    try (WALWriter writer = new WALWriter(walFile, version)) {
       writer.setCompressedByteBuffer(
           ByteBuffer.allocateDirect(WALBuffer.ONE_THIRD_WAL_BUFFER_SIZE));
       buf.position(buf.limit());
@@ -278,10 +289,10 @@ public class WALCompressionTest {
 
     try (DataInputStream dataInputStream =
         new DataInputStream(new BufferedInputStream(Files.newInputStream(walFile.toPath())))) {
-      byte[] magicStringBytes = new byte[WALFileVersion.V2.getVersionBytes().length];
+      byte[] magicStringBytes = new byte[version.getVersionBytes().length];
       // head magic string
       dataInputStream.readFully(magicStringBytes);
-      Assert.assertEquals(WALFileVersion.V2.getVersionString(), new String(magicStringBytes));
+      Assert.assertEquals(version.getVersionString(), new String(magicStringBytes));
       Assert.assertEquals(
           CompressionType.LZ4, CompressionType.deserialize(dataInputStream.readByte()));
       Assert.assertEquals(compressed.length, dataInputStream.readInt());
@@ -296,11 +307,19 @@ public class WALCompressionTest {
       Assert.assertEquals(
           new WALSignalEntry(WALEntryType.WAL_FILE_INFO_END_MARKER),
           WALEntry.deserialize(dataInputStream));
-      ByteBuffer metadataBuf = ByteBuffer.allocate(12 + Integer.BYTES);
+      final int metadataSize = new WALMetaData().serializedSize(version);
+      final ByteBuffer metadataBuf = ByteBuffer.allocate(metadataSize);
       dataInputStream.readFully(metadataBuf.array());
+      final WALMetaData metadata = WALMetaData.deserialize(metadataBuf, version);
+      Assert.assertTrue(metadata.getBuffersSize().isEmpty());
+      Assert.assertTrue(metadata.getPhysicalTimes().isEmpty());
+      Assert.assertTrue(metadata.getNodeIds().isEmpty());
+      Assert.assertTrue(metadata.getWriterEpochs().isEmpty());
+      Assert.assertTrue(metadata.getLocalSeqs().isEmpty());
+      Assert.assertEquals(metadataSize, dataInputStream.readInt());
       // Tail magic string
       dataInputStream.readFully(magicStringBytes);
-      Assert.assertEquals(WALFileVersion.V2.getVersionString(), new String(magicStringBytes));
+      Assert.assertEquals(version.getVersionString(), new String(magicStringBytes));
     }
   }
 

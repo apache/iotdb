@@ -35,6 +35,7 @@ import org.apache.tsfile.read.query.dataset.ResultSet;
 import org.junit.Assert;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -108,6 +109,15 @@ final class ConsensusSubscriptionTableITSupport {
   static void createConsensusTopic(
       final String topicName, final String databasePattern, final String tablePattern)
       throws Exception {
+    createConsensusTopic(topicName, databasePattern, tablePattern, null);
+  }
+
+  static void createConsensusTopic(
+      final String topicName,
+      final String databasePattern,
+      final String tablePattern,
+      final String columnPattern)
+      throws Exception {
     final String host = EnvFactory.getEnv().getIP();
     final int port = Integer.parseInt(EnvFactory.getEnv().getPort());
 
@@ -121,6 +131,9 @@ final class ConsensusSubscriptionTableITSupport {
       config.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_SESSION_DATA_SETS_HANDLER_VALUE);
       config.put(TopicConstant.DATABASE_KEY, databasePattern);
       config.put(TopicConstant.TABLE_KEY, tablePattern);
+      if (columnPattern != null) {
+        config.put(TopicConstant.COLUMN_KEY, columnPattern);
+      }
       session.createTopic(topicName, config);
     }
   }
@@ -337,6 +350,15 @@ final class ConsensusSubscriptionTableITSupport {
     return database + "." + tableName + "#" + timestamp;
   }
 
+  static String normalizeColumnSignature(final String... columns) {
+    final List<String> normalized = new ArrayList<>(columns.length);
+    for (final String column : columns) {
+      normalized.add(column.toLowerCase(Locale.ROOT));
+    }
+    Collections.sort(normalized);
+    return String.join(",", normalized);
+  }
+
   private static ConsumedRecords consumeMessages(final List<SubscriptionMessage> messages)
       throws Exception {
     final ConsumedRecords consumed = new ConsumedRecords();
@@ -344,7 +366,13 @@ final class ConsensusSubscriptionTableITSupport {
       for (final ResultSet resultSet : message.getResultSets()) {
         final SubscriptionRecordHandler.SubscriptionResultSet subscriptionResultSet =
             (SubscriptionRecordHandler.SubscriptionResultSet) resultSet;
-        consumed.getSeenColumns().addAll(subscriptionResultSet.getColumnNames());
+        final List<String> columnNames = subscriptionResultSet.getColumnNames();
+        for (final String columnName : columnNames) {
+          consumed.getSeenColumns().add(columnName.toLowerCase(Locale.ROOT));
+        }
+        consumed
+            .getSeenColumnSignatures()
+            .add(normalizeColumnSignature(columnNames.toArray(new String[0])));
         final String databaseName = subscriptionResultSet.getDatabaseName();
         final String tableName = subscriptionResultSet.getTableName();
         while (subscriptionResultSet.hasNext()) {
@@ -404,6 +432,7 @@ final class ConsensusSubscriptionTableITSupport {
     private final Set<String> rowKeys = new LinkedHashSet<>();
     private final Set<String> duplicateRowKeys = new LinkedHashSet<>();
     private final Set<String> seenColumns = new LinkedHashSet<>();
+    private final Set<String> seenColumnSignatures = new LinkedHashSet<>();
     private final Map<String, Integer> rowsPerTable = new LinkedHashMap<>();
     private final Map<String, Integer> rowsPerDatabase = new LinkedHashMap<>();
     private int rowCount;
@@ -423,6 +452,7 @@ final class ConsensusSubscriptionTableITSupport {
       rowKeys.addAll(other.rowKeys);
       duplicateRowKeys.addAll(other.duplicateRowKeys);
       seenColumns.addAll(other.seenColumns);
+      seenColumnSignatures.addAll(other.seenColumnSignatures);
       other.rowsPerTable.forEach((table, count) -> rowsPerTable.merge(table, count, Integer::sum));
       other.rowsPerDatabase.forEach(
           (database, count) -> rowsPerDatabase.merge(database, count, Integer::sum));
@@ -438,6 +468,10 @@ final class ConsensusSubscriptionTableITSupport {
 
     Set<String> getSeenColumns() {
       return seenColumns;
+    }
+
+    Set<String> getSeenColumnSignatures() {
+      return seenColumnSignatures;
     }
 
     Map<String, Integer> getRowsPerTable() {
@@ -466,6 +500,10 @@ final class ConsensusSubscriptionTableITSupport {
           + rowsPerTable
           + ", rowsPerDatabase="
           + rowsPerDatabase
+          + ", seenColumns="
+          + seenColumns
+          + ", seenColumnSignatures="
+          + seenColumnSignatures
           + ", duplicateRowKeys="
           + duplicateRowKeys
           + "}";

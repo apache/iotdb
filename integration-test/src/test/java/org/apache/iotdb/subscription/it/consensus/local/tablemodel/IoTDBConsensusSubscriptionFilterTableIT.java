@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.subscription.it.consensus.local.tablemodel;
 
+import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.session.subscription.consumer.table.SubscriptionTablePullConsumer;
@@ -33,6 +34,7 @@ import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashSet;
+import java.util.Locale;
 import java.util.Set;
 
 @RunWith(IoTDBTestRunner.class)
@@ -140,6 +142,134 @@ public class IoTDBConsensusSubscriptionFilterTableIT extends AbstractSubscriptio
       ConsensusSubscriptionTableITSupport.assertNoMoreMessages(consumer, 3, Duration.ofMillis(500));
     } finally {
       ConsensusSubscriptionTableITSupport.cleanup(consumer, subscribedTopics, database);
+    }
+  }
+
+  @Test
+  public void testColumnFiltering() throws Exception {
+    final ConsensusSubscriptionTableITSupport.TestIdentifiers ids =
+        ConsensusSubscriptionTableITSupport.newIdentifiers("table_filter_columns");
+    final String database = ids.getDatabase();
+    final String table = "t1";
+    final String schema = "tag1 STRING TAG, s1 INT64 FIELD, s2 DOUBLE FIELD, s3 BOOLEAN FIELD";
+    final String expectedColumnSignature =
+        ConsensusSubscriptionTableITSupport.normalizeColumnSignature("time", "tag1", "s2");
+    final Set<String> expectedSeenColumns =
+        new LinkedHashSet<>(Arrays.asList("time", "tag1", "s2"));
+    final Set<String> expectedRowKeys = new LinkedHashSet<>();
+    SubscriptionTablePullConsumer consumer = null;
+
+    try {
+      ConsensusSubscriptionTableITSupport.createDatabaseAndTable(database, table, schema);
+      try (final ITableSession session =
+          org.apache.iotdb.it.env.EnvFactory.getEnv().getTableSessionConnection()) {
+        session.executeNonQueryStatement("use " + database);
+        session.executeNonQueryStatement(
+            "insert into "
+                + table
+                + "(tag1, s1, s2, s3, time) values ('bootstrap', 0, 0.0, true, 0)");
+        session.executeNonQueryStatement("flush");
+      }
+
+      ConsensusSubscriptionTableITSupport.createConsensusTopic(
+          ids.getTopic(), database, table, "(tag1|s2)");
+
+      consumer =
+          ConsensusSubscriptionTableITSupport.createConsumer(
+              ids.getConsumerId(), ids.getConsumerGroupId());
+      consumer.subscribe(ids.getTopic());
+
+      try (final ITableSession session =
+          org.apache.iotdb.it.env.EnvFactory.getEnv().getTableSessionConnection()) {
+        session.executeNonQueryStatement("use " + database);
+        for (int i = 1; i <= 10; i++) {
+          final long timestamp = 100L + i;
+          session.executeNonQueryStatement(
+              String.format(
+                  Locale.ROOT,
+                  "insert into %s(tag1, s1, s2, s3, time) values ('tag_%d', %d, %.1f, %s, %d)",
+                  table,
+                  i,
+                  i * 10L,
+                  i + 0.5d,
+                  i % 2 == 0 ? "true" : "false",
+                  timestamp));
+          expectedRowKeys.add(
+              ConsensusSubscriptionTableITSupport.rowKey(database, table, timestamp));
+        }
+        session.executeNonQueryStatement("flush");
+      }
+
+      final ConsensusSubscriptionTableITSupport.ConsumedRecords consumed =
+          ConsensusSubscriptionTableITSupport.pollAndCommitUntilAtLeast(
+              consumer, expectedRowKeys.size(), 50);
+
+      ConsensusSubscriptionTableITSupport.assertExactRowKeys(expectedRowKeys, consumed);
+      Assert.assertEquals(expectedSeenColumns, consumed.getSeenColumns());
+      Assert.assertEquals(
+          Collections.singleton(expectedColumnSignature), consumed.getSeenColumnSignatures());
+      Assert.assertFalse(consumed.getSeenColumns().contains("s1"));
+      Assert.assertFalse(consumed.getSeenColumns().contains("s3"));
+      ConsensusSubscriptionTableITSupport.assertNoMoreMessages(consumer, 3, Duration.ofMillis(500));
+    } finally {
+      ConsensusSubscriptionTableITSupport.cleanup(consumer, ids.getTopic(), database);
+    }
+  }
+
+  @Test
+  public void testColumnFilteringWithNoMatchedColumnsReturnsNothing() throws Exception {
+    final ConsensusSubscriptionTableITSupport.TestIdentifiers ids =
+        ConsensusSubscriptionTableITSupport.newIdentifiers("table_filter_columns_no_match");
+    final String database = ids.getDatabase();
+    final String table = "t1";
+    final String schema = "tag1 STRING TAG, s1 INT64 FIELD, s2 DOUBLE FIELD";
+    SubscriptionTablePullConsumer consumer = null;
+
+    try {
+      ConsensusSubscriptionTableITSupport.createDatabaseAndTable(database, table, schema);
+      try (final ITableSession session =
+          org.apache.iotdb.it.env.EnvFactory.getEnv().getTableSessionConnection()) {
+        session.executeNonQueryStatement("use " + database);
+        session.executeNonQueryStatement(
+            "insert into " + table + "(tag1, s1, s2, time) values ('bootstrap', 0, 0.0, 0)");
+        session.executeNonQueryStatement("flush");
+      }
+
+      ConsensusSubscriptionTableITSupport.createConsensusTopic(
+          ids.getTopic(), database, table, "not_exist");
+
+      consumer =
+          ConsensusSubscriptionTableITSupport.createConsumer(
+              ids.getConsumerId(), ids.getConsumerGroupId());
+      consumer.subscribe(ids.getTopic());
+
+      try (final ITableSession session =
+          org.apache.iotdb.it.env.EnvFactory.getEnv().getTableSessionConnection()) {
+        session.executeNonQueryStatement("use " + database);
+        for (int i = 1; i <= 5; i++) {
+          session.executeNonQueryStatement(
+              String.format(
+                  Locale.ROOT,
+                  "insert into %s(tag1, s1, s2, time) values ('tag_%d', %d, %.1f, %d)",
+                  table,
+                  i,
+                  i * 10L,
+                  i + 0.25d,
+                  200L + i));
+        }
+        session.executeNonQueryStatement("flush");
+      }
+
+      final ConsensusSubscriptionTableITSupport.ConsumedRecords consumed =
+          ConsensusSubscriptionTableITSupport.pollAndCommitUntilAtLeast(consumer, 0, 20);
+
+      Assert.assertEquals(0, consumed.getRowCount());
+      Assert.assertTrue(consumed.getRowKeys().isEmpty());
+      Assert.assertTrue(consumed.getSeenColumns().isEmpty());
+      Assert.assertTrue(consumed.getSeenColumnSignatures().isEmpty());
+      ConsensusSubscriptionTableITSupport.assertNoMoreMessages(consumer, 3, Duration.ofMillis(500));
+    } finally {
+      ConsensusSubscriptionTableITSupport.cleanup(consumer, ids.getTopic(), database);
     }
   }
 }
