@@ -71,6 +71,7 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
       final boolean isWithMod)
       throws IOException {
     super(
+        tsFile,
         pipeName,
         creationTime,
         null,
@@ -80,7 +81,8 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
         pipeTaskMeta,
         entity,
         true,
-        sourceEvent);
+        sourceEvent,
+        isWithMod);
 
     this.isWithMod = isWithMod;
     try {

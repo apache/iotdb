@@ -1491,10 +1491,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   }
 
   private void visitUpdateUser(RelationalAuthorStatement node) {
-    User user = AuthorityChecker.getAuthorityFetcher().getUser(node.getUserName());
-    if (user == null) {
-      throw new SemanticException("User " + node.getUserName() + " not found");
-    }
+    final User user = AuthorityChecker.getAuthorityFetcher().getUser(node.getUserName(), true);
     node.setOldPassword(user.getPassword());
   }
 

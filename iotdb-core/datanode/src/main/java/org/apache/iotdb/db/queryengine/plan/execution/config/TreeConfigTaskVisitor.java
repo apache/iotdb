@@ -22,7 +22,6 @@ package org.apache.iotdb.db.queryengine.plan.execution.config;
 import org.apache.iotdb.common.rpc.thrift.Model;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.audit.UserEntity;
-import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.executable.ExecutableManager;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -340,18 +339,14 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
   }
 
   private void visitUpdateUser(AuthorStatement statement) {
-    User user = AuthorityChecker.getAuthorityFetcher().getUser(statement.getUserName());
-    if (user == null) {
-      throw new SemanticException("User " + statement.getUserName() + " not found");
-    }
-    statement.setPassWord(user.getPassword());
+    statement.setPassWord(
+        AuthorityChecker.getAuthorityFetcher()
+            .getUser(statement.getUserName(), true)
+            .getPassword());
   }
 
   private void visitRenameUser(AuthorStatement statement) {
-    User user = AuthorityChecker.getAuthorityFetcher().getUser(statement.getUserName());
-    if (user == null) {
-      throw new SemanticException("User " + statement.getUserName() + " not found");
-    }
+    AuthorityChecker.getAuthorityFetcher().getUser(statement.getUserName(), true);
   }
 
   @Override
