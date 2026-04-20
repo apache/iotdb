@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.node_commons.plan.udf;
 
-import org.apache.iotdb.ainode.rpc.thrift.TForecastReq;
-import org.apache.iotdb.ainode.rpc.thrift.TForecastResp;
 import org.apache.iotdb.common.rpc.thrift.FunctionType;
 import org.apache.iotdb.common.rpc.thrift.Model;
 import org.apache.iotdb.commons.udf.UDFInformation;

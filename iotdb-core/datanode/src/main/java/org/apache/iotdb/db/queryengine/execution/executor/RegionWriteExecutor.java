@@ -341,7 +341,7 @@ public class RegionWriteExecutor {
       // data deletion should block data insertion, especially when executed for deleting timeseries
       context.getRegionWriteValidationRWLock().writeLock().lock();
       try {
-        return visitPipeEnrichedDeleteDataNode(node, context);
+        return PlanVisitor.super.visitPipeEnrichedDeleteDataNode(node, context);
       } finally {
         context.getRegionWriteValidationRWLock().writeLock().unlock();
       }
@@ -354,7 +354,7 @@ public class RegionWriteExecutor {
       // require write lock on data region.
       context.getRegionWriteValidationRWLock().writeLock().lock();
       try {
-        return visitDeleteData(node, context);
+        return PlanVisitor.super.visitDeleteData(node, context);
       } finally {
         context.getRegionWriteValidationRWLock().writeLock().unlock();
       }
@@ -367,7 +367,7 @@ public class RegionWriteExecutor {
       // require write lock on data region.
       context.getRegionWriteValidationRWLock().writeLock().lock();
       try {
-        return visitDeleteData(node, context);
+        return PlanVisitor.super.visitDeleteData(node, context);
       } finally {
         context.getRegionWriteValidationRWLock().writeLock().unlock();
       }
@@ -380,7 +380,7 @@ public class RegionWriteExecutor {
       // require write lock on data region.
       context.getRegionWriteValidationRWLock().writeLock().lock();
       try {
-        return visitWriteObjectFile(node, context);
+        return PlanVisitor.super.visitWriteObjectFile(node, context);
       } finally {
         context.getRegionWriteValidationRWLock().writeLock().unlock();
       }
@@ -391,7 +391,7 @@ public class RegionWriteExecutor {
         final DeleteTimeSeriesNode node, final WritePlanNodeExecutionContext context) {
       context.getRegionWriteValidationRWLock().writeLock().lock();
       try {
-        return visitDeleteTimeseries(node, context);
+        return PlanVisitor.super.visitDeleteTimeseries(node, context);
       } finally {
         context.getRegionWriteValidationRWLock().writeLock().unlock();
       }
@@ -402,7 +402,7 @@ public class RegionWriteExecutor {
         final DeleteLogicalViewNode node, final WritePlanNodeExecutionContext context) {
       context.getRegionWriteValidationRWLock().writeLock().lock();
       try {
-        return visitDeleteLogicalView(node, context);
+        return PlanVisitor.super.visitDeleteLogicalView(node, context);
       } finally {
         context.getRegionWriteValidationRWLock().writeLock().unlock();
       }
@@ -440,7 +440,7 @@ public class RegionWriteExecutor {
                   Collections.singletonList(node.getPath().getMeasurement()),
                   Collections.singletonList(node.getAlias()));
           if (failingMeasurementMap.isEmpty()) {
-            return visitCreateTimeSeries(node, context);
+            return PlanVisitor.super.visitCreateTimeSeries(node, context);
           } else {
             final MetadataException metadataException = failingMeasurementMap.get(0);
             LOGGER.info(METADATA_ERROR_MSG, metadataException.getMessage());
@@ -457,12 +457,13 @@ public class RegionWriteExecutor {
         if (receivedFromPipe) {
           context.getRegionWriteValidationRWLock().writeLock().lock();
           try {
-            return visitPipeEnrichedWritePlanNode(new PipeEnrichedWritePlanNode(node), context);
+            return PlanVisitor.super.visitPipeEnrichedWritePlanNode(
+                new PipeEnrichedWritePlanNode(node), context);
           } finally {
             context.getRegionWriteValidationRWLock().writeLock().unlock();
           }
         } else {
-          return visitCreateTimeSeries(node, context);
+          return PlanVisitor.super.visitCreateTimeSeries(node, context);
         }
       }
     }
@@ -497,7 +498,7 @@ public class RegionWriteExecutor {
               schemaRegion.checkMeasurementExistence(
                   node.getDevicePath(), node.getMeasurements(), node.getAliasList());
           if (failingMeasurementMap.isEmpty()) {
-            return visitCreateAlignedTimeSeries(node, context);
+            return PlanVisitor.super.visitCreateAlignedTimeSeries(node, context);
           } else {
             final MetadataException metadataException =
                 failingMeasurementMap.values().iterator().next();
@@ -515,12 +516,13 @@ public class RegionWriteExecutor {
         if (receivedFromPipe) {
           context.getRegionWriteValidationRWLock().writeLock().lock();
           try {
-            return visitPipeEnrichedWritePlanNode(new PipeEnrichedWritePlanNode(node), context);
+            return PlanVisitor.super.visitPipeEnrichedWritePlanNode(
+                new PipeEnrichedWritePlanNode(node), context);
           } finally {
             context.getRegionWriteValidationRWLock().writeLock().unlock();
           }
         } else {
-          return visitCreateAlignedTimeSeries(node, context);
+          return PlanVisitor.super.visitCreateAlignedTimeSeries(node, context);
         }
       }
     }
@@ -583,12 +585,13 @@ public class RegionWriteExecutor {
         if (receivedFromPipe) {
           context.getRegionWriteValidationRWLock().writeLock().lock();
           try {
-            return visitPipeEnrichedWritePlanNode(new PipeEnrichedWritePlanNode(node), context);
+            return PlanVisitor.super.visitPipeEnrichedWritePlanNode(
+                new PipeEnrichedWritePlanNode(node), context);
           } finally {
             context.getRegionWriteValidationRWLock().writeLock().unlock();
           }
         } else {
-          return visitCreateMultiTimeSeries(node, context);
+          return PlanVisitor.super.visitCreateMultiTimeSeries(node, context);
         }
       }
     }
@@ -631,7 +634,8 @@ public class RegionWriteExecutor {
         final List<TSStatus> failingStatus) {
       if (!measurementGroupMap.isEmpty()) {
         // try registering the rest timeseries
-        final RegionExecutionResult executionResult = visitCreateMultiTimeSeries(node, context);
+        final RegionExecutionResult executionResult =
+            PlanVisitor.super.visitCreateMultiTimeSeries(node, context);
         if (failingStatus.isEmpty()) {
           return executionResult;
         }
@@ -709,7 +713,7 @@ public class RegionWriteExecutor {
 
           return processExecutionResultOfInternalCreateSchema(
               !measurementGroup.isEmpty()
-                  ? visitInternalCreateTimeSeries(node, context)
+                  ? PlanVisitor.super.visitInternalCreateTimeSeries(node, context)
                   : RegionExecutionResult.create(
                       true,
                       "Execute successfully",
@@ -723,12 +727,13 @@ public class RegionWriteExecutor {
         if (receivedFromPipe) {
           context.getRegionWriteValidationRWLock().writeLock().lock();
           try {
-            return visitPipeEnrichedWritePlanNode(new PipeEnrichedWritePlanNode(node), context);
+            return PlanVisitor.super.visitPipeEnrichedWritePlanNode(
+                new PipeEnrichedWritePlanNode(node), context);
           } finally {
             context.getRegionWriteValidationRWLock().writeLock().unlock();
           }
         } else {
-          return visitInternalCreateTimeSeries(node, context);
+          return PlanVisitor.super.visitInternalCreateTimeSeries(node, context);
         }
       }
     }
@@ -810,7 +815,7 @@ public class RegionWriteExecutor {
 
           return processExecutionResultOfInternalCreateSchema(
               !node.getDeviceMap().isEmpty()
-                  ? visitInternalCreateMultiTimeSeries(node, context)
+                  ? PlanVisitor.super.visitInternalCreateMultiTimeSeries(node, context)
                   : RegionExecutionResult.create(
                       true,
                       "Execute successfully",
@@ -824,12 +829,13 @@ public class RegionWriteExecutor {
         if (receivedFromPipe) {
           context.getRegionWriteValidationRWLock().writeLock().lock();
           try {
-            return visitPipeEnrichedWritePlanNode(new PipeEnrichedWritePlanNode(node), context);
+            return PlanVisitor.super.visitPipeEnrichedWritePlanNode(
+                new PipeEnrichedWritePlanNode(node), context);
           } finally {
             context.getRegionWriteValidationRWLock().writeLock().unlock();
           }
         } else {
-          return visitInternalCreateMultiTimeSeries(node, context);
+          return PlanVisitor.super.visitInternalCreateMultiTimeSeries(node, context);
         }
       }
     }
@@ -943,8 +949,9 @@ public class RegionWriteExecutor {
                   measurementPath.getMeasurementSchema().getType()));
         }
         return receivedFromPipe
-            ? visitPipeEnrichedWritePlanNode(new PipeEnrichedWritePlanNode(node), context)
-            : visitAlterTimeSeries(node, context);
+            ? PlanVisitor.super.visitPipeEnrichedWritePlanNode(
+                new PipeEnrichedWritePlanNode(node), context)
+            : PlanVisitor.super.visitAlterTimeSeries(node, context);
       } catch (MetadataException e) {
         return RegionExecutionResult.create(
             true, e.getMessage(), RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
@@ -987,8 +994,9 @@ public class RegionWriteExecutor {
                 Collections.emptyList());
         if (result == null) {
           return receivedFromPipe
-              ? visitPipeEnrichedWritePlanNode(new PipeEnrichedWritePlanNode(node), context)
-              : visitActivateTemplate(node, context);
+              ? PlanVisitor.super.visitPipeEnrichedWritePlanNode(
+                  new PipeEnrichedWritePlanNode(node), context)
+              : PlanVisitor.super.visitActivateTemplate(node, context);
         } else {
           return result;
         }
@@ -1038,8 +1046,9 @@ public class RegionWriteExecutor {
         }
 
         return receivedFromPipe
-            ? visitPipeEnrichedWritePlanNode(new PipeEnrichedWritePlanNode(node), context)
-            : visitBatchActivateTemplate(node, context);
+            ? PlanVisitor.super.visitPipeEnrichedWritePlanNode(
+                new PipeEnrichedWritePlanNode(node), context)
+            : PlanVisitor.super.visitBatchActivateTemplate(node, context);
       } finally {
         context.getRegionWriteValidationRWLock().readLock().unlock();
       }
@@ -1089,8 +1098,9 @@ public class RegionWriteExecutor {
         }
 
         return receivedFromPipe
-            ? visitPipeEnrichedWritePlanNode(new PipeEnrichedWritePlanNode(node), context)
-            : visitInternalBatchActivateTemplate(node, context);
+            ? PlanVisitor.super.visitPipeEnrichedWritePlanNode(
+                new PipeEnrichedWritePlanNode(node), context)
+            : PlanVisitor.super.visitInternalBatchActivateTemplate(node, context);
       } finally {
         context.getRegionWriteValidationRWLock().readLock().unlock();
       }
@@ -1139,15 +1149,17 @@ public class RegionWriteExecutor {
           }
           // step 2. make sure all source paths exist.
           return receivedFromPipe
-              ? visitPipeEnrichedWritePlanNode(new PipeEnrichedWritePlanNode(node), context)
-              : visitCreateLogicalView(node, context);
+              ? PlanVisitor.super.visitPipeEnrichedWritePlanNode(
+                  new PipeEnrichedWritePlanNode(node), context)
+              : PlanVisitor.super.visitCreateLogicalView(node, context);
         } finally {
           context.getRegionWriteValidationRWLock().writeLock().unlock();
         }
       } else {
         return receivedFromPipe
-            ? visitPipeEnrichedWritePlanNode(new PipeEnrichedWritePlanNode(node), context)
-            : visitCreateLogicalView(node, context);
+            ? PlanVisitor.super.visitPipeEnrichedWritePlanNode(
+                new PipeEnrichedWritePlanNode(node), context)
+            : PlanVisitor.super.visitCreateLogicalView(node, context);
       }
       // end of visitCreateLogicalView
     }
@@ -1171,8 +1183,9 @@ public class RegionWriteExecutor {
             false, e.getMessage(), RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
       }
       return receivedFromPipe
-          ? visitPipeEnrichedWritePlanNode(new PipeEnrichedWritePlanNode(node), context)
-          : visitCreateOrUpdateTableDevice(node, context);
+          ? PlanVisitor.super.visitPipeEnrichedWritePlanNode(
+              new PipeEnrichedWritePlanNode(node), context)
+          : PlanVisitor.super.visitCreateOrUpdateTableDevice(node, context);
     }
 
     @Override
