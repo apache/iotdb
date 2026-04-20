@@ -51,7 +51,6 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 
-import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
 
@@ -287,7 +286,8 @@ public class RestApiServiceImpl extends RestApiService {
     }
 
     clientSession.setSqlDialect(IClientSession.SqlDialect.TABLE);
-    return relationSqlParser.createStatement(sql.getSql(), ZoneId.systemDefault(), clientSession);
+    return relationSqlParser.createStatement(
+        sql.getSql(), clientSession.getZoneId(), clientSession);
   }
 
   private Response validateStatement(Statement statement, boolean userQuery) {

@@ -107,11 +107,19 @@ public class PatternMatchTableFunction implements TableFunction {
 
     Double smoothValue = (Double) ((ScalarArgument) arguments.get(SMOOTH_PARAM)).getValue();
     Double thresholdValue = (Double) ((ScalarArgument) arguments.get(THRESHOLD_PARAM)).getValue();
+    Double widthValue = (Double) ((ScalarArgument) arguments.get(WIDTH_PARAM)).getValue();
+    Double heightValue = (Double) ((ScalarArgument) arguments.get(HEIGHT_PARAM)).getValue();
     if (smoothValue < 0) {
       throw new UDFException("smooth must be a non-negative number, but got: " + smoothValue);
     }
     if (thresholdValue < 0) {
       throw new UDFException("threshold must be a non-negative number, but got: " + thresholdValue);
+    }
+    if (widthValue < 0) {
+      throw new UDFException("width must be a non-negative number, but got: " + widthValue);
+    }
+    if (heightValue < 0) {
+      throw new UDFException("height must be a non-negative number, but got: " + heightValue);
     }
 
     // outputColumnSchema description

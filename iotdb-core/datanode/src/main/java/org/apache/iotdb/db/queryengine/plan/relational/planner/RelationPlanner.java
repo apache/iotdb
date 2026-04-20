@@ -390,6 +390,7 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
       tableScanNode =
           new InformationSchemaTableScanNode(
               idAllocator.genPlanNodeId(), qualifiedObjectName, outputSymbols, tableColumnSchema);
+      analysis.updateNeedSetHighestPriority(qualifiedObjectName);
     } else {
       tableScanNode =
           new DeviceTableScanNode(
