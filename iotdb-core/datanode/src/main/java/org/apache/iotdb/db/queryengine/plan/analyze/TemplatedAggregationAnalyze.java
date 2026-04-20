@@ -45,6 +45,7 @@ import java.util.Map;
 import java.util.Set;
 
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.ENDTIME;
+import static org.apache.iotdb.db.calc_commons.utils.constant.SqlConstant.COUNT_TIME;
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.DEVICE_EXPRESSION;
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.analyzeExpressionType;
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.analyzeGroupByTime;
@@ -56,7 +57,6 @@ import static org.apache.iotdb.db.queryengine.plan.analyze.TemplatedAnalyze.anal
 import static org.apache.iotdb.db.queryengine.plan.analyze.TemplatedAnalyze.analyzeDeviceViewOutput;
 import static org.apache.iotdb.db.queryengine.plan.optimization.LimitOffsetPushDown.canPushDownLimitOffsetInGroupByTimeForDevice;
 import static org.apache.iotdb.db.queryengine.plan.optimization.LimitOffsetPushDown.pushDownLimitOffsetInGroupByTimeForDevice;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.COUNT_TIME;
 
 /** Methods in this class are used for aggregation, templated with align by device situation. */
 public class TemplatedAggregationAnalyze {

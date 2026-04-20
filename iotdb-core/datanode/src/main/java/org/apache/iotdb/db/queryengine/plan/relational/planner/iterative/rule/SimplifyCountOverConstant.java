@@ -45,6 +45,7 @@ import java.util.Optional;
 import static com.google.common.base.Verify.verify;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.calc_commons.plan.relational.utils.matching.Capture.newCapture;
+import static org.apache.iotdb.db.calc_commons.utils.constant.SqlConstant.COUNT;
 import static org.apache.iotdb.db.node_commons.plan.relational.function.FunctionKind.AGGREGATE;
 import static org.apache.iotdb.db.node_commons.plan.relational.metadata.FunctionNullability.getAggregationFunctionNullability;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.IrExpressionInterpreter.evaluateConstantExpression;
@@ -52,7 +53,6 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.aggregation;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.project;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.source;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.COUNT;
 
 public class SimplifyCountOverConstant implements Rule<AggregationNode> {
   private static final Capture<ProjectNode> CHILD = newCapture();

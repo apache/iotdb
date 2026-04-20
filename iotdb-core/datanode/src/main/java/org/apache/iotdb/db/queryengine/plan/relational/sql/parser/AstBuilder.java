@@ -148,6 +148,7 @@ import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.WithQuery;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.ZeroOrMoreQuantifier;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.ZeroOrOneQuantifier;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.parser.ParsingException;
+import org.apache.iotdb.db.node_commons.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.execution.operator.process.copyto.CopyToOptions;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AddColumn;
@@ -269,8 +270,7 @@ import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlLexer;
 import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlParser;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator;
-import org.apache.iotdb.db.utils.DateTimeUtils;
-import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
+import org.apache.iotdb.db.utils.DataNodeDateTimeUtils;
 
 import com.google.common.collect.ImmutableList;
 import org.antlr.v4.runtime.ParserRuleContext;
@@ -315,6 +315,9 @@ import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.TAG;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.TIME;
 import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction.DATE_BIN;
+import static org.apache.iotdb.db.calc_commons.utils.constant.SqlConstant.APPROX_COUNT_DISTINCT;
+import static org.apache.iotdb.db.calc_commons.utils.constant.SqlConstant.APPROX_MOST_FREQUENT;
+import static org.apache.iotdb.db.calc_commons.utils.constant.SqlConstant.APPROX_PERCENTILE;
 import static org.apache.iotdb.db.node_commons.plan.relational.sql.ast.AnchorPattern.Type.PARTITION_END;
 import static org.apache.iotdb.db.node_commons.plan.relational.sql.ast.AnchorPattern.Type.PARTITION_START;
 import static org.apache.iotdb.db.node_commons.plan.relational.sql.ast.GroupingSets.Type.CUBE;
@@ -331,6 +334,7 @@ import static org.apache.iotdb.db.node_commons.plan.relational.sql.ast.SkipTo.sk
 import static org.apache.iotdb.db.node_commons.plan.relational.sql.ast.SkipTo.skipToFirst;
 import static org.apache.iotdb.db.node_commons.plan.relational.sql.ast.SkipTo.skipToLast;
 import static org.apache.iotdb.db.node_commons.plan.relational.sql.ast.SkipTo.skipToNextRow;
+import static org.apache.iotdb.db.node_commons.utils.TimestampPrecisionUtils.currPrecision;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.DATABASE_NOT_SPECIFIED;
 import static org.apache.iotdb.db.queryengine.plan.parser.ASTVisitor.SERVICE_MANAGEMENT_NOT_SUPPORTED;
 import static org.apache.iotdb.db.queryengine.plan.parser.ASTVisitor.parseDateTimeFormat;
@@ -340,10 +344,6 @@ import static org.apache.iotdb.db.queryengine.plan.parser.ASTVisitor.parseString
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AsofJoinOn.constructAsofJoinOn;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.util.QueryUtil.selectList;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.util.QueryUtil.table;
-import static org.apache.iotdb.db.utils.TimestampPrecisionUtils.currPrecision;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.APPROX_COUNT_DISTINCT;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.APPROX_MOST_FREQUENT;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.APPROX_PERCENTILE;
 
 public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
@@ -2356,7 +2356,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     List<LongLiteral> fillGroupingElements = null;
     if (ctx.timeBoundClause() != null) {
       timeBound =
-          DateTimeUtils.constructTimeDuration(ctx.timeBoundClause().timeDuration().getText());
+          DataNodeDateTimeUtils.constructTimeDuration(
+              ctx.timeBoundClause().timeDuration().getText());
 
       if (timeBound.monthDuration != 0 && timeBound.nonMonthDuration != 0) {
         throw new SemanticException(
@@ -2747,7 +2748,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       if (ctx.joinCriteria().ON() != null) {
         if (ctx.ASOF() != null) {
           if (ctx.timeDuration() != null) {
-            timeDuration = DateTimeUtils.constructTimeDuration(ctx.timeDuration().getText());
+            timeDuration =
+                DataNodeDateTimeUtils.constructTimeDuration(ctx.timeDuration().getText());
 
             if (timeDuration.monthDuration != 0) {
               throw new SemanticException(
@@ -3058,7 +3060,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     if (ctx.expression() != null) {
       return visit(ctx.expression());
     } else {
-      TimeDuration timeDuration = DateTimeUtils.constructTimeDuration(ctx.timeDuration().getText());
+      TimeDuration timeDuration =
+          DataNodeDateTimeUtils.constructTimeDuration(ctx.timeDuration().getText());
 
       if (timeDuration.monthDuration != 0) {
         throw new SemanticException("Setting monthly intervals is not supported.");
@@ -3366,9 +3369,13 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     time = parseDateTimeFormat(ctx.getChild(0).getText(), currentTime, zoneId);
     for (int i = 1; i < ctx.getChildCount(); i = i + 2) {
       if ("+".equals(ctx.getChild(i).getText())) {
-        time += DateTimeUtils.convertDurationStrToLong(time, ctx.getChild(i + 1).getText(), false);
+        time +=
+            DataNodeDateTimeUtils.convertDurationStrToLong(
+                time, ctx.getChild(i + 1).getText(), false);
       } else {
-        time -= DateTimeUtils.convertDurationStrToLong(time, ctx.getChild(i + 1).getText(), false);
+        time -=
+            DataNodeDateTimeUtils.convertDurationStrToLong(
+                time, ctx.getChild(i + 1).getText(), false);
       }
     }
     return time;
@@ -3608,7 +3615,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
   @Override
   public Node visitDateBinGapFill(RelationalSqlParser.DateBinGapFillContext ctx) {
-    TimeDuration timeDuration = DateTimeUtils.constructTimeDuration(ctx.timeDuration().getText());
+    TimeDuration timeDuration =
+        DataNodeDateTimeUtils.constructTimeDuration(ctx.timeDuration().getText());
 
     if (timeDuration.monthDuration != 0 && timeDuration.nonMonthDuration != 0) {
       throw new SemanticException(
@@ -3641,7 +3649,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
   @Override
   public Node visitDateBin(RelationalSqlParser.DateBinContext ctx) {
-    TimeDuration timeDuration = DateTimeUtils.constructTimeDuration(ctx.timeDuration().getText());
+    TimeDuration timeDuration =
+        DataNodeDateTimeUtils.constructTimeDuration(ctx.timeDuration().getText());
 
     if (timeDuration.monthDuration != 0 && timeDuration.nonMonthDuration != 0) {
       throw new SemanticException(

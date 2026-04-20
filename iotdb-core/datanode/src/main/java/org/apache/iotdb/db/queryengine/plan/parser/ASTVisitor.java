@@ -38,6 +38,7 @@ import org.apache.iotdb.commons.schema.filter.SchemaFilterFactory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
+import org.apache.iotdb.db.calc_commons.utils.constant.SqlConstant;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.SemanticException;
@@ -51,6 +52,8 @@ import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.NumericParameter
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.QualifiedName;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.TypeParameter;
 import org.apache.iotdb.db.node_commons.plan.statement.component.FillPolicy;
+import org.apache.iotdb.db.node_commons.utils.DateTimeUtils;
+import org.apache.iotdb.db.node_commons.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.ConstantContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.CountDatabasesContext;
@@ -255,9 +258,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowSpaceQuotaSt
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowThrottleQuotaStatement;
 import org.apache.iotdb.db.schemaengine.template.TemplateAlterOperationType;
 import org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator;
-import org.apache.iotdb.db.utils.DateTimeUtils;
-import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
-import org.apache.iotdb.db.utils.constant.SqlConstant;
+import org.apache.iotdb.db.utils.DataNodeDateTimeUtils;
 import org.apache.iotdb.trigger.api.enums.TriggerEvent;
 import org.apache.iotdb.trigger.api.enums.TriggerType;
 
@@ -309,22 +310,22 @@ import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.TAG;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.TIME;
 import static org.apache.iotdb.db.calc_commons.transformation.dag.util.CommonTransformUtils.getEscapeCharacter;
+import static org.apache.iotdb.db.calc_commons.utils.constant.SqlConstant.CAST_FUNCTION;
+import static org.apache.iotdb.db.calc_commons.utils.constant.SqlConstant.CAST_TYPE;
+import static org.apache.iotdb.db.calc_commons.utils.constant.SqlConstant.REPLACE_FROM;
+import static org.apache.iotdb.db.calc_commons.utils.constant.SqlConstant.REPLACE_FUNCTION;
+import static org.apache.iotdb.db.calc_commons.utils.constant.SqlConstant.REPLACE_TO;
+import static org.apache.iotdb.db.calc_commons.utils.constant.SqlConstant.ROUND_FUNCTION;
+import static org.apache.iotdb.db.calc_commons.utils.constant.SqlConstant.ROUND_PLACES;
+import static org.apache.iotdb.db.calc_commons.utils.constant.SqlConstant.SUBSTRING_FUNCTION;
+import static org.apache.iotdb.db.calc_commons.utils.constant.SqlConstant.SUBSTRING_IS_STANDARD;
+import static org.apache.iotdb.db.calc_commons.utils.constant.SqlConstant.SUBSTRING_LENGTH;
+import static org.apache.iotdb.db.calc_commons.utils.constant.SqlConstant.SUBSTRING_START;
+import static org.apache.iotdb.db.node_commons.utils.TimestampPrecisionUtils.TIMESTAMP_PRECISION;
+import static org.apache.iotdb.db.node_commons.utils.TimestampPrecisionUtils.currPrecision;
 import static org.apache.iotdb.db.queryengine.plan.optimization.LimitOffsetPushDown.canPushDownLimitOffsetToGroupByTime;
 import static org.apache.iotdb.db.queryengine.plan.optimization.LimitOffsetPushDown.pushDownLimitOffsetToTimeParameter;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.parser.AstBuilder.lowerIdentifier;
-import static org.apache.iotdb.db.utils.TimestampPrecisionUtils.TIMESTAMP_PRECISION;
-import static org.apache.iotdb.db.utils.TimestampPrecisionUtils.currPrecision;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.CAST_FUNCTION;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.CAST_TYPE;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.REPLACE_FROM;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.REPLACE_FUNCTION;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.REPLACE_TO;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.ROUND_FUNCTION;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.ROUND_PLACES;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.SUBSTRING_FUNCTION;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.SUBSTRING_IS_STANDARD;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.SUBSTRING_LENGTH;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.SUBSTRING_START;
 
 /** Parse AST to Statement. */
 public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
@@ -1232,7 +1233,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       IoTDBSqlParser.ResampleClauseContext ctx, CreateContinuousQueryStatement statement) {
     if (ctx.EVERY() != null) {
       statement.setEveryInterval(
-          DateTimeUtils.convertDurationStrToLong(ctx.everyInterval.getText()));
+          DataNodeDateTimeUtils.convertDurationStrToLong(ctx.everyInterval.getText()));
     } else {
       QueryStatement queryStatement = statement.getQueryBodyStatement();
       if (!queryStatement.isGroupByTime()) {
@@ -1250,10 +1251,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
     if (ctx.RANGE() != null) {
       statement.setStartTimeOffset(
-          DateTimeUtils.convertDurationStrToLong(ctx.startTimeOffset.getText()));
+          DataNodeDateTimeUtils.convertDurationStrToLong(ctx.startTimeOffset.getText()));
       if (ctx.endTimeOffset != null) {
         statement.setEndTimeOffset(
-            DateTimeUtils.convertDurationStrToLong(ctx.endTimeOffset.getText()));
+            DataNodeDateTimeUtils.convertDurationStrToLong(ctx.endTimeOffset.getText()));
       }
     } else {
       statement.setStartTimeOffset(statement.getEveryInterval());
@@ -1878,7 +1879,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
 
     // Parse time interval
-    groupByTimeComponent.setInterval(DateTimeUtils.constructTimeDuration(ctx.interval.getText()));
+    groupByTimeComponent.setInterval(
+        DataNodeDateTimeUtils.constructTimeDuration(ctx.interval.getText()));
     groupByTimeComponent.setOriginalInterval(ctx.interval.getText());
     if (groupByTimeComponent.getInterval().monthDuration == 0
         && groupByTimeComponent.getInterval().nonMonthDuration == 0) {
@@ -1888,7 +1890,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
     // parse sliding step
     if (ctx.step != null) {
-      groupByTimeComponent.setSlidingStep(DateTimeUtils.constructTimeDuration(ctx.step.getText()));
+      groupByTimeComponent.setSlidingStep(
+          DataNodeDateTimeUtils.constructTimeDuration(ctx.step.getText()));
       groupByTimeComponent.setOriginalSlidingStep(ctx.step.getText());
     } else {
       groupByTimeComponent.setSlidingStep(groupByTimeComponent.getInterval());
@@ -1965,7 +1968,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       groupByConditionComponent.setIgnoringNull(ignoringNull);
       return groupByConditionComponent;
     } else if (windowType == WindowType.SESSION_WINDOW) {
-      long interval = DateTimeUtils.convertDurationStrToLong(ctx.timeInterval.getText());
+      long interval = DataNodeDateTimeUtils.convertDurationStrToLong(ctx.timeInterval.getText());
       return new GroupBySessionComponent(interval);
     } else if (windowType == WindowType.COUNT_WINDOW) {
       ExpressionContext countExpressionContext = expressions.get(0);
@@ -2095,7 +2098,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
             "Only FILL(PREVIOUS) support specifying the time duration threshold.");
       }
       fillComponent.setTimeDurationThreshold(
-          DateTimeUtils.constructTimeDuration(ctx.interval.getText()));
+          DataNodeDateTimeUtils.constructTimeDuration(ctx.interval.getText()));
     }
     return fillComponent;
   }
@@ -3577,11 +3580,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     for (int i = 1; i < ctx.getChildCount(); i = i + 2) {
       if ("+".equals(ctx.getChild(i).getText())) {
         time +=
-            DateTimeUtils.convertDurationStrToLong(
+            DataNodeDateTimeUtils.convertDurationStrToLong(
                 time, ctx.getChild(i + 1).getText(), precision, false);
       } else {
         time -=
-            DateTimeUtils.convertDurationStrToLong(
+            DataNodeDateTimeUtils.convertDurationStrToLong(
                 time, ctx.getChild(i + 1).getText(), precision, false);
       }
     }
@@ -3593,9 +3596,13 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     time = parseDateTimeFormat(ctx.getChild(0).getText(), currentTime, zoneId);
     for (int i = 1; i < ctx.getChildCount(); i = i + 2) {
       if ("+".equals(ctx.getChild(i).getText())) {
-        time += DateTimeUtils.convertDurationStrToLong(time, ctx.getChild(i + 1).getText(), false);
+        time +=
+            DataNodeDateTimeUtils.convertDurationStrToLong(
+                time, ctx.getChild(i + 1).getText(), false);
       } else {
-        time -= DateTimeUtils.convertDurationStrToLong(time, ctx.getChild(i + 1).getText(), false);
+        time -=
+            DataNodeDateTimeUtils.convertDurationStrToLong(
+                time, ctx.getChild(i + 1).getText(), false);
       }
     }
     return time;

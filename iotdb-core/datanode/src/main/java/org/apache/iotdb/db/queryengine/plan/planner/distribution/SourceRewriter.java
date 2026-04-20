@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.table.Audit;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
+import org.apache.iotdb.db.calc_commons.utils.constant.SqlConstant;
 import org.apache.iotdb.db.node_commons.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.node_commons.plan.expression.multi.FunctionType;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNode;
@@ -85,7 +86,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.OrderByParame
 import org.apache.iotdb.db.queryengine.plan.statement.component.OrderByKey;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.queryengine.plan.statement.component.SortItem;
-import org.apache.iotdb.db.utils.constant.SqlConstant;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.common.conf.TSFileConfig;
@@ -109,13 +109,13 @@ import java.util.stream.Collectors;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.LAST_VALUE;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.commons.partition.DataPartition.NOT_ASSIGNED;
+import static org.apache.iotdb.db.calc_commons.utils.constant.SqlConstant.AVG;
+import static org.apache.iotdb.db.calc_commons.utils.constant.SqlConstant.COUNT_IF;
+import static org.apache.iotdb.db.calc_commons.utils.constant.SqlConstant.DIFF;
+import static org.apache.iotdb.db.calc_commons.utils.constant.SqlConstant.FIRST_VALUE;
+import static org.apache.iotdb.db.calc_commons.utils.constant.SqlConstant.TIME_DURATION;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionTypeAnalyzer.analyzeExpression;
 import static org.apache.iotdb.db.queryengine.plan.planner.LogicalPlanBuilder.updateTypeProviderByPartialAggregation;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.AVG;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.COUNT_IF;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.DIFF;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.FIRST_VALUE;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.TIME_DURATION;
 
 public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> {
 

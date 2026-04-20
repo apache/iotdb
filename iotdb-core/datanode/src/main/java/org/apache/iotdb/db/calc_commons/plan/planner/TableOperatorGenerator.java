@@ -104,6 +104,7 @@ import org.apache.iotdb.db.calc_commons.plan.relational.planner.CastToStringLite
 import org.apache.iotdb.db.calc_commons.plan.relational.planner.CastToTimestampLiteralVisitor;
 import org.apache.iotdb.db.calc_commons.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.calc_commons.transformation.dag.column.leaf.LeafColumnTransformer;
+import org.apache.iotdb.db.calc_commons.utils.datastructure.SortKey;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.node_commons.common.SessionInfo;
 import org.apache.iotdb.db.node_commons.plan.analyze.ITableTypeProvider;
@@ -163,7 +164,6 @@ import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Literal;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.node_commons.plan.relational.type.InternalTypeManager;
-import org.apache.iotdb.db.utils.datastructure.SortKey;
 import org.apache.iotdb.udf.api.relational.TableFunction;
 import org.apache.iotdb.udf.api.relational.table.TableFunctionProcessorProvider;
 
@@ -216,6 +216,10 @@ import static org.apache.iotdb.db.calc_commons.plan.planner.CommonOperatorUtils.
 import static org.apache.iotdb.db.calc_commons.plan.planner.CommonOperatorUtils.UNKNOWN_DATATYPE;
 import static org.apache.iotdb.db.calc_commons.plan.planner.CommonOperatorUtils.getLinearFill;
 import static org.apache.iotdb.db.calc_commons.plan.planner.CommonOperatorUtils.getPreviousFill;
+import static org.apache.iotdb.db.calc_commons.utils.constant.SqlConstant.FIRST_AGGREGATION;
+import static org.apache.iotdb.db.calc_commons.utils.constant.SqlConstant.FIRST_BY_AGGREGATION;
+import static org.apache.iotdb.db.calc_commons.utils.constant.SqlConstant.LAST_AGGREGATION;
+import static org.apache.iotdb.db.calc_commons.utils.constant.SqlConstant.LAST_BY_AGGREGATION;
 import static org.apache.iotdb.db.node_commons.execution.operator.source.relational.aggregation.grouped.hash.GroupByHash.DEFAULT_GROUP_NUMBER;
 import static org.apache.iotdb.db.node_commons.plan.relational.planner.SortOrder.ASC_NULLS_FIRST;
 import static org.apache.iotdb.db.node_commons.plan.relational.planner.SortOrder.ASC_NULLS_LAST;
@@ -225,10 +229,6 @@ import static org.apache.iotdb.db.node_commons.plan.relational.planner.node.Rows
 import static org.apache.iotdb.db.node_commons.plan.relational.planner.node.SkipToPosition.LAST;
 import static org.apache.iotdb.db.node_commons.plan.relational.sql.ast.BooleanLiteral.TRUE_LITERAL;
 import static org.apache.iotdb.db.node_commons.plan.relational.type.InternalTypeManager.getTSDataType;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.FIRST_AGGREGATION;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.FIRST_BY_AGGREGATION;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.LAST_AGGREGATION;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.LAST_BY_AGGREGATION;
 import static org.apache.tsfile.read.common.type.LongType.INT64;
 import static org.apache.tsfile.read.common.type.StringType.STRING;
 import static org.apache.tsfile.read.common.type.TimestampType.TIMESTAMP;

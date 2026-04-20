@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.utils.constant;
+package org.apache.iotdb.db.calc_commons.utils.constant;
 
 import org.apache.iotdb.commons.path.PartialPath;
 

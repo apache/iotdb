@@ -55,7 +55,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import static org.apache.iotdb.db.utils.constant.SqlConstant.COUNT_TIME;
+import static org.apache.iotdb.db.calc_commons.utils.constant.SqlConstant.COUNT_TIME;
 
 /**
  * Base class of SELECT statement.

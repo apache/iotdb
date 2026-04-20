@@ -39,7 +39,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.confignode.service.ConfigNode;
 import org.apache.iotdb.consensus.common.DataSet;
-import org.apache.iotdb.db.utils.DateTimeUtils;
+import org.apache.iotdb.db.node_commons.utils.DateTimeUtils;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
 import java.io.IOException;

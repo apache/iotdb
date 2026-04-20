@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.node_commons.plan.relational.sql.ast;
 
-import org.apache.iotdb.db.utils.cte.CteDataStore;
+import org.apache.iotdb.db.node_commons.utils.cte.CteDataStore;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;

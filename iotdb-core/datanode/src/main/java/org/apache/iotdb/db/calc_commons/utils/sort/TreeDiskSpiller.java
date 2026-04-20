@@ -17,32 +17,28 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.utils.sort;
-
-import org.apache.iotdb.db.calc_commons.plan.planner.CommonOperatorUtils;
+package org.apache.iotdb.db.calc_commons.utils.sort;
 
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
-import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
 
 import java.util.List;
 
-public class TableDiskSpiller extends DiskSpiller {
-  public TableDiskSpiller(String folderPath, String filePrefix, List<TSDataType> dataTypeList) {
+public class TreeDiskSpiller extends DiskSpiller {
+
+  public TreeDiskSpiller(String folderPath, String filePrefix, List<TSDataType> dataTypeList) {
     super(folderPath, filePrefix, dataTypeList);
   }
 
   @Override
   protected TsBlock buildSortedTsBlock(TsBlockBuilder resultBuilder) {
-    return resultBuilder.build(
-        new RunLengthEncodedColumn(
-            CommonOperatorUtils.TIME_COLUMN_TEMPLATE, resultBuilder.getPositionCount()));
+    return resultBuilder.build();
   }
 
   @Override
   protected void appendTime(ColumnBuilder timeColumnBuilder, long time) {
-    // do nothing for table related
+    timeColumnBuilder.writeLong(time);
   }
 }

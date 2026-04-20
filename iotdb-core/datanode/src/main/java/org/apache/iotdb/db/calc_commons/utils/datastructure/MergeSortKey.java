@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -17,28 +17,29 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.utils.sort;
+package org.apache.iotdb.db.calc_commons.utils.datastructure;
 
-import org.apache.tsfile.block.column.ColumnBuilder;
-import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
-import org.apache.tsfile.read.common.block.TsBlockBuilder;
 
-import java.util.List;
+public class MergeSortKey extends SortKey {
 
-public class TreeDiskSpiller extends DiskSpiller {
+  // This filed only used in operation as an intermediate tool, which is used to locate the origin
+  // of
+  // sortKey when there are more than one channels as input of mergeSort.
+  // It was initialized during the calculation in operator.
+  public int inputChannelIndex;
 
-  public TreeDiskSpiller(String folderPath, String filePrefix, List<TSDataType> dataTypeList) {
-    super(folderPath, filePrefix, dataTypeList);
+  public MergeSortKey(TsBlock tsBlock, int rowIndex) {
+    super(tsBlock, rowIndex);
   }
 
-  @Override
-  protected TsBlock buildSortedTsBlock(TsBlockBuilder resultBuilder) {
-    return resultBuilder.build();
+  public MergeSortKey(TsBlock tsBlock, int rowIndex, int inputChannelIndex) {
+    super(tsBlock, rowIndex);
+    this.inputChannelIndex = inputChannelIndex;
   }
 
-  @Override
-  protected void appendTime(ColumnBuilder timeColumnBuilder, long time) {
-    timeColumnBuilder.writeLong(time);
+  public MergeSortKey(SortKey sortKey) {
+    super(sortKey.tsBlock, sortKey.rowIndex);
+    this.inputChannelIndex = -1;
   }
 }

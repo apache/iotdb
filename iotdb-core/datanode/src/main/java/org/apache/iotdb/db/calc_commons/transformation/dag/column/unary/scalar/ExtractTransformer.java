@@ -31,10 +31,10 @@ import java.time.ZoneId;
 import java.util.function.Function;
 
 import static java.time.temporal.ChronoField.ALIGNED_WEEK_OF_YEAR;
-import static org.apache.iotdb.db.utils.DateTimeUtils.convertToZonedDateTime;
-import static org.apache.iotdb.db.utils.DateTimeUtils.getExtractTimestampMsPartFunction;
-import static org.apache.iotdb.db.utils.DateTimeUtils.getExtractTimestampNsPartFunction;
-import static org.apache.iotdb.db.utils.DateTimeUtils.getExtractTimestampUsPartFunction;
+import static org.apache.iotdb.db.node_commons.utils.DateTimeUtils.convertToZonedDateTime;
+import static org.apache.iotdb.db.node_commons.utils.DateTimeUtils.getExtractTimestampMsPartFunction;
+import static org.apache.iotdb.db.node_commons.utils.DateTimeUtils.getExtractTimestampNsPartFunction;
+import static org.apache.iotdb.db.node_commons.utils.DateTimeUtils.getExtractTimestampUsPartFunction;
 
 public class ExtractTransformer extends UnaryColumnTransformer {
   private final Function<Long, Long> evaluateFunction;

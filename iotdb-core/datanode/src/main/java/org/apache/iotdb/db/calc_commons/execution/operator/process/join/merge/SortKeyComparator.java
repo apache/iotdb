@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.calc_commons.execution.operator.process.join.merge;
 
-import org.apache.iotdb.db.utils.datastructure.SortKey;
+import org.apache.iotdb.db.calc_commons.utils.datastructure.SortKey;
 
 import java.util.Comparator;
 

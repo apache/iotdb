@@ -439,12 +439,6 @@ public class IoTDBConfig {
   /** Enable auto repair compaction */
   private volatile boolean enableAutoRepairCompaction = true;
 
-  /** The buffer for cte scan operation */
-  private long cteBufferSize = 128 * 1024L;
-
-  /** Max number of rows for cte materialization */
-  private int maxRowsInCteBuffer = 1000;
-
   /** Mods cache size limit per fi */
   private long modsCacheSizeLimitPerFI = 32 * 1024 * 1024;
 
@@ -4215,22 +4209,6 @@ public class IoTDBConfig {
 
   public void setRateLimiterType(String rateLimiterType) {
     RateLimiterType = rateLimiterType;
-  }
-
-  public void setCteBufferSize(long cteBufferSize) {
-    this.cteBufferSize = cteBufferSize;
-  }
-
-  public long getCteBufferSize() {
-    return cteBufferSize;
-  }
-
-  public void setMaxRowsInCteBuffer(int maxRowsInCteBuffer) {
-    this.maxRowsInCteBuffer = maxRowsInCteBuffer;
-  }
-
-  public int getMaxRowsInCteBuffer() {
-    return maxRowsInCteBuffer;
   }
 
   public void setModsCacheSizeLimitPerFI(long modsCacheSizeLimitPerFI) {

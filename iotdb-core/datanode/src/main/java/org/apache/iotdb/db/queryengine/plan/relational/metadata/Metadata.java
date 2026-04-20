@@ -30,6 +30,7 @@ import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.node_commons.common.SessionInfo;
 import org.apache.iotdb.db.node_commons.plan.relational.function.ITableFunctionFactory;
 import org.apache.iotdb.db.node_commons.plan.relational.function.OperatorType;
+import org.apache.iotdb.db.node_commons.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.node_commons.plan.relational.type.TypeNotFoundException;
 import org.apache.iotdb.db.node_commons.plan.relational.type.TypeSignature;

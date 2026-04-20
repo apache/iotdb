@@ -16,7 +16,7 @@ package org.apache.iotdb.db.calc_commons.transformation.dag.util;
 
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.node_commons.common.SessionInfo;
-import org.apache.iotdb.db.utils.DateTimeUtils;
+import org.apache.iotdb.db.node_commons.utils.DateTimeUtils;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.read.common.type.Type;

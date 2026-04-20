@@ -17,14 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.utils;
+package org.apache.iotdb.db.node_commons.utils;
 
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
-import org.apache.iotdb.commons.exception.ObjectFileNotExist;
 import org.apache.iotdb.db.exception.sql.SemanticException;
-import org.apache.iotdb.db.service.metrics.FileMetrics;
-import org.apache.iotdb.db.storageengine.dataregion.IObjectPath;
-import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.encoding.decoder.Decoder;
@@ -32,24 +28,33 @@ import org.apache.tsfile.encoding.decoder.DecoderWrapper;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.channels.FileChannel;
-import java.nio.file.Files;
-import java.nio.file.StandardOpenOption;
-import java.util.Objects;
 import java.util.Optional;
+import java.util.ServiceLoader;
 
 public class ObjectTypeUtils {
 
-  private static final Logger logger = LoggerFactory.getLogger(ObjectTypeUtils.class);
-  private static final TierManager TIER_MANAGER = TierManager.getInstance();
+  private static final IObjectFileService OBJECT_FILE_SERVICE = loadObjectFileService();
 
   private ObjectTypeUtils() {}
+
+  private static IObjectFileService loadObjectFileService() {
+    IObjectFileService objectFileService = null;
+    ServiceLoader<IObjectFileServiceProvider> loader =
+        ServiceLoader.load(IObjectFileServiceProvider.class);
+    for (IObjectFileServiceProvider provider : loader) {
+      if (objectFileService != null) {
+        throw new IllegalStateException("Multiple IObjectFileServiceProvider found");
+      }
+      objectFileService = provider.getObjectFileService();
+    }
+    if (objectFileService == null) {
+      throw new IllegalStateException("No IObjectFileServiceProvider found");
+    }
+    return objectFileService;
+  }
 
   public static ByteBuffer readObjectContent(
       Binary binary, long offset, int length, boolean mayNotInCurrentNode) {
@@ -66,31 +71,8 @@ public class ObjectTypeUtils {
 
   public static ByteBuffer readObjectContent(
       String relativePath, long offset, int readSize, boolean mayNotInCurrentNode) {
-    Optional<File> objectFile = TIER_MANAGER.getAbsoluteObjectFilePath(relativePath, false);
-    if (objectFile.isPresent()) {
-      return readObjectContentFromLocalFile(objectFile.get(), offset, readSize);
-    }
-    if (mayNotInCurrentNode) {
-      return readObjectContentFromRemoteFile(relativePath, offset, readSize);
-    }
-    throw new ObjectFileNotExist(relativePath);
-  }
-
-  private static ByteBuffer readObjectContentFromLocalFile(File file, long offset, long readSize) {
-    byte[] bytes = new byte[(int) readSize];
-    ByteBuffer buffer = ByteBuffer.wrap(bytes);
-    try (FileChannel fileChannel = FileChannel.open(file.toPath(), StandardOpenOption.READ)) {
-      fileChannel.read(buffer, offset);
-    } catch (IOException e) {
-      throw new IoTDBRuntimeException(e, TSStatusCode.OBJECT_READ_ERROR.getStatusCode());
-    }
-    buffer.flip();
-    return buffer;
-  }
-
-  private static ByteBuffer readObjectContentFromRemoteFile(
-      final String relativePath, final long offset, final int readSize) {
-    throw new UnsupportedOperationException("readObjectContentFromRemoteFile");
+    return OBJECT_FILE_SERVICE.readObjectContent(
+        relativePath, offset, readSize, mayNotInCurrentNode);
   }
 
   public static Binary generateObjectBinary(long objectSize, IObjectPath objectPath) {
@@ -183,70 +165,14 @@ public class ObjectTypeUtils {
   }
 
   public static Optional<File> getObjectPathFromBinary(Binary binary, boolean needTempFile) {
-    byte[] bytes = binary.getValues();
-    ByteBuffer buffer = ByteBuffer.wrap(bytes, 8, bytes.length - 8);
-    String relativeObjectFilePath =
-        IObjectPath.getDeserializer().deserializeFromObjectValue(buffer).toString();
-    return TIER_MANAGER.getAbsoluteObjectFilePath(relativeObjectFilePath, needTempFile);
+    return OBJECT_FILE_SERVICE.getObjectPathFromBinary(binary, needTempFile);
   }
 
   public static void deleteObjectPathFromBinary(Binary binary) {
-    Optional<File> file = ObjectTypeUtils.getObjectPathFromBinary(binary, true);
-    if (!file.isPresent()) {
-      return;
-    }
-    File tmpFile = new File(file.get().getPath() + ".tmp");
-    File bakFile = new File(file.get().getPath() + ".back");
-    for (int i = 0; i < 2; i++) {
-      if (file.get().exists()) {
-        FileMetrics.getInstance().decreaseObjectFileNum(1);
-        FileMetrics.getInstance().decreaseObjectFileSize(file.get().length());
-      }
-      try {
-        deleteObjectFile(file.get());
-        deleteObjectFile(tmpFile);
-        deleteObjectFile(bakFile);
-      } catch (IOException e) {
-        logger.error("Failed to remove object file {}", file.get().getAbsolutePath(), e);
-      }
-    }
+    OBJECT_FILE_SERVICE.deleteObjectPathFromBinary(binary);
   }
 
   public static void deleteObjectPath(File file) {
-    File tmpFile = new File(file.getPath() + ".tmp");
-    File bakFile = new File(file.getPath() + ".back");
-    for (int i = 0; i < 2; i++) {
-      if (file.exists()) {
-        FileMetrics.getInstance().decreaseObjectFileNum(1);
-        FileMetrics.getInstance().decreaseObjectFileSize(file.length());
-      }
-      try {
-        deleteObjectFile(file);
-        deleteObjectFile(tmpFile);
-        deleteObjectFile(bakFile);
-      } catch (IOException e) {
-        logger.error("Failed to remove object file {}", file.getAbsolutePath(), e);
-      }
-    }
-    deleteEmptyParentDir(file);
-  }
-
-  private static void deleteEmptyParentDir(File file) {
-    File dir = file.getParentFile();
-    if (dir.isDirectory() && Objects.requireNonNull(dir.list()).length == 0) {
-      try {
-        Files.deleteIfExists(dir.toPath());
-        deleteEmptyParentDir(dir);
-      } catch (IOException e) {
-        logger.error("Failed to remove empty object dir {}", dir.getAbsolutePath(), e);
-      }
-    }
-  }
-
-  private static void deleteObjectFile(File file) throws IOException {
-    if (file.exists()) {
-      logger.info("Remove object file {}, size is {}(byte)", file.getAbsolutePath(), file.length());
-    }
-    Files.deleteIfExists(file.toPath());
+    OBJECT_FILE_SERVICE.deleteObjectPath(file);
   }
 }

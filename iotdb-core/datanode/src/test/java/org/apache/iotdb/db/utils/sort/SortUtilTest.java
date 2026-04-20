@@ -22,8 +22,13 @@ package org.apache.iotdb.db.utils.sort;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.utils.FileUtils;
-import org.apache.iotdb.db.utils.datastructure.MergeSortKey;
-import org.apache.iotdb.db.utils.datastructure.SortKey;
+import org.apache.iotdb.db.calc_commons.utils.datastructure.MergeSortKey;
+import org.apache.iotdb.db.calc_commons.utils.datastructure.SortKey;
+import org.apache.iotdb.db.calc_commons.utils.sort.FileSpillerReader;
+import org.apache.iotdb.db.calc_commons.utils.sort.MemoryReader;
+import org.apache.iotdb.db.calc_commons.utils.sort.SortBufferManager;
+import org.apache.iotdb.db.calc_commons.utils.sort.SortReader;
+import org.apache.iotdb.db.calc_commons.utils.sort.TreeDiskSpiller;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.common.conf.TSFileDescriptor;

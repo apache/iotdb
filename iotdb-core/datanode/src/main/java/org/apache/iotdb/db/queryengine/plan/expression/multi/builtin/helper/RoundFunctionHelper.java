@@ -33,8 +33,8 @@ import org.apache.tsfile.read.common.type.TypeFactory;
 
 import java.util.Map;
 
+import static org.apache.iotdb.db.calc_commons.utils.constant.SqlConstant.ROUND_PLACES;
 import static org.apache.iotdb.db.queryengine.plan.parser.ASTVisitor.checkFunctionExpressionInputSize;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.ROUND_PLACES;
 
 public class RoundFunctionHelper implements BuiltInScalarFunctionHelper {
   @Override

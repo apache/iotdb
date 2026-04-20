@@ -17,10 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.utils.sort;
+package org.apache.iotdb.db.calc_commons.utils.sort;
 
 import org.apache.iotdb.commons.exception.IoTDBException;
-import org.apache.iotdb.db.utils.datastructure.MergeSortKey;
+import org.apache.iotdb.db.calc_commons.utils.datastructure.MergeSortKey;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.common.conf.TSFileDescriptor;

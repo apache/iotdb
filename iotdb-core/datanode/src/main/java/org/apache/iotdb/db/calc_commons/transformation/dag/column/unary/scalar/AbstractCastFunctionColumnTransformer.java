@@ -24,7 +24,7 @@ import org.apache.iotdb.db.calc_commons.transformation.dag.column.ColumnTransfor
 import org.apache.iotdb.db.calc_commons.transformation.dag.column.unary.UnaryColumnTransformer;
 import org.apache.iotdb.db.calc_commons.transformation.dag.util.CastFunctionUtils;
 import org.apache.iotdb.db.exception.sql.SemanticException;
-import org.apache.iotdb.db.utils.DateTimeUtils;
+import org.apache.iotdb.db.node_commons.utils.DateTimeUtils;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;

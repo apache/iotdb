@@ -22,7 +22,7 @@ package org.apache.iotdb.db.calc_commons.execution.operator.process;
 import org.apache.iotdb.db.calc_commons.execution.operator.CommonOperatorContext;
 import org.apache.iotdb.db.calc_commons.execution.operator.Operator;
 import org.apache.iotdb.db.calc_commons.plan.planner.CommonOperatorUtils;
-import org.apache.iotdb.db.utils.datastructure.SortKey;
+import org.apache.iotdb.db.calc_commons.utils.datastructure.SortKey;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;

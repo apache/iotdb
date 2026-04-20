@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.calc_commons.transformation.dag.column.unary.scalar;
 
 import org.apache.iotdb.db.calc_commons.transformation.dag.column.ColumnTransformer;
-import org.apache.iotdb.db.utils.ObjectTypeUtils;
+import org.apache.iotdb.db.node_commons.utils.ObjectTypeUtils;
 
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;

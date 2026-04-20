@@ -34,7 +34,7 @@ import org.apache.tsfile.read.common.type.TypeFactory;
 import java.time.ZoneId;
 import java.util.Map;
 
-import static org.apache.iotdb.db.utils.constant.SqlConstant.CAST_TYPE;
+import static org.apache.iotdb.db.calc_commons.utils.constant.SqlConstant.CAST_TYPE;
 
 public class CastFunctionHelper implements BuiltInScalarFunctionHelper {
 

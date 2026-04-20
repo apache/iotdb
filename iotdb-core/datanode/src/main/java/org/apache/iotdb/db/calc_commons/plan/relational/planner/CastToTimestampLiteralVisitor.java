@@ -29,7 +29,7 @@ import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Literal;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.LongLiteral;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.NullLiteral;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.StringLiteral;
-import org.apache.iotdb.db.utils.DateTimeUtils;
+import org.apache.iotdb.db.node_commons.utils.DateTimeUtils;
 
 import java.time.ZoneId;
 

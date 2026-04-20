@@ -34,11 +34,11 @@ import org.apache.tsfile.read.common.type.TypeFactory;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-import static org.apache.iotdb.db.utils.constant.SqlConstant.SUBSTRING_FOR;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.SUBSTRING_FROM;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.SUBSTRING_IS_STANDARD;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.SUBSTRING_LENGTH;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.SUBSTRING_START;
+import static org.apache.iotdb.db.calc_commons.utils.constant.SqlConstant.SUBSTRING_FOR;
+import static org.apache.iotdb.db.calc_commons.utils.constant.SqlConstant.SUBSTRING_FROM;
+import static org.apache.iotdb.db.calc_commons.utils.constant.SqlConstant.SUBSTRING_IS_STANDARD;
+import static org.apache.iotdb.db.calc_commons.utils.constant.SqlConstant.SUBSTRING_LENGTH;
+import static org.apache.iotdb.db.calc_commons.utils.constant.SqlConstant.SUBSTRING_START;
 
 public class SubStringFunctionHelper implements BuiltInScalarFunctionHelper {
   public static final String BLANK_STRING = " ";

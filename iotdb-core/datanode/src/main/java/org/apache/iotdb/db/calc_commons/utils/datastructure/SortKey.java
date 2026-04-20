@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.utils.datastructure;
+package org.apache.iotdb.db.calc_commons.utils.datastructure;
 
 import org.apache.tsfile.read.common.block.TsBlock;
 

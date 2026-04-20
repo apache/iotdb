@@ -21,9 +21,9 @@ package org.apache.iotdb.db.queryengine.execution.operator.process;
 
 import org.apache.iotdb.db.calc_commons.execution.operator.Operator;
 import org.apache.iotdb.db.calc_commons.execution.operator.process.SortOperator;
+import org.apache.iotdb.db.calc_commons.utils.datastructure.SortKey;
+import org.apache.iotdb.db.calc_commons.utils.sort.TreeDiskSpiller;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
-import org.apache.iotdb.db.utils.datastructure.SortKey;
-import org.apache.iotdb.db.utils.sort.TreeDiskSpiller;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;

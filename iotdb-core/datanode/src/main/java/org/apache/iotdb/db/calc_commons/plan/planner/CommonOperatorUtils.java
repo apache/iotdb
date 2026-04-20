@@ -48,7 +48,7 @@ import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
 
-import static org.apache.iotdb.db.utils.TimestampPrecisionUtils.TIMESTAMP_PRECISION;
+import static org.apache.iotdb.db.node_commons.utils.TimestampPrecisionUtils.TIMESTAMP_PRECISION;
 
 public class CommonOperatorUtils {
   public static final IdentityLinearFill IDENTITY_LINEAR_FILL = new IdentityLinearFill();

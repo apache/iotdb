@@ -33,8 +33,8 @@ import org.apache.tsfile.read.common.type.TypeFactory;
 
 import java.util.Map;
 
-import static org.apache.iotdb.db.utils.constant.SqlConstant.REPLACE_FROM;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.REPLACE_TO;
+import static org.apache.iotdb.db.calc_commons.utils.constant.SqlConstant.REPLACE_FROM;
+import static org.apache.iotdb.db.calc_commons.utils.constant.SqlConstant.REPLACE_TO;
 
 public class ReplaceFunctionHelper implements BuiltInScalarFunctionHelper {
   @Override

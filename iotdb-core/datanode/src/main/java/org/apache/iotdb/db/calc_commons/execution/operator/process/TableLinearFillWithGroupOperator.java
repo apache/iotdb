@@ -23,7 +23,7 @@ import org.apache.iotdb.db.calc_commons.execution.operator.CommonOperatorContext
 import org.apache.iotdb.db.calc_commons.execution.operator.Operator;
 import org.apache.iotdb.db.calc_commons.execution.operator.process.fill.ILinearFill;
 import org.apache.iotdb.db.calc_commons.plan.planner.CommonOperatorUtils;
-import org.apache.iotdb.db.utils.datastructure.SortKey;
+import org.apache.iotdb.db.calc_commons.utils.datastructure.SortKey;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;

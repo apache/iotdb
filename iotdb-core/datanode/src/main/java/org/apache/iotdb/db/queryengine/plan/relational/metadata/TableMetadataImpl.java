@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunctio
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.db.calc_commons.plan.relational.metadata.CommonMetadataUtils;
 import org.apache.iotdb.db.calc_commons.plan.udf.TableUDFUtils;
+import org.apache.iotdb.db.calc_commons.utils.constant.SqlConstant;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeTableColumnDisorderException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.node_commons.common.SessionInfo;
@@ -39,6 +40,8 @@ import org.apache.iotdb.db.node_commons.plan.relational.function.arithmetic.Divi
 import org.apache.iotdb.db.node_commons.plan.relational.function.arithmetic.ModulusResolver;
 import org.apache.iotdb.db.node_commons.plan.relational.function.arithmetic.MultiplicationResolver;
 import org.apache.iotdb.db.node_commons.plan.relational.function.arithmetic.SubtractionResolver;
+import org.apache.iotdb.db.node_commons.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.db.node_commons.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.node_commons.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.node_commons.plan.relational.type.TypeManager;
@@ -52,7 +55,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDev
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableHeaderSchemaValidator;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
-import org.apache.iotdb.db.utils.constant.SqlConstant;
 import org.apache.iotdb.udf.api.customizer.analysis.AggregateFunctionAnalysis;
 import org.apache.iotdb.udf.api.customizer.analysis.ScalarFunctionAnalysis;
 import org.apache.iotdb.udf.api.customizer.parameter.FunctionArguments;

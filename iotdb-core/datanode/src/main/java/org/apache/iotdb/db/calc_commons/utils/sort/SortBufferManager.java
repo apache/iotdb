@@ -17,9 +17,9 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.utils.sort;
+package org.apache.iotdb.db.calc_commons.utils.sort;
 
-import org.apache.iotdb.db.queryengine.exception.MemoryNotEnoughException;
+import org.apache.iotdb.db.calc_commons.exception.MemoryNotEnoughException;
 
 public class SortBufferManager {
 

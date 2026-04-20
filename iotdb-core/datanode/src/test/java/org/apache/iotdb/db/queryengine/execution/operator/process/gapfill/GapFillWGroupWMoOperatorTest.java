@@ -25,6 +25,7 @@ import org.apache.iotdb.db.calc_commons.execution.operator.process.MergeSortOper
 import org.apache.iotdb.db.calc_commons.execution.operator.process.gapfill.gapfill.GapFillWGroupWMoOperator;
 import org.apache.iotdb.db.calc_commons.execution.operator.process.gapfill.gapfill.GapFillWoGroupWoMoOperator;
 import org.apache.iotdb.db.calc_commons.plan.planner.CommonOperatorUtils;
+import org.apache.iotdb.db.calc_commons.utils.datastructure.SortKey;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.SortOrder;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
@@ -34,7 +35,6 @@ import org.apache.iotdb.db.queryengine.execution.driver.DriverContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceStateMachine;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
-import org.apache.iotdb.db.utils.datastructure.SortKey;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.common.conf.TSFileConfig;

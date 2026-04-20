@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.utils;
+package org.apache.iotdb.db.calc_commons.utils;
 
 import org.apache.tsfile.utils.RamUsageEstimator;
 

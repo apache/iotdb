@@ -54,7 +54,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
 import org.apache.iotdb.db.storageengine.load.disk.ILoadDiskSelector;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
-import org.apache.iotdb.db.utils.DateTimeUtils;
+import org.apache.iotdb.db.utils.DataNodeDateTimeUtils;
 import org.apache.iotdb.db.utils.datastructure.TVListSortAlgorithm;
 import org.apache.iotdb.external.api.IPropertiesLoader;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
@@ -1063,18 +1063,18 @@ public class IoTDBDescriptor {
     long cteBufferSizeInBytes =
         Long.parseLong(
             properties.getProperty(
-                "cte_buffer_size_in_bytes", Long.toString(conf.getCteBufferSize())));
+                "cte_buffer_size_in_bytes", Long.toString(commonConfig.getCteBufferSize())));
     if (cteBufferSizeInBytes > 0) {
-      conf.setCteBufferSize(cteBufferSizeInBytes);
+      commonConfig.setCteBufferSize(cteBufferSizeInBytes);
     }
 
     // max number of rows for cte materialization
     int maxRowsInCteBuffer =
         Integer.parseInt(
             properties.getProperty(
-                "max_rows_in_cte_buffer", Integer.toString(conf.getMaxRowsInCteBuffer())));
+                "max_rows_in_cte_buffer", Integer.toString(commonConfig.getMaxRowsInCteBuffer())));
     if (maxRowsInCteBuffer > 0) {
-      conf.setMaxRowsInCteBuffer(maxRowsInCteBuffer);
+      commonConfig.setMaxRowsInCteBuffer(maxRowsInCteBuffer);
     }
 
     loadFixedSizeLimitForQuery(
@@ -2272,17 +2272,18 @@ public class IoTDBDescriptor {
       long cteBufferSizeInBytes =
           Long.parseLong(
               properties.getProperty(
-                  "cte_buffer_size_in_bytes", Long.toString(conf.getCteBufferSize())));
+                  "cte_buffer_size_in_bytes", Long.toString(commonConfig.getCteBufferSize())));
       if (cteBufferSizeInBytes > 0) {
-        conf.setCteBufferSize(cteBufferSizeInBytes);
+        commonConfig.setCteBufferSize(cteBufferSizeInBytes);
       }
       // max number of rows for cte materialization
       int maxRowsInCteBuffer =
           Integer.parseInt(
               properties.getProperty(
-                  "max_rows_in_cte_buffer", Integer.toString(conf.getMaxRowsInCteBuffer())));
+                  "max_rows_in_cte_buffer",
+                  Integer.toString(commonConfig.getMaxRowsInCteBuffer())));
       if (maxRowsInCteBuffer > 0) {
-        conf.setMaxRowsInCteBuffer(maxRowsInCteBuffer);
+        commonConfig.setMaxRowsInCteBuffer(maxRowsInCteBuffer);
       }
 
       // max sub-task num for information table scan
@@ -2755,7 +2756,7 @@ public class IoTDBDescriptor {
     }
 
     conf.setContinuousQueryMinimumEveryInterval(
-        DateTimeUtils.convertDurationStrToLong(
+        DataNodeDateTimeUtils.convertDurationStrToLong(
             properties.getProperty("continuous_query_minimum_every_interval", "1s").trim(),
             CommonDescriptor.getInstance().getConfig().getTimestampPrecision(),
             false));

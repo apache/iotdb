@@ -19,12 +19,12 @@
  *
  */
 
-package org.apache.iotdb.db.utils.cte;
+package org.apache.iotdb.db.node_commons.utils.cte;
 
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
+import org.apache.iotdb.db.node_commons.plan.relational.metadata.TableSchema;
 
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.utils.Accountable;
@@ -58,11 +58,11 @@ public class CteDataStore implements Accountable {
   }
 
   public boolean addTsBlock(TsBlock tsBlock) {
-    IoTDBConfig iotConfig = IoTDBDescriptor.getInstance().getConfig();
+    CommonConfig config = CommonDescriptor.getInstance().getConfig();
     long bytesSize = tsBlock.getRetainedSizeInBytes();
     int rows = tsBlock.getPositionCount();
-    if (bytesSize + cachedBytes >= iotConfig.getCteBufferSize()
-        || rows + cachedRows >= iotConfig.getMaxRowsInCteBuffer()) {
+    if (bytesSize + cachedBytes >= config.getCteBufferSize()
+        || rows + cachedRows >= config.getMaxRowsInCteBuffer()) {
       return false;
     }
     cachedData.add(tsBlock);

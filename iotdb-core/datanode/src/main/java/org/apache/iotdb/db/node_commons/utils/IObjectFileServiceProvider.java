@@ -17,15 +17,9 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.exception;
+package org.apache.iotdb.db.node_commons.utils;
 
-import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
+public interface IObjectFileServiceProvider {
 
-import static org.apache.iotdb.rpc.TSStatusCode.QUERY_EXECUTION_MEMORY_NOT_ENOUGH;
-
-public class MemoryNotEnoughException extends IoTDBRuntimeException {
-
-  public MemoryNotEnoughException(String message) {
-    super(message, QUERY_EXECUTION_MEMORY_NOT_ENOUGH.getStatusCode());
-  }
+  IObjectFileService getObjectFileService();
 }

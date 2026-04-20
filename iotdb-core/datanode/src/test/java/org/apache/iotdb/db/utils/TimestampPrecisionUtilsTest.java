@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.utils;
 
+import org.apache.iotdb.db.node_commons.utils.TimestampPrecisionUtils;
+
 import org.junit.Test;
 
 import static org.junit.Assert.fail;

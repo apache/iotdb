@@ -31,6 +31,7 @@ import org.apache.iotdb.db.calc_commons.execution.operator.Operator;
 import org.apache.iotdb.db.calc_commons.execution.operator.process.LimitOperator;
 import org.apache.iotdb.db.calc_commons.execution.operator.process.OffsetOperator;
 import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.node_commons.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.node_commons.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Expression;
@@ -48,7 +49,6 @@ import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.planner.DataNodeTableOperatorGenerator;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanContext;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestMetadata;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.NonAlignedDeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
@@ -689,7 +689,8 @@ public class NonAlignedTreeDeviceViewScanOperatorTreeTest {
       }
       count += tsBlock.getPositionCount();
     }
-    FragmentInstanceContext fragmentInstance = operator.getOperatorContext().getInstanceContext();
+    FragmentInstanceContext fragmentInstance =
+        ((OperatorContext) operator.getOperatorContext()).getInstanceContext();
     Filter globalTimeFilter = fragmentInstance.getGlobalTimeFilter();
     if (globalTimeFilter != null) {
       assertFalse(globalTimeFilter instanceof Or);
