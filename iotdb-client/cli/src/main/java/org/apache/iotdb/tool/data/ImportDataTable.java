@@ -65,6 +65,17 @@ public class ImportDataTable extends AbstractImportData {
   private static Map<String, TSDataType> dataTypes = new HashMap<>();
   private static Map<String, ColumnCategory> columnCategory = new HashMap<>();
 
+  private static final Pattern DB_FROM_SQL_PATTERN;
+
+  static {
+    // group N:   双引号标识符 (""转义)
+    // group N+1: 反引号标识符 (``转义)
+    // group N+2: 普通标识符
+    String id = "(?:\"((?:[^\"]|\"\")*)\"" + "|`((?:[^`]|``)*)`" + "|(\\w+))";
+    DB_FROM_SQL_PATTERN =
+        Pattern.compile("into\\s+" + id + "\\s*\\.\\s*" + id, Pattern.CASE_INSENSITIVE);
+  }
+
   public void init() throws InterruptedException {
     TableSessionPoolBuilder tableSessionPoolBuilder =
         new TableSessionPoolBuilder()
@@ -161,13 +172,8 @@ public class ImportDataTable extends AbstractImportData {
   }
 
   private static String extractDbFromSql(String sql) {
-    // group N:   双引号标识符 (""转义)
-    // group N+1: 反引号标识符 (``转义)
-    // group N+2: 普通标识符
-    String id = "(?:\"((?:[^\"]|\"\")*)\"" + "|`((?:[^`]|``)*)`" + "|(\\w+))";
-    String regex = "into\\s+" + id + "\\s*\\.\\s*" + id;
-    Pattern pattern = Pattern.compile(regex, Pattern.CASE_INSENSITIVE);
-    Matcher matcher = pattern.matcher(sql);
+
+    Matcher matcher = DB_FROM_SQL_PATTERN.matcher(sql);
     if (matcher.find()) {
       // db name: group 1 (双引号), group 2 (反引号), group 3 (普通)
       if (matcher.group(1) != null) return matcher.group(1).replace("\"\"", "\"");
@@ -198,7 +204,7 @@ public class ImportDataTable extends AbstractImportData {
           if (database != null && dbName != null && !dbName.equalsIgnoreCase(database)) {
             ioTPrinter.println(
                 String.format(
-                    "The database in SQL statement '%s' does not match the target database '%s'",
+                    "The extracted database '%s' in SQL statement does not match the target database '%s'",
                     dbName, database));
             failedRecords.add(Collections.singletonList(sql));
             continue;
