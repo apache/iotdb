@@ -185,7 +185,7 @@ public class ImportDataTable extends AbstractImportData {
         try (ITableSession session = sessionPool.getSession()) {
           sql = sql.replace(";", "");
           String dbName = extractDbFromSql(sql);
-          if (dbName != null && !dbName.equalsIgnoreCase(database)) {
+          if (database != null && dbName != null && !dbName.equalsIgnoreCase(database)) {
             ioTPrinter.println(
                 String.format(
                     "The database in SQL statement '%s' does not match the target database '%s'",
