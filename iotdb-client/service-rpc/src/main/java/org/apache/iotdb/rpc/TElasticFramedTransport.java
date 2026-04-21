@@ -174,11 +174,11 @@ public class TElasticFramedTransport extends TTransport {
   protected void readFrame() throws TTransportException {
     underlying.readAll(i32buf, 0, 4);
     int size = TFramedTransport.decodeFrameSize(i32buf);
-    checkFrameSize(size);
+    validateFrame(size);
     readBuffer.fill(underlying, size);
   }
 
-  protected void checkFrameSize(int size) throws TTransportException {
+  protected void validateFrame(int size) throws TTransportException {
     final int HTTP_GET_SIGNATURE = 0x47455420; // "GET "
     final int HTTP_POST_SIGNATURE = 0x504F5354; // "POST"
     final int TLS_MIN_VERSION = 0x160300;
@@ -196,8 +196,6 @@ public class TElasticFramedTransport extends TTransport {
         error = FrameError.TLS_REQUEST;
       } else if (size < 0) {
         error = FrameError.NEGATIVE_FRAME_SIZE;
-      } else if (size > thriftMaxFrameSize) {
-        error = FrameError.FRAME_SIZE_EXCEEDED;
       }
     }
 
@@ -241,9 +239,26 @@ public class TElasticFramedTransport extends TTransport {
     }
   }
 
+  protected void checkWriteFrameSize(int size) throws TTransportException {
+    if (size <= thriftMaxFrameSize) {
+      return;
+    }
+    SocketAddress remoteAddress = null;
+    if (underlying instanceof TSocket) {
+      remoteAddress = ((TSocket) underlying).getSocket().getRemoteSocketAddress();
+    }
+    String remoteInfo = (remoteAddress == null) ? "" : " to " + remoteAddress;
+    String message =
+        String.format(
+            FrameError.FRAME_SIZE_EXCEEDED.messageFormat, size, thriftMaxFrameSize, remoteInfo);
+    close();
+    throw new TTransportException(TTransportException.CORRUPTED_DATA, message);
+  }
+
   @Override
   public void flush() throws TTransportException {
     int length = writeBuffer.getPos();
+    checkWriteFrameSize(length);
     TFramedTransport.encodeFrameSize(length, i32buf);
     underlying.write(i32buf, 0, 4);
     underlying.write(writeBuffer.getBuffer(), 0, length);

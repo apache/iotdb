@@ -59,6 +59,7 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
+import org.apache.thrift.transport.TTransportException;
 import org.apache.tsfile.external.commons.lang3.exception.ExceptionUtils;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.Preconditions;
@@ -549,6 +550,16 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
                   TSStatusCode.EXECUTE_STATEMENT_ERROR,
                   String.format("unknown read type [%s]", instance.getType())));
       }
+    } catch (TException e) {
+      Throwable rootCause = ExceptionUtils.getRootCause(e);
+      if (rootCause instanceof TTransportException
+          && ((TTransportException) rootCause).getType() == TTransportException.CORRUPTED_DATA) {
+        queryContext.addFailedEndPoint(endPoint);
+        throw new FragmentInstanceDispatchException(
+            new TSStatus(TSStatusCode.THRIFT_FRAME_OVERSIZE.getStatusCode())
+                .setMessage(rootCause.getMessage()));
+      }
+      throw e;
     }
   }
 
