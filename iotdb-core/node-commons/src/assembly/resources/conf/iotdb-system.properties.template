@@ -739,12 +739,6 @@ partition_table_recover_worker_num=10
 # Datatype: Integer
 partition_table_recover_max_read_megabytes_per_second=10
 
-# Purpose: for data partition repair
-# Set a timeout to wait for all datanodes complete startup, the unit is ms
-# effectiveMode: restart
-# Datatype: Integer
-partition_table_recover_wait_all_dn_up_timeout_ms=60000
-
 ####################
 ### Memory Control Configuration
 ####################

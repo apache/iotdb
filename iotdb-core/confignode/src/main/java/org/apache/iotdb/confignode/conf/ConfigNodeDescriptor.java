@@ -322,23 +322,6 @@ public class ConfigNodeDescriptor {
                 "failure_detector_phi_acceptable_pause_in_ms",
                 String.valueOf(conf.getFailureDetectorPhiAcceptablePauseInMs()))));
 
-    long partitionTableRecoverWaitAllDnUpTimeoutInMs =
-        Long.parseLong(
-            properties.getProperty(
-                "partition_table_recover_wait_all_dn_up_timeout_ms",
-                String.valueOf(conf.getPartitionTableRecoverWaitAllDnUpTimeoutInMs())));
-    if (partitionTableRecoverWaitAllDnUpTimeoutInMs <= 0) {
-      LOGGER.warn(
-          "partition_table_recover_wait_all_dn_up_timeout_ms should be greater than 0, "
-              + "but current value is {}, ignore that and use the default value {}",
-          partitionTableRecoverWaitAllDnUpTimeoutInMs,
-          conf.getPartitionTableRecoverWaitAllDnUpTimeoutInMs());
-      partitionTableRecoverWaitAllDnUpTimeoutInMs =
-          conf.getPartitionTableRecoverWaitAllDnUpTimeoutInMs();
-    }
-    conf.setPartitionTableRecoverWaitAllDnUpTimeoutInMs(
-        partitionTableRecoverWaitAllDnUpTimeoutInMs);
-
     String leaderDistributionPolicy =
         properties.getProperty("leader_distribution_policy", conf.getLeaderDistributionPolicy());
     if (AbstractLeaderBalancer.GREEDY_POLICY.equals(leaderDistributionPolicy)
