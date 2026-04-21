@@ -41,6 +41,11 @@ import org.apache.iotdb.db.queryengine.plan.expression.unary.LogicNotExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.NegationExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.RegularExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.ExpressionVisitor;
+import org.apache.iotdb.db.queryengine.plan.relational.function.arithmetic.AdditionResolver;
+import org.apache.iotdb.db.queryengine.plan.relational.function.arithmetic.DivisionResolver;
+import org.apache.iotdb.db.queryengine.plan.relational.function.arithmetic.ModulusResolver;
+import org.apache.iotdb.db.queryengine.plan.relational.function.arithmetic.MultiplicationResolver;
+import org.apache.iotdb.db.queryengine.plan.relational.function.arithmetic.SubtractionResolver;
 import org.apache.iotdb.db.queryengine.transformation.dag.udf.UDAFInformationInferrer;
 import org.apache.iotdb.db.queryengine.transformation.dag.udf.UDTFInformationInferrer;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
@@ -54,6 +59,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -217,46 +223,61 @@ public class ExpressionTypeAnalyzer {
     @Override
     public TSDataType visitNegationExpression(
         NegationExpression negationExpression, Function<String, TSDataType> context) {
-      TSDataType inputExpressionType = process(negationExpression.getExpression(), context);
-      checkInputExpressionDataType(
-          negationExpression.getExpression().getExpressionString(),
-          inputExpressionType,
-          TSDataType.INT32,
-          TSDataType.INT64,
-          TSDataType.FLOAT,
-          TSDataType.DOUBLE);
-      return setExpressionType(negationExpression, inputExpressionType);
+      TSDataType operandType = process(negationExpression.getExpression(), context);
+
+      if (operandType != TSDataType.INT32
+          && operandType != TSDataType.INT64
+          && operandType != TSDataType.FLOAT
+          && operandType != TSDataType.DOUBLE
+          && operandType != TSDataType.TIMESTAMP) {
+        throw new SemanticException(
+            String.format(
+                "Invalid input expression data type. Do not support %s operation for %s.",
+                ExpressionType.NEGATION, operandType));
+      }
+
+      return setExpressionType(negationExpression, operandType);
     }
 
     @Override
     public TSDataType visitArithmeticBinaryExpression(
         ArithmeticBinaryExpression arithmeticBinaryExpression,
         Function<String, TSDataType> context) {
-      checkInputExpressionDataType(
-          arithmeticBinaryExpression.getLeftExpression().getExpressionString(),
-          process(arithmeticBinaryExpression.getLeftExpression(), context),
-          TSDataType.INT32,
-          TSDataType.INT64,
-          TSDataType.FLOAT,
-          TSDataType.DOUBLE);
-      checkInputExpressionDataType(
-          arithmeticBinaryExpression.getRightExpression().getExpressionString(),
-          process(arithmeticBinaryExpression.getRightExpression(), context),
-          TSDataType.INT32,
-          TSDataType.INT64,
-          TSDataType.FLOAT,
-          TSDataType.DOUBLE);
-      if ((arithmeticBinaryExpression.getExpressionType() == ExpressionType.DIVISION
-              || arithmeticBinaryExpression.getExpressionType() == ExpressionType.MODULO)
-          && isExpressionDataTypeSatisfy(
-              arithmeticBinaryExpression.getLeftExpression(), TSDataType.INT64, TSDataType.INT32)
-          && isExpressionDataTypeSatisfy(
-              arithmeticBinaryExpression.getRightExpression(),
-              TSDataType.INT64,
-              TSDataType.INT32)) {
-        return setExpressionType(arithmeticBinaryExpression, TSDataType.INT64);
+      TSDataType leftType = process(arithmeticBinaryExpression.getLeftExpression(), context);
+      TSDataType rightType = process(arithmeticBinaryExpression.getRightExpression(), context);
+
+      ExpressionType operatorType = arithmeticBinaryExpression.getExpressionType();
+
+      Optional<TSDataType> resultTypeOpt;
+      switch (operatorType) {
+        case ADDITION:
+          resultTypeOpt = AdditionResolver.inferType(leftType, rightType);
+          break;
+        case SUBTRACTION:
+          resultTypeOpt = SubtractionResolver.inferType(leftType, rightType);
+          break;
+        case MULTIPLICATION:
+          resultTypeOpt = MultiplicationResolver.inferType(leftType, rightType);
+          break;
+        case DIVISION:
+          resultTypeOpt = DivisionResolver.inferType(leftType, rightType);
+          break;
+        case MODULO:
+          resultTypeOpt = ModulusResolver.inferType(leftType, rightType);
+          break;
+        default:
+          resultTypeOpt = Optional.empty();
+          break;
       }
-      return setExpressionType(arithmeticBinaryExpression, TSDataType.DOUBLE);
+
+      if (!resultTypeOpt.isPresent()) {
+        throw new SemanticException(
+            String.format(
+                "Invalid input expression data type. Do not support %s operation for %s and %s.",
+                operatorType, leftType, rightType));
+      }
+
+      return setExpressionType(arithmeticBinaryExpression, resultTypeOpt.get());
     }
 
     @Override

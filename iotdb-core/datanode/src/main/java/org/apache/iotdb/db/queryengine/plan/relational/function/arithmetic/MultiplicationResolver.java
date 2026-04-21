@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.function.arithmetic;
 
+import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
+
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.type.Type;
 
 import java.util.Collections;
@@ -36,6 +39,8 @@ import static org.apache.tsfile.read.common.type.UnknownType.UNKNOWN;
 public class MultiplicationResolver {
 
   private static final Map<Type, Map<Type, Type>> CONDITION_MAP = new HashMap<>();
+  private static final Map<TSDataType, Map<TSDataType, TSDataType>> CONDITION_MAP_TREE =
+      new HashMap<>();
 
   static {
     addCondition(INT32, INT32, INT32);
@@ -66,10 +71,23 @@ public class MultiplicationResolver {
     addCondition(UNKNOWN, INT64, INT64);
     addCondition(UNKNOWN, FLOAT, FLOAT);
     addCondition(UNKNOWN, DOUBLE, DOUBLE);
+
+    for (Map.Entry<Type, Map<Type, Type>> leftEntry : CONDITION_MAP.entrySet()) {
+      TSDataType leftTs = InternalTypeManager.getTSDataType(leftEntry.getKey());
+      for (Map.Entry<Type, Type> rightEntry : leftEntry.getValue().entrySet()) {
+        TSDataType rightTs = InternalTypeManager.getTSDataType(rightEntry.getKey());
+        TSDataType resultTs = InternalTypeManager.getTSDataType(rightEntry.getValue());
+        addConditionTS(leftTs, rightTs, resultTs);
+      }
+    }
   }
 
   private static void addCondition(Type condition1, Type condition2, Type result) {
     CONDITION_MAP.computeIfAbsent(condition1, k -> new HashMap<>()).put(condition2, result);
+  }
+
+  private static void addConditionTS(TSDataType left, TSDataType right, TSDataType result) {
+    CONDITION_MAP_TREE.computeIfAbsent(left, k -> new HashMap<>()).put(right, result);
   }
 
   public static Optional<Type> checkConditions(List<? extends Type> argumentTypes) {
@@ -77,5 +95,12 @@ public class MultiplicationResolver {
         CONDITION_MAP
             .getOrDefault(argumentTypes.get(0), Collections.emptyMap())
             .getOrDefault(argumentTypes.get(1), null));
+  }
+
+  public static Optional<TSDataType> inferType(TSDataType leftType, TSDataType rightType) {
+    return Optional.ofNullable(
+        CONDITION_MAP_TREE
+            .getOrDefault(leftType, Collections.emptyMap())
+            .getOrDefault(rightType, null));
   }
 }

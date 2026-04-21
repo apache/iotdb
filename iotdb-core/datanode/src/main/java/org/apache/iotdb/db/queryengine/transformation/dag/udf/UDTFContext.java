@@ -59,4 +59,8 @@ public class UDTFContext {
   public UDTFExecutor getExecutorByFunctionExpression(FunctionExpression functionExpression) {
     return expressionName2Executor.get(functionExpression.getExpressionString());
   }
+
+  public ZoneId getZoneId() {
+    return zoneId;
+  }
 }

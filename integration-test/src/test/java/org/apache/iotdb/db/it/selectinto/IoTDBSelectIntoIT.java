@@ -319,17 +319,17 @@ public class IoTDBSelectIntoIT {
     String expectedQueryHeader = "Time,root.sg_expr.d.k1,root.sg_expr.d.k2,root.sg_expr.d.k3,";
     String[] queryRetArray =
         new String[] {
-          "1,2.0,null,null,",
+          "1,2,null,null,",
           "2,null,-0.9092974268256817,null,",
-          "3,6.0,-0.1411200080598672,null,",
+          "3,6,-0.1411200080598672,null,",
           "4,null,0.7568024953079282,null,",
           "6,null,0.27941549819892586,null,",
-          "7,14.0,-0.6569865987187891,null,",
-          "8,16.0,-0.9893582466233818,8.0,",
+          "7,14,-0.6569865987187891,null,",
+          "8,16,-0.9893582466233818,8.0,",
           "9,null,-0.4121184852417566,null,",
-          "10,20.0,null,10.0,",
+          "10,20,null,10.0,",
           "11,null,0.9999902065507035,11.0,",
-          "12,24.0,0.5365729180004349,null,"
+          "12,24,0.5365729180004349,null,"
         };
     resultSetEqualTest(
         "select k1, k2, k3 from root.sg_expr.d;", expectedQueryHeader, queryRetArray);

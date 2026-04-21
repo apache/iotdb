@@ -154,7 +154,7 @@ public class IoTDBCaseWhenThenIT {
     // WHEN clause must return BOOLEAN
     String sql = "select case when s1+1 then 20 else 22 end from root.sg.d1";
     String msg =
-        "701: The expression in the WHEN clause must return BOOLEAN. expression: root.sg.d1.s1 + 1, actual data type: DOUBLE.";
+        "701: The expression in the WHEN clause must return BOOLEAN. expression: root.sg.d1.s1 + 1, actual data type: INT64.";
     assertTestFail(sql, msg);
   }
 
@@ -493,8 +493,8 @@ public class IoTDBCaseWhenThenIT {
         new String[] {
           "0,root.sg.d1,null,",
           "1000000,root.sg.d1,11.0,",
-          "20000000,root.sg.d1,21.0,",
-          "210000000,root.sg.d1,32.0,",
+          "20000000,root.sg.d1,21,",
+          "210000000,root.sg.d1,32,",
         };
     resultSetEqualTest(sql, expectHeader, retArray);
 
@@ -543,10 +543,10 @@ public class IoTDBCaseWhenThenIT {
         };
     retArray =
         new String[] {
-          "0,root.sg.d1,-1.0,",
+          "0,root.sg.d1,-1,",
           "1000000,root.sg.d1,11.0,",
-          "20000000,root.sg.d1,21.0,",
-          "210000000,root.sg.d1,32.0,",
+          "20000000,root.sg.d1,21,",
+          "210000000,root.sg.d1,32,",
         };
     resultSetEqualTest(sql, expectHeader, retArray);
 
@@ -734,7 +734,7 @@ public class IoTDBCaseWhenThenIT {
         };
     String[] retArray =
         new String[] {
-          "0,0.0,0.0,", "1000000,121.0,11.0,", "20000000,484.0,66.0,", "210000000,1089.0,77.0,",
+          "0,0,0.0,", "1000000,121,11.0,", "20000000,484,66.0,", "210000000,1089,77.0,",
         };
     resultSetEqualTest(sql, expectedHeader, retArray);
 
@@ -773,7 +773,7 @@ public class IoTDBCaseWhenThenIT {
         };
     String[] retArray =
         new String[] {
-          "0,0.0,44.0,", "1000000,121.0,11.0,", "20000000,484.0,66.0,", "210000000,1089.0,77.0,",
+          "0,0,44.0,", "1000000,121,11.0,", "20000000,484,66.0,", "210000000,1089,77.0,",
         };
     resultSetEqualTest(sql, expectedHeader, retArray);
 

@@ -37,6 +37,7 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 
+import static org.apache.iotdb.db.it.utils.TestUtils.assertTestFail;
 import static org.apache.iotdb.db.it.utils.TestUtils.prepareData;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -59,11 +60,13 @@ public class IoTDBArithmeticIT {
     "CREATE TIMESERIES root.sg.d1.s6 WITH DATATYPE=TEXT, ENCODING=PLAIN",
     "CREATE TIMESERIES root.sg.d1.s7 WITH DATATYPE=INT32, ENCODING=PLAIN",
     "CREATE TIMESERIES root.sg.d1.s8 WITH DATATYPE=INT32, ENCODING=PLAIN",
-    "insert into root.sg.d1(time, s1, s2, s3, s4, s5, s6, s7) values (1, 1, 1, 1, 1, false, '1', 1)",
-    "insert into root.sg.d1(time, s1, s2, s3, s4, s5, s6, s8) values (2, 2, 2, 2, 2, false, '2', 2)",
-    "insert into root.sg.d1(time, s1, s2, s3, s4, s5, s6, s7) values (3, 3, 3, 3, 3, true, '3', 3)",
-    "insert into root.sg.d1(time, s1, s2, s3, s4, s5, s6, s8) values (4, 4, 4, 4, 4, true, '4', 4)",
-    "insert into root.sg.d1(time, s1, s2, s3, s4, s5, s6, s7, s8) values (5, 5, 5, 5, 5, true, '5', 5, 5)",
+    "CREATE TIMESERIES root.sg.d1.s9 WITH DATATYPE=DATE, ENCODING=PLAIN",
+    "CREATE TIMESERIES root.sg.d1.s10 WITH DATATYPE=TIMESTAMP, ENCODING=PLAIN",
+    "insert into root.sg.d1(time, s1, s2, s3, s4, s5, s6, s7, s9, s10) values (1, 1, 1, 1, 1, false, '1', 1, '2024-01-01', 10)",
+    "insert into root.sg.d1(time, s1, s2, s3, s4, s5, s6, s8, s9, s10) values (2, 2, 2, 2, 2, false, '2', 2, '2024-02-01', 20)",
+    "insert into root.sg.d1(time, s1, s2, s3, s4, s5, s6, s7, s9, s10) values (3, 3, 3, 3, 3, true, '3', 3, '2024-03-01', 30)",
+    "insert into root.sg.d1(time, s1, s2, s3, s4, s5, s6, s8, s9, s10) values (4, 4, 4, 4, 4, true, '4', 4, '2024-04-01', 40)",
+    "insert into root.sg.d1(time, s1, s2, s3, s4, s5, s6, s7, s8, s9, s10) values (5, 5, 5, 5, 5, true, '5', 5, 5, '2024-05-01', 50)",
   };
 
   @BeforeClass
@@ -149,6 +152,36 @@ public class IoTDBArithmeticIT {
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
+  }
+
+  @Test
+  public void testTimestampNegation() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      ResultSet resultSet = statement.executeQuery("select -s10 from root.sg.d1");
+
+      String[] expected = {
+        "1969-12-31T23:59:59.990Z",
+        "1969-12-31T23:59:59.980Z",
+        "1969-12-31T23:59:59.970Z",
+        "1969-12-31T23:59:59.960Z",
+        "1969-12-31T23:59:59.950Z"
+      };
+
+      for (String expectedValue : expected) {
+        resultSet.next();
+        assertEquals(expectedValue, resultSet.getString(2));
+      }
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+  }
+
+  @Test
+  public void testUnaryWrongType() {
+    assertTestFail("select -s5 from root.sg.d1", "Invalid input expression data type");
+    assertTestFail("select -s6 from root.sg.d1", "Invalid input expression data type");
+    assertTestFail("select -s9 from root.sg.d1", "Invalid input expression data type");
   }
 
   @Test
@@ -239,6 +272,166 @@ public class IoTDBArithmeticIT {
       assertEquals(retArray.length, cnt);
     } catch (SQLException throwable) {
       fail();
+    }
+  }
+
+  @Test
+  public void testDateAndTimestampArithmetic() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+
+      String sql =
+          "select s1+s9,s1+s10,s2+s9,s2+s10,s9+s1,s9+s2,s10+s1,s10+s2,s9-s1,s9-s2,s10-s1,s10-s2 from root.sg.d1";
+      ResultSet resultSet = statement.executeQuery(sql);
+
+      int[][] expectedResults = {
+        {20240101, 11, 20240101, 11, 20240101, 20240101, 11, 11, 20231231, 20231231, 9, 9},
+        {20240201, 22, 20240201, 22, 20240201, 20240201, 22, 22, 20240131, 20240131, 18, 18},
+        {20240301, 33, 20240301, 33, 20240301, 20240301, 33, 33, 20240229, 20240229, 27, 27},
+        {20240401, 44, 20240401, 44, 20240401, 20240401, 44, 44, 20240331, 20240331, 36, 36},
+        {20240501, 55, 20240501, 55, 20240501, 20240501, 55, 55, 20240430, 20240430, 45, 45}
+      };
+
+      for (int[] expectedResult : expectedResults) {
+        resultSet.next();
+        for (int i = 0; i < expectedResult.length; i++) {
+          assertEquals(expectedResult[i], resultSet.getInt(i + 2));
+        }
+      }
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+  }
+
+  @Test
+  public void testDivisionByZero() {
+    assertTestFail("select s1/0 from root.sg.d1", "Division by zero");
+    assertTestFail("select s2/0 from root.sg.d1", "Division by zero");
+    assertTestFail("select s1%0 from root.sg.d1", "Division by zero");
+    assertTestFail("select s2%0 from root.sg.d1", "Division by zero");
+  }
+
+  @Test
+  public void testFloatDivisionByZero() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      ResultSet resultSet =
+          statement.executeQuery("select s3/0.0,0.0/s3,0.0/-s3,-s3/0.0 from root.sg.d1");
+
+      String[] expected = {"Infinity", "0.0", "-0.0", "-Infinity"};
+
+      for (int i = 0; i < 5; i++) {
+        resultSet.next();
+        for (int j = 0; j < expected.length; j++) {
+          assertEquals(expected[j], resultSet.getString(j + 2));
+        }
+      }
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+  }
+
+  @Test
+  public void testDoubleModuloByZero() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      ResultSet resultSet =
+          statement.executeQuery("select s4%0.0,0.0%s4,0.0%-s4,-s4%0.0 from root.sg.d1");
+
+      String[] expected = {"NaN", "0.0", "0.0", "NaN"};
+
+      for (int i = 0; i < 5; i++) {
+        resultSet.next();
+        for (int j = 0; j < expected.length; j++) {
+          assertEquals(expected[j], resultSet.getString(j + 2));
+        }
+      }
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+  }
+
+  @Test
+  public void testBinaryWrongType() {
+    assertTestFail("select s9 * s1 from root.sg.d1", "Invalid");
+    assertTestFail("select s9 / s1 from root.sg.d1", "Invalid");
+    assertTestFail("select s9 % s1 from root.sg.d1", "Invalid");
+    assertTestFail("select s10 * s1 from root.sg.d1", "Invalid");
+    assertTestFail("select s10 / s1 from root.sg.d1", "Invalid");
+    assertTestFail("select s10 % s1 from root.sg.d1", "Invalid");
+  }
+
+  @Test
+  public void testOverflow() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+
+      String[][] timeseries = {
+        {"s1", "INT32"},
+        {"s2", "INT64"},
+        {"s3", "INT64"},
+        {"s7", "INT32"},
+        {"s8", "INT32"},
+        {"s10", "TIMESTAMP"}
+      };
+      for (String[] ts : timeseries) {
+        statement.execute(
+            String.format(
+                "CREATE TIMESERIES root.sg.d2.%s WITH DATATYPE=%s, ENCODING=PLAIN", ts[0], ts[1]));
+      }
+
+      statement.execute(
+          String.format(
+              "insert into root.sg.d2(time, s1, s2, s3, s7, s8, s10) values (1, %d, %d, %d, %d, %d, %d)",
+              Integer.MAX_VALUE / 2 + 1,
+              Long.MAX_VALUE / 2 + 1,
+              Long.MIN_VALUE / 2 - 1,
+              Integer.MAX_VALUE / 2 + 1,
+              Integer.MIN_VALUE / 2 - 1,
+              Long.MAX_VALUE / 2 + 1));
+      statement.execute(
+          String.format(
+              "insert into root.sg.d2(time, s1, s2, s7, s8) values (2, %d, %d, %d, %d)",
+              Integer.MIN_VALUE / 2 - 1,
+              Long.MIN_VALUE / 2 - 1,
+              Integer.MIN_VALUE / 2 - 1,
+              Integer.MAX_VALUE / 2 + 1));
+
+      assertTestFail("select s1+s7 from root.sg.d2 where time=1", "int Addition overflow");
+      assertTestFail("select s1-s8 from root.sg.d2 where time=2", "int Subtraction overflow");
+      assertTestFail("select s1*s7 from root.sg.d2 where time=1", "int Multiplication overflow");
+
+      assertTestFail("select s2+s2 from root.sg.d2 where time=1", "long Addition overflow");
+      assertTestFail("select s3-s2 from root.sg.d2 where time=1", "long Subtraction overflow");
+
+      assertTestFail(
+          String.format("select s10+%d from root.sg.d2 where time=1", Long.MAX_VALUE),
+          "long Addition overflow");
+      assertTestFail(
+          String.format("select s10-(%d) from root.sg.d2 where time=1", Long.MIN_VALUE),
+          "long Subtraction overflow");
+
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+  }
+
+  @Test
+  public void testDateOutOfRange() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("CREATE TIMESERIES root.sg.d3.date WITH DATATYPE=DATE, ENCODING=PLAIN");
+      statement.execute("insert into root.sg.d3(time, date) values (1, '9999-12-31')");
+      statement.execute("insert into root.sg.d3(time, date) values (2, '1000-01-01')");
+
+      assertTestFail(
+          "select date + 86400000 from root.sg.d3 where time = 1",
+          "Year must be between 1000 and 9999");
+      assertTestFail(
+          "select date - 86400000 from root.sg.d3 where time = 2",
+          "Year must be between 1000 and 9999");
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
     }
   }
 }
