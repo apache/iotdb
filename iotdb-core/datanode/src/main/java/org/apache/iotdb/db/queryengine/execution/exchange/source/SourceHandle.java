@@ -128,6 +128,7 @@ public class SourceHandle implements ISourceHandle {
       RamUsageEstimator.shallowSizeOfInstance(SourceHandle.class)
           + RamUsageEstimator.shallowSizeOfInstance(TFragmentInstanceId.class) * 2;
 
+  @TestOnly
   @SuppressWarnings("squid:S107")
   public SourceHandle(
       TEndPoint remoteEndpoint,

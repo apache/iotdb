@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeMPPDataExchangeServiceClient;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.queryengine.exception.exchange.GetTsBlockFromClosedOrAbortedChannelException;
 import org.apache.iotdb.db.queryengine.execution.driver.DriverContext;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.DownStreamChannelIndex;
@@ -808,6 +809,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
         context.getDriverTaskID().toString());
   }
 
+  @TestOnly
   public synchronized ISourceHandle createLocalSourceHandleForFragment(
       TFragmentInstanceId localFragmentInstanceId,
       String localPlanNodeId,
@@ -882,6 +884,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
     return localSourceHandle;
   }
 
+  @TestOnly
   @Override
   public ISourceHandle createSourceHandle(
       TFragmentInstanceId localFragmentInstanceId,

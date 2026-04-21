@@ -131,6 +131,7 @@ public class SinkChannel implements ISinkChannel {
       RamUsageEstimator.shallowSizeOfInstance(SinkChannel.class)
           + RamUsageEstimator.shallowSizeOfInstance(TFragmentInstanceId.class) * 2;
 
+  @TestOnly
   @SuppressWarnings("squid:S107")
   public SinkChannel(
       TEndPoint remoteEndpoint,
