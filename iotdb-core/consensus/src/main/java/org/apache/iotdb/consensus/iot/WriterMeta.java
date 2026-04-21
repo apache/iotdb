@@ -24,6 +24,8 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.channels.Channels;
+import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -84,19 +86,36 @@ final class WriterMeta {
         parent == null
             ? Paths.get(path + ".tmp")
             : parent.resolve(path.getFileName().toString() + ".tmp");
-    try (OutputStream outputStream =
-            Files.newOutputStream(
+    try (FileChannel fileChannel =
+            FileChannel.open(
                 tempPath,
                 StandardOpenOption.CREATE,
                 StandardOpenOption.TRUNCATE_EXISTING,
                 StandardOpenOption.WRITE);
-        DataOutputStream dataOutputStream = new DataOutputStream(outputStream)) {
+        DataOutputStream dataOutputStream = new DataOutputStream(outputStream(fileChannel))) {
       dataOutputStream.writeInt(FORMAT_VERSION);
       dataOutputStream.writeLong(writerEpoch);
       dataOutputStream.writeLong(lastAllocatedLocalSeq);
       dataOutputStream.writeLong(lastAssignedPhysicalTimeMs);
       dataOutputStream.flush();
+      fileChannel.force(true);
     }
     Files.move(tempPath, path, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+    syncDirectoryIfPossible(parent);
+  }
+
+  private static OutputStream outputStream(final FileChannel fileChannel) {
+    return Channels.newOutputStream(fileChannel);
+  }
+
+  private static void syncDirectoryIfPossible(final Path directory) {
+    if (directory == null) {
+      return;
+    }
+    try (FileChannel directoryChannel = FileChannel.open(directory, StandardOpenOption.READ)) {
+      directoryChannel.force(true);
+    } catch (IOException ignored) {
+      // Best effort only. Some platforms do not support opening directories as FileChannels.
+    }
   }
 }

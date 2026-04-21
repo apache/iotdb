@@ -152,7 +152,8 @@ public class WatermarkProcessor implements SubscriptionMessageProcessor {
 
     // Buffer overflow: force-flush all if buffer exceeds byte limit
     if (bufferedBytes > maxBufferBytes) {
-      return forceFlushAll();
+      emitted.addAll(forceFlushAll());
+      return emitted;
     }
 
     // Timeout: if nothing was emitted and timeout exceeded, force-flush all

@@ -22,6 +22,10 @@ package org.apache.iotdb.session.subscription.consumer.base;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
 
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -40,6 +44,29 @@ public class WatermarkProcessorTest {
     final SubscriptionCommitContext ctx =
         new SubscriptionCommitContext(dataNodeId, 0, TOPIC, GROUP, 0L, 0L, regionId, 0L);
     return new SubscriptionMessage(ctx, Collections.emptyMap());
+  }
+
+  private static SubscriptionMessage tabletMsg(
+      final String regionId,
+      final int dataNodeId,
+      final long commitId,
+      final long timestamp,
+      final int rowCount) {
+    final SubscriptionCommitContext ctx =
+        new SubscriptionCommitContext(dataNodeId, 0, TOPIC, GROUP, commitId, 0L, regionId, 0L);
+    final List<IMeasurementSchema> schemas =
+        Collections.singletonList(new MeasurementSchema("s1", TSDataType.INT64));
+    final Tablet tablet = new Tablet("root.sg.d1", schemas, rowCount);
+    final long[] timestamps = new long[rowCount];
+    final long[] values = (long[]) tablet.getValues()[0];
+    Arrays.fill(timestamps, timestamp);
+    for (int i = 0; i < rowCount; i++) {
+      values[i] = i;
+    }
+    tablet.setTimestamps(timestamps);
+    tablet.setRowSize(rowCount);
+    return new SubscriptionMessage(
+        ctx, Collections.singletonMap("root.sg", Collections.singletonList(tablet)));
   }
 
   private static SubscriptionMessage watermarkMsg(
@@ -157,5 +184,26 @@ public class WatermarkProcessorTest {
 
     proc.process(Collections.singletonList(watermarkMsg(REGION_R1, 1, 1000)));
     Assert.assertEquals(1000, proc.getWatermark());
+  }
+
+  @Test
+  public void testOverflowFlushRetainsAlreadyEmittedMessages() {
+    final SubscriptionMessage smallMessage = tabletMsg(REGION_R1, 1, 1L, 1000L, 1);
+    final SubscriptionMessage largeMessage = tabletMsg(REGION_R1, 1, 2L, 2000L, 64);
+    final long maxBufferBytes = smallMessage.estimateSize();
+
+    Assert.assertTrue(largeMessage.estimateSize() > maxBufferBytes);
+
+    final WatermarkProcessor proc =
+        new WatermarkProcessor(10, 60_000, Long.MAX_VALUE, maxBufferBytes);
+
+    Assert.assertTrue(proc.process(Collections.singletonList(smallMessage)).isEmpty());
+
+    final List<SubscriptionMessage> result = proc.process(Collections.singletonList(largeMessage));
+
+    Assert.assertEquals(2, result.size());
+    Assert.assertSame(smallMessage, result.get(0));
+    Assert.assertSame(largeMessage, result.get(1));
+    Assert.assertEquals(0, proc.getBufferedCount());
   }
 }

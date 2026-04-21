@@ -41,8 +41,8 @@ import java.util.Map;
  */
 public class ColumnAlignProcessor implements SubscriptionMessageProcessor {
 
-  // deviceKey -> (columnIndex -> lastValue)
-  private final Map<String, Map<Integer, Object>> lastValues = new HashMap<>();
+  // deviceKey -> (columnName -> lastValue)
+  private final Map<String, Map<String, Object>> lastValues = new HashMap<>();
 
   @Override
   public List<SubscriptionMessage> process(final List<SubscriptionMessage> messages) {
@@ -65,7 +65,7 @@ public class ColumnAlignProcessor implements SubscriptionMessageProcessor {
 
   private void fillTablet(final Tablet tablet) {
     final String deviceKey = getDeviceKey(tablet);
-    final Map<Integer, Object> cache = lastValues.computeIfAbsent(deviceKey, k -> new HashMap<>());
+    final Map<String, Object> cache = lastValues.computeIfAbsent(deviceKey, k -> new HashMap<>());
 
     final Object[] values = tablet.getValues();
     final BitMap[] bitMaps = tablet.getBitMaps();
@@ -74,18 +74,19 @@ public class ColumnAlignProcessor implements SubscriptionMessageProcessor {
 
     for (int row = 0; row < rowSize; row++) {
       for (int col = 0; col < columnCount; col++) {
+        final String columnKey = getColumnKey(tablet, col);
         final boolean isNull =
             bitMaps != null && bitMaps[col] != null && bitMaps[col].isMarked(row);
         if (isNull) {
           // try forward-fill from cache
-          final Object cached = cache.get(col);
+          final Object cached = cache.get(columnKey);
           if (cached != null) {
             setValueAt(values[col], row, cached);
             bitMaps[col].unmark(row);
           }
         } else {
           // update cache with this non-null value
-          cache.put(col, getValueAt(values[col], row));
+          cache.put(columnKey, getValueAt(values[col], row));
         }
       }
     }
@@ -95,6 +96,10 @@ public class ColumnAlignProcessor implements SubscriptionMessageProcessor {
     // tree model uses deviceId; table model uses tableName
     final String deviceId = tablet.getDeviceId();
     return deviceId != null ? deviceId : tablet.getTableName();
+  }
+
+  private static String getColumnKey(final Tablet tablet, final int columnIndex) {
+    return tablet.getSchemas().get(columnIndex).getMeasurementName();
   }
 
   private static Object getValueAt(final Object columnArray, final int row) {
