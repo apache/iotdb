@@ -105,6 +105,7 @@ public class MPPQueryContext {
    * insufficient. Set from analysis via {@link #setNeedSetHighestPriority(boolean)}.
    */
   private boolean needSetHighestPriority = false;
+
   @TestOnly
   public MPPQueryContext(QueryId queryId) {
     this.queryId = queryId;
