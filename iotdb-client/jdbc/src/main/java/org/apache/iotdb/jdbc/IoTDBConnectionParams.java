@@ -32,9 +32,9 @@ import static org.apache.iotdb.jdbc.Constant.TREE;
 /**
  * Holds all connection parameters parsed from a JDBC URL for an IoTDB connection.
  *
- * <p>This class is populated by {@code IoTDBJDBCUtils} when a JDBC URL of the form
- * {@code jdbc:iotdb://host:port/} is parsed, and is subsequently consumed by
- * {@code IoTDBConnection} to open a Thrift session to the IoTDB server.
+ * <p>This class is populated by {@code IoTDBJDBCUtils} when a JDBC URL of the form {@code
+ * jdbc:iotdb://host:port/} is parsed, and is subsequently consumed by {@code IoTDBConnection} to
+ * open a Thrift session to the IoTDB server.
  *
  * <p>Default values for all parameters are defined in {@link Config}.
  */
@@ -203,8 +203,8 @@ public class IoTDBConnectionParams {
   /**
    * Returns the maximum frame size (in bytes) for Thrift RPC communication.
    *
-   * <p>Frames larger than this value will be rejected. Increase this value
-   * when querying very wide rows or large result sets.
+   * <p>Frames larger than this value will be rejected. Increase this value when querying very wide
+   * rows or large result sets.
    *
    * @return the Thrift maximum frame size
    */
@@ -242,8 +242,8 @@ public class IoTDBConnectionParams {
   /**
    * Sets the network timeout in milliseconds for this connection.
    *
-   * <p>If a negative value is provided, the timeout is reset to
-   * {@code Config.DEFAULT_CONNECTION_TIMEOUT_MS}.
+   * <p>If a negative value is provided, the timeout is reset to {@code
+   * Config.DEFAULT_CONNECTION_TIMEOUT_MS}.
    *
    * @param networkTimeout the timeout in milliseconds; negative values reset to default
    */
@@ -267,8 +267,8 @@ public class IoTDBConnectionParams {
   /**
    * Sets the timezone used when formatting timestamps returned by the IoTDB server.
    *
-   * @param timeZone a timezone string accepted by {@code ZoneId.of()},
-   *                 e.g. {@code "UTC"} or {@code "Asia/Shanghai"}
+   * @param timeZone a timezone string accepted by {@code ZoneId.of()}, e.g. {@code "UTC"} or
+   *     {@code "Asia/Shanghai"}
    */
   public void setTimeZone(String timeZone) {
     this.timeZone = timeZone;
@@ -362,9 +362,10 @@ public class IoTDBConnectionParams {
    * Returns the SQL dialect mode for this connection.
    *
    * <p>IoTDB supports two SQL dialect modes:
+   *
    * <ul>
-   *   <li>{@code "tree"} — the default tree-model dialect</li>
-   *   <li>{@code "table"} — the relational table-model dialect (IoTDB 2.X)</li>
+   *   <li>{@code "tree"} — the default tree-model dialect
+   *   <li>{@code "table"} — the relational table-model dialect (IoTDB 2.X)
    * </ul>
    *
    * @return the SQL dialect string, defaulting to {@code "tree"}
@@ -385,8 +386,8 @@ public class IoTDBConnectionParams {
   /**
    * Returns the target database name for this connection, if specified.
    *
-   * <p>This is used in Table Model (IoTDB 2.X) to set the default database
-   * context, equivalent to {@code USE database} in SQL.
+   * <p>This is used in Table Model (IoTDB 2.X) to set the default database context, equivalent to
+   * {@code USE database} in SQL.
    *
    * @return an {@code Optional} containing the database name, or empty if not set
    */
