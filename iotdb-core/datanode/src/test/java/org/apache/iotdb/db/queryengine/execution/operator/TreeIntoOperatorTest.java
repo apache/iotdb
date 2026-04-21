@@ -26,7 +26,7 @@ import org.apache.iotdb.commons.node_commons.plan.planner.plan.parameter.InputLo
 import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.calc_commons.execution.operator.Operator;
+import org.apache.iotdb.calc_commons.execution.operator.Operator;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;

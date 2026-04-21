@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.queryengine.execution.operator.source;
 
 import org.apache.iotdb.commons.node_commons.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.calc_commons.execution.operator.AbstractOperator;
+import org.apache.iotdb.calc_commons.execution.operator.AbstractOperator;
 
 public abstract class AbstractSourceOperator extends AbstractOperator implements SourceOperator {
 

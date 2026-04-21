@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process;
 
-import org.apache.iotdb.db.calc_commons.execution.operator.Operator;
-import org.apache.iotdb.db.calc_commons.execution.operator.process.AbstractLinearFillOperator;
-import org.apache.iotdb.db.calc_commons.execution.operator.process.fill.ILinearFill;
+import org.apache.iotdb.calc_commons.execution.operator.Operator;
+import org.apache.iotdb.calc_commons.execution.operator.process.AbstractLinearFillOperator;
+import org.apache.iotdb.calc_commons.execution.operator.process.fill.ILinearFill;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 
 import org.apache.tsfile.block.column.Column;

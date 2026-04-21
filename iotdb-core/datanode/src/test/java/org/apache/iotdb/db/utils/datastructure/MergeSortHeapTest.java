@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.utils.datastructure;
 
-import org.apache.iotdb.db.calc_commons.utils.datastructure.MergeSortHeap;
-import org.apache.iotdb.db.calc_commons.utils.datastructure.MergeSortKey;
-import org.apache.iotdb.db.calc_commons.utils.datastructure.SortKey;
+import org.apache.iotdb.calc_commons.utils.datastructure.MergeSortHeap;
+import org.apache.iotdb.calc_commons.utils.datastructure.MergeSortKey;
+import org.apache.iotdb.calc_commons.utils.datastructure.SortKey;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.MergeSortComparatorUtils;
 import org.apache.iotdb.db.queryengine.plan.statement.component.OrderByKey;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;

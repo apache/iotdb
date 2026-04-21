@@ -129,8 +129,8 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDC
 import static org.apache.iotdb.commons.node_commons.plan.statement.component.FillPolicy.LINEAR;
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.DEVICE;
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.ENDTIME;
-import static org.apache.iotdb.db.calc_commons.utils.constant.SqlConstant.LAST_VALUE;
-import static org.apache.iotdb.db.calc_commons.utils.constant.SqlConstant.MAX_TIME;
+import static org.apache.iotdb.calc_commons.utils.constant.SqlConstant.LAST_VALUE;
+import static org.apache.iotdb.calc_commons.utils.constant.SqlConstant.MAX_TIME;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionTypeAnalyzer.analyzeExpression;
 import static org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TopKNode.LIMIT_VALUE_USE_TOP_K;
 

@@ -45,7 +45,7 @@ import java.util.Map;
 import java.util.Set;
 
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.ENDTIME;
-import static org.apache.iotdb.db.calc_commons.utils.constant.SqlConstant.COUNT_TIME;
+import static org.apache.iotdb.calc_commons.utils.constant.SqlConstant.COUNT_TIME;
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.DEVICE_EXPRESSION;
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.analyzeExpressionType;
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.analyzeGroupByTime;

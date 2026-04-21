@@ -28,9 +28,9 @@ import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.ComparisonE
 import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.Literal;
 import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.SymbolReference;
-import org.apache.iotdb.db.calc_commons.plan.relational.utils.matching.Capture;
-import org.apache.iotdb.db.calc_commons.plan.relational.utils.matching.Captures;
-import org.apache.iotdb.db.calc_commons.plan.relational.utils.matching.Pattern;
+import org.apache.iotdb.calc_commons.plan.relational.utils.matching.Capture;
+import org.apache.iotdb.calc_commons.plan.relational.utils.matching.Captures;
+import org.apache.iotdb.calc_commons.plan.relational.utils.matching.Pattern;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlannerContext;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Rule;
 
@@ -42,7 +42,7 @@ import java.util.OptionalInt;
 import static com.google.common.collect.Iterables.getOnlyElement;
 import static java.lang.Math.toIntExact;
 import static java.util.Objects.requireNonNull;
-import static org.apache.iotdb.db.calc_commons.plan.relational.utils.matching.Capture.newCapture;
+import static org.apache.iotdb.calc_commons.plan.relational.utils.matching.Capture.newCapture;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.Util.toTopNRankingType;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.filter;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.source;

@@ -23,9 +23,9 @@ import org.apache.iotdb.commons.node_commons.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.node_commons.plan.relational.planner.Symbol;
 import org.apache.iotdb.commons.node_commons.plan.relational.planner.node.TopKNode;
 import org.apache.iotdb.commons.node_commons.plan.relational.planner.node.UnionNode;
-import org.apache.iotdb.db.calc_commons.plan.relational.utils.matching.Capture;
-import org.apache.iotdb.db.calc_commons.plan.relational.utils.matching.Captures;
-import org.apache.iotdb.db.calc_commons.plan.relational.utils.matching.Pattern;
+import org.apache.iotdb.calc_commons.plan.relational.utils.matching.Capture;
+import org.apache.iotdb.calc_commons.plan.relational.utils.matching.Captures;
+import org.apache.iotdb.calc_commons.plan.relational.utils.matching.Pattern;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Rule;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.SymbolMapper;
 
@@ -37,7 +37,7 @@ import java.util.Set;
 
 import static com.google.common.collect.Iterables.getLast;
 import static com.google.common.collect.Sets.intersection;
-import static org.apache.iotdb.db.calc_commons.plan.relational.utils.matching.Capture.newCapture;
+import static org.apache.iotdb.calc_commons.plan.relational.utils.matching.Capture.newCapture;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.source;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.topK;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.union;

@@ -24,8 +24,8 @@ import org.apache.iotdb.commons.node_commons.plan.relational.planner.node.Aggreg
 import org.apache.iotdb.commons.node_commons.plan.relational.planner.node.ExceptNode;
 import org.apache.iotdb.commons.node_commons.plan.relational.planner.node.IntersectNode;
 import org.apache.iotdb.commons.node_commons.plan.relational.planner.node.UnionNode;
-import org.apache.iotdb.db.calc_commons.plan.relational.utils.matching.Captures;
-import org.apache.iotdb.db.calc_commons.plan.relational.utils.matching.Pattern;
+import org.apache.iotdb.calc_commons.plan.relational.utils.matching.Captures;
+import org.apache.iotdb.calc_commons.plan.relational.utils.matching.Pattern;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Lookup;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Rule;

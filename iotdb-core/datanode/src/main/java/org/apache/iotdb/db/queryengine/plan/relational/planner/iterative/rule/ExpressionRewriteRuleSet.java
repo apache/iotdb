@@ -28,8 +28,8 @@ import org.apache.iotdb.commons.node_commons.plan.relational.planner.node.Projec
 import org.apache.iotdb.commons.node_commons.plan.relational.planner.rowpattern.ExpressionAndValuePointers;
 import org.apache.iotdb.commons.node_commons.plan.relational.planner.rowpattern.IrLabel;
 import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.calc_commons.plan.relational.utils.matching.Captures;
-import org.apache.iotdb.db.calc_commons.plan.relational.utils.matching.Pattern;
+import org.apache.iotdb.calc_commons.plan.relational.utils.matching.Captures;
+import org.apache.iotdb.calc_commons.plan.relational.utils.matching.Pattern;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolsExtractor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Rule;
 

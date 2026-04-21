@@ -76,9 +76,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
-import static org.apache.iotdb.db.calc_commons.plan.relational.planner.ir.GlobalTimePredicateExtractVisitor.isExtractTimeColumn;
-import static org.apache.iotdb.db.calc_commons.plan.relational.planner.ir.GlobalTimePredicateExtractVisitor.isTimeColumn;
-import static org.apache.iotdb.db.calc_commons.transformation.dag.util.CommonTransformUtils.getEscapeCharacter;
+import static org.apache.iotdb.calc_commons.plan.relational.planner.ir.GlobalTimePredicateExtractVisitor.isExtractTimeColumn;
+import static org.apache.iotdb.calc_commons.plan.relational.planner.ir.GlobalTimePredicateExtractVisitor.isTimeColumn;
+import static org.apache.iotdb.calc_commons.transformation.dag.util.CommonTransformUtils.getEscapeCharacter;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.ConvertPredicateToTimeFilterVisitor.getLongValue;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicatePushIntoScanChecker.isLiteral;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicatePushIntoScanChecker.isSymbolReference;

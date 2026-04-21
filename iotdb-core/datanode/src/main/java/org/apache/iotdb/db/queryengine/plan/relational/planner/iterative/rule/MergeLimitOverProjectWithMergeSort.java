@@ -24,14 +24,14 @@ import org.apache.iotdb.commons.node_commons.plan.relational.planner.node.LimitN
 import org.apache.iotdb.commons.node_commons.plan.relational.planner.node.MergeSortNode;
 import org.apache.iotdb.commons.node_commons.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.commons.node_commons.plan.relational.planner.node.TopKNode;
-import org.apache.iotdb.db.calc_commons.plan.relational.utils.matching.Capture;
-import org.apache.iotdb.db.calc_commons.plan.relational.utils.matching.Captures;
-import org.apache.iotdb.db.calc_commons.plan.relational.utils.matching.Pattern;
+import org.apache.iotdb.calc_commons.plan.relational.utils.matching.Capture;
+import org.apache.iotdb.calc_commons.plan.relational.utils.matching.Captures;
+import org.apache.iotdb.calc_commons.plan.relational.utils.matching.Pattern;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Rule;
 
 import com.google.common.collect.ImmutableList;
 
-import static org.apache.iotdb.db.calc_commons.plan.relational.utils.matching.Capture.newCapture;
+import static org.apache.iotdb.calc_commons.plan.relational.utils.matching.Capture.newCapture;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.MergeLimitWithMergeSort.transformByMergeSortNode;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.limit;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.mergeSort;

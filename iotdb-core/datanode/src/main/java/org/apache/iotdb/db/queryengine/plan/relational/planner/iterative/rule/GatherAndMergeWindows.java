@@ -26,10 +26,10 @@ import org.apache.iotdb.commons.node_commons.plan.relational.planner.Symbol;
 import org.apache.iotdb.commons.node_commons.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.commons.node_commons.plan.relational.planner.node.WindowNode;
 import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.calc_commons.plan.relational.utils.matching.Capture;
-import org.apache.iotdb.db.calc_commons.plan.relational.utils.matching.Captures;
-import org.apache.iotdb.db.calc_commons.plan.relational.utils.matching.Pattern;
-import org.apache.iotdb.db.calc_commons.plan.relational.utils.matching.PropertyPattern;
+import org.apache.iotdb.calc_commons.plan.relational.utils.matching.Capture;
+import org.apache.iotdb.calc_commons.plan.relational.utils.matching.Captures;
+import org.apache.iotdb.calc_commons.plan.relational.utils.matching.Pattern;
+import org.apache.iotdb.calc_commons.plan.relational.utils.matching.PropertyPattern;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolsExtractor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Rule;
 
@@ -49,7 +49,7 @@ import java.util.stream.Stream;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static com.google.common.collect.ImmutableSet.toImmutableSet;
-import static org.apache.iotdb.db.calc_commons.plan.relational.utils.matching.Capture.newCapture;
+import static org.apache.iotdb.calc_commons.plan.relational.utils.matching.Capture.newCapture;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.Util.restrictOutputs;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.Util.transpose;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.groupNode;

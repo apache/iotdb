@@ -21,10 +21,10 @@ package org.apache.iotdb.db.queryengine.execution.operator.process.window.functi
 
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.commons.node_commons.plan.relational.planner.SortOrder;
-import org.apache.iotdb.db.calc_commons.execution.operator.process.window.function.aggregate.AggregationWindowFunction;
-import org.apache.iotdb.db.calc_commons.execution.operator.process.window.partition.PartitionExecutor;
-import org.apache.iotdb.db.calc_commons.execution.operator.process.window.partition.frame.FrameInfo;
-import org.apache.iotdb.db.calc_commons.plan.planner.CommonOperatorUtils;
+import org.apache.iotdb.calc_commons.execution.operator.process.window.function.aggregate.AggregationWindowFunction;
+import org.apache.iotdb.calc_commons.execution.operator.process.window.partition.PartitionExecutor;
+import org.apache.iotdb.calc_commons.execution.operator.process.window.partition.frame.FrameInfo;
+import org.apache.iotdb.calc_commons.plan.planner.CommonOperatorUtils;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.TableWindowOperatorTestUtils;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.function.FunctionTestUtils;
 

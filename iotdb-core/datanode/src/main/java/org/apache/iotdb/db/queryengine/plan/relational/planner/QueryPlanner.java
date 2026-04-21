@@ -111,7 +111,7 @@ import static org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.Wind
 import static org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.WindowFrame.Type.RANGE;
 import static org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.WindowFrame.Type.ROWS;
 import static org.apache.iotdb.commons.node_commons.plan.relational.type.TypeSignatureTranslator.toSqlType;
-import static org.apache.iotdb.db.calc_commons.plan.relational.metadata.CommonMetadataUtils.isNumericType;
+import static org.apache.iotdb.calc_commons.plan.relational.metadata.CommonMetadataUtils.isNumericType;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingTranslator.sortItemToSortOrder;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.PlanBuilder.newPlanBuilder;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ScopeAware.scopeAwareKey;

@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.driver;
 
-import org.apache.iotdb.db.calc_commons.execution.operator.Operator;
+import org.apache.iotdb.calc_commons.execution.operator.Operator;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.execution.operator.source.DataSourceOperator;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
@@ -31,7 +31,7 @@ import javax.annotation.concurrent.NotThreadSafe;
 
 import java.util.List;
 
-import static org.apache.iotdb.db.calc_commons.metric.QueryExecutionMetricSet.QUERY_RESOURCE_INIT;
+import static org.apache.iotdb.calc_commons.metric.QueryExecutionMetricSet.QUERY_RESOURCE_INIT;
 import static org.apache.iotdb.db.storageengine.dataregion.VirtualDataRegion.UNFINISHED_QUERY_DATA_SOURCE;
 
 /**

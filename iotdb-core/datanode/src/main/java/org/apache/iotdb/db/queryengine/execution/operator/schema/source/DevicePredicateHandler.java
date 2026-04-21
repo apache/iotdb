@@ -23,8 +23,8 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.utils.PathUtils;
-import org.apache.iotdb.db.calc_commons.transformation.dag.column.ColumnTransformer;
-import org.apache.iotdb.db.calc_commons.transformation.dag.column.leaf.LeafColumnTransformer;
+import org.apache.iotdb.calc_commons.transformation.dag.column.ColumnTransformer;
+import org.apache.iotdb.calc_commons.transformation.dag.column.leaf.LeafColumnTransformer;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTreeViewSchemaUtils;
 
@@ -39,7 +39,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.db.calc_commons.execution.operator.process.FilterAndProjectOperator.satisfy;
+import static org.apache.iotdb.calc_commons.execution.operator.process.FilterAndProjectOperator.satisfy;
 import static org.apache.iotdb.db.queryengine.execution.operator.schema.source.TableDeviceQuerySource.transformToTableDeviceTsBlockColumns;
 
 public abstract class DevicePredicateHandler implements AutoCloseable {

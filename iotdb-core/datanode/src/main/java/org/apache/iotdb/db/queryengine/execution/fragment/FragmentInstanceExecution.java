@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.queryengine.execution.fragment;
 
 import org.apache.iotdb.commons.utils.FileUtils;
-import org.apache.iotdb.db.calc_commons.exception.MemoryNotEnoughException;
+import org.apache.iotdb.calc_commons.exception.MemoryNotEnoughException;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;

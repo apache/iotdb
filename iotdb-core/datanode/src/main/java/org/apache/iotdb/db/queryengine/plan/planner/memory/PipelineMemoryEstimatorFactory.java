@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.planner.memory;
 
 import org.apache.iotdb.commons.node_commons.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.calc_commons.execution.operator.Operator;
+import org.apache.iotdb.calc_commons.execution.operator.Operator;
 
 public class PipelineMemoryEstimatorFactory {
 

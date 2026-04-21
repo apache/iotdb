@@ -74,7 +74,7 @@ import java.util.Map;
 import java.util.Set;
 
 import static com.google.common.base.Preconditions.checkState;
-import static org.apache.iotdb.db.calc_commons.utils.constant.SqlConstant.COUNT_TIME;
+import static org.apache.iotdb.calc_commons.utils.constant.SqlConstant.COUNT_TIME;
 
 public class AggregationPushDown implements PlanOptimizer {
 

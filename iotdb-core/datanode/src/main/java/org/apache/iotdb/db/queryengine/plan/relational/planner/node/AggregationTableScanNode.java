@@ -60,8 +60,8 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFunction.LAST;
 import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFunction.LAST_BY;
-import static org.apache.iotdb.db.calc_commons.utils.constant.SqlConstant.COUNT;
-import static org.apache.iotdb.db.calc_commons.utils.constant.SqlConstant.TABLE_TIME_COLUMN_NAME;
+import static org.apache.iotdb.calc_commons.utils.constant.SqlConstant.COUNT;
+import static org.apache.iotdb.calc_commons.utils.constant.SqlConstant.TABLE_TIME_COLUMN_NAME;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator.DATE_BIN_PREFIX;
 
 public class AggregationTableScanNode extends DeviceTableScanNode {

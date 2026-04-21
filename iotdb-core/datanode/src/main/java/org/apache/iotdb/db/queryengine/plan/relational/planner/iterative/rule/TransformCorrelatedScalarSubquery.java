@@ -34,8 +34,8 @@ import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.QualifiedNa
 import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.SimpleCaseExpression;
 import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.StringLiteral;
 import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.WhenClause;
-import org.apache.iotdb.db.calc_commons.plan.relational.utils.matching.Captures;
-import org.apache.iotdb.db.calc_commons.plan.relational.utils.matching.Pattern;
+import org.apache.iotdb.calc_commons.plan.relational.utils.matching.Captures;
+import org.apache.iotdb.calc_commons.plan.relational.utils.matching.Pattern;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Rule;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.Cardinality;
@@ -50,8 +50,8 @@ import static org.apache.iotdb.commons.node_commons.plan.relational.planner.node
 import static org.apache.iotdb.commons.node_commons.plan.relational.planner.node.JoinNode.JoinType.LEFT;
 import static org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.BooleanLiteral.TRUE_LITERAL;
 import static org.apache.iotdb.commons.node_commons.plan.relational.type.TypeSignatureTranslator.toSqlType;
-import static org.apache.iotdb.db.calc_commons.plan.relational.utils.matching.Pattern.nonEmpty;
-import static org.apache.iotdb.db.calc_commons.transformation.dag.column.FailFunctionColumnTransformer.FAIL_FUNCTION_NAME;
+import static org.apache.iotdb.calc_commons.plan.relational.utils.matching.Pattern.nonEmpty;
+import static org.apache.iotdb.calc_commons.transformation.dag.column.FailFunctionColumnTransformer.FAIL_FUNCTION_NAME;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.PlanNodeSearcher.searchFrom;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.CorrelatedJoin.correlation;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.CorrelatedJoin.filter;

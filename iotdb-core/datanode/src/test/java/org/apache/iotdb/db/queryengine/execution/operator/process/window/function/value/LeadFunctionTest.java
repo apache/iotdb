@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.window.function.value;
 
-import org.apache.iotdb.db.calc_commons.execution.operator.process.window.function.value.LeadFunction;
-import org.apache.iotdb.db.calc_commons.execution.operator.process.window.partition.PartitionExecutor;
-import org.apache.iotdb.db.calc_commons.plan.planner.CommonOperatorUtils;
+import org.apache.iotdb.calc_commons.execution.operator.process.window.function.value.LeadFunction;
+import org.apache.iotdb.calc_commons.execution.operator.process.window.partition.PartitionExecutor;
+import org.apache.iotdb.calc_commons.plan.planner.CommonOperatorUtils;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.function.FunctionTestUtils;
 
 import org.apache.tsfile.block.column.Column;

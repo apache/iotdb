@@ -27,9 +27,9 @@ import org.apache.iotdb.commons.node_commons.plan.relational.planner.node.JoinNo
 import org.apache.iotdb.commons.node_commons.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.commons.node_commons.plan.relational.planner.node.SemiJoinNode;
 import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.calc_commons.plan.relational.utils.matching.Capture;
-import org.apache.iotdb.db.calc_commons.plan.relational.utils.matching.Captures;
-import org.apache.iotdb.db.calc_commons.plan.relational.utils.matching.Pattern;
+import org.apache.iotdb.calc_commons.plan.relational.utils.matching.Capture;
+import org.apache.iotdb.calc_commons.plan.relational.utils.matching.Captures;
+import org.apache.iotdb.calc_commons.plan.relational.utils.matching.Pattern;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Rule;
 
 import com.google.common.collect.ImmutableList;
@@ -44,7 +44,7 @@ import static org.apache.iotdb.commons.node_commons.plan.relational.planner.node
 import static org.apache.iotdb.commons.node_commons.plan.relational.planner.node.AggregationNode.singleGroupingSet;
 import static org.apache.iotdb.commons.node_commons.plan.relational.planner.node.JoinNode.JoinType.INNER;
 import static org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.BooleanLiteral.TRUE_LITERAL;
-import static org.apache.iotdb.db.calc_commons.plan.relational.utils.matching.Capture.newCapture;
+import static org.apache.iotdb.calc_commons.plan.relational.utils.matching.Capture.newCapture;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ExpressionSymbolInliner.inlineSymbols;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils.and;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils.extractConjuncts;

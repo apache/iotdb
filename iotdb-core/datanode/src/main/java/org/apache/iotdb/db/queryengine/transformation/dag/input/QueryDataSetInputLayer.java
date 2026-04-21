@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.input;
 
-import org.apache.iotdb.db.calc_commons.transformation.datastructure.iterator.RowListForwardIterator;
-import org.apache.iotdb.db.calc_commons.transformation.datastructure.row.ElasticSerializableRowList;
+import org.apache.iotdb.calc_commons.transformation.datastructure.iterator.RowListForwardIterator;
+import org.apache.iotdb.calc_commons.transformation.datastructure.row.ElasticSerializableRowList;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
 import org.apache.iotdb.db.queryengine.transformation.api.YieldableState;

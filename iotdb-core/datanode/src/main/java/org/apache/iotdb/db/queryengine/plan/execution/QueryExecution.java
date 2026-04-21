@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.node_commons.common.SqlDialect;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
-import org.apache.iotdb.db.calc_commons.metric.QueryExecutionMetricSet;
+import org.apache.iotdb.calc_commons.metric.QueryExecutionMetricSet;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.KilledByOthersException;
@@ -73,7 +73,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Throwables.throwIfUnchecked;
 import static org.apache.iotdb.commons.utils.ErrorHandlingCommonUtils.getRootCause;
-import static org.apache.iotdb.db.calc_commons.metric.QueryExecutionMetricSet.WAIT_FOR_RESULT;
+import static org.apache.iotdb.calc_commons.metric.QueryExecutionMetricSet.WAIT_FOR_RESULT;
 import static org.apache.iotdb.db.queryengine.common.DataNodeEndPoints.isSameNode;
 import static org.apache.iotdb.rpc.TSStatusCode.DATE_OUT_OF_RANGE;
 

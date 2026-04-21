@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk;
 
-import org.apache.iotdb.db.calc_commons.utils.ObjectTypeUtils;
+import org.apache.iotdb.calc_commons.utils.ObjectTypeUtils;
 import org.apache.iotdb.db.exception.ChunkTypeInconsistentException;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;

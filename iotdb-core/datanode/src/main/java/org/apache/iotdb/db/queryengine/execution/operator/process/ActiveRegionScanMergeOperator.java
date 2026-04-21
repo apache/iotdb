@@ -20,8 +20,8 @@
 package org.apache.iotdb.db.queryengine.execution.operator.process;
 
 import org.apache.iotdb.commons.node_commons.execution.MemoryEstimationHelper;
-import org.apache.iotdb.db.calc_commons.execution.operator.Operator;
-import org.apache.iotdb.db.calc_commons.execution.operator.process.AbstractConsumeAllOperator;
+import org.apache.iotdb.calc_commons.execution.operator.Operator;
+import org.apache.iotdb.calc_commons.execution.operator.process.AbstractConsumeAllOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 
 import com.google.common.util.concurrent.ListenableFuture;

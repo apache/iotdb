@@ -20,13 +20,13 @@ package org.apache.iotdb.mqtt;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant.ClientVersion;
+import org.apache.iotdb.commons.node_commons.common.SqlDialect;
+import org.apache.iotdb.commons.node_commons.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.node_commons.common.SqlDialect;
-import org.apache.iotdb.db.node_commons.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.db.protocol.session.MqttClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;

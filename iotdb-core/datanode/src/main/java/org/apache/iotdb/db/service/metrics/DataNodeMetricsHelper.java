@@ -29,7 +29,7 @@ import org.apache.iotdb.commons.service.metric.JvmGcMonitorMetrics;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.commons.service.metric.cpu.CpuUsageMetrics;
-import org.apache.iotdb.db.calc_commons.metric.QueryExecutionMetricSet;
+import org.apache.iotdb.calc_commons.metric.QueryExecutionMetricSet;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.metric.PipeDataNodeMetrics;
 import org.apache.iotdb.db.protocol.thrift.handler.RPCServiceThriftHandlerMetrics;

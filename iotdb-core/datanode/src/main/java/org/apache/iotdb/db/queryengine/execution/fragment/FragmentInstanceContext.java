@@ -31,7 +31,7 @@ import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.calc_commons.plan.planner.memory.MemoryReservationManager;
+import org.apache.iotdb.calc_commons.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.QueryProcessException;

@@ -28,9 +28,9 @@ import org.apache.iotdb.commons.node_commons.plan.relational.planner.node.Aggreg
 import org.apache.iotdb.commons.node_commons.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.SymbolReference;
-import org.apache.iotdb.db.calc_commons.plan.relational.utils.matching.Capture;
-import org.apache.iotdb.db.calc_commons.plan.relational.utils.matching.Captures;
-import org.apache.iotdb.db.calc_commons.plan.relational.utils.matching.Pattern;
+import org.apache.iotdb.calc_commons.plan.relational.utils.matching.Capture;
+import org.apache.iotdb.calc_commons.plan.relational.utils.matching.Captures;
+import org.apache.iotdb.calc_commons.plan.relational.utils.matching.Pattern;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlannerContext;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Rule;
 
@@ -46,8 +46,8 @@ import static com.google.common.base.Verify.verify;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.commons.node_commons.plan.relational.function.FunctionKind.AGGREGATE;
 import static org.apache.iotdb.commons.node_commons.plan.relational.metadata.FunctionNullability.getAggregationFunctionNullability;
-import static org.apache.iotdb.db.calc_commons.plan.relational.utils.matching.Capture.newCapture;
-import static org.apache.iotdb.db.calc_commons.utils.constant.SqlConstant.COUNT;
+import static org.apache.iotdb.calc_commons.plan.relational.utils.matching.Capture.newCapture;
+import static org.apache.iotdb.calc_commons.utils.constant.SqlConstant.COUNT;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.IrExpressionInterpreter.evaluateConstantExpression;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils.isEffectivelyLiteral;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.aggregation;

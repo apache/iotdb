@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.db.calc_commons.utils.constant.SqlConstant;
+import org.apache.iotdb.calc_commons.utils.constant.SqlConstant;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.AbstractAlignedChunkMetadata;

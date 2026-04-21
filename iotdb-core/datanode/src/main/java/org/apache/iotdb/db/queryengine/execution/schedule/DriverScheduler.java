@@ -26,7 +26,7 @@ import org.apache.iotdb.commons.node_commons.common.SessionInfo;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.calc_commons.exception.MemoryNotEnoughException;
+import org.apache.iotdb.calc_commons.exception.MemoryNotEnoughException;
 import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;

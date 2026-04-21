@@ -332,9 +332,9 @@ import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.TAG;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.TIME;
 import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction.DATE_BIN;
-import static org.apache.iotdb.db.calc_commons.utils.constant.SqlConstant.APPROX_COUNT_DISTINCT;
-import static org.apache.iotdb.db.calc_commons.utils.constant.SqlConstant.APPROX_MOST_FREQUENT;
-import static org.apache.iotdb.db.calc_commons.utils.constant.SqlConstant.APPROX_PERCENTILE;
+import static org.apache.iotdb.calc_commons.utils.constant.SqlConstant.APPROX_COUNT_DISTINCT;
+import static org.apache.iotdb.calc_commons.utils.constant.SqlConstant.APPROX_MOST_FREQUENT;
+import static org.apache.iotdb.calc_commons.utils.constant.SqlConstant.APPROX_PERCENTILE;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.DATABASE_NOT_SPECIFIED;
 import static org.apache.iotdb.db.queryengine.plan.parser.ASTVisitor.SERVICE_MANAGEMENT_NOT_SUPPORTED;
 import static org.apache.iotdb.db.queryengine.plan.parser.ASTVisitor.parseDateTimeFormat;

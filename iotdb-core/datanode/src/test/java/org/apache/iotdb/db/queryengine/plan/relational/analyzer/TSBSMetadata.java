@@ -66,9 +66,9 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import static org.apache.iotdb.db.calc_commons.plan.relational.metadata.CommonMetadataUtils.isOneNumericType;
-import static org.apache.iotdb.db.calc_commons.plan.relational.metadata.CommonMetadataUtils.isTwoNumericType;
-import static org.apache.iotdb.db.calc_commons.plan.relational.metadata.CommonMetadataUtils.isTwoTypeComparable;
+import static org.apache.iotdb.calc_commons.plan.relational.metadata.CommonMetadataUtils.isOneNumericType;
+import static org.apache.iotdb.calc_commons.plan.relational.metadata.CommonMetadataUtils.isTwoNumericType;
+import static org.apache.iotdb.calc_commons.plan.relational.metadata.CommonMetadataUtils.isTwoTypeComparable;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.MockTSBSDataPartition.T1_DEVICE_1;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.MockTSBSDataPartition.T1_DEVICE_2;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.MockTSBSDataPartition.T1_DEVICE_3;

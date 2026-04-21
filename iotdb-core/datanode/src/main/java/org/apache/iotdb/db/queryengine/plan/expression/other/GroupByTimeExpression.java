@@ -21,7 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.expression.other;
 
 import org.apache.iotdb.commons.node_commons.common.NodeRef;
 import org.apache.iotdb.commons.node_commons.plan.planner.plan.parameter.InputLocation;
-import org.apache.iotdb.db.calc_commons.transformation.dag.udf.UDTFExecutor;
+import org.apache.iotdb.calc_commons.transformation.dag.udf.UDTFExecutor;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.ExpressionType;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.ExpressionVisitor;

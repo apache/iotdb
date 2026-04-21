@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.itbase.constant;
 
-import org.apache.iotdb.db.node_commons.plan.udf.BuiltinAggregationFunction;
+import org.apache.iotdb.commons.node_commons.plan.udf.BuiltinAggregationFunction;
 
 import java.util.Arrays;
 import java.util.HashSet;

@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational;
 
 import org.apache.iotdb.commons.node_commons.execution.MemoryEstimationHelper;
-import org.apache.iotdb.db.calc_commons.execution.operator.Operator;
+import org.apache.iotdb.calc_commons.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.ITableTimeRangeIterator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.AbstractDataSourceOperator;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
@@ -38,8 +38,8 @@ import org.apache.tsfile.utils.RamUsageEstimator;
 import java.util.List;
 import java.util.Optional;
 
-import static org.apache.iotdb.db.calc_commons.plan.planner.CommonOperatorUtils.CURRENT_DEVICE_INDEX_STRING;
-import static org.apache.iotdb.db.calc_commons.plan.planner.CommonOperatorUtils.TIME_COLUMN_TEMPLATE;
+import static org.apache.iotdb.calc_commons.plan.planner.CommonOperatorUtils.CURRENT_DEVICE_INDEX_STRING;
+import static org.apache.iotdb.calc_commons.plan.planner.CommonOperatorUtils.TIME_COLUMN_TEMPLATE;
 
 public class TreeNonAlignedDeviceViewAggregationScanOperator
     extends AbstractDefaultAggTableScanOperator {

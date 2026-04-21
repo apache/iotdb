@@ -42,9 +42,9 @@ import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.consensus.ConsensusFactory;
-import org.apache.iotdb.db.calc_commons.execution.relational.ColumnTransformerBuilder;
-import org.apache.iotdb.db.calc_commons.transformation.dag.column.ColumnTransformer;
-import org.apache.iotdb.db.calc_commons.transformation.dag.column.leaf.LeafColumnTransformer;
+import org.apache.iotdb.calc_commons.execution.relational.ColumnTransformerBuilder;
+import org.apache.iotdb.calc_commons.transformation.dag.column.ColumnTransformer;
+import org.apache.iotdb.calc_commons.transformation.dag.column.leaf.LeafColumnTransformer;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
@@ -156,7 +156,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.db.calc_commons.plan.planner.TableOperatorGenerator.makeLayout;
+import static org.apache.iotdb.calc_commons.plan.planner.TableOperatorGenerator.makeLayout;
 import static org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDeviceSchemaFetcher.convertTagValuesToDeviceID;
 import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 

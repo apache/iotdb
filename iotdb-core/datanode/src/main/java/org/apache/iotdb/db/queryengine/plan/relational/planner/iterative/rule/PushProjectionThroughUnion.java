@@ -26,9 +26,9 @@ import org.apache.iotdb.commons.node_commons.plan.relational.planner.node.Projec
 import org.apache.iotdb.commons.node_commons.plan.relational.planner.node.UnionNode;
 import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.SymbolReference;
-import org.apache.iotdb.db.calc_commons.plan.relational.utils.matching.Capture;
-import org.apache.iotdb.db.calc_commons.plan.relational.utils.matching.Captures;
-import org.apache.iotdb.db.calc_commons.plan.relational.utils.matching.Pattern;
+import org.apache.iotdb.calc_commons.plan.relational.utils.matching.Capture;
+import org.apache.iotdb.calc_commons.plan.relational.utils.matching.Captures;
+import org.apache.iotdb.calc_commons.plan.relational.utils.matching.Pattern;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Rule;
 
 import com.google.common.collect.ImmutableList;
@@ -39,7 +39,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static org.apache.iotdb.db.calc_commons.plan.relational.utils.matching.Capture.newCapture;
+import static org.apache.iotdb.calc_commons.plan.relational.utils.matching.Capture.newCapture;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ExpressionSymbolInliner.inlineSymbols;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.project;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.source;

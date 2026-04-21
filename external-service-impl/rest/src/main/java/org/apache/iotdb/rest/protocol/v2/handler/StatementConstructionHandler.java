@@ -18,10 +18,10 @@
 package org.apache.iotdb.rest.protocol.v2.handler;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.node_commons.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.exception.WriteProcessRejectException;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
-import org.apache.iotdb.db.node_commons.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;

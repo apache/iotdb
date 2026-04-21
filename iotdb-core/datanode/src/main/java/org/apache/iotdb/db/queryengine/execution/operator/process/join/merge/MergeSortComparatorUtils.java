@@ -14,8 +14,8 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.join.merge;
 
-import org.apache.iotdb.db.calc_commons.execution.operator.process.join.merge.MergeSortComparator;
-import org.apache.iotdb.db.calc_commons.utils.datastructure.SortKey;
+import org.apache.iotdb.calc_commons.execution.operator.process.join.merge.MergeSortComparator;
+import org.apache.iotdb.calc_commons.utils.datastructure.SortKey;
 import org.apache.iotdb.db.queryengine.plan.statement.component.NullOrdering;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.queryengine.plan.statement.component.SortItem;

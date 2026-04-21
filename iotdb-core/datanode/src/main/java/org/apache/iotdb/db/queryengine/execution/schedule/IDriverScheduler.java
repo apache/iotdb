@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.queryengine.execution.schedule;
 
 import org.apache.iotdb.commons.node_commons.common.SessionInfo;
-import org.apache.iotdb.db.calc_commons.exception.MemoryNotEnoughException;
+import org.apache.iotdb.calc_commons.exception.MemoryNotEnoughException;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.exception.CpuNotEnoughException;

@@ -28,8 +28,8 @@ import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.QualifiedName;
 import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction;
-import org.apache.iotdb.db.calc_commons.plan.relational.utils.matching.Captures;
-import org.apache.iotdb.db.calc_commons.plan.relational.utils.matching.Pattern;
+import org.apache.iotdb.calc_commons.plan.relational.utils.matching.Captures;
+import org.apache.iotdb.calc_commons.plan.relational.utils.matching.Pattern;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Rule;
 

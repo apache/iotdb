@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.transformation.datastructure;
 
-import org.apache.iotdb.db.calc_commons.transformation.datastructure.Cache;
+import org.apache.iotdb.calc_commons.transformation.datastructure.Cache;
 
 import java.util.Arrays;
 

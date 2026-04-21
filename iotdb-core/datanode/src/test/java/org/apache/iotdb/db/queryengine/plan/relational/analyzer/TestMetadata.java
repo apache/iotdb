@@ -84,9 +84,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.schema.table.InformationSchema.INFORMATION_DATABASE;
-import static org.apache.iotdb.db.calc_commons.plan.relational.metadata.CommonMetadataUtils.isOneNumericType;
-import static org.apache.iotdb.db.calc_commons.plan.relational.metadata.CommonMetadataUtils.isTwoNumericType;
-import static org.apache.iotdb.db.calc_commons.plan.relational.metadata.CommonMetadataUtils.isTwoTypeComparable;
+import static org.apache.iotdb.calc_commons.plan.relational.metadata.CommonMetadataUtils.isOneNumericType;
+import static org.apache.iotdb.calc_commons.plan.relational.metadata.CommonMetadataUtils.isTwoNumericType;
+import static org.apache.iotdb.calc_commons.plan.relational.metadata.CommonMetadataUtils.isTwoTypeComparable;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.MockTableModelDataPartition.DEVICE_1;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.MockTableModelDataPartition.DEVICE_1_ATTRIBUTES;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.MockTableModelDataPartition.DEVICE_2;
