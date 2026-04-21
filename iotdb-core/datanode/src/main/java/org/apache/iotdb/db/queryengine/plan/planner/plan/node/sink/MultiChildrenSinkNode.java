@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink;
 
-import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.node_commons.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.node_commons.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.DownStreamChannelLocation;
 
 import java.util.ArrayList;

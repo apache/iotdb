@@ -19,6 +19,10 @@
 
 package org.apache.iotdb.db.metadata.schemaRegion;
 
+import org.apache.iotdb.commons.node_commons.common.SessionInfo;
+import org.apache.iotdb.commons.node_commons.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.StringLiteral;
+import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
@@ -30,10 +34,6 @@ import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
 import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.node_commons.common.SessionInfo;
-import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.StringLiteral;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeUpdateNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.UpdateAssignment;

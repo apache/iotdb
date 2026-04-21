@@ -20,8 +20,8 @@
 package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.node_commons.utils.DateTimeUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.node_commons.utils.DateTimeUtils;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser;
 import org.apache.iotdb.db.qp.sql.SqlLexer;

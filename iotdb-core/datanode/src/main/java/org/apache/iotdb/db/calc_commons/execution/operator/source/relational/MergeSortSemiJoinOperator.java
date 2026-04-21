@@ -19,10 +19,10 @@
 
 package org.apache.iotdb.db.calc_commons.execution.operator.source.relational;
 
+import org.apache.iotdb.commons.node_commons.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.calc_commons.execution.operator.CommonOperatorContext;
 import org.apache.iotdb.db.calc_commons.execution.operator.Operator;
 import org.apache.iotdb.db.calc_commons.execution.operator.process.join.merge.comparator.JoinKeyComparator;
-import org.apache.iotdb.db.node_commons.execution.MemoryEstimationHelper;
 
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;

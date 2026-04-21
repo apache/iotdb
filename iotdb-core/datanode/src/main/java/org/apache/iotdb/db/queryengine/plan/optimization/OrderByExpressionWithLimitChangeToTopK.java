@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.plan.optimization;
 
-import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.node_commons.plan.planner.plan.node.process.MultiChildProcessNode;
-import org.apache.iotdb.db.node_commons.plan.planner.plan.node.process.SingleChildProcessNode;
+import org.apache.iotdb.commons.node_commons.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.node_commons.plan.planner.plan.node.process.MultiChildProcessNode;
+import org.apache.iotdb.commons.node_commons.plan.planner.plan.node.process.SingleChildProcessNode;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
@@ -39,7 +39,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.apache.iotdb.db.node_commons.plan.statement.component.FillPolicy.LINEAR;
+import static org.apache.iotdb.commons.node_commons.plan.statement.component.FillPolicy.LINEAR;
 import static org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TopKNode.LIMIT_VALUE_USE_TOP_K;
 
 /**

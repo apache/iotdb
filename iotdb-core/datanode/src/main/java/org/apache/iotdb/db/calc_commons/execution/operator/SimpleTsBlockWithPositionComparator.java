@@ -19,10 +19,10 @@
 
 package org.apache.iotdb.db.calc_commons.execution.operator;
 
+import org.apache.iotdb.commons.node_commons.plan.relational.planner.SortOrder;
 import org.apache.iotdb.db.calc_commons.execution.operator.process.join.merge.MergeSortComparator;
 import org.apache.iotdb.db.calc_commons.utils.datastructure.MergeSortKey;
 import org.apache.iotdb.db.calc_commons.utils.datastructure.SortKey;
-import org.apache.iotdb.db.node_commons.plan.relational.planner.SortOrder;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;

@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.calc_commons.transformation.dag.column.binary;
 
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.db.calc_commons.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.calc_commons.transformation.dag.column.binary.strategies.HmacStrategy;
-import org.apache.iotdb.db.exception.sql.SemanticException;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;

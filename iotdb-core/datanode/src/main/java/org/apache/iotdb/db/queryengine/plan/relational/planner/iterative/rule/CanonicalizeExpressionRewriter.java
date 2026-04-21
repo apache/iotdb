@@ -19,18 +19,18 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule;
 
-import org.apache.iotdb.db.node_commons.common.SessionInfo;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.ArithmeticBinaryExpression;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.ComparisonExpression;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.FunctionCall;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.IfExpression;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.IsNotNullPredicate;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.IsNullPredicate;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.NotExpression;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.SearchedCaseExpression;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.SymbolReference;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.WhenClause;
+import org.apache.iotdb.commons.node_commons.common.SessionInfo;
+import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.ArithmeticBinaryExpression;
+import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.ComparisonExpression;
+import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.FunctionCall;
+import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.IfExpression;
+import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.IsNotNullPredicate;
+import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.IsNullPredicate;
+import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.NotExpression;
+import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.SearchedCaseExpression;
+import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.SymbolReference;
+import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.WhenClause;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.IrTypeAnalyzer;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlannerContext;
@@ -42,8 +42,8 @@ import com.google.common.collect.ImmutableList;
 import java.util.Optional;
 
 import static java.util.Objects.requireNonNull;
-import static org.apache.iotdb.db.node_commons.plan.relational.sql.ast.ArithmeticBinaryExpression.Operator.ADD;
-import static org.apache.iotdb.db.node_commons.plan.relational.sql.ast.ArithmeticBinaryExpression.Operator.MULTIPLY;
+import static org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.ArithmeticBinaryExpression.Operator.ADD;
+import static org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.ArithmeticBinaryExpression.Operator.MULTIPLY;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils.isEffectivelyLiteral;
 
 public class CanonicalizeExpressionRewriter {

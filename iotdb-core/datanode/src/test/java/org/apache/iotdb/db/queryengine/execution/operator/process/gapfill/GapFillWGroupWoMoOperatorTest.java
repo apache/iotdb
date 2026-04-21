@@ -20,14 +20,14 @@
 package org.apache.iotdb.db.queryengine.execution.operator.process.gapfill;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.node_commons.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.node_commons.plan.relational.planner.SortOrder;
 import org.apache.iotdb.db.calc_commons.execution.operator.Operator;
 import org.apache.iotdb.db.calc_commons.execution.operator.process.MergeSortOperator;
 import org.apache.iotdb.db.calc_commons.execution.operator.process.gapfill.GapFillWGroupWoMoOperator;
 import org.apache.iotdb.db.calc_commons.execution.operator.process.gapfill.GapFillWoGroupWoMoOperator;
 import org.apache.iotdb.db.calc_commons.plan.planner.CommonOperatorUtils;
 import org.apache.iotdb.db.calc_commons.utils.datastructure.SortKey;
-import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.node_commons.plan.relational.planner.SortOrder;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.common.QueryId;

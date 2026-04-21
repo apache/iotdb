@@ -19,12 +19,12 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.DataType;
+import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.GenericDataType;
+import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.IAstVisitor;
+import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.Identifier;
+import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.NodeLocation;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.DataType;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.GenericDataType;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.IAstVisitor;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Identifier;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.NodeLocation;
 
 import javax.annotation.Nullable;
 

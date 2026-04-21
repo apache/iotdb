@@ -19,6 +19,13 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.node_commons.common.SessionInfo;
+import org.apache.iotdb.commons.node_commons.plan.planner.plan.parameter.InputLocation;
+import org.apache.iotdb.commons.node_commons.plan.relational.planner.Symbol;
+import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.IAstVisitor;
+import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.NodeLocation;
+import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.Table;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
@@ -27,13 +34,6 @@ import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.db.calc_commons.execution.relational.ColumnTransformerBuilder;
 import org.apache.iotdb.db.calc_commons.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.calc_commons.transformation.dag.column.leaf.LeafColumnTransformer;
-import org.apache.iotdb.db.node_commons.common.SessionInfo;
-import org.apache.iotdb.db.node_commons.plan.planner.plan.parameter.InputLocation;
-import org.apache.iotdb.db.node_commons.plan.relational.planner.Symbol;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.IAstVisitor;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.NodeLocation;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Table;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.source.DeviceBlackListConstructor;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.source.TableDeviceQuerySource;

@@ -19,6 +19,10 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher;
 
+import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.BetweenPredicate;
+import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.ComparisonExpression;
+import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.LogicalExpression;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterType;
 import org.apache.iotdb.commons.schema.filter.impl.StringValueFilterVisitor;
@@ -27,10 +31,6 @@ import org.apache.iotdb.commons.schema.filter.impl.singlechild.NotFilter;
 import org.apache.iotdb.commons.schema.filter.impl.singlechild.TagFilter;
 import org.apache.iotdb.commons.schema.filter.impl.values.PreciseFilter;
 import org.apache.iotdb.commons.schema.table.TsTable;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.BetweenPredicate;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.ComparisonExpression;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.LogicalExpression;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.schema.CheckSchemaPredicateVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.schema.ConvertSchemaPredicateToFilterVisitor;

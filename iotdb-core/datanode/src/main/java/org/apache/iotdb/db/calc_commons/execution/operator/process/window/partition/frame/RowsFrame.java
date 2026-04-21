@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.calc_commons.execution.operator.process.window.partition.frame;
 
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.db.calc_commons.execution.operator.process.window.partition.Partition;
 import org.apache.iotdb.db.calc_commons.execution.operator.process.window.utils.Range;
-import org.apache.iotdb.db.exception.sql.SemanticException;
 
 import static com.google.common.base.Preconditions.checkArgument;
 

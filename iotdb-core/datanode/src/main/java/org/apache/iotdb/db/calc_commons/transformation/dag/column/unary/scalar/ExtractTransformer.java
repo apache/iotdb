@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.calc_commons.transformation.dag.column.unary.scalar;
 
+import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.Extract;
 import org.apache.iotdb.db.calc_commons.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.calc_commons.transformation.dag.column.unary.UnaryColumnTransformer;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Extract;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
@@ -31,10 +31,10 @@ import java.time.ZoneId;
 import java.util.function.Function;
 
 import static java.time.temporal.ChronoField.ALIGNED_WEEK_OF_YEAR;
-import static org.apache.iotdb.db.node_commons.utils.DateTimeUtils.convertToZonedDateTime;
-import static org.apache.iotdb.db.node_commons.utils.DateTimeUtils.getExtractTimestampMsPartFunction;
-import static org.apache.iotdb.db.node_commons.utils.DateTimeUtils.getExtractTimestampNsPartFunction;
-import static org.apache.iotdb.db.node_commons.utils.DateTimeUtils.getExtractTimestampUsPartFunction;
+import static org.apache.iotdb.commons.node_commons.utils.DateTimeUtils.convertToZonedDateTime;
+import static org.apache.iotdb.commons.node_commons.utils.DateTimeUtils.getExtractTimestampMsPartFunction;
+import static org.apache.iotdb.commons.node_commons.utils.DateTimeUtils.getExtractTimestampNsPartFunction;
+import static org.apache.iotdb.commons.node_commons.utils.DateTimeUtils.getExtractTimestampUsPartFunction;
 
 public class ExtractTransformer extends UnaryColumnTransformer {
   private final Function<Long, Long> evaluateFunction;

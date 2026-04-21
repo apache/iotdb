@@ -22,14 +22,14 @@ package org.apache.iotdb.db.queryengine.plan.planner;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.memory.IMemoryBlock;
 import org.apache.iotdb.commons.memory.MemoryBlockType;
+import org.apache.iotdb.commons.node_commons.common.SqlDialect;
+import org.apache.iotdb.commons.node_commons.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.db.calc_commons.exception.MemoryNotEnoughException;
 import org.apache.iotdb.db.calc_commons.execution.operator.Operator;
 import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.node_commons.common.SqlDialect;
-import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.common.DeviceContext;
 import org.apache.iotdb.db.queryengine.execution.driver.DataDriverContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.DataNodeQueryContext;
@@ -54,7 +54,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-import static org.apache.iotdb.db.node_commons.common.SqlDialect.TREE;
+import static org.apache.iotdb.commons.node_commons.common.SqlDialect.TREE;
 
 /**
  * Used to plan a fragment instance. One fragment instance could be split into multiple pipelines so

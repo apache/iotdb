@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.calc_commons.execution.operator.source.relational.aggregation.grouped;
 
+import org.apache.iotdb.commons.node_commons.execution.MemoryEstimationHelper;
+import org.apache.iotdb.commons.node_commons.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.db.calc_commons.execution.operator.AbstractOperator;
 import org.apache.iotdb.db.calc_commons.execution.operator.CommonOperatorContext;
 import org.apache.iotdb.db.calc_commons.execution.operator.Operator;
@@ -26,8 +28,6 @@ import org.apache.iotdb.db.calc_commons.execution.operator.source.relational.agg
 import org.apache.iotdb.db.calc_commons.execution.operator.source.relational.aggregation.grouped.builder.InMemoryHashAggregationBuilder;
 import org.apache.iotdb.db.calc_commons.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.db.calc_commons.utils.datastructure.SortKey;
-import org.apache.iotdb.db.node_commons.execution.MemoryEstimationHelper;
-import org.apache.iotdb.db.node_commons.plan.relational.planner.node.AggregationNode;
 
 import com.google.common.primitives.Ints;
 import com.google.common.util.concurrent.ListenableFuture;
@@ -45,9 +45,9 @@ import java.util.Optional;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.commons.node_commons.execution.operator.source.relational.aggregation.grouped.UpdateMemory.NOOP;
 import static org.apache.iotdb.db.calc_commons.plan.planner.CommonOperatorUtils.CURRENT_USED_MEMORY;
 import static org.apache.iotdb.db.calc_commons.plan.planner.CommonOperatorUtils.MAX_USED_MEMORY;
-import static org.apache.iotdb.db.node_commons.execution.operator.source.relational.aggregation.grouped.UpdateMemory.NOOP;
 
 public class StreamingHashAggregationOperator extends AbstractOperator {
   private static final long INSTANCE_SIZE =

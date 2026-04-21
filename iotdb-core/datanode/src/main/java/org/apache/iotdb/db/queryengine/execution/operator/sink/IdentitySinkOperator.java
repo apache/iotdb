@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.sink;
 
+import org.apache.iotdb.commons.node_commons.execution.MemoryEstimationHelper;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.calc_commons.execution.operator.Operator;
-import org.apache.iotdb.db.node_commons.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.DownStreamChannelIndex;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.ISinkHandle;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;

@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.tools;
 
 import org.apache.iotdb.commons.file.SystemFileFactory;
-import org.apache.iotdb.db.node_commons.utils.DateTimeUtils;
+import org.apache.iotdb.commons.node_commons.utils.DateTimeUtils;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.file.metadata.IDeviceID;

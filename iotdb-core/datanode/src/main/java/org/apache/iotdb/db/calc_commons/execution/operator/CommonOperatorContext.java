@@ -20,9 +20,9 @@
 package org.apache.iotdb.db.calc_commons.execution.operator;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.node_commons.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.calc_commons.plan.planner.memory.MemoryReservationManager;
-import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNodeId;
 
 import io.airlift.units.Duration;
 import org.apache.tsfile.utils.Accountable;

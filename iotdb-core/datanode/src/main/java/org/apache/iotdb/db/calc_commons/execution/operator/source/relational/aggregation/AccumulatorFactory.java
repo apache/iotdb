@@ -20,6 +20,11 @@
 package org.apache.iotdb.db.calc_commons.execution.operator.source.relational.aggregation;
 
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
+import org.apache.iotdb.commons.node_commons.execution.operator.source.relational.aggregation.grouped.UpdateMemory;
+import org.apache.iotdb.commons.node_commons.execution.operator.source.relational.aggregation.grouped.hash.MarkDistinctHash;
+import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.commons.node_commons.plan.relational.type.InternalTypeManager;
+import org.apache.iotdb.commons.node_commons.plan.udf.TableUDFUtils;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.db.calc_commons.execution.aggregation.VarianceAccumulator;
 import org.apache.iotdb.db.calc_commons.execution.operator.source.relational.aggregation.grouped.BinaryGroupedApproxMostFrequentAccumulator;
@@ -50,11 +55,6 @@ import org.apache.iotdb.db.calc_commons.execution.operator.source.relational.agg
 import org.apache.iotdb.db.calc_commons.execution.operator.source.relational.aggregation.grouped.GroupedVarianceAccumulator;
 import org.apache.iotdb.db.calc_commons.execution.operator.source.relational.aggregation.grouped.IntGroupedApproxMostFrequentAccumulator;
 import org.apache.iotdb.db.calc_commons.execution.operator.source.relational.aggregation.grouped.LongGroupedApproxMostFrequentAccumulator;
-import org.apache.iotdb.db.node_commons.execution.operator.source.relational.aggregation.grouped.UpdateMemory;
-import org.apache.iotdb.db.node_commons.execution.operator.source.relational.aggregation.grouped.hash.MarkDistinctHash;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.node_commons.plan.relational.type.InternalTypeManager;
-import org.apache.iotdb.db.node_commons.plan.udf.TableUDFUtils;
 import org.apache.iotdb.udf.api.customizer.parameter.FunctionArguments;
 import org.apache.iotdb.udf.api.relational.AggregateFunction;
 

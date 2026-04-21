@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.calc_commons.transformation.dag.column.unary;
 
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.db.calc_commons.transformation.dag.column.ColumnTransformer;
-import org.apache.iotdb.db.exception.sql.SemanticException;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;

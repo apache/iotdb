@@ -21,7 +21,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.expression.ternary;
 
-import org.apache.iotdb.db.node_commons.execution.MemoryEstimationHelper;
+import org.apache.iotdb.commons.node_commons.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.ExpressionType;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.ExpressionVisitor;

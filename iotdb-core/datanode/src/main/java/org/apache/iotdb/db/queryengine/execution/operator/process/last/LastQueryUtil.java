@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.queryengine.execution.operator.process.last;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.db.node_commons.plan.planner.plan.parameter.InputLocation;
+import org.apache.iotdb.commons.node_commons.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.queryengine.execution.aggregation.LastValueDescAccumulator;
 import org.apache.iotdb.db.queryengine.execution.aggregation.MaxTimeDescAccumulator;
 import org.apache.iotdb.db.queryengine.execution.aggregation.TreeAggregator;

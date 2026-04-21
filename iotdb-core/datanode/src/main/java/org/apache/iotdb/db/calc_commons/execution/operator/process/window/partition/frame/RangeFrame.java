@@ -19,11 +19,11 @@
 
 package org.apache.iotdb.db.calc_commons.execution.operator.process.window.partition.frame;
 
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.db.calc_commons.execution.operator.process.window.partition.Partition;
 import org.apache.iotdb.db.calc_commons.execution.operator.process.window.utils.ColumnList;
 import org.apache.iotdb.db.calc_commons.execution.operator.process.window.utils.Range;
 import org.apache.iotdb.db.calc_commons.execution.operator.process.window.utils.RowComparator;
-import org.apache.iotdb.db.exception.sql.SemanticException;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.write.UnSupportedDataTypeException;

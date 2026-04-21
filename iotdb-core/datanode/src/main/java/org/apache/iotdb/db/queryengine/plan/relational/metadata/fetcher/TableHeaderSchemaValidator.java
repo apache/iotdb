@@ -22,6 +22,10 @@ package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.commons.node_commons.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.commons.node_commons.plan.relational.metadata.TableSchema;
+import org.apache.iotdb.commons.node_commons.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.commons.schema.table.InsertNodeMeasurementInfo;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
@@ -36,10 +40,6 @@ import org.apache.iotdb.db.calc_commons.plan.relational.metadata.CommonMetadataU
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeTableColumnDisorderException;
 import org.apache.iotdb.db.exception.sql.ColumnCreationFailException;
-import org.apache.iotdb.db.exception.sql.SemanticException;
-import org.apache.iotdb.db.node_commons.plan.relational.metadata.ColumnSchema;
-import org.apache.iotdb.db.node_commons.plan.relational.metadata.TableSchema;
-import org.apache.iotdb.db.node_commons.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.lock.DataNodeSchemaLockManager;
 import org.apache.iotdb.db.queryengine.plan.analyze.lock.SchemaLockType;
@@ -73,8 +73,8 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.commons.node_commons.plan.relational.type.InternalTypeManager.getTSDataType;
 import static org.apache.iotdb.commons.schema.table.TsTable.TIME_COLUMN_NAME;
-import static org.apache.iotdb.db.node_commons.plan.relational.type.InternalTypeManager.getTSDataType;
 import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
 
 public class TableHeaderSchemaValidator {

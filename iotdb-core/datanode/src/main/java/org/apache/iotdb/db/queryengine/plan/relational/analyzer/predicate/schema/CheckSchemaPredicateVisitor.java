@@ -19,18 +19,18 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.schema;
 
+import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.BetweenPredicate;
+import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.ComparisonExpression;
+import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.Literal;
+import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.LogicalExpression;
+import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.NotExpression;
+import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.SymbolReference;
+import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.TableExpressionType;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
-import org.apache.iotdb.db.exception.sql.SemanticException;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.BetweenPredicate;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.ComparisonExpression;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Literal;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.LogicalExpression;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.NotExpression;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.SymbolReference;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.TableExpressionType;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 

@@ -19,15 +19,15 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement;
 
+import org.apache.iotdb.commons.node_commons.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.node_commons.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.commons.node_commons.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
-import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.node_commons.plan.relational.metadata.ColumnSchema;
-import org.apache.iotdb.db.node_commons.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;

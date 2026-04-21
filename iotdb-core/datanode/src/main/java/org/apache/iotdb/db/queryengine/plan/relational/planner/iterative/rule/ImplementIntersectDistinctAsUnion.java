@@ -19,15 +19,15 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule;
 
+import org.apache.iotdb.commons.node_commons.plan.relational.planner.Assignments;
+import org.apache.iotdb.commons.node_commons.plan.relational.planner.node.FilterNode;
+import org.apache.iotdb.commons.node_commons.plan.relational.planner.node.IntersectNode;
+import org.apache.iotdb.commons.node_commons.plan.relational.planner.node.ProjectNode;
+import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.ComparisonExpression;
+import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.GenericLiteral;
 import org.apache.iotdb.db.calc_commons.plan.relational.utils.matching.Captures;
 import org.apache.iotdb.db.calc_commons.plan.relational.utils.matching.Pattern;
-import org.apache.iotdb.db.node_commons.plan.relational.planner.Assignments;
-import org.apache.iotdb.db.node_commons.plan.relational.planner.node.FilterNode;
-import org.apache.iotdb.db.node_commons.plan.relational.planner.node.IntersectNode;
-import org.apache.iotdb.db.node_commons.plan.relational.planner.node.ProjectNode;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.ComparisonExpression;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.GenericLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Rule;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns;
@@ -36,7 +36,7 @@ import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.read.common.type.LongType;
 
 import static java.util.Objects.requireNonNull;
-import static org.apache.iotdb.db.node_commons.plan.relational.sql.ast.ComparisonExpression.Operator.GREATER_THAN_OR_EQUAL;
+import static org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.ComparisonExpression.Operator.GREATER_THAN_OR_EQUAL;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils.and;
 
 public class ImplementIntersectDistinctAsUnion implements Rule<IntersectNode> {

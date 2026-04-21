@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.protocol.client.an;
 
-import org.apache.iotdb.db.node_commons.plan.relational.function.ITableFunctionAINodeService;
-import org.apache.iotdb.db.node_commons.plan.relational.function.ITableFunctionAINodeServiceProvider;
+import org.apache.iotdb.commons.node_commons.plan.relational.function.ITableFunctionAINodeService;
+import org.apache.iotdb.commons.node_commons.plan.relational.function.ITableFunctionAINodeServiceProvider;
 
 public class DataNodeTableFunctionAINodeServiceProvider
     implements ITableFunctionAINodeServiceProvider {

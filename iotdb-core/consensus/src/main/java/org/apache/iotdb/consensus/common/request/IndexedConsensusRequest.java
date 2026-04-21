@@ -26,18 +26,19 @@ import java.util.Objects;
 import java.util.concurrent.atomic.AtomicLong;
 
 /** only used for iot consensus. */
-public class IndexedConsensusRequest implements IConsensusRequest {
+public class IndexedConsensusRequest implements org.apache.iotdb.commons.request.IConsensusRequest {
 
   /** we do not need to serialize these two fields as they are useless in other nodes. */
   private final long searchIndex;
 
   private final long syncIndex;
-  private final List<IConsensusRequest> requests;
+  private final List<org.apache.iotdb.commons.request.IConsensusRequest> requests;
   private final List<ByteBuffer> serializedRequests;
   private long memorySize = 0;
   private AtomicLong referenceCnt = new AtomicLong();
 
-  public IndexedConsensusRequest(long searchIndex, List<IConsensusRequest> requests) {
+  public IndexedConsensusRequest(
+      long searchIndex, List<org.apache.iotdb.commons.request.IConsensusRequest> requests) {
     this.searchIndex = searchIndex;
     this.requests = requests;
     this.syncIndex = -1L;
@@ -45,7 +46,9 @@ public class IndexedConsensusRequest implements IConsensusRequest {
   }
 
   public IndexedConsensusRequest(
-      long searchIndex, long syncIndex, List<IConsensusRequest> requests) {
+      long searchIndex,
+      long syncIndex,
+      List<org.apache.iotdb.commons.request.IConsensusRequest> requests) {
     this.searchIndex = searchIndex;
     this.requests = requests;
     this.syncIndex = syncIndex;
@@ -66,7 +69,7 @@ public class IndexedConsensusRequest implements IConsensusRequest {
     throw new UnsupportedOperationException();
   }
 
-  public List<IConsensusRequest> getRequests() {
+  public List<org.apache.iotdb.commons.request.IConsensusRequest> getRequests() {
     return requests;
   }
 

@@ -19,12 +19,12 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
-import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.node_commons.plan.relational.planner.Assignments;
-import org.apache.iotdb.db.node_commons.plan.relational.planner.Symbol;
-import org.apache.iotdb.db.node_commons.plan.relational.planner.node.ProjectNode;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.node_commons.plan.relational.type.InternalTypeManager;
+import org.apache.iotdb.commons.node_commons.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.node_commons.plan.relational.planner.Assignments;
+import org.apache.iotdb.commons.node_commons.plan.relational.planner.Symbol;
+import org.apache.iotdb.commons.node_commons.plan.relational.planner.node.ProjectNode;
+import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.commons.node_commons.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;

@@ -28,6 +28,19 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.cq.TimeoutPolicy;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.commons.node_commons.common.SqlDialect;
+import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.DataType;
+import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.DataTypeParameter;
+import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.GenericDataType;
+import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.Identifier;
+import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.Node;
+import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.NumericParameter;
+import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.QualifiedName;
+import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.TypeParameter;
+import org.apache.iotdb.commons.node_commons.plan.statement.component.FillPolicy;
+import org.apache.iotdb.commons.node_commons.utils.DateTimeUtils;
+import org.apache.iotdb.commons.node_commons.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
@@ -41,19 +54,6 @@ import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.calc_commons.utils.constant.SqlConstant;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.sql.SemanticException;
-import org.apache.iotdb.db.node_commons.common.SqlDialect;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.DataType;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.DataTypeParameter;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.GenericDataType;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Identifier;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Node;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.NumericParameter;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.QualifiedName;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.TypeParameter;
-import org.apache.iotdb.db.node_commons.plan.statement.component.FillPolicy;
-import org.apache.iotdb.db.node_commons.utils.DateTimeUtils;
-import org.apache.iotdb.db.node_commons.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.ConstantContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.CountDatabasesContext;
@@ -305,6 +305,8 @@ import static java.util.stream.Collectors.toList;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TIMESERIES_COMPRESSION;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TIMESERIES_COMPRESSOR;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TIMESERIES_ENCODING;
+import static org.apache.iotdb.commons.node_commons.utils.TimestampPrecisionUtils.TIMESTAMP_PRECISION;
+import static org.apache.iotdb.commons.node_commons.utils.TimestampPrecisionUtils.currPrecision;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_RESULT_NODES;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.FIELD;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.TAG;
@@ -321,8 +323,6 @@ import static org.apache.iotdb.db.calc_commons.utils.constant.SqlConstant.SUBSTR
 import static org.apache.iotdb.db.calc_commons.utils.constant.SqlConstant.SUBSTRING_IS_STANDARD;
 import static org.apache.iotdb.db.calc_commons.utils.constant.SqlConstant.SUBSTRING_LENGTH;
 import static org.apache.iotdb.db.calc_commons.utils.constant.SqlConstant.SUBSTRING_START;
-import static org.apache.iotdb.db.node_commons.utils.TimestampPrecisionUtils.TIMESTAMP_PRECISION;
-import static org.apache.iotdb.db.node_commons.utils.TimestampPrecisionUtils.currPrecision;
 import static org.apache.iotdb.db.queryengine.plan.optimization.LimitOffsetPushDown.canPushDownLimitOffsetToGroupByTime;
 import static org.apache.iotdb.db.queryengine.plan.optimization.LimitOffsetPushDown.pushDownLimitOffsetToTimeParameter;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.parser.AstBuilder.lowerIdentifier;
@@ -5028,13 +5028,13 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
                     .literalExpression()));
   }
 
-  private org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Expression parseExpression(
+  private org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.Expression parseExpression(
       final IoTDBSqlParser.LiteralExpressionContext context) {
     if (context.STRING_LITERAL() != null) {
-      return new org.apache.iotdb.db.node_commons.plan.relational.sql.ast.StringLiteral(
+      return new org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.StringLiteral(
           parseStringLiteral(context.getText()));
     } else if (context.INTEGER_LITERAL() != null) {
-      return new org.apache.iotdb.db.node_commons.plan.relational.sql.ast.LongLiteral(
+      return new org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.LongLiteral(
           context.getText());
     }
     throw new UnsupportedOperationException("Currently other expressions are not supported");

@@ -19,10 +19,10 @@
 
 package org.apache.iotdb.db.queryengine.plan.expression.leaf;
 
+import org.apache.iotdb.commons.node_commons.execution.MemoryEstimationHelper;
+import org.apache.iotdb.commons.node_commons.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
-import org.apache.iotdb.db.node_commons.execution.MemoryEstimationHelper;
-import org.apache.iotdb.db.node_commons.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.queryengine.plan.expression.ExpressionType;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.ExpressionVisitor;
 import org.apache.iotdb.db.queryengine.transformation.dag.memory.LayerMemoryAssigner;

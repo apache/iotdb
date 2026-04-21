@@ -19,13 +19,13 @@
 
 package org.apache.iotdb.db.calc_commons.execution.operator.process.rowpattern.expression;
 
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.db.calc_commons.execution.operator.process.rowpattern.PatternAggregator;
 import org.apache.iotdb.db.calc_commons.execution.operator.process.rowpattern.PhysicalAggregationPointer;
 import org.apache.iotdb.db.calc_commons.execution.operator.process.rowpattern.PhysicalValueAccessor;
 import org.apache.iotdb.db.calc_commons.execution.operator.process.rowpattern.PhysicalValuePointer;
 import org.apache.iotdb.db.calc_commons.execution.operator.process.rowpattern.matcher.ArrayView;
 import org.apache.iotdb.db.calc_commons.execution.operator.process.window.partition.Partition;
-import org.apache.iotdb.db.exception.sql.SemanticException;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.type.AbstractIntType;

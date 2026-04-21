@@ -19,13 +19,13 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule;
 
+import org.apache.iotdb.commons.node_commons.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.node_commons.plan.relational.planner.Assignments;
+import org.apache.iotdb.commons.node_commons.plan.relational.planner.Symbol;
+import org.apache.iotdb.commons.node_commons.plan.relational.planner.node.ExceptNode;
+import org.apache.iotdb.commons.node_commons.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.calc_commons.plan.relational.utils.matching.Captures;
 import org.apache.iotdb.db.calc_commons.plan.relational.utils.matching.Pattern;
-import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.node_commons.plan.relational.planner.Assignments;
-import org.apache.iotdb.db.node_commons.plan.relational.planner.Symbol;
-import org.apache.iotdb.db.node_commons.plan.relational.planner.node.ExceptNode;
-import org.apache.iotdb.db.node_commons.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Lookup;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Rule;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns;
@@ -38,8 +38,8 @@ import com.google.common.collect.ListMultimap;
 import java.util.List;
 import java.util.Map;
 
-import static org.apache.iotdb.db.node_commons.plan.relational.planner.node.AggregationNode.singleAggregation;
-import static org.apache.iotdb.db.node_commons.plan.relational.planner.node.AggregationNode.singleGroupingSet;
+import static org.apache.iotdb.commons.node_commons.plan.relational.planner.node.AggregationNode.singleAggregation;
+import static org.apache.iotdb.commons.node_commons.plan.relational.planner.node.AggregationNode.singleGroupingSet;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.QueryCardinalityUtil.isEmpty;
 
 public class RemoveEmptyExceptBranches implements Rule<ExceptNode> {

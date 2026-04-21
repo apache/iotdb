@@ -20,9 +20,9 @@
 package org.apache.iotdb.db.protocol.session;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant.ClientVersion;
+import org.apache.iotdb.commons.node_commons.common.ConnectionInfo;
+import org.apache.iotdb.commons.node_commons.common.SqlDialect;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
-import org.apache.iotdb.db.node_commons.common.ConnectionInfo;
-import org.apache.iotdb.db.node_commons.common.SqlDialect;
 import org.apache.iotdb.service.rpc.thrift.TSConnectionInfo;
 import org.apache.iotdb.service.rpc.thrift.TSConnectionType;
 

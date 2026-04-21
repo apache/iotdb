@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.calc_commons.execution.operator.process.function;
 
+import org.apache.iotdb.commons.node_commons.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.calc_commons.execution.operator.CommonOperatorContext;
 import org.apache.iotdb.db.calc_commons.execution.operator.Operator;
 import org.apache.iotdb.db.calc_commons.execution.operator.process.AggregationMergeSortOperator;
@@ -27,7 +28,6 @@ import org.apache.iotdb.db.calc_commons.execution.operator.process.function.part
 import org.apache.iotdb.db.calc_commons.execution.operator.process.function.partition.PartitionState;
 import org.apache.iotdb.db.calc_commons.execution.operator.process.function.partition.Slice;
 import org.apache.iotdb.db.calc_commons.plan.planner.CommonOperatorUtils;
-import org.apache.iotdb.db.node_commons.execution.MemoryEstimationHelper;
 import org.apache.iotdb.udf.api.relational.access.Record;
 import org.apache.iotdb.udf.api.relational.table.TableFunctionProcessorProvider;
 import org.apache.iotdb.udf.api.relational.table.processor.TableFunctionDataProcessor;

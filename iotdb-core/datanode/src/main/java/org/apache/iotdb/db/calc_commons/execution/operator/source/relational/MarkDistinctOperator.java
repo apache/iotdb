@@ -19,13 +19,13 @@
 
 package org.apache.iotdb.db.calc_commons.execution.operator.source.relational;
 
+import org.apache.iotdb.commons.node_commons.execution.MemoryEstimationHelper;
+import org.apache.iotdb.commons.node_commons.execution.operator.source.relational.aggregation.grouped.UpdateMemory;
+import org.apache.iotdb.commons.node_commons.execution.operator.source.relational.aggregation.grouped.hash.MarkDistinctHash;
 import org.apache.iotdb.db.calc_commons.execution.operator.CommonOperatorContext;
 import org.apache.iotdb.db.calc_commons.execution.operator.Operator;
 import org.apache.iotdb.db.calc_commons.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.db.calc_commons.plan.planner.memory.MemoryReservationManager;
-import org.apache.iotdb.db.node_commons.execution.MemoryEstimationHelper;
-import org.apache.iotdb.db.node_commons.execution.operator.source.relational.aggregation.grouped.UpdateMemory;
-import org.apache.iotdb.db.node_commons.execution.operator.source.relational.aggregation.grouped.hash.MarkDistinctHash;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.primitives.Ints;

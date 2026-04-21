@@ -32,7 +32,7 @@ package org.apache.iotdb.db.calc_commons.transformation.dag.column.binary;
 
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.db.calc_commons.transformation.dag.column.ColumnTransformer;
-import org.apache.iotdb.db.node_commons.utils.DateTimeUtils;
+import org.apache.iotdb.commons.node_commons.utils.DateTimeUtils;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
@@ -176,7 +176,7 @@ package org.apache.iotdb.db.calc_commons.transformation.dag.column.binary;
 
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.db.calc_commons.transformation.dag.column.ColumnTransformer;
-import org.apache.iotdb.db.node_commons.utils.DateTimeUtils;
+import org.apache.iotdb.commons.node_commons.utils.DateTimeUtils;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
@@ -292,7 +292,7 @@ public class ${className} extends BinaryColumnTransformer {
 package org.apache.iotdb.db.calc_commons.transformation.dag.column.binary;
 
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
-import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.db.calc_commons.transformation.dag.column.ColumnTransformer;
 
 import org.apache.tsfile.block.column.Column;

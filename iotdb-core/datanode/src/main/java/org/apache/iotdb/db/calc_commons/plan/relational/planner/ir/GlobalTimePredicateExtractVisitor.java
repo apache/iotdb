@@ -19,25 +19,25 @@
 
 package org.apache.iotdb.db.calc_commons.plan.relational.planner.ir;
 
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.ArithmeticBinaryExpression;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.BetweenPredicate;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.CommonQueryAstVisitor;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.ComparisonExpression;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Extract;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.FunctionCall;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.IfExpression;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.InPredicate;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.IsNotNullPredicate;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.IsNullPredicate;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.LikePredicate;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.LogicalExpression;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.LongLiteral;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.NotExpression;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.NullIfExpression;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.SearchedCaseExpression;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.SimpleCaseExpression;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.SymbolReference;
+import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.ArithmeticBinaryExpression;
+import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.BetweenPredicate;
+import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.CommonQueryAstVisitor;
+import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.ComparisonExpression;
+import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.Extract;
+import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.FunctionCall;
+import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.IfExpression;
+import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.InPredicate;
+import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.IsNotNullPredicate;
+import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.IsNullPredicate;
+import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.LikePredicate;
+import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.LogicalExpression;
+import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.LongLiteral;
+import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.NotExpression;
+import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.NullIfExpression;
+import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.SearchedCaseExpression;
+import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.SimpleCaseExpression;
+import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.SymbolReference;
 
 import org.apache.tsfile.utils.Pair;
 
@@ -46,9 +46,9 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 
-import static org.apache.iotdb.db.node_commons.plan.relational.sql.ast.BooleanLiteral.TRUE_LITERAL;
-import static org.apache.iotdb.db.node_commons.plan.relational.sql.ast.LogicalExpression.Operator.AND;
-import static org.apache.iotdb.db.node_commons.plan.relational.sql.ast.LogicalExpression.Operator.OR;
+import static org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.BooleanLiteral.TRUE_LITERAL;
+import static org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.LogicalExpression.Operator.AND;
+import static org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.LogicalExpression.Operator.OR;
 
 public class GlobalTimePredicateExtractVisitor
     implements CommonQueryAstVisitor<

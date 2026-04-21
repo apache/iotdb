@@ -14,8 +14,8 @@
 
 package org.apache.iotdb.db.calc_commons.execution.operator.source.relational.aggregation;
 
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.db.calc_commons.execution.operator.source.relational.aggregation.approximate.TDigest;
-import org.apache.iotdb.db.exception.sql.SemanticException;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;

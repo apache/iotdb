@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.calc_commons.transformation.dag.column.unary.scalar.inteface;
 
-import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.commons.exception.SemanticException;
 
 @FunctionalInterface
 public interface CodecStrategy {

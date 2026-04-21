@@ -23,11 +23,11 @@ package org.apache.iotdb.db.calc_commons.transformation.dag.column.binary;
 
 import org.apache.tsfile.read.common.type.Type;
 
-import org.apache.iotdb.db.node_commons.plan.relational.function.arithmetic.AdditionResolver;
-import org.apache.iotdb.db.node_commons.plan.relational.function.arithmetic.DivisionResolver;
-import org.apache.iotdb.db.node_commons.plan.relational.function.arithmetic.ModulusResolver;
-import org.apache.iotdb.db.node_commons.plan.relational.function.arithmetic.MultiplicationResolver;
-import org.apache.iotdb.db.node_commons.plan.relational.function.arithmetic.SubtractionResolver;
+import org.apache.iotdb.commons.node_commons.plan.relational.function.arithmetic.AdditionResolver;
+import org.apache.iotdb.commons.node_commons.plan.relational.function.arithmetic.DivisionResolver;
+import org.apache.iotdb.commons.node_commons.plan.relational.function.arithmetic.ModulusResolver;
+import org.apache.iotdb.commons.node_commons.plan.relational.function.arithmetic.MultiplicationResolver;
+import org.apache.iotdb.commons.node_commons.plan.relational.function.arithmetic.SubtractionResolver;
 import org.apache.iotdb.db.calc_commons.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.calc_commons.transformation.dag.column.unary.DoubleNegationColumnTransformer;
 import org.apache.iotdb.db.calc_commons.transformation.dag.column.unary.FloatNegationColumnTransformer;

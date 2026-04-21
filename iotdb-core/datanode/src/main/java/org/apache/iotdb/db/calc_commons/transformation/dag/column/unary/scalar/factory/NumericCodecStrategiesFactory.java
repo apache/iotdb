@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.calc_commons.transformation.dag.column.unary.scalar.factory;
 
-import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.commons.exception.SemanticException;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;

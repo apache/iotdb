@@ -15,8 +15,8 @@
 package org.apache.iotdb.db.calc_commons.plan.relational.metadata;
 
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.exception.table.TableNotExistsException;
-import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.read.common.type.ObjectType;

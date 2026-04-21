@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.calc_commons.plan.relational.metadata;
 
-import org.apache.iotdb.db.node_commons.plan.relational.type.TypeNotFoundException;
-import org.apache.iotdb.db.node_commons.plan.relational.type.TypeSignature;
+import org.apache.iotdb.commons.node_commons.plan.relational.type.TypeNotFoundException;
+import org.apache.iotdb.commons.node_commons.plan.relational.type.TypeSignature;
 
 import org.apache.tsfile.read.common.type.Type;
 

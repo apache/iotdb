@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze;
 
-import org.apache.iotdb.db.node_commons.plan.analyze.ITableTypeProvider;
-import org.apache.iotdb.db.node_commons.plan.relational.planner.Symbol;
-import org.apache.iotdb.db.node_commons.plan.relational.utils.TypeUtil;
+import org.apache.iotdb.commons.node_commons.plan.analyze.ITableTypeProvider;
+import org.apache.iotdb.commons.node_commons.plan.relational.planner.Symbol;
+import org.apache.iotdb.commons.node_commons.plan.relational.utils.TypeUtil;
 
 import com.google.common.collect.ImmutableMap;
 import org.apache.tsfile.enums.TSDataType;

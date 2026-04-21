@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.db.calc_commons.execution.operator.process;
 
+import org.apache.iotdb.commons.node_commons.execution.MemoryEstimationHelper;
+import org.apache.iotdb.commons.node_commons.plan.relational.planner.node.RowsPerMatch;
+import org.apache.iotdb.commons.node_commons.plan.relational.planner.node.SkipToPosition;
 import org.apache.iotdb.db.calc_commons.execution.operator.CommonOperatorContext;
 import org.apache.iotdb.db.calc_commons.execution.operator.Operator;
 import org.apache.iotdb.db.calc_commons.execution.operator.process.rowpattern.LogicalIndexNavigation;
@@ -29,9 +32,6 @@ import org.apache.iotdb.db.calc_commons.execution.operator.process.rowpattern.ex
 import org.apache.iotdb.db.calc_commons.execution.operator.process.rowpattern.matcher.Matcher;
 import org.apache.iotdb.db.calc_commons.execution.operator.process.window.utils.RowComparator;
 import org.apache.iotdb.db.calc_commons.plan.planner.memory.MemoryReservationManager;
-import org.apache.iotdb.db.node_commons.execution.MemoryEstimationHelper;
-import org.apache.iotdb.db.node_commons.plan.relational.planner.node.RowsPerMatch;
-import org.apache.iotdb.db.node_commons.plan.relational.planner.node.SkipToPosition;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.ListenableFuture;

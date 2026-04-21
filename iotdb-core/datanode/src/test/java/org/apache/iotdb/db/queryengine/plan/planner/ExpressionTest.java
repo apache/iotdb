@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner;
 
+import org.apache.iotdb.commons.node_commons.common.NodeRef;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.node_commons.common.NodeRef;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;

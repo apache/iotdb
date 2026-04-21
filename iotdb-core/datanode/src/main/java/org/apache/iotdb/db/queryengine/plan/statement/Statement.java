@@ -61,8 +61,8 @@ public abstract class Statement extends StatementNode {
 
   public abstract List<? extends PartialPath> getPaths();
 
-  public org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Statement toRelationalStatement(
-      final MPPQueryContext context) {
+  public org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.Statement
+      toRelationalStatement(final MPPQueryContext context) {
     throw new UnsupportedOperationException("Method not implemented yet");
   }
 

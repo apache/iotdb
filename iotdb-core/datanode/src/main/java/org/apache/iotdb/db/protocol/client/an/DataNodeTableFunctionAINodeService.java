@@ -23,8 +23,8 @@ import org.apache.iotdb.ainode.rpc.thrift.TForecastReq;
 import org.apache.iotdb.ainode.rpc.thrift.TForecastResp;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
+import org.apache.iotdb.commons.node_commons.plan.relational.function.ITableFunctionAINodeService;
 import org.apache.iotdb.db.exception.ainode.AINodeConnectionException;
-import org.apache.iotdb.db.node_commons.plan.relational.function.ITableFunctionAINodeService;
 
 import org.apache.thrift.TException;
 

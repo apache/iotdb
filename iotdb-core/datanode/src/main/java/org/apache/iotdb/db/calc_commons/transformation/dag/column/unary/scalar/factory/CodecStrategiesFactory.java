@@ -19,10 +19,10 @@
 
 package org.apache.iotdb.db.calc_commons.transformation.dag.column.unary.scalar.factory;
 
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.db.calc_commons.transformation.dag.column.unary.scalar.inteface.CodecStrategy;
 import org.apache.iotdb.db.calc_commons.transformation.dag.column.unary.scalar.util.HexUtils;
 import org.apache.iotdb.db.calc_commons.transformation.dag.column.unary.scalar.util.SpookyHashV2Utils;
-import org.apache.iotdb.db.exception.sql.SemanticException;
 
 import com.google.common.hash.Hashing;
 import com.google.common.io.BaseEncoding;

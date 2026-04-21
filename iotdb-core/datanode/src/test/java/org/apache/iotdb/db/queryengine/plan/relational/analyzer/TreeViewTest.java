@@ -35,9 +35,9 @@ import org.junit.Test;
 
 import java.util.Optional;
 
-import static org.apache.iotdb.db.node_commons.plan.relational.planner.node.AggregationNode.Step.FINAL;
-import static org.apache.iotdb.db.node_commons.plan.relational.planner.node.AggregationNode.Step.INTERMEDIATE;
-import static org.apache.iotdb.db.node_commons.plan.relational.planner.node.AggregationNode.Step.PARTIAL;
+import static org.apache.iotdb.commons.node_commons.plan.relational.planner.node.AggregationNode.Step.FINAL;
+import static org.apache.iotdb.commons.node_commons.plan.relational.planner.node.AggregationNode.Step.INTERMEDIATE;
+import static org.apache.iotdb.commons.node_commons.plan.relational.planner.node.AggregationNode.Step.PARTIAL;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestMetadata.DEVICE_VIEW_TEST_TABLE;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestMetadata.TREE_VIEW_DB;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanAssert.assertPlan;

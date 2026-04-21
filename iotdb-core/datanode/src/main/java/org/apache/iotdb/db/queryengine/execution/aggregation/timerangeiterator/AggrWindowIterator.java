@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator;
 
-import org.apache.iotdb.db.node_commons.utils.DateTimeUtils;
-import org.apache.iotdb.db.node_commons.utils.TimestampPrecisionUtils;
+import org.apache.iotdb.commons.node_commons.utils.DateTimeUtils;
+import org.apache.iotdb.commons.node_commons.utils.TimestampPrecisionUtils;
 
 import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.utils.TimeDuration;

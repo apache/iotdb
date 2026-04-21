@@ -370,8 +370,8 @@ public class LoadTsFileStatement extends Statement {
 
   @TableModel
   @Override
-  public org.apache.iotdb.db.node_commons.plan.relational.sql.ast.Statement toRelationalStatement(
-      MPPQueryContext context) {
+  public org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.Statement
+      toRelationalStatement(MPPQueryContext context) {
     final Map<String, String> loadAttributes = new HashMap<>();
 
     loadAttributes.put(DATABASE_LEVEL_KEY, String.valueOf(databaseLevel));

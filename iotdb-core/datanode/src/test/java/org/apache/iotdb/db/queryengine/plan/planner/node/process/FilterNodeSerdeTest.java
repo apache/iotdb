@@ -19,8 +19,8 @@
 package org.apache.iotdb.db.queryengine.plan.planner.node.process;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.node_commons.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.node_commons.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.GreaterThanExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.ConstantOperand;

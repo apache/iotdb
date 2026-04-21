@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.calc_commons.execution.operator.process.window.partition.frame;
 
-import org.apache.iotdb.db.node_commons.plan.relational.planner.SortOrder;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.FrameBound;
-import org.apache.iotdb.db.node_commons.plan.relational.sql.ast.WindowFrame;
+import org.apache.iotdb.commons.node_commons.plan.relational.planner.SortOrder;
+import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.FrameBound;
+import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.WindowFrame;
 
 import java.util.Optional;
 

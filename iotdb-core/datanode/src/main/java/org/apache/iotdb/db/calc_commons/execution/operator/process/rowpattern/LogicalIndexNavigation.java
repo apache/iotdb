@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.calc_commons.execution.operator.process.rowpattern;
 
+import org.apache.iotdb.commons.node_commons.plan.relational.planner.rowpattern.IrLabel;
+import org.apache.iotdb.commons.node_commons.plan.relational.planner.rowpattern.LogicalIndexPointer;
 import org.apache.iotdb.db.calc_commons.execution.operator.process.rowpattern.matcher.ArrayView;
-import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.IrLabel;
-import org.apache.iotdb.db.node_commons.plan.relational.planner.rowpattern.LogicalIndexPointer;
 
 import java.util.Collections;
 import java.util.Map;

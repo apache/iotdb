@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.calc_commons.utils;
 
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
-import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.encoding.decoder.Decoder;

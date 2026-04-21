@@ -19,14 +19,14 @@
 
 package org.apache.iotdb.db.calc_commons.execution.operator.source.relational.aggregation.grouped;
 
+import org.apache.iotdb.commons.node_commons.execution.MemoryEstimationHelper;
+import org.apache.iotdb.commons.node_commons.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.calc_commons.execution.operator.AbstractOperator;
 import org.apache.iotdb.db.calc_commons.execution.operator.CommonOperatorContext;
 import org.apache.iotdb.db.calc_commons.execution.operator.Operator;
 import org.apache.iotdb.db.calc_commons.execution.operator.source.relational.aggregation.TableAggregator;
 import org.apache.iotdb.db.calc_commons.plan.planner.CommonOperatorUtils;
 import org.apache.iotdb.db.calc_commons.utils.datastructure.SortKey;
-import org.apache.iotdb.db.node_commons.execution.MemoryEstimationHelper;
-import org.apache.iotdb.db.node_commons.plan.relational.type.InternalTypeManager;
 
 import com.google.common.primitives.Ints;
 import com.google.common.util.concurrent.ListenableFuture;
