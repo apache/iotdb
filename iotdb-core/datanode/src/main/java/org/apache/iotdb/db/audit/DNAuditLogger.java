@@ -370,11 +370,11 @@ public class DNAuditLogger extends AbstractAuditLogger {
   private IClientSession createInternalAuditSession(String sessionSuffix) {
     IClientSession session =
         new InternalClientSession(
-            String.format("%s_%s", sessionSuffix, SystemConstant.AUDIT_DATABASE));
+            String.format("%s_%s", sessionSuffix, SystemConstant.AUDIT_PREFIX_KEY));
     session.setUsername(AuthorityChecker.INTERNAL_AUDIT_USER);
     session.setZoneId(ZoneId.systemDefault());
     session.setClientVersion(IoTDBConstant.ClientVersion.V_1_0);
-    session.setDatabaseName(SystemConstant.AUDIT_DATABASE);
+    session.setDatabaseName(SystemConstant.AUDIT_PREFIX_KEY);
     session.setSqlDialect(IClientSession.SqlDialect.TABLE);
     return session;
   }
