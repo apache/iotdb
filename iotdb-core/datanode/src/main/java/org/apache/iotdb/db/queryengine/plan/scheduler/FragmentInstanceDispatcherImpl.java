@@ -79,6 +79,7 @@ import java.util.stream.Collectors;
 
 import static com.google.common.util.concurrent.Futures.immediateFuture;
 import static org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet.DISPATCH_READ;
+import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onThriftFrameOversizeException;
 
 public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
 
@@ -554,10 +555,9 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
       Throwable rootCause = ExceptionUtils.getRootCause(e);
       if (rootCause instanceof TTransportException
           && ((TTransportException) rootCause).getType() == TTransportException.CORRUPTED_DATA) {
-        queryContext.addFailedEndPoint(endPoint);
-        throw new FragmentInstanceDispatchException(
-            new TSStatus(TSStatusCode.THRIFT_FRAME_OVERSIZE.getStatusCode())
-                .setMessage(rootCause.getMessage()));
+        // Don't set DISPATCH_ERROR status to avoid retry if dispatch failed because of thrift frame
+        // is oversize
+        throw new FragmentInstanceDispatchException(onThriftFrameOversizeException(rootCause));
       }
       throw e;
     }
