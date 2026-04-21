@@ -1,0 +1,226 @@
+# Manual run; Release published; v* tag pushes; rc/** pushes only when C++-related paths change
+# (job should-package). release events use the workflow file from the default branch.
+name: C++ Client package
+
+on:
+  workflow_dispatch:
+  release:
+    types: [published]
+  push:
+    branches:
+      - "rc/**"
+    tags:
+      - "v*"
+
+concurrency:
+  group: client-cpp-package-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  MAVEN_OPTS: -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.http.retryHandler.class=standard -Dmaven.wagon.http.retryHandler.count=3
+  MAVEN_ARGS: --batch-mode --no-transfer-progress
+
+jobs:
+  should-package:
+    runs-on: ubuntu-latest
+    outputs:
+      run: ${{ steps.result.outputs.run }}
+    steps:
+      - uses: actions/checkout@v5
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads/rc/')
+      - uses: dorny/paths-filter@v3
+        id: filter
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads/rc/')
+        with:
+          filters: |
+            cpp:
+              - 'pom.xml'
+              - 'iotdb-client/**'
+              - 'iotdb-protocol/**'
+              - '.github/workflows/client-cpp-package.yml'
+      - id: result
+        shell: bash
+        run: |
+          set -euo pipefail
+          E="${{ github.event_name }}"
+          R="${{ github.ref }}"
+          if [[ "$E" == "workflow_dispatch" ]] || [[ "$E" == "release" ]]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [[ "$E" == "push" ]] && [[ "$R" == refs/tags/v* ]]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [[ "$E" == "push" ]] && [[ "$R" =~ ^refs/heads/rc/ ]]; then
+            if [[ "${{ steps.filter.outputs.cpp }}" == "true" ]]; then
+              echo "run=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "run=false" >> "$GITHUB_OUTPUT"
+            fi
+            exit 0
+          fi
+          echo "run=false" >> "$GITHUB_OUTPUT"
+
+  package-linux:
+    name: Package (${{ matrix.name }})
+    needs: should-package
+    if: needs.should-package.outputs.run == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: linux-x86_64
+            runs-on: ubuntu-22.04
+          - name: linux-aarch64
+            runs-on: ubuntu-22.04-arm
+    runs-on: ${{ matrix.runs-on }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Install C++ dependencies (Linux)
+        shell: bash
+        run: |
+          set -euxo pipefail
+          sudo apt-get update
+          sudo apt-get install -y libboost-all-dev openssl libssl-dev
+      - name: Cache Maven packages
+        uses: actions/cache@v5
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-${{ runner.arch }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ runner.arch }}-m2-
+      - name: Package client-cpp
+        shell: bash
+        run: |
+          set -euxo pipefail
+          ./mvnw clean package -P with-cpp -pl iotdb-client/client-cpp -am \
+            -DskipTests \
+            -Dspotless.check.skip=true -Dspotless.apply.skip=true
+      - name: Upload zip artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: client-cpp-${{ matrix.name }}
+          path: iotdb-client/client-cpp/target/client-cpp-*-cpp-*.zip
+          if-no-files-found: error
+
+  package-macos:
+    name: Package (${{ matrix.name }})
+    needs: should-package
+    if: needs.should-package.outputs.run == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macos-x86_64
+            runs-on: macos-15-intel
+          - name: macos-arm64
+            runs-on: macos-latest
+    runs-on: ${{ matrix.runs-on }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Install C++ dependencies (macOS)
+        shell: bash
+        run: |
+          set -euxo pipefail
+          brew install boost openssl
+      - name: Cache Maven packages
+        uses: actions/cache@v5
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-${{ runner.arch }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ runner.arch }}-m2-
+      - name: Package client-cpp
+        shell: bash
+        env:
+          MACOSX_DEPLOYMENT_TARGET: "12.0"
+        run: |
+          set -euxo pipefail
+          ./mvnw clean package -P with-cpp -pl iotdb-client/client-cpp -am \
+            -DskipTests \
+            -Dspotless.check.skip=true -Dspotless.apply.skip=true
+      - name: Upload zip artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: client-cpp-${{ matrix.name }}
+          path: iotdb-client/client-cpp/target/client-cpp-*-cpp-*.zip
+          if-no-files-found: error
+
+  package-windows:
+    name: Package (${{ matrix.name }})
+    needs: should-package
+    if: needs.should-package.outputs.run == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: windows-vs2022
+            runs-on: windows-2022
+            boost_choco: boost-msvc-14.3
+            cmake_generator: ""
+            iotdb_tools_thrift_version: ""
+          - name: windows-vs2026
+            runs-on: windows-2025-vs2026
+            boost_choco: boost-msvc-14.3
+            cmake_generator: Visual Studio 18 2026
+            iotdb_tools_thrift_version: ""
+    runs-on: ${{ matrix.runs-on }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Install C++ dependencies (Windows)
+        shell: pwsh
+        run: |
+          choco install winflexbison3 -y
+          choco install ${{ matrix.boost_choco }} -y
+          $boost_path = (Get-ChildItem -Path 'C:\local\' -Filter 'boost_*').FullName
+          echo $boost_path >> $env:GITHUB_PATH
+          choco install openssl -y
+          $sslPath = (Get-ChildItem 'C:\Program Files\OpenSSL*' -Directory | Select-Object -First 1).FullName
+          echo "$sslPath\bin" >> $env:GITHUB_PATH
+          echo "OPENSSL_ROOT_DIR=$sslPath" >> $env:GITHUB_ENV
+      - name: Cache Maven packages
+        uses: actions/cache@v5
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-m2-
+      - name: Package client-cpp
+        shell: bash
+        env:
+          CMAKE_GENERATOR: ${{ matrix.cmake_generator }}
+          IOTDB_TOOLS_THRIFT_VERSION: ${{ matrix.iotdb_tools_thrift_version }}
+        run: |
+          set -euxo pipefail
+          MVN_ARGS=(./mvnw clean package -P with-cpp -pl iotdb-client/client-cpp -am \
+            -DskipTests \
+            -Dspotless.check.skip=true -Dspotless.apply.skip=true)
+          if [ -n "${CMAKE_GENERATOR:-}" ]; then
+            MVN_ARGS+=("-Dcmake.generator=${CMAKE_GENERATOR}")
+          fi
+          if [ -n "${IOTDB_TOOLS_THRIFT_VERSION:-}" ]; then
+            MVN_ARGS+=("-Diotdb-tools-thrift.version=${IOTDB_TOOLS_THRIFT_VERSION}")
+          fi
+          "${MVN_ARGS[@]}"
+      - name: Upload zip artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: client-cpp-${{ matrix.name }}
+          path: iotdb-client/client-cpp/target/client-cpp-*-cpp-*.zip
+          if-no-files-found: error
