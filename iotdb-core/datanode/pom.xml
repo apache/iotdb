@@ -245,10 +245,6 @@
             </exclusions>
         </dependency>
         <dependency>
-            <groupId>com.google.code.gson</groupId>
-            <artifactId>gson</artifactId>
-        </dependency>
-        <dependency>
             <groupId>com.github.ben-manes.caffeine</groupId>
             <artifactId>caffeine</artifactId>
             <exclusions>
@@ -270,6 +266,7 @@
         <dependency>
             <groupId>at.yawk.lz4</groupId>
             <artifactId>lz4-java</artifactId>
+            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>junit</groupId>
