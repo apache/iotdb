@@ -20,11 +20,11 @@
 package org.apache.iotdb.db.queryengine.plan.statement;
 
 import org.apache.iotdb.commons.exception.SemanticException;
-import org.apache.iotdb.commons.node_commons.common.SessionInfo;
-import org.apache.iotdb.commons.node_commons.plan.relational.metadata.ColumnSchema;
-import org.apache.iotdb.commons.node_commons.plan.relational.metadata.TableSchema;
-import org.apache.iotdb.commons.node_commons.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.queryengine.common.SessionInfo;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.TableSchema;
+import org.apache.iotdb.commons.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.commons.schema.table.InsertNodeMeasurementInfo;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;

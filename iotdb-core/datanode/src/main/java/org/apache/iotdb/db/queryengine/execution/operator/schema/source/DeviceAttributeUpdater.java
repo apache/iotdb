@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.schema.source;
 
-import org.apache.iotdb.calc_commons.transformation.dag.column.ColumnTransformer;
-import org.apache.iotdb.calc_commons.transformation.dag.column.leaf.LeafColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.ColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.leaf.LeafColumnTransformer;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
 import org.apache.iotdb.commons.schema.table.TsTable;
@@ -44,7 +44,7 @@ import java.util.Objects;
 import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.calc_commons.execution.operator.process.FilterAndProjectOperator.constructFilteredTsBlock;
+import static org.apache.iotdb.calc.execution.operator.process.FilterAndProjectOperator.constructFilteredTsBlock;
 
 public class DeviceAttributeUpdater extends DeviceUpdater {
   private final List<ColumnTransformer> commonTransformerList;

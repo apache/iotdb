@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.util;
 
-import org.apache.iotdb.calc_commons.transformation.datastructure.row.ElasticSerializableRowList;
-import org.apache.iotdb.calc_commons.transformation.datastructure.tv.ElasticSerializableTVList;
+import org.apache.iotdb.calc.transformation.datastructure.row.ElasticSerializableRowList;
+import org.apache.iotdb.calc.transformation.datastructure.tv.ElasticSerializableTVList;
 import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
 import org.apache.iotdb.db.queryengine.transformation.api.YieldableState;
 import org.apache.iotdb.db.queryengine.transformation.dag.input.IUDFInputDataSet;

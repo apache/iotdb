@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.adapter;
 
-import org.apache.iotdb.calc_commons.transformation.datastructure.row.ElasticSerializableRowList;
+import org.apache.iotdb.calc.transformation.datastructure.row.ElasticSerializableRowList;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.access.RowIterator;

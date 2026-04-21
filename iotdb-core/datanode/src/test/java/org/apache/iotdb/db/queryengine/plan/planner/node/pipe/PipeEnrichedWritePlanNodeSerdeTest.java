@@ -19,10 +19,10 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner.node.pipe;
 
-import org.apache.iotdb.commons.node_commons.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.commons.node_commons.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.commons.node_commons.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.InternalBatchActivateTemplateNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedWritePlanNode;
 

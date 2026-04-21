@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.pipe.processor.aggregate;
 
-import org.apache.iotdb.calc_commons.transformation.dag.udf.UDFParametersFactory;
+import org.apache.iotdb.calc.transformation.dag.udf.UDFParametersFactory;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;

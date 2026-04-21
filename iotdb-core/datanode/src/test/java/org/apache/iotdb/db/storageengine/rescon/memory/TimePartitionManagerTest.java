@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.rescon.memory;
 
-import org.apache.iotdb.calc_commons.exception.QueryProcessException;
+import org.apache.iotdb.calc.exception.QueryProcessException;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.conf.DataNodeMemoryConfig;

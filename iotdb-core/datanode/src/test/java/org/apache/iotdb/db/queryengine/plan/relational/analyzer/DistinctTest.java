@@ -30,7 +30,7 @@ import org.junit.Test;
 
 import java.util.Optional;
 
-import static org.apache.iotdb.commons.node_commons.plan.relational.planner.node.AggregationNode.Step.SINGLE;
+import static org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode.Step.SINGLE;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanAssert.assertPlan;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.aggregation;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.aggregationFunction;

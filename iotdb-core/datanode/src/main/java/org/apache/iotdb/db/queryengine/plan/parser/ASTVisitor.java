@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.parser;
 
-import org.apache.iotdb.calc_commons.utils.constant.SqlConstant;
+import org.apache.iotdb.calc.utils.constant.SqlConstant;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TTimedQuota;
 import org.apache.iotdb.common.rpc.thrift.ThrottleType;
@@ -30,21 +30,21 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.cq.TimeoutPolicy;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.SemanticException;
-import org.apache.iotdb.commons.node_commons.common.SqlDialect;
-import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.DataType;
-import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.DataTypeParameter;
-import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.GenericDataType;
-import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.Identifier;
-import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.Node;
-import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.NumericParameter;
-import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.QualifiedName;
-import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.TypeParameter;
-import org.apache.iotdb.commons.node_commons.plan.statement.component.FillPolicy;
-import org.apache.iotdb.commons.node_commons.utils.DateTimeUtils;
-import org.apache.iotdb.commons.node_commons.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.queryengine.common.SqlDialect;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.DataType;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.DataTypeParameter;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.GenericDataType;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Identifier;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NumericParameter;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.QualifiedName;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.TypeParameter;
+import org.apache.iotdb.commons.queryengine.plan.statement.component.FillPolicy;
+import org.apache.iotdb.commons.queryengine.utils.DateTimeUtils;
+import org.apache.iotdb.commons.queryengine.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.commons.schema.cache.CacheClearOptions;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
@@ -302,23 +302,23 @@ import java.util.stream.Collectors;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static java.util.stream.Collectors.toList;
-import static org.apache.iotdb.calc_commons.transformation.dag.util.CommonTransformUtils.getEscapeCharacter;
-import static org.apache.iotdb.calc_commons.utils.constant.SqlConstant.CAST_FUNCTION;
-import static org.apache.iotdb.calc_commons.utils.constant.SqlConstant.CAST_TYPE;
-import static org.apache.iotdb.calc_commons.utils.constant.SqlConstant.REPLACE_FROM;
-import static org.apache.iotdb.calc_commons.utils.constant.SqlConstant.REPLACE_FUNCTION;
-import static org.apache.iotdb.calc_commons.utils.constant.SqlConstant.REPLACE_TO;
-import static org.apache.iotdb.calc_commons.utils.constant.SqlConstant.ROUND_FUNCTION;
-import static org.apache.iotdb.calc_commons.utils.constant.SqlConstant.ROUND_PLACES;
-import static org.apache.iotdb.calc_commons.utils.constant.SqlConstant.SUBSTRING_FUNCTION;
-import static org.apache.iotdb.calc_commons.utils.constant.SqlConstant.SUBSTRING_IS_STANDARD;
-import static org.apache.iotdb.calc_commons.utils.constant.SqlConstant.SUBSTRING_LENGTH;
-import static org.apache.iotdb.calc_commons.utils.constant.SqlConstant.SUBSTRING_START;
+import static org.apache.iotdb.calc.transformation.dag.util.CommonTransformUtils.getEscapeCharacter;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.CAST_FUNCTION;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.CAST_TYPE;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.REPLACE_FROM;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.REPLACE_FUNCTION;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.REPLACE_TO;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.ROUND_FUNCTION;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.ROUND_PLACES;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.SUBSTRING_FUNCTION;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.SUBSTRING_IS_STANDARD;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.SUBSTRING_LENGTH;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.SUBSTRING_START;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TIMESERIES_COMPRESSION;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TIMESERIES_COMPRESSOR;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TIMESERIES_ENCODING;
-import static org.apache.iotdb.commons.node_commons.utils.TimestampPrecisionUtils.TIMESTAMP_PRECISION;
-import static org.apache.iotdb.commons.node_commons.utils.TimestampPrecisionUtils.currPrecision;
+import static org.apache.iotdb.commons.queryengine.utils.TimestampPrecisionUtils.TIMESTAMP_PRECISION;
+import static org.apache.iotdb.commons.queryengine.utils.TimestampPrecisionUtils.currPrecision;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_RESULT_NODES;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.FIELD;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.TAG;
@@ -5028,13 +5028,13 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
                     .literalExpression()));
   }
 
-  private org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.Expression parseExpression(
+  private org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression parseExpression(
       final IoTDBSqlParser.LiteralExpressionContext context) {
     if (context.STRING_LITERAL() != null) {
-      return new org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.StringLiteral(
+      return new org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.StringLiteral(
           parseStringLiteral(context.getText()));
     } else if (context.INTEGER_LITERAL() != null) {
-      return new org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.LongLiteral(
+      return new org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LongLiteral(
           context.getText());
     }
     throw new UnsupportedOperationException("Currently other expressions are not supported");

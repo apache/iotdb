@@ -18,9 +18,9 @@
  */
 package org.apache.iotdb.db.queryengine.plan.relational.planner.informationschema;
 
-import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.ComparisonExpression;
-import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.StringLiteral;
-import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.SymbolReference;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ComparisonExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.StringLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlanTester;
 
@@ -29,7 +29,7 @@ import org.junit.Test;
 
 import java.util.Optional;
 
-import static org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.ComparisonExpression.Operator.EQUAL;
+import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ComparisonExpression.Operator.EQUAL;
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.BIN;
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.CLIENT_IP;
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.COST_TIME;

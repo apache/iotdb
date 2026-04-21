@@ -27,7 +27,7 @@ import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
 import java.util.Collections;
 import java.util.List;
 
-import static org.apache.iotdb.calc_commons.utils.constant.SqlConstant.COUNT_TIME;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.COUNT_TIME;
 
 public class CountTimeAggregationAmountVisitor extends CollectVisitor {
 

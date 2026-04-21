@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
-import org.apache.iotdb.calc_commons.exception.QueryProcessException;
-import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.IAstVisitor;
+import org.apache.iotdb.calc.exception.QueryProcessException;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IAstVisitor;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeUtils;

@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze;
 
-import org.apache.iotdb.calc_commons.utils.constant.SqlConstant;
+import org.apache.iotdb.calc.utils.constant.SqlConstant;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
@@ -173,8 +173,8 @@ import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkState;
-import static org.apache.iotdb.calc_commons.utils.constant.SqlConstant.COUNT_TIME_HEADER;
-import static org.apache.iotdb.calc_commons.utils.constant.SqlConstant.TREE_MODEL_DATABASE_PREFIX;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.COUNT_TIME_HEADER;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.TREE_MODEL_DATABASE_PREFIX;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.ALLOWED_SCHEMA_PROPS;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.DEADBAND;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.LOSS;

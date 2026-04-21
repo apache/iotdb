@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.common.header;
 
-import org.apache.iotdb.commons.node_commons.plan.relational.planner.Symbol;
-import org.apache.iotdb.commons.node_commons.plan.relational.planner.node.OutputNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 
 import com.google.common.primitives.Bytes;

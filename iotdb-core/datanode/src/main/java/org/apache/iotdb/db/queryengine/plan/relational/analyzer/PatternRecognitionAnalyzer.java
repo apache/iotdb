@@ -20,20 +20,20 @@
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
 import org.apache.iotdb.commons.exception.SemanticException;
-import org.apache.iotdb.commons.node_commons.plan.relational.analyzer.NodeRef;
-import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.ExcludedPattern;
-import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.FunctionCall;
-import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.Identifier;
-import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.LongLiteral;
-import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.MeasureDefinition;
-import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.PatternRecognitionRelation;
-import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.PatternRecognitionRelation.RowsPerMatch;
-import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.RangeQuantifier;
-import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.RowPattern;
-import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.SkipTo;
-import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.SubsetDefinition;
-import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.VariableDefinition;
+import org.apache.iotdb.commons.queryengine.plan.relational.analyzer.NodeRef;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ExcludedPattern;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.FunctionCall;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Identifier;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LongLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.MeasureDefinition;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.PatternRecognitionRelation;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.PatternRecognitionRelation.RowsPerMatch;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.RangeQuantifier;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.RowPattern;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SkipTo;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SubsetDefinition;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.VariableDefinition;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis.Range;
 
 import com.google.common.collect.ImmutableList;
@@ -49,7 +49,7 @@ import java.util.Set;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static com.google.common.collect.ImmutableSet.toImmutableSet;
-import static org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.ProcessingMode.Mode.FINAL;
+import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ProcessingMode.Mode.FINAL;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.ExpressionTreeUtils.extractExpressions;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.util.AstUtil.preOrder;
 

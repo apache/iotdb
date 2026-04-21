@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.pipe.processor.aggregate.window.processor;
 
-import org.apache.iotdb.commons.node_commons.utils.DateTimeUtils;
-import org.apache.iotdb.commons.node_commons.utils.TimestampPrecisionUtils;
+import org.apache.iotdb.commons.queryengine.utils.DateTimeUtils;
+import org.apache.iotdb.commons.queryengine.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.db.pipe.processor.aggregate.window.datastructure.TimeSeriesWindow;
 import org.apache.iotdb.db.pipe.processor.aggregate.window.datastructure.WindowOutput;
 import org.apache.iotdb.db.pipe.processor.aggregate.window.datastructure.WindowState;

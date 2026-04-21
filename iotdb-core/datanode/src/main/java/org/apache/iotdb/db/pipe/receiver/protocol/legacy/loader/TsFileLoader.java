@@ -21,8 +21,8 @@ package org.apache.iotdb.db.pipe.receiver.protocol.legacy.loader;
 
 import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.node_commons.common.SessionInfo;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.LoadFileException;

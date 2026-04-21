@@ -19,18 +19,18 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 
-import org.apache.iotdb.calc_commons.plan.relational.metadata.ITypeMetadata;
+import org.apache.iotdb.calc.plan.relational.metadata.ITypeMetadata;
 import org.apache.iotdb.commons.exception.SemanticException;
-import org.apache.iotdb.commons.node_commons.common.SessionInfo;
-import org.apache.iotdb.commons.node_commons.plan.relational.function.ITableFunctionFactory;
-import org.apache.iotdb.commons.node_commons.plan.relational.function.OperatorType;
-import org.apache.iotdb.commons.node_commons.plan.relational.metadata.TableSchema;
-import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.commons.node_commons.plan.relational.type.TypeNotFoundException;
-import org.apache.iotdb.commons.node_commons.plan.relational.type.TypeSignature;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaPartition;
+import org.apache.iotdb.commons.queryengine.common.SessionInfo;
+import org.apache.iotdb.commons.queryengine.plan.relational.function.ITableFunctionFactory;
+import org.apache.iotdb.commons.queryengine.plan.relational.function.OperatorType;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.TableSchema;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.commons.queryengine.plan.relational.type.TypeNotFoundException;
+import org.apache.iotdb.commons.queryengine.plan.relational.type.TypeSignature;
 import org.apache.iotdb.commons.schema.table.InsertNodeMeasurementInfo;
 import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinWindowFunction;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeTableColumnDisorderException;

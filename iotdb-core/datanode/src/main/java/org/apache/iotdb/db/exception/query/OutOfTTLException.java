@@ -20,7 +20,7 @@
 
 package org.apache.iotdb.db.exception.query;
 
-import org.apache.iotdb.commons.node_commons.utils.DateTimeUtils;
+import org.apache.iotdb.commons.queryengine.utils.DateTimeUtils;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.rpc.TSStatusCode;
 

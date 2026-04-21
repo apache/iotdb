@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process;
 
-import org.apache.iotdb.calc_commons.execution.operator.Operator;
-import org.apache.iotdb.calc_commons.execution.operator.process.ProcessOperator;
+import org.apache.iotdb.calc.execution.operator.Operator;
+import org.apache.iotdb.calc.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.db.queryengine.execution.aggregation.TreeAggregator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 

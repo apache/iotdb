@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.type;
 
-import org.apache.iotdb.commons.node_commons.plan.relational.type.TypeSignature;
+import org.apache.iotdb.commons.queryengine.plan.relational.type.TypeSignature;
 
 import org.apache.tsfile.read.common.type.Type;
 

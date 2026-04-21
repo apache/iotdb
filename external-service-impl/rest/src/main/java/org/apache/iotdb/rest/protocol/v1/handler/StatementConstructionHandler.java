@@ -18,7 +18,7 @@
 package org.apache.iotdb.rest.protocol.v1.handler;
 
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.node_commons.utils.TimestampPrecisionUtils;
+import org.apache.iotdb.commons.queryengine.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.exception.WriteProcessRejectException;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;

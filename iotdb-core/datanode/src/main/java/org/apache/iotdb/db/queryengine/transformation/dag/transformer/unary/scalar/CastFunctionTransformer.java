@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.transformer.unary.scalar;
 
-import org.apache.iotdb.calc_commons.exception.QueryProcessException;
-import org.apache.iotdb.calc_commons.transformation.dag.util.CastFunctionUtils;
+import org.apache.iotdb.calc.exception.QueryProcessException;
+import org.apache.iotdb.calc.transformation.dag.util.CastFunctionUtils;
 import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
 import org.apache.iotdb.db.queryengine.transformation.dag.transformer.unary.UnaryTransformer;
 

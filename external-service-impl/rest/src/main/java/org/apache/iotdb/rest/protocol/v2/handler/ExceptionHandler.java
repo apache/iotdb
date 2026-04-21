@@ -17,7 +17,7 @@
 
 package org.apache.iotdb.rest.protocol.v2.handler;
 
-import org.apache.iotdb.calc_commons.exception.QueryProcessException;
+import org.apache.iotdb.calc.exception.QueryProcessException;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBException;

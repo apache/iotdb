@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.expression.multi.builtin.helper;
 
-import org.apache.iotdb.calc_commons.transformation.dag.column.ColumnTransformer;
-import org.apache.iotdb.calc_commons.transformation.dag.column.unary.scalar.CastFunctionColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.ColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.unary.scalar.CastFunctionColumnTransformer;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.builtin.BuiltInScalarFunctionHelper;
@@ -34,7 +34,7 @@ import org.apache.tsfile.read.common.type.TypeFactory;
 import java.time.ZoneId;
 import java.util.Map;
 
-import static org.apache.iotdb.calc_commons.utils.constant.SqlConstant.CAST_TYPE;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.CAST_TYPE;
 
 public class CastFunctionHelper implements BuiltInScalarFunctionHelper {
 

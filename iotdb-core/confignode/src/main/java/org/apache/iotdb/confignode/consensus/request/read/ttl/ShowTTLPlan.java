@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.confignode.consensus.request.read.ttl;
 
-import org.apache.iotdb.calc_commons.utils.constant.SqlConstant;
+import org.apache.iotdb.calc.utils.constant.SqlConstant;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.read.ConfigPhysicalReadPlan;
 

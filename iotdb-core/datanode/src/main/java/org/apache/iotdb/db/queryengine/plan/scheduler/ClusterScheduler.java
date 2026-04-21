@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.queryengine.plan.scheduler;
 
-import org.apache.iotdb.calc_commons.metric.QueryExecutionMetricSet;
+import org.apache.iotdb.calc.metric.QueryExecutionMetricSet;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
@@ -42,7 +42,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 
-import static org.apache.iotdb.calc_commons.metric.QueryExecutionMetricSet.WAIT_FOR_DISPATCH;
+import static org.apache.iotdb.calc.metric.QueryExecutionMetricSet.WAIT_FOR_DISPATCH;
 
 /**
  * QueryScheduler is used to dispatch the fragment instances of a query to target nodes. And it will

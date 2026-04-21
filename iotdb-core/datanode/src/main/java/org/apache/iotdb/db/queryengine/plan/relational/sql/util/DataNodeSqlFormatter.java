@@ -19,12 +19,12 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.util;
 
-import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.Identifier;
-import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.Node;
-import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.PatternRecognitionRelation;
-import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.Relation;
-import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.Table;
-import org.apache.iotdb.commons.node_commons.plan.relational.sql.util.CommonQuerySqlFormatter;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Identifier;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.PatternRecognitionRelation;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Relation;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Table;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.util.CommonQuerySqlFormatter;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AddColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterPipe;

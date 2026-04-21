@@ -18,8 +18,8 @@
 package org.apache.iotdb.rest.protocol.table.v1.handler;
 
 import org.apache.iotdb.commons.exception.IoTDBException;
-import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.Query;
-import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.Statement;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Query;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
 import org.apache.iotdb.rest.protocol.model.ExecutionStatus;

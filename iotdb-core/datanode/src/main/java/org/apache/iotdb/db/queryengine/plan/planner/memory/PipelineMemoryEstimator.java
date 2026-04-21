@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner.memory;
 
-import org.apache.iotdb.calc_commons.execution.operator.Operator;
+import org.apache.iotdb.calc.execution.operator.Operator;
 import org.apache.iotdb.commons.utils.TestOnly;
 
 import java.util.LinkedList;

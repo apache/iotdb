@@ -19,11 +19,11 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
-import org.apache.iotdb.commons.node_commons.plan.relational.planner.node.JoinNode;
-import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.ArithmeticBinaryExpression;
-import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.ComparisonExpression;
-import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.LongLiteral;
-import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.SymbolReference;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.JoinNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ArithmeticBinaryExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ComparisonExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LongLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlanTester;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern;
 
@@ -32,9 +32,9 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import org.junit.Test;
 
-import static org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.SortItem.NullOrdering.LAST;
-import static org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.SortItem.Ordering.ASCENDING;
-import static org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.SortItem.Ordering.DESCENDING;
+import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SortItem.NullOrdering.LAST;
+import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SortItem.Ordering.ASCENDING;
+import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SortItem.Ordering.DESCENDING;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.assertAnalyzeSemanticException;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanAssert.assertPlan;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.equiJoinClause;

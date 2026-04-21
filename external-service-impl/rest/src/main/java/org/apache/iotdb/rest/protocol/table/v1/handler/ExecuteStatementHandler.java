@@ -17,8 +17,8 @@
 
 package org.apache.iotdb.rest.protocol.table.v1.handler;
 
-import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.Query;
-import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.Statement;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Query;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DescribeTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Explain;

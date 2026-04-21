@@ -14,7 +14,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.fragment;
 
-import org.apache.iotdb.commons.node_commons.common.SessionInfo;
+import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 
 public interface INodeCommonFragmentInstanceContext {

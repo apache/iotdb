@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.schemaengine.schemaregion.read.resp.reader.impl;
 
-import org.apache.iotdb.commons.node_commons.common.NodeRef;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.queryengine.common.NodeRef;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterType;
 import org.apache.iotdb.commons.schema.tree.SchemaIterator;

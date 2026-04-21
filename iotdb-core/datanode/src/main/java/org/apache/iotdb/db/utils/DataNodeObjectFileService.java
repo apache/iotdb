@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.utils;
 
-import org.apache.iotdb.calc_commons.utils.IObjectFileService;
-import org.apache.iotdb.calc_commons.utils.ObjectTypeUtils;
+import org.apache.iotdb.calc.utils.IObjectFileService;
+import org.apache.iotdb.calc.utils.ObjectTypeUtils;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.ObjectFileNotExist;
 import org.apache.iotdb.db.service.metrics.FileMetrics;

@@ -19,15 +19,15 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.gapfill;
 
-import org.apache.iotdb.calc_commons.execution.operator.Operator;
-import org.apache.iotdb.calc_commons.execution.operator.process.MergeSortOperator;
-import org.apache.iotdb.calc_commons.execution.operator.process.gapfill.GapFillWGroupWMoOperator;
-import org.apache.iotdb.calc_commons.execution.operator.process.gapfill.GapFillWoGroupWoMoOperator;
-import org.apache.iotdb.calc_commons.plan.planner.CommonOperatorUtils;
-import org.apache.iotdb.calc_commons.utils.datastructure.SortKey;
+import org.apache.iotdb.calc.execution.operator.Operator;
+import org.apache.iotdb.calc.execution.operator.process.MergeSortOperator;
+import org.apache.iotdb.calc.execution.operator.process.gapfill.GapFillWGroupWMoOperator;
+import org.apache.iotdb.calc.execution.operator.process.gapfill.GapFillWoGroupWoMoOperator;
+import org.apache.iotdb.calc.plan.planner.CommonOperatorUtils;
+import org.apache.iotdb.calc.utils.datastructure.SortKey;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
-import org.apache.iotdb.commons.node_commons.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.commons.node_commons.plan.relational.planner.SortOrder;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.SortOrder;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
@@ -54,7 +54,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 
-import static org.apache.iotdb.calc_commons.execution.operator.process.join.merge.MergeSortComparator.getComparatorForTable;
+import static org.apache.iotdb.calc.execution.operator.process.join.merge.MergeSortComparator.getComparatorForTable;
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;

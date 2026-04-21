@@ -21,33 +21,33 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan.node;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.commons.node_commons.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.commons.node_commons.plan.relational.planner.DataOrganizationSpecification;
-import org.apache.iotdb.commons.node_commons.plan.relational.planner.Symbol;
-import org.apache.iotdb.commons.node_commons.plan.relational.planner.node.AssignUniqueId;
-import org.apache.iotdb.commons.node_commons.plan.relational.planner.node.CorrelatedJoinNode;
-import org.apache.iotdb.commons.node_commons.plan.relational.planner.node.EnforceSingleRowNode;
-import org.apache.iotdb.commons.node_commons.plan.relational.planner.node.ExceptNode;
-import org.apache.iotdb.commons.node_commons.plan.relational.planner.node.GapFillNode;
-import org.apache.iotdb.commons.node_commons.plan.relational.planner.node.GroupNode;
-import org.apache.iotdb.commons.node_commons.plan.relational.planner.node.IntersectNode;
-import org.apache.iotdb.commons.node_commons.plan.relational.planner.node.JoinNode;
-import org.apache.iotdb.commons.node_commons.plan.relational.planner.node.LinearFillNode;
-import org.apache.iotdb.commons.node_commons.plan.relational.planner.node.MarkDistinctNode;
-import org.apache.iotdb.commons.node_commons.plan.relational.planner.node.OutputNode;
-import org.apache.iotdb.commons.node_commons.plan.relational.planner.node.PatternRecognitionNode;
-import org.apache.iotdb.commons.node_commons.plan.relational.planner.node.PreviousFillNode;
-import org.apache.iotdb.commons.node_commons.plan.relational.planner.node.RowNumberNode;
-import org.apache.iotdb.commons.node_commons.plan.relational.planner.node.SemiJoinNode;
-import org.apache.iotdb.commons.node_commons.plan.relational.planner.node.StreamSortNode;
-import org.apache.iotdb.commons.node_commons.plan.relational.planner.node.TableFunctionProcessorNode;
-import org.apache.iotdb.commons.node_commons.plan.relational.planner.node.TopKRankingNode;
-import org.apache.iotdb.commons.node_commons.plan.relational.planner.node.UnionNode;
-import org.apache.iotdb.commons.node_commons.plan.relational.planner.node.ValueFillNode;
-import org.apache.iotdb.commons.node_commons.plan.relational.planner.node.ValuesNode;
-import org.apache.iotdb.commons.node_commons.plan.relational.planner.node.WindowNode;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.DataOrganizationSpecification;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AssignUniqueId;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.CorrelatedJoinNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.EnforceSingleRowNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ExceptNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.GapFillNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.GroupNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.IntersectNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.JoinNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.LinearFillNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.MarkDistinctNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.OutputNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.PatternRecognitionNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.PreviousFillNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.RowNumberNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.SemiJoinNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.StreamSortNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TableFunctionProcessorNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TopKRankingNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.UnionNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ValueFillNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ValuesNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.WindowNode;
 import org.apache.iotdb.db.queryengine.plan.analyze.TemplatedInfo;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationMergeSortNode;
@@ -715,13 +715,13 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
 
   @Override
   public List<String> visitAggregation(
-      org.apache.iotdb.commons.node_commons.plan.relational.planner.node.AggregationNode node,
+      org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode node,
       GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("Aggregation-%s", node.getPlanNodeId().getId()));
     boxValue.add(String.format("OutputSymbols: %s", node.getOutputSymbols()));
     int i = 0;
-    for (org.apache.iotdb.commons.node_commons.plan.relational.planner.node.AggregationNode
+    for (org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode
             .Aggregation
         aggregation : node.getAggregations().values()) {
       StringBuilder aggregator =
@@ -755,7 +755,7 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
     boxValue.add(String.format("QualifiedTableName: %s", node.getQualifiedObjectName().toString()));
     boxValue.add(String.format("OutputSymbols: %s", node.getOutputSymbols()));
     int i = 0;
-    for (org.apache.iotdb.commons.node_commons.plan.relational.planner.node.AggregationNode
+    for (org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode
             .Aggregation
         aggregation : node.getAggregations().values()) {
       StringBuilder aggregator =
@@ -823,7 +823,7 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
 
   @Override
   public List<String> visitFilter(
-      org.apache.iotdb.commons.node_commons.plan.relational.planner.node.FilterNode node,
+      org.apache.iotdb.commons.queryengine.plan.relational.planner.node.FilterNode node,
       GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("Filter-%s", node.getPlanNodeId().getId()));
@@ -833,7 +833,7 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
 
   @Override
   public List<String> visitProject(
-      org.apache.iotdb.commons.node_commons.plan.relational.planner.node.ProjectNode node,
+      org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ProjectNode node,
       GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("Project-%s", node.getPlanNodeId().getId()));
@@ -931,7 +931,7 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
 
   @Override
   public List<String> visitLimit(
-      org.apache.iotdb.commons.node_commons.plan.relational.planner.node.LimitNode node,
+      org.apache.iotdb.commons.queryengine.plan.relational.planner.node.LimitNode node,
       GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("Limit-%s", node.getPlanNodeId().getId()));
@@ -948,7 +948,7 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
 
   @Override
   public List<String> visitOffset(
-      org.apache.iotdb.commons.node_commons.plan.relational.planner.node.OffsetNode node,
+      org.apache.iotdb.commons.queryengine.plan.relational.planner.node.OffsetNode node,
       GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("Offset-%s", node.getPlanNodeId().getId()));
@@ -958,7 +958,7 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
 
   @Override
   public List<String> visitSort(
-      org.apache.iotdb.commons.node_commons.plan.relational.planner.node.SortNode node,
+      org.apache.iotdb.commons.queryengine.plan.relational.planner.node.SortNode node,
       GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("Sort-%s", node.getPlanNodeId().getId()));
@@ -997,7 +997,7 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
 
   @Override
   public List<String> visitMergeSort(
-      org.apache.iotdb.commons.node_commons.plan.relational.planner.node.MergeSortNode node,
+      org.apache.iotdb.commons.queryengine.plan.relational.planner.node.MergeSortNode node,
       GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("MergeSort-%s", node.getPlanNodeId().getId()));
@@ -1008,7 +1008,7 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
 
   @Override
   public List<String> visitCollect(
-      org.apache.iotdb.commons.node_commons.plan.relational.planner.node.CollectNode node,
+      org.apache.iotdb.commons.queryengine.plan.relational.planner.node.CollectNode node,
       GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("Collect-%s", node.getPlanNodeId().getId()));
@@ -1018,7 +1018,7 @@ public class PlanGraphPrinter implements PlanVisitor<List<String>, PlanGraphPrin
 
   @Override
   public List<String> visitTopK(
-      org.apache.iotdb.commons.node_commons.plan.relational.planner.node.TopKNode node,
+      org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TopKNode node,
       GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("TopK-%s", node.getPlanNodeId().getId()));

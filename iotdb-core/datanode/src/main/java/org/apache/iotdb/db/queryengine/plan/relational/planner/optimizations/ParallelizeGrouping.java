@@ -19,21 +19,21 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations;
 
-import org.apache.iotdb.commons.node_commons.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.commons.node_commons.plan.relational.metadata.ColumnSchema;
-import org.apache.iotdb.commons.node_commons.plan.relational.planner.DataOrganizationSpecification;
-import org.apache.iotdb.commons.node_commons.plan.relational.planner.OrderingScheme;
-import org.apache.iotdb.commons.node_commons.plan.relational.planner.Symbol;
-import org.apache.iotdb.commons.node_commons.plan.relational.planner.node.AggregationNode;
-import org.apache.iotdb.commons.node_commons.plan.relational.planner.node.CorrelatedJoinNode;
-import org.apache.iotdb.commons.node_commons.plan.relational.planner.node.GroupNode;
-import org.apache.iotdb.commons.node_commons.plan.relational.planner.node.JoinNode;
-import org.apache.iotdb.commons.node_commons.plan.relational.planner.node.PatternRecognitionNode;
-import org.apache.iotdb.commons.node_commons.plan.relational.planner.node.SemiJoinNode;
-import org.apache.iotdb.commons.node_commons.plan.relational.planner.node.SortNode;
-import org.apache.iotdb.commons.node_commons.plan.relational.planner.node.StreamSortNode;
-import org.apache.iotdb.commons.node_commons.plan.relational.planner.node.TableFunctionProcessorNode;
-import org.apache.iotdb.commons.node_commons.plan.relational.planner.node.TopKNode;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.DataOrganizationSpecification;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.OrderingScheme;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.CorrelatedJoinNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.GroupNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.JoinNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.PatternRecognitionNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.SemiJoinNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.SortNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.StreamSortNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TableFunctionProcessorNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TopKNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;

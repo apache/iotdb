@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.window;
 
-import org.apache.iotdb.calc_commons.plan.planner.CommonOperatorUtils;
+import org.apache.iotdb.calc.plan.planner.CommonOperatorUtils;
 
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;

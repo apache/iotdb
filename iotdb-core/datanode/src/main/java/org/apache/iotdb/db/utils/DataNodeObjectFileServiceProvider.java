@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.utils;
 
-import org.apache.iotdb.calc_commons.utils.IObjectFileService;
-import org.apache.iotdb.calc_commons.utils.IObjectFileServiceProvider;
+import org.apache.iotdb.calc.utils.IObjectFileService;
+import org.apache.iotdb.calc.utils.IObjectFileServiceProvider;
 
 public class DataNodeObjectFileServiceProvider implements IObjectFileServiceProvider {
 

@@ -21,7 +21,7 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.transformer.ternary;
 
-import org.apache.iotdb.calc_commons.transformation.dag.util.CommonTransformUtils;
+import org.apache.iotdb.calc.transformation.dag.util.CommonTransformUtils;
 import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
 
 import org.apache.tsfile.block.column.Column;

@@ -20,13 +20,13 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.util;
 
 import org.apache.iotdb.commons.exception.SemanticException;
-import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.Identifier;
-import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.Literal;
-import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.LongLiteral;
-import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.Node;
-import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.NullLiteral;
-import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.StringLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Identifier;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Literal;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LongLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NullLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.StringLiteral;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 
 import com.google.common.graph.SuccessorsFunction;

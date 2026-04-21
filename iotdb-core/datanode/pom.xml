@@ -408,7 +408,7 @@
                             <outputDirectory>${project.build.directory}/codegen</outputDirectory>
                             <resources>
                                 <resource>
-                                    <directory>${maven.multiModuleProjectDirectory}/iotdb-core/calc_commons/src/main/codegen</directory>
+                                    <directory>${maven.multiModuleProjectDirectory}/iotdb-core/calc-commons/src/main/codegen</directory>
                                     <filtering>false</filtering>
                                 </resource>
                                 <resource>

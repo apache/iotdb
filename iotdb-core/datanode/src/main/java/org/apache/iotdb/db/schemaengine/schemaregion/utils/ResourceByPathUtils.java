@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.schemaengine.schemaregion.utils;
 
-import org.apache.iotdb.calc_commons.exception.QueryProcessException;
-import org.apache.iotdb.calc_commons.plan.planner.memory.MemoryReservationManager;
+import org.apache.iotdb.calc.exception.QueryProcessException;
+import org.apache.iotdb.calc.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;

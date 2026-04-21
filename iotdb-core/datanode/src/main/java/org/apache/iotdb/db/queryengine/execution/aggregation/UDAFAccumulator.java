@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.execution.aggregation;
 
-import org.apache.iotdb.calc_commons.execution.aggregation.Accumulator;
-import org.apache.iotdb.calc_commons.transformation.dag.udf.UDFParametersFactory;
-import org.apache.iotdb.commons.node_commons.plan.udf.UDFManagementService;
+import org.apache.iotdb.calc.execution.aggregation.Accumulator;
+import org.apache.iotdb.calc.transformation.dag.udf.UDFParametersFactory;
+import org.apache.iotdb.commons.queryengine.plan.udf.UDFManagementService;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.udf.api.State;

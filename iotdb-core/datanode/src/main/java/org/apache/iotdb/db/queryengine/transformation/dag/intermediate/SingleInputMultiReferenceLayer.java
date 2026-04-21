@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.intermediate;
 
-import org.apache.iotdb.calc_commons.transformation.datastructure.iterator.TVListForwardIterator;
-import org.apache.iotdb.calc_commons.transformation.datastructure.tv.ElasticSerializableTVList;
+import org.apache.iotdb.calc.transformation.datastructure.iterator.TVListForwardIterator;
+import org.apache.iotdb.calc.transformation.datastructure.tv.ElasticSerializableTVList;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
 import org.apache.iotdb.db.queryengine.transformation.api.LayerRowWindowReader;

@@ -18,13 +18,13 @@
  */
 package org.apache.iotdb.db.queryengine.execution.operator;
 
-import org.apache.iotdb.calc_commons.execution.operator.Operator;
-import org.apache.iotdb.calc_commons.execution.operator.process.fill.ILinearFill;
-import org.apache.iotdb.calc_commons.execution.operator.process.fill.identity.IdentityLinearFill;
-import org.apache.iotdb.calc_commons.execution.operator.process.fill.linear.FloatLinearFill;
-import org.apache.iotdb.calc_commons.execution.operator.process.fill.linear.LinearFill;
+import org.apache.iotdb.calc.execution.operator.Operator;
+import org.apache.iotdb.calc.execution.operator.process.fill.ILinearFill;
+import org.apache.iotdb.calc.execution.operator.process.fill.identity.IdentityLinearFill;
+import org.apache.iotdb.calc.execution.operator.process.fill.linear.FloatLinearFill;
+import org.apache.iotdb.calc.execution.operator.process.fill.linear.LinearFill;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
-import org.apache.iotdb.commons.node_commons.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.common.QueryId;

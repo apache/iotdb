@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner;
 
-import org.apache.iotdb.calc_commons.execution.operator.Operator;
+import org.apache.iotdb.calc.execution.operator.Operator;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.queryengine.execution.driver.DataDriver;
 import org.apache.iotdb.db.queryengine.execution.driver.DataDriverContext;

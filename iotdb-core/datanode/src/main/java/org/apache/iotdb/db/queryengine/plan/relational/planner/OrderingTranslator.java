@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
-import org.apache.iotdb.commons.node_commons.plan.relational.planner.SortOrder;
-import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.SortItem;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.SortOrder;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SortItem;
 
 public class OrderingTranslator {
   private OrderingTranslator() {}

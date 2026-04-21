@@ -25,14 +25,14 @@
 
 <#--Main Part-->
 <#if (first.instance == "DATE" || first.instance == "TIMESTAMP") && (second.instance == "INT" || second.instance == "LONG")><#if operator.name == "Addition" || operator.name == "Subtraction">
-<@pp.changeOutputFile name="/org/apache/iotdb/calc_commons/transformation/dag/column/binary/${className}.java" />
+<@pp.changeOutputFile name="/org/apache/iotdb/calc/transformation/dag/column/binary/${className}.java" />
 <#--Date + int || Date + long || Timestamp + int || Timestamp + long-->
 <#--Date - int || Date - long || Timestamp - int || Timestamp - long-->
-package org.apache.iotdb.calc_commons.transformation.dag.column.binary;
+package org.apache.iotdb.calc.transformation.dag.column.binary;
 
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
-import org.apache.iotdb.calc_commons.transformation.dag.column.ColumnTransformer;
-import org.apache.iotdb.commons.node_commons.utils.DateTimeUtils;
+import org.apache.iotdb.calc.transformation.dag.column.ColumnTransformer;
+import org.apache.iotdb.commons.queryengine.utils.DateTimeUtils;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
@@ -171,12 +171,12 @@ public class ${className} extends BinaryColumnTransformer {
 <#elseif (second.instance == "DATE" || second.instance =="TIMESTAMP") && (first.instance == "INT" || first.instance == "LONG")>
   <#if operator.name == "Addition">
 <#--int + Date || long + Date || int + Timestamp || long + Timestamp-->
-<@pp.changeOutputFile name="/org/apache/iotdb/calc_commons/transformation/dag/column/binary/${className}.java" />
-package org.apache.iotdb.calc_commons.transformation.dag.column.binary;
+<@pp.changeOutputFile name="/org/apache/iotdb/calc/transformation/dag/column/binary/${className}.java" />
+package org.apache.iotdb.calc.transformation.dag.column.binary;
 
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
-import org.apache.iotdb.calc_commons.transformation.dag.column.ColumnTransformer;
-import org.apache.iotdb.commons.node_commons.utils.DateTimeUtils;
+import org.apache.iotdb.calc.transformation.dag.column.ColumnTransformer;
+import org.apache.iotdb.commons.queryengine.utils.DateTimeUtils;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
@@ -276,7 +276,7 @@ public class ${className} extends BinaryColumnTransformer {
 }
 </#if>
 <#elseif first.instance != "DATE" && first.instance != "TIMESTAMP" && second.instance != "DATE" && second.instance != "TIMESTAMP">
-<@pp.changeOutputFile name="/org/apache/iotdb/calc_commons/transformation/dag/column/binary/${className}.java" />
+<@pp.changeOutputFile name="/org/apache/iotdb/calc/transformation/dag/column/binary/${className}.java" />
 <#--int、long、float、double with + - * / %-->
 <#--assign resultType-->
 <#if first.dataType == "double" || second.dataType == "double">
@@ -289,11 +289,11 @@ public class ${className} extends BinaryColumnTransformer {
   <#assign resultType = "int" />
 </#if>
 <#--Parting line-->
-package org.apache.iotdb.calc_commons.transformation.dag.column.binary;
+package org.apache.iotdb.calc.transformation.dag.column.binary;
 
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.SemanticException;
-import org.apache.iotdb.calc_commons.transformation.dag.column.ColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.ColumnTransformer;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;

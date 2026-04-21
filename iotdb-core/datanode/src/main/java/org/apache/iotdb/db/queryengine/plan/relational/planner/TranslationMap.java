@@ -19,19 +19,19 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
-import org.apache.iotdb.commons.node_commons.plan.relational.analyzer.NodeRef;
-import org.apache.iotdb.commons.node_commons.plan.relational.planner.Symbol;
-import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.DereferenceExpression;
-import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.FieldReference;
-import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.FunctionCall;
-import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.GenericDataType;
-import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.Identifier;
-import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.LikePredicate;
-import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.Parameter;
-import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.QualifiedName;
-import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.SymbolReference;
-import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.Trim;
+import org.apache.iotdb.commons.queryengine.plan.relational.analyzer.NodeRef;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.DereferenceExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.FieldReference;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.FunctionCall;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.GenericDataType;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Identifier;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LikePredicate;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Parameter;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.QualifiedName;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolReference;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Trim;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.ResolvedField;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Scope;
@@ -61,7 +61,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.ScopeAware
  * boundary.
  *
  * <p>AST and IR expressions use the same class hierarchy ({@link
- * org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.Expression}, but differ in the
+ * org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression}, but differ in the
  * following ways:
  * <li>AST expressions contain Identifiers, while IR expressions contain SymbolReferences
  * <li>FunctionCalls in AST expressions are SQL function names. In IR expressions, they contain an

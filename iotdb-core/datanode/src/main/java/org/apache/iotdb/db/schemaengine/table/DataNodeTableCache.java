@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.schemaengine.table;
 
-import org.apache.iotdb.calc_commons.plan.relational.metadata.CommonMetadataUtils;
+import org.apache.iotdb.calc.plan.relational.metadata.CommonMetadataUtils;
 import org.apache.iotdb.commons.schema.table.NonCommittableTsTable;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;

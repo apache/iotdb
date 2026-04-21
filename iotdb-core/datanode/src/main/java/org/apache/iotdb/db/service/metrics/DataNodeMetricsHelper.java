@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.service.metrics;
 
-import org.apache.iotdb.calc_commons.metric.QueryExecutionMetricSet;
+import org.apache.iotdb.calc.metric.QueryExecutionMetricSet;
 import org.apache.iotdb.commons.client.ClientManagerMetrics;
 import org.apache.iotdb.commons.concurrent.ThreadModule;
 import org.apache.iotdb.commons.concurrent.ThreadName;

@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.utils;
 
-import org.apache.iotdb.commons.node_commons.utils.TimestampPrecisionUtils;
+import org.apache.iotdb.commons.queryengine.utils.TimestampPrecisionUtils;
 
 import org.junit.Test;
 

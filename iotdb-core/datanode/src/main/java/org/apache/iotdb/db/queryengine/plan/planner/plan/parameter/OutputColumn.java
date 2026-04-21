@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.queryengine.plan.planner.plan.parameter;
 
-import org.apache.iotdb.commons.node_commons.plan.planner.plan.parameter.InputLocation;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.parameter.InputLocation;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.ReadWriteIOUtils;

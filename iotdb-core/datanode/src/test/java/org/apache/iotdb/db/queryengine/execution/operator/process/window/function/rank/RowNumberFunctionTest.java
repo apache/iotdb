@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.window.function.rank;
 
-import org.apache.iotdb.calc_commons.execution.operator.process.window.function.rank.RowNumberFunction;
-import org.apache.iotdb.calc_commons.execution.operator.process.window.partition.PartitionExecutor;
-import org.apache.iotdb.calc_commons.plan.planner.CommonOperatorUtils;
+import org.apache.iotdb.calc.execution.operator.process.window.function.rank.RowNumberFunction;
+import org.apache.iotdb.calc.execution.operator.process.window.partition.PartitionExecutor;
+import org.apache.iotdb.calc.plan.planner.CommonOperatorUtils;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.TableWindowOperatorTestUtils;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.function.FunctionTestUtils;
 
