@@ -28,6 +28,7 @@ import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.exception.exchange.GetTsBlockFromClosedOrAbortedChannelException;
 import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeManager.SinkListener;
 import org.apache.iotdb.db.queryengine.execution.memory.LocalMemoryManager;
+import org.apache.iotdb.db.queryengine.execution.memory.MemoryPool.MemoryReservationResult;
 import org.apache.iotdb.db.queryengine.metric.DataExchangeCostMetricSet;
 import org.apache.iotdb.db.queryengine.metric.DataExchangeCountMetricSet;
 import org.apache.iotdb.db.utils.SetThreadName;
@@ -119,6 +120,8 @@ public class SinkChannel implements ISinkChannel {
   private long maxBytesCanReserve =
       IoTDBDescriptor.getInstance().getConfig().getMaxBytesPerFragmentInstance();
 
+  private final boolean isHighestPriority;
+
   private static final DataExchangeCostMetricSet DATA_EXCHANGE_COST_METRIC_SET =
       DataExchangeCostMetricSet.getInstance();
   private static final DataExchangeCountMetricSet DATA_EXCHANGE_COUNT_METRIC_SET =
@@ -127,6 +130,34 @@ public class SinkChannel implements ISinkChannel {
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(SinkChannel.class)
           + RamUsageEstimator.shallowSizeOfInstance(TFragmentInstanceId.class) * 2;
+
+  @TestOnly
+  @SuppressWarnings("squid:S107")
+  public SinkChannel(
+      TEndPoint remoteEndpoint,
+      TFragmentInstanceId remoteFragmentInstanceId,
+      String remotePlanNodeId,
+      String localPlanNodeId,
+      TFragmentInstanceId localFragmentInstanceId,
+      LocalMemoryManager localMemoryManager,
+      ExecutorService executorService,
+      TsBlockSerde serde,
+      SinkListener sinkListener,
+      IClientManager<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient>
+          mppDataExchangeServiceClientManager) {
+    this(
+        remoteEndpoint,
+        remoteFragmentInstanceId,
+        remotePlanNodeId,
+        localPlanNodeId,
+        localFragmentInstanceId,
+        localMemoryManager,
+        executorService,
+        serde,
+        sinkListener,
+        false,
+        mppDataExchangeServiceClientManager);
+  }
 
   @SuppressWarnings("squid:S107")
   public SinkChannel(
@@ -139,6 +170,7 @@ public class SinkChannel implements ISinkChannel {
       ExecutorService executorService,
       TsBlockSerde serde,
       SinkListener sinkListener,
+      boolean isHighestPriority,
       IClientManager<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient>
           mppDataExchangeServiceClientManager) {
     this.remoteEndpoint = Validate.notNull(remoteEndpoint, "remoteEndPoint can not be null.");
@@ -155,6 +187,7 @@ public class SinkChannel implements ISinkChannel {
     this.executorService = Validate.notNull(executorService, "executorService can not be null.");
     this.serde = Validate.notNull(serde, "serde can not be null.");
     this.sinkListener = Validate.notNull(sinkListener, "sinkListener can not be null.");
+    this.isHighestPriority = isHighestPriority;
     this.mppDataExchangeServiceClientManager = mppDataExchangeServiceClientManager;
     this.retryIntervalInMs = DEFAULT_RETRY_INTERVAL_IN_MS;
     this.threadName =
@@ -204,21 +237,22 @@ public class SinkChannel implements ISinkChannel {
       long sizeInBytes = tsBlock.getSizeInBytes();
       int startSequenceId;
       startSequenceId = nextSequenceId;
-      blocked =
+      MemoryReservationResult reserveResult =
           localMemoryManager
               .getQueryPool()
-              .reserve(
+              .reserveWithPriority(
                   localFragmentInstanceId.getQueryId(),
                   fullFragmentInstanceId,
                   localPlanNodeId,
                   sizeInBytes,
-                  maxBytesCanReserve)
-              .left;
-      bufferRetainedSizeInBytes += sizeInBytes;
+                  maxBytesCanReserve,
+                  isHighestPriority);
+      blocked = reserveResult.getFuture();
+      bufferRetainedSizeInBytes += reserveResult.getReservedBytes();
 
       sequenceIdToTsBlock.put(nextSequenceId, new Pair<>(tsBlock, currentTsBlockSize));
       nextSequenceId += 1;
-      currentTsBlockSize = sizeInBytes;
+      currentTsBlockSize = reserveResult.getReservedBytes();
 
       submitSendNewDataBlockEventTask(startSequenceId, ImmutableList.of(sizeInBytes));
     } finally {
@@ -433,19 +467,21 @@ public class SinkChannel implements ISinkChannel {
       return;
     }
     // SinkChannel is opened when ShuffleSinkHandle choose it as the next channel
-    this.blocked =
+    MemoryReservationResult reserveResult =
         localMemoryManager
             .getQueryPool()
-            .reserve(
+            .reserveWithPriority(
                 localFragmentInstanceId.getQueryId(),
                 fullFragmentInstanceId,
                 localPlanNodeId,
                 DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
-                maxBytesCanReserve) // actually we only know maxBytesCanReserve after
-            // the handle is created, so we use DEFAULT here. It is ok to use DEFAULT here because
-            // at first this SinkChannel has not reserved memory.
-            .left;
-    this.bufferRetainedSizeInBytes = DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
+                maxBytesCanReserve,
+                isHighestPriority); // actually we only know maxBytesCanReserve after
+    // the handle is created, so we use DEFAULT here. It is ok to use DEFAULT here because
+    // at first this SinkChannel has not reserved memory.
+    this.blocked = reserveResult.getFuture();
+    this.bufferRetainedSizeInBytes = reserveResult.getReservedBytes();
+    this.currentTsBlockSize = reserveResult.getReservedBytes();
   }
 
   @Override
