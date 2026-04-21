@@ -1461,7 +1461,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   public SettableFuture<ConfigTaskResult> repairDataPartitionTable() {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     TSStatus tsStatus = new TSStatus();
-    
+
     try (ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       // Send request to ConfigNode to trigger DataPartitionTableIntegrityCheckProcedure
@@ -1469,7 +1469,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     } catch (ClientManagerException | TException e) {
       future.setException(e);
     }
-    
+
     if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
     } else {

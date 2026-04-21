@@ -1155,6 +1155,16 @@ public class ConfigManager implements IManager {
     return resp;
   }
 
+  @Override
+  public TSStatus dataPartitionTableIntegrityCheck() {
+    TSStatus status = confirmLeader();
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return status;
+    }
+
+    return partitionManager.dataPartitionTableIntegrityCheck();
+  }
+
   private void printNewCreatedDataPartition(
       GetOrCreateDataPartitionPlan getOrCreateDataPartitionPlan, TDataPartitionTableResp resp) {
     final String lineSeparator = System.lineSeparator();

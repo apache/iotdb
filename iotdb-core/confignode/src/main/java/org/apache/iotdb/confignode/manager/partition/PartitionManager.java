@@ -81,6 +81,7 @@ import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionCreate
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionDeleteTask;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionMaintainTask;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionMaintainType;
+import org.apache.iotdb.confignode.procedure.impl.partition.DataPartitionTableIntegrityCheckProcedure;
 import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListReq;
@@ -509,6 +510,16 @@ public class PartitionManager {
       return resp;
     }
     return resp;
+  }
+
+  /** Used to repair the lost data partition table */
+  public TSStatus dataPartitionTableIntegrityCheck() {
+    synchronized (this) {
+      DataPartitionTableIntegrityCheckProcedure procedure =
+          new DataPartitionTableIntegrityCheckProcedure();
+      getProcedureManager().getExecutor().submitProcedure(procedure);
+    }
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   private TSStatus consensusWritePartitionResult(ConfigPhysicalPlan plan) {

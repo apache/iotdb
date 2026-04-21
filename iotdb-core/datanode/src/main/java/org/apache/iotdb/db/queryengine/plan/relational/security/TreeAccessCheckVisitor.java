@@ -147,6 +147,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.ExplainStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.FlushStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.KillQueryStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.LoadConfigurationStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.RepairDataPartitionTable;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetConfigurationStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSqlDialectStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSystemStatusStatement;
@@ -1677,6 +1678,13 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   @Override
   public TSStatus visitStartRepairData(
       StartRepairDataStatement startRepairDataStatement, TreeAccessCheckContext context) {
+    return checkGlobalAuth(
+        context.setAuditLogOperation(AuditLogOperation.CONTROL), PrivilegeType.SYSTEM, () -> "");
+  }
+
+  @Override
+  public TSStatus visitRepairDataPartitionTable(
+      RepairDataPartitionTable repairDataPartitionTable, TreeAccessCheckContext context) {
     return checkGlobalAuth(
         context.setAuditLogOperation(AuditLogOperation.CONTROL), PrivilegeType.SYSTEM, () -> "");
   }

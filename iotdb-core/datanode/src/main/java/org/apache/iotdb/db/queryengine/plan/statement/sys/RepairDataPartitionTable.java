@@ -17,18 +17,36 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
+package org.apache.iotdb.db.queryengine.plan.statement.sys;
 
-import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
+import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
+import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
+import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 
-public class RepairDataPartitionTable extends WrappedStatement {
-  public RepairDataPartitionTable(Statement innerTreeStatement, MPPQueryContext context) {
-    super(innerTreeStatement, context);
+import java.util.Collections;
+import java.util.List;
+
+public class RepairDataPartitionTable extends Statement implements IConfigStatement {
+
+  public RepairDataPartitionTable() {
+    this.statementType = StatementType.REPAIR_DATA_PARTITION_TABLE;
   }
 
   @Override
-  public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
+  public List<PartialPath> getPaths() {
+    return Collections.emptyList();
+  }
+
+  @Override
+  public QueryType getQueryType() {
+    return QueryType.OTHER;
+  }
+
+  @Override
+  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
     return visitor.visitRepairDataPartitionTable(this, context);
   }
 }

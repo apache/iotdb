@@ -142,7 +142,6 @@ statement
     | clearCacheStatement
     | startRepairDataStatement
     | stopRepairDataStatement
-    | repairDataPartitionTableStatement
     | setSystemStatusStatement
     | showVersionStatement
     | showQueriesStatement
@@ -666,10 +665,6 @@ startRepairDataStatement
 
 stopRepairDataStatement
 	: STOP REPAIR DATA localOrClusterMode?
-	;
-
-repairDataPartitionTableStatement
-	: REPAIR DATA PARTITION TABLE
 	;
 
 setSystemStatusStatement

@@ -1487,6 +1487,8 @@ service IConfigNodeRPCService {
    */
   TDataPartitionTableResp getOrCreateDataPartitionTable(TDataPartitionReq req)
 
+  common.TSStatus dataPartitionTableIntegrityCheck()
+
   // ======================================================
   // Authorize
   // ======================================================

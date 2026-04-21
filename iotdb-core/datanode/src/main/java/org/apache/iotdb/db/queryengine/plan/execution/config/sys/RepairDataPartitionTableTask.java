@@ -22,16 +22,16 @@ package org.apache.iotdb.db.queryengine.plan.execution.config.sys;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
-import org.apache.iotdb.db.queryengine.plan.statement.sys.RepairDataPartitionTableStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.RepairDataPartitionTable;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
 public class RepairDataPartitionTableTask implements IConfigTask {
 
-  private final RepairDataPartitionTableStatement repairDataPartitionTableStatement;
+  private final RepairDataPartitionTable repairDataPartitionTable;
 
-  public RepairDataPartitionTableTask(RepairDataPartitionTableStatement repairDataPartitionTableStatement) {
-    this.repairDataPartitionTableStatement = repairDataPartitionTableStatement;
+  public RepairDataPartitionTableTask(RepairDataPartitionTable repairDataPartitionTable) {
+    this.repairDataPartitionTable = repairDataPartitionTable;
   }
 
   @Override
