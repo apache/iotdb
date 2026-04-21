@@ -45,7 +45,7 @@ public class DropContinuousQueryStatement extends Statement implements IConfigSt
 
   @Override
   public QueryType getQueryType() {
-    return QueryType.WRITE;
+    return QueryType.OTHER;
   }
 
   @Override

@@ -77,7 +77,7 @@ public class IoTDBMQTTServiceJsonIT {
     mqtt.setUserName(USER);
     mqtt.setPassword(PASSWORD);
     mqtt.setConnectAttemptsMax(3);
-    mqtt.setReconnectDelay(10);
+    mqtt.setReconnectDelay(1000);
     mqtt.setClientId("jsonClientId1");
 
     connection = mqtt.blockingConnection();

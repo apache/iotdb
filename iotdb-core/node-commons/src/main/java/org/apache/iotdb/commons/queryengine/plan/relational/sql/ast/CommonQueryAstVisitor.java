@@ -92,6 +92,10 @@ public interface CommonQueryAstVisitor<R, C> extends IAstVisitor<R, C> {
     return visitLiteral(node, context);
   }
 
+  default R visitTimeDurationLiteral(TimeDurationLiteral node, C context) {
+    return visitLiteral(node, context);
+  }
+
   default R visitDecimalLiteral(DecimalLiteral node, C context) {
     return visitLiteral(node, context);
   }

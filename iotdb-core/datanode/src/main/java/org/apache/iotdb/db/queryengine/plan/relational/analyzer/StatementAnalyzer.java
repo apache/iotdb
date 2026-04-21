@@ -100,6 +100,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.TableFunctio
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.TableFunctionInvocation;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.TableFunctionTableArgument;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.TableSubquery;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.TimeDurationLiteral;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Trim;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Union;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Values;
@@ -828,7 +829,7 @@ public class StatementAnalyzer {
 
     @Override
     public Scope visitLoadTsFile(final LoadTsFile node, final Optional<Scope> scope) {
-      queryContext.setQueryType(QueryType.WRITE);
+      queryContext.setQueryType(QueryType.OTHER);
 
       try (final LoadTsFileAnalyzer loadTsFileAnalyzer =
           new LoadTsFileAnalyzer(node, node.isGeneratedByPipe(), queryContext)) {
@@ -4546,7 +4547,7 @@ public class StatementAnalyzer {
     @Override
     public Scope visitCreateOrUpdateDevice(
         final CreateOrUpdateDevice node, final Optional<Scope> context) {
-      queryContext.setQueryType(QueryType.WRITE);
+      queryContext.setQueryType(QueryType.OTHER);
       DataNodeSchemaLockManager.getInstance()
           .takeReadLock(queryContext, SchemaLockType.VALIDATE_VS_DELETION_TABLE);
       // Check if the table exists
@@ -5258,6 +5259,12 @@ public class StatementAnalyzer {
 
     private ArgumentAnalysis analyzeScalarArgument(
         Expression expression, ScalarParameterSpecification argumentSpecification) {
+      if (expression instanceof TimeDurationLiteral) {
+        if (((TimeDurationLiteral) expression).getValue().monthDuration != 0) {
+          throw new SemanticException("Setting monthly intervals is not supported.");
+        }
+      }
+
       // currently, only constant arguments are supported
       Object constantValue =
           evaluateConstantExpression(

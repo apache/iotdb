@@ -1040,8 +1040,6 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
   }
 
   private void assertTimeseriesCountOnReceiver(BaseEnv receiverEnv, int count) {
-    // for system password history
-    count += 2;
     TestUtils.assertDataEventuallyOnEnv(
         receiverEnv,
         "count timeseries root.**",

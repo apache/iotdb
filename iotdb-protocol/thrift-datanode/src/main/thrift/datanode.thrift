@@ -1330,7 +1330,7 @@ service IDataNodeRPCService {
   /**
    * Check the status of DataPartitionTable generation task
    */
-  TGenerateDataPartitionTableHeartbeatResp generateDataPartitionTableHeartbeat()
+  TGenerateDataPartitionTableHeartbeatResp generateDataPartitionTableHeartbeat(TGenerateDataPartitionTableReq req)
 
   /**
   * END: Data Partition Table Integrity Check

@@ -46,7 +46,7 @@ public class LoadConfigurationStatement extends Statement implements IConfigStat
 
   @Override
   public QueryType getQueryType() {
-    return QueryType.WRITE;
+    return QueryType.OTHER;
   }
 
   @Override

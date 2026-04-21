@@ -91,6 +91,7 @@ public class PipeCompactedTsFileInsertionEvent extends PipeTsFileInsertionEvent 
     // init fields of PipeTsFileInsertionEvent
     flushPointCount = bindFlushPointCount(originalEvents);
     overridingProgressIndex = bindOverridingProgressIndex(originalEvents);
+    bindTsFileDedupScopeID(anyOfOriginalEvents.getTsFileDedupScopeID());
   }
 
   private static boolean bindIsWithMod(Set<PipeTsFileInsertionEvent> originalEvents) {
@@ -184,10 +185,10 @@ public class PipeCompactedTsFileInsertionEvent extends PipeTsFileInsertionEvent 
 
   @Override
   public void eliminateProgressIndex() {
-    if (Objects.isNull(overridingProgressIndex)) {
+    if (Objects.isNull(overridingProgressIndex) && Objects.nonNull(getTsFileDedupScopeID())) {
       for (final String originFilePath : originFilePaths) {
         PipeTsFileEpochProgressIndexKeeper.getInstance()
-            .eliminateProgressIndex(dataRegionId, pipeName, originFilePath);
+            .eliminateProgressIndex(dataRegionId, getTsFileDedupScopeID(), originFilePath);
       }
     }
   }

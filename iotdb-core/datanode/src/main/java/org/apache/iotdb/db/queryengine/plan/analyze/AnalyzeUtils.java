@@ -311,7 +311,7 @@ public class AnalyzeUtils {
   }
 
   public static void analyzeDelete(final Delete node, final MPPQueryContext queryContext) {
-    queryContext.setQueryType(QueryType.WRITE);
+    queryContext.setQueryType(QueryType.OTHER);
     validateSchema(node, queryContext);
 
     try (final ConfigNodeClient configNodeClient =

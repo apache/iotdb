@@ -89,7 +89,6 @@ public class AuthorPlanExecutor implements IAuthorPlanExecutor {
         result = AuthUtils.generateEmptyPermissionInfoResp();
       }
     } catch (AuthException e) {
-      LOGGER.error("meet error while logging in.", e);
       loginMessage = e.getMessage();
       tsStatus.setCode(e.getCode().getStatusCode());
       tsStatus.setMessage(loginMessage != null ? loginMessage : "Authentication failed.");

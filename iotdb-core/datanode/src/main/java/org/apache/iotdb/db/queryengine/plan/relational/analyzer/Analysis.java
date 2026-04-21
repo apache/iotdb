@@ -71,7 +71,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.PatternRecogniti
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.tablefunction.TableFunctionInvocationAnalysis;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 
 import com.google.common.collect.ArrayListMultimap;
@@ -119,6 +118,7 @@ public class Analysis implements IAnalysis {
   private List<TEndPoint> redirectNodeList;
 
   @Nullable private Statement root;
+  private boolean needSetHighestPriority;
 
   private final Map<NodeRef<Parameter>, Expression> parameters;
 
@@ -267,6 +267,14 @@ public class Analysis implements IAnalysis {
   public Analysis(@Nullable Statement root, Map<NodeRef<Parameter>, Expression> parameters) {
     this.root = root;
     this.parameters = ImmutableMap.copyOf(requireNonNull(parameters, "parameters is null"));
+  }
+
+  public void updateNeedSetHighestPriority(QualifiedObjectName tableName) {
+    if (needSetHighestPriority) {
+      return;
+    }
+    //  the database of table has been judged to be 'information_schema' in outer
+    needSetHighestPriority = InformationSchema.QUERIES.equals(tableName.getObjectName());
   }
 
   public Map<NodeRef<Parameter>, Expression> getParameters() {
@@ -961,8 +969,7 @@ public class Analysis implements IAnalysis {
 
   @Override
   public boolean needSetHighestPriority() {
-    return root instanceof ShowStatement
-        && ((ShowStatement) root).getTableName().equals(InformationSchema.QUERIES);
+    return needSetHighestPriority;
   }
 
   @Override

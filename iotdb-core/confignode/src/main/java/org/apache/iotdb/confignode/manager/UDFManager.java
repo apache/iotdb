@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.Model;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.udf.UDFInformation;
 import org.apache.iotdb.commons.udf.UDFType;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
@@ -137,6 +138,8 @@ public class UDFManager {
 
       LOGGER.info("Start to activate UDF [{}] in UDF_Table on Config Nodes", udfName);
       return configManager.getConsensusManager().write(new UpdateFunctionPlan(udfInformation));
+    } catch (IoTDBRuntimeException e) {
+      return new TSStatus(e.getErrorCode()).setMessage(e.getMessage());
     } catch (Exception e) {
       LOGGER.warn(e.getMessage(), e);
       return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())

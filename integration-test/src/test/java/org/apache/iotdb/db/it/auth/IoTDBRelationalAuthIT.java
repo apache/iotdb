@@ -564,7 +564,7 @@ public class IoTDBRelationalAuthIT {
       try {
         adminStmt.execute("ALTER USER nonExist SET PASSWORD 'asdfer1124566'");
       } catch (SQLException e) {
-        assertEquals("701: User nonExist not found", e.getMessage());
+        assertEquals("804: User nonExist does not exist", e.getMessage());
       }
     }
   }

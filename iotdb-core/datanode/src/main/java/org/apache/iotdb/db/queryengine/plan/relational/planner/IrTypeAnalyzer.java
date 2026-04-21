@@ -57,6 +57,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SearchedCase
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.StringLiteral;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolReference;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.TimeDurationLiteral;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.WhenClause;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.OperatorNotFoundException;
@@ -90,6 +91,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.commons.queryengine.plan.relational.type.TypeSignatureTranslator.toTypeSignature;
+import static org.apache.iotdb.commons.queryengine.utils.TimestampPrecisionUtils.currPrecision;
 import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
 import static org.apache.tsfile.read.common.type.DoubleType.DOUBLE;
 import static org.apache.tsfile.read.common.type.FloatType.FLOAT;
@@ -401,6 +403,17 @@ public class IrTypeAnalyzer {
     @Override
     public Type visitNullLiteral(NullLiteral node, Context context) {
       return setExpressionType(node, UNKNOWN);
+    }
+
+    @Override
+    public Type visitTimeDurationLiteral(TimeDurationLiteral node, Context context) {
+      long value = node.getValue().getTotalDuration(currPrecision);
+
+      if (value >= Integer.MIN_VALUE && value <= Integer.MAX_VALUE) {
+        return setExpressionType(node, INT32);
+      }
+      // keep the original type
+      return setExpressionType(node, INT64);
     }
 
     @Override

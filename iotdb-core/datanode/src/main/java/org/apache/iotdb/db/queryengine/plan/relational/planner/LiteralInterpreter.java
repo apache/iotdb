@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Literal;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LongLiteral;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NullLiteral;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.StringLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.TimeDurationLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
@@ -40,6 +41,7 @@ import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
 
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.commons.queryengine.utils.TimestampPrecisionUtils.currPrecision;
 
 public class LiteralInterpreter {
 
@@ -115,6 +117,11 @@ public class LiteralInterpreter {
     @Override
     public Object visitNullLiteral(NullLiteral node, Void context) {
       return null;
+    }
+
+    @Override
+    public Long visitTimeDurationLiteral(TimeDurationLiteral node, Void context) {
+      return node.getValue().getTotalDuration(currPrecision);
     }
   }
 }

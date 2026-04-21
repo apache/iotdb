@@ -53,10 +53,6 @@ public class AlterColumnDataTypePlan extends AbstractTableColumnPlan {
     newType = TSDataType.deserializeFrom(buffer);
   }
 
-  public void setNewType(TSDataType newType) {
-    this.newType = newType;
-  }
-
   public TSDataType getNewType() {
     return newType;
   }
