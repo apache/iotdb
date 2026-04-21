@@ -83,16 +83,20 @@ class PipeAgentLauncher {
     }
 
     // create instances of pipe plugins and do registration
-    try {
-      for (PipePluginMeta meta : resourcesInformationHolder.getPipePluginMetaList()) {
-        if (meta.isBuiltin()) {
-          continue;
-        }
-        PipeDataNodeAgent.plugin().doRegister(meta);
+    for (PipePluginMeta meta : resourcesInformationHolder.getPipePluginMetaList()) {
+      if (meta.isBuiltin()) {
+        continue;
       }
-    } catch (Throwable e) {
-      // Ignore the pipe plugin errors and continue to start
-      LOGGER.warn("Failure when register pipe plugins, will ignore.", e);
+      try {
+        PipeDataNodeAgent.plugin().doRegister(meta);
+      } catch (Throwable e) {
+        PipeDataNodeAgent.plugin().markPluginLoadFailure(meta, e);
+        // Ignore a single broken plugin and continue startup.
+        LOGGER.warn(
+            "Failure when register pipe plugin {}. Skip this plugin and continue startup.",
+            meta.getPluginName(),
+            e);
+      }
     }
   }
 

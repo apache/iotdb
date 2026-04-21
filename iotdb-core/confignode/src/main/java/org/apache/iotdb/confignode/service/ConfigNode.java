@@ -24,7 +24,6 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.ServerCommandLine;
 import org.apache.iotdb.commons.client.ClientManagerMetrics;
-import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadModule;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.ThreadPoolMetrics;
@@ -80,9 +79,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
@@ -113,11 +109,6 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
   protected ConfigManager configManager;
 
   private int exitStatusCode = 0;
-
-  private Future<Void> dataPartitionTableCheckFuture;
-
-  private ExecutorService dataPartitionTableCheckExecutor =
-      IoTDBThreadPoolFactory.newSingleThreadExecutor("DATA_PARTITION_TABLE_CHECK");
 
   public ConfigNode() {
     super("ConfigNode");
@@ -156,15 +147,6 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
     }
     active();
     LOGGER.info("IoTDB started");
-    if (dataPartitionTableCheckFuture != null) {
-      try {
-        dataPartitionTableCheckFuture.get();
-      } catch (ExecutionException | InterruptedException e) {
-        LOGGER.error("Data partition table check task execute failed", e);
-      } finally {
-        dataPartitionTableCheckExecutor.shutdownNow();
-      }
-    }
   }
 
   @Override

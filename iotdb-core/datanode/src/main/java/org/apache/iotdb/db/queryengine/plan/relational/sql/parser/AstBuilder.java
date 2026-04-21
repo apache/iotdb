@@ -32,6 +32,7 @@ import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.protocol.session.IClientSession;
@@ -4136,7 +4137,11 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   private QualifiedName getQualifiedName(RelationalSqlParser.QualifiedNameContext context) {
-    return QualifiedName.of(visit(context.identifier(), Identifier.class));
+    final QualifiedName result = QualifiedName.of(visit(context.identifier(), Identifier.class));
+    if (!result.getPrefix().map(s -> PathUtils.isTableModelDatabase(s.toString())).orElse(true)) {
+      throw new SemanticException("The tree model database shall not be specified in table model.");
+    }
+    return result;
   }
 
   private static boolean isDistinct(RelationalSqlParser.SetQuantifierContext setQuantifier) {

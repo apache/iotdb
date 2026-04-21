@@ -143,6 +143,7 @@ public class IoTDBRestServiceIT {
     testInsertMultiPartition();
     testInsertTablet();
     testInsertTabletNoDatabase();
+    testInsertTabletWithTreeDB();
     testInsertTablet1();
     testInsertTablet2();
     testQuery();
@@ -296,6 +297,18 @@ public class IoTDBRestServiceIT {
     assertEquals(305, Integer.parseInt(result.get("code").toString()));
   }
 
+  public void testInsertTabletWithTreeDB() {
+    List<String> sqls =
+        Collections.singletonList(
+            "create table sg211 (tag1 string tag,t1 STRING ATTRIBUTE, s1 FLOAT field)");
+    for (String sql : sqls) {
+      RestUtils.nonQuery(httpClient, port, sqlHandler("test", sql));
+    }
+    String json =
+        "{\"database\":\"root.test\",\"column_categories\":[\"TAG\",\"ATTRIBUTE\",\"FIELD\"],\"timestamps\":[1635232143960,1635232153960,1635232163960,1635232173960,1635232183960],\"column_names\":[\"tag1\",\"t1\",\"s1\"],\"data_types\":[\"STRING\",\"STRING\",\"FLOAT\"],\"values\":[[\"a11\",\"true\",11],[\"a11\",\"false\",22],[\"a13\",\"false1\",23],[\"a14\",\"false2\",24],[\"a15\",\"false3\",25]],\"table\":\"sg211\"}";
+    wrongInsertTablet(json);
+  }
+
   public void testInsertTablet1() {
     List<String> sqls =
         Collections.singletonList(
@@ -338,6 +351,11 @@ public class IoTDBRestServiceIT {
     assertEquals("a11", jsonArray1.get(0).getAsString());
     assertEquals("false", jsonArray1.get(1).getAsString());
     assertEquals(11f, jsonArray1.get(2).getAsFloat(), 0f);
+  }
+
+  public void wrongInsertTablet(String json) {
+    JsonObject result = RestUtils.insertTablet(httpClient, port, json);
+    assertEquals(701, Integer.parseInt(result.get("code").toString()));
   }
 
   public void prepareTableData() {

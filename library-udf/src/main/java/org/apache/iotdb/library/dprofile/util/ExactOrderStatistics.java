@@ -31,7 +31,14 @@ import org.eclipse.collections.impl.list.mutable.primitive.LongArrayList;
 import java.io.IOException;
 import java.util.NoSuchElementException;
 
-/** Util for computing median, MAD, percentile. */
+/**
+ * Util for computing median, MAD, percentile.
+ *
+ * <p>Percentile / quantile ({@link #getPercentile}) uses <b>discrete nearest-rank</b>: for sorted
+ * size {@code n} and {@code phi} in (0, 1], take 1-based rank {@code k = ceil(n * phi)} and 0-based
+ * index {@code k - 1}, clamped to {@code [0, n - 1]}. No interpolation; {@code phi = 0.5} is not
+ * required to match {@link #getMedian}.
+ */
 public class ExactOrderStatistics {
 
   private final Type dataType;
@@ -55,12 +62,6 @@ public class ExactOrderStatistics {
       case DOUBLE:
         doubleArrayList = new DoubleArrayList();
         break;
-      case STRING:
-      case TEXT:
-      case BOOLEAN:
-      case BLOB:
-      case DATE:
-      case TIMESTAMP:
       default:
         // This will not happen.
         throw new UDFInputSeriesDataTypeNotValidException(
@@ -88,12 +89,6 @@ public class ExactOrderStatistics {
           doubleArrayList.add(vd);
         }
         break;
-      case DATE:
-      case TIMESTAMP:
-      case BLOB:
-      case BOOLEAN:
-      case TEXT:
-      case STRING:
       default:
         // This will not happen.
         throw new UDFInputSeriesDataTypeNotValidException(
@@ -111,12 +106,6 @@ public class ExactOrderStatistics {
         return getMedian(floatArrayList);
       case DOUBLE:
         return getMedian(doubleArrayList);
-      case TEXT:
-      case STRING:
-      case BOOLEAN:
-      case BLOB:
-      case TIMESTAMP:
-      case DATE:
       default:
         // This will not happen.
         throw new UDFInputSeriesDataTypeNotValidException(
@@ -199,12 +188,6 @@ public class ExactOrderStatistics {
         return getMad(floatArrayList);
       case DOUBLE:
         return getMad(doubleArrayList);
-      case TIMESTAMP:
-      case DATE:
-      case BLOB:
-      case BOOLEAN:
-      case STRING:
-      case TEXT:
       default:
         // This will not happen.
         throw new UDFInputSeriesDataTypeNotValidException(
@@ -251,12 +234,18 @@ public class ExactOrderStatistics {
     }
   }
 
+  /** Discrete nearest-rank index into sorted data of length {@code n}; see class Javadoc. */
+  private static int discreteNearestRankIndex(int n, double phi) {
+    int idx = (int) Math.ceil(n * phi) - 1;
+    return Math.max(0, Math.min(n - 1, idx));
+  }
+
   public static float getPercentile(FloatArrayList nums, double phi) {
     if (nums.isEmpty()) {
       throw new NoSuchElementException();
     } else {
       nums.sortThis();
-      return nums.get((int) Math.ceil(nums.size() * phi));
+      return nums.get(discreteNearestRankIndex(nums.size(), phi));
     }
   }
 
@@ -265,7 +254,7 @@ public class ExactOrderStatistics {
       throw new NoSuchElementException();
     } else {
       nums.sortThis();
-      return nums.get((int) Math.ceil(nums.size() * phi));
+      return nums.get(discreteNearestRankIndex(nums.size(), phi));
     }
   }
 
@@ -279,12 +268,6 @@ public class ExactOrderStatistics {
         return Float.toString(getPercentile(floatArrayList, phi));
       case DOUBLE:
         return Double.toString(getPercentile(doubleArrayList, phi));
-      case STRING:
-      case TEXT:
-      case BOOLEAN:
-      case BLOB:
-      case DATE:
-      case TIMESTAMP:
       default:
         // This will not happen.
         throw new UDFInputSeriesDataTypeNotValidException(
@@ -297,7 +280,7 @@ public class ExactOrderStatistics {
       throw new NoSuchElementException();
     } else {
       nums.sortThis();
-      return nums.get((int) Math.ceil(nums.size() * phi));
+      return nums.get(discreteNearestRankIndex(nums.size(), phi));
     }
   }
 
@@ -306,7 +289,7 @@ public class ExactOrderStatistics {
       throw new NoSuchElementException();
     } else {
       nums.sortThis();
-      return nums.get((int) Math.ceil(nums.size() * phi));
+      return nums.get(discreteNearestRankIndex(nums.size(), phi));
     }
   }
 }

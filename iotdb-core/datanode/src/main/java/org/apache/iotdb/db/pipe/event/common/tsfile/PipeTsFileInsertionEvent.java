@@ -99,6 +99,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
 
   protected volatile ProgressIndex overridingProgressIndex;
   private Set<String> tableNames;
+  private String tsFileDedupScopeID;
 
   // This is set to check the tsFile paths by privilege
   private Map<IDeviceID, String[]> treeSchemaMap;
@@ -398,11 +399,24 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   }
 
   public void eliminateProgressIndex() {
-    if (Objects.isNull(overridingProgressIndex) && Objects.nonNull(resource)) {
+    if (Objects.isNull(overridingProgressIndex)
+        && Objects.nonNull(resource)
+        && Objects.nonNull(tsFileDedupScopeID)) {
       PipeTsFileEpochProgressIndexKeeper.getInstance()
           .eliminateProgressIndex(
-              Integer.parseInt(resource.getDataRegionId()), pipeName, resource.getTsFilePath());
+              Integer.parseInt(resource.getDataRegionId()),
+              tsFileDedupScopeID,
+              resource.getTsFilePath());
     }
+  }
+
+  public PipeTsFileInsertionEvent bindTsFileDedupScopeID(final String tsFileDedupScopeID) {
+    this.tsFileDedupScopeID = tsFileDedupScopeID;
+    return this;
+  }
+
+  public String getTsFileDedupScopeID() {
+    return tsFileDedupScopeID;
   }
 
   @Override
@@ -419,25 +433,26 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
       final long startTime,
       final long endTime) {
     return new PipeTsFileInsertionEvent(
-        getRawIsTableModelEvent(),
-        getSourceDatabaseNameFromDataRegion(),
-        resource,
-        tsFile,
-        isWithMod,
-        isLoaded,
-        isGeneratedByHistoricalExtractor,
-        tableNames,
-        pipeName,
-        creationTime,
-        pipeTaskMeta,
-        treePattern,
-        tablePattern,
-        userId,
-        userName,
-        cliHostname,
-        skipIfNoPrivileges,
-        startTime,
-        endTime);
+            getRawIsTableModelEvent(),
+            getSourceDatabaseNameFromDataRegion(),
+            resource,
+            tsFile,
+            isWithMod,
+            isLoaded,
+            isGeneratedByHistoricalExtractor,
+            tableNames,
+            pipeName,
+            creationTime,
+            pipeTaskMeta,
+            treePattern,
+            tablePattern,
+            userId,
+            userName,
+            cliHostname,
+            skipIfNoPrivileges,
+            startTime,
+            endTime)
+        .bindTsFileDedupScopeID(tsFileDedupScopeID);
   }
 
   @Override
