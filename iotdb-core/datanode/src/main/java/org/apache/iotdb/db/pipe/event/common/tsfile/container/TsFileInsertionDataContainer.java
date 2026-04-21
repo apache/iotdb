@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.pipe.event.common.tsfile.parser.table.TsFileInsertionEventTableParser;
 import org.apache.iotdb.db.pipe.metric.overview.PipeTsFileToTabletsMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
@@ -104,7 +103,7 @@ public abstract class TsFileInsertionDataContainer implements AutoCloseable {
         getClass().getSimpleName(),
         pipeName,
         creationTime,
-        this instanceof TsFileInsertionEventTableParser ? tablePattern : treePattern,
+        pattern,
         startTime,
         endTime,
         isWithMod);
