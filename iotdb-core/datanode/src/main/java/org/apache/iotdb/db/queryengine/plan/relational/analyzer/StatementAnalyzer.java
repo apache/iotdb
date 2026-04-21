@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
+import org.apache.iotdb.calc_commons.plan.relational.metadata.CommonMetadataUtils;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.node_commons.common.SessionInfo;
@@ -118,7 +119,6 @@ import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
-import org.apache.iotdb.calc_commons.plan.relational.metadata.CommonMetadataUtils;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext.ExplainType;
 import org.apache.iotdb.db.queryengine.execution.warnings.IoTDBWarning;
@@ -270,6 +270,7 @@ import static java.lang.Math.toIntExact;
 import static java.util.Collections.emptyList;
 import static java.util.Locale.ENGLISH;
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.calc_commons.plan.relational.metadata.CommonMetadataUtils.isTimestampType;
 import static org.apache.iotdb.commons.node_commons.plan.relational.function.tvf.ForecastTableFunction.TIMECOL_PARAMETER_NAME;
 import static org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.DereferenceExpression.getQualifiedName;
 import static org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.Join.Type.FULL;
@@ -279,7 +280,6 @@ import static org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.Join
 import static org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.PatternRecognitionRelation.RowsPerMatch.ONE;
 import static org.apache.iotdb.commons.schema.table.TsTable.TABLE_ALLOWED_PROPERTIES;
 import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction.DATE_BIN;
-import static org.apache.iotdb.calc_commons.plan.relational.metadata.CommonMetadataUtils.isTimestampType;
 import static org.apache.iotdb.db.queryengine.execution.warnings.StandardWarningCode.REDUNDANT_ORDER_BY;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.AggregationAnalyzer.verifyOrderByAggregations;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.AggregationAnalyzer.verifySourceAggregations;

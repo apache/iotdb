@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.util;
 
-import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.calc_commons.transformation.dag.util.BitwiseUtils;
+import org.apache.iotdb.commons.exception.SemanticException;
 
 import org.junit.Assert;
 import org.junit.Test;

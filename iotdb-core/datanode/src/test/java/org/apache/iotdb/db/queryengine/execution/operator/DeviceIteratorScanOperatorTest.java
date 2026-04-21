@@ -19,11 +19,11 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator;
 
+import org.apache.iotdb.calc_commons.execution.operator.Operator;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.node_commons.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.path.AlignedFullPath;
-import org.apache.iotdb.calc_commons.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.common.QueryId;

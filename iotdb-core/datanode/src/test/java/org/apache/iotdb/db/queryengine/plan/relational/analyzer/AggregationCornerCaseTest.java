@@ -19,14 +19,14 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
-import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
-import org.apache.iotdb.commons.node_commons.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.commons.node_commons.plan.relational.planner.SortOrder;
-import org.apache.iotdb.commons.node_commons.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.calc_commons.execution.operator.Operator;
 import org.apache.iotdb.calc_commons.execution.operator.source.relational.aggregation.grouped.GroupedAggregator;
 import org.apache.iotdb.calc_commons.execution.operator.source.relational.aggregation.grouped.HashAggregationOperator;
 import org.apache.iotdb.calc_commons.execution.operator.source.relational.aggregation.grouped.StreamingHashAggregationOperator;
+import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.node_commons.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.node_commons.plan.relational.planner.SortOrder;
+import org.apache.iotdb.commons.node_commons.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
@@ -52,15 +52,15 @@ import java.util.Collections;
 import java.util.List;
 import java.util.OptionalInt;
 
+import static org.apache.iotdb.calc_commons.execution.operator.process.join.merge.MergeSortComparator.getComparatorForTable;
+import static org.apache.iotdb.calc_commons.execution.operator.source.relational.aggregation.AccumulatorFactory.createGroupedAccumulator;
+import static org.apache.iotdb.calc_commons.plan.planner.CommonOperatorUtils.TIME_COLUMN_TEMPLATE;
 import static org.apache.iotdb.commons.node_commons.execution.operator.source.relational.aggregation.grouped.hash.GroupByHash.DEFAULT_GROUP_NUMBER;
 import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFunction.EXTREME;
 import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFunction.FIRST;
 import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFunction.LAST;
 import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFunction.SUM;
 import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFunction.getAggregationTypeByFuncName;
-import static org.apache.iotdb.calc_commons.execution.operator.process.join.merge.MergeSortComparator.getComparatorForTable;
-import static org.apache.iotdb.calc_commons.execution.operator.source.relational.aggregation.AccumulatorFactory.createGroupedAccumulator;
-import static org.apache.iotdb.calc_commons.plan.planner.CommonOperatorUtils.TIME_COLUMN_TEMPLATE;
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;

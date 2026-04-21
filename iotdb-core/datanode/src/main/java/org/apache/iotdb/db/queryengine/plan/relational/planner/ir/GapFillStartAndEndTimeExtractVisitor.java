@@ -34,13 +34,13 @@ import javax.annotation.Nullable;
 
 import java.time.ZoneId;
 
+import static org.apache.iotdb.calc_commons.transformation.dag.column.unary.scalar.DateBinFunctionColumnTransformer.dateBin;
 import static org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.ComparisonExpression.Operator.GREATER_THAN;
 import static org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.ComparisonExpression.Operator.GREATER_THAN_OR_EQUAL;
 import static org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.ComparisonExpression.Operator.LESS_THAN;
 import static org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.ComparisonExpression.Operator.LESS_THAN_OR_EQUAL;
 import static org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.LogicalExpression.Operator.AND;
 import static org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.LogicalExpression.Operator.OR;
-import static org.apache.iotdb.calc_commons.transformation.dag.column.unary.scalar.DateBinFunctionColumnTransformer.dateBin;
 
 public class GapFillStartAndEndTimeExtractVisitor
     implements AstVisitor<Boolean, GapFillStartAndEndTimeExtractVisitor.Context> {

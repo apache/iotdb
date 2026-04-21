@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
+import org.apache.iotdb.calc_commons.transformation.dag.util.CastFunctionUtils;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.node_commons.common.SessionInfo;
 import org.apache.iotdb.commons.node_commons.plan.relational.analyzer.NodeRef;
@@ -48,7 +49,6 @@ import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.SearchedCas
 import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.SimpleCaseExpression;
 import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.WhenClause;
-import org.apache.iotdb.calc_commons.transformation.dag.util.CastFunctionUtils;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.DeterminismEvaluator;
@@ -77,10 +77,10 @@ import static com.google.common.base.Verify.verify;
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static com.google.common.collect.Iterables.getOnlyElement;
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.calc_commons.transformation.dag.column.unary.scalar.ExtractTransformer.constructEvaluateFunction;
 import static org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.ArithmeticUnaryExpression.Sign.MINUS;
 import static org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.ArithmeticUnaryExpression.Sign.PLUS;
 import static org.apache.iotdb.commons.node_commons.plan.relational.type.TypeSignatureTranslator.toTypeSignature;
-import static org.apache.iotdb.calc_commons.transformation.dag.column.unary.scalar.ExtractTransformer.constructEvaluateFunction;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.DeterminismEvaluator.isDeterministic;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils.isEffectivelyLiteral;
 

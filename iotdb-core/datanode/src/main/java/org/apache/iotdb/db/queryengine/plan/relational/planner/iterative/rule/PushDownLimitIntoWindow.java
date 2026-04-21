@@ -19,13 +19,13 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule;
 
+import org.apache.iotdb.calc_commons.plan.relational.utils.matching.Capture;
+import org.apache.iotdb.calc_commons.plan.relational.utils.matching.Captures;
+import org.apache.iotdb.calc_commons.plan.relational.utils.matching.Pattern;
 import org.apache.iotdb.commons.node_commons.common.SessionInfo;
 import org.apache.iotdb.commons.node_commons.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.commons.node_commons.plan.relational.planner.node.TopKRankingNode;
 import org.apache.iotdb.commons.node_commons.plan.relational.planner.node.WindowNode;
-import org.apache.iotdb.calc_commons.plan.relational.utils.matching.Capture;
-import org.apache.iotdb.calc_commons.plan.relational.utils.matching.Captures;
-import org.apache.iotdb.calc_commons.plan.relational.utils.matching.Pattern;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Rule;
 
 import com.google.common.collect.ImmutableList;
@@ -34,8 +34,8 @@ import java.util.Optional;
 
 import static com.google.common.collect.Iterables.getOnlyElement;
 import static java.lang.Math.toIntExact;
-import static org.apache.iotdb.commons.node_commons.plan.relational.planner.node.TopKRankingNode.RankingType.ROW_NUMBER;
 import static org.apache.iotdb.calc_commons.plan.relational.utils.matching.Capture.newCapture;
+import static org.apache.iotdb.commons.node_commons.plan.relational.planner.node.TopKRankingNode.RankingType.ROW_NUMBER;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.Util.toTopNRankingType;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.ChildReplacer.replaceChildren;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.limit;

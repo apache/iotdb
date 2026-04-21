@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.qp.sql;
 
+import org.apache.iotdb.calc_commons.utils.constant.SqlConstant;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.SemanticException;
-import org.apache.iotdb.calc_commons.utils.constant.SqlConstant;
 import org.apache.iotdb.db.queryengine.plan.parser.ASTVisitor;
 
 import org.junit.After;

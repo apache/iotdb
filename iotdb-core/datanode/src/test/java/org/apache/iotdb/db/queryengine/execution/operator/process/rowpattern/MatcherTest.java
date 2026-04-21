@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern;
 
-import org.apache.iotdb.commons.node_commons.plan.relational.planner.rowpattern.IrLabel;
-import org.apache.iotdb.commons.node_commons.plan.relational.planner.rowpattern.IrRowPattern;
 import org.apache.iotdb.calc_commons.execution.operator.process.rowpattern.PatternAggregator;
 import org.apache.iotdb.calc_commons.execution.operator.process.rowpattern.PatternVariableRecognizer;
 import org.apache.iotdb.calc_commons.execution.operator.process.rowpattern.matcher.ArrayView;
@@ -29,6 +27,8 @@ import org.apache.iotdb.calc_commons.execution.operator.process.rowpattern.match
 import org.apache.iotdb.calc_commons.execution.operator.process.rowpattern.matcher.Matcher;
 import org.apache.iotdb.calc_commons.execution.operator.process.rowpattern.matcher.Program;
 import org.apache.iotdb.calc_commons.execution.operator.process.window.partition.Partition;
+import org.apache.iotdb.commons.node_commons.plan.relational.planner.rowpattern.IrLabel;
+import org.apache.iotdb.commons.node_commons.plan.relational.planner.rowpattern.IrRowPattern;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;

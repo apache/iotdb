@@ -19,10 +19,10 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement.crud;
 
+import org.apache.iotdb.calc_commons.exception.QueryProcessException;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaValidation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertRows;

@@ -21,11 +21,11 @@ package org.apache.iotdb.db.queryengine.execution.operator.process.ai;
 
 import org.apache.iotdb.ainode.rpc.thrift.TInferenceReq;
 import org.apache.iotdb.ainode.rpc.thrift.TInferenceResp;
+import org.apache.iotdb.calc_commons.execution.operator.Operator;
+import org.apache.iotdb.calc_commons.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.node_commons.execution.MemoryEstimationHelper;
-import org.apache.iotdb.calc_commons.execution.operator.Operator;
-import org.apache.iotdb.calc_commons.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.db.exception.ainode.AINodeConnectionException;
 import org.apache.iotdb.db.exception.runtime.ModelInferenceProcessException;
 import org.apache.iotdb.db.protocol.client.an.AINodeClient;

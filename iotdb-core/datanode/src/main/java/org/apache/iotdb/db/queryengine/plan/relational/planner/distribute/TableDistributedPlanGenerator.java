@@ -143,12 +143,12 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
+import static org.apache.iotdb.calc_commons.utils.constant.SqlConstant.COUNT;
 import static org.apache.iotdb.commons.node_commons.plan.relational.function.FunctionKind.AGGREGATE;
 import static org.apache.iotdb.commons.node_commons.plan.relational.metadata.FunctionNullability.getAggregationFunctionNullability;
 import static org.apache.iotdb.commons.node_commons.plan.relational.planner.node.AggregationNode.Step.FINAL;
 import static org.apache.iotdb.commons.node_commons.plan.relational.planner.node.AggregationNode.Step.SINGLE;
 import static org.apache.iotdb.commons.partition.DataPartition.NOT_ASSIGNED;
-import static org.apache.iotdb.calc_commons.utils.constant.SqlConstant.COUNT;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PushPredicateIntoTableScan.containsDiffFunction;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.TransformSortToStreamSort.isOrderByAllIdsAndTime;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.Util.split;

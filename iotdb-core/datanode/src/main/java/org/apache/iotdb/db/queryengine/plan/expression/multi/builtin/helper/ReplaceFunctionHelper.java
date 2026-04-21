@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.plan.expression.multi.builtin.helper;
 
-import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.calc_commons.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.calc_commons.transformation.dag.column.unary.scalar.ReplaceFunctionColumnTransformer;
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.builtin.BuiltInScalarFunctionHelper;
 import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;

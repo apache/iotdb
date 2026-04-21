@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.execution.aggregation;
 
-import org.apache.iotdb.commons.node_commons.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.calc_commons.execution.aggregation.Accumulator;
 import org.apache.iotdb.calc_commons.metric.QueryExecutionMetricSet;
+import org.apache.iotdb.commons.node_commons.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationStep;
 
 import org.apache.tsfile.block.column.Column;

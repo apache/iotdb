@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.parser;
 
+import org.apache.iotdb.calc_commons.exception.QueryProcessException;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.cluster.NodeStatus;
@@ -148,7 +149,6 @@ import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.execution.operator.process.copyto.CopyToOptions;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AddColumn;
@@ -309,6 +309,9 @@ import static java.lang.Long.parseLong;
 import static java.util.Locale.ENGLISH;
 import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.toList;
+import static org.apache.iotdb.calc_commons.utils.constant.SqlConstant.APPROX_COUNT_DISTINCT;
+import static org.apache.iotdb.calc_commons.utils.constant.SqlConstant.APPROX_MOST_FREQUENT;
+import static org.apache.iotdb.calc_commons.utils.constant.SqlConstant.APPROX_PERCENTILE;
 import static org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.AnchorPattern.Type.PARTITION_END;
 import static org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.AnchorPattern.Type.PARTITION_START;
 import static org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.GroupingSets.Type.CUBE;
@@ -332,9 +335,6 @@ import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.TAG;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.TIME;
 import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction.DATE_BIN;
-import static org.apache.iotdb.calc_commons.utils.constant.SqlConstant.APPROX_COUNT_DISTINCT;
-import static org.apache.iotdb.calc_commons.utils.constant.SqlConstant.APPROX_MOST_FREQUENT;
-import static org.apache.iotdb.calc_commons.utils.constant.SqlConstant.APPROX_PERCENTILE;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.DATABASE_NOT_SPECIFIED;
 import static org.apache.iotdb.db.queryengine.plan.parser.ASTVisitor.SERVICE_MANAGEMENT_NOT_SUPPORTED;
 import static org.apache.iotdb.db.queryengine.plan.parser.ASTVisitor.parseDateTimeFormat;

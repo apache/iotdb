@@ -19,11 +19,11 @@
 
 package org.apache.iotdb.db.queryengine.plan.expression.visitor.cartesian;
 
+import org.apache.iotdb.calc_commons.utils.constant.SqlConstant;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
-import org.apache.iotdb.calc_commons.utils.constant.SqlConstant;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils;

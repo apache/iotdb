@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational;
 
-import org.apache.iotdb.commons.node_commons.execution.MemoryEstimationHelper;
 import org.apache.iotdb.calc_commons.execution.operator.Operator;
 import org.apache.iotdb.calc_commons.plan.planner.CommonOperatorUtils;
+import org.apache.iotdb.commons.node_commons.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.source.AbstractDataSourceOperator;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;

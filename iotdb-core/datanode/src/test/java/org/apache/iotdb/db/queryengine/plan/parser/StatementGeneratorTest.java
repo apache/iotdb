@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.parser;
 
+import org.apache.iotdb.calc_commons.exception.QueryProcessException;
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.exception.IllegalPathException;
@@ -28,7 +29,6 @@ import org.apache.iotdb.commons.node_commons.plan.relational.metadata.ColumnSche
 import org.apache.iotdb.commons.node_commons.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.GreaterEqualExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.LessThanExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.LogicAndExpression;

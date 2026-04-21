@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.node;
 
+import org.apache.iotdb.calc_commons.plan.relational.utils.matching.Pattern;
+import org.apache.iotdb.calc_commons.plan.relational.utils.matching.Property;
 import org.apache.iotdb.commons.node_commons.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.node_commons.plan.relational.planner.Symbol;
 import org.apache.iotdb.commons.node_commons.plan.relational.planner.node.AggregationNode;
@@ -51,8 +53,6 @@ import org.apache.iotdb.commons.node_commons.plan.relational.planner.node.TopKRa
 import org.apache.iotdb.commons.node_commons.plan.relational.planner.node.UnionNode;
 import org.apache.iotdb.commons.node_commons.plan.relational.planner.node.WindowNode;
 import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.calc_commons.plan.relational.utils.matching.Pattern;
-import org.apache.iotdb.calc_commons.plan.relational.utils.matching.Property;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Lookup;
 
 import java.util.List;

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
+import org.apache.iotdb.calc_commons.plan.relational.metadata.CommonMetadataUtils;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.node_commons.common.SessionInfo;
 import org.apache.iotdb.commons.node_commons.plan.relational.analyzer.NodeRef;
@@ -85,7 +86,6 @@ import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.WhenClause;
 import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.WindowFrame;
 import org.apache.iotdb.commons.node_commons.plan.relational.type.TypeNotFoundException;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
-import org.apache.iotdb.calc_commons.plan.relational.metadata.CommonMetadataUtils;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
@@ -142,6 +142,13 @@ import static java.util.Collections.unmodifiableMap;
 import static java.util.Collections.unmodifiableSet;
 import static java.util.Locale.ENGLISH;
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.calc_commons.plan.relational.metadata.CommonMetadataUtils.isCharType;
+import static org.apache.iotdb.calc_commons.plan.relational.metadata.CommonMetadataUtils.isNumericType;
+import static org.apache.iotdb.calc_commons.plan.relational.metadata.CommonMetadataUtils.isTwoTypeComparable;
+import static org.apache.iotdb.calc_commons.utils.constant.SqlConstant.FIRST_AGGREGATION;
+import static org.apache.iotdb.calc_commons.utils.constant.SqlConstant.FIRST_BY_AGGREGATION;
+import static org.apache.iotdb.calc_commons.utils.constant.SqlConstant.LAST_AGGREGATION;
+import static org.apache.iotdb.calc_commons.utils.constant.SqlConstant.LAST_BY_AGGREGATION;
 import static org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.DereferenceExpression.isQualifiedAllFieldsReference;
 import static org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.FrameBound.Type.CURRENT_ROW;
 import static org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.FrameBound.Type.FOLLOWING;
@@ -152,13 +159,6 @@ import static org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.Wind
 import static org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.WindowFrame.Type.RANGE;
 import static org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.WindowFrame.Type.ROWS;
 import static org.apache.iotdb.commons.node_commons.plan.relational.type.TypeSignatureTranslator.toTypeSignature;
-import static org.apache.iotdb.calc_commons.plan.relational.metadata.CommonMetadataUtils.isCharType;
-import static org.apache.iotdb.calc_commons.plan.relational.metadata.CommonMetadataUtils.isNumericType;
-import static org.apache.iotdb.calc_commons.plan.relational.metadata.CommonMetadataUtils.isTwoTypeComparable;
-import static org.apache.iotdb.calc_commons.utils.constant.SqlConstant.FIRST_AGGREGATION;
-import static org.apache.iotdb.calc_commons.utils.constant.SqlConstant.FIRST_BY_AGGREGATION;
-import static org.apache.iotdb.calc_commons.utils.constant.SqlConstant.LAST_AGGREGATION;
-import static org.apache.iotdb.calc_commons.utils.constant.SqlConstant.LAST_BY_AGGREGATION;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.ExpressionTreeUtils.extractExpressions;
 import static org.apache.iotdb.db.queryengine.plan.relational.utils.NodeUtils.getSortItemsFromOrderBy;
 import static org.apache.tsfile.read.common.type.BlobType.BLOB;

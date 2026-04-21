@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze;
 
+import org.apache.iotdb.calc_commons.utils.constant.SqlConstant;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
@@ -40,7 +41,6 @@ import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
-import org.apache.iotdb.calc_commons.utils.constant.SqlConstant;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.ainode.GetModelInfoException;
@@ -173,6 +173,8 @@ import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkState;
+import static org.apache.iotdb.calc_commons.utils.constant.SqlConstant.COUNT_TIME_HEADER;
+import static org.apache.iotdb.calc_commons.utils.constant.SqlConstant.TREE_MODEL_DATABASE_PREFIX;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.ALLOWED_SCHEMA_PROPS;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.DEADBAND;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.LOSS;
@@ -180,8 +182,6 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCAR
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_PATTERN;
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.DEVICE;
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.ENDTIME;
-import static org.apache.iotdb.calc_commons.utils.constant.SqlConstant.COUNT_TIME_HEADER;
-import static org.apache.iotdb.calc_commons.utils.constant.SqlConstant.TREE_MODEL_DATABASE_PREFIX;
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.PARTITION_FETCHER;
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.SCHEMA_FETCHER;
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeUtils.removeLogicalView;

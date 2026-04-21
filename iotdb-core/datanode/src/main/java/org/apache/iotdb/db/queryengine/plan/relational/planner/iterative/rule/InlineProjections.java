@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule;
 
+import org.apache.iotdb.calc_commons.plan.relational.utils.matching.Capture;
+import org.apache.iotdb.calc_commons.plan.relational.utils.matching.Captures;
+import org.apache.iotdb.calc_commons.plan.relational.utils.matching.Pattern;
 import org.apache.iotdb.commons.node_commons.common.SessionInfo;
 import org.apache.iotdb.commons.node_commons.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.node_commons.plan.relational.planner.Assignments;
@@ -26,9 +29,6 @@ import org.apache.iotdb.commons.node_commons.plan.relational.planner.Symbol;
 import org.apache.iotdb.commons.node_commons.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.SymbolReference;
-import org.apache.iotdb.calc_commons.plan.relational.utils.matching.Capture;
-import org.apache.iotdb.calc_commons.plan.relational.utils.matching.Captures;
-import org.apache.iotdb.calc_commons.plan.relational.utils.matching.Pattern;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlannerContext;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolsExtractor;

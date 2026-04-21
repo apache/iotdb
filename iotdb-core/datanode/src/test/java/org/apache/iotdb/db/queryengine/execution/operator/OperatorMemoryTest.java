@@ -18,15 +18,6 @@
  */
 package org.apache.iotdb.db.queryengine.execution.operator;
 
-import org.apache.iotdb.common.rpc.thrift.TAggregationType;
-import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.node_commons.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.commons.path.AlignedFullPath;
-import org.apache.iotdb.commons.path.IFullPath;
-import org.apache.iotdb.commons.path.MeasurementPath;
-import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.calc_commons.execution.operator.Operator;
 import org.apache.iotdb.calc_commons.execution.operator.process.FilterAndProjectOperator;
 import org.apache.iotdb.calc_commons.execution.operator.process.LimitOperator;
@@ -38,6 +29,15 @@ import org.apache.iotdb.calc_commons.transformation.dag.column.binary.Arithmetic
 import org.apache.iotdb.calc_commons.transformation.dag.column.binary.CompareLessEqualColumnTransformer;
 import org.apache.iotdb.calc_commons.transformation.dag.column.leaf.ConstantColumnTransformer;
 import org.apache.iotdb.calc_commons.transformation.dag.column.leaf.TimeColumnTransformer;
+import org.apache.iotdb.common.rpc.thrift.TAggregationType;
+import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.node_commons.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.path.AlignedFullPath;
+import org.apache.iotdb.commons.path.IFullPath;
+import org.apache.iotdb.commons.path.MeasurementPath;
+import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.common.QueryId;

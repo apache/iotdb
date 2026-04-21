@@ -19,14 +19,14 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner;
 
+import org.apache.iotdb.calc_commons.exception.MemoryNotEnoughException;
+import org.apache.iotdb.calc_commons.execution.operator.Operator;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.memory.IMemoryBlock;
 import org.apache.iotdb.commons.memory.MemoryBlockType;
 import org.apache.iotdb.commons.node_commons.common.SqlDialect;
 import org.apache.iotdb.commons.node_commons.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.path.IFullPath;
-import org.apache.iotdb.calc_commons.exception.MemoryNotEnoughException;
-import org.apache.iotdb.calc_commons.execution.operator.Operator;
 import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;

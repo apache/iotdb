@@ -17,6 +17,7 @@
 
 package org.apache.iotdb.rest.protocol.v1.handler;
 
+import org.apache.iotdb.calc_commons.exception.QueryProcessException;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBException;
@@ -25,7 +26,6 @@ import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.DatabaseNotSetException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.rest.protocol.v1.model.ExecutionStatus;
 import org.apache.iotdb.rpc.TSStatusCode;

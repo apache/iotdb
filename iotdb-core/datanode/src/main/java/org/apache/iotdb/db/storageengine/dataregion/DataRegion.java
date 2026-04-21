@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.db.storageengine.dataregion;
 
+import org.apache.iotdb.calc_commons.exception.QueryProcessException;
+import org.apache.iotdb.calc_commons.plan.relational.metadata.CommonMetadataUtils;
+import org.apache.iotdb.calc_commons.utils.ObjectTypeUtils;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.cluster.NodeStatus;
@@ -51,8 +54,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TTableInfo;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.iot.IoTConsensus;
 import org.apache.iotdb.consensus.iot.IoTConsensusServerImpl;
-import org.apache.iotdb.calc_commons.plan.relational.metadata.CommonMetadataUtils;
-import org.apache.iotdb.calc_commons.utils.ObjectTypeUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
@@ -65,7 +66,6 @@ import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.WriteProcessRejectException;
 import org.apache.iotdb.db.exception.load.LoadFileException;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.quota.ExceedQuotaException;
 import org.apache.iotdb.db.exception.runtime.TableLostRuntimeException;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResource;

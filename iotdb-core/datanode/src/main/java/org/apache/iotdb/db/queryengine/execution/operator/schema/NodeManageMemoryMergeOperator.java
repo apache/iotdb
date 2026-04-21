@@ -19,13 +19,13 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.schema;
 
+import org.apache.iotdb.calc_commons.execution.operator.Operator;
+import org.apache.iotdb.calc_commons.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.commons.node_commons.execution.MemoryEstimationHelper;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.schema.node.MNodeType;
-import org.apache.iotdb.calc_commons.execution.operator.Operator;
-import org.apache.iotdb.calc_commons.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 
 import com.google.common.util.concurrent.ListenableFuture;

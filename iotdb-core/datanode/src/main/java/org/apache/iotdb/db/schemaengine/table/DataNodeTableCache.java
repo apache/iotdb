@@ -19,13 +19,13 @@
 
 package org.apache.iotdb.db.schemaengine.table;
 
+import org.apache.iotdb.calc_commons.plan.relational.metadata.CommonMetadataUtils;
 import org.apache.iotdb.commons.schema.table.NonCommittableTsTable;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TFetchTableResp;
-import org.apache.iotdb.calc_commons.plan.relational.metadata.CommonMetadataUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.ClusterConfigTaskExecutor;
 import org.apache.iotdb.rpc.TSStatusCode;

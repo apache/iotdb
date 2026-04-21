@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.common;
 
+import org.apache.iotdb.calc_commons.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.audit.AuditEventType;
@@ -32,7 +33,6 @@ import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.Query;
 import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.Table;
 import org.apache.iotdb.commons.node_commons.utils.cte.CteDataStore;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.calc_commons.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;

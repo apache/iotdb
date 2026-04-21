@@ -19,13 +19,13 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.copyto.tsfile;
 
+import org.apache.iotdb.calc_commons.utils.constant.SqlConstant;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.node_commons.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.commons.node_commons.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.commons.node_commons.plan.relational.planner.Symbol;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
-import org.apache.iotdb.calc_commons.utils.constant.SqlConstant;
 import org.apache.iotdb.db.queryengine.execution.operator.process.copyto.CopyToOptions;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.RelationPlan;

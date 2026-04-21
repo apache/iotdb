@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.db.schemaengine.schemaregion.impl;
 
+import org.apache.iotdb.calc_commons.execution.relational.ColumnTransformerBuilder;
+import org.apache.iotdb.calc_commons.transformation.dag.column.ColumnTransformer;
+import org.apache.iotdb.calc_commons.transformation.dag.column.leaf.LeafColumnTransformer;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.MetadataException;
@@ -42,9 +45,6 @@ import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.consensus.ConsensusFactory;
-import org.apache.iotdb.calc_commons.execution.relational.ColumnTransformerBuilder;
-import org.apache.iotdb.calc_commons.transformation.dag.column.ColumnTransformer;
-import org.apache.iotdb.calc_commons.transformation.dag.column.leaf.LeafColumnTransformer;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;

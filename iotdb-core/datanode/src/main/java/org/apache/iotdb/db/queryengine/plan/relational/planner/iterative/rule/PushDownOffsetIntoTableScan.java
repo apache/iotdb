@@ -19,10 +19,10 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule;
 
-import org.apache.iotdb.commons.node_commons.plan.relational.planner.node.OffsetNode;
 import org.apache.iotdb.calc_commons.plan.relational.utils.matching.Capture;
 import org.apache.iotdb.calc_commons.plan.relational.utils.matching.Captures;
 import org.apache.iotdb.calc_commons.plan.relational.utils.matching.Pattern;
+import org.apache.iotdb.commons.node_commons.plan.relational.planner.node.OffsetNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Rule;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;

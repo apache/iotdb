@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.scheduler;
 
+import org.apache.iotdb.calc_commons.metric.QueryExecutionMetricSet;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
@@ -34,7 +35,6 @@ import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
 import org.apache.iotdb.consensus.exception.RatisReadUnavailableException;
-import org.apache.iotdb.calc_commons.metric.QueryExecutionMetricSet;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.mpp.FragmentInstanceDispatchException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;

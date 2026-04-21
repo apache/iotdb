@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner.memory;
 
-import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.calc_commons.execution.operator.Operator;
+import org.apache.iotdb.commons.utils.TestOnly;
 
 public class ConsumeChildrenOneByOnePipelineMemoryEstimator extends PipelineMemoryEstimator {
 

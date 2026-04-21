@@ -103,6 +103,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
 import static com.google.common.collect.ImmutableMap.toImmutableMap;
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.calc_commons.plan.relational.planner.ir.GlobalTimePredicateExtractVisitor.extractGlobalTimeFilter;
 import static org.apache.iotdb.commons.node_commons.plan.relational.planner.SortOrder.ASC_NULLS_FIRST;
 import static org.apache.iotdb.commons.node_commons.plan.relational.planner.SortOrder.ASC_NULLS_LAST;
 import static org.apache.iotdb.commons.node_commons.plan.relational.planner.SortOrder.DESC_NULLS_LAST;
@@ -117,7 +118,6 @@ import static org.apache.iotdb.commons.schema.table.InformationSchema.CURRENT_QU
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.ATTRIBUTE;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.FIELD;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.TIME;
-import static org.apache.iotdb.calc_commons.plan.relational.planner.ir.GlobalTimePredicateExtractVisitor.extractGlobalTimeFilter;
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.PARTITION_FETCHER;
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.SCHEMA_FETCHER;
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.getTimePartitionSlotList;

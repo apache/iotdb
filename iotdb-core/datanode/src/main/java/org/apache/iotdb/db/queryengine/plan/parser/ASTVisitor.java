@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.parser;
 
+import org.apache.iotdb.calc_commons.utils.constant.SqlConstant;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TTimedQuota;
 import org.apache.iotdb.common.rpc.thrift.ThrottleType;
@@ -51,7 +52,6 @@ import org.apache.iotdb.commons.schema.filter.SchemaFilterFactory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
-import org.apache.iotdb.calc_commons.utils.constant.SqlConstant;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser;
@@ -302,15 +302,6 @@ import java.util.stream.Collectors;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static java.util.stream.Collectors.toList;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TIMESERIES_COMPRESSION;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TIMESERIES_COMPRESSOR;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TIMESERIES_ENCODING;
-import static org.apache.iotdb.commons.node_commons.utils.TimestampPrecisionUtils.TIMESTAMP_PRECISION;
-import static org.apache.iotdb.commons.node_commons.utils.TimestampPrecisionUtils.currPrecision;
-import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_RESULT_NODES;
-import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.FIELD;
-import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.TAG;
-import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.TIME;
 import static org.apache.iotdb.calc_commons.transformation.dag.util.CommonTransformUtils.getEscapeCharacter;
 import static org.apache.iotdb.calc_commons.utils.constant.SqlConstant.CAST_FUNCTION;
 import static org.apache.iotdb.calc_commons.utils.constant.SqlConstant.CAST_TYPE;
@@ -323,6 +314,15 @@ import static org.apache.iotdb.calc_commons.utils.constant.SqlConstant.SUBSTRING
 import static org.apache.iotdb.calc_commons.utils.constant.SqlConstant.SUBSTRING_IS_STANDARD;
 import static org.apache.iotdb.calc_commons.utils.constant.SqlConstant.SUBSTRING_LENGTH;
 import static org.apache.iotdb.calc_commons.utils.constant.SqlConstant.SUBSTRING_START;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TIMESERIES_COMPRESSION;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TIMESERIES_COMPRESSOR;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TIMESERIES_ENCODING;
+import static org.apache.iotdb.commons.node_commons.utils.TimestampPrecisionUtils.TIMESTAMP_PRECISION;
+import static org.apache.iotdb.commons.node_commons.utils.TimestampPrecisionUtils.currPrecision;
+import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_RESULT_NODES;
+import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.FIELD;
+import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.TAG;
+import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.TIME;
 import static org.apache.iotdb.db.queryengine.plan.optimization.LimitOffsetPushDown.canPushDownLimitOffsetToGroupByTime;
 import static org.apache.iotdb.db.queryengine.plan.optimization.LimitOffsetPushDown.pushDownLimitOffsetToTimeParameter;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.parser.AstBuilder.lowerIdentifier;

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
+import org.apache.iotdb.calc_commons.plan.relational.metadata.CommonMetadataUtils;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.node_commons.common.SessionInfo;
 import org.apache.iotdb.commons.node_commons.plan.planner.plan.node.PlanNode;
@@ -42,7 +43,6 @@ import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.calc_commons.plan.relational.metadata.CommonMetadataUtils;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;

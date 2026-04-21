@@ -19,10 +19,10 @@
 
 package org.apache.iotdb.db.queryengine.plan.expression;
 
+import org.apache.iotdb.calc_commons.transformation.dag.udf.UDTFExecutor;
 import org.apache.iotdb.commons.node_commons.common.NodeRef;
 import org.apache.iotdb.commons.node_commons.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.calc_commons.transformation.dag.udf.UDTFExecutor;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.AdditionExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.DivisionExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.EqualToExpression;

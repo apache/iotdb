@@ -19,9 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner.distribution;
 
-import org.apache.iotdb.common.rpc.thrift.TAggregationType;
-import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.calc_commons.execution.operator.source.relational.aggregation.AccumulatorFactory;
 import org.apache.iotdb.calc_commons.execution.operator.source.relational.aggregation.FirstAccumulator;
 import org.apache.iotdb.calc_commons.execution.operator.source.relational.aggregation.FirstByAccumulator;
@@ -32,6 +29,9 @@ import org.apache.iotdb.calc_commons.execution.operator.source.relational.aggreg
 import org.apache.iotdb.calc_commons.execution.operator.source.relational.aggregation.LastByDescAccumulator;
 import org.apache.iotdb.calc_commons.execution.operator.source.relational.aggregation.LastDescAccumulator;
 import org.apache.iotdb.calc_commons.execution.operator.source.relational.aggregation.TableAccumulator;
+import org.apache.iotdb.common.rpc.thrift.TAggregationType;
+import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.commons.node_commons.plan.relational.sql.ast.SymbolReference;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.junit.Test;
