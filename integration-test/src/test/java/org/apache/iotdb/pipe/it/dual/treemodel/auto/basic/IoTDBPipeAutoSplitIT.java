@@ -111,8 +111,8 @@ public class IoTDBPipeAutoSplitIT extends AbstractPipeDualTreeModelAutoIT {
     TestUtils.executeNonQueries(
         senderEnv,
         Arrays.asList(
-            "drop pipe a2b_history",
-            "drop pipe a2b_realtime",
+            "drop pipe if exists a2b_history",
+            "drop pipe if exists a2b_realtime",
             String.format(
                 "create pipe a2b1 with source ('inclusion'='schema') with sink ('node-urls'='%s')",
                 receiverDataNode.getIpAndPortString()),
