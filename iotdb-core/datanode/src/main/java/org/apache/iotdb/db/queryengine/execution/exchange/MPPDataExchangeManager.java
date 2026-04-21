@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeMPPDataExchangeServiceClient;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.queryengine.exception.exchange.GetTsBlockFromClosedOrAbortedChannelException;
 import org.apache.iotdb.db.queryengine.execution.driver.DriverContext;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.DownStreamChannelIndex;
@@ -656,7 +657,11 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
       }
       queue =
           new SharedTsBlockQueue(
-              localFragmentInstanceId, localPlanNodeId, localMemoryManager, executorService);
+              localFragmentInstanceId,
+              localPlanNodeId,
+              localMemoryManager,
+              executorService,
+              instanceContext.isHighestPriority());
     }
 
     return new LocalSinkChannel(
@@ -680,7 +685,8 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
             driverContext.getDriverTaskID().getFragmentInstanceId().toThrift(),
             planNodeId,
             localMemoryManager,
-            executorService);
+            executorService,
+            driverContext.getFragmentInstanceContext().isHighestPriority());
     queue.allowAddingTsBlock();
     return new LocalSinkChannel(
         queue,
@@ -718,6 +724,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
         tsBlockSerdeFactory.get(),
         new ISinkChannelListenerImpl(
             localFragmentInstanceId, instanceContext, instanceContext::failed, cnt),
+        instanceContext.isHighestPriority(),
         mppDataExchangeServiceClientManager);
   }
 
@@ -802,6 +809,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
         context.getDriverTaskID().toString());
   }
 
+  @TestOnly
   public synchronized ISourceHandle createLocalSourceHandleForFragment(
       TFragmentInstanceId localFragmentInstanceId,
       String localPlanNodeId,
@@ -809,6 +817,24 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
       TFragmentInstanceId remoteFragmentInstanceId,
       int index,
       IMPPDataExchangeManagerCallback<Throwable> onFailureCallback) {
+    return createLocalSourceHandleForFragment(
+        localFragmentInstanceId,
+        localPlanNodeId,
+        remotePlanNodeId,
+        remoteFragmentInstanceId,
+        index,
+        onFailureCallback,
+        false);
+  }
+
+  public synchronized ISourceHandle createLocalSourceHandleForFragment(
+      TFragmentInstanceId localFragmentInstanceId,
+      String localPlanNodeId,
+      String remotePlanNodeId,
+      TFragmentInstanceId remoteFragmentInstanceId,
+      int index,
+      IMPPDataExchangeManagerCallback<Throwable> onFailureCallback,
+      boolean isHighestPriority) {
     if (sourceHandles.containsKey(localFragmentInstanceId)
         && sourceHandles.get(localFragmentInstanceId).containsKey(localPlanNodeId)) {
       throw new IllegalStateException(
@@ -840,7 +866,11 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
       }
       queue =
           new SharedTsBlockQueue(
-              remoteFragmentInstanceId, remotePlanNodeId, localMemoryManager, executorService);
+              remoteFragmentInstanceId,
+              remotePlanNodeId,
+              localMemoryManager,
+              executorService,
+              isHighestPriority);
     }
     LocalSourceHandle localSourceHandle =
         new LocalSourceHandle(
@@ -854,6 +884,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
     return localSourceHandle;
   }
 
+  @TestOnly
   @Override
   public ISourceHandle createSourceHandle(
       TFragmentInstanceId localFragmentInstanceId,
@@ -862,6 +893,24 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
       TEndPoint remoteEndpoint,
       TFragmentInstanceId remoteFragmentInstanceId,
       IMPPDataExchangeManagerCallback<Throwable> onFailureCallback) {
+    return createSourceHandle(
+        localFragmentInstanceId,
+        localPlanNodeId,
+        indexOfUpstreamSinkHandle,
+        remoteEndpoint,
+        remoteFragmentInstanceId,
+        onFailureCallback,
+        false);
+  }
+
+  public ISourceHandle createSourceHandle(
+      TFragmentInstanceId localFragmentInstanceId,
+      String localPlanNodeId,
+      int indexOfUpstreamSinkHandle,
+      TEndPoint remoteEndpoint,
+      TFragmentInstanceId remoteFragmentInstanceId,
+      IMPPDataExchangeManagerCallback<Throwable> onFailureCallback,
+      boolean isHighestPriority) {
     Map<String, ISourceHandle> sourceHandleMap = sourceHandles.get(localFragmentInstanceId);
     if (sourceHandleMap != null && sourceHandleMap.containsKey(localPlanNodeId)) {
       throw new IllegalStateException(
@@ -891,6 +940,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
             executorService,
             tsBlockSerdeFactory.get(),
             new SourceHandleListenerImpl(onFailureCallback),
+            isHighestPriority,
             mppDataExchangeServiceClientManager);
     sourceHandles
         .computeIfAbsent(localFragmentInstanceId, key -> new ConcurrentHashMap<>())
