@@ -130,6 +130,12 @@ public class MPPQueryContext implements IAuditEntity {
 
   private boolean userQuery = false;
 
+  /**
+   * When true (e.g. SHOW QUERIES), operator and exchange memory may use fallback when pool is
+   * insufficient. Set from analysis via {@link #setNeedSetHighestPriority(boolean)}.
+   */
+  private boolean needSetHighestPriority = false;
+
   private boolean debug = false;
 
   private Map<NodeRef<Table>, Query> cteQueries = new HashMap<>();
@@ -506,6 +512,14 @@ public class MPPQueryContext implements IAuditEntity {
 
   public void setUserQuery(boolean userQuery) {
     this.userQuery = userQuery;
+  }
+
+  public boolean needSetHighestPriority() {
+    return needSetHighestPriority;
+  }
+
+  public void setNeedSetHighestPriority(boolean needSetHighestPriority) {
+    this.needSetHighestPriority = needSetHighestPriority;
   }
 
   public boolean isDebug() {

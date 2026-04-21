@@ -267,6 +267,7 @@ public class FragmentInstance implements IConsensusRequest {
     fragmentInstance.hostDataNode =
         hasHostDataNode ? ThriftCommonsSerDeUtils.deserializeTDataNodeLocation(buffer) : null;
     fragmentInstance.isExplainAnalyze = ReadWriteIOUtils.readBool(buffer);
+    fragmentInstance.setHighestPriority(ReadWriteIOUtils.readBool(buffer));
     return fragmentInstance;
   }
 
@@ -293,6 +294,7 @@ public class FragmentInstance implements IConsensusRequest {
         ThriftCommonsSerDeUtils.serializeTDataNodeLocation(hostDataNode, outputStream);
       }
       ReadWriteIOUtils.write(isExplainAnalyze, outputStream);
+      ReadWriteIOUtils.write(isHighestPriority, outputStream);
       return ByteBuffer.wrap(publicBAOS.getBuf(), 0, publicBAOS.size());
     } catch (IOException e) {
       LOGGER.error("Unexpected error occurs when serializing this FragmentInstance.", e);
