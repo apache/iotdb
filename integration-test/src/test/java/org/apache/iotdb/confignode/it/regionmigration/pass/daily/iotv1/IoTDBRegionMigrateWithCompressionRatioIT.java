@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.it.regionmigration.pass.daily.iotv1;
 
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 
 import org.apache.tsfile.utils.Pair;
 import org.awaitility.Awaitility;
@@ -29,6 +30,10 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
@@ -61,8 +66,9 @@ public class IoTDBRegionMigrateWithCompressionRatioIT {
         Statement statement = connection.createStatement()) {
       statement.execute("CREATE DATABASE test");
       statement.execute("USE test");
-      statement.execute("CREATE TABLE t1 (s1 INT64 FIELD)");
-      statement.execute("INSERT INTO t1 (time, s1) VALUES (100, 100)");
+      statement.execute("CREATE TABLE t1 (s1 INT64 FIELD, s2 OBJECT FIELD)");
+      statement.execute(
+          "INSERT INTO t1 (time, s1, s2) VALUES (100, 100, to_object(true, 0, X'cafe'))");
       statement.execute("FLUSH");
 
       Map<Integer, Pair<Integer, Set<Integer>>> dataRegionMapWithLeader =
@@ -125,6 +131,36 @@ public class IoTDBRegionMigrateWithCompressionRatioIT {
                 Assert.assertEquals(
                     finalCompressionRatioBeforeMigration, compressionRatioAfterMigration, 0.0001);
               });
+
+      try (ResultSet resultSet =
+          statement.executeQuery("SELECT read_object(s2) FROM t1 WHERE time = 100")) {
+        Assert.assertTrue(resultSet.next());
+        Assert.assertArrayEquals(new byte[] {(byte) 0xCA, (byte) 0xFE}, resultSet.getBytes(1));
+      }
+
+      final DataNodeWrapper newLeaderWrapper =
+          EnvFactory.getEnv().dataNodeIdToWrapper(newLeaderId).get();
+      Awaitility.await()
+          .atMost(2, TimeUnit.MINUTES)
+          .pollDelay(1, TimeUnit.SECONDS)
+          .untilAsserted(
+              () ->
+                  Assert.assertTrue(hasObjectFileForRegion(newLeaderWrapper, dataRegionIdForTest)));
+    }
+  }
+
+  private static boolean hasObjectFileForRegion(DataNodeWrapper dataNodeWrapper, int regionId) {
+    Path regionObjectDir =
+        Paths.get(dataNodeWrapper.getDataNodeObjectDir(), String.valueOf(regionId));
+    if (!Files.exists(regionObjectDir) || !Files.isDirectory(regionObjectDir)) {
+      return false;
+    }
+    try {
+      return Files.walk(regionObjectDir).anyMatch(path -> Files.isRegularFile(path));
+    } catch (IOException e) {
+      throw new RuntimeException(
+          String.format("Failed to check object files under %s", regionObjectDir.toAbsolutePath()),
+          e);
     }
   }
 }

@@ -70,6 +70,12 @@ public class ObjectTypeUtils {
 
   private ObjectTypeUtils() {}
 
+  public static boolean isObjectCandidate(String fileName) {
+    return fileName.endsWith(OBJECT_FILE_SUFFIX)
+        || fileName.endsWith(OBJECT_TEMP_FILE_SUFFIX)
+        || fileName.endsWith(OBJECT_BACK_FILE_SUFFIX);
+  }
+
   public static ByteBuffer readObjectContent(
       Binary binary, long offset, int length, boolean mayNotInCurrentNode) {
     Pair<Long, String> objectLengthPathPair =
