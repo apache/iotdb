@@ -619,7 +619,7 @@ public class IoTDBTableIT {
 
       // Test time column
       // More time column tests are included in other IT
-      statement.execute("create table test100 (t1 time)");
+      statement.execute("create table test100 (t1 time) with (ttl='INF')");
       statement.execute("create table test101 (t1 timestamp time)");
 
       TestUtils.assertResultSetEqual(
