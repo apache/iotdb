@@ -137,10 +137,12 @@ public class ShowCreateTableTask extends AbstractTableTask {
     if (table.getPropValue(TsTable.COMMENT_KEY).isPresent()) {
       builder.append(" COMMENT ").append(getString(table.getPropValue(TsTable.COMMENT_KEY).get()));
     }
-    builder
-        .append(" WITH (ttl=")
-        .append(table.getPropValue(TsTable.TTL_PROPERTY).orElse("'" + TTL_INFINITE + "'"))
-        .append(")");
+
+    String ttlString = table.getPropValue(TsTable.TTL_PROPERTY).orElse(TTL_INFINITE);
+    if (ttlString.equals(TTL_INFINITE)) {
+      ttlString = "'" + ttlString + "'";
+    }
+    builder.append(" WITH (ttl=").append(ttlString).append(")");
 
     return builder.toString();
   }
