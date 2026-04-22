@@ -125,6 +125,7 @@ public class QueryExecution implements IQueryExecution {
     this.context = context;
     this.planner = planner;
     this.analysis = analyze(context);
+    context.setNeedSetHighestPriority(analysis.needSetHighestPriority());
     this.stateMachine = new QueryStateMachine(context.getQueryId(), executor);
 
     // We add the abort logic inside the QueryExecution.
@@ -587,7 +588,8 @@ public class QueryExecution implements IQueryExecution {
                     context.getResultNodeContext().getUpStreamPlanNodeId().getId(),
                     context.getResultNodeContext().getUpStreamFragmentInstanceId().toThrift(),
                     0, // Upstream of result ExchangeNode will only have one child.
-                    stateMachine::transitionToFailed)
+                    stateMachine::transitionToFailed,
+                    context.needSetHighestPriority())
             : MPPDataExchangeService.getInstance()
                 .getMPPDataExchangeManager()
                 .createSourceHandle(
@@ -596,7 +598,8 @@ public class QueryExecution implements IQueryExecution {
                     0,
                     upstreamEndPoint,
                     context.getResultNodeContext().getUpStreamFragmentInstanceId().toThrift(),
-                    stateMachine::transitionToFailed);
+                    stateMachine::transitionToFailed,
+                    context.needSetHighestPriority());
   }
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning

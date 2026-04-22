@@ -86,6 +86,7 @@ public class OpcUaServerBuilder implements Closeable {
   private boolean enableAnonymousAccess;
   private Set<SecurityPolicy> securityPolicies;
   private DefaultTrustListManager trustListManager;
+  private long debounceTimeMs;
 
   public OpcUaServerBuilder setTcpBindPort(final int tcpBindPort) {
     this.tcpBindPort = tcpBindPort;
@@ -121,6 +122,15 @@ public class OpcUaServerBuilder implements Closeable {
   public OpcUaServerBuilder setSecurityPolicies(final Set<SecurityPolicy> securityPolicies) {
     this.securityPolicies = securityPolicies;
     return this;
+  }
+
+  public OpcUaServerBuilder setDebounceTimeMs(long debounceTimeMs) {
+    this.debounceTimeMs = debounceTimeMs;
+    return this;
+  }
+
+  public long getDebounceTimeMs() {
+    return debounceTimeMs;
   }
 
   public OpcUaServer build() throws Exception {
@@ -314,7 +324,8 @@ public class OpcUaServerBuilder implements Closeable {
       final String password,
       final Path securityDir,
       final boolean enableAnonymousAccess,
-      final Set<SecurityPolicy> securityPolicies) {
+      final Set<SecurityPolicy> securityPolicies,
+      final long debounceTimeMs) {
     checkEquals("user", this.user, user);
     checkEquals("password", this.password, password);
     checkEquals(
@@ -323,6 +334,7 @@ public class OpcUaServerBuilder implements Closeable {
         FileSystems.getDefault().getPath(securityDir.toAbsolutePath().toString()));
     checkEquals("enableAnonymousAccess option", this.enableAnonymousAccess, enableAnonymousAccess);
     checkEquals("securityPolicies", this.securityPolicies, securityPolicies);
+    checkEquals("debounceTimeMs", this.debounceTimeMs, debounceTimeMs);
   }
 
   private void checkEquals(final String attrName, Object thisAttr, Object thatAttr) {

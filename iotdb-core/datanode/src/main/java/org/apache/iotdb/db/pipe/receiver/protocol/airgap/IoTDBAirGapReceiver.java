@@ -222,12 +222,20 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
     }
   }
 
-  private byte[] readData(final InputStream inputStream) throws IOException {
+  byte[] readData(final InputStream inputStream) throws IOException {
     final int length = readLength(inputStream);
 
     if (length <= 0) {
       // Will fail() after checkSum()
       return new byte[0];
+    }
+
+    final int maxLength = PipeConfig.getInstance().getPipeAirGapReceiverMaxPayloadSizeInBytes();
+    if (length > maxLength) {
+      throw new IOException(
+          String.format(
+              "AirGap payload length (%d) exceeds maximum allowed (%d). Closing connection from %s",
+              length, maxLength, socket.getRemoteSocketAddress()));
     }
 
     final byte[] resultBuffer = new byte[length];
@@ -238,11 +246,16 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
     return resultBuffer;
   }
 
+  private int readLength(final InputStream inputStream) throws IOException {
+    return readLength(inputStream, false);
+  }
+
   /**
    * Read the length of the following data. The thread may typically block here when there is no
    * data to read.
    */
-  private int readLength(final InputStream inputStream) throws IOException {
+  private int readLength(final InputStream inputStream, final boolean isELanguage)
+      throws IOException {
     final byte[] doubleIntLengthBytes = new byte[2 * INT_LEN];
     readTillFull(inputStream, doubleIntLengthBytes);
 
@@ -251,10 +264,16 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
     if (Arrays.equals(
         doubleIntLengthBytes,
         BytesUtils.subBytes(AirGapELanguageConstant.E_LANGUAGE_PREFIX, 0, 2 * INT_LEN))) {
+      if (isELanguage) {
+        throw new IOException(
+            String.format(
+                "Detected suspicious nested E-Language prefix. Closing connection from %s",
+                socket.getRemoteSocketAddress()));
+      }
       isELanguagePayload = true;
       skipTillEnough(
           inputStream, (long) AirGapELanguageConstant.E_LANGUAGE_PREFIX.length - 2 * INT_LEN);
-      return readLength(inputStream);
+      return readLength(inputStream, true);
     }
 
     final byte[] dataLengthBytes = BytesUtils.subBytes(doubleIntLengthBytes, 0, INT_LEN);

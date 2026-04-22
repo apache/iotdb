@@ -27,6 +27,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeManager.SourceHandleListener;
 import org.apache.iotdb.db.queryengine.execution.memory.LocalMemoryManager;
+import org.apache.iotdb.db.queryengine.execution.memory.MemoryPool.MemoryReservationResult;
 import org.apache.iotdb.db.queryengine.metric.DataExchangeCostMetricSet;
 import org.apache.iotdb.db.queryengine.metric.DataExchangeCountMetricSet;
 import org.apache.iotdb.db.utils.SetThreadName;
@@ -115,6 +116,8 @@ public class SourceHandle implements ISourceHandle {
    */
   private boolean canGetTsBlockFromRemote = false;
 
+  private final boolean isHighestPriority;
+
   private static final DataExchangeCostMetricSet DATA_EXCHANGE_COST_METRIC_SET =
       DataExchangeCostMetricSet.getInstance();
   private static final DataExchangeCountMetricSet DATA_EXCHANGE_COUNT_METRIC_SET =
@@ -123,6 +126,34 @@ public class SourceHandle implements ISourceHandle {
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(SourceHandle.class)
           + RamUsageEstimator.shallowSizeOfInstance(TFragmentInstanceId.class) * 2;
+
+  @TestOnly
+  @SuppressWarnings("squid:S107")
+  public SourceHandle(
+      TEndPoint remoteEndpoint,
+      TFragmentInstanceId remoteFragmentInstanceId,
+      TFragmentInstanceId localFragmentInstanceId,
+      String localPlanNodeId,
+      int indexOfUpstreamSinkHandle,
+      LocalMemoryManager localMemoryManager,
+      ExecutorService executorService,
+      TsBlockSerde serde,
+      SourceHandleListener sourceHandleListener,
+      IClientManager<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient>
+          mppDataExchangeServiceClientManager) {
+    this(
+        remoteEndpoint,
+        remoteFragmentInstanceId,
+        localFragmentInstanceId,
+        localPlanNodeId,
+        indexOfUpstreamSinkHandle,
+        localMemoryManager,
+        executorService,
+        serde,
+        sourceHandleListener,
+        false,
+        mppDataExchangeServiceClientManager);
+  }
 
   @SuppressWarnings("squid:S107")
   public SourceHandle(
@@ -135,6 +166,7 @@ public class SourceHandle implements ISourceHandle {
       ExecutorService executorService,
       TsBlockSerde serde,
       SourceHandleListener sourceHandleListener,
+      boolean isHighestPriority,
       IClientManager<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient>
           mppDataExchangeServiceClientManager) {
     this.remoteEndpoint = Validate.notNull(remoteEndpoint, "remoteEndpoint can not be null.");
@@ -152,6 +184,7 @@ public class SourceHandle implements ISourceHandle {
     this.serde = Validate.notNull(serde, "serde can not be null.");
     this.sourceHandleListener =
         Validate.notNull(sourceHandleListener, "sourceHandleListener can not be null.");
+    this.isHighestPriority = isHighestPriority;
     this.bufferRetainedSizeInBytes = 0L;
     this.mppDataExchangeServiceClientManager = mppDataExchangeServiceClientManager;
     this.retryIntervalInMs = DEFAULT_RETRY_INTERVAL_IN_MS;
@@ -192,19 +225,24 @@ public class SourceHandle implements ISourceHandle {
       if (tsBlock == null) {
         return null;
       }
-      long retainedSize = sequenceIdToDataBlockSize.remove(currSequenceId);
+      Long retainedSize = sequenceIdToDataBlockSize.remove(currSequenceId);
+      if (retainedSize == null) {
+        throw new IllegalStateException("Reserved data block size is null.");
+      }
       if (LOGGER.isDebugEnabled()) {
         LOGGER.debug("[GetTsBlockFromBuffer] sequenceId:{}, size:{}", currSequenceId, retainedSize);
       }
       currSequenceId += 1;
-      bufferRetainedSizeInBytes -= retainedSize;
-      localMemoryManager
-          .getQueryPool()
-          .free(
-              localFragmentInstanceId.getQueryId(),
-              fullFragmentInstanceId,
-              localPlanNodeId,
-              retainedSize);
+      if (retainedSize > 0) {
+        bufferRetainedSizeInBytes -= retainedSize;
+        localMemoryManager
+            .getQueryPool()
+            .free(
+                localFragmentInstanceId.getQueryId(),
+                fullFragmentInstanceId,
+                localPlanNodeId,
+                retainedSize);
+      }
 
       if (sequenceIdToTsBlock.isEmpty() && !isFinished()) {
         if (LOGGER.isDebugEnabled()) {
@@ -241,18 +279,24 @@ public class SourceHandle implements ISourceHandle {
       if (bytesToReserve == null) {
         throw new IllegalStateException("Data block size is null.");
       }
-      pair =
+      MemoryReservationResult reserveResult =
           localMemoryManager
               .getQueryPool()
-              .reserve(
+              .reserveWithPriority(
                   localFragmentInstanceId.getQueryId(),
                   fullFragmentInstanceId,
                   localPlanNodeId,
                   bytesToReserve,
-                  maxBytesCanReserve);
-      bufferRetainedSizeInBytes += bytesToReserve;
+                  maxBytesCanReserve,
+                  isHighestPriority);
+      pair = new Pair<>(reserveResult.getFuture(), reserveResult.isReserveSuccess());
+      // actually reserve size is not equals raw size, update the actually reserve size to the map
+      if (reserveResult.getReservedBytes() != bytesToReserve) {
+        sequenceIdToDataBlockSize.put(endSequenceId, reserveResult.getReservedBytes());
+      }
+      bufferRetainedSizeInBytes += reserveResult.getReservedBytes();
       endSequenceId += 1;
-      reservedBytes += bytesToReserve;
+      reservedBytes += reserveResult.getReservedBytes();
       if (!Boolean.TRUE.equals(pair.right)) {
         blockedSize = bytesToReserve;
         break;
@@ -619,14 +663,16 @@ public class SourceHandle implements ISourceHandle {
         if (aborted || closed) {
           return;
         }
-        bufferRetainedSizeInBytes -= reservedBytes;
-        localMemoryManager
-            .getQueryPool()
-            .free(
-                localFragmentInstanceId.getQueryId(),
-                fullFragmentInstanceId,
-                localPlanNodeId,
-                reservedBytes);
+        if (reservedBytes > 0) {
+          bufferRetainedSizeInBytes -= reservedBytes;
+          localMemoryManager
+              .getQueryPool()
+              .free(
+                  localFragmentInstanceId.getQueryId(),
+                  fullFragmentInstanceId,
+                  localPlanNodeId,
+                  reservedBytes);
+        }
         sourceHandleListener.onFailure(SourceHandle.this, t);
       }
     }

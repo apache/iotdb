@@ -150,10 +150,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
     }
 
     if (reader == null) {
-      reader =
-          Objects.nonNull(modFile)
-              ? new RandomAccessFile(modFile, "r")
-              : new RandomAccessFile(tsFile, "r");
+      reader = transferMod ? new RandomAccessFile(modFile, "r") : new RandomAccessFile(tsFile, "r");
     }
 
     this.clientManager = clientManager;
