@@ -42,6 +42,7 @@ import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.audit.DNAuditLogger;
 import org.apache.iotdb.db.auth.AuthorityChecker;
@@ -113,6 +114,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsOfOneDeviceStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateMultiTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateTimeSeriesStatement;
@@ -1170,7 +1172,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
     try {
       final long queryId = SESSION_MANAGER.requestQueryId(clientSession, req.statementId);
-      // 1. Map<Device, String[] measurements> ISchemaFetcher.getAllSensors(prefix) ~= 50ms
+      // 1.1 Map<Device, String[] measurements> ISchemaFetcher.getAllSensors(prefix) ~= 50ms
 
       final PartialPath prefixPath = new PartialPath(req.getPrefixes().toArray(new String[0]));
       if (prefixPath.hasWildcard()) {
@@ -1184,13 +1186,26 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           new HashMap<>();
       int sensorNum = 0;
 
+      // 1.2 Check permission, the cost is rather low because the req only contains one prefix path
+      final QueryStatement s = StatementGenerator.createStatement(convert(req));
+      final TSStatus status =
+          AuthorityChecker.checkAuthority(
+              s,
+              new TreeAccessCheckContext(
+                  clientSession.getUserId(),
+                  clientSession.getUsername(),
+                  clientSession.getClientAddress()));
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return RpcUtils.getTSExecuteStatementResp(status);
+      }
+
       final String prefixString = prefixPath.toString();
       for (final ISchemaRegion region : SchemaEngine.getInstance().getAllSchemaRegions()) {
         if (!prefixString.startsWith(region.getDatabaseFullPath())
             && !region.getDatabaseFullPath().startsWith(prefixString)) {
           continue;
         }
-        sensorNum += region.fillLastQueryMap(prefixPath, resultMap);
+        sensorNum += region.fillLastQueryMap(prefixPath, resultMap, s.getAuthorityScope());
       }
 
       // 2.DATA_NODE_SCHEMA_CACHE.getLastCache()
@@ -1286,6 +1301,20 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     long startTime = System.nanoTime();
     Throwable t = null;
     try {
+      // Place the permission check first
+      final QueryStatement s = StatementGenerator.createStatement(convert(req));
+      // permission check
+      final TSStatus status =
+          AuthorityChecker.checkAuthority(
+              s,
+              new TreeAccessCheckContext(
+                  clientSession.getUserId(),
+                  clientSession.getUsername(),
+                  clientSession.getClientAddress()));
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return RpcUtils.getTSExecuteStatementResp(status);
+      }
+
       String db;
       String device;
       PartialPath devicePath;
@@ -1315,7 +1344,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       // no valid DataRegion
       if (regionReplicaSets.isEmpty()
           || regionReplicaSets.size() == 1 && NOT_ASSIGNED == regionReplicaSets.get(0)) {
-        TSExecuteStatementResp resp =
+        final TSExecuteStatementResp resp =
             createResponse(DatasetHeaderFactory.getLastQueryHeader(), queryId);
         resp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, ""));
         resp.setQueryResult(Collections.emptyList());
@@ -1325,7 +1354,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         return resp;
       }
 
-      TEndPoint lastRegionLeader =
+      final TEndPoint lastRegionLeader =
           regionReplicaSets
               .get(regionReplicaSets.size() - 1)
               .dataNodeLocations
@@ -1336,41 +1365,51 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       // read directly from cache
       if (isSameNode(lastRegionLeader)) {
         // the device's all dataRegions' leader are on current node, can use null entry in cache
-        boolean canUseNullEntry =
+        final boolean canUseNullEntry =
             regionReplicaSets.stream()
                 .limit(regionReplicaSets.size() - 1L)
                 .allMatch(
                     regionReplicaSet ->
                         isSameNode(
                             regionReplicaSet.dataNodeLocations.get(0).mPPDataExchangeEndPoint));
-        int sensorNum = req.sensors.size();
-        TsBlockBuilder builder = LastQueryUtil.createTsBlockBuilder(sensorNum);
+        final int sensorNum = req.sensors.size();
+        final TsBlockBuilder builder = LastQueryUtil.createTsBlockBuilder(sensorNum);
         boolean allCached = true;
-        for (String sensor : req.sensors) {
-          MeasurementPath fullPath;
+
+        PathPatternTree queryTree = new PathPatternTree();
+        for (final String sensor : req.sensors) {
+          final MeasurementPath fullPath;
           if (req.isLegalPathNodes()) {
             fullPath = devicePath.concatAsMeasurementPath(sensor);
           } else {
             fullPath = devicePath.concatAsMeasurementPath((new PartialPath(sensor)).getFullPath());
           }
-          TimeValuePair timeValuePair = DATA_NODE_SCHEMA_CACHE.getLastCache(fullPath);
-          if (timeValuePair == null) {
-            allCached = false;
-            break;
-          } else if (timeValuePair.getValue() == null) {
-            // there is no data for this sensor
-            if (!canUseNullEntry) {
+          queryTree.appendPathPattern(fullPath);
+        }
+        queryTree.constructTree();
+        queryTree = s.getAuthorityScope().intersectWithFullPathPrefixTree(queryTree);
+
+        if (!queryTree.isEmpty()) {
+          for (final MeasurementPath fullPath : queryTree.getAllPathPatterns(true)) {
+            final TimeValuePair timeValuePair = DATA_NODE_SCHEMA_CACHE.getLastCache(fullPath);
+            if (timeValuePair == null) {
               allCached = false;
               break;
+            } else if (timeValuePair.getValue() == null) {
+              // there is no data for this sensor
+              if (!canUseNullEntry) {
+                allCached = false;
+                break;
+              }
+            } else {
+              // we don't consider TTL
+              LastQueryUtil.appendLastValueRespectBlob(
+                  builder,
+                  timeValuePair.getTimestamp(),
+                  new Binary(fullPath.getFullPath(), TSFileConfig.STRING_CHARSET),
+                  timeValuePair.getValue(),
+                  timeValuePair.getValue().getDataType().name());
             }
-          } else {
-            // we don't consider TTL
-            LastQueryUtil.appendLastValueRespectBlob(
-                builder,
-                timeValuePair.getTimestamp(),
-                new Binary(fullPath.getFullPath(), TSFileConfig.STRING_CHARSET),
-                timeValuePair.getValue(),
-                timeValuePair.getValue().getDataType().name());
           }
         }
         // cache hit
@@ -1388,20 +1427,6 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           sampleForCacheHitFastLastDataQueryForOneDevice(req);
           return resp;
         }
-      }
-
-      // cache miss
-      Statement s = StatementGenerator.createStatement(convert(req));
-      // permission check
-      TSStatus status =
-          AuthorityChecker.checkAuthority(
-              s,
-              new TreeAccessCheckContext(
-                  clientSession.getUserId(),
-                  clientSession.getUsername(),
-                  clientSession.getClientAddress()));
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        return RpcUtils.getTSExecuteStatementResp(status);
       }
 
       quota =

@@ -49,7 +49,7 @@ public class UnloadModelStatement extends Statement implements IConfigStatement 
 
   @Override
   public QueryType getQueryType() {
-    return QueryType.WRITE;
+    return QueryType.OTHER;
   }
 
   @Override

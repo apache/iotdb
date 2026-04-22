@@ -65,6 +65,7 @@ import org.apache.iotdb.confignode.consensus.request.write.database.SetDataRepli
 import org.apache.iotdb.confignode.consensus.request.write.database.SetSchemaReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.PreAlterColumnDataTypePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableColumnCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.SetViewCommentPlan;
@@ -1392,7 +1393,8 @@ public class ClusterSchemaManager {
       final String database,
       final String tableName,
       final String columnName,
-      final TSDataType dataType)
+      final TSDataType dataType,
+      final boolean isGeneratedByPipe)
       throws MetadataException {
     final TsTable originalTable = getTableIfExists(database, tableName).orElse(null);
 
@@ -1405,7 +1407,9 @@ public class ClusterSchemaManager {
     }
 
     TSStatus tsStatus =
-        clusterSchemaInfo.preAlterColumnDataType(database, tableName, columnName, dataType);
+        executePlan(
+            new PreAlterColumnDataTypePlan(database, tableName, columnName, dataType),
+            isGeneratedByPipe);
     if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return new Pair<>(tsStatus, null);
     }

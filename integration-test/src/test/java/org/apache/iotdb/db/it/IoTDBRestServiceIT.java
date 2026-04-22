@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.it;
 
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
+import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -26,8 +27,10 @@ import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.itbase.category.RemoteIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import org.apache.http.HttpEntity;
@@ -52,8 +55,11 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -474,8 +480,15 @@ public class IoTDBRestServiceIT {
     listUser(httpClient);
     selectCount(httpClient);
     selectLast(httpClient);
+    queryWithValidTimeZoneHeader(httpClient);
+    nonQueryWithValidTimeZoneHeader(httpClient);
+    queryWithInvalidTimeZoneHeader(httpClient);
+    nonQueryWithValidTimeZoneHeaderTableV1(httpClient);
+    queryWithValidTimeZoneHeaderTableV1(httpClient);
+    queryWithInvalidTimeZoneHeaderTableV1(httpClient);
 
     queryV2(httpClient);
+    selectFastLast(httpClient);
     queryGroupByLevelV2(httpClient);
     queryRowLimitV2(httpClient);
     queryShowChildPathsV2(httpClient);
@@ -494,6 +507,9 @@ public class IoTDBRestServiceIT {
     listUserV2(httpClient);
     selectCountV2(httpClient);
     selectLastV2(httpClient);
+    queryWithValidTimeZoneHeaderV2(httpClient);
+    nonQueryWithValidTimeZoneHeaderV2(httpClient);
+    queryWithInvalidTimeZoneHeaderV2(httpClient);
     perData(httpClient);
     List<String> insertTablet_right_json_list = new ArrayList<>();
     List<String> insertTablet_error_json_list = new ArrayList<>();
@@ -871,6 +887,71 @@ public class IoTDBRestServiceIT {
       String message = EntityUtils.toString(response.getEntity(), "utf-8");
       JsonObject result = JsonParser.parseString(message).getAsJsonObject();
       assertEquals(801, Integer.parseInt(result.get("code").toString()));
+    } catch (IOException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    } finally {
+      try {
+        if (response != null) {
+          response.close();
+        }
+      } catch (IOException e) {
+        e.printStackTrace();
+        fail(e.getMessage());
+      }
+    }
+  }
+
+  @Test
+  public void queryFastLastWithWrongAuthorization() {
+    CloseableHttpResponse response = null;
+
+    TestUtils.executeNonQuery("create user abcd 'strongPassword@1234'");
+    try {
+      final CloseableHttpClient httpClient = HttpClientBuilder.create().build();
+      final HttpPost httpPost = new HttpPost("http://127.0.0.1:" + port + "/rest/v2/fastLastQuery");
+      httpPost.addHeader("Content-type", "application/json; charset=utf-8");
+      httpPost.setHeader("Accept", "application/json");
+      final String authorization = getAuthorization("abcd", "strongPassword@1234");
+      httpPost.setHeader("Authorization", authorization);
+      final String sql = "{\"prefix_paths\":[\"root\",\"sg25\"]}";
+      httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
+      for (int i = 0; i < 30; i++) {
+        try {
+          response = httpClient.execute(httpPost);
+          break;
+        } catch (Exception e) {
+          if (i == 29) {
+            throw e;
+          }
+          try {
+            Thread.sleep(1000);
+          } catch (InterruptedException ex) {
+            throw new RuntimeException(ex);
+          }
+        }
+      }
+
+      Assert.assertEquals(200, response.getStatusLine().getStatusCode());
+      String message = EntityUtils.toString(response.getEntity(), "utf-8");
+      ObjectMapper mapper = new ObjectMapper();
+      Map map = mapper.readValue(message, Map.class);
+      List<Long> timestampsResult = (List<Long>) map.get("timestamps");
+      List<Long> expressionsResult = (List<Long>) map.get("expressions");
+      List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
+      Assert.assertTrue(map.size() > 0);
+      List<Object> expressions =
+          new ArrayList<Object>() {
+            {
+              add("Timeseries");
+              add("Value");
+              add("DataType");
+            }
+          };
+
+      Assert.assertEquals(expressions, expressionsResult);
+      Assert.assertEquals(Collections.emptyList(), timestampsResult);
+      Assert.assertEquals(Collections.emptyList(), valuesResult);
     } catch (IOException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -1651,6 +1732,98 @@ public class IoTDBRestServiceIT {
     }
   }
 
+  public void selectFastLast(CloseableHttpClient httpClient) {
+    // Only used in 1D scenarios
+    if (EnvFactory.getEnv().getDataNodeWrapperList().size() > 1) {
+      return;
+    }
+    CloseableHttpResponse response = null;
+    try {
+      HttpPost httpPost = getHttpPost("http://127.0.0.1:" + port + "/rest/v2/fastLastQuery");
+      String sql = "{\"prefix_paths\":[\"root\",\"sg25\"]}";
+      httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
+      response = httpClient.execute(httpPost);
+      HttpEntity responseEntity = response.getEntity();
+      String message = EntityUtils.toString(responseEntity, "utf-8");
+      ObjectMapper mapper = new ObjectMapper();
+      Map map = mapper.readValue(message, Map.class);
+      List<Long> timestampsResult = (List<Long>) map.get("timestamps");
+      List<Long> expressionsResult = (List<Long>) map.get("expressions");
+      List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
+      Assert.assertTrue(map.size() > 0);
+      List<Object> expressions =
+          new ArrayList<Object>() {
+            {
+              add("Timeseries");
+              add("Value");
+              add("DataType");
+            }
+          };
+      List<Object> timestamps =
+          new ArrayList<Object>() {
+            {
+              add(1635232153960l);
+              add(1635232153960l);
+              add(1635232153960l);
+              add(1635232143960l);
+              add(1635232153960l);
+              add(1635232153960l);
+            }
+          };
+      List<Object> values1 =
+          new ArrayList<Object>() {
+            {
+              add("root.sg25.s3");
+              add("root.sg25.s4");
+              add("root.sg25.s5");
+              add("root.sg25.s6");
+              add("root.sg25.s7");
+              add("root.sg25.s8");
+            }
+          };
+      List<Object> values2 =
+          new ArrayList<Object>() {
+            {
+              add("");
+              add("2");
+              add("1635000012345556");
+              add("1.41");
+              add("false");
+              add("3.5555");
+            }
+          };
+      List<Object> values3 =
+          new ArrayList<Object>() {
+            {
+              add("TEXT");
+              add("INT32");
+              add("INT64");
+              add("FLOAT");
+              add("BOOLEAN");
+              add("DOUBLE");
+            }
+          };
+
+      Assert.assertEquals(expressions, expressionsResult);
+      Assert.assertEquals(timestamps, timestampsResult);
+      Assert.assertEquals(values1, valuesResult.get(0));
+      Assert.assertEquals(values2, valuesResult.get(1));
+      Assert.assertEquals(values3, valuesResult.get(2));
+    } catch (IOException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    } finally {
+      try {
+        if (response != null) {
+          response.close();
+        }
+      } catch (IOException e) {
+        e.printStackTrace();
+        fail(e.getMessage());
+      }
+    }
+  }
+
   public void queryGroupByLevelV2(CloseableHttpClient httpClient) {
     CloseableHttpResponse response = null;
     try {
@@ -2352,6 +2525,316 @@ public class IoTDBRestServiceIT {
         e.printStackTrace();
         fail(e.getMessage());
       }
+    }
+  }
+
+  public void queryWithValidTimeZoneHeader(CloseableHttpClient httpClient) {
+    CloseableHttpResponse response = null;
+    try {
+      long expectedTimestamp =
+          ZonedDateTime.of(2026, 3, 28, 0, 0, 0, 0, ZoneId.of("+05:00")).toInstant().toEpochMilli();
+      HttpPost insertPost = getHttpPost("http://127.0.0.1:" + port + "/rest/v1/nonQuery");
+      String insertSql =
+          String.format(
+              "{\"sql\":\"INSERT INTO root.sg_tz.d2(timestamp, s3) VALUES(%d, 10.5)\"}",
+              expectedTimestamp);
+      insertPost.setEntity(new StringEntity(insertSql, Charset.defaultCharset()));
+      try (CloseableHttpResponse insertResponse = httpClient.execute(insertPost)) {
+        assertEquals(200, insertResponse.getStatusLine().getStatusCode());
+      }
+      HttpPost httpPost = getHttpPost("http://127.0.0.1:" + port + "/rest/v1/query");
+      httpPost.setHeader("Time-Zone", "+05:00");
+      String sql =
+          "{\"sql\":\"SELECT count(s3) FROM root.sg_tz.d2 GROUP BY ([2026-03-28T00:00:00, 2026-03-29T00:00:00), 1d)\"}";
+      httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
+      response = httpClient.execute(httpPost);
+      assertEquals(200, response.getStatusLine().getStatusCode());
+      String message = EntityUtils.toString(response.getEntity(), "utf-8");
+      JsonObject result = JsonParser.parseString(message).getAsJsonObject();
+      assertTrue(result.has("timestamps"));
+      assertTrue(result.getAsJsonArray("timestamps").size() > 0);
+      assertEquals(expectedTimestamp, result.getAsJsonArray("timestamps").get(0).getAsLong());
+      JsonArray values = result.getAsJsonArray("values");
+      int countResult = values.get(0).getAsJsonArray().get(0).getAsInt();
+      assertEquals(1, countResult);
+    } catch (IOException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    } finally {
+      try {
+        if (response != null) {
+          response.close();
+        }
+      } catch (IOException e) {
+        e.printStackTrace();
+        fail(e.getMessage());
+      }
+    }
+  }
+
+  public void nonQueryWithValidTimeZoneHeader(CloseableHttpClient httpClient) {
+    CloseableHttpResponse response = null;
+    try {
+      HttpPost createPost = getHttpPost("http://127.0.0.1:" + port + "/rest/v1/nonQuery");
+      nonQuery(
+          httpClient,
+          "{\"sql\":\"CREATE TIMESERIES root.sg_tz.d1.s1 WITH DATATYPE=INT32\"}",
+          createPost);
+
+      HttpPost insertPost = getHttpPost("http://127.0.0.1:" + port + "/rest/v1/nonQuery");
+      insertPost.setHeader("Time-Zone", "+05:00");
+      nonQuery(
+          httpClient,
+          "{\"sql\":\"INSERT INTO root.sg_tz.d1(time, s1) VALUES (2026-03-28T00:00:00, 123)\"}",
+          insertPost);
+
+      HttpPost queryPost = getHttpPost("http://127.0.0.1:" + port + "/rest/v1/query");
+      queryPost.setEntity(
+          new StringEntity("{\"sql\":\"SELECT s1 FROM root.sg_tz.d1\"}", StandardCharsets.UTF_8));
+      response = httpClient.execute(queryPost);
+      String message = EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
+      JsonObject result = JsonParser.parseString(message).getAsJsonObject();
+      long expected =
+          ZonedDateTime.of(2026, 3, 28, 0, 0, 0, 0, ZoneId.of("+05:00")).toInstant().toEpochMilli();
+      assertEquals(expected, result.getAsJsonArray("timestamps").get(0).getAsLong());
+
+    } catch (IOException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    } finally {
+      try {
+        if (response != null) {
+          response.close();
+        }
+      } catch (IOException e) {
+        e.printStackTrace();
+        fail(e.getMessage());
+      }
+    }
+  }
+
+  public void queryWithValidTimeZoneHeaderV2(CloseableHttpClient httpClient) {
+    CloseableHttpResponse response = null;
+    try {
+      long expectedTimestamp =
+          ZonedDateTime.of(2026, 3, 28, 0, 0, 0, 0, ZoneId.of("+05:00")).toInstant().toEpochMilli();
+      HttpPost insertPost = getHttpPost("http://127.0.0.1:" + port + "/rest/v1/nonQuery");
+      String insertSql =
+          String.format(
+              "{\"sql\":\"INSERT INTO root.sg_tz.d3(timestamp, s3) VALUES(%d, 10.5)\"}",
+              expectedTimestamp);
+      insertPost.setEntity(new StringEntity(insertSql, Charset.defaultCharset()));
+      try (CloseableHttpResponse insertResponse = httpClient.execute(insertPost)) {
+        assertEquals(200, insertResponse.getStatusLine().getStatusCode());
+      }
+      HttpPost httpPost = getHttpPost("http://127.0.0.1:" + port + "/rest/v2/query");
+      httpPost.setHeader("Time-Zone", "+05:00");
+      String sql =
+          "{\"sql\":\"SELECT count(s3) FROM root.sg_tz.d3 GROUP BY ([2026-03-28T00:00:00, 2026-03-29T00:00:00), 1d)\"}";
+      httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
+      response = httpClient.execute(httpPost);
+      assertEquals(200, response.getStatusLine().getStatusCode());
+      String message = EntityUtils.toString(response.getEntity(), "utf-8");
+      JsonObject result = JsonParser.parseString(message).getAsJsonObject();
+      assertTrue(result.has("timestamps"));
+      assertTrue(result.getAsJsonArray("timestamps").size() > 0);
+      assertEquals(expectedTimestamp, result.getAsJsonArray("timestamps").get(0).getAsLong());
+      JsonArray values = result.getAsJsonArray("values");
+      int countResult = values.get(0).getAsJsonArray().get(0).getAsInt();
+      assertEquals(1, countResult);
+    } catch (IOException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    } finally {
+      try {
+        if (response != null) {
+          response.close();
+        }
+      } catch (IOException e) {
+        e.printStackTrace();
+        fail(e.getMessage());
+      }
+    }
+  }
+
+  public void nonQueryWithValidTimeZoneHeaderV2(CloseableHttpClient httpClient) {
+    CloseableHttpResponse response = null;
+    try {
+      HttpPost createPost = getHttpPost("http://127.0.0.1:" + port + "/rest/v2/nonQuery");
+      nonQuery(
+          httpClient,
+          "{\"sql\":\"CREATE TIMESERIES root.sg_tz.d2.s1 WITH DATATYPE=INT32\"}",
+          createPost);
+
+      HttpPost insertPost = getHttpPost("http://127.0.0.1:" + port + "/rest/v2/nonQuery");
+      insertPost.setHeader("Time-Zone", "+05:00");
+      nonQuery(
+          httpClient,
+          "{\"sql\":\"INSERT INTO root.sg_tz.d2(time, s1) VALUES (2026-03-28T00:00:00, 123)\"}",
+          insertPost);
+
+      HttpPost queryPost = getHttpPost("http://127.0.0.1:" + port + "/rest/v2/query");
+      queryPost.setEntity(
+          new StringEntity("{\"sql\":\"SELECT s1 FROM root.sg_tz.d2\"}", StandardCharsets.UTF_8));
+      response = httpClient.execute(queryPost);
+      String message = EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
+      JsonObject result = JsonParser.parseString(message).getAsJsonObject();
+      long expected =
+          ZonedDateTime.of(2026, 3, 28, 0, 0, 0, 0, ZoneId.of("+05:00")).toInstant().toEpochMilli();
+      assertEquals(expected, result.getAsJsonArray("timestamps").get(0).getAsLong());
+
+    } catch (IOException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    } finally {
+      try {
+        if (response != null) {
+          response.close();
+        }
+      } catch (IOException e) {
+        e.printStackTrace();
+        fail(e.getMessage());
+      }
+    }
+  }
+
+  public void queryWithInvalidTimeZoneHeader(CloseableHttpClient httpClient) {
+    CloseableHttpResponse response = null;
+    try {
+      HttpPost httpPost = getHttpPost("http://127.0.0.1:" + port + "/rest/v1/query");
+      httpPost.setHeader("Time-Zone", "Invalid/Zone");
+      String sql = "{\"sql\":\"SELECT s3 FROM root.sg25\"}";
+      httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
+      response = httpClient.execute(httpPost);
+      assertEquals(400, response.getStatusLine().getStatusCode());
+      String message = EntityUtils.toString(response.getEntity(), "utf-8");
+      JsonObject result = JsonParser.parseString(message).getAsJsonObject();
+      assertEquals(TSStatusCode.ILLEGAL_PARAMETER.getStatusCode(), result.get("code").getAsInt());
+      assertTrue(result.get("message").getAsString().contains("Invalid time zone"));
+    } catch (IOException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    } finally {
+      try {
+        if (response != null) {
+          response.close();
+        }
+      } catch (IOException e) {
+        e.printStackTrace();
+        fail(e.getMessage());
+      }
+    }
+  }
+
+  public void queryWithInvalidTimeZoneHeaderV2(CloseableHttpClient httpClient) {
+    CloseableHttpResponse response = null;
+    try {
+      HttpPost httpPost = getHttpPost("http://127.0.0.1:" + port + "/rest/v2/query");
+      httpPost.setHeader("Time-Zone", "Invalid/Zone");
+      String sql = "{\"sql\":\"SELECT s3 FROM root.sg25\"}";
+      httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
+      response = httpClient.execute(httpPost);
+      assertEquals(400, response.getStatusLine().getStatusCode());
+      String message = EntityUtils.toString(response.getEntity(), "utf-8");
+      JsonObject result = JsonParser.parseString(message).getAsJsonObject();
+      assertEquals(TSStatusCode.ILLEGAL_PARAMETER.getStatusCode(), result.get("code").getAsInt());
+      assertTrue(result.get("message").getAsString().contains("Invalid time zone"));
+    } catch (IOException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    } finally {
+      try {
+        if (response != null) {
+          response.close();
+        }
+      } catch (IOException e) {
+        e.printStackTrace();
+        fail(e.getMessage());
+      }
+    }
+  }
+
+  private void nonQueryWithValidTimeZoneHeaderTableV1(CloseableHttpClient httpClient) {
+    nonQuery(
+        httpClient,
+        "{\"database\":\"\", \"sql\":\"CREATE DATABASE table_tz\"}",
+        getHttpPost("http://127.0.0.1:" + port + "/rest/table/v1/nonQuery"));
+    nonQuery(
+        httpClient,
+        "{\"database\":\"table_tz\", \"sql\":\"CREATE TABLE d1 (s1 INT32)\"}",
+        getHttpPost("http://127.0.0.1:" + port + "/rest/table/v1/nonQuery"));
+
+    HttpPost insertPost = getHttpPost("http://127.0.0.1:" + port + "/rest/table/v1/nonQuery");
+    insertPost.setHeader("Time-Zone", "+05:00");
+    nonQuery(
+        httpClient,
+        "{\"database\":\"table_tz\", \"sql\":\"INSERT INTO d1(time, s1) VALUES ('2026-03-28T00:00:00', 123)\"}",
+        insertPost);
+
+    HttpPost queryPost = getHttpPost("http://127.0.0.1:" + port + "/rest/table/v1/query");
+    queryPost.setEntity(
+        new StringEntity(
+            "{\"database\":\"table_tz\", \"sql\":\"SELECT time, s1 FROM d1\"}",
+            StandardCharsets.UTF_8));
+    try (CloseableHttpResponse response = httpClient.execute(queryPost)) {
+      assertEquals(200, response.getStatusLine().getStatusCode());
+      String message = EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
+      JsonObject result = JsonParser.parseString(message).getAsJsonObject();
+      long actualTimestamp =
+          result.getAsJsonArray("values").get(0).getAsJsonArray().get(0).getAsLong();
+      long expectedTimestamp =
+          ZonedDateTime.of(2026, 3, 28, 0, 0, 0, 0, ZoneId.of("+05:00")).toInstant().toEpochMilli();
+      assertEquals(expectedTimestamp, actualTimestamp);
+    } catch (IOException e) {
+      fail(e.getMessage());
+    }
+  }
+
+  private void queryWithValidTimeZoneHeaderTableV1(CloseableHttpClient httpClient) {
+    HttpPost preparePost = getHttpPost("http://127.0.0.1:" + port + "/rest/table/v1/nonQuery");
+    nonQuery(httpClient, "{\"database\":\"\", \"sql\":\"CREATE DATABASE table_tz2\"}", preparePost);
+    nonQuery(
+        httpClient,
+        "{\"database\":\"table_tz2\", \"sql\":\"CREATE TABLE d2 (s1 INT32)\"}",
+        preparePost);
+
+    long absoluteTimestamp =
+        ZonedDateTime.of(2026, 3, 28, 0, 0, 0, 0, ZoneId.of("+05:00")).toInstant().toEpochMilli();
+    String insertSql =
+        String.format(
+            "{\"database\":\"table_tz2\", \"sql\":\"INSERT INTO d2(time, s1) VALUES (%d, 456)\"}",
+            absoluteTimestamp);
+    nonQuery(httpClient, insertSql, preparePost);
+
+    HttpPost queryPost = getHttpPost("http://127.0.0.1:" + port + "/rest/table/v1/query");
+    queryPost.setHeader("Time-Zone", "+05:00");
+    String sql =
+        "{\"database\":\"table_tz2\", \"sql\":\"SELECT COUNT(s1) FROM d2 WHERE time = 2026-03-28T00:00:00\"}";
+    queryPost.setEntity(new StringEntity(sql, StandardCharsets.UTF_8));
+    try (CloseableHttpResponse response = httpClient.execute(queryPost)) {
+      assertEquals(200, response.getStatusLine().getStatusCode());
+      String message = EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
+      JsonObject result = JsonParser.parseString(message).getAsJsonObject();
+      long actualCount = result.getAsJsonArray("values").get(0).getAsJsonArray().get(0).getAsLong();
+      assertEquals(1, actualCount);
+    } catch (IOException e) {
+      fail(e.getMessage());
+    }
+  }
+
+  private void queryWithInvalidTimeZoneHeaderTableV1(CloseableHttpClient httpClient) {
+    HttpPost queryPost = getHttpPost("http://127.0.0.1:" + port + "/rest/table/v1/query");
+    queryPost.setHeader("Time-Zone", "Invalid/Zone");
+    String sql = "{\"database\":\"table_tz\", \"sql\":\"SELECT 1\"}";
+    queryPost.setEntity(new StringEntity(sql, StandardCharsets.UTF_8));
+    try (CloseableHttpResponse response = httpClient.execute(queryPost)) {
+      assertEquals(400, response.getStatusLine().getStatusCode());
+      String message = EntityUtils.toString(response.getEntity(), "utf-8");
+      JsonObject result = JsonParser.parseString(message).getAsJsonObject();
+      assertEquals(TSStatusCode.ILLEGAL_PARAMETER.getStatusCode(), result.get("code").getAsInt());
+      assertTrue(result.get("message").getAsString().contains("Invalid time zone"));
+    } catch (IOException e) {
+      fail(e.getMessage());
     }
   }
 }

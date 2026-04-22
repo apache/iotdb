@@ -604,7 +604,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               String.format(
                   "Failed to create UDF [%s], the given function name conflicts with the built-in function name.",
                   udfName.toUpperCase()),
-              TSStatusCode.CREATE_UDF_ERROR.getStatusCode()));
+              TSStatusCode.UDF_ALREADY_EXISTS.getStatusCode()));
       return future;
     }
     try (ConfigNodeClient client =
@@ -738,11 +738,6 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
       final TSStatus executionStatus = client.createFunction(tCreateFunctionReq);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != executionStatus.getCode()) {
-        LOGGER.warn(
-            "Failed to create function {}({}) because {}",
-            udfName,
-            className,
-            executionStatus.getMessage());
         future.setException(new IoTDBException(executionStatus));
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));

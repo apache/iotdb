@@ -94,6 +94,11 @@ public class DLearnIT {
               + "datatype=double, "
               + "encoding=plain, "
               + "compression=uncompressed");
+      statement.addBatch(
+          "create timeseries root.vehicle.d3.s1 with "
+              + "datatype=int32, "
+              + "encoding=plain, "
+              + "compression=uncompressed");
       statement.executeBatch();
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
@@ -168,6 +173,16 @@ public class DLearnIT {
           String.format(
               "insert into root.vehicle.d2(timestamp,s1,s2,s3,s4) values(%d,%d,%d,%d,%d)",
               900, 4, 4, 4, 4));
+      // Toy series for cluster UDF (l=3, k=2): windows [1,2,3], [10,20,30], [1,5,1]. With
+      // norm=false,
+      // k-means groups the first two windows; k-shape / medoidshape group windows 0 and 2
+      // (shape-related).
+      int[] toy = {1, 2, 3, 10, 20, 30, 1, 5, 1};
+      for (int i = 0; i < toy.length; i++) {
+        statement.addBatch(
+            String.format(
+                "insert into root.vehicle.d3(timestamp,s1) values(%d,%d)", (i + 1) * 100, toy[i]));
+      }
       statement.executeBatch();
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
@@ -179,6 +194,7 @@ public class DLearnIT {
         Statement statement = connection.createStatement()) {
       statement.execute("create function iqr as 'org.apache.iotdb.library.anomaly.UDTFIQR'");
       statement.execute("create function ar as 'org.apache.iotdb.library.dlearn.UDTFAR'");
+      statement.execute("create function cluster as 'org.apache.iotdb.library.dlearn.UDTFCluster'");
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -304,6 +320,72 @@ public class DLearnIT {
       resultSet.next();
       double result4 = resultSet.getDouble(2);
       Assert.assertEquals(-0.257, result4, 0.01);
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+  }
+
+  @Test
+  public void testCluster1() {
+    String sqlStr =
+        "select cluster(d3.s1, 'l'='3', 'k'='2', 'method'='kmeans', 'norm'='false', "
+            + "'maxiter'='50', 'output'='label') from root.vehicle";
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement();
+        ResultSet resultSet = statement.executeQuery(sqlStr)) {
+      resultSet.next();
+      int l0 = resultSet.getInt(2);
+      resultSet.next();
+      int l1 = resultSet.getInt(2);
+      resultSet.next();
+      int l2 = resultSet.getInt(2);
+      Assert.assertFalse(resultSet.next());
+      Assert.assertEquals(l0, l2);
+      Assert.assertNotEquals(l0, l1);
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+  }
+
+  @Test
+  public void testCluster2() {
+    String sqlStr =
+        "select cluster(d3.s1, 'l'='3', 'k'='2', 'method'='kshape', 'norm'='true', "
+            + "'maxiter'='50', 'output'='label') from root.vehicle";
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement();
+        ResultSet resultSet = statement.executeQuery(sqlStr)) {
+      resultSet.next();
+      int l0 = resultSet.getInt(2);
+      resultSet.next();
+      int l1 = resultSet.getInt(2);
+      resultSet.next();
+      int l2 = resultSet.getInt(2);
+      Assert.assertFalse(resultSet.next());
+      Assert.assertEquals(l0, l1);
+      Assert.assertNotEquals(l0, l2);
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+  }
+
+  @Test
+  public void testCluster3() {
+    String sqlStr =
+        "select cluster(d3.s1, 'l'='3', 'k'='2', 'method'='medoidshape', 'norm'='true', "
+            + "'sample_rate'='1', 'maxiter'='50', 'output'='label') from root.vehicle";
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement();
+        ResultSet resultSet = statement.executeQuery(sqlStr)) {
+      resultSet.next();
+      int l0 = resultSet.getInt(2);
+      resultSet.next();
+      int l1 = resultSet.getInt(2);
+      resultSet.next();
+      int l2 = resultSet.getInt(2);
+      Assert.assertFalse(resultSet.next());
+      Assert.assertEquals(l0, l1);
+      Assert.assertNotEquals(l0, l2);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }

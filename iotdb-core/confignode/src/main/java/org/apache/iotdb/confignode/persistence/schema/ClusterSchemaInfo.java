@@ -58,6 +58,7 @@ import org.apache.iotdb.confignode.consensus.request.write.table.AlterColumnData
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.PreAlterColumnDataTypePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteTablePlan;
@@ -105,7 +106,6 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.annotations.TableModel;
-import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -1547,13 +1547,15 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
                 plan.getColumnName()));
   }
 
-  public TSStatus preAlterColumnDataType(
-      String databaseName, String tableName, String columnName, TSDataType dataType) {
+  public TSStatus preAlterColumnDataType(final PreAlterColumnDataTypePlan plan) {
     databaseReadWriteLock.writeLock().lock();
     try {
       final TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       tableModelMTree.preAlterColumnDataType(
-          getQualifiedDatabasePartialPath(databaseName), tableName, columnName, dataType);
+          getQualifiedDatabasePartialPath(plan.getDatabase()),
+          plan.getTableName(),
+          plan.getColumnName(),
+          plan.getNewType());
       return status;
     } catch (final MetadataException e) {
       LOGGER.warn(e.getMessage(), e);

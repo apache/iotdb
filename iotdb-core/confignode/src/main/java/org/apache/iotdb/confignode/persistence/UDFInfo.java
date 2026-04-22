@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.persistence;
 
 import org.apache.iotdb.common.rpc.thrift.Model;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.executable.ExecutableManager;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.udf.UDFInformation;
@@ -96,15 +97,17 @@ public class UDFInfo implements SnapshotProcessor {
       throws UDFManagementException {
     if (udfTable.containsUDF(model, udfName)
         && udfTable.getUDFInformation(model, udfName).isAvailable()) {
-      throw new UDFManagementException(
-          String.format("Failed to create UDF [%s], the same name UDF has been created", udfName));
+      throw new IoTDBRuntimeException(
+          String.format("Failed to create UDF [%s], the same name UDF has been created", udfName),
+          TSStatusCode.UDF_ALREADY_EXISTS.getStatusCode());
     }
 
     if (existedJarToMD5.containsKey(jarName) && !existedJarToMD5.get(jarName).equals(jarMD5)) {
-      throw new UDFManagementException(
+      throw new IoTDBRuntimeException(
           String.format(
               "Failed to create UDF [%s], the same name Jar [%s] but different MD5 [%s] has existed",
-              udfName, jarName, jarMD5));
+              udfName, jarName, jarMD5),
+          TSStatusCode.UDF_ALREADY_EXISTS.getStatusCode());
     }
   }
 

@@ -22,14 +22,10 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.schema.table.Audit;
 import org.apache.iotdb.commons.schema.table.InformationSchema;
-import org.apache.iotdb.commons.utils.AuthUtils;
-import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.relational.type.AuthorRType;
-import org.apache.iotdb.db.utils.DataNodeAuthUtils;
 import org.apache.iotdb.rpc.RpcUtils;
-import org.apache.iotdb.rpc.StatementExecutionException;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -265,7 +261,7 @@ public class RelationalAuthorStatement extends Statement {
       case REVOKE_USER_ROLE:
       case RENAME_USER:
       case ACCOUNT_UNLOCK:
-        return QueryType.WRITE;
+        return QueryType.OTHER;
       case LIST_ROLE:
       case LIST_USER:
       case LIST_ROLE_PRIV:
@@ -300,53 +296,6 @@ public class RelationalAuthorStatement extends Statement {
    * @return null if the post-process succeeds, a status otherwise.
    */
   public TSStatus onSuccess() {
-    if (authorType == AuthorRType.CREATE_USER) {
-      return onCreateUserSuccess();
-    } else if (authorType == AuthorRType.UPDATE_USER) {
-      return onUpdateUserSuccess();
-    } else if (authorType == AuthorRType.DROP_USER) {
-      return onDropUserSuccess();
-    }
-    return null;
-  }
-
-  private TSStatus onCreateUserSuccess() {
-    associatedUserId = AuthorityChecker.getUserId(userName).orElse(-1L);
-    // the old password is expected to be encrypted during updates, so we also encrypt it here to
-    // keep consistency
-    TSStatus tsStatus =
-        DataNodeAuthUtils.recordPasswordHistory(
-            associatedUserId,
-            password,
-            AuthUtils.encryptPassword(password),
-            CommonDateTimeUtils.currentTime());
-    try {
-      RpcUtils.verifySuccess(tsStatus);
-    } catch (StatementExecutionException e) {
-      return new TSStatus(e.getStatusCode()).setMessage(e.getMessage());
-    }
-    return null;
-  }
-
-  private TSStatus onUpdateUserSuccess() {
-    TSStatus tsStatus =
-        DataNodeAuthUtils.recordPasswordHistory(
-            associatedUserId, password, oldPassword, CommonDateTimeUtils.currentTime());
-    try {
-      RpcUtils.verifySuccess(tsStatus);
-    } catch (StatementExecutionException e) {
-      return new TSStatus(e.getStatusCode()).setMessage(e.getMessage());
-    }
-    return null;
-  }
-
-  private TSStatus onDropUserSuccess() {
-    TSStatus tsStatus = DataNodeAuthUtils.deletePasswordHistory(associatedUserId);
-    try {
-      RpcUtils.verifySuccess(tsStatus);
-    } catch (StatementExecutionException e) {
-      return new TSStatus(e.getStatusCode()).setMessage(e.getMessage());
-    }
     return null;
   }
 
