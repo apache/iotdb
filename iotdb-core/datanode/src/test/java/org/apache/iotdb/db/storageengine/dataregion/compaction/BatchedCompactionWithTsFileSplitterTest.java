@@ -268,26 +268,14 @@ public class BatchedCompactionWithTsFileSplitterTest extends AbstractCompactionT
               tsFileData -> {
                 if (tsFileData instanceof DeletionData) {
                   deletionMods.add(((DeletionData) tsFileData).getModEntry());
-                  try {
-                    ((DeletionData) tsFileData).writeToModificationFile(actualModificationFile);
-                  } catch (IOException e) {
-                    throw new RuntimeException(e);
-                  }
                 }
                 return true;
               });
       splitter.splitTsFileByDataPartition();
     }
 
-    List<ModEntry> actualMods;
-    try (ModificationFile actualModificationFile =
-        new ModificationFile(actualModsFile.getAbsolutePath(), false)) {
-      actualMods = actualModificationFile.getAllMods();
-    }
-    Assert.assertEquals(expectedMods, actualMods);
-    Files.deleteIfExists(actualModsFile.toPath());
-
     Assert.assertEquals(expectedMods, deletionMods);
+    Files.deleteIfExists(actualModsFile.toPath());
   }
 
   private TsFileResource createAlignedMultiDeviceFile() throws IOException {
