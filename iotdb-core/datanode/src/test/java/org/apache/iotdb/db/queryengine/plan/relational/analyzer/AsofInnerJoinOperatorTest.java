@@ -327,14 +327,18 @@ public class AsofInnerJoinOperatorTest {
       int[] column2Array,
       boolean[][] columnsIsNull) {
     FragmentInstanceContext fragmentInstanceContext = Mockito.mock(FragmentInstanceContext.class);
+    ThreadSafeMemoryReservationManager memoryReservationManager =
+        new ThreadSafeMemoryReservationManager(new QueryId("1"), "test");
     Mockito.when(fragmentInstanceContext.getMemoryReservationContext())
-        .thenReturn(new ThreadSafeMemoryReservationManager(new QueryId("1"), "test"));
+        .thenReturn(memoryReservationManager);
     DriverContext driverContext = Mockito.mock(DriverContext.class);
     Mockito.when(driverContext.getFragmentInstanceContext()).thenReturn(fragmentInstanceContext);
     OperatorContext operatorContext = Mockito.mock(OperatorContext.class);
     Mockito.when(operatorContext.getMaxRunTimeForTest())
         .thenReturn(new Duration(1, TimeUnit.SECONDS));
     Mockito.when(operatorContext.getDriverContext()).thenReturn(driverContext);
+    Mockito.when(operatorContext.getMemoryReservationContext())
+        .thenReturn(memoryReservationManager);
 
     Operator leftChild =
         new Operator() {
