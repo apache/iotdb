@@ -232,8 +232,7 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
               "create database root.test",
               "alter database root.test with schema_region_group_num=2, data_region_group_num=3",
               "create timeSeries root.test.d1.s1 int32",
-              "insert into root.test.d1 (s1) values (1)"),
-          null);
+              "insert into root.test.d1 (s1) values (1)"));
 
       TestUtils.assertDataAlwaysOnEnv(
           receiverEnv,
@@ -417,5 +416,36 @@ public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
         assertEquals("1107: The 'inclusion' string contains illegal path.", e.getMessage());
       }
     }
+  }
+
+  @Test
+  public void testAttributeSync() {
+    TestUtils.executeNonQueries(
+        receiverEnv,
+        Arrays.asList(
+            "create database test",
+            "use test",
+            "create table table1(a tag, b attribute, c attribute, d int32)",
+            "insert into table1 (time, a, b, c, d) values(1, 1, null, 1, 1), (2, 2, 2, null, 2)"),
+        BaseEnv.TABLE_SQL_DIALECT);
+
+    TestUtils.executeNonQueries(
+        senderEnv,
+        Arrays.asList(
+            "create database test",
+            "use test",
+            "create table table1(a tag, b attribute, c attribute, d int32)",
+            "insert into table1 (time, a, b, c, d) values(1, 1, 1, null, 1), (2, 2, null, 2, 2)",
+            String.format(
+                "create pipe a2b with source ('inclusion'='schema') with sink ('node-urls'='%s')",
+                receiverEnv.getDataNodeWrapperList().get(0).getIpAndPortString())),
+        BaseEnv.TABLE_SQL_DIALECT);
+
+    TestUtils.assertDataAlwaysOnEnv(
+        receiverEnv,
+        "show devices from table1",
+        "a,b,c,",
+        new HashSet<>(Arrays.asList("1,1,1,", "2,2,2,")),
+        "test");
   }
 }

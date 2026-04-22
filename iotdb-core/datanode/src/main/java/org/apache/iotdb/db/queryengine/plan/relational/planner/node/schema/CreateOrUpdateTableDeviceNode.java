@@ -31,6 +31,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionPlanType;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionPlanVisitor;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.utils.Constants;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -215,7 +216,7 @@ public class CreateOrUpdateTableDeviceNode extends WritePlanNode implements ISch
         ReadWriteIOUtils.writeObject(value, stream);
       }
       for (int i = 0; i < attributeNameList.size() - deviceAttributeValueList.length; ++i) {
-        ReadWriteIOUtils.writeObject(null, stream);
+        ReadWriteIOUtils.writeObject(Constants.NONE, stream);
       }
     }
   }
