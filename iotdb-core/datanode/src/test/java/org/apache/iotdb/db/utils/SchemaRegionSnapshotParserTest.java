@@ -314,7 +314,9 @@ public class SchemaRegionSnapshotParserTest {
                     Arrays.asList("a", "c"),
                     Arrays.asList(
                         new Binary[] {new Binary("b", TSFileConfig.STRING_CHARSET)},
-                        new Object[] {Constants.NONE, new Binary("d", TSFileConfig.STRING_CHARSET)})),
+                        new Object[] {
+                          Constants.NONE, new Binary("d", TSFileConfig.STRING_CHARSET)
+                        })),
                 new CreateOrUpdateDevice(
                     databasePath.getNodes()[1],
                     anotherTable,
