@@ -45,6 +45,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.info.T
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.snapshot.MemMTreeSnapshotUtil;
 
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.Constants;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
@@ -447,7 +448,13 @@ public class SRStatementGenerator implements Iterator<Object>, Iterable<Object> 
           attributeNameList = new ArrayList<>(tableAttributes.keySet());
         }
         final List<Object> attributeValues =
-            attributeNameList.stream().map(tableAttributes::remove).collect(Collectors.toList());
+            attributeNameList.stream()
+                .map(
+                    attributeKey -> {
+                      final Object attributeValue = tableAttributes.remove(attributeKey);
+                      return Objects.nonNull(attributeValue) ? attributeValue : Constants.NONE;
+                    })
+                .collect(Collectors.toList());
         tableAttributes.forEach(
             (attributeKey, attributeValue) -> {
               attributeNameList.add(attributeKey);

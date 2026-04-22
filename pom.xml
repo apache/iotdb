@@ -204,7 +204,7 @@
         <keypass/>
         <alias/>
         <jarsigner.skip>true</jarsigner.skip>
-        <tsfile.version>2.2.1-260327-SNAPSHOT</tsfile.version>
+        <tsfile.version>2.3.0-260422-SNAPSHOT</tsfile.version>
         <!-- Module configuration properties (default values) -->
         <moduleA.enabled>true</moduleA.enabled>
         <moduleB.enabled>true</moduleB.enabled>
