@@ -37,7 +37,7 @@ ischema_names = {
     "INT32": types.Integer,
     "INT64": types.BigInteger,
     "FLOAT": types.Float,
-    "DOUBLE": types.Float,
+    "DOUBLE": types.Float(precision=53),
     "STRING": types.String,
     "TEXT": types.Text,
     "BLOB": types.LargeBinary,
@@ -86,7 +86,9 @@ class IoTDBDialect(default.DefaultDialect):
     def create_connect_args(self, url):
         opts = url.translate_connect_args()
         opts.update(url.query)
+        opts["sqlalchemy_mode"] = True
         opts["sql_dialect"] = "table"
+        self._url_database = opts.get("database")
         return ([], opts)
 
     def initialize(self, connection):
@@ -96,7 +98,7 @@ class IoTDBDialect(default.DefaultDialect):
         return None
 
     def _get_default_schema_name(self, connection):
-        return None
+        return getattr(self, "_url_database", None)
 
     def has_schema(self, connection, schema_name, **kw):
         return schema_name in self.get_schema_names(connection)
@@ -110,16 +112,20 @@ class IoTDBDialect(default.DefaultDialect):
 
     def get_table_names(self, connection, schema=None, **kw):
         if schema:
-            connection.execute(text("USE %s" % schema))
-        cursor = connection.execute(text("SHOW TABLES"))
+            quoted = self.identifier_preparer.quote_identifier(schema)
+            cursor = connection.execute(text("SHOW TABLES FROM %s" % quoted))
+        else:
+            cursor = connection.execute(text("SHOW TABLES"))
         return [row[0] for row in cursor.fetchall()]
 
     def get_columns(self, connection, table_name, schema=None, **kw):
+        quoted_table = self.identifier_preparer.quote_identifier(table_name)
         if schema:
-            connection.execute(text("USE %s" % schema))
-        cursor = connection.execute(
-            text("SHOW COLUMNS FROM %s" % table_name)
-        )
+            quoted_schema = self.identifier_preparer.quote_identifier(schema)
+            qualified = "%s.%s" % (quoted_schema, quoted_table)
+        else:
+            qualified = quoted_table
+        cursor = connection.execute(text("DESC %s" % qualified))
         columns = []
         for row in cursor.fetchall():
             col_name = row[0]
