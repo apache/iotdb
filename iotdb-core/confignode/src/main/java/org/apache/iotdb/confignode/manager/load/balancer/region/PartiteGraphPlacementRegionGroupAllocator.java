@@ -121,7 +121,8 @@ public class PartiteGraphPlacementRegionGroupAllocator implements IRegionGroupAl
       List<TRegionReplicaSet> allocatedRegionGroups,
       Map<TConsensusGroupId, String> regionDatabaseMap,
       Map<String, List<TRegionReplicaSet>> databaseAllocatedRegionGroupMap,
-      Map<TConsensusGroupId, TRegionReplicaSet> remainReplicasMap) {
+      Map<TConsensusGroupId, TRegionReplicaSet> remainReplicasMap,
+      Map<TConsensusGroupId, Long> regionDiskUsageMap) {
     // TODO: Implement this method
     throw new UnsupportedOperationException(
         "The removeNodeReplicaSelect method of PartiteGraphPlacementRegionGroupAllocator is yet to be implemented.");

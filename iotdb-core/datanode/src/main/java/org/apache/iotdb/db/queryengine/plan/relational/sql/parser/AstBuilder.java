@@ -51,6 +51,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AsofJoinOn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BetweenPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BinaryLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CancelMigrations;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Cast;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ClearCache;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CliActivate;
@@ -130,6 +131,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.KillQuery;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LikePredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Limit;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadBalance;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadConfiguration;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadModel;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
@@ -1521,6 +1523,12 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   @Override
+  public Node visitCancelMigrationsStatement(
+      RelationalSqlParser.CancelMigrationsStatementContext ctx) {
+    return new CancelMigrations();
+  }
+
+  @Override
   public Node visitShowDataNodesStatement(RelationalSqlParser.ShowDataNodesStatementContext ctx) {
     return new ShowDataNodes();
   }
@@ -1570,17 +1578,17 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     throw new SemanticException("SHOW SERIES SLOT is not supported yet.");
   }
 
-  //  @Override
-  //  public Node visitLoadBalanceStatement(RelationalSqlParser.LoadBalanceStatementContext ctx) {
-  //    List<Integer> targetNodeIds = null;
-  //    if (ctx.targetNodeIds != null && !ctx.targetNodeIds.isEmpty()) {
-  //      targetNodeIds =
-  //          ctx.targetNodeIds.stream()
-  //              .map(token -> Integer.parseInt(token.getText()))
-  //              .collect(java.util.stream.Collectors.toList());
-  //    }
-  //    return new LoadBalance(targetNodeIds);
-  //  }
+  @Override
+  public Node visitLoadBalanceStatement(RelationalSqlParser.LoadBalanceStatementContext ctx) {
+    List<Integer> targetNodeIds = null;
+    if (ctx.targetNodeIds != null && !ctx.targetNodeIds.isEmpty()) {
+      targetNodeIds =
+          ctx.targetNodeIds.stream()
+              .map(token -> Integer.parseInt(token.getText()))
+              .collect(java.util.stream.Collectors.toList());
+    }
+    return new LoadBalance(targetNodeIds);
+  }
 
   @Override
   public Node visitMigrateRegionStatement(RelationalSqlParser.MigrateRegionStatementContext ctx) {

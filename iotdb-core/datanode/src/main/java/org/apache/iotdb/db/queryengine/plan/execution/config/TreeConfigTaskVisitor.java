@@ -31,6 +31,7 @@ import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.AlterEncodingCompressorTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.AlterTimeSeriesTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.CancelMigrationsTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.CountDatabaseTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.CountTimeSlotListTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.CreateContinuousQueryTask;
@@ -138,6 +139,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.StatementNode;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterEncodingCompressorStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterTimeSeriesDataTypeStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.CancelMigrationsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountTimeSlotListStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateContinuousQueryStatement;
@@ -545,6 +547,12 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
   public IConfigTask visitShowMigrations(
       ShowMigrationsStatement showMigrationsStatement, MPPQueryContext context) {
     return new ShowMigrationsTask(showMigrationsStatement, false);
+  }
+
+  @Override
+  public IConfigTask visitCancelMigrations(
+      CancelMigrationsStatement cancelMigrationsStatement, MPPQueryContext context) {
+    return new CancelMigrationsTask();
   }
 
   @Override

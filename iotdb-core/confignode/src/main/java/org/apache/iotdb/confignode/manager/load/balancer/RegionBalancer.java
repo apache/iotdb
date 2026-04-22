@@ -35,7 +35,9 @@ import org.apache.iotdb.confignode.manager.load.balancer.region.GreedyRegionGrou
 import org.apache.iotdb.confignode.manager.load.balancer.region.IRegionGroupAllocator;
 import org.apache.iotdb.confignode.manager.load.balancer.region.PartiteGraphPlacementRegionGroupAllocator;
 import org.apache.iotdb.confignode.manager.load.balancer.region.migrator.GreedyCopySetRegionGroupMigrator;
+import org.apache.iotdb.confignode.manager.load.balancer.region.migrator.GreedyRegionGroupMigrator;
 import org.apache.iotdb.confignode.manager.load.balancer.region.migrator.IRegionGroupMigrator;
+import org.apache.iotdb.confignode.manager.load.balancer.region.migrator.PGPRebalanceRegionGroupMigrator;
 import org.apache.iotdb.confignode.manager.load.cache.region.RegionGroupStatistics;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
@@ -57,8 +59,18 @@ public class RegionBalancer {
 
   public RegionBalancer(IManager configManager) {
     this.configManager = configManager;
-    // Todo(xphu): add more migrator algorithms and make it configurable
-    this.regionGroupMigrator = new GreedyCopySetRegionGroupMigrator();
+
+    switch (ConfigNodeDescriptor.getInstance().getConf().getRegionGroupMigratePolicy()) {
+      case GREEDY:
+        this.regionGroupMigrator = new GreedyRegionGroupMigrator();
+        break;
+      case PGP:
+        this.regionGroupMigrator = new PGPRebalanceRegionGroupMigrator();
+        break;
+      case GCR:
+      default:
+        this.regionGroupMigrator = new GreedyCopySetRegionGroupMigrator();
+    }
 
     switch (ConfigNodeDescriptor.getInstance().getConf().getRegionGroupAllocatePolicy()) {
       case GREEDY:
@@ -190,5 +202,18 @@ public class RegionBalancer {
     GREEDY,
     GCR,
     PGR
+  }
+
+  public enum RegionGroupMigratePolicy {
+    GREEDY,
+    GCR,
+    PGP
+  }
+
+  public enum RegionGroupScaleInPolicy {
+    GREEDY,
+    GCR,
+    CAR,
+    RANDOM
   }
 }

@@ -189,6 +189,8 @@ public interface IConfigTaskExecutor {
   SettableFuture<ConfigTaskResult> showMigrations(
       final ShowMigrationsStatement showMigrationsStatement, final boolean isTableModel);
 
+  SettableFuture<ConfigTaskResult> cancelMigrations();
+
   SettableFuture<ConfigTaskResult> showDataNodes();
 
   SettableFuture<ConfigTaskResult> showAvailableUrls();

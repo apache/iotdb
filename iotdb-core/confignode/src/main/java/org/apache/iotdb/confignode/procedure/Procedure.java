@@ -245,6 +245,21 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
   }
 
   /**
+   * Called by ProcedureExecutor when acquireLock returns LOCK_EVENT_WAIT. The procedure should
+   * enqueue itself into the appropriate wait queue so that it can be rescheduled when the lock
+   * becomes available.
+   *
+   * <p>Default behavior: enqueue into the nodeLock wait queue (backward compatible with existing
+   * AbstractNodeProcedure behavior).
+   *
+   * @param env environment
+   */
+  protected void onLockEventWait(Env env) {
+    // Default: delegate to nodeLock for backward compatibility
+    ((ConfigNodeProcedureEnv) env).getNodeLock().waitProcedure(this);
+  }
+
+  /**
    * To make executor yield between each execution step to give other procedures a chance to run.
    *
    * @param env environment

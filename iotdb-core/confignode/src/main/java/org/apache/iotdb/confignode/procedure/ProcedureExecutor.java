@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.scheduler.ProcedureScheduler;
 import org.apache.iotdb.confignode.procedure.scheduler.SimpleProcedureScheduler;
@@ -394,7 +393,7 @@ public class ProcedureExecutor<Env> {
       // data races
       if (Objects.equals(lockState, ProcedureLockState.LOCK_EVENT_WAIT)) {
         LOG.info("procedureId {} wait for lock.", proc.getProcId());
-        ((ConfigNodeProcedureEnv) this.environment).getNodeLock().waitProcedure(proc);
+        proc.onLockEventWait(this.environment);
       }
     }
   }

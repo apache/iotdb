@@ -105,6 +105,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerRelationalReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
+import org.apache.iotdb.confignode.rpc.thrift.TCancelMigrationsReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCheckMaxClientNumResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCheckSessionNumReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
@@ -1100,6 +1101,11 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TShowMigrationsResp showMigrations(final TShowMigrationsReq showMigrationsReq) {
     return configManager.showMigrations(showMigrationsReq);
+  }
+
+  @Override
+  public TSStatus cancelMigrations(final TCancelMigrationsReq cancelMigrationsReq) {
+    return configManager.cancelMigrations();
   }
 
   @Override

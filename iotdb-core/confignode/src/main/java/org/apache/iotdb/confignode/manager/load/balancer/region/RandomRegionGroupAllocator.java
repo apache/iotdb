@@ -28,53 +28,33 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.security.SecureRandom;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-/** Allocate Region Greedily */
-public class GreedyRegionGroupAllocator implements IRegionGroupAllocator {
+/**
+ * Random allocator for scale-in experimental comparison.
+ *
+ * <p>For each region that needs migration, randomly selects an available node (excluding nodes
+ * already holding a replica of that region). This serves as a baseline to demonstrate the
+ * effectiveness of the GCR algorithm's multi-objective optimization.
+ *
+ * <p>Expected result: poor load balance quality (high variance in region distribution) compared to
+ * GCR, since no load-awareness is applied.
+ */
+public class RandomRegionGroupAllocator implements IRegionGroupAllocator {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(GreedyRegionGroupAllocator.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(RandomRegionGroupAllocator.class);
 
   private static final SecureRandom RANDOM = new SecureRandom();
 
   /** Number of rounds to run and pick the worst-variance result for experimental comparison. */
   private static final int MAX_RETRY = 1000;
 
-  public GreedyRegionGroupAllocator() {
-    // Empty constructor
-  }
-
-  static class DataNodeEntry implements Comparable<DataNodeEntry> {
-
-    int dataNodeId;
-    int regionCount;
-    double freeDiskSpace;
-    int randomWeight;
-
-    DataNodeEntry(int dataNodeId, int regionCount, double freeDiskSpace) {
-      this.dataNodeId = dataNodeId;
-      this.regionCount = regionCount;
-      this.freeDiskSpace = freeDiskSpace;
-      this.randomWeight = RANDOM.nextInt();
-    }
-
-    @Override
-    public int compareTo(DataNodeEntry other) {
-      if (this.regionCount != other.regionCount) {
-        return Integer.compare(this.regionCount, other.regionCount);
-      } else if (this.freeDiskSpace != other.freeDiskSpace) {
-        return Double.compare(other.freeDiskSpace, this.freeDiskSpace);
-      } else {
-        return Integer.compare(this.randomWeight, other.randomWeight);
-      }
-    }
-  }
+  private static final GreedyRegionGroupAllocator GREEDY_ALLOCATOR =
+      new GreedyRegionGroupAllocator();
 
   @Override
   public TRegionReplicaSet generateOptimalRegionReplicasDistribution(
@@ -84,12 +64,14 @@ public class GreedyRegionGroupAllocator implements IRegionGroupAllocator {
       List<TRegionReplicaSet> databaseAllocatedRegionGroups,
       int replicationFactor,
       TConsensusGroupId consensusGroupId) {
-    // Build weightList order by number of regions allocated asc
-    List<TDataNodeLocation> weightList =
-        buildWeightList(availableDataNodeMap, freeDiskSpaceMap, allocatedRegionGroups);
-    return new TRegionReplicaSet(
-        consensusGroupId,
-        weightList.stream().limit(replicationFactor).collect(Collectors.toList()));
+    // Random allocator is only used for scale-in; delegate initial allocation to Greedy
+    return GREEDY_ALLOCATOR.generateOptimalRegionReplicasDistribution(
+        availableDataNodeMap,
+        freeDiskSpaceMap,
+        allocatedRegionGroups,
+        databaseAllocatedRegionGroups,
+        replicationFactor,
+        consensusGroupId);
   }
 
   @Override
@@ -104,7 +86,7 @@ public class GreedyRegionGroupAllocator implements IRegionGroupAllocator {
 
     ScaleInAllocatorLogger.logSummary(
         LOGGER,
-        "Greedy",
+        "Random",
         "Initial",
         availableDataNodeMap,
         allocatedRegionGroups,
@@ -119,14 +101,13 @@ public class GreedyRegionGroupAllocator implements IRegionGroupAllocator {
             remainReplicasMap));
 
     // Run multiple rounds and pick the result with the highest variance, so that the log
-    // can demonstrate the greedy algorithm's load imbalance. Greedy has internal randomness
-    // (shuffle for tie-breaking), so different runs may produce different results.
+    // can demonstrate the random algorithm's load imbalance.
     Map<TConsensusGroupId, TDataNodeConfiguration> bestResult = null;
     long bestVariance = -1;
 
     for (int round = 0; round < MAX_RETRY; round++) {
       Map<TConsensusGroupId, TDataNodeConfiguration> candidateResult =
-          doGreedySelect(availableDataNodeMap, allocatedRegionGroups, remainReplicasMap);
+          doRandomSelect(availableDataNodeMap, remainReplicasMap);
 
       long variance =
           ScaleInAllocatorLogger.computeResultVariance(
@@ -139,7 +120,7 @@ public class GreedyRegionGroupAllocator implements IRegionGroupAllocator {
 
     ScaleInAllocatorLogger.logSummary(
         LOGGER,
-        "Greedy",
+        "Random",
         "Final",
         availableDataNodeMap,
         allocatedRegionGroups,
@@ -153,26 +134,15 @@ public class GreedyRegionGroupAllocator implements IRegionGroupAllocator {
   }
 
   /**
-   * Single round of greedy selection: for each region, pick the least-loaded valid node with random
-   * tie-breaking.
+   * Single round of random selection: for each region, randomly pick one available node (excluding
+   * nodes already holding a replica).
    */
-  private Map<TConsensusGroupId, TDataNodeConfiguration> doGreedySelect(
+  private Map<TConsensusGroupId, TDataNodeConfiguration> doRandomSelect(
       Map<Integer, TDataNodeConfiguration> availableDataNodeMap,
-      List<TRegionReplicaSet> allocatedRegionGroups,
       Map<TConsensusGroupId, TRegionReplicaSet> remainReplicasMap) {
 
-    // Compute the current region count for each available node
-    Map<Integer, Integer> regionCounter = new HashMap<>();
-    for (Integer nodeId : availableDataNodeMap.keySet()) {
-      regionCounter.put(nodeId, 0);
-    }
-    for (TRegionReplicaSet replicaSet : allocatedRegionGroups) {
-      for (TDataNodeLocation loc : replicaSet.getDataNodeLocations()) {
-        regionCounter.computeIfPresent(loc.getDataNodeId(), (k, v) -> v + 1);
-      }
-    }
-
     Map<TConsensusGroupId, TDataNodeConfiguration> result = new HashMap<>();
+
     for (Map.Entry<TConsensusGroupId, TRegionReplicaSet> entry : remainReplicasMap.entrySet()) {
       TConsensusGroupId regionId = entry.getKey();
       TRegionReplicaSet remainReplicaSet = entry.getValue();
@@ -189,59 +159,13 @@ public class GreedyRegionGroupAllocator implements IRegionGroupAllocator {
               .filter(nodeId -> !excludedNodes.contains(nodeId))
               .collect(Collectors.toList());
 
-      // Shuffle first to randomize tie-breaking
-      Collections.shuffle(candidates, RANDOM);
-
-      // Pick the candidate with the minimum current region count
-      int bestNodeId = -1;
-      int bestLoad = Integer.MAX_VALUE;
-      for (int candidate : candidates) {
-        int load = regionCounter.getOrDefault(candidate, 0);
-        if (load < bestLoad) {
-          bestLoad = load;
-          bestNodeId = candidate;
-        }
-      }
-
-      if (bestNodeId >= 0) {
-        result.put(regionId, availableDataNodeMap.get(bestNodeId));
-        // Update the region counter so subsequent iterations see the new load
-        regionCounter.merge(bestNodeId, 1, Integer::sum);
+      if (!candidates.isEmpty()) {
+        // Randomly pick one candidate
+        int selectedNodeId = candidates.get(RANDOM.nextInt(candidates.size()));
+        result.put(regionId, availableDataNodeMap.get(selectedNodeId));
       }
     }
 
     return result;
-  }
-
-  private List<TDataNodeLocation> buildWeightList(
-      Map<Integer, TDataNodeConfiguration> availableDataNodeMap,
-      Map<Integer, Double> freeDiskSpaceMap,
-      List<TRegionReplicaSet> allocatedRegionGroups) {
-
-    // Map<DataNodeId, Region count>
-    Map<Integer, Integer> regionCounter = new HashMap<>(availableDataNodeMap.size());
-    allocatedRegionGroups.forEach(
-        regionReplicaSet ->
-            regionReplicaSet
-                .getDataNodeLocations()
-                .forEach(
-                    dataNodeLocation ->
-                        regionCounter.merge(dataNodeLocation.getDataNodeId(), 1, Integer::sum)));
-
-    /* Construct priority map */
-    List<DataNodeEntry> entryList = new ArrayList<>();
-    availableDataNodeMap.forEach(
-        (datanodeId, dataNodeConfiguration) ->
-            entryList.add(
-                new DataNodeEntry(
-                    datanodeId,
-                    regionCounter.getOrDefault(datanodeId, 0),
-                    freeDiskSpaceMap.getOrDefault(datanodeId, 0d))));
-
-    // Sort weightList
-    return entryList.stream()
-        .sorted()
-        .map(entry -> availableDataNodeMap.get(entry.dataNodeId).getLocation())
-        .collect(Collectors.toList());
   }
 }

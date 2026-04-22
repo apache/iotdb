@@ -102,6 +102,7 @@ import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupAlreadyExistException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
+import org.apache.iotdb.consensus.iot.RegionMigrationProgressHolder;
 import org.apache.iotdb.db.audit.DNAuditLogger;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -3811,6 +3812,12 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TRegionMigrateResult getRegionMaintainResult(long taskId) throws TException {
     return RegionMigrateService.getInstance().getRegionMaintainResult(taskId);
+  }
+
+  @Override
+  public String getRegionMigrationProgress(TConsensusGroupId regionId) throws TException {
+    ConsensusGroupId groupId = ConsensusGroupId.Factory.createFromTConsensusGroupId(regionId);
+    return RegionMigrationProgressHolder.getProgress(groupId).orElse("");
   }
 
   @Override

@@ -102,6 +102,11 @@ public class ShowMigrationsTask implements IConfigTask {
                 BytesUtils.valueOf(
                     DateTimeUtils.convertLongToDate(migrationInfo.getLastUpdateTime())));
         builder.getColumnBuilder(9).writeBinary(BytesUtils.valueOf(migrationInfo.getDuration()));
+        builder
+            .getColumnBuilder(10)
+            .writeBinary(
+                BytesUtils.valueOf(
+                    migrationInfo.isSetProgress() ? migrationInfo.getProgress() : ""));
         builder.declarePosition();
       }
     }

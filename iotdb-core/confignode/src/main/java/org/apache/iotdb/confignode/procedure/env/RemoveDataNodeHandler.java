@@ -38,8 +38,11 @@ import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeToStatusResp;
 import org.apache.iotdb.confignode.manager.ConfigManager;
+import org.apache.iotdb.confignode.manager.load.balancer.region.CARRegionGroupAllocator;
 import org.apache.iotdb.confignode.manager.load.balancer.region.GreedyCopySetRegionGroupAllocator;
+import org.apache.iotdb.confignode.manager.load.balancer.region.GreedyRegionGroupAllocator;
 import org.apache.iotdb.confignode.manager.load.balancer.region.IRegionGroupAllocator;
+import org.apache.iotdb.confignode.manager.load.balancer.region.RandomRegionGroupAllocator;
 import org.apache.iotdb.confignode.manager.load.cache.node.NodeHeartbeatSample;
 import org.apache.iotdb.confignode.manager.load.cache.region.RegionHeartbeatSample;
 import org.apache.iotdb.confignode.manager.partition.PartitionMetrics;
@@ -81,12 +84,15 @@ public class RemoveDataNodeHandler {
   public RemoveDataNodeHandler(ConfigManager configManager) {
     this.configManager = configManager;
 
-    switch (ConfigNodeDescriptor.getInstance().getConf().getRegionGroupAllocatePolicy()) {
+    switch (ConfigNodeDescriptor.getInstance().getConf().getRegionGroupScaleInPolicy()) {
       case GREEDY:
-        this.regionGroupAllocator = new GreedyCopySetRegionGroupAllocator();
+        this.regionGroupAllocator = new GreedyRegionGroupAllocator();
         break;
-      case PGR:
-        this.regionGroupAllocator = new GreedyCopySetRegionGroupAllocator();
+      case RANDOM:
+        this.regionGroupAllocator = new RandomRegionGroupAllocator();
+        break;
+      case CAR:
+        this.regionGroupAllocator = new CARRegionGroupAllocator();
         break;
       case GCR:
       default:
@@ -229,10 +235,7 @@ public class RemoveDataNodeHandler {
     }
 
     final List<TDataNodeConfiguration> availableDataNodes =
-        configManager
-            .getNodeManager()
-            .filterDataNodeThroughStatus(NodeStatus.Running, NodeStatus.Unknown)
-            .stream()
+        configManager.getNodeManager().filterDataNodeThroughStatus(NodeStatus.Running).stream()
             .filter(node -> !removedDataNodesSet.contains(node.getLocation().getDataNodeId()))
             .collect(Collectors.toList());
 
@@ -288,6 +291,23 @@ public class RemoveDataNodeHandler {
       databaseAllocatedRegionGroupMap.put(database, databaseAllocatedReplicaSets);
     }
 
+    // Build per-RegionGroup disk usage map from LoadCache
+    Map<TConsensusGroupId, Long> regionDiskUsageMap = new HashMap<>();
+    Set<TConsensusGroupId> allocatedGroupIds = new HashSet<>();
+    for (TRegionReplicaSet rs : allocatedReplicaSets) {
+      allocatedGroupIds.add(rs.getRegionId());
+    }
+    configManager
+        .getLoadManager()
+        .getLoadCache()
+        .getCurrentRegionGroupStatisticsMap()
+        .forEach(
+            (groupId, stats) -> {
+              if (allocatedGroupIds.contains(groupId)) {
+                regionDiskUsageMap.put(groupId, stats.getDiskUsage());
+              }
+            });
+
     Map<TConsensusGroupId, TDataNodeConfiguration> result =
         regionGroupAllocator.removeNodeReplicaSelect(
             availableDataNodeMap,
@@ -295,7 +315,8 @@ public class RemoveDataNodeHandler {
             allocatedReplicaSets,
             regionDatabaseMap,
             databaseAllocatedRegionGroupMap,
-            remainReplicasMap);
+            remainReplicasMap,
+            regionDiskUsageMap);
 
     for (TConsensusGroupId regionId : result.keySet()) {
 

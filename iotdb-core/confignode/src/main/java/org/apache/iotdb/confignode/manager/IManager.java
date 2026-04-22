@@ -646,6 +646,9 @@ public interface IManager {
   /** Show Migrations. */
   TShowMigrationsResp showMigrations(TShowMigrationsReq showMigrationsReq);
 
+  /** Cancel all running migrations. */
+  TSStatus cancelMigrations();
+
   /** Show DataNodes for information schema. */
   TShowDataNodes4InformationSchemaResp showDataNodes4InformationSchema();
 

@@ -154,6 +154,10 @@ CALL
     : C A L L
     ;
 
+CANCEL
+    : C A N C E L
+    ;
+
 CAST
     : C A S T
     ;

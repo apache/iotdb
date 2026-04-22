@@ -313,6 +313,24 @@ public class ConfigNodeDescriptor {
       throw new IOException(e);
     }
 
+    try {
+      conf.setRegionGroupMigratePolicy(
+          RegionBalancer.RegionGroupMigratePolicy.valueOf(
+              properties.getProperty(
+                  "region_group_migrate_policy", conf.getRegionGroupMigratePolicy().name())));
+    } catch (IllegalArgumentException e) {
+      throw new IOException(e);
+    }
+
+    try {
+      conf.setRegionGroupScaleInPolicy(
+          RegionBalancer.RegionGroupScaleInPolicy.valueOf(
+              properties.getProperty(
+                  "region_group_scalein_policy", conf.getRegionGroupScaleInPolicy().name())));
+    } catch (IllegalArgumentException e) {
+      throw new IOException(e);
+    }
+
     conf.setCnRpcMaxConcurrentClientNum(
         Integer.parseInt(
             properties.getProperty(
@@ -479,6 +497,12 @@ public class ConfigNodeDescriptor {
             properties.getProperty(
                 "procedure_core_worker_thread_count",
                 String.valueOf(conf.getProcedureCoreWorkerThreadsCount()))));
+
+    conf.setRegionMigrationConcurrencyLimit(
+        Integer.parseInt(
+            properties.getProperty(
+                "region_migration_concurrency_limit",
+                String.valueOf(conf.getRegionMigrationConcurrencyLimit()))));
 
     loadRatisConsensusConfig(properties);
     loadCQConfig(properties);
@@ -942,6 +966,12 @@ public class ConfigNodeDescriptor {
                     commonDescriptor.getConfig().getAuditableControlEventTypeInStr())
                 .trim()
                 .toUpperCase());
+
+    conf.setRegionMigrationConcurrencyLimit(
+        Integer.parseInt(
+            properties.getProperty(
+                "region_migration_concurrency_limit",
+                String.valueOf(conf.getRegionMigrationConcurrencyLimit()))));
   }
 
   public static ConfigNodeDescriptor getInstance() {

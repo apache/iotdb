@@ -2032,6 +2032,18 @@ public class ConfigManager implements IManager {
   }
 
   @Override
+  public TSStatus cancelMigrations() {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      int cancelledCount = procedureManager.cancelAllMigrations();
+      return RpcUtils.getStatus(
+          TSStatusCode.SUCCESS_STATUS,
+          "Successfully signalled " + cancelledCount + " migration(s) to cancel");
+    }
+    return status;
+  }
+
+  @Override
   public TShowAINodesResp showAINodes() {
     TSStatus status = confirmLeader();
     TShowAINodesResp resp = new TShowAINodesResp();
@@ -3123,7 +3135,7 @@ public class ConfigManager implements IManager {
   @Override
   public TSStatus loadBalance(TLoadBalanceReq req) {
     List<TDataNodeConfiguration> availableDataNodes =
-        getNodeManager().filterDataNodeThroughStatus(NodeStatus.Running, NodeStatus.Unknown);
+        getNodeManager().filterDataNodeThroughStatus(NodeStatus.Running);
     Map<Integer, TDataNodeConfiguration> availableDataNodeMap =
         new HashMap<>(availableDataNodes.size());
     availableDataNodes.forEach(
@@ -3197,7 +3209,8 @@ public class ConfigManager implements IManager {
   }
 
   /**
-   * Filter regions by model: only process regions that match the requested model.
+   * Filter regions by model: only process regions that match the requested model. System databases
+   * (root.__system, root.__audit) are excluded from load balancing.
    *
    * @param allRegions All regions to filter
    * @param req Load balance request containing the model filter
@@ -3210,6 +3223,11 @@ public class ConfigManager implements IManager {
             regionReplicaSet -> {
               String databaseName =
                   getPartitionManager().getRegionDatabase(regionReplicaSet.getRegionId());
+              // Exclude system databases from load balancing
+              if (SchemaConstant.SYSTEM_DATABASE.equals(databaseName)
+                  || SchemaConstant.AUDIT_DATABASE.equals(databaseName)) {
+                return false;
+              }
               boolean isTreeModelDatabase = databaseName.startsWith("root.");
               return (req.getModel() == Model.TREE && isTreeModelDatabase)
                   || (req.getModel() == Model.TABLE && !isTreeModelDatabase);

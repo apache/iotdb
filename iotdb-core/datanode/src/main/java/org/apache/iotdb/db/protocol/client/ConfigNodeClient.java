@@ -63,6 +63,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerRelationalReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
+import org.apache.iotdb.confignode.rpc.thrift.TCancelMigrationsReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCheckMaxClientNumResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCheckSessionNumReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
@@ -916,6 +917,12 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   public TShowMigrationsResp showMigrations(TShowMigrationsReq req) throws TException {
     return executeRemoteCallWithRetry(
         () -> client.showMigrations(req), resp -> !updateConfigNodeLeader(resp.status));
+  }
+
+  @Override
+  public TSStatus cancelMigrations(TCancelMigrationsReq req) throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.cancelMigrations(req), resp -> !updateConfigNodeLeader(resp));
   }
 
   @Override

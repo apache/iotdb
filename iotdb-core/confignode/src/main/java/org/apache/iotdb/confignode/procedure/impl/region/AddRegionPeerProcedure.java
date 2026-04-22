@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.commons.exception.runtime.ThriftSerDeException;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
+import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.env.RegionMaintainHandler;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
@@ -44,6 +45,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.BooleanSupplier;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.utils.KillPoint.KillPoint.setKillPoint;
@@ -114,7 +116,11 @@ public class AddRegionPeerProcedure extends RegionOperationProcedure<AddRegionPe
                   env, handler, "submit DO_ADD_REGION_PEER task fail");
             }
           }
-          TRegionMigrateResult result = handler.waitTaskFinish(this.getProcId(), coordinator);
+          // Build cancel checker: if this AddRegionPeerProcedure is a child of
+          // RegionMigrateProcedure, check the parent's cancel flag so that the
+          // polling loop can exit early when the user issues CANCEL ALL MIGRATIONS.
+          TRegionMigrateResult result =
+              handler.waitTaskFinish(this.getProcId(), coordinator, buildCancelChecker(env));
           switch (result.getTaskStatus()) {
             case TASK_NOT_EXIST:
             // coordinator crashed and lost its task table
@@ -155,6 +161,26 @@ public class AddRegionPeerProcedure extends RegionOperationProcedure<AddRegionPe
     }
     LOGGER.info("[pid{}][AddRegion] state {} complete", getProcId(), state);
     return Flow.HAS_MORE_STATE;
+  }
+
+  /**
+   * Build a cancel checker for the waitTaskFinish polling loop. If this procedure is a child of
+   * {@link RegionMigrateProcedure}, returns its {@code isCancelled()} method reference; otherwise
+   * returns a no-op supplier that always returns false.
+   */
+  private BooleanSupplier buildCancelChecker(ConfigNodeProcedureEnv env) {
+    if (hasParent()) {
+      Procedure<ConfigNodeProcedureEnv> parent =
+          env.getConfigManager()
+              .getProcedureManager()
+              .getExecutor()
+              .getProcedures()
+              .get(getParentProcId());
+      if (parent instanceof RegionMigrateProcedure) {
+        return ((RegionMigrateProcedure) parent)::isCancelled;
+      }
+    }
+    return () -> false;
   }
 
   private Flow warnAndRollBackAndNoMoreState(

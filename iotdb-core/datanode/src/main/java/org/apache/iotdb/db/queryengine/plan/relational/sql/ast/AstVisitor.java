@@ -433,6 +433,10 @@ public abstract class AstVisitor<R, C> {
     return visitStatement(node, context);
   }
 
+  protected R visitCancelMigrations(CancelMigrations node, C context) {
+    return visitStatement(node, context);
+  }
+
   protected R visitShowDataNodes(ShowDataNodes node, C context) {
     return visitStatement(node, context);
   }

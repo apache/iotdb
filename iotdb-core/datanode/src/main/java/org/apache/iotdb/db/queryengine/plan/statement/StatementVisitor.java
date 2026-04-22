@@ -37,6 +37,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.internal.SeriesSchemaFetch
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterEncodingCompressorStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterTimeSeriesDataTypeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterTimeSeriesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.CancelMigrationsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDevicesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountLevelTimeSeriesStatement;
@@ -571,6 +572,10 @@ public abstract class StatementVisitor<R, C> {
 
   public R visitShowMigrations(ShowMigrationsStatement showMigrationsStatement, C context) {
     return visitStatement(showMigrationsStatement, context);
+  }
+
+  public R visitCancelMigrations(CancelMigrationsStatement cancelMigrationsStatement, C context) {
+    return visitStatement(cancelMigrationsStatement, context);
   }
 
   public R visitShowDataNodes(ShowDataNodesStatement showDataNodesStatement, C context) {

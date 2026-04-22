@@ -24,6 +24,9 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -39,6 +42,9 @@ import static java.util.Map.Entry.comparingByValue;
 
 /** Allocate Region through Greedy and CopySet Algorithm. */
 public class GreedyCopySetRegionGroupAllocator implements IRegionGroupAllocator {
+
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(GreedyCopySetRegionGroupAllocator.class);
 
   private static final SecureRandom RANDOM = new SecureRandom();
   private static final int GCR_MAX_OPTIMAL_PLAN_NUM = 10;
@@ -150,12 +156,29 @@ public class GreedyCopySetRegionGroupAllocator implements IRegionGroupAllocator 
       List<TRegionReplicaSet> allocatedRegionGroups,
       Map<TConsensusGroupId, String> regionDatabaseMap,
       Map<String, List<TRegionReplicaSet>> databaseAllocatedRegionGroupMap,
-      Map<TConsensusGroupId, TRegionReplicaSet> remainReplicasMap) {
+      Map<TConsensusGroupId, TRegionReplicaSet> remainReplicasMap,
+      Map<TConsensusGroupId, Long> regionDiskUsageMap) {
     try {
       // 1. prepare: compute regionCounter, databaseRegionCounter, and combinationCounter
 
       prepare(availableDataNodeMap, allocatedRegionGroups, Collections.emptyList());
       computeInitialDbLoad(availableDataNodeMap, databaseAllocatedRegionGroupMap);
+
+      ScaleInAllocatorLogger.logSummary(
+          LOGGER,
+          "GCR",
+          "Initial",
+          availableDataNodeMap,
+          allocatedRegionGroups,
+          null,
+          regionDatabaseMap,
+          remainReplicasMap,
+          regionDiskUsageMap,
+          ScaleInAllocatorLogger.inferRemovedNodeMap(
+              availableDataNodeMap,
+              regionDatabaseMap,
+              databaseAllocatedRegionGroupMap,
+              remainReplicasMap));
 
       // 2. Build allowed candidate set for each region that needs to be migrated.
       // For each region in remainReplicasMap, the candidate destination nodes are all nodes in
@@ -175,17 +198,18 @@ public class GreedyCopySetRegionGroupAllocator implements IRegionGroupAllocator 
         List<Integer> candidates =
             availableDataNodeMap.keySet().stream()
                 .filter(nodeId -> !notAllowedNodes.contains(nodeId))
-                .sorted(
-                    (a, b) -> {
-                      int cmp = Integer.compare(regionCounter[a], regionCounter[b]);
-                      return (cmp != 0)
-                          ? cmp
-                          : Integer.compare(databaseRegionCounter[a], databaseRegionCounter[b]);
-                    })
                 .collect(Collectors.toList());
+        // Shuffle to randomize tie-breaking, then sort by regionCounter asc, databaseRegionCounter
+        // asc
         Collections.shuffle(candidates);
+        candidates.sort(
+            (a, b) -> {
+              int cmp = Integer.compare(regionCounter[a], regionCounter[b]);
+              return (cmp != 0)
+                  ? cmp
+                  : Integer.compare(databaseRegionCounter[a], databaseRegionCounter[b]);
+            });
 
-        // Sort candidates in ascending order of current global load (regionCounter)
         allowedCandidatesMap.put(regionId, candidates);
       }
 
@@ -251,6 +275,19 @@ public class GreedyCopySetRegionGroupAllocator implements IRegionGroupAllocator 
           }
         }
       }
+
+      ScaleInAllocatorLogger.logSummary(
+          LOGGER,
+          "GCR",
+          "Final",
+          availableDataNodeMap,
+          allocatedRegionGroups,
+          result,
+          regionDatabaseMap,
+          remainReplicasMap,
+          regionDiskUsageMap,
+          null);
+
       return result;
     } finally {
       // Clear any temporary state to avoid impacting subsequent calls
@@ -289,29 +326,28 @@ public class GreedyCopySetRegionGroupAllocator implements IRegionGroupAllocator 
       int currentScatter,
       int[] currentAssignment,
       int[] additionalLoad) {
-    // Compute the maximum global load and maximum database load among all nodes that received
-    // additional load.
-    int[] currentMetrics = getCurrentMetrics(additionalLoad, currentScatter, currentAssignment);
-    // Lexicographically compare currentMetrics with bestMetrics.
-    // If currentMetrics is better than bestMetrics, update bestMetrics and clear the candidate
-    // buffer.
-    boolean isBetter = false;
-    boolean isEqual = true;
-    for (int i = 0; i < 3; i++) {
-      if (currentMetrics[i] < bestMetrics[i]) {
-        isBetter = true;
-        isEqual = false;
-        break;
-      } else if (currentMetrics[i] > bestMetrics[i]) {
-        isEqual = false;
-        break;
-      }
-    }
-    if (!isBetter && !isEqual) {
-      return;
-    }
-
     if (index == dfsRegionKeys.size()) {
+      // Compute the maximum global load and maximum database load among all nodes that received
+      // additional load.
+      int[] currentMetrics = getCurrentMetrics(additionalLoad, currentScatter, currentAssignment);
+      // Lexicographically compare currentMetrics with bestMetrics.
+      // If currentMetrics is better than bestMetrics, update bestMetrics and clear the candidate
+      // buffer.
+      boolean isBetter = false;
+      boolean isEqual = true;
+      for (int i = 0; i < 3; i++) {
+        if (currentMetrics[i] < bestMetrics[i]) {
+          isBetter = true;
+          isEqual = false;
+          break;
+        } else if (currentMetrics[i] > bestMetrics[i]) {
+          isEqual = false;
+          break;
+        }
+      }
+      if (!isBetter && !isEqual) {
+        return;
+      }
       if (isBetter) {
         bestMetrics[0] = currentMetrics[0];
         bestMetrics[1] = currentMetrics[1];
@@ -617,7 +653,14 @@ public class GreedyCopySetRegionGroupAllocator implements IRegionGroupAllocator 
     }
   }
 
-  void clear() {
+  private void clear() {
     optimalReplicaSets.clear();
+    dfsRegionKeys = null;
+    allowedCandidatesMap = null;
+    bestAssignment = null;
+    bestMetrics = null;
+    scatterDelta = null;
+    regionDatabaseMap = null;
+    initialDbLoad = null;
   }
 }

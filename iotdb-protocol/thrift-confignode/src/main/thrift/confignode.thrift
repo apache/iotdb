@@ -820,11 +820,16 @@ struct TMigrationInfo {
   8: required i64 submittedTime
   9: required i64 lastUpdateTime
   10: required string duration
+  11: optional string progress
 }
 
 struct TShowMigrationsResp {
   1: required common.TSStatus status
   2: optional list<TMigrationInfo> migrationInfoList;
+}
+
+// Cancel migrations
+struct TCancelMigrationsReq {
 }
 
 // Routing
@@ -1906,6 +1911,11 @@ service IConfigNodeRPCService {
    * Show all running region migration tasks
    */
   TShowMigrationsResp showMigrations(TShowMigrationsReq req)
+
+  /**
+   * Cancel all running region migration tasks
+   */
+  common.TSStatus cancelMigrations(TCancelMigrationsReq req)
 
   // ======================================================
   // Routing

@@ -22,38 +22,71 @@ package org.apache.iotdb.confignode.procedure.scheduler;
 import org.apache.iotdb.confignode.procedure.Procedure;
 
 import java.util.ArrayDeque;
+import java.util.HashSet;
+import java.util.Set;
 
-/** Lock Queue for procedure of the same type */
+/**
+ * Lock queue for procedures. Supports both exclusive mode (maxPermits=1, the default) and semaphore
+ * mode (maxPermits>1) for concurrent lock holders.
+ *
+ * <p>When maxPermits <= 0, no limit is enforced and {@link #tryLock} always returns true.
+ */
 public class LockQueue {
-  private final ArrayDeque<Procedure<?>> deque = new ArrayDeque<>();
+  private final ArrayDeque<Procedure<?>> waitingQueue = new ArrayDeque<>();
+  private final Set<Long> lockOwnerProcedureIds = new HashSet<>();
+  private volatile int maxPermits;
 
-  private Procedure<?> lockOwnerProcedure = null;
+  /** Creates an exclusive lock queue (maxPermits = 1). */
+  public LockQueue() {
+    this(1);
+  }
 
-  public boolean tryLock(Procedure<?> procedure) {
-    if (lockOwnerProcedure == null) {
-      lockOwnerProcedure = procedure;
+  /**
+   * Creates a lock queue allowing up to {@code maxPermits} concurrent holders.
+   *
+   * @param maxPermits maximum concurrent lock holders; <= 0 means no limit
+   */
+  public LockQueue(int maxPermits) {
+    this.maxPermits = maxPermits;
+  }
+
+  public synchronized boolean tryLock(Procedure<?> procedure) {
+    // No limit mode
+    if (maxPermits <= 0) {
       return true;
     }
-    return procedure.getProcId() == lockOwnerProcedure.getProcId();
-  }
-
-  public boolean releaseLock(Procedure<?> procedure) {
-    if (lockOwnerProcedure == null || lockOwnerProcedure.getProcId() != procedure.getProcId()) {
-      return false;
+    // Reentrant check
+    if (lockOwnerProcedureIds.contains(procedure.getProcId())) {
+      return true;
     }
-    lockOwnerProcedure = null;
-    return true;
+    if (lockOwnerProcedureIds.size() < maxPermits) {
+      lockOwnerProcedureIds.add(procedure.getProcId());
+      return true;
+    }
+    return false;
   }
 
-  public void waitProcedure(Procedure<?> procedure) {
-    deque.addLast(procedure);
+  public synchronized boolean releaseLock(Procedure<?> procedure) {
+    return lockOwnerProcedureIds.remove(procedure.getProcId());
   }
 
-  public int wakeWaitingProcedures(ProcedureScheduler procedureScheduler) {
-    int count = deque.size();
-    while (!deque.isEmpty()) {
-      procedureScheduler.addFront(deque.pollFirst());
+  public synchronized void waitProcedure(Procedure<?> procedure) {
+    waitingQueue.addLast(procedure);
+  }
+
+  public synchronized int wakeWaitingProcedures(ProcedureScheduler procedureScheduler) {
+    int count = waitingQueue.size();
+    while (!waitingQueue.isEmpty()) {
+      procedureScheduler.addFront(waitingQueue.pollFirst());
     }
     return count;
+  }
+
+  public void setMaxPermits(int maxPermits) {
+    this.maxPermits = maxPermits;
+  }
+
+  public int getMaxPermits() {
+    return maxPermits;
   }
 }

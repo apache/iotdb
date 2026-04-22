@@ -138,6 +138,14 @@ public class ConfigNodeConfig {
   private RegionBalancer.RegionGroupAllocatePolicy regionGroupAllocatePolicy =
       RegionBalancer.RegionGroupAllocatePolicy.GCR;
 
+  /** RegionGroup migrate policy. */
+  private RegionBalancer.RegionGroupMigratePolicy regionGroupMigratePolicy =
+      RegionBalancer.RegionGroupMigratePolicy.GCR;
+
+  /** RegionGroup scale-in policy. */
+  private RegionBalancer.RegionGroupScaleInPolicy regionGroupScaleInPolicy =
+      RegionBalancer.RegionGroupScaleInPolicy.GCR;
+
   /** Max concurrent client number. */
   private int rpcMaxConcurrentClientNum = 3000;
 
@@ -195,6 +203,11 @@ public class ConfigNodeConfig {
   /** Procedure core worker threads size. */
   private int procedureCoreWorkerThreadsCount =
       Math.max(Runtime.getRuntime().availableProcessors() / 4, 16);
+
+  /**
+   * Max number of RegionMigrateProcedure that can run concurrently. 0 or negative means no limit.
+   */
+  private volatile int regionMigrationConcurrencyLimit = 0;
 
   /** The heartbeat interval in milliseconds. */
   private long heartbeatIntervalInMs = 1000;
@@ -574,6 +587,24 @@ public class ConfigNodeConfig {
     this.regionGroupAllocatePolicy = regionGroupAllocatePolicy;
   }
 
+  public RegionBalancer.RegionGroupMigratePolicy getRegionGroupMigratePolicy() {
+    return regionGroupMigratePolicy;
+  }
+
+  public void setRegionGroupMigratePolicy(
+      RegionBalancer.RegionGroupMigratePolicy regionGroupMigratePolicy) {
+    this.regionGroupMigratePolicy = regionGroupMigratePolicy;
+  }
+
+  public RegionBalancer.RegionGroupScaleInPolicy getRegionGroupScaleInPolicy() {
+    return regionGroupScaleInPolicy;
+  }
+
+  public void setRegionGroupScaleInPolicy(
+      RegionBalancer.RegionGroupScaleInPolicy regionGroupScaleInPolicy) {
+    this.regionGroupScaleInPolicy = regionGroupScaleInPolicy;
+  }
+
   public int getThriftServerAwaitTimeForStopService() {
     return thriftServerAwaitTimeForStopService;
   }
@@ -687,6 +718,14 @@ public class ConfigNodeConfig {
 
   public void setProcedureCoreWorkerThreadsCount(int procedureCoreWorkerThreadsCount) {
     this.procedureCoreWorkerThreadsCount = procedureCoreWorkerThreadsCount;
+  }
+
+  public int getRegionMigrationConcurrencyLimit() {
+    return regionMigrationConcurrencyLimit;
+  }
+
+  public void setRegionMigrationConcurrencyLimit(int regionMigrationConcurrencyLimit) {
+    this.regionMigrationConcurrencyLimit = regionMigrationConcurrencyLimit;
   }
 
   public long getHeartbeatIntervalInMs() {

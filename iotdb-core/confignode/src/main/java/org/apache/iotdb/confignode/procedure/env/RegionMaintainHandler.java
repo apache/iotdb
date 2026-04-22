@@ -69,6 +69,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BooleanSupplier;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant.PROCESSOR_KEY;
@@ -331,11 +332,40 @@ public class RegionMaintainHandler {
 
   // TODO: will use 'procedure yield' to refactor later
   public TRegionMigrateResult waitTaskFinish(long taskId, TDataNodeLocation dataNodeLocation) {
+    return waitTaskFinish(taskId, dataNodeLocation, () -> false);
+  }
+
+  /**
+   * Poll the DataNode for the region maintain task result, blocking until the task finishes, the
+   * connection times out, or the cancelChecker returns true.
+   *
+   * <p>When the cancelChecker signals cancellation, this method returns a FAIL result so that the
+   * caller (e.g. AddRegionPeerProcedure) can trigger its normal rollback path.
+   *
+   * @param taskId the procedure id used as the task key on the DataNode
+   * @param dataNodeLocation the DataNode to poll
+   * @param cancelChecker a supplier that returns true when the task should be cancelled
+   * @return the task result
+   */
+  public TRegionMigrateResult waitTaskFinish(
+      long taskId, TDataNodeLocation dataNodeLocation, BooleanSupplier cancelChecker) {
     final long MAX_DISCONNECTION_TOLERATE_MS = 600_000;
     final long INITIAL_DISCONNECTION_TOLERATE_MS = 60_000;
     long startTime = System.nanoTime();
     long lastReportTime = System.nanoTime();
     while (true) {
+      // Check cancel flag at each polling iteration
+      if (cancelChecker.getAsBoolean()) {
+        LOGGER.info(
+            "{} task {} cancelled by user request, exiting polling loop",
+            REGION_MIGRATE_PROCESS,
+            taskId);
+        TRegionMigrateResult report = new TRegionMigrateResult();
+        report.setTaskStatus(TRegionMaintainTaskStatus.FAIL);
+        report.setFailedNodeAndReason(new HashMap<>());
+        report.getFailedNodeAndReason().put(dataNodeLocation, TRegionMigrateFailedType.Disconnect);
+        return report;
+      }
       try (SyncDataNodeInternalServiceClient dataNodeClient =
           dataNodeClientManager.borrowClient(dataNodeLocation.getInternalEndPoint())) {
         TRegionMigrateResult report = dataNodeClient.getRegionMaintainResult(taskId);

@@ -45,6 +45,8 @@ import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.confignode.client.sync.CnToDnSyncRequestType;
+import org.apache.iotdb.confignode.client.sync.SyncDataNodeClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.ainode.RemoveAINodePlan;
@@ -2425,7 +2427,7 @@ public class ProcedureManager {
    * @return List of migration info
    */
   public List<TMigrationInfo> getRunningMigrations() {
-    return getExecutor().getProcedures().values().stream()
+    return getExecutor().getProcedures().values().parallelStream()
         .filter(procedure -> procedure instanceof RegionMigrateProcedure)
         .filter(procedure -> !procedure.isFinished())
         .map(
@@ -2445,8 +2447,57 @@ public class ProcedureManager {
               // Calculate duration
               long duration = System.currentTimeMillis() - migrateProc.getSubmittedTime();
               info.setDuration(CommonDateTimeUtils.convertMillisecondToDurationStr(duration));
+              // Fetch migration progress (e.g. "3/10" files) from coordinator when in add-peer
+              // phase
+              if (currentState == RegionTransitionState.ADD_REGION_PEER
+                  || currentState == RegionTransitionState.CHECK_ADD_REGION_PEER) {
+                try {
+                  Object result =
+                      SyncDataNodeClientPool.getInstance()
+                          .sendSyncRequestToDataNodeWithGivenRetry(
+                              migrateProc.getCoordinatorForAddPeer().getInternalEndPoint(),
+                              migrateProc.getRegionId(),
+                              CnToDnSyncRequestType.GET_REGION_MIGRATION_PROGRESS,
+                              1);
+                  String progress = result instanceof String ? (String) result : null;
+                  if (progress != null && !progress.isEmpty()) {
+                    info.setProgress(progress);
+                  }
+                } catch (Exception ignore) {
+                  // progress remains unset
+                }
+              }
               return info;
             })
         .collect(Collectors.toList());
+  }
+
+  /**
+   * Cancel all running region migration procedures. Iterates over all active procedures, finds
+   * unfinished {@link RegionMigrateProcedure} instances, and sets their cancel flag. The actual
+   * cancellation is cooperative — each procedure checks the flag at the entry of its next state
+   * transition and stops at the earliest safe point.
+   *
+   * @return the number of migration procedures that were signalled to cancel
+   */
+  public int cancelAllMigrations() {
+    int cancelledCount = 0;
+    for (Procedure<ConfigNodeProcedureEnv> procedure : getExecutor().getProcedures().values()) {
+      if (procedure instanceof RegionMigrateProcedure && !procedure.isFinished()) {
+        RegionMigrateProcedure migrateProc = (RegionMigrateProcedure) procedure;
+        if (!migrateProc.isCancelled()) {
+          migrateProc.cancel();
+          cancelledCount++;
+          LOGGER.info(
+              "[pid{}][CancelMigrations] cancel signal sent to migration: {} from DataNode {} to {}",
+              migrateProc.getProcId(),
+              migrateProc.getRegionId(),
+              migrateProc.getOriginalDataNode().getDataNodeId(),
+              migrateProc.getDestDataNode().getDataNodeId());
+        }
+      }
+    }
+    LOGGER.info("[CancelMigrations] total {} migration(s) signalled to cancel", cancelledCount);
+    return cancelledCount;
   }
 }

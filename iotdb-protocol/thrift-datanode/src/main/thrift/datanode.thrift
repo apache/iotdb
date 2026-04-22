@@ -1096,6 +1096,13 @@ service IDataNodeRPCService {
    */
   TRegionMigrateResult getRegionMaintainResult(i64 taskId)
 
+  /**
+   * Get the current migration progress (e.g. "3/10" for migrated files / total files) for the
+   * given region when this DataNode is the coordinator of add peer. Empty string if not
+   * available.
+   */
+  string getRegionMigrationProgress(common.TConsensusGroupId regionId)
+
     /**
      * Notify the DataNode of the beginning or ending the migration of the specified RegionGroup
      */

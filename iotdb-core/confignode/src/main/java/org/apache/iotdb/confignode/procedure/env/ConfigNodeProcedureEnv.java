@@ -38,6 +38,7 @@ import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestCon
 import org.apache.iotdb.confignode.client.sync.CnToDnSyncRequestType;
 import org.apache.iotdb.confignode.client.sync.SyncConfigNodeClientPool;
 import org.apache.iotdb.confignode.client.sync.SyncDataNodeClientPool;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.PreDeleteDatabasePlan;
@@ -110,6 +111,8 @@ public class ConfigNodeProcedureEnv {
 
   private final ReentrantLock submitRegionMigrateLock = new ReentrantLock(true);
 
+  private final LockQueue regionMigrateSemaphore;
+
   private final ConfigManager configManager;
 
   private final ProcedureScheduler scheduler;
@@ -126,6 +129,9 @@ public class ConfigNodeProcedureEnv {
     this.regionMaintainHandler = new RegionMaintainHandler(configManager);
     this.removeDataNodeHandler = new RemoveDataNodeHandler(configManager);
     this.removeConfigNodeLock = new ReentrantLock();
+    this.regionMigrateSemaphore =
+        new LockQueue(
+            ConfigNodeDescriptor.getInstance().getConf().getRegionMigrationConcurrencyLimit());
   }
 
   public ConfigManager getConfigManager() {
@@ -862,6 +868,10 @@ public class ConfigNodeProcedureEnv {
 
   public ReentrantLock getSubmitRegionMigrateLock() {
     return submitRegionMigrateLock;
+  }
+
+  public LockQueue getRegionMigrateSemaphore() {
+    return regionMigrateSemaphore;
   }
 
   public RegionMaintainHandler getRegionMaintainHandler() {

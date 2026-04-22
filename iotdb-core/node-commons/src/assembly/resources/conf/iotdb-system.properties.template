@@ -1813,6 +1813,12 @@ data_region_iot_max_memory_ratio_for_queue = 0.6
 # Datatype: long
 region_migration_speed_limit_bytes_per_second = 50331648
 
+# Max number of region migration procedures that can run concurrently
+# 0 or negative means no limit
+# effectiveMode: hot_reload
+# Datatype: int
+# region_migration_concurrency_limit=0
+
 ####################
 ### Blob Allocator Configuration
 ####################

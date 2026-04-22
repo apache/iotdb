@@ -123,7 +123,6 @@ public class GreedyCopySetRemoveNodeReplicaSelectTest {
     int randomMaxRegionCount = 0;
     int randomMinRegionCount = Integer.MAX_VALUE;
     int PGPMaxRegionCount = 0;
-    int PGPMinRegionCount = Integer.MAX_VALUE;
 
     AVAILABLE_DATA_NODE_MAP
         .keySet()
@@ -179,7 +178,8 @@ public class GreedyCopySetRemoveNodeReplicaSelectTest {
             allocateResult,
             regionDatabaseMap,
             databaseAllocatedRegionGroupMap,
-            remainReplicasMap);
+            remainReplicasMap,
+            Collections.emptyMap());
 
     for (TConsensusGroupId regionId : result.keySet()) {
       TDataNodeConfiguration selectedNode = result.get(regionId);
@@ -208,7 +208,6 @@ public class GreedyCopySetRemoveNodeReplicaSelectTest {
     for (Integer i : PGPRegionCounter.keySet()) {
       Integer value = PGPRegionCounter.get(i);
       PGPMaxRegionCount = Math.max(PGPMaxRegionCount, value);
-      PGPMinRegionCount = Math.min(PGPMinRegionCount, value);
       LOGGER.info("{} : {}", i, value);
     }
 
@@ -286,7 +285,7 @@ public class GreedyCopySetRemoveNodeReplicaSelectTest {
     Set<Integer> rndNodes = new HashSet<>();
     Set<Integer> planNodes = new HashSet<>();
     int rndMax = 0, rndMin = Integer.MAX_VALUE;
-    int planMax = 0, planMin = Integer.MAX_VALUE;
+    int planMax = 0;
 
     AVAILABLE_DATA_NODE_MAP
         .keySet()
@@ -327,7 +326,8 @@ public class GreedyCopySetRemoveNodeReplicaSelectTest {
             globalAllocatedList,
             regionDbMap,
             dbAllocatedMap,
-            remainMap);
+            remainMap,
+            Collections.emptyMap());
 
     for (TConsensusGroupId regionId : result.keySet()) {
       TDataNodeConfiguration selectedNode = result.get(regionId);
@@ -347,7 +347,6 @@ public class GreedyCopySetRemoveNodeReplicaSelectTest {
     }
     for (int c : planCount.values()) {
       planMax = Math.max(planMax, c);
-      planMin = Math.min(planMin, c);
     }
 
     // Assertions

@@ -187,6 +187,7 @@ public class ColumnHeaderConstant {
   public static final String SUBMITTED_TIME = "SubmittedTime";
   public static final String LAST_UPDATE_TIME = "LastUpdateTime";
   public static final String DURATION = "Duration";
+  public static final String PROGRESS = "Progress";
 
   // column names for show datanodes
   public static final String SCHEMA_REGION_NUM = "SchemaRegionNum";
@@ -529,7 +530,8 @@ public class ColumnHeaderConstant {
           new ColumnHeader(PROCEDURE_STATUS, TSDataType.TEXT),
           new ColumnHeader(SUBMITTED_TIME, TSDataType.TEXT),
           new ColumnHeader(LAST_UPDATE_TIME, TSDataType.TEXT),
-          new ColumnHeader(DURATION, TSDataType.TEXT));
+          new ColumnHeader(DURATION, TSDataType.TEXT),
+          new ColumnHeader(PROGRESS, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showAINodesColumnHeaders =
       ImmutableList.of(

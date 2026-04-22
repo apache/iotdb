@@ -59,6 +59,7 @@ public interface IRegionGroupAllocator {
    * @param databaseAllocatedRegionGroupMap Allocated RegionGroups within the same Database with the
    *     replica set
    * @param remainReplicasMap the remaining replica set excluding the removed DataNodes
+   * @param regionDiskUsageMap The disk usage (in bytes) of each RegionGroup, used for logging
    * @return The optimal DataNode to place the new replica on along with the remaining replicas
    */
   Map<TConsensusGroupId, TDataNodeConfiguration> removeNodeReplicaSelect(
@@ -67,5 +68,6 @@ public interface IRegionGroupAllocator {
       List<TRegionReplicaSet> allocatedRegionGroups,
       Map<TConsensusGroupId, String> regionDatabaseMap,
       Map<String, List<TRegionReplicaSet>> databaseAllocatedRegionGroupMap,
-      Map<TConsensusGroupId, TRegionReplicaSet> remainReplicasMap);
+      Map<TConsensusGroupId, TRegionReplicaSet> remainReplicasMap,
+      Map<TConsensusGroupId, Long> regionDiskUsageMap);
 }
