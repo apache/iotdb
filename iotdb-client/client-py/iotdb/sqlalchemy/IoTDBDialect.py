@@ -16,58 +16,64 @@
 # under the License.
 #
 
-from sqlalchemy import types, util
+from sqlalchemy import schema as sa_schema, types
 from sqlalchemy.engine import default
 from sqlalchemy.sql import text
-from sqlalchemy.sql.sqltypes import String
 
 from iotdb import dbapi
 
+from .IoTDBDDLCompiler import IoTDBDDLCompiler
 from .IoTDBIdentifierPreparer import IoTDBIdentifierPreparer
 from .IoTDBSQLCompiler import IoTDBSQLCompiler
 from .IoTDBTypeCompiler import IoTDBTypeCompiler
 
-TYPES_MAP = {
+IOTDB_CATEGORY_TIME = "TIME"
+IOTDB_CATEGORY_TAG = "TAG"
+IOTDB_CATEGORY_ATTRIBUTE = "ATTRIBUTE"
+IOTDB_CATEGORY_FIELD = "FIELD"
+
+ischema_names = {
     "BOOLEAN": types.Boolean,
     "INT32": types.Integer,
     "INT64": types.BigInteger,
     "FLOAT": types.Float,
     "DOUBLE": types.Float,
+    "STRING": types.String,
     "TEXT": types.Text,
-    "LONG": types.BigInteger,
+    "BLOB": types.LargeBinary,
+    "TIMESTAMP": types.DateTime,
+    "DATE": types.Date,
 }
 
 
 class IoTDBDialect(default.DefaultDialect):
     name = "iotdb"
-    driver = "iotdb-python"
+    driver = "iotdb"
+
     statement_compiler = IoTDBSQLCompiler
-    type_compiler = IoTDBTypeCompiler
+    ddl_compiler = IoTDBDDLCompiler
+    type_compiler_cls = IoTDBTypeCompiler
     preparer = IoTDBIdentifierPreparer
-    convert_unicode = True
 
-    supports_unicode_statements = True
-    supports_unicode_binds = True
-    supports_simple_order_by_label = False
+    supports_alter = True
     supports_schemas = True
-    supports_right_nested_joins = False
-    description_encoding = None
+    supports_sequences = False
+    supports_native_boolean = True
+    supports_native_enum = False
+    supports_statement_cache = True
+    insert_returning = False
+    update_returning = False
+    delete_returning = False
+    supports_default_values = False
+    supports_empty_insert = False
+    postfetch_lastrowid = False
+    supports_sane_rowcount = False
+    supports_sane_multi_rowcount = False
 
-    if hasattr(String, "RETURNS_UNICODE"):
-        returns_unicode_strings = String.RETURNS_UNICODE
-    else:
-
-        def _check_unicode_returns(self, connection, additional_tests=None):
-            return True
-
-        _check_unicode_returns = _check_unicode_returns
-
-    def create_connect_args(self, url):
-        # inherits the docstring from interfaces.Dialect.create_connect_args
-        opts = url.translate_connect_args()
-        opts.update(url.query)
-        opts.update({"sqlalchemy_mode": True})
-        return [[], opts]
+    construct_arguments = [
+        (sa_schema.Column, {"category": None}),
+        (sa_schema.Table, {"ttl": None}),
+    ]
 
     @classmethod
     def import_dbapi(cls):
@@ -77,8 +83,23 @@ class IoTDBDialect(default.DefaultDialect):
     def dbapi(cls):
         return dbapi
 
-    def has_schema(self, connection, schema):
-        return schema in self.get_schema_names(connection)
+    def create_connect_args(self, url):
+        opts = url.translate_connect_args()
+        opts.update(url.query)
+        opts["sql_dialect"] = "table"
+        return ([], opts)
+
+    def initialize(self, connection):
+        pass
+
+    def _get_server_version_info(self, connection):
+        return None
+
+    def _get_default_schema_name(self, connection):
+        return None
+
+    def has_schema(self, connection, schema_name, **kw):
+        return schema_name in self.get_schema_names(connection)
 
     def has_table(self, connection, table_name, schema=None, **kw):
         return table_name in self.get_table_names(connection, schema=schema)
@@ -88,22 +109,41 @@ class IoTDBDialect(default.DefaultDialect):
         return [row[0] for row in cursor.fetchall()]
 
     def get_table_names(self, connection, schema=None, **kw):
-        cursor = connection.execute(
-            text("SHOW DEVICES %s.**" % (schema or self.default_schema_name))
-        )
-        return [row[0].replace(schema + ".", "", 1) for row in cursor.fetchall()]
+        if schema:
+            connection.execute(text("USE %s" % schema))
+        cursor = connection.execute(text("SHOW TABLES"))
+        return [row[0] for row in cursor.fetchall()]
 
     def get_columns(self, connection, table_name, schema=None, **kw):
+        if schema:
+            connection.execute(text("USE %s" % schema))
         cursor = connection.execute(
-            text("SHOW TIMESERIES %s.%s.*" % (schema, table_name))
+            text("SHOW COLUMNS FROM %s" % table_name)
         )
-        columns = [self._general_time_column_info()]
+        columns = []
         for row in cursor.fetchall():
-            columns.append(self._create_column_info(row, schema, table_name))
+            col_name = row[0]
+            col_type_str = row[1]
+            col_category = row[2] if len(row) > 2 else None
+
+            sa_type = ischema_names.get(col_type_str.upper(), types.UserDefinedType)
+
+            col_info = {
+                "name": col_name,
+                "type": sa_type() if isinstance(sa_type, type) else sa_type,
+                "nullable": True,
+                "default": None,
+            }
+
+            if col_category:
+                col_info["iotdb_category"] = col_category.upper()
+
+            columns.append(col_info)
+
         return columns
 
     def get_pk_constraint(self, connection, table_name, schema=None, **kw):
-        pass
+        return {"constrained_columns": [], "name": None}
 
     def get_foreign_keys(self, connection, table_name, schema=None, **kw):
         return []
@@ -111,33 +151,11 @@ class IoTDBDialect(default.DefaultDialect):
     def get_indexes(self, connection, table_name, schema=None, **kw):
         return []
 
-    @util.memoized_property
-    def _dialect_specific_select_one(self):
-        # IoTDB does not support select 1
-        # so replace the statement with "show version"
-        return "SHOW VERSION"
+    def get_view_names(self, connection, schema=None, **kw):
+        return []
 
-    def _general_time_column_info(self):
-        """
-        Treat Time as a column
-        """
-        return {
-            "name": "Time",
-            "type": self._resolve_type("LONG"),
-            "nullable": False,
-            "default": None,
-        }
+    def do_commit(self, dbapi_connection):
+        pass
 
-    def _create_column_info(self, row, schema, table_name):
-        """
-        Generate description information for each column
-        """
-        return {
-            "name": row[0].replace(schema + "." + table_name + ".", "", 1),
-            "type": self._resolve_type(row[3]),
-            "nullable": True,
-            "default": None,
-        }
-
-    def _resolve_type(self, type_):
-        return TYPES_MAP.get(type_, types.UserDefinedType)
+    def do_rollback(self, dbapi_connection):
+        pass

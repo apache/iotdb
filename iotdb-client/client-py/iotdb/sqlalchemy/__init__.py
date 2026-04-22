@@ -15,3 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+
+from .IoTDBDialect import IoTDBDialect
+
+__all__ = ["IoTDBDialect"]

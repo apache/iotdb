@@ -37,9 +37,15 @@ class Connection(object):
         zone_id=Session.DEFAULT_ZONE_ID,
         enable_rpc_compression=False,
         sqlalchemy_mode=False,
+        sql_dialect=None,
+        database=None,
     ):
         self.__session = Session(host, port, username, password, fetch_size, zone_id)
         self.__sqlalchemy_mode = sqlalchemy_mode
+        if sql_dialect:
+            self.__session.sql_dialect = sql_dialect
+        if database:
+            self.__session.database = database
         self.__is_close = True
         try:
             self.__session.open(enable_rpc_compression)
