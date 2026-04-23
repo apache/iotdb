@@ -326,6 +326,8 @@ public class AccumulatorFactory {
       case KURTOSIS:
         return new GroupedCentralMomentAccumulator(
             inputDataTypes.get(0), CentralMomentAccumulator.MomentType.KURTOSIS);
+      case PERCENTILE:
+        return new GroupedPercentileAccumulator(inputDataTypes.get(0));
       default:
         throw new IllegalArgumentException(
             CalcMessages.INVALID_AGGREGATION_FUNCTION + aggregationType);
@@ -418,6 +420,8 @@ public class AccumulatorFactory {
       case KURTOSIS:
         return new TableCentralMomentAccumulator(
             inputDataTypes.get(0), CentralMomentAccumulator.MomentType.KURTOSIS);
+      case PERCENTILE:
+        return new PercentileAccumulator(inputDataTypes.get(0));
       default:
         throw new IllegalArgumentException(
             CalcMessages.INVALID_AGGREGATION_FUNCTION + aggregationType);
