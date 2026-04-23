@@ -294,14 +294,14 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
       }
       final UaVariableNode measurementNode;
       final long utcTimestamp = timestampToUtc(timestamps.get(timestamps.size() > 1 ? i : 0));
-      final DataValue dataValue =
-          new DataValue(
-              new Variant(values.get(i)),
-              currentQuality,
-              new DateTime(utcTimestamp),
-              new DateTime());
 
       if (Objects.isNull(sink.getValueName())) {
+        final DataValue dataValue =
+            new DataValue(
+                new Variant(values.get(i)),
+                currentQuality,
+                new DateTime(utcTimestamp),
+                new DateTime());
         measurementNode = addNode(name, currentFolder, folderNode, dataValue, type);
         if (Objects.isNull(measurementNode.getValue())
             || Objects.isNull(measurementNode.getValue().getSourceTime())
