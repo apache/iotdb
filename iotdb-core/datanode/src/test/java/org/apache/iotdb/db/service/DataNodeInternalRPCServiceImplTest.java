@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.service;
 
+import static org.mockito.Mockito.when;
+
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
@@ -50,6 +52,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.Cre
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.CreateMultiTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.CreateTimeSeriesNode;
 import org.apache.iotdb.db.schemaengine.SchemaEngine;
+import org.apache.iotdb.db.service.DataNode.DataNodeContext;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -79,6 +82,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import org.mockito.Mockito;
 
 public class DataNodeInternalRPCServiceImplTest {
 
@@ -134,7 +138,9 @@ public class DataNodeInternalRPCServiceImplTest {
         .createLocalPeer(
             ConsensusGroupId.Factory.createFromTConsensusGroupId(regionReplicaSet.getRegionId()),
             genSchemaRegionPeerList(regionReplicaSet));
-    dataNodeInternalRPCServiceImpl = new DataNodeInternalRPCServiceImpl();
+    DataNodeContext context = Mockito.mock(DataNodeContext.class);
+    when(context.isAllConsensusStarted()).thenReturn(true);
+    dataNodeInternalRPCServiceImpl = new DataNodeInternalRPCServiceImpl(context);
   }
 
   @After

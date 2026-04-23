@@ -193,6 +193,7 @@ import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 import org.apache.iotdb.db.schemaengine.template.TemplateInternalRPCUpdateType;
 import org.apache.iotdb.db.schemaengine.template.TemplateInternalRPCUtil;
 import org.apache.iotdb.db.service.DataNode;
+import org.apache.iotdb.db.service.DataNode.DataNodeContext;
 import org.apache.iotdb.db.service.RegionMigrateService;
 import org.apache.iotdb.db.service.externalservice.ExternalServiceManagementService;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
@@ -416,6 +417,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   private final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
 
+  private final DataNodeContext dataNodeContext;
+
   private final ExecutorService schemaExecutor =
       new WrappedThreadPoolExecutor(
           0,
@@ -430,10 +433,11 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   private static final String SYSTEM = "system";
 
-  public DataNodeInternalRPCServiceImpl() {
+  public DataNodeInternalRPCServiceImpl(DataNodeContext dataNodeContext) {
     super();
     partitionFetcher = ClusterPartitionFetcher.getInstance();
     schemaFetcher = ClusterSchemaFetcher.getInstance();
+    this.dataNodeContext = dataNodeContext;
   }
 
   @Override

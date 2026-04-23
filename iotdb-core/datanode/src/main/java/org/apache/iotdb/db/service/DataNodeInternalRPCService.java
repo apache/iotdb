@@ -31,6 +31,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.protocol.thrift.handler.InternalServiceThriftHandler;
 import org.apache.iotdb.db.protocol.thrift.impl.DataNodeInternalRPCServiceImpl;
+import org.apache.iotdb.db.service.DataNode.DataNodeContext;
 import org.apache.iotdb.db.service.metrics.DataNodeInternalRPCServiceMetrics;
 import org.apache.iotdb.mpp.rpc.thrift.IDataNodeRPCService.Processor;
 import org.apache.iotdb.rpc.DeepCopyRpcTransportFactory;
@@ -44,6 +45,7 @@ public class DataNodeInternalRPCService extends ThriftService
   private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
 
   private final AtomicReference<DataNodeInternalRPCServiceImpl> impl = new AtomicReference<>();
+  private DataNodeContext dataNodeContext;
 
   private DataNodeInternalRPCService() {}
 
@@ -54,9 +56,9 @@ public class DataNodeInternalRPCService extends ThriftService
 
   @Override
   public void initTProcessor() {
-    impl.compareAndSet(null, new DataNodeInternalRPCServiceImpl());
+    DataNodeInternalRPCServiceImpl service = getImpl();
     initSyncedServiceImpl(null);
-    processor = new Processor<>(impl.get());
+    processor = new Processor<>(service);
   }
 
   @Override
@@ -109,7 +111,7 @@ public class DataNodeInternalRPCService extends ThriftService
   }
 
   public DataNodeInternalRPCServiceImpl getImpl() {
-    impl.compareAndSet(null, new DataNodeInternalRPCServiceImpl());
+    impl.compareAndSet(null, new DataNodeInternalRPCServiceImpl(dataNodeContext));
     return impl.get();
   }
 
@@ -121,5 +123,9 @@ public class DataNodeInternalRPCService extends ThriftService
 
   public static DataNodeInternalRPCService getInstance() {
     return DataNodeInternalRPCServiceHolder.INSTANCE;
+  }
+
+  public void setDataNodeContext(DataNodeContext dataNodeContext) {
+    this.dataNodeContext = dataNodeContext;
   }
 }
