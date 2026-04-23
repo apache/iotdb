@@ -501,6 +501,17 @@ public class DatabasePartitionTable {
     }
   }
 
+  public Set<TRegionReplicaSet> getRegionGroupsByTime(
+      TTimePartitionSlot startTimeSlot, TTimePartitionSlot endTimeSlot) {
+    List<TConsensusGroupId> regionIds =
+        dataPartitionTable.getRegionId(new TSeriesPartitionSlot(-1), startTimeSlot, endTimeSlot);
+    return regionIds.stream()
+        .distinct()
+        .filter(regionGroupMap::containsKey)
+        .map(id -> regionGroupMap.get(id).getReplicaSet())
+        .collect(Collectors.toSet());
+  }
+
   public List<TTimePartitionSlot> getTimeSlotList(
       TSeriesPartitionSlot seriesSlotId, TConsensusGroupId regionId, long startTime, long endTime) {
     return dataPartitionTable.getTimeSlotList(seriesSlotId, regionId, startTime, endTime);
