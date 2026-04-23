@@ -43,6 +43,7 @@ import org.apache.iotdb.confignode.consensus.request.read.partition.GetSchemaPar
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetSeriesSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetTimeSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.pipe.plugin.GetPipePluginJarPlan;
+import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionGroupsByTimePlan;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionIdPlan;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.table.DescTablePlan;
@@ -355,6 +356,8 @@ public class ConfigPlanExecutor {
         return partitionInfo.countTimeSlotList((CountTimeSlotListPlan) req);
       case GetSeriesSlotList:
         return partitionInfo.getSeriesSlotList((GetSeriesSlotListPlan) req);
+      case GetRegionGroupsByTime:
+        return partitionInfo.getRegionGroupsByTime((GetRegionGroupsByTimePlan) req);
       case SHOW_CQ:
         return cqInfo.showCQ();
       case ShowExternalService:

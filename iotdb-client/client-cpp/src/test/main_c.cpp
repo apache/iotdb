@@ -20,39 +20,32 @@
 #define CATCH_CONFIG_MAIN
 
 #include <catch.hpp>
-#include "Session.h"
-#include "SessionBuilder.h"
+#include "SessionC.h"
 
-std::shared_ptr<Session> session;
+// Global session handle used by the C API tree-model tests
+CSession* g_session = nullptr;
 
-struct SessionListener : Catch::TestEventListenerBase {
-
+struct CSessionListener : Catch::TestEventListenerBase {
     using TestEventListenerBase::TestEventListenerBase;
 
-    void testCaseStarting(Catch::TestCaseInfo const &testInfo) override {
-        if (!session) {
-            SessionBuilder builder;
-            session = builder.host("127.0.0.1")
-                          ->rpcPort(6667)
-                          ->username("root")
-                          ->password("root")
-                          ->useSSL(false)
-                          ->build();
-        } else {
-            session->open(false);
+    void testCaseStarting(Catch::TestCaseInfo const& testInfo) override {
+        g_session = ts_session_new("127.0.0.1", 6667, "root", "root");
+        REQUIRE(g_session != nullptr);
+        TsStatus st = ts_session_open(g_session);
+        if (st != TS_OK) {
+            ts_session_destroy(g_session);
+            g_session = nullptr;
+            FAIL("ts_session_open failed; ensure distribution is built and IoTDB listens on 127.0.0.1:6667");
         }
     }
 
-    void testCaseEnded(Catch::TestCaseStats const &testCaseStats) override {
-        if (session) {
-            session->close();
+    void testCaseEnded(Catch::TestCaseStats const& testCaseStats) override {
+        if (g_session) {
+            ts_session_close(g_session);
+            ts_session_destroy(g_session);
+            g_session = nullptr;
         }
-    }
-
-    void testRunEnded(Catch::TestRunStats const &testRunStats) override {
-        // Release session before static/global teardown on Windows.
-        session.reset();
     }
 };
 
-CATCH_REGISTER_LISTENER( SessionListener )
+CATCH_REGISTER_LISTENER(CSessionListener)

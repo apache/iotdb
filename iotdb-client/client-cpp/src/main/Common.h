@@ -193,6 +193,31 @@ public:
     }
 
     Field() = default;
+
+    /** True if this field is SQL NULL (optional for the active dataType is unset). Unknown types are treated as null. */
+    bool isNull() const {
+        switch (dataType) {
+            case TSDataType::BOOLEAN:
+                return !boolV.is_initialized();
+            case TSDataType::INT32:
+                return !intV.is_initialized();
+            case TSDataType::INT64:
+            case TSDataType::TIMESTAMP:
+                return !longV.is_initialized();
+            case TSDataType::FLOAT:
+                return !floatV.is_initialized();
+            case TSDataType::DOUBLE:
+                return !doubleV.is_initialized();
+            case TSDataType::TEXT:
+            case TSDataType::STRING:
+            case TSDataType::BLOB:
+                return !stringV.is_initialized();
+            case TSDataType::DATE:
+                return !dateV.is_initialized();
+            default:
+                return true;
+        }
+    }
 };
 
 enum class ColumnCategory {

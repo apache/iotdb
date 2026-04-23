@@ -85,6 +85,7 @@
             <id>with-cpp</id>
             <modules>
                 <module>client-cpp-example</module>
+                <module>client-c-example</module>
             </modules>
         </profile>
     </profiles>

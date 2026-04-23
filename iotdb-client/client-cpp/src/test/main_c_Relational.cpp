@@ -20,36 +20,32 @@
 #define CATCH_CONFIG_MAIN
 
 #include <catch.hpp>
-#include "TableSessionBuilder.h"
+#include "SessionC.h"
 
-std::shared_ptr<TableSession> session;
+// Global table session handle used by the C API table-model tests
+CTableSession* g_table_session = nullptr;
 
-struct SessionListener : Catch::TestEventListenerBase {
+struct CTableSessionListener : Catch::TestEventListenerBase {
     using TestEventListenerBase::TestEventListenerBase;
 
     void testCaseStarting(Catch::TestCaseInfo const& testInfo) override {
-        if (!session) {
-            TableSessionBuilder builder;
-            session = builder.host("127.0.0.1")
-                            ->rpcPort(6667)
-                            ->username("root")
-                            ->password("root")
-                            ->build();
-        } else {
-            session->open();
+        g_table_session = ts_table_session_new("127.0.0.1", 6667, "root", "root", "");
+        REQUIRE(g_table_session != nullptr);
+        TsStatus st = ts_table_session_open(g_table_session);
+        if (st != TS_OK) {
+            ts_table_session_destroy(g_table_session);
+            g_table_session = nullptr;
+            FAIL("ts_table_session_open failed; ensure distribution is built and IoTDB listens on 127.0.0.1:6667");
         }
     }
 
     void testCaseEnded(Catch::TestCaseStats const& testCaseStats) override {
-        if (session) {
-            session->close();
+        if (g_table_session) {
+            ts_table_session_close(g_table_session);
+            ts_table_session_destroy(g_table_session);
+            g_table_session = nullptr;
         }
-    }
-
-    void testRunEnded(Catch::TestRunStats const& testRunStats) override {
-        // Release session before static/global teardown on Windows.
-        session.reset();
     }
 };
 
-CATCH_REGISTER_LISTENER(SessionListener)
+CATCH_REGISTER_LISTENER(CTableSessionListener)

@@ -1055,16 +1055,15 @@ public class TestUtils {
         null);
   }
 
-  public static void executeNonQueries(
-      BaseEnv env, List<String> sqlList, Connection defaultConnection) {
+  public static void executeNonQueries(BaseEnv env, List<String> sqlList, String sqlDialect) {
     executeNonQueries(
         env,
         sqlList,
         SessionConfig.DEFAULT_USER,
         SessionConfig.DEFAULT_PASSWORD,
         null,
-        TREE_SQL_DIALECT,
-        defaultConnection);
+        sqlDialect,
+        null);
   }
 
   public static void executeNonQueries(
