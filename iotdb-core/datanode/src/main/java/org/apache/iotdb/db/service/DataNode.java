@@ -936,8 +936,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
 
   protected void registerInternalRPCService() throws StartupException {
     // Start InternalRPCService to indicate that the current DataNode can accept cluster scheduling
-    DataNodeInternalRPCService instance = DataNodeInternalRPCService.getInstance();
-    registerManager.register();
+    registerManager.register(DataNodeInternalRPCService.getInstance());
   }
 
   // make it easier for users to extend ClientRPCServiceImpl to export more rpc services

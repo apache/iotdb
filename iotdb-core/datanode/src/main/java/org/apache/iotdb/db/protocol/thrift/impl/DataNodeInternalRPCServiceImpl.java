@@ -442,21 +442,25 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     this.dataNodeContext = dataNodeContext;
   }
 
+  private long consensusWaitTimeoutSeconds = 30;
+
   private TSStatus waitForConsensusStarted() {
     if (dataNodeContext.isAllConsensusStarted()) {
       return null;
     }
     try {
       Await.await()
-          .atMost(30, TimeUnit.SECONDS)
+          .atMost(consensusWaitTimeoutSeconds, TimeUnit.SECONDS)
           .pollInterval(100, TimeUnit.MILLISECONDS)
           .until(dataNodeContext::isAllConsensusStarted);
       return null;
     } catch (AwaitTimeoutException e) {
-      LOGGER.warn("Consensus has not been started after 30 seconds, rejecting region request");
+      LOGGER.warn(
+          "Consensus has not been started after {} seconds, rejecting region request",
+          consensusWaitTimeoutSeconds);
       return RpcUtils.getStatus(
           TSStatusCode.CONSENSUS_NOT_INITIALIZED,
-          "Consensus has not been started after 30 seconds");
+          "Consensus has not been started after " + consensusWaitTimeoutSeconds + " seconds");
     }
   }
 
@@ -3504,5 +3508,9 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     }
 
     return result;
+  }
+
+  public void setConsensusWaitTimeoutSeconds(long consensusWaitTimeoutSeconds) {
+    this.consensusWaitTimeoutSeconds = consensusWaitTimeoutSeconds;
   }
 }
