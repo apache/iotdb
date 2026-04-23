@@ -71,6 +71,7 @@ public enum ConfigPhysicalPlanType {
   CountTimeSlotList((short) 310),
   AddRegionLocation((short) 311),
   RemoveRegionLocation((short) 312),
+  GetRegionGroupsByTime((short) 313),
 
   /** Partition. */
   GetSchemaPartition((short) 400),

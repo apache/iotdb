@@ -36,6 +36,7 @@ import org.apache.iotdb.confignode.consensus.request.read.partition.GetDataParti
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetSeriesSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetTimeSlotListPlan;
+import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionGroupsByTimePlan;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionIdPlan;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
@@ -53,6 +54,7 @@ import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMai
 import org.apache.iotdb.confignode.consensus.request.write.region.PollSpecificRegionMaintainTaskPlan;
 import org.apache.iotdb.confignode.consensus.response.partition.CountTimeSlotListResp;
 import org.apache.iotdb.confignode.consensus.response.partition.DataPartitionResp;
+import org.apache.iotdb.confignode.consensus.response.partition.GetRegionGroupsByTimeResp;
 import org.apache.iotdb.confignode.consensus.response.partition.GetRegionIdResp;
 import org.apache.iotdb.confignode.consensus.response.partition.GetSeriesSlotListResp;
 import org.apache.iotdb.confignode.consensus.response.partition.GetTimeSlotListResp;
@@ -1103,6 +1105,18 @@ public class PartitionInfo implements SnapshotProcessor {
             .distinct()
             .sorted(Comparator.comparing(TConsensusGroupId::getId))
             .collect(Collectors.toList()));
+  }
+
+  public DataSet getRegionGroupsByTime(GetRegionGroupsByTimePlan plan) {
+    if (!isDatabaseExisted(plan.getDatabase())) {
+      return new GetRegionGroupsByTimeResp(
+          new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()), new HashSet<>());
+    }
+    DatabasePartitionTable databasePartitionTable = databasePartitionTables.get(plan.getDatabase());
+    return new GetRegionGroupsByTimeResp(
+        new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
+        databasePartitionTable.getRegionGroupsByTime(
+            plan.getStartTimeSlot(), plan.getEndTimeSlot()));
   }
 
   /**
