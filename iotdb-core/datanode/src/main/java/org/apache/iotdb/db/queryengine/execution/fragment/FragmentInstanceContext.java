@@ -34,6 +34,7 @@ import org.apache.iotdb.db.queryengine.common.DeviceContext;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
+import org.apache.iotdb.db.queryengine.exception.MemoryNotEnoughException;
 import org.apache.iotdb.db.queryengine.metric.DriverSchedulerMetricSet;
 import org.apache.iotdb.db.queryengine.metric.QueryRelatedResourceMetricSet;
 import org.apache.iotdb.db.queryengine.metric.QueryResourceMetricSet;
@@ -959,9 +960,22 @@ public class FragmentInstanceContext extends QueryContext {
                 memoryReservationManager.releaseMemoryVirtually(tvList.getReservedMemoryBytes());
             FragmentInstanceContext queryContext =
                 (FragmentInstanceContext) queryContextSet.iterator().next();
-            queryContext
-                .getMemoryReservationContext()
-                .reserveMemoryVirtually(releasedBytes.left, releasedBytes.right);
+            try {
+              queryContext
+                  .getMemoryReservationContext()
+                  .reserveMemoryVirtually(releasedBytes.left, releasedBytes.right);
+            } catch (MemoryNotEnoughException ex) {
+              LOGGER.warn(
+                  "MemoryNotEnoughException when transferring TVList ownership from query {} to another query {}.",
+                  this.getId(),
+                  queryContext.getId());
+            } catch (RuntimeException ex) {
+              LOGGER.warn(
+                  "Unexpected Exception when transferring TVList ownership from query {} to another query {}.",
+                  this.getId(),
+                  queryContext.getId(),
+                  ex);
+            }
 
             if (LOGGER.isDebugEnabled()) {
               LOGGER.debug(
