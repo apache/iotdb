@@ -290,6 +290,8 @@ public class AccumulatorFactory {
         } else {
           return new GroupedApproxPercentileWithWeightAccumulator(inputDataTypes.get(0));
         }
+      case PERCENTILE:
+        return new GroupedPercentileAccumulator(inputDataTypes.get(0));
       default:
         throw new IllegalArgumentException("Invalid Aggregation function: " + aggregationType);
     }
@@ -353,6 +355,8 @@ public class AccumulatorFactory {
         } else {
           return new ApproxPercentileWithWeightAccumulator(inputDataTypes.get(0));
         }
+      case PERCENTILE:
+        return new PercentileAccumulator(inputDataTypes.get(0));
       default:
         throw new IllegalArgumentException("Invalid Aggregation function: " + aggregationType);
     }

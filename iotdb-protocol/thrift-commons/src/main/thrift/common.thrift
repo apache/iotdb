@@ -310,6 +310,7 @@ enum TAggregationType {
   APPROX_COUNT_DISTINCT,
   APPROX_MOST_FREQUENT,
   APPROX_PERCENTILE,
+  PERCENTILE,
 }
 
 struct TShowConfigurationTemplateResp {
