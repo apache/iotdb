@@ -21,11 +21,14 @@ package org.apache.iotdb.db.queryengine.execution.operator.process.window;
 
 import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.GroupedTopNBuilder;
+import org.apache.iotdb.db.queryengine.execution.operator.GroupedTopNRankBuilder;
 import org.apache.iotdb.db.queryengine.execution.operator.GroupedTopNRowNumberBuilder;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.SimpleTsBlockWithPositionComparator;
+import org.apache.iotdb.db.queryengine.execution.operator.SimpleTsBlockWithPositionEqualsAndHash;
 import org.apache.iotdb.db.queryengine.execution.operator.TsBlockWithPositionComparator;
+import org.apache.iotdb.db.queryengine.execution.operator.TsBlockWithPositionEqualsAndHash;
 import org.apache.iotdb.db.queryengine.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.UpdateMemory;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.hash.GroupByHash;
@@ -150,16 +153,21 @@ public class TopKRankingOperator implements ProcessOperator {
               groupByHashSupplier.get());
     }
 
-    //    if (rankingType == TopKRankingNode.RankingType.RANK) {
-    //      Comparator<TsBlock> comparator = new SimpleTsBlockWithPositionComparator(
-    //          sourceTypes, sortChannels, ascendingOrders);
-    //      return () -> new GroupedTopNRankBuilder(
-    //          sourceTypes,
-    //          comparator,
-    //          maxRankingPerPartition,
-    //          generateRanking,
-    //          groupByHashSupplier.get());
-    //    }
+    if (rankingType == TopKRankingNode.RankingType.RANK) {
+      TsBlockWithPositionComparator comparator =
+          new SimpleTsBlockWithPositionComparator(inputTypes, sortChannels, sortOrders);
+      TsBlockWithPositionEqualsAndHash equalsAndHash =
+          new SimpleTsBlockWithPositionEqualsAndHash(inputTypes, sortChannels);
+      return () ->
+          new GroupedTopNRankBuilder(
+              inputTypes,
+              comparator,
+              equalsAndHash,
+              maxRowCountPerPartition,
+              !partial,
+              partitionChannels.stream().mapToInt(Integer::intValue).toArray(),
+              groupByHashSupplier.get());
+    }
 
     if (rankingType == TopKRankingNode.RankingType.DENSE_RANK) {
       throw new UnsupportedOperationException("DENSE_RANK not yet implemented");

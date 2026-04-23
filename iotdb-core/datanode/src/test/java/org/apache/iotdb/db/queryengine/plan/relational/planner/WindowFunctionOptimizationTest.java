@@ -122,7 +122,7 @@ public class WindowFunctionOptimizationTest {
     PlanTester planTester = new PlanTester();
 
     String sql =
-        "SELECT * FROM (SELECT *, row_number() OVER (PARTITION BY tag1, tag2, tag3 ORDER BY s1) as rn FROM table1) WHERE rn <= 2";
+        "SELECT * FROM (SELECT *, rank() OVER (PARTITION BY tag1, tag2, tag3 ORDER BY s1) as rn FROM table1) WHERE rn <= 2";
     LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
     PlanMatchPattern tableScan = tableScan("testdb.table1");
 
@@ -161,7 +161,7 @@ public class WindowFunctionOptimizationTest {
     PlanTester planTester = new PlanTester();
 
     String sql =
-        "SELECT * FROM (SELECT *, row_number() OVER (PARTITION BY tag1 ORDER BY s1) as rn FROM table1) WHERE rn <= 2";
+        "SELECT * FROM (SELECT *, rank() OVER (PARTITION BY tag1 ORDER BY s1) as rn FROM table1) WHERE rn <= 2";
     LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
     PlanMatchPattern tableScan = tableScan("testdb.table1");
 
