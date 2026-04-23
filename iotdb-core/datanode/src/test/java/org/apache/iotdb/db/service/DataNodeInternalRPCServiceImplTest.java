@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.service;
 
-import static org.mockito.Mockito.when;
-
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
@@ -71,6 +69,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.mockito.Mockito;
 
 import java.io.File;
 import java.io.IOException;
@@ -82,7 +81,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import org.mockito.Mockito;
+
+import static org.mockito.Mockito.when;
 
 public class DataNodeInternalRPCServiceImplTest {
 
