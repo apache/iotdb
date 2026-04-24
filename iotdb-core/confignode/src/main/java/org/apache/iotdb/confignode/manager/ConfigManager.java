@@ -805,6 +805,16 @@ public class ConfigManager implements IManager {
     }
   }
 
+  public synchronized TSStatus dangerDeleteDatabase(final String database) {
+    final TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      final TDatabaseSchema databaseSchema = new TDatabaseSchema(database);
+      return procedureManager.deleteDatabases(Collections.singletonList(databaseSchema), false);
+    } else {
+      return status;
+    }
+  }
+
   private List<TSeriesPartitionSlot> calculateRelatedSlot(
       final PartialPath path, final PartialPath database) {
     // The path contains `**`

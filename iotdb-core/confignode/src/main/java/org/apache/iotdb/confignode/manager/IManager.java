@@ -422,6 +422,8 @@ public interface IManager {
    */
   TSStatus deleteDatabases(TDeleteDatabasesReq tDeleteReq);
 
+  TSStatus dangerDeleteDatabase(String database);
+
   /**
    * Get SchemaPartition.
    *
