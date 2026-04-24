@@ -59,6 +59,18 @@ public class IoTDBRestServiceConfig {
 
   private int restQueryDefaultRowSizeLimit = 10000;
 
+  /** Maximum accepted REST request body size in bytes. */
+  private long restMaxRequestBodySizeInBytes = 16 * 1024 * 1024L;
+
+  /** Maximum row count accepted by a single REST write request. */
+  private int restMaxInsertRows = 100000;
+
+  /** Maximum column count accepted by a single REST write request. */
+  private int restMaxInsertColumns = 1024;
+
+  /** Maximum value cell count accepted by a single REST write request. */
+  private long restMaxInsertValues = 1000000L;
+
   /** Is client authentication required. */
   private boolean clientAuth = false;
 
@@ -172,5 +184,37 @@ public class IoTDBRestServiceConfig {
 
   public void setRestQueryDefaultRowSizeLimit(int restQueryDefaultRowSizeLimit) {
     this.restQueryDefaultRowSizeLimit = restQueryDefaultRowSizeLimit;
+  }
+
+  public long getRestMaxRequestBodySizeInBytes() {
+    return restMaxRequestBodySizeInBytes;
+  }
+
+  public void setRestMaxRequestBodySizeInBytes(long restMaxRequestBodySizeInBytes) {
+    this.restMaxRequestBodySizeInBytes = restMaxRequestBodySizeInBytes;
+  }
+
+  public int getRestMaxInsertRows() {
+    return restMaxInsertRows;
+  }
+
+  public void setRestMaxInsertRows(int restMaxInsertRows) {
+    this.restMaxInsertRows = restMaxInsertRows;
+  }
+
+  public int getRestMaxInsertColumns() {
+    return restMaxInsertColumns;
+  }
+
+  public void setRestMaxInsertColumns(int restMaxInsertColumns) {
+    this.restMaxInsertColumns = restMaxInsertColumns;
+  }
+
+  public long getRestMaxInsertValues() {
+    return restMaxInsertValues;
+  }
+
+  public void setRestMaxInsertValues(long restMaxInsertValues) {
+    this.restMaxInsertValues = restMaxInsertValues;
   }
 }

@@ -17,6 +17,7 @@
 
 package org.apache.iotdb.rest.protocol.v2.handler;
 
+import org.apache.iotdb.rest.protocol.handler.RequestLimitChecker;
 import org.apache.iotdb.rest.protocol.v2.model.ExpressionRequest;
 import org.apache.iotdb.rest.protocol.v2.model.InsertRecordsRequest;
 import org.apache.iotdb.rest.protocol.v2.model.InsertTabletRequest;
@@ -56,6 +57,23 @@ public class RequestValidationHandler {
     Objects.requireNonNull(
         insertTabletRequest.getMeasurements(), "measurements should not be null");
     Objects.requireNonNull(insertTabletRequest.getValues(), "values should not be null");
+    if (insertTabletRequest.getMeasurements().size() != insertTabletRequest.getDataTypes().size()) {
+      throw new IllegalArgumentException("measurements and data_types should have the same size");
+    }
+    if (insertTabletRequest.getValues().size() != insertTabletRequest.getDataTypes().size()) {
+      throw new IllegalArgumentException("values and data_types should have the same size");
+    }
+    int rowCount = insertTabletRequest.getTimestamps().size();
+    int columnCount = insertTabletRequest.getMeasurements().size();
+    RequestLimitChecker.checkRowCount("insertTablet request", rowCount);
+    RequestLimitChecker.checkColumnCount("insertTablet request", columnCount);
+    RequestLimitChecker.checkValueCount("insertTablet request", (long) rowCount * columnCount);
+    for (List<Object> column : insertTabletRequest.getValues()) {
+      if (column.size() != rowCount) {
+        throw new IllegalArgumentException(
+            "Each value column should have the same size as timestamps");
+      }
+    }
     List<String> errorMessages = new ArrayList<>();
     String device = insertTabletRequest.getDevice();
     for (int i = 0; i < insertTabletRequest.getMeasurements().size(); i++) {
@@ -80,10 +98,28 @@ public class RequestValidationHandler {
     Objects.requireNonNull(insertRecordsRequest.getValuesList(), "values_list should not be null");
     Objects.requireNonNull(
         insertRecordsRequest.getMeasurementsList(), "measurements_list should not be null");
+    int rowCount = insertRecordsRequest.getDevices().size();
+    if (insertRecordsRequest.getTimestamps().size() != rowCount
+        || insertRecordsRequest.getMeasurementsList().size() != rowCount
+        || insertRecordsRequest.getDataTypesList().size() != rowCount
+        || insertRecordsRequest.getValuesList().size() != rowCount) {
+      throw new IllegalArgumentException(
+          "devices, timestamps, measurements_list, data_types_list and values_list should have the same size");
+    }
+    RequestLimitChecker.checkRowCount("insertRecords request", rowCount);
     List<String> errorMessages = new ArrayList<>();
+    long valueCount = 0;
     for (int i = 0; i < insertRecordsRequest.getDataTypesList().size(); i++) {
       String device = insertRecordsRequest.getDevices().get(i);
       List<String> measurements = insertRecordsRequest.getMeasurementsList().get(i);
+      List<String> dataTypes = insertRecordsRequest.getDataTypesList().get(i);
+      List<Object> values = insertRecordsRequest.getValuesList().get(i);
+      if (measurements.size() != dataTypes.size() || values.size() != dataTypes.size()) {
+        throw new IllegalArgumentException(
+            "Each insertRecords row should have the same number of measurements, data types and values");
+      }
+      RequestLimitChecker.checkColumnCount("insertRecords request", measurements.size());
+      valueCount += values.size();
       for (int c = 0; c < insertRecordsRequest.getDataTypesList().get(i).size(); c++) {
         String dataType = insertRecordsRequest.getDataTypesList().get(i).get(c);
         String measurement = measurements.get(c);
@@ -93,6 +129,7 @@ public class RequestValidationHandler {
         }
       }
     }
+    RequestLimitChecker.checkValueCount("insertRecords request", valueCount);
     if (!errorMessages.isEmpty()) {
       throw new RuntimeException(String.join(",", errorMessages));
     }
