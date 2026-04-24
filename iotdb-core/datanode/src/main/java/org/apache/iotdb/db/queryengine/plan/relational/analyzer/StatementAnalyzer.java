@@ -133,6 +133,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NotExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullIfExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Offset;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.OrderBy;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ParallelHintItem;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Parameter;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PatternRecognitionRelation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PipeEnriched;
@@ -141,12 +142,15 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QuantifiedComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QuerySpecification;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RegionRouteHintItem;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Relation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RenameColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RenameTable;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ReplicaHintItem;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Row;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SearchedCaseExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Select;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SelectHint;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SelectItem;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetOperation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetProperties;
@@ -195,6 +199,10 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WithQuery;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WrappedInsertStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.type.CompatibleResolver;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeManager;
+import org.apache.iotdb.db.queryengine.plan.relational.utils.hint.Hint;
+import org.apache.iotdb.db.queryengine.plan.relational.utils.hint.ParallelHint;
+import org.apache.iotdb.db.queryengine.plan.relational.utils.hint.RegionRouteHint;
+import org.apache.iotdb.db.queryengine.plan.relational.utils.hint.ReplicaHint;
 import org.apache.iotdb.db.queryengine.plan.statement.component.FillPolicy;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
@@ -1248,6 +1256,8 @@ public class StatementAnalyzer {
             orderByScope.orElseThrow(() -> new NoSuchElementException("No value present")));
       }
 
+      // select hint
+      analyzeHint(node, sourceScope);
       return outputScope;
     }
 
@@ -1499,6 +1509,72 @@ public class StatementAnalyzer {
       }
 
       analysis.setWhere(node, predicate);
+    }
+
+    private void analyzeHint(QuerySpecification node, Scope scope) {
+      Optional<SelectHint> selectHint = node.getSelectHint();
+      selectHint.ifPresent(hint -> process(hint, scope));
+    }
+
+    @Override
+    public Scope visitSelectHint(SelectHint node, final Optional<Scope> context) {
+      Map<String, Hint> hintMap = new HashMap<>();
+      for (Node hintItem : node.getHintItems()) {
+        Hint hint = processHintItem(hintItem);
+        if (hint != null) {
+          hintMap.putIfAbsent(hint.getKey(), hint);
+        }
+      }
+      analysis.setHintMap(hintMap);
+      return createAndAssignScope(node, context);
+    }
+
+    private Hint processHintItem(Node hintItem) {
+      if (hintItem instanceof ReplicaHintItem) {
+        ReplicaHintItem item = (ReplicaHintItem) hintItem;
+        QualifiedName table = item.getTable();
+        if (table == null) {
+          return new ReplicaHint(null, item.getReplicaIndex());
+        }
+        QualifiedName resolvedTable = resolveTable(table);
+        if (resolvedTable != null) {
+          return new ReplicaHint(resolvedTable, item.getReplicaIndex());
+        }
+      } else if (hintItem instanceof RegionRouteHintItem) {
+        RegionRouteHintItem item = (RegionRouteHintItem) hintItem;
+        QualifiedName table = item.getTable();
+        if (table == null) {
+          return new RegionRouteHint(null, item.getRegionDatanodeMap());
+        }
+        QualifiedName resolvedTable = resolveTable(table);
+        if (resolvedTable != null) {
+          return new RegionRouteHint(resolvedTable, item.getRegionDatanodeMap());
+        }
+      } else if (hintItem instanceof ParallelHintItem) {
+        ParallelHintItem item = (ParallelHintItem) hintItem;
+        return new ParallelHint(item.getParallelism());
+      }
+      return null;
+    }
+
+    private QualifiedName resolveTable(QualifiedName table) {
+      List<QualifiedName> existingTables =
+          analysis.getRelationNames().values().stream().collect(toImmutableList());
+
+      // Alias
+      if (existingTables.contains(table)) {
+        return table;
+      }
+
+      // Table
+      QualifiedObjectName tableObjectName = createQualifiedObjectName(sessionContext, table);
+      QualifiedName tableName =
+          QualifiedName.of(tableObjectName.getDatabaseName(), tableObjectName.getObjectName());
+
+      if (!existingTables.contains(tableName)) {
+        return null;
+      }
+      return tableName;
     }
 
     private List<Expression> analyzeSelect(QuerySpecification node, Scope scope) {
@@ -3602,7 +3678,7 @@ public class StatementAnalyzer {
     @Override
     protected Scope visitAliasedRelation(AliasedRelation relation, Optional<Scope> scope) {
       analysis.setRelationName(relation, QualifiedName.of(ImmutableList.of(relation.getAlias())));
-      analysis.addAliased(relation.getRelation());
+      analysis.addAliased(relation.getRelation(), relation.getAlias());
       Scope relationScope = process(relation.getRelation(), scope);
       RelationType relationType = relationScope.getRelationType();
 

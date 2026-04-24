@@ -165,6 +165,9 @@ public class FragmentInstanceManager {
                                 instance.isVerbose()));
                 context.setHighestPriority(instance.isHighestPriority());
 
+                // set parallelism from fragment instance
+                context.setParallelism(instance.getParallelism());
+
                 try {
                   List<PipelineDriverFactory> driverFactories =
                       planner.plan(

@@ -144,6 +144,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NumericParameter;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Offset;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.OneOrMoreQuantifier;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.OrderBy;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ParallelHintItem;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Parameter;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PatternAlternation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PatternConcatenation;
@@ -163,6 +164,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QueryBody;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QuerySpecification;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RangeQuantifier;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ReconstructRegion;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RegionRouteHintItem;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Relation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RelationalAuthorStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RemoveAINode;
@@ -171,10 +173,12 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RemoveDataNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RemoveRegion;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RenameColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RenameTable;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ReplicaHintItem;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Row;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RowPattern;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SearchedCaseExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Select;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SelectHint;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SelectItem;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetColumnComment;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetConfiguration;
@@ -2339,7 +2343,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
               query.getWindows(),
               orderBy,
               offset,
-              limit),
+              limit,
+              query.getSelectHint()),
           Optional.empty(),
           Optional.empty(),
           Optional.empty(),
@@ -2448,7 +2453,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
         ctx.where,
         ctx.groupBy(),
         ctx.having,
-        ctx.windowDefinition());
+        ctx.windowDefinition(),
+        ctx.selectHint());
   }
 
   @Override
@@ -2463,7 +2469,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
         ctx.where,
         ctx.groupBy(),
         ctx.having,
-        ctx.windowDefinition());
+        ctx.windowDefinition(),
+        null);
   }
 
   private Node buildQuerySpecification(
@@ -2475,7 +2482,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       RelationalSqlParser.BooleanExpressionContext where,
       RelationalSqlParser.GroupByContext groupBy,
       RelationalSqlParser.BooleanExpressionContext having,
-      List<RelationalSqlParser.WindowDefinitionContext> windowDefinitions) {
+      List<RelationalSqlParser.WindowDefinitionContext> windowDefinitions,
+      RelationalSqlParser.SelectHintContext selectHintContext) {
 
     Optional<Relation> from = Optional.empty();
     List<SelectItem> selectItems = visit(selectItemContexts, SelectItem.class);
@@ -2503,6 +2511,12 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     NodeLocation selectLocation =
         selectNode != null ? getLocation(selectNode) : getLocation(parserRuleContext);
 
+    // Hint Map
+    Optional<SelectHint> selectHint =
+        selectHintContext != null
+            ? Optional.of((SelectHint) visitSelectHint(selectHintContext))
+            : Optional.empty();
+
     return new QuerySpecification(
         getLocation(parserRuleContext),
         new Select(selectLocation, isDistinct(setQuantifier), selectItems),
@@ -2514,7 +2528,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
         visit(windowDefinitions, WindowDefinition.class),
         Optional.empty(),
         Optional.empty(),
-        Optional.empty());
+        Optional.empty(),
+        selectHint);
   }
 
   @Override
@@ -2541,6 +2556,50 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     } else {
       return new AllColumns(getLocation(ctx), aliases);
     }
+  }
+
+  @Override
+  public Node visitSelectHint(RelationalSqlParser.SelectHintContext ctx) {
+    List<Node> hintItems = new ArrayList<>();
+    for (RelationalSqlParser.HintItemContext hintItemCtx : ctx.hintItem()) {
+      hintItems.add(visit(hintItemCtx));
+    }
+    return new SelectHint(hintItems);
+  }
+
+  @Override
+  public Node visitReplicaHint(RelationalSqlParser.ReplicaHintContext ctx) {
+    QualifiedName table = ctx.tableName == null ? null : getQualifiedName(ctx.tableName);
+    int replicaIndex = Integer.parseInt(ctx.INTEGER_VALUE().getText());
+    return new ReplicaHintItem(table, replicaIndex);
+  }
+
+  @Override
+  public Node visitRegionRouteHint(RelationalSqlParser.RegionRouteHintContext ctx) {
+    QualifiedName table = ctx.tableName == null ? null : getQualifiedName(ctx.tableName);
+    Map<Integer, Integer> regionDatanodeMap = new HashMap<>();
+    try {
+      for (RelationalSqlParser.RegionRouteItemContext itemCtx : ctx.regionRoutes) {
+        int regionId = Integer.parseInt(itemCtx.regionId.getText());
+        if (regionId < -1) {
+          throw parseError("Region ID must not be less than -1", ctx);
+        }
+        int datanodeId = Integer.parseInt(itemCtx.datanodeId.getText());
+        if (datanodeId < 0) {
+          throw parseError("DataNode ID must not be less than 0", ctx);
+        }
+        regionDatanodeMap.putIfAbsent(regionId, datanodeId);
+      }
+    } catch (NumberFormatException e) {
+      throw parseError("Region ID and DataNode ID must be integers", ctx);
+    }
+    return new RegionRouteHintItem(table, regionDatanodeMap);
+  }
+
+  @Override
+  public Node visitParallelHint(RelationalSqlParser.ParallelHintContext ctx) {
+    int parallelism = Integer.parseInt(ctx.INTEGER_VALUE().getText());
+    return new ParallelHintItem(parallelism);
   }
 
   @Override

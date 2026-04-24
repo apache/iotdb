@@ -188,7 +188,8 @@ public class Util {
                 node.getGroupingSets(),
                 node.getPreGroupedSymbols(),
                 PARTIAL,
-                node.getGroupIdSymbol())
+                node.getGroupIdSymbol(),
+                node.getAlias())
             : new AggregationTreeDeviceViewScanNode(
                 queryId.genPlanNodeId(),
                 node.getQualifiedObjectName(),

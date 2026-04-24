@@ -101,7 +101,8 @@ public class TestPlanBuilder {
             pushDownLimit,
             pushDownOffset,
             pushLimitToEachDevice,
-            containsNonAlignedDevice);
+            containsNonAlignedDevice,
+            null);
     return this;
   }
 }

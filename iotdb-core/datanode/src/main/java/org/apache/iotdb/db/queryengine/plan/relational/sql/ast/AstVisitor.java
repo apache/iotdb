@@ -137,6 +137,22 @@ public abstract class AstVisitor<R, C> {
     return visitNode(node, context);
   }
 
+  protected R visitSelectHint(SelectHint node, C context) {
+    return visitNode(node, context);
+  }
+
+  protected R visitReplicaHintItem(ReplicaHintItem node, C context) {
+    return visitNode(node, context);
+  }
+
+  protected R visitRegionRouteHintItem(RegionRouteHintItem node, C context) {
+    return visitNode(node, context);
+  }
+
+  protected R visitParallelHintItem(ParallelHintItem node, C context) {
+    return visitNode(node, context);
+  }
+
   protected R visitRelation(Relation node, C context) {
     return visitNode(node, context);
   }

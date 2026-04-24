@@ -187,6 +187,9 @@ public class TableModelQueryFragmentPlanner extends AbstractFragmentParallelPlan
             fragment.isRoot(),
             queryContext.isVerbose());
 
+    // set parallelism from MppQueryContext
+    fragmentInstance.setParallelism(queryContext.getParallelism());
+
     selectExecutorAndHost(
         fragment,
         fragmentInstance,

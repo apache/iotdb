@@ -1026,7 +1026,7 @@ sortItem
     ;
 
 querySpecification
-    : SELECT setQuantifier? selectItem (',' selectItem)*
+    : SELECT selectHint? setQuantifier? selectItem (',' selectItem)*
       (FROM relation (',' relation)*)?
       (WHERE where=booleanExpression)?
       (GROUP BY groupBy)?
@@ -1114,6 +1114,32 @@ joinType
 joinCriteria
     : ON booleanExpression
     | USING '(' identifier (',' identifier)* ')'
+    ;
+
+selectHint
+    : HINT_START hintItem+ HINT_END
+    ;
+
+hintItem
+    : replicaHint
+    | regionRouteHint
+    | parallelHint
+    ;
+
+replicaHint
+    : REPLICA '(' (tableName=qualifiedName ',')? INTEGER_VALUE ')'
+    ;
+
+regionRouteHint
+    : REGION_ROUTE '(' (tableName=qualifiedName ',')? regionRoutes+=regionRouteItem (',' regionRoutes+=regionRouteItem)* ')'
+    ;
+
+regionRouteItem
+    : '(' regionId=number ',' datanodeId=number ')'
+    ;
+
+parallelHint
+    : PARALLEL '(' INTEGER_VALUE ')'
     ;
 
 patternRecognition
@@ -1508,6 +1534,7 @@ nonReserved
     | WEEK | WHILE | WINDOW | WITHIN | WITHOUT | WORK | WRAPPER | WRITE
     | YEAR
     | ZONE
+    | HINT_START | HINT_END
     ;
 
 ABSENT: 'ABSENT';
@@ -1920,6 +1947,9 @@ WRITE: 'WRITE';
 YEAR: 'YEAR' | 'Y';
 ZONE: 'ZONE';
 AUDIT: 'AUDIT';
+REPLICA: 'REPLICA';
+REGION_ROUTE: 'REGION_ROUTE';
+PARALLEL: 'PARALLEL';
 
 AT_SIGN: '@';
 EQ: '=';
@@ -1938,6 +1968,8 @@ CONCAT: '||';
 QUESTION_MARK: '?';
 SEMICOLON: ';';
 
+HINT_START: '/*+';
+HINT_END: '*/';
 
 STRING
     : '\'' ( ~'\'' | '\'\'' )* '\''
@@ -2034,9 +2066,12 @@ SIMPLE_COMMENT
     ;
 
 BRACKETED_COMMENT
-    : '/*' .*? '*/' -> channel(HIDDEN)
+    : '/*' (~[+] .*?)? '*/' -> channel(HIDDEN)
     ;
 
+EMPTY_HINT
+    : '/*+' [ \r\n\t]* '*/' -> channel(HIDDEN)
+    ;
 WS
     : [ \r\n\t]+ -> channel(HIDDEN)
     ;
