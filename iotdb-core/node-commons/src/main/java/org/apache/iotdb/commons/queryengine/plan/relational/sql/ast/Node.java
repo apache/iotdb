@@ -35,8 +35,9 @@ public abstract class Node implements Accountable {
   }
 
   /**
-   * Accessible for {@link org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor}, use
-   * {@link org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor#process(Node,
+   * Accessible for {@link
+   * org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.CommonQueryAstVisitor}, use {@link
+   * org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.CommonQueryAstVisitor#process(Node,
    * Object)} instead.
    */
   protected <R, C> R accept(IAstVisitor<R, C> visitor, C context) {
