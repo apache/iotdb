@@ -477,6 +477,86 @@ public class IoTDBDeletionTableIT {
   }
 
   @Test
+  public void testLastByWithTimeShouldReturnNoRowsAfterDeletingAllData() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("use test");
+      statement.execute("create table last_by_delete_0(deviceId string tag, s0 int32 field)");
+      statement.execute(
+          "insert into last_by_delete_0(time, deviceId, s0) values (1, 'd0', 1)");
+      statement.execute("flush");
+
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select last_by(s0, time) from last_by_delete_0 where deviceId = 'd0'")) {
+        assertTrue(resultSet.next());
+      }
+
+      statement.execute("delete from last_by_delete_0 where deviceId = 'd0'");
+
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select last_by(s0, time) from last_by_delete_0 where deviceId = 'd0'")) {
+        assertResultSetEmpty(resultSet);
+      }
+
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select last_by(s0, time) from last_by_delete_0 where deviceId = 'd0'")) {
+        assertResultSetEmpty(resultSet);
+      }
+    }
+  }
+
+  @Test
+  public void testThreeArgLastByShouldReturnNoRowsAfterDeletingAllData() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("use test");
+      statement.execute("create table last_by_delete_1(deviceId string tag, s0 int32 field)");
+      statement.execute(
+          "insert into last_by_delete_1(time, deviceId, s0) values (1, 'd0', 1)");
+      statement.execute("flush");
+
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select last_by(time, s0, time) from last_by_delete_1 where deviceId = 'd0'")) {
+        assertTrue(resultSet.next());
+      }
+
+      statement.execute("delete from last_by_delete_1 where deviceId = 'd0'");
+
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select last_by(time, s0, time) from last_by_delete_1 where deviceId = 'd0'")) {
+        assertResultSetEmpty(resultSet);
+      }
+
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select last_by(time, s0, time) from last_by_delete_1 where deviceId = 'd0'")) {
+        assertResultSetEmpty(resultSet);
+      }
+    }
+  }
+
+  private void assertResultSetEmpty(ResultSet resultSet) throws SQLException {
+    if (!resultSet.next()) {
+      return;
+    }
+
+    StringBuilder rowBuilder = new StringBuilder();
+    int columnCount = resultSet.getMetaData().getColumnCount();
+    for (int i = 1; i <= columnCount; i++) {
+      if (i > 1) {
+        rowBuilder.append(", ");
+      }
+      rowBuilder.append(resultSet.getString(i));
+    }
+    fail("Expected no rows, but got: " + rowBuilder);
+  }
+
+  @Test
   public void testFullDeleteWithoutWhereClause() throws SQLException {
     prepareData(5, 1);
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);

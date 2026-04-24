@@ -24,6 +24,7 @@ import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.fragment.DataNodeQueryContext;
 import org.apache.iotdb.db.queryengine.execution.operator.process.last.LastQueryUtil;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.LastAccumulator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.LastByAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.LastByDescAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.LastDescAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.TableAggregator;
@@ -323,7 +324,9 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
     // when there is no data, no need to append result if the query is GROUP BY or output of
     // aggregator is partial (final operator will produce NULL result)
     if (timeLastValue == EMPTY_PRIMITIVE_TYPE
-        && (groupingKeySize != 0 || tableAggregators.get(0).getStep().isOutputPartial())) {
+        && (groupingKeySize != 0
+            || tableAggregators.get(0).getStep().isOutputPartial()
+            || shouldSkipEmptyLastByResult(currentHitResult))) {
       outputDeviceIndex++;
       currentHitCacheIndex++;
       return;
@@ -706,7 +709,9 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
 
   @Override
   protected void updateResultTsBlock() {
-    appendAggregationResult();
+    if (!shouldSkipEmptyLastByResult()) {
+      appendAggregationResult();
+    }
 
     if (needUpdateCache && timeIterator.hasCachedTimeRange()) {
       if (lastRowCacheResults != null) {
@@ -721,6 +726,38 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
 
     // after appendAggregationResult invoked, aggregators must be cleared
     resetTableAggregators();
+  }
+
+  private boolean shouldSkipEmptyLastByResult() {
+    if (groupingKeySize != 0 || tableAggregators.isEmpty()) {
+      return false;
+    }
+    for (TableAggregator aggregator : tableAggregators) {
+      if (!(aggregator.getAccumulator() instanceof LastByAccumulator)) {
+        return false;
+      }
+      if (((LastByAccumulator) aggregator.getAccumulator()).hasInitResult()) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private boolean shouldSkipEmptyLastByResult(TimeValuePair[] currentHitResult) {
+    if (groupingKeySize != 0 || tableAggregators.isEmpty()) {
+      return false;
+    }
+    for (TableAggregator aggregator : tableAggregators) {
+      if (!(aggregator.getAccumulator() instanceof LastByAccumulator)) {
+        return false;
+      }
+    }
+    for (TimeValuePair timeValuePair : currentHitResult) {
+      if (timeValuePair.getValue() != EMPTY_PRIMITIVE_TYPE) {
+        return false;
+      }
+    }
+    return true;
   }
 
   @Override

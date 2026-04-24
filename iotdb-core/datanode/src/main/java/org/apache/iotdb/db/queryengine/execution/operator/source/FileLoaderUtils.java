@@ -370,7 +370,7 @@ public class FileLoaderUtils {
     // deal with time column
     List<ModEntry> timeModifications =
         context.getPathModifications(
-            resource, alignedPath.getDeviceId(), timeColumnMetadata.getMeasurementId());
+            resource, alignedPath.getDeviceId(), AlignedFullPath.VECTOR_PLACEHOLDER);
     // all rows are deleted, just return null to skip device data in this file
     if (ModificationUtils.isAllDeletedByMods(
         timeModifications,
