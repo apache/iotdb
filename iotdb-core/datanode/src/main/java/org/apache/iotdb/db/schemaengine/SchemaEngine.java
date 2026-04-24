@@ -389,11 +389,10 @@ public class SchemaEngine {
             entry ->
                 schemaIds.contains(entry.getKey().getId())
                     && SchemaRegionConsensusImpl.getInstance().isLeader(entry.getKey())
-                    && !entry.getValue().getDatabaseFullPath().equals(SystemConstant.AUDIT_DATABASE)
                     && !entry
                         .getValue()
                         .getDatabaseFullPath()
-                        .equals(SystemConstant.SYSTEM_DATABASE))
+                        .equals(SystemConstant.AUDIT_DATABASE))
         .forEach(
             entry ->
                 timeSeriesNum.put(
@@ -466,7 +465,14 @@ public class SchemaEngine {
       SchemaRegionConsensusImpl.getInstance().getAllConsensusGroupIds().stream()
           .filter(
               consensusGroupId ->
-                  SchemaRegionConsensusImpl.getInstance().isLeader(consensusGroupId))
+                  SchemaRegionConsensusImpl.getInstance().isLeader(consensusGroupId)
+                      && Optional.ofNullable(schemaRegionMap.get((SchemaRegionId) consensusGroupId))
+                          .map(
+                              schemaRegion ->
+                                  !schemaRegion
+                                      .getDatabaseFullPath()
+                                      .equals(SystemConstant.AUDIT_DATABASE))
+                          .orElse(false))
           .forEach(
               consensusGroupId ->
                   tmp.put(
