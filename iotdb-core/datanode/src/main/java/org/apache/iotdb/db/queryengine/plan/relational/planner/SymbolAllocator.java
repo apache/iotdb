@@ -109,6 +109,22 @@ public class SymbolAllocator {
     return TypeProvider.viewOf(symbolMap);
   }
 
+  public HashMap<Symbol, Type> cloneSymbolMap() {
+    return new HashMap<>(symbolMap);
+  }
+
+  public void fill(Map<Symbol, Type> symbolMap) {
+    this.symbolMap.putAll(symbolMap);
+  }
+
+  public int getNextId() {
+    return nextId;
+  }
+
+  public void setNextId(int nextId) {
+    this.nextId = nextId;
+  }
+
   private int nextId() {
     return nextId++;
   }

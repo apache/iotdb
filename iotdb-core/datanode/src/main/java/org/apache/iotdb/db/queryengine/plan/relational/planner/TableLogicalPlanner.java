@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
+import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.commons.partition.DataPartition;
+import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
@@ -26,6 +29,8 @@ import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
@@ -44,14 +49,17 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Field;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.RelationId;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.RelationType;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Scope;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.ConvertPredicateToTimeFilterVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.execution.querystats.PlanOptimizersStatsCollector;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.PredicateWithUncorrelatedScalarSubqueryReconstructor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CopyToNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExplainAnalyzeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.IntoNode;
@@ -59,6 +67,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OffsetNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.CreateOrUpdateTableDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeUpdateNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceFetchNode;
@@ -74,36 +83,56 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateOrUpdateDev
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Delete;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Explain;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExplainAnalyze;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FetchDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Insert;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LiteralMarkerReplacer;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PipeEnriched;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableNameRewriter;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Update;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WrappedStatement;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.util.SqlFormatter;
 import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
+import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.external.commons.codec.digest.DigestUtils;
 import org.apache.tsfile.read.common.type.LongType;
 import org.apache.tsfile.read.common.type.StringType;
 import org.apache.tsfile.read.common.type.TypeFactory;
+import org.apache.tsfile.read.filter.basic.Filter;
+import org.apache.tsfile.utils.Pair;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.LOGICAL_PLANNER;
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.LOGICAL_PLAN_OPTIMIZE;
+import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.SCHEMA_FETCHER;
+import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.getTimePartitionSlotList;
 import static org.apache.iotdb.db.queryengine.plan.relational.metadata.MetadataUtil.createQualifiedObjectName;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.CachedValue.cloneMetadataExpressions;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.CachedValue.clonePlanWithNewLiterals;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.CachedValue.collectDeviceTableScanNodes;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.QueryPlanner.visibleFields;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode.COLUMN_NAME_PREFIX;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDevice.COUNT_DEVICE_HEADER_STRING;
@@ -117,7 +146,6 @@ public class TableLogicalPlanner {
   private final List<PlanOptimizer> planOptimizers;
   private final Metadata metadata;
   private final WarningCollector warningCollector;
-
   private PredicateWithUncorrelatedScalarSubqueryReconstructor
       predicateWithUncorrelatedScalarSubqueryReconstructor;
 
@@ -163,9 +191,237 @@ public class TableLogicalPlanner {
         predicateWithUncorrelatedScalarSubqueryReconstructor;
   }
 
+  private List<Literal> generalizeStatement(Query query) {
+    LiteralMarkerReplacer literalMarkerReplacer = new LiteralMarkerReplacer();
+    literalMarkerReplacer.process(query);
+    return literalMarkerReplacer.getLiteralList();
+  }
+
+  private String calculateCacheKey(Statement statement, Analysis analysis) {
+    StringBuilder sb = new StringBuilder();
+    Statement normalized = TableNameRewriter.rewrite(statement, analysis.getDatabaseName());
+    sb.append(SqlFormatter.formatSql(normalized));
+    long version = DataNodeTableCache.getInstance().getInstanceVersion();
+    sb.append(version);
+    String rawKey = sb.toString();
+    return DigestUtils.md5Hex(rawKey.getBytes(StandardCharsets.UTF_8));
+  }
+
+  private void populatePlanCacheDiagnostics(String cachedKey, MPPQueryContext queryContext) {
+    PlanCacheManager.ProfileDiagnostics diag =
+        PlanCacheManager.getInstance().getProfileDiagnostics(cachedKey);
+    if (diag != null) {
+      queryContext.setPlanCacheDiagnostics(
+          diag.getEwmaReusablePlanningCost(),
+          diag.getEwmaFirstResponseLatency(),
+          diag.getEwmaBenefitRatio(),
+          diag.getSampleCount(),
+          diag.getHitCount(),
+          diag.getMissCount(),
+          diag.getBypassCount(),
+          CONFIG.getSmartPlanCacheMinReusablePlanningCostNanos(),
+          CONFIG.getSmartPlanCacheAdmitRatio(),
+          CONFIG.getSmartPlanCacheBypassRatio());
+    }
+  }
+
+  private static final Logger logger = LoggerFactory.getLogger(TableLogicalPlanner.class);
+  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
+
+  private DataPartition fetchDataPartitionByDevices(
+      final String
+          database, // for tree view, database should be the real tree db name with `root.` prefix
+      final List<DeviceEntry> deviceEntries,
+      final Filter globalTimeFilter) {
+    final Pair<List<TTimePartitionSlot>, Pair<Boolean, Boolean>> res =
+        getTimePartitionSlotList(globalTimeFilter, queryContext);
+
+    // there is no satisfied time range
+    if (res.left.isEmpty() && Boolean.FALSE.equals(res.right.left)) {
+      return new DataPartition(
+          Collections.emptyMap(),
+          CONFIG.getSeriesPartitionExecutorClass(),
+          CONFIG.getSeriesPartitionSlotNum());
+    }
+
+    final List<DataPartitionQueryParam> dataPartitionQueryParams =
+        deviceEntries.stream()
+            .map(
+                deviceEntry ->
+                    new DataPartitionQueryParam(
+                        deviceEntry.getDeviceID(), res.left, res.right.left, res.right.right))
+            .collect(Collectors.toList());
+
+    if (res.right.left || res.right.right) {
+      return metadata.getDataPartitionWithUnclosedTimeRange(database, dataPartitionQueryParams);
+    } else {
+      return metadata.getDataPartition(database, dataPartitionQueryParams);
+    }
+  }
+
+  /** The metadataExpression in cachedValue needs to be used to update the scanNode in planNode */
+  private void adjustSchema(
+      DeviceTableScanNode scanNode,
+      List<Expression> metaExprs,
+      List<String> attributeCols,
+      Map<Symbol, ColumnSchema> assignments,
+      Analysis analysis) {
+
+    long startTime = System.nanoTime();
+
+    Map<String, List<DeviceEntry>> deviceEntriesMap =
+        metadata.indexScan(
+            scanNode.getQualifiedObjectName(), metaExprs, attributeCols, queryContext);
+
+    String deviceDatabase =
+        !deviceEntriesMap.isEmpty() ? deviceEntriesMap.keySet().iterator().next() : null;
+    List<DeviceEntry> deviceEntries =
+        deviceDatabase != null ? deviceEntriesMap.get(deviceDatabase) : Collections.emptyList();
+    scanNode.setDeviceEntries(deviceEntries);
+
+    Filter timeFilter =
+        scanNode
+            .getTimePredicate()
+            .map(
+                v ->
+                    v.accept(
+                        new ConvertPredicateToTimeFilterVisitor(
+                            queryContext.getZoneId(), TimestampPrecisionUtils.currPrecision),
+                        null))
+            .orElse(null);
+    scanNode.setTimeFilter(timeFilter);
+
+    DataPartition dataPartition =
+        fetchDataPartitionByDevices(
+            scanNode instanceof TreeDeviceViewScanNode
+                ? ((TreeDeviceViewScanNode) scanNode).getTreeDBName()
+                : scanNode.getQualifiedObjectName().getDatabaseName(),
+            deviceEntries,
+            timeFilter);
+    analysis.upsertDataPartition(dataPartition);
+
+    long schemaFetchCost = System.nanoTime() - startTime;
+    QueryPlanCostMetricSet.getInstance().recordTablePlanCost(SCHEMA_FETCHER, schemaFetchCost);
+    queryContext.setFetchSchemaCost(schemaFetchCost);
+
+    if (deviceEntries.isEmpty() && analysis.noAggregates() && !analysis.hasJoinNode()) {
+      analysis.setEmptyDataSource(true);
+      analysis.setFinishQueryAfterAnalyze();
+    }
+  }
+
+  private Query getCacheableQuery(Statement statement) {
+    if (statement instanceof Query) {
+      return (Query) statement;
+    }
+    if (statement instanceof Explain) {
+      return getCacheableQuery(((Explain) statement).getStatement());
+    }
+    if (statement instanceof ExplainAnalyze) {
+      return getCacheableQuery(((ExplainAnalyze) statement).getStatement());
+    }
+    return null;
+  }
+
   public LogicalQueryPlan plan(final Analysis analysis) {
     long startTime = System.nanoTime();
-    final Statement statement = analysis.getStatement();
+    long totalStartTime = startTime;
+    Statement statement = analysis.getStatement();
+
+    String cachedKey = "";
+    List<Literal> literalReference = null;
+    PlanCacheManager.LookupDecision lookupDecision = null;
+    boolean cacheLookupAttempted = false;
+    Query cacheableQuery = getCacheableQuery(statement);
+
+    if (cacheableQuery != null) {
+      List<Literal> literalList = generalizeStatement(cacheableQuery);
+      cachedKey = calculateCacheKey(cacheableQuery, analysis);
+      lookupDecision = PlanCacheManager.getInstance().getLookupDecision(cachedKey);
+      queryContext.setPlanCacheState(lookupDecision.getState().name());
+      populatePlanCacheDiagnostics(cachedKey, queryContext);
+      if (lookupDecision.shouldLookup()) {
+        long lookupStartTime = System.nanoTime();
+        cacheLookupAttempted = true;
+        CachedValue cachedValue = PlanCacheManager.getInstance().getCachedValue(cachedKey);
+        queryContext.setPlanCacheLookupCost(System.nanoTime() - lookupStartTime);
+        if (cachedValue != null && !queryContext.isExplainAnalyze()) {
+          queryContext.setPlanCacheStatus("HIT");
+          queryContext.setSavedLogicalPlanningCost(
+              PlanCacheManager.getInstance().getEstimatedReusablePlanningCost(cachedKey));
+          PlanCacheManager.getInstance().recordCacheHit(cachedKey);
+          // deal with the device stuff
+          long curTime = System.nanoTime();
+          symbolAllocator.fill(cachedValue.getSymbolMap());
+          symbolAllocator.setNextId(cachedValue.getSymbolNextId());
+          analysis.setRespDatasetHeader(cachedValue.getRespHeader());
+
+          // Clone the PlanNode with new literals
+          CachedValue.ClonerContext clonerContext =
+              new CachedValue.ClonerContext(
+                  queryContext.getQueryId(), queryContext.getLocalQueryId(), literalList);
+          PlanNode newPlan = clonePlanWithNewLiterals(cachedValue.getPlanNode(), clonerContext);
+          // Clone the metadata expressions with new literals
+          List<List<Expression>> newMetadataExpressionLists = new ArrayList<>();
+          if (cachedValue.getMetadataExpressionLists() != null) {
+            for (List<Expression> exprList : cachedValue.getMetadataExpressionLists()) {
+              if (exprList != null) {
+                newMetadataExpressionLists.add(cloneMetadataExpressions(exprList, literalList));
+              } else {
+                // occupy an empty list and maintain a one-to-one correspondence with scanNodes
+                newMetadataExpressionLists.add(new ArrayList<>());
+              }
+            }
+          }
+
+          List<DeviceTableScanNode> scanNodes = collectDeviceTableScanNodes(newPlan);
+
+          for (int i = 0; i < scanNodes.size(); i++) {
+            DeviceTableScanNode scanNode = scanNodes.get(i);
+
+            List<Expression> metaExprs =
+                i < newMetadataExpressionLists.size()
+                    ? newMetadataExpressionLists.get(i)
+                    : Collections.emptyList();
+            List<String> attributeCols =
+                i < cachedValue.getAttributeColumnsLists().size()
+                    ? cachedValue.getAttributeColumnsLists().get(i)
+                    : Collections.emptyList();
+            Map<Symbol, ColumnSchema> assignments =
+                i < cachedValue.getAssignmentsLists().size()
+                    ? cachedValue.getAssignmentsLists().get(i)
+                    : Collections.emptyMap();
+
+            adjustSchema(scanNode, metaExprs, attributeCols, assignments, analysis);
+          }
+
+          logger.info(
+              "Logical plan is cached, adjustment cost time: {}", System.nanoTime() - curTime);
+          logger.info("Logical plan is cached, cost time: {}", System.nanoTime() - totalStartTime);
+          logger.info(
+              "Logical plan is cached, fetch schema cost time: {}",
+              queryContext.getFetchPartitionCost() + queryContext.getFetchSchemaCost());
+
+          return new LogicalQueryPlan(queryContext, newPlan);
+        }
+        if (cachedValue != null) {
+          // EXPLAIN ANALYZE: cache exists but we need full plan with ExplainAnalyzeNode
+          queryContext.setPlanCacheStatus("HIT");
+          queryContext.setSavedLogicalPlanningCost(
+              PlanCacheManager.getInstance().getEstimatedReusablePlanningCost(cachedKey));
+        } else {
+          queryContext.setPlanCacheStatus("MISS");
+        }
+      } else {
+        queryContext.setPlanCacheStatus("BYPASS", lookupDecision.getReason());
+      }
+      // Following implementation of plan should be based on the generalizedStatement
+      literalReference = literalList;
+    } else {
+      queryContext.setPlanCacheStatus("BYPASS", "Unsupported_Statement");
+    }
+
+    // The logical plan was not hit. The logical plan generation stage needs to be executed
     PlanNode planNode = planStatement(analysis, statement);
 
     if (analysis.isQuery()) {
@@ -197,7 +453,53 @@ public class TableLogicalPlanner {
       queryContext.setLogicalOptimizationCost(logicalOptimizationCost);
       QueryPlanCostMetricSet.getInstance()
           .recordTablePlanCost(LOGICAL_PLAN_OPTIMIZE, logicalOptimizationCost);
+
+      long reusablePlanningCost = logicalPlanCostTime + logicalOptimizationCost;
+      queryContext.setReusablePlanningCost(reusablePlanningCost);
+
+      if (cacheableQuery != null) {
+        // Store cache context for deferred recordExecution in QueryExecution.recordExecutionTime()
+        // where the real firstResponseLatency (first RPC server-side time) is available.
+        queryContext.setPlanCacheCachedKey(cachedKey);
+        queryContext.setPlanCacheLookupAttempted(cacheLookupAttempted);
+
+        PlanCacheManager.PlanCacheState currentState =
+            lookupDecision != null
+                ? lookupDecision.getState()
+                : PlanCacheManager.PlanCacheState.MONITOR;
+        queryContext.setPlanCacheState(currentState.name());
+        queryContext.setSavedLogicalPlanningCost(
+            currentState == PlanCacheManager.PlanCacheState.ACTIVE ? reusablePlanningCost : 0);
+        if (PlanCacheManager.getInstance().shouldCache(cachedKey)) {
+          CachedValue.ClonerContext clonerContext =
+              new CachedValue.ClonerContext(
+                  queryContext.getQueryId(), queryContext.getLocalQueryId(), literalReference);
+          PlanNode clonedPlan = clonePlanWithNewLiterals(planNode, clonerContext);
+          List<DeviceTableScanNode> scanNodes = collectDeviceTableScanNodes(clonedPlan);
+
+          PlanCacheManager.getInstance()
+              .cacheValue(
+                  cachedKey,
+                  clonedPlan,
+                  scanNodes,
+                  literalReference,
+                  analysis.getRespDatasetHeader(),
+                  symbolAllocator.cloneSymbolMap(),
+                  symbolAllocator.getNextId(),
+                  queryContext.getMetadataExpressionLists(),
+                  queryContext.getAttributeColumnsLists(),
+                  queryContext.getAssignmentsLists());
+          if (!cacheLookupAttempted && lookupDecision != null) {
+            queryContext.setPlanCacheStatus(
+                currentState == PlanCacheManager.PlanCacheState.ACTIVE ? "MISS" : "MONITOR");
+          }
+        }
+      }
     }
+    logger.info(
+        "Logical plan is generated, fetch schema cost time: {}",
+        queryContext.getFetchPartitionCost() + queryContext.getFetchSchemaCost());
+    logger.info("Logical plan is generated, cost time: {}", System.nanoTime() - totalStartTime);
 
     return new LogicalQueryPlan(queryContext, planNode);
   }
@@ -398,7 +700,6 @@ public class TableLogicalPlanner {
   }
 
   private RelationPlan createRelationPlan(Analysis analysis, Query query) {
-    // materialize cte if needed
     if (!queryContext.isInnerTriggeredQuery()) {
       CteMaterializer.getInstance().materializeCTE(analysis, queryContext);
     }
@@ -624,7 +925,6 @@ public class TableLogicalPlanner {
             queryContext.getLocalQueryId(),
             queryContext.getTimeOut(),
             symbol,
-            // recording permittedOutputs of ExplainAnalyzeNode's child
             getChildPermittedOutputs(analysis, statement.getStatement(), originalQueryPlan));
     return new RelationPlan(
         newRoot,
@@ -651,7 +951,6 @@ public class TableLogicalPlanner {
             innerQueryRelationPlan.getRoot(),
             statement.getTargetFileName(),
             statement.getOptions(),
-            // recording permittedOutputs of CopyToNode's child
             getChildPermittedOutputs(
                 analysis, statement.getQueryStatement(), innerQueryRelationPlan),
             innerQueryRespDatasetHeader,

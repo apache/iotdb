@@ -35,8 +35,8 @@ public class LongLiteral extends Literal {
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(LongLiteral.class);
 
-  private final String value;
-  private final long parsedValue;
+  private String value;
+  private long parsedValue;
 
   public LongLiteral(String value) {
     super(null);
@@ -144,5 +144,12 @@ public class LongLiteral extends Literal {
     return INSTANCE_SIZE
         + AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal())
         + RamUsageEstimator.sizeOf(value);
+  }
+
+  @Override
+  public void replace(Literal literal) {
+    LongLiteral longLiteral = (LongLiteral) literal;
+    this.value = longLiteral.getValue();
+    this.parsedValue = longLiteral.getParsedValue();
   }
 }

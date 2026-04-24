@@ -36,8 +36,8 @@ public class StringLiteral extends Literal {
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(StringLiteral.class);
 
-  private final String value;
-  private final int length;
+  private String value;
+  private int length;
 
   public StringLiteral(String value) {
     super(null);
@@ -119,5 +119,12 @@ public class StringLiteral extends Literal {
     return INSTANCE_SIZE
         + AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal())
         + RamUsageEstimator.sizeOf(value);
+  }
+
+  @Override
+  public void replace(Literal literal) {
+    StringLiteral stringLiteral = (StringLiteral) literal;
+    this.value = stringLiteral.getValue();
+    this.length = stringLiteral.length();
   }
 }
