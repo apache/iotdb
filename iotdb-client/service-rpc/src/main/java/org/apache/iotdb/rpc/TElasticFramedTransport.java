@@ -196,6 +196,8 @@ public class TElasticFramedTransport extends TTransport {
         error = FrameError.TLS_REQUEST;
       } else if (size < 0) {
         error = FrameError.NEGATIVE_FRAME_SIZE;
+      } else if (size > thriftMaxFrameSize) {
+        error = FrameError.FRAME_SIZE_EXCEEDED;
       }
     }
 
