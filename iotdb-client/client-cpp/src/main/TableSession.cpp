@@ -22,17 +22,18 @@
 #include "TableSession.h"
 #include "SessionDataSet.h"
 
-void TableSession::insert(Tablet &tablet, bool sorted) {
-    session_->insertRelationalTablet(tablet, sorted);
+void TableSession::insert(Tablet& tablet, bool sorted) {
+  session_->insertRelationalTablet(tablet, sorted);
 }
-void TableSession::executeNonQueryStatement(const string &sql) {
-    session_->executeNonQueryStatement(sql);
+void TableSession::executeNonQueryStatement(const string& sql) {
+  session_->executeNonQueryStatement(sql);
 }
-unique_ptr<SessionDataSet> TableSession::executeQueryStatement(const string &sql) {
-    return session_->executeQueryStatement(sql);
+unique_ptr<SessionDataSet> TableSession::executeQueryStatement(const string& sql) {
+  return session_->executeQueryStatement(sql);
 }
-unique_ptr<SessionDataSet> TableSession::executeQueryStatement(const string &sql, int64_t timeoutInMs) {
-    return session_->executeQueryStatement(sql, timeoutInMs);
+unique_ptr<SessionDataSet> TableSession::executeQueryStatement(const string& sql,
+                                                               int64_t timeoutInMs) {
+  return session_->executeQueryStatement(sql, timeoutInMs);
 }
 
 int32_t TableSession::prepareStatement(const std::string& sql, const std::string& statementName) {
@@ -58,11 +59,11 @@ void TableSession::deallocatePreparedStatement(const std::string& statementName)
 }
 
 string TableSession::getDatabase() {
-    return session_->getDatabase();
+  return session_->getDatabase();
 }
 void TableSession::open(bool enableRPCCompression) {
-    session_->open(enableRPCCompression);
+  session_->open(enableRPCCompression);
 }
 void TableSession::close() {
-    session_->close();
+  session_->close();
 }

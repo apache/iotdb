@@ -107,6 +107,31 @@ plugin](https://github.com/diffplug/spotless/tree/main/plugin-maven) together wi
    import static all other imports
 ```
 
+### C++ formatting
+
+- Formatter: `clang-format` only
+- Version: pinned as `clang.format.version` in the root `pom.xml` (currently `17.0.6`, aligned with Apache TsFile); CI installs LLVM/clang-format so the default `clang-format` on the runner matches that version
+- Entrypoint: Maven Spotless; the `clangFormat` configuration is attached under the `spotless-cpp` profile in the C++ modules and activates only on **JDK 11+**, so run `spotless:check` / `spotless:apply` for C++ with JDK 11 or newer (CI does). JDK 8 builds elsewhere in the reactor do not load that Spotless fragment.
+
+Check only:
+
+`./mvnw -P with-cpp -pl iotdb-client/client-cpp spotless:check`
+
+`./mvnw -P with-cpp -pl example/client-cpp-example spotless:check`
+
+Auto-fix:
+
+`./mvnw -P with-cpp -pl iotdb-client/client-cpp spotless:apply`
+
+`./mvnw -P with-cpp -pl example/client-cpp-example spotless:apply`
+
+On Windows PowerShell, a comma inside `-pl` can be parsed incorrectly; use the two commands above, or quote the full `-pl` value, for example `./mvnw -P with-cpp "-pl=iotdb-client/client-cpp,example/client-cpp-example" spotless:check`.
+
+Temporarily skip Spotless (not recommended except emergency CI triage):
+
+`-Dspotless.skip=true`
+
+Risk: skipping formatting checks can introduce style drift between contributors and CI, and often causes follow-up format-only commits.
 
 ## Contributing code
 
