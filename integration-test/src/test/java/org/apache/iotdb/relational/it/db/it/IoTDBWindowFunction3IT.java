@@ -51,6 +51,17 @@ public class IoTDBWindowFunction3IT {
         "insert into demo values (2021-01-01T09:10:00, 'd1', 1)",
         "insert into demo values (2021-01-01T09:08:00, 'd2', 2)",
         "insert into demo values (2021-01-01T09:15:00, 'd2', 4)",
+        "create table multi_tag (region string tag, plant string tag, temp double field)",
+        "insert into multi_tag values (2021-01-01T08:00:00, 'east', 'A', 10)",
+        "insert into multi_tag values (2021-01-01T09:00:00, 'east', 'A', 20)",
+        "insert into multi_tag values (2021-01-01T10:00:00, 'east', 'A', 15)",
+        "insert into multi_tag values (2021-01-01T11:00:00, 'east', 'A', 25)",
+        "insert into multi_tag values (2021-01-01T08:30:00, 'east', 'B', 30)",
+        "insert into multi_tag values (2021-01-01T09:30:00, 'east', 'B', 35)",
+        "insert into multi_tag values (2021-01-01T10:30:00, 'east', 'B', 32)",
+        "insert into multi_tag values (2021-01-01T07:00:00, 'west', 'C', 50)",
+        "insert into multi_tag values (2021-01-01T08:00:00, 'west', 'C', 55)",
+        "insert into multi_tag values (2021-01-01T09:00:00, 'west', 'C', 52)",
         "FLUSH",
         "CLEAR ATTRIBUTE CACHE",
       };
@@ -121,8 +132,8 @@ public class IoTDBWindowFunction3IT {
     String[] expectedHeader = new String[] {"time", "device", "value", "rn"};
     String[] retArray =
         new String[] {
-          "2021-01-01T09:10:00.000Z,d1,1.0,1,",
           "2021-01-01T09:05:00.000Z,d1,3.0,2,",
+          "2021-01-01T09:10:00.000Z,d1,1.0,1,",
           "2021-01-01T09:08:00.000Z,d2,2.0,1,",
           "2021-01-01T09:15:00.000Z,d2,4.0,2,",
         };
@@ -167,11 +178,201 @@ public class IoTDBWindowFunction3IT {
   }
 
   @Test
+  public void testPushDownFilterIntoWindowWithRank() {
+    // Data: d1 values {3,5,3,1}, d2 values {2,4}
+    // rank(PARTITION BY device ORDER BY value):
+    //   d1: 1.0→rank=1, 3.0→rank=2, 3.0→rank=2, 5.0→rank=4
+    //   d2: 2.0→rank=1, 4.0→rank=2
+    // WHERE rk <= 2: keeps d1 rows with rank≤2 (3 rows due to tie), d2 all (2 rows)
+    String[] expectedHeader = new String[] {"time", "device", "value", "rk"};
+    String[] retArray =
+        new String[] {
+          "2021-01-01T09:05:00.000Z,d1,3.0,2,",
+          "2021-01-01T09:09:00.000Z,d1,3.0,2,",
+          "2021-01-01T09:10:00.000Z,d1,1.0,1,",
+          "2021-01-01T09:08:00.000Z,d2,2.0,1,",
+          "2021-01-01T09:15:00.000Z,d2,4.0,2,",
+        };
+    tableResultSetEqualTest(
+        "SELECT * FROM (SELECT *, rank() OVER (PARTITION BY device ORDER BY value) as rk FROM demo) WHERE rk <= 2 ORDER BY device, time",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testPushDownLimitIntoWindowWithRank() {
+    // TopKRanking(RANK, topN=2) keeps rank≤2 per partition, then LIMIT 2 on final result
+    // d1 rank≤2: 1.0(r=1), 3.0(r=2), 3.0(r=2) → 3 rows sorted by time: 09:05,09:09,09:10
+    // d2 rank≤2: 2.0(r=1), 4.0(r=2) → 2 rows
+    // ORDER BY device, time LIMIT 2 → first 2 from d1
+    String[] expectedHeader = new String[] {"time", "device", "value", "rk"};
+    String[] retArray =
+        new String[] {
+          "2021-01-01T09:05:00.000Z,d1,3.0,2,", "2021-01-01T09:07:00.000Z,d1,5.0,4,",
+        };
+    tableResultSetEqualTest(
+        "SELECT * FROM (SELECT *, rank() OVER (PARTITION BY device ORDER BY value) as rk FROM demo) ORDER BY device, time LIMIT 2",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testRankBasic() {
+    // Verifies rank computation: ties get the same rank, gaps after ties
+    String[] expectedHeader = new String[] {"time", "device", "value", "rk"};
+    String[] retArray =
+        new String[] {
+          "2021-01-01T09:05:00.000Z,d1,3.0,2,",
+          "2021-01-01T09:07:00.000Z,d1,5.0,4,",
+          "2021-01-01T09:09:00.000Z,d1,3.0,2,",
+          "2021-01-01T09:10:00.000Z,d1,1.0,1,",
+          "2021-01-01T09:08:00.000Z,d2,2.0,1,",
+          "2021-01-01T09:15:00.000Z,d2,4.0,2,",
+        };
+    tableResultSetEqualTest(
+        "SELECT *, rank() OVER (PARTITION BY device ORDER BY value) as rk FROM demo ORDER BY device, time",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testRankWithFilterEquals() {
+    // WHERE rk = 2 keeps only rows with rank exactly 2 (both d1 rows with value=3)
+    String[] expectedHeader = new String[] {"time", "device", "value", "rk"};
+    String[] retArray =
+        new String[] {
+          "2021-01-01T09:05:00.000Z,d1,3.0,2,",
+          "2021-01-01T09:09:00.000Z,d1,3.0,2,",
+          "2021-01-01T09:15:00.000Z,d2,4.0,2,",
+        };
+    tableResultSetEqualTest(
+        "SELECT * FROM (SELECT *, rank() OVER (PARTITION BY device ORDER BY value) as rk FROM demo) WHERE rk = 2 ORDER BY device, time",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
   public void testRemoveRedundantWindow() {
     String[] expectedHeader = new String[] {"time", "device", "value", "rn"};
     String[] retArray = new String[] {};
     tableResultSetEqualTest(
         "SELECT *, row_number() OVER (PARTITION BY device) AS rn FROM demo WHERE 1 = 2",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testTopKRankingOrderByTimeAsc() {
+    // PARTITION BY all tags + ORDER BY time ASC triggers limit push-down to DeviceTableScanNode
+    // and streaming RowNumberOperator optimization.
+    String[] expectedHeader = new String[] {"time", "device", "value", "rn"};
+    String[] retArray =
+        new String[] {
+          "2021-01-01T09:05:00.000Z,d1,3.0,1,",
+          "2021-01-01T09:07:00.000Z,d1,5.0,2,",
+          "2021-01-01T09:08:00.000Z,d2,2.0,1,",
+          "2021-01-01T09:15:00.000Z,d2,4.0,2,",
+        };
+    tableResultSetEqualTest(
+        "SELECT * FROM (SELECT *, row_number() OVER (PARTITION BY device ORDER BY time ASC) as rn FROM demo) WHERE rn <= 2 ORDER BY device, time",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testTopKRankingOrderByTimeDesc() {
+    // ORDER BY time DESC: returns newest K rows per device
+    String[] expectedHeader = new String[] {"time", "device", "value", "rn"};
+    String[] retArray =
+        new String[] {
+          "2021-01-01T09:09:00.000Z,d1,3.0,2,",
+          "2021-01-01T09:10:00.000Z,d1,1.0,1,",
+          "2021-01-01T09:08:00.000Z,d2,2.0,2,",
+          "2021-01-01T09:15:00.000Z,d2,4.0,1,",
+        };
+    tableResultSetEqualTest(
+        "SELECT * FROM (SELECT *, row_number() OVER (PARTITION BY device ORDER BY time DESC) as rn FROM demo) WHERE rn <= 2 ORDER BY device, time",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testTopKRankingOrderByTimeLimit1() {
+    // rn <= 1: get exactly the oldest row per device
+    String[] expectedHeader = new String[] {"time", "device", "value", "rn"};
+    String[] retArray =
+        new String[] {
+          "2021-01-01T09:05:00.000Z,d1,3.0,1,", "2021-01-01T09:08:00.000Z,d2,2.0,1,",
+        };
+    tableResultSetEqualTest(
+        "SELECT * FROM (SELECT *, row_number() OVER (PARTITION BY device ORDER BY time ASC) as rn FROM demo) WHERE rn <= 1 ORDER BY device",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testTopKRankingOrderByTimeMultiTag() {
+    // Multi-tag table: PARTITION BY region, plant (all tags) ORDER BY time
+    String[] expectedHeader = new String[] {"time", "region", "plant", "temp", "rn"};
+    String[] retArray =
+        new String[] {
+          "2021-01-01T08:00:00.000Z,east,A,10.0,1,",
+          "2021-01-01T09:00:00.000Z,east,A,20.0,2,",
+          "2021-01-01T08:30:00.000Z,east,B,30.0,1,",
+          "2021-01-01T09:30:00.000Z,east,B,35.0,2,",
+          "2021-01-01T07:00:00.000Z,west,C,50.0,1,",
+          "2021-01-01T08:00:00.000Z,west,C,55.0,2,",
+        };
+    tableResultSetEqualTest(
+        "SELECT * FROM (SELECT *, row_number() OVER (PARTITION BY region, plant ORDER BY time ASC) as rn FROM multi_tag) WHERE rn <= 2 ORDER BY region, plant, time",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testTopKRankingOrderByTimeMultiTagDesc() {
+    // Multi-tag table: ORDER BY time DESC returns newest rows per device
+    String[] expectedHeader = new String[] {"time", "region", "plant", "temp", "rn"};
+    String[] retArray =
+        new String[] {
+          "2021-01-01T10:00:00.000Z,east,A,15.0,2,",
+          "2021-01-01T11:00:00.000Z,east,A,25.0,1,",
+          "2021-01-01T09:30:00.000Z,east,B,35.0,2,",
+          "2021-01-01T10:30:00.000Z,east,B,32.0,1,",
+          "2021-01-01T08:00:00.000Z,west,C,55.0,2,",
+          "2021-01-01T09:00:00.000Z,west,C,52.0,1,",
+        };
+    tableResultSetEqualTest(
+        "SELECT * FROM (SELECT *, row_number() OVER (PARTITION BY region, plant ORDER BY time DESC) as rn FROM multi_tag) WHERE rn <= 2 ORDER BY region, plant, time",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testTopKRankingOrderByTimeLimitExceedsRows() {
+    // rn <= 10 but d2 only has 2 rows - should return all available rows
+    String[] expectedHeader = new String[] {"time", "device", "value", "rn"};
+    String[] retArray =
+        new String[] {
+          "2021-01-01T09:05:00.000Z,d1,3.0,1,",
+          "2021-01-01T09:07:00.000Z,d1,5.0,2,",
+          "2021-01-01T09:09:00.000Z,d1,3.0,3,",
+          "2021-01-01T09:10:00.000Z,d1,1.0,4,",
+          "2021-01-01T09:08:00.000Z,d2,2.0,1,",
+          "2021-01-01T09:15:00.000Z,d2,4.0,2,",
+        };
+    tableResultSetEqualTest(
+        "SELECT * FROM (SELECT *, row_number() OVER (PARTITION BY device ORDER BY time ASC) as rn FROM demo) WHERE rn <= 10 ORDER BY device, time",
         expectedHeader,
         retArray,
         DATABASE_NAME);
