@@ -1049,19 +1049,18 @@ public class IoTDBTableIT {
     }
 
     try (final Connection connection =
-            EnvFactory.getEnv()
-                .getConnection("testUser", "testUser123456", BaseEnv.TABLE_SQL_DIALECT);
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
       statement.execute("alter database tree_view_db set properties ttl=100");
       statement.execute(
           "create or replace view tree_view_db.view_table (tag1 tag, tag2 tag, s11 int32 field, s3 from s2) restrict as root.\"重庆\".\"1\".**");
 
       TestUtils.assertResultSetEqual(
-          statement.executeQuery("show tables"),
+          statement.executeQuery("show tables from tree_view_db"),
           "TableName,TTL(ms),",
           Collections.singleton("view_table,100,"));
     } catch (final SQLException e) {
-      fail();
+      fail(e.getMessage());
     }
 
     try (final Connection connection =
