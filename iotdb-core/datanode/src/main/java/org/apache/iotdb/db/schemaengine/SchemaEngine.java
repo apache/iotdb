@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.ConsensusFactory;
@@ -393,7 +394,10 @@ public class SchemaEngine {
         .filter(
             entry ->
                 targetSchemaIds.contains(entry.getKey().getId())
-                    && SchemaRegionConsensusImpl.getInstance().isLeader(entry.getKey()))
+                    && SchemaRegionConsensusImpl.getInstance().isLeader(entry.getKey())
+                    // Audit logs are stored under the internal system database in dev/1.3.
+                    && !SchemaConstant.SYSTEM_DATABASE.equals(
+                        entry.getValue().getDatabaseFullPath()))
         .forEach(
             entry ->
                 timeSeriesNum.put(
@@ -442,7 +446,15 @@ public class SchemaEngine {
       SchemaRegionConsensusImpl.getInstance().getAllConsensusGroupIds().stream()
           .filter(
               consensusGroupId ->
-                  SchemaRegionConsensusImpl.getInstance().isLeader(consensusGroupId))
+                  SchemaRegionConsensusImpl.getInstance().isLeader(consensusGroupId)
+                      && Optional.ofNullable(schemaRegionMap.get((SchemaRegionId) consensusGroupId))
+                          .map(
+                              schemaRegion ->
+                                  // Audit logs are stored under the internal system database in
+                                  // dev/1.3.
+                                  !SchemaConstant.SYSTEM_DATABASE.equals(
+                                      schemaRegion.getDatabaseFullPath()))
+                          .orElse(false))
           .forEach(
               consensusGroupId ->
                   tmp.put(
