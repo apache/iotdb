@@ -74,6 +74,7 @@ public class PipeMemoryBlock implements AutoCloseable {
 
   public PipeMemoryBlock setExpandMethod(final LongUnaryOperator extendMethod) {
     this.expandMethod.set(extendMethod);
+    pipeMemoryManager.addExpandableBlock(this);
     return this;
   }
 
@@ -181,6 +182,9 @@ public class PipeMemoryBlock implements AutoCloseable {
             pipeMemoryManager.release(this);
             if (Objects.nonNull(shrinkMethod.get())) {
               pipeMemoryManager.removeShrinkableBlock(this);
+            }
+            if (Objects.nonNull(expandMethod.get())) {
+              pipeMemoryManager.removeExpandableBlock(this);
             }
             if (isInterrupted) {
               LOGGER.warn("{} is released after thread interruption.", this);
