@@ -170,9 +170,25 @@ public class TimePartitionUtils {
     databaseConfigCache.put(database, new DatabaseTimePartitionConfig(origin, interval));
   }
 
+  public static void updateDatabaseTimePartitionConfigs(Map<String, TDatabaseSchema> schemaMap) {
+    if (schemaMap == null || schemaMap.isEmpty()) {
+      return;
+    }
+    schemaMap.forEach(
+        (database, schema) -> {
+          if (database != null && schema != null) {
+            updateDatabaseTimePartitionConfig(database, schema);
+          }
+        });
+  }
+
   // Remove database-specific time partition configuration
   public static void removeDatabaseTimePartitionConfig(String database) {
     databaseConfigCache.remove(database);
+  }
+
+  public static void clearDatabaseTimePartitionConfigCache() {
+    databaseConfigCache.clear();
   }
 
   // Get database-specific configuration, fallback to global if not found

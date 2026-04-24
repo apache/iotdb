@@ -337,15 +337,16 @@ public class InformationSchemaContentSupplierFactory {
       } else {
         columnBuilders[1].writeBinary(
             new Binary(String.valueOf(currentDatabase.getTTL()), TSFileConfig.STRING_CHARSET));
+        }
+        columnBuilders[2].writeInt(currentDatabase.getSchemaReplicationFactor());
+        columnBuilders[3].writeInt(currentDatabase.getDataReplicationFactor());
+        columnBuilders[4].writeLong(currentDatabase.getTimePartitionOrigin());
+        columnBuilders[5].writeLong(currentDatabase.getTimePartitionInterval());
+        columnBuilders[6].writeInt(currentDatabase.getSchemaRegionNum());
+        columnBuilders[7].writeInt(currentDatabase.getDataRegionNum());
+        resultBuilder.declarePosition();
+        currentDatabase = null;
       }
-      columnBuilders[2].writeInt(currentDatabase.getSchemaReplicationFactor());
-      columnBuilders[3].writeInt(currentDatabase.getDataReplicationFactor());
-      columnBuilders[4].writeLong(currentDatabase.getTimePartitionInterval());
-      columnBuilders[5].writeInt(currentDatabase.getSchemaRegionNum());
-      columnBuilders[6].writeInt(currentDatabase.getDataRegionNum());
-      resultBuilder.declarePosition();
-      currentDatabase = null;
-    }
 
     @Override
     public boolean hasNext() {

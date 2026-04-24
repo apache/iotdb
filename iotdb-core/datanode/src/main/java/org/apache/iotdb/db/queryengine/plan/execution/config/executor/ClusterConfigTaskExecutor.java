@@ -476,6 +476,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         }
 
       } else {
+        TimePartitionUtils.updateDatabaseTimePartitionConfig(databaseSchema.getName(), databaseSchema);
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
     } catch (final ClientManagerException | TException e) {
@@ -4217,6 +4218,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       final TSStatus tsStatus = configNodeClient.setDatabase(databaseSchema);
 
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()) {
+        TimePartitionUtils.updateDatabaseTimePartitionConfig(databaseSchema.getName(), databaseSchema);
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       } else if (TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode() == tsStatus.getCode()) {
         if (ifExists) {

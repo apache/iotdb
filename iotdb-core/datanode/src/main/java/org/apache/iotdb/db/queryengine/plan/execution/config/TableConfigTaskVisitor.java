@@ -281,6 +281,7 @@ import static org.apache.iotdb.commons.schema.table.TsTable.TIME_COLUMN_NAME;
 import static org.apache.iotdb.commons.schema.table.TsTable.TTL_PROPERTY;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask.DATA_REGION_GROUP_NUM_KEY;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask.SCHEMA_REGION_GROUP_NUM_KEY;
+import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask.TIME_PARTITION_ORIGIN_KEY;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask.TIME_PARTITION_INTERVAL_KEY;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask.TTL_KEY;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager.getTSDataType;
@@ -346,6 +347,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
       final String key = property.getName().getValue().toLowerCase(Locale.ENGLISH);
       if (property.isSetToDefault()) {
         switch (key) {
+          case TIME_PARTITION_ORIGIN_KEY:
           case TIME_PARTITION_INTERVAL_KEY:
           case SCHEMA_REGION_GROUP_NUM_KEY:
           case DATA_REGION_GROUP_NUM_KEY:
@@ -377,6 +379,9 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
             break;
           }
           schema.setTTL(parseLongFromLiteral(value, TTL_KEY));
+          break;
+        case TIME_PARTITION_ORIGIN_KEY:
+          schema.setTimePartitionOrigin(parseLongFromLiteral(value, TIME_PARTITION_ORIGIN_KEY));
           break;
         case TIME_PARTITION_INTERVAL_KEY:
           schema.setTimePartitionInterval(parseLongFromLiteral(value, TIME_PARTITION_INTERVAL_KEY));

@@ -40,6 +40,7 @@ public class TimePartitionUtilsTest {
     CommonDescriptor.getInstance()
         .getConfig()
         .setTimePartitionInterval(TEST_TIME_PARTITION_INTERVAL);
+    TimePartitionUtils.clearDatabaseTimePartitionConfigCache();
   }
 
   @Test

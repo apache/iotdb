@@ -43,6 +43,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.table.Audit;
+import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
@@ -245,7 +246,7 @@ public class PartitionCache {
         if (databaseSchemaResp.getStatus().getCode()
             == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           // update all database into cache
-          updateDatabaseCache(databaseSchemaResp.getDatabaseSchemaMap().keySet());
+          updateDatabaseCache(databaseSchemaResp.getDatabaseSchemaMap());
           getDatabaseMap(result, deviceIDs, true);
         }
       }
@@ -266,7 +267,7 @@ public class PartitionCache {
       final TDatabaseSchemaResp databaseSchemaResp = client.getMatchedDatabaseSchemas(req);
       if (databaseSchemaResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         // update all database into cache
-        updateDatabaseCache(databaseSchemaResp.getDatabaseSchemaMap().keySet());
+        updateDatabaseCache(databaseSchemaResp.getDatabaseSchemaMap());
       }
     } finally {
       databaseCacheLock.writeLock().unlock();
@@ -313,6 +314,8 @@ public class PartitionCache {
 
         // Try to create databases one by one until done or one database fail
         final Set<String> successFullyCreatedDatabase = new HashSet<>();
+        final Map<String, TDatabaseSchema> successFullyCreatedDatabaseSchema = new HashMap<>();
+        boolean needRefreshCacheFromConfigNode = false;
         for (final String databaseName : databaseNamesNeedCreated) {
           final long startTime = System.nanoTime();
           try {
@@ -332,9 +335,17 @@ public class PartitionCache {
           databaseSchema.setName(databaseName);
           databaseSchema.setIsTableModel(false);
           final TSStatus tsStatus = client.setDatabase(databaseSchema);
-          if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()
-              || TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode() == tsStatus.getCode()) {
+          if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()) {
             successFullyCreatedDatabase.add(databaseName);
+            successFullyCreatedDatabaseSchema.put(databaseName, databaseSchema);
+            // In tree model, if the user creates a conflict database concurrently, for instance,
+            // the database created by user is root.db.ss.a, the auto-creation failed database is
+            // root.db, we wait till "getOrCreatePartition" to judge if the time series (like
+            // root.db.ss.a.e / root.db.ss.a) conflicts with the created database. just do not throw
+            // exception here.
+          } else if (TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode() == tsStatus.getCode()) {
+            successFullyCreatedDatabase.add(databaseName);
+            needRefreshCacheFromConfigNode = true;
             // In tree model, if the user creates a conflict database concurrently, for instance,
             // the database created by user is root.db.ss.a, the auto-creation failed database is
             // root.db, we wait till "getOrCreatePartition" to judge if the time series (like
@@ -342,7 +353,11 @@ public class PartitionCache {
             // exception here.
           } else if (TSStatusCode.DATABASE_CONFLICT.getStatusCode() != tsStatus.getCode()) {
             // Try to update cache by databases successfully created
-            updateDatabaseCache(successFullyCreatedDatabase);
+            if (needRefreshCacheFromConfigNode) {
+              fetchDatabaseAndUpdateCache(client, false);
+            } else {
+              updateDatabaseCache(successFullyCreatedDatabaseSchema);
+            }
             logger.warn(
                 "[{} Cache] failed to create database {}",
                 CacheMetrics.DATABASE_CACHE_NAME,
@@ -351,7 +366,11 @@ public class PartitionCache {
           }
         }
         // Try to update database cache when all databases have already been created
-        updateDatabaseCache(successFullyCreatedDatabase);
+        if (needRefreshCacheFromConfigNode) {
+          fetchDatabaseAndUpdateCache(client, false);
+        } else {
+          updateDatabaseCache(successFullyCreatedDatabaseSchema);
+        }
         getDatabaseMap(result, deviceIDs, false);
       }
     } finally {
@@ -383,10 +402,11 @@ public class PartitionCache {
       databaseSchema.setName(database);
       databaseSchema.setIsTableModel(true);
       final TSStatus tsStatus = client.setDatabase(databaseSchema);
-      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()
-          || TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode() == tsStatus.getCode()) {
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()) {
         // Try to update cache by databases successfully created
-        updateDatabaseCache(Collections.singleton(database));
+        updateDatabaseCache(Collections.singletonMap(database, databaseSchema));
+      } else if (TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode() == tsStatus.getCode()) {
+        fetchDatabaseAndUpdateCache(client, true);
       } else {
         logger.warn(
             "[{} Cache] failed to create database {}", CacheMetrics.DATABASE_CACHE_NAME, database);
@@ -546,13 +566,39 @@ public class PartitionCache {
     }
   }
 
+  public void updateDatabaseCache(final Map<String, TDatabaseSchema> databaseSchemaMap) {
+    if (databaseSchemaMap == null || databaseSchemaMap.isEmpty()) {
+      return;
+    }
+    databaseCacheLock.writeLock().lock();
+    try {
+      databaseCache.addAll(databaseSchemaMap.keySet());
+      TimePartitionUtils.updateDatabaseTimePartitionConfigs(databaseSchemaMap);
+    } finally {
+      databaseCacheLock.writeLock().unlock();
+    }
+  }
+
   /** invalidate all database cache */
   public void removeFromDatabaseCache() {
     databaseCacheLock.writeLock().lock();
     try {
       databaseCache.clear();
+      TimePartitionUtils.clearDatabaseTimePartitionConfigCache();
     } finally {
       databaseCacheLock.writeLock().unlock();
+    }
+  }
+
+  private void fetchDatabaseAndUpdateCache(final ConfigNodeClient client, final boolean isTableModel)
+      throws TException {
+    final TGetDatabaseReq req =
+        new TGetDatabaseReq(ROOT_PATH, SchemaConstant.ALL_MATCH_SCOPE_BINARY)
+            .setIsTableModel(isTableModel)
+            .setCanSeeAuditDB(true);
+    final TDatabaseSchemaResp databaseSchemaResp = client.getMatchedDatabaseSchemas(req);
+    if (databaseSchemaResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      updateDatabaseCache(databaseSchemaResp.getDatabaseSchemaMap());
     }
   }
 
