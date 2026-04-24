@@ -20,8 +20,8 @@
 package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 
 import org.apache.iotdb.commons.exception.IoTDBException;
-import org.apache.iotdb.db.queryengine.plan.relational.function.OperatorType;
-import org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignature;
+import org.apache.iotdb.commons.queryengine.plan.relational.function.OperatorType;
+import org.apache.iotdb.commons.queryengine.plan.relational.type.TypeSignature;
 
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;

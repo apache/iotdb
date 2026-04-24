@@ -19,8 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze;
 
-import org.apache.iotdb.db.exception.sql.SemanticException;
-import org.apache.iotdb.db.queryengine.common.NodeRef;
+import org.apache.iotdb.calc.utils.constant.SqlConstant;
+import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.commons.queryengine.common.NodeRef;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.ExpressionType;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.ArithmeticBinaryExpression;
@@ -44,7 +45,6 @@ import org.apache.iotdb.db.queryengine.plan.expression.visitor.ExpressionVisitor
 import org.apache.iotdb.db.queryengine.transformation.dag.udf.UDAFInformationInferrer;
 import org.apache.iotdb.db.queryengine.transformation.dag.udf.UDTFInformationInferrer;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
-import org.apache.iotdb.db.utils.constant.SqlConstant;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.write.schema.IMeasurementSchema;

@@ -18,16 +18,16 @@
  */
 package org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule;
 
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.function.BoundSignature;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.Assignments;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ProjectNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TopKRankingNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.WindowNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.common.QueryId;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.relational.function.BoundSignature;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.Assignments;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolsExtractor;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKRankingNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.WindowNode;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
@@ -41,8 +41,8 @@ import java.util.Set;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static com.google.common.collect.Iterables.getOnlyElement;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKRankingNode.RankingType.RANK;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKRankingNode.RankingType.ROW_NUMBER;
+import static org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TopKRankingNode.RankingType.RANK;
+import static org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TopKRankingNode.RankingType.ROW_NUMBER;
 
 final class Util {
   private Util() {}

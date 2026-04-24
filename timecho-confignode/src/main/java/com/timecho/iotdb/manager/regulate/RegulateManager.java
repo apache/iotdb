@@ -25,12 +25,12 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.LicenseException;
+import org.apache.iotdb.commons.queryengine.utils.DateTimeUtils;
 import org.apache.iotdb.commons.structure.SortedProperties;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.rpc.thrift.TClusterActivationStatus;
-import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.collect.ImmutableMap;

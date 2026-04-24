@@ -19,12 +19,12 @@
 
 package org.apache.iotdb.db.consensus.statemachine;
 
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.commons.request.IConsensusRequest;
 import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
-import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

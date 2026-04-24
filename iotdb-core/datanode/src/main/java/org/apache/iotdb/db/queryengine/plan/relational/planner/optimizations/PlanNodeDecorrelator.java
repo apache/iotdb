@@ -19,28 +19,28 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations;
 
-import org.apache.iotdb.db.exception.sql.SemanticException;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.Assignments;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.iterative.GroupReference;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.FilterNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.LimitNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ProjectNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TopKNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Cast;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ComparisonExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolReference;
+import org.apache.iotdb.commons.queryengine.plan.relational.type.TypeManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.Assignments;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlannerContext;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolsExtractor;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.GroupReference;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Lookup;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Cast;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeCoercion;
-import org.apache.iotdb.db.queryengine.plan.relational.type.TypeManager;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -60,14 +60,14 @@ import static com.google.common.base.Preconditions.checkState;
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static com.google.common.collect.ImmutableMap.toImmutableMap;
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode.singleAggregation;
+import static org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode.singleGroupingSet;
+import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ComparisonExpression.Operator.EQUAL;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.DeterminismEvaluator.isDeterministic;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils.and;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils.combineConjuncts;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils.extractConjuncts;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.singleAggregation;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.singleGroupingSet;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.SymbolMapper.symbolMapper;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression.Operator.EQUAL;
 
 public class PlanNodeDecorrelator {
   private final PlannerContext plannerContext;
@@ -96,7 +96,7 @@ public class PlanNodeDecorrelator {
                 decorrelationResult.correlatedPredicates, decorrelationResult.node, correlation));
   }
 
-  private class DecorrelatingVisitor extends PlanVisitor<Optional<DecorrelationResult>, Void> {
+  private class DecorrelatingVisitor implements PlanVisitor<Optional<DecorrelationResult>, Void> {
     private final TypeManager typeManager;
     private final List<Symbol> correlation;
 

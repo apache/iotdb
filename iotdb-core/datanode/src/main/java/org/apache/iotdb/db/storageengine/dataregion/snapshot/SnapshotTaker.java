@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.snapshot;
 
+import org.apache.iotdb.calc.utils.ObjectTypeUtils;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -29,7 +30,6 @@ import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFil
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
-import org.apache.iotdb.db.utils.ObjectTypeUtils;
 
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.tsfile.fileSystem.fsFactory.FSFactory;

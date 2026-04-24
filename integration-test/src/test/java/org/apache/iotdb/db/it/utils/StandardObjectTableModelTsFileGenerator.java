@@ -19,14 +19,14 @@
 
 package org.apache.iotdb.db.it.utils;
 
-import org.apache.iotdb.db.storageengine.dataregion.IObjectPath;
+import org.apache.iotdb.calc.utils.IObjectPath;
+import org.apache.iotdb.calc.utils.ObjectTypeUtils;
 import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate;
 import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
-import org.apache.iotdb.db.utils.ObjectTypeUtils;
 
-import com.timecho.iotdb.db.storageengine.dataregion.Base32ObjectPath;
+import com.timecho.iotdb.calc.storageengine.dataregion.Base32ObjectPath;
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;

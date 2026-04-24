@@ -20,10 +20,11 @@ package org.apache.iotdb.mqtt;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant.ClientVersion;
+import org.apache.iotdb.commons.queryengine.common.SqlDialect;
+import org.apache.iotdb.commons.queryengine.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.MqttClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
@@ -41,7 +42,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.utils.CommonUtils;
-import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
@@ -117,7 +117,7 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
           ZoneId.systemDefault().toString(),
           TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3,
           ClientVersion.V_1_0,
-          useTableInsert ? IClientSession.SqlDialect.TABLE : IClientSession.SqlDialect.TREE);
+          useTableInsert ? SqlDialect.TABLE : SqlDialect.TREE);
       sessionManager.registerSessionForMqtt(session);
       clientIdToSessionMap.put(msg.getClientID(), session);
     }
@@ -446,7 +446,7 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
         // Set session context
         String databaseName = messages.get(0).getDatabase().toLowerCase();
         session.setDatabaseName(databaseName);
-        session.setSqlDialect(IClientSession.SqlDialect.TABLE);
+        session.setSqlDialect(SqlDialect.TABLE);
 
         // Construct batch InsertTabletStatement
         Tablet tablet = constructTabletFromMultipleMessages(messages);

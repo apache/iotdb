@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational;
 
-import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
+import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.ITableTimeRangeIterator;
 
 import org.apache.tsfile.block.column.Column;
@@ -30,7 +30,7 @@ import org.apache.tsfile.utils.RamUsageEstimator;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
-import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.AbstractTableScanOperator.TIME_COLUMN_TEMPLATE;
+import static org.apache.iotdb.calc.plan.planner.CommonOperatorUtils.TIME_COLUMN_TEMPLATE;
 
 public abstract class AbstractDefaultAggTableScanOperator extends AbstractAggTableScanOperator {
 

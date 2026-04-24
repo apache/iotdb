@@ -19,13 +19,14 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar;
 
+import org.apache.iotdb.calc.transformation.dag.column.ColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.unary.scalar.ObjectLengthColumnTransformer;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
 
-import com.timecho.iotdb.db.queryengine.plan.relational.function.scalar.unary.ReadObjectColumnTransformer;
+import com.timecho.iotdb.calc.plan.relational.function.scalar.unary.ReadObjectColumnTransformer;
 import org.apache.tsfile.block.TsBlockBuilderStatus;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilderStatus;

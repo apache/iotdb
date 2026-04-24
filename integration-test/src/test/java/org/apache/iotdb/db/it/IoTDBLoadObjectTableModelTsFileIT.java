@@ -27,7 +27,7 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
-import com.timecho.iotdb.db.storageengine.dataregion.Base32ObjectPath;
+import com.timecho.iotdb.calc.storageengine.dataregion.Base32ObjectPath;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Binary;
 import org.junit.After;

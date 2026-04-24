@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.object;
 
+import org.apache.iotdb.calc.utils.IObjectPath;
+import org.apache.iotdb.calc.utils.ObjectTypeUtils;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.MetadataException;
@@ -30,7 +32,6 @@ import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
-import org.apache.iotdb.db.storageengine.dataregion.IObjectPath;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.AbstractCompactionTest;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.FastCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.ReadChunkCompactionPerformer;
@@ -42,11 +43,10 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.Com
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
-import org.apache.iotdb.db.utils.ObjectTypeUtils;
 
 import com.google.common.io.BaseEncoding;
-import com.timecho.iotdb.db.storageengine.dataregion.Base32ObjectPath;
-import com.timecho.iotdb.db.storageengine.dataregion.PlainObjectPath;
+import com.timecho.iotdb.calc.storageengine.dataregion.Base32ObjectPath;
+import com.timecho.iotdb.calc.storageengine.dataregion.PlainObjectPath;
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.WriteProcessException;

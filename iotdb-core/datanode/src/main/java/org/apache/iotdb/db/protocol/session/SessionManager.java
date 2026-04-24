@@ -27,6 +27,9 @@ import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.queryengine.common.ConnectionInfo;
+import org.apache.iotdb.commons.queryengine.common.SessionInfo;
+import org.apache.iotdb.commons.queryengine.common.SqlDialect;
 import org.apache.iotdb.commons.service.JMXService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.service.metric.MetricService;
@@ -41,8 +44,6 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.protocol.basic.BasicOpenSessionResp;
 import org.apache.iotdb.db.protocol.thrift.OperationType;
-import org.apache.iotdb.db.queryengine.common.ConnectionInfo;
-import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.execution.config.session.PreparedStatementMemoryManager;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.QueryResourceManager;
@@ -126,13 +127,7 @@ public class SessionManager implements SessionManagerMBean {
       TSProtocolVersion tsProtocolVersion,
       IoTDBConstant.ClientVersion clientVersion) {
     return login(
-        session,
-        username,
-        password,
-        zoneId,
-        tsProtocolVersion,
-        clientVersion,
-        IClientSession.SqlDialect.TREE);
+        session, username, password, zoneId, tsProtocolVersion, clientVersion, SqlDialect.TREE);
   }
 
   public BasicOpenSessionResp login(
@@ -142,7 +137,7 @@ public class SessionManager implements SessionManagerMBean {
       String zoneId,
       TSProtocolVersion tsProtocolVersion,
       IoTDBConstant.ClientVersion clientVersion,
-      IClientSession.SqlDialect sqlDialect) {
+      SqlDialect sqlDialect) {
     return login(
         session, username, password, zoneId, tsProtocolVersion, clientVersion, sqlDialect, false);
   }
@@ -155,7 +150,7 @@ public class SessionManager implements SessionManagerMBean {
       final String zoneId,
       final TSProtocolVersion tsProtocolVersion,
       final IoTDBConstant.ClientVersion clientVersion,
-      final IClientSession.SqlDialect sqlDialect,
+      final SqlDialect sqlDialect,
       final boolean useEncryptedPassword) {
     final BasicOpenSessionResp openSessionResp = new BasicOpenSessionResp();
 
@@ -635,7 +630,7 @@ public class SessionManager implements SessionManagerMBean {
         ZoneId.systemDefault(),
         sessionInfo.getVersion(),
         sessionInfo.getDatabaseName().orElse(null),
-        IClientSession.SqlDialect.TREE);
+        SqlDialect.TREE);
   }
 
   public SessionInfo getSessionInfoOfTreeModel(IClientSession session) {
@@ -645,7 +640,7 @@ public class SessionManager implements SessionManagerMBean {
         ZoneId.systemDefault(),
         session.getClientVersion(),
         session.getDatabaseName(),
-        IClientSession.SqlDialect.TREE);
+        SqlDialect.TREE);
   }
 
   public SessionInfo getSessionInfoOfTableModel(IClientSession session) {
@@ -655,7 +650,7 @@ public class SessionManager implements SessionManagerMBean {
         ZoneId.systemDefault(),
         session.getClientVersion(),
         session.getDatabaseName(),
-        IClientSession.SqlDialect.TABLE);
+        SqlDialect.TABLE);
   }
 
   public SessionInfo getSessionInfoOfPipeReceiver(IClientSession session, String databaseName) {
@@ -665,7 +660,7 @@ public class SessionManager implements SessionManagerMBean {
         ZoneId.systemDefault(),
         session.getClientVersion(),
         databaseName,
-        IClientSession.SqlDialect.TABLE);
+        SqlDialect.TABLE);
   }
 
   @Override

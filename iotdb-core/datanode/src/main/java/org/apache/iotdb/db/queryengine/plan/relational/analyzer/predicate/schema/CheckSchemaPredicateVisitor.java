@@ -19,20 +19,20 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.schema;
 
+import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.BetweenPredicate;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ComparisonExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Literal;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LogicalExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NotExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolReference;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.TableExpressionType;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
-import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BetweenPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NotExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableExpressionType;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,7 +41,7 @@ import java.util.Objects;
 
 // Return whether input expression can not be bounded to a single ID
 public class CheckSchemaPredicateVisitor
-    extends AstVisitor<Boolean, CheckSchemaPredicateVisitor.Context> {
+    implements AstVisitor<Boolean, CheckSchemaPredicateVisitor.Context> {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(CheckSchemaPredicateVisitor.class);
   private static final long LOG_INTERVAL_MS = 60_000L;
@@ -53,7 +53,7 @@ public class CheckSchemaPredicateVisitor
   }
 
   @Override
-  protected Boolean visitLogicalExpression(final LogicalExpression node, final Context context) {
+  public Boolean visitLogicalExpression(final LogicalExpression node, final Context context) {
     if (node.getOperator().equals(LogicalExpression.Operator.AND)) {
       if (System.currentTimeMillis() - lastLogTime >= LOG_INTERVAL_MS) {
         LOGGER.info(
@@ -71,7 +71,7 @@ public class CheckSchemaPredicateVisitor
   }
 
   @Override
-  protected Boolean visitNotExpression(final NotExpression node, final Context context) {
+  public Boolean visitNotExpression(final NotExpression node, final Context context) {
     if (node.getValue().getExpressionType().equals(TableExpressionType.LOGICAL_EXPRESSION)) {
       if (System.currentTimeMillis() - lastLogTime >= LOG_INTERVAL_MS) {
         LOGGER.info(
@@ -85,14 +85,13 @@ public class CheckSchemaPredicateVisitor
   }
 
   @Override
-  protected Boolean visitComparisonExpression(
-      final ComparisonExpression node, final Context context) {
+  public Boolean visitComparisonExpression(final ComparisonExpression node, final Context context) {
     return !(node.getLeft() instanceof Literal) && !(node.getRight() instanceof Literal)
         || processColumn(node, context);
   }
 
   @Override
-  protected Boolean visitBetweenPredicate(final BetweenPredicate node, final Context context) {
+  public Boolean visitBetweenPredicate(final BetweenPredicate node, final Context context) {
     return node.getValue() instanceof SymbolReference
             && (node.getMin() instanceof SymbolReference
                 || node.getMax() instanceof SymbolReference)

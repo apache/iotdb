@@ -19,12 +19,12 @@
 
 package org.apache.iotdb.db.storageengine.load.util;
 
+import org.apache.iotdb.calc.utils.ObjectTypeUtils;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.LoadFileException;
 import org.apache.iotdb.db.exception.load.ObjectFileCorruptedException;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadSingleTsFileNode;
-import org.apache.iotdb.db.utils.ObjectTypeUtils;
 
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.encoding.decoder.Decoder;

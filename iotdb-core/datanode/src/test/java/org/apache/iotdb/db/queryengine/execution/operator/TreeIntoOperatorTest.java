@@ -19,11 +19,14 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator;
 
+import org.apache.iotdb.calc.execution.operator.Operator;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
@@ -37,8 +40,6 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.Asc
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.ColumnMerger;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.SingleColumnMerger;
 import org.apache.iotdb.db.queryengine.execution.operator.source.SeriesScanOperator;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;

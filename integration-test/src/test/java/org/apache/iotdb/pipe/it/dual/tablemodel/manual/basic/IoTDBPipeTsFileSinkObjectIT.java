@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.pipe.it.dual.tablemodel.manual.basic;
 
+import org.apache.iotdb.calc.utils.ObjectTypeUtils;
 import org.apache.iotdb.db.it.utils.StandardObjectTableModelTsFileGenerator;
 import org.apache.iotdb.db.it.utils.TestUtils;
-import org.apache.iotdb.db.utils.ObjectTypeUtils;
 import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.event.common.tablet;
 
+import org.apache.iotdb.calc.utils.ObjectTypeUtils;
 import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.path.MeasurementPath;
@@ -29,7 +30,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
-import org.apache.iotdb.db.utils.ObjectTypeUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.enums.TSDataType;

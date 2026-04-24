@@ -20,9 +20,10 @@
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write;
 
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.IPlanVisitor;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegionPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionPlanType;
@@ -121,8 +122,8 @@ public class UpdatePhysicalAliasRefNode extends PlanNode implements ISchemaRegio
   }
 
   @Override
-  public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitUpdatePhysicalAliasRef(this, context);
+  public <R, C> R accept(IPlanVisitor<R, C> visitor, C context) {
+    return ((PlanVisitor<R, C>) visitor).visitUpdatePhysicalAliasRef(this, context);
   }
 
   @Override

@@ -20,6 +20,11 @@
 package org.apache.iotdb.db.queryengine.plan.execution.memory;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.analyzer.NodeRef;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Table;
+import org.apache.iotdb.commons.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
@@ -28,9 +33,7 @@ import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanGraphPrinter;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Field;
-import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.RelationType;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.TableLogicalPlanner;
@@ -40,10 +43,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DescribeQuery;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Explain;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDevice;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
-import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
@@ -60,13 +60,13 @@ import java.util.Map;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.BLANK;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.CTE_QUERY;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MAIN_QUERY;
+import static org.apache.iotdb.commons.queryengine.plan.relational.planner.node.OutputNode.buildFallbackColumnName;
 import static org.apache.iotdb.db.queryengine.common.header.DatasetHeader.EMPTY_HEADER;
 import static org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector.NOOP;
 import static org.apache.iotdb.db.queryengine.plan.execution.memory.StatementMemorySourceVisitor.getStatementMemorySource;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode.buildFallbackColumnName;
 
 public class TableModelStatementMemorySourceVisitor
-    extends AstVisitor<StatementMemorySource, TableModelStatementMemorySourceContext> {
+    implements AstVisitor<StatementMemorySource, TableModelStatementMemorySourceContext> {
 
   @Override
   public StatementMemorySource visitNode(

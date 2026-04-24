@@ -400,6 +400,7 @@ public class ConfigNodeConfig {
 
   public void setConfigNodeId(int configNodeId) {
     this.configNodeId = configNodeId;
+    CommonDescriptor.getInstance().getConfig().setNodeId(configNodeId);
   }
 
   public String getInternalAddress() {

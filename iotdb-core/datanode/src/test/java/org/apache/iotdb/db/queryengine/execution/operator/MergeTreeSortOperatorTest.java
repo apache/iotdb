@@ -18,12 +18,16 @@
  */
 package org.apache.iotdb.db.queryengine.execution.operator;
 
+import org.apache.iotdb.calc.execution.operator.Operator;
+import org.apache.iotdb.calc.utils.datastructure.SortKey;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;
+import org.apache.iotdb.commons.queryengine.common.SqlDialect;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
@@ -40,7 +44,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.TreeSortOperat
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.FullOuterTimeJoinOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.AscTimeComparator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.DescTimeComparator;
-import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.MergeSortComparator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.MergeSortComparatorUtils;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.SingleColumnMerger;
 import org.apache.iotdb.db.queryengine.execution.operator.source.SeriesScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.ShowQueriesOperator;
@@ -48,8 +52,6 @@ import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
 import org.apache.iotdb.db.queryengine.plan.statement.component.OrderByKey;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
@@ -57,7 +59,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.SortItem;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.series.SeriesReaderTestUtil;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-import org.apache.iotdb.db.utils.datastructure.SortKey;
 import org.apache.iotdb.isession.SessionConfig;
 
 import com.google.common.collect.ImmutableList;
@@ -355,7 +356,7 @@ public class MergeTreeSortOperatorTest {
             Arrays.asList(
                 singleDeviceViewOperator1, singleDeviceViewOperator2, singleDeviceViewOperator3),
             tsDataTypes,
-            MergeSortComparator.getComparator(
+            MergeSortComparatorUtils.getComparator(
                 Arrays.asList(
                     new SortItem(OrderByKey.TIME, timeOrdering),
                     new SortItem(OrderByKey.DEVICE, deviceOrdering)),
@@ -839,7 +840,7 @@ public class MergeTreeSortOperatorTest {
             driverContext.getOperatorContexts().get(14),
             Arrays.asList(singleDeviceViewOperator1, singleDeviceViewOperator2),
             tsDataTypes,
-            MergeSortComparator.getComparator(
+            MergeSortComparatorUtils.getComparator(
                 Arrays.asList(
                     new SortItem(OrderByKey.TIME, timeOrdering),
                     new SortItem(OrderByKey.DEVICE, deviceOrdering)),
@@ -853,7 +854,7 @@ public class MergeTreeSortOperatorTest {
             driverContext.getOperatorContexts().get(15),
             Arrays.asList(singleDeviceViewOperator3, singleDeviceViewOperator4),
             tsDataTypes,
-            MergeSortComparator.getComparator(
+            MergeSortComparatorUtils.getComparator(
                 Arrays.asList(
                     new SortItem(OrderByKey.TIME, timeOrdering),
                     new SortItem(OrderByKey.DEVICE, deviceOrdering)),
@@ -868,7 +869,7 @@ public class MergeTreeSortOperatorTest {
             driverContext.getOperatorContexts().get(16),
             Arrays.asList(treeMergeSortOperator1, treeMergeSortOperator2),
             tsDataTypes,
-            MergeSortComparator.getComparator(
+            MergeSortComparatorUtils.getComparator(
                 Arrays.asList(
                     new SortItem(OrderByKey.TIME, timeOrdering),
                     new SortItem(OrderByKey.DEVICE, deviceOrdering)),
@@ -1329,7 +1330,7 @@ public class MergeTreeSortOperatorTest {
             driverContext.getOperatorContexts().get(12),
             Arrays.asList(deviceViewOperator1, deviceViewOperator2),
             tsDataTypes,
-            MergeSortComparator.getComparator(
+            MergeSortComparatorUtils.getComparator(
                 Arrays.asList(
                     new SortItem(OrderByKey.DEVICE, deviceOrdering),
                     new SortItem(OrderByKey.TIME, timeOrdering)),
@@ -1597,7 +1598,7 @@ public class MergeTreeSortOperatorTest {
       List<OperatorContext> operatorContexts = driverContext.getOperatorContexts();
       List<TSDataType> dataTypes = DatasetHeaderFactory.getShowQueriesHeader().getRespDataTypes();
       Comparator<SortKey> comparator =
-          MergeSortComparator.getComparator(
+          MergeSortComparatorUtils.getComparator(
               Arrays.asList(
                   new SortItem(OrderByKey.TIME, Ordering.ASC),
                   new SortItem(OrderByKey.DATANODEID, Ordering.DESC)),
@@ -1785,7 +1786,7 @@ public class MergeTreeSortOperatorTest {
             driverContext.getOperatorContexts().get(0),
             Arrays.asList(childOperator1, childOperator2),
             Collections.singletonList(TSDataType.INT64),
-            MergeSortComparator.getComparator(
+            MergeSortComparatorUtils.getComparator(
                 Collections.singletonList(new SortItem(OrderByKey.TIME, Ordering.ASC)),
                 Collections.singletonList(-1),
                 Collections.singletonList(TSDataType.INT64)));
@@ -1852,8 +1853,8 @@ public class MergeTreeSortOperatorTest {
     }
 
     @Override
-    public IClientSession.SqlDialect getSQLDialect() {
-      return IClientSession.SqlDialect.TREE;
+    public SqlDialect getSQLDialect() {
+      return SqlDialect.TREE;
     }
 
     @Override

@@ -19,10 +19,74 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
+import org.apache.iotdb.calc.plan.relational.metadata.CommonMetadataUtils;
+import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.commons.queryengine.common.SessionInfo;
+import org.apache.iotdb.commons.queryengine.plan.relational.analyzer.NodeRef;
+import org.apache.iotdb.commons.queryengine.plan.relational.function.BoundSignature;
+import org.apache.iotdb.commons.queryengine.plan.relational.function.FunctionId;
+import org.apache.iotdb.commons.queryengine.plan.relational.function.FunctionKind;
+import org.apache.iotdb.commons.queryengine.plan.relational.function.OperatorType;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.FunctionNullability;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ResolvedFunction;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ArithmeticBinaryExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ArithmeticUnaryExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.BetweenPredicate;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.BinaryLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.BooleanLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Cast;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.CoalesceExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Columns;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ComparisonExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.CurrentDatabase;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.CurrentTime;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.CurrentUser;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.DecimalLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.DereferenceExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.DoubleLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ExistsPredicate;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Extract;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.FieldReference;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.FloatLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.FrameBound;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.FunctionCall;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.GenericLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Identifier;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IfExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.InListExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.InPredicate;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IsNotNullPredicate;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IsNullPredicate;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LikePredicate;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LogicalExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LongLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NotExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NullIfExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NullLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.OrderBy;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Parameter;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ProcessingMode;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.QualifiedName;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.QuantifiedComparisonExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.RangeQuantifier;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Row;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.RowPattern;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SearchedCaseExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SortItem;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.StringLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SubqueryExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SubsetDefinition;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolReference;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Trim;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.WhenClause;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.WindowFrame;
+import org.apache.iotdb.commons.queryengine.plan.relational.type.TypeNotFoundException;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
-import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
-import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis.Range;
@@ -33,74 +97,11 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.PatternRecogniti
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.PatternRecognitionAnalysis.NavigationMode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.PatternRecognitionAnalysis.PatternFunctionAnalysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.PatternRecognitionAnalysis.ScalarInputDescriptor;
-import org.apache.iotdb.db.queryengine.plan.relational.function.BoundSignature;
-import org.apache.iotdb.db.queryengine.plan.relational.function.FunctionId;
-import org.apache.iotdb.db.queryengine.plan.relational.function.FunctionKind;
-import org.apache.iotdb.db.queryengine.plan.relational.function.OperatorType;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.FunctionNullability;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.OperatorNotFoundException;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.ResolvedFunction;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ArithmeticBinaryExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ArithmeticUnaryExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BetweenPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BinaryLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Cast;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CoalesceExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Columns;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CurrentDatabase;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CurrentTime;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CurrentUser;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DecimalLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DereferenceExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DoubleLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExistsPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Extract;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FieldReference;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FloatLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FrameBound;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GenericLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IfExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InListExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IsNotNullPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IsNullPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LikePredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NotExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullIfExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.OrderBy;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Parameter;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ProcessingMode;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QuantifiedComparisonExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RangeQuantifier;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Row;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RowPattern;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SearchedCaseExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SortItem;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StackableAstVisitor;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StringLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubqueryExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubsetDefinition;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Trim;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WhenClause;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WindowFrame;
-import org.apache.iotdb.db.queryengine.plan.relational.type.TypeNotFoundException;
 
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.ImmutableList;
@@ -141,25 +142,25 @@ import static java.util.Collections.unmodifiableMap;
 import static java.util.Collections.unmodifiableSet;
 import static java.util.Locale.ENGLISH;
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.calc.plan.relational.metadata.CommonMetadataUtils.isCharType;
+import static org.apache.iotdb.calc.plan.relational.metadata.CommonMetadataUtils.isNumericType;
+import static org.apache.iotdb.calc.plan.relational.metadata.CommonMetadataUtils.isTwoTypeComparable;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.FIRST_AGGREGATION;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.FIRST_BY_AGGREGATION;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.LAST_AGGREGATION;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.LAST_BY_AGGREGATION;
+import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.DereferenceExpression.isQualifiedAllFieldsReference;
+import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.FrameBound.Type.CURRENT_ROW;
+import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.FrameBound.Type.FOLLOWING;
+import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.FrameBound.Type.PRECEDING;
+import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.FrameBound.Type.UNBOUNDED_FOLLOWING;
+import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.FrameBound.Type.UNBOUNDED_PRECEDING;
+import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.WindowFrame.Type.GROUPS;
+import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.WindowFrame.Type.RANGE;
+import static org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.WindowFrame.Type.ROWS;
+import static org.apache.iotdb.commons.queryengine.plan.relational.type.TypeSignatureTranslator.toTypeSignature;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.ExpressionTreeUtils.extractExpressions;
-import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl.isCharType;
-import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl.isNumericType;
-import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl.isTwoTypeComparable;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DereferenceExpression.isQualifiedAllFieldsReference;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FrameBound.Type.CURRENT_ROW;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FrameBound.Type.FOLLOWING;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FrameBound.Type.PRECEDING;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FrameBound.Type.UNBOUNDED_FOLLOWING;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FrameBound.Type.UNBOUNDED_PRECEDING;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WindowFrame.Type.GROUPS;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WindowFrame.Type.RANGE;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WindowFrame.Type.ROWS;
-import static org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignatureTranslator.toTypeSignature;
 import static org.apache.iotdb.db.queryengine.plan.relational.utils.NodeUtils.getSortItemsFromOrderBy;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.FIRST_AGGREGATION;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.FIRST_BY_AGGREGATION;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.LAST_AGGREGATION;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.LAST_BY_AGGREGATION;
 import static org.apache.tsfile.read.common.type.BlobType.BLOB;
 import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
 import static org.apache.tsfile.read.common.type.DoubleType.DOUBLE;
@@ -480,7 +481,7 @@ public class ExpressionAnalyzer {
     }
 
     @Override
-    protected Type visitRow(Row node, StackableAstVisitorContext<Context> context) {
+    public Type visitRow(Row node, StackableAstVisitorContext<Context> context) {
       List<Type> types =
           node.getItems().stream().map(child -> process(child, context)).collect(toImmutableList());
 
@@ -489,7 +490,7 @@ public class ExpressionAnalyzer {
     }
 
     @Override
-    protected Type visitCurrentTime(CurrentTime node, StackableAstVisitorContext<Context> context) {
+    public Type visitCurrentTime(CurrentTime node, StackableAstVisitorContext<Context> context) {
       if (requireNonNull(node.getFunction()) == CurrentTime.Function.TIMESTAMP) {
         return setExpressionType(node, INT64);
       }
@@ -497,7 +498,7 @@ public class ExpressionAnalyzer {
     }
 
     @Override
-    protected Type visitSymbolReference(
+    public Type visitSymbolReference(
         SymbolReference node, StackableAstVisitorContext<Context> context) {
       //      if (context.getContext().isInLambda()) {
       //        Optional<ResolvedField> resolvedField =
@@ -514,7 +515,7 @@ public class ExpressionAnalyzer {
     }
 
     @Override
-    protected Type visitIdentifier(Identifier node, StackableAstVisitorContext<Context> context) {
+    public Type visitIdentifier(Identifier node, StackableAstVisitorContext<Context> context) {
       ResolvedField resolvedField =
           context.getContext().getScope().resolveField(node, QualifiedName.of(node.getValue()));
 
@@ -575,7 +576,7 @@ public class ExpressionAnalyzer {
     }
 
     @Override
-    protected Type visitDereferenceExpression(
+    public Type visitDereferenceExpression(
         DereferenceExpression node, StackableAstVisitorContext<Context> context) {
       if (isQualifiedAllFieldsReference(node)) {
         throw new SemanticException("<identifier>.* not allowed in this context");
@@ -639,7 +640,7 @@ public class ExpressionAnalyzer {
           return handleResolvedField(node, resolvedField.get(), context);
         }
         if (!scope.isColumnReference(qualifiedName)) {
-          TableMetadataImpl.throwColumnNotExistsException(qualifiedName);
+          CommonMetadataUtils.throwColumnNotExistsException(qualifiedName);
         }
       }
 
@@ -669,14 +670,14 @@ public class ExpressionAnalyzer {
       }
 
       if (rowFieldType == null) {
-        TableMetadataImpl.throwColumnNotExistsException(qualifiedName);
+        CommonMetadataUtils.throwColumnNotExistsException(qualifiedName);
       }
 
       return setExpressionType(node, rowFieldType);
     }
 
     @Override
-    protected Type visitNotExpression(
+    public Type visitNotExpression(
         NotExpression node, StackableAstVisitorContext<Context> context) {
       coerceType(context, node.getValue(), BOOLEAN, "Value of logical NOT expression");
 
@@ -684,7 +685,7 @@ public class ExpressionAnalyzer {
     }
 
     @Override
-    protected Type visitLogicalExpression(
+    public Type visitLogicalExpression(
         LogicalExpression node, StackableAstVisitorContext<Context> context) {
       for (Expression term : node.getTerms()) {
         coerceType(context, term, BOOLEAN, "Logical expression term");
@@ -694,7 +695,7 @@ public class ExpressionAnalyzer {
     }
 
     @Override
-    protected Type visitComparisonExpression(
+    public Type visitComparisonExpression(
         ComparisonExpression node, StackableAstVisitorContext<Context> context) {
       OperatorType operatorType = null;
       switch (node.getOperator()) {
@@ -719,7 +720,7 @@ public class ExpressionAnalyzer {
     }
 
     @Override
-    protected Type visitIsNullPredicate(
+    public Type visitIsNullPredicate(
         IsNullPredicate node, StackableAstVisitorContext<Context> context) {
       process(node.getValue(), context);
 
@@ -727,7 +728,7 @@ public class ExpressionAnalyzer {
     }
 
     @Override
-    protected Type visitIsNotNullPredicate(
+    public Type visitIsNotNullPredicate(
         IsNotNullPredicate node, StackableAstVisitorContext<Context> context) {
       process(node.getValue(), context);
 
@@ -735,7 +736,7 @@ public class ExpressionAnalyzer {
     }
 
     @Override
-    protected Type visitNullIfExpression(
+    public Type visitNullIfExpression(
         NullIfExpression node, StackableAstVisitorContext<Context> context) {
       Type firstType = process(node.getFirst(), context);
       Type secondType = process(node.getSecond(), context);
@@ -749,8 +750,7 @@ public class ExpressionAnalyzer {
     }
 
     @Override
-    protected Type visitIfExpression(
-        IfExpression node, StackableAstVisitorContext<Context> context) {
+    public Type visitIfExpression(IfExpression node, StackableAstVisitorContext<Context> context) {
       coerceType(context, node.getCondition(), BOOLEAN, "IF condition");
 
       Type type;
@@ -770,7 +770,7 @@ public class ExpressionAnalyzer {
     }
 
     @Override
-    protected Type visitSearchedCaseExpression(
+    public Type visitSearchedCaseExpression(
         SearchedCaseExpression node, StackableAstVisitorContext<Context> context) {
       for (WhenClause whenClause : node.getWhenClauses()) {
         coerceType(context, whenClause.getOperand(), BOOLEAN, "CASE WHEN clause");
@@ -792,7 +792,7 @@ public class ExpressionAnalyzer {
     }
 
     @Override
-    protected Type visitSimpleCaseExpression(
+    public Type visitSimpleCaseExpression(
         SimpleCaseExpression node, StackableAstVisitorContext<Context> context) {
       coerceCaseOperandToToSingleType(node, context);
 
@@ -855,7 +855,7 @@ public class ExpressionAnalyzer {
     }
 
     @Override
-    protected Type visitCoalesceExpression(
+    public Type visitCoalesceExpression(
         CoalesceExpression node, StackableAstVisitorContext<Context> context) {
       Type type = coerceToSingleType(context, "All COALESCE operands", node.getOperands());
 
@@ -863,7 +863,7 @@ public class ExpressionAnalyzer {
     }
 
     @Override
-    protected Type visitArithmeticUnary(
+    public Type visitArithmeticUnary(
         ArithmeticUnaryExpression node, StackableAstVisitorContext<Context> context) {
       switch (node.getSign()) {
         case PLUS:
@@ -886,7 +886,7 @@ public class ExpressionAnalyzer {
     }
 
     @Override
-    protected Type visitArithmeticBinary(
+    public Type visitArithmeticBinary(
         ArithmeticBinaryExpression node, StackableAstVisitorContext<Context> context) {
       return getOperator(
           context,
@@ -897,7 +897,7 @@ public class ExpressionAnalyzer {
     }
 
     @Override
-    protected Type visitLikePredicate(
+    public Type visitLikePredicate(
         LikePredicate node, StackableAstVisitorContext<Context> context) {
       Type valueType = process(node.getValue(), context);
       if (!isCharType(valueType)) {
@@ -929,19 +929,19 @@ public class ExpressionAnalyzer {
     }
 
     @Override
-    protected Type visitStringLiteral(
+    public Type visitStringLiteral(
         StringLiteral node, StackableAstVisitorContext<Context> context) {
       return setExpressionType(node, STRING);
     }
 
     @Override
-    protected Type visitBinaryLiteral(
+    public Type visitBinaryLiteral(
         BinaryLiteral node, StackableAstVisitorContext<Context> context) {
       return setExpressionType(node, BLOB);
     }
 
     @Override
-    protected Type visitLongLiteral(LongLiteral node, StackableAstVisitorContext<Context> context) {
+    public Type visitLongLiteral(LongLiteral node, StackableAstVisitorContext<Context> context) {
       if (node.getParsedValue() >= Integer.MIN_VALUE
           && node.getParsedValue() <= Integer.MAX_VALUE) {
         return setExpressionType(node, INT32);
@@ -951,43 +951,41 @@ public class ExpressionAnalyzer {
     }
 
     @Override
-    protected Type visitDoubleLiteral(
+    public Type visitDoubleLiteral(
         DoubleLiteral node, StackableAstVisitorContext<Context> context) {
       return setExpressionType(node, DOUBLE);
     }
 
     @Override
-    protected Type visitFloatLiteral(
-        FloatLiteral node, StackableAstVisitorContext<Context> context) {
+    public Type visitFloatLiteral(FloatLiteral node, StackableAstVisitorContext<Context> context) {
       return setExpressionType(node, FLOAT);
     }
 
     @Override
-    protected Type visitDecimalLiteral(
+    public Type visitDecimalLiteral(
         DecimalLiteral node, StackableAstVisitorContext<Context> context) {
       throw new SemanticException("DecimalLiteral is not supported yet.");
     }
 
     @Override
-    protected Type visitBooleanLiteral(
+    public Type visitBooleanLiteral(
         BooleanLiteral node, StackableAstVisitorContext<Context> context) {
       return setExpressionType(node, BOOLEAN);
     }
 
     @Override
-    protected Type visitGenericLiteral(
+    public Type visitGenericLiteral(
         GenericLiteral node, StackableAstVisitorContext<Context> context) {
       throw new SemanticException("GenericLiteral is not supported yet.");
     }
 
     @Override
-    protected Type visitNullLiteral(NullLiteral node, StackableAstVisitorContext<Context> context) {
+    public Type visitNullLiteral(NullLiteral node, StackableAstVisitorContext<Context> context) {
       return setExpressionType(node, UNKNOWN);
     }
 
     @Override
-    protected Type visitFunctionCall(
-        FunctionCall node, StackableAstVisitorContext<Context> context) {
+    public Type visitFunctionCall(FunctionCall node, StackableAstVisitorContext<Context> context) {
       String functionName = node.getName().getSuffix();
       boolean isAggregation = metadata.isAggregationFunction(session, functionName, accessControl);
       boolean isRowPatternCount =
@@ -1616,18 +1614,18 @@ public class ExpressionAnalyzer {
     }
 
     @Override
-    protected Type visitCurrentDatabase(
+    public Type visitCurrentDatabase(
         CurrentDatabase node, StackableAstVisitorContext<Context> context) {
       return setExpressionType(node, STRING);
     }
 
     @Override
-    protected Type visitCurrentUser(CurrentUser node, StackableAstVisitorContext<Context> context) {
+    public Type visitCurrentUser(CurrentUser node, StackableAstVisitorContext<Context> context) {
       return setExpressionType(node, STRING);
     }
 
     @Override
-    protected Type visitTrim(Trim node, StackableAstVisitorContext<Context> context) {
+    public Type visitTrim(Trim node, StackableAstVisitorContext<Context> context) {
       ImmutableList.Builder<Type> argumentTypes = ImmutableList.builder();
 
       argumentTypes.add(process(node.getTrimSource(), context));
@@ -1642,7 +1640,7 @@ public class ExpressionAnalyzer {
     }
 
     @Override
-    protected Type visitParameter(Parameter node, StackableAstVisitorContext<Context> context) {
+    public Type visitParameter(Parameter node, StackableAstVisitorContext<Context> context) {
 
       if (parameters.isEmpty()) {
         throw new SemanticException("Query takes no parameters");
@@ -1663,7 +1661,7 @@ public class ExpressionAnalyzer {
     }
 
     @Override
-    protected Type visitExtract(Extract node, StackableAstVisitorContext<Context> context) {
+    public Type visitExtract(Extract node, StackableAstVisitorContext<Context> context) {
       if (node.getExpression() instanceof LongLiteral) {
         // Don't visit child here to avoid setting its Type to INT32
         setExpressionType(node.getExpression(), INT64);
@@ -1679,7 +1677,7 @@ public class ExpressionAnalyzer {
     }
 
     @Override
-    protected Type visitBetweenPredicate(
+    public Type visitBetweenPredicate(
         BetweenPredicate node, StackableAstVisitorContext<Context> context) {
       Type valueType = process(node.getValue(), context);
       Type minType = process(node.getMin(), context);
@@ -1722,7 +1720,7 @@ public class ExpressionAnalyzer {
     }
 
     @Override
-    protected Type visitInPredicate(InPredicate node, StackableAstVisitorContext<Context> context) {
+    public Type visitInPredicate(InPredicate node, StackableAstVisitorContext<Context> context) {
       Expression value = node.getValue();
       // Attention: remove this check after supporting RowType
       if (value instanceof Row) {
@@ -1774,7 +1772,7 @@ public class ExpressionAnalyzer {
     }
 
     @Override
-    protected Type visitSubqueryExpression(
+    public Type visitSubqueryExpression(
         SubqueryExpression node, StackableAstVisitorContext<Context> context) {
       Type type = analyzeSubquery(node, context);
 
@@ -2036,7 +2034,7 @@ public class ExpressionAnalyzer {
     }
 
     @Override
-    protected Type visitExists(ExistsPredicate node, StackableAstVisitorContext<Context> context) {
+    public Type visitExists(ExistsPredicate node, StackableAstVisitorContext<Context> context) {
       StatementAnalyzer analyzer =
           statementAnalyzerFactory.apply(node, context.getContext().getCorrelationSupport());
       Scope subqueryScope = Scope.builder().withParent(context.getContext().getScope()).build();
@@ -2066,7 +2064,7 @@ public class ExpressionAnalyzer {
     }
 
     @Override
-    protected Type visitQuantifiedComparisonExpression(
+    public Type visitQuantifiedComparisonExpression(
         QuantifiedComparisonExpression node, StackableAstVisitorContext<Context> context) {
       quantifiedComparisons.add(NodeRef.of(node));
 
@@ -2112,19 +2110,19 @@ public class ExpressionAnalyzer {
     }
 
     @Override
-    protected Type visitExpression(Expression node, StackableAstVisitorContext<Context> context) {
+    public Type visitExpression(Expression node, StackableAstVisitorContext<Context> context) {
       throw new SemanticException(
           String.format("not yet implemented: %s", node.getClass().getName()));
     }
 
     @Override
-    protected Type visitNode(Node node, StackableAstVisitorContext<Context> context) {
+    public Type visitNode(Node node, StackableAstVisitorContext<Context> context) {
       throw new SemanticException(
           String.format("not yet implemented: %s", node.getClass().getName()));
     }
 
     @Override
-    protected Type visitColumns(Columns node, StackableAstVisitorContext<Context> context) {
+    public Type visitColumns(Columns node, StackableAstVisitorContext<Context> context) {
       throw new SemanticException("Columns only support to be used in SELECT and WHERE clause");
     }
 

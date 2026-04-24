@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
+import org.apache.iotdb.commons.queryengine.utils.DateTimeUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
@@ -44,7 +45,6 @@ import org.apache.iotdb.db.pipe.source.dataregion.realtime.listener.PipeInsertio
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.listener.PipeTimePartitionListener;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
-import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.pipe.api.PipeExtractor;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeRuntimeEnvironment;

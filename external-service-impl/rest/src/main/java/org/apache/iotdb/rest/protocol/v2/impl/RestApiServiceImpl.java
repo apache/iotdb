@@ -23,6 +23,8 @@ import org.apache.iotdb.commons.audit.AuditLogFields;
 import org.apache.iotdb.commons.audit.AuditLogOperation;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.queryengine.common.SessionInfo;
+import org.apache.iotdb.commons.queryengine.common.SqlDialect;
 import org.apache.iotdb.db.audit.DNAuditLogger;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -30,7 +32,6 @@ import org.apache.iotdb.db.conf.rest.IoTDBRestServiceDescriptor;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.protocol.thrift.OperationType;
-import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
@@ -257,7 +258,7 @@ public class RestApiServiceImpl extends RestApiService {
                   clientSession.getClientAddress(),
                   AuditEventType.SLOW_OPERATION,
                   AuditLogOperation.QUERY,
-                  clientSession.getSqlDialect() == IClientSession.SqlDialect.TREE
+                  clientSession.getSqlDialect() == SqlDialect.TREE
                       ? PrivilegeType.READ_DATA
                       : PrivilegeType.SELECT,
                   t == null,

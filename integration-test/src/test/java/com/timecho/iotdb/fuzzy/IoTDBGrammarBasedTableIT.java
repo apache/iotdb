@@ -19,17 +19,17 @@
 
 package com.timecho.iotdb.fuzzy;
 
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ComparisonExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.FunctionCall;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Identifier;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LongLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFunction;
 import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction;
 import org.apache.iotdb.db.protocol.session.InternalClientSession;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DefaultTraversalVisitor;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.util.SqlFormatter;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.util.DataNodeSqlFormatter;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
@@ -105,7 +105,7 @@ public class IoTDBGrammarBasedTableIT {
     private final Random random = new Random(System.currentTimeMillis());
 
     @Override
-    protected Void visitComparisonExpression(ComparisonExpression node, Void context) {
+    public Void visitComparisonExpression(ComparisonExpression node, Void context) {
       if (node.getOperator() == ComparisonExpression.Operator.EQUAL) {
         if (node.getRight() instanceof LongLiteral) {
           node.setRight(new LongLiteral(String.valueOf(random.nextLong())));
@@ -144,7 +144,7 @@ public class IoTDBGrammarBasedTableIT {
     }
 
     @Override
-    protected Void visitComparisonExpression(ComparisonExpression node, Void context) {
+    public Void visitComparisonExpression(ComparisonExpression node, Void context) {
       if (node.getOperator() == ComparisonExpression.Operator.LESS_THAN_OR_EQUAL) {
         if (node.getRight() instanceof LongLiteral) {
           node.setRight(new LongLiteral(String.valueOf(right)));
@@ -175,7 +175,7 @@ public class IoTDBGrammarBasedTableIT {
     private final Random random = new Random(System.currentTimeMillis());
 
     @Override
-    protected Void visitComparisonExpression(ComparisonExpression node, Void context) {
+    public Void visitComparisonExpression(ComparisonExpression node, Void context) {
       if (node.getOperator() == ComparisonExpression.Operator.EQUAL) {
         if (node.getRight() instanceof LongLiteral) {
           node.setRight(new LongLiteral(String.valueOf(random.nextInt(9))));
@@ -202,7 +202,7 @@ public class IoTDBGrammarBasedTableIT {
     private final Random random = new Random(System.currentTimeMillis());
 
     @Override
-    protected Void visitFunctionCall(FunctionCall node, Void context) {
+    public Void visitFunctionCall(FunctionCall node, Void context) {
       if (TableBuiltinScalarFunction.DATE_BIN
           .getFunctionName()
           .equalsIgnoreCase(node.getName().toString())) {
@@ -232,7 +232,7 @@ public class IoTDBGrammarBasedTableIT {
     private final Random random = new Random(System.currentTimeMillis());
 
     @Override
-    protected Void visitFunctionCall(FunctionCall node, Void context) {
+    public Void visitFunctionCall(FunctionCall node, Void context) {
       if (TableBuiltinAggregationFunction.LAST_BY
           .getFunctionName()
           .equalsIgnoreCase(node.getName().toString())) {
@@ -250,7 +250,7 @@ public class IoTDBGrammarBasedTableIT {
   }
 
   private String constructSql(Node node) {
-    String sql = SqlFormatter.formatSql(node);
+    String sql = DataNodeSqlFormatter.formatDataNodeSql(node);
     System.out.println(sql);
     return sql;
   }

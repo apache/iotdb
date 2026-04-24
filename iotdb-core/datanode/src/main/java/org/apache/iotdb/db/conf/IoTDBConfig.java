@@ -362,8 +362,6 @@ public class IoTDBConfig {
 
   private int mergeThresholdOfExplainAnalyze = 10;
 
-  private int modeMapSizeThreshold = 10000;
-
   /** How many queries can be concurrently executed. When <= 0, use 1000. */
   private int maxAllowedConcurrentQueries = 1000;
 
@@ -462,15 +460,6 @@ public class IoTDBConfig {
 
   /** Enable auto repair compaction */
   private volatile boolean enableAutoRepairCompaction = true;
-
-  /** The buffer for sort operation */
-  private long sortBufferSize = 32 * 1024 * 1024L;
-
-  /** The buffer for cte scan operation */
-  private long cteBufferSize = 128 * 1024L;
-
-  /** Max number of rows for cte materialization */
-  private int maxRowsInCteBuffer = 1000;
 
   /** Mods cache size limit per fi */
   private long modsCacheSizeLimitPerFI = 32 * 1024 * 1024;
@@ -836,12 +825,6 @@ public class IoTDBConfig {
   private boolean enable13DataInsertAdapt = false;
 
   /**
-   * Used to estimate the memory usage of text fields in a UDF query. It is recommended to set this
-   * value to be slightly larger than the average length of all text records.
-   */
-  private int udfInitialByteArrayLengthForMemoryControl = 48;
-
-  /**
    * How much memory may be used in ONE UDF query (in MB).
    *
    * <p>The upper limit is 20% of allocated memory for read.
@@ -1052,9 +1035,6 @@ public class IoTDBConfig {
   private int schemaThreadCount = 5;
 
   private ReadConsistencyLevel readConsistencyLevel = ReadConsistencyLevel.STRONG;
-
-  /** Maximum execution time of a DriverTask */
-  private int driverTaskExecutionTimeSliceInMs = 200;
 
   /** Maximum size of wal buffer used in IoTConsensus. Unit: byte */
   private long throttleThreshold = 200 * 1024 * 1024 * 1024L;
@@ -1413,15 +1393,6 @@ public class IoTDBConfig {
 
   public void setUdfCollectorMemoryBudgetInMB(float udfCollectorMemoryBudgetInMB) {
     this.udfCollectorMemoryBudgetInMB = udfCollectorMemoryBudgetInMB;
-  }
-
-  public int getUdfInitialByteArrayLengthForMemoryControl() {
-    return udfInitialByteArrayLengthForMemoryControl;
-  }
-
-  public void setUdfInitialByteArrayLengthForMemoryControl(
-      int udfInitialByteArrayLengthForMemoryControl) {
-    this.udfInitialByteArrayLengthForMemoryControl = udfInitialByteArrayLengthForMemoryControl;
   }
 
   public int getDefaultFillInterval() {
@@ -3336,6 +3307,7 @@ public class IoTDBConfig {
 
   public void setDataNodeId(int dataNodeId) {
     this.dataNodeId = dataNodeId;
+    CommonDescriptor.getInstance().getConfig().setNodeId(dataNodeId);
   }
 
   public int getPartitionCacheSize() {
@@ -3555,14 +3527,6 @@ public class IoTDBConfig {
     } else {
       this.readConsistencyLevel = ReadConsistencyLevel.STRONG;
     }
-  }
-
-  public int getDriverTaskExecutionTimeSliceInMs() {
-    return driverTaskExecutionTimeSliceInMs;
-  }
-
-  public void setDriverTaskExecutionTimeSliceInMs(int driverTaskExecutionTimeSliceInMs) {
-    this.driverTaskExecutionTimeSliceInMs = driverTaskExecutionTimeSliceInMs;
   }
 
   public static String getEnvironmentVariables() {
@@ -4009,14 +3973,6 @@ public class IoTDBConfig {
     onBlackListUpdated.run();
   }
 
-  public void setModeMapSizeThreshold(int modeMapSizeThreshold) {
-    this.modeMapSizeThreshold = modeMapSizeThreshold;
-  }
-
-  public int getModeMapSizeThreshold() {
-    return modeMapSizeThreshold;
-  }
-
   public double getMaxAllocateMemoryRatioForLoad() {
     return maxAllocateMemoryRatioForLoad;
   }
@@ -4416,12 +4372,20 @@ public class IoTDBConfig {
         : this.iotConsensusV2ReceiverFileDirs;
   }
 
-  public void setSortBufferSize(long sortBufferSize) {
-    this.sortBufferSize = sortBufferSize;
+  public boolean isQuotaEnable() {
+    return quotaEnable;
   }
 
-  public long getSortBufferSize() {
-    return sortBufferSize;
+  public void setQuotaEnable(boolean quotaEnable) {
+    this.quotaEnable = quotaEnable;
+  }
+
+  public String getRateLimiterType() {
+    return RateLimiterType;
+  }
+
+  public void setRateLimiterType(String rateLimiterType) {
+    RateLimiterType = rateLimiterType;
   }
 
   public void setModsCacheSizeLimitPerFI(long modsCacheSizeLimitPerFI) {
@@ -4440,22 +4404,6 @@ public class IoTDBConfig {
     return sortTmpDir;
   }
 
-  public boolean isQuotaEnable() {
-    return quotaEnable;
-  }
-
-  public void setQuotaEnable(boolean quotaEnable) {
-    this.quotaEnable = quotaEnable;
-  }
-
-  public String getRateLimiterType() {
-    return RateLimiterType;
-  }
-
-  public void setRateLimiterType(String rateLimiterType) {
-    RateLimiterType = rateLimiterType;
-  }
-
   public int getMigrateThreadCount() {
     return migrateThreadCount;
   }
@@ -4466,22 +4414,6 @@ public class IoTDBConfig {
 
   public long[] getTieredStorageMigrateSpeedLimitBytesPerSec() {
     return tieredStorageMigrateSpeedLimitBytesPerSec;
-  }
-
-  public void setCteBufferSize(long cteBufferSize) {
-    this.cteBufferSize = cteBufferSize;
-  }
-
-  public long getCteBufferSize() {
-    return cteBufferSize;
-  }
-
-  public void setMaxRowsInCteBuffer(int maxRowsInCteBuffer) {
-    this.maxRowsInCteBuffer = maxRowsInCteBuffer;
-  }
-
-  public int getMaxRowsInCteBuffer() {
-    return maxRowsInCteBuffer;
   }
 
   public void setTieredStorageMigrateSpeedLimitBytesPerSec(

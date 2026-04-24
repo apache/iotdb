@@ -19,18 +19,18 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule;
 
+import org.apache.iotdb.calc.plan.relational.utils.matching.Capture;
+import org.apache.iotdb.calc.plan.relational.utils.matching.Captures;
+import org.apache.iotdb.calc.plan.relational.utils.matching.Pattern;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Rule;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
-import org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Capture;
-import org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Captures;
-import org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Pattern;
 
+import static org.apache.iotdb.calc.plan.relational.utils.matching.Capture.newCapture;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.limit;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.source;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.tableScan;
-import static org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Capture.newCapture;
 
 public class EliminateLimitWithTableScan implements Rule<LimitNode> {
   private static final Capture<TableScanNode> CHILD = newCapture();

@@ -19,12 +19,12 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
+import org.apache.iotdb.calc.exception.QueryProcessException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALByteBufferForTest;
 import org.apache.iotdb.db.utils.EnvironmentUtils;

@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement.crud;
 
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.execution.operator.window.WindowType;
 import org.apache.iotdb.db.queryengine.execution.operator.window.ainode.InferenceWindow;
 import org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer;
@@ -55,7 +55,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import static org.apache.iotdb.db.utils.constant.SqlConstant.COUNT_TIME;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.COUNT_TIME;
 
 /**
  * Base class of SELECT statement.

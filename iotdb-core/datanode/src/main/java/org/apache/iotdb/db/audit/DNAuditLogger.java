@@ -37,6 +37,8 @@ import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
+import org.apache.iotdb.commons.queryengine.common.SessionInfo;
+import org.apache.iotdb.commons.queryengine.common.SqlDialect;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
@@ -51,7 +53,6 @@ import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.InternalClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
-import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
@@ -375,14 +376,14 @@ public class DNAuditLogger extends AbstractAuditLogger {
     session.setZoneId(ZoneId.systemDefault());
     session.setClientVersion(IoTDBConstant.ClientVersion.V_1_0);
     session.setDatabaseName(SystemConstant.AUDIT_PREFIX_KEY);
-    session.setSqlDialect(IClientSession.SqlDialect.TABLE);
+    session.setSqlDialect(SqlDialect.TABLE);
     return session;
   }
 
   private boolean ensureAuditDatabaseInTableModel(IClientSession session, String logPrefix) {
     SqlParser relationSqlParser = new SqlParser();
     Metadata metadata = LocalExecutionPlanner.getInstance().metadata;
-    org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement stmt =
+    org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement stmt =
         relationSqlParser.createStatement(
             "CREATE DATABASE " + SystemConstant.AUDIT_PREFIX_KEY, ZoneId.systemDefault(), session);
     TSStatus status =
@@ -415,7 +416,7 @@ public class DNAuditLogger extends AbstractAuditLogger {
       String errorMsg) {
     SqlParser relationSqlParser = new SqlParser();
     Metadata metadata = LocalExecutionPlanner.getInstance().metadata;
-    org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement stmt =
+    org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement stmt =
         relationSqlParser.createStatement(createViewSql, ZoneId.systemDefault(), session);
     TSStatus status =
         coordinator.executeForTableModel(

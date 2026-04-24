@@ -19,12 +19,12 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.assertions;
 
-import org.apache.iotdb.db.queryengine.plan.relational.planner.Assignments;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.Assignments;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.ExpressionRewriter;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.ExpressionTreeRewriter;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 
 import com.google.common.collect.ImmutableMap;
 

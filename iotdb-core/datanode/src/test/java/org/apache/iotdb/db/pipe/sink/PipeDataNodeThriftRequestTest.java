@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.sink;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.response.PipeTransferFilePieceResp;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.db.pipe.processor.twostage.exchange.payload.CombineRequest;
 import org.apache.iotdb.db.pipe.processor.twostage.state.CountState;
@@ -39,7 +40,6 @@ import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTable
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTsFilePieceReq;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTsFilePieceWithModReq;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTsFileSealReq;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.CreateAlignedTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;

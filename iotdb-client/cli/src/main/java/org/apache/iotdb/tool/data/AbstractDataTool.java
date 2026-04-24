@@ -19,15 +19,15 @@
 
 package org.apache.iotdb.tool.data;
 
+import org.apache.iotdb.calc.utils.constant.SqlConstant;
 import org.apache.iotdb.cli.type.ExitType;
 import org.apache.iotdb.cli.utils.CliContext;
 import org.apache.iotdb.cli.utils.IoTPrinter;
 import org.apache.iotdb.cli.utils.JlineUtils;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.queryengine.utils.DateTimeUtils;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.utils.PathUtils;
-import org.apache.iotdb.db.utils.DateTimeUtils;
-import org.apache.iotdb.db.utils.constant.SqlConstant;
 import org.apache.iotdb.exception.ArgsErrorException;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.rpc.IoTDBConnectionException;

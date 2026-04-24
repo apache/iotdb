@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.load.splitter;
 
+import org.apache.iotdb.calc.utils.ObjectTypeUtils;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -32,7 +33,6 @@ import org.apache.iotdb.db.pipe.event.common.tsfile.parser.util.ModsOperationUti
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.util.ModsOperationUtil.ModsInfo;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
-import org.apache.iotdb.db.utils.ObjectTypeUtils;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 
 import org.apache.tsfile.common.conf.TSFileConfig;

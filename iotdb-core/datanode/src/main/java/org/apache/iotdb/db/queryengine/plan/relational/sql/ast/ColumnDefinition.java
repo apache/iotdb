@@ -19,6 +19,13 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.AstMemoryEstimationHelper;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.DataType;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.GenericDataType;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IAstVisitor;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Identifier;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NodeLocation;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 
 import com.google.common.collect.ImmutableList;
@@ -94,8 +101,8 @@ public class ColumnDefinition extends Node {
   }
 
   @Override
-  public <R, C> R accept(final AstVisitor<R, C> visitor, C context) {
-    return visitor.visitColumnDefinition(this, context);
+  public <R, C> R accept(final IAstVisitor<R, C> visitor, C context) {
+    return ((AstVisitor<R, C>) visitor).visitColumnDefinition(this, context);
   }
 
   @Override

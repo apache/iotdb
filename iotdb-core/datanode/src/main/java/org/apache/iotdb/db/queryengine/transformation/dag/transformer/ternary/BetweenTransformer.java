@@ -21,8 +21,8 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.transformer.ternary;
 
+import org.apache.iotdb.calc.transformation.dag.util.CommonTransformUtils;
 import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
-import org.apache.iotdb.db.queryengine.transformation.dag.util.TransformUtils;
 
 import org.apache.tsfile.block.column.Column;
 
@@ -68,10 +68,10 @@ public class BetweenTransformer extends CompareTernaryTransformer {
         int secondIndex,
         Column thirdValues,
         int thirdIndex) ->
-        ((TransformUtils.compare(
+        ((CommonTransformUtils.compare(
                         firstValues.getBinary(firstIndex), secondValues.getBinary(secondIndex))
                     >= 0)
-                && (TransformUtils.compare(
+                && (CommonTransformUtils.compare(
                         firstValues.getBinary(firstIndex), thirdValues.getBinary(thirdIndex))
                     <= 0))
             ^ isNotBetween;

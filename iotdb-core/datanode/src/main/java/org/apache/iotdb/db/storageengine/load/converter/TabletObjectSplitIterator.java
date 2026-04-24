@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.storageengine.load.converter;
 
+import org.apache.iotdb.calc.utils.ObjectTypeUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.utils.ObjectTypeUtils;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.enums.ColumnCategory;

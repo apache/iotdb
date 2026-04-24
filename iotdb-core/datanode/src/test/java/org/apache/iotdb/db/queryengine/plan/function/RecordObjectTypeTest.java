@@ -19,11 +19,11 @@
 
 package org.apache.iotdb.db.queryengine.plan.function;
 
+import org.apache.iotdb.calc.execution.operator.process.function.partition.Slice;
+import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.RecordIterator;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
-import org.apache.iotdb.db.queryengine.execution.operator.process.function.partition.Slice;
-import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.RecordIterator;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
 import org.apache.iotdb.udf.api.relational.access.Record;
 import org.apache.iotdb.udf.api.type.Type;
@@ -50,7 +50,7 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.Optional;
 
-import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.RecordIterator.OBJECT_ERR_MSG;
+import static org.apache.iotdb.calc.execution.operator.source.relational.aggregation.RecordIterator.OBJECT_ERR_MSG;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;

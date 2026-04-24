@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.conf;
 
+import org.apache.iotdb.calc.exception.QueryProcessException;
 import org.apache.iotdb.commons.audit.AuditEventType;
 import org.apache.iotdb.commons.audit.AuditLogFields;
 import org.apache.iotdb.commons.audit.AuditLogOperation;
@@ -41,7 +42,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TRatisConfig;
 import org.apache.iotdb.consensus.config.IoTConsensusV2Config;
 import org.apache.iotdb.db.audit.DNAuditLogger;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.pipe.resource.log.PipePeriodicalLogReducer;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.LastCacheLoadStrategy;
@@ -61,7 +61,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
 import org.apache.iotdb.db.storageengine.load.disk.ILoadDiskSelector;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
-import org.apache.iotdb.db.utils.DateTimeUtils;
+import org.apache.iotdb.db.utils.DataNodeDateTimeUtils;
 import org.apache.iotdb.db.utils.datastructure.TVListSortAlgorithm;
 import org.apache.iotdb.external.api.IPropertiesLoader;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
@@ -118,6 +118,7 @@ public class IoTDBDescriptor {
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBDescriptor.class);
 
   private static final CommonDescriptor commonDescriptor = CommonDescriptor.getInstance();
+  private static final CommonConfig commonConfig = commonDescriptor.getConfig();
 
   private static final IoTDBConfig conf = new IoTDBConfig();
   private static final DataNodeMemoryConfig memoryConfig = new DataNodeMemoryConfig();
@@ -608,13 +609,14 @@ public class IoTDBDescriptor {
                 "merge_threshold_of_explain_analyze",
                 Integer.toString(conf.getMergeThresholdOfExplainAnalyze()))));
 
-    conf.setModeMapSizeThreshold(
+    commonConfig.setModeMapSizeThreshold(
         Integer.parseInt(
             properties.getProperty(
-                "mode_map_size_threshold", Integer.toString(conf.getModeMapSizeThreshold()))));
+                "mode_map_size_threshold",
+                Integer.toString(commonConfig.getModeMapSizeThreshold()))));
 
-    if (conf.getModeMapSizeThreshold() <= 0) {
-      conf.setModeMapSizeThreshold(10000);
+    if (commonConfig.getModeMapSizeThreshold() <= 0) {
+      commonConfig.setModeMapSizeThreshold(10000);
     }
 
     conf.setMaxAllowedConcurrentQueries(
@@ -1202,24 +1204,29 @@ public class IoTDBDescriptor {
             properties.getProperty("quota_enable", String.valueOf(conf.isQuotaEnable()))));
 
     // The buffer for sort operator to calculate
-    loadFixedSizeLimitForQuery(properties, "sort_buffer_size_in_bytes", conf::setSortBufferSize);
+    loadFixedSizeLimitForQuery(
+        properties,
+        "sort_buffer_size_in_bytes",
+        (v) -> {
+          commonDescriptor.getConfig().setSortBufferSize(v);
+        });
 
     // The buffer for cte materialization.
     long cteBufferSizeInBytes =
         Long.parseLong(
             properties.getProperty(
-                "cte_buffer_size_in_bytes", Long.toString(conf.getCteBufferSize())));
+                "cte_buffer_size_in_bytes", Long.toString(commonConfig.getCteBufferSize())));
     if (cteBufferSizeInBytes > 0) {
-      conf.setCteBufferSize(cteBufferSizeInBytes);
+      commonConfig.setCteBufferSize(cteBufferSizeInBytes);
     }
 
     // max number of rows for cte materialization
     int maxRowsInCteBuffer =
         Integer.parseInt(
             properties.getProperty(
-                "max_rows_in_cte_buffer", Integer.toString(conf.getMaxRowsInCteBuffer())));
+                "max_rows_in_cte_buffer", Integer.toString(commonConfig.getMaxRowsInCteBuffer())));
     if (maxRowsInCteBuffer > 0) {
-      conf.setMaxRowsInCteBuffer(maxRowsInCteBuffer);
+      commonConfig.setMaxRowsInCteBuffer(maxRowsInCteBuffer);
     }
 
     loadFixedSizeLimitForQuery(
@@ -2708,7 +2715,10 @@ public class IoTDBDescriptor {
                   ConfigurationFileUtils.getConfigurationDefaultValue("tvlist_sort_threshold"))));
 
       // sort_buffer_size_in_bytes
-      loadFixedSizeLimitForQuery(properties, "sort_buffer_size_in_bytes", conf::setSortBufferSize);
+      loadFixedSizeLimitForQuery(
+          properties,
+          "sort_buffer_size_in_bytes",
+          v -> commonDescriptor.getConfig().setSortBufferSize(v));
 
       loadFixedSizeLimitForQuery(
           properties, "mods_cache_size_limit_per_fi_in_bytes", conf::setModsCacheSizeLimitPerFI);
@@ -2728,17 +2738,18 @@ public class IoTDBDescriptor {
       long cteBufferSizeInBytes =
           Long.parseLong(
               properties.getProperty(
-                  "cte_buffer_size_in_bytes", Long.toString(conf.getCteBufferSize())));
+                  "cte_buffer_size_in_bytes", Long.toString(commonConfig.getCteBufferSize())));
       if (cteBufferSizeInBytes > 0) {
-        conf.setCteBufferSize(cteBufferSizeInBytes);
+        commonConfig.setCteBufferSize(cteBufferSizeInBytes);
       }
       // max number of rows for cte materialization
       int maxRowsInCteBuffer =
           Integer.parseInt(
               properties.getProperty(
-                  "max_rows_in_cte_buffer", Integer.toString(conf.getMaxRowsInCteBuffer())));
+                  "max_rows_in_cte_buffer",
+                  Integer.toString(commonConfig.getMaxRowsInCteBuffer())));
       if (maxRowsInCteBuffer > 0) {
-        conf.setMaxRowsInCteBuffer(maxRowsInCteBuffer);
+        commonConfig.setMaxRowsInCteBuffer(maxRowsInCteBuffer);
       }
       final boolean beforeEnableAuditLog = commonDescriptor.getConfig().isEnableAuditLog();
       // update audit log config
@@ -3279,8 +3290,10 @@ public class IoTDBDescriptor {
     String initialByteArrayLengthForMemoryControl =
         properties.getProperty("udf_initial_byte_array_length_for_memory_control");
     if (initialByteArrayLengthForMemoryControl != null) {
-      conf.setUdfInitialByteArrayLengthForMemoryControl(
-          Integer.parseInt(initialByteArrayLengthForMemoryControl.trim()));
+      commonDescriptor
+          .getConfig()
+          .setUdfInitialByteArrayLengthForMemoryControl(
+              Integer.parseInt(initialByteArrayLengthForMemoryControl.trim()));
     }
 
     conf.setUdfDir(properties.getProperty("udf_lib_dir", conf.getUdfDir()));
@@ -3412,7 +3425,7 @@ public class IoTDBDescriptor {
     }
 
     conf.setContinuousQueryMinimumEveryInterval(
-        DateTimeUtils.convertDurationStrToLong(
+        DataNodeDateTimeUtils.convertDurationStrToLong(
             properties.getProperty("continuous_query_minimum_every_interval", "1s").trim(),
             CommonDescriptor.getInstance().getConfig().getTimestampPrecision(),
             false));
@@ -3491,11 +3504,11 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "partition_cache_size", Integer.toString(conf.getPartitionCacheSize()))));
 
-    conf.setDriverTaskExecutionTimeSliceInMs(
+    commonConfig.setDriverTaskExecutionTimeSliceInMs(
         Integer.parseInt(
             properties.getProperty(
                 "driver_task_execution_time_slice_in_ms",
-                Integer.toString(conf.getDriverTaskExecutionTimeSliceInMs()))));
+                Integer.toString(commonConfig.getDriverTaskExecutionTimeSliceInMs()))));
   }
 
   /** Get default encode algorithm by data type */

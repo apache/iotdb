@@ -20,19 +20,20 @@
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
+import org.apache.iotdb.commons.queryengine.common.SessionInfo;
+import org.apache.iotdb.commons.queryengine.common.SqlDialect;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
+import org.apache.iotdb.commons.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
-import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControlImpl;
 import org.apache.iotdb.db.queryengine.plan.relational.security.ITableAuthChecker;
 import org.apache.iotdb.db.queryengine.plan.relational.security.TableModelPrivilege;
 import org.apache.iotdb.db.queryengine.plan.relational.security.TreeAccessCheckVisitor;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.rewrite.StatementRewrite;
-import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 
 import org.junit.Test;
 import org.mockito.Mockito;
@@ -219,8 +220,7 @@ public class AuthTest {
     Statement statement = sqlParser.createStatement(sql, zoneId, clientSession);
 
     SessionInfo session =
-        new SessionInfo(
-            0, userName, zoneId, databaseNameInSessionInfo, IClientSession.SqlDialect.TABLE);
+        new SessionInfo(0, userName, zoneId, databaseNameInSessionInfo, SqlDialect.TABLE);
     StatementAnalyzerFactory statementAnalyzerFactory =
         new StatementAnalyzerFactory(
             TEST_MATADATA,
@@ -245,8 +245,7 @@ public class AuthTest {
     Mockito.when(clientSession.getDatabaseName()).thenReturn(null);
     Statement statement = sqlParser.createStatement(sql, zoneId, clientSession);
 
-    SessionInfo session =
-        new SessionInfo(0, userName, zoneId, null, IClientSession.SqlDialect.TABLE);
+    SessionInfo session = new SessionInfo(0, userName, zoneId, null, SqlDialect.TABLE);
     MPPQueryContext context = new MPPQueryContext(sql, QUERY_ID, 0, session, null, null);
 
     statement.accept(
@@ -261,8 +260,7 @@ public class AuthTest {
   private void analyzeConfigTask(
       String sql, String userName, ITableAuthChecker authChecker, IClientSession clientSession) {
     Statement statement = sqlParser.createStatement(sql, zoneId, clientSession);
-    SessionInfo session =
-        new SessionInfo(0, userName, zoneId, null, IClientSession.SqlDialect.TABLE);
+    SessionInfo session = new SessionInfo(0, userName, zoneId, null, SqlDialect.TABLE);
     MPPQueryContext context = new MPPQueryContext(sql, QUERY_ID, 0, session, null, null);
 
     statement.accept(

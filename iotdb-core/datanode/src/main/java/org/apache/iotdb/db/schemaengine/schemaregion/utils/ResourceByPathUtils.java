@@ -19,14 +19,14 @@
 
 package org.apache.iotdb.db.schemaengine.schemaregion.utils;
 
+import org.apache.iotdb.calc.exception.QueryProcessException;
+import org.apache.iotdb.calc.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
-import org.apache.iotdb.db.queryengine.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.AlignedReadOnlyMemChunk;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.AlignedWritableMemChunk;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.AlignedWritableMemChunkGroup;
