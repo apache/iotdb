@@ -19,6 +19,19 @@
 
 package org.apache.iotdb.commons.queryengine.plan.planner.plan.node;
 
+/**
+ * Base visitor abstraction for {@link PlanNode}.
+ *
+ * <p><strong>Fragile contract notice:</strong> some concrete {@link PlanNode#accept(IPlanVisitor,
+ * Object)} implementations currently downcast the incoming visitor to {@link
+ * ICoreQueryPlanVisitor}. Therefore, every in-tree subtype of {@link IPlanVisitor} is expected to
+ * also inherit from {@link ICoreQueryPlanVisitor} today, usually via {@code PlanVisitor}.
+ *
+ * <p>This constraint can be broken intentionally, but only with full awareness of the follow-up
+ * work that is required. If a future implementation directly implements {@link IPlanVisitor}
+ * without also inheriting from {@link ICoreQueryPlanVisitor}, some plan nodes may throw {@link
+ * ClassCastException} at runtime unless their {@code accept(...)} logic is updated accordingly.
+ */
 public interface IPlanVisitor<R, C> {
 
   default R process(PlanNode node, C context) {
