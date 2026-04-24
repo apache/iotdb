@@ -151,7 +151,7 @@ public class ErrorHandlingUtils {
     return onQueryException(e, operation.getName());
   }
 
-  private static TSStatus tryCatchQueryException(Throwable e) {
+  private static TSStatus tryCatchQueryException(Exception e) {
     Throwable rootCause = ErrorHandlingCommonUtils.getRootCause(e);
     // ignore logging sg not ready exception
     if (rootCause instanceof StorageGroupNotReadyException) {
