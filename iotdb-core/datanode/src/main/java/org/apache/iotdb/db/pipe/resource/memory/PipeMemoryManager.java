@@ -61,6 +61,7 @@ public class PipeMemoryManager {
 
   // Only non-zero memory blocks will be added to this set.
   private final Set<PipeMemoryBlock> allocatedBlocks = new HashSet<>();
+  private final Set<PipeMemoryBlock> shrinkableBlocks = new HashSet<>();
 
   public PipeMemoryManager() {
     PipeDataNodeAgent.runtime()
@@ -528,8 +529,9 @@ public class PipeMemoryManager {
     return returnedMemoryBlock;
   }
 
+  // Single-threaded logic
   private boolean tryShrinkUntilFreeMemorySatisfy(long sizeInBytes) {
-    final List<PipeMemoryBlock> shuffledBlocks = new ArrayList<>(allocatedBlocks);
+    final List<PipeMemoryBlock> shuffledBlocks = new ArrayList<>(shrinkableBlocks);
     Collections.shuffle(shuffledBlocks);
 
     while (true) {
@@ -547,6 +549,14 @@ public class PipeMemoryManager {
         return false;
       }
     }
+  }
+
+  void addShrinkableBlock(final PipeMemoryBlock block) {
+    shrinkableBlocks.add(block);
+  }
+
+  void removeShrinkableBlock(final PipeMemoryBlock block) {
+    shrinkableBlocks.remove(block);
   }
 
   public synchronized void tryExpandAllAndCheckConsistency() {

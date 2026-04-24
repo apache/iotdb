@@ -24,6 +24,7 @@ import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
@@ -62,6 +63,7 @@ public class PipeMemoryBlock implements AutoCloseable {
 
   public PipeMemoryBlock setShrinkMethod(final LongUnaryOperator shrinkMethod) {
     this.shrinkMethod.set(shrinkMethod);
+    pipeMemoryManager.addShrinkableBlock(this);
     return this;
   }
 
@@ -177,6 +179,9 @@ public class PipeMemoryBlock implements AutoCloseable {
         if (lock.tryLock(50, TimeUnit.MICROSECONDS)) {
           try {
             pipeMemoryManager.release(this);
+            if (Objects.nonNull(shrinkMethod.get())) {
+              pipeMemoryManager.removeShrinkableBlock(this);
+            }
             if (isInterrupted) {
               LOGGER.warn("{} is released after thread interruption.", this);
             }
