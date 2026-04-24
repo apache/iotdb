@@ -36,6 +36,7 @@ import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.db.audit.DNAuditLogger;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.IoTDBDescriptor.IMigrationManager;
@@ -194,8 +195,8 @@ public class MigrationTaskManager implements IService, IMigrationManager {
       }
       AuditLogFields fields =
           new AuditLogFields(
-              -1,
-              null,
+              AuthorityChecker.INTERNAL_CONTROL_USER_ID,
+              AuthorityChecker.INTERNAL_CONTROL_USER,
               null,
               AuditEventType.AUDIT_STORAGE_FULL,
               AuditLogOperation.CONTROL,

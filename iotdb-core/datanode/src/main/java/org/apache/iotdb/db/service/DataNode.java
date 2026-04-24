@@ -359,8 +359,8 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
         DNAuditLogger.getInstance().createLoginHistoryViewIfNecessary();
         AuditLogFields fields =
             new AuditLogFields(
-                -1,
-                null,
+                AuthorityChecker.INTERNAL_CONTROL_USER_ID,
+                AuthorityChecker.INTERNAL_CONTROL_USER,
                 null,
                 AuditEventType.CHANGE_AUDIT_OPTION,
                 AuditLogOperation.CONTROL,
@@ -383,8 +383,8 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
                 "org.apache.tsfile.encrypt.UNENCRYPTED")) {
           AuditLogFields encryptFields =
               new AuditLogFields(
-                  -1,
-                  null,
+                  AuthorityChecker.INTERNAL_CONTROL_USER_ID,
+                  AuthorityChecker.INTERNAL_CONTROL_USER,
                   null,
                   AuditEventType.GENERATE_KEY,
                   AuditLogOperation.CONTROL,

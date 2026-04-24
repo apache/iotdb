@@ -41,6 +41,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TRatisConfig;
 import org.apache.iotdb.consensus.config.IoTConsensusV2Config;
 import org.apache.iotdb.db.audit.DNAuditLogger;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.pipe.resource.log.PipePeriodicalLogReducer;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
@@ -2881,8 +2882,8 @@ public class IoTDBDescriptor {
         DNAuditLogger.getInstance().start();
         AuditLogFields fields =
             new AuditLogFields(
-                -1,
-                null,
+                AuthorityChecker.INTERNAL_CONTROL_USER_ID,
+                AuthorityChecker.INTERNAL_CONTROL_USER,
                 null,
                 AuditEventType.CHANGE_AUDIT_OPTION,
                 AuditLogOperation.CONTROL,

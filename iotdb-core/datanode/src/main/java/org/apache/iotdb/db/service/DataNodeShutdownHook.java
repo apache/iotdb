@@ -32,6 +32,7 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.audit.DNAuditLogger;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
@@ -99,8 +100,8 @@ public class DataNodeShutdownHook extends Thread {
       logger.info("DataNode exiting...");
       AuditLogFields fields =
           new AuditLogFields(
-              -1,
-              null,
+              AuthorityChecker.INTERNAL_CONTROL_USER_ID,
+              AuthorityChecker.INTERNAL_CONTROL_USER,
               null,
               AuditEventType.DN_SHUTDOWN,
               AuditLogOperation.CONTROL,

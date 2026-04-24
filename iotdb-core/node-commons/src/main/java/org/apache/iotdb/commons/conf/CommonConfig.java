@@ -505,7 +505,10 @@ public class CommonConfig {
           AuditEventType.SLOW_OPERATION,
           AuditEventType.LOGIN,
           AuditEventType.LOGOUT,
-          AuditEventType.DN_SHUTDOWN);
+          AuditEventType.DN_SHUTDOWN,
+          AuditEventType.DESTROY_KEY,
+          AuditEventType.AUDIT_STORAGE_FULL,
+          AuditEventType.GENERATE_KEY);
 
   /** The level of privilege required to record audit logs * */
   private PrivilegeLevel auditableOperationLevel = PrivilegeLevel.GLOBAL;
