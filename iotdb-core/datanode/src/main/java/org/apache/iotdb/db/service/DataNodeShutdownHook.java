@@ -118,8 +118,8 @@ public class DataNodeShutdownHook extends Thread {
               "org.apache.tsfile.encrypt.UNENCRYPTED")) {
         AuditLogFields encryptFields =
             new AuditLogFields(
-                -1,
-                null,
+                AuthorityChecker.INTERNAL_CONTROL_USER_ID,
+                AuthorityChecker.INTERNAL_CONTROL_USER,
                 null,
                 AuditEventType.DESTROY_KEY,
                 AuditLogOperation.CONTROL,

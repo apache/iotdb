@@ -147,8 +147,8 @@ public class TimechoDBAuditLogXSeparationOfPowersIT {
           new AuditLogSet(
               Arrays.asList(
                   "node_1",
-                  "u_none",
-                  "null",
+                  "u_5",
+                  "__internal_controller",
                   "null",
                   "CHANGE_AUDIT_OPTION",
                   "CONTROL",
@@ -1587,7 +1587,7 @@ public class TimechoDBAuditLogXSeparationOfPowersIT {
           // Start audit service
           new AuditLogSet(
               Arrays.asList(
-                  "root.__audit.log.node_1.u_none",
+                  "root.__audit.log.node_1.u_5",
                   "true",
                   "GLOBAL",
                   "[AUDIT]",
@@ -1597,7 +1597,7 @@ public class TimechoDBAuditLogXSeparationOfPowersIT {
                   "null",
                   "CHANGE_AUDIT_OPTION",
                   "null",
-                  "null")),
+                  "__internal_controller")),
           // Environment setup login/logout
           new AuditLogSet(
               Arrays.asList(
