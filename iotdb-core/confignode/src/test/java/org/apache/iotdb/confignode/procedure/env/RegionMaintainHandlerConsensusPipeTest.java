@@ -49,6 +49,9 @@ import java.util.HashMap;
 import java.util.Map;
 
 import static org.apache.iotdb.consensus.ConsensusFactory.IOT_CONSENSUS_V2;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -270,10 +273,9 @@ public class RegionMaintainHandlerConsensusPipeTest {
         1L, loc1, new TConsensusGroupId(TConsensusGroupType.DataRegion, 100));
 
     verify(loadManager, times(1)).getNodeStatus(loc1.getDataNodeId());
-    org.junit.Assert.assertFalse(handler.lastUseFullRetry);
-    org.junit.Assert.assertEquals(
-        CnToDnSyncRequestType.DELETE_OLD_REGION_PEER, handler.lastRequestType);
-    org.junit.Assert.assertEquals(loc1.getInternalEndPoint(), handler.lastEndPoint);
+    assertFalse(handler.lastUseFullRetry);
+    assertEquals(CnToDnSyncRequestType.DELETE_OLD_REGION_PEER, handler.lastRequestType);
+    assertEquals(loc1.getInternalEndPoint(), handler.lastEndPoint);
   }
 
   @Test
@@ -285,10 +287,9 @@ public class RegionMaintainHandlerConsensusPipeTest {
         1L, loc1, new TConsensusGroupId(TConsensusGroupType.DataRegion, 100));
 
     verify(loadManager, times(1)).getNodeStatus(loc1.getDataNodeId());
-    org.junit.Assert.assertTrue(handler.lastUseFullRetry);
-    org.junit.Assert.assertEquals(
-        CnToDnSyncRequestType.DELETE_OLD_REGION_PEER, handler.lastRequestType);
-    org.junit.Assert.assertEquals(loc1.getInternalEndPoint(), handler.lastEndPoint);
+    assertTrue(handler.lastUseFullRetry);
+    assertEquals(CnToDnSyncRequestType.DELETE_OLD_REGION_PEER, handler.lastRequestType);
+    assertEquals(loc1.getInternalEndPoint(), handler.lastEndPoint);
   }
 
   @Test
