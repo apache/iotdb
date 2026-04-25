@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.transformation.api;
 
-import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.calc.exception.QueryProcessException;
 import org.apache.iotdb.udf.api.access.RowWindow;
 
 import org.apache.tsfile.enums.TSDataType;

@@ -19,14 +19,15 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational;
 
+import org.apache.iotdb.calc.plan.planner.CommonOperatorUtils;
 import org.apache.iotdb.commons.path.AlignedFullPath;
-import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
+import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.source.AbstractSeriesScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.AlignedSeriesScanUtil;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.storageengine.dataregion.read.IQueryDataSource;
@@ -36,7 +37,6 @@ import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
-import org.apache.tsfile.read.common.block.column.LongColumn;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 
@@ -48,17 +48,13 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.commons.queryengine.plan.relational.type.InternalTypeManager.getTSDataType;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.AlignedSeriesScanOperator.appendDataIntoBuilder;
 import static org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanGraphPrinter.DEVICE_NUMBER;
-import static org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager.getTSDataType;
 
 public abstract class AbstractTableScanOperator extends AbstractSeriesScanOperator {
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(TableScanOperator.class);
-
-  public static final String CURRENT_DEVICE_INDEX_STRING = "CurrentDeviceIndex";
-  public static final LongColumn TIME_COLUMN_TEMPLATE =
-      new LongColumn(1, Optional.empty(), new long[] {0});
 
   private final List<ColumnSchema> columnSchemas;
 
@@ -108,7 +104,8 @@ public abstract class AbstractTableScanOperator extends AbstractSeriesScanOperat
             .map(IMeasurementSchema::getType)
             .collect(Collectors.toList());
     this.currentDeviceIndex = 0;
-    this.operatorContext.recordSpecifiedInfo(CURRENT_DEVICE_INDEX_STRING, Integer.toString(0));
+    this.operatorContext.recordSpecifiedInfo(
+        CommonOperatorUtils.CURRENT_DEVICE_INDEX_STRING, Integer.toString(0));
 
     // allSensors include time and all field columns
     this.maxReturnSize =
@@ -263,7 +260,7 @@ public abstract class AbstractTableScanOperator extends AbstractSeriesScanOperat
       queryDataSource.reset();
       this.seriesScanUtil.initQueryDataSource(queryDataSource);
       this.operatorContext.recordSpecifiedInfo(
-          CURRENT_DEVICE_INDEX_STRING, Integer.toString(currentDeviceIndex));
+          CommonOperatorUtils.CURRENT_DEVICE_INDEX_STRING, Integer.toString(currentDeviceIndex));
     }
   }
 
@@ -286,7 +283,7 @@ public abstract class AbstractTableScanOperator extends AbstractSeriesScanOperat
             alignedPath,
             scanOrder,
             seriesScanOptions,
-            operatorContext.getInstanceContext(),
+            ((OperatorContext) operatorContext).getInstanceContext(),
             true,
             measurementColumnTSDataTypes);
   }

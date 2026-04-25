@@ -149,7 +149,8 @@
         <sonar.organization>apache</sonar.organization>
         <!-- Override this to `true`, if you want to disable spotless -->
         <spotless.skip>false</spotless.skip>
-        <spotless.version>2.43.0</spotless.version>
+        <spotless.version>2.44.5</spotless.version>
+        <clang.format.version>17.0.6</clang.format.version>
         <!-- This was the last version to support Java 8 -->
         <swagger.version>1.6.14</swagger.version>
         <thrift.exec-cmd.executable>chmod</thrift.exec-cmd.executable>

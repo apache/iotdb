@@ -19,21 +19,21 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate;
 
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BetweenPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IfExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IsNotNullPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IsNullPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LikePredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NotExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullIfExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SearchedCaseExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.BetweenPredicate;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ComparisonExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IfExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.InPredicate;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IsNotNullPredicate;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IsNullPredicate;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LikePredicate;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Literal;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LogicalExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NotExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NullIfExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SearchedCaseExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolReference;
 
 import java.util.List;
 
@@ -45,29 +45,29 @@ public class PredicatePushIntoScanChecker extends PredicateVisitor<Boolean, Void
   }
 
   @Override
-  protected Boolean visitInPredicate(InPredicate node, Void context) {
+  public Boolean visitInPredicate(InPredicate node, Void context) {
     return isSymbolReference(node.getValue());
   }
 
   @Override
-  protected Boolean visitIsNullPredicate(IsNullPredicate node, Void context) {
+  public Boolean visitIsNullPredicate(IsNullPredicate node, Void context) {
     throw new IllegalArgumentException("IS NULL Expression can't be pushed down");
   }
 
   @Override
-  protected Boolean visitIsNotNullPredicate(IsNotNullPredicate node, Void context) {
+  public Boolean visitIsNotNullPredicate(IsNotNullPredicate node, Void context) {
     return isSymbolReference(node.getValue());
   }
 
   @Override
-  protected Boolean visitLikePredicate(LikePredicate node, Void context) {
+  public Boolean visitLikePredicate(LikePredicate node, Void context) {
     return isSymbolReference(node.getValue())
         && isLiteral(node.getPattern())
         && node.getEscape().map(PredicatePushIntoScanChecker::isLiteral).orElse(true);
   }
 
   @Override
-  protected Boolean visitLogicalExpression(LogicalExpression node, Void context) {
+  public Boolean visitLogicalExpression(LogicalExpression node, Void context) {
     List<Expression> children = node.getTerms();
     for (Expression child : children) {
       if (!process(child, context)) {
@@ -78,38 +78,38 @@ public class PredicatePushIntoScanChecker extends PredicateVisitor<Boolean, Void
   }
 
   @Override
-  protected Boolean visitNotExpression(NotExpression node, Void context) {
+  public Boolean visitNotExpression(NotExpression node, Void context) {
     throw new IllegalArgumentException("Not Expression can't be pushed down");
   }
 
   @Override
-  protected Boolean visitComparisonExpression(ComparisonExpression node, Void context) {
+  public Boolean visitComparisonExpression(ComparisonExpression node, Void context) {
     return (isSymbolReference(node.getLeft()) && isLiteral(node.getRight()))
         || (isSymbolReference(node.getRight()) && isLiteral(node.getLeft()));
   }
 
   @Override
-  protected Boolean visitSimpleCaseExpression(SimpleCaseExpression node, Void context) {
+  public Boolean visitSimpleCaseExpression(SimpleCaseExpression node, Void context) {
     return Boolean.FALSE;
   }
 
   @Override
-  protected Boolean visitSearchedCaseExpression(SearchedCaseExpression node, Void context) {
+  public Boolean visitSearchedCaseExpression(SearchedCaseExpression node, Void context) {
     return Boolean.FALSE;
   }
 
   @Override
-  protected Boolean visitIfExpression(IfExpression node, Void context) {
+  public Boolean visitIfExpression(IfExpression node, Void context) {
     return Boolean.FALSE;
   }
 
   @Override
-  protected Boolean visitNullIfExpression(NullIfExpression node, Void context) {
+  public Boolean visitNullIfExpression(NullIfExpression node, Void context) {
     return Boolean.FALSE;
   }
 
   @Override
-  protected Boolean visitBetweenPredicate(BetweenPredicate node, Void context) {
+  public Boolean visitBetweenPredicate(BetweenPredicate node, Void context) {
     return (isSymbolReference(node.getValue())
             && isLiteral(node.getMin())
             && isLiteral(node.getMax()))

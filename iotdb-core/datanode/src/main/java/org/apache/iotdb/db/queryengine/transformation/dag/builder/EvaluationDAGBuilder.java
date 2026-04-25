@@ -19,10 +19,10 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.builder;
 
-import org.apache.iotdb.db.queryengine.common.NodeRef;
+import org.apache.iotdb.commons.queryengine.common.NodeRef;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.IntermediateLayerVisitor;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
 import org.apache.iotdb.db.queryengine.transformation.dag.input.QueryDataSetInputLayer;
 import org.apache.iotdb.db.queryengine.transformation.dag.intermediate.IntermediateLayer;

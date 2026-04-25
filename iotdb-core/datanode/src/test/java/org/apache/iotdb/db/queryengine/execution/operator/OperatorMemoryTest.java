@@ -18,14 +18,26 @@
  */
 package org.apache.iotdb.db.queryengine.execution.operator;
 
+import org.apache.iotdb.calc.execution.operator.Operator;
+import org.apache.iotdb.calc.execution.operator.process.FilterAndProjectOperator;
+import org.apache.iotdb.calc.execution.operator.process.LimitOperator;
+import org.apache.iotdb.calc.execution.operator.process.OffsetOperator;
+import org.apache.iotdb.calc.execution.operator.process.fill.IFill;
+import org.apache.iotdb.calc.execution.operator.process.fill.linear.LinearFill;
+import org.apache.iotdb.calc.transformation.dag.column.ColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.binary.ArithmeticAdditionColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.binary.CompareLessEqualColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.leaf.ConstantColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.leaf.TimeColumnTransformer;
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
@@ -37,17 +49,12 @@ import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContex
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceStateMachine;
 import org.apache.iotdb.db.queryengine.execution.operator.process.AggregationOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.DeviceViewOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.process.FilterAndProjectOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.process.LimitOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.process.OffsetOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.RawDataAggregationOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.SlidingWindowAggregationOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TreeFillOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TreeIntoOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TreeLinearFillOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TreeSortOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.process.fill.IFill;
-import org.apache.iotdb.db.queryengine.execution.operator.process.fill.linear.LinearFill;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.FullOuterTimeJoinOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.HorizontallyConcatOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.last.LastQueryCollectOperator;
@@ -76,17 +83,11 @@ import org.apache.iotdb.db.queryengine.execution.operator.window.TimeWindowParam
 import org.apache.iotdb.db.queryengine.execution.operator.window.WindowParameter;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.ArithmeticAdditionColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.CompareLessEqualColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.ConstantColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.TimeColumnTransformer;
 
 import com.google.common.collect.Sets;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
@@ -528,13 +529,13 @@ public class OperatorMemoryTest {
             null);
 
     assertEquals(
-        2048 + 512 + IoTDBDescriptor.getInstance().getConfig().getSortBufferSize(),
+        2048 + 512 + CommonDescriptor.getInstance().getConfig().getSortBufferSize(),
         treeSortOperator.calculateMaxPeekMemory());
     assertEquals(
         TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes(),
         treeSortOperator.calculateMaxReturnSize());
     assertEquals(
-        512 + IoTDBDescriptor.getInstance().getConfig().getSortBufferSize(),
+        512 + CommonDescriptor.getInstance().getConfig().getSortBufferSize(),
         treeSortOperator.calculateRetainedSizeAfterCallingNext());
   }
 

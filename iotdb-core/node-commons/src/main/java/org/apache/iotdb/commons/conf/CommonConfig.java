@@ -486,6 +486,28 @@ public class CommonConfig {
   private int pathLogMaxSize = 100;
   private boolean restrictObjectLimit = false;
 
+  /**
+   * Used to estimate the memory usage of text fields in a UDF query. It is recommended to set this
+   * value to be slightly larger than the average length of all text records.
+   */
+  private int udfInitialByteArrayLengthForMemoryControl = 48;
+
+  /** The buffer for sort operation */
+  private long sortBufferSize = 32 * 1024 * 1024L;
+
+  /** Maximum execution time of a DriverTask */
+  private int driverTaskExecutionTimeSliceInMs = 200;
+
+  private int modeMapSizeThreshold = 10000;
+
+  private int nodeId = -1;
+
+  /** The buffer for cte scan operation */
+  private long cteBufferSize = 128 * 1024L;
+
+  /** Max number of rows for cte materialization */
+  private int maxRowsInCteBuffer = 1000;
+
   CommonConfig() {
     // Empty constructor
   }
@@ -2828,5 +2850,62 @@ public class CommonConfig {
 
   public void setRestrictObjectLimit(boolean restrictObjectLimit) {
     this.restrictObjectLimit = restrictObjectLimit;
+  }
+
+  public int getUdfInitialByteArrayLengthForMemoryControl() {
+    return udfInitialByteArrayLengthForMemoryControl;
+  }
+
+  public void setUdfInitialByteArrayLengthForMemoryControl(
+      int udfInitialByteArrayLengthForMemoryControl) {
+    this.udfInitialByteArrayLengthForMemoryControl = udfInitialByteArrayLengthForMemoryControl;
+  }
+
+  public void setSortBufferSize(long sortBufferSize) {
+    this.sortBufferSize = sortBufferSize;
+  }
+
+  public long getSortBufferSize() {
+    return sortBufferSize;
+  }
+
+  public int getDriverTaskExecutionTimeSliceInMs() {
+    return driverTaskExecutionTimeSliceInMs;
+  }
+
+  public void setDriverTaskExecutionTimeSliceInMs(int driverTaskExecutionTimeSliceInMs) {
+    this.driverTaskExecutionTimeSliceInMs = driverTaskExecutionTimeSliceInMs;
+  }
+
+  public void setModeMapSizeThreshold(int modeMapSizeThreshold) {
+    this.modeMapSizeThreshold = modeMapSizeThreshold;
+  }
+
+  public int getModeMapSizeThreshold() {
+    return modeMapSizeThreshold;
+  }
+
+  public void setNodeId(int nodeId) {
+    this.nodeId = nodeId;
+  }
+
+  public int getNodeId() {
+    return nodeId;
+  }
+
+  public void setCteBufferSize(long cteBufferSize) {
+    this.cteBufferSize = cteBufferSize;
+  }
+
+  public long getCteBufferSize() {
+    return cteBufferSize;
+  }
+
+  public void setMaxRowsInCteBuffer(int maxRowsInCteBuffer) {
+    this.maxRowsInCteBuffer = maxRowsInCteBuffer;
+  }
+
+  public int getMaxRowsInCteBuffer() {
+    return maxRowsInCteBuffer;
   }
 }

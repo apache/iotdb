@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 
 import java.util.List;
 import java.util.Map;

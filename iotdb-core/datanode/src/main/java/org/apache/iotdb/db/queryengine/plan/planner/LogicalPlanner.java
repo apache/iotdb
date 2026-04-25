@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner;
 
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
@@ -26,7 +27,6 @@ import org.apache.iotdb.db.queryengine.plan.optimization.AggregationPushDown;
 import org.apache.iotdb.db.queryengine.plan.optimization.PlanOptimizer;
 import org.apache.iotdb.db.queryengine.plan.optimization.PredicatePushDown;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 
 import java.util.Arrays;
 import java.util.List;

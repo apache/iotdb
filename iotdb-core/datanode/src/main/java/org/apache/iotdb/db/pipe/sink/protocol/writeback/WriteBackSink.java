@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
+import org.apache.iotdb.commons.queryengine.common.SqlDialect;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.db.auth.AuthorityChecker;
@@ -34,7 +35,6 @@ import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertio
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTabletInsertNodeReqV2;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTabletRawReqV2;
-import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.InternalClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
@@ -206,7 +206,7 @@ public class WriteBackSink implements PipeConnector {
                     ZoneId.systemDefault().toString(),
                     SessionManager.CURRENT_RPC_VERSION,
                     IoTDBConstant.ClientVersion.V_1_0,
-                    IClientSession.SqlDialect.TREE,
+                    SqlDialect.TREE,
                     environment.getRegionId() >= 0)
                 .getCode()
             != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -391,7 +391,7 @@ public class WriteBackSink implements PipeConnector {
   private TSStatus executeStatementForTableModel(
       Statement statement, String dataBaseName, final String userName) {
     session.setDatabaseName(dataBaseName);
-    session.setSqlDialect(IClientSession.SqlDialect.TABLE);
+    session.setSqlDialect(SqlDialect.TABLE);
     final String originalUserName = session.getUsername();
     if (useEventUserName && userName != null) {
       session.setUsername(userName);
@@ -496,7 +496,7 @@ public class WriteBackSink implements PipeConnector {
 
   private TSStatus executeStatementForTreeModel(final Statement statement, final String userName) {
     session.setDatabaseName(null);
-    session.setSqlDialect(IClientSession.SqlDialect.TREE);
+    session.setSqlDialect(SqlDialect.TREE);
     final String originalUserName = session.getUsername();
     if (useEventUserName && userName != null) {
       session.setUsername(userName);

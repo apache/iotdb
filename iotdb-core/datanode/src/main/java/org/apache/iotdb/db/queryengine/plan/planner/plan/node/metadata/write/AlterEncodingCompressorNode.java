@@ -20,10 +20,11 @@
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write;
 
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.IPlanVisitor;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.commons.utils.SerializeUtils;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegionPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionPlanType;
@@ -101,8 +102,8 @@ public class AlterEncodingCompressorNode extends PlanNode implements ISchemaRegi
   }
 
   @Override
-  public <R, C> R accept(final PlanVisitor<R, C> visitor, final C context) {
-    return visitor.visitAlterEncodingCompressor(this, context);
+  public <R, C> R accept(final IPlanVisitor<R, C> visitor, final C context) {
+    return ((PlanVisitor<R, C>) visitor).visitAlterEncodingCompressor(this, context);
   }
 
   @Override

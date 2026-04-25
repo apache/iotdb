@@ -87,7 +87,20 @@ jobs:
         run: |
           set -euxo pipefail
           sudo apt-get update
-          sudo apt-get install -y libboost-all-dev openssl libssl-dev
+          sudo apt-get install -y libboost-all-dev openssl libssl-dev wget
+          . /etc/os-release
+          if [[ "${VERSION_CODENAME}" == "jammy" ]]; then
+            wget -qO /tmp/llvm.sh https://apt.llvm.org/llvm.sh
+            chmod +x /tmp/llvm.sh
+            sudo DEBIAN_FRONTEND=noninteractive /tmp/llvm.sh 17
+            # llvm.sh installs clang-17/lldb/lld/clangd but not the clang-format-17 package
+            sudo apt-get install -y clang-format-17
+          else
+            sudo apt-get install -y clang-format-17
+          fi
+          sudo update-alternatives --install /usr/bin/clang-format clang-format /usr/bin/clang-format-17 100
+          sudo update-alternatives --set clang-format /usr/bin/clang-format-17
+          clang-format --version
       - name: Cache Maven packages
         uses: actions/cache@v5
         with:
@@ -99,9 +112,7 @@ jobs:
         shell: bash
         run: |
           set -euxo pipefail
-          ./mvnw clean package -P with-cpp -pl iotdb-client/client-cpp -am \
-            -DskipTests \
-            -Dspotless.check.skip=true -Dspotless.apply.skip=true
+          ./mvnw clean package -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests
       - name: Upload zip artifact
         uses: actions/upload-artifact@v6
         with:
@@ -133,7 +144,10 @@ jobs:
         shell: bash
         run: |
           set -euxo pipefail
-          brew install boost openssl
+          brew install boost openssl llvm@17
+          ln -sf "$(brew --prefix llvm@17)/bin/clang-format" "$(brew --prefix)/bin/clang-format"
+          echo "$(brew --prefix llvm@17)/bin" >> "$GITHUB_PATH"
+          clang-format --version
       - name: Cache Maven packages
         uses: actions/cache@v5
         with:
@@ -147,9 +161,7 @@ jobs:
           MACOSX_DEPLOYMENT_TARGET: "12.0"
         run: |
           set -euxo pipefail
-          ./mvnw clean package -P with-cpp -pl iotdb-client/client-cpp -am \
-            -DskipTests \
-            -Dspotless.check.skip=true -Dspotless.apply.skip=true
+          ./mvnw clean package -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests
       - name: Upload zip artifact
         uses: actions/upload-artifact@v6
         with:
@@ -194,6 +206,8 @@ jobs:
           $sslPath = (Get-ChildItem 'C:\Program Files\OpenSSL*' -Directory | Select-Object -First 1).FullName
           echo "$sslPath\bin" >> $env:GITHUB_PATH
           echo "OPENSSL_ROOT_DIR=$sslPath" >> $env:GITHUB_ENV
+          choco install llvm --version=17.0.6 --force -y
+          clang-format --version
       - name: Cache Maven packages
         uses: actions/cache@v5
         with:
@@ -208,9 +222,7 @@ jobs:
           IOTDB_TOOLS_THRIFT_VERSION: ${{ matrix.iotdb_tools_thrift_version }}
         run: |
           set -euxo pipefail
-          MVN_ARGS=(./mvnw clean package -P with-cpp -pl iotdb-client/client-cpp -am \
-            -DskipTests \
-            -Dspotless.check.skip=true -Dspotless.apply.skip=true)
+          MVN_ARGS=(./mvnw clean package -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests)
           if [ -n "${CMAKE_GENERATOR:-}" ]; then
             MVN_ARGS+=("-Dcmake.generator=${CMAKE_GENERATOR}")
           fi

@@ -646,10 +646,11 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
             .flatMap(parsedStatement -> batchVisitor.process(parsedStatement, null))
             .ifPresent(statement -> results.add(executeStatementAndClassifyExceptions(statement)));
       } else if (treeOrTableStatement
-          instanceof org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement) {
-        final org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement originalStatement =
-            (org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement)
-                treeOrTableStatement;
+          instanceof org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement) {
+        final org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement
+            originalStatement =
+                (org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement)
+                    treeOrTableStatement;
 
         if (!executionTypes.contains(StatementType.AUTO_CREATE_DEVICE_MNODE)) {
           continue;
@@ -699,7 +700,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
         ? new TPipeTransferResp(executeStatementAndClassifyExceptions((Statement) statement))
         : new TPipeTransferResp(
             executeStatementForTableModelWithPermissionCheck(
-                (org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement) statement,
+                (org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement) statement,
                 null));
   }
 
@@ -1050,7 +1051,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   }
 
   private TSStatus executeStatementForTableModelWithPermissionCheck(
-      final org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement statement,
+      final org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement statement,
       final String databaseName) {
     try {
       final TSStatus status = loginIfNecessary();

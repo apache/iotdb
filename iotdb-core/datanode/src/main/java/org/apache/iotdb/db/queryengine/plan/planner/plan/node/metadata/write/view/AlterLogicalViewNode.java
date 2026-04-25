@@ -22,11 +22,12 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.vi
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.IPlanVisitor;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.schema.view.viewExpression.leaf.TimeSeriesViewOperand;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 
 import org.apache.tsfile.exception.NotImplementedException;
@@ -92,8 +93,8 @@ public class AlterLogicalViewNode extends PlanNode {
 
   // region Interfaces in WritePlanNode or PlanNode
   @Override
-  public <R, C> R accept(final PlanVisitor<R, C> visitor, final C context) {
-    return visitor.visitAlterLogicalView(this, context);
+  public <R, C> R accept(final IPlanVisitor<R, C> visitor, final C context) {
+    return ((PlanVisitor<R, C>) visitor).visitAlterLogicalView(this, context);
   }
 
   @Override

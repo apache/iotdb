@@ -19,19 +19,20 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.analyzer.NodeRef;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.WindowNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.DereferenceExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Identifier;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.QualifiedName;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SubqueryExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Lookup;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.WindowNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DefaultExpressionTraversalVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DefaultTraversalVisitor;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DereferenceExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubqueryExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
@@ -149,14 +150,13 @@ public final class SymbolsExtractor {
   private static class SymbolBuilderVisitor
       extends DefaultExpressionTraversalVisitor<ImmutableList.Builder<Symbol>> {
     @Override
-    protected Void visitSymbolReference(
-        SymbolReference node, ImmutableList.Builder<Symbol> builder) {
+    public Void visitSymbolReference(SymbolReference node, ImmutableList.Builder<Symbol> builder) {
       builder.add(Symbol.from(node));
       return null;
     }
 
     /*@Override
-    protected Void visitLambdaExpression(LambdaExpression node, ImmutableList.Builder<Symbol> context)
+    public Void visitLambdaExpression(LambdaExpression node, ImmutableList.Builder<Symbol> context)
     {
         // Symbols in lambda expression are bound to lambda arguments, so no need to extract them
         return null;
@@ -175,7 +175,7 @@ public final class SymbolsExtractor {
     }
 
     @Override
-    protected Void visitDereferenceExpression(
+    public Void visitDereferenceExpression(
         DereferenceExpression node, ImmutableSet.Builder<QualifiedName> builder) {
       if (columnReferences.contains(NodeRef.<Expression>of(node))) {
         builder.add(DereferenceExpression.getQualifiedName(node));
@@ -186,13 +186,13 @@ public final class SymbolsExtractor {
     }
 
     @Override
-    protected Void visitIdentifier(Identifier node, ImmutableSet.Builder<QualifiedName> builder) {
+    public Void visitIdentifier(Identifier node, ImmutableSet.Builder<QualifiedName> builder) {
       builder.add(QualifiedName.of(node.getValue()));
       return null;
     }
 
     @Override
-    protected Void visitSubqueryExpression(
+    public Void visitSubqueryExpression(
         SubqueryExpression node, ImmutableSet.Builder<QualifiedName> context) {
       if (!recurseIntoSubqueries) {
         return null;

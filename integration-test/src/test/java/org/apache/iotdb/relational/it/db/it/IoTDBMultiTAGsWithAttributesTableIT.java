@@ -35,12 +35,12 @@ import java.sql.Connection;
 import java.sql.Statement;
 import java.util.Arrays;
 
+import static org.apache.iotdb.commons.queryengine.plan.relational.planner.node.JoinNode.JoinType.FULL;
+import static org.apache.iotdb.commons.queryengine.plan.relational.planner.node.JoinNode.JoinType.INNER;
+import static org.apache.iotdb.commons.queryengine.plan.relational.planner.node.JoinNode.JoinType.LEFT;
+import static org.apache.iotdb.commons.queryengine.plan.relational.planner.node.JoinNode.JoinType.RIGHT;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableAssertTestFail;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode.JoinType.FULL;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode.JoinType.INNER;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode.JoinType.LEFT;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode.JoinType.RIGHT;
 import static org.junit.Assert.fail;
 
 /** In this IT, table has more than one TAGs and Attributes. */

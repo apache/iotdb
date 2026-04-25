@@ -19,8 +19,10 @@
 
 package org.apache.iotdb.db.queryengine.plan.expression;
 
+import org.apache.iotdb.calc.transformation.dag.udf.UDTFExecutor;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.queryengine.common.NodeRef;
+import org.apache.iotdb.commons.queryengine.common.NodeRef;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.AdditionExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.DivisionExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.EqualToExpression;
@@ -50,10 +52,8 @@ import org.apache.iotdb.db.queryengine.plan.expression.unary.LogicNotExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.NegationExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.RegularExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.ExpressionVisitor;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementNode;
 import org.apache.iotdb.db.queryengine.transformation.dag.memory.LayerMemoryAssigner;
-import org.apache.iotdb.db.queryengine.transformation.dag.udf.UDTFExecutor;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Accountable;

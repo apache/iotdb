@@ -19,18 +19,19 @@
 
 package org.apache.iotdb.db.utils;
 
+import org.apache.iotdb.calc.exception.QueryProcessException;
+import org.apache.iotdb.calc.utils.constant.SqlConstant;
+import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.commons.queryengine.utils.DateTimeUtils;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.protocol.thrift.OperationType;
 import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.literal.BinaryLiteral;
-import org.apache.iotdb.db.utils.constant.SqlConstant;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.service.rpc.thrift.TSAggregationQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSFastLastDataQueryForOneDeviceReq;
@@ -104,7 +105,8 @@ public class CommonUtils {
             if (TypeInferenceUtils.isNumber(value)) {
               return Long.parseLong(value);
             } else {
-              return DateTimeUtils.parseDateTimeExpressionToLong(StringUtils.trim(value), zoneId);
+              return DataNodeDateTimeUtils.parseDateTimeExpressionToLong(
+                  StringUtils.trim(value), zoneId);
             }
           } catch (Throwable e) {
             throw new NumberFormatException(

@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.transformer.unary.scalar;
 
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.queryengine.plan.expression.multi.builtin.helper.CastFunctionHelper;
+import org.apache.iotdb.calc.exception.QueryProcessException;
+import org.apache.iotdb.calc.transformation.dag.util.CastFunctionUtils;
 import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
 import org.apache.iotdb.db.queryengine.transformation.dag.transformer.unary.UnaryTransformer;
 
@@ -168,7 +168,7 @@ public class CastFunctionTransformer extends UnaryTransformer {
         builder = new IntColumnBuilder(null, count);
         for (int i = 0; i < count; i++) {
           if (!isNulls[i]) {
-            builder.writeInt(CastFunctionHelper.castLongToInt(values[i]));
+            builder.writeInt(CastFunctionUtils.castLongToInt(values[i]));
           } else {
             builder.appendNull();
           }
@@ -244,7 +244,7 @@ public class CastFunctionTransformer extends UnaryTransformer {
         builder = new IntColumnBuilder(null, count);
         for (int i = 0; i < count; i++) {
           if (!isNulls[i]) {
-            builder.writeInt(CastFunctionHelper.castFloatToInt(values[i]));
+            builder.writeInt(CastFunctionUtils.castFloatToInt(values[i]));
           } else {
             builder.appendNull();
           }
@@ -254,7 +254,7 @@ public class CastFunctionTransformer extends UnaryTransformer {
         builder = new LongColumnBuilder(null, count);
         for (int i = 0; i < count; i++) {
           if (!isNulls[i]) {
-            builder.writeLong(CastFunctionHelper.castFloatToLong(values[i]));
+            builder.writeLong(CastFunctionUtils.castFloatToLong(values[i]));
           } else {
             builder.appendNull();
           }
@@ -320,7 +320,7 @@ public class CastFunctionTransformer extends UnaryTransformer {
         builder = new IntColumnBuilder(null, count);
         for (int i = 0; i < count; i++) {
           if (!isNulls[i]) {
-            builder.writeInt(CastFunctionHelper.castDoubleToInt(values[i]));
+            builder.writeInt(CastFunctionUtils.castDoubleToInt(values[i]));
           } else {
             builder.appendNull();
           }
@@ -330,7 +330,7 @@ public class CastFunctionTransformer extends UnaryTransformer {
         builder = new LongColumnBuilder(null, count);
         for (int i = 0; i < count; i++) {
           if (!isNulls[i]) {
-            builder.writeLong(CastFunctionHelper.castDoubleToLong(values[i]));
+            builder.writeLong(CastFunctionUtils.castDoubleToLong(values[i]));
           } else {
             builder.appendNull();
           }
@@ -340,7 +340,7 @@ public class CastFunctionTransformer extends UnaryTransformer {
         builder = new FloatColumnBuilder(null, count);
         for (int i = 0; i < count; i++) {
           if (!isNulls[i]) {
-            builder.writeFloat(CastFunctionHelper.castDoubleToFloat(values[i]));
+            builder.writeFloat(CastFunctionUtils.castDoubleToFloat(values[i]));
           } else {
             builder.appendNull();
           }
@@ -495,7 +495,7 @@ public class CastFunctionTransformer extends UnaryTransformer {
         for (int i = 0; i < count; i++) {
           if (!isNulls[i]) {
             String str = values[i].getStringValue(TSFileConfig.STRING_CHARSET);
-            builder.writeFloat(CastFunctionHelper.castTextToFloat(str));
+            builder.writeFloat(CastFunctionUtils.castTextToFloat(str));
           } else {
             builder.appendNull();
           }
@@ -506,7 +506,7 @@ public class CastFunctionTransformer extends UnaryTransformer {
         for (int i = 0; i < count; i++) {
           if (!isNulls[i]) {
             String str = values[i].getStringValue(TSFileConfig.STRING_CHARSET);
-            builder.writeDouble(CastFunctionHelper.castTextToDouble(str));
+            builder.writeDouble(CastFunctionUtils.castTextToDouble(str));
           } else {
             builder.appendNull();
           }
@@ -517,7 +517,7 @@ public class CastFunctionTransformer extends UnaryTransformer {
         for (int i = 0; i < count; i++) {
           if (!isNulls[i]) {
             String str = values[i].getStringValue(TSFileConfig.STRING_CHARSET);
-            builder.writeBoolean(CastFunctionHelper.castTextToBoolean(str));
+            builder.writeBoolean(CastFunctionUtils.castTextToBoolean(str));
           } else {
             builder.appendNull();
           }

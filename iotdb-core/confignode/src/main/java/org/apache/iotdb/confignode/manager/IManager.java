@@ -119,6 +119,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetLocationForTriggerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipePluginTableResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetRegionGroupsByTimeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetRegionGroupsByTimeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListReq;
@@ -856,6 +858,13 @@ public interface IManager {
    * @return TGetSeriesSlotListResp.
    */
   TGetSeriesSlotListResp getSeriesSlotList(TGetSeriesSlotListReq req);
+
+  /**
+   * Get DataRegion groups that overlap a time range for the given database.
+   *
+   * @return TGetRegionGroupsByTimeResp.
+   */
+  TGetRegionGroupsByTimeResp getRegionGroupsByTime(TGetRegionGroupsByTimeReq req);
 
   TSStatus migrateRegion(TMigrateRegionReq req);
 

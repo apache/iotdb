@@ -19,6 +19,11 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.DataType;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.GenericDataType;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IAstVisitor;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Identifier;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NodeLocation;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 
 import javax.annotation.Nullable;
@@ -52,8 +57,8 @@ public class ViewFieldDefinition extends ColumnDefinition {
     return from;
   }
 
-  public <R, C> R accept(final AstVisitor<R, C> visitor, C context) {
-    return visitor.visitViewFieldDefinition(this, context);
+  public <R, C> R accept(final IAstVisitor<R, C> visitor, C context) {
+    return ((AstVisitor<R, C>) visitor).visitViewFieldDefinition(this, context);
   }
 
   @Override

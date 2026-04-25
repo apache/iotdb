@@ -19,35 +19,35 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate;
 
+import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.BetweenPredicate;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.BinaryLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.BooleanLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ComparisonExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.DoubleLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Extract;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.FloatLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.GenericLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IfExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.InListExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.InPredicate;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IsNotNullPredicate;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IsNullPredicate;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LikePredicate;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Literal;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LogicalExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LongLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NotExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NullIfExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SearchedCaseExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.StringLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolReference;
+import org.apache.iotdb.commons.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
-import org.apache.iotdb.db.exception.sql.SemanticException;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BetweenPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BinaryLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DoubleLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Extract;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FloatLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GenericLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IfExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InListExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IsNotNullPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IsNullPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LikePredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NotExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullIfExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SearchedCaseExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StringLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
-import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.math.DoubleMath;
@@ -76,12 +76,12 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
-import static org.apache.iotdb.db.queryengine.plan.expression.unary.LikeExpression.getEscapeCharacter;
+import static org.apache.iotdb.calc.plan.relational.planner.ir.GlobalTimePredicateExtractVisitor.isExtractTimeColumn;
+import static org.apache.iotdb.calc.plan.relational.planner.ir.GlobalTimePredicateExtractVisitor.isTimeColumn;
+import static org.apache.iotdb.calc.transformation.dag.util.CommonTransformUtils.getEscapeCharacter;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.ConvertPredicateToTimeFilterVisitor.getLongValue;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicatePushIntoScanChecker.isLiteral;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicatePushIntoScanChecker.isSymbolReference;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.GlobalTimePredicateExtractVisitor.isExtractTimeColumn;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.GlobalTimePredicateExtractVisitor.isTimeColumn;
 import static org.apache.tsfile.enums.TSDataType.INT32;
 import static org.apache.tsfile.enums.TSDataType.INT64;
 import static org.apache.tsfile.read.common.type.TimestampType.TIMESTAMP;
@@ -103,7 +103,7 @@ public class ConvertPredicateToFilterVisitor
   }
 
   @Override
-  protected Filter visitInPredicate(InPredicate node, Context context) {
+  public Filter visitInPredicate(InPredicate node, Context context) {
     Expression operand = node.getValue();
     if (isTimeColumn(operand, timeColumnName)) {
       return timeFilterVisitor.process(node, null);
@@ -376,12 +376,12 @@ public class ConvertPredicateToFilterVisitor
   }
 
   @Override
-  protected Filter visitIsNullPredicate(IsNullPredicate node, Context context) {
+  public Filter visitIsNullPredicate(IsNullPredicate node, Context context) {
     throw new IllegalArgumentException("IS NULL cannot be pushed down");
   }
 
   @Override
-  protected Filter visitIsNotNullPredicate(IsNotNullPredicate node, Context context) {
+  public Filter visitIsNotNullPredicate(IsNotNullPredicate node, Context context) {
     checkArgument(isSymbolReference(node.getValue()));
     SymbolReference operand = (SymbolReference) node.getValue();
     checkArgument(context.isMeasurementColumn(operand));
@@ -390,7 +390,7 @@ public class ConvertPredicateToFilterVisitor
   }
 
   @Override
-  protected Filter visitLikePredicate(LikePredicate node, Context context) {
+  public Filter visitLikePredicate(LikePredicate node, Context context) {
     checkArgument(isSymbolReference(node.getValue()));
     SymbolReference operand = (SymbolReference) node.getValue();
     checkArgument(context.isMeasurementColumn(operand));
@@ -408,7 +408,7 @@ public class ConvertPredicateToFilterVisitor
   }
 
   @Override
-  protected Filter visitLogicalExpression(LogicalExpression node, Context context) {
+  public Filter visitLogicalExpression(LogicalExpression node, Context context) {
     switch (node.getOperator()) {
       case OR:
         return FilterFactory.or(
@@ -423,12 +423,12 @@ public class ConvertPredicateToFilterVisitor
   }
 
   @Override
-  protected Filter visitNotExpression(NotExpression node, Context context) {
+  public Filter visitNotExpression(NotExpression node, Context context) {
     return FilterFactory.not(process(node.getValue(), context));
   }
 
   @Override
-  protected Filter visitComparisonExpression(ComparisonExpression node, Context context) {
+  public Filter visitComparisonExpression(ComparisonExpression node, Context context) {
     if (isTimeColumn(node.getLeft(), timeColumnName)
         || isTimeColumn(node.getRight(), timeColumnName)) {
       return timeFilterVisitor.process(node, null);
@@ -470,27 +470,27 @@ public class ConvertPredicateToFilterVisitor
   }
 
   @Override
-  protected Filter visitSimpleCaseExpression(SimpleCaseExpression node, Context context) {
+  public Filter visitSimpleCaseExpression(SimpleCaseExpression node, Context context) {
     throw new UnsupportedOperationException("Filter push down does not support CASE WHEN");
   }
 
   @Override
-  protected Filter visitSearchedCaseExpression(SearchedCaseExpression node, Context context) {
+  public Filter visitSearchedCaseExpression(SearchedCaseExpression node, Context context) {
     throw new UnsupportedOperationException("Filter push down does not support CASE WHEN");
   }
 
   @Override
-  protected Filter visitIfExpression(IfExpression node, Context context) {
+  public Filter visitIfExpression(IfExpression node, Context context) {
     throw new UnsupportedOperationException("Filter push down does not support IF");
   }
 
   @Override
-  protected Filter visitNullIfExpression(NullIfExpression node, Context context) {
+  public Filter visitNullIfExpression(NullIfExpression node, Context context) {
     throw new UnsupportedOperationException("Filter push down does not support NULLIF");
   }
 
   @Override
-  protected Filter visitBetweenPredicate(BetweenPredicate node, Context context) {
+  public Filter visitBetweenPredicate(BetweenPredicate node, Context context) {
     Expression firstExpression = node.getValue();
     Expression secondExpression = node.getMin();
     Expression thirdExpression = node.getMax();
