@@ -19,59 +19,29 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator;
 
+import org.apache.iotdb.calc.execution.operator.CommonOperatorContext;
+import org.apache.iotdb.calc.plan.planner.memory.MemoryReservationManager;
+import org.apache.iotdb.commons.queryengine.common.SessionInfo;
+import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.queryengine.common.SessionInfo;
-import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.driver.DriverContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 
-import io.airlift.units.Duration;
-import org.apache.tsfile.utils.Accountable;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
-import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.TimeUnit;
 
-/**
- * Contains information about {@link Operator} execution.
- *
- * <p>Not thread-safe.
- */
-public class OperatorContext implements Accountable {
-
-  private static Duration maxRunTime =
-      new Duration(
-          IoTDBDescriptor.getInstance().getConfig().getDriverTaskExecutionTimeSliceInMs(),
-          TimeUnit.MILLISECONDS);
+/** DataNode-specific operator context. */
+public class OperatorContext extends CommonOperatorContext {
 
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(OperatorContext.class);
-
-  private final int operatorId;
-  // It seems it's never used.
-  private final PlanNodeId planNodeId;
-  private String operatorType;
   private DriverContext driverContext;
-
-  private long totalExecutionTimeInNanos = 0L;
-  private long nextCalledCount = 0L;
-  private long hasNextCalledCount = 0L;
-
-  // SpecifiedInfo is used to record some custom information for the operator,
-  // which will be shown in the result of EXPLAIN ANALYZE to analyze the query.
-  private final Map<String, Object> specifiedInfo = new ConcurrentHashMap<>();
-  private long output = 0;
-  private long estimatedMemorySize;
 
   public OperatorContext(
       int operatorId, PlanNodeId planNodeId, String operatorType, DriverContext driverContext) {
-    this.operatorId = operatorId;
-    this.planNodeId = planNodeId;
-    this.operatorType = operatorType;
+    super(operatorId, planNodeId, operatorType);
     this.driverContext = driverContext;
   }
 
@@ -81,22 +51,8 @@ public class OperatorContext implements Accountable {
       PlanNodeId planNodeId,
       String operatorType,
       FragmentInstanceContext fragmentInstanceContext) {
-    this.operatorId = operatorId;
-    this.planNodeId = planNodeId;
-    this.operatorType = operatorType;
+    super(operatorId, planNodeId, operatorType);
     this.driverContext = new DriverContext(fragmentInstanceContext, 0);
-  }
-
-  public int getOperatorId() {
-    return operatorId;
-  }
-
-  public String getOperatorType() {
-    return operatorType;
-  }
-
-  public void setOperatorType(String operatorType) {
-    this.operatorType = operatorType;
   }
 
   public DriverContext getDriverContext() {
@@ -111,73 +67,23 @@ public class OperatorContext implements Accountable {
     return driverContext.getFragmentInstanceContext();
   }
 
-  public static Duration getMaxRunTime() {
-    return maxRunTime;
-  }
-
-  @TestOnly
-  public Duration getMaxRunTimeForTest() {
-    return maxRunTime;
-  }
-
-  public static void setMaxRunTime(Duration maxRunTime) {
-    OperatorContext.maxRunTime = maxRunTime;
-  }
-
   public SessionInfo getSessionInfo() {
     return getInstanceContext().getSessionInfo();
   }
 
-  public PlanNodeId getPlanNodeId() {
-    return planNodeId;
+  @Override
+  public MemoryReservationManager getMemoryReservationContext() {
+    return getInstanceContext().getMemoryReservationContext();
   }
 
-  public void recordExecutionTime(long executionTimeInNanos) {
-    this.totalExecutionTimeInNanos += executionTimeInNanos;
+  @Override
+  public int getFragmentId() {
+    return getInstanceContext().getId().getFragmentId().getId();
   }
 
-  public void recordNextCalled() {
-    this.nextCalledCount++;
-  }
-
-  public void recordHasNextCalled() {
-    this.hasNextCalledCount++;
-  }
-
-  public long getTotalExecutionTimeInNanos() {
-    return totalExecutionTimeInNanos;
-  }
-
-  public long getNextCalledCount() {
-    return nextCalledCount;
-  }
-
-  public long getHasNextCalledCount() {
-    return hasNextCalledCount;
-  }
-
-  public void setEstimatedMemorySize(long estimatedMemorySize) {
-    this.estimatedMemorySize = estimatedMemorySize;
-  }
-
-  public long getEstimatedMemorySize() {
-    return estimatedMemorySize;
-  }
-
-  public void addOutputRows(long outputRows) {
-    this.output += outputRows;
-  }
-
-  public long getOutputRows() {
-    return output;
-  }
-
-  public void recordSpecifiedInfo(String key, String value) {
-    specifiedInfo.put(key, value);
-  }
-
-  public Map<String, Object> getSpecifiedInfo() {
-    return specifiedInfo;
+  @Override
+  public int getPipelineId() {
+    return driverContext.getPipelineId();
   }
 
   @Override

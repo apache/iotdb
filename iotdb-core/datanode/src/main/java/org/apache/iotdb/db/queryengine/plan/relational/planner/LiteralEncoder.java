@@ -19,16 +19,16 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BinaryLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Cast;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DoubleLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FloatLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GenericLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StringLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.BinaryLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.BooleanLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Cast;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.DoubleLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.FloatLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.GenericLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LongLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NullLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.StringLiteral;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.common.conf.TSFileConfig;
@@ -44,10 +44,10 @@ import java.util.List;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
-import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl.isBlobType;
-import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl.isBool;
-import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl.isCharType;
-import static org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignatureTranslator.toSqlType;
+import static org.apache.iotdb.calc.plan.relational.metadata.CommonMetadataUtils.isBlobType;
+import static org.apache.iotdb.calc.plan.relational.metadata.CommonMetadataUtils.isBool;
+import static org.apache.iotdb.calc.plan.relational.metadata.CommonMetadataUtils.isCharType;
+import static org.apache.iotdb.commons.queryengine.plan.relational.type.TypeSignatureTranslator.toSqlType;
 import static org.apache.tsfile.read.common.type.DoubleType.DOUBLE;
 import static org.apache.tsfile.read.common.type.FloatType.FLOAT;
 import static org.apache.tsfile.read.common.type.IntType.INT32;

@@ -22,11 +22,11 @@ package org.apache.iotdb.db.pipe.sink.protocol.opcua.server;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeNonCriticalException;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
+import org.apache.iotdb.commons.queryengine.utils.DateTimeUtils;
+import org.apache.iotdb.commons.queryengine.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.db.pipe.sink.protocol.opcua.OpcUaSink;
 import org.apache.iotdb.db.pipe.sink.util.sorter.PipeTableModelTabletEventSorter;
 import org.apache.iotdb.db.pipe.sink.util.sorter.PipeTreeModelTabletEventSorter;
-import org.apache.iotdb.db.utils.DateTimeUtils;
-import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.pipe.api.event.Event;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
@@ -294,14 +294,14 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
       }
       final UaVariableNode measurementNode;
       final long utcTimestamp = timestampToUtc(timestamps.get(timestamps.size() > 1 ? i : 0));
-      final DataValue dataValue =
-          new DataValue(
-              new Variant(values.get(i)),
-              currentQuality,
-              new DateTime(utcTimestamp),
-              new DateTime());
 
       if (Objects.isNull(sink.getValueName())) {
+        final DataValue dataValue =
+            new DataValue(
+                new Variant(values.get(i)),
+                currentQuality,
+                new DateTime(utcTimestamp),
+                new DateTime());
         measurementNode = addNode(name, currentFolder, folderNode, dataValue, type);
         if (Objects.isNull(measurementNode.getValue())
             || Objects.isNull(measurementNode.getValue().getSourceTime())

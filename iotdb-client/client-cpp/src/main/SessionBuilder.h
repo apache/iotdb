@@ -24,82 +24,83 @@
 
 class SessionBuilder : public AbstractSessionBuilder {
 public:
-    SessionBuilder* host(const std::string &host) {
-        AbstractSessionBuilder::host = host;
-        return this;
-    }
+  SessionBuilder* host(const std::string& host) {
+    AbstractSessionBuilder::host = host;
+    return this;
+  }
 
-    SessionBuilder* rpcPort(int rpcPort) {
-        AbstractSessionBuilder::rpcPort = rpcPort;
-        return this;
-    }
+  SessionBuilder* rpcPort(int rpcPort) {
+    AbstractSessionBuilder::rpcPort = rpcPort;
+    return this;
+  }
 
-    SessionBuilder* useSSL(bool useSSL) {
-        AbstractSessionBuilder::useSSL = useSSL;
-        return this;
-    }
+  SessionBuilder* useSSL(bool useSSL) {
+    AbstractSessionBuilder::useSSL = useSSL;
+    return this;
+  }
 
-    SessionBuilder* trustCertFilePath(const std::string &trustCertFilePath) {
-        AbstractSessionBuilder::trustCertFilePath = trustCertFilePath;
-        return this;
-    }
+  SessionBuilder* trustCertFilePath(const std::string& trustCertFilePath) {
+    AbstractSessionBuilder::trustCertFilePath = trustCertFilePath;
+    return this;
+  }
 
-    SessionBuilder* username(const std::string &username) {
-        AbstractSessionBuilder::username = username;
-        return this;
-    }
+  SessionBuilder* username(const std::string& username) {
+    AbstractSessionBuilder::username = username;
+    return this;
+  }
 
-    SessionBuilder* password(const std::string &password) {
-        AbstractSessionBuilder::password = password;
-        return this;
-    }
+  SessionBuilder* password(const std::string& password) {
+    AbstractSessionBuilder::password = password;
+    return this;
+  }
 
-    SessionBuilder* zoneId(const std::string &zoneId) {
-        AbstractSessionBuilder::zoneId = zoneId;
-        return this;
-    }
+  SessionBuilder* zoneId(const std::string& zoneId) {
+    AbstractSessionBuilder::zoneId = zoneId;
+    return this;
+  }
 
-    SessionBuilder* fetchSize(int fetchSize) {
-        AbstractSessionBuilder::fetchSize = fetchSize;
-        return this;
-    }
+  SessionBuilder* fetchSize(int fetchSize) {
+    AbstractSessionBuilder::fetchSize = fetchSize;
+    return this;
+  }
 
-    SessionBuilder* database(const std::string &database) {
-        AbstractSessionBuilder::database = database;
-        return this;
-    }
+  SessionBuilder* database(const std::string& database) {
+    AbstractSessionBuilder::database = database;
+    return this;
+  }
 
-    SessionBuilder* nodeUrls(const std::vector<std::string>& nodeUrls) {
-        AbstractSessionBuilder::nodeUrls = nodeUrls;
-        return this;
-    }
+  SessionBuilder* nodeUrls(const std::vector<std::string>& nodeUrls) {
+    AbstractSessionBuilder::nodeUrls = nodeUrls;
+    return this;
+  }
 
-    SessionBuilder* enableAutoFetch(bool enableAutoFetch) {
-        AbstractSessionBuilder::enableAutoFetch = enableAutoFetch;
-        return this;
-    }
+  SessionBuilder* enableAutoFetch(bool enableAutoFetch) {
+    AbstractSessionBuilder::enableAutoFetch = enableAutoFetch;
+    return this;
+  }
 
-    SessionBuilder* enableRedirections(bool enableRedirections) {
-        AbstractSessionBuilder::enableRedirections = enableRedirections;
-        return this;
-    }
+  SessionBuilder* enableRedirections(bool enableRedirections) {
+    AbstractSessionBuilder::enableRedirections = enableRedirections;
+    return this;
+  }
 
-    SessionBuilder* enableRPCCompression(bool enableRPCCompression) {
-        AbstractSessionBuilder::enableRPCCompression = enableRPCCompression;
-        return this;
-    }
+  SessionBuilder* enableRPCCompression(bool enableRPCCompression) {
+    AbstractSessionBuilder::enableRPCCompression = enableRPCCompression;
+    return this;
+  }
 
-   std::shared_ptr<Session> build() {
-        if (!AbstractSessionBuilder::nodeUrls.empty() &&
-            (AbstractSessionBuilder::host != DEFAULT_HOST ||
-                AbstractSessionBuilder::rpcPort != DEFAULT_RPC_PORT)) {
-            throw IoTDBException("Session builder does not support setting node urls and host/rpcPort at the same time.");
-        }
-        sqlDialect = "tree";
-        auto newSession = std::make_shared<Session>(this);
-        newSession->open(false);
-        return newSession;
-   }
+  std::shared_ptr<Session> build() {
+    if (!AbstractSessionBuilder::nodeUrls.empty() &&
+        (AbstractSessionBuilder::host != DEFAULT_HOST ||
+         AbstractSessionBuilder::rpcPort != DEFAULT_RPC_PORT)) {
+      throw IoTDBException(
+          "Session builder does not support setting node urls and host/rpcPort at the same time.");
+    }
+    sqlDialect = "tree";
+    auto newSession = std::make_shared<Session>(this);
+    newSession->open(false);
+    return newSession;
+  }
 };
 
 #endif // IOTDB_SESSION_BUILDER_H

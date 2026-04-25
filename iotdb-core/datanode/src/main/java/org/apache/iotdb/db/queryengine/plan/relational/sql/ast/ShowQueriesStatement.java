@@ -19,6 +19,13 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IAstVisitor;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NodeLocation;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Offset;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.OrderBy;
+
 import java.util.Optional;
 
 public class ShowQueriesStatement extends ShowStatement {
@@ -34,7 +41,7 @@ public class ShowQueriesStatement extends ShowStatement {
   }
 
   @Override
-  public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
-    return visitor.visitShowQueriesStatement(this, context);
+  public <R, C> R accept(IAstVisitor<R, C> visitor, C context) {
+    return ((AstVisitor<R, C>) visitor).visitShowQueriesStatement(this, context);
   }
 }

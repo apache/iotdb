@@ -19,20 +19,20 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule;
 
-import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.calc.plan.relational.utils.matching.Captures;
+import org.apache.iotdb.calc.plan.relational.utils.matching.Pattern;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.Measure;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.PatternRecognitionNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.rowpattern.ExpressionAndValuePointers;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Rule;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.Measure;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PatternRecognitionNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.ExpressionAndValuePointers;
-import org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Captures;
-import org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Pattern;
 
 import com.google.common.collect.ImmutableSet;
 
+import static org.apache.iotdb.commons.queryengine.plan.relational.planner.node.RowsPerMatch.ONE;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.Util.restrictChildOutputs;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.PatternRecognition.rowsPerMatch;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.patternRecognition;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.RowsPerMatch.ONE;
 
 /**
  * This rule restricts the inputs to PatternRecognitionNode based on which symbols are used by the

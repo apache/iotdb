@@ -313,6 +313,17 @@ struct TCountTimeSlotListResp {
     2: optional i64 count
 }
 
+struct TGetRegionGroupsByTimeReq {
+    1: required string database
+    2: required i64 startTime
+    3: required i64 endTime
+}
+
+struct TGetRegionGroupsByTimeResp {
+    1: required common.TSStatus status
+    2: optional set<common.TRegionReplicaSet> regionReplicaSets
+}
+
 struct TGetSeriesSlotListReq {
     1: required string database
     2: required common.TConsensusGroupType type
@@ -1970,6 +1981,9 @@ service IConfigNodeRPCService {
 
   /** Get the given database's assigned SeriesSlots */
   TGetSeriesSlotListResp getSeriesSlotList(TGetSeriesSlotListReq req)
+
+  /** Get a database's DataRegion groups that overlap a time range */
+  TGetRegionGroupsByTimeResp getRegionGroupsByTime(TGetRegionGroupsByTimeReq req)
 
   // ====================================================
   // CQ

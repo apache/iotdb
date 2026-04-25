@@ -19,12 +19,12 @@
 
 package org.apache.iotdb.db.queryengine.plan.expression.multi.builtin.helper;
 
-import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.calc.transformation.dag.column.ColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.unary.scalar.ReplaceFunctionColumnTransformer;
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.builtin.BuiltInScalarFunctionHelper;
 import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.ReplaceFunctionColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.transformer.Transformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.transformer.unary.scalar.ReplaceFunctionTransformer;
 
@@ -33,8 +33,8 @@ import org.apache.tsfile.read.common.type.TypeFactory;
 
 import java.util.Map;
 
-import static org.apache.iotdb.db.utils.constant.SqlConstant.REPLACE_FROM;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.REPLACE_TO;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.REPLACE_FROM;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.REPLACE_TO;
 
 public class ReplaceFunctionHelper implements BuiltInScalarFunctionHelper {
   @Override

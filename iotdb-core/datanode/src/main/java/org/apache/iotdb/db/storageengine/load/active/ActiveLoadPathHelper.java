@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.storageengine.load.active;
 
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator;
 

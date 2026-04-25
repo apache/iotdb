@@ -37,6 +37,7 @@
         <module>metrics</module>
         <module>node-commons</module>
         <module>relational-grammar</module>
+        <module>calc-commons</module>
     </modules>
     <profiles>
         <profile>

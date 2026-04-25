@@ -19,20 +19,20 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
-import org.apache.iotdb.db.exception.sql.SemanticException;
-import org.apache.iotdb.db.queryengine.common.SessionInfo;
+import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.commons.queryengine.common.SessionInfo;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.BinaryLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.BooleanLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.DoubleLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.FloatLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.GenericLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Literal;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LongLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NullLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.StringLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.TimeDurationLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BinaryLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DoubleLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FloatLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GenericLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StringLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TimeDurationLiteral;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.read.common.type.DateType;
@@ -41,7 +41,7 @@ import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
 
 import static java.util.Objects.requireNonNull;
-import static org.apache.iotdb.db.utils.TimestampPrecisionUtils.currPrecision;
+import static org.apache.iotdb.commons.queryengine.utils.TimestampPrecisionUtils.currPrecision;
 
 public class LiteralInterpreter {
 
@@ -61,7 +61,7 @@ public class LiteralInterpreter {
     return new LiteralVisitor(type).process(node, null);
   }
 
-  private class LiteralVisitor extends AstVisitor<Object, Void> {
+  private class LiteralVisitor implements AstVisitor<Object, Void> {
     private final Type type;
 
     private LiteralVisitor(Type type) {
@@ -69,42 +69,42 @@ public class LiteralInterpreter {
     }
 
     @Override
-    protected Object visitLiteral(Literal node, Void context) {
+    public Object visitLiteral(Literal node, Void context) {
       throw new UnsupportedOperationException("Unhandled literal type: " + node);
     }
 
     @Override
-    protected Boolean visitBooleanLiteral(BooleanLiteral node, Void context) {
+    public Boolean visitBooleanLiteral(BooleanLiteral node, Void context) {
       return node.getValue();
     }
 
     @Override
-    protected Long visitLongLiteral(LongLiteral node, Void context) {
+    public Long visitLongLiteral(LongLiteral node, Void context) {
       return node.getParsedValue();
     }
 
     @Override
-    protected Double visitDoubleLiteral(DoubleLiteral node, Void context) {
+    public Double visitDoubleLiteral(DoubleLiteral node, Void context) {
       return node.getValue();
     }
 
     @Override
-    protected Float visitFloatLiteral(FloatLiteral node, Void context) {
+    public Float visitFloatLiteral(FloatLiteral node, Void context) {
       return node.getValue();
     }
 
     @Override
-    protected Binary visitStringLiteral(StringLiteral node, Void context) {
+    public Binary visitStringLiteral(StringLiteral node, Void context) {
       return new Binary(node.getValue(), TSFileConfig.STRING_CHARSET);
     }
 
     @Override
-    protected Binary visitBinaryLiteral(BinaryLiteral node, Void context) {
+    public Binary visitBinaryLiteral(BinaryLiteral node, Void context) {
       return new Binary(node.getValue());
     }
 
     @Override
-    protected Object visitGenericLiteral(GenericLiteral node, Void context) {
+    public Object visitGenericLiteral(GenericLiteral node, Void context) {
       if (type.equals(TimestampType.TIMESTAMP)) {
         return Long.parseLong(node.getValue());
       } else if (type.equals(DateType.DATE)) {
@@ -115,12 +115,12 @@ public class LiteralInterpreter {
     }
 
     @Override
-    protected Object visitNullLiteral(NullLiteral node, Void context) {
+    public Object visitNullLiteral(NullLiteral node, Void context) {
       return null;
     }
 
     @Override
-    protected Long visitTimeDurationLiteral(TimeDurationLiteral node, Void context) {
+    public Long visitTimeDurationLiteral(TimeDurationLiteral node, Void context) {
       return node.getValue().getTotalDuration(currPrecision);
     }
   }

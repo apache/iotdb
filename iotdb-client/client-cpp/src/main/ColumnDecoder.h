@@ -28,9 +28,9 @@ class Column;
 
 class ColumnDecoder {
 public:
-    virtual ~ColumnDecoder() = default;
-    virtual std::unique_ptr<Column> readColumn(
-        MyStringBuffer& buffer, TSDataType::TSDataType dataType, int32_t positionCount) = 0;
+  virtual ~ColumnDecoder() = default;
+  virtual std::unique_ptr<Column>
+  readColumn(MyStringBuffer& buffer, TSDataType::TSDataType dataType, int32_t positionCount) = 0;
 };
 
 std::vector<bool> deserializeNullIndicators(MyStringBuffer& buffer, int32_t positionCount);
@@ -38,38 +38,38 @@ std::vector<bool> deserializeBooleanArray(MyStringBuffer& buffer, int32_t size);
 
 class BaseColumnDecoder : public ColumnDecoder {
 public:
-    std::unique_ptr<Column> readColumn(
-        MyStringBuffer& buffer, TSDataType::TSDataType dataType, int32_t positionCount) override;
+  std::unique_ptr<Column> readColumn(MyStringBuffer& buffer, TSDataType::TSDataType dataType,
+                                     int32_t positionCount) override;
 };
 
 class Int32ArrayColumnDecoder : public BaseColumnDecoder {
 public:
-    std::unique_ptr<Column> readColumn(
-        MyStringBuffer& buffer, TSDataType::TSDataType dataType, int32_t positionCount) override;
+  std::unique_ptr<Column> readColumn(MyStringBuffer& buffer, TSDataType::TSDataType dataType,
+                                     int32_t positionCount) override;
 };
 
 class Int64ArrayColumnDecoder : public BaseColumnDecoder {
 public:
-    std::unique_ptr<Column> readColumn(
-        MyStringBuffer& buffer, TSDataType::TSDataType dataType, int32_t positionCount) override;
+  std::unique_ptr<Column> readColumn(MyStringBuffer& buffer, TSDataType::TSDataType dataType,
+                                     int32_t positionCount) override;
 };
 
 class ByteArrayColumnDecoder : public BaseColumnDecoder {
 public:
-    std::unique_ptr<Column> readColumn(
-        MyStringBuffer& buffer, TSDataType::TSDataType dataType, int32_t positionCount) override;
+  std::unique_ptr<Column> readColumn(MyStringBuffer& buffer, TSDataType::TSDataType dataType,
+                                     int32_t positionCount) override;
 };
 
 class BinaryArrayColumnDecoder : public BaseColumnDecoder {
 public:
-    std::unique_ptr<Column> readColumn(
-        MyStringBuffer& buffer, TSDataType::TSDataType dataType, int32_t positionCount) override;
+  std::unique_ptr<Column> readColumn(MyStringBuffer& buffer, TSDataType::TSDataType dataType,
+                                     int32_t positionCount) override;
 };
 
 class RunLengthColumnDecoder : public BaseColumnDecoder {
 public:
-    std::unique_ptr<Column> readColumn(
-        MyStringBuffer& buffer, TSDataType::TSDataType dataType, int32_t positionCount) override;
+  std::unique_ptr<Column> readColumn(MyStringBuffer& buffer, TSDataType::TSDataType dataType,
+                                     int32_t positionCount) override;
 };
 
 #endif

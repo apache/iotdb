@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.expression.visitor.cartesian;
 
+import org.apache.iotdb.calc.utils.constant.SqlConstant;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -27,7 +28,6 @@ import org.apache.iotdb.db.queryengine.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
-import org.apache.iotdb.db.utils.constant.SqlConstant;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.external.commons.lang3.Validate;

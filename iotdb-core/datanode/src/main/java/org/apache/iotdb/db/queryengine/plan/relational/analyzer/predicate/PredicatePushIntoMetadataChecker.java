@@ -19,41 +19,41 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate;
 
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ArithmeticBinaryExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ArithmeticUnaryExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ArithmeticBinaryExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ArithmeticUnaryExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.BetweenPredicate;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.BinaryLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.BooleanLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Cast;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.CoalesceExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ComparisonExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.CurrentDatabase;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.CurrentTime;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.CurrentUser;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.DecimalLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.DoubleLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.FloatLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.FunctionCall;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.GenericLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IfExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.InListExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.InPredicate;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IsNotNullPredicate;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IsNullPredicate;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LikePredicate;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Literal;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LogicalExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LongLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NotExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NullIfExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NullLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SearchedCaseExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.StringLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolReference;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Trim;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BetweenPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BinaryLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Cast;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CoalesceExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CurrentDatabase;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CurrentTime;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CurrentUser;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DecimalLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DoubleLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FloatLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GenericLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IfExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InListExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IsNotNullPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IsNullPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LikePredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NotExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullIfExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SearchedCaseExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StringLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Trim;
 
 import java.util.List;
 import java.util.Set;
@@ -63,7 +63,7 @@ import java.util.Set;
  * attributeColumn = 'XXX' 4. 'XXX' = attributeColumn 5. tagColumn/attributeColumn IS NULL 6. using
  * or to combine the above expression
  */
-public class PredicatePushIntoMetadataChecker extends AstVisitor<Boolean, Void> {
+public class PredicatePushIntoMetadataChecker implements AstVisitor<Boolean, Void> {
 
   private final Set<String> idOrAttributeColumnNames;
 
@@ -82,125 +82,124 @@ public class PredicatePushIntoMetadataChecker extends AstVisitor<Boolean, Void> 
   }
 
   @Override
-  protected Boolean visitArithmeticBinary(
-      final ArithmeticBinaryExpression node, final Void context) {
+  public Boolean visitArithmeticBinary(final ArithmeticBinaryExpression node, final Void context) {
     return node.getLeft().accept(this, context) && node.getRight().accept(this, context);
   }
 
   @Override
-  protected Boolean visitArithmeticUnary(final ArithmeticUnaryExpression node, final Void context) {
+  public Boolean visitArithmeticUnary(final ArithmeticUnaryExpression node, final Void context) {
     return node.getValue().accept(this, context);
   }
 
   @Override
-  protected Boolean visitBetweenPredicate(final BetweenPredicate node, final Void context) {
+  public Boolean visitBetweenPredicate(final BetweenPredicate node, final Void context) {
     return node.getValue().accept(this, context)
         && node.getMin().accept(this, context)
         && node.getMax().accept(this, context);
   }
 
   @Override
-  protected Boolean visitCast(final Cast node, final Void context) {
+  public Boolean visitCast(final Cast node, final Void context) {
     return node.getExpression().accept(this, context);
   }
 
   @Override
-  protected Boolean visitBooleanLiteral(final BooleanLiteral node, final Void context) {
+  public Boolean visitBooleanLiteral(final BooleanLiteral node, final Void context) {
     return true;
   }
 
   @Override
-  protected Boolean visitBinaryLiteral(final BinaryLiteral node, final Void context) {
+  public Boolean visitBinaryLiteral(final BinaryLiteral node, final Void context) {
     return true;
   }
 
   @Override
-  protected Boolean visitStringLiteral(final StringLiteral node, final Void context) {
+  public Boolean visitStringLiteral(final StringLiteral node, final Void context) {
     return true;
   }
 
   @Override
-  protected Boolean visitLongLiteral(final LongLiteral node, final Void context) {
+  public Boolean visitLongLiteral(final LongLiteral node, final Void context) {
     return true;
   }
 
   @Override
-  protected Boolean visitDoubleLiteral(final DoubleLiteral node, final Void context) {
+  public Boolean visitDoubleLiteral(final DoubleLiteral node, final Void context) {
     return true;
   }
 
   @Override
-  protected Boolean visitFloatLiteral(final FloatLiteral node, final Void context) {
+  public Boolean visitFloatLiteral(final FloatLiteral node, final Void context) {
     return true;
   }
 
   @Override
-  protected Boolean visitDecimalLiteral(final DecimalLiteral node, final Void context) {
+  public Boolean visitDecimalLiteral(final DecimalLiteral node, final Void context) {
     return true;
   }
 
   @Override
-  protected Boolean visitGenericLiteral(final GenericLiteral node, final Void context) {
+  public Boolean visitGenericLiteral(final GenericLiteral node, final Void context) {
     return true;
   }
 
   @Override
-  protected Boolean visitNullLiteral(final NullLiteral node, final Void context) {
+  public Boolean visitNullLiteral(final NullLiteral node, final Void context) {
     return true;
   }
 
   @Override
-  protected Boolean visitComparisonExpression(final ComparisonExpression node, final Void context) {
+  public Boolean visitComparisonExpression(final ComparisonExpression node, final Void context) {
     return node.getLeft().accept(this, context) && node.getRight().accept(this, context);
   }
 
   @Override
-  protected Boolean visitCurrentDatabase(final CurrentDatabase node, final Void context) {
+  public Boolean visitCurrentDatabase(final CurrentDatabase node, final Void context) {
     return true;
   }
 
   @Override
-  protected Boolean visitCurrentTime(final CurrentTime node, final Void context) {
+  public Boolean visitCurrentTime(final CurrentTime node, final Void context) {
     return true;
   }
 
   @Override
-  protected Boolean visitCurrentUser(final CurrentUser node, final Void context) {
+  public Boolean visitCurrentUser(final CurrentUser node, final Void context) {
     return true;
   }
 
   @Override
-  protected Boolean visitFunctionCall(final FunctionCall node, final Void context) {
+  public Boolean visitFunctionCall(final FunctionCall node, final Void context) {
     return node.getArguments().stream().allMatch(expression -> expression.accept(this, context));
   }
 
   @Override
-  protected Boolean visitInPredicate(final InPredicate node, final Void context) {
+  public Boolean visitInPredicate(final InPredicate node, final Void context) {
     return node.getValue().accept(this, context) && node.getValueList().accept(this, context);
   }
 
   @Override
-  protected Boolean visitInListExpression(final InListExpression node, final Void context) {
+  public Boolean visitInListExpression(final InListExpression node, final Void context) {
     return node.getValues().stream().allMatch(expression -> expression.accept(this, context));
   }
 
   @Override
-  protected Boolean visitIsNullPredicate(final IsNullPredicate node, final Void context) {
+  public Boolean visitIsNullPredicate(final IsNullPredicate node, final Void context) {
     return node.getValue().accept(this, context);
   }
 
   @Override
-  protected Boolean visitIsNotNullPredicate(final IsNotNullPredicate node, final Void context) {
+  public Boolean visitIsNotNullPredicate(final IsNotNullPredicate node, final Void context) {
     return node.getValue().accept(this, context);
   }
 
   @Override
-  protected Boolean visitLikePredicate(final LikePredicate node, final Void context) {
+  public Boolean visitLikePredicate(final LikePredicate node, final Void context) {
     return node.getValue().accept(this, context);
   }
 
   @Override
-  protected Boolean visitLogicalExpression(final LogicalExpression node, final Void context) {
+  public Boolean visitLogicalExpression(final LogicalExpression node, final Void context) {
     final List<Expression> children = node.getTerms();
     for (final Expression child : children) {
       final Boolean result = process(child, context);
@@ -215,7 +214,7 @@ public class PredicatePushIntoMetadataChecker extends AstVisitor<Boolean, Void> 
   }
 
   @Override
-  protected Boolean visitNotExpression(final NotExpression node, final Void context) {
+  public Boolean visitNotExpression(final NotExpression node, final Void context) {
     if (node.getValue() instanceof Literal) {
       return Boolean.FALSE;
     }
@@ -223,44 +222,40 @@ public class PredicatePushIntoMetadataChecker extends AstVisitor<Boolean, Void> 
   }
 
   @Override
-  protected Boolean visitSymbolReference(final SymbolReference node, final Void context) {
+  public Boolean visitSymbolReference(final SymbolReference node, final Void context) {
     return idOrAttributeColumnNames.contains(node.getName());
   }
 
   @Override
-  protected Boolean visitCoalesceExpression(final CoalesceExpression node, final Void context) {
+  public Boolean visitCoalesceExpression(final CoalesceExpression node, final Void context) {
     return Boolean.FALSE;
   }
 
   @Override
-  protected Boolean visitSimpleCaseExpression(final SimpleCaseExpression node, final Void context) {
+  public Boolean visitSimpleCaseExpression(final SimpleCaseExpression node, final Void context) {
     return Boolean.FALSE;
   }
 
   @Override
-  protected Boolean visitSearchedCaseExpression(
+  public Boolean visitSearchedCaseExpression(
       final SearchedCaseExpression node, final Void context) {
     return Boolean.FALSE;
   }
 
   @Override
-  protected Boolean visitTrim(final Trim node, final Void context) {
+  public Boolean visitTrim(final Trim node, final Void context) {
     return node.getTrimSource().accept(this, context)
         && (!node.getTrimCharacter().isPresent()
             || node.getTrimCharacter().orElse(null).accept(this, context));
   }
 
   @Override
-  protected Boolean visitIfExpression(final IfExpression node, final Void context) {
+  public Boolean visitIfExpression(final IfExpression node, final Void context) {
     return Boolean.FALSE;
   }
 
   @Override
-  protected Boolean visitNullIfExpression(final NullIfExpression node, final Void context) {
+  public Boolean visitNullIfExpression(final NullIfExpression node, final Void context) {
     return Boolean.FALSE;
-  }
-
-  public static boolean isStringLiteral(final Expression expression) {
-    return expression instanceof StringLiteral;
   }
 }

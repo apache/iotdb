@@ -19,14 +19,14 @@
 
 package org.apache.iotdb.db.pipe.source.schemaregion;
 
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.CreateOrUpdateTableDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateOrUpdateDevice;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
 
-public class PipeTableStatementToPlanVisitor extends AstVisitor<PlanNode, Void> {
+public class PipeTableStatementToPlanVisitor implements AstVisitor<PlanNode, Void> {
   @Override
   public PlanNode visitNode(final Node node, final Void context) {
     throw new UnsupportedOperationException(

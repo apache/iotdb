@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.expression.visitor.predicate;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.queryengine.utils.DateTimeUtils;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.ExpressionType;
@@ -41,7 +42,6 @@ import org.apache.iotdb.db.queryengine.plan.expression.unary.IsNullExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.LikeExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.LogicNotExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.RegularExpression;
-import org.apache.iotdb.db.utils.DateTimeUtils;
 
 import com.google.common.io.BaseEncoding;
 import org.apache.tsfile.common.conf.TSFileConfig;

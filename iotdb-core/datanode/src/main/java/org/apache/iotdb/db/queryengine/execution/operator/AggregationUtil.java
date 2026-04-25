@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator;
 
+import org.apache.iotdb.commons.queryengine.plan.udf.BuiltinAggregationFunction;
 import org.apache.iotdb.db.queryengine.execution.aggregation.TreeAggregator;
 import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.ITimeRangeIterator;
 import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.SingleTimeWindowIterator;
@@ -28,7 +29,6 @@ import org.apache.iotdb.db.queryengine.execution.operator.window.TimeWindow;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByTimeParameter;
-import org.apache.iotdb.db.queryengine.plan.udf.BuiltinAggregationFunction;
 import org.apache.iotdb.db.queryengine.statistics.StatisticsManager;
 
 import org.apache.tsfile.block.column.Column;

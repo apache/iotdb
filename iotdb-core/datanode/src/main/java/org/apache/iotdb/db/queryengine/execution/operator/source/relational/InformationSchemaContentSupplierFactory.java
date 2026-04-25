@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational;
 
+import org.apache.iotdb.calc.plan.planner.CommonOperatorUtils;
 import org.apache.iotdb.common.rpc.thrift.Model;
 import org.apache.iotdb.common.rpc.thrift.TAINodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
@@ -33,6 +34,14 @@ import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.agent.plugin.meta.PipePluginMeta;
+import org.apache.iotdb.commons.queryengine.common.ConnectionInfo;
+import org.apache.iotdb.commons.queryengine.common.SqlDialect;
+import org.apache.iotdb.commons.queryengine.plan.relational.function.TableBuiltinTableFunction;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ComparisonExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.StringLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.util.ReservedIdentifiers;
+import org.apache.iotdb.commons.queryengine.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.schema.table.InformationSchema;
 import org.apache.iotdb.commons.schema.table.TableNodeStatus;
@@ -68,9 +77,7 @@ import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeSinglePipeMetrics;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
-import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
-import org.apache.iotdb.db.queryengine.common.ConnectionInfo;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.execution.QueryState;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
@@ -78,14 +85,9 @@ import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowCreateViewTask;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanGraphPrinter;
-import org.apache.iotdb.db.queryengine.plan.relational.function.TableBuiltinTableFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableDiskUsageInformationSchemaTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StringLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.util.ReservedIdentifiers;
 import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlKeywords;
 import org.apache.iotdb.db.schemaengine.table.InformationSchemaUtils;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
@@ -94,7 +96,6 @@ import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageIndex.Da
 import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageIndex.TableDiskUsageIndexReader;
 import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageIndex.TimePartitionTableSizeQueryContext;
 import org.apache.iotdb.db.utils.MathUtils;
-import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -272,7 +273,7 @@ public class InformationSchemaContentSupplierFactory {
     protected void constructLine() {
       final IQueryExecution queryExecution = queryExecutions.get(nextConsumedIndex);
 
-      if (queryExecution.getSQLDialect().equals(IClientSession.SqlDialect.TABLE)) {
+      if (queryExecution.getSQLDialect().equals(SqlDialect.TABLE)) {
         columnBuilders[0].writeBinary(BytesUtils.valueOf(queryExecution.getQueryId()));
         columnBuilders[1].writeLong(
             TimestampPrecisionUtils.convertToCurrPrecision(
@@ -1546,8 +1547,7 @@ public class InformationSchemaContentSupplierFactory {
       final TsBlock result =
           resultBuilder.build(
               new RunLengthEncodedColumn(
-                  AbstractTableScanOperator.TIME_COLUMN_TEMPLATE,
-                  resultBuilder.getPositionCount()));
+                  CommonOperatorUtils.TIME_COLUMN_TEMPLATE, resultBuilder.getPositionCount()));
       resultBuilder.reset();
       return result;
     }
@@ -1573,7 +1573,9 @@ public class InformationSchemaContentSupplierFactory {
     protected void constructLine() {
       ConnectionInfo connectionInfo = sessionConnectionIterator.next();
       columnBuilders[0].writeBinary(
-          new Binary(String.valueOf(connectionInfo.getDataNodeId()), TSFileConfig.STRING_CHARSET));
+          new Binary(
+              String.valueOf(IoTDBDescriptor.getInstance().getConfig().getDataNodeId()),
+              TSFileConfig.STRING_CHARSET));
       columnBuilders[1].writeBinary(
           new Binary(String.valueOf(connectionInfo.getUserId()), TSFileConfig.STRING_CHARSET));
       columnBuilders[2].writeBinary(

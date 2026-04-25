@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.exception.load;
 
-import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 public class LoadAnalyzeTableColumnDisorderException extends SemanticException {

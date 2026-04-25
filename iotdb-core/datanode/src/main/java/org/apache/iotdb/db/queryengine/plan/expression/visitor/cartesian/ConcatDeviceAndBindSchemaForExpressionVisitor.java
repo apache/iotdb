@@ -19,9 +19,10 @@
 
 package org.apache.iotdb.db.queryengine.plan.expression.visitor.cartesian;
 
+import org.apache.iotdb.calc.utils.constant.SqlConstant;
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils;
@@ -30,7 +31,6 @@ import org.apache.iotdb.db.queryengine.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
-import org.apache.iotdb.db.utils.constant.SqlConstant;
 
 import org.apache.tsfile.external.commons.lang3.Validate;
 
@@ -41,11 +41,11 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.COUNT_TIME;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.cartesianProduct;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.reconstructFunctionExpressionsWithMemoryCheck;
 import static org.apache.iotdb.db.queryengine.plan.expression.visitor.cartesian.BindSchemaForExpressionVisitor.transformViewPath;
 import static org.apache.iotdb.db.utils.TypeInferenceUtils.bindTypeForBuiltinAggregationNonSeriesInputExpressions;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.COUNT_TIME;
 
 public class ConcatDeviceAndBindSchemaForExpressionVisitor
     extends CartesianProductVisitor<ConcatDeviceAndBindSchemaForExpressionVisitor.Context> {
