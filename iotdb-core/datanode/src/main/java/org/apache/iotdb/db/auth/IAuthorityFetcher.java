@@ -86,5 +86,5 @@ public interface IAuthorityFetcher {
 
   void refreshToken();
 
-  User getUser(String username);
+  User getUser(String username, final boolean force);
 }

@@ -1517,8 +1517,9 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
 
   @Override
   public int fillLastQueryMap(
-      PartialPath pattern,
-      Map<TableId, Map<IDeviceID, Map<String, Pair<TSDataType, TimeValuePair>>>> mapToFill) {
+      final PartialPath pattern,
+      final Map<TableId, Map<IDeviceID, Map<String, Pair<TSDataType, TimeValuePair>>>> mapToFill,
+      final PathPatternTree scope) {
     throw new UnsupportedOperationException("Not implemented");
   }
 

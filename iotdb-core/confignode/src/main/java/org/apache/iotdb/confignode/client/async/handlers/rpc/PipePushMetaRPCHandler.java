@@ -67,15 +67,15 @@ public class PipePushMetaRPCHandler extends DataNodeAsyncRequestRPCHandler<TPush
   }
 
   @Override
-  public void onError(Exception e) {
-    String errorMsg =
+  public void onError(final Exception e) {
+    final String errorMsg =
         "Failed to "
             + requestType
             + " on DataNode: "
             + formattedTargetLocation
             + ", exception: "
             + e.getMessage();
-    LOGGER.error(errorMsg, e);
+    LOGGER.warn(errorMsg);
 
     responseMap.put(
         requestId,

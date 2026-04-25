@@ -48,6 +48,7 @@ import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.Constants;
 import org.apache.tsfile.utils.Pair;
 import org.junit.After;
 import org.junit.Assert;
@@ -313,7 +314,9 @@ public class SchemaRegionSnapshotParserTest {
                     Arrays.asList("a", "c"),
                     Arrays.asList(
                         new Binary[] {new Binary("b", TSFileConfig.STRING_CHARSET)},
-                        new Binary[] {null, new Binary("d", TSFileConfig.STRING_CHARSET)})),
+                        new Object[] {
+                          Constants.NONE, new Binary("d", TSFileConfig.STRING_CHARSET)
+                        })),
                 new CreateOrUpdateDevice(
                     databasePath.getNodes()[1],
                     anotherTable,

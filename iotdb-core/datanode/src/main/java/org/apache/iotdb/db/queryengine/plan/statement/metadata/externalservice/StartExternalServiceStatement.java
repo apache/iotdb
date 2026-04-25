@@ -52,7 +52,7 @@ public class StartExternalServiceStatement extends Statement implements IConfigS
 
   @Override
   public QueryType getQueryType() {
-    return QueryType.WRITE;
+    return QueryType.OTHER;
   }
 
   @Override

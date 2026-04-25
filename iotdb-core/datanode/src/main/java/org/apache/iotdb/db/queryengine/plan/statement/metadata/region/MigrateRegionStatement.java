@@ -70,7 +70,7 @@ public class MigrateRegionStatement extends Statement implements IConfigStatemen
 
   @Override
   public QueryType getQueryType() {
-    return QueryType.WRITE;
+    return QueryType.OTHER;
   }
 
   @Override

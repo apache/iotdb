@@ -511,7 +511,8 @@ public class IoTDBDatabaseIT {
                   "plugin_name,STRING,TAG,",
                   "plugin_type,STRING,ATTRIBUTE,",
                   "class_name,STRING,ATTRIBUTE,",
-                  "plugin_jar,STRING,ATTRIBUTE,")));
+                  "plugin_jar,STRING,ATTRIBUTE,",
+                  "exception_message,STRING,ATTRIBUTE,")));
       TestUtils.assertResultSetEqual(
           statement.executeQuery("desc topics"),
           "ColumnName,DataType,Category,",
@@ -729,9 +730,9 @@ public class IoTDBDatabaseIT {
       TestUtils.assertResultSetEqual(
           statement.executeQuery(
               "select * from pipe_plugins where plugin_name = 'IOTDB-THRIFT-SINK'"),
-          "plugin_name,plugin_type,class_name,plugin_jar,",
+          "plugin_name,plugin_type,class_name,plugin_jar,exception_message,",
           Collections.singleton(
-              "IOTDB-THRIFT-SINK,Builtin,org.apache.iotdb.commons.pipe.agent.plugin.builtin.sink.iotdb.thrift.IoTDBThriftSink,null,"));
+              "IOTDB-THRIFT-SINK,Builtin,org.apache.iotdb.commons.pipe.agent.plugin.builtin.sink.iotdb.thrift.IoTDBThriftSink,null,null,"));
 
       TestUtils.assertResultSetEqual(
           statement.executeQuery("select * from views"),
@@ -772,8 +773,7 @@ public class IoTDBDatabaseIT {
           Collections.singleton(EnvFactory.getEnv().getConfigNodeWrapperList().size() + ","));
 
       Set<String> resultSet = new HashSet<>();
-      // data region created from writing password history
-      resultSet.add("1,");
+      resultSet.add("0,");
       for (int i = 1; i < EnvFactory.getEnv().getDataNodeWrapperList().size(); i++) {
         resultSet.add("0,");
       }
@@ -842,7 +842,7 @@ public class IoTDBDatabaseIT {
     try (final Connection connection = EnvFactory.getEnv().getConnection();
         final Statement statement = connection.createStatement()) {
       // One for AUDIT database
-      TestUtils.assertResultSetSize(statement.executeQuery("show databases"), 2);
+      TestUtils.assertResultSetSize(statement.executeQuery("show databases"), 1);
     }
   }
 

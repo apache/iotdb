@@ -2497,7 +2497,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   @Override
   public Analysis visitCreateTimeseries(
       CreateTimeSeriesStatement createTimeSeriesStatement, MPPQueryContext context) {
-    context.setQueryType(QueryType.WRITE);
+    context.setQueryType(QueryType.OTHER);
     if (createTimeSeriesStatement.getPath().getNodeLength() < 3) {
       throw new SemanticException(
           new IllegalPathException(createTimeSeriesStatement.getPath().getFullPath()));
@@ -2599,7 +2599,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   @Override
   public Analysis visitCreateAlignedTimeseries(
       CreateAlignedTimeSeriesStatement createAlignedTimeSeriesStatement, MPPQueryContext context) {
-    context.setQueryType(QueryType.WRITE);
+    context.setQueryType(QueryType.OTHER);
     if (createAlignedTimeSeriesStatement.getDevicePath().getNodeLength() < 2) {
       throw new SemanticException(
           new IllegalPathException(createAlignedTimeSeriesStatement.getDevicePath().getFullPath()));
@@ -2637,7 +2637,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   public Analysis visitInternalCreateTimeseries(
       InternalCreateTimeSeriesStatement internalCreateTimeSeriesStatement,
       MPPQueryContext context) {
-    context.setQueryType(QueryType.WRITE);
+    context.setQueryType(QueryType.OTHER);
 
     Analysis analysis = new Analysis();
     analysis.setRealStatement(internalCreateTimeSeriesStatement);
@@ -2665,7 +2665,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   public Analysis visitInternalCreateMultiTimeSeries(
       final InternalCreateMultiTimeSeriesStatement internalCreateMultiTimeSeriesStatement,
       final MPPQueryContext context) {
-    context.setQueryType(QueryType.WRITE);
+    context.setQueryType(QueryType.OTHER);
 
     final Analysis analysis = new Analysis();
     analysis.setRealStatement(internalCreateMultiTimeSeriesStatement);
@@ -2690,7 +2690,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   public Analysis visitCreateMultiTimeSeries(
       final CreateMultiTimeSeriesStatement createMultiTimeSeriesStatement,
       final MPPQueryContext context) {
-    context.setQueryType(QueryType.WRITE);
+    context.setQueryType(QueryType.OTHER);
     final Analysis analysis = new Analysis();
     analysis.setRealStatement(createMultiTimeSeriesStatement);
 
@@ -2718,7 +2718,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   @Override
   public Analysis visitAlterTimeSeries(
       AlterTimeSeriesStatement alterTimeSeriesStatement, MPPQueryContext context) {
-    context.setQueryType(QueryType.WRITE);
+    context.setQueryType(QueryType.OTHER);
     Analysis analysis = new Analysis();
     analysis.setRealStatement(alterTimeSeriesStatement);
 
@@ -2906,7 +2906,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
   @Override
   public Analysis visitLoadFile(LoadTsFileStatement loadTsFileStatement, MPPQueryContext context) {
-    context.setQueryType(QueryType.WRITE);
+    context.setQueryType(QueryType.OTHER);
 
     try (final LoadTsFileAnalyzer loadTsFileAnalyzer =
         new LoadTsFileAnalyzer(
@@ -3397,7 +3397,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   @Override
   public Analysis visitDeleteData(
       DeleteDataStatement deleteDataStatement, MPPQueryContext context) {
-    context.setQueryType(QueryType.WRITE);
+    context.setQueryType(QueryType.OTHER);
     Analysis analysis = new Analysis();
     analysis.setRealStatement(deleteDataStatement);
 
@@ -3477,7 +3477,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   public Analysis visitCreateSchemaTemplate(
       CreateSchemaTemplateStatement createTemplateStatement, MPPQueryContext context) {
 
-    context.setQueryType(QueryType.WRITE);
+    context.setQueryType(QueryType.OTHER);
     List<String> measurements = createTemplateStatement.getMeasurements();
     Set<String> measurementsSet = new HashSet<>(measurements);
     if (measurementsSet.size() < measurements.size()) {
@@ -3492,7 +3492,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   @Override
   public Analysis visitSetSchemaTemplate(
       SetSchemaTemplateStatement setSchemaTemplateStatement, MPPQueryContext context) {
-    context.setQueryType(QueryType.WRITE);
+    context.setQueryType(QueryType.OTHER);
     Analysis analysis = new Analysis();
     analysis.setRealStatement(setSchemaTemplateStatement);
     return analysis;
@@ -3501,7 +3501,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   @Override
   public Analysis visitActivateTemplate(
       ActivateTemplateStatement activateTemplateStatement, MPPQueryContext context) {
-    context.setQueryType(QueryType.WRITE);
+    context.setQueryType(QueryType.OTHER);
     Analysis analysis = new Analysis();
     analysis.setRealStatement(activateTemplateStatement);
 
@@ -3531,7 +3531,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   @Override
   public Analysis visitBatchActivateTemplate(
       BatchActivateTemplateStatement batchActivateTemplateStatement, MPPQueryContext context) {
-    context.setQueryType(QueryType.WRITE);
+    context.setQueryType(QueryType.OTHER);
     Analysis analysis = new Analysis();
     analysis.setRealStatement(batchActivateTemplateStatement);
 
@@ -3567,7 +3567,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   public Analysis visitInternalBatchActivateTemplate(
       InternalBatchActivateTemplateStatement internalBatchActivateTemplateStatement,
       MPPQueryContext context) {
-    context.setQueryType(QueryType.WRITE);
+    context.setQueryType(QueryType.OTHER);
     Analysis analysis = new Analysis();
     analysis.setRealStatement(internalBatchActivateTemplateStatement);
 
@@ -3757,7 +3757,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   public Analysis visitCreateLogicalView(
       CreateLogicalViewStatement createLogicalViewStatement, MPPQueryContext context) {
     Analysis analysis = new Analysis();
-    context.setQueryType(QueryType.WRITE);
+    context.setQueryType(QueryType.OTHER);
     analysis.setRealStatement(createLogicalViewStatement);
 
     if (createLogicalViewStatement.getViewExpressions() == null) {

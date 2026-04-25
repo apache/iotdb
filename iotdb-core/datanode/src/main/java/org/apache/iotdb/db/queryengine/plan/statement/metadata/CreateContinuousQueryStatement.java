@@ -155,7 +155,7 @@ public class CreateContinuousQueryStatement extends Statement implements IConfig
 
   @Override
   public QueryType getQueryType() {
-    return QueryType.WRITE;
+    return QueryType.OTHER;
   }
 
   @Override

@@ -71,6 +71,7 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
       final boolean isWithMod)
       throws IOException {
     super(
+        tsFile,
         pipeName,
         creationTime,
         null,
@@ -80,7 +81,8 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
         pipeTaskMeta,
         entity,
         true,
-        sourceEvent);
+        sourceEvent,
+        isWithMod);
 
     this.isWithMod = isWithMod;
     try {
@@ -93,7 +95,7 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
               .forceAllocateForTabletWithRetry(currentModifications.ramBytesUsed());
       long tableSize =
           Math.min(
-              PipeConfig.getInstance().getPipeDataStructureTabletSizeInBytes(),
+              IoTDBDescriptor.getInstance().getConfig().getPipeDataStructureTabletSizeInBytes(),
               IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize());
 
       this.allocatedMemoryBlockForChunk =
@@ -107,7 +109,9 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
       this.allocatedMemoryBlockForTableSchemas =
           PipeDataNodeResourceManager.memory()
               .forceAllocateForTabletWithRetry(
-                  PipeConfig.getInstance().getPipeDataStructureTabletSizeInBytes());
+                  IoTDBDescriptor.getInstance()
+                      .getConfig()
+                      .getPipeDataStructureTabletSizeInBytes());
 
       this.startTime = startTime;
       this.endTime = endTime;

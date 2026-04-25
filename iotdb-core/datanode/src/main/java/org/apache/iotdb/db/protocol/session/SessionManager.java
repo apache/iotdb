@@ -24,14 +24,12 @@ import org.apache.iotdb.commons.audit.AuditEventType;
 import org.apache.iotdb.commons.audit.AuditLogFields;
 import org.apache.iotdb.commons.audit.AuditLogOperation;
 import org.apache.iotdb.commons.audit.UserEntity;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.service.JMXService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
-import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.db.audit.DNAuditLogger;
 import org.apache.iotdb.db.auth.AuthorityChecker;
@@ -42,7 +40,6 @@ import org.apache.iotdb.db.queryengine.common.ConnectionInfo;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.execution.config.session.PreparedStatementMemoryManager;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.QueryResourceManager;
-import org.apache.iotdb.db.utils.DataNodeAuthUtils;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -55,10 +52,7 @@ import org.apache.tsfile.external.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.time.Instant;
-import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -148,16 +142,6 @@ public class SessionManager implements SessionManagerMBean {
 
     final long userId = AuthorityChecker.getUserId(username).orElse(-1L);
 
-    Long timeToExpire =
-        DataNodeAuthUtils.checkPasswordExpiration(userId, password, useEncryptedPassword);
-    if (timeToExpire != null && timeToExpire <= System.currentTimeMillis()) {
-      openSessionResp
-          .sessionId(-1)
-          .setCode(TSStatusCode.ILLEGAL_PASSWORD.getStatusCode())
-          .setMessage("Password has expired, please use \"ALTER USER\" to change to a new one");
-      return openSessionResp;
-    }
-
     boolean enableLoginLock = userId != -1;
     LoginLockManager loginLockManager = LoginLockManager.getInstance();
     if (enableLoginLock && loginLockManager.checkLock(userId, session.getClientAddress())) {
@@ -182,42 +166,6 @@ public class SessionManager implements SessionManagerMBean {
         session.setSqlDialect(sqlDialect);
         supplySession(session, userId, username, ZoneId.of(zoneId), clientVersion);
         String logInMessage = "Login successfully";
-        if (timeToExpire != null && timeToExpire != Long.MAX_VALUE) {
-          DateTimeFormatter dateFormat = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-          logInMessage +=
-              ". Your password will expire at "
-                  + dateFormat.format(
-                      LocalDateTime.ofInstant(
-                          Instant.ofEpochMilli(timeToExpire), ZoneId.systemDefault()));
-        } else if (timeToExpire == null) {
-          LOGGER.info(
-              "No password history for user {}, using the current time to create a new one",
-              username);
-          long currentTime = CommonDateTimeUtils.currentTime();
-          TSStatus tsStatus =
-              DataNodeAuthUtils.recordPasswordHistory(
-                  userId, password, AuthUtils.encryptPassword(password), currentTime);
-          if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-            openSessionResp
-                .sessionId(-1)
-                .setCode(tsStatus.getCode())
-                .setMessage(tsStatus.getMessage());
-            return openSessionResp;
-          }
-          timeToExpire =
-              CommonDateTimeUtils.convertIoTDBTimeToMillis(currentTime)
-                  + CommonDescriptor.getInstance().getConfig().getPasswordExpirationDays()
-                      * 1000
-                      * 86400;
-          if (timeToExpire > System.currentTimeMillis()) {
-            DateTimeFormatter dateFormat = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-            logInMessage +=
-                ". Your password will expire at "
-                    + dateFormat.format(
-                        LocalDateTime.ofInstant(
-                            Instant.ofEpochMilli(timeToExpire), ZoneId.systemDefault()));
-          }
-        }
         openSessionResp
             .sessionId(session.getId())
             .setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode())

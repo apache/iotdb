@@ -65,6 +65,17 @@ public class ImportDataTable extends AbstractImportData {
   private static Map<String, TSDataType> dataTypes = new HashMap<>();
   private static Map<String, ColumnCategory> columnCategory = new HashMap<>();
 
+  private static final Pattern DB_FROM_SQL_PATTERN;
+
+  static {
+    // group N:   双引号标识符 (""转义)
+    // group N+1: 反引号标识符 (``转义)
+    // group N+2: 普通标识符
+    String id = "(?:\"((?:[^\"]|\"\")*)\"" + "|`((?:[^`]|``)*)`" + "|(\\w+))";
+    DB_FROM_SQL_PATTERN =
+        Pattern.compile("into\\s+" + id + "\\s*\\.\\s*" + id, Pattern.CASE_INSENSITIVE);
+  }
+
   public void init() throws InterruptedException {
     TableSessionPoolBuilder tableSessionPoolBuilder =
         new TableSessionPoolBuilder()
@@ -160,6 +171,18 @@ public class ImportDataTable extends AbstractImportData {
     loadFileSuccessfulNum.increment();
   }
 
+  private static String extractDbFromSql(String sql) {
+
+    Matcher matcher = DB_FROM_SQL_PATTERN.matcher(sql);
+    if (matcher.find()) {
+      // db name: group 1 (双引号), group 2 (反引号), group 3 (普通)
+      if (matcher.group(1) != null) return matcher.group(1).replace("\"\"", "\"");
+      if (matcher.group(2) != null) return matcher.group(2).replace("``", "`");
+      return matcher.group(3);
+    }
+    return null;
+  }
+
   @SuppressWarnings("java:S2259")
   protected void importFromSqlFile(File file) {
     ArrayList<List<Object>> failedRecords = new ArrayList<>();
@@ -173,7 +196,19 @@ public class ImportDataTable extends AbstractImportData {
       String sql;
       while ((sql = br.readLine()) != null) {
         try (ITableSession session = sessionPool.getSession()) {
-          sql = sql.replace(";", "");
+          sql = sql.trim();
+          if (sql.endsWith(";")) {
+            sql = sql.substring(0, sql.length() - 1);
+          }
+          String dbName = extractDbFromSql(sql);
+          if (database != null && dbName != null && !dbName.equalsIgnoreCase(database)) {
+            ioTPrinter.println(
+                String.format(
+                    "The extracted database '%s' in SQL statement does not match the target database '%s'",
+                    dbName, database));
+            failedRecords.add(Collections.singletonList(sql));
+            continue;
+          }
           session.executeNonQueryStatement(sql);
         } catch (IoTDBConnectionException | StatementExecutionException e) {
           ioTPrinter.println(e.getMessage());

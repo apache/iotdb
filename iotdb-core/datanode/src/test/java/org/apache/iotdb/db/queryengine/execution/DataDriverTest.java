@@ -35,7 +35,9 @@ import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContex
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceState;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceStateMachine;
 import org.apache.iotdb.db.queryengine.execution.operator.process.LimitOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.SingleDeviceViewOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.FullOuterTimeJoinOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.join.LeftOuterTimeJoinOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.AscTimeComparator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.SingleColumnMerger;
 import org.apache.iotdb.db.queryengine.execution.operator.source.SeriesScanOperator;
@@ -242,6 +244,122 @@ public class DataDriverTest {
 
         assertEquals(250, row);
 
+      } finally {
+        if (dataDriver != null) {
+          dataDriver.close();
+        }
+      }
+    } catch (QueryProcessException e) {
+      e.printStackTrace();
+      fail();
+    } finally {
+      instanceNotificationExecutor.shutdown();
+    }
+  }
+
+  @Test
+  public void testCallIsFinishedBeforeDataSourcePrepared() {
+    ExecutorService instanceNotificationExecutor =
+        IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
+    try {
+      IFullPath measurementPath1 =
+          new NonAlignedFullPath(
+              IDeviceID.Factory.DEFAULT_FACTORY.create(DATA_DRIVER_TEST_SG + ".device0"),
+              new MeasurementSchema("sensor0", TSDataType.INT32));
+      Set<String> allSensors = new HashSet<>();
+      allSensors.add("sensor0");
+      allSensors.add("sensor1");
+      QueryId queryId = new QueryId("stub_query");
+      FragmentInstanceId instanceId =
+          new FragmentInstanceId(new PlanFragmentId(queryId, 0), "stub-instance");
+      FragmentInstanceStateMachine stateMachine =
+          new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
+      DataRegion dataRegion = Mockito.mock(DataRegion.class);
+      Mockito.when(dataRegion.tryReadLock(Mockito.anyLong())).thenReturn(true);
+      FragmentInstanceContext fragmentInstanceContext =
+          createFragmentInstanceContext(instanceId, stateMachine);
+      fragmentInstanceContext.setDataRegion(dataRegion);
+      DataDriverContext driverContext = new DataDriverContext(fragmentInstanceContext, 0);
+      PlanNodeId planNodeId1 = new PlanNodeId("1");
+      driverContext.addOperatorContext(1, planNodeId1, SeriesScanOperator.class.getSimpleName());
+      PlanNodeId planNodeId2 = new PlanNodeId("2");
+      driverContext.addOperatorContext(2, planNodeId2, SeriesScanOperator.class.getSimpleName());
+      driverContext.addOperatorContext(
+          3, new PlanNodeId("3"), FullOuterTimeJoinOperator.class.getSimpleName());
+      driverContext.addOperatorContext(4, new PlanNodeId("4"), LimitOperator.class.getSimpleName());
+
+      SeriesScanOptions.Builder scanOptionsBuilder = new SeriesScanOptions.Builder();
+      scanOptionsBuilder.withAllSensors(allSensors);
+      SeriesScanOperator seriesScanOperator1 =
+          new SeriesScanOperator(
+              driverContext.getOperatorContexts().get(0),
+              planNodeId1,
+              measurementPath1,
+              Ordering.ASC,
+              scanOptionsBuilder.build());
+      driverContext.addSourceOperator(seriesScanOperator1);
+      driverContext.addPath(measurementPath1);
+      seriesScanOperator1
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+
+      IFullPath measurementPath2 =
+          new NonAlignedFullPath(
+              IDeviceID.Factory.DEFAULT_FACTORY.create(DATA_DRIVER_TEST_SG + ".device0"),
+              new MeasurementSchema("sensor1", TSDataType.INT32));
+      SeriesScanOperator seriesScanOperator2 =
+          new SeriesScanOperator(
+              driverContext.getOperatorContexts().get(1),
+              planNodeId2,
+              measurementPath2,
+              Ordering.ASC,
+              scanOptionsBuilder.build());
+      driverContext.addSourceOperator(seriesScanOperator2);
+      driverContext.addPath(measurementPath2);
+
+      seriesScanOperator2
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+
+      LeftOuterTimeJoinOperator timeJoinOperator =
+          new LeftOuterTimeJoinOperator(
+              driverContext.getOperatorContexts().get(2),
+              seriesScanOperator1,
+              1,
+              seriesScanOperator2,
+              Arrays.asList(TSDataType.INT32, TSDataType.INT32),
+              new AscTimeComparator());
+      SingleDeviceViewOperator fakeOperator =
+          new SingleDeviceViewOperator(
+              driverContext.getOperatorContexts().get(3),
+              "d1",
+              timeJoinOperator,
+              Arrays.asList(0),
+              Arrays.asList(TSDataType.INT32, TSDataType.INT32));
+      fakeOperator.getOperatorContext().setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+
+      fragmentInstanceContext.setSourcePaths(driverContext.getPaths());
+      String deviceId = DATA_DRIVER_TEST_SG + ".device0";
+      Mockito.when(
+              dataRegion.query(
+                  eq(driverContext.getPaths()),
+                  eq(IDeviceID.Factory.DEFAULT_FACTORY.create(deviceId)),
+                  eq(fragmentInstanceContext),
+                  Mockito.isNull(),
+                  Mockito.isNull(),
+                  Mockito.anyLong()))
+          .thenReturn(null);
+      fragmentInstanceContext.initQueryDataSource(driverContext.getPaths());
+      fragmentInstanceContext.initializeNumOfDrivers(1);
+
+      StubSink stubSink = new StubSink(fragmentInstanceContext);
+      driverContext.setSink(stubSink);
+      IDriver dataDriver = null;
+      try {
+        dataDriver = new DataDriver(fakeOperator, driverContext, 0);
+        assertEquals(
+            fragmentInstanceContext.getId(), dataDriver.getDriverTaskId().getFragmentInstanceId());
+        assertFalse(dataDriver.isFinished());
       } finally {
         if (dataDriver != null) {
           dataDriver.close();

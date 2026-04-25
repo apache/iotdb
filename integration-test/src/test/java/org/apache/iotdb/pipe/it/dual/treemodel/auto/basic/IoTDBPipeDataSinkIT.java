@@ -589,7 +589,8 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualTreeModelAutoIT {
         Collections.singleton("5,"));
 
     TestUtils.executeNonQueries(
-        senderEnv, Arrays.asList("drop pipe test_history", "drop pipe test_realtime"));
+        senderEnv,
+        Arrays.asList("drop pipe if exists test_history", "drop pipe if exists test_realtime"));
 
     TestUtils.executeNonQuery(receiverEnv, "drop database root.**");
 

@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.db.auth.AuthorityChecker;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileInsertionEventParser;
@@ -117,6 +118,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
       final boolean isWithMod)
       throws IOException, IllegalPathException {
     super(
+        tsFile,
         pipeName,
         creationTime,
         pattern,
@@ -126,7 +128,8 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
         pipeTaskMeta,
         entity,
         skipIfNoPrivileges,
-        sourceEvent);
+        sourceEvent,
+        isWithMod);
 
     this.startTime = startTime;
     this.endTime = endTime;
@@ -135,7 +138,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
     this.allocatedMemoryBlockForBatchData =
         PipeDataNodeResourceManager.memory()
             .forceAllocateForTabletWithRetry(
-                PipeConfig.getInstance().getPipeDataStructureTabletSizeInBytes());
+                IoTDBDescriptor.getInstance().getConfig().getPipeDataStructureTabletSizeInBytes());
     this.allocatedMemoryBlockForChunk =
         PipeDataNodeResourceManager.memory()
             .forceAllocateForTabletWithRetry(PipeConfig.getInstance().getPipeMaxReaderChunkSize());

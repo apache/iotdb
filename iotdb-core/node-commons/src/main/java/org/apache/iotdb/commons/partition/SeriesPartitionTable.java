@@ -51,7 +51,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 public class SeriesPartitionTable {
-
   private final ConcurrentSkipListMap<TTimePartitionSlot, List<TConsensusGroupId>>
       seriesPartitionMap;
 
@@ -256,7 +255,6 @@ public class SeriesPartitionTable {
    */
   public List<TTimePartitionSlot> autoCleanPartitionTable(
       long TTL, TTimePartitionSlot currentTimeSlot, String database) {
-    // should only be used in CN scope, in DN scope should directly use
     final long timePartitionInterval =
         CommonDateTimeUtils.convertMilliTimeWithPrecision(
             TimePartitionUtils.getTimePartitionInterval(database),
