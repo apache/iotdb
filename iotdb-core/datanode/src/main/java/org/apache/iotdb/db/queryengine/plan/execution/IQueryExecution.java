@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.execution;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -41,6 +42,8 @@ public interface IQueryExecution {
   void cancel();
 
   ExecutionResult getStatus();
+
+  TSStatus getTSStatus();
 
   Optional<TsBlock> getBatchResult() throws IoTDBException;
 

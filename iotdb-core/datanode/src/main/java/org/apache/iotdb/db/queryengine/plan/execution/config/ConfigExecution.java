@@ -243,6 +243,11 @@ public class ConfigExecution implements IQueryExecution {
   }
 
   @Override
+  public TSStatus getTSStatus() {
+    return getStatus().status;
+  }
+
+  @Override
   public ExecutionResult getStatus() {
     try {
       final ConfigTaskResult taskResult = taskFuture.get();

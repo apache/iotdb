@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.audit.AuditEventType;
 import org.apache.iotdb.commons.audit.AuditLogFields;
 import org.apache.iotdb.commons.audit.AuditLogOperation;
@@ -361,8 +362,8 @@ public class Coordinator {
       if (execution != null && isWrite && executionTime >= CONFIG.getSlowQueryThreshold()) {
         // Audit slow write operations
         PrivilegeType curType = isTreeModel ? PrivilegeType.WRITE_DATA : PrivilegeType.INSERT;
-        statusString =
-            execution.getStatus().status == null ? "null" : execution.getStatus().status.toString();
+        TSStatus tsStatus = execution.getTSStatus();
+        statusString = tsStatus == null ? "null" : tsStatus.toString();
         AuditLogFields auditLogFields =
             new AuditLogFields(
                 execution.getContext().getUserId(),
@@ -371,10 +372,9 @@ public class Coordinator {
                 AuditEventType.SLOW_OPERATION,
                 AuditLogOperation.DML,
                 curType,
-                execution.getStatus().status != null
-                    && (execution.getStatus().status.getCode()
-                            == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-                        || execution.getStatus().status.getCode()
+                tsStatus != null
+                    && (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+                        || tsStatus.getCode()
                             == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()),
                 execution.getContext().getDatabaseName().orElse(""),
                 execution.getExecuteSQL().orElse(""));
@@ -928,6 +928,7 @@ public class Coordinator {
       }
       if (isUserQuery
           && queryExecution.getTotalExecutionTime() / 1_000_000 >= CONFIG.getSlowQueryThreshold()) {
+        TSStatus tsStatus = queryExecution.getTSStatus();
         AuditLogFields auditLogFields =
             new AuditLogFields(
                 queryExecution.getContext().getUserId(),
@@ -938,9 +939,8 @@ public class Coordinator {
                 queryExecution.getSQLDialect() == IClientSession.SqlDialect.TREE
                     ? PrivilegeType.READ_DATA
                     : PrivilegeType.SELECT,
-                queryExecution.getStatus().status != null
-                    && queryExecution.getStatus().status.getCode()
-                        == TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+                tsStatus != null
+                    && tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode(),
                 queryExecution.getContext().getDatabaseName().orElse(""),
                 queryExecution.getExecuteSQL().orElse(""));
         DNAuditLogger.getInstance()

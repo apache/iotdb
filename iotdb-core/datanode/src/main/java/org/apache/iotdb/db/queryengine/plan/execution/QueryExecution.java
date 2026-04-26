@@ -553,6 +553,11 @@ public class QueryExecution implements IQueryExecution {
    * @return ExecutionStatus. Contains the QueryId and the TSStatus.
    */
   @Override
+  public TSStatus getTSStatus() {
+    return getExecutionResult(stateMachine.getState()).status;
+  }
+
+  @Override
   public ExecutionResult getStatus() {
     // Although we monitor the state to transition to RUNNING, the future will return if any
     // Terminated state is triggered

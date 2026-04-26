@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.queryengine.execution.operator;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;
@@ -1874,6 +1875,11 @@ public class MergeTreeSortOperatorTest {
 
     @Override
     public ExecutionResult getStatus() {
+      return null;
+    }
+
+    @Override
+    public TSStatus getTSStatus() {
       return null;
     }
 
