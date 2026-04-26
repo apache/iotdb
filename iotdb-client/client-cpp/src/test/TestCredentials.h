@@ -30,7 +30,7 @@ constexpr const char* kPassword = "TimechoDB@2021";
 /** Deliberately wrong password for negative authentication tests. */
 constexpr const char* kWrongPassword = "wrong-password";
 
-}  // namespace integration_test
-}  // namespace iotdb
+} // namespace integration_test
+} // namespace iotdb
 
 #endif

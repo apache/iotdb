@@ -30,22 +30,22 @@ namespace prepared {
 enum class ParamKind { kNull, kBool, kInt32, kInt64, kFloat, kDouble, kString, kBlob };
 
 struct ParamSlot {
-    ParamKind kind{ParamKind::kNull};
-    /** Primitive payload; active member is determined by `kind`. */
-    union {
-        bool boolVal;
-        int32_t int32Val;
-        int64_t int64Val;
-        float floatVal;
-        double doubleVal;
-    };
-    /** UTF-8 for kString; raw bytes for kBlob (may contain embedded NULs). */
-    std::string stringOrBlob;
+  ParamKind kind{ParamKind::kNull};
+  /** Primitive payload; active member is determined by `kind`. */
+  union {
+    bool boolVal;
+    int32_t int32Val;
+    int64_t int64Val;
+    float floatVal;
+    double doubleVal;
+  };
+  /** UTF-8 for kString; raw bytes for kBlob (may contain embedded NULs). */
+  std::string stringOrBlob;
 };
 
 std::string serializeParameters(const std::vector<ParamSlot>& params);
 
-}  // namespace prepared
-}  // namespace iotdb
+} // namespace prepared
+} // namespace iotdb
 
 #endif

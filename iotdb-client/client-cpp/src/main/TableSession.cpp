@@ -37,25 +37,26 @@ unique_ptr<SessionDataSet> TableSession::executeQueryStatement(const string& sql
 }
 
 int32_t TableSession::prepareStatement(const std::string& sql, const std::string& statementName) {
-    return session_->prepareStatementMayRedirect(sql, statementName);
+  return session_->prepareStatementMayRedirect(sql, statementName);
 }
 
-unique_ptr<SessionDataSet> TableSession::executePreparedStatement(const std::string& sqlForDisplay,
-                                                                  const std::string& statementName,
-                                                                  const std::string& parametersBinary,
-                                                                  int64_t timeoutInMs) {
-    return session_->executePreparedStatementMayRedirect(sqlForDisplay, statementName, parametersBinary, timeoutInMs);
+unique_ptr<SessionDataSet>
+TableSession::executePreparedStatement(const std::string& sqlForDisplay,
+                                       const std::string& statementName,
+                                       const std::string& parametersBinary, int64_t timeoutInMs) {
+  return session_->executePreparedStatementMayRedirect(sqlForDisplay, statementName,
+                                                       parametersBinary, timeoutInMs);
 }
 
 unique_ptr<SessionDataSet> TableSession::executePreparedStatement(
     const std::string& sqlForDisplay, const std::string& statementName,
     const std::vector<iotdb::prepared::ParamSlot>& params, int64_t timeoutInMs) {
-    return executePreparedStatement(
-        sqlForDisplay, statementName, iotdb::prepared::serializeParameters(params), timeoutInMs);
+  return executePreparedStatement(sqlForDisplay, statementName,
+                                  iotdb::prepared::serializeParameters(params), timeoutInMs);
 }
 
 void TableSession::deallocatePreparedStatement(const std::string& statementName) {
-    session_->deallocatePreparedStatementMayRedirect(statementName);
+  session_->deallocatePreparedStatementMayRedirect(statementName);
 }
 
 string TableSession::getDatabase() {

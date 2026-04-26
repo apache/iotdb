@@ -2023,77 +2023,78 @@ std::unique_ptr<SessionDataSet> Session::executeQueryStatementMayRedirect(const 
   }
 }
 
-int32_t Session::prepareStatementMayRedirect(const std::string& sql, const std::string& statementName) {
-    auto sessionConnection = getQuerySessionConnection();
-    if (!sessionConnection) {
-        log_warn("Session connection not found");
-        throw ExecutionException("Session connection not found");
-    }
+int32_t Session::prepareStatementMayRedirect(const std::string& sql,
+                                             const std::string& statementName) {
+  auto sessionConnection = getQuerySessionConnection();
+  if (!sessionConnection) {
+    log_warn("Session connection not found");
+    throw ExecutionException("Session connection not found");
+  }
+  try {
+    return sessionConnection->prepareStatement(sql, statementName);
+  } catch (RedirectException& e) {
+    log_warn("Session connection redirect exception: " + e.what());
+    handleQueryRedirection(e.endPoint);
     try {
-        return sessionConnection->prepareStatement(sql, statementName);
-    } catch (RedirectException& e) {
-        log_warn("Session connection redirect exception: " + e.what());
-        handleQueryRedirection(e.endPoint);
-        try {
-            return defaultSessionConnection_->prepareStatement(sql, statementName);
-        } catch (exception& e) {
-            log_error("Exception while preparing statement after redirect: %s", e.what());
-            throw ExecutionException(e.what());
-        }
+      return defaultSessionConnection_->prepareStatement(sql, statementName);
     } catch (exception& e) {
-        log_error("Exception while preparing statement: %s", e.what());
-        throw;
+      log_error("Exception while preparing statement after redirect: %s", e.what());
+      throw ExecutionException(e.what());
     }
+  } catch (exception& e) {
+    log_error("Exception while preparing statement: %s", e.what());
+    throw;
+  }
 }
 
-std::unique_ptr<SessionDataSet> Session::executePreparedStatementMayRedirect(const std::string& sqlForDisplay,
-                                                                             const std::string& statementName,
-                                                                             const std::string& parametersBinary,
-                                                                             int64_t timeoutInMs) {
-    auto sessionConnection = getQuerySessionConnection();
-    if (!sessionConnection) {
-        log_warn("Session connection not found");
-        return nullptr;
-    }
+std::unique_ptr<SessionDataSet> Session::executePreparedStatementMayRedirect(
+    const std::string& sqlForDisplay, const std::string& statementName,
+    const std::string& parametersBinary, int64_t timeoutInMs) {
+  auto sessionConnection = getQuerySessionConnection();
+  if (!sessionConnection) {
+    log_warn("Session connection not found");
+    return nullptr;
+  }
+  try {
+    return sessionConnection->executePreparedStatement(sqlForDisplay, statementName,
+                                                       parametersBinary, timeoutInMs);
+  } catch (RedirectException& e) {
+    log_warn("Session connection redirect exception: " + e.what());
+    handleQueryRedirection(e.endPoint);
     try {
-        return sessionConnection->executePreparedStatement(sqlForDisplay, statementName, parametersBinary, timeoutInMs);
-    } catch (RedirectException& e) {
-        log_warn("Session connection redirect exception: " + e.what());
-        handleQueryRedirection(e.endPoint);
-        try {
-            return defaultSessionConnection_->executePreparedStatement(sqlForDisplay, statementName, parametersBinary,
-                                                                       timeoutInMs);
-        } catch (exception& e) {
-            log_error("Exception while executing prepared statement after redirect: %s", e.what());
-            throw ExecutionException(e.what());
-        }
+      return defaultSessionConnection_->executePreparedStatement(sqlForDisplay, statementName,
+                                                                 parametersBinary, timeoutInMs);
     } catch (exception& e) {
-        log_error("Exception while executing prepared statement: %s", e.what());
-        throw;
+      log_error("Exception while executing prepared statement after redirect: %s", e.what());
+      throw ExecutionException(e.what());
     }
+  } catch (exception& e) {
+    log_error("Exception while executing prepared statement: %s", e.what());
+    throw;
+  }
 }
 
 void Session::deallocatePreparedStatementMayRedirect(const std::string& statementName) {
-    auto sessionConnection = getQuerySessionConnection();
-    if (!sessionConnection) {
-        log_warn("Session connection not found");
-        throw ExecutionException("Session connection not found");
-    }
+  auto sessionConnection = getQuerySessionConnection();
+  if (!sessionConnection) {
+    log_warn("Session connection not found");
+    throw ExecutionException("Session connection not found");
+  }
+  try {
+    sessionConnection->deallocatePreparedStatement(statementName);
+  } catch (RedirectException& e) {
+    log_warn("Session connection redirect exception: " + e.what());
+    handleQueryRedirection(e.endPoint);
     try {
-        sessionConnection->deallocatePreparedStatement(statementName);
-    } catch (RedirectException& e) {
-        log_warn("Session connection redirect exception: " + e.what());
-        handleQueryRedirection(e.endPoint);
-        try {
-            defaultSessionConnection_->deallocatePreparedStatement(statementName);
-        } catch (exception& e) {
-            log_error("Exception while deallocating prepared statement after redirect: %s", e.what());
-            throw ExecutionException(e.what());
-        }
+      defaultSessionConnection_->deallocatePreparedStatement(statementName);
     } catch (exception& e) {
-        log_error("Exception while deallocating prepared statement: %s", e.what());
-        throw;
+      log_error("Exception while deallocating prepared statement after redirect: %s", e.what());
+      throw ExecutionException(e.what());
     }
+  } catch (exception& e) {
+    log_error("Exception while deallocating prepared statement: %s", e.what());
+    throw;
+  }
 }
 
 void Session::executeNonQueryStatement(const string& sql) {

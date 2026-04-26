@@ -27,27 +27,28 @@
 CTableSession* g_table_session = nullptr;
 
 struct CTableSessionListener : Catch::TestEventListenerBase {
-    using TestEventListenerBase::TestEventListenerBase;
+  using TestEventListenerBase::TestEventListenerBase;
 
-    void testCaseStarting(Catch::TestCaseInfo const& testInfo) override {
-        g_table_session = ts_table_session_new("127.0.0.1", 6667, iotdb::integration_test::kUsername,
-                                                 iotdb::integration_test::kPassword, "");
-        REQUIRE(g_table_session != nullptr);
-        TsStatus st = ts_table_session_open(g_table_session);
-        if (st != TS_OK) {
-            ts_table_session_destroy(g_table_session);
-            g_table_session = nullptr;
-            FAIL("ts_table_session_open failed; ensure distribution is built and IoTDB listens on 127.0.0.1:6667");
-        }
+  void testCaseStarting(Catch::TestCaseInfo const& testInfo) override {
+    g_table_session = ts_table_session_new("127.0.0.1", 6667, iotdb::integration_test::kUsername,
+                                           iotdb::integration_test::kPassword, "");
+    REQUIRE(g_table_session != nullptr);
+    TsStatus st = ts_table_session_open(g_table_session);
+    if (st != TS_OK) {
+      ts_table_session_destroy(g_table_session);
+      g_table_session = nullptr;
+      FAIL("ts_table_session_open failed; ensure distribution is built and IoTDB listens on "
+           "127.0.0.1:6667");
     }
+  }
 
-    void testCaseEnded(Catch::TestCaseStats const& testCaseStats) override {
-        if (g_table_session) {
-            ts_table_session_close(g_table_session);
-            ts_table_session_destroy(g_table_session);
-            g_table_session = nullptr;
-        }
+  void testCaseEnded(Catch::TestCaseStats const& testCaseStats) override {
+    if (g_table_session) {
+      ts_table_session_close(g_table_session);
+      ts_table_session_destroy(g_table_session);
+      g_table_session = nullptr;
     }
+  }
 };
 
 CATCH_REGISTER_LISTENER(CTableSessionListener)

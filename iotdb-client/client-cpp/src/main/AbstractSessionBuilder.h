@@ -24,36 +24,36 @@
 
 class AbstractSessionBuilder {
 public:
-    static constexpr const char* DEFAULT_HOST = "localhost";
-    static constexpr int DEFAULT_RPC_PORT = 6667;
-    static constexpr const char* DEFAULT_USERNAME = "root";
-    static constexpr const char* DEFAULT_PASSWORD = "TimechoDB@2021";
-    static constexpr int DEFAULT_FETCH_SIZE = 10000;
-    static constexpr int DEFAULT_CONNECT_TIMEOUT_MS = 3 * 1000;
-    static constexpr int DEFAULT_MAX_RETRIES = 3;
-    static constexpr int DEFAULT_RETRY_DELAY_MS = 500;
-    static constexpr const char* DEFAULT_SQL_DIALECT = "tree";
-    static constexpr bool DEFAULT_ENABLE_AUTO_FETCH = true;
-    static constexpr bool DEFAULT_ENABLE_REDIRECTIONS = true;
-    static constexpr bool DEFAULT_ENABLE_RPC_COMPRESSION = false;
+  static constexpr const char* DEFAULT_HOST = "localhost";
+  static constexpr int DEFAULT_RPC_PORT = 6667;
+  static constexpr const char* DEFAULT_USERNAME = "root";
+  static constexpr const char* DEFAULT_PASSWORD = "TimechoDB@2021";
+  static constexpr int DEFAULT_FETCH_SIZE = 10000;
+  static constexpr int DEFAULT_CONNECT_TIMEOUT_MS = 3 * 1000;
+  static constexpr int DEFAULT_MAX_RETRIES = 3;
+  static constexpr int DEFAULT_RETRY_DELAY_MS = 500;
+  static constexpr const char* DEFAULT_SQL_DIALECT = "tree";
+  static constexpr bool DEFAULT_ENABLE_AUTO_FETCH = true;
+  static constexpr bool DEFAULT_ENABLE_REDIRECTIONS = true;
+  static constexpr bool DEFAULT_ENABLE_RPC_COMPRESSION = false;
 
-    std::string host = DEFAULT_HOST;
-    int rpcPort = DEFAULT_RPC_PORT;
-    std::string username = DEFAULT_USERNAME;
-    std::string password = DEFAULT_PASSWORD;
-    std::string zoneId = "";
-    int fetchSize = 10000;
-    int connectTimeoutMs = 3 * 1000;
-    int maxRetries = 3;
-    int retryDelayMs = 500;
-    std::string sqlDialect = "tree";
-    std::string database = "";
-    bool enableAutoFetch = true;
-    bool enableRedirections = true;
-    bool enableRPCCompression = false;
-    std::vector<std::string> nodeUrls;
-    bool useSSL = false;
-    std::string trustCertFilePath;
+  std::string host = DEFAULT_HOST;
+  int rpcPort = DEFAULT_RPC_PORT;
+  std::string username = DEFAULT_USERNAME;
+  std::string password = DEFAULT_PASSWORD;
+  std::string zoneId = "";
+  int fetchSize = 10000;
+  int connectTimeoutMs = 3 * 1000;
+  int maxRetries = 3;
+  int retryDelayMs = 500;
+  std::string sqlDialect = "tree";
+  std::string database = "";
+  bool enableAutoFetch = true;
+  bool enableRedirections = true;
+  bool enableRPCCompression = false;
+  std::vector<std::string> nodeUrls;
+  bool useSSL = false;
+  std::string trustCertFilePath;
 };
 
 #endif // IOTDB_ABSTRACTSESSIONBUILDER_H
