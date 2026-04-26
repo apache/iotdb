@@ -59,6 +59,7 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
+import org.apache.thrift.transport.TTransportException;
 import org.apache.tsfile.external.commons.lang3.exception.ExceptionUtils;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.Preconditions;
@@ -78,6 +79,7 @@ import java.util.stream.Collectors;
 
 import static com.google.common.util.concurrent.Futures.immediateFuture;
 import static org.apache.iotdb.calc.metric.QueryExecutionMetricSet.DISPATCH_READ;
+import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onThriftFrameOversizeException;
 
 public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
 
@@ -549,6 +551,15 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
                   TSStatusCode.EXECUTE_STATEMENT_ERROR,
                   String.format("unknown read type [%s]", instance.getType())));
       }
+    } catch (TException e) {
+      Throwable rootCause = ExceptionUtils.getRootCause(e);
+      if (rootCause instanceof TTransportException
+          && ((TTransportException) rootCause).getType() == TTransportException.CORRUPTED_DATA) {
+        // Don't set DISPATCH_ERROR status to avoid retry if dispatch failed because of thrift frame
+        // is oversize
+        throw new FragmentInstanceDispatchException(onThriftFrameOversizeException(rootCause));
+      }
+      throw e;
     }
   }
 
