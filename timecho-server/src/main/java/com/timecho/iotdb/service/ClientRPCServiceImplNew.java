@@ -83,6 +83,10 @@ public class ClientRPCServiceImplNew extends ClientRPCServiceImpl {
           Boolean.TRUE.equals(req.getIsSetTag().get(i))
               ? req.getDeviceId().get(startIndex++)
               : null;
+      if (i == 0) {
+        // Always convert table name to lower case
+        trueSegments[i] = trueSegments[i].toLowerCase();
+      }
     }
     TTableDeviceLeaderResp resp = new TTableDeviceLeaderResp();
     resp.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
