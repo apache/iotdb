@@ -45,6 +45,9 @@ public class PipeHandleLeaderChangeProcedureTest {
     leaderMap.put(new TConsensusGroupId(TConsensusGroupType.DataRegion, 1), new Pair<>(1, 2));
     leaderMap.put(new TConsensusGroupId(TConsensusGroupType.DataRegion, 2), new Pair<>(2, 3));
     leaderMap.put(new TConsensusGroupId(TConsensusGroupType.DataRegion, 3), new Pair<>(4, 5));
+    leaderMap.put(
+        new TConsensusGroupId(TConsensusGroupType.ConfigRegion, Integer.MIN_VALUE),
+        new Pair<>(6, 7));
 
     PipeHandleLeaderChangeProcedure proc = new PipeHandleLeaderChangeProcedure(leaderMap);
 

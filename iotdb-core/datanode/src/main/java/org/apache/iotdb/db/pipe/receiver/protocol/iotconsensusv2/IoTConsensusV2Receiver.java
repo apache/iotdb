@@ -519,9 +519,10 @@ public class IoTConsensusV2Receiver {
     long startPreCheckNanos = System.nanoTime();
     iotConsensusV2ReceiverMetrics.recordBorrowTsFileWriterTimer(
         startPreCheckNanos - startBorrowTsFileWriterNanos);
-    File writingFile = tsFileWriter.getWritingFile();
-    RandomAccessFile writingFileWriter = tsFileWriter.getWritingFileWriter();
+    final File writingFile = tsFileWriter.getWritingFile();
+    final RandomAccessFile writingFileWriter = tsFileWriter.getWritingFileWriter();
 
+    final File currentWritingDirPath = tsFileWriter.getLocalWritingDir();
     try {
       final List<File> files =
           req.getFileNames().stream()
