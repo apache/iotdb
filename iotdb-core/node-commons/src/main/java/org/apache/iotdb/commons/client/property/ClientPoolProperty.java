@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.client.property;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
+
 import org.apache.commons.pool2.impl.GenericKeyedObjectPoolConfig;
 
 import java.time.Duration;
@@ -49,7 +51,8 @@ public class ClientPoolProperty<V> {
      * the maximum number of clients that can be allocated for a node. When some clients are idle
      * for more than {@code maxIdleTimeForClient}, they will be cleaned up.
      */
-    private int maxClientNumForEachNode = DefaultProperty.MAX_CLIENT_NUM_FOR_EACH_NODE;
+    private int maxClientNumForEachNode =
+        CommonDescriptor.getInstance().getConfig().getMaxClientNumForEachNode();
 
     /**
      * the minimum amount of time a client may sit idle in the pool before it is eligible for
