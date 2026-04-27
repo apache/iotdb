@@ -1156,7 +1156,7 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public synchronized TSStatus dataPartitionTableIntegrityCheck() {
+  public TSStatus dataPartitionTableIntegrityCheck() {
     TSStatus status = confirmLeader();
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return status;

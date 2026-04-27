@@ -153,6 +153,9 @@ public class PartitionManager {
   private final ScheduledExecutorService regionMaintainer;
   private Future<?> currentRegionMaintainerFuture;
 
+  private final AtomicBoolean dataPartitionTableIntegrityCheckProcedureRunning =
+      new AtomicBoolean(false);
+
   public PartitionManager(IManager configManager, PartitionInfo partitionInfo) {
     this.configManager = configManager;
     this.partitionInfo = partitionInfo;
@@ -514,12 +517,25 @@ public class PartitionManager {
 
   /** Used to repair the lost data partition table */
   public TSStatus dataPartitionTableIntegrityCheck() {
+    if (configManager
+            .getProcedureManager()
+            .isExistUnfinishedProcedure(DataPartitionTableIntegrityCheckProcedure.class)
+        || !dataPartitionTableIntegrityCheckProcedureRunning.compareAndSet(false, true)) {
+      return RpcUtils.getStatus(
+          TSStatusCode.OVERLAP_WITH_EXISTING_TASK,
+          "DataPartitionTableIntegrityCheckProcedure is already submitted.");
+    }
+
     synchronized (this) {
       DataPartitionTableIntegrityCheckProcedure procedure =
           new DataPartitionTableIntegrityCheckProcedure();
       getProcedureManager().getExecutor().submitProcedure(procedure);
     }
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  }
+
+  public void markDataPartitionTableIntegrityCheckProcedureFinished() {
+    dataPartitionTableIntegrityCheckProcedureRunning.set(false);
   }
 
   private TSStatus consensusWritePartitionResult(ConfigPhysicalPlan plan) {
