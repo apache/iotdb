@@ -19,12 +19,14 @@
 
 package org.apache.iotdb.commons.pipe.datastructure;
 
+import java.util.Objects;
+
 public class Triple<L, M, R> {
   public final L first;
   public final M second;
   public final R third;
 
-  public Triple(L first, M second, R third) {
+  public Triple(final L first, final M second, final R third) {
     this.first = first;
     this.second = second;
     this.third = third;
@@ -40,5 +42,22 @@ public class Triple<L, M, R> {
 
   public R getThird() {
     return third;
+  }
+
+  @Override
+  public boolean equals(final Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    final Triple<?, ?, ?> triple = (Triple<?, ?, ?>) o;
+    return first.equals(triple.first) && second.equals(triple.second) && third.equals(triple.third);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(first, second, third);
   }
 }
