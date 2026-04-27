@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.security;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.audit.AuditEventType;
 import org.apache.iotdb.commons.audit.AuditLogOperation;
 import org.apache.iotdb.commons.audit.IAuditEntity;
 import org.apache.iotdb.commons.auth.AuthException;
@@ -1686,7 +1687,10 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   public TSStatus visitRepairDataPartitionTable(
       RepairDataPartitionTable repairDataPartitionTable, TreeAccessCheckContext context) {
     return checkGlobalAuth(
-        context.setAuditLogOperation(AuditLogOperation.CONTROL), PrivilegeType.SYSTEM, () -> "");
+        context.setAuditLogOperation(AuditLogOperation.CONTROL),
+        PrivilegeType.SYSTEM,
+        () -> "",
+        AuditEventType.INTEGRITY_CHECK);
   }
 
   @Override
@@ -2034,6 +2038,29 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
     AUDIT_LOGGER.recordObjectAuthenticationAuditLog(
         context.setResult(result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()),
         auditObject);
+    return result;
+  }
+
+  protected TSStatus checkGlobalAuth(
+      IAuditEntity context,
+      PrivilegeType requiredPrivilege,
+      Supplier<String> auditObject,
+      AuditEventType auditEventType) {
+    if (checkHasGlobalAuth(context, requiredPrivilege, auditObject)) {
+      return SUCCEED;
+    }
+    TSStatus result = AuthorityChecker.getTSStatus(false, requiredPrivilege);
+    IAuditEntity auditEntity =
+        context.setResult(result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    AUDIT_LOGGER.log(
+        auditEntity.setAuditEventType(auditEventType),
+        () ->
+            String.format(
+                OBJECT_AUTHENTICATION_AUDIT_STR,
+                auditEntity.getUsername(),
+                auditEntity.getUserId(),
+                auditObject.get(),
+                auditEntity.getResult()));
     return result;
   }
 

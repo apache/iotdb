@@ -389,7 +389,7 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
   @Override
   public IConfigTask visitRepairDataPartitionTable(
       RepairDataPartitionTable repairDataPartitionTable, MPPQueryContext context) {
-    return new RepairDataPartitionTableTask(repairDataPartitionTable);
+    return new RepairDataPartitionTableTask();
   }
 
   @Override
