@@ -122,10 +122,6 @@ public class ClientPoolFactory {
 
     private final int selectorNumOfAsyncClientManager;
 
-    public AsyncDataNodeInternalServiceClientPoolFactory() {
-      this.selectorNumOfAsyncClientManager = conf.getSelectorNumOfClientManager();
-    }
-
     public AsyncDataNodeInternalServiceClientPoolFactory(int selectorNumOfAsyncClientManager) {
       this.selectorNumOfAsyncClientManager = selectorNumOfAsyncClientManager;
     }
