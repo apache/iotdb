@@ -28,8 +28,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.Set;
 import java.util.function.Consumer;
 
 public abstract class BlockingPendingQueue<E extends Event> {
@@ -43,6 +45,7 @@ public abstract class BlockingPendingQueue<E extends Event> {
   protected final PipeEventCounter eventCounter;
 
   protected final AtomicBoolean isClosed = new AtomicBoolean(false);
+  protected final Set<String> droppedPipeTaskKeys = ConcurrentHashMap.newKeySet();
 
   protected BlockingPendingQueue(
       final BlockingQueue<E> pendingQueue, final PipeEventCounter eventCounter) {
@@ -51,7 +54,10 @@ public abstract class BlockingPendingQueue<E extends Event> {
   }
 
   public boolean offer(final E event) {
-    checkBeforeOffer(event);
+    if (!checkBeforeOffer(event)) {
+      return false;
+    }
+
     final boolean offered = pendingQueue.offer(event);
     if (offered) {
       eventCounter.increaseEventCount(event);
@@ -60,7 +66,9 @@ public abstract class BlockingPendingQueue<E extends Event> {
   }
 
   public boolean put(final E event) {
-    checkBeforeOffer(event);
+    if (!checkBeforeOffer(event)) {
+      return false;
+    }
     try {
       pendingQueue.put(event);
       eventCounter.increaseEventCount(event);
@@ -101,6 +109,7 @@ public abstract class BlockingPendingQueue<E extends Event> {
     isClosed.set(true);
     pendingQueue.clear();
     eventCounter.reset();
+    droppedPipeTaskKeys.clear();
   }
 
   /** DO NOT FORGET to set eventCounter to new value after invoking this method. */
@@ -120,10 +129,12 @@ public abstract class BlockingPendingQueue<E extends Event> {
           return true;
         });
     eventCounter.reset();
+    droppedPipeTaskKeys.clear();
   }
 
   public void discardEventsOfPipe(
       final String pipeNameToDrop, final long creationTimeToDrop, final int regionId) {
+    droppedPipeTaskKeys.add(generatePipeTaskKey(pipeNameToDrop, creationTimeToDrop, regionId));
     pendingQueue.removeIf(
         event -> {
           if (event instanceof EnrichedEvent
@@ -158,10 +169,12 @@ public abstract class BlockingPendingQueue<E extends Event> {
     return eventCounter.getPipeHeartbeatEventCount();
   }
 
-  protected void checkBeforeOffer(final E event) {
-    if (isClosed.get() && event instanceof EnrichedEvent) {
+  protected boolean checkBeforeOffer(final E event) {
+    final boolean shouldReject = isClosed.get() || isEventFromDroppedPipe(event);
+    if (shouldReject && event instanceof EnrichedEvent) {
       ((EnrichedEvent) event).clearReferenceCount(BlockingPendingQueue.class.getName());
     }
+    return !shouldReject;
   }
 
   protected static boolean isEventFromPipe(
@@ -172,5 +185,24 @@ public abstract class BlockingPendingQueue<E extends Event> {
     return pipeNameToDrop.equals(event.getPipeName())
         && creationTimeToDrop == event.getCreationTime()
         && regionId == event.getRegionId();
+  }
+
+  protected boolean isEventFromDroppedPipe(final E event) {
+    return event instanceof EnrichedEvent
+        && ((EnrichedEvent) event).getPipeName() != null
+        && isPipeDropped(
+            ((EnrichedEvent) event).getPipeName(),
+            ((EnrichedEvent) event).getCreationTime(),
+            ((EnrichedEvent) event).getRegionId());
+  }
+
+  public boolean isPipeDropped(
+      final String pipeName, final long creationTime, final int regionId) {
+    return droppedPipeTaskKeys.contains(generatePipeTaskKey(pipeName, creationTime, regionId));
+  }
+
+  private static String generatePipeTaskKey(
+      final String pipeName, final long creationTime, final int regionId) {
+    return pipeName + "_" + creationTime + "_" + regionId;
   }
 }
