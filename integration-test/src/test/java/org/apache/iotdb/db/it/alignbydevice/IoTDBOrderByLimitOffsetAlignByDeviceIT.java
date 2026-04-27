@@ -41,7 +41,7 @@ import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
 public class IoTDBOrderByLimitOffsetAlignByDeviceIT {
 
   @BeforeClass
-  public static void setUp() throws Exception {
+  public static void setUp() {
     EnvFactory.getEnv().initClusterEnvironment();
     insertData();
     insertData2();
@@ -49,7 +49,7 @@ public class IoTDBOrderByLimitOffsetAlignByDeviceIT {
   }
 
   @AfterClass
-  public static void tearDown() throws Exception {
+  public static void tearDown() {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 

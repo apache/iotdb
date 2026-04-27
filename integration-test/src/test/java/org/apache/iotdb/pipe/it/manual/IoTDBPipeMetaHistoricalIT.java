@@ -92,7 +92,7 @@ public class IoTDBPipeMetaHistoricalIT extends AbstractPipeDualManualIT {
 
       // Do not fail if the failure has nothing to do with pipe
       // Because the failures will randomly generate due to resource limitation
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               "create database root.ln",
@@ -102,16 +102,15 @@ public class IoTDBPipeMetaHistoricalIT extends AbstractPipeDualManualIT {
               "create role `admin`",
               "grant role `admin` to `thulab`",
               "grant read on root.** to role `admin`",
-              "create schema template t1 (temperature FLOAT encoding=RLE, status BOOLEAN encoding=PLAIN compression=SNAPPY)",
+              "create schema template t1 (temperature FLOAT encoding=RLE,status BOOLEAN encoding=PLAIN compression=SNAPPY)",
               "set schema template t1 to root.ln.wf01",
               "set schema template t1 to root.db.wf01",
               "create timeseries using schema template on root.ln.wf01.wt01",
               "create timeseries using schema template on root.db.wf01.wt01",
               "create timeseries root.ln.wf02.wt01.status with datatype=BOOLEAN,encoding=PLAIN",
               // Insert large timestamp to avoid deletion by ttl
-              "insert into root.ln.wf01.wt01(time, temperature, status) values (1800000000000, 23, true)"))) {
-        return;
-      }
+              "insert into root.ln.wf01.wt01(time,temperature,status) values (1800000000000,23,true)"),
+          null);
 
       final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
@@ -159,10 +158,8 @@ public class IoTDBPipeMetaHistoricalIT extends AbstractPipeDualManualIT {
           "Time,root.ln.wf01.wt01.temperature,root.ln.wf01.wt01.status,",
           Collections.singleton("1800000000000,23.0,true,"));
 
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
-          senderEnv, "create timeseries using schema template on root.ln.wf01.wt02")) {
-        return;
-      }
+      TestUtils.executeNonQuery(
+          senderEnv, "create timeseries using schema template on root.ln.wf01.wt02", null);
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv, "count timeseries", "count(timeseries),", Collections.singleton("4,"));
@@ -181,7 +178,7 @@ public class IoTDBPipeMetaHistoricalIT extends AbstractPipeDualManualIT {
 
       // Do not fail if the failure has nothing to do with pipe
       // Because the failures will randomly generate due to resource limitation
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               "create database root.ln",
@@ -196,9 +193,8 @@ public class IoTDBPipeMetaHistoricalIT extends AbstractPipeDualManualIT {
               "create timeseries using schema template on root.ln.wf01.wt01",
               "create timeseries root.ln.wf02.wt01.status with datatype=BOOLEAN,encoding=PLAIN",
               // Insert large timestamp to avoid deletion by ttl
-              "insert into root.ln.wf01.wt01(time, temperature, status) values (1800000000000, 23, true)"))) {
-        return;
-      }
+              "insert into root.ln.wf01.wt01(time, temperature, status) values (1800000000000, 23, true)"),
+          null);
 
       final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
@@ -259,9 +255,7 @@ public class IoTDBPipeMetaHistoricalIT extends AbstractPipeDualManualIT {
       TestUtils.assertDataAlwaysOnEnv(
           receiverEnv, "select * from root.**", "Time", Collections.emptySet());
 
-      if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "CREATE ROLE test")) {
-        return;
-      }
+      TestUtils.executeNonQuery(senderEnv, "CREATE ROLE test", null);
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
@@ -283,14 +277,13 @@ public class IoTDBPipeMetaHistoricalIT extends AbstractPipeDualManualIT {
 
       // Do not fail if the failure has nothing to do with pipe
       // Because the failures will randomly generate due to resource limitation
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               "create database root.sg",
               "create timeseries root.sg.a.b int32",
-              "create aligned timeseries root.sg.`apache|timecho-tag-attr`.d1(s1 INT32 tags(tag1=v1, tag2=v2) attributes(attr1=v1, attr2=v2), s2 DOUBLE tags(tag3=v3, tag4=v4) attributes(attr3=v3, attr4=v4))"))) {
-        return;
-      }
+              "create aligned timeseries root.sg.`apache|timecho-tag-attr`.d1(s1 INT32 tags(tag1=v1,tag2=v2) attributes(attr1=v1,attr2=v2),s2 DOUBLE tags(tag3=v3,tag4=v4) attributes(attr3=v3,attr4=v4))"),
+          null);
 
       final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();

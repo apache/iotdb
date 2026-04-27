@@ -262,6 +262,7 @@ public abstract class AlignedTVList extends TVList {
     return getAlignedValueByValueIndex(valueIndex, null, floatPrecision, encodingList);
   }
 
+  @SuppressWarnings("java:S6541")
   private TsPrimitiveType getAlignedValueByValueIndex(
       int valueIndex,
       int[] validIndexesForTimeDuplicatedRows,
@@ -835,7 +836,7 @@ public abstract class AlignedTVList extends TVList {
   }
 
   @Override
-  public long calculateRamSize() {
+  public synchronized long calculateRamSize() {
     return timestamps.size() * alignedTvListArrayMemCost();
   }
 
@@ -920,6 +921,7 @@ public abstract class AlignedTVList extends TVList {
   }
 
   /** Build TsBlock by column. */
+  @SuppressWarnings("java:S6541")
   public TsBlock buildTsBlock(
       int floatPrecision, List<TSEncoding> encodingList, List<List<TimeRange>> deletionList) {
     TsBlockBuilder builder = new TsBlockBuilder(dataTypes);
@@ -1155,6 +1157,7 @@ public abstract class AlignedTVList extends TVList {
     }
   }
 
+  @SuppressWarnings("java:S6541")
   public static AlignedTVList deserialize(DataInputStream stream) throws IOException {
     TSDataType dataType = ReadWriteIOUtils.readDataType(stream);
     if (dataType != TSDataType.VECTOR) {
@@ -1256,6 +1259,10 @@ public abstract class AlignedTVList extends TVList {
   }
 
   public BitMap getAllValueColDeletedMap() {
+    return getAllValueColDeletedMap(rowCount);
+  }
+
+  public BitMap getAllValueColDeletedMap(int rowCount) {
     // row exists when any column value exists
     if (bitMaps == null) {
       return null;
@@ -1412,7 +1419,7 @@ public abstract class AlignedTVList extends TVList {
           (columnIndexList == null)
               ? IntStream.range(0, dataTypes.size()).boxed().collect(Collectors.toList())
               : columnIndexList;
-      this.allValueColDeletedMap = getAllValueColDeletedMap();
+      this.allValueColDeletedMap = getAllValueColDeletedMap(this.rows);
       this.valueColumnsDeletionList = valueColumnsDeletionList;
       this.floatPrecision = floatPrecision != null ? floatPrecision : 0;
       this.encodingList = encodingList;
@@ -1429,6 +1436,7 @@ public abstract class AlignedTVList extends TVList {
     }
 
     @Override
+    @SuppressWarnings("java:S6541")
     protected void prepareNext() {
       // find the first row that is neither deleted nor empty (all NULL values)
       findValidRow = false;
@@ -1602,6 +1610,7 @@ public abstract class AlignedTVList extends TVList {
     }
 
     @Override
+    @SuppressWarnings("java:S6541")
     public boolean hasNextBatch() {
       if (!paginationController.hasCurLimit()) {
         return false;
@@ -1617,13 +1626,16 @@ public abstract class AlignedTVList extends TVList {
 
     @Override
     public TsBlock nextBatch() {
-      TsBlockBuilder builder = new TsBlockBuilder(maxNumberOfPointsInPage, dataTypeList);
+      int maxRowCountOfCurrentBatch = Math.min(rows - index, maxNumberOfPointsInPage);
+      TsBlockBuilder builder = new TsBlockBuilder(maxRowCountOfCurrentBatch, dataTypeList);
       // Time column
       TimeColumnBuilder timeBuilder = builder.getTimeColumnBuilder();
 
       int validRowCount = 0;
-      // duplicated time or deleted time are all invalid, true if we don't need this row
-      BitMap timeDuplicateInfo = null;
+      // Rows that are deleted or whose timestamps do not match the filter are considered invalid.
+      // The corresponding bit is set to true if the row is not needed.
+      LazyBitMap timeInvalidInfo = null;
+      LazyBitMap timeDuplicatedInfo = null;
 
       int startIndex = index;
       // time column
@@ -1632,12 +1644,15 @@ public abstract class AlignedTVList extends TVList {
         if (validRowCount >= maxNumberOfPointsInPage || isCurrentTimeExceedTimeRange(time)) {
           break;
         }
-        // skip empty row
-        if (allValueColDeletedMap != null
-            && allValueColDeletedMap.isMarked(getValueIndex(getScanOrderIndex(index)))) {
-          continue;
-        }
-        if (!isTimeSatisfied(time)) {
+        // skip invalid row
+        if ((allValueColDeletedMap != null
+                && allValueColDeletedMap.isMarked(getValueIndex(getScanOrderIndex(index))))
+            || !isTimeSatisfied(time)) {
+          timeInvalidInfo =
+              timeInvalidInfo == null
+                  ? new LazyBitMap(index, maxRowCountOfCurrentBatch, rows - 1)
+                  : timeInvalidInfo;
+          timeInvalidInfo.mark(index);
           continue;
         }
         int nextRowIndex = index + 1;
@@ -1645,20 +1660,25 @@ public abstract class AlignedTVList extends TVList {
             && ((allValueColDeletedMap != null
                     && allValueColDeletedMap.isMarked(
                         getValueIndex(getScanOrderIndex(nextRowIndex))))
-                || !isTimeSatisfied(time))) {
+                || !isTimeSatisfied(getTime(getScanOrderIndex(nextRowIndex))))) {
+          timeInvalidInfo =
+              timeInvalidInfo == null
+                  ? new LazyBitMap(nextRowIndex, maxRowCountOfCurrentBatch, rows - 1)
+                  : timeInvalidInfo;
+          timeInvalidInfo.mark(nextRowIndex);
           nextRowIndex++;
         }
         if ((nextRowIndex == rows || time != getTime(getScanOrderIndex(nextRowIndex)))) {
           timeBuilder.writeLong(time);
           validRowCount++;
         } else {
-          if (Objects.isNull(timeDuplicateInfo)) {
-            timeDuplicateInfo = new BitMap(rows);
+          if (Objects.isNull(timeDuplicatedInfo)) {
+            timeDuplicatedInfo = new LazyBitMap(index, maxRowCountOfCurrentBatch, rows - 1);
           }
-          // For this timeInvalidInfo, we mark all positions that are not the last one in the
+          // For this timeDuplicatedInfo, we mark all positions that are not the last one in the
           // ASC traversal. It has the same behaviour for the DESC traversal, because our ultimate
           // goal is to process all the data with the same timestamp before writing it into TsBlock.
-          timeDuplicateInfo.mark(index);
+          timeDuplicatedInfo.mark(index);
         }
         index = nextRowIndex - 1;
       }
@@ -1673,21 +1693,20 @@ public abstract class AlignedTVList extends TVList {
         int[] deleteCursor = {0};
         // Pair of Time and Index
         Pair<Long, Integer> lastValidPointIndexForTimeDupCheck = null;
-        if (Objects.nonNull(timeDuplicateInfo)) {
+        if (Objects.nonNull(timeDuplicatedInfo)) {
           lastValidPointIndexForTimeDupCheck = new Pair<>(Long.MIN_VALUE, null);
         }
         ColumnBuilder valueBuilder = builder.getColumnBuilder(columnIndex);
         currentWriteRowIndex = 0;
         for (int sortedRowIndex = startIndex; sortedRowIndex < index; sortedRowIndex++) {
-          // skip empty row
-          if ((allValueColDeletedMap != null
-                  && allValueColDeletedMap.isMarked(
-                      getValueIndex(getScanOrderIndex(sortedRowIndex))))
-              || !isTimeSatisfied(getTime(getScanOrderIndex(sortedRowIndex)))) {
-            continue;
+          // skip invalid rows
+          if (Objects.nonNull(timeInvalidInfo)) {
+            if (timeInvalidInfo.isMarked(sortedRowIndex)) {
+              continue;
+            }
           }
-          // skip time duplicated or totally deleted rows
-          if (Objects.nonNull(timeDuplicateInfo)) {
+          // skip time duplicated rows
+          if (Objects.nonNull(timeDuplicatedInfo)) {
             if (!outer.isNullValue(
                 getValueIndex(getScanOrderIndex(sortedRowIndex)), validColumnIndex)) {
               lastValidPointIndexForTimeDupCheck.left = getTime(getScanOrderIndex(sortedRowIndex));
@@ -1702,11 +1721,11 @@ public abstract class AlignedTVList extends TVList {
                     getValueIndex(getScanOrderIndex(sortedRowIndex));
               }
             }
-            // timeInvalidInfo was constructed when traversing the time column before. It can be
-            // reused when traversing each value column to skip deleted rows or non-last rows with
+            // timeDuplicatedInfo was constructed when traversing the time column before. It can be
+            // reused when traversing each value column to skip non-last rows with
             // duplicated timestamps.
             // Until the last duplicate timestamp is encountered, it will be skipped here.
-            if (timeDuplicateInfo.isMarked(sortedRowIndex)) {
+            if (timeDuplicatedInfo.isMarked(sortedRowIndex)) {
               continue;
             }
           }
@@ -1759,9 +1778,9 @@ public abstract class AlignedTVList extends TVList {
       TsBlock tsBlock = builder.build();
       if (needRebuildTsBlock(hasAnyNonNullValue)) {
         // if exist all null rows, at most have validRowCount - 1 valid rows
+        // When rebuilding TsBlock, pushDownFilter and paginationController are also processed.
         tsBlock = reBuildTsBlock(hasAnyNonNullValue, validRowCount, dataTypeList, tsBlock);
-      }
-      if (pushDownFilter != null) {
+      } else if (pushDownFilter != null) {
         tsBlock =
             TsBlockUtil.applyFilterAndLimitOffsetToTsBlock(
                 tsBlock,
@@ -1823,21 +1842,35 @@ public abstract class AlignedTVList extends TVList {
         int previousValidRowCount,
         List<TSDataType> tsDataTypeList,
         TsBlock previousTsBlock) {
+      boolean[] selection = hasAnyNonNullValue;
+      if (pushDownFilter != null) {
+        selection = pushDownFilter.satisfyTsBlock(hasAnyNonNullValue, previousTsBlock);
+      }
       TsBlockBuilder builder = new TsBlockBuilder(previousValidRowCount - 1, tsDataTypeList);
       TimeColumnBuilder timeColumnBuilder = builder.getTimeColumnBuilder();
       Column timeColumn = previousTsBlock.getTimeColumn();
+      int stopIndex = previousValidRowCount;
       for (int i = 0; i < previousValidRowCount; i++) {
-        if (hasAnyNonNullValue[i]) {
-          timeColumnBuilder.writeLong(timeColumn.getLong(i));
-          builder.declarePosition();
+        if (selection[i]) {
+          if (paginationController.hasCurOffset()) {
+            paginationController.consumeOffset();
+            selection[i] = false;
+          } else if (paginationController.hasCurLimit()) {
+            timeColumnBuilder.writeLong(timeColumn.getLong(i));
+            builder.declarePosition();
+            paginationController.consumeLimit();
+          } else {
+            stopIndex = i;
+            break;
+          }
         }
       }
 
       for (int columnIndex = 0; columnIndex < tsDataTypeList.size(); columnIndex++) {
         ColumnBuilder columnBuilder = builder.getColumnBuilder(columnIndex);
         Column column = previousTsBlock.getColumn(columnIndex);
-        for (int i = 0; i < previousValidRowCount; i++) {
-          if (hasAnyNonNullValue[i]) {
+        for (int i = 0; i < stopIndex; i++) {
+          if (selection[i]) {
             if (column.isNull(i)) {
               columnBuilder.appendNull();
             } else {
@@ -1860,11 +1893,18 @@ public abstract class AlignedTVList extends TVList {
     }
 
     @Override
+    @SuppressWarnings("java:S6541")
     public void encodeBatch(IChunkWriter chunkWriter, BatchEncodeInfo encodeInfo, long[] times) {
+      int maxRowCountOfCurrentBatch =
+          Math.min(
+              rows - index,
+              Math.min(
+                  (int) encodeInfo.maxNumberOfPointsInChunk - encodeInfo.pointNumInChunk, // NOSONAR
+                  encodeInfo.maxNumberOfPointsInPage - encodeInfo.pointNumInPage));
       AlignedChunkWriterImpl alignedChunkWriter = (AlignedChunkWriterImpl) chunkWriter;
 
       // duplicated time or deleted time are all invalid, true if we don't need this row
-      BitMap timeDuplicateInfo = null;
+      LazyBitMap timeDuplicateInfo = null;
 
       int startIndex = index;
       // time column
@@ -1890,7 +1930,7 @@ public abstract class AlignedTVList extends TVList {
           encodeInfo.pointNumInChunk++;
         } else {
           if (Objects.isNull(timeDuplicateInfo)) {
-            timeDuplicateInfo = new BitMap(rows);
+            timeDuplicateInfo = new LazyBitMap(index, maxRowCountOfCurrentBatch, rows - 1);
           }
           timeDuplicateInfo.mark(index);
         }

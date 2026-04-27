@@ -196,6 +196,9 @@ public class ColumnHeaderConstant {
   public static final String QUERY_ID = "QueryId";
   public static final String ELAPSED_TIME = "ElapsedTime";
   public static final String STATEMENT = "Statement";
+  public static final String WAIT_TIME_IN_SERVER = "WaitTimeInServer";
+  public static final String CLIENT_IP = "ClientIp";
+  public static final String TIMEOUT = "Timeout";
 
   // column names for show space quota
   public static final String QUOTA_TYPE = "QuotaType";
@@ -499,7 +502,10 @@ public class ColumnHeaderConstant {
           new ColumnHeader(QUERY_ID, TSDataType.TEXT),
           new ColumnHeader(DATA_NODE_ID, TSDataType.INT32),
           new ColumnHeader(ELAPSED_TIME, TSDataType.FLOAT),
-          new ColumnHeader(STATEMENT, TSDataType.TEXT));
+          new ColumnHeader(STATEMENT, TSDataType.TEXT),
+          new ColumnHeader(WAIT_TIME_IN_SERVER, TSDataType.FLOAT),
+          new ColumnHeader(CLIENT_IP, TSDataType.TEXT),
+          new ColumnHeader(TIMEOUT, TSDataType.INT64));
 
   public static final List<ColumnHeader> showSpaceQuotaColumnHeaders =
       ImmutableList.of(

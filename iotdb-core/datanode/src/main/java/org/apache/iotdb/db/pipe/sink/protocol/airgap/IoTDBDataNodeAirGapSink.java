@@ -108,7 +108,8 @@ public abstract class IoTDBDataNodeAirGapSink extends IoTDBAirGapSink {
           new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
               .setMessage(errorMessage),
           errorMessage,
-          pipeSchemaRegionWritePlanEvent.toString());
+          pipeSchemaRegionWritePlanEvent.toString(),
+          true);
     }
   }
 }

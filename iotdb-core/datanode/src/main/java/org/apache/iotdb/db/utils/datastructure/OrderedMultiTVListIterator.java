@@ -69,6 +69,22 @@ public class OrderedMultiTVListIterator extends MultiTVListIterator {
   }
 
   @Override
+  protected void skipToCurrentTimeRangeStartPosition() {
+    hasNext = false;
+    iteratorIndex = 0;
+    while (iteratorIndex < tvListIterators.size() && !hasNext) {
+      TVList.TVListIterator iterator = tvListIterators.get(iteratorIndex);
+      iterator.skipToCurrentTimeRangeStartPosition();
+      if (!iterator.hasNextTimeValuePair()) {
+        iteratorIndex++;
+        continue;
+      }
+      hasNext = iterator.hasNextTimeValuePair();
+    }
+    probeNext = false;
+  }
+
+  @Override
   protected void next() {
     tvListIterators.get(iteratorIndex).next();
     probeNext = false;
@@ -89,5 +105,13 @@ public class OrderedMultiTVListIterator extends MultiTVListIterator {
       break;
     }
     probeNext = false;
+  }
+
+  @Override
+  public void setCurrentPageTimeRange(TimeRange timeRange) {
+    for (TVList.TVListIterator tvListIterator : this.tvListIterators) {
+      tvListIterator.timeRange = timeRange;
+    }
+    super.setCurrentPageTimeRange(timeRange);
   }
 }

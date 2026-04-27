@@ -853,4 +853,21 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
       }
     }
   }
+
+  @Test
+  public void testTemplatePathConflict() throws Exception {
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
+      // set device template
+      statement.execute("SET DEVICE TEMPLATE t1 TO root.sg1");
+      // activate device template
+      statement.execute("create timeSeries using device template on root.sg1.d1");
+      try {
+        statement.execute("create timeSeries using device template on root.sg1.d1.s1");
+        fail();
+      } catch (final Exception e) {
+        Assert.assertEquals("506: Path [root.sg1.d1.s1] already exist", e.getMessage());
+      }
+    }
+  }
 }

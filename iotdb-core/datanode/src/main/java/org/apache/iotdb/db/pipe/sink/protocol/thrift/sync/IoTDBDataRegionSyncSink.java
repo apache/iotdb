@@ -39,7 +39,6 @@ import org.apache.iotdb.db.pipe.sink.payload.evolvable.batch.PipeTabletEventBatc
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.batch.PipeTabletEventPlainBatch;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.batch.PipeTabletEventTsFileBatch;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.batch.PipeTransferBatchReqBuilder;
-import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTabletBinaryReq;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTabletInsertNodeReq;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTabletRawReq;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTsFilePieceReq;
@@ -319,11 +318,7 @@ public class IoTDBDataRegionSyncSink extends IoTDBDataNodeSyncSink {
 
       final InsertNode insertNode = pipeInsertNodeTabletInsertionEvent.getInsertNode();
       final TPipeTransferReq req =
-          compressIfNeeded(
-              insertNode != null
-                  ? PipeTransferTabletInsertNodeReq.toTPipeTransferReq(insertNode)
-                  : PipeTransferTabletBinaryReq.toTPipeTransferReq(
-                      pipeInsertNodeTabletInsertionEvent.getByteBuffer()));
+          compressIfNeeded(PipeTransferTabletInsertNodeReq.toTPipeTransferReq(insertNode));
       rateLimitIfNeeded(
           pipeInsertNodeTabletInsertionEvent.getPipeName(),
           pipeInsertNodeTabletInsertionEvent.getCreationTime(),

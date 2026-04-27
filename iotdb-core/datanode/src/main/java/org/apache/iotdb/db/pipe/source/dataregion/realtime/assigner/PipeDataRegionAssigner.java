@@ -64,7 +64,9 @@ public class PipeDataRegionAssigner implements Closeable {
 
   public PipeDataRegionAssigner(final String dataRegionId) {
     this.matcher = new CachedSchemaPatternMatcher();
-    this.disruptor = new DisruptorQueue(this::assignToExtractor, this::onAssignedHook);
+    this.disruptor =
+        new DisruptorQueue(
+            Integer.parseInt(dataRegionId), this::assignToSource, this::onAssignedHook);
     this.dataRegionId = dataRegionId;
     PipeAssignerMetrics.getInstance().register(this);
   }
@@ -105,7 +107,7 @@ public class PipeDataRegionAssigner implements Closeable {
     eventCounter.decreaseEventCount(innerEvent);
   }
 
-  private void assignToExtractor(
+  private void assignToSource(
       final PipeRealtimeEvent event, final long sequence, final boolean endOfBatch) {
     if (disruptor.isClosed()) {
       return;

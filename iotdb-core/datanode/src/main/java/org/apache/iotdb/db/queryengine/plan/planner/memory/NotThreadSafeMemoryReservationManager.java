@@ -22,6 +22,8 @@ package org.apache.iotdb.db.queryengine.plan.planner.memory;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 
+import org.apache.tsfile.utils.Pair;
+
 import javax.annotation.concurrent.NotThreadSafe;
 
 @NotThreadSafe
@@ -90,5 +92,26 @@ public class NotThreadSafeMemoryReservationManager implements MemoryReservationM
       bytesToBeReserved = 0;
       bytesToBeReleased = 0;
     }
+  }
+
+  @Override
+  public Pair<Long, Long> releaseMemoryVirtually(final long size) {
+    if (bytesToBeReserved >= size) {
+      bytesToBeReserved -= size;
+      return new Pair<>(size, 0L);
+    } else {
+      long releasedBytesInReserved = bytesToBeReserved;
+      long releasedBytesInTotal = size - bytesToBeReserved;
+      bytesToBeReserved = 0;
+      reservedBytesInTotal -= releasedBytesInTotal;
+      return new Pair<>(releasedBytesInReserved, releasedBytesInTotal);
+    }
+  }
+
+  @Override
+  public void reserveMemoryVirtually(
+      final long bytesToBeReserved, final long bytesAlreadyReserved) {
+    reservedBytesInTotal += bytesAlreadyReserved;
+    reserveMemoryCumulatively(bytesToBeReserved);
   }
 }

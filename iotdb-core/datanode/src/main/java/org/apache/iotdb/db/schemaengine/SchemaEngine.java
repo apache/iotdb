@@ -76,7 +76,7 @@ public class SchemaEngine {
   private final SchemaRegionLoader schemaRegionLoader;
 
   @SuppressWarnings("java:S3077")
-  private volatile Map<SchemaRegionId, ISchemaRegion> schemaRegionMap;
+  private final Map<SchemaRegionId, ISchemaRegion> schemaRegionMap = new ConcurrentHashMap<>();
 
   private ScheduledExecutorService timedForceMLogThread;
 
@@ -114,8 +114,6 @@ public class SchemaEngine {
     // CachedSchemaEngineMetric depend on CacheMemoryManager, so it should be initialized after
     // CacheMemoryManager
     schemaMetricManager = new SchemaMetricManager(schemaEngineStatistics);
-
-    schemaRegionMap = new ConcurrentHashMap<>();
 
     initSchemaRegion();
 
@@ -234,11 +232,8 @@ public class SchemaEngine {
   }
 
   public void forceMlog() {
-    Map<SchemaRegionId, ISchemaRegion> schemaRegionMap = this.schemaRegionMap;
-    if (schemaRegionMap != null) {
-      for (ISchemaRegion schemaRegion : schemaRegionMap.values()) {
-        schemaRegion.forceMlog();
-      }
+    for (ISchemaRegion schemaRegion : schemaRegionMap.values()) {
+      schemaRegion.forceMlog();
     }
   }
 
@@ -253,15 +248,13 @@ public class SchemaEngine {
       timedForceMLogThread = null;
     }
 
-    if (schemaRegionMap != null) {
-      // SchemaEngineStatistics will be clear after clear all schema region
-      for (ISchemaRegion schemaRegion : schemaRegionMap.values()) {
-        schemaRegion.clear();
-      }
-      schemaRegionMap.clear();
-      schemaRegionMap = null;
-      logger.info("clear schema region map.");
+    // SchemaEngineStatistics will be clear after clear all schema region
+    for (ISchemaRegion schemaRegion : schemaRegionMap.values()) {
+      schemaRegion.clear();
     }
+    schemaRegionMap.clear();
+    logger.info("clear schema region map.");
+
     // SchemaMetric should be cleared lastly
     if (schemaMetricManager != null) {
       schemaMetricManager.clear();
@@ -369,7 +362,7 @@ public class SchemaEngine {
   }
 
   public int getSchemaRegionNumber() {
-    return schemaRegionMap == null ? 0 : schemaRegionMap.size();
+    return schemaRegionMap.size();
   }
 
   public Map<Integer, Long> countDeviceNumBySchemaRegion(List<Integer> schemaIds) {

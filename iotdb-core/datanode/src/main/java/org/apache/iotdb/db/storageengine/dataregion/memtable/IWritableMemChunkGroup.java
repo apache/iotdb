@@ -48,6 +48,8 @@ public interface IWritableMemChunkGroup extends WALEntryValue {
 
   Map<String, IWritableMemChunk> getMemChunkMap();
 
+  boolean isEmpty();
+
   int delete(
       PartialPath originalPath, PartialPath devicePath, long startTimestamp, long endTimestamp);
 

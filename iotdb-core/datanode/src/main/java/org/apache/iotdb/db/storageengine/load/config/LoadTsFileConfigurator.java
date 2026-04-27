@@ -48,6 +48,9 @@ public class LoadTsFileConfigurator {
       case VERIFY_KEY:
         validateVerifyParam(value);
         break;
+      case PIPE_GENERATED_KEY:
+        validatePipeGeneratedParam(value);
+        break;
       case ASYNC_LOAD_KEY:
         validateAsyncLoadParam(value);
         break;
@@ -58,19 +61,19 @@ public class LoadTsFileConfigurator {
 
   public static final String DATABASE_LEVEL_KEY = "database-level";
   private static final int DATABASE_LEVEL_DEFAULT_VALUE =
-      IoTDBDescriptor.getInstance().getConfig().getDefaultStorageGroupLevel();
+      IoTDBDescriptor.getInstance().getConfig().getDefaultDatabaseLevel();
   private static final int DATABASE_LEVEL_MIN_VALUE = 1;
 
   public static void validateDatabaseLevelParam(final String databaseLevel) {
     try {
-      int level = Integer.parseInt(databaseLevel);
+      final int level = Integer.parseInt(databaseLevel);
       if (level < DATABASE_LEVEL_MIN_VALUE) {
         throw new SemanticException(
             String.format(
                 "Given database level %d is less than the minimum value %d, please input a valid database level.",
                 level, DATABASE_LEVEL_MIN_VALUE));
       }
-    } catch (Exception e) {
+    } catch (final NumberFormatException e) {
       throw new SemanticException(
           String.format(
               "Given database level %s is not a valid integer, please input a valid database level.",
@@ -153,6 +156,21 @@ public class LoadTsFileConfigurator {
   public static boolean parseOrGetDefaultVerify(final Map<String, String> loadAttributes) {
     return Boolean.parseBoolean(
         loadAttributes.getOrDefault(VERIFY_KEY, String.valueOf(VERIFY_DEFAULT_VALUE)));
+  }
+
+  public static final String PIPE_GENERATED_KEY = "pipe-generated";
+
+  public static void validatePipeGeneratedParam(final String pipeGenerated) {
+    if (!"true".equalsIgnoreCase(pipeGenerated) && !"false".equalsIgnoreCase(pipeGenerated)) {
+      throw new SemanticException(
+          String.format(
+              "Given %s value '%s' is not supported, please input a valid boolean value.",
+              PIPE_GENERATED_KEY, pipeGenerated));
+    }
+  }
+
+  public static boolean parseOrGetDefaultPipeGenerated(final Map<String, String> loadAttributes) {
+    return Boolean.parseBoolean(loadAttributes.getOrDefault(PIPE_GENERATED_KEY, "false"));
   }
 
   public static final String ASYNC_LOAD_KEY = "async";

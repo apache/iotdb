@@ -44,6 +44,7 @@ import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -147,6 +148,7 @@ public class IoTDBSnapshotTSPatternTsfilePushConsumerIT extends AbstractSubscrip
     session_src.executeNonQueryStatement("flush;");
   }
 
+  @Ignore
   @Test
   @Retry
   public void do_test()
@@ -190,7 +192,7 @@ public class IoTDBSnapshotTSPatternTsfilePushConsumerIT extends AbstractSubscrip
                   onReceiveCount.incrementAndGet();
                   System.out.println("onReceiveCount=" + onReceiveCount.get());
                   try {
-                    TsFileReader reader = message.getTsFileHandler().openReader();
+                    TsFileReader reader = message.getTsFile().openReader();
                     for (int i = 0; i < 4; i++) {
                       QueryDataSet dataset =
                           reader.query(

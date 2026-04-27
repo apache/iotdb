@@ -244,6 +244,10 @@ public class LocalExecutionPlanner {
       final long reservedBytes,
       final String queryId,
       final String contextHolder) {
+    if (memoryInBytes <= 0) {
+      throw new IllegalArgumentException(
+          "Bytes to reserve from free memory for operators should be larger than 0");
+    }
     if (memoryInBytes > freeMemoryForOperators) {
       throw new MemoryNotEnoughException(
           String.format(
@@ -264,6 +268,10 @@ public class LocalExecutionPlanner {
   }
 
   public synchronized void releaseToFreeMemoryForOperators(final long memoryInBytes) {
+    if (memoryInBytes <= 0) {
+      throw new IllegalArgumentException(
+          "Bytes to release to free memory for operators should be larger than 0");
+    }
     freeMemoryForOperators += memoryInBytes;
 
     if (freeMemoryForOperators > ALLOCATE_MEMORY_FOR_OPERATORS) {

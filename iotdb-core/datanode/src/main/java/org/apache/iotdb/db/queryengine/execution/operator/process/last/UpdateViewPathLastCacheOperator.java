@@ -29,7 +29,7 @@ import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.TsPrimitiveType;
 
 public class UpdateViewPathLastCacheOperator extends UpdateLastCacheOperator {
-
+  // Now not only a view path will be set here, but also the measurement path with alias will be set
   private final String outputViewPath;
 
   public UpdateViewPathLastCacheOperator(

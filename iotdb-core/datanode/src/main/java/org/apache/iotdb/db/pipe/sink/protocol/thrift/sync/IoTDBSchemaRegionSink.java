@@ -145,7 +145,8 @@ public class IoTDBSchemaRegionSink extends IoTDBDataNodeSyncSink {
           String.format(
               "Seal file %s and %s error, result status %s.",
               mTreeSnapshotFile, tagLogSnapshotFile, resp.getStatus()),
-          snapshotEvent.toString());
+          snapshotEvent.toString(),
+          true);
     }
 
     LOGGER.info("Successfully transferred file {} and {}.", mTreeSnapshotFile, tagLogSnapshotFile);

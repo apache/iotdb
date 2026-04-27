@@ -27,7 +27,6 @@ import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.scheduler.IScheduler;
-import org.apache.iotdb.rpc.TSStatusCode;
 
 import java.util.concurrent.ScheduledExecutorService;
 
@@ -49,6 +48,5 @@ public interface IPlanner {
 
   ScheduledExecutorService getScheduledExecutorService();
 
-  void setRedirectInfo(
-      IAnalysis analysis, TEndPoint localEndPoint, TSStatus tsstatus, TSStatusCode statusCode);
+  void setRedirectInfo(IAnalysis analysis, TEndPoint localEndPoint, TSStatus tsstatus);
 }

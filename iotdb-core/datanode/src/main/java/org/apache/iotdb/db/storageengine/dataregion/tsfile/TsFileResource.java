@@ -78,7 +78,7 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
 import static org.apache.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
 @SuppressWarnings("java:S1135") // ignore todos
-public class TsFileResource {
+public class TsFileResource implements Cloneable {
 
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(TsFileResource.class)
@@ -253,21 +253,16 @@ public class TsFileResource {
     ReadWriteIOUtils.write(maxPlanIndex, outputStream);
     ReadWriteIOUtils.write(minPlanIndex, outputStream);
 
-    if (modFile != null && modFile.exists()) {
-      String modFileName = new File(modFile.getFilePath()).getName();
-      ReadWriteIOUtils.write(modFileName, outputStream);
-    } else {
-      // make the first "inputStream.available() > 0" in deserialize() happy.
-      //
-      // if modFile not exist, write null (-1). the first "inputStream.available() > 0" in
-      // deserialize() and deserializeFromOldFile() detect -1 and deserialize modFileName as null
-      // and skip the modFile deserialize.
-      //
-      // this make sure the first and the second "inputStream.available() > 0" in deserialize()
-      // will always be called... which is a bit ugly but allows the following variable
-      // maxProgressIndex to be deserialized correctly.
-      ReadWriteIOUtils.write((String) null, outputStream);
-    }
+    // make the first "inputStream.available() > 0" in deserialize() happy.
+    //
+    // if modFile not exist, write null (-1). the first "inputStream.available() > 0" in
+    // deserialize() and deserializeFromOldFile() detect -1 and deserialize modFileName as null
+    // and skip the modFile deserialize.
+    //
+    // this make sure the first and the second "inputStream.available() > 0" in deserialize()
+    // will always be called... which is a bit ugly but allows the following variable
+    // maxProgressIndex to be deserialized correctly.
+    ReadWriteIOUtils.write((String) null, outputStream);
 
     if (maxProgressIndex.get() != null) {
       TsFileResourceBlockType.PROGRESS_INDEX.serialize(outputStream);
@@ -292,10 +287,6 @@ public class TsFileResource {
 
       if (inputStream.available() > 0) {
         String modFileName = ReadWriteIOUtils.readString(inputStream);
-        if (modFileName != null) {
-          File modF = new File(file.getParentFile(), modFileName);
-          modFile = new ModificationFile(modF.getPath());
-        }
       }
 
       while (inputStream.available() > 0) {
@@ -1262,5 +1253,40 @@ public class TsFileResource {
 
   public void setLastValues(Map<IDeviceID, List<Pair<String, TimeValuePair>>> lastValues) {
     this.lastValues = lastValues;
+  }
+
+  public TsFileResource shallowClone() {
+    TsFileResource cloned = new TsFileResource();
+    cloned.file = this.file;
+    cloned.timeIndex = this.timeIndex;
+    cloned.maxPlanIndex = this.maxPlanIndex;
+    cloned.minPlanIndex = this.minPlanIndex;
+    cloned.compactionModFile = this.compactionModFile;
+    cloned.isSeq = this.isSeq;
+    cloned.tsFileRepairStatus = this.tsFileRepairStatus;
+    cloned.settleTsFileCallBack = this.settleTsFileCallBack;
+    cloned.deviceTimeIndexRamSize = this.deviceTimeIndexRamSize;
+    cloned.tsFileSize = this.tsFileSize;
+    cloned.processor = this.processor;
+    cloned.originTsFileResource = this.originTsFileResource;
+    cloned.isGeneratedByPipeConsensus = this.isGeneratedByPipeConsensus;
+    cloned.isGeneratedByPipe = this.isGeneratedByPipe;
+    cloned.insertionCompactionCandidateStatus = this.insertionCompactionCandidateStatus;
+    cloned.tierLevel = this.tierLevel;
+    cloned.pathToChunkMetadataListMap = this.pathToChunkMetadataListMap;
+    cloned.pathToReadOnlyMemChunkMap = this.pathToReadOnlyMemChunkMap;
+    cloned.pathToTimeSeriesMetadataMap = this.pathToTimeSeriesMetadataMap;
+    cloned.lastValues = this.lastValues;
+    cloned.maxProgressIndex.set(this.maxProgressIndex.get());
+    cloned.atomicStatus.set(this.atomicStatus.get());
+    cloned.isEmpty.set(this.isEmpty.get());
+    cloned.tsFileID = this.tsFileID;
+    cloned.prev = null;
+    cloned.next = null;
+    return cloned;
+  }
+
+  public TsFileResource shallowCloneForNative() throws CloneNotSupportedException {
+    return (TsFileResource) clone();
   }
 }

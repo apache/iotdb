@@ -43,6 +43,11 @@ public class SchemaDriver extends Driver {
   }
 
   @Override
+  boolean isInit() {
+    return true;
+  }
+
+  @Override
   protected void releaseResource() {
     driverContext.getFragmentInstanceContext().decrementNumOfUnClosedDriver();
   }

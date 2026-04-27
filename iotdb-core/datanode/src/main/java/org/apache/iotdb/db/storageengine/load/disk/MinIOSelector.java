@@ -81,10 +81,12 @@ public class MinIOSelector extends InheritSystemMultiDisksStrategySelector {
       throws DiskSpaceInsufficientException, LoadFileException {
     String fileDirRoot = null;
     try {
-      fileDirRoot =
-          Optional.ofNullable(FileStoreUtils.getFileStore(sourceDirectory.getCanonicalPath()))
-              .map(Object::toString)
-              .orElse(null);
+      if (sourceDirectory != null) {
+        fileDirRoot =
+            Optional.ofNullable(FileStoreUtils.getFileStore(sourceDirectory.getCanonicalPath()))
+                .map(Object::toString)
+                .orElse(null);
+      }
     } catch (Exception e) {
       logger.warn(
           "Exception occurs when reading target file's mount point {}",

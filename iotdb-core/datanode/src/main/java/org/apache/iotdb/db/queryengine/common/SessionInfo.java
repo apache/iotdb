@@ -33,20 +33,24 @@ public class SessionInfo {
   private final long sessionId;
   private final String userName;
   private final ZoneId zoneId;
+  private final String cliHostname;
 
   private ClientVersion version = ClientVersion.V_1_0;
 
-  public SessionInfo(long sessionId, String userName, ZoneId zoneId) {
+  public SessionInfo(long sessionId, String userName, ZoneId zoneId, String cliHostname) {
     this.sessionId = sessionId;
     this.userName = userName;
     this.zoneId = zoneId;
+    this.cliHostname = cliHostname;
   }
 
-  public SessionInfo(long sessionId, String userName, ZoneId zoneId, ClientVersion version) {
+  public SessionInfo(
+      long sessionId, String userName, ZoneId zoneId, ClientVersion version, String cliHostname) {
     this.sessionId = sessionId;
     this.userName = userName;
     this.zoneId = zoneId;
     this.version = version;
+    this.cliHostname = cliHostname;
   }
 
   public long getSessionId() {
@@ -65,16 +69,22 @@ public class SessionInfo {
     return version;
   }
 
+  public String getCliHostname() {
+    return cliHostname;
+  }
+
   public static SessionInfo deserializeFrom(ByteBuffer buffer) {
     long sessionId = ReadWriteIOUtils.readLong(buffer);
     String userName = ReadWriteIOUtils.readString(buffer);
     ZoneId zoneId = ZoneId.of(Objects.requireNonNull(ReadWriteIOUtils.readString(buffer)));
-    return new SessionInfo(sessionId, userName, zoneId);
+    String cliHostname = ReadWriteIOUtils.readString(buffer);
+    return new SessionInfo(sessionId, userName, zoneId, cliHostname);
   }
 
   public void serialize(DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(sessionId, stream);
     ReadWriteIOUtils.write(userName, stream);
     ReadWriteIOUtils.write(zoneId.getId(), stream);
+    ReadWriteIOUtils.write(cliHostname, stream);
   }
 }

@@ -584,7 +584,7 @@ public class RegionWriteExecutor {
               alreadyExistingStatus.add(
                   RpcUtils.getStatus(
                       metadataException.getErrorCode(),
-                      MeasurementPath.transformDataToString(
+                      PartialPath.transformDataToString(
                           ((MeasurementAlreadyExistException) metadataException)
                               .getMeasurementPath())));
             } else {
@@ -674,7 +674,7 @@ public class RegionWriteExecutor {
                 alreadyExistingStatus.add(
                     RpcUtils.getStatus(
                         metadataException.getErrorCode(),
-                        MeasurementPath.transformDataToString(
+                        PartialPath.transformDataToString(
                             ((MeasurementAlreadyExistException) metadataException)
                                 .getMeasurementPath())));
               } else {

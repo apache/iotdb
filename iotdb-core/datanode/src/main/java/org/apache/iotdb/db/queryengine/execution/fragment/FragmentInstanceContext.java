@@ -32,6 +32,7 @@ import org.apache.iotdb.db.queryengine.common.DeviceContext;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
+import org.apache.iotdb.db.queryengine.exception.MemoryNotEnoughException;
 import org.apache.iotdb.db.queryengine.metric.DriverSchedulerMetricSet;
 import org.apache.iotdb.db.queryengine.metric.QueryRelatedResourceMetricSet;
 import org.apache.iotdb.db.queryengine.metric.QueryResourceMetricSet;
@@ -55,12 +56,15 @@ import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchFragmentInstanceStatisticsResp;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.read.filter.basic.Filter;
+import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.ZoneId;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -91,6 +95,7 @@ public class FragmentInstanceContext extends QueryContext {
 
   protected IDataRegionForQuery dataRegion;
   private Filter globalTimeFilter;
+  private List<TimeRange> globalTimeFilterTimeRanges;
 
   // it will only be used once, after sharedQueryDataSource being inited, it will be set to null
   protected List<PartialPath> sourcePaths;
@@ -148,6 +153,7 @@ public class FragmentInstanceContext extends QueryContext {
   private long unclosedUnseqFileNum = 0;
   private long closedSeqFileNum = 0;
   private long closedUnseqFileNum = 0;
+  private boolean highestPriority = false;
 
   public static FragmentInstanceContext createFragmentInstanceContext(
       FragmentInstanceId id, FragmentInstanceStateMachine stateMachine, SessionInfo sessionInfo) {
@@ -204,7 +210,7 @@ public class FragmentInstanceContext extends QueryContext {
       FragmentInstanceId id, FragmentInstanceStateMachine stateMachine) {
     FragmentInstanceContext instanceContext =
         new FragmentInstanceContext(
-            id, stateMachine, new SessionInfo(1, "test", ZoneId.systemDefault()));
+            id, stateMachine, new SessionInfo(1, "test", ZoneId.systemDefault(), ""));
     instanceContext.initialize();
     instanceContext.start();
     return instanceContext;
@@ -219,7 +225,7 @@ public class FragmentInstanceContext extends QueryContext {
         new FragmentInstanceContext(
             id,
             stateMachine,
-            new SessionInfo(1, "test", ZoneId.systemDefault()),
+            new SessionInfo(1, "test", ZoneId.systemDefault(), ""),
             memoryReservationManager);
     instanceContext.initialize();
     instanceContext.start();
@@ -511,6 +517,23 @@ public class FragmentInstanceContext extends QueryContext {
     return globalTimeFilter;
   }
 
+  public List<TimeRange> getGlobalTimeFilterTimeRanges() {
+    if (globalTimeFilter == null) {
+      return Collections.singletonList(new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE));
+    }
+    List<TimeRange> local = globalTimeFilterTimeRanges;
+    if (local == null) {
+      synchronized (this) {
+        local = globalTimeFilterTimeRanges;
+        if (local == null) {
+          local = globalTimeFilter.getTimeRanges();
+          globalTimeFilterTimeRanges = local;
+        }
+      }
+    }
+    return local;
+  }
+
   public IDataRegionForQuery getDataRegion() {
     return dataRegion;
   }
@@ -731,7 +754,7 @@ public class FragmentInstanceContext extends QueryContext {
     if (initQueryDataSourceRetryCount % 10 == 0) {
       LOGGER.warn(
           "Failed to acquire the read lock of DataRegion-{} for {} times",
-          dataRegion == null ? "UNKNOWN" : dataRegion.getDataRegionId(),
+          dataRegion == null ? "UNKNOWN" : dataRegion.getDataRegionIdString(),
           initQueryDataSourceRetryCount);
     }
     return UNFINISHED_QUERY_DATA_SOURCE;
@@ -848,25 +871,58 @@ public class FragmentInstanceContext extends QueryContext {
    */
   private void releaseTVListOwnedByQuery() {
     for (TVList tvList : tvListSet) {
+      long tvListRamSize = tvList.calculateRamSize();
       tvList.lockQueryList();
       Set<QueryContext> queryContextSet = tvList.getQueryContextSet();
       try {
         queryContextSet.remove(this);
         if (tvList.getOwnerQuery() == this) {
+          if (tvList.getReservedMemoryBytes() != tvListRamSize) {
+            LOGGER.warn(
+                "Release TVList owned by query: allocate size {}, release size {}",
+                tvList.getReservedMemoryBytes(),
+                tvListRamSize);
+          }
           if (queryContextSet.isEmpty()) {
-            LOGGER.debug(
-                "TVList {} is released by the query, FragmentInstance Id is {}",
-                tvList,
-                this.getId());
-            memoryReservationManager.releaseMemoryCumulatively(tvList.calculateRamSize());
+            if (LOGGER.isDebugEnabled()) {
+              LOGGER.debug(
+                  "TVList {} is released by the query, FragmentInstance Id is {}",
+                  tvList,
+                  this.getId());
+            }
+            memoryReservationManager.releaseMemoryCumulatively(tvList.getReservedMemoryBytes());
             tvList.clear();
           } else {
+            // Transfer memory to next query. It must be exception-safe as this method is called
+            // during FragmentInstanceExecution cleanup. Any exception during this process could
+            // prevent proper resource cleanup and cause memory leaks.
+            Pair<Long, Long> releasedBytes =
+                memoryReservationManager.releaseMemoryVirtually(tvList.getReservedMemoryBytes());
             FragmentInstanceContext queryContext =
                 (FragmentInstanceContext) queryContextSet.iterator().next();
-            LOGGER.debug(
-                "TVList {} is now owned by another query, FragmentInstance Id is {}",
-                tvList,
-                queryContext.getId());
+            try {
+              queryContext
+                  .getMemoryReservationContext()
+                  .reserveMemoryVirtually(releasedBytes.left, releasedBytes.right);
+            } catch (MemoryNotEnoughException ex) {
+              LOGGER.warn(
+                  "MemoryNotEnoughException when transferring TVList ownership from query {} to another query {}.",
+                  this.getId(),
+                  queryContext.getId());
+            } catch (RuntimeException ex) {
+              LOGGER.warn(
+                  "Unexpected Exception when transferring TVList ownership from query {} to another query {}.",
+                  this.getId(),
+                  queryContext.getId(),
+                  ex);
+            }
+
+            if (LOGGER.isDebugEnabled()) {
+              LOGGER.debug(
+                  "TVList {} is now owned by another query, FragmentInstance Id is {}",
+                  tvList,
+                  queryContext.getId());
+            }
             tvList.setOwnerQuery(queryContext);
           }
         }
@@ -1085,6 +1141,18 @@ public class FragmentInstanceContext extends QueryContext {
 
   public boolean ignoreNotExistsDevice() {
     return ignoreNotExistsDevice;
+  }
+
+  /**
+   * Same flag as {@link
+   * org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis#needSetHighestPriority()}.
+   */
+  public boolean isHighestPriority() {
+    return highestPriority;
+  }
+
+  public void setHighestPriority(boolean highestPriority) {
+    this.highestPriority = highestPriority;
   }
 
   public boolean isSingleSourcePath() {

@@ -42,7 +42,6 @@ import org.apache.iotdb.db.exception.metadata.template.DifferentTemplateExceptio
 import org.apache.iotdb.db.exception.metadata.template.TemplateIsInUseException;
 import org.apache.iotdb.db.exception.quota.ExceedQuotaException;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
-import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DeviceSchemaCache;
 import org.apache.iotdb.db.schemaengine.metric.SchemaRegionMemMetric;
 import org.apache.iotdb.db.schemaengine.rescon.MemSchemaRegionStatistics;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.IMemMNode;
@@ -67,6 +66,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.reader.impl.Schem
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.reader.impl.TimeseriesReaderWithViewFetch;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.MetaFormatUtils;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.filter.DeviceFilterVisitor;
+import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.storageengine.rescon.quotas.DataNodeSpaceQuotaManager;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -83,6 +83,7 @@ import org.apache.tsfile.write.schema.MeasurementSchema;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -90,10 +91,13 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.function.Function;
+
+import static org.apache.iotdb.commons.schema.SchemaConstant.NON_TEMPLATE;
 
 /**
  * The hierarchical struct of the Metadata Tree is implemented in this class.
@@ -120,50 +124,50 @@ public class MTreeBelowSGMemoryImpl {
   private final MemMTreeStore store;
 
   @SuppressWarnings("java:S3077")
-  private volatile IMemMNode storageGroupMNode;
+  private volatile IMemMNode databaseMNode;
 
   private final IMemMNode rootNode;
   private final Function<IMeasurementMNode<IMemMNode>, Map<String, String>> tagGetter;
   private final Function<IMeasurementMNode<IMemMNode>, Map<String, String>> attributeGetter;
   private final IMNodeFactory<IMemMNode> nodeFactory =
       MNodeFactoryLoader.getInstance().getMemMNodeIMNodeFactory();
-  private final int levelOfSG;
+  private final int levelOfDB;
   private final MemSchemaRegionStatistics regionStatistics;
 
   // region MTree initialization, clear and serialization
   public MTreeBelowSGMemoryImpl(
-      PartialPath storageGroupPath,
+      PartialPath databasePath,
       Function<IMeasurementMNode<IMemMNode>, Map<String, String>> tagGetter,
       Function<IMeasurementMNode<IMemMNode>, Map<String, String>> attributeGetter,
       MemSchemaRegionStatistics regionStatistics,
       SchemaRegionMemMetric metric) {
-    store = new MemMTreeStore(storageGroupPath, regionStatistics, metric);
+    store = new MemMTreeStore(databasePath, regionStatistics, metric);
     this.regionStatistics = regionStatistics;
-    this.storageGroupMNode = store.getRoot();
-    this.rootNode = store.generatePrefix(storageGroupPath);
-    levelOfSG = storageGroupPath.getNodeLength() - 1;
+    this.databaseMNode = store.getRoot();
+    this.rootNode = store.generatePrefix(databasePath);
+    levelOfDB = databasePath.getNodeLength() - 1;
     this.tagGetter = tagGetter;
     this.attributeGetter = attributeGetter;
   }
 
   private MTreeBelowSGMemoryImpl(
-      PartialPath storageGroupPath,
+      PartialPath databasePath,
       MemMTreeStore store,
       Function<IMeasurementMNode<IMemMNode>, Map<String, String>> tagGetter,
       Function<IMeasurementMNode<IMemMNode>, Map<String, String>> attributeGetter,
       MemSchemaRegionStatistics regionStatistics) {
     this.store = store;
     this.regionStatistics = regionStatistics;
-    this.storageGroupMNode = store.getRoot();
-    this.rootNode = store.generatePrefix(storageGroupPath);
-    levelOfSG = storageGroupPath.getNodeLength() - 1;
+    this.databaseMNode = store.getRoot();
+    this.rootNode = store.generatePrefix(databasePath);
+    levelOfDB = databasePath.getNodeLength() - 1;
     this.tagGetter = tagGetter;
     this.attributeGetter = attributeGetter;
   }
 
   public void clear() {
     store.clear();
-    storageGroupMNode = null;
+    databaseMNode = null;
   }
 
   public synchronized boolean createSnapshot(File snapshotDir) {
@@ -211,7 +215,8 @@ public class MTreeBelowSGMemoryImpl {
       final CompressionType compressor,
       final Map<String, String> props,
       final String alias,
-      final boolean withMerge)
+      final boolean withMerge,
+      final AtomicBoolean isAligned)
       throws MetadataException {
     final String[] nodeNames = path.getNodes();
     if (nodeNames.length <= 2) {
@@ -225,6 +230,12 @@ public class MTreeBelowSGMemoryImpl {
     // only write on mTree will be synchronized
     synchronized (this) {
       final IMemMNode device = checkAndAutoCreateDeviceNode(devicePath.getTailNode(), deviceParent);
+
+      if (device.isDevice()
+          && device.getAsDeviceMNode().isAlignedNullable() != null
+          && isAligned != null) {
+        isAligned.set(device.getAsDeviceMNode().isAligned());
+      }
 
       MetaFormatUtils.checkTimeseriesProps(path.getFullPath(), props);
 
@@ -301,7 +312,8 @@ public class MTreeBelowSGMemoryImpl {
       final List<CompressionType> compressors,
       final List<String> aliasList,
       final boolean withMerge,
-      final Set<Integer> existingMeasurementIndexes)
+      final Set<Integer> existingMeasurementIndexes,
+      final AtomicBoolean isAligned)
       throws MetadataException {
     final List<IMeasurementMNode<IMemMNode>> measurementMNodeList = new ArrayList<>();
     MetaFormatUtils.checkSchemaMeasurementNames(measurements);
@@ -311,6 +323,12 @@ public class MTreeBelowSGMemoryImpl {
     // only write operations on mTree will be synchronized
     synchronized (this) {
       final IMemMNode device = checkAndAutoCreateDeviceNode(devicePath.getTailNode(), deviceParent);
+
+      if (device.isDevice()
+          && device.getAsDeviceMNode().isAlignedNullable() != null
+          && isAligned != null) {
+        isAligned.set(device.getAsDeviceMNode().isAligned());
+      }
 
       for (int i = 0; i < measurements.size(); i++) {
         if (device.hasChild(measurements.get(i))) {
@@ -378,14 +396,14 @@ public class MTreeBelowSGMemoryImpl {
       throws MetadataException {
     String[] nodeNames = devicePath.getNodes();
     MetaFormatUtils.checkTimeseries(devicePath);
-    if (nodeNames.length == levelOfSG + 1) {
+    if (nodeNames.length == levelOfDB + 1) {
       return null;
     }
-    IMemMNode cur = storageGroupMNode;
+    IMemMNode cur = databaseMNode;
     IMemMNode child;
     String childName;
     // e.g, path = root.sg.d1.s1,  create internal nodes and set cur to sg node, parent of d1
-    for (int i = levelOfSG + 1; i < nodeNames.length - 1; i++) {
+    for (int i = levelOfDB + 1; i < nodeNames.length - 1; i++) {
       childName = nodeNames[i];
       child = cur.getChild(childName);
       if (child == null) {
@@ -404,13 +422,12 @@ public class MTreeBelowSGMemoryImpl {
       throws PathAlreadyExistException, ExceedQuotaException {
     if (deviceParent == null) {
       // device is sg
-      return storageGroupMNode;
+      return databaseMNode;
     }
     IMemMNode device = store.getChild(deviceParent, deviceName);
     if (device == null) {
       if (IoTDBDescriptor.getInstance().getConfig().isQuotaEnable()) {
-        if (!DataNodeSpaceQuotaManager.getInstance()
-            .checkDeviceLimit(storageGroupMNode.getName())) {
+        if (!DataNodeSpaceQuotaManager.getInstance().checkDeviceLimit(databaseMNode.getName())) {
           throw new ExceedQuotaException(
               "The number of devices has reached the upper limit",
               TSStatusCode.SPACE_QUOTA_EXCEEDED.getStatusCode());
@@ -469,8 +486,7 @@ public class MTreeBelowSGMemoryImpl {
                 devicePath.getFullPath() + "." + measurementList.get(i), aliasList.get(i)));
       }
       if (IoTDBDescriptor.getInstance().getConfig().isQuotaEnable()) {
-        if (!DataNodeSpaceQuotaManager.getInstance()
-            .checkTimeSeriesNum(storageGroupMNode.getName())) {
+        if (!DataNodeSpaceQuotaManager.getInstance().checkTimeSeriesNum(databaseMNode.getName())) {
           failingMeasurementMap.put(
               i,
               new ExceedQuotaException(
@@ -675,11 +691,20 @@ public class MTreeBelowSGMemoryImpl {
   public IMemMNode getDeviceNodeWithAutoCreating(PartialPath deviceId) throws MetadataException {
     MetaFormatUtils.checkTimeseries(deviceId);
     String[] nodeNames = deviceId.getNodes();
-    IMemMNode cur = storageGroupMNode;
+    IMemMNode cur = databaseMNode;
     IMemMNode child;
-    for (int i = levelOfSG + 1; i < nodeNames.length; i++) {
+    for (int i = levelOfDB + 1; i < nodeNames.length; i++) {
       child = cur.getChild(nodeNames[i]);
       if (child == null) {
+        if (cur.isDevice() && cur.getAsDeviceMNode().getSchemaTemplateId() != NON_TEMPLATE) {
+          final Template template =
+              ClusterTemplateManager.getInstance()
+                  .getTemplate(cur.getAsDeviceMNode().getSchemaTemplateId());
+          if (Objects.nonNull(template) && template.getSchema(nodeNames[i]) != null) {
+            throw new PathAlreadyExistException(
+                new PartialPath(Arrays.copyOf(deviceId.getNodes(), i + 1)).getFullPath());
+          }
+        }
         child =
             store.addChild(cur, nodeNames[i], nodeFactory.createInternalMNode(cur, nodeNames[i]));
       }
@@ -817,9 +842,9 @@ public class MTreeBelowSGMemoryImpl {
    */
   public IMemMNode getNodeByPath(PartialPath path) throws PathNotExistException {
     String[] nodes = path.getNodes();
-    IMemMNode cur = storageGroupMNode;
+    IMemMNode cur = databaseMNode;
     IMemMNode next;
-    for (int i = levelOfSG + 1; i < nodes.length; i++) {
+    for (int i = levelOfDB + 1; i < nodes.length; i++) {
       next = cur.getChild(nodes[i]);
       if (next == null) {
         throw new PathNotExistException(path.getFullPath(), true);
@@ -852,9 +877,9 @@ public class MTreeBelowSGMemoryImpl {
 
   public void activateTemplate(PartialPath activatePath, Template template)
       throws MetadataException {
-    String[] nodes = activatePath.getNodes();
-    IMemMNode cur = storageGroupMNode;
-    for (int i = levelOfSG + 1; i < nodes.length; i++) {
+    final String[] nodes = activatePath.getNodes();
+    IMemMNode cur = databaseMNode;
+    for (int i = levelOfDB + 1; i < nodes.length; i++) {
       cur = cur.getChild(nodes[i]);
     }
 
@@ -955,10 +980,10 @@ public class MTreeBelowSGMemoryImpl {
   }
 
   public void activateTemplateWithoutCheck(
-      PartialPath activatePath, int templateId, boolean isAligned) {
-    String[] nodes = activatePath.getNodes();
-    IMemMNode cur = storageGroupMNode;
-    for (int i = levelOfSG + 1; i < nodes.length; i++) {
+      final PartialPath activatePath, final int templateId, final boolean isAligned) {
+    final String[] nodes = activatePath.getNodes();
+    IMemMNode cur = databaseMNode;
+    for (int i = levelOfDB + 1; i < nodes.length; i++) {
       cur = cur.getChild(nodes[i]);
     }
 
@@ -1061,12 +1086,12 @@ public class MTreeBelowSGMemoryImpl {
 
   public int fillLastQueryMap(
       final PartialPath prefixPath,
-      final Map<String, Map<PartialPath, Map<String, TimeValuePair>>> mapToFill)
+      final Map<PartialPath, Map<String, TimeValuePair>> mapToFill,
+      final PathPatternTree scope)
       throws MetadataException {
     final int[] sensorNum = {0};
     try (final EntityUpdater<IMemMNode> updater =
-        new EntityUpdater<IMemMNode>(
-            rootNode, prefixPath, store, true, SchemaConstant.ALL_MATCH_SCOPE) {
+        new EntityUpdater<IMemMNode>(rootNode, prefixPath, store, true, scope) {
 
           @Override
           protected void updateEntity(final IDeviceMNode<IMemMNode> node) {
@@ -1077,9 +1102,7 @@ public class MTreeBelowSGMemoryImpl {
               }
             }
             final PartialPath path = node.getPartialPath();
-            mapToFill
-                .computeIfAbsent(DeviceSchemaCache.getLeadingSegment(path), o -> new HashMap<>())
-                .put(path, measurementMap);
+            mapToFill.put(path, measurementMap);
             sensorNum[0] += measurementMap.size();
           }
         }) {

@@ -33,12 +33,9 @@ import org.apache.tsfile.write.schema.VectorMeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
 import java.rmi.UnexpectedException;
 import java.util.HashMap;
 import java.util.Map;
@@ -292,28 +289,5 @@ public class MeasurementPath extends PartialPath {
   @Override
   public PartialPath transformToPartialPath() {
     return getDevicePath().concatNode(getTailNode());
-  }
-
-  /**
-   * In specific scenarios, like internal create timeseries, the message can only be passed as
-   * String format.
-   */
-  public static String transformDataToString(MeasurementPath measurementPath) {
-    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-    DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
-    try {
-      measurementPath.serialize(dataOutputStream);
-    } catch (IOException ignored) {
-      // this exception won't happen.
-    }
-    byte[] bytes = byteArrayOutputStream.toByteArray();
-    // must use single-byte char sets
-    return new String(bytes, StandardCharsets.ISO_8859_1);
-  }
-
-  public static MeasurementPath parseDataFromString(String measurementPathData) {
-    return (MeasurementPath)
-        PathDeserializeUtil.deserialize(
-            ByteBuffer.wrap(measurementPathData.getBytes(StandardCharsets.ISO_8859_1)));
   }
 }

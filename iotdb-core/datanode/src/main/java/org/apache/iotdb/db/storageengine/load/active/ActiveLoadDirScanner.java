@@ -32,12 +32,14 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Arrays;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -100,8 +102,9 @@ public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
 
       final boolean isGeneratedByPipe =
           listeningDir.equals(IOTDB_CONFIG.getLoadActiveListeningPipeDir());
+      final File listeningDirFile = new File(listeningDir);
       try (final Stream<File> fileStream =
-          FileUtils.streamFiles(new File(listeningDir), true, (String[]) null)) {
+          FileUtils.streamFiles(listeningDirFile, true, (String[]) null)) {
         try {
           fileStream
               .filter(file -> !activeLoadTsFileLoader.isFilePendingOrLoading(file))
@@ -114,7 +117,20 @@ public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
               .filter(this::isTsFileCompleted)
               .limit(currentAllowedPendingSize)
               .forEach(
-                  file -> activeLoadTsFileLoader.tryTriggerTsFileLoad(file, isGeneratedByPipe));
+                  filePath -> {
+                    final File tsFile = new File(filePath);
+                    final Map<String, String> attributes =
+                        ActiveLoadPathHelper.parseAttributes(tsFile, listeningDirFile);
+
+                    final File parentFile = tsFile.getParentFile();
+
+                    activeLoadTsFileLoader.tryTriggerTsFileLoad(
+                        tsFile.getAbsolutePath(),
+                        listeningDirFile.getAbsolutePath(),
+                        isGeneratedByPipe);
+                  });
+        } catch (UncheckedIOException e) {
+          LOGGER.debug("The file has been deleted. Ignore this exception.");
         } catch (final Exception e) {
           LOGGER.warn("Exception occurred during scanning dir: {}", listeningDir, e);
         }

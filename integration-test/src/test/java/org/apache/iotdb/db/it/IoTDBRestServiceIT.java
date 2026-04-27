@@ -18,8 +18,10 @@
  */
 package org.apache.iotdb.db.it;
 
+import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.env.cluster.env.SimpleEnv;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -41,6 +43,7 @@ import org.apache.http.util.EntityUtils;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -48,11 +51,20 @@ import org.junit.runner.RunWith;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
+import static org.apache.iotdb.consensus.ConsensusFactory.IOT_CONSENSUS;
+import static org.apache.iotdb.consensus.ConsensusFactory.RATIS_CONSENSUS;
 import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.COLUMN_TTL;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -78,7 +90,7 @@ public class IoTDBRestServiceIT {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
-  private String getAuthorization(String username, String password) {
+  public static String getAuthorization(String username, String password) {
     return Base64.getEncoder()
         .encodeToString((username + ":" + password).getBytes(StandardCharsets.UTF_8));
   }
@@ -128,7 +140,7 @@ public class IoTDBRestServiceIT {
     }
   }
 
-  private HttpPost getHttpPost(String url) {
+  public static HttpPost getHttpPost(String url) {
     HttpPost httpPost = new HttpPost(url);
     httpPost.addHeader("Content-type", "application/json; charset=utf-8");
     httpPost.setHeader("Accept", "application/json");
@@ -239,6 +251,101 @@ public class IoTDBRestServiceIT {
         e.printStackTrace();
         fail(e.getMessage());
       }
+    }
+  }
+
+  @Ignore // Flaky test
+  @Test
+  public void errorInsertRecords() throws SQLException, InterruptedException {
+    SimpleEnv simpleEnv = new SimpleEnv();
+    simpleEnv
+        .getConfig()
+        .getCommonConfig()
+        .setSchemaRegionConsensusProtocolClass(RATIS_CONSENSUS)
+        .setSchemaReplicationFactor(3)
+        .setDataRegionConsensusProtocolClass(IOT_CONSENSUS)
+        .setDataReplicationFactor(2);
+    simpleEnv.getConfig().getDataNodeConfig().setEnableRestService(true);
+    simpleEnv.initClusterEnvironment(1, 3);
+
+    CloseableHttpResponse response = null;
+    CloseableHttpClient httpClient = HttpClientBuilder.create().build();
+    try {
+      HttpPost httpPost =
+          getHttpPost(
+              "http://"
+                  + simpleEnv.getDataNodeWrapper(0).getIp()
+                  + ":"
+                  + simpleEnv.getDataNodeWrapper(0).getRestServicePort()
+                  + "/rest/v2/insertRecords");
+      String json =
+          "{\"timestamps\":[1635232113960,1635232151960,1635232143960,1635232143960],\"measurements_list\":[[\"s33\",\"s44\"],[\"s55\",\"s66\"],[\"s77\",\"s88\"],[\"s771\",\"s881\"]],\"data_types_list\":[[\"INT32\",\"INT64\"],[\"FLOAT\",\"DOUBLE\"],[\"FLOAT\",\"DOUBLE\"],[\"BOOLEAN\",\"TEXT\"]],\"values_list\":[[1,false],[2.1,2],[4,6],[false,\"cccccc\"]],\"is_aligned\":false,\"devices\":[\"root.s1\",\"root.s1\",\"root.s1\",\"root.s3\"]}";
+      httpPost.setEntity(new StringEntity(json, Charset.defaultCharset()));
+      for (int i = 0; i < 30; i++) {
+        try {
+          response = httpClient.execute(httpPost);
+          break;
+        } catch (Exception e) {
+          if (i == 29) {
+            throw e;
+          }
+          try {
+            Thread.sleep(1000);
+          } catch (InterruptedException ex) {
+            throw new RuntimeException(ex);
+          }
+        }
+      }
+
+      HttpEntity responseEntity = response.getEntity();
+      String message = EntityUtils.toString(responseEntity, "utf-8");
+      JsonObject result = JsonParser.parseString(message).getAsJsonObject();
+      assertEquals(507, Integer.parseInt(result.get("code").toString()));
+    } catch (IOException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    } finally {
+      try {
+        if (response != null) {
+          response.close();
+        }
+      } catch (IOException e) {
+        e.printStackTrace();
+        fail(e.getMessage());
+      }
+    }
+    TimeUnit.SECONDS.sleep(5);
+
+    try {
+      for (DataNodeWrapper dataNodeWrapper : simpleEnv.getDataNodeWrapperList()) {
+        dataNodeWrapper.stop();
+        try (Connection connectionAfterNodeDown = simpleEnv.getAvailableConnection();
+            Statement statementAfterNodeDown = connectionAfterNodeDown.createStatement()) {
+          int count = 0;
+          try (ResultSet resultSet =
+              statementAfterNodeDown.executeQuery(
+                  "select s88, s77, s66, s55, s44, s33 from root.s1")) {
+            ResultSetMetaData metaData = resultSet.getMetaData();
+            while (resultSet.next()) {
+              StringBuilder row = new StringBuilder();
+              for (int i = 0; i < metaData.getColumnCount(); i++) {
+                row.append(resultSet.getString(i + 1)).append(",");
+              }
+              System.out.println(row);
+              count++;
+            }
+          }
+          assertEquals(3, count);
+        }
+        dataNodeWrapper.start();
+        TimeUnit.SECONDS.sleep(1);
+      }
+    } catch (SQLException e) {
+      if (!e.getMessage().contains("Maybe server is down")) {
+        throw e;
+      }
+    } finally {
+      simpleEnv.cleanClusterEnvironment();
     }
   }
 
@@ -408,6 +515,7 @@ public class IoTDBRestServiceIT {
     selectLast(httpClient);
 
     queryV2(httpClient);
+    selectFastLast(httpClient);
     queryGroupByLevelV2(httpClient);
     queryRowLimitV2(httpClient);
     queryShowChildPathsV2(httpClient);
@@ -803,6 +911,71 @@ public class IoTDBRestServiceIT {
       String message = EntityUtils.toString(response.getEntity(), "utf-8");
       JsonObject result = JsonParser.parseString(message).getAsJsonObject();
       assertEquals(801, Integer.parseInt(result.get("code").toString()));
+    } catch (IOException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    } finally {
+      try {
+        if (response != null) {
+          response.close();
+        }
+      } catch (IOException e) {
+        e.printStackTrace();
+        fail(e.getMessage());
+      }
+    }
+  }
+
+  @Test
+  public void queryFastLastWithWrongAuthorization() {
+    CloseableHttpResponse response = null;
+
+    TestUtils.executeNonQuery("create user abcd 'strongPassword@1234'");
+    try {
+      final CloseableHttpClient httpClient = HttpClientBuilder.create().build();
+      final HttpPost httpPost = new HttpPost("http://127.0.0.1:" + port + "/rest/v2/fastLastQuery");
+      httpPost.addHeader("Content-type", "application/json; charset=utf-8");
+      httpPost.setHeader("Accept", "application/json");
+      final String authorization = getAuthorization("abcd", "strongPassword@1234");
+      httpPost.setHeader("Authorization", authorization);
+      final String sql = "{\"prefix_paths\":[\"root\",\"sg25\"]}";
+      httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
+      for (int i = 0; i < 30; i++) {
+        try {
+          response = httpClient.execute(httpPost);
+          break;
+        } catch (Exception e) {
+          if (i == 29) {
+            throw e;
+          }
+          try {
+            Thread.sleep(1000);
+          } catch (InterruptedException ex) {
+            throw new RuntimeException(ex);
+          }
+        }
+      }
+
+      Assert.assertEquals(200, response.getStatusLine().getStatusCode());
+      String message = EntityUtils.toString(response.getEntity(), "utf-8");
+      ObjectMapper mapper = new ObjectMapper();
+      Map map = mapper.readValue(message, Map.class);
+      List<Long> timestampsResult = (List<Long>) map.get("timestamps");
+      List<Long> expressionsResult = (List<Long>) map.get("expressions");
+      List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
+      Assert.assertTrue(map.size() > 0);
+      List<Object> expressions =
+          new ArrayList<Object>() {
+            {
+              add("Timeseries");
+              add("Value");
+              add("DataType");
+            }
+          };
+
+      Assert.assertEquals(expressions, expressionsResult);
+      Assert.assertEquals(Collections.emptyList(), timestampsResult);
+      Assert.assertEquals(Collections.emptyList(), valuesResult);
     } catch (IOException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -1557,6 +1730,98 @@ public class IoTDBRestServiceIT {
       Assert.assertEquals(values4, valuesResult.get(3));
       Assert.assertEquals(values5, valuesResult.get(4));
       Assert.assertEquals(values6, valuesResult.get(5));
+    } catch (IOException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    } finally {
+      try {
+        if (response != null) {
+          response.close();
+        }
+      } catch (IOException e) {
+        e.printStackTrace();
+        fail(e.getMessage());
+      }
+    }
+  }
+
+  public void selectFastLast(CloseableHttpClient httpClient) {
+    // Only used in 1D scenarios
+    if (EnvFactory.getEnv().getDataNodeWrapperList().size() > 1) {
+      return;
+    }
+    CloseableHttpResponse response = null;
+    try {
+      HttpPost httpPost = getHttpPost("http://127.0.0.1:" + port + "/rest/v2/fastLastQuery");
+      String sql = "{\"prefix_paths\":[\"root\",\"sg25\"]}";
+      httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
+      response = httpClient.execute(httpPost);
+      HttpEntity responseEntity = response.getEntity();
+      String message = EntityUtils.toString(responseEntity, "utf-8");
+      ObjectMapper mapper = new ObjectMapper();
+      Map map = mapper.readValue(message, Map.class);
+      List<Long> timestampsResult = (List<Long>) map.get("timestamps");
+      List<Long> expressionsResult = (List<Long>) map.get("expressions");
+      List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
+      Assert.assertTrue(map.size() > 0);
+      List<Object> expressions =
+          new ArrayList<Object>() {
+            {
+              add("Timeseries");
+              add("Value");
+              add("DataType");
+            }
+          };
+      List<Object> timestamps =
+          new ArrayList<Object>() {
+            {
+              add(1635232153960l);
+              add(1635232153960l);
+              add(1635232153960l);
+              add(1635232143960l);
+              add(1635232153960l);
+              add(1635232153960l);
+            }
+          };
+      List<Object> values1 =
+          new ArrayList<Object>() {
+            {
+              add("root.sg25.s3");
+              add("root.sg25.s4");
+              add("root.sg25.s5");
+              add("root.sg25.s6");
+              add("root.sg25.s7");
+              add("root.sg25.s8");
+            }
+          };
+      List<Object> values2 =
+          new ArrayList<Object>() {
+            {
+              add("");
+              add("2");
+              add("1635000012345556");
+              add("1.41");
+              add("false");
+              add("3.5555");
+            }
+          };
+      List<Object> values3 =
+          new ArrayList<Object>() {
+            {
+              add("TEXT");
+              add("INT32");
+              add("INT64");
+              add("FLOAT");
+              add("BOOLEAN");
+              add("DOUBLE");
+            }
+          };
+
+      Assert.assertEquals(expressions, expressionsResult);
+      Assert.assertEquals(timestamps, timestampsResult);
+      Assert.assertEquals(values1, valuesResult.get(0));
+      Assert.assertEquals(values2, valuesResult.get(1));
+      Assert.assertEquals(values3, valuesResult.get(2));
     } catch (IOException e) {
       e.printStackTrace();
       fail(e.getMessage());

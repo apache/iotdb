@@ -29,6 +29,7 @@ public class DeserializedBatchIndexedConsensusRequest
   private final long startSyncIndex;
   private final long endSyncIndex;
   private final List<IConsensusRequest> insertNodes;
+  private long memorySize;
 
   public DeserializedBatchIndexedConsensusRequest(
       long startSyncIndex, long endSyncIndex, int size) {
@@ -52,6 +53,7 @@ public class DeserializedBatchIndexedConsensusRequest
 
   public void add(IConsensusRequest insertNode) {
     this.insertNodes.add(insertNode);
+    this.memorySize += insertNode.getMemorySize();
   }
 
   @Override
@@ -81,5 +83,10 @@ public class DeserializedBatchIndexedConsensusRequest
   @Override
   public ByteBuffer serializeToByteBuffer() {
     return null;
+  }
+
+  @Override
+  public long getMemorySize() {
+    return memorySize;
   }
 }

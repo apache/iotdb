@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.execution.executor;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.utils.ErrorHandlingCommonUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.IConsensus;
@@ -33,7 +34,6 @@ import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceInfo;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.storageengine.dataregion.VirtualDataRegion;
-import org.apache.iotdb.db.utils.ErrorHandlingUtils;
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -100,13 +100,15 @@ public class RegionReadExecutor {
                 });
         return resp;
       }
-    } catch (ConsensusGroupNotExistException e) {
+    } catch (final ConsensusGroupNotExistException e) {
       LOGGER.warn("Execute FragmentInstance in ConsensusGroup {} failed.", groupId, e);
-      RegionExecutionResult resp =
+      final String errorMsg = String.format(ERROR_MSG_FORMAT, e.getMessage());
+      final RegionExecutionResult resp =
           RegionExecutionResult.create(
               false,
-              String.format(ERROR_MSG_FORMAT, e.getMessage()),
-              new TSStatus(TSStatusCode.CONSENSUS_GROUP_NOT_EXIST.getStatusCode()));
+              errorMsg,
+              new TSStatus(TSStatusCode.CONSENSUS_GROUP_NOT_EXIST.getStatusCode())
+                  .setMessage(errorMsg));
       resp.setReadNeedRetry(true);
       return resp;
     } catch (Throwable e) {
@@ -114,7 +116,7 @@ public class RegionReadExecutor {
       RegionExecutionResult resp =
           RegionExecutionResult.create(
               false, String.format(ERROR_MSG_FORMAT, e.getMessage()), null);
-      Throwable t = ErrorHandlingUtils.getRootCause(e);
+      Throwable t = ErrorHandlingCommonUtils.getRootCause(e);
       if (t instanceof ReadException
           || t instanceof ReadIndexException
           || t instanceof NotLeaderException

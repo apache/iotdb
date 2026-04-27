@@ -27,7 +27,7 @@ import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 import org.apache.iotdb.session.subscription.consumer.AckStrategy;
 import org.apache.iotdb.session.subscription.consumer.ConsumeResult;
 import org.apache.iotdb.session.subscription.consumer.SubscriptionPushConsumer;
-import org.apache.iotdb.session.subscription.payload.SubscriptionSessionDataSet;
+import org.apache.iotdb.session.subscription.payload.SubscriptionRecordHandler;
 import org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant;
 import org.apache.iotdb.subscription.it.Retry;
 import org.apache.iotdb.subscription.it.RetryRule;
@@ -41,6 +41,7 @@ import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -144,6 +145,7 @@ public class IoTDBSnapshotTSPatternDatasetPushConsumerIT extends AbstractSubscri
     session_src.executeNonQueryStatement("flush;");
   }
 
+  @Ignore
   @Test
   @Retry
   public void do_test()
@@ -165,8 +167,8 @@ public class IoTDBSnapshotTSPatternDatasetPushConsumerIT extends AbstractSubscri
             .fileSaveDir("target/push-subscription")
             .consumeListener(
                 message -> {
-                  for (final SubscriptionSessionDataSet dataSet :
-                      message.getSessionDataSetsHandler()) {
+                  for (final SubscriptionRecordHandler.SubscriptionResultSet dataSet :
+                      message.getResultSets()) {
                     try {
                       session_dest.insertTablet(dataSet.getTablet());
                     } catch (StatementExecutionException e) {

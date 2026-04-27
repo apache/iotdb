@@ -38,6 +38,7 @@ import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.common.type.TypeFactory;
 import org.apache.tsfile.utils.Binary;
@@ -82,18 +83,22 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
   private static final int DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES =
       TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
 
+  protected final TsBlockBuilder resultTsBlockBuilder;
+
   protected AbstractIntoOperator(
       OperatorContext operatorContext,
       Operator child,
       List<TSDataType> inputColumnTypes,
       ExecutorService intoOperationExecutor,
-      long statementSizePerLine) {
+      long statementSizePerLine,
+      List<TSDataType> outputDataTypes) {
     this.operatorContext = operatorContext;
     this.child = child;
     this.typeConvertors =
         inputColumnTypes.stream().map(TypeFactory::getType).collect(Collectors.toList());
 
     this.writeOperationExecutor = intoOperationExecutor;
+    this.resultTsBlockBuilder = new TsBlockBuilder(outputDataTypes);
     initMemoryEstimates(statementSizePerLine);
   }
 
@@ -152,7 +157,7 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
     checkLastWriteOperation();
 
     if (!processTsBlock(cachedTsBlock)) {
-      return null;
+      return tryToReturnPartialResult();
     }
     cachedTsBlock = null;
     if (child.hasNextWithTimer()) {
@@ -160,7 +165,7 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
       processTsBlock(inputTsBlock);
 
       // call child.next only once
-      return null;
+      return tryToReturnPartialResult();
     } else {
       return tryToReturnResultTsBlock();
     }
@@ -217,6 +222,8 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
   protected abstract boolean processTsBlock(TsBlock inputTsBlock);
 
   protected abstract TsBlock tryToReturnResultTsBlock();
+
+  protected abstract TsBlock tryToReturnPartialResult();
 
   protected static List<InsertTabletStatementGenerator> constructInsertTabletStatementGenerators(
       Map<PartialPath, Map<String, InputLocation>> targetPathToSourceInputLocationMap,
@@ -286,7 +293,7 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
             () -> client.insertTablets(insertMultiTabletsStatement), writeOperationExecutor);
   }
 
-  private boolean existFullStatement(
+  protected boolean existFullStatement(
       List<InsertTabletStatementGenerator> insertTabletStatementGenerators) {
     for (InsertTabletStatementGenerator generator : insertTabletStatementGenerators) {
       if (generator.isFull()) {
@@ -547,6 +554,10 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
 
     public String getDevice() {
       return devicePath.toString();
+    }
+
+    public int getRowCount() {
+      return rowCount;
     }
 
     public int getWrittenCount(String measurement) {

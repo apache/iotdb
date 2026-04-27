@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBPipePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBPipePatternOperations;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.UnionIoTDBPipePattern;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
@@ -55,11 +56,11 @@ import java.util.List;
 
 public class PipeConfigPhysicalPlanPatternParseVisitorTest {
 
-  private final UnionIoTDBPipePattern prefixPathPattern =
+  private final IoTDBPipePatternOperations prefixPathPattern =
       new UnionIoTDBPipePattern(new IoTDBPipePattern("root.db.device.**"));
-  private final UnionIoTDBPipePattern fullPathPattern =
+  private final IoTDBPipePatternOperations fullPathPattern =
       new UnionIoTDBPipePattern(new IoTDBPipePattern("root.db.device.s1"));
-  private final UnionIoTDBPipePattern multiplePathPattern =
+  private final IoTDBPipePatternOperations multiplePathPattern =
       new UnionIoTDBPipePattern(
           Arrays.asList(
               new IoTDBPipePattern("root.db.device.s1"),

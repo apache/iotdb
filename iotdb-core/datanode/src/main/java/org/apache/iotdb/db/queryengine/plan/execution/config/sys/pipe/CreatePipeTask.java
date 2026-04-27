@@ -37,7 +37,7 @@ public class CreatePipeTask implements IConfigTask {
 
   public CreatePipeTask(CreatePipeStatement createPipeStatement) {
     // support now() function
-    applyNowFunctionToExtractorAttributes(createPipeStatement.getExtractorAttributes());
+    applyNowFunctionToExtractorAttributes(createPipeStatement.getSourceAttributes());
     this.createPipeStatement = createPipeStatement;
   }
 

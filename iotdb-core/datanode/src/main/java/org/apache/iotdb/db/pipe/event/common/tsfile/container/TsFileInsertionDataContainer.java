@@ -19,21 +19,27 @@
 
 package org.apache.iotdb.db.pipe.event.common.tsfile.container;
 
+import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
-import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.metric.overview.PipeTsFileToTabletsMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
+import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
+import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.tsfile.read.filter.factory.TimeFilterApi;
+import org.apache.tsfile.write.record.Tablet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
 
 public abstract class TsFileInsertionDataContainer implements AutoCloseable {
@@ -49,8 +55,13 @@ public abstract class TsFileInsertionDataContainer implements AutoCloseable {
   protected final PipeTaskMeta pipeTaskMeta; // used to report progress
   protected final EnrichedEvent sourceEvent; // used to report progress
 
-  protected final long initialTimeNano = System.nanoTime();
-  protected boolean timeUsageReported = false;
+  // mods entry
+  protected PipeMemoryBlock allocatedMemoryBlockForModifications;
+  protected PatternTreeMap<Modification, PatternTreeMapFactory.ModsSerializer> currentModifications;
+
+  protected long parseStartTimeNano = -1;
+  protected boolean parseStartTimeRecorded = false;
+  protected boolean parseEndTimeRecorded = false;
 
   protected final PipeMemoryBlock allocatedMemoryBlockForTablet;
 
@@ -59,13 +70,15 @@ public abstract class TsFileInsertionDataContainer implements AutoCloseable {
   protected Iterable<TabletInsertionEvent> tabletInsertionIterable;
 
   protected TsFileInsertionDataContainer(
+      final File tsFile,
       final String pipeName,
       final long creationTime,
       final PipePattern pattern,
       final long startTime,
       final long endTime,
       final PipeTaskMeta pipeTaskMeta,
-      final EnrichedEvent sourceEvent) {
+      final EnrichedEvent sourceEvent,
+      final boolean isWithMod) {
     this.pipeName = pipeName;
     this.creationTime = creationTime;
 
@@ -82,7 +95,18 @@ public abstract class TsFileInsertionDataContainer implements AutoCloseable {
     this.allocatedMemoryBlockForTablet =
         PipeDataNodeResourceManager.memory()
             .forceAllocateForTabletWithRetry(
-                PipeConfig.getInstance().getPipeDataStructureTabletSizeInBytes());
+                IoTDBDescriptor.getInstance().getConfig().getPipeDataStructureTabletSizeInBytes());
+
+    LOGGER.info(
+        "TsFile {} has initialized {}, pipeName: {}, creation time: {}, pattern: {}, startTime: {}, endTime: {}, withMod: {}",
+        tsFile,
+        getClass().getSimpleName(),
+        pipeName,
+        creationTime,
+        pattern,
+        startTime,
+        endTime,
+        isWithMod);
   }
 
   /**
@@ -90,21 +114,62 @@ public abstract class TsFileInsertionDataContainer implements AutoCloseable {
    */
   public abstract Iterable<TabletInsertionEvent> toTabletInsertionEvents();
 
+  /**
+   * Record parse start time when hasNext() is called for the first time and returns true. Should be
+   * called in Iterator.hasNext() when it's the first call.
+   */
+  protected void recordParseStartTime() {
+    if (pipeName == null || parseStartTimeRecorded) {
+      return;
+    }
+    parseStartTimeNano = System.nanoTime();
+    parseStartTimeRecorded = true;
+  }
+
+  /**
+   * Record parse end time when hasNext() is called and returns false (last call). Should be called
+   * in Iterator.hasNext() when it returns false.
+   */
+  protected void recordParseEndTime() {
+    if (pipeName == null || !parseStartTimeRecorded || parseEndTimeRecorded) {
+      return;
+    }
+    try {
+      final long parseEndTimeNano = System.nanoTime();
+      final long totalTimeNanos = parseEndTimeNano - parseStartTimeNano;
+      final String taskID = pipeName + "_" + creationTime;
+      PipeTsFileToTabletsMetrics.getInstance().recordTsFileToTabletTime(taskID, totalTimeNanos);
+      parseEndTimeRecorded = true;
+    } catch (final Exception e) {
+      LOGGER.warn("Failed to record parse end time for pipe {}", pipeName, e);
+    }
+  }
+
+  /**
+   * Record metrics when a tablet is generated. Should be called by subclasses when generating
+   * tablets.
+   *
+   * @param tablet the generated tablet
+   */
+  protected void recordTabletMetrics(final Tablet tablet) {
+    if (pipeName == null || tablet == null) {
+      return;
+    }
+    try {
+      final String taskID = pipeName + "_" + creationTime;
+      final long tabletMemorySize = PipeMemoryWeightUtil.calculateTabletSizeInBytes(tablet);
+      PipeTsFileToTabletsMetrics.getInstance().recordTabletGenerated(taskID, tabletMemorySize);
+    } catch (final Exception e) {
+      LOGGER.warn("Failed to record tablet metrics for pipe {}", pipeName, e);
+    }
+  }
+
   @Override
   public void close() {
 
     tabletInsertionIterable = null;
 
-    try {
-      if (pipeName != null && !timeUsageReported) {
-        PipeTsFileToTabletsMetrics.getInstance()
-            .recordTsFileToTabletTime(
-                pipeName + "_" + creationTime, System.nanoTime() - initialTimeNano);
-        timeUsageReported = true;
-      }
-    } catch (final Exception e) {
-      LOGGER.warn("Failed to report time usage for parsing tsfile for pipe {}", pipeName, e);
-    }
+    // Time recording is now handled in Iterator.hasNext(), no need to record here
 
     try {
       if (tsFileSequenceReader != null) {
@@ -116,6 +181,15 @@ public abstract class TsFileInsertionDataContainer implements AutoCloseable {
 
     if (allocatedMemoryBlockForTablet != null) {
       allocatedMemoryBlockForTablet.close();
+    }
+
+    if (currentModifications != null) {
+      // help GC
+      currentModifications = null;
+    }
+
+    if (allocatedMemoryBlockForModifications != null) {
+      allocatedMemoryBlockForModifications.close();
     }
   }
 }

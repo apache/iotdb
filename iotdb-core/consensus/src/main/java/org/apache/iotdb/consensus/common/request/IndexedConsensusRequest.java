@@ -23,6 +23,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicLong;
 
 /** only used for iot consensus. */
 public class IndexedConsensusRequest implements IConsensusRequest {
@@ -34,6 +35,7 @@ public class IndexedConsensusRequest implements IConsensusRequest {
   private final List<IConsensusRequest> requests;
   private final List<ByteBuffer> serializedRequests;
   private long memorySize = 0;
+  private AtomicLong referenceCnt = new AtomicLong();
 
   public IndexedConsensusRequest(long searchIndex, List<IConsensusRequest> requests) {
     this.searchIndex = searchIndex;
@@ -99,5 +101,13 @@ public class IndexedConsensusRequest implements IConsensusRequest {
   @Override
   public int hashCode() {
     return Objects.hash(searchIndex, requests);
+  }
+
+  public long incRef() {
+    return referenceCnt.getAndIncrement();
+  }
+
+  public long decRef() {
+    return referenceCnt.getAndDecrement();
   }
 }

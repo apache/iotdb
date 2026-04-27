@@ -19,10 +19,11 @@
 
 package org.apache.iotdb.db.pipe.event;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBPipePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.PrefixPipePattern;
-import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.container.TsFileInsertionDataContainer;
 import org.apache.iotdb.db.pipe.event.common.tsfile.container.query.TsFileInsertionQueryDataContainer;
 import org.apache.iotdb.db.pipe.event.common.tsfile.container.scan.TsFileInsertionScanDataContainer;
@@ -48,6 +49,7 @@ import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -79,9 +81,19 @@ public class TsFileInsertionDataContainerTest {
   private File alignedTsFile;
   private File nonalignedTsFile;
   private TsFileResource resource;
+  private boolean isPipeMemoryManagementEnabled;
+
+  @Before
+  public void setUp() throws Exception {
+    isPipeMemoryManagementEnabled = PipeConfig.getInstance().getPipeMemoryManagementEnabled();
+    CommonDescriptor.getInstance().getConfig().setPipeMemoryManagementEnabled(false);
+  }
 
   @After
   public void tearDown() throws Exception {
+    CommonDescriptor.getInstance()
+        .getConfig()
+        .setPipeMemoryManagementEnabled(isPipeMemoryManagementEnabled);
     if (alignedTsFile != null) {
       alignedTsFile.delete();
     }
@@ -560,7 +572,7 @@ public class TsFileInsertionDataContainerTest {
         isQuery
             ? new TsFileInsertionQueryDataContainer(tsFile, pattern, startTime, endTime)
             : new TsFileInsertionScanDataContainer(
-                tsFile, pattern, startTime, endTime, null, null)) {
+                tsFile, pattern, startTime, endTime, null, null, false)) {
       final AtomicInteger count1 = new AtomicInteger(0);
       final AtomicInteger count2 = new AtomicInteger(0);
       final AtomicInteger count3 = new AtomicInteger(0);
@@ -593,18 +605,15 @@ public class TsFileInsertionDataContainerTest {
                                       })
                                   .forEach(
                                       tabletInsertionEvent2 ->
-                                          tabletInsertionEvent2.processTablet(
-                                              (tablet, rowCollector) ->
-                                                  new PipeRawTabletInsertionEvent(tablet, false)
-                                                      .processRowByRow(
-                                                          (row, collector) -> {
-                                                            try {
-                                                              rowCollector.collectRow(row);
-                                                              count3.addAndGet(getNonNullSize(row));
-                                                            } catch (final IOException e) {
-                                                              throw new RuntimeException(e);
-                                                            }
-                                                          })))));
+                                          tabletInsertionEvent2.processTabletWithCollect(
+                                              (tablet, collector) -> {
+                                                try {
+                                                  collector.collectTablet(tablet);
+                                                  count3.addAndGet(getNonNullSize(tablet));
+                                                } catch (final IOException e) {
+                                                  throw new RuntimeException(e);
+                                                }
+                                              }))));
 
       Assert.assertEquals(expectedCount, count1.get());
       Assert.assertEquals(expectedCount, count2.get());
@@ -620,6 +629,18 @@ public class TsFileInsertionDataContainerTest {
     for (int i = 0; i < row.size(); ++i) {
       if (!row.isNull(i)) {
         ++count;
+      }
+    }
+    return count;
+  }
+
+  private int getNonNullSize(final Tablet tablet) {
+    int count = 0;
+    for (int i = 0; i < tablet.rowSize; ++i) {
+      for (int j = 0; j < tablet.getSchemas().size(); ++j) {
+        if (tablet.bitMaps == null || tablet.bitMaps[j] == null || !tablet.bitMaps[j].isMarked(i)) {
+          ++count;
+        }
       }
     }
     return count;

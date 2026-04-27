@@ -37,9 +37,9 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
-import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALPipeException;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
+import org.apache.iotdb.pipe.api.collector.TabletCollector;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
@@ -50,7 +50,8 @@ import org.apache.tsfile.write.record.Tablet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.nio.ByteBuffer;
+import javax.annotation.Nonnull;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -101,18 +102,18 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
     this.allocatedMemoryBlock = new AtomicReference<>();
   }
 
+  @Nonnull
   public InsertNode getInsertNode() {
     return insertNode;
   }
 
-  public ByteBuffer getByteBuffer() throws WALPipeException {
-    return insertNode.serializeToByteBuffer();
-  }
-
   public String getDeviceId() {
-    return Objects.nonNull(insertNode.getDevicePath())
-        ? insertNode.getDevicePath().getFullPath()
-        : null;
+    final InsertNode node = insertNode;
+    if (Objects.isNull(node)) {
+      return null;
+    }
+    final PartialPath targetPath = node.getDevicePath();
+    return Objects.nonNull(targetPath) ? targetPath.getFullPath() : null;
   }
 
   public long getExtractTime() {
@@ -185,22 +186,27 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
       final PipePattern pattern,
       final long startTime,
       final long endTime) {
+    final InsertNode node = insertNode;
+    if (Objects.isNull(node)) {
+      throw new PipeException("InsertNode has been released");
+    }
     return new PipeInsertNodeTabletInsertionEvent(
         insertNode, pipeName, creationTime, pipeTaskMeta, pattern, startTime, endTime);
   }
 
   @Override
   public boolean isGeneratedByPipe() {
-    return insertNode.isGeneratedByPipe();
+    final InsertNode node = insertNode;
+    if (Objects.isNull(node)) {
+      throw new PipeException("InsertNode has been released");
+    }
+    return node.isGeneratedByPipe();
   }
 
   @Override
   public boolean mayEventTimeOverlappedWithTimeRange() {
     try {
       final InsertNode insertNode = getInsertNode();
-      if (Objects.isNull(insertNode)) {
-        return true;
-      }
 
       if (insertNode instanceof InsertRowNode) {
         final long timestamp = ((InsertRowNode) insertNode).getTime();
@@ -242,9 +248,6 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
   public boolean mayEventPathsOverlappedWithPattern() {
     try {
       final InsertNode insertNode = getInsertNode();
-      if (Objects.isNull(insertNode)) {
-        return true;
-      }
 
       if (insertNode instanceof InsertRowNode || insertNode instanceof InsertTabletNode) {
         final PartialPath devicePartialPath = insertNode.getDevicePath();
@@ -290,6 +293,17 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
       final BiConsumer<Tablet, RowCollector> consumer) {
     return initDataContainers().stream()
         .map(tabletInsertionDataContainer -> tabletInsertionDataContainer.processTablet(consumer))
+        .flatMap(Collection::stream)
+        .collect(Collectors.toList());
+  }
+
+  @Override
+  public Iterable<TabletInsertionEvent> processTabletWithCollect(
+      BiConsumer<Tablet, TabletCollector> consumer) {
+    return initDataContainers().stream()
+        .map(
+            tabletInsertionEventParser ->
+                tabletInsertionEventParser.processTabletWithCollect(consumer))
         .flatMap(Collection::stream)
         .collect(Collectors.toList());
   }
@@ -393,6 +407,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
 
   @Override
   public String toString() {
+    final InsertNode insertNode = this.insertNode;
     return String.format(
             "PipeInsertNodeTabletInsertionEvent{progressIndex=%s, isAligned=%s, isGeneratedByPipe=%s, dataContainers=%s}",
             progressIndex,
@@ -405,6 +420,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
 
   @Override
   public String coreReportMessage() {
+    final InsertNode insertNode = this.insertNode;
     return String.format(
             "PipeInsertNodeTabletInsertionEvent{progressIndex=%s, isAligned=%s, isGeneratedByPipe=%s}",
             progressIndex,

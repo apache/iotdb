@@ -108,14 +108,14 @@ public class SnapshotTaker {
         LOGGER.warn(
             "Failed to take snapshot for {}-{}, clean up",
             dataRegion.getDatabaseName(),
-            dataRegion.getDataRegionId());
+            dataRegion.getDataRegionIdString());
         cleanUpWhenFail(finalSnapshotId);
       } else {
         snapshotLogger.logEnd();
         LOGGER.info(
             "Successfully take snapshot for {}-{}, snapshot directory is {}",
             dataRegion.getDatabaseName(),
-            dataRegion.getDataRegionId(),
+            dataRegion.getDataRegionIdString(),
             snapshotDir.getParentFile().getAbsolutePath() + File.separator + finalSnapshotId);
       }
 
@@ -124,7 +124,7 @@ public class SnapshotTaker {
       LOGGER.error(
           "Exception occurs when taking snapshot for {}-{}",
           dataRegion.getDatabaseName(),
-          dataRegion.getDataRegionId(),
+          dataRegion.getDataRegionIdString(),
           e);
       return false;
     } finally {
@@ -147,7 +147,9 @@ public class SnapshotTaker {
       StringBuilder pathBuilder = new StringBuilder(dataDir);
       pathBuilder.append(File.separator).append(IoTDBConstant.SNAPSHOT_FOLDER_NAME);
       pathBuilder.append(File.separator).append(dataRegion.getDatabaseName());
-      pathBuilder.append(IoTDBConstant.FILE_NAME_SEPARATOR).append(dataRegion.getDataRegionId());
+      pathBuilder
+          .append(IoTDBConstant.FILE_NAME_SEPARATOR)
+          .append(dataRegion.getDataRegionIdString());
       try {
         String path = pathBuilder.toString();
         if (new File(path).exists()) {
@@ -298,7 +300,7 @@ public class SnapshotTaker {
     stringBuilder.append(File.separator);
     stringBuilder.append(dataRegion.getDatabaseName());
     stringBuilder.append(IoTDBConstant.FILE_NAME_SEPARATOR);
-    stringBuilder.append(dataRegion.getDataRegionId());
+    stringBuilder.append(dataRegion.getDataRegionIdString());
     stringBuilder.append(File.separator);
     stringBuilder.append(snapshotId);
     stringBuilder.append(File.separator);

@@ -34,16 +34,18 @@ import java.util.function.Function;
  * @param <V> The cache value.
  * @param <T> The cache entry holding cache value.
  */
-interface ICacheEntryGroup<FK, SK, V, T extends ICacheEntry<SK, V>> {
+interface ICacheEntryGroup<SK, V> {
+  CacheEntry<SK, V> getCacheEntry(final SK secondKey);
 
-  FK getFirstKey();
+  Iterator<Map.Entry<SK, CacheEntry<SK, V>>> getAllCacheEntries();
 
-  T getCacheEntry(final SK secondKey);
+  CacheEntry<SK, V> computeCacheEntry(
+      final SK secondKey,
+      final Function<AtomicLong, BiFunction<SK, CacheEntry<SK, V>, CacheEntry<SK, V>>> computation);
 
-  Iterator<Map.Entry<SK, T>> getAllCacheEntries();
-
-  T computeCacheEntry(
-      final SK secondKey, final Function<AtomicLong, BiFunction<SK, T, T>> computation);
+  CacheEntry<SK, V> computeCacheEntryIfPresent(
+      final SK secondKey,
+      final Function<AtomicLong, BiFunction<SK, CacheEntry<SK, V>, CacheEntry<SK, V>>> computation);
 
   long removeCacheEntry(final SK secondKey);
 

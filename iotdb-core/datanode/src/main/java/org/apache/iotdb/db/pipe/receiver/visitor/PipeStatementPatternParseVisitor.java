@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.pipe.receiver.visitor;
 
+import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBPipePatternOperations;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
-import org.apache.iotdb.commons.pipe.datastructure.pattern.UnionIoTDBPipePattern;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementNode;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
@@ -37,12 +37,12 @@ import java.util.stream.IntStream;
 
 /**
  * The {@link PipeStatementPatternParseVisitor} will transform the schema {@link Statement}s using
- * {@link UnionIoTDBPipePattern}. Rule:
+ * {@link IoTDBPipePatternOperations}. Rule:
  *
  * <p>1. All patterns in the output {@link Statement} will be the intersection of the original
- * {@link Statement}'s patterns and the given {@link UnionIoTDBPipePattern}.
+ * {@link Statement}'s patterns and the given {@link IoTDBPipePatternOperations}.
  *
- * <p>2. If a pattern does not intersect with the {@link UnionIoTDBPipePattern}, it's dropped.
+ * <p>2. If a pattern does not intersect with the {@link IoTDBPipePatternOperations}, it's dropped.
  *
  * <p>3. If all the patterns in the {@link Statement} is dropped, the {@link Statement} is dropped.
  *
@@ -50,16 +50,16 @@ import java.util.stream.IntStream;
  * from the {@link SRStatementGenerator} and will no longer be used.
  */
 public class PipeStatementPatternParseVisitor
-    extends StatementVisitor<Optional<Statement>, UnionIoTDBPipePattern> {
+    extends StatementVisitor<Optional<Statement>, IoTDBPipePatternOperations> {
   @Override
   public Optional<Statement> visitNode(
-      final StatementNode statement, final UnionIoTDBPipePattern pattern) {
+      final StatementNode statement, final IoTDBPipePatternOperations pattern) {
     return Optional.of((Statement) statement);
   }
 
   @Override
   public Optional<Statement> visitCreateTimeseries(
-      final CreateTimeSeriesStatement statement, final UnionIoTDBPipePattern pattern) {
+      final CreateTimeSeriesStatement statement, final IoTDBPipePatternOperations pattern) {
     return pattern.matchesMeasurement(
             statement.getPath().getDevice(), statement.getPath().getMeasurement())
         ? Optional.of(statement)
@@ -68,7 +68,7 @@ public class PipeStatementPatternParseVisitor
 
   @Override
   public Optional<Statement> visitCreateAlignedTimeseries(
-      final CreateAlignedTimeSeriesStatement statement, final UnionIoTDBPipePattern pattern) {
+      final CreateAlignedTimeSeriesStatement statement, final IoTDBPipePatternOperations pattern) {
     final int[] filteredIndexes =
         IntStream.range(0, statement.getMeasurements().size())
             .filter(
@@ -109,7 +109,7 @@ public class PipeStatementPatternParseVisitor
   @Override
   public Optional<Statement> visitAlterTimeSeries(
       final AlterTimeSeriesStatement alterTimeSeriesStatement,
-      final UnionIoTDBPipePattern pattern) {
+      final IoTDBPipePatternOperations pattern) {
     return pattern.matchesMeasurement(
             alterTimeSeriesStatement.getPath().getDevice(),
             alterTimeSeriesStatement.getPath().getMeasurement())
@@ -120,7 +120,7 @@ public class PipeStatementPatternParseVisitor
   @Override
   public Optional<Statement> visitActivateTemplate(
       final ActivateTemplateStatement activateTemplateStatement,
-      final UnionIoTDBPipePattern pattern) {
+      final IoTDBPipePatternOperations pattern) {
     return pattern.matchDevice(activateTemplateStatement.getPath().getFullPath())
         ? Optional.of(activateTemplateStatement)
         : Optional.empty();
@@ -129,7 +129,7 @@ public class PipeStatementPatternParseVisitor
   @Override
   public Optional<Statement> visitCreateLogicalView(
       final CreateLogicalViewStatement createLogicalViewStatement,
-      final UnionIoTDBPipePattern pattern) {
+      final IoTDBPipePatternOperations pattern) {
     final int[] filteredIndexes =
         IntStream.range(0, createLogicalViewStatement.getTargetPathList().size())
             .filter(

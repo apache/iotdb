@@ -93,7 +93,7 @@ public class PipeRuntimeSinkCriticalException extends PipeRuntimeCriticalExcepti
 
   @Override
   public String toString() {
-    return "PipeRuntimeConnectorCriticalException{"
+    return "PipeRuntimeSinkCriticalException{"
         + "message='"
         + getMessage()
         + "', timeStamp="

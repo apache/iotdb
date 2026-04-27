@@ -260,6 +260,11 @@ public class DataNodeSchemaCacheTest {
     Assert.assertEquals(
         new TimeValuePair(2, new TsPrimitiveType.TsInt(2)),
         dataNodeSchemaCache.getLastCache(new MeasurementPath("root.db.d.s3")));
+
+    Assert.assertTrue(dataNodeSchemaCache.getDeviceSchemaCache().getMemoryUsage() > 0);
+
+    dataNodeSchemaCache.cleanUp();
+    Assert.assertEquals(0, dataNodeSchemaCache.getDeviceSchemaCache().getMemoryUsage());
   }
 
   @Test
@@ -313,5 +318,13 @@ public class DataNodeSchemaCacheTest {
     Assert.assertEquals(1, measurementPaths.size());
     Assert.assertEquals(TSDataType.FLOAT, measurementPaths.get(0).getMeasurementSchema().getType());
     Assert.assertEquals("root.sg1.d3.s1", measurementPaths.get(0).getFullPath());
+
+    dataNodeSchemaCache.getDeviceSchemaCache().invalidateSchema();
+    dataNodeSchemaCache.getDeviceSchemaCache().invalidateSchema();
+    dataNodeSchemaCache.getDeviceSchemaCache().invalidateSchema();
+    Assert.assertTrue(dataNodeSchemaCache.getDeviceSchemaCache().getMemoryUsage() > 0);
+
+    dataNodeSchemaCache.getDeviceSchemaCache().invalidateAll();
+    Assert.assertEquals(0, dataNodeSchemaCache.getDeviceSchemaCache().getMemoryUsage());
   }
 }

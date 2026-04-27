@@ -56,7 +56,10 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.pool.SessionPool;
 
+import org.apache.thrift.TConfiguration;
 import org.apache.thrift.TException;
+import org.apache.thrift.transport.TSocket;
+import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 
 import java.io.File;
@@ -234,7 +237,7 @@ public abstract class AbstractEnv implements BaseEnv {
 
     final List<String> dataNodeEndpoints = new ArrayList<>();
     final RequestDelegate<Void> dataNodesDelegate =
-        new ParallelRequestDelegate<>(dataNodeEndpoints, NODE_START_TIMEOUT);
+        new ParallelRequestDelegate<>(dataNodeEndpoints, NODE_START_TIMEOUT, this);
     for (int i = 0; i < dataNodesNum; i++) {
       final DataNodeWrapper dataNodeWrapper =
           new DataNodeWrapper(
@@ -292,7 +295,7 @@ public abstract class AbstractEnv implements BaseEnv {
     aiNodeWrapper.createLogDir();
     final RequestDelegate<Void> aiNodesDelegate =
         new ParallelRequestDelegate<>(
-            Collections.singletonList(aiNodeEndPoint), NODE_START_TIMEOUT);
+            Collections.singletonList(aiNodeEndPoint), NODE_START_TIMEOUT, this);
 
     aiNodesDelegate.addRequest(
         () -> {
@@ -435,7 +438,17 @@ public abstract class AbstractEnv implements BaseEnv {
   @Override
   public Connection getConnection(String username, String password) throws SQLException {
     return new ClusterTestConnection(
-        getWriteConnection(null, username, password), getReadConnections(null, username, password));
+        getWriteConnection(null, username, password),
+        getReadConnections(null, username, password),
+        this);
+  }
+
+  @Override
+  public Connection getAvailableConnection(String username, String password) throws SQLException {
+    return new ClusterTestConnection(
+        getWriteConnection(null, username, password),
+        getOneAvailableReadConnection(null, username, password),
+        this);
   }
 
   @Override
@@ -444,7 +457,8 @@ public abstract class AbstractEnv implements BaseEnv {
       throws SQLException {
     return new ClusterTestConnection(
         getWriteConnectionWithSpecifiedDataNode(dataNodeWrapper, null, username, password),
-        getReadConnections(null, dataNodeWrapper, username, password));
+        getReadConnections(null, dataNodeWrapper, username, password),
+        this);
   }
 
   @Override
@@ -453,7 +467,8 @@ public abstract class AbstractEnv implements BaseEnv {
       throws SQLException {
     return new ClusterTestConnection(
         getWriteConnectionWithSpecifiedDataNode(dataNode, null, username, password),
-        Collections.emptyList());
+        Collections.emptyList(),
+        this);
   }
 
   @Override
@@ -462,7 +477,8 @@ public abstract class AbstractEnv implements BaseEnv {
       throws SQLException {
     return new ClusterTestConnection(
         getWriteConnectionWithSpecifiedDataNode(dataNode, null, username, password),
-        getReadConnections(null, username, password));
+        getReadConnections(null, username, password),
+        this);
   }
 
   @Override
@@ -471,7 +487,8 @@ public abstract class AbstractEnv implements BaseEnv {
     if (System.getProperty("ReadAndVerifyWithMultiNode", "true").equalsIgnoreCase("true")) {
       return new ClusterTestConnection(
           getWriteConnection(version, username, password),
-          getReadConnections(version, username, password));
+          getReadConnections(version, username, password),
+          this);
     } else {
       return getWriteConnection(version, username, password).getUnderlyingConnecton();
     }
@@ -597,7 +614,7 @@ public abstract class AbstractEnv implements BaseEnv {
       Constant.Version version, String username, String password) throws SQLException {
     List<String> endpoints = new ArrayList<>();
     ParallelRequestDelegate<NodeConnection> readConnRequestDelegate =
-        new ParallelRequestDelegate<>(endpoints, NODE_START_TIMEOUT);
+        new ParallelRequestDelegate<>(endpoints, NODE_START_TIMEOUT, this);
     for (DataNodeWrapper dataNodeWrapper : this.dataNodeWrapperList) {
       final String endpoint = dataNodeWrapper.getIpAndPortString();
       endpoints.add(endpoint);
@@ -628,7 +645,7 @@ public abstract class AbstractEnv implements BaseEnv {
       throws SQLException {
     final List<String> endpoints = new ArrayList<>();
     final ParallelRequestDelegate<NodeConnection> readConnRequestDelegate =
-        new ParallelRequestDelegate<>(endpoints, NODE_START_TIMEOUT);
+        new ParallelRequestDelegate<>(endpoints, NODE_START_TIMEOUT, this);
 
     endpoints.add(dataNode.getIpAndPortString());
     readConnRequestDelegate.addRequest(
@@ -650,6 +667,23 @@ public abstract class AbstractEnv implements BaseEnv {
     return readConnRequestDelegate.requestAll();
   }
 
+  protected List<NodeConnection> getOneAvailableReadConnection(
+      final Constant.Version version, final String username, final String password)
+      throws SQLException {
+    final List<DataNodeWrapper> dataNodeWrapperListCopy = new ArrayList<>(dataNodeWrapperList);
+    Collections.shuffle(dataNodeWrapperListCopy);
+    SQLException lastException = null;
+    for (final DataNodeWrapper dataNode : dataNodeWrapperListCopy) {
+      try {
+        return getReadConnections(version, dataNode, username, password);
+      } catch (final SQLException e) {
+        lastException = e;
+      }
+    }
+    logger.error("Failed to get connection from any DataNode, last exception is ", lastException);
+    throw lastException;
+  }
+
   // use this to avoid some runtimeExceptions when try to get jdbc connections.
   // because it is hard to add retry and handle exception when getting jdbc connections in
   // getWriteConnectionWithSpecifiedDataNode and getReadConnections.
@@ -663,7 +697,7 @@ public abstract class AbstractEnv implements BaseEnv {
             .map(DataNodeWrapper::getIpAndPortString)
             .collect(Collectors.toList());
     final RequestDelegate<Void> testDelegate =
-        new ParallelRequestDelegate<>(endpoints, NODE_START_TIMEOUT);
+        new ParallelRequestDelegate<>(endpoints, NODE_START_TIMEOUT, this);
     for (final DataNodeWrapper dataNode : dataNodeWrapperList) {
       final String dataNodeEndpoint = dataNode.getIpAndPortString();
       testDelegate.addRequest(
@@ -1014,7 +1048,8 @@ public abstract class AbstractEnv implements BaseEnv {
     final RequestDelegate<Void> configNodeDelegate =
         new ParallelRequestDelegate<>(
             Collections.singletonList(newConfigNodeWrapper.getIpAndPortString()),
-            NODE_START_TIMEOUT);
+            NODE_START_TIMEOUT,
+            this);
     configNodeDelegate.addRequest(
         () -> {
           newConfigNodeWrapper.start();
@@ -1041,7 +1076,7 @@ public abstract class AbstractEnv implements BaseEnv {
     final List<String> dataNodeEndpoints =
         Collections.singletonList(newDataNodeWrapper.getIpAndPortString());
     final RequestDelegate<Void> dataNodesDelegate =
-        new ParallelRequestDelegate<>(dataNodeEndpoints, NODE_START_TIMEOUT);
+        new ParallelRequestDelegate<>(dataNodeEndpoints, NODE_START_TIMEOUT, this);
     dataNodesDelegate.addRequest(
         () -> {
           newDataNodeWrapper.start();
@@ -1087,7 +1122,7 @@ public abstract class AbstractEnv implements BaseEnv {
 
   @Override
   public void ensureNodeStatus(
-      final List<BaseNodeWrapper> nodes, final List<NodeStatus> targetStatus)
+      final List<BaseNodeWrapper> nodes, final List<NodeStatus> targetStatusList)
       throws IllegalStateException {
     Throwable lastException = null;
     for (int i = 0; i < retryCount; i++) {
@@ -1115,7 +1150,9 @@ public abstract class AbstractEnv implements BaseEnv {
                             + node.getClientRpcEndPoint().getPort(),
                         node.getDataNodeId()));
         for (int j = 0; j < nodes.size(); j++) {
-          final String endpoint = nodes.get(j).getIpAndPortString();
+          BaseNodeWrapper nodeWrapper = nodes.get(j);
+          String ipAndPortString = nodeWrapper.getIpAndPortString();
+          final String endpoint = ipAndPortString;
           if (!nodeIds.containsKey(endpoint)) {
             // Node not exist
             // Notice: Never modify this line, since the NodeLocation might be modified in IT
@@ -1123,12 +1160,27 @@ public abstract class AbstractEnv implements BaseEnv {
             continue;
           }
           final String status = showClusterResp.getNodeStatus().get(nodeIds.get(endpoint));
-          if (!targetStatus.get(j).getStatus().equals(status)) {
+          final NodeStatus targetStatus = targetStatusList.get(j);
+          if (!targetStatus.getStatus().equals(status)) {
             // Error status
             errorMessages.add(
                 String.format(
                     "Node %s is in status %s, but expected %s",
-                    endpoint, status, targetStatus.get(j)));
+                    endpoint, status, targetStatusList.get(j)));
+            continue;
+          }
+          if (nodeWrapper instanceof DataNodeWrapper && targetStatus.equals(NodeStatus.Running)) {
+            final String[] ipPort = nodeWrapper.getIpAndPortString().split(":");
+            final String ip = ipPort[0];
+            final int port = Integer.parseInt(ipPort[1]);
+            try (TSocket socket = new TSocket(new TConfiguration(), ip, port, 1000)) {
+              socket.open();
+            } catch (final TTransportException e) {
+              errorMessages.add(
+                  String.format(
+                      "DataNode %s is not reachable: %s",
+                      nodeWrapper.getIpAndPortString(), e.getMessage()));
+            }
           }
         }
         if (errorMessages.isEmpty()) {

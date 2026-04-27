@@ -28,6 +28,7 @@ public class ImportTsFileScanTool {
 
   private static final String RESOURCE = ".resource";
   private static final String MODS = ".mods";
+  private static final String TSFILE = ".tsfile";
 
   private static final LinkedBlockingQueue<String> tsfileQueue = new LinkedBlockingQueue<>();
   private static final Set<String> tsfileSet = new HashSet<>();
@@ -43,7 +44,7 @@ public class ImportTsFileScanTool {
     if (file.isFile()) {
       if (file.getName().endsWith(RESOURCE) || file.getName().endsWith(MODS)) {
         resourceOrModsSet.add(file.getAbsolutePath());
-      } else {
+      } else if (file.getName().endsWith(TSFILE)) {
         tsfileSet.add(file.getAbsolutePath());
         tsfileQueue.put(file.getAbsolutePath());
       }

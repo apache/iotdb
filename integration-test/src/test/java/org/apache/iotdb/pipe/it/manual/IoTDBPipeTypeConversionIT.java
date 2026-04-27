@@ -226,8 +226,7 @@ public class IoTDBPipeTypeConversionIT extends AbstractPipeDualManualIT {
         String.format(
             "create timeseries root.test.%s2%s.status with datatype=%s,encoding=PLAIN",
             sourceTypeName, targetTypeName, dataType);
-    TestUtils.tryExecuteNonQueriesWithRetry(
-        env, Collections.singletonList(timeSeriesCreationQuery));
+    TestUtils.executeNonQueries(env, Collections.singletonList(timeSeriesCreationQuery), null);
   }
 
   private void createDataPipe() {
@@ -238,7 +237,7 @@ public class IoTDBPipeTypeConversionIT extends AbstractPipeDualManualIT {
                 + " with processor ('processor'='do-nothing-processor')"
                 + " with sink ('node-urls'='%s:%s','batch.enable'='false','sink.format'='tablet')",
             receiverEnv.getIP(), receiverEnv.getPort());
-    TestUtils.tryExecuteNonQueriesWithRetry(senderEnv, Collections.singletonList(sql));
+    TestUtils.executeNonQueries(senderEnv, Collections.singletonList(sql), null);
   }
 
   private List<Pair> createTestDataForType(String sourceType) {
@@ -273,29 +272,34 @@ public class IoTDBPipeTypeConversionIT extends AbstractPipeDualManualIT {
     switch (sourceType) {
       case STRING:
       case TEXT:
-        TestUtils.tryExecuteNonQueriesWithRetry(
+        TestUtils.executeNonQueries(
             senderEnv,
-            createInsertStatementsForString(testData, sourceType.name(), targetType.name()));
+            createInsertStatementsForString(testData, sourceType.name(), targetType.name()),
+            null);
         return;
       case TIMESTAMP:
-        TestUtils.tryExecuteNonQueriesWithRetry(
+        TestUtils.executeNonQueries(
             senderEnv,
-            createInsertStatementsForTimestamp(testData, sourceType.name(), targetType.name()));
+            createInsertStatementsForTimestamp(testData, sourceType.name(), targetType.name()),
+            null);
         return;
       case DATE:
-        TestUtils.tryExecuteNonQueriesWithRetry(
+        TestUtils.executeNonQueries(
             senderEnv,
-            createInsertStatementsForLocalDate(testData, sourceType.name(), targetType.name()));
+            createInsertStatementsForLocalDate(testData, sourceType.name(), targetType.name()),
+            null);
         return;
       case BLOB:
-        TestUtils.tryExecuteNonQueriesWithRetry(
+        TestUtils.executeNonQueries(
             senderEnv,
-            createInsertStatementsForBlob(testData, sourceType.name(), targetType.name()));
+            createInsertStatementsForBlob(testData, sourceType.name(), targetType.name()),
+            null);
         return;
       default:
-        TestUtils.tryExecuteNonQueriesWithRetry(
+        TestUtils.executeNonQueries(
             senderEnv,
-            createInsertStatementsForNumeric(testData, sourceType.name(), targetType.name()));
+            createInsertStatementsForNumeric(testData, sourceType.name(), targetType.name()),
+            null);
     }
   }
 

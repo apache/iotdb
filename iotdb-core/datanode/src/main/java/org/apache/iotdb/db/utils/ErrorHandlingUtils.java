@@ -22,6 +22,7 @@ package org.apache.iotdb.db.utils;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
+import org.apache.iotdb.commons.utils.ErrorHandlingCommonUtils;
 import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.QueryInBatchStatementException;
 import org.apache.iotdb.db.exception.StorageGroupNotReadyException;
@@ -71,7 +72,7 @@ public class ErrorHandlingUtils {
       LOGGER.warn(ERROR_OPERATION_LOG, statusCode, operation, e);
     }
     if (e instanceof SemanticException) {
-      Throwable rootCause = getRootCause(e);
+      Throwable rootCause = ErrorHandlingCommonUtils.getRootCause(e);
       if (e.getCause() instanceof IoTDBException) {
         return RpcUtils.getStatus(
             ((IoTDBException) e.getCause()).getErrorCode(), rootCause.getMessage());
@@ -104,7 +105,6 @@ public class ErrorHandlingUtils {
     LOGGER.warn(message);
     return status.setMessage(message);
   }
-
   public static TSStatus onQueryException(Exception e, String operation, TSStatusCode statusCode) {
     TSStatus status = tryCatchQueryException(e);
     if (status != null) {
@@ -125,6 +125,9 @@ public class ErrorHandlingUtils {
             || status.getCode() == TSStatusCode.PLAN_FAILED_NETWORK_PARTITION.getStatusCode()
             || status.getCode() == TSStatusCode.SYNC_CONNECTION_ERROR.getStatusCode()
             || status.getCode() == TSStatusCode.CANNOT_FETCH_FI_STATE.getStatusCode()
+            || status.getCode() == TSStatusCode.TEMPLATE_INCOMPATIBLE.getStatusCode()
+            || status.getCode() == TSStatusCode.PATH_ALREADY_EXIST.getStatusCode()
+            || status.getCode() == TSStatusCode.PIPE_NOT_EXIST_ERROR.getStatusCode()
             || status.getCode() == TSStatusCode.QUERY_TIMEOUT.getStatusCode()) {
           LOGGER.info(message);
         } else {
@@ -147,7 +150,7 @@ public class ErrorHandlingUtils {
   }
 
   private static TSStatus tryCatchQueryException(Exception e) {
-    Throwable rootCause = getRootCause(e);
+    Throwable rootCause = ErrorHandlingCommonUtils.getRootCause(e);
     // ignore logging sg not ready exception
     if (rootCause instanceof StorageGroupNotReadyException) {
       return RpcUtils.getStatus(TSStatusCode.STORAGE_ENGINE_NOT_READY, rootCause.getMessage());
@@ -222,7 +225,7 @@ public class ErrorHandlingUtils {
       LOGGER.warn(message, e);
       return RpcUtils.getStatus(Arrays.asList(batchException.getFailingStatus()));
     } else if (e instanceof IoTDBException) {
-      Throwable rootCause = getRootCause(e);
+      Throwable rootCause = ErrorHandlingCommonUtils.getRootCause(e);
       // ignore logging sg not ready exception
       if (!(rootCause instanceof StorageGroupNotReadyException)) {
         LOGGER.warn(message, e);

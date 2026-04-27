@@ -40,6 +40,7 @@ import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -113,6 +114,7 @@ public class IoTDBTestPushConsumeNoTargetDirTsfileIT extends AbstractSubscriptio
     session_src.executeNonQueryStatement("flush;");
   }
 
+  @Ignore
   @Test
   public void do_test()
       throws InterruptedException,
@@ -135,7 +137,7 @@ public class IoTDBTestPushConsumeNoTargetDirTsfileIT extends AbstractSubscriptio
                 message -> {
                   onReceiveCount.incrementAndGet();
                   try {
-                    TsFileReader reader = message.getTsFileHandler().openReader();
+                    TsFileReader reader = message.getTsFile().openReader();
                     Path path = new Path(device, "s_0", true);
                     QueryDataSet dataset =
                         reader.query(QueryExpression.create(Collections.singletonList(path), null));

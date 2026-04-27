@@ -1799,6 +1799,14 @@ public class MergeSortOperatorTest {
     public void recordExecutionTime(long executionTime) {}
 
     @Override
+    public void updateCurrentRpcStartTime(long startTime) {}
+
+    @Override
+    public boolean isActive() {
+      return true;
+    }
+
+    @Override
     public long getTotalExecutionTime() {
       return 0;
     }
@@ -1820,9 +1828,6 @@ public class MergeSortOperatorTest {
     public void stop(Throwable t) {}
 
     @Override
-    public void stopAndCleanup() {}
-
-    @Override
     public void stopAndCleanup(Throwable t) {}
 
     @Override
@@ -1836,6 +1841,16 @@ public class MergeSortOperatorTest {
     @Override
     public Optional<TsBlock> getBatchResult() {
       return Optional.empty();
+    }
+
+    @Override
+    public String getClientHostname() {
+      return "";
+    }
+
+    @Override
+    public long getTimeout() {
+      return 60_000L;
     }
 
     @Override

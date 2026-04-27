@@ -586,7 +586,10 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
               plan instanceof CreateTimeSeriesPlanImpl
                       && ((CreateTimeSeriesPlanImpl) plan).isWithMerge()
                   || plan instanceof CreateTimeSeriesNode
-                      && ((CreateTimeSeriesNode) plan).isGeneratedByPipe());
+                      && ((CreateTimeSeriesNode) plan).isGeneratedByPipe(),
+              plan instanceof CreateTimeSeriesPlanImpl
+                  ? ((CreateTimeSeriesPlanImpl) plan).getAligned()
+                  : null);
 
       // Should merge
       if (Objects.isNull(leafMNode)) {
@@ -670,7 +673,10 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
               aliasList,
               (plan instanceof CreateAlignedTimeSeriesPlanImpl
                   && ((CreateAlignedTimeSeriesPlanImpl) plan).isWithMerge()),
-              existingMeasurementIndexes);
+              existingMeasurementIndexes,
+              (plan instanceof CreateAlignedTimeSeriesPlanImpl
+                  ? ((CreateAlignedTimeSeriesPlanImpl) plan).getAligned()
+                  : null));
 
       // update statistics and schemaDataTypeNumMap
       regionStatistics.addMeasurement(measurementMNodeList.size());
@@ -758,7 +764,11 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   @Override
   public Map<Integer, MetadataException> checkMeasurementExistence(
       PartialPath devicePath, List<String> measurementList, List<String> aliasList) {
-    return mtree.checkMeasurementExistence(devicePath, measurementList, aliasList);
+    try {
+      return mtree.checkMeasurementExistence(devicePath, measurementList, aliasList);
+    } catch (final Exception e) {
+      return Collections.emptyMap();
+    }
   }
 
   @Override
@@ -1326,9 +1336,10 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   @Override
   public int fillLastQueryMap(
       final PartialPath pattern,
-      final Map<String, Map<PartialPath, Map<String, TimeValuePair>>> mapToFill)
+      final Map<PartialPath, Map<String, TimeValuePair>> mapToFill,
+      final PathPatternTree scope)
       throws MetadataException {
-    return mtree.fillLastQueryMap(pattern, mapToFill);
+    return mtree.fillLastQueryMap(pattern, mapToFill, scope);
   }
 
   @Override

@@ -60,7 +60,7 @@ public class TemplatedInfo {
   private final boolean queryAllSensors;
 
   // variables used in DeviceViewOperator
-  private final List<String> deviceViewOutputNames;
+  private List<String> deviceViewOutputNames;
   private List<Integer> deviceToMeasurementIndexes;
 
   // variables related to LIMIT/OFFSET push down
@@ -148,6 +148,10 @@ public class TemplatedInfo {
 
   public List<String> getDeviceViewOutputNames() {
     return this.deviceViewOutputNames;
+  }
+
+  public void setDeviceViewOutputNames(List<String> deviceViewOutputNames) {
+    this.deviceViewOutputNames = deviceViewOutputNames;
   }
 
   public long getOffsetValue() {

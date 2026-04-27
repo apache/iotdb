@@ -34,6 +34,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TCheckSchemaRegionUsingTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCheckSchemaRegionUsingTemplateResp;
 import org.apache.iotdb.mpp.rpc.thrift.TCountPathsUsingTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCountPathsUsingTemplateResp;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import java.io.ByteArrayOutputStream;
@@ -168,6 +169,7 @@ public class SchemaUtils {
                 respList.add(response);
                 List<TConsensusGroupId> failedRegionList = new ArrayList<>();
                 if (response.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+                  failureMap.remove(dataNodeLocation);
                   return failedRegionList;
                 }
 
@@ -181,6 +183,12 @@ public class SchemaUtils {
                 } else {
                   failedRegionList.addAll(consensusGroupIdList);
                 }
+                if (!failedRegionList.isEmpty()) {
+                  failureMap.put(
+                      dataNodeLocation, RpcUtils.extractFailureStatues(response.getStatus()));
+                } else {
+                  failureMap.remove(dataNodeLocation);
+                }
                 return failedRegionList;
               }
 
@@ -190,8 +198,8 @@ public class SchemaUtils {
                 exception[0] =
                     new MetadataException(
                         String.format(
-                            "Failed to execute in all replicaset of schemaRegion %s when checking templates on path %s. Failure nodes: %s",
-                            consensusGroupId.id, deleteDatabasePatternPaths, dataNodeLocationSet));
+                            "Failed to execute in all replicaset of schemaRegion %s when checking templates on path %s. Failures: %s",
+                            consensusGroupId.id, deleteDatabasePatternPaths, printFailureMap()));
                 interruptTask();
               }
             };

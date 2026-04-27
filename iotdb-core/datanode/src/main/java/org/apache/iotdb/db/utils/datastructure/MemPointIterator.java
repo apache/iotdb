@@ -69,7 +69,10 @@ public abstract class MemPointIterator implements IPointReader {
 
   public void setCurrentPageTimeRange(TimeRange timeRange) {
     this.timeRange = timeRange;
+    skipToCurrentTimeRangeStartPosition();
   }
+
+  protected void skipToCurrentTimeRangeStartPosition() {}
 
   protected boolean isCurrentTimeExceedTimeRange(long time) {
     return timeRange != null

@@ -491,6 +491,60 @@ public class TestUtils {
     return false;
   }
 
+  public static void executeNonQuery(BaseEnv env, String sql, Connection defaultConnection) {
+    executeNonQuery(
+        env, sql, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD, defaultConnection);
+  }
+
+  public static void executeNonQuery(
+      BaseEnv env, String sql, String userName, String password, Connection defaultConnection) {
+    executeNonQueries(env, Collections.singletonList(sql), userName, password, defaultConnection);
+  }
+
+  public static void executeNonQueries(
+      BaseEnv env, List<String> sqlList, Connection defaultConnection) {
+    executeNonQueries(
+        env,
+        sqlList,
+        SessionConfig.DEFAULT_USER,
+        SessionConfig.DEFAULT_PASSWORD,
+        defaultConnection);
+  }
+
+  public static void executeNonQueries(
+      BaseEnv env,
+      List<String> sqlList,
+      String userName,
+      String password,
+      Connection defaultConnection) {
+    int lastIndex = 0;
+    Connection localConnection = null;
+    Connection connectionToUse = defaultConnection;
+    Statement statement;
+    try {
+      // create a new connection if default is not provided or the previous is broken
+      if (connectionToUse == null) {
+        localConnection = env.getConnection(userName, password);
+        connectionToUse = localConnection;
+      }
+      statement = connectionToUse.createStatement();
+      for (int i = lastIndex; i < sqlList.size(); ++i) {
+        statement.execute(sqlList.get(i));
+      }
+    } catch (SQLException e) {
+      // the default connection should be closed by the upper level
+      // while the local connection should be closed here
+      if (connectionToUse == localConnection && localConnection != null) {
+        try {
+          localConnection.close();
+        } catch (SQLException ex) {
+          // ignore
+        }
+      }
+      throw new RuntimeException(e);
+    }
+  }
+
   public static void executeNonQueryOnSpecifiedDataNodeWithRetry(
       BaseEnv env, DataNodeWrapper wrapper, String sql) {
     for (int retryCountLeft = 10; retryCountLeft >= 0; retryCountLeft--) {
@@ -624,6 +678,32 @@ public class TestUtils {
         assertEquals(expectedRetArray[count++], rowRecord.toString().replace('\t', ','));
       }
       assertEquals(expectedRetArray.length, count);
+    } catch (IoTDBConnectionException | StatementExecutionException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  public static void assertResultSetEqual(
+      SessionDataSet actualResultSet,
+      List<String> expectedColumnNames,
+      Set<String> expectedRetSet,
+      boolean ignoreTimeStamp) {
+    final Set<String> copiedSet = new HashSet<>(expectedRetSet);
+    try {
+      List<String> actualColumnNames = actualResultSet.getColumnNames();
+      if (ignoreTimeStamp) {
+        assertEquals(expectedColumnNames, actualColumnNames);
+      } else {
+        assertEquals(TIMESTAMP_STR, actualColumnNames.get(0));
+        assertEquals(expectedColumnNames, actualColumnNames.subList(1, actualColumnNames.size()));
+      }
+
+      while (actualResultSet.hasNext()) {
+        RowRecord rowRecord = actualResultSet.next();
+        assertTrue(copiedSet.remove(rowRecord.toString().replace('\t', ',')));
+      }
+      assertEquals(0, copiedSet.size());
     } catch (IoTDBConnectionException | StatementExecutionException e) {
       e.printStackTrace();
       fail(e.getMessage());

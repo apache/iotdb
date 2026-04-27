@@ -20,7 +20,7 @@
 package org.apache.iotdb.commons.schema.cache;
 
 public enum CacheClearOptions {
-  TREE_SCHEMA,
+  SCHEMA,
   QUERY,
   DEFAULT,
 }

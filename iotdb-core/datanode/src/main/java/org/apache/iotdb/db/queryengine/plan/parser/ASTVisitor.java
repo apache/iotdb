@@ -3356,12 +3356,12 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     clearCacheStatement.setOnCluster(ctx.LOCAL() == null);
 
     if (ctx.SCHEMA() != null) {
-      clearCacheStatement.setOptions(Collections.singleton(CacheClearOptions.TREE_SCHEMA));
+      clearCacheStatement.setOptions(Collections.singleton(CacheClearOptions.SCHEMA));
     } else if (ctx.QUERY() != null) {
       clearCacheStatement.setOptions(Collections.singleton(CacheClearOptions.QUERY));
     } else if (ctx.ALL() != null) {
       clearCacheStatement.setOptions(
-          new HashSet<>(Arrays.asList(CacheClearOptions.TREE_SCHEMA, CacheClearOptions.QUERY)));
+          new HashSet<>(Arrays.asList(CacheClearOptions.SCHEMA, CacheClearOptions.QUERY)));
     } else {
       clearCacheStatement.setOptions(Collections.singleton(CacheClearOptions.DEFAULT));
     }
@@ -3822,11 +3822,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
         ctx.IF() != null && ctx.NOT() != null && ctx.EXISTS() != null);
 
     if (ctx.extractorAttributesClause() != null) {
-      createPipeStatement.setExtractorAttributes(
+      createPipeStatement.setSourceAttributes(
           parseExtractorAttributesClause(
               ctx.extractorAttributesClause().extractorAttributeClause()));
     } else {
-      createPipeStatement.setExtractorAttributes(new HashMap<>());
+      createPipeStatement.setSourceAttributes(new HashMap<>());
     }
     if (ctx.processorAttributesClause() != null) {
       createPipeStatement.setProcessorAttributes(
@@ -3836,11 +3836,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       createPipeStatement.setProcessorAttributes(new HashMap<>());
     }
     if (ctx.connectorAttributesClause() != null) {
-      createPipeStatement.setConnectorAttributes(
+      createPipeStatement.setSinkAttributes(
           parseConnectorAttributesClause(
               ctx.connectorAttributesClause().connectorAttributeClause()));
     } else {
-      createPipeStatement.setConnectorAttributes(
+      createPipeStatement.setSinkAttributes(
           parseConnectorAttributesClause(
               ctx.connectorAttributesWithoutWithSinkClause().connectorAttributeClause()));
     }

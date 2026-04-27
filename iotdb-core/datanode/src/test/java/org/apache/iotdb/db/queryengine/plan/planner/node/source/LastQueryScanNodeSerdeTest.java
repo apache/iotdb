@@ -44,6 +44,7 @@ public class LastQueryScanNodeSerdeTest {
             true,
             Arrays.asList(0, 1),
             null,
+            false,
             Arrays.asList(
                 new MeasurementSchema("s1", TSDataType.INT32),
                 new MeasurementSchema("s0", TSDataType.BOOLEAN)));
@@ -59,6 +60,7 @@ public class LastQueryScanNodeSerdeTest {
             false,
             Arrays.asList(0, 1),
             null,
+            false,
             Arrays.asList(
                 new MeasurementSchema("s1", TSDataType.INT32),
                 new MeasurementSchema("s0", TSDataType.BOOLEAN)));

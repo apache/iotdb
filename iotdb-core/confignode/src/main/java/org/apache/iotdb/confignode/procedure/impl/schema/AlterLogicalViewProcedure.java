@@ -59,6 +59,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.BiFunction;
+import java.util.stream.Collectors;
 
 public class AlterLogicalViewProcedure
     extends StateMachineProcedure<ConfigNodeProcedureEnv, AlterLogicalViewState> {
@@ -71,6 +72,8 @@ public class AlterLogicalViewProcedure
 
   private transient PathPatternTree pathPatternTree;
   private transient ByteBuffer patternTreeBytes;
+
+  protected final Map<TDataNodeLocation, TSStatus> failureMap = new HashMap<>();
 
   public AlterLogicalViewProcedure(final boolean isGeneratedByPipe) {
     super(isGeneratedByPipe);
@@ -390,11 +393,14 @@ public class AlterLogicalViewProcedure
           new ProcedureException(
               new MetadataException(
                   String.format(
-                      "Alter view %s failed when [%s] because failed to execute in all replicaset of schemaRegion %s. Failure nodes: %s",
+                      "Alter view %s failed when [%s] because failed to execute in all replicaset of schemaRegion %s. Failure nodes: %s, statuses: %s",
                       viewPathToSourceMap.keySet(),
                       taskName,
                       consensusGroupId.id,
-                      dataNodeLocationSet))));
+                      dataNodeLocationSet.stream()
+                          .map(TDataNodeLocation::getDataNodeId)
+                          .collect(Collectors.toSet()),
+                      failureStatusList))));
       interruptTask();
     }
   }

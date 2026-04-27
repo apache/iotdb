@@ -306,13 +306,6 @@ public class DataNodeSchemaCache {
     deviceSchemaCache.invalidateLastCache(path.getDevicePath(), path.getMeasurement());
   }
 
-  public void invalidateDatabaseLastCache(final String database) {
-    if (!CommonDescriptor.getInstance().getConfig().isLastCacheEnable()) {
-      return;
-    }
-    deviceSchemaCache.invalidateLastCache(database);
-  }
-
   /**
    * Update the {@link DeviceLastCache} in writing. If a measurement is with all {@code null}s, its
    * {@link TimeValuePair}[] shall be {@code null}. For correctness, this will put the {@link

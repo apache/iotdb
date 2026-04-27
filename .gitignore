@@ -123,3 +123,9 @@ iotdb-core/tsfile/src/main/antlr4/org/apache/tsfile/parser/gen/
 # Develocity
 .mvn/.gradle-enterprise/
 .mvn/.develocity/
+.run/CN1.run.xml
+.run/CN-ide.run.xml
+.run/DN1.run.xml
+.run/DN2.run.xml
+.run/DN3.run.xml
+.run/DN-ide.run.xml

@@ -49,8 +49,8 @@ public class PipeTaskSourceStage extends PipeTaskStage {
       PipeTaskMeta pipeTaskMeta) {
     pipeExtractor =
         StorageEngine.getInstance().getAllDataRegionIds().contains(new DataRegionId(regionId))
-            ? PipeDataNodeAgent.plugin().dataRegion().reflectExtractor(extractorParameters)
-            : PipeDataNodeAgent.plugin().schemaRegion().reflectExtractor(extractorParameters);
+            ? PipeDataNodeAgent.plugin().dataRegion().reflectSource(extractorParameters)
+            : PipeDataNodeAgent.plugin().schemaRegion().reflectSource(extractorParameters);
 
     // Validate and customize should be called before createSubtask. this allows extractor exposing
     // exceptions in advance.

@@ -109,16 +109,6 @@ public class IoTDBRestServiceDescriptor {
         Integer.parseInt(
             properties.getProperty(
                 "idle_timeout_in_seconds", Integer.toString(conf.getIdleTimeoutInSeconds()))));
-    conf.setCacheExpireInSeconds(
-        Integer.parseInt(
-            properties.getProperty(
-                "cache_expire_in_seconds", Integer.toString(conf.getCacheExpireInSeconds()))));
-    conf.setCacheInitNum(
-        Integer.parseInt(
-            properties.getProperty("cache_init_num", Integer.toString(conf.getCacheInitNum()))));
-    conf.setCacheMaxNum(
-        Integer.parseInt(
-            properties.getProperty("cache_max_num", Integer.toString(conf.getCacheMaxNum()))));
   }
 
   /**

@@ -51,6 +51,7 @@ import org.apache.iotdb.commons.pipe.agent.plugin.service.PipePluginExecutableMa
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.pipe.sink.payload.airgap.AirGapPseudoTPipeTransferRequest;
 import org.apache.iotdb.commons.schema.cache.CacheClearOptions;
@@ -62,6 +63,7 @@ import org.apache.iotdb.commons.trigger.service.TriggerExecutableManager;
 import org.apache.iotdb.commons.udf.service.UDFClassLoader;
 import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
+import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
@@ -290,6 +292,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
@@ -323,7 +326,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     SUBSCRIPTION_NOT_ENABLED_ERROR_FUTURE = SettableFuture.create();
     SUBSCRIPTION_NOT_ENABLED_ERROR_FUTURE.setException(
         new IoTDBException(
-            "Subscription not enabled, please set config `subscription_enabled` to true.",
+            "Subscription is not enabled.",
             TSStatusCode.SUBSCRIPTION_NOT_ENABLED_ERROR.getStatusCode()));
   }
 
@@ -813,93 +816,106 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     final String className = createPipePluginStatement.getClassName();
     final String uriString = createPipePluginStatement.getUriString();
 
+    final String pathError = FileUtils.getIllegalError4Directory(pluginName);
+    if (Objects.nonNull(pathError)) {
+      future.setException(
+          new IoTDBException(
+              String.format("Failed to create pipe plugin %s. " + pathError, pluginName),
+              TSStatusCode.SEMANTIC_ERROR.getStatusCode()));
+      return future;
+    }
+
     if (uriString == null || uriString.isEmpty()) {
       future.setException(
           new IoTDBException(
               "Failed to create pipe plugin, because the URI is empty.",
-              TSStatusCode.PIPE_PLUGIN_DOWNLOAD_ERROR.getStatusCode()));
+              TSStatusCode.SEMANTIC_ERROR.getStatusCode()));
+      return future;
+    }
+
+    final String libRoot;
+    final ByteBuffer jarFile;
+    final String jarMd5;
+
+    final String jarFileName = new File(uriString).getName();
+    try {
+      final URI uri = new URI(uriString);
+      if (uri.getScheme() == null) {
+        future.setException(
+            new IoTDBException(
+                "The scheme of URI is not set, please specify the scheme of URI.",
+                TSStatusCode.SEMANTIC_ERROR.getStatusCode()));
+        return future;
+      }
+      if (!uri.getScheme().equals("file")) {
+        // Download executable
+        final ExecutableResource resource =
+            PipePluginExecutableManager.getInstance().request(Collections.singletonList(uriString));
+        final String jarFilePathUnderTempDir =
+            PipePluginExecutableManager.getInstance()
+                    .getDirStringUnderTempRootByRequestId(resource.getRequestId())
+                + jarFileName;
+        // libRoot should be the path of the specified jar
+        libRoot = jarFilePathUnderTempDir;
+        jarFile = ExecutableManager.transferToBytebuffer(jarFilePathUnderTempDir);
+        jarMd5 = DigestUtils.md5Hex(Files.newInputStream(Paths.get(jarFilePathUnderTempDir)));
+      } else {
+        // libRoot should be the path of the specified jar
+        libRoot = new File(new URI(uriString)).getAbsolutePath();
+        // If jarPath is a file path on datanode, we transfer it to ByteBuffer and send it to
+        // ConfigNode.
+        jarFile = ExecutableManager.transferToBytebuffer(libRoot);
+        // Set md5 of the jar file
+        jarMd5 = DigestUtils.md5Hex(Files.newInputStream(Paths.get(libRoot)));
+      }
+    } catch (final URISyntaxException | IllegalArgumentException e) {
+      future.setException(
+          new IoTDBException(e.getMessage(), TSStatusCode.SEMANTIC_ERROR.getStatusCode()));
+      return future;
+    } catch (final IOException e) {
+      LOGGER.warn(
+          "Failed to get executable for PipePlugin({}) using URI: {}.",
+          createPipePluginStatement.getPluginName(),
+          createPipePluginStatement.getUriString(),
+          e);
+      future.setException(
+          new IoTDBException(
+              "Failed to get executable for PipePlugin "
+                  + createPipePluginStatement.getPluginName()
+                  + ", please check the URI.",
+              TSStatusCode.SEMANTIC_ERROR.getStatusCode()));
+      return future;
+    }
+
+    // try to create instance, this request will fail if creation is not successful
+    try (final PipePluginClassLoader classLoader = new PipePluginClassLoader(libRoot)) {
+      // ensure that jar file contains the class and the class is a pipe plugin
+      final Class<?> clazz =
+          Class.forName(createPipePluginStatement.getClassName(), true, classLoader);
+      final PipePlugin ignored = (PipePlugin) clazz.getDeclaredConstructor().newInstance();
+    } catch (final ClassNotFoundException
+        | NoSuchMethodException
+        | InstantiationException
+        | IllegalAccessException
+        | InvocationTargetException
+        | ClassCastException
+        | IOException e) {
+      LOGGER.warn(
+          "Failed to create pipePlugin when try to create PipePlugin({}) instance first.",
+          createPipePluginStatement.getPluginName(),
+          e);
+      future.setException(
+          new IoTDBException(
+              "Failed to load class '"
+                  + createPipePluginStatement.getClassName()
+                  + "', because it's not found in jar file or is invalid: "
+                  + createPipePluginStatement.getUriString(),
+              TSStatusCode.PIPE_PLUGIN_LOAD_CLASS_ERROR.getStatusCode()));
       return future;
     }
 
     try (final ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      final String libRoot;
-      final ByteBuffer jarFile;
-      final String jarMd5;
-
-      final String jarFileName = new File(uriString).getName();
-      try {
-        final URI uri = new URI(uriString);
-        if (uri.getScheme() == null) {
-          future.setException(
-              new IoTDBException(
-                  "The scheme of URI is not set, please specify the scheme of URI.",
-                  TSStatusCode.PIPE_PLUGIN_DOWNLOAD_ERROR.getStatusCode()));
-          return future;
-        }
-        if (!uri.getScheme().equals("file")) {
-          // Download executable
-          final ExecutableResource resource =
-              PipePluginExecutableManager.getInstance()
-                  .request(Collections.singletonList(uriString));
-          final String jarFilePathUnderTempDir =
-              PipePluginExecutableManager.getInstance()
-                      .getDirStringUnderTempRootByRequestId(resource.getRequestId())
-                  + jarFileName;
-          // libRoot should be the path of the specified jar
-          libRoot = jarFilePathUnderTempDir;
-          jarFile = ExecutableManager.transferToBytebuffer(jarFilePathUnderTempDir);
-          jarMd5 = DigestUtils.md5Hex(Files.newInputStream(Paths.get(jarFilePathUnderTempDir)));
-        } else {
-          // libRoot should be the path of the specified jar
-          libRoot = new File(new URI(uriString)).getAbsolutePath();
-          // If jarPath is a file path on datanode, we transfer it to ByteBuffer and send it to
-          // ConfigNode.
-          jarFile = ExecutableManager.transferToBytebuffer(libRoot);
-          // Set md5 of the jar file
-          jarMd5 = DigestUtils.md5Hex(Files.newInputStream(Paths.get(libRoot)));
-        }
-      } catch (final IOException | URISyntaxException e) {
-        LOGGER.warn(
-            "Failed to get executable for PipePlugin({}) using URI: {}.",
-            createPipePluginStatement.getPluginName(),
-            createPipePluginStatement.getUriString(),
-            e);
-        future.setException(
-            new IoTDBException(
-                "Failed to get executable for PipePlugin"
-                    + createPipePluginStatement.getPluginName()
-                    + "', please check the URI.",
-                TSStatusCode.PIPE_PLUGIN_DOWNLOAD_ERROR.getStatusCode()));
-        return future;
-      }
-
-      // try to create instance, this request will fail if creation is not successful
-      try (final PipePluginClassLoader classLoader = new PipePluginClassLoader(libRoot)) {
-        // ensure that jar file contains the class and the class is a pipe plugin
-        final Class<?> clazz =
-            Class.forName(createPipePluginStatement.getClassName(), true, classLoader);
-        final PipePlugin ignored = (PipePlugin) clazz.getDeclaredConstructor().newInstance();
-      } catch (final ClassNotFoundException
-          | NoSuchMethodException
-          | InstantiationException
-          | IllegalAccessException
-          | InvocationTargetException
-          | ClassCastException e) {
-        LOGGER.warn(
-            "Failed to create function when try to create PipePlugin({}) instance first.",
-            createPipePluginStatement.getPluginName(),
-            e);
-        future.setException(
-            new IoTDBException(
-                "Failed to load class '"
-                    + createPipePluginStatement.getClassName()
-                    + "', because it's not found in jar file or is invalid: "
-                    + createPipePluginStatement.getUriString(),
-                TSStatusCode.PIPE_PLUGIN_LOAD_CLASS_ERROR.getStatusCode()));
-        return future;
-      }
-
       final TSStatus executionStatus =
           client.createPipePlugin(
               new TCreatePipePluginReq()
@@ -924,7 +940,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
-    } catch (final ClientManagerException | TException | IOException e) {
+    } catch (final ClientManagerException | TException e) {
       future.setException(e);
     }
     return future;
@@ -939,13 +955,15 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       final TSStatus executionStatus =
           client.dropPipePlugin(
               new TDropPipePluginReq()
-                  .setPluginName(dropPipePluginStatement.getPluginName())
+                  .setPluginName(dropPipePluginStatement.getPluginName().toUpperCase())
                   .setIfExistsCondition(dropPipePluginStatement.hasIfExistsCondition()));
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != executionStatus.getCode()) {
-        LOGGER.warn(
-            "[{}] Failed to drop pipe plugin {}.",
-            executionStatus,
-            dropPipePluginStatement.getPluginName());
+        if (TSStatusCode.PIPE_NOT_EXIST_ERROR.getStatusCode() != executionStatus.getCode()) {
+          LOGGER.warn(
+              "[{}] Failed to drop pipe plugin {}.",
+              executionStatus,
+              dropPipePluginStatement.getPluginName());
+        }
         future.setException(new IoTDBException(executionStatus));
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
@@ -1770,18 +1788,28 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> createPipe(CreatePipeStatement createPipeStatement) {
-    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+  public SettableFuture<ConfigTaskResult> createPipe(
+      final CreatePipeStatement createPipeStatement) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
 
-    // Validate pipe name
-    if (createPipeStatement.getPipeName().startsWith(PipeStaticMeta.SYSTEM_PIPE_PREFIX)) {
-      String exceptionMessage =
-          String.format(
-              "Failed to create pipe %s, pipe name starting with \"%s\" are not allowed to be created.",
-              createPipeStatement.getPipeName(), PipeStaticMeta.SYSTEM_PIPE_PREFIX);
-      LOGGER.warn(exceptionMessage);
+    // Verify that Pipe is disabled if TSFile encryption is enabled
+    final String pipeName = createPipeStatement.getPipeName();
+    if (pipeName.startsWith(PipeStaticMeta.SYSTEM_PIPE_PREFIX)) {
       future.setException(
-          new IoTDBException(exceptionMessage, TSStatusCode.PIPE_ERROR.getStatusCode()));
+          new IoTDBException(
+              String.format(
+                  "Failed to create pipe %s, pipe name starting with \"%s\" are not allowed to be created.",
+                  pipeName, PipeStaticMeta.SYSTEM_PIPE_PREFIX),
+              TSStatusCode.SEMANTIC_ERROR.getStatusCode()));
+      return future;
+    }
+
+    final String pathError = FileUtils.getIllegalError4Directory(pipeName);
+    if (Objects.nonNull(pathError)) {
+      future.setException(
+          new IoTDBException(
+              String.format("Failed to create pipe %s, " + pathError, pipeName),
+              TSStatusCode.SEMANTIC_ERROR.getStatusCode()));
       return future;
     }
 
@@ -1789,10 +1817,10 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     try {
       PipeDataNodeAgent.plugin()
           .validate(
-              createPipeStatement.getPipeName(),
-              createPipeStatement.getExtractorAttributes(),
+              pipeName,
+              createPipeStatement.getSourceAttributes(),
               createPipeStatement.getProcessorAttributes(),
-              createPipeStatement.getConnectorAttributes());
+              createPipeStatement.getSinkAttributes());
     } catch (final Exception e) {
       LOGGER.info("Failed to validate create pipe statement, because {}", e.getMessage(), e);
       future.setException(
@@ -1803,7 +1831,9 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     // Syntactic sugar: if full-sync mode is detected (i.e. not snapshot mode, or both realtime
     // and history are true), the pipe is split into history-only and realtime–only modes.
     final PipeParameters sourcePipeParameters =
-        new PipeParameters(createPipeStatement.getExtractorAttributes());
+        new PipeParameters(createPipeStatement.getSourceAttributes());
+    final PipeParameters sinkPipeParameters =
+        new PipeParameters(createPipeStatement.getSinkAttributes());
     if (PipeConfig.getInstance().getPipeAutoSplitFullEnabled()
         && PipeDataNodeAgent.task().isFullSync(sourcePipeParameters)) {
       try (final ConfigNodeClient configNodeClient =
@@ -1812,7 +1842,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         final TCreatePipeReq realtimeReq =
             new TCreatePipeReq()
                 // Append suffix to the pipeline name for real-time data
-                .setPipeName(createPipeStatement.getPipeName() + "_realtime")
+                .setPipeName(pipeName + "_realtime")
                 // NOTE: set if not exists always to true to handle partial failure
                 .setIfNotExistsCondition(true)
                 // Use extractor parameters for real-time data
@@ -1827,7 +1857,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                                     Boolean.toString(false))))
                         .getAttribute())
                 .setProcessorAttributes(createPipeStatement.getProcessorAttributes())
-                .setConnectorAttributes(createPipeStatement.getConnectorAttributes());
+                .setConnectorAttributes(createPipeStatement.getSinkAttributes());
 
         final TSStatus realtimeTsStatus = configNodeClient.createPipe(realtimeReq);
         // If creation fails, immediately return with exception
@@ -1840,7 +1870,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         final TCreatePipeReq historyReq =
             new TCreatePipeReq()
                 // Append suffix to the pipeline name for historical data
-                .setPipeName(createPipeStatement.getPipeName() + "_history")
+                .setPipeName(pipeName + "_history")
                 .setIfNotExistsCondition(createPipeStatement.hasIfNotExistsCondition())
                 // Use source parameters for historical data
                 .setExtractorAttributes(
@@ -1861,7 +1891,14 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                                     PipeSourceConstant.EXTRACTOR_EXCLUSION_DEFAULT_VALUE)))
                         .getAttribute())
                 .setProcessorAttributes(createPipeStatement.getProcessorAttributes())
-                .setConnectorAttributes(createPipeStatement.getConnectorAttributes());
+                .setConnectorAttributes(
+                    sinkPipeParameters
+                        .addOrReplaceEquivalentAttributesWithClone(
+                            new PipeParameters(
+                                Collections.singletonMap(
+                                    PipeSinkConstant.SINK_ENABLE_SEND_TSFILE_LIMIT,
+                                    Boolean.TRUE.toString())))
+                        .getAttribute());
 
         final TSStatus historyTsStatus = configNodeClient.createPipe(historyReq);
         // If creation fails, immediately return with exception
@@ -1883,11 +1920,11 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       TCreatePipeReq req =
           new TCreatePipeReq()
-              .setPipeName(createPipeStatement.getPipeName())
+              .setPipeName(pipeName)
               .setIfNotExistsCondition(createPipeStatement.hasIfNotExistsCondition())
-              .setExtractorAttributes(createPipeStatement.getExtractorAttributes())
+              .setExtractorAttributes(createPipeStatement.getSourceAttributes())
               .setProcessorAttributes(createPipeStatement.getProcessorAttributes())
-              .setConnectorAttributes(createPipeStatement.getConnectorAttributes());
+              .setConnectorAttributes(createPipeStatement.getSinkAttributes());
       TSStatus tsStatus = configNodeClient.createPipe(req);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
         LOGGER.warn(
@@ -1973,7 +2010,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     try {
       if (!alterPipeStatement.getExtractorAttributes().isEmpty()) {
         if (alterPipeStatement.isReplaceAllExtractorAttributes()) {
-          PipeDataNodeAgent.plugin().validateExtractor(alterPipeStatement.getExtractorAttributes());
+          PipeDataNodeAgent.plugin().validateSource(alterPipeStatement.getExtractorAttributes());
         } else {
           pipeMetaFromCoordinator
               .getStaticMeta()
@@ -1981,7 +2018,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               .addOrReplaceEquivalentAttributes(
                   new PipeParameters(alterPipeStatement.getExtractorAttributes()));
           PipeDataNodeAgent.plugin()
-              .validateExtractor(
+              .validateSource(
                   pipeMetaFromCoordinator.getStaticMeta().getExtractorParameters().getAttribute());
         }
       }
@@ -2004,7 +2041,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       if (!alterPipeStatement.getConnectorAttributes().isEmpty()) {
         if (alterPipeStatement.isReplaceAllConnectorAttributes()) {
           PipeDataNodeAgent.plugin()
-              .validateConnector(pipeName, alterPipeStatement.getConnectorAttributes());
+              .validateSource(pipeName, alterPipeStatement.getConnectorAttributes());
         } else {
           pipeMetaFromCoordinator
               .getStaticMeta()
@@ -2012,7 +2049,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               .addOrReplaceEquivalentAttributes(
                   new PipeParameters(alterPipeStatement.getConnectorAttributes()));
           PipeDataNodeAgent.plugin()
-              .validateConnector(
+              .validateSource(
                   pipeName,
                   pipeMetaFromCoordinator.getStaticMeta().getConnectorParameters().getAttribute());
         }
@@ -2270,8 +2307,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     final TopicMeta temporaryTopicMeta =
         new TopicMeta(topicName, System.currentTimeMillis(), topicAttributes);
     try {
-      PipeDataNodeAgent.plugin()
-          .validateExtractor(temporaryTopicMeta.generateExtractorAttributes());
+      PipeDataNodeAgent.plugin().validateSource(temporaryTopicMeta.generateExtractorAttributes());
       PipeDataNodeAgent.plugin()
           .validateProcessor(temporaryTopicMeta.generateProcessorAttributes());
     } catch (Exception e) {
@@ -2835,6 +2871,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         future.setException(
             new IOException(
                 "The DataNode to be removed is not in the cluster, or the input format is incorrect."));
+        return future;
       }
 
       LOGGER.info("Starting to remove DataNode with nodeIds: {}", nodeIds);
@@ -2904,6 +2941,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         future.setException(
             new IOException(
                 "The ConfigNode to be removed is not in the cluster, or the input format is incorrect."));
+        return future;
       }
 
       TConfigNodeLocation configNodeLocation = removeConfigNodeLocations.get(0);

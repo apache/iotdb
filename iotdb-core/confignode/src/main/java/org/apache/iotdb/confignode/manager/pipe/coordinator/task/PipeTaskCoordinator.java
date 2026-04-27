@@ -51,7 +51,6 @@ public class PipeTaskCoordinator {
   private final PipeTaskInfo pipeTaskInfo;
 
   private final PipeTaskCoordinatorLock pipeTaskCoordinatorLock;
-  private AtomicReference<PipeTaskInfo> pipeTaskInfoHolder;
 
   public PipeTaskCoordinator(ConfigManager configManager, PipeTaskInfo pipeTaskInfo) {
     this.configManager = configManager;
@@ -66,12 +65,7 @@ public class PipeTaskCoordinator {
    *     null if the lock is not acquired.
    */
   public AtomicReference<PipeTaskInfo> tryLock() {
-    if (pipeTaskCoordinatorLock.tryLock()) {
-      pipeTaskInfoHolder = new AtomicReference<>(pipeTaskInfo);
-      return pipeTaskInfoHolder;
-    }
-
-    return null;
+    return pipeTaskCoordinatorLock.tryLock() ? new AtomicReference<>(pipeTaskInfo) : null;
   }
 
   /**
@@ -82,31 +76,15 @@ public class PipeTaskCoordinator {
    */
   public AtomicReference<PipeTaskInfo> lock() {
     pipeTaskCoordinatorLock.lock();
-    pipeTaskInfoHolder = new AtomicReference<>(pipeTaskInfo);
-    return pipeTaskInfoHolder;
+    return new AtomicReference<>(pipeTaskInfo);
   }
 
   /**
    * Unlock the pipe task coordinator. Calling this method will clear the pipe task info holder,
    * which means that the holder will be null after calling this method.
-   *
-   * @return {@code true} if successfully unlocked, {@code false} if current thread is not holding
-   *     the lock.
    */
-  public boolean unlock() {
-    if (pipeTaskInfoHolder != null) {
-      pipeTaskInfoHolder.set(null);
-      pipeTaskInfoHolder = null;
-    }
-
-    try {
-      pipeTaskCoordinatorLock.unlock();
-      return true;
-    } catch (IllegalMonitorStateException ignored) {
-      // This is thrown if unlock() is called without lock() called first.
-      LOGGER.warn("This thread is not holding the lock.");
-      return false;
-    }
+  public void unlock() {
+    pipeTaskCoordinatorLock.unlock();
   }
 
   public boolean isLocked() {

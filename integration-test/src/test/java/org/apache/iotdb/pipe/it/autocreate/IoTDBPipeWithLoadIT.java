@@ -109,21 +109,20 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeDualAutoIT {
       // Time-series not affected by mods: d1.s1, d2.s1
       // Time-series partially deleted by mods: d1.s2, d3.s1
       // Time-series completely deleted by mods: d1.s3, d4.s1 (should not be loaded by receiver)
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
-              "insert into root.db.d1 (time, s1, s2, s3) values (1, 1, 1, 1), (3, 3, 3, 3)",
-              "insert into root.db.d2 (time, s1) values (1, 1), (3, 3)",
-              "insert into root.db.d3 (time, s1) values (1, 1), (3, 3)",
-              "insert into root.db.d4 (time, s1) values (1, 1), (3, 3)",
+              "insert into root.db.d1 (time,s1,s2,s3) values (1,1,1,1),(3,3,3,3)",
+              "insert into root.db.d2 (time,s1) values (1,1),(3,3)",
+              "insert into root.db.d3 (time,s1) values (1,1),(3,3)",
+              "insert into root.db.d4 (time,s1) values (1,1),(3,3)",
               "flush",
               "delete from root.db.d1.s2 where time <= 2",
               "delete from root.db.d1.s3 where time >= 1 and time <= 3",
               "delete from root.db.d3.** where time <= 2",
               "delete from root.db.d4.** where time >= 1 and time <= 3",
-              "flush"))) {
-        return;
-      }
+              "flush"),
+          null);
 
       TSStatus status =
           client.createPipe(

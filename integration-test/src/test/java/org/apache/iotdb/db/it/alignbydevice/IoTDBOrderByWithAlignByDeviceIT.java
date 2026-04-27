@@ -72,14 +72,14 @@ public class IoTDBOrderByWithAlignByDeviceIT {
   public static final Map<String, double[]> deviceToAvgPrecipitation = new HashMap<>();
 
   @BeforeClass
-  public static void setUp() throws Exception {
+  public static void setUp() {
     EnvFactory.getEnv().initClusterEnvironment();
     insertData();
     insertData2();
   }
 
   @AfterClass
-  public static void tearDown() throws Exception {
+  public static void tearDown() {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 

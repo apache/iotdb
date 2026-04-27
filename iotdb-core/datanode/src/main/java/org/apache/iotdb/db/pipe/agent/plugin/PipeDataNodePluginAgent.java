@@ -212,9 +212,9 @@ public class PipeDataNodePluginAgent {
         pipeName, extractorAttributes, processorAttributes, connectorAttributes);
   }
 
-  public void validateExtractor(Map<String, String> extractorAttributes) throws Exception {
-    dataRegionAgent.validateExtractor(extractorAttributes);
-    schemaRegionAgent.validateExtractor(extractorAttributes);
+  public void validateSource(Map<String, String> sourceAttributes) throws Exception {
+    dataRegionAgent.validateSource(sourceAttributes);
+    schemaRegionAgent.validateSource(sourceAttributes);
   }
 
   public void validateProcessor(Map<String, String> processorAttributes) throws Exception {
@@ -222,9 +222,8 @@ public class PipeDataNodePluginAgent {
     schemaRegionAgent.validateProcessor(processorAttributes);
   }
 
-  public void validateConnector(String pipeName, Map<String, String> connectorAttributes)
-      throws Exception {
-    dataRegionAgent.validateConnector(pipeName, connectorAttributes);
-    schemaRegionAgent.validateConnector(pipeName, connectorAttributes);
+  public void validateSource(String pipeName, Map<String, String> sinkAttributes) throws Exception {
+    dataRegionAgent.validateSink(pipeName, sinkAttributes);
+    schemaRegionAgent.validateSink(pipeName, sinkAttributes);
   }
 }

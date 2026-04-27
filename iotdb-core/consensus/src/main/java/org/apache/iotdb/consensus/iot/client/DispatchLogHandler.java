@@ -21,6 +21,7 @@ package org.apache.iotdb.consensus.iot.client;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.consensus.iot.logdispatcher.Batch;
+import org.apache.iotdb.consensus.iot.logdispatcher.LogDispatcher;
 import org.apache.iotdb.consensus.iot.logdispatcher.LogDispatcher.LogDispatcherThread;
 import org.apache.iotdb.consensus.iot.logdispatcher.LogDispatcherThreadMetrics;
 import org.apache.iotdb.consensus.iot.thrift.TSyncLogEntriesRes;
@@ -88,6 +89,10 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogEntriesRe
         }
       }
       completeBatch(batch);
+    }
+    if (response.isSetReceiverMemSize()) {
+      LogDispatcher.getReceiverMemSizeSum().addAndGet(response.getReceiverMemSize());
+      LogDispatcher.getSenderMemSizeSum().addAndGet(batch.getMemorySize());
     }
     logDispatcherThreadMetrics.recordSyncLogTimePerRequest(System.nanoTime() - createTime);
   }

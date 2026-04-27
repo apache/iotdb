@@ -73,7 +73,7 @@ cn_consensus_port=10720
 # Could set 127.0.0.1(for local test) or ipv4 address
 # effectiveMode: restart
 # Datatype: String
-dn_rpc_address=0.0.0.0
+dn_rpc_address=127.0.0.1
 
 # Used for connection of IoTDB native clients(Session)
 # Bind with dn_rpc_address
@@ -560,21 +560,6 @@ enable_swagger=false
 # Datatype: int
 rest_query_default_row_size_limit=10000
 
-# the expiration time of the user login information cache (in seconds)
-# effectiveMode: restart
-# Datatype: int
-cache_expire_in_seconds=28800
-
-# maximum number of users can be stored in the user login cache.
-# effectiveMode: restart
-# Datatype: int
-cache_max_num=100
-
-# init capacity of users can be stored in the user login cache.
-# effectiveMode: restart
-# Datatype: int
-cache_init_num=10
-
 # Is client authentication required
 # effectiveMode: restart
 # Datatype: boolean
@@ -910,7 +895,7 @@ enable_auto_create_schema=true
 # Default: 1
 # When illegal: report an error and change nothing during hot-reload; use the default value in
 # start-up
-default_storage_group_level=1
+default_database_level=1
 
 # ALL data types: BOOLEAN, INT32, INT64, FLOAT, DOUBLE, TEXT
 
@@ -1668,13 +1653,8 @@ compressor=LZ4
 ####################
 
 # which class to serve for authorization. By default, it is LocalFileAuthorizer.
-# Another choice is org.apache.iotdb.commons.auth.authorizer.OpenIdAuthorizer
 # effectiveMode: restart
 authorizer_provider_class=org.apache.iotdb.commons.auth.authorizer.LocalFileAuthorizer
-
-# If OpenIdAuthorizer is enabled, then openID_url must be set.
-# effectiveMode: restart
-openID_url=
 
 # encryption provider class
 # effectiveMode: first_start

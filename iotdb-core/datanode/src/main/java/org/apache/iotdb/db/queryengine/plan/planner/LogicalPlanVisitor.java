@@ -714,6 +714,11 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
               insertRowStatement.getTime(),
               insertRowStatement.getValues(),
               insertRowStatement.isNeedInferType());
+      if (insertRowStatement.getFailedMeasurementInfoMap() != null) {
+        for (Integer index : insertRowStatement.getFailedMeasurementInfoMap().keySet()) {
+          insertRowNode.markFailedMeasurement(index);
+        }
+      }
       insertRowNode.setFailedMeasurementNumber(insertRowStatement.getFailedMeasurementNumber());
       insertRowsNode.addOneInsertRowNode(insertRowNode, i);
     }
@@ -785,12 +790,12 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
   public PlanNode visitSeriesSchemaFetch(
       SeriesSchemaFetchStatement seriesSchemaFetchStatement, MPPQueryContext context) {
     LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(analysis, context);
-    List<String> storageGroupList =
+    List<String> databaseList =
         new ArrayList<>(analysis.getSchemaPartitionInfo().getSchemaPartitionMap().keySet());
     return planBuilder
-        .planSchemaFetchMerge(storageGroupList)
+        .planSchemaFetchMerge(databaseList)
         .planSeriesSchemaFetchSource(
-            storageGroupList,
+            databaseList,
             seriesSchemaFetchStatement.getPatternTree(),
             seriesSchemaFetchStatement.getTemplateMap(),
             seriesSchemaFetchStatement.isWithTags(),

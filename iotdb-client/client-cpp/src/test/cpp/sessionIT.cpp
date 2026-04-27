@@ -19,6 +19,8 @@
 
 #include "catch.hpp"
 #include "Session.h"
+#include "TsBlock.h"
+#include <sstream>
 
 using namespace std;
 
@@ -727,4 +729,69 @@ TEST_CASE("Test executeLastDataQuery ", "[testExecuteLastDataQuery]") {
     sessionDataSet = session->executeLastDataQuery(paths, 100000);
     sessionDataSet->setFetchSize(1024);
     REQUIRE(sessionDataSet->hasNext() == false);
+}
+
+// Helper function for comparing TEndPoint with detailed error message
+void assertTEndPointEqual(const TEndPoint& actual,
+                         const std::string& expectedIp,
+                         int expectedPort,
+                         const char* file,
+                         int line) {
+    if (actual.ip != expectedIp || actual.port != expectedPort) {
+        std::stringstream ss;
+        ss << "\nTEndPoint mismatch:\nExpected: " << expectedIp << ":" << expectedPort
+           << "\nActual:   " << actual.ip << ":" << actual.port;
+        Catch::SourceLineInfo location(file, line);
+        Catch::AssertionHandler handler("TEndPoint comparison", location, ss.str(), Catch::ResultDisposition::Normal);
+        handler.handleMessage(Catch::ResultWas::ExplicitFailure, ss.str());
+        handler.complete();
+    }
+}
+
+// Macro to simplify test assertions
+#define REQUIRE_TENDPOINT(actual, expectedIp, expectedPort) \
+    assertTEndPointEqual(actual, expectedIp, expectedPort, __FILE__, __LINE__)
+
+TEST_CASE("UrlUtils - parseTEndPointIpv4AndIpv6Url", "[UrlUtils]") {
+    // Test valid IPv4 addresses
+    SECTION("Valid IPv4") {
+        REQUIRE_TENDPOINT(UrlUtils::parseTEndPointIpv4AndIpv6Url("192.168.1.1:8080"), "192.168.1.1", 8080);
+        REQUIRE_TENDPOINT(UrlUtils::parseTEndPointIpv4AndIpv6Url("10.0.0.1:80"), "10.0.0.1", 80);
+    }
+
+    // Test valid IPv6 addresses
+    SECTION("Valid IPv6") {
+        REQUIRE_TENDPOINT(UrlUtils::parseTEndPointIpv4AndIpv6Url("[2001:db8::1]:8080"), "2001:db8::1", 8080);
+        REQUIRE_TENDPOINT(UrlUtils::parseTEndPointIpv4AndIpv6Url("[::1]:80"), "::1", 80);
+    }
+
+    // Test hostnames
+    SECTION("Hostnames") {
+        REQUIRE_TENDPOINT(UrlUtils::parseTEndPointIpv4AndIpv6Url("localhost:8080"), "localhost", 8080);
+        REQUIRE_TENDPOINT(UrlUtils::parseTEndPointIpv4AndIpv6Url("example.com:443"), "example.com", 443);
+    }
+
+    // Test edge cases
+    SECTION("Edge cases") {
+        REQUIRE_TENDPOINT(UrlUtils::parseTEndPointIpv4AndIpv6Url(""), "", 0);
+        REQUIRE_TENDPOINT(UrlUtils::parseTEndPointIpv4AndIpv6Url("127.0.0.1"), "127.0.0.1", 0);
+    }
+
+    // Test invalid inputs
+    SECTION("Invalid inputs") {
+        REQUIRE_TENDPOINT(UrlUtils::parseTEndPointIpv4AndIpv6Url("192.168.1.1:abc"), "192.168.1.1:abc", 0);
+        REQUIRE_TENDPOINT(UrlUtils::parseTEndPointIpv4AndIpv6Url("]invalid[:80"), "]invalid[", 80);
+    }
+
+    // Test port ranges
+    SECTION("Port ranges") {
+        REQUIRE_TENDPOINT(UrlUtils::parseTEndPointIpv4AndIpv6Url("localhost:0"), "localhost", 0);
+        REQUIRE_TENDPOINT(UrlUtils::parseTEndPointIpv4AndIpv6Url("127.0.0.1:65535"), "127.0.0.1", 65535);
+    }
+}
+
+TEST_CASE("TsBlock deserialize rejects truncated malicious payload", "[TsBlockDeserialize]") {
+    std::string data(18, '\0');
+    data[3] = '\x10';
+    REQUIRE_THROWS_AS(TsBlock::deserialize(data), IoTDBException);
 }

@@ -58,8 +58,8 @@ public class StorageEngineTest {
     DataRegion rg1 = PowerMockito.mock(DataRegion.class);
     DataRegion rg2 = PowerMockito.mock(DataRegion.class);
     DataRegionId id2 = new DataRegionId(2);
-    PowerMockito.when(rg1.getDataRegionId()).thenReturn("1");
-    PowerMockito.when(rg2.getDataRegionId()).thenReturn("2");
+    PowerMockito.when(rg1.getDataRegionIdString()).thenReturn("1");
+    PowerMockito.when(rg2.getDataRegionIdString()).thenReturn("2");
     storageEngine.setDataRegion(id1, rg1);
     storageEngine.setDataRegion(id2, rg2);
 

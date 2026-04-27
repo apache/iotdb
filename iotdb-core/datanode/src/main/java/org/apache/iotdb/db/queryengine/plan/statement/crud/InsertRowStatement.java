@@ -56,6 +56,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 public class InsertRowStatement extends InsertBaseStatement implements ISchemaValidation {
 
@@ -475,5 +476,29 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
     return INSTANCE_SIZE
         + InsertNodeMemoryEstimator.sizeOfValues(values, measurementSchemas)
         + RamUsageEstimator.sizeOf(measurementIsAligned);
+  }
+
+  @Override
+  public String getPipeLoggingString() {
+    return "InsertRowNode{"
+        + "devicePath="
+        + devicePath
+        + ", time="
+        + time
+        + ", valueLength="
+        + (Objects.nonNull(values) ? values.length : 0)
+        + '}';
+  }
+
+  @Override
+  public String toString() {
+    return "InsertRowNode{"
+        + "devicePath="
+        + devicePath
+        + ", time="
+        + time
+        + ", values="
+        + Arrays.toString(values)
+        + '}';
   }
 }

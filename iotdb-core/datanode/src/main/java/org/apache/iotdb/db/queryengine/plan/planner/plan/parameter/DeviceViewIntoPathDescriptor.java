@@ -22,7 +22,6 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan.parameter;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.db.exception.sql.SemanticException;
-import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.queryengine.plan.analyze.SelectIntoUtils;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -100,7 +99,7 @@ public class DeviceViewIntoPathDescriptor {
     }
   }
 
-  public void bindType(ISchemaTree targetSchemaTree) {
+  public void bindType() {
     Map<String, List<Pair<String, PartialPath>>> deviceToSourceTypeBoundTargetPathPairListMap =
         new HashMap<>();
     for (Map.Entry<String, List<Pair<String, PartialPath>>> sourceTargetEntry :
@@ -108,7 +107,7 @@ public class DeviceViewIntoPathDescriptor {
       deviceToSourceTypeBoundTargetPathPairListMap.put(
           sourceTargetEntry.getKey(),
           SelectIntoUtils.bindTypeForSourceTargetPathPairList(
-              sourceTargetEntry.getValue(), sourceToDataTypeMap, targetSchemaTree));
+              sourceTargetEntry.getValue(), sourceToDataTypeMap));
     }
     this.deviceToSourceTargetPathPairListMap = deviceToSourceTypeBoundTargetPathPairListMap;
   }

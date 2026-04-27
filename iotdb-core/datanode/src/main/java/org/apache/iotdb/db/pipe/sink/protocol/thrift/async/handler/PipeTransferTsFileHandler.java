@@ -123,7 +123,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
     readFileBufferSize =
         (int)
             Math.min(
-                PipeConfig.getInstance().getPipeConnectorReadFileBufferSize(),
+                PipeConfig.getInstance().getPipeSinkReadFileBufferSize(),
                 transferMod ? Math.max(tsFile.length(), modFile.length()) : tsFile.length());
     position = 0;
 
@@ -143,17 +143,14 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
       memoryBlock =
           PipeDataNodeResourceManager.memory()
               .forceAllocateForTsFileWithRetry(
-                  PipeConfig.getInstance().isPipeConnectorReadFileBufferMemoryControlEnabled()
+                  PipeConfig.getInstance().isPipeSinkReadFileBufferMemoryControlEnabled()
                       ? readFileBufferSize
                       : 0);
       readBuffer = new byte[readFileBufferSize];
     }
 
     if (reader == null) {
-      reader =
-          Objects.nonNull(modFile)
-              ? new RandomAccessFile(modFile, "r")
-              : new RandomAccessFile(tsFile, "r");
+      reader = transferMod ? new RandomAccessFile(modFile, "r") : new RandomAccessFile(tsFile, "r");
     }
 
     this.clientManager = clientManager;
@@ -407,7 +404,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
         returnClientIfNecessary();
       } finally {
         if (eventsHadBeenAddedToRetryQueue.compareAndSet(false, true)) {
-          connector.addFailureEventsToRetryQueue(events);
+          connector.addFailureEventsToRetryQueue(events, exception);
         }
       }
     }
@@ -423,12 +420,15 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
     }
 
     client.setShouldReturnSelf(true);
-    try {
-      client.returnSelf();
-    } catch (final IllegalStateException e) {
-      LOGGER.info(
-          "Illegal state when return the client to object pool, maybe the pool is already cleared. Will ignore.");
-    }
+    client.returnSelf(
+        (e) -> {
+          if (e instanceof IllegalStateException) {
+            LOGGER.info(
+                "Illegal state when return the client to object pool, maybe the pool is already cleared. Will ignore.");
+            return true;
+          }
+          return false;
+        });
     client = null;
   }
 
@@ -466,7 +466,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
    * @param timeoutMs CAN NOT BE UNLIMITED, otherwise it may cause deadlock.
    */
   private void waitForResourceEnough4Slicing(final long timeoutMs) throws InterruptedException {
-    if (!PipeConfig.getInstance().isPipeConnectorReadFileBufferMemoryControlEnabled()) {
+    if (!PipeConfig.getInstance().isPipeSinkReadFileBufferMemoryControlEnabled()) {
       return;
     }
 

@@ -27,6 +27,8 @@ import org.apache.iotdb.commons.pipe.agent.task.execution.PipeSubtaskScheduler;
 import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.pipe.agent.task.subtask.PipeReportableSubtask;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
+import org.apache.iotdb.commons.utils.ErrorHandlingCommonUtils;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.agent.task.connection.PipeEventCollector;
 import org.apache.iotdb.db.pipe.event.UserDefinedEnrichedEvent;
@@ -35,7 +37,6 @@ import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeSinglePipeMetrics;
 import org.apache.iotdb.db.pipe.metric.processor.PipeProcessorMetrics;
 import org.apache.iotdb.db.pipe.processor.pipeconsensus.PipeConsensusProcessor;
 import org.apache.iotdb.db.storageengine.StorageEngine;
-import org.apache.iotdb.db.utils.ErrorHandlingUtils;
 import org.apache.iotdb.pipe.api.PipeProcessor;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
@@ -43,6 +44,7 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import com.google.common.util.concurrent.ListeningExecutorService;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -187,11 +189,19 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
       }
       decreaseReferenceCountAndReleaseLastEvent(event, shouldReport);
     } catch (final PipeRuntimeOutOfMemoryCriticalException e) {
-      LOGGER.info(
-          "Temporarily out of memory in pipe event processing, will wait for the memory to release.",
-          e);
+      PipeLogger.log(
+          LOGGER::info,
+          e,
+          "Temporarily out of memory in pipe event processing, will wait for the memory to release.");
       return false;
     } catch (final Exception e) {
+      if (ExceptionUtils.getRootCause(e) instanceof PipeRuntimeOutOfMemoryCriticalException) {
+        PipeLogger.log(
+            LOGGER::info,
+            e,
+            "Temporarily out of memory in pipe event processing, will wait for the memory to release.");
+        return false;
+      }
       if (!isClosed.get()) {
         throw new PipeException(
             String.format(
@@ -200,10 +210,12 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
                 lastEvent instanceof EnrichedEvent
                     ? ((EnrichedEvent) lastEvent).coreReportMessage()
                     : lastEvent,
-                ErrorHandlingUtils.getRootCause(e).getMessage()),
+                ErrorHandlingCommonUtils.getRootCause(e).getMessage()),
             e);
       } else {
-        LOGGER.info("Exception in pipe event processing, ignored because pipe is dropped.", e);
+        LOGGER.info(
+            "Exception in pipe event processing, ignored because pipe is dropped.{}",
+            e.getMessage() != null ? " Message: " + e.getMessage() : "");
         clearReferenceCountAndReleaseLastEvent(event);
       }
     }
@@ -235,7 +247,7 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
       LOGGER.info(
           "Exception occurred when closing pipe processor subtask {}, root cause: {}",
           taskID,
-          ErrorHandlingUtils.getRootCause(e).getMessage(),
+          ErrorHandlingCommonUtils.getRootCause(e).getMessage(),
           e);
     } finally {
       // should be called after pipeProcessor.close()
@@ -275,20 +287,11 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
     return regionId;
   }
 
-  public int getEventCount(final boolean ignoreHeartbeat) {
-    // Avoid potential NPE in "getPipeName"
-    final EnrichedEvent event =
-        lastEvent instanceof EnrichedEvent ? (EnrichedEvent) lastEvent : null;
-    return Objects.nonNull(event) && !(ignoreHeartbeat && event instanceof PipeHeartbeatEvent)
-        ? 1
-        : 0;
-  }
-
   //////////////////////////// Error report ////////////////////////////
 
   @Override
   protected String getRootCause(final Throwable throwable) {
-    return ErrorHandlingUtils.getRootCause(throwable).getMessage();
+    return ErrorHandlingCommonUtils.getRootCause(throwable).getMessage();
   }
 
   @Override

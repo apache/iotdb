@@ -31,8 +31,6 @@ public interface ILastFlushTimeMap {
 
   void updatePartitionFlushedTime(long timePartitionId, long maxFlushedTime);
 
-  void updateMultiDeviceGlobalFlushedTime(Map<IDeviceID, Long> globalFlushedTimeMap);
-
   void upgradeAndUpdateMultiDeviceFlushedTime(
       long timePartitionId, Map<IDeviceID, Long> flushedTimeMap);
 
@@ -49,14 +47,10 @@ public interface ILastFlushTimeMap {
   // region read
   long getFlushedTime(long timePartitionId, IDeviceID deviceId);
 
-  long getGlobalFlushedTime(IDeviceID path);
-
   // endregion
 
   // region clear
   void clearFlushedTime();
-
-  void clearGlobalFlushedTime();
 
   // endregion
 

@@ -149,10 +149,12 @@ public class SubscriptionTopicAgent {
   public String getTopicFormat(final String topicName) {
     acquireReadLock();
     try {
-      return topicMetaKeeper
-          .getTopicMeta(topicName)
-          .getConfig()
-          .getStringOrDefault(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_DEFAULT_VALUE);
+      return topicMetaKeeper.containsTopicMeta(topicName)
+          ? topicMetaKeeper
+              .getTopicMeta(topicName)
+              .getConfig()
+              .getStringOrDefault(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_DEFAULT_VALUE)
+          : null;
     } finally {
       releaseReadLock();
     }
@@ -161,10 +163,12 @@ public class SubscriptionTopicAgent {
   public String getTopicMode(final String topicName) {
     acquireReadLock();
     try {
-      return topicMetaKeeper
-          .getTopicMeta(topicName)
-          .getConfig()
-          .getStringOrDefault(TopicConstant.MODE_KEY, TopicConstant.MODE_DEFAULT_VALUE);
+      return topicMetaKeeper.containsTopicMeta(topicName)
+          ? topicMetaKeeper
+              .getTopicMeta(topicName)
+              .getConfig()
+              .getStringOrDefault(TopicConstant.MODE_KEY, TopicConstant.MODE_DEFAULT_VALUE)
+          : null;
     } finally {
       releaseReadLock();
     }
@@ -174,6 +178,7 @@ public class SubscriptionTopicAgent {
     acquireReadLock();
     try {
       return topicNames.stream()
+          .filter(topicMetaKeeper::containsTopicMeta)
           .collect(
               Collectors.toMap(
                   topicName -> topicName,

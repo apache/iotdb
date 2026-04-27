@@ -137,6 +137,11 @@ public class FileSpillerReader implements SortReader {
   }
 
   @Override
+  public void releaseMemory() {
+    sortBufferManager.releaseOneSortBranch();
+  }
+
+  @Override
   public void close() throws IoTDBException {
     try {
       fileChannel.close();

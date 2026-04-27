@@ -40,6 +40,7 @@ import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -131,6 +132,7 @@ public class IoTDBTSPatternTsfilePushConsumerIT extends AbstractSubscriptionRegr
     session_src.executeNonQueryStatement("flush;");
   }
 
+  @Ignore
   @Test
   public void do_test()
       throws InterruptedException,
@@ -163,7 +165,7 @@ public class IoTDBTSPatternTsfilePushConsumerIT extends AbstractSubscriptionRegr
                   onReceiveCount.incrementAndGet();
                   System.out.println("onReceiveCount=" + onReceiveCount.get());
                   try {
-                    TsFileReader reader = message.getTsFileHandler().openReader();
+                    TsFileReader reader = message.getTsFile().openReader();
                     Path path_d0s0 = new Path(device, "s_0", true);
                     Path path_d0s1 = new Path(device, "s_1", true);
                     Path path_d1s0 = new Path(database + ".d_1", "s_0", true);

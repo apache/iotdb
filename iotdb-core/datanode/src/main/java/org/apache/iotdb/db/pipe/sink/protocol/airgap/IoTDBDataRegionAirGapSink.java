@@ -30,7 +30,6 @@ import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.metric.overview.PipeResourceMetrics;
 import org.apache.iotdb.db.pipe.metric.sink.PipeDataRegionSinkMetrics;
-import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTabletBinaryReq;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTabletInsertNodeReq;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTabletRawReq;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTsFilePieceReq;
@@ -95,6 +94,9 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
     final AirGapSocket socket = sockets.get(socketIndex);
 
     try {
+      // When receiver encountered packet loss, the transfer will time out
+      // We need to restore the transfer quickly by retry under this circumstance
+      socket.setSoTimeout(PIPE_CONFIG.getPipeAirGapSinkTabletTimeoutMs());
       if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
         doTransferWrapper(socket, (PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent);
       } else {
@@ -108,6 +110,8 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
               "Network error when transfer tablet insertion event %s, because %s.",
               ((EnrichedEvent) tabletInsertionEvent).coreReportMessage(), e.getMessage()),
           e);
+    } finally {
+      socket.setSoTimeout(PIPE_CONFIG.getPipeSinkTransferTimeoutMs());
     }
   }
 
@@ -164,7 +168,7 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
       throw new PipeConnectionException(
           String.format(
               "Network error when transfer tsfile event %s, because %s.",
-              ((PipeSchemaRegionWritePlanEvent) event).coreReportMessage(), e.getMessage()),
+              ((EnrichedEvent) event).coreReportMessage(), e.getMessage()),
           e);
     }
   }
@@ -189,13 +193,9 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
   private void doTransfer(
       final AirGapSocket socket,
       final PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent)
-      throws PipeException, WALPipeException, IOException {
+      throws PipeException, IOException {
     final InsertNode insertNode = pipeInsertNodeTabletInsertionEvent.getInsertNode();
-    final byte[] bytes =
-        Objects.isNull(insertNode)
-            ? PipeTransferTabletBinaryReq.toTPipeTransferBytes(
-                pipeInsertNodeTabletInsertionEvent.getByteBuffer())
-            : PipeTransferTabletInsertNodeReq.toTPipeTransferBytes(insertNode);
+    final byte[] bytes = PipeTransferTabletInsertNodeReq.toTPipeTransferBytes(insertNode);
 
     if (!send(
         pipeInsertNodeTabletInsertionEvent.getPipeName(),

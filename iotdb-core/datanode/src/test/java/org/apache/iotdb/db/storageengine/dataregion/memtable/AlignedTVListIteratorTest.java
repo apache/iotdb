@@ -20,12 +20,15 @@
 package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceStateMachine;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.utils.datastructure.AlignedTVList;
+import org.apache.iotdb.db.utils.datastructure.BatchEncodeInfo;
 import org.apache.iotdb.db.utils.datastructure.MemPointIterator;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 
@@ -40,6 +43,7 @@ import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.read.filter.operator.LongFilterOperators;
 import org.apache.tsfile.read.filter.operator.TimeFilterOperators;
 import org.apache.tsfile.read.reader.series.PaginationController;
+import org.apache.tsfile.write.chunk.AlignedChunkWriterImpl;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.VectorMeasurementSchema;
 import org.junit.AfterClass;
@@ -159,6 +163,7 @@ public class AlignedTVListIteratorTest {
             Collections.emptyList()),
         false,
         10);
+    tvListMap = buildAlignedSingleTvListMap(Collections.singletonList(new TimeRange(1, 10)));
   }
 
   @Test
@@ -805,5 +810,145 @@ public class AlignedTVListIteratorTest {
         ? paginationController
         : new PaginationController(
             paginationController.getCurLimit(), paginationController.getCurOffset());
+  }
+
+  @Test
+  public void testSkipTimeRange() throws QueryProcessException, IOException {
+    List<Map<TVList, Integer>> list =
+        Arrays.asList(
+            buildAlignedSingleTvListMap(
+                Arrays.asList(new TimeRange(10, 20), new TimeRange(22, 40))),
+            buildAlignedMultiTvListMap(Arrays.asList(new TimeRange(10, 20), new TimeRange(22, 40))),
+            buildAlignedMultiTvListMap(
+                Arrays.asList(
+                    new TimeRange(10, 20),
+                    new TimeRange(10, 20),
+                    new TimeRange(24, 30),
+                    new TimeRange(22, 40))));
+    for (Map<TVList, Integer> tvListMap : list) {
+      testSkipTimeRange(
+          tvListMap,
+          Ordering.ASC,
+          Arrays.asList(new TimeRange(11, 13), new TimeRange(21, 21), new TimeRange(33, 34)),
+          Arrays.asList(new TimeRange(11, 13), new TimeRange(33, 34)));
+      testSkipTimeRange(
+          tvListMap,
+          Ordering.DESC,
+          Arrays.asList(new TimeRange(33, 34), new TimeRange(21, 21), new TimeRange(11, 13)),
+          Arrays.asList(new TimeRange(33, 34), new TimeRange(11, 13)));
+    }
+  }
+
+  private void testSkipTimeRange(
+      Map<TVList, Integer> tvListMap,
+      Ordering scanOrder,
+      List<TimeRange> statisticsTimeRanges,
+      List<TimeRange> expectedResultTimeRange)
+      throws QueryProcessException, IOException {
+    List<Integer> columnIdxList = Arrays.asList(0, 1, 2);
+    IMeasurementSchema measurementSchema = getMeasurementSchema();
+    AlignedReadOnlyMemChunk chunk =
+        new AlignedReadOnlyMemChunk(
+            fragmentInstanceContext,
+            columnIdxList,
+            measurementSchema,
+            tvListMap,
+            Arrays.asList(
+                Collections.emptyList(), Collections.emptyList(), Collections.emptyList()));
+    chunk.sortTvLists();
+    chunk.initChunkMetaFromTVListsWithFakeStatistics();
+    MemPointIterator memPointIterator = chunk.createMemPointIterator(scanOrder, null);
+    List<Long> expectedTimestamps = new ArrayList<>();
+    for (TimeRange timeRange : expectedResultTimeRange) {
+      if (scanOrder == Ordering.ASC) {
+        for (long i = timeRange.getMin(); i <= timeRange.getMax(); i++) {
+          expectedTimestamps.add(i);
+        }
+      } else {
+        for (long i = timeRange.getMax(); i >= timeRange.getMin(); i--) {
+          expectedTimestamps.add(i);
+        }
+      }
+    }
+    List<Long> resultTimestamps = new ArrayList<>(expectedTimestamps.size());
+    for (TimeRange timeRange : statisticsTimeRanges) {
+      memPointIterator.setCurrentPageTimeRange(timeRange);
+      while (memPointIterator.hasNextBatch()) {
+        TsBlock tsBlock = memPointIterator.nextBatch();
+        for (int i = 0; i < tsBlock.getPositionCount(); i++) {
+          long currentTimestamp = tsBlock.getTimeByIndex(i);
+          long value = tsBlock.getColumn(0).getLong(i);
+          Assert.assertEquals(currentTimestamp, value);
+          resultTimestamps.add(currentTimestamp);
+        }
+      }
+    }
+    Assert.assertEquals(expectedTimestamps, resultTimestamps);
+
+    memPointIterator = chunk.createMemPointIterator(scanOrder, null);
+
+    resultTimestamps.clear();
+    for (TimeRange timeRange : statisticsTimeRanges) {
+      memPointIterator.setCurrentPageTimeRange(timeRange);
+      while (memPointIterator.hasNextTimeValuePair()) {
+        TimeValuePair timeValuePair = memPointIterator.nextTimeValuePair();
+        Assert.assertEquals(timeValuePair.getTimestamp(), timeValuePair.getValues()[0]);
+        resultTimestamps.add(timeValuePair.getTimestamp());
+      }
+    }
+    Assert.assertEquals(expectedTimestamps, resultTimestamps);
+  }
+
+  @Test
+  public void testEncodeBatch() {
+    testEncodeBatch(largeSingleTvListMap, 400000);
+    testEncodeBatch(largeOrderedMultiTvListMap, 400000);
+    testEncodeBatch(largeMergeSortMultiTvListMap, 400000);
+  }
+
+  private void testEncodeBatch(Map<TVList, Integer> tvListMap, long expectedCount) {
+    AlignedChunkWriterImpl alignedChunkWriter = new AlignedChunkWriterImpl(getMeasurementSchema());
+    List<Integer> columnIdxList = Arrays.asList(0, 1, 2);
+    IMeasurementSchema measurementSchema = getMeasurementSchema();
+    AlignedReadOnlyMemChunk chunk =
+        new AlignedReadOnlyMemChunk(
+            fragmentInstanceContext,
+            columnIdxList,
+            measurementSchema,
+            tvListMap,
+            Arrays.asList(
+                Collections.emptyList(), Collections.emptyList(), Collections.emptyList()));
+    chunk.sortTvLists();
+    chunk.initChunkMetaFromTVListsWithFakeStatistics();
+    MemPointIterator memPointIterator = chunk.createMemPointIterator(Ordering.ASC, null);
+    BatchEncodeInfo encodeInfo =
+        new BatchEncodeInfo(
+            0, 0, 0, 10000, 100000, IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize());
+    long[] times = new long[10000];
+    long count = 0;
+    while (memPointIterator.hasNextBatch()) {
+      memPointIterator.encodeBatch(alignedChunkWriter, encodeInfo, times);
+      if (encodeInfo.pointNumInPage >= encodeInfo.maxNumberOfPointsInPage) {
+        alignedChunkWriter.write(times, encodeInfo.pointNumInPage, 0);
+        encodeInfo.pointNumInPage = 0;
+      }
+
+      if (encodeInfo.pointNumInChunk >= encodeInfo.maxNumberOfPointsInChunk) {
+        alignedChunkWriter.sealCurrentPage();
+        count += alignedChunkWriter.getTimeChunkWriter().getPointNum();
+        alignedChunkWriter.clearPageWriter();
+        alignedChunkWriter = new AlignedChunkWriterImpl(getMeasurementSchema());
+        encodeInfo.reset();
+      }
+    }
+    // Handle remaining data in the final unsealed chunk
+    if (encodeInfo.pointNumInChunk > 0 || encodeInfo.pointNumInPage > 0) {
+      if (encodeInfo.pointNumInPage > 0) {
+        alignedChunkWriter.write(times, encodeInfo.pointNumInPage, 0);
+      }
+      alignedChunkWriter.sealCurrentPage();
+      count += alignedChunkWriter.getTimeChunkWriter().getPointNum();
+    }
+    Assert.assertEquals(expectedCount, count);
   }
 }

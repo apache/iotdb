@@ -100,6 +100,7 @@ import org.apache.iotdb.db.storageengine.dataregion.flush.FlushManager;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
+import org.apache.iotdb.db.storageengine.load.active.ActiveLoadAgent;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
 import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.db.trigger.executor.TriggerExecutor;
@@ -168,6 +169,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
 
   private boolean schemaRegionConsensusStarted = false;
   private boolean dataRegionConsensusStarted = false;
+  private static Thread watcherThread;
 
   public DataNode() {
     super("DataNode");
@@ -188,11 +190,36 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     return DataNodeHolder.INSTANCE;
   }
 
-  public static void main(String[] args) {
+  public static void main(final String[] args) {
+    final Thread hookThread = Thread.currentThread();
+    watcherThread =
+        new Thread(
+            () -> {
+              while (!Thread.interrupted() && hookThread.isAlive()) {
+                try {
+                  Thread.sleep(10000);
+                  final StackTraceElement[] stackTrace = hookThread.getStackTrace();
+                  final StringBuilder stackTraceBuilder =
+                      new StringBuilder("Stack trace of main thread:\n");
+                  for (final StackTraceElement traceElement : stackTrace) {
+                    stackTraceBuilder.append(traceElement.toString()).append("\n");
+                  }
+                  logger.info(stackTraceBuilder.toString());
+                } catch (final InterruptedException e) {
+                  Thread.currentThread().interrupt();
+                  return;
+                }
+              }
+            },
+            "DataNodeStartWatcher");
+    watcherThread.setDaemon(true);
+    watcherThread.start();
+
     logger.info("IoTDB-DataNode environment variables: {}", IoTDBConfig.getEnvironmentVariables());
     logger.info("IoTDB-DataNode default charset is: {}", Charset.defaultCharset().displayName());
     DataNode dataNode = new DataNode();
     int returnCode = dataNode.run(args);
+    watcherThread.interrupt();
     if (returnCode != 0) {
       System.exit(returnCode);
     }
@@ -223,6 +250,8 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
         ConfigNodeInfo.getInstance().storeConfigNodeList();
         // Register this DataNode to the cluster when first start
         sendRegisterRequestToConfigNode(false);
+        // Clean up active load listening directories on first startup
+        ActiveLoadAgent.cleanupListeningDirectories();
       } else {
         // Send restart request of this DataNode
         sendRestartRequestToConfigNode();
@@ -653,6 +682,15 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     }
   }
 
+  private void cleanupSortTmpDir() {
+    String sortTmpDir = config.getSortTmpDir();
+    File tmpDir = new File(sortTmpDir);
+    if (tmpDir.exists()) {
+      FileUtils.deleteFileOrDirectory(tmpDir, true);
+      logger.info("Cleaned up stale sort temp directory: {}", sortTmpDir);
+    }
+  }
+
   private void prepareResources() throws StartupException {
     prepareUDFResources();
     prepareTriggerResources();
@@ -706,6 +744,9 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     logger.info("Setting up IoTDB DataNode...");
     registerManager.register(new JMXService());
     JMXService.registerMBean(getInstance(), mbeanName);
+
+    // Clean up stale sort temp files left from previous runs
+    cleanupSortTmpDir();
 
     // Get resources for trigger,udf,pipe...
     prepareResources();

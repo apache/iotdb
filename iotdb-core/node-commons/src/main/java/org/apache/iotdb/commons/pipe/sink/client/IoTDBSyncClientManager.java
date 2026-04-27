@@ -193,9 +193,9 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
       clientAndStatus.setLeft(
           new IoTDBSyncClient(
               new ThriftClientProperty.Builder()
-                  .setConnectionTimeoutMs(PIPE_CONFIG.getPipeConnectorHandshakeTimeoutMs())
+                  .setConnectionTimeoutMs(PIPE_CONFIG.getPipeSinkHandshakeTimeoutMs())
                   .setRpcThriftCompressionEnabled(
-                      PIPE_CONFIG.isPipeConnectorRPCThriftCompressionEnabled())
+                      PIPE_CONFIG.isPipeSinkRPCThriftCompressionEnabled())
                   .build(),
               endPoint.getIp(),
               endPoint.getPort(),
@@ -361,7 +361,7 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
         final Pair<IoTDBSyncClient, Boolean> nextClientAndStatus =
             endPoint2ClientAndStatus.get(endPointList.get(nextClientIndex));
         if (Boolean.TRUE.equals(nextClientAndStatus.getRight())
-            && clientAndStatus.getLeft() != null) {
+            && nextClientAndStatus.getLeft() != null) {
           return nextClientAndStatus;
         }
       }

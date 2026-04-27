@@ -72,9 +72,6 @@ public class CommonDescriptor {
   public void loadCommonProps(TrimProperties properties) throws IOException {
     config.setAuthorizerProvider(
         properties.getProperty("authorizer_provider_class", config.getAuthorizerProvider()).trim());
-    // if using org.apache.iotdb.db.auth.authorizer.OpenIdAuthorizer, openID_url is needed.
-    config.setOpenIdProviderUrl(
-        properties.getProperty("openID_url", config.getOpenIdProviderUrl()).trim());
     config.setEncryptDecryptProvider(
         properties
             .getProperty(
@@ -247,16 +244,16 @@ public class CommonDescriptor {
                 "cluster_device_limit_threshold",
                 String.valueOf(config.getDeviceLimitThreshold()))));
 
+    config.setPathLogMaxSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "path_log_max_size", String.valueOf(config.getPathLogMaxSize()))));
+
     loadRetryProperties(properties);
     loadBinaryAllocatorProps(properties);
   }
 
   private void loadSubscriptionProps(TrimProperties properties) {
-    config.setSubscriptionEnabled(
-        Boolean.parseBoolean(
-            properties.getProperty(
-                "subscription_enabled", String.valueOf(config.getSubscriptionEnabled()))));
-
     config.setSubscriptionCacheMemoryUsagePercentage(
         Float.parseFloat(
             properties.getProperty(

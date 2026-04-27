@@ -66,8 +66,21 @@ public class TTLScheduleTask implements Callable<Void> {
           }
         }
       } catch (InterruptedException ignored) {
-        logger.info("[TTLCheckTask-{}] TTL checker is interrupted", workerId);
-        return null;
+        boolean isStoppedByUser =
+            CompactionScheduleTaskManager.getInstance().isStoppingAllScheduleTask();
+        logger.info(
+            "[TTLCheckTask-{}] TTL checker is interrupted, isStoppedByUser: {}",
+            workerId,
+            isStoppedByUser);
+        if (isStoppedByUser) {
+          return null;
+        }
+      } catch (Exception e) {
+        logger.error("[TTLCheckTask-{}] Failed to execute ttl check", workerId, e);
+      } catch (Throwable t) {
+        logger.error(
+            "[TTLCheckTask-{}] Failed to execute ttl check and cannot recover", workerId, t);
+        throw t;
       }
     }
   }

@@ -29,14 +29,17 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2AutoCreateSchema;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.commons.lang3.SystemUtils;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
+import java.io.File;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -312,6 +315,68 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualAutoIT {
 
       final List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
       Assert.assertEquals(1, showPipeResult.size());
+    }
+  }
+
+  @Test
+  public void testDirectoryErrors() throws SQLException {
+    try (final Connection connection = senderEnv.getConnection();
+        final Statement statement = connection.createStatement()) {
+      List<String> wrongDirs = Arrays.asList(".", "..", "/hackYou", "..\\hackYouTwice");
+      if (SystemUtils.IS_OS_WINDOWS) {
+        wrongDirs = new ArrayList<>(wrongDirs);
+        wrongDirs.add("BombWindows/:*?");
+        wrongDirs.add("AUX");
+      }
+      for (final String name : wrongDirs) {
+        testDirectoryError(name, statement);
+      }
+    }
+  }
+
+  private void testDirectoryError(final String wrongDir, final Statement statement) {
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+
+    final String receiverIp = receiverDataNode.getIp();
+    final int receiverPort = receiverDataNode.getPort();
+
+    try {
+      statement.execute(
+          String.format(
+              "create pipe `"
+                  + wrongDir
+                  + "` with source ()"
+                  + " with processor ()"
+                  + " with sink ("
+                  + "'sink'='invalid-param',"
+                  + "'sink.ip'='%s',"
+                  + "'sink.port'='%s',"
+                  + "'sink.batch.enable'='false')",
+              receiverIp,
+              receiverPort));
+      fail();
+    } catch (final Exception ignore) {
+      // Expected
+    }
+
+    try {
+      statement.execute(
+          String.format(
+              "create pipePlugin `"
+                  + wrongDir
+                  + "` as 'org.apache.iotdb.db.pipe.example.TestProcessor' USING URI '%s'",
+              new File(
+                          System.getProperty("user.dir")
+                              + File.separator
+                              + "target"
+                              + File.separator
+                              + "test-classes"
+                              + File.separator)
+                      .toURI()
+                  + "PipePlugin.jar"));
+      fail();
+    } catch (final SQLException e) {
+      Assert.assertTrue(e.getMessage().contains("701: Failed to create pipe plugin"));
     }
   }
 
@@ -725,6 +790,66 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualAutoIT {
         final Statement statement = connection.createStatement()) {
       statement.execute("create pipe p1('sink'='do-nothing-sink')");
     } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testPipePluginValidation() {
+    try (final Connection connection = senderEnv.getConnection();
+        final Statement statement = connection.createStatement()) {
+      try {
+        statement.execute(
+            "create pipePlugin TestProcessor as 'org.apache.iotdb.db.pipe.example.TestProcessor' USING URI 'xxx'");
+        fail();
+      } catch (final SQLException e) {
+        Assert.assertEquals(
+            "701: Untrusted uri xxx, current trusted_uri_pattern is file:.*", e.getMessage());
+      }
+      try {
+        statement.execute(
+            "create pipePlugin TestProcessor as 'org.apache.iotdb.db.pipe.example.TestProcessor' USING URI 'file:.*'");
+        fail();
+      } catch (final SQLException e) {
+        Assert.assertEquals("701: URI is not hierarchical", e.getMessage());
+      }
+      try {
+        statement.execute(
+            String.format(
+                "create pipePlugin TestProcessor as 'org.apache.iotdb.db.pipe.example.TestProcessor' USING URI '%s'",
+                new File(
+                            System.getProperty("user.dir")
+                                + File.separator
+                                + "target"
+                                + File.separator
+                                + "test-classes"
+                                + File.separator)
+                        .toURI()
+                    + "PipePlugin.jar"));
+        fail();
+      } catch (final SQLException e) {
+        Assert.assertEquals(
+            "701: Failed to get executable for PipePlugin TestProcessor, please check the URI.",
+            e.getMessage());
+      }
+      try {
+        statement.execute("drop pipePlugin test_processor");
+        fail();
+      } catch (final SQLException e) {
+        Assert.assertEquals(
+            "1601: Failed to drop PipePlugin [TEST_PROCESSOR], this PipePlugin has not been created",
+            e.getMessage());
+      }
+      try {
+        statement.execute("drop pipePlugin `Do-Nothing-Sink`");
+        fail();
+      } catch (final SQLException e) {
+        Assert.assertEquals(
+            "1601: Failed to drop PipePlugin [DO-NOTHING-SINK], the PipePlugin is a built-in PipePlugin",
+            e.getMessage());
+      }
+    } catch (final SQLException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
