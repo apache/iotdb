@@ -1983,6 +1983,8 @@ public class ColumnTransformerBuilder
 
     private final ITypeMetadata metadata;
 
+    // used in other branch
+    @SuppressWarnings("unused")
     private final Optional<MemoryReservationManager> memoryReservationManager;
 
     public Context(
