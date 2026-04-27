@@ -165,6 +165,16 @@ public class PipeRealtimeEvent extends EnrichedEvent {
   }
 
   @Override
+  public void skipReportOnCommit() {
+    event.skipReportOnCommit();
+  }
+
+  @Override
+  public boolean isShouldReportOnCommit() {
+    return event.isShouldReportOnCommit();
+  }
+
+  @Override
   public void skipParsingPattern() {
     event.skipParsingPattern();
   }

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.event;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -469,6 +470,60 @@ public class PipeTabletInsertionEventTest {
     } finally {
       AuthorityChecker.setAccessControl(oldControl);
       event.close();
+    }
+  }
+
+  @Test
+  public void testAuthCheckIgnoresNullMeasurementInPartialInsert() throws Exception {
+    insertRowNode.markFailedMeasurement(1);
+
+    final PipeInsertNodeTabletInsertionEvent event =
+        new PipeInsertNodeTabletInsertionEvent(
+            false,
+            "root.db",
+            insertRowNode,
+            null,
+            0,
+            null,
+            new PrefixTreePattern(pattern),
+            new TablePattern(true, null, null),
+            "0",
+            "user",
+            "localhost",
+            false,
+            Long.MIN_VALUE,
+            Long.MAX_VALUE);
+    final AccessControl oldControl = AuthorityChecker.getAccessControl();
+    final NullMeasurementRejectingAccessControl accessControl =
+        new NullMeasurementRejectingAccessControl();
+    try {
+      AuthorityChecker.setAccessControl(accessControl);
+
+      event.throwIfNoPrivilege();
+
+      Assert.assertFalse(accessControl.hasNullMeasurementPath);
+      Assert.assertFalse(event.shouldParse4Privilege());
+    } finally {
+      AuthorityChecker.setAccessControl(oldControl);
+      event.close();
+    }
+  }
+
+  private static class NullMeasurementRejectingAccessControl
+      extends PipeTsFileInsertionEventTest.TestAccessControl {
+
+    private boolean hasNullMeasurementPath = false;
+
+    @Override
+    public TSStatus checkSeriesPrivilege4Pipe(
+        final org.apache.iotdb.commons.audit.IAuditEntity context,
+        final java.util.List<? extends PartialPath> checkedPathsSupplier,
+        final org.apache.iotdb.commons.auth.entity.PrivilegeType permission) {
+      hasNullMeasurementPath =
+          checkedPathsSupplier.stream().anyMatch(path -> path.getFullPath().endsWith(".null"));
+      return hasNullMeasurementPath
+          ? AuthorityChecker.getTSStatus(Collections.singletonList(0), checkedPathsSupplier, permission)
+          : new TSStatus(org.apache.iotdb.rpc.TSStatusCode.SUCCESS_STATUS.getStatusCode());
     }
   }
 }
