@@ -77,6 +77,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -126,6 +127,7 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
   private final AtomicBoolean isClosed = new AtomicBoolean(false);
   private final Map<PipeTransferTrackableHandler, PipeTransferTrackableHandler> pendingHandlers =
       new ConcurrentHashMap<>();
+  private final Set<String> droppedPipeTaskKeys = ConcurrentHashMap.newKeySet();
 
   private boolean enableSendTsFileLimit;
   private volatile boolean isConnectionException;
@@ -681,8 +683,15 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
   public void addFailureEventToRetryQueue(final Event event, final Exception e) {
     isConnectionException =
         e instanceof PipeConnectionException || ThriftClient.isConnectionBroken(e);
-    if (event instanceof EnrichedEvent && ((EnrichedEvent) event).isReleased()) {
-      return;
+    if (event instanceof EnrichedEvent) {
+      final EnrichedEvent enrichedEvent = (EnrichedEvent) event;
+      if (enrichedEvent.isReleased()) {
+        return;
+      }
+      if (isDroppedPipe(enrichedEvent)) {
+        enrichedEvent.clearReferenceCount(IoTDBDataRegionAsyncSink.class.getName());
+        return;
+      }
     }
 
     if (isClosed.get()) {
@@ -728,15 +737,18 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
   //////////////////////////// Operations for close ////////////////////////////
 
   @Override
-  public synchronized void discardEventsOfPipe(final String pipeNameToDrop, final int regionId) {
-    if (isTabletBatchModeEnabled) {
-      tabletBatchBuilder.discardEventsOfPipe(pipeNameToDrop, regionId);
+  public synchronized void discardEventsOfPipe(
+      final String pipeNameToDrop, final long creationTimeToDrop, final int regionId) {
+    droppedPipeTaskKeys.add(generatePipeTaskKey(pipeNameToDrop, creationTimeToDrop, regionId));
+
+    if (isTabletBatchModeEnabled && Objects.nonNull(tabletBatchBuilder)) {
+      tabletBatchBuilder.discardEventsOfPipe(pipeNameToDrop, creationTimeToDrop, regionId);
     }
     retryEventQueue.removeIf(
         event -> {
           if (event instanceof EnrichedEvent
-              && pipeNameToDrop.equals(((EnrichedEvent) event).getPipeName())
-              && regionId == ((EnrichedEvent) event).getRegionId()) {
+              && isDroppedPipe(
+                  (EnrichedEvent) event, pipeNameToDrop, creationTimeToDrop, regionId)) {
             ((EnrichedEvent) event).clearReferenceCount(IoTDBDataRegionAsyncSink.class.getName());
             retryEventQueueEventCounter.decreaseEventCount(event);
             return true;
@@ -747,8 +759,8 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
     retryTsFileQueue.removeIf(
         event -> {
           if (event instanceof EnrichedEvent
-              && pipeNameToDrop.equals(((EnrichedEvent) event).getPipeName())
-              && regionId == ((EnrichedEvent) event).getRegionId()) {
+              && isDroppedPipe(
+                  (EnrichedEvent) event, pipeNameToDrop, creationTimeToDrop, regionId)) {
             ((EnrichedEvent) event).clearReferenceCount(IoTDBDataRegionAsyncSink.class.getName());
             retryEventQueueEventCounter.decreaseEventCount(event);
             return true;
@@ -792,6 +804,7 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
 
     // clear reference count of events in retry queue after closing async client
     clearRetryEventsReferenceCount();
+    droppedPipeTaskKeys.clear();
 
     super.close();
   }
@@ -846,6 +859,26 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
 
   public void setTransferTsFileCounter(AtomicInteger transferTsFileCounter) {
     this.transferTsFileCounter = transferTsFileCounter;
+  }
+
+  private boolean isDroppedPipe(final EnrichedEvent event) {
+    return droppedPipeTaskKeys.contains(
+        generatePipeTaskKey(event.getPipeName(), event.getCreationTime(), event.getRegionId()));
+  }
+
+  private static boolean isDroppedPipe(
+      final EnrichedEvent event,
+      final String pipeNameToDrop,
+      final long creationTimeToDrop,
+      final int regionId) {
+    return pipeNameToDrop.equals(event.getPipeName())
+        && creationTimeToDrop == event.getCreationTime()
+        && regionId == event.getRegionId();
+  }
+
+  private static String generatePipeTaskKey(
+      final String pipeName, final long creationTime, final int regionId) {
+    return pipeName + "_" + creationTime + "_" + regionId;
   }
 
   @Override

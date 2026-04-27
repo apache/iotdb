@@ -63,7 +63,10 @@ public class SubscriptionSinkSubtaskLifeCycle extends PipeSinkSubtaskLifeCycle {
   }
 
   @Override
-  public synchronized boolean deregister(final String pipeNameToDeregister, int regionId) {
+  public synchronized boolean deregister(
+      final String pipeNameToDeregister,
+      final long creationTimeToDeregister,
+      final int regionId) {
     if (registeredTaskCount <= 0) {
       throw new IllegalStateException("registeredTaskCount <= 0");
     }

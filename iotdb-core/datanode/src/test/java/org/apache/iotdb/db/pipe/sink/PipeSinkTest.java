@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.sink;
 
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
+import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskSinkRuntimeEnvironment;
@@ -30,6 +31,7 @@ import org.apache.iotdb.db.pipe.sink.protocol.thrift.async.IoTDBDataRegionAsyncS
 import org.apache.iotdb.db.pipe.sink.protocol.thrift.sync.IoTDBDataRegionSyncSink;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
+import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.write.record.Tablet;
@@ -101,6 +103,46 @@ public class PipeSinkTest {
                   })));
     } catch (Exception e) {
       Assert.fail();
+    }
+  }
+
+  @Test
+  public void testAsyncSinkDropDoesNotRequeueDroppedPipeEvents() throws Exception {
+    try (final IoTDBDataRegionAsyncSink connector = new IoTDBDataRegionAsyncSink()) {
+      final PipeParameters parameters =
+          new PipeParameters(
+              new HashMap<String, String>() {
+                {
+                  put(
+                      PipeSinkConstant.CONNECTOR_KEY,
+                      BuiltinPipePlugin.IOTDB_THRIFT_ASYNC_CONNECTOR.getPipePluginName());
+                  put(PipeSinkConstant.CONNECTOR_IOTDB_NODE_URLS_KEY, "127.0.0.1:6668");
+                }
+              });
+      connector.validate(new PipeParameterValidator(parameters));
+      connector.customize(
+          parameters,
+          new PipeTaskRuntimeConfiguration(new PipeTaskSinkRuntimeEnvironment("pipe", 1L, 1)));
+
+      final PipeRawTabletInsertionEvent droppedEvent =
+          createPipeRawTabletInsertionEvent("pipe", 1L, 1);
+      droppedEvent.increaseReferenceCount("test");
+      droppedEvent.setCommitterKeyAndCommitId(new CommitterKey("pipe", 1L, 1, -1), 1L);
+
+      connector.discardEventsOfPipe("pipe", 1L, 1);
+      connector.addFailureEventToRetryQueue(droppedEvent, new PipeException("test"));
+
+      Assert.assertEquals(0, connector.getRetryEventQueueSize());
+      Assert.assertTrue(droppedEvent.isReleased());
+
+      final PipeRawTabletInsertionEvent recreatedPipeEvent =
+          createPipeRawTabletInsertionEvent("pipe", 2L, 1);
+      recreatedPipeEvent.increaseReferenceCount("test");
+      recreatedPipeEvent.setCommitterKeyAndCommitId(new CommitterKey("pipe", 2L, 1, -1), 1L);
+
+      connector.addFailureEventToRetryQueue(recreatedPipeEvent, new PipeException("test"));
+
+      Assert.assertEquals(1, connector.getRetryEventQueueSize());
     }
   }
 
@@ -193,5 +235,16 @@ public class PipeSinkTest {
     } catch (Exception e) {
       Assert.fail();
     }
+  }
+
+  private PipeRawTabletInsertionEvent createPipeRawTabletInsertionEvent(
+      final String pipeName, final long creationTime, final int regionId) {
+    final List<IMeasurementSchema> schemaList =
+        Arrays.asList(new MeasurementSchema("s1", TSDataType.INT64));
+    final Tablet tablet = new Tablet("root.db.d" + regionId, schemaList, 1);
+    tablet.addTimestamp(0, 1L);
+    tablet.addValue("s1", 0, 1L);
+    return new PipeRawTabletInsertionEvent(
+        false, "root.db", "db", "root.db", tablet, false, pipeName, creationTime, null, null, false);
   }
 }

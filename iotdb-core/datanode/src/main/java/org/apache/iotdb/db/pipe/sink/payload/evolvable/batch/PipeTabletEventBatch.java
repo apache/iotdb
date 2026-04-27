@@ -154,10 +154,13 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
    * Discard all events of the given pipe. This method only clears the reference count of the events
    * and discard them, but do not modify other objects (such as buffers) for simplicity.
    */
-  public synchronized void discardEventsOfPipe(final String pipeNameToDrop, final int regionId) {
+  public synchronized void discardEventsOfPipe(
+      final String pipeNameToDrop, final long creationTimeToDrop, final int regionId) {
     events.removeIf(
         event -> {
-          if (pipeNameToDrop.equals(event.getPipeName()) && regionId == event.getRegionId()) {
+          if (pipeNameToDrop.equals(event.getPipeName())
+              && creationTimeToDrop == event.getCreationTime()
+              && regionId == event.getRegionId()) {
             event.clearReferenceCount(IoTDBDataRegionAsyncSink.class.getName());
             return true;
           }

@@ -198,9 +198,10 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
    * When a pipe is dropped, the connector maybe reused and will not be closed. So we just discard
    * its queued events in the output pipe connector.
    */
-  public void discardEventsOfPipe(final String pipeNameToDrop, int regionId) {
+  public void discardEventsOfPipe(
+      final String pipeNameToDrop, final long creationTimeToDrop, final int regionId) {
     // Try to remove the events as much as possible
-    inputPendingQueue.discardEventsOfPipe(pipeNameToDrop, regionId);
+    inputPendingQueue.discardEventsOfPipe(pipeNameToDrop, creationTimeToDrop, regionId);
 
     try {
       increaseHighPriorityTaskCount();
@@ -214,6 +215,7 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
         // will.
         if (lastEvent instanceof EnrichedEvent
             && pipeNameToDrop.equals(((EnrichedEvent) lastEvent).getPipeName())
+            && creationTimeToDrop == ((EnrichedEvent) lastEvent).getCreationTime()
             && regionId == ((EnrichedEvent) lastEvent).getRegionId()) {
           // Do not clear the last event's reference counts because it may be on transferring
           lastEvent = null;
@@ -237,6 +239,7 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
         // "nonnull" detection.
         if (lastExceptionEvent instanceof EnrichedEvent
             && pipeNameToDrop.equals(((EnrichedEvent) lastExceptionEvent).getPipeName())
+            && creationTimeToDrop == ((EnrichedEvent) lastExceptionEvent).getCreationTime()
             && regionId == ((EnrichedEvent) lastExceptionEvent).getRegionId()) {
           clearReferenceCountAndReleaseLastExceptionEvent();
         }
@@ -246,7 +249,8 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
     }
 
     if (outputPipeSink instanceof IoTDBSink) {
-      ((IoTDBSink) outputPipeSink).discardEventsOfPipe(pipeNameToDrop, regionId);
+      ((IoTDBSink) outputPipeSink)
+          .discardEventsOfPipe(pipeNameToDrop, creationTimeToDrop, regionId);
     }
   }
 
