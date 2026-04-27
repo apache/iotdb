@@ -25,6 +25,7 @@ import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.protocol.thrift.impl.DataNodeInternalRPCServiceImpl;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControlImpl;
 import org.apache.iotdb.db.queryengine.plan.relational.security.ITableAuthCheckerImpl;
+import org.apache.iotdb.db.service.DataNode;
 import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatResp;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchLeaderRemoteReplicaReq;
@@ -42,6 +43,10 @@ public class DataNodeInternalRPCServiceImplNew extends DataNodeInternalRPCServic
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(DataNodeInternalRPCServiceImplNew.class);
+
+  public DataNodeInternalRPCServiceImplNew(DataNode.DataNodeContext dataNodeContext) {
+    super(dataNodeContext);
+  }
 
   @Override
   public TFetchLeaderRemoteReplicaResp fetchLeaderRemoteReplica(TFetchLeaderRemoteReplicaReq req) {

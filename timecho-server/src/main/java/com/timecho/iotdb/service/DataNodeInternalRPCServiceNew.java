@@ -7,7 +7,7 @@ public class DataNodeInternalRPCServiceNew extends DataNodeInternalRPCService {
 
   @Override
   public void initTProcessor() {
-    impl.compareAndSet(null, new DataNodeInternalRPCServiceImplNew());
+    impl.compareAndSet(null, new DataNodeInternalRPCServiceImplNew(dataNodeContext));
     initSyncedServiceImpl(null);
     processor = new Processor<>(impl.get());
   }
