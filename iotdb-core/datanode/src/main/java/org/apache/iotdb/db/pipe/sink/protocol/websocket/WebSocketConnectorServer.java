@@ -58,7 +58,8 @@ public class WebSocketConnectorServer extends WebSocketServer {
   // Map<pipeName, Map<eventId, Tuple<connector, event>>>
   private final ConcurrentHashMap<String, ConcurrentHashMap<Long, EventWaitingForAck>>
       eventsWaitingForAck = new ConcurrentHashMap<>();
-  private final Set<Triple<String, Long, Integer>> droppedPipeTaskKeys = ConcurrentHashMap.newKeySet();
+  private final Set<Triple<String, Long, Integer>> droppedPipeTaskKeys =
+      ConcurrentHashMap.newKeySet();
 
   private final BidiMap<String, WebSocket> router =
       new DualTreeBidiMap<String, WebSocket>(null, Comparator.comparing(Object::hashCode)) {};
