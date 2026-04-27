@@ -160,6 +160,7 @@ BUILTIN_HF_TRANSFORMERS_MODEL_MAP = {
         },
         transformers_registered=True,
     ),
+<<<<<<< HEAD
     "toto": ModelInfo(
         model_id="toto",
         category=ModelCategory.BUILTIN,
@@ -172,5 +173,18 @@ BUILTIN_HF_TRANSFORMERS_MODEL_MAP = {
             "AutoModelForCausalLM": "modeling_toto.TotoForPrediction",
         },
         transformers_registered=True,
+=======
+    "patchtst_fm": ModelInfo(
+        model_id = "patchtst_fm",
+        category=ModelCategory.BUILTIN,
+        state=ModelStates.INACTIVE,
+        model_type="patchtst_fm",
+        pipeline_cls="pipeline_patchtst_fm.PatchTSTFMPipeline",
+        repo_id="ibm-research/patchtst-fm-r1",
+        auto_map={
+        "AutoConfig": "configuration_patchtst_fm.PatchTSTFMConfig",
+        "AutoModelForCausalLM": "modeling_patchtst_fm.PatchTSTFMForPrediction",
+    },
+>>>>>>> d54f8bc19d (feat(AINode): [Issue-17301] Import PatchTST-FM-R1 architecture and register in model_info)
     ),
 }

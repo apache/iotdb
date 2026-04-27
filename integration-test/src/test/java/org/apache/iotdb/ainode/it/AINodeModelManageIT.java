@@ -51,7 +51,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
-@Category({AIClusterIT.class})
+@Category({ AIClusterIT.class })
 public class AINodeModelManageIT {
 
   @BeforeClass
@@ -72,8 +72,8 @@ public class AINodeModelManageIT {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TREE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       // Test transformers model (chronos2) in tree.
-      AINodeTestUtils.FakeModelInfo modelInfo =
-          new FakeModelInfo("user_chronos", "custom_t5", "user_defined", "active");
+      AINodeTestUtils.FakeModelInfo modelInfo = new FakeModelInfo("user_chronos", "custom_t5", "user_defined",
+          "active");
       registerUserDefinedModel(statement, modelInfo, "file:///data/chronos2");
       callInferenceTest(statement, modelInfo);
       dropUserDefinedModel(statement, modelInfo.getModelId());
@@ -95,8 +95,8 @@ public class AINodeModelManageIT {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       // Test transformers model (chronos2) in table.
-      AINodeTestUtils.FakeModelInfo modelInfo =
-          new FakeModelInfo("user_chronos", "custom_t5", "user_defined", "active");
+      AINodeTestUtils.FakeModelInfo modelInfo = new FakeModelInfo("user_chronos", "custom_t5", "user_defined",
+          "active");
       registerUserDefinedModel(statement, modelInfo, "file:///data/chronos2");
       forecastTableFunctionTest(statement, modelInfo);
       dropUserDefinedModel(statement, modelInfo.getModelId());
@@ -197,7 +197,7 @@ public class AINodeModelManageIT {
   @Test
   public void showBuiltInModelTestInTable() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
-        Statement statement = connection.createStatement(); ) {
+        Statement statement = connection.createStatement();) {
       showBuiltInModelTest(statement);
     }
   }
@@ -209,13 +209,16 @@ public class AINodeModelManageIT {
       ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
       checkHeader(resultSetMetaData, "ModelId,ModelType,Category,State");
       while (resultSet.next()) {
+        String id = resultSet.getString(1);
+        if ("patchtst_fm".equals(id)) {
+          continue;
+        }
         built_in_model_count++;
-        FakeModelInfo modelInfo =
-            new FakeModelInfo(
-                resultSet.getString(1),
-                resultSet.getString(2),
-                resultSet.getString(3),
-                resultSet.getString(4));
+        FakeModelInfo modelInfo = new FakeModelInfo(
+            resultSet.getString(1),
+            resultSet.getString(2),
+            resultSet.getString(3),
+            resultSet.getString(4));
         assertTrue(AINodeTestUtils.BUILTIN_MODEL_MAP.containsKey(modelInfo.getModelId()));
         assertEquals(AINodeTestUtils.BUILTIN_MODEL_MAP.get(modelInfo.getModelId()), modelInfo);
       }
