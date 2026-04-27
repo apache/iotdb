@@ -105,6 +105,7 @@ public class ErrorHandlingUtils {
     LOGGER.warn(message);
     return status.setMessage(message);
   }
+
   public static TSStatus onQueryException(Exception e, String operation, TSStatusCode statusCode) {
     TSStatus status = tryCatchQueryException(e);
     if (status != null) {
