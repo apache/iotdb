@@ -50,7 +50,7 @@ public enum OperationType {
   CREATE_SCHEMA_TEMPLATE("createSchemaTemplate"),
   CHECK_AUTHORITY("checkAuthority"),
   EXECUTE_NON_QUERY_PLAN("executeNonQueryPlan"),
-  DISPATCH_FRAGMENT_INSTANCE("dispatchFragmentInstance");
+  QUERY_LATENCY("queryLatency");
   private final String name;
 
   OperationType(String name) {
