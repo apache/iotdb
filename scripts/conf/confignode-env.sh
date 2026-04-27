@@ -192,7 +192,7 @@ else
     JAVA=java
 fi
 
-if [ -z $JAVA ] ; then
+if [ -z "$JAVA" ] ; then
     echo Unable to find java executable. Check JAVA_HOME and PATH environment variables.  > /dev/stderr
     exit 1;
 fi
