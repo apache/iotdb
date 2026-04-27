@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.sink.protocol.websocket;
 
 import org.apache.iotdb.commons.external.collections4.BidiMap;
 import org.apache.iotdb.commons.external.collections4.bidimap.DualTreeBidiMap;
+import org.apache.iotdb.commons.pipe.datastructure.Triple;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -113,7 +114,7 @@ public class WebSocketConnectorServer extends WebSocketServer {
           .forEach((eventId, eventWrapper) -> discardEvent(eventWrapper.event));
     }
 
-    droppedPipeTaskKeys.removeIf(key -> key.getLeft().equals(pipeName));
+    droppedPipeTaskKeys.removeIf(key -> key.getFirst().equals(pipeName));
   }
 
   public synchronized void discardEventsOfPipe(
