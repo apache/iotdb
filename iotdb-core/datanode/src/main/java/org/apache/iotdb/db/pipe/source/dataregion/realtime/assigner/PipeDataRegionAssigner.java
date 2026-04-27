@@ -256,7 +256,7 @@ public class PipeDataRegionAssigner implements Closeable {
     matcher.invalidateCache();
   }
 
-  public boolean notMoreExtractorNeededToBeAssigned() {
+  public boolean notMoreSourceNeededToBeAssigned() {
     return matcher.getRegisterCount() == 0;
   }
 
