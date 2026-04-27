@@ -68,6 +68,18 @@ public class ConsumerConfig extends PipeParameters {
     return getString(ConsumerConstant.CONSUMER_GROUP_ID_KEY);
   }
 
+  public String getUsername() {
+    return getString(ConsumerConstant.USERNAME_KEY);
+  }
+
+  public String getPassword() {
+    return getString(ConsumerConstant.PASSWORD_KEY);
+  }
+
+  public String getEncryptedPassword() {
+    return getString(ConsumerConstant.ENCRYPTED_PASSWORD_KEY);
+  }
+
   public long getHeartbeatIntervalMs() {
     return getLongOrDefault(
         ConsumerConstant.HEARTBEAT_INTERVAL_MS_KEY,

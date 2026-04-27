@@ -54,4 +54,15 @@ public class TopicDeSerTest {
     Assert.assertEquals(
         topicMeta.getSubscribedConsumerGroupIds(), topicMeta2.getSubscribedConsumerGroupIds());
   }
+
+  @Test
+  public void testGenerateExtractorAttributesWithEncryptedPassword() {
+    final TopicMeta topicMeta = new TopicMeta("test_topic", 1, new HashMap<>());
+
+    final Map<String, String> extractorAttributes =
+        topicMeta.generateExtractorAttributes("test_user", "encrypted-password");
+
+    Assert.assertEquals("test_user", extractorAttributes.get("username"));
+    Assert.assertEquals("encrypted-password", extractorAttributes.get("password"));
+  }
 }
