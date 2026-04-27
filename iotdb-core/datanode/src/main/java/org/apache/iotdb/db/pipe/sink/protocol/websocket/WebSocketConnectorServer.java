@@ -57,7 +57,7 @@ public class WebSocketConnectorServer extends WebSocketServer {
   // Map<pipeName, Map<eventId, Tuple<connector, event>>>
   private final ConcurrentHashMap<String, ConcurrentHashMap<Long, EventWaitingForAck>>
       eventsWaitingForAck = new ConcurrentHashMap<>();
-  private final Set<String> droppedPipeTaskKeys = ConcurrentHashMap.newKeySet();
+  private final Set<Triple<String, Long, Integer>> droppedPipeTaskKeys = ConcurrentHashMap.newKeySet();
 
   private final BidiMap<String, WebSocket> router =
       new DualTreeBidiMap<String, WebSocket>(null, Comparator.comparing(Object::hashCode)) {};
@@ -113,12 +113,12 @@ public class WebSocketConnectorServer extends WebSocketServer {
           .forEach((eventId, eventWrapper) -> discardEvent(eventWrapper.event));
     }
 
-    droppedPipeTaskKeys.removeIf(key -> key.startsWith(pipeName + "_"));
+    droppedPipeTaskKeys.removeIf(key -> key.getLeft().equals(pipeName));
   }
 
   public synchronized void discardEventsOfPipe(
       final String pipeNameToDrop, final long creationTimeToDrop, final int regionId) {
-    droppedPipeTaskKeys.add(generatePipeTaskKey(pipeNameToDrop, creationTimeToDrop, regionId));
+    droppedPipeTaskKeys.add(new Triple<>(pipeNameToDrop, creationTimeToDrop, regionId));
 
     final PriorityBlockingQueue<EventWaitingForTransfer> eventTransferQueue =
         eventsWaitingForTransfer.get(pipeNameToDrop);
@@ -536,7 +536,7 @@ public class WebSocketConnectorServer extends WebSocketServer {
   private boolean isDroppedPipe(final Event event) {
     return event instanceof EnrichedEvent
         && droppedPipeTaskKeys.contains(
-            generatePipeTaskKey(
+            new Triple<>(
                 ((EnrichedEvent) event).getPipeName(),
                 ((EnrichedEvent) event).getCreationTime(),
                 ((EnrichedEvent) event).getRegionId()));
@@ -545,11 +545,6 @@ public class WebSocketConnectorServer extends WebSocketServer {
   private boolean isQueueAvailable(
       final String pipeName, final PriorityBlockingQueue<EventWaitingForTransfer> queue) {
     return eventsWaitingForTransfer.get(pipeName) == queue;
-  }
-
-  private static String generatePipeTaskKey(
-      final String pipeName, final long creationTime, final int regionId) {
-    return pipeName + "_" + creationTime + "_" + regionId;
   }
 
   private void discardEvent(final Event event) {
