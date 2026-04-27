@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.pipe.agent.task.connection;
 
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.datastructure.Triple;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.metric.PipeEventCounter;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -45,7 +46,8 @@ public abstract class BlockingPendingQueue<E extends Event> {
   protected final PipeEventCounter eventCounter;
 
   protected final AtomicBoolean isClosed = new AtomicBoolean(false);
-  protected final Set<String> droppedPipeTaskKeys = ConcurrentHashMap.newKeySet();
+  protected final Set<Triple<String, Long, Integer>> droppedPipeTaskKeys =
+      ConcurrentHashMap.newKeySet();
 
   protected BlockingPendingQueue(
       final BlockingQueue<E> pendingQueue, final PipeEventCounter eventCounter) {
@@ -134,7 +136,7 @@ public abstract class BlockingPendingQueue<E extends Event> {
 
   public void discardEventsOfPipe(
       final String pipeNameToDrop, final long creationTimeToDrop, final int regionId) {
-    droppedPipeTaskKeys.add(generatePipeTaskKey(pipeNameToDrop, creationTimeToDrop, regionId));
+    droppedPipeTaskKeys.add(new Triple<>(pipeNameToDrop, creationTimeToDrop, regionId));
     pendingQueue.removeIf(
         event -> {
           if (event instanceof EnrichedEvent
@@ -197,11 +199,6 @@ public abstract class BlockingPendingQueue<E extends Event> {
   }
 
   public boolean isPipeDropped(final String pipeName, final long creationTime, final int regionId) {
-    return droppedPipeTaskKeys.contains(generatePipeTaskKey(pipeName, creationTime, regionId));
-  }
-
-  private static String generatePipeTaskKey(
-      final String pipeName, final long creationTime, final int regionId) {
-    return pipeName + "_" + creationTime + "_" + regionId;
+    return droppedPipeTaskKeys.contains(new Triple<>(pipeName, creationTime, regionId));
   }
 }
