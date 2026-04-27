@@ -128,7 +128,8 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
   private final AtomicBoolean isClosed = new AtomicBoolean(false);
   private final Map<PipeTransferTrackableHandler, PipeTransferTrackableHandler> pendingHandlers =
       new ConcurrentHashMap<>();
-  private final Set<Triple<String, Long, Integer>> droppedPipeTaskKeys = ConcurrentHashMap.newKeySet();
+  private final Set<Triple<String, Long, Integer>> droppedPipeTaskKeys =
+      ConcurrentHashMap.newKeySet();
 
   private boolean enableSendTsFileLimit;
   private volatile boolean isConnectionException;
