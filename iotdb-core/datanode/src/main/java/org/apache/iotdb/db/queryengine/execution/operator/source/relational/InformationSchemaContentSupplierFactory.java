@@ -90,6 +90,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableDiskUsa
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlKeywords;
 import org.apache.iotdb.db.schemaengine.table.InformationSchemaUtils;
+import org.apache.iotdb.db.schemaengine.table.TableColumnMetadataUtil;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.utils.StorageEngineTimePartitionIterator;
 import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageIndex.DataRegionTableSizeQueryContext;
@@ -463,12 +464,13 @@ public class InformationSchemaContentSupplierFactory {
   }
 
   private static class ColumnSupplier extends TsBlockSupplier {
-    private final Iterator<Map.Entry<String, Map<String, Pair<TsTable, Set<String>>>>> dbIterator;
-    private Iterator<Map.Entry<String, Pair<TsTable, Set<String>>>> tableInfoIterator;
+    private final Iterator<Map.Entry<String, Map<String, TableColumnDetailInfo>>> dbIterator;
+    private Iterator<Map.Entry<String, TableColumnDetailInfo>> tableInfoIterator;
     private Iterator<TsTableColumnSchema> columnSchemaIterator;
     private String dbName;
     private String tableName;
     private Set<String> preDeletedColumns;
+    private Map<String, Byte> preAlteredColumns;
     private final UserEntity userEntity;
 
     private ColumnSupplier(final List<TSDataType> dataTypes, final UserEntity userEntity)
@@ -477,9 +479,8 @@ public class InformationSchemaContentSupplierFactory {
       this.userEntity = userEntity;
       try (final ConfigNodeClient client =
           ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-        final TDescTable4InformationSchemaResp resp = client.descTables4InformationSchema();
-        final Map<String, Map<String, Pair<TsTable, Set<String>>>> resultMap =
-            resp.getTableColumnInfoMap().entrySet().stream()
+        final Map<String, Map<String, TableColumnDetailInfo>> resultMap =
+            client.descTables4InformationSchema().getTableColumnInfoMap().entrySet().stream()
                 .collect(
                     Collectors.toMap(
                         Map.Entry::getKey,
@@ -489,17 +490,20 @@ public class InformationSchemaContentSupplierFactory {
                                     Collectors.toMap(
                                         Map.Entry::getKey,
                                         tableEntry ->
-                                            new Pair<>(
+                                            new TableColumnDetailInfo(
                                                 TsTableInternalRPCUtil.deserializeSingleTsTable(
                                                     tableEntry.getValue().getTableInfo()),
-                                                tableEntry.getValue().getPreDeletedColumns())))));
+                                                tableEntry.getValue().getPreDeletedColumns(),
+                                                tableEntry.getValue().getPreAlteredColumns())))));
         resultMap.put(
             InformationSchema.INFORMATION_DATABASE,
             InformationSchema.getSchemaTables().values().stream()
                 .collect(
                     Collectors.toMap(
                         TsTable::getTableName,
-                        table -> new Pair<>(table, Collections.emptySet()))));
+                        table ->
+                            new TableColumnDetailInfo(
+                                table, Collections.emptySet(), Collections.emptyMap()))));
         dbIterator = resultMap.entrySet().iterator();
       }
     }
@@ -512,12 +516,15 @@ public class InformationSchemaContentSupplierFactory {
       columnBuilders[2].writeBinary(
           new Binary(schema.getColumnName(), TSFileConfig.STRING_CHARSET));
       columnBuilders[3].writeBinary(
-          new Binary(schema.getDataType().name(), TSFileConfig.STRING_CHARSET));
+          new Binary(
+              TableColumnMetadataUtil.getColumnDataTypeName(schema, preAlteredColumns),
+              TSFileConfig.STRING_CHARSET));
       columnBuilders[4].writeBinary(
           new Binary(schema.getColumnCategory().name(), TSFileConfig.STRING_CHARSET));
       columnBuilders[5].writeBinary(
           new Binary(
-              preDeletedColumns.contains(schema.getColumnName()) ? "PRE_DELETE" : "USING",
+              TableColumnMetadataUtil.getColumnStatus(
+                  schema.getColumnName(), preDeletedColumns, preAlteredColumns),
               TSFileConfig.STRING_CHARSET));
 
       if (schema.getProps().containsKey(TsTable.COMMENT_KEY)) {
@@ -536,8 +543,7 @@ public class InformationSchemaContentSupplierFactory {
           if (!dbIterator.hasNext()) {
             return false;
           }
-          final Map.Entry<String, Map<String, Pair<TsTable, Set<String>>>> entry =
-              dbIterator.next();
+          final Map.Entry<String, Map<String, TableColumnDetailInfo>> entry = dbIterator.next();
           dbName = entry.getKey();
           if (!canShowDB(accessControl, userEntity.getUsername(), dbName, userEntity)) {
             continue;
@@ -545,19 +551,47 @@ public class InformationSchemaContentSupplierFactory {
           tableInfoIterator = entry.getValue().entrySet().iterator();
         }
 
-        Map.Entry<String, Pair<TsTable, Set<String>>> tableEntry;
+        Map.Entry<String, TableColumnDetailInfo> tableEntry;
         while (tableInfoIterator.hasNext()) {
           tableEntry = tableInfoIterator.next();
           if (canShowTable(
               accessControl, userEntity.getUsername(), dbName, tableEntry.getKey(), userEntity)) {
             tableName = tableEntry.getKey();
-            preDeletedColumns = tableEntry.getValue().getRight();
-            columnSchemaIterator = tableEntry.getValue().getLeft().getColumnList().iterator();
+            preDeletedColumns = tableEntry.getValue().getPreDeletedColumns();
+            preAlteredColumns = tableEntry.getValue().getPreAlteredColumns();
+            columnSchemaIterator = tableEntry.getValue().getTable().getColumnList().iterator();
             break;
           }
         }
       }
       return true;
+    }
+  }
+
+  private static class TableColumnDetailInfo {
+    private final TsTable table;
+    private final Set<String> preDeletedColumns;
+    private final Map<String, Byte> preAlteredColumns;
+
+    private TableColumnDetailInfo(
+        final TsTable table,
+        final Set<String> preDeletedColumns,
+        final Map<String, Byte> preAlteredColumns) {
+      this.table = table;
+      this.preDeletedColumns = preDeletedColumns;
+      this.preAlteredColumns = preAlteredColumns;
+    }
+
+    private TsTable getTable() {
+      return table;
+    }
+
+    private Set<String> getPreDeletedColumns() {
+      return preDeletedColumns;
+    }
+
+    private Map<String, Byte> getPreAlteredColumns() {
+      return preAlteredColumns;
     }
   }
 
