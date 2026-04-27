@@ -449,7 +449,11 @@ final class ConsensusSubscriptionTableITSupport {
 
     void merge(final ConsumedRecords other) {
       rowCount += other.rowCount;
-      rowKeys.addAll(other.rowKeys);
+      for (final String rowKey : other.rowKeys) {
+        if (!rowKeys.add(rowKey)) {
+          duplicateRowKeys.add(rowKey);
+        }
+      }
       duplicateRowKeys.addAll(other.duplicateRowKeys);
       seenColumns.addAll(other.seenColumns);
       seenColumnSignatures.addAll(other.seenColumnSignatures);
