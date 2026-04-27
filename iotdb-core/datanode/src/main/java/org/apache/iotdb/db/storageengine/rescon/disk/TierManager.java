@@ -30,6 +30,7 @@ import org.apache.iotdb.db.storageengine.rescon.disk.strategy.RandomOnDiskUsable
 import org.apache.iotdb.metrics.utils.FileStoreUtils;
 
 import com.google.common.io.BaseEncoding;
+import org.apache.ratis.util.MemoizedCheckedSupplier;
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.tsfile.fileSystem.FSType;
 import org.apache.tsfile.utils.FSUtils;
@@ -82,7 +83,10 @@ public class TierManager {
 
   private List<String> copyToTargetDirs;
 
-  private FolderManager copyToFolderManager;
+  //  private FolderManager copyToFolderManager;
+
+  private MemoizedCheckedSupplier<FolderManager, DiskSpaceInsufficientException>
+      copyToFolderManager;
 
   /** total space of each tier, Long.MAX_VALUE when one tier contains remote storage */
   private long[] tierDiskTotalSpace;
@@ -175,11 +179,9 @@ public class TierManager {
                             .getFile(v, IoTDBConstant.COPY_TO_TARGET_FOLDER_NAME)
                             .getPath())
                 .collect(Collectors.toList());
-        try {
-          copyToFolderManager = new FolderManager(copyToTargetDirs, directoryStrategyType);
-        } catch (DiskSpaceInsufficientException e) {
-          logger.error("All disks of tier {} are full.", tierLevel, e);
-        }
+        copyToFolderManager =
+            MemoizedCheckedSupplier.valueOf(
+                () -> new FolderManager(copyToTargetDirs, directoryStrategyType));
       }
 
       objectDirs =
@@ -248,14 +250,7 @@ public class TierManager {
   }
 
   public String getNextFolderForCopyToTargetFile() throws DiskSpaceInsufficientException {
-    if (copyToFolderManager == null) {
-      throw new DiskSpaceInsufficientException(
-          "copyToFolderManager is not initialized. This usually indicates that folder "
-              + "initialization in TierManager.initFolders() failed due to insufficient disk "
-              + "space. Please check disk space and related configuration before retrying the "
-              + "copy-to-target operation.");
-    }
-    return copyToFolderManager.getNextFolder();
+    return copyToFolderManager.get().getNextFolder();
   }
 
   public String getNextFolderForObjectFile() throws DiskSpaceInsufficientException {

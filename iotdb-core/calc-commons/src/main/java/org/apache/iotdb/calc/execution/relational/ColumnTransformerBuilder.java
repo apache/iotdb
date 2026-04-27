@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.calc.execution.relational;
 
+import org.apache.iotdb.calc.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.calc.plan.relational.metadata.ITypeMetadata;
 import org.apache.iotdb.calc.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.calc.transformation.dag.column.FailFunctionColumnTransformer;
@@ -214,6 +215,8 @@ import org.apache.tsfile.read.common.type.TimestampType;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.common.type.TypeEnum;
 import org.apache.tsfile.utils.Binary;
+
+import javax.annotation.Nullable;
 
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -1944,6 +1947,10 @@ public class ColumnTransformerBuilder
 
     private final ITypeMetadata metadata;
 
+    // used in other branch
+    @SuppressWarnings("unused")
+    private final Optional<MemoryReservationManager> memoryReservationManager;
+
     public Context(
         SessionInfo sessionInfo,
         List<LeafColumnTransformer> leafList,
@@ -1954,7 +1961,8 @@ public class ColumnTransformerBuilder
         List<TSDataType> inputDataTypes,
         int originSize,
         ITableTypeProvider typeProvider,
-        ITypeMetadata metadata) {
+        ITypeMetadata metadata,
+        @Nullable MemoryReservationManager memoryReservationManager) {
       this.sessionInfo = sessionInfo;
       this.leafList = leafList;
       this.inputLocations = inputLocations;
@@ -1965,6 +1973,7 @@ public class ColumnTransformerBuilder
       this.originSize = originSize;
       this.typeProvider = typeProvider;
       this.metadata = metadata;
+      this.memoryReservationManager = Optional.ofNullable(memoryReservationManager);
     }
 
     public Type getType(SymbolReference symbolReference) {
