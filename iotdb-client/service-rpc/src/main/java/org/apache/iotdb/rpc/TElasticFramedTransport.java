@@ -174,11 +174,6 @@ public class TElasticFramedTransport extends TTransport {
   protected void readFrame() throws TTransportException {
     underlying.readAll(i32buf, 0, 4);
     int size = TFramedTransport.decodeFrameSize(i32buf);
-    validateFrame(size);
-    readBuffer.fill(underlying, size);
-  }
-
-  protected void validateFrame(int size) throws TTransportException {
 
     if (size < 0) {
       close();
