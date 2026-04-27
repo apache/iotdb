@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.client.ThriftClient;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.datastructure.Triple;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.commons.pipe.sink.protocol.IoTDBSink;
@@ -127,7 +128,7 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
   private final AtomicBoolean isClosed = new AtomicBoolean(false);
   private final Map<PipeTransferTrackableHandler, PipeTransferTrackableHandler> pendingHandlers =
       new ConcurrentHashMap<>();
-  private final Set<String> droppedPipeTaskKeys = ConcurrentHashMap.newKeySet();
+  private final Set<Triple<String, Long, Integer>> droppedPipeTaskKeys = ConcurrentHashMap.newKeySet();
 
   private boolean enableSendTsFileLimit;
   private volatile boolean isConnectionException;
@@ -739,7 +740,7 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
   @Override
   public synchronized void discardEventsOfPipe(
       final String pipeNameToDrop, final long creationTimeToDrop, final int regionId) {
-    droppedPipeTaskKeys.add(generatePipeTaskKey(pipeNameToDrop, creationTimeToDrop, regionId));
+    droppedPipeTaskKeys.add(new Triple<>(pipeNameToDrop, creationTimeToDrop, regionId));
 
     if (isTabletBatchModeEnabled && Objects.nonNull(tabletBatchBuilder)) {
       tabletBatchBuilder.discardEventsOfPipe(pipeNameToDrop, creationTimeToDrop, regionId);
@@ -863,7 +864,7 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
 
   private boolean isDroppedPipe(final EnrichedEvent event) {
     return droppedPipeTaskKeys.contains(
-        generatePipeTaskKey(event.getPipeName(), event.getCreationTime(), event.getRegionId()));
+        new Triple<>(event.getPipeName(), event.getCreationTime(), event.getRegionId()));
   }
 
   private static boolean isDroppedPipe(
@@ -874,11 +875,6 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
     return pipeNameToDrop.equals(event.getPipeName())
         && creationTimeToDrop == event.getCreationTime()
         && regionId == event.getRegionId();
-  }
-
-  private static String generatePipeTaskKey(
-      final String pipeName, final long creationTime, final int regionId) {
-    return pipeName + "_" + creationTime + "_" + regionId;
   }
 
   @Override
