@@ -1024,8 +1024,7 @@ public class ConfigMTree {
       if (columnSchema instanceof FieldColumnSchema) {
         final FieldColumnSchema fieldColumnSchema = (FieldColumnSchema) columnSchema;
         fieldColumnSchema.setEncoding(
-            SchemaUtils.getDataTypeCompatibleEncoding(
-                dataType, fieldColumnSchema.getEncoding()));
+            SchemaUtils.getDataTypeCompatibleEncoding(dataType, fieldColumnSchema.getEncoding()));
       }
       node.removePreAlteredColumn(columnName);
     }
