@@ -27,11 +27,11 @@ import org.apache.iotdb.pipe.api.event.Event;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.Set;
 import java.util.function.Consumer;
 
 public abstract class BlockingPendingQueue<E extends Event> {
@@ -196,8 +196,7 @@ public abstract class BlockingPendingQueue<E extends Event> {
             ((EnrichedEvent) event).getRegionId());
   }
 
-  public boolean isPipeDropped(
-      final String pipeName, final long creationTime, final int regionId) {
+  public boolean isPipeDropped(final String pipeName, final long creationTime, final int regionId) {
     return droppedPipeTaskKeys.contains(generatePipeTaskKey(pipeName, creationTime, regionId));
   }
 

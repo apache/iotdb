@@ -287,6 +287,16 @@ public class PipeSinkTest {
     tablet.addTimestamp(0, 1L);
     tablet.addValue("s1", 0, 1L);
     return new PipeRawTabletInsertionEvent(
-        false, "root.db", "db", "root.db", tablet, false, pipeName, creationTime, null, null, false);
+        false,
+        "root.db",
+        "db",
+        "root.db",
+        tablet,
+        false,
+        pipeName,
+        creationTime,
+        null,
+        null,
+        false);
   }
 }

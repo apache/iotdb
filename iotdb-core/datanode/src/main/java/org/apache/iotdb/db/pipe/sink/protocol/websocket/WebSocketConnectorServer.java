@@ -125,8 +125,7 @@ public class WebSocketConnectorServer extends WebSocketServer {
     if (eventTransferQueue != null) {
       eventTransferQueue.removeIf(
           eventWrapper ->
-              discardIfMatches(
-                  eventWrapper.event, pipeNameToDrop, creationTimeToDrop, regionId));
+              discardIfMatches(eventWrapper.event, pipeNameToDrop, creationTimeToDrop, regionId));
       synchronized (eventTransferQueue) {
         eventTransferQueue.notifyAll();
       }
@@ -135,10 +134,12 @@ public class WebSocketConnectorServer extends WebSocketServer {
     final ConcurrentHashMap<Long, EventWaitingForAck> eventId2EventMap =
         eventsWaitingForAck.get(pipeNameToDrop);
     if (eventId2EventMap != null) {
-      eventId2EventMap.entrySet().removeIf(
-          entry ->
-              discardIfMatches(
-                  entry.getValue().event, pipeNameToDrop, creationTimeToDrop, regionId));
+      eventId2EventMap
+          .entrySet()
+          .removeIf(
+              entry ->
+                  discardIfMatches(
+                      entry.getValue().event, pipeNameToDrop, creationTimeToDrop, regionId));
     }
   }
 
