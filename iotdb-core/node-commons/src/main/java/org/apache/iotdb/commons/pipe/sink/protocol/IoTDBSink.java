@@ -148,7 +148,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SIN
 
 @TreeModel
 @TableModel
-public abstract class IoTDBSink implements PipeConnector {
+public abstract class IoTDBSink implements PipeConnector, PipeConnectorWithEventDiscard {
 
   private static final String PARSE_URL_ERROR_FORMATTER =
       "Exception occurred while parsing node urls from target servers: {}";

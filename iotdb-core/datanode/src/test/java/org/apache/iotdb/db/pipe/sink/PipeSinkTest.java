@@ -29,6 +29,8 @@ import org.apache.iotdb.db.pipe.sink.protocol.legacy.IoTDBLegacyPipeSink;
 import org.apache.iotdb.db.pipe.sink.protocol.opcua.OpcUaSink;
 import org.apache.iotdb.db.pipe.sink.protocol.thrift.async.IoTDBDataRegionAsyncSink;
 import org.apache.iotdb.db.pipe.sink.protocol.thrift.sync.IoTDBDataRegionSyncSink;
+import org.apache.iotdb.db.pipe.sink.protocol.websocket.WebSocketConnectorServer;
+import org.apache.iotdb.db.pipe.sink.protocol.websocket.WebSocketSink;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeException;
@@ -39,6 +41,7 @@ import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.Assert;
 import org.junit.Test;
+import org.mockito.Mockito;
 
 import java.security.SecureRandom;
 import java.util.Arrays;
@@ -143,6 +146,45 @@ public class PipeSinkTest {
       connector.addFailureEventToRetryQueue(recreatedPipeEvent, new PipeException("test"));
 
       Assert.assertEquals(1, connector.getRetryEventQueueSize());
+    }
+  }
+
+  @Test
+  public void testWebSocketSinkDropDoesNotRequeueDroppedPipeEvents() {
+    final String pipeName = "pipe_" + System.nanoTime();
+    final WebSocketConnectorServer server = WebSocketConnectorServer.getOrCreateInstance(0);
+    final WebSocketSink connector = Mockito.mock(WebSocketSink.class);
+    Mockito.when(connector.getPipeName()).thenReturn(pipeName);
+
+    server.register(connector);
+    try {
+      final PipeRawTabletInsertionEvent droppedEvent =
+          createPipeRawTabletInsertionEvent(pipeName, 1L, 1);
+      droppedEvent.increaseReferenceCount(WebSocketSink.class.getName());
+      droppedEvent.setCommitterKeyAndCommitId(new CommitterKey(pipeName, 1L, 1, -1), 1L);
+      server.addEvent(droppedEvent, connector);
+
+      server.discardEventsOfPipe(pipeName, 1L, 1);
+      Assert.assertTrue(droppedEvent.isReleased());
+
+      final PipeRawTabletInsertionEvent recreatedDroppedPipeEvent =
+          createPipeRawTabletInsertionEvent(pipeName, 1L, 1);
+      recreatedDroppedPipeEvent.increaseReferenceCount(WebSocketSink.class.getName());
+      recreatedDroppedPipeEvent.setCommitterKeyAndCommitId(
+          new CommitterKey(pipeName, 1L, 1, -1), 2L);
+      server.addEvent(recreatedDroppedPipeEvent, connector);
+
+      Assert.assertTrue(recreatedDroppedPipeEvent.isReleased());
+
+      final PipeRawTabletInsertionEvent recreatedPipeEvent =
+          createPipeRawTabletInsertionEvent(pipeName, 2L, 1);
+      recreatedPipeEvent.increaseReferenceCount(WebSocketSink.class.getName());
+      recreatedPipeEvent.setCommitterKeyAndCommitId(new CommitterKey(pipeName, 2L, 1, -1), 3L);
+      server.addEvent(recreatedPipeEvent, connector);
+
+      Assert.assertFalse(recreatedPipeEvent.isReleased());
+    } finally {
+      server.unregister(connector);
     }
   }
 
