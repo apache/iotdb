@@ -382,8 +382,11 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
       }
       pendingQueue.pollLast();
     }
-    if (pendingQueue.peekLast() instanceof ProgressReportEvent) {
-      final ProgressReportEvent oldEvent = (ProgressReportEvent) pendingQueue.peekLast();
+    final Event last = pendingQueue.peekLast();
+    if (last instanceof PipeRealtimeEvent
+        && ((PipeRealtimeEvent) last).getEvent() instanceof ProgressReportEvent) {
+      final ProgressReportEvent oldEvent =
+          (ProgressReportEvent) ((PipeRealtimeEvent) last).getEvent();
       oldEvent.bindProgressIndex(
           oldEvent
               .getProgressIndex()
