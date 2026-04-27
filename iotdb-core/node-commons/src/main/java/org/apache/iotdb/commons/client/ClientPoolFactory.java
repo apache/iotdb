@@ -120,6 +120,16 @@ public class ClientPoolFactory {
   public static class AsyncDataNodeInternalServiceClientPoolFactory
       implements IClientPoolFactory<TEndPoint, AsyncDataNodeInternalServiceClient> {
 
+    private final int selectorNumOfAsyncClientManager;
+
+    public AsyncDataNodeInternalServiceClientPoolFactory() {
+      this.selectorNumOfAsyncClientManager = conf.getSelectorNumOfClientManager();
+    }
+
+    public AsyncDataNodeInternalServiceClientPoolFactory(int selectorNumOfAsyncClientManager) {
+      this.selectorNumOfAsyncClientManager = selectorNumOfAsyncClientManager;
+    }
+
     @Override
     public GenericKeyedObjectPool<TEndPoint, AsyncDataNodeInternalServiceClient> createClientPool(
         ClientManager<TEndPoint, AsyncDataNodeInternalServiceClient> manager) {
@@ -130,7 +140,7 @@ public class ClientPoolFactory {
                   new ThriftClientProperty.Builder()
                       .setConnectionTimeoutMs(conf.getDnConnectionTimeoutInMS())
                       .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnabled())
-                      .setSelectorNumOfAsyncClientManager(conf.getSelectorNumOfClientManager())
+                      .setSelectorNumOfAsyncClientManager(selectorNumOfAsyncClientManager)
                       .setPrintLogWhenEncounterException(false)
                       .build(),
                   ThreadName.ASYNC_DATANODE_CLIENT_POOL.getName()),

@@ -216,7 +216,8 @@ public class Coordinator {
       ASYNC_INTERNAL_SERVICE_CLIENT_MANAGER =
           new IClientManager.Factory<TEndPoint, AsyncDataNodeInternalServiceClient>()
               .createClientManager(
-                  new ClientPoolFactory.AsyncDataNodeInternalServiceClientPoolFactory());
+                  new ClientPoolFactory.AsyncDataNodeInternalServiceClientPoolFactory(
+                      CONFIG.getSelectorNumOfClientManager()));
 
   private final ExecutorService executor;
   private final ScheduledExecutorService scheduledExecutor;
