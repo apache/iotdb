@@ -45,7 +45,7 @@ public class DataNodeInternalRPCService extends ThriftService
   private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
 
   protected final AtomicReference<DataNodeInternalRPCServiceImpl> impl = new AtomicReference<>();
-  private DataNodeContext dataNodeContext;
+  protected DataNodeContext dataNodeContext;
 
   private DataNodeInternalRPCService() {}
 
