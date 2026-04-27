@@ -23,10 +23,7 @@ import org.apache.thrift.TConfiguration;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 import org.apache.thrift.transport.TTransportFactory;
-import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.layered.TFramedTransport;
-
-import java.net.SocketAddress;
 
 // https://github.com/apache/thrift/blob/master/doc/specs/thrift-rpc.md
 public class TElasticFramedTransport extends TTransport {
@@ -129,11 +126,6 @@ public class TElasticFramedTransport extends TTransport {
   }
 
   protected void validateFrame(int size) throws TTransportException {
-    final int HTTP_GET_SIGNATURE = 0x47455420; // "GET "
-    final int HTTP_POST_SIGNATURE = 0x504F5354; // "POST"
-    final int TLS_MIN_VERSION = 0x160300;
-    final int TLS_MAX_VERSION = 0x160303;
-    final int TLS_LENGTH_HIGH_MAX = 0x02;
 
     if (size < 0) {
       close();
@@ -151,16 +143,6 @@ public class TElasticFramedTransport extends TTransport {
                 + size
                 + ") detected, you may be sending HTTP GET/POST requests to the Thrift-RPC port, please confirm that you are using the right port");
       } else {
-        int high24 = size >>> 8;
-        if (high24 >= TLS_MIN_VERSION
-            && high24 <= TLS_MAX_VERSION
-            && (i32buf[3] & 0xFF) <= TLS_LENGTH_HIGH_MAX) {
-          throw new TTransportException(
-              TTransportException.CORRUPTED_DATA,
-              "Singular frame size ("
-                  + size
-                  + ") detected, you may be sending TLS requests to the Thrift-RPC port, please confirm that you are using the right port");
-        }
         throw new TTransportException(
             TTransportException.CORRUPTED_DATA,
             "Frame size (" + size + ") larger than protect max size (" + thriftMaxFrameSize + ")!");
@@ -173,21 +155,10 @@ public class TElasticFramedTransport extends TTransport {
     if (size <= thriftMaxFrameSize) {
       return;
     }
-    SocketAddress remoteAddress = null;
-    if (underlying instanceof TSocket) {
-      remoteAddress = ((TSocket) underlying).getSocket().getRemoteSocketAddress();
-    }
-    String remoteInfo = (remoteAddress == null) ? "" : " to " + remoteAddress;
-    String message =
-        "Frame size ("
-            + size
-            + ") larger than protect max size ("
-            + thriftMaxFrameSize
-            + ") while writing"
-            + remoteInfo
-            + "!";
     close();
-    throw new TTransportException(TTransportException.CORRUPTED_DATA, message);
+    throw new TTransportException(
+        TTransportException.CORRUPTED_DATA,
+        "Frame size (" + size + ") larger than protect max size (" + thriftMaxFrameSize + ")!");
   }
 
   @Override
