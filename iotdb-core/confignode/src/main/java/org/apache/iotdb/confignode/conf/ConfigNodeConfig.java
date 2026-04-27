@@ -145,6 +145,12 @@ public class ConfigNodeConfig {
    */
   private int maxClientNumForEachNode = DefaultProperty.MAX_CLIENT_NUM_FOR_EACH_NODE;
 
+  /**
+   * ClientManager will have so many selector threads (TAsyncClientManager) to distribute to its
+   * clients.
+   */
+  private int selectorNumOfClientManager = 1;
+
   /** System directory, including version file for each database and metadata. */
   private String systemDir =
       IoTDBConstant.CN_DEFAULT_DATA_DIR + File.separator + IoTDBConstant.SYSTEM_FOLDER_NAME;
@@ -460,6 +466,14 @@ public class ConfigNodeConfig {
   public ConfigNodeConfig setMaxClientNumForEachNode(int maxClientNumForEachNode) {
     this.maxClientNumForEachNode = maxClientNumForEachNode;
     return this;
+  }
+
+  public int getSelectorNumOfClientManager() {
+    return selectorNumOfClientManager;
+  }
+
+  public void setSelectorNumOfClientManager(int selectorNumOfClientManager) {
+    this.selectorNumOfClientManager = selectorNumOfClientManager;
   }
 
   public String getConsensusDir() {
