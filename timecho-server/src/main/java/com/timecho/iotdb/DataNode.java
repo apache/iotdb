@@ -102,7 +102,9 @@ public class DataNode extends org.apache.iotdb.db.service.DataNode {
   @Override
   protected void registerInternalRPCService() throws StartupException {
     // Start InternalRPCService to indicate that the current DataNode can accept cluster scheduling
-    registerManager.register(DataNodeInternalRPCServiceNew.getInstance());
+    DataNodeInternalRPCServiceNew instance = DataNodeInternalRPCServiceNew.getInstance();
+    instance.setDataNodeContext(context);
+    registerManager.register(instance);
     registerManager.register(MigrationTaskManager.getInstance());
   }
 
