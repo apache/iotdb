@@ -1689,7 +1689,6 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
     return checkGlobalAuth(
         context.setAuditLogOperation(AuditLogOperation.CONTROL),
         PrivilegeType.SYSTEM,
-        () -> "",
         AuditEventType.INTEGRITY_CHECK);
   }
 
@@ -2042,11 +2041,8 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   }
 
   protected TSStatus checkGlobalAuth(
-      IAuditEntity context,
-      PrivilegeType requiredPrivilege,
-      Supplier<String> auditObject,
-      AuditEventType auditEventType) {
-    if (checkHasGlobalAuth(context, requiredPrivilege, auditObject)) {
+      IAuditEntity context, PrivilegeType requiredPrivilege, AuditEventType auditEventType) {
+    if (checkHasGlobalAuth(context, requiredPrivilege)) {
       return SUCCEED;
     }
     TSStatus result = AuthorityChecker.getTSStatus(false, requiredPrivilege);
@@ -2066,6 +2062,10 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   protected boolean checkHasGlobalAuth(
       IAuditEntity context, PrivilegeType requiredPrivilege, Supplier<String> auditObject) {
     return checkHasGlobalAuth(context, requiredPrivilege, auditObject, false);
+  }
+
+  protected boolean checkHasGlobalAuth(IAuditEntity context, PrivilegeType requiredPrivilege) {
+    return checkHasGlobalAuth(context, requiredPrivilege, () -> "", false);
   }
 
   protected boolean checkHasGlobalAuth(
