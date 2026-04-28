@@ -3395,6 +3395,15 @@ public class DataRegion implements IDataRegionForQuery {
       } // else do nothing
     }
 
+    if (involvedModificationFiles.isEmpty() && deletedByFiles.isEmpty()) {
+      logger.info("[Deletion] Deletion {} does not involve any file", deletion);
+      return;
+    }
+
+    if (!involvedModificationFiles.isEmpty()) {
+      writeDeletionToModFiles(involvedModificationFiles, deletion);
+    }
+
     if (!deletedByFiles.isEmpty()) {
       deleteTsFileCompletely(deletedByFiles);
       if (logger.isDebugEnabled()) {
@@ -3402,13 +3411,17 @@ public class DataRegion implements IDataRegionForQuery {
             "deleteTsFileCompletely execute successful, all tsfile are deleted successfully");
       }
     }
+  }
 
-    if (involvedModificationFiles.isEmpty()) {
-      logger.info("[Deletion] Deletion {} does not involve any file", deletion);
-      return;
-    }
+  private boolean isFileFullyMatchedByTime(
+      ModEntry deletion, long fileStartTime, long fileEndTime) {
+    return fileStartTime >= deletion.getStartTime() && fileEndTime <= deletion.getEndTime();
+  }
 
-    List<Exception> exceptions =
+  protected void writeDeletionToModFiles(
+      final Set<ModificationFile> involvedModificationFiles, final ModEntry deletion)
+      throws IOException {
+    final List<Exception> exceptions =
         involvedModificationFiles.parallelStream()
             .map(
                 modFile -> {
@@ -3436,11 +3449,6 @@ public class DataRegion implements IDataRegionForQuery {
         "[Deletion] Deletion {} is written into {} mod files",
         deletion,
         involvedModificationFiles.size());
-  }
-
-  private boolean isFileFullyMatchedByTime(
-      ModEntry deletion, long fileStartTime, long fileEndTime) {
-    return fileStartTime >= deletion.getStartTime() && fileEndTime <= deletion.getEndTime();
   }
 
   /** Delete completely TsFile and related supporting files */
@@ -3474,14 +3482,8 @@ public class DataRegion implements IDataRegionForQuery {
       } // else do nothing
     }
 
-    for (ModificationFile involvedModificationFile : involvedModificationFiles) {
-      // delete data in sealed file
-      involvedModificationFile.write(modEntry);
-      // The file size may be smaller than the original file, so the increment here may be
-      // negative
-      involvedModificationFile.close();
-      logger.debug(
-          "[Deletion] Deletion {} written into mods file:{}.", modEntry, involvedModificationFile);
+    if (!involvedModificationFiles.isEmpty()) {
+      writeDeletionToModFiles(involvedModificationFiles, modEntry);
     }
 
     // can be deleted by files

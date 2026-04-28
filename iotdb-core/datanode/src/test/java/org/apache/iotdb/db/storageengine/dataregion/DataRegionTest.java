@@ -61,6 +61,8 @@ import org.apache.iotdb.db.storageengine.dataregion.flush.FlushManager;
 import org.apache.iotdb.db.storageengine.dataregion.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.ReadOnlyMemChunk;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
@@ -93,6 +95,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -1659,11 +1662,83 @@ public class DataRegionTest {
         dataRegion.getWorkSequenceTsFileProcessors().contains(tsFileResource.getProcessor()));
   }
 
+  @Test
+  public void testDeleteByDeviceShouldNotDeleteFullyMatchedFilesBeforeModWriteSucceeds()
+      throws Exception {
+    final FailingModWriteDataRegion dataRegion1 =
+        new FailingModWriteDataRegion(systemDir, "root.delete_fail");
+    try {
+      for (int time = 0; time < 100; time++) {
+        TSRecord record = new TSRecord("root.delete_fail.d0", time);
+        record.addTuple(
+            DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(time)));
+        dataRegion1.insert(buildInsertRowNodeByTSRecord(record));
+      }
+      dataRegion1.syncCloseAllWorkingTsFileProcessors();
+      final TsFileResource fullyMatchedFile = dataRegion1.getSequenceFileList().get(0);
+
+      for (int time = 100; time < 200; time++) {
+        TSRecord record = new TSRecord("root.delete_fail.d0", time);
+        record.addTuple(
+            DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(time)));
+        dataRegion1.insert(buildInsertRowNodeByTSRecord(record));
+      }
+      dataRegion1.syncCloseAllWorkingTsFileProcessors();
+      final TsFileResource partiallyMatchedFile = dataRegion1.getSequenceFileList().get(1);
+
+      dataRegion1.setFailWriteDeletionToModFiles(true);
+
+      final MeasurementPath path = new MeasurementPath("root.delete_fail.d0.s0");
+      final DeleteDataNode deleteDataNode =
+          new DeleteDataNode(new PlanNodeId("1"), Collections.singletonList(path), 0, 150);
+      deleteDataNode.setSearchIndex(0);
+
+      try {
+        dataRegion1.deleteByDevice(path, deleteDataNode);
+        Assert.fail("Expected IOException");
+      } catch (IOException e) {
+        final Throwable cause = e.getCause() == null ? e : e.getCause();
+        Assert.assertTrue(cause.getMessage().contains("mock mod write failure"));
+      }
+
+      Assert.assertTrue(fullyMatchedFile.getTsFile().exists());
+      Assert.assertTrue(partiallyMatchedFile.getTsFile().exists());
+      Assert.assertFalse(fullyMatchedFile.anyModFileExists());
+      Assert.assertFalse(partiallyMatchedFile.anyModFileExists());
+    } finally {
+      dataRegion1.syncDeleteDataFiles();
+    }
+  }
+
   public static class DummyDataRegion extends DataRegion {
 
     public DummyDataRegion(String systemInfoDir, String storageGroupName)
         throws DataRegionException {
       super(systemInfoDir, "0", new TsFileFlushPolicy.DirectFlushPolicy(), storageGroupName);
+    }
+  }
+
+  public static class FailingModWriteDataRegion extends DummyDataRegion {
+
+    private boolean failWriteDeletionToModFiles;
+
+    public FailingModWriteDataRegion(String systemInfoDir, String storageGroupName)
+        throws DataRegionException {
+      super(systemInfoDir, storageGroupName);
+    }
+
+    public void setFailWriteDeletionToModFiles(boolean failWriteDeletionToModFiles) {
+      this.failWriteDeletionToModFiles = failWriteDeletionToModFiles;
+    }
+
+    @Override
+    protected void writeDeletionToModFiles(
+        final Set<ModificationFile> involvedModificationFiles, final ModEntry deletion)
+        throws IOException {
+      if (failWriteDeletionToModFiles && !involvedModificationFiles.isEmpty()) {
+        throw new IOException("mock mod write failure");
+      }
+      super.writeDeletionToModFiles(involvedModificationFiles, deletion);
     }
   }
 
