@@ -570,6 +570,19 @@ public class IoTDBRelationalAuthIT {
   }
 
   @Test
+  public void testUserNameMustNotStartWithDoubleUnderscore() throws SQLException {
+    try (Connection adminCon = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement adminStmt = adminCon.createStatement()) {
+      Assert.assertThrows(
+          SQLException.class, () -> adminStmt.execute("create user __badx 'password123456'"));
+      adminStmt.execute("create user gooduser 'password123456'");
+      Assert.assertThrows(
+          SQLException.class, () -> adminStmt.execute("ALTER USER gooduser RENAME TO __badx"));
+      adminStmt.execute("DROP USER gooduser");
+    }
+  }
+
+  @Test
   public void testAudit() throws SQLException {
     try (Connection adminCon = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement adminStmt = adminCon.createStatement()) {

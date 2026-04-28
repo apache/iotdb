@@ -22,6 +22,8 @@ package org.apache.iotdb.commons.utils;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PathPrivilege;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.auth.entity.User;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 
@@ -57,6 +59,36 @@ public class AuthUtilsTest {
             AuthUtils.validatePassword(
                 "heqwertyuiopasdfghjklzxcvbnm123456789999999asdfgh\"\n"
                     + "                + \"jkzxcvbnmqwertyuioasdfghjklzxcvbnm"));
+  }
+
+  @Test
+  public void authUtilsTest_ReservedBuiltinUsernamePrefix() throws AuthException {
+    Assert.assertTrue(User.isSystemReservedUsername(User.BUILTIN_INTERNAL_AUDIT_LOG_USERNAME));
+    Assert.assertTrue(User.isSystemReservedUsername("__any_builtin_style"));
+    Assert.assertFalse(User.isSystemReservedUsername("_single_underscore"));
+    Assert.assertFalse(User.isSystemReservedUsername("user__suffix"));
+
+    // validateUsername: format only (e.g. builtin init path may use this)
+    AuthUtils.validateUsername(User.BUILTIN_INTERNAL_AUDIT_LOG_USERNAME);
+    AuthUtils.validateUsername("__abcd");
+
+    // CREATE USER and RENAME USER target: "__" prefix is not allowed
+    Assert.assertThrows(
+        AuthException.class,
+        () -> AuthUtils.validateNewUserUsername(User.BUILTIN_INTERNAL_AUDIT_LOG_USERNAME));
+    Assert.assertThrows(AuthException.class, () -> AuthUtils.validateNewUserUsername("__abcd"));
+  }
+
+  @Test
+  public void authUtilsTest_InternalBuiltinUsername() throws AuthException {
+    AuthUtils.validateInternalBuiltinUsername("sys_admin", User.INTERNAL_SYSTEM_ADMIN);
+    AuthUtils.validateInternalBuiltinUsername("security_admin", User.INTERNAL_SECURITY_ADMIN);
+    AuthUtils.validateInternalBuiltinUsername("audit_admin", User.INTERNAL_AUDIT_ADMIN);
+    AuthUtils.validateInternalBuiltinUsername("root", IoTDBConstant.SUPER_USER_ID);
+
+    Assert.assertThrows(
+        AuthException.class, () -> AuthUtils.validateInternalBuiltinUsername("nointernal", 4L));
+    AuthUtils.validateInternalBuiltinUsername("__internal_auditor", 4L);
   }
 
   @Test
