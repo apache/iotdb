@@ -49,18 +49,7 @@ public class PipeRealtimeEventTest {
   private static class TestEnrichedEvent extends EnrichedEvent {
 
     private TestEnrichedEvent() {
-      super(
-          null,
-          0,
-          null,
-          null,
-          null,
-          null,
-          null,
-          null,
-          false,
-          Long.MIN_VALUE,
-          Long.MAX_VALUE);
+      super(null, 0, null, null, null, null, null, null, false, Long.MIN_VALUE, Long.MAX_VALUE);
     }
 
     @Override

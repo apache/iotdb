@@ -522,7 +522,8 @@ public class PipeTabletInsertionEventTest {
       hasNullMeasurementPath =
           checkedPathsSupplier.stream().anyMatch(path -> path.getFullPath().endsWith(".null"));
       return hasNullMeasurementPath
-          ? AuthorityChecker.getTSStatus(Collections.singletonList(0), checkedPathsSupplier, permission)
+          ? AuthorityChecker.getTSStatus(
+              Collections.singletonList(0), checkedPathsSupplier, permission)
           : new TSStatus(org.apache.iotdb.rpc.TSStatusCode.SUCCESS_STATUS.getStatusCode());
     }
   }
