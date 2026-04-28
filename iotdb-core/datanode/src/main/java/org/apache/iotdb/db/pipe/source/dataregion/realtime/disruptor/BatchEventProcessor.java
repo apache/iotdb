@@ -69,7 +69,6 @@ public final class BatchEventProcessor<T> implements Runnable {
 
   @Override
   public void run() {
-    T event = null;
     long nextSequence = sequence.get() + 1L;
 
     while (running) {
@@ -78,27 +77,57 @@ public final class BatchEventProcessor<T> implements Runnable {
         final long availableSequence = sequenceBarrier.waitFor(nextSequence);
 
         // Batch process all available events
-        while (nextSequence <= availableSequence) {
-          event = ringBuffer.get(nextSequence);
-          eventHandler.onEvent(event, nextSequence, nextSequence == availableSequence);
-          nextSequence++;
-        }
-
-        // Update sequence
-        sequence.set(availableSequence);
+        nextSequence = processAvailableEvents(nextSequence, availableSequence);
 
       } catch (final InterruptedException ex) {
-        Thread.currentThread().interrupt();
-        LOGGER.info("Processor interrupted");
+        if (running) {
+          Thread.currentThread().interrupt();
+          LOGGER.info("Processor interrupted");
+        }
         break;
       } catch (final Throwable ex) {
-        exceptionHandler.handleEventException(ex, nextSequence, event);
+        exceptionHandler.handleEventException(ex, nextSequence, ringBuffer.get(nextSequence));
         sequence.set(nextSequence);
         nextSequence++;
       }
     }
 
+    if (!running) {
+      drainRemainingPublishedEvents(nextSequence);
+    }
     LOGGER.info("Processor stopped");
+  }
+
+  private long processAvailableEvents(long nextSequence, long availableSequence) throws Throwable {
+    while (nextSequence <= availableSequence) {
+      final T event = ringBuffer.get(nextSequence);
+      eventHandler.onEvent(event, nextSequence, nextSequence == availableSequence);
+      nextSequence++;
+    }
+
+    sequence.set(availableSequence);
+    return nextSequence;
+  }
+
+  private void drainRemainingPublishedEvents(long nextSequence) {
+    final long availableSequence = sequenceBarrier.getCursor();
+    if (availableSequence < nextSequence) {
+      return;
+    }
+
+    final long highestPublishedSequence =
+        sequenceBarrier.getHighestPublishedSequence(nextSequence, availableSequence);
+    while (nextSequence <= highestPublishedSequence) {
+      final T event = ringBuffer.get(nextSequence);
+      try {
+        eventHandler.onEvent(event, nextSequence, nextSequence == highestPublishedSequence);
+      } catch (final Throwable ex) {
+        exceptionHandler.handleEventException(ex, nextSequence, event);
+      } finally {
+        sequence.set(nextSequence);
+      }
+      nextSequence++;
+    }
   }
 
   private static class DefaultExceptionHandler<T> implements ExceptionHandler<T> {

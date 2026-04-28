@@ -122,10 +122,14 @@ public class Disruptor<T> {
 
     if (processorThread != null) {
       try {
+        processorThread.interrupt();
         processorThread.join(5000);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
         LOGGER.warn("Interrupted waiting for processor to stop");
+      }
+      if (processorThread.isAlive()) {
+        LOGGER.warn("Timed out waiting for processor to stop");
       }
     }
 
