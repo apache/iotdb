@@ -266,7 +266,6 @@
         <dependency>
             <groupId>at.yawk.lz4</groupId>
             <artifactId>lz4-java</artifactId>
-            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>junit</groupId>
@@ -476,6 +475,7 @@
                     <ignoredDependencies>
                         <!-- For some reason this plugin missed it being used for a constant import -->
                         <ignoredDependency>org.apache.iotdb:isession</ignoredDependency>
+                        <ignoredDependency>at.yawk.lz4:lz4-java</ignoredDependency>
                     </ignoredDependencies>
                 </configuration>
             </plugin>

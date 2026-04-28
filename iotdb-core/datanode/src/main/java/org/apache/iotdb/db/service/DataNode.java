@@ -187,7 +187,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
   private volatile boolean schemaRegionConsensusStarted = false;
   private volatile boolean dataRegionConsensusStarted = false;
   private static Thread watcherThread;
-  private DataNodeContext context;
+  protected DataNodeContext context;
 
   public DataNode() {
     super("DataNode");
