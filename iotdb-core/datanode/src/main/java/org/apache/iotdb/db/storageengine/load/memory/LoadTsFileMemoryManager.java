@@ -179,7 +179,18 @@ public class LoadTsFileMemoryManager {
     if (dataCacheMemoryBlock == null) {
       final long actuallyAllocateMemoryInBytes =
           tryAllocateFromQuery(MEMORY_TOTAL_SIZE_FROM_QUERY_IN_BYTES >> 2);
-      dataCacheMemoryBlock = new LoadTsFileDataCacheMemoryBlock(actuallyAllocateMemoryInBytes);
+      try {
+        dataCacheMemoryBlock = new LoadTsFileDataCacheMemoryBlock(actuallyAllocateMemoryInBytes);
+      } catch (RuntimeException e) {
+        if (actuallyAllocateMemoryInBytes > 0) {
+          try {
+            releaseToQuery(actuallyAllocateMemoryInBytes);
+          } catch (RuntimeException releaseException) {
+            e.addSuppressed(releaseException);
+          }
+        }
+        throw e;
+      }
       LOGGER.info(
           "Create Data Cache Memory Block {}, allocate memory {}",
           dataCacheMemoryBlock,
