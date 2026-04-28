@@ -72,25 +72,34 @@ public class PipeInsertionDataNodeListener {
 
   public synchronized void stopListenAndAssign(
       final int dataRegionId, final PipeRealtimeDataRegionSource extractor) {
-    final PipeDataRegionAssigner assigner = dataRegionId2Assigner.get(dataRegionId);
-    if (assigner == null) {
-      return;
+    PipeDataRegionAssigner assignerToClose = null;
+
+    synchronized (this) {
+      final PipeDataRegionAssigner assigner = dataRegionId2Assigner.get(dataRegionId);
+      if (assigner == null) {
+        return;
+      }
+
+      assigner.stopAssignTo(extractor);
+
+      if (extractor.isNeedListenToTsFile()) {
+        listenToTsFileExtractorCount.decrementAndGet();
+      }
+      if (extractor.isNeedListenToInsertNode()) {
+        listenToInsertNodeExtractorCount.decrementAndGet();
+      }
+
+      if (assigner.notMoreSourceNeededToBeAssigned()) {
+        // The removed assigner will is the same as the one referenced by the variable `assigner`
+        dataRegionId2Assigner.remove(dataRegionId);
+        // This will help to release the memory occupied by the assigner
+        assignerToClose = assigner;
+      }
     }
 
-    assigner.stopAssignTo(extractor);
-
-    if (extractor.isNeedListenToTsFile()) {
-      listenToTsFileExtractorCount.decrementAndGet();
-    }
-    if (extractor.isNeedListenToInsertNode()) {
-      listenToInsertNodeExtractorCount.decrementAndGet();
-    }
-
-    if (assigner.notMoreExtractorNeededToBeAssigned()) {
-      // The removed assigner will is the same as the one referenced by the variable `assigner`
-      dataRegionId2Assigner.remove(dataRegionId);
-      // This will help to release the memory occupied by the assigner
-      assigner.close();
+    if (assignerToClose != null) {
+      // Closing the disruptor may block for a while, so keep it out of the global listener lock.
+      assignerToClose.close();
     }
   }
 

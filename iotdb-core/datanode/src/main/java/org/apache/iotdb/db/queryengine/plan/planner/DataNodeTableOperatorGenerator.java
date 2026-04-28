@@ -1240,7 +1240,8 @@ public class DataNodeTableOperatorGenerator
                                 ImmutableList.of(),
                                 0,
                                 context.getTypeProvider(),
-                                metadata)),
+                                metadata,
+                                context.getMemoryReservationManager())),
                     columnSchemaList,
                     database,
                     table)
