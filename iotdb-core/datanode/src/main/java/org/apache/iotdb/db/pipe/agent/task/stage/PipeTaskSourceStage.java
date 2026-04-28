@@ -45,32 +45,32 @@ public class PipeTaskSourceStage extends PipeTaskStage {
   public PipeTaskSourceStage(
       String pipeName,
       long creationTime,
-      PipeParameters extractorParameters,
+      PipeParameters sourceParameters,
       int regionId,
       PipeTaskMeta pipeTaskMeta) {
     pipeExtractor =
         StorageEngine.getInstance().getAllDataRegionIds().contains(new DataRegionId(regionId))
                 || PipeRuntimeMeta.isSourceExternal(regionId)
-            ? PipeDataNodeAgent.plugin().dataRegion().reflectSource(extractorParameters)
-            : PipeDataNodeAgent.plugin().schemaRegion().reflectSource(extractorParameters);
+            ? PipeDataNodeAgent.plugin().dataRegion().reflectSource(sourceParameters)
+            : PipeDataNodeAgent.plugin().schemaRegion().reflectSource(sourceParameters);
 
-    // Validate and customize should be called before createSubtask. this allows extractor exposing
+    // Validate and customize should be called before createSubtask. this allows source exposing
     // exceptions in advance.
     try {
-      // 1. Validate extractor parameters
-      pipeExtractor.validate(new PipeParameterValidator(extractorParameters));
+      // 1. Validate source parameters
+      pipeExtractor.validate(new PipeParameterValidator(sourceParameters));
 
-      // 2. Customize extractor
+      // 2. Customize source
       final PipeTaskRuntimeConfiguration runtimeConfiguration =
           new PipeTaskRuntimeConfiguration(
               new PipeTaskSourceRuntimeEnvironment(pipeName, creationTime, regionId, pipeTaskMeta));
-      pipeExtractor.customize(extractorParameters, runtimeConfiguration);
+      pipeExtractor.customize(sourceParameters, runtimeConfiguration);
     } catch (Exception e) {
       try {
         pipeExtractor.close();
       } catch (Exception closeException) {
         LOGGER.warn(
-            "Failed to close extractor after failed to initialize extractor. "
+            "Failed to close source after failed to initialize source. "
                 + "Ignore this exception.",
             closeException);
       }
