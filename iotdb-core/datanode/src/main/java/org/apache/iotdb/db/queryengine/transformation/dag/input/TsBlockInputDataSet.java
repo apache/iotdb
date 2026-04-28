@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.input;
 
-import org.apache.iotdb.db.queryengine.execution.operator.Operator;
+import org.apache.iotdb.calc.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.transformation.api.YieldableState;
 
 import org.apache.tsfile.block.column.Column;

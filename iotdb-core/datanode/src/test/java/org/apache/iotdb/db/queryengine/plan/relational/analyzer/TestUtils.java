@@ -20,20 +20,20 @@
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.db.protocol.session.IClientSession;
+import org.apache.iotdb.commons.queryengine.common.SessionInfo;
+import org.apache.iotdb.commons.queryengine.common.SqlDialect;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.JoinNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.MergeSortNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.SortNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
-import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MergeSortNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
@@ -68,7 +68,7 @@ public class TestUtils {
           ZoneId.systemDefault(),
           IoTDBConstant.ClientVersion.V_1_0,
           "db",
-          IClientSession.SqlDialect.TABLE);
+          SqlDialect.TABLE);
   public static final Metadata TEST_MATADATA = new TestMetadata();
   public static final MPPQueryContext QUERY_CONTEXT =
       new MPPQueryContext("only for test", QUERY_ID, SESSION_INFO, null, null);
@@ -178,8 +178,7 @@ public class TestUtils {
       SqlParser sqlParser = new SqlParser();
       Statement statement = sqlParser.createStatement(sql, ZoneId.systemDefault(), null);
       SessionInfo session =
-          new SessionInfo(
-              0, "test", ZoneId.systemDefault(), "testdb", IClientSession.SqlDialect.TABLE);
+          new SessionInfo(0, "test", ZoneId.systemDefault(), "testdb", SqlDialect.TABLE);
       analyzeStatementWithException(statement, TEST_MATADATA, QUERY_CONTEXT, sqlParser, session);
       fail("Expect test sql throws exception: " + sql);
     } catch (Exception e) {

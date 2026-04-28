@@ -19,6 +19,10 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.fill.filter;
 
+import org.apache.iotdb.calc.execution.operator.process.fill.filter.MonthIntervalMSFillFilter;
+import org.apache.iotdb.calc.execution.operator.process.fill.filter.MonthIntervalNSFillFilter;
+import org.apache.iotdb.calc.execution.operator.process.fill.filter.MonthIntervalUSFillFilter;
+
 import org.junit.Test;
 
 import java.time.Instant;

@@ -54,16 +54,33 @@ jobs:
         if: runner.os == 'Linux'
         shell: bash
         run: |
+          set -euxo pipefail
           sudo apt-get update
-          sudo apt-get install libboost-all-dev
-          sudo apt-get install openssl libssl-dev
+          sudo apt-get install -y libboost-all-dev openssl libssl-dev wget
+          # jammy (22.04): no clang-format-17 in default repos — use apt.llvm.org (same LLVM 17 as noble/choco/brew)
+          . /etc/os-release
+          if [[ "${VERSION_CODENAME}" == "jammy" ]]; then
+            wget -qO /tmp/llvm.sh https://apt.llvm.org/llvm.sh
+            chmod +x /tmp/llvm.sh
+            sudo DEBIAN_FRONTEND=noninteractive /tmp/llvm.sh 17
+            # llvm.sh installs clang-17/lldb/lld/clangd but not the clang-format-17 package
+            sudo apt-get install -y clang-format-17
+          else
+            sudo apt-get install -y clang-format-17
+          fi
+          sudo update-alternatives --install /usr/bin/clang-format clang-format /usr/bin/clang-format-17 100
+          sudo update-alternatives --set clang-format /usr/bin/clang-format-17
+          clang-format --version
       - name: Install CPP Dependencies (Mac)
         # remove some xcode to release disk space
         if: runner.os == 'macOS'
         shell: bash
         run: |
           brew install boost
-          brew install openssl
+          brew install openssl llvm@17
+          ln -sf "$(brew --prefix llvm@17)/bin/clang-format" "$(brew --prefix)/bin/clang-format"
+          echo "$(brew --prefix llvm@17)/bin" >> "$GITHUB_PATH"
+          clang-format --version
           sudo rm -rf /Applications/Xcode_14.3.1.app
           sudo rm -rf /Applications/Xcode_15.0.1.app
           sudo rm -rf /Applications/Xcode_15.1.app
@@ -72,21 +89,28 @@ jobs:
       - name: Install CPP Dependencies (Windows)
         if: runner.os == 'Windows'
         run: |
-          choco install winflexbison3
-          choco install boost-msvc-14.3
+          choco install winflexbison3 -y
+          choco install boost-msvc-14.3 -y
           $boost_path = (Get-ChildItem -Path 'C:\local\' -Filter 'boost_*').FullName
           echo $boost_path >> $env:GITHUB_PATH
           
-          choco install openssl
+          choco install openssl -y
           $sslPath = (Get-ChildItem 'C:\Program Files\OpenSSL*' -Directory | Select-Object -First 1).FullName
           echo "$sslPath\bin" >> $env:GITHUB_PATH
           echo "OPENSSL_ROOT_DIR=$sslPath" >> $env:GITHUB_ENV
+          choco install llvm --version=17.0.6 --force -y
+          clang-format --version
       - name: Cache Maven packages
         uses: actions/cache@v5
         with:
           path: ~/.m2
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2-
+      - name: Check C++ format (Spotless)
+        shell: bash
+        run: |
+          ./mvnw -P with-cpp -pl iotdb-client/client-cpp spotless:check
+          ./mvnw -P with-cpp -pl example/client-cpp-example spotless:check
       - name: Build IoTDB server
         shell: bash
         run: ./mvnw clean install -pl distribution -am -DskipTests

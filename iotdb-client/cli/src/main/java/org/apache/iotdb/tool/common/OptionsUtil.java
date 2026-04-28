@@ -157,13 +157,7 @@ public class OptionsUtil extends Constants {
   }
 
   public static Options createTableImportCommonOptions() {
-    Options options = createImportCommonOptions();
-
-    Option opDatabase =
-        Option.builder(DB_ARGS).longOpt(DB_NAME).argName(DB_ARGS).hasArg().desc(DB_DESC).build();
-    options.addOption(opDatabase);
-
-    return options;
+    return createImportCommonOptions();
   }
 
   public static Options createExportCommonOptions() {
@@ -731,6 +725,16 @@ public class OptionsUtil extends Constants {
   public static Options createTableImportCsvOptions() {
     Options options = createTableImportCommonOptions();
 
+    Option opDatabase =
+        Option.builder(DB_ARGS)
+            .longOpt(DB_NAME)
+            .argName(DB_ARGS)
+            .required()
+            .hasArg()
+            .desc(DB_DESC)
+            .build();
+    options.addOption(opDatabase);
+
     Option opTable =
         Option.builder(TABLE_ARGS)
             .longOpt(TABLE_ARGS)
@@ -830,6 +834,10 @@ public class OptionsUtil extends Constants {
   public static Options createTableImportSqlOptions() {
     Options options = createTableImportCommonOptions();
 
+    Option opDatabase =
+        Option.builder(DB_ARGS).longOpt(DB_NAME).argName(DB_ARGS).hasArg().desc(DB_DESC).build();
+    options.addOption(opDatabase);
+
     Option opFile =
         Option.builder(FILE_ARGS)
             .required()
@@ -888,6 +896,16 @@ public class OptionsUtil extends Constants {
 
   public static Options createTableImportTsFileOptions() {
     Options options = createTableImportCommonOptions();
+
+    Option opDatabase =
+        Option.builder(DB_ARGS)
+            .longOpt(DB_NAME)
+            .argName(DB_ARGS)
+            .required()
+            .hasArg()
+            .desc(DB_DESC)
+            .build();
+    options.addOption(opDatabase);
 
     Option opFile =
         Option.builder(FILE_ARGS)

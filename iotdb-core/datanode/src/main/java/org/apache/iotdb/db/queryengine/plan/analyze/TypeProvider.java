@@ -19,8 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze;
 
-import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
-import org.apache.iotdb.db.queryengine.plan.relational.utils.TypeUtil;
+import org.apache.iotdb.commons.queryengine.plan.analyze.ITableTypeProvider;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.commons.queryengine.plan.relational.utils.TypeUtil;
 
 import com.google.common.collect.ImmutableMap;
 import org.apache.tsfile.enums.TSDataType;
@@ -40,7 +41,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand.TIMESTAMP_EXPRESSION_STRING;
 
-public class TypeProvider {
+public class TypeProvider implements ITableTypeProvider {
 
   private final Map<String, TSDataType> treeModelTypeMap;
 

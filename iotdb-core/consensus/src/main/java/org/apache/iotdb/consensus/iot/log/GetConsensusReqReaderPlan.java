@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.consensus.iot.log;
 
-import org.apache.iotdb.consensus.common.request.IConsensusRequest;
+import org.apache.iotdb.commons.request.IConsensusRequest;
 
 import java.nio.ByteBuffer;
 

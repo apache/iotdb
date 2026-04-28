@@ -19,7 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.iterative;
 
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.iterative.GroupReference;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 
 import java.util.List;
@@ -33,7 +34,7 @@ public final class Plans {
     return node.accept(new ResolvingVisitor(lookup), null);
   }
 
-  private static class ResolvingVisitor extends PlanVisitor<PlanNode, Void> {
+  private static class ResolvingVisitor implements PlanVisitor<PlanNode, Void> {
     private final Lookup lookup;
 
     public ResolvingVisitor(Lookup lookup) {

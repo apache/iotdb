@@ -117,7 +117,8 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionAndP
                 new TCreatePipeReq()
                     .setPipeName(pipeName)
                     .setExtractorAttributes(
-                        topicMeta.generateExtractorAttributes(consumerMeta.getUsername()))
+                        topicMeta.generateExtractorAttributes(
+                            consumerMeta.getUsername(), consumerMeta.getSubscriptionAuthPassword()))
                     .setProcessorAttributes(topicMeta.generateProcessorAttributes())
                     .setConnectorAttributes(topicMeta.generateConnectorAttributes(consumerGroupId)),
                 pipeTaskInfo));

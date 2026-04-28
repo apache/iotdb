@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnMetadata;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.TableSchema;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;

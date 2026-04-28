@@ -66,6 +66,7 @@ import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.commons.udf.UDFInformation;
 import org.apache.iotdb.commons.udf.UDFType;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
+import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionGroupsByTimePlan;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorRelationalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorTreePlan;
@@ -2061,5 +2062,14 @@ public class ConfigPhysicalPlanSerDeTest {
     RemoveRegionLocationPlan dePlan =
         (RemoveRegionLocationPlan) ConfigPhysicalPlan.Factory.create(plan.serializeToByteBuffer());
     Assert.assertEquals(plan, dePlan);
+  }
+
+  @Test
+  public void GetRegionGroupsByTimePlanTest() throws IOException {
+    GetRegionGroupsByTimePlan plan0 = new GetRegionGroupsByTimePlan("root.sg0", 0L, 604800000L);
+    GetRegionGroupsByTimePlan plan1 =
+        (GetRegionGroupsByTimePlan)
+            ConfigPhysicalPlan.Factory.create(plan0.serializeToByteBuffer());
+    Assert.assertEquals(plan0, plan1);
   }
 }

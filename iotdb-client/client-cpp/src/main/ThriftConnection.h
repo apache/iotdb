@@ -29,51 +29,49 @@ class SessionDataSet;
 
 class ThriftConnection {
 public:
-    static const int THRIFT_DEFAULT_BUFFER_SIZE;
-    static const int THRIFT_MAX_FRAME_SIZE;
-    static const int CONNECTION_TIMEOUT_IN_MS;
-    static const int DEFAULT_FETCH_SIZE;
+  static const int THRIFT_DEFAULT_BUFFER_SIZE;
+  static const int THRIFT_MAX_FRAME_SIZE;
+  static const int CONNECTION_TIMEOUT_IN_MS;
+  static const int DEFAULT_FETCH_SIZE;
 
-    explicit ThriftConnection(const TEndPoint& endPoint,
-                     int thriftDefaultBufferSize = THRIFT_DEFAULT_BUFFER_SIZE,
-                     int thriftMaxFrameSize = THRIFT_MAX_FRAME_SIZE,
-                     int connectionTimeoutInMs = CONNECTION_TIMEOUT_IN_MS,
-                     int fetchSize = DEFAULT_FETCH_SIZE);
+  explicit ThriftConnection(const TEndPoint& endPoint,
+                            int thriftDefaultBufferSize = THRIFT_DEFAULT_BUFFER_SIZE,
+                            int thriftMaxFrameSize = THRIFT_MAX_FRAME_SIZE,
+                            int connectionTimeoutInMs = CONNECTION_TIMEOUT_IN_MS,
+                            int fetchSize = DEFAULT_FETCH_SIZE);
 
-    ~ThriftConnection();
+  ~ThriftConnection();
 
-    void init(const std::string& username,
-              const std::string& password,
-              bool enableRPCCompression = false,
-              bool useSSL = false,
-              const std::string& trustCertFilePath = "",
-              const std::string& zoneId = std::string(),
-              const std::string& version = "V_1_0");
+  void init(const std::string& username, const std::string& password,
+            bool enableRPCCompression = false, bool useSSL = false,
+            const std::string& trustCertFilePath = "", const std::string& zoneId = std::string(),
+            const std::string& version = "V_1_0");
 
-    std::unique_ptr<SessionDataSet> executeQueryStatement(const std::string& sql, int64_t timeoutInMs = -1);
+  std::unique_ptr<SessionDataSet> executeQueryStatement(const std::string& sql,
+                                                        int64_t timeoutInMs = -1);
 
-    void close();
+  void close();
 
 private:
-    TEndPoint endPoint_;
+  TEndPoint endPoint_;
 
-    int thriftDefaultBufferSize_;
-    int thriftMaxFrameSize_;
-    int connectionTimeoutInMs_;
-    int fetchSize_;
+  int thriftDefaultBufferSize_;
+  int thriftMaxFrameSize_;
+  int connectionTimeoutInMs_;
+  int fetchSize_;
 
 #if WITH_SSL
-    std::shared_ptr<apache::thrift::transport::TSSLSocketFactory> socketFactory_ =
-        std::make_shared<apache::thrift::transport::TSSLSocketFactory>();
+  std::shared_ptr<apache::thrift::transport::TSSLSocketFactory> socketFactory_ =
+      std::make_shared<apache::thrift::transport::TSSLSocketFactory>();
 #endif
-    std::shared_ptr<apache::thrift::transport::TTransport> transport_;
-    std::shared_ptr<IClientRPCServiceClient> client_;
-    int64_t sessionId_{};
-    int64_t statementId_{};
-    std::string zoneId_;
-    int timeFactor_{};
+  std::shared_ptr<apache::thrift::transport::TTransport> transport_;
+  std::shared_ptr<IClientRPCServiceClient> client_;
+  int64_t sessionId_{};
+  int64_t statementId_{};
+  std::string zoneId_;
+  int timeFactor_{};
 
-    void initZoneId();
+  void initZoneId();
 };
 
 #endif

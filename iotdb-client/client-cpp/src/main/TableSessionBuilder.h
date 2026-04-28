@@ -26,7 +26,7 @@
 #include "AbstractSessionBuilder.h"
 
 class TableSessionBuilder : public AbstractSessionBuilder {
-    /*
+  /*
         std::string host;
         int rpcPort;
         std::string username;
@@ -37,59 +37,60 @@ class TableSessionBuilder : public AbstractSessionBuilder {
         std::string database;
     */
 public:
-    TableSessionBuilder* host(const std::string &host) {
-        AbstractSessionBuilder::host = host;
-        return this;
-    }
-    TableSessionBuilder* rpcPort(int rpcPort) {
-        AbstractSessionBuilder::rpcPort = rpcPort;
-        return this;
-    }
-    TableSessionBuilder* useSSL(bool useSSL) {
-        AbstractSessionBuilder::useSSL = useSSL;
-        return this;
-    }
+  TableSessionBuilder* host(const std::string& host) {
+    AbstractSessionBuilder::host = host;
+    return this;
+  }
+  TableSessionBuilder* rpcPort(int rpcPort) {
+    AbstractSessionBuilder::rpcPort = rpcPort;
+    return this;
+  }
+  TableSessionBuilder* useSSL(bool useSSL) {
+    AbstractSessionBuilder::useSSL = useSSL;
+    return this;
+  }
 
-    TableSessionBuilder* trustCertFilePath(const std::string &trustCertFilePath) {
-        AbstractSessionBuilder::trustCertFilePath = trustCertFilePath;
-        return this;
-    }
+  TableSessionBuilder* trustCertFilePath(const std::string& trustCertFilePath) {
+    AbstractSessionBuilder::trustCertFilePath = trustCertFilePath;
+    return this;
+  }
 
-    TableSessionBuilder* username(const std::string &username) {
-        AbstractSessionBuilder::username = username;
-        return this;
+  TableSessionBuilder* username(const std::string& username) {
+    AbstractSessionBuilder::username = username;
+    return this;
+  }
+  TableSessionBuilder* password(const std::string& password) {
+    AbstractSessionBuilder::password = password;
+    return this;
+  }
+  TableSessionBuilder* zoneId(const std::string& zoneId) {
+    AbstractSessionBuilder::zoneId = zoneId;
+    return this;
+  }
+  TableSessionBuilder* fetchSize(int fetchSize) {
+    AbstractSessionBuilder::fetchSize = fetchSize;
+    return this;
+  }
+  TableSessionBuilder* database(const std::string& database) {
+    AbstractSessionBuilder::database = database;
+    return this;
+  }
+  TableSessionBuilder* nodeUrls(const std::vector<string>& nodeUrls) {
+    AbstractSessionBuilder::nodeUrls = nodeUrls;
+    return this;
+  }
+  std::shared_ptr<TableSession> build() {
+    if (!AbstractSessionBuilder::nodeUrls.empty() &&
+        (AbstractSessionBuilder::host != DEFAULT_HOST ||
+         AbstractSessionBuilder::rpcPort != DEFAULT_RPC_PORT)) {
+      throw IoTDBException(
+          "Session builder does not support setting node urls and host/rpcPort at the same time.");
     }
-    TableSessionBuilder* password(const std::string &password) {
-        AbstractSessionBuilder::password = password;
-        return this;
-    }
-    TableSessionBuilder* zoneId(const std::string &zoneId) {
-        AbstractSessionBuilder::zoneId = zoneId;
-        return this;
-    }
-    TableSessionBuilder* fetchSize(int fetchSize) {
-        AbstractSessionBuilder::fetchSize = fetchSize;
-        return this;
-    }
-    TableSessionBuilder* database(const std::string &database) {
-        AbstractSessionBuilder::database = database;
-        return this;
-    }
-    TableSessionBuilder* nodeUrls(const std::vector<string>& nodeUrls) {
-        AbstractSessionBuilder::nodeUrls = nodeUrls;
-        return this;
-    }
-    std::shared_ptr<TableSession> build() {
-        if (!AbstractSessionBuilder::nodeUrls.empty() &&
-            (AbstractSessionBuilder::host != DEFAULT_HOST ||
-                AbstractSessionBuilder::rpcPort != DEFAULT_RPC_PORT)) {
-            throw IoTDBException("Session builder does not support setting node urls and host/rpcPort at the same time.");
-        }
-        sqlDialect = "table";
-        auto newSession = std::make_shared<Session>(this);
-        newSession->open(false);
-        return std::make_shared<TableSession>(newSession);
-    }
+    sqlDialect = "table";
+    auto newSession = std::make_shared<Session>(this);
+    newSession->open(false);
+    return std::make_shared<TableSession>(newSession);
+  }
 };
 
 #endif // IOTDB_TABLESESSIONBUILDER_H

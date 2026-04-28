@@ -100,6 +100,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
 
   private final String username;
   private final String password;
+  private final String encryptedPassword;
 
   protected String consumerId;
   protected String consumerGroupId;
@@ -177,6 +178,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
 
     this.username = builder.username;
     this.password = builder.password;
+    this.encryptedPassword = builder.encryptedPassword;
 
     this.consumerId = builder.consumerId;
     this.consumerGroupId = builder.consumerGroupId;
@@ -207,6 +209,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
                 (String)
                     properties.getOrDefault(
                         ConsumerConstant.PASSWORD_KEY, SessionConfig.DEFAULT_PASSWORD))
+            .encryptedPassword((String) properties.get(ConsumerConstant.ENCRYPTED_PASSWORD_KEY))
             .consumerId((String) properties.get(ConsumerConstant.CONSUMER_ID_KEY))
             .consumerGroupId((String) properties.get(ConsumerConstant.CONSUMER_GROUP_ID_KEY))
             .heartbeatIntervalMs(
@@ -387,6 +390,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
       final TEndPoint endPoint,
       final String username,
       final String password,
+      final String encryptedPassword,
       final String consumerId,
       final String consumerGroupId,
       final int thriftMaxFrameSize,
@@ -400,6 +404,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
             endPoint,
             this.username,
             this.password,
+            this.encryptedPassword,
             this.consumerId,
             this.consumerGroupId,
             this.thriftMaxFrameSize,

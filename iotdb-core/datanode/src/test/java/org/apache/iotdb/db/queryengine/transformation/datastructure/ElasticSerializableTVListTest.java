@@ -19,8 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.transformation.datastructure;
 
-import org.apache.iotdb.db.queryengine.transformation.datastructure.iterator.TVListForwardIterator;
-import org.apache.iotdb.db.queryengine.transformation.datastructure.tv.ElasticSerializableTVList;
+import org.apache.iotdb.calc.transformation.datastructure.SerializableList;
+import org.apache.iotdb.calc.transformation.datastructure.iterator.TVListForwardIterator;
+import org.apache.iotdb.calc.transformation.datastructure.tv.ElasticSerializableTVList;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.enums.TSDataType;

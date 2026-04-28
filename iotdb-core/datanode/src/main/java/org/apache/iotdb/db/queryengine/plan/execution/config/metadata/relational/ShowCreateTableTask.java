@@ -96,7 +96,13 @@ public class ShowCreateTableTask extends AbstractTableTask {
               .append("TAG");
           break;
         case TIME:
-          continue;
+          builder
+              .append(getIdentifier(schema.getColumnName()))
+              .append(" ")
+              .append(schema.getDataType())
+              .append(" ")
+              .append("TIME");
+          break;
         case FIELD:
           builder
               .append(getIdentifier(schema.getColumnName()))
@@ -123,7 +129,7 @@ public class ShowCreateTableTask extends AbstractTableTask {
       builder.append(",");
     }
 
-    if (table.getColumnList().size() > 1) {
+    if (!table.getColumnList().isEmpty()) {
       builder.deleteCharAt(builder.length() - 1);
     }
 
@@ -131,10 +137,12 @@ public class ShowCreateTableTask extends AbstractTableTask {
     if (table.getPropValue(TsTable.COMMENT_KEY).isPresent()) {
       builder.append(" COMMENT ").append(getString(table.getPropValue(TsTable.COMMENT_KEY).get()));
     }
-    builder
-        .append(" WITH (ttl=")
-        .append(table.getPropValue(TsTable.TTL_PROPERTY).orElse("'" + TTL_INFINITE + "'"))
-        .append(")");
+
+    String ttlString = table.getPropValue(TsTable.TTL_PROPERTY).orElse(TTL_INFINITE);
+    if (ttlString.equals(TTL_INFINITE)) {
+      ttlString = "'" + ttlString + "'";
+    }
+    builder.append(" WITH (ttl=").append(ttlString).append(")");
 
     return builder.toString();
   }

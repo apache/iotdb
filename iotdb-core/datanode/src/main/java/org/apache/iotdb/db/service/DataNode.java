@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.service;
 
+import org.apache.iotdb.calc.service.AbstractTemporaryQueryDataFileService;
 import org.apache.iotdb.common.rpc.thrift.Model;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
@@ -45,6 +46,7 @@ import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.pipe.agent.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.queryengine.plan.udf.UDFManagementService;
 import org.apache.iotdb.commons.service.JMXService;
 import org.apache.iotdb.commons.service.RegisterManager;
 import org.apache.iotdb.commons.service.ServiceType;
@@ -95,7 +97,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.LogicalPlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.distribution.DistributionPlanContext;
 import org.apache.iotdb.db.queryengine.plan.planner.distribution.SourceRewriter;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
-import org.apache.iotdb.db.queryengine.plan.udf.UDFManagementService;
 import org.apache.iotdb.db.schemaengine.SchemaEngine;
 import org.apache.iotdb.db.schemaengine.schemaregion.attribute.update.GeneralRegionAttributeSecurityService;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
@@ -146,9 +147,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.DEFAULT_CLUSTER_NAME;
+import static org.apache.iotdb.commons.queryengine.utils.DateTimeUtils.initTimestampPrecision;
 import static org.apache.iotdb.commons.utils.StatusUtils.retrieveExitStatusCode;
 import static org.apache.iotdb.db.conf.IoTDBStartCheck.PROPERTIES_FILE_NAME;
-import static org.apache.iotdb.db.utils.DateTimeUtils.initTimestampPrecision;
 
 public class DataNode extends ServerCommandLine implements DataNodeMBean {
 
@@ -183,14 +184,16 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
   private static final String REGISTER_INTERRUPTION =
       "Unexpected interruption when waiting to register to the cluster";
 
-  private boolean schemaRegionConsensusStarted = false;
-  private boolean dataRegionConsensusStarted = false;
+  private volatile boolean schemaRegionConsensusStarted = false;
+  private volatile boolean dataRegionConsensusStarted = false;
   private static Thread watcherThread;
+  private DataNodeContext context;
 
   public DataNode() {
     super("DataNode");
     // We do not init anything here, so that we can re-initialize the instance in IT.
     DataNodeHolder.INSTANCE = this;
+    context = new DataNodeContext();
   }
 
   public static void reinitializeStatics() {
@@ -934,7 +937,9 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
 
   protected void registerInternalRPCService() throws StartupException {
     // Start InternalRPCService to indicate that the current DataNode can accept cluster scheduling
-    registerManager.register(DataNodeInternalRPCService.getInstance());
+    DataNodeInternalRPCService instance = DataNodeInternalRPCService.getInstance();
+    instance.setDataNodeContext(context);
+    registerManager.register(instance);
   }
 
   // make it easier for users to extend ClientRPCServiceImpl to export more rpc services
@@ -995,7 +1000,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
   }
 
   private void registerUdfServices() throws StartupException {
-    registerManager.register(TemporaryQueryDataFileService.getInstance());
+    registerManager.register(AbstractTemporaryQueryDataFileService.getInstance());
     registerManager.register(UDFClassLoaderManager.setupAndGetInstance(config.getUdfDir()));
   }
 
@@ -1371,6 +1376,12 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
 
     private DataNodeHolder() {
       // Empty constructor
+    }
+  }
+
+  public class DataNodeContext {
+    public boolean isAllConsensusStarted() {
+      return dataRegionConsensusStarted && schemaRegionConsensusStarted;
     }
   }
 }

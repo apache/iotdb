@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node;
 
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.ICoreQueryPlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.CountSchemaMergeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.DeviceSchemaFetchScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.DevicesCountNode;
@@ -79,17 +80,14 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.Horizontal
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.IntoNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MergeSortNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MultiChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.OffsetNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.RawDataAggregationNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleDeviceViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SlidingWindowAggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SortNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TopKNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TransformNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TwoChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.FullOuterTimeJoinNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.InnerTimeJoinNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.LeftOuterTimeJoinNode;
@@ -110,7 +108,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesScanN
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesScanSourceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.ShowDiskUsageNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.ShowQueriesNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SourceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.TimeseriesRegionScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertMultiTabletsNode;
@@ -123,33 +120,16 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDe
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.GroupReference;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTreeDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AlignedAggregationTreeDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CteScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExceptNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GapFillNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GroupNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.IntersectNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LinearFillNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MarkDistinctNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.NonAlignedAggregationTreeDeviceViewScanNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PatternRecognitionNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PreviousFillNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.RowNumberNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SemiJoinNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionProcessorNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeAlignedDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeNonAlignedDeviceViewScanNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.UnionNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValueFillNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValuesNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.WindowNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.ConstructTableDevicesBlackListNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.CreateOrUpdateTableDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.DeleteTableDeviceNode;
@@ -164,13 +144,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.Table
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableNodeLocationAddNode;
 
 @SuppressWarnings("java:S6539") // suppress "Monster class" warning
-public abstract class PlanVisitor<R, C> {
-
-  public R process(PlanNode node, C context) {
-    return node.accept(this, context);
-  }
-
-  public abstract R visitPlan(PlanNode node, C context);
+public interface PlanVisitor<R, C> extends ICoreQueryPlanVisitor<R, C> {
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // Data Query Node
@@ -178,228 +152,212 @@ public abstract class PlanVisitor<R, C> {
 
   // source --------------------------------------------------------------------------------------
 
-  public R visitSourceNode(SourceNode node, C context) {
-    return visitPlan(node, context);
-  }
-
-  public R visitSeriesScanSource(SeriesScanSourceNode node, C context) {
+  default R visitCteScan(CteScanNode node, C context) {
     return visitSourceNode(node, context);
   }
 
-  public R visitSeriesScan(SeriesScanNode node, C context) {
+  default R visitSeriesScanSource(SeriesScanSourceNode node, C context) {
+    return visitSourceNode(node, context);
+  }
+
+  default R visitSeriesScan(SeriesScanNode node, C context) {
     return visitSeriesScanSource(node, context);
   }
 
-  public R visitAlignedSeriesScan(AlignedSeriesScanNode node, C context) {
+  default R visitAlignedSeriesScan(AlignedSeriesScanNode node, C context) {
     return visitSeriesScanSource(node, context);
   }
 
-  public R visitSeriesAggregationSourceNode(SeriesAggregationSourceNode node, C context) {
+  default R visitSeriesAggregationSourceNode(SeriesAggregationSourceNode node, C context) {
     return visitSourceNode(node, context);
   }
 
-  public R visitSeriesAggregationScan(SeriesAggregationScanNode node, C context) {
+  default R visitSeriesAggregationScan(SeriesAggregationScanNode node, C context) {
     return visitSeriesAggregationSourceNode(node, context);
   }
 
-  public R visitAlignedSeriesAggregationScan(AlignedSeriesAggregationScanNode node, C context) {
+  default R visitAlignedSeriesAggregationScan(AlignedSeriesAggregationScanNode node, C context) {
     return visitSeriesAggregationSourceNode(node, context);
   }
 
-  public R visitLastQueryScan(LastQueryScanNode node, C context) {
+  default R visitLastQueryScan(LastQueryScanNode node, C context) {
     return visitSourceNode(node, context);
   }
 
-  public R visitRegionScan(RegionScanNode node, C context) {
+  default R visitRegionScan(RegionScanNode node, C context) {
     return visitSourceNode(node, context);
   }
 
-  public R visitDeviceRegionScan(DeviceRegionScanNode node, C context) {
+  default R visitDeviceRegionScan(DeviceRegionScanNode node, C context) {
     return visitRegionScan(node, context);
   }
 
-  public R visitTimeSeriesRegionScan(TimeseriesRegionScanNode node, C context) {
+  default R visitTimeSeriesRegionScan(TimeseriesRegionScanNode node, C context) {
     return visitRegionScan(node, context);
-  }
-
-  public R visitCteScan(CteScanNode node, C context) {
-    return visitSourceNode(node, context);
   }
 
   // single child --------------------------------------------------------------------------------
 
-  public R visitSingleChildProcess(SingleChildProcessNode node, C context) {
-    return visitPlan(node, context);
-  }
-
-  public R visitFill(FillNode node, C context) {
+  default R visitFill(FillNode node, C context) {
     return visitSingleChildProcess(node, context);
   }
 
-  public R visitFilter(FilterNode node, C context) {
+  default R visitFilter(FilterNode node, C context) {
     return visitSingleChildProcess(node, context);
   }
 
-  public R visitSlidingWindowAggregation(SlidingWindowAggregationNode node, C context) {
+  default R visitSlidingWindowAggregation(SlidingWindowAggregationNode node, C context) {
     return visitSingleChildProcess(node, context);
   }
 
-  public R visitLimit(LimitNode node, C context) {
+  default R visitLimit(LimitNode node, C context) {
     return visitSingleChildProcess(node, context);
   }
 
-  public R visitOffset(OffsetNode node, C context) {
+  default R visitOffset(OffsetNode node, C context) {
     return visitSingleChildProcess(node, context);
   }
 
-  public R visitSort(SortNode node, C context) {
+  default R visitSort(SortNode node, C context) {
     return visitSingleChildProcess(node, context);
   }
 
-  public R visitProject(ProjectNode node, C context) {
+  default R visitProject(ProjectNode node, C context) {
     return visitSingleChildProcess(node, context);
   }
 
-  public R visitExchange(ExchangeNode node, C context) {
+  default R visitExchange(ExchangeNode node, C context) {
     return visitSingleChildProcess(node, context);
   }
 
-  public R visitTransform(TransformNode node, C context) {
+  default R visitTransform(TransformNode node, C context) {
     return visitSingleChildProcess(node, context);
   }
 
-  public R visitInto(IntoNode node, C context) {
+  default R visitInto(IntoNode node, C context) {
     return visitSingleChildProcess(node, context);
   }
 
-  public R visitInto(
+  default R visitInto(
       org.apache.iotdb.db.queryengine.plan.relational.planner.node.IntoNode node, C context) {
     return visitSingleChildProcess(node, context);
   }
 
-  public R visitDeviceViewInto(DeviceViewIntoNode node, C context) {
+  default R visitDeviceViewInto(DeviceViewIntoNode node, C context) {
     return visitSingleChildProcess(node, context);
   }
 
-  public R visitColumnInject(ColumnInjectNode node, C context) {
+  default R visitColumnInject(ColumnInjectNode node, C context) {
     return visitSingleChildProcess(node, context);
   }
 
-  public R visitSingleDeviceView(SingleDeviceViewNode node, C context) {
+  default R visitSingleDeviceView(SingleDeviceViewNode node, C context) {
     return visitSingleChildProcess(node, context);
   }
 
-  public R visitInference(InferenceNode node, C context) {
+  default R visitInference(InferenceNode node, C context) {
     return visitSingleChildProcess(node, context);
   }
 
-  public R visitExplainAnalyze(ExplainAnalyzeNode node, C context) {
+  default R visitExplainAnalyze(ExplainAnalyzeNode node, C context) {
     return visitSingleChildProcess(node, context);
   }
 
-  public R visitRawDataAggregation(RawDataAggregationNode node, C context) {
+  default R visitRawDataAggregation(RawDataAggregationNode node, C context) {
     return visitSingleChildProcess(node, context);
   }
 
   // two child -----------------------------------------------------------------------------------
 
-  public R visitTwoChildProcess(TwoChildProcessNode node, C context) {
-    return visitPlan(node, context);
-  }
-
-  public R visitLeftOuterTimeJoin(LeftOuterTimeJoinNode node, C context) {
+  default R visitLeftOuterTimeJoin(LeftOuterTimeJoinNode node, C context) {
     return visitTwoChildProcess(node, context);
   }
 
   // multi child --------------------------------------------------------------------------------
 
-  public R visitMultiChildProcess(MultiChildProcessNode node, C context) {
-    return visitPlan(node, context);
-  }
-
-  public R visitDeviceView(DeviceViewNode node, C context) {
+  default R visitDeviceView(DeviceViewNode node, C context) {
     return visitMultiChildProcess(node, context);
   }
 
-  public R visitAggregationMergeSort(AggregationMergeSortNode node, C context) {
+  default R visitAggregationMergeSort(AggregationMergeSortNode node, C context) {
     return visitMultiChildProcess(node, context);
   }
 
-  public R visitDeviceMerge(DeviceMergeNode node, C context) {
+  default R visitDeviceMerge(DeviceMergeNode node, C context) {
     return visitMultiChildProcess(node, context);
   }
 
-  public R visitGroupByLevel(GroupByLevelNode node, C context) {
+  default R visitGroupByLevel(GroupByLevelNode node, C context) {
     return visitMultiChildProcess(node, context);
   }
 
-  public R visitGroupByTag(GroupByTagNode node, C context) {
+  default R visitGroupByTag(GroupByTagNode node, C context) {
     return visitMultiChildProcess(node, context);
   }
 
-  public R visitAggregation(AggregationNode node, C context) {
+  default R visitAggregation(AggregationNode node, C context) {
     return visitMultiChildProcess(node, context);
   }
 
-  public R visitFullOuterTimeJoin(FullOuterTimeJoinNode node, C context) {
+  default R visitFullOuterTimeJoin(FullOuterTimeJoinNode node, C context) {
     return visitMultiChildProcess(node, context);
   }
 
-  public R visitInnerTimeJoin(InnerTimeJoinNode node, C context) {
+  default R visitInnerTimeJoin(InnerTimeJoinNode node, C context) {
     return visitMultiChildProcess(node, context);
   }
 
-  public R visitLastQuery(LastQueryNode node, C context) {
+  default R visitLastQuery(LastQueryNode node, C context) {
     return visitMultiChildProcess(node, context);
   }
 
-  public R visitLastQueryMerge(LastQueryMergeNode node, C context) {
+  default R visitLastQueryMerge(LastQueryMergeNode node, C context) {
     return visitMultiChildProcess(node, context);
   }
 
-  public R visitLastQueryCollect(LastQueryCollectNode node, C context) {
+  default R visitLastQueryCollect(LastQueryCollectNode node, C context) {
     return visitMultiChildProcess(node, context);
   }
 
-  public R visitLastQueryTransform(LastQueryTransformNode node, C context) {
+  default R visitLastQueryTransform(LastQueryTransformNode node, C context) {
     return visitSingleChildProcess(node, context);
   }
 
-  public R visitMergeSort(MergeSortNode node, C context) {
+  default R visitMergeSort(MergeSortNode node, C context) {
     return visitMultiChildProcess(node, context);
   }
 
-  public R visitCollect(CollectNode node, C context) {
+  default R visitCollect(CollectNode node, C context) {
     return visitMultiChildProcess(node, context);
   }
 
-  public R visitTopK(TopKNode node, C context) {
+  default R visitTopK(TopKNode node, C context) {
     return visitMultiChildProcess(node, context);
   }
 
-  public R visitHorizontallyConcat(HorizontallyConcatNode node, C context) {
+  default R visitHorizontallyConcat(HorizontallyConcatNode node, C context) {
     return visitMultiChildProcess(node, context);
   }
 
-  public R visitRegionMerge(ActiveRegionScanMergeNode node, C context) {
+  default R visitRegionMerge(ActiveRegionScanMergeNode node, C context) {
     return visitMultiChildProcess(node, context);
   }
 
   // others -----------------------------------------------------------------------------------
 
-  public R visitShowQueries(ShowQueriesNode node, C context) {
+  default R visitShowQueries(ShowQueriesNode node, C context) {
     return visitPlan(node, context);
   }
 
-  public R visitShowDiskUsage(ShowDiskUsageNode node, C context) {
+  default R visitShowDiskUsage(ShowDiskUsageNode node, C context) {
     return visitPlan(node, context);
   }
 
-  public R visitIdentitySink(IdentitySinkNode node, C context) {
+  default R visitIdentitySink(IdentitySinkNode node, C context) {
     return visitPlan(node, context);
   }
 
-  public R visitShuffleSink(ShuffleSinkNode node, C context) {
+  default R visitShuffleSink(ShuffleSinkNode node, C context) {
     return visitPlan(node, context);
   }
 
@@ -407,208 +365,209 @@ public abstract class PlanVisitor<R, C> {
   // Schema Write & Query Node
   /////////////////////////////////////////////////////////////////////////////////////////////////
 
-  public R visitSchemaQueryMerge(SchemaQueryMergeNode node, C context) {
+  default R visitSchemaQueryMerge(SchemaQueryMergeNode node, C context) {
     return visitPlan(node, context);
   }
 
-  public R visitSchemaQueryScan(SchemaQueryScanNode node, C context) {
+  default R visitSchemaQueryScan(SchemaQueryScanNode node, C context) {
     return visitPlan(node, context);
   }
 
-  public R visitSchemaQueryOrderByHeat(SchemaQueryOrderByHeatNode node, C context) {
+  default R visitSchemaQueryOrderByHeat(SchemaQueryOrderByHeatNode node, C context) {
     return visitPlan(node, context);
   }
 
-  public R visitTimeSeriesSchemaScan(TimeSeriesSchemaScanNode node, C context) {
+  default R visitTimeSeriesSchemaScan(TimeSeriesSchemaScanNode node, C context) {
     return visitPlan(node, context);
   }
 
-  public R visitDevicesSchemaScan(DevicesSchemaScanNode node, C context) {
+  default R visitDevicesSchemaScan(DevicesSchemaScanNode node, C context) {
     return visitPlan(node, context);
   }
 
-  public R visitDevicesCount(DevicesCountNode node, C context) {
+  default R visitDevicesCount(DevicesCountNode node, C context) {
     return visitPlan(node, context);
   }
 
-  public R visitTimeSeriesCount(TimeSeriesCountNode node, C context) {
+  default R visitTimeSeriesCount(TimeSeriesCountNode node, C context) {
     return visitPlan(node, context);
   }
 
-  public R visitLevelTimeSeriesCount(LevelTimeSeriesCountNode node, C context) {
+  default R visitLevelTimeSeriesCount(LevelTimeSeriesCountNode node, C context) {
     return visitPlan(node, context);
   }
 
-  public R visitCountMerge(CountSchemaMergeNode node, C context) {
+  default R visitCountMerge(CountSchemaMergeNode node, C context) {
     return visitPlan(node, context);
   }
 
-  public R visitCreateTimeSeries(CreateTimeSeriesNode node, C context) {
+  default R visitCreateTimeSeries(CreateTimeSeriesNode node, C context) {
     return visitPlan(node, context);
   }
 
-  public R visitSchemaFetchMerge(SchemaFetchMergeNode node, C context) {
+  default R visitSchemaFetchMerge(SchemaFetchMergeNode node, C context) {
     return visitPlan(node, context);
   }
 
-  public R visitSeriesSchemaFetchScan(SeriesSchemaFetchScanNode node, C context) {
+  default R visitSeriesSchemaFetchScan(SeriesSchemaFetchScanNode node, C context) {
     return visitPlan(node, context);
   }
 
-  public R visitDeviceSchemaFetchScan(DeviceSchemaFetchScanNode node, C context) {
+  default R visitDeviceSchemaFetchScan(DeviceSchemaFetchScanNode node, C context) {
     return visitPlan(node, context);
   }
 
-  public R visitCreateAlignedTimeSeries(CreateAlignedTimeSeriesNode node, C context) {
+  default R visitCreateAlignedTimeSeries(CreateAlignedTimeSeriesNode node, C context) {
     return visitPlan(node, context);
   }
 
-  public R visitCreateMultiTimeSeries(CreateMultiTimeSeriesNode node, C context) {
+  default R visitCreateMultiTimeSeries(CreateMultiTimeSeriesNode node, C context) {
     return visitPlan(node, context);
   }
 
-  public R visitAlterTimeSeries(AlterTimeSeriesNode node, C context) {
+  default R visitAlterTimeSeries(AlterTimeSeriesNode node, C context) {
     return visitPlan(node, context);
   }
 
-  public R visitInternalCreateTimeSeries(InternalCreateTimeSeriesNode node, C context) {
+  default R visitInternalCreateTimeSeries(InternalCreateTimeSeriesNode node, C context) {
     return visitPlan(node, context);
   }
 
-  public R visitActivateTemplate(ActivateTemplateNode node, C context) {
+  default R visitActivateTemplate(ActivateTemplateNode node, C context) {
     return visitPlan(node, context);
   }
 
-  public R visitPreDeactivateTemplate(PreDeactivateTemplateNode node, C context) {
+  default R visitPreDeactivateTemplate(PreDeactivateTemplateNode node, C context) {
     return visitPlan(node, context);
   }
 
-  public R visitRollbackPreDeactivateTemplate(RollbackPreDeactivateTemplateNode node, C context) {
+  default R visitRollbackPreDeactivateTemplate(RollbackPreDeactivateTemplateNode node, C context) {
     return visitPlan(node, context);
   }
 
-  public R visitDeactivateTemplate(DeactivateTemplateNode node, C context) {
+  default R visitDeactivateTemplate(DeactivateTemplateNode node, C context) {
     return visitPlan(node, context);
   }
 
-  public R visitInternalBatchActivateTemplate(InternalBatchActivateTemplateNode node, C context) {
+  default R visitInternalBatchActivateTemplate(InternalBatchActivateTemplateNode node, C context) {
     return visitPlan(node, context);
   }
 
-  public R visitInternalCreateMultiTimeSeries(InternalCreateMultiTimeSeriesNode node, C context) {
+  default R visitInternalCreateMultiTimeSeries(InternalCreateMultiTimeSeriesNode node, C context) {
     return visitPlan(node, context);
   }
 
-  public R visitNodePathsSchemaScan(NodePathsSchemaScanNode node, C context) {
+  default R visitNodePathsSchemaScan(NodePathsSchemaScanNode node, C context) {
     return visitPlan(node, context);
   }
 
-  public R visitNodeManagementMemoryMerge(NodeManagementMemoryMergeNode node, C context) {
+  default R visitNodeManagementMemoryMerge(NodeManagementMemoryMergeNode node, C context) {
     return visitPlan(node, context);
   }
 
-  public R visitNodePathConvert(NodePathsConvertNode node, C context) {
+  default R visitNodePathConvert(NodePathsConvertNode node, C context) {
     return visitPlan(node, context);
   }
 
-  public R visitNodePathsCount(NodePathsCountNode node, C context) {
+  default R visitNodePathsCount(NodePathsCountNode node, C context) {
     return visitPlan(node, context);
   }
 
-  public R visitDeleteTimeseries(DeleteTimeSeriesNode node, C context) {
+  default R visitDeleteTimeseries(DeleteTimeSeriesNode node, C context) {
     return visitPlan(node, context);
   }
 
-  public R visitAlterEncodingCompressor(AlterEncodingCompressorNode node, C context) {
+  default R visitAlterEncodingCompressor(AlterEncodingCompressorNode node, C context) {
     return visitPlan(node, context);
   }
 
-  public R visitAlterTimeSeriesDataType(AlterTimeSeriesNode node, C context) {
+  default R visitAlterTimeSeriesDataType(AlterTimeSeriesNode node, C context) {
     return visitPlan(node, context);
   }
 
-  public R visitConstructSchemaBlackList(ConstructSchemaBlackListNode node, C context) {
+  default R visitConstructSchemaBlackList(ConstructSchemaBlackListNode node, C context) {
     return visitPlan(node, context);
   }
 
-  public R visitRollbackSchemaBlackList(RollbackSchemaBlackListNode node, C context) {
+  default R visitRollbackSchemaBlackList(RollbackSchemaBlackListNode node, C context) {
     return visitPlan(node, context);
   }
 
-  public R visitBatchActivateTemplate(BatchActivateTemplateNode node, C context) {
+  default R visitBatchActivateTemplate(BatchActivateTemplateNode node, C context) {
     return visitPlan(node, context);
   }
 
-  public R visitCreateLogicalView(CreateLogicalViewNode node, C context) {
+  default R visitCreateLogicalView(CreateLogicalViewNode node, C context) {
     return visitPlan(node, context);
   }
 
-  public R visitConstructLogicalViewBlackList(ConstructLogicalViewBlackListNode node, C context) {
+  default R visitConstructLogicalViewBlackList(ConstructLogicalViewBlackListNode node, C context) {
     return visitPlan(node, context);
   }
 
-  public R visitRollbackLogicalViewBlackList(RollbackLogicalViewBlackListNode node, C context) {
+  default R visitRollbackLogicalViewBlackList(RollbackLogicalViewBlackListNode node, C context) {
     return visitPlan(node, context);
   }
 
-  public R visitDeleteLogicalView(DeleteLogicalViewNode node, C context) {
+  default R visitDeleteLogicalView(DeleteLogicalViewNode node, C context) {
     return visitPlan(node, context);
   }
 
-  public R visitAlterLogicalView(AlterLogicalViewNode node, C context) {
+  default R visitAlterLogicalView(AlterLogicalViewNode node, C context) {
     return visitPlan(node, context);
   }
 
-  public R visitCreateOrUpdateTableDevice(
+  default R visitCreateOrUpdateTableDevice(
       final CreateOrUpdateTableDeviceNode node, final C context) {
     return visitPlan(node, context);
   }
 
-  public R visitTableDeviceAttributeUpdate(
+  default R visitTableDeviceAttributeUpdate(
       final TableDeviceAttributeUpdateNode node, final C context) {
     return visitPlan(node, context);
   }
 
-  public R visitTableDeviceFetch(final TableDeviceFetchNode node, final C context) {
+  default R visitTableDeviceFetch(final TableDeviceFetchNode node, final C context) {
     return visitPlan(node, context);
   }
 
-  public R visitTableDeviceQueryScan(final TableDeviceQueryScanNode node, final C context) {
+  default R visitTableDeviceQueryScan(final TableDeviceQueryScanNode node, final C context) {
     return visitPlan(node, context);
   }
 
-  public R visitTableDeviceQueryCount(final TableDeviceQueryCountNode node, final C context) {
+  default R visitTableDeviceQueryCount(final TableDeviceQueryCountNode node, final C context) {
     return visitPlan(node, context);
   }
 
-  public R visitTableDeviceAttributeCommit(
+  default R visitTableDeviceAttributeCommit(
       final TableDeviceAttributeCommitUpdateNode node, final C context) {
     return visitPlan(node, context);
   }
 
-  public R visitTableNodeLocationAdd(final TableNodeLocationAddNode node, final C context) {
+  default R visitTableNodeLocationAdd(final TableNodeLocationAddNode node, final C context) {
     return visitPlan(node, context);
   }
 
-  public R visitDeleteTableDevice(final DeleteTableDeviceNode node, final C context) {
+  default R visitDeleteTableDevice(final DeleteTableDeviceNode node, final C context) {
     return visitPlan(node, context);
   }
 
-  public R visitTableAttributeColumnDrop(final TableAttributeColumnDropNode node, final C context) {
+  default R visitTableAttributeColumnDrop(
+      final TableAttributeColumnDropNode node, final C context) {
     return visitPlan(node, context);
   }
 
-  public R visitConstructTableDevicesBlackList(
+  default R visitConstructTableDevicesBlackList(
       final ConstructTableDevicesBlackListNode node, final C context) {
     return visitPlan(node, context);
   }
 
-  public R visitRollbackTableDevicesBlackList(
+  default R visitRollbackTableDevicesBlackList(
       final RollbackTableDevicesBlackListNode node, final C context) {
     return visitPlan(node, context);
   }
 
-  public R visitDeleteTableDevicesInBlackList(
+  default R visitDeleteTableDevicesInBlackList(
       final DeleteTableDevicesInBlackListNode node, final C context) {
     return visitPlan(node, context);
   }
@@ -617,47 +576,47 @@ public abstract class PlanVisitor<R, C> {
   // Data Write Node
   /////////////////////////////////////////////////////////////////////////////////////////////////
 
-  public R visitInsertRow(InsertRowNode node, C context) {
+  default R visitInsertRow(InsertRowNode node, C context) {
     return visitPlan(node, context);
   }
 
-  public R visitRelationalInsertRow(RelationalInsertRowNode node, C context) {
+  default R visitRelationalInsertRow(RelationalInsertRowNode node, C context) {
     return visitInsertRow(node, context);
   }
 
-  public R visitRelationalInsertRows(RelationalInsertRowsNode node, C context) {
+  default R visitRelationalInsertRows(RelationalInsertRowsNode node, C context) {
     return visitInsertRows(node, context);
   }
 
-  public R visitInsertTablet(InsertTabletNode node, C context) {
+  default R visitInsertTablet(InsertTabletNode node, C context) {
     return visitPlan(node, context);
   }
 
-  public R visitRelationalInsertTablet(RelationalInsertTabletNode node, C context) {
+  default R visitRelationalInsertTablet(RelationalInsertTabletNode node, C context) {
     return visitInsertTablet(node, context);
   }
 
-  public R visitInsertRows(InsertRowsNode node, C context) {
+  default R visitInsertRows(InsertRowsNode node, C context) {
     return visitPlan(node, context);
   }
 
-  public R visitInsertMultiTablets(InsertMultiTabletsNode node, C context) {
+  default R visitInsertMultiTablets(InsertMultiTabletsNode node, C context) {
     return visitPlan(node, context);
   }
 
-  public R visitInsertRowsOfOneDevice(InsertRowsOfOneDeviceNode node, C context) {
+  default R visitInsertRowsOfOneDevice(InsertRowsOfOneDeviceNode node, C context) {
     return visitPlan(node, context);
   }
 
-  public R visitDeleteData(DeleteDataNode node, C context) {
+  default R visitDeleteData(DeleteDataNode node, C context) {
     return visitPlan(node, context);
   }
 
-  public R visitDeleteData(RelationalDeleteDataNode node, C context) {
+  default R visitDeleteData(RelationalDeleteDataNode node, C context) {
     return visitPlan(node, context);
   }
 
-  public R visitWriteObjectFile(ObjectNode node, C context) {
+  default R visitWriteObjectFile(ObjectNode node, C context) {
     return visitPlan(node, context);
   }
 
@@ -665,246 +624,85 @@ public abstract class PlanVisitor<R, C> {
   // Pipe Related Node
   /////////////////////////////////////////////////////////////////////////////////////////////////
 
-  public R visitPipeEnrichedInsertNode(PipeEnrichedInsertNode node, C context) {
+  default R visitPipeEnrichedInsertNode(PipeEnrichedInsertNode node, C context) {
     return visitPlan(node, context);
   }
 
-  public R visitPipeEnrichedDeleteDataNode(PipeEnrichedDeleteDataNode node, C context) {
+  default R visitPipeEnrichedDeleteDataNode(PipeEnrichedDeleteDataNode node, C context) {
     return visitPlan(node, context);
   }
 
-  public R visitPipeEnrichedWritePlanNode(PipeEnrichedWritePlanNode node, C context) {
+  default R visitPipeEnrichedWritePlanNode(PipeEnrichedWritePlanNode node, C context) {
     return visitPlan(node, context);
   }
 
-  public R visitPipeEnrichedNonWritePlanNode(PipeEnrichedNonWritePlanNode node, C context) {
+  default R visitPipeEnrichedNonWritePlanNode(PipeEnrichedNonWritePlanNode node, C context) {
     return visitPlan(node, context);
   }
 
-  public R visitPipeOperateSchemaQueueNode(PipeOperateSchemaQueueNode node, C context) {
+  default R visitPipeOperateSchemaQueueNode(PipeOperateSchemaQueueNode node, C context) {
     return visitPlan(node, context);
   }
 
   // =============================== Used for Table Model ====================================
-  public R visitFilter(
-      org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode node, C context) {
-    return visitSingleChildProcess(node, context);
-  }
 
-  public R visitApply(
-      org.apache.iotdb.db.queryengine.plan.relational.planner.node.ApplyNode node, C context) {
-    return visitTwoChildProcess(node, context);
-  }
-
-  public R visitAssignUniqueId(
-      org.apache.iotdb.db.queryengine.plan.relational.planner.node.AssignUniqueId node, C context) {
-    return visitSingleChildProcess(node, context);
-  }
-
-  public R visitEnforceSingleRow(
-      org.apache.iotdb.db.queryengine.plan.relational.planner.node.EnforceSingleRowNode node,
-      C context) {
-    return visitSingleChildProcess(node, context);
-  }
-
-  public R visitCorrelatedJoin(
-      org.apache.iotdb.db.queryengine.plan.relational.planner.node.CorrelatedJoinNode node,
-      C context) {
-    return visitTwoChildProcess(node, context);
-  }
-
-  public R visitTableScan(TableScanNode node, C context) {
+  default R visitTableScan(TableScanNode node, C context) {
     return visitPlan(node, context);
   }
 
-  public R visitDeviceTableScan(DeviceTableScanNode node, C context) {
+  default R visitDeviceTableScan(DeviceTableScanNode node, C context) {
     return visitTableScan(node, context);
   }
 
-  public R visitInformationSchemaTableScan(InformationSchemaTableScanNode node, C context) {
+  default R visitInformationSchemaTableScan(InformationSchemaTableScanNode node, C context) {
     return visitTableScan(node, context);
   }
 
-  public R visitProject(
-      org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode node, C context) {
-    return visitSingleChildProcess(node, context);
-  }
-
-  public R visitLimit(
-      org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode node, C context) {
-    return visitSingleChildProcess(node, context);
-  }
-
-  public R visitOffset(
-      org.apache.iotdb.db.queryengine.plan.relational.planner.node.OffsetNode node, C context) {
-    return visitSingleChildProcess(node, context);
-  }
-
-  public R visitMergeSort(
-      org.apache.iotdb.db.queryengine.plan.relational.planner.node.MergeSortNode node, C context) {
-    return visitMultiChildProcess(node, context);
-  }
-
-  public R visitExplainAnalyze(
+  default R visitExplainAnalyze(
       org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExplainAnalyzeNode node,
       C context) {
     return visitSingleChildProcess(node, context);
   }
 
-  public R visitCopyTo(
+  default R visitCopyTo(
       org.apache.iotdb.db.queryengine.plan.relational.planner.node.CopyToNode node, C context) {
     return visitSingleChildProcess(node, context);
   }
 
-  public R visitOutput(
-      org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode node, C context) {
-    return visitSingleChildProcess(node, context);
-  }
-
-  public R visitCollect(
-      org.apache.iotdb.db.queryengine.plan.relational.planner.node.CollectNode node, C context) {
-    return visitMultiChildProcess(node, context);
-  }
-
-  public R visitGapFill(GapFillNode node, C context) {
-    return visitSingleChildProcess(node, context);
-  }
-
-  public R visitFill(
-      org.apache.iotdb.db.queryengine.plan.relational.planner.node.FillNode node, C context) {
-    return visitSingleChildProcess(node, context);
-  }
-
-  public R visitPreviousFill(PreviousFillNode node, C context) {
-    return visitFill(node, context);
-  }
-
-  public R visitLinearFill(LinearFillNode node, C context) {
-    return visitFill(node, context);
-  }
-
-  public R visitValueFill(ValueFillNode node, C context) {
-    return visitFill(node, context);
-  }
-
-  public R visitSort(
-      org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode node, C context) {
-    return visitSingleChildProcess(node, context);
-  }
-
-  public R visitStreamSort(
-      org.apache.iotdb.db.queryengine.plan.relational.planner.node.StreamSortNode node, C context) {
-    return visitSingleChildProcess(node, context);
-  }
-
-  public R visitGroup(GroupNode node, C context) {
-    return visitSingleChildProcess(node, context);
-  }
-
-  public R visitTopK(
-      org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode node, C context) {
-    return visitMultiChildProcess(node, context);
-  }
-
-  public R visitTopKRanking(
-      org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKRankingNode node,
-      C context) {
-    return visitSingleChildProcess(node, context);
-  }
-
-  public R visitRowNumber(RowNumberNode node, C context) {
-    return visitSingleChildProcess(node, context);
-  }
-
-  public R visitValuesNode(ValuesNode node, C context) {
-    return visitPlan(node, context);
-  }
-
-  public R visitJoin(
-      org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode node, C context) {
-    return visitTwoChildProcess(node, context);
-  }
-
-  public R visitSemiJoin(SemiJoinNode node, C context) {
-    return visitTwoChildProcess(node, context);
-  }
-
-  public R visitGroupReference(GroupReference node, C context) {
-    return visitPlan(node, context);
-  }
-
-  public R visitAggregation(
-      org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode node,
-      C context) {
-    return visitSingleChildProcess(node, context);
-  }
-
-  public R visitTableExchange(
+  default R visitTableExchange(
       org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode node, C context) {
     return visitSingleChildProcess(node, context);
   }
 
-  public R visitAggregationTableScan(
+  default R visitAggregationTableScan(
       org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode node,
       C context) {
     return visitDeviceTableScan(node, context);
   }
 
-  public R visitTreeDeviceViewScan(TreeDeviceViewScanNode node, C context) {
+  default R visitTreeDeviceViewScan(TreeDeviceViewScanNode node, C context) {
     return visitDeviceTableScan(node, context);
   }
 
-  public R visitAggregationTreeDeviceViewScan(AggregationTreeDeviceViewScanNode node, C context) {
+  default R visitAggregationTreeDeviceViewScan(AggregationTreeDeviceViewScanNode node, C context) {
     return visitAggregationTableScan(node, context);
   }
 
-  public R visitAlignedAggregationTreeDeviceViewScan(
+  default R visitAlignedAggregationTreeDeviceViewScan(
       AlignedAggregationTreeDeviceViewScanNode node, C context) {
     return visitAggregationTreeDeviceViewScan(node, context);
   }
 
-  public R visitNonAlignedAggregationTreeDeviceViewScan(
+  default R visitNonAlignedAggregationTreeDeviceViewScan(
       NonAlignedAggregationTreeDeviceViewScanNode node, C context) {
     return visitAggregationTreeDeviceViewScan(node, context);
   }
 
-  public R visitTreeAlignedDeviceViewScan(TreeAlignedDeviceViewScanNode node, C context) {
+  default R visitTreeAlignedDeviceViewScan(TreeAlignedDeviceViewScanNode node, C context) {
     return visitTreeDeviceViewScan(node, context);
   }
 
-  public R visitTreeNonAlignedDeviceViewScan(TreeNonAlignedDeviceViewScanNode node, C context) {
+  default R visitTreeNonAlignedDeviceViewScan(TreeNonAlignedDeviceViewScanNode node, C context) {
     return visitTreeDeviceViewScan(node, context);
-  }
-
-  public R visitMarkDistinct(MarkDistinctNode node, C context) {
-    return visitSingleChildProcess(node, context);
-  }
-
-  public R visitWindowFunction(WindowNode node, C context) {
-    return visitPlan(node, context);
-  }
-
-  public R visitTableFunction(TableFunctionNode node, C context) {
-    return visitPlan(node, context);
-  }
-
-  public R visitTableFunctionProcessor(TableFunctionProcessorNode node, C context) {
-    return visitPlan(node, context);
-  }
-
-  public R visitPatternRecognition(PatternRecognitionNode node, C context) {
-    return visitPlan(node, context);
-  }
-
-  public R visitUnion(UnionNode node, C context) {
-    return visitPlan(node, context);
-  }
-
-  public R visitIntersect(IntersectNode node, C context) {
-    return visitPlan(node, context);
-  }
-
-  public R visitExcept(ExceptNode node, C context) {
-    return visitPlan(node, context);
   }
 }

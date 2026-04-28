@@ -306,7 +306,7 @@ public class IoTDBTableIT {
       }
 
       statement.execute(
-          "create table table2(region_id STRING TAG, plant_id STRING TAG, color STRING ATTRIBUTE, temperature FLOAT FIELD) with (TTL=6600000)");
+          "create table table2(t1 TIMESTAMP TIME, region_id STRING TAG, plant_id STRING TAG, color STRING ATTRIBUTE, temperature FLOAT FIELD) with (TTL=6600000)");
 
       statement.execute("alter table table2 add column speed DOUBLE FIELD COMMENT 'fast'");
 
@@ -314,7 +314,7 @@ public class IoTDBTableIT {
           statement.executeQuery("show create table table2"),
           "Table,Create Table,",
           Collections.singleton(
-              "table2,CREATE TABLE \"table2\" (\"region_id\" STRING TAG,\"plant_id\" STRING TAG,\"color\" STRING ATTRIBUTE,\"temperature\" FLOAT FIELD,\"speed\" DOUBLE FIELD COMMENT 'fast') WITH (ttl=6600000),"));
+              "table2,CREATE TABLE \"table2\" (\"t1\" TIMESTAMP TIME,\"region_id\" STRING TAG,\"plant_id\" STRING TAG,\"color\" STRING ATTRIBUTE,\"temperature\" FLOAT FIELD,\"speed\" DOUBLE FIELD COMMENT 'fast') WITH (ttl=6600000),"));
 
       try {
         statement.execute("alter table table2 add column speed DOUBLE FIELD");
@@ -422,7 +422,7 @@ public class IoTDBTableIT {
         assertEquals(columnNames.length, cnt);
       }
 
-      columnNames = new String[] {"time", "region_id", "plant_id", "color", "temperature", "speed"};
+      columnNames = new String[] {"t1", "region_id", "plant_id", "color", "temperature", "speed"};
       dataTypes = new String[] {"TIMESTAMP", "STRING", "STRING", "STRING", "FLOAT", "DOUBLE"};
       categories = new String[] {"TIME", "TAG", "TAG", "ATTRIBUTE", "FIELD", "FIELD"};
 
@@ -451,7 +451,7 @@ public class IoTDBTableIT {
 
       // Test comment
       // Before
-      columnNames = new String[] {"time", "region_id", "plant_id", "temperature", "speed"};
+      columnNames = new String[] {"t1", "region_id", "plant_id", "temperature", "speed"};
       dataTypes = new String[] {"TIMESTAMP", "STRING", "STRING", "FLOAT", "DOUBLE"};
       categories = new String[] {"TIME", "TAG", "TAG", "FIELD", "FIELD"};
       statuses = new String[] {"USING", "USING", "USING", "USING", "USING"};
@@ -480,7 +480,7 @@ public class IoTDBTableIT {
       // After
       statement.execute("COMMENT ON COLUMN table2.region_id IS '重庆'");
       statement.execute("COMMENT ON COLUMN table2.region_id IS NULL");
-      statement.execute("COMMENT ON COLUMN test2.table2.time IS 'recent'");
+      statement.execute("COMMENT ON COLUMN test2.table2.t1 IS 'recent'");
       statement.execute("COMMENT ON COLUMN test2.table2.region_id IS ''");
 
       comments = new String[] {"recent", "", null, null, "fast"};
@@ -527,7 +527,7 @@ public class IoTDBTableIT {
       }
 
       try {
-        statement.execute("alter table table2 drop column time");
+        statement.execute("alter table table2 drop column t1");
       } catch (final SQLException e) {
         assertEquals("701: Dropping tag or time column is not supported.", e.getMessage());
       }
@@ -619,8 +619,14 @@ public class IoTDBTableIT {
 
       // Test time column
       // More time column tests are included in other IT
-      statement.execute("create table test100 (time time)");
-      statement.execute("create table test101 (time timestamp time)");
+      statement.execute("create table test100 (t1 time) with (ttl='INF')");
+      statement.execute("create table test101 (t1 timestamp time)");
+
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("show create table test100"),
+          "Table,Create Table,",
+          Collections.singleton(
+              "test100,CREATE TABLE \"test100\" (\"t1\" TIMESTAMP TIME) WITH (ttl='INF'),"));
     } catch (final SQLException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -1043,13 +1049,18 @@ public class IoTDBTableIT {
     }
 
     try (final Connection connection =
-            EnvFactory.getEnv()
-                .getConnection("testUser", "testUser123456", BaseEnv.TABLE_SQL_DIALECT);
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
+      statement.execute("alter database tree_view_db set properties ttl=100");
       statement.execute(
-          "create or replace view tree_view_db.view_table (tag1 tag, tag2 tag, s11 int32 field, s3 from s2) restrict with (ttl=100) as root.\"重庆\".\"1\".**");
+          "create or replace view tree_view_db.view_table (tag1 tag, tag2 tag, s11 int32 field, s3 from s2) restrict as root.\"重庆\".\"1\".**");
+
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("show tables from tree_view_db"),
+          "TableName,TTL(ms),",
+          Collections.singleton("view_table,100,"));
     } catch (final SQLException e) {
-      fail();
+      fail(e.getMessage());
     }
 
     try (final Connection connection =
@@ -1066,14 +1077,14 @@ public class IoTDBTableIT {
           statement.executeQuery("show create view view_table"),
           "View,Create View,",
           Collections.singleton(
-              "view_table,CREATE VIEW \"view_table\" (\"tag1\" STRING TAG,\"tag2\" STRING TAG,\"s11\" INT32 FIELD,\"s3\" STRING FIELD FROM \"s2\") RESTRICT WITH (ttl=100) AS root.\"重庆\".\"1\".**,"));
+              "view_table,CREATE VIEW \"view_table\" (\"time\" TIMESTAMP TIME,\"tag1\" STRING TAG,\"tag2\" STRING TAG,\"s11\" INT32 FIELD,\"s3\" STRING FIELD FROM \"s2\") RESTRICT WITH (ttl=100) AS root.\"重庆\".\"1\".**,"));
 
       // Can also use "show create table"
       TestUtils.assertResultSetEqual(
           statement.executeQuery("show create table view_table"),
           "View,Create View,",
           Collections.singleton(
-              "view_table,CREATE VIEW \"view_table\" (\"tag1\" STRING TAG,\"tag2\" STRING TAG,\"s11\" INT32 FIELD,\"s3\" STRING FIELD FROM \"s2\") RESTRICT WITH (ttl=100) AS root.\"重庆\".\"1\".**,"));
+              "view_table,CREATE VIEW \"view_table\" (\"time\" TIMESTAMP TIME,\"tag1\" STRING TAG,\"tag2\" STRING TAG,\"s11\" INT32 FIELD,\"s3\" STRING FIELD FROM \"s2\") RESTRICT WITH (ttl=100) AS root.\"重庆\".\"1\".**,"));
 
       statement.execute("create table a ()");
       try {
