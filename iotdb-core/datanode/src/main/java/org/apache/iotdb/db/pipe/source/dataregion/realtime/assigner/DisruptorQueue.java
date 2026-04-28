@@ -30,9 +30,6 @@ import org.apache.iotdb.db.pipe.source.dataregion.realtime.disruptor.Disruptor;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.disruptor.EventHandler;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.disruptor.RingBuffer;
 
-import com.lmax.disruptor.EventHandler;
-import com.lmax.disruptor.RingBuffer;
-import com.lmax.disruptor.dsl.Disruptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
