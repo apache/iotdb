@@ -242,6 +242,22 @@ public class QetchAlgorithm {
     // divided the pattern to multi DataSegment with the regex information
     List<PatternSegment> patternSegments = parsePattern2DataSegment(pattern);
 
+    // Validate that pattern contains at least one data segment with >= 2 points
+    boolean hasDataSegment = false;
+    for (PatternSegment segment : patternSegments) {
+      if (!segment.isConstantChar()) {
+        hasDataSegment = true;
+        break;
+      }
+    }
+    if (!hasDataSegment) {
+      throw new IllegalArgumentException(
+          "Invalid pattern: '"
+              + pattern
+              + "'. Pattern must contain at least two numeric data points separated by commas,"
+              + " e.g., '1,2,3'");
+    }
+
     // trans multi dataSegment to automaton
     transDataSegment2Automation(patternSegments);
   }
