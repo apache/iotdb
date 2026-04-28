@@ -75,22 +75,22 @@ public class PipeDataRegionPluginAgent extends PipePluginAgent {
     // TODO: validate visibility for schema region and config region
     final Visibility pipeVisibility =
         VisibilityUtils.calculateFromExtractorParameters(new PipeParameters(sourceAttributes));
-    final Visibility extractorVisibility =
+    final Visibility sourceVisibility =
         VisibilityUtils.calculateFromPluginClass(temporaryExtractor.getClass());
     final Visibility processorVisibility =
         VisibilityUtils.calculateFromPluginClass(temporaryProcessor.getClass());
     final Visibility connectorVisibility =
         VisibilityUtils.calculateFromPluginClass(temporaryConnector.getClass());
     if (!VisibilityUtils.isCompatible(
-        pipeVisibility, extractorVisibility, processorVisibility, connectorVisibility)) {
+        pipeVisibility, sourceVisibility, processorVisibility, connectorVisibility)) {
       throw new PipeParameterNotValidException(
           String.format(
-              "The visibility of the pipe (%s, %s) is not compatible with the visibility of the extractor (%s, %s, %s), processor (%s, %s, %s), and connector (%s, %s, %s).",
+              "The visibility of the pipe (%s, %s) is not compatible with the visibility of the source (%s, %s, %s), processor (%s, %s, %s), and connector (%s, %s, %s).",
               pipeName,
               pipeVisibility,
               sourceAttributes,
               temporaryExtractor.getClass().getName(),
-              extractorVisibility,
+              sourceVisibility,
               processorAttributes,
               temporaryProcessor.getClass().getName(),
               processorVisibility,

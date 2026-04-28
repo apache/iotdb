@@ -136,7 +136,7 @@ public enum ThreadName {
   GPRC_DEFAULT_WORKER_ELG("grpc-default-worker-ELG"),
   GROUP_MANAGEMENT("groupManagement"),
   // -------------------------- Compute --------------------------
-  PIPE_EXTRACTOR_DISRUPTOR("Pipe-Extractor-Disruptor"),
+  PIPE_SOURCE_DISRUPTOR("Pipe-Source-Disruptor"),
   PIPE_PROCESSOR_EXECUTOR_POOL("Pipe-Processor-Executor-Pool"),
   PIPE_CONNECTOR_EXECUTOR_POOL("Pipe-Connector-Executor-Pool"),
   IOT_CONSENSUS_V2_EXECUTOR_POOL("Pipe-Consensus-Executor-Pool"),
@@ -302,7 +302,7 @@ public enum ThreadName {
   private static final Set<ThreadName> computeThreadNames =
       new HashSet<>(
           Arrays.asList(
-              PIPE_EXTRACTOR_DISRUPTOR,
+              PIPE_SOURCE_DISRUPTOR,
               PIPE_PROCESSOR_EXECUTOR_POOL,
               PIPE_CONNECTOR_EXECUTOR_POOL,
               IOT_CONSENSUS_V2_EXECUTOR_POOL,
