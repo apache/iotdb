@@ -195,8 +195,8 @@ public class MigrationTaskManager implements IService, IMigrationManager {
       }
       AuditLogFields fields =
           new AuditLogFields(
-              AuthorityChecker.INTERNAL_CONTROL_USER_ID,
-              AuthorityChecker.INTERNAL_CONTROL_USER,
+              AuthorityChecker.INTERNAL_AUDIT_USER_ID,
+              AuthorityChecker.INTERNAL_AUDIT_USER,
               null,
               AuditEventType.AUDIT_STORAGE_FULL,
               AuditLogOperation.CONTROL,

@@ -88,9 +88,6 @@ public class AuthorityChecker {
   public static final int INTERNAL_AUDIT_USER_ID = 4;
   public static final String INTERNAL_AUDIT_USER = "__internal_auditor";
 
-  public static final int INTERNAL_CONTROL_USER_ID = 5;
-  public static final String INTERNAL_CONTROL_USER = "__internal_controller";
-
   public static String ANY_SCOPE = "any";
 
   public static final String ONLY_ADMIN_ALLOWED =

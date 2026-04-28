@@ -100,8 +100,8 @@ public class DataNodeShutdownHook extends Thread {
       logger.info("DataNode exiting...");
       AuditLogFields fields =
           new AuditLogFields(
-              AuthorityChecker.INTERNAL_CONTROL_USER_ID,
-              AuthorityChecker.INTERNAL_CONTROL_USER,
+              AuthorityChecker.INTERNAL_AUDIT_USER_ID,
+              AuthorityChecker.INTERNAL_AUDIT_USER,
               null,
               AuditEventType.DN_SHUTDOWN,
               AuditLogOperation.CONTROL,
@@ -118,8 +118,8 @@ public class DataNodeShutdownHook extends Thread {
               "org.apache.tsfile.encrypt.UNENCRYPTED")) {
         AuditLogFields encryptFields =
             new AuditLogFields(
-                AuthorityChecker.INTERNAL_CONTROL_USER_ID,
-                AuthorityChecker.INTERNAL_CONTROL_USER,
+                AuthorityChecker.INTERNAL_AUDIT_USER_ID,
+                AuthorityChecker.INTERNAL_AUDIT_USER,
                 null,
                 AuditEventType.DESTROY_KEY,
                 AuditLogOperation.CONTROL,

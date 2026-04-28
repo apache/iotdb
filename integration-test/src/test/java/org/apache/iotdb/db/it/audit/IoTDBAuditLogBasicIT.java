@@ -203,8 +203,8 @@ public class IoTDBAuditLogBasicIT {
           new AuditLogSet(
               Arrays.asList(
                   "node_1",
-                  "u_5",
-                  "__internal_controller",
+                  "u_4",
+                  "__internal_auditor",
                   "null",
                   "CHANGE_AUDIT_OPTION",
                   "CONTROL",
@@ -1362,7 +1362,7 @@ public class IoTDBAuditLogBasicIT {
           // Start audit service
           new AuditLogSet(
               Arrays.asList(
-                  "root.__audit.log.node_1.u_5",
+                  "root.__audit.log.node_1.u_4",
                   "true",
                   "GLOBAL",
                   "[AUDIT]",
@@ -1372,7 +1372,7 @@ public class IoTDBAuditLogBasicIT {
                   "null",
                   "CHANGE_AUDIT_OPTION",
                   "null",
-                  "__internal_controller")),
+                  "__internal_auditor")),
           // Environment setup login/logout
           new AuditLogSet(
               Arrays.asList(

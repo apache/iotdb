@@ -2882,8 +2882,8 @@ public class IoTDBDescriptor {
         DNAuditLogger.getInstance().start();
         AuditLogFields fields =
             new AuditLogFields(
-                AuthorityChecker.INTERNAL_CONTROL_USER_ID,
-                AuthorityChecker.INTERNAL_CONTROL_USER,
+                AuthorityChecker.INTERNAL_AUDIT_USER_ID,
+                AuthorityChecker.INTERNAL_AUDIT_USER,
                 null,
                 AuditEventType.CHANGE_AUDIT_OPTION,
                 AuditLogOperation.CONTROL,
