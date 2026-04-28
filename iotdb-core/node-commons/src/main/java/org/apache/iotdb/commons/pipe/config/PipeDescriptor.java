@@ -443,7 +443,7 @@ public class PipeDescriptor {
                 "rate_limiter_hot_reload_check_interval_ms",
                 String.valueOf(config.getRateLimiterHotReloadCheckIntervalMs()))));
 
-    config.setPipeConnectorRequestSliceThresholdBytes(
+    config.setPipeSinkRequestSliceThresholdBytes(
         Integer.parseInt(
             properties.getProperty(
                 "pipe_connector_request_slice_threshold_bytes",

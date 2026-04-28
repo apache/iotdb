@@ -293,8 +293,7 @@ public class CommonConfig {
   private double pipeAllSinksRateLimitBytesPerSecond = -1;
   private int rateLimiterHotReloadCheckIntervalMs = 1000;
 
-  private int pipeConnectorRequestSliceThresholdBytes =
-      (int) (RpcUtils.THRIFT_FRAME_MAX_SIZE * 0.8);
+  private int pipeSinkRequestSliceThresholdBytes = (int) (RpcUtils.THRIFT_FRAME_MAX_SIZE * 0.8);
 
   private boolean isSeperatedPipeHeartbeatEnabled = true;
   private int pipeHeartbeatIntervalSecondsForCollectingPipeMeta = 3;
@@ -1396,12 +1395,12 @@ public class CommonConfig {
     return pipeSinkRetryIntervalMs;
   }
 
-  public void setPipeSinkRetryIntervalMs(long pipeConnectorRetryIntervalMs) {
-    if (this.pipeSinkRetryIntervalMs == pipeConnectorRetryIntervalMs) {
+  public void setPipeSinkRetryIntervalMs(long pipeSinkRetryIntervalMs) {
+    if (this.pipeSinkRetryIntervalMs == pipeSinkRetryIntervalMs) {
       return;
     }
-    this.pipeSinkRetryIntervalMs = pipeConnectorRetryIntervalMs;
-    logger.info("pipeSinkRetryIntervalMs is set to {}", pipeConnectorRetryIntervalMs);
+    this.pipeSinkRetryIntervalMs = pipeSinkRetryIntervalMs;
+    logger.info("pipeSinkRetryIntervalMs is set to {}", pipeSinkRetryIntervalMs);
   }
 
   public boolean isPipeSinkRetryLocallyForConnectionError() {
@@ -2202,18 +2201,16 @@ public class CommonConfig {
   }
 
   public int getPipeSinkRequestSliceThresholdBytes() {
-    return pipeConnectorRequestSliceThresholdBytes;
+    return pipeSinkRequestSliceThresholdBytes;
   }
 
-  public void setPipeConnectorRequestSliceThresholdBytes(
-      int pipeConnectorRequestSliceThresholdBytes) {
-    if (this.pipeConnectorRequestSliceThresholdBytes == pipeConnectorRequestSliceThresholdBytes) {
+  public void setPipeSinkRequestSliceThresholdBytes(int pipeSinkRequestSliceThresholdBytes) {
+    if (this.pipeSinkRequestSliceThresholdBytes == pipeSinkRequestSliceThresholdBytes) {
       return;
     }
-    this.pipeConnectorRequestSliceThresholdBytes = pipeConnectorRequestSliceThresholdBytes;
+    this.pipeSinkRequestSliceThresholdBytes = pipeSinkRequestSliceThresholdBytes;
     logger.info(
-        "pipeConnectorRequestSliceThresholdBytes is set to {}",
-        pipeConnectorRequestSliceThresholdBytes);
+        "pipeConnectorRequestSliceThresholdBytes is set to {}", pipeSinkRequestSliceThresholdBytes);
   }
 
   public long getTwoStageAggregateMaxCombinerLiveTimeInMs() {
