@@ -47,6 +47,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.GroupByTag
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.OffsetNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.RawDataAggregationNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.DeviceRegionScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.CrossSeriesAggregationDescriptor;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
@@ -638,6 +639,22 @@ public class SchemaQueryLogicalPlannerTest {
       Assert.assertEquals(30, showDevicesNode2.getLimit());
       Assert.assertEquals(0, showDevicesNode2.getOffset());
       Assert.assertTrue(showDevicesNode2.isHasLimit());
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail();
+    }
+  }
+
+  @Test
+  public void testShowDevicesWithTimeConditionPaginationOrder() {
+    String sql = "SHOW DEVICES root.ln.wf01.wt01 WHERE time >= 10 limit 20 offset 10";
+    try {
+      LimitNode limitNode = (LimitNode) parseSQLToPlanNode(sql);
+      Assert.assertEquals(20, limitNode.getLimit());
+
+      OffsetNode offsetNode = (OffsetNode) limitNode.getChild();
+      Assert.assertEquals(10, offsetNode.getOffset());
+      Assert.assertTrue(offsetNode.getChild() instanceof DeviceRegionScanNode);
     } catch (Exception e) {
       e.printStackTrace();
       fail();

@@ -667,8 +667,8 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
                   analysis.getDeviceToTimeseriesSchemas(),
                   analysis.hasInvalidSeries(),
                   analysis.useAliasSeries())
-              .planLimit(showDevicesStatement.getLimit())
-              .planOffset(showDevicesStatement.getOffset());
+              .planOffset(showDevicesStatement.getOffset())
+              .planLimit(showDevicesStatement.getLimit());
       return planBuilder.getRoot();
     }
 
