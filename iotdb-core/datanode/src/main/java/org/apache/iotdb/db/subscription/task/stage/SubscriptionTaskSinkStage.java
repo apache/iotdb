@@ -71,7 +71,6 @@ public class SubscriptionTaskSinkStage extends PipeTaskSinkStage {
   }
 
   public UnboundedBlockingPendingQueue<Event> getPipeSinkPendingQueue() {
-    return SubscriptionSinkSubtaskManager.instance()
-        .getPipeConnectorPendingQueue(sinkSubtaskId);
+    return SubscriptionSinkSubtaskManager.instance().getPipeConnectorPendingQueue(sinkSubtaskId);
   }
 }

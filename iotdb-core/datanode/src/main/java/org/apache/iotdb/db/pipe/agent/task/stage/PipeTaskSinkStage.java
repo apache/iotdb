@@ -81,8 +81,7 @@ public class PipeTaskSinkStage extends PipeTaskStage {
 
   @Override
   public void dropSubtask() throws PipeException {
-    PipeSinkSubtaskManager.instance()
-        .deregister(pipeName, creationTime, regionId, sinkSubtaskId);
+    PipeSinkSubtaskManager.instance().deregister(pipeName, creationTime, regionId, sinkSubtaskId);
   }
 
   public UnboundedBlockingPendingQueue<Event> getPipeSinkPendingQueue() {
