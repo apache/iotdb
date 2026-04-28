@@ -150,9 +150,22 @@ class Session(object):
         session.__hosts = []
         session.__ports = []
         for node_url in node_urls:
-            split = node_url.split(":")
-            session.__hosts.append(split[0])
-            session.__ports.append(int(split[1]))
+            # Handle IPv6 address format [ipv6]:port
+            if node_url.startswith("["):
+                bracket_end = node_url.find("]")
+                if bracket_end > 0:
+                    host = node_url[1:bracket_end]
+                    # Port comes after "]:"
+                    port_str = node_url[bracket_end + 2:]
+                    session.__hosts.append(host)
+                    session.__ports.append(int(port_str))
+                else:
+                    raise RuntimeError(f"Invalid IPv6 address format: {node_url}")
+            else:
+                # IPv4 format: host:port
+                split = node_url.split(":")
+                session.__hosts.append(split[0])
+                session.__ports.append(int(split[1]))
         session.__host = session.__hosts[0]
         session.__port = session.__ports[0]
         session.__default_endpoint = TEndPoint(session.__host, session.__port)

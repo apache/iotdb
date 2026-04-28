@@ -85,7 +85,12 @@ public class Utils {
   private Utils() {}
 
   public static String hostAddress(TEndPoint endpoint) {
-    return String.format("%s:%d", endpoint.getIp(), endpoint.getPort());
+    String ip = endpoint.getIp();
+    // IPv6 addresses need to be wrapped in brackets
+    if (ip.contains(":")) {
+      return String.format("[%s]:%d", ip, endpoint.getPort());
+    }
+    return String.format("%s:%d", ip, endpoint.getPort());
   }
 
   public static String fromTEndPointToString(TEndPoint endpoint) {
@@ -106,6 +111,14 @@ public class Utils {
   }
 
   public static TEndPoint fromRaftPeerAddressToTEndPoint(String address) {
+    // Handle IPv6 address format [ipv6]:port
+    if (address.startsWith("[")) {
+      int bracketEnd = address.indexOf(']');
+      String ip = address.substring(1, bracketEnd);
+      int port = Integer.parseInt(address.substring(bracketEnd + 2));
+      return new TEndPoint(ip, port);
+    }
+    // IPv4 format: ip:port
     String[] items = address.split(":");
     return new TEndPoint(items[0], Integer.parseInt(items[1]));
   }
@@ -115,7 +128,16 @@ public class Utils {
   }
 
   public static TEndPoint fromRaftPeerProtoToTEndPoint(RaftPeerProto proto) {
-    String[] items = proto.getAddress().split(":");
+    String address = proto.getAddress();
+    // Handle IPv6 address format [ipv6]:port
+    if (address.startsWith("[")) {
+      int bracketEnd = address.indexOf(']');
+      String ip = address.substring(1, bracketEnd);
+      int port = Integer.parseInt(address.substring(bracketEnd + 2));
+      return new TEndPoint(ip, port);
+    }
+    // IPv4 format: ip:port
+    String[] items = address.split(":");
     return new TEndPoint(items[0], Integer.parseInt(items[1]));
   }
 

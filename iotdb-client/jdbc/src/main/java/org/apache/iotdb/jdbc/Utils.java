@@ -42,8 +42,8 @@ public class Utils {
   static final String RPC_COMPRESS = "rpc_compress";
 
   /**
-   * Parse JDBC connection URL The only supported format of the URL is:
-   * jdbc:iotdb://localhost:6667/.
+   * Parse JDBC connection URL The only supported format of the URL is: jdbc:iotdb://localhost:6667/
+   * or jdbc:iotdb://[::1]:6667/ for IPv6.
    */
   static IoTDBConnectionParams parseUrl(String url, Properties info) throws IoTDBURLException {
     IoTDBConnectionParams params = new IoTDBConnectionParams(url);
@@ -57,10 +57,24 @@ public class Utils {
     String suffixURL = null;
     if (url.startsWith(Config.IOTDB_URL_PREFIX)) {
       String subURL = url.substring(Config.IOTDB_URL_PREFIX.length());
-      int i = subURL.lastIndexOf(COLON);
-      host = subURL.substring(0, i);
+      int i;
+      // Handle IPv6 address format [ipv6]:port
+      if (subURL.startsWith("[")) {
+        int bracketEnd = subURL.indexOf(']');
+        if (bracketEnd > 0) {
+          host = subURL.substring(1, bracketEnd);
+          // Find port after "]:"
+          i = bracketEnd + 2;
+        } else {
+          throw new IoTDBURLException("Invalid IPv6 address format in URL: " + url);
+        }
+      } else {
+        // IPv4 format: use lastIndexOf to find port separator
+        i = subURL.lastIndexOf(COLON);
+        host = subURL.substring(0, i);
+        i++;
+      }
       params.setHost(host);
-      i++;
       // parse port
       int port = 0;
       for (; i < subURL.length() && Character.isDigit(subURL.charAt(i)); i++) {
