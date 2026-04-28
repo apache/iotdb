@@ -190,8 +190,8 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
 
   private static final DNAuditLogger AUDIT_LOGGER = DNAuditLogger.getInstance();
 
-  private static final String OBJECT_AUTHENTICATION_AUDIT_STR =
-      "User %s (ID=%d) requests authority on object %s with result %s";
+  private static final String OPERATION_AUDIT_STR =
+      "User %s (ID=%d) requests authority on the %s operation";
 
   @Override
   public TSStatus visitNode(StatementNode node, TreeAccessCheckContext context) {
@@ -2056,11 +2056,10 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
         auditEntity.setAuditEventType(auditEventType),
         () ->
             String.format(
-                OBJECT_AUTHENTICATION_AUDIT_STR,
+                OPERATION_AUDIT_STR,
                 auditEntity.getUsername(),
                 auditEntity.getUserId(),
-                auditObject.get(),
-                auditEntity.getResult()));
+                auditEventType));
     return result;
   }
 
