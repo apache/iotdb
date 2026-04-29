@@ -1347,15 +1347,6 @@ public class ConfigNodeConfig {
     this.enableSeparationOfPowers = enableSeparationOfPowers;
   }
 
-  public long getPartitionTableRecoverWaitAllDnUpTimeoutInMs() {
-    return partitionTableRecoverWaitAllDnUpTimeoutInMs;
-  }
-
-  public void setPartitionTableRecoverWaitAllDnUpTimeoutInMs(
-      long partitionTableRecoverWaitAllDnUpTimeoutInMs) {
-    this.partitionTableRecoverWaitAllDnUpTimeoutInMs = partitionTableRecoverWaitAllDnUpTimeoutInMs;
-  }
-
   /**
    * Check situation that encrypted config file or encrypted permission files exist when encrypt
    * switch is disable

@@ -83,6 +83,7 @@ import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionCreate
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionDeleteTask;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionMaintainTask;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionMaintainType;
+import org.apache.iotdb.confignode.procedure.impl.partition.DataPartitionTableIntegrityCheckProcedure;
 import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionGroupsByTimeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdReq;
@@ -154,6 +155,9 @@ public class PartitionManager {
 
   private final ScheduledExecutorService regionMaintainer;
   private Future<?> currentRegionMaintainerFuture;
+
+  private final AtomicBoolean dataPartitionTableIntegrityCheckProcedureRunning =
+      new AtomicBoolean(false);
 
   public PartitionManager(IManager configManager, PartitionInfo partitionInfo) {
     this.configManager = configManager;
@@ -512,6 +516,29 @@ public class PartitionManager {
       return resp;
     }
     return resp;
+  }
+
+  /** Used to repair the lost data partition table */
+  public TSStatus dataPartitionTableIntegrityCheck() {
+    if (configManager
+            .getProcedureManager()
+            .isExistUnfinishedProcedure(DataPartitionTableIntegrityCheckProcedure.class)
+        || !dataPartitionTableIntegrityCheckProcedureRunning.compareAndSet(false, true)) {
+      return RpcUtils.getStatus(
+          TSStatusCode.OVERLAP_WITH_EXISTING_TASK,
+          "DataPartitionTableIntegrityCheckProcedure is already submitted.");
+    }
+
+    synchronized (this) {
+      DataPartitionTableIntegrityCheckProcedure procedure =
+          new DataPartitionTableIntegrityCheckProcedure();
+      getProcedureManager().getExecutor().submitProcedure(procedure);
+    }
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  }
+
+  public void markDataPartitionTableIntegrityCheckProcedureFinished() {
+    dataPartitionTableIntegrityCheckProcedureRunning.set(false);
   }
 
   private TSStatus consensusWritePartitionResult(ConfigPhysicalPlan plan) {
