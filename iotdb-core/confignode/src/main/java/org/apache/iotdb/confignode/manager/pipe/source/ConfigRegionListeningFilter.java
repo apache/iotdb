@@ -230,8 +230,8 @@ public class ConfigRegionListeningFilter {
                   ConfigPhysicalPlanType.RevokeUser,
                   ConfigPhysicalPlanType.RevokeRoleFromUser,
                   ConfigPhysicalPlanType.RRevokeUserRole,
-                  ConfigPhysicalPlanType.RGrantUserAll,
-                  ConfigPhysicalPlanType.RGrantUserSysPri)));
+                  ConfigPhysicalPlanType.RRevokeUserAll,
+                  ConfigPhysicalPlanType.RRevokeUserSysPri)));
 
       // Table
       OPTION_PLAN_MAP.put(
@@ -267,7 +267,7 @@ public class ConfigRegionListeningFilter {
             && !((DeleteDatabasePlan) plan).getName().equals(Audit.TABLE_MODEL_AUDIT_DATABASE);
       case CreateDatabase:
       case AlterDatabase:
-        return !(((DatabaseSchemaPlan) plan)
+        return !((DatabaseSchemaPlan) plan)
                 .getSchema()
                 .getName()
                 .equals(SchemaConstant.SYSTEM_DATABASE)
@@ -278,7 +278,7 @@ public class ConfigRegionListeningFilter {
             && !((DatabaseSchemaPlan) plan)
                 .getSchema()
                 .getName()
-                .equals(Audit.TABLE_MODEL_AUDIT_DATABASE));
+                .equals(Audit.TABLE_MODEL_AUDIT_DATABASE);
       // Table under audit db
       case PipeCreateTableOrView:
         return !((PipeCreateTableOrViewPlan) plan)
