@@ -3032,7 +3032,9 @@ public class DataRegion implements IDataRegionForQuery {
                                   TimePartitionUtils.getTimePartitionId(
                                       Long.parseLong(
                                           name.substring(
-                                              -ObjectTypeUtils.OBJECT_FILE_SUFFIX.length())));
+                                              0,
+                                              name.length()
+                                                  - ObjectTypeUtils.OBJECT_FILE_SUFFIX.length())));
                               TableDiskUsageIndex.getInstance()
                                   .writeObjectDelta(
                                       databaseName,

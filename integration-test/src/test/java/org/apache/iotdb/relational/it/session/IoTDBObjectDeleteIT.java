@@ -263,6 +263,40 @@ public class IoTDBObjectDeleteIT {
   }
 
   @Test
+  public void dropObjectTableWithMultipleRowsTest()
+      throws IoTDBConnectionException, StatementExecutionException, IOException {
+    byte[] objectBytes = readTestObjectBytes();
+
+    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
+      session.executeNonQueryStatement("USE \"db1\"");
+      insertTwoRowsWithObjects(session, objectBytes);
+      assertObjectRowsReadable(session, objectBytes);
+
+      session.executeNonQueryStatement("drop table object_table");
+    }
+
+    Assert.assertFalse(objectFileExists("object_table", "1", "5", "3", "file", "1.bin"));
+    Assert.assertFalse(objectFileExists("object_table", "1", "5", "3", "file", "2.bin"));
+  }
+
+  @Test
+  public void dropObjectDatabaseTest()
+      throws IoTDBConnectionException, StatementExecutionException, IOException {
+    byte[] objectBytes = readTestObjectBytes();
+
+    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
+      session.executeNonQueryStatement("USE \"db1\"");
+      insertTwoRowsWithObjects(session, objectBytes);
+      assertObjectRowsReadable(session, objectBytes);
+
+      session.executeNonQueryStatement("drop database db1");
+    }
+
+    Assert.assertFalse(objectFileExists("object_table", "1", "5", "3", "file", "1.bin"));
+    Assert.assertFalse(objectFileExists("object_table", "1", "5", "3", "file", "2.bin"));
+  }
+
+  @Test
   public void deleteObjectSegmentsTest()
       throws IoTDBConnectionException, StatementExecutionException, IOException {
     String testObject =
@@ -359,5 +393,118 @@ public class IoTDBObjectDeleteIT {
 
   protected String convertPathString(String path) {
     return BaseEncoding.base32().omitPadding().encode(path.getBytes(StandardCharsets.UTF_8));
+  }
+
+  private byte[] readTestObjectBytes() throws IOException {
+    String testObject =
+        System.getProperty("user.dir")
+            + File.separator
+            + "target"
+            + File.separator
+            + "test-classes"
+            + File.separator
+            + "object-example.pt";
+    return Files.readAllBytes(Paths.get(testObject));
+  }
+
+  private void insertTwoRowsWithObjects(ITableSession session, byte[] objectBytes)
+      throws IoTDBConnectionException, StatementExecutionException {
+    List<String> columnNameList =
+        Arrays.asList("region_id", "plant_id", "device_id", "temperature", "file");
+    List<TSDataType> dataTypeList =
+        Arrays.asList(
+            TSDataType.STRING,
+            TSDataType.STRING,
+            TSDataType.STRING,
+            TSDataType.FLOAT,
+            TSDataType.OBJECT);
+    List<ColumnCategory> columnTypeList =
+        new ArrayList<>(
+            Arrays.asList(
+                ColumnCategory.TAG,
+                ColumnCategory.TAG,
+                ColumnCategory.TAG,
+                ColumnCategory.FIELD,
+                ColumnCategory.FIELD));
+    Tablet tablet = new Tablet("object_table", columnNameList, dataTypeList, columnTypeList, 2);
+
+    int rowIndex = tablet.getRowSize();
+    tablet.addTimestamp(rowIndex, 1);
+    tablet.addValue(rowIndex, 0, "1");
+    tablet.addValue(rowIndex, 1, "5");
+    tablet.addValue(rowIndex, 2, "3");
+    tablet.addValue(rowIndex, 3, 37.6F);
+    tablet.addValue(rowIndex, 4, true, 0, objectBytes);
+
+    rowIndex = tablet.getRowSize();
+    tablet.addTimestamp(rowIndex, 2);
+    tablet.addValue(rowIndex, 0, "1");
+    tablet.addValue(rowIndex, 1, "5");
+    tablet.addValue(rowIndex, 2, "3");
+    tablet.addValue(rowIndex, 3, 38.6F);
+    tablet.addValue(rowIndex, 4, true, 0, objectBytes);
+
+    session.insert(tablet);
+    tablet.reset();
+    session.executeNonQueryStatement("flush");
+  }
+
+  private void assertObjectRowsReadable(ITableSession session, byte[] objectBytes)
+      throws IoTDBConnectionException, StatementExecutionException {
+    try (SessionDataSet dataSet =
+        session.executeQueryStatement(
+            "select time, READ_OBJECT(file) as file_content from object_table order by time")) {
+      SessionDataSet.DataIterator iterator = dataSet.iterator();
+      Assert.assertTrue(iterator.next());
+      Assert.assertEquals(1L, iterator.getLong("time"));
+      Assert.assertArrayEquals(objectBytes, iterator.getBlob("file_content").getValues());
+      Assert.assertTrue(iterator.next());
+      Assert.assertEquals(2L, iterator.getLong("time"));
+      Assert.assertArrayEquals(objectBytes, iterator.getBlob("file_content").getValues());
+      Assert.assertFalse(iterator.next());
+    }
+  }
+
+  private boolean objectFileExists(
+      String tableName,
+      String regionId,
+      String plantId,
+      String deviceId,
+      String measurement,
+      String fileName) {
+    for (DataNodeWrapper dataNodeWrapper : EnvFactory.getEnv().getDataNodeWrapperList()) {
+      String objectDirStr = dataNodeWrapper.getDataNodeObjectDir();
+      File objectDir = new File(objectDirStr);
+      if (!objectDir.exists() || !objectDir.isDirectory()) {
+        continue;
+      }
+      File[] regionDirs = objectDir.listFiles();
+      if (regionDirs == null) {
+        continue;
+      }
+      for (File regionDir : regionDirs) {
+        if (!regionDir.isDirectory()) {
+          continue;
+        }
+        File objectFile =
+            new File(
+                regionDir,
+                convertPathString(tableName)
+                    + File.separator
+                    + convertPathString(regionId)
+                    + File.separator
+                    + convertPathString(plantId)
+                    + File.separator
+                    + convertPathString(deviceId)
+                    + File.separator
+                    + convertPathString(measurement)
+                    + File.separator
+                    + fileName);
+        if (objectFile.exists() && objectFile.isFile()) {
+          return true;
+        }
+      }
+    }
+    return false;
   }
 }
