@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.execution.aggregation;
+package org.apache.iotdb.calc.execution.aggregation;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
@@ -30,30 +30,32 @@ import java.nio.ByteBuffer;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
-public class CovarianceAccumulator implements Accumulator {
+public class CorrelationAccumulator implements Accumulator {
 
-  private static final int INTERMEDIATE_SIZE = Long.BYTES + 3 * Double.BYTES;
+  private static final int INTERMEDIATE_SIZE = Long.BYTES + 5 * Double.BYTES;
 
-  public enum CovarianceType {
-    COVAR_POP,
-    COVAR_SAMP
+  public enum CorrelationType {
+    CORR
   }
 
   private final TSDataType[] seriesDataTypes;
-  private final CovarianceType covarianceType;
+  private final CorrelationType correlationType;
 
   private long count;
   private double meanX;
   private double meanY;
+  private double m2X;
+  private double m2Y;
   private double c2;
 
-  public CovarianceAccumulator(TSDataType[] seriesDataTypes, CovarianceType covarianceType) {
+  public CorrelationAccumulator(TSDataType[] seriesDataTypes, CorrelationType correlationType) {
     this.seriesDataTypes = seriesDataTypes;
-    this.covarianceType = covarianceType;
+    this.correlationType = correlationType;
   }
 
   @Override
   public void addInput(Column[] columns, BitMap bitMap) {
+
     int size = columns[0].getPositionCount();
     for (int i = 0; i < size; i++) {
       if (bitMap != null && !bitMap.isMarked(i)) {
@@ -65,6 +67,7 @@ public class CovarianceAccumulator implements Accumulator {
 
       double x = getDoubleValue(columns[1], i, seriesDataTypes[0]);
       double y = getDoubleValue(columns[2], i, seriesDataTypes[1]);
+
       update(x, y);
     }
   }
@@ -87,34 +90,46 @@ public class CovarianceAccumulator implements Accumulator {
 
   private void update(double x, double y) {
     long newCount = count + 1;
+
     double oldMeanX = meanX;
-    meanX = oldMeanX + (x - oldMeanX) / newCount;
     double oldMeanY = meanY;
-    double newMeanY = oldMeanY + (y - oldMeanY) / newCount;
-    meanY = newMeanY;
-    c2 += (x - oldMeanX) * (y - newMeanY);
+
+    meanX = oldMeanX + (x - oldMeanX) / newCount;
+    meanY = oldMeanY + (y - oldMeanY) / newCount;
+
+    c2 += (x - oldMeanX) * (y - meanY);
+    m2X += (x - oldMeanX) * (x - meanX);
+    m2Y += (y - oldMeanY) * (y - meanY);
+
     count = newCount;
   }
 
   @Override
   public void addIntermediate(Column[] partialResult) {
-    checkArgument(partialResult.length == 1, "partialResult of Covariance should be 1");
+    checkArgument(partialResult.length == 1, "partialResult of Correlation should be 1");
     if (partialResult[0].isNull(0)) {
       return;
     }
-
     byte[] bytes = partialResult[0].getBinary(0).getValues();
     ByteBuffer buffer = ByteBuffer.wrap(bytes);
 
     long otherCount = buffer.getLong();
     double otherMeanX = buffer.getDouble();
     double otherMeanY = buffer.getDouble();
+    double otherM2X = buffer.getDouble();
+    double otherM2Y = buffer.getDouble();
     double otherC2 = buffer.getDouble();
 
-    merge(otherCount, otherMeanX, otherMeanY, otherC2);
+    merge(otherCount, otherMeanX, otherMeanY, otherM2X, otherM2Y, otherC2);
   }
 
-  private void merge(long otherCount, double otherMeanX, double otherMeanY, double otherC2) {
+  private void merge(
+      long otherCount,
+      double otherMeanX,
+      double otherMeanY,
+      double otherM2X,
+      double otherM2Y,
+      double otherC2) {
     if (otherCount == 0) {
       return;
     }
@@ -122,62 +137,61 @@ public class CovarianceAccumulator implements Accumulator {
       count = otherCount;
       meanX = otherMeanX;
       meanY = otherMeanY;
+      m2X = otherM2X;
+      m2Y = otherM2Y;
       c2 = otherC2;
-      return;
+    } else {
+      long na = count;
+      long n = na + otherCount;
+      double meanXValue = meanX;
+      double meanYValue = meanY;
+      double deltaX = otherMeanX - meanXValue;
+      double deltaY = otherMeanY - meanYValue;
+
+      m2X += otherM2X + na * otherCount * deltaX * deltaX / (double) n;
+      m2Y += otherM2Y + na * otherCount * deltaY * deltaY / (double) n;
+      c2 += otherC2 + deltaX * deltaY * na * otherCount / (double) n;
+      meanX = meanXValue + deltaX * otherCount / (double) n;
+      meanY = meanYValue + deltaY * otherCount / (double) n;
+      count = n;
     }
-
-    long newCount = count + otherCount;
-    double deltaX = otherMeanX - meanX;
-    double deltaY = otherMeanY - meanY;
-
-    c2 += otherC2 + deltaX * deltaY * count * otherCount / newCount;
-    meanX += deltaX * otherCount / newCount;
-    meanY += deltaY * otherCount / newCount;
-    count = newCount;
   }
 
   @Override
   public void outputIntermediate(ColumnBuilder[] columnBuilders) {
-    checkArgument(columnBuilders.length == 1, "partialResult of Covariance should be 1");
+    checkArgument(columnBuilders.length == 1, "partialResult of Correlation should be 1");
     if (count == 0) {
       columnBuilders[0].appendNull();
-      return;
+    } else {
+      byte[] bytes = new byte[INTERMEDIATE_SIZE];
+      ByteBuffer buffer = ByteBuffer.wrap(bytes);
+      buffer.putLong(count);
+      buffer.putDouble(meanX);
+      buffer.putDouble(meanY);
+      buffer.putDouble(m2X);
+      buffer.putDouble(m2Y);
+      buffer.putDouble(c2);
+      columnBuilders[0].writeBinary(new Binary(bytes));
     }
-
-    byte[] bytes = new byte[INTERMEDIATE_SIZE];
-    ByteBuffer buffer = ByteBuffer.wrap(bytes);
-    buffer.putLong(count);
-    buffer.putDouble(meanX);
-    buffer.putDouble(meanY);
-    buffer.putDouble(c2);
-    columnBuilders[0].writeBinary(new Binary(bytes));
   }
 
   @Override
   public void outputFinal(ColumnBuilder columnBuilder) {
-    switch (covarianceType) {
-      case COVAR_POP:
-        if (count == 0) {
-          columnBuilder.appendNull();
-        } else {
-          columnBuilder.writeDouble(c2 / count);
-        }
-        break;
-      case COVAR_SAMP:
-        if (count < 2) {
-          columnBuilder.appendNull();
-        } else {
-          columnBuilder.writeDouble(c2 / (count - 1));
-        }
-        break;
-      default:
-        throw new UnsupportedOperationException("Unknown type: " + covarianceType);
+    if (correlationType != CorrelationType.CORR) {
+      throw new UnsupportedOperationException("Unknown type: " + correlationType);
+    }
+
+    double result = c2 / Math.sqrt(m2X * m2Y);
+    if (Double.isFinite(result)) {
+      columnBuilder.writeDouble(result);
+    } else {
+      columnBuilder.appendNull();
     }
   }
 
   @Override
   public void removeIntermediate(Column[] input) {
-    checkArgument(input.length == 1, "Input of Covariance should be 1");
+    checkArgument(input.length == 1, "Input of Correlation should be 1");
     if (input[0].isNull(0)) {
       return;
     }
@@ -190,7 +204,7 @@ public class CovarianceAccumulator implements Accumulator {
       return;
     }
     checkArgument(
-        count >= otherCount, "Covariance state count is smaller than removed state count");
+        count >= otherCount, "Correlation state count is smaller than removed state count");
 
     if (count == otherCount) {
       reset();
@@ -199,19 +213,24 @@ public class CovarianceAccumulator implements Accumulator {
 
     double otherMeanX = buffer.getDouble();
     double otherMeanY = buffer.getDouble();
+    double otherM2X = buffer.getDouble();
+    double otherM2Y = buffer.getDouble();
     double otherC2 = buffer.getDouble();
 
     long totalCount = count;
     long newCount = totalCount - otherCount;
 
-    double newMeanX = ((double) totalCount * meanX - (double) otherCount * otherMeanX) / newCount;
-    double newMeanY = ((double) totalCount * meanY - (double) otherCount * otherMeanY) / newCount;
+    double newMeanX = (totalCount * meanX - otherCount * otherMeanX) / newCount;
+    double newMeanY = (totalCount * meanY - otherCount * otherMeanY) / newCount;
 
     double deltaX = otherMeanX - newMeanX;
     double deltaY = otherMeanY - newMeanY;
     double correction = ((double) newCount * otherCount) / totalCount;
 
     c2 = c2 - otherC2 - deltaX * deltaY * correction;
+    m2X = m2X - otherM2X - deltaX * deltaX * correction;
+    m2Y = m2Y - otherM2Y - deltaY * deltaY * correction;
+
     meanX = newMeanX;
     meanY = newMeanY;
     count = newCount;
@@ -230,6 +249,8 @@ public class CovarianceAccumulator implements Accumulator {
     count = 0;
     meanX = 0;
     meanY = 0;
+    m2X = 0;
+    m2Y = 0;
     c2 = 0;
   }
 

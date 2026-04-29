@@ -12,7 +12,7 @@
  * limitations under the License.
  */
 
-package org.apache.iotdb.db.queryengine.execution.aggregation;
+package org.apache.iotdb.calc.execution.aggregation;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;

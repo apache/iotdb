@@ -17,12 +17,12 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped;
+package org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped;
 
-import org.apache.iotdb.db.queryengine.execution.aggregation.CovarianceAccumulator;
-import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.AggregationMask;
-import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.array.DoubleBigArray;
-import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.array.LongBigArray;
+import org.apache.iotdb.calc.execution.aggregation.CovarianceAccumulator;
+import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.AggregationMask;
+import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.array.DoubleBigArray;
+import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.array.LongBigArray;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;

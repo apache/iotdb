@@ -59,8 +59,7 @@ public enum TableBuiltinAggregationFunction {
   VAR_SAMP("var_samp"),
   APPROX_COUNT_DISTINCT("approx_count_distinct"),
   APPROX_MOST_FREQUENT("approx_most_frequent"),
-  APPROX_PERCENTILE("approx_percentile");
-  APPROX_MOST_FREQUENT("approx_most_frequent"),
+  APPROX_PERCENTILE("approx_percentile"),
   CORR("corr"),
   COVAR_POP("covar_pop"),
   COVAR_SAMP("covar_samp"),

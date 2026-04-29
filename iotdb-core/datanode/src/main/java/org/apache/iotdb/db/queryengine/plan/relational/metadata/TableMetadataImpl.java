@@ -1151,13 +1151,13 @@ public class TableMetadataImpl implements Metadata {
                   "Error size of input expressions. expression: %s, actual size: %s, expected size: [2].",
                   functionName.toUpperCase(), argumentTypes.size()));
         }
-        if (!isNumericType(argumentTypes.get(0))) {
+        if (!CommonMetadataUtils.isNumericType(argumentTypes.get(0))) {
           throw new SemanticException(
               String.format(
                   "Aggregate functions [%s] only support numeric data types [INT32, INT64, FLOAT, DOUBLE, TIMESTAMP]",
                   functionName.toUpperCase()));
         }
-        if (!isNumericType(argumentTypes.get(1))) {
+        if (!CommonMetadataUtils.isNumericType(argumentTypes.get(1))) {
           throw new SemanticException(
               String.format(
                   "Aggregate functions [%s] only support numeric data types [INT32, INT64, FLOAT, DOUBLE, TIMESTAMP]",
@@ -1172,7 +1172,7 @@ public class TableMetadataImpl implements Metadata {
                   "Error size of input expressions. expression: %s, actual size: %s, expected size: [1].",
                   functionName.toUpperCase(), argumentTypes.size()));
         }
-        if (!isNumericType(argumentTypes.get(0))) {
+        if (!CommonMetadataUtils.isNumericType(argumentTypes.get(0))) {
           throw new SemanticException(
               String.format(
                   "Aggregate functions [%s] only support numeric data types [INT32, INT64, FLOAT, DOUBLE, TIMESTAMP]",
@@ -1556,159 +1556,5 @@ public class TableMetadataImpl implements Metadata {
       String database, List<DataPartitionQueryParam> sgNameToQueryParamsMap) {
     return partitionFetcher.getDataPartitionWithUnclosedTimeRange(
         Collections.singletonMap(database, sgNameToQueryParamsMap));
-  }
-
-  @Override
-  public TableFunction getTableFunction(String functionName) {
-    if (TableBuiltinTableFunction.isBuiltInTableFunction(functionName)) {
-      return TableBuiltinTableFunction.getBuiltinTableFunction(functionName);
-    } else if (TableUDFUtils.isTableFunction(functionName)) {
-      return TableUDFUtils.getTableFunction(functionName);
-    } else {
-      throw new SemanticException("Unknown function: " + functionName);
-    }
-  }
-
-  @Override
-  public IModelFetcher getModelFetcher() {
-    return modelFetcher;
-  }
-
-  public static boolean isTwoNumericType(List<? extends Type> argumentTypes) {
-    return argumentTypes.size() == 2
-        && isNumericType(argumentTypes.get(0))
-        && isNumericType(argumentTypes.get(1));
-  }
-
-  public static boolean isOneNumericType(List<? extends Type> argumentTypes) {
-    return argumentTypes.size() == 1 && isNumericType(argumentTypes.get(0));
-  }
-
-  public static boolean isTwoSupportedMathNumericType(List<? extends Type> argumentTypes) {
-    return argumentTypes.size() == 2
-        && isSupportedMathNumericType(argumentTypes.get(0))
-        && isSupportedMathNumericType(argumentTypes.get(1));
-  }
-
-  public static boolean isOneSupportedMathNumericType(List<? extends Type> argumentTypes) {
-    return argumentTypes.size() == 1 && isSupportedMathNumericType(argumentTypes.get(0));
-  }
-
-  public static boolean isOneBooleanType(List<? extends Type> argumentTypes) {
-    return argumentTypes.size() == 1 && BOOLEAN.equals(argumentTypes.get(0));
-  }
-
-  public static boolean isOneCharType(List<? extends Type> argumentTypes) {
-    return argumentTypes.size() == 1 && isCharType(argumentTypes.get(0));
-  }
-
-  public static boolean isTwoCharType(List<? extends Type> argumentTypes) {
-    return argumentTypes.size() == 2
-        && isCharType(argumentTypes.get(0))
-        && isCharType(argumentTypes.get(1));
-  }
-
-  public static boolean isThreeCharType(List<? extends Type> argumentTypes) {
-    return argumentTypes.size() == 3
-        && isCharType(argumentTypes.get(0))
-        && isCharType(argumentTypes.get(1))
-        && isCharType(argumentTypes.get(2));
-  }
-
-  public static boolean isCharType(Type type) {
-    return TEXT.equals(type) || StringType.STRING.equals(type);
-  }
-
-  public static boolean isBlobType(Type type) {
-    return BlobType.BLOB.equals(type);
-  }
-
-  public static boolean isBool(Type type) {
-    return BOOLEAN.equals(type);
-  }
-
-  public static boolean isSupportedMathNumericType(Type type) {
-    return DOUBLE.equals(type) || FLOAT.equals(type) || INT32.equals(type) || INT64.equals(type);
-  }
-
-  public static boolean isNumericType(Type type) {
-    return DOUBLE.equals(type)
-        || FLOAT.equals(type)
-        || INT32.equals(type)
-        || INT64.equals(type)
-        || TIMESTAMP.equals(type);
-  }
-
-  public static boolean isTimestampType(Type type) {
-    return TIMESTAMP.equals(type);
-  }
-
-  public static boolean isUnknownType(Type type) {
-    return UNKNOWN.equals(type);
-  }
-
-  public static boolean isIntegerNumber(Type type) {
-    return INT32.equals(type) || INT64.equals(type);
-  }
-
-  public static boolean isTwoTypeComparable(List<? extends Type> argumentTypes) {
-    if (argumentTypes.size() != 2) {
-      return false;
-    }
-    Type left = argumentTypes.get(0);
-    Type right = argumentTypes.get(1);
-    if (left.equals(right)) {
-      return true;
-    }
-
-    // Boolean type and Binary Type can not be compared with other types
-    return (isNumericType(left) && isNumericType(right))
-        || (isCharType(left) && isCharType(right))
-        || (isUnknownType(left) && (isNumericType(right) || isCharType(right)))
-        || ((isNumericType(left) || isCharType(left)) && isUnknownType(right));
-  }
-
-  public static boolean areAllTypesSameAndComparable(List<? extends Type> argumentTypes) {
-    if (argumentTypes == null || argumentTypes.isEmpty()) {
-      return true;
-    }
-    Type firstType = argumentTypes.get(0);
-    if (!firstType.isComparable()) {
-      return false;
-    }
-    return argumentTypes.stream().allMatch(type -> type.equals(firstType));
-  }
-
-  public static boolean isArithmeticType(Type type) {
-    return INT32.equals(type)
-        || INT64.equals(type)
-        || FLOAT.equals(type)
-        || DOUBLE.equals(type)
-        || DATE.equals(type)
-        || TIMESTAMP.equals(type);
-  }
-
-  public static boolean isTwoTypeCalculable(List<? extends Type> argumentTypes) {
-    if (argumentTypes.size() != 2) {
-      return false;
-    }
-    Type left = argumentTypes.get(0);
-    Type right = argumentTypes.get(1);
-    if ((isUnknownType(left) && isArithmeticType(right))
-        || (isUnknownType(right) && isArithmeticType(left))) {
-      return true;
-    }
-    return isArithmeticType(left) && isArithmeticType(right);
-  }
-
-  public static void throwTableNotExistsException(final String database, final String tableName) {
-    throw new SemanticException(new TableNotExistsException(database, tableName));
-  }
-
-  public static void throwColumnNotExistsException(final Object columnName) {
-    throw new SemanticException(
-        new IoTDBException(
-            String.format("Column '%s' cannot be resolved.", columnName),
-            TSStatusCode.COLUMN_NOT_EXISTS.getStatusCode()));
   }
 }

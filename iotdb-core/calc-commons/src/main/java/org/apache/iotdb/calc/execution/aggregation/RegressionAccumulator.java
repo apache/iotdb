@@ -1,23 +1,18 @@
 /*
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
- * under the License.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
-package org.apache.iotdb.db.queryengine.execution.aggregation;
+package org.apache.iotdb.calc.execution.aggregation;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
@@ -30,33 +25,33 @@ import java.nio.ByteBuffer;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
-public class CorrelationAccumulator implements Accumulator {
+public class RegressionAccumulator implements Accumulator {
 
-  private static final int INTERMEDIATE_SIZE = Long.BYTES + 5 * Double.BYTES;
+  private static final int INTERMEDIATE_SIZE = Long.BYTES + 4 * Double.BYTES;
 
-  public enum CorrelationType {
-    CORR
+  public enum RegressionType {
+    REGR_SLOPE,
+    REGR_INTERCEPT
   }
 
   private final TSDataType[] seriesDataTypes;
-  private final CorrelationType correlationType;
+  private final RegressionType regressionType;
 
   private long count;
   private double meanX;
   private double meanY;
   private double m2X;
-  private double m2Y;
   private double c2;
 
-  public CorrelationAccumulator(TSDataType[] seriesDataTypes, CorrelationType correlationType) {
+  public RegressionAccumulator(TSDataType[] seriesDataTypes, RegressionType regressionType) {
     this.seriesDataTypes = seriesDataTypes;
-    this.correlationType = correlationType;
+    this.regressionType = regressionType;
   }
 
   @Override
   public void addInput(Column[] columns, BitMap bitMap) {
 
-    int size = columns[0].getPositionCount();
+    int size = columns[1].getPositionCount();
     for (int i = 0; i < size; i++) {
       if (bitMap != null && !bitMap.isMarked(i)) {
         continue;
@@ -65,8 +60,8 @@ public class CorrelationAccumulator implements Accumulator {
         continue;
       }
 
-      double x = getDoubleValue(columns[1], i, seriesDataTypes[0]);
-      double y = getDoubleValue(columns[2], i, seriesDataTypes[1]);
+      double y = getDoubleValue(columns[1], i, seriesDataTypes[0]);
+      double x = getDoubleValue(columns[2], i, seriesDataTypes[1]);
 
       update(x, y);
     }
@@ -89,24 +84,20 @@ public class CorrelationAccumulator implements Accumulator {
   }
 
   private void update(double x, double y) {
-    long newCount = count + 1;
-
+    long n = count + 1;
     double oldMeanX = meanX;
+    meanX = oldMeanX + (x - oldMeanX) / n;
     double oldMeanY = meanY;
-
-    meanX = oldMeanX + (x - oldMeanX) / newCount;
-    meanY = oldMeanY + (y - oldMeanY) / newCount;
-
-    c2 += (x - oldMeanX) * (y - meanY);
+    double newMeanY = oldMeanY + (y - oldMeanY) / n;
+    meanY = newMeanY;
+    c2 += (x - oldMeanX) * (y - newMeanY);
     m2X += (x - oldMeanX) * (x - meanX);
-    m2Y += (y - oldMeanY) * (y - meanY);
-
-    count = newCount;
+    count = n;
   }
 
   @Override
   public void addIntermediate(Column[] partialResult) {
-    checkArgument(partialResult.length == 1, "partialResult of Correlation should be 1");
+    checkArgument(partialResult.length == 1, "partialResult of Regression should be 1");
     if (partialResult[0].isNull(0)) {
       return;
     }
@@ -117,19 +108,13 @@ public class CorrelationAccumulator implements Accumulator {
     double otherMeanX = buffer.getDouble();
     double otherMeanY = buffer.getDouble();
     double otherM2X = buffer.getDouble();
-    double otherM2Y = buffer.getDouble();
     double otherC2 = buffer.getDouble();
 
-    merge(otherCount, otherMeanX, otherMeanY, otherM2X, otherM2Y, otherC2);
+    merge(otherCount, otherMeanX, otherMeanY, otherM2X, otherC2);
   }
 
   private void merge(
-      long otherCount,
-      double otherMeanX,
-      double otherMeanY,
-      double otherM2X,
-      double otherM2Y,
-      double otherC2) {
+      long otherCount, double otherMeanX, double otherMeanY, double otherM2X, double otherC2) {
     if (otherCount == 0) {
       return;
     }
@@ -138,28 +123,27 @@ public class CorrelationAccumulator implements Accumulator {
       meanX = otherMeanX;
       meanY = otherMeanY;
       m2X = otherM2X;
-      m2Y = otherM2Y;
       c2 = otherC2;
     } else {
       long na = count;
-      long n = na + otherCount;
+      long nb = otherCount;
+      long n = na + nb;
       double meanXValue = meanX;
       double meanYValue = meanY;
       double deltaX = otherMeanX - meanXValue;
       double deltaY = otherMeanY - meanYValue;
 
-      m2X += otherM2X + na * otherCount * deltaX * deltaX / (double) n;
-      m2Y += otherM2Y + na * otherCount * deltaY * deltaY / (double) n;
-      c2 += otherC2 + deltaX * deltaY * na * otherCount / (double) n;
-      meanX = meanXValue + deltaX * otherCount / (double) n;
-      meanY = meanYValue + deltaY * otherCount / (double) n;
+      m2X += otherM2X + na * nb * deltaX * deltaX / (double) n;
+      c2 += otherC2 + deltaX * deltaY * na * nb / (double) n;
+      meanX = meanXValue + deltaX * nb / (double) n;
+      meanY = meanYValue + deltaY * nb / (double) n;
       count = n;
     }
   }
 
   @Override
   public void outputIntermediate(ColumnBuilder[] columnBuilders) {
-    checkArgument(columnBuilders.length == 1, "partialResult of Correlation should be 1");
+    checkArgument(columnBuilders.length == 1, "partialResult of Regression should be 1");
     if (count == 0) {
       columnBuilders[0].appendNull();
     } else {
@@ -169,7 +153,6 @@ public class CorrelationAccumulator implements Accumulator {
       buffer.putDouble(meanX);
       buffer.putDouble(meanY);
       buffer.putDouble(m2X);
-      buffer.putDouble(m2Y);
       buffer.putDouble(c2);
       columnBuilders[0].writeBinary(new Binary(bytes));
     }
@@ -177,21 +160,35 @@ public class CorrelationAccumulator implements Accumulator {
 
   @Override
   public void outputFinal(ColumnBuilder columnBuilder) {
-    if (correlationType != CorrelationType.CORR) {
-      throw new UnsupportedOperationException("Unknown type: " + correlationType);
-    }
-
-    double result = c2 / Math.sqrt(m2X * m2Y);
-    if (Double.isFinite(result)) {
-      columnBuilder.writeDouble(result);
-    } else {
+    if (count == 0) {
       columnBuilder.appendNull();
+      return;
+    }
+    switch (regressionType) {
+      case REGR_SLOPE:
+        double slope = c2 / m2X;
+        if (Double.isFinite(slope)) {
+          columnBuilder.writeDouble(slope);
+        } else {
+          columnBuilder.appendNull();
+        }
+        break;
+      case REGR_INTERCEPT:
+        double intercept = meanY - (c2 / m2X) * meanX;
+        if (Double.isFinite(intercept)) {
+          columnBuilder.writeDouble(intercept);
+        } else {
+          columnBuilder.appendNull();
+        }
+        break;
+      default:
+        throw new UnsupportedOperationException("Unknown type: " + regressionType);
     }
   }
 
   @Override
   public void removeIntermediate(Column[] input) {
-    checkArgument(input.length == 1, "Input of Correlation should be 1");
+    checkArgument(input.length == 1, "Input of Regression should be 1");
     if (input[0].isNull(0)) {
       return;
     }
@@ -204,7 +201,7 @@ public class CorrelationAccumulator implements Accumulator {
       return;
     }
     checkArgument(
-        count >= otherCount, "Correlation state count is smaller than removed state count");
+        count >= otherCount, "Regression state count is smaller than removed state count");
 
     if (count == otherCount) {
       reset();
@@ -214,14 +211,13 @@ public class CorrelationAccumulator implements Accumulator {
     double otherMeanX = buffer.getDouble();
     double otherMeanY = buffer.getDouble();
     double otherM2X = buffer.getDouble();
-    double otherM2Y = buffer.getDouble();
     double otherC2 = buffer.getDouble();
 
     long totalCount = count;
     long newCount = totalCount - otherCount;
 
-    double newMeanX = (totalCount * meanX - otherCount * otherMeanX) / newCount;
-    double newMeanY = (totalCount * meanY - otherCount * otherMeanY) / newCount;
+    double newMeanX = ((double) totalCount * meanX - (double) otherCount * otherMeanX) / newCount;
+    double newMeanY = ((double) totalCount * meanY - (double) otherCount * otherMeanY) / newCount;
 
     double deltaX = otherMeanX - newMeanX;
     double deltaY = otherMeanY - newMeanY;
@@ -229,7 +225,6 @@ public class CorrelationAccumulator implements Accumulator {
 
     c2 = c2 - otherC2 - deltaX * deltaY * correction;
     m2X = m2X - otherM2X - deltaX * deltaX * correction;
-    m2Y = m2Y - otherM2Y - deltaY * deltaY * correction;
 
     meanX = newMeanX;
     meanY = newMeanY;
@@ -250,7 +245,6 @@ public class CorrelationAccumulator implements Accumulator {
     meanX = 0;
     meanY = 0;
     m2X = 0;
-    m2Y = 0;
     c2 = 0;
   }
 
