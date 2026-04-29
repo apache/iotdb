@@ -22,7 +22,6 @@ package org.apache.iotdb.confignode.persistence.auth;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.authorizer.IAuthorizer;
-import org.apache.iotdb.commons.auth.authorizer.OpenIdAuthorizer;
 import org.apache.iotdb.commons.auth.entity.ModelType;
 import org.apache.iotdb.commons.auth.entity.PrivilegeModelType;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
@@ -74,29 +73,22 @@ public class AuthorPlanExecutor implements IAuthorPlanExecutor {
   }
 
   @Override
-  public TPermissionInfoResp login(String username, String password) {
+  public TPermissionInfoResp login(
+      String username, final String password, final boolean useEncryptedPassword) {
     boolean status;
     String loginMessage = null;
     TSStatus tsStatus = new TSStatus();
     TPermissionInfoResp result = new TPermissionInfoResp();
     try {
-      status = authorizer.login(username, password);
+      status = authorizer.login(username, password, useEncryptedPassword);
       if (status) {
-        // Bring this user's permission information back to the datanode for caching
-        if (authorizer instanceof OpenIdAuthorizer) {
-          username = ((OpenIdAuthorizer) authorizer).getIoTDBUserName(username);
-          result = getUserPermissionInfo(username, ModelType.ALL);
-          result.getUserInfo().setIsOpenIdUser(true);
-        } else {
-          result = getUserPermissionInfo(username, ModelType.ALL);
-        }
+        result = getUserPermissionInfo(username, ModelType.ALL);
 
         result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Login successfully"));
       } else {
         result = AuthUtils.generateEmptyPermissionInfoResp();
       }
     } catch (AuthException e) {
-      LOGGER.error("meet error while logging in.", e);
       loginMessage = e.getMessage();
       tsStatus.setCode(e.getCode().getStatusCode());
       tsStatus.setMessage(loginMessage != null ? loginMessage : "Authentication failed.");
@@ -145,8 +137,6 @@ public class AuthorPlanExecutor implements IAuthorPlanExecutor {
           break;
         case DropRole:
           authorizer.deleteRole(roleName);
-          break;
-        case AccountUnlock:
           break;
         case GrantRole:
           for (int permission : permissions) {

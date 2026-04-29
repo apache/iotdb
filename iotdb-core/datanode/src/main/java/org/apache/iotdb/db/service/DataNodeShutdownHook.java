@@ -174,7 +174,7 @@ public class DataNodeShutdownHook extends Thread {
     // Persist progress index before shutdown to accurate recovery after restart
     PipeDataNodeAgent.task().persistAllProgressIndex();
     // Shutdown all consensus pipe's receiver
-    PipeDataNodeAgent.receiver().pipeConsensus().closeReceiverExecutor();
+    PipeDataNodeAgent.receiver().iotConsensusV2().closeReceiverExecutor();
 
     // set encryption key to 16-byte zero.
     TSFileDescriptor.getInstance().getConfig().setEncryptKey(new byte[16]);

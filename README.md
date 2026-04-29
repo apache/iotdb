@@ -28,11 +28,11 @@
 ![](https://github-size-badge.herokuapp.com/apache/iotdb.svg)
 ![](https://img.shields.io/github/downloads/apache/iotdb/total.svg)
 ![](https://img.shields.io/badge/platform-win%20%7C%20macos%20%7C%20linux-yellow.svg)
-![](https://img.shields.io/badge/java--language-1.8%20%7C%2011%20%7C%2017-blue.svg)
+![](https://img.shields.io/badge/java--language-1.8+-blue.svg)
 [![IoTDB Website](https://img.shields.io/website-up-down-green-red/https/shields.io.svg?label=iotdb-website)](https://iotdb.apache.org/)
-[![Maven Version](https://maven-badges.herokuapp.com/maven-central/org.apache.iotdb/iotdb-parent/badge.svg)](http://search.maven.org/#search|gav|1|g:"org.apache.iotdb")
+[![Maven Central](https://img.shields.io/maven-central/v/org.apache.iotdb/iotdb-parent.svg)](https://central.sonatype.com/artifact/org.apache.iotdb/iotdb-parent)
 [![Gitpod Ready-to-Code](https://img.shields.io/badge/Gitpod-Ready--to--Code-blue?logo=gitpod)](https://gitpod.io/#https://github.com/apache/iotdb)
-[![Slack Status](https://img.shields.io/badge/slack-join_chat-white.svg?logo=slack&style=social)](https://join.slack.com/t/apacheiotdb/shared_invite/zt-qvso1nj8-7715TpySZtZqmyG5qXQwpg)
+[![Slack Status](https://img.shields.io/badge/slack-join_chat-white.svg?logo=slack&style=social)](https://join.slack.com/t/apacheiotdb/shared_invite/zt-3sh0ws7xf-JjVayYQt_RSUUHJ~iJOiSA)
 
 # Overview
 
@@ -89,7 +89,7 @@ This short guide will walk you through the basic process of using IoTDB. For a m
 
 To use IoTDB, you need to have:
 
-1. Java >= 1.8 (1.8, 11 to 17 are verified. Please make sure the environment path has been set accordingly).
+1. Java >= 1.8 (1.8 to 25 are verified. Please make sure the environment path has been set accordingly).
 2. Maven >= 3.6 (If you want to compile and install IoTDB from source code).
 3. Set the max open files num as 65535 to avoid the "too many open files" error.
 4. (Optional) Set the somaxconn as 65535 to avoid "connection reset" error when the system is under high load.
@@ -100,6 +100,29 @@ To use IoTDB, you need to have:
     # FreeBSD or Darwin
     > sudo sysctl -w kern.ipc.somaxconn=65535
     ```
+
+> ⚠️ **Important: System Resource Limits**
+>
+> IoTDB requires sufficient system resource limits to start correctly.
+> If these limits are not configured, IoTDB may fail to start or emit warnings such as
+> `"too many open files"` or `"connection reset"` in the logs.
+>
+> **Linux / macOS**
+> ```bash
+> ulimit -n 65535
+> sudo sysctl -w net.core.somaxconn=65535
+> ```
+>
+> **Docker Users**
+> When running IoTDB in Docker, these limits must be applied on the **host machine**
+> or explicitly passed to the container:
+> ```bash
+> docker run --ulimit nofile=65535:65535 ...
+> ```
+>
+> **Windows Users**
+> These commands are not applicable on Windows.
+> Please follow the Windows installation steps below and ensure sufficient system resources.
 ### Linux
 
 (This guide is based on an installation of Ubuntu 22.04.)
@@ -517,6 +540,6 @@ see [Frequent Questions when Compiling the Source Code](https://iotdb.apache.org
 
 ### Slack
 
-* [Slack channel](https://join.slack.com/t/apacheiotdb/shared_invite/zt-qvso1nj8-7715TpySZtZqmyG5qXQwpg)
+* [Slack channel](https://join.slack.com/t/apacheiotdb/shared_invite/zt-3sh0ws7xf-JjVayYQt_RSUUHJ~iJOiSA)
 
 see [Join the community](https://github.com/apache/iotdb/issues/1995) for more!

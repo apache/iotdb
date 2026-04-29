@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.client.property.ClientPoolProperty.DefaultProper
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.enums.ReadConsistencyLevel;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.exception.LoadConfigurationException;
@@ -125,7 +126,7 @@ public class IoTDBConfig {
   private int mqttMaxMessageSize = 1048576;
 
   /** Rpc binding address. */
-  private String rpcAddress = "0.0.0.0";
+  private String rpcAddress = "127.0.0.1";
 
   /** whether to use thrift compression. */
   private boolean rpcThriftCompressionEnable = false;
@@ -270,6 +271,10 @@ public class IoTDBConfig {
   private String triggerTemporaryLibDir =
       triggerDir + File.separator + IoTDBConstant.TMP_FOLDER_NAME;
 
+  /** External lib directory for ExternalService, stores user-uploaded JAR files */
+  private String externalServiceDir =
+      IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.EXTERNAL_SERVICE_FOLDER_NAME;
+
   /** External lib directory for Pipe Plugin, stores user-defined JAR files */
   private String pipeDir =
       IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.PIPE_FOLDER_NAME;
@@ -335,8 +340,6 @@ public class IoTDBConfig {
 
   private int mergeThresholdOfExplainAnalyze = 10;
 
-  private int modeMapSizeThreshold = 10000;
-
   /** How many queries can be concurrently executed. When <= 0, use 1000. */
   private int maxAllowedConcurrentQueries = 1000;
 
@@ -394,6 +397,24 @@ public class IoTDBConfig {
   /** The interval to check whether unsequence memtables need flushing. Unit: ms */
   private long unseqMemtableFlushCheckInterval = 30 * 1000L;
 
+  /**
+   * Whether to enable delay analyzer for tracking data arrival delays and calculating safe
+   * watermark
+   */
+  private boolean enableDelayAnalyzer = false;
+
+  /** Default window size for delay analyzer, empirical value: 10000 sample points */
+  private int delayAnalyzerWindowSize = 10000;
+
+  /** Minimum window size for delay analyzer validation */
+  private int delayAnalyzerMinWindowSize = 1000;
+
+  /** Maximum window size for delay analyzer validation */
+  private int delayAnalyzerMaxWindowSize = 100000;
+
+  /** Default confidence level for delay analyzer: 99% */
+  private double delayAnalyzerConfidenceLevel = 0.99;
+
   /** The sort algorithm used in TVList */
   private TVListSortAlgorithm tvListSortAlgorithm = TVListSortAlgorithm.TIM;
 
@@ -417,9 +438,6 @@ public class IoTDBConfig {
 
   /** Enable auto repair compaction */
   private volatile boolean enableAutoRepairCompaction = true;
-
-  /** The buffer for sort operation */
-  private long sortBufferSize = 32 * 1024 * 1024L;
 
   /** Mods cache size limit per fi */
   private long modsCacheSizeLimitPerFI = 32 * 1024 * 1024;
@@ -785,12 +803,6 @@ public class IoTDBConfig {
   private boolean enable13DataInsertAdapt = false;
 
   /**
-   * Used to estimate the memory usage of text fields in a UDF query. It is recommended to set this
-   * value to be slightly larger than the average length of all text records.
-   */
-  private int udfInitialByteArrayLengthForMemoryControl = 48;
-
-  /**
    * How much memory may be used in ONE UDF query (in MB).
    *
    * <p>The upper limit is 20% of allocated memory for read.
@@ -1002,9 +1014,6 @@ public class IoTDBConfig {
 
   private ReadConsistencyLevel readConsistencyLevel = ReadConsistencyLevel.STRONG;
 
-  /** Maximum execution time of a DriverTask */
-  private int driverTaskExecutionTimeSliceInMs = 200;
-
   /** Maximum size of wal buffer used in IoTConsensus. Unit: byte */
   private long throttleThreshold = 200 * 1024 * 1024 * 1024L;
 
@@ -1209,6 +1218,13 @@ public class IoTDBConfig {
 
   private long maxObjectSizeInByte = 4 * 1024 * 1024 * 1024L;
 
+  private int maxSubTaskNumForInformationTableScan = 4;
+
+  /* Need use these parameters when repair data partition table */
+  private int partitionTableRecoverWorkerNum = 10;
+  // Rate limit set to 10 MB/s
+  private int partitionTableRecoverMaxReadMBsPerSecond = 10;
+
   IoTDBConfig() {}
 
   public int getMaxLogEntriesNumPerBatch() {
@@ -1308,15 +1324,6 @@ public class IoTDBConfig {
     this.udfCollectorMemoryBudgetInMB = udfCollectorMemoryBudgetInMB;
   }
 
-  public int getUdfInitialByteArrayLengthForMemoryControl() {
-    return udfInitialByteArrayLengthForMemoryControl;
-  }
-
-  public void setUdfInitialByteArrayLengthForMemoryControl(
-      int udfInitialByteArrayLengthForMemoryControl) {
-    this.udfInitialByteArrayLengthForMemoryControl = udfInitialByteArrayLengthForMemoryControl;
-  }
-
   public int getDefaultFillInterval() {
     return defaultFillInterval;
   }
@@ -1358,6 +1365,7 @@ public class IoTDBConfig {
     udfTemporaryLibDir = addDataHomeDir(udfTemporaryLibDir);
     triggerDir = addDataHomeDir(triggerDir);
     triggerTemporaryLibDir = addDataHomeDir(triggerTemporaryLibDir);
+    externalServiceDir = addDataHomeDir(externalServiceDir);
     pipeDir = addDataHomeDir(pipeDir);
     pipeTemporaryLibDir = addDataHomeDir(pipeTemporaryLibDir);
     for (int i = 0; i < pipeReceiverFileDirs.length; i++) {
@@ -1677,6 +1685,10 @@ public class IoTDBConfig {
 
   public void updateTriggerTemporaryLibDir() {
     this.triggerTemporaryLibDir = triggerDir + File.separator + IoTDBConstant.TMP_FOLDER_NAME;
+  }
+
+  public String getExternalServiceDir() {
+    return externalServiceDir;
   }
 
   public String getPipeLibDir() {
@@ -2201,6 +2213,46 @@ public class IoTDBConfig {
 
   public void setUnseqMemtableFlushCheckInterval(long unseqMemtableFlushCheckInterval) {
     this.unseqMemtableFlushCheckInterval = unseqMemtableFlushCheckInterval;
+  }
+
+  public boolean isEnableDelayAnalyzer() {
+    return enableDelayAnalyzer;
+  }
+
+  public void setEnableDelayAnalyzer(boolean enableDelayAnalyzer) {
+    this.enableDelayAnalyzer = enableDelayAnalyzer;
+  }
+
+  public int getDelayAnalyzerWindowSize() {
+    return delayAnalyzerWindowSize;
+  }
+
+  public void setDelayAnalyzerWindowSize(int delayAnalyzerWindowSize) {
+    this.delayAnalyzerWindowSize = delayAnalyzerWindowSize;
+  }
+
+  public int getDelayAnalyzerMinWindowSize() {
+    return delayAnalyzerMinWindowSize;
+  }
+
+  public void setDelayAnalyzerMinWindowSize(int delayAnalyzerMinWindowSize) {
+    this.delayAnalyzerMinWindowSize = delayAnalyzerMinWindowSize;
+  }
+
+  public int getDelayAnalyzerMaxWindowSize() {
+    return delayAnalyzerMaxWindowSize;
+  }
+
+  public void setDelayAnalyzerMaxWindowSize(int delayAnalyzerMaxWindowSize) {
+    this.delayAnalyzerMaxWindowSize = delayAnalyzerMaxWindowSize;
+  }
+
+  public double getDelayAnalyzerConfidenceLevel() {
+    return delayAnalyzerConfidenceLevel;
+  }
+
+  public void setDelayAnalyzerConfidenceLevel(double delayAnalyzerConfidenceLevel) {
+    this.delayAnalyzerConfidenceLevel = delayAnalyzerConfidenceLevel;
   }
 
   public TVListSortAlgorithm getTvListSortAlgorithm() {
@@ -3181,6 +3233,7 @@ public class IoTDBConfig {
 
   public void setDataNodeId(int dataNodeId) {
     this.dataNodeId = dataNodeId;
+    CommonDescriptor.getInstance().getConfig().setNodeId(dataNodeId);
   }
 
   public int getPartitionCacheSize() {
@@ -3205,6 +3258,15 @@ public class IoTDBConfig {
 
   public void setPartitionCacheSize(int partitionCacheSize) {
     this.partitionCacheSize = partitionCacheSize;
+  }
+
+  public int getPipeDataStructureTabletSizeInBytes() {
+    int size = PipeConfig.getInstance().getPipeDataStructureTabletSizeInBytes();
+    if (size > thriftMaxFrameSize) {
+      size = (int) (thriftMaxFrameSize * 0.8);
+      CommonDescriptor.getInstance().getConfig().setPipeDataStructureTabletSizeInBytes(size);
+    }
+    return size;
   }
 
   public int getAuthorCacheSize() {
@@ -3391,14 +3453,6 @@ public class IoTDBConfig {
     } else {
       this.readConsistencyLevel = ReadConsistencyLevel.STRONG;
     }
-  }
-
-  public int getDriverTaskExecutionTimeSliceInMs() {
-    return driverTaskExecutionTimeSliceInMs;
-  }
-
-  public void setDriverTaskExecutionTimeSliceInMs(int driverTaskExecutionTimeSliceInMs) {
-    this.driverTaskExecutionTimeSliceInMs = driverTaskExecutionTimeSliceInMs;
   }
 
   public static String getEnvironmentVariables() {
@@ -3803,14 +3857,6 @@ public class IoTDBConfig {
     this.candidateCompactionTaskQueueSize = candidateCompactionTaskQueueSize;
   }
 
-  public void setModeMapSizeThreshold(int modeMapSizeThreshold) {
-    this.modeMapSizeThreshold = modeMapSizeThreshold;
-  }
-
-  public int getModeMapSizeThreshold() {
-    return modeMapSizeThreshold;
-  }
-
   public double getMaxAllocateMemoryRatioForLoad() {
     return maxAllocateMemoryRatioForLoad;
   }
@@ -4165,14 +4211,6 @@ public class IoTDBConfig {
     RateLimiterType = rateLimiterType;
   }
 
-  public void setSortBufferSize(long sortBufferSize) {
-    this.sortBufferSize = sortBufferSize;
-  }
-
-  public long getSortBufferSize() {
-    return sortBufferSize;
-  }
-
   public void setModsCacheSizeLimitPerFI(long modsCacheSizeLimitPerFI) {
     this.modsCacheSizeLimitPerFI = modsCacheSizeLimitPerFI;
   }
@@ -4335,5 +4373,30 @@ public class IoTDBConfig {
 
   public void setMaxObjectSizeInByte(long maxObjectSizeInByte) {
     this.maxObjectSizeInByte = maxObjectSizeInByte;
+  }
+
+  public int getMaxSubTaskNumForInformationTableScan() {
+    return maxSubTaskNumForInformationTableScan;
+  }
+
+  public void setMaxSubTaskNumForInformationTableScan(int maxSubTaskNumForInformationTableScan) {
+    this.maxSubTaskNumForInformationTableScan = maxSubTaskNumForInformationTableScan;
+  }
+
+  public int getPartitionTableRecoverWorkerNum() {
+    return partitionTableRecoverWorkerNum;
+  }
+
+  public void setPartitionTableRecoverWorkerNum(int partitionTableRecoverWorkerNum) {
+    this.partitionTableRecoverWorkerNum = partitionTableRecoverWorkerNum;
+  }
+
+  public int getPartitionTableRecoverMaxReadMBsPerSecond() {
+    return partitionTableRecoverMaxReadMBsPerSecond;
+  }
+
+  public void setPartitionTableRecoverMaxReadMBsPerSecond(
+      int partitionTableRecoverMaxReadMBsPerSecond) {
+    this.partitionTableRecoverMaxReadMBsPerSecond = partitionTableRecoverMaxReadMBsPerSecond;
   }
 }

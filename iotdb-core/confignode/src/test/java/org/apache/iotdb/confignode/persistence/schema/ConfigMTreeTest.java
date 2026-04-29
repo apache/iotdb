@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
+import org.apache.iotdb.commons.schema.table.TableNodeStatus;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
@@ -30,6 +31,7 @@ import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.confignode.persistence.schema.mnode.IConfigMNode;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
+import org.apache.iotdb.db.utils.SchemaUtils;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
@@ -42,8 +44,14 @@ import org.junit.Test;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_SCOPE;
@@ -55,6 +63,8 @@ import static org.junit.Assert.fail;
 public class ConfigMTreeTest {
 
   private ConfigMTree root;
+  private static final String SCHEMA_FILE = "oldsnapshot/cluster_schema.bin";
+  private static final String TABLE_SCHEMA_FILE = "oldsnapshot/table_cluster_schema.bin";
 
   @Before
   public void setUp() throws Exception {
@@ -392,8 +402,55 @@ public class ConfigMTreeTest {
       final TsTable table = tables.get(0);
       assertEquals("table" + i, table.getTableName());
       assertEquals(1, table.getTagNum());
-      assertEquals(4, table.getColumnNum());
+      // currently, only construct the TsTable would not carry the time column
+      assertEquals(3, table.getColumnNum());
     }
+  }
+
+  @Test
+  public void testAlterColumnTypeUpdatesCompatibleEncoding() throws Exception {
+    root = new ConfigMTree(true);
+
+    final PartialPath database = new PartialPath("root.sg");
+    root.setStorageGroup(database);
+    final IDatabaseMNode<IConfigMNode> databaseNode = root.getDatabaseNodeByDatabasePath(database);
+    databaseNode
+        .getAsMNode()
+        .getDatabaseSchema()
+        .setName(PathUtils.unQualifyDatabaseName(database.getFullPath()));
+    databaseNode.getAsMNode().getDatabaseSchema().setIsTableModel(true);
+
+    final TsTable table = new TsTable("table1");
+    table.addColumnSchema(new TagColumnSchema("id", TSDataType.STRING));
+    table.addColumnSchema(
+        new FieldColumnSchema(
+            "measurement", TSDataType.DOUBLE, TSEncoding.GORILLA, CompressionType.SNAPPY));
+    root.preCreateTable(database, table);
+    root.commitCreateTable(database, table.getTableName());
+
+    root.preAlterColumnDataType(database, table.getTableName(), "measurement", TSDataType.STRING);
+
+    final TSEncoding expectedEncoding =
+        SchemaUtils.getDataTypeCompatibleEncoding(TSDataType.STRING, TSEncoding.GORILLA);
+    Assert.assertNotEquals(TSEncoding.GORILLA, expectedEncoding);
+
+    final TsTable preAlteredTable = root.getUsingTableSchema(database, table.getTableName());
+    final FieldColumnSchema preAlteredField =
+        (FieldColumnSchema) preAlteredTable.getColumnSchema("measurement");
+    Assert.assertEquals(TSDataType.STRING, preAlteredField.getDataType());
+    Assert.assertEquals(expectedEncoding, preAlteredField.getEncoding());
+
+    root.commitAlterColumnDataType(
+        database, table.getTableName(), "measurement", TSDataType.STRING);
+
+    final TsTable committedTable = root.getUsingTableSchema(database, table.getTableName());
+    final FieldColumnSchema committedField =
+        (FieldColumnSchema) committedTable.getColumnSchema("measurement");
+    Assert.assertEquals(TSDataType.STRING, committedField.getDataType());
+    Assert.assertEquals(expectedEncoding, committedField.getEncoding());
+
+    Assert.assertTrue(
+        root.getTableSchemaDetails(database, table.getTableName()).preAlteredColumns.isEmpty());
   }
 
   @Test
@@ -431,6 +488,55 @@ public class ConfigMTreeTest {
       Assert.assertTrue(pathList.contains("root.a.b.template0"));
     } catch (MetadataException e) {
       fail();
+    }
+  }
+
+  @Test
+  public void deserializeSchemaFromSnapshot() {
+    String pathStr = this.getClass().getClassLoader().getResource(SCHEMA_FILE).getFile();
+    File schemaFile = new File(pathStr);
+    try (InputStream inputStream = Files.newInputStream(schemaFile.getAbsoluteFile().toPath())) {
+      ConfigMTree treeMTree = new ConfigMTree(false);
+      treeMTree.deserialize(inputStream);
+
+      Set<String> databaseSet = new HashSet<>();
+      for (PartialPath path : treeMTree.getAllDatabasePaths(false)) {
+        databaseSet.add(path.getFullPath());
+      }
+      Assert.assertTrue(databaseSet.contains("root.__audit"));
+    } catch (IOException | MetadataException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  @Test
+  public void deserializeTableSchemaFromSnapshot() {
+    String pathStr = this.getClass().getClassLoader().getResource(TABLE_SCHEMA_FILE).getFile();
+    File schemaFile = new File(pathStr);
+    try (InputStream inputStream = Files.newInputStream(schemaFile.getAbsoluteFile().toPath())) {
+      ConfigMTree tableMTree = new ConfigMTree(true);
+      tableMTree.deserialize(inputStream);
+
+      Set<String> databaseSet = new HashSet<>();
+      for (PartialPath path : tableMTree.getAllDatabasePaths(true)) {
+        databaseSet.add(path.getTailNode());
+      }
+      Assert.assertTrue(databaseSet.contains("test_g_0"));
+
+      Set<String> tableSet = new HashSet<>();
+      for (Map.Entry<String, List<Pair<TsTable, TableNodeStatus>>> entry :
+          tableMTree.getAllTables().entrySet()) {
+        List<Pair<TsTable, TableNodeStatus>> tablePairs = entry.getValue();
+        for (Pair<TsTable, TableNodeStatus> pair : tablePairs) {
+          TsTable tsTable = pair.getLeft();
+          if (tsTable != null) {
+            tableSet.add(tsTable.getTableName());
+          }
+        }
+      }
+      Assert.assertTrue(tableSet.contains("table_0"));
+    } catch (IOException | MetadataException e) {
+      throw new RuntimeException(e);
     }
   }
 }

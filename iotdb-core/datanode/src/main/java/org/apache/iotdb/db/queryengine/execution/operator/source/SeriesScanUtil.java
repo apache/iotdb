@@ -38,8 +38,11 @@ import org.apache.iotdb.db.storageengine.dataregion.read.reader.common.MergeRead
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.common.NoDataPointReader;
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.common.PriorityMergeReader;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.utils.CommonUtils;
+import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.db.utils.datastructure.MemPointIterator;
 
+import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
@@ -53,6 +56,12 @@ import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.common.block.TsBlockUtil;
+import org.apache.tsfile.read.common.block.column.BinaryColumn;
+import org.apache.tsfile.read.common.block.column.BooleanColumn;
+import org.apache.tsfile.read.common.block.column.DoubleColumn;
+import org.apache.tsfile.read.common.block.column.FloatColumn;
+import org.apache.tsfile.read.common.block.column.IntColumn;
+import org.apache.tsfile.read.common.block.column.LongColumn;
 import org.apache.tsfile.read.controller.IChunkLoader;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.read.reader.IPageReader;
@@ -61,12 +70,16 @@ import org.apache.tsfile.read.reader.page.AlignedPageReader;
 import org.apache.tsfile.read.reader.page.TablePageReader;
 import org.apache.tsfile.read.reader.series.PaginationController;
 import org.apache.tsfile.utils.Accountable;
+import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.Serializable;
+import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.LinkedList;
@@ -82,6 +95,7 @@ import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.BUI
 
 public class SeriesScanUtil implements Accountable {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(SeriesScanUtil.class);
   public static final StringArrayDeviceID EMPTY_DEVICE_ID = new StringArrayDeviceID("");
   protected final FragmentInstanceContext context;
 
@@ -401,6 +415,11 @@ public class SeriesScanUtil implements Accountable {
     // globalTimeFilter.canSkip() must be FALSE
     Filter pushDownFilter = scanOptions.getPushDownFilter();
     if (pushDownFilter != null && pushDownFilter.canSkip(firstChunkMetadata)) {
+
+      // record the chunk level filtered data
+      this.context
+          .getQueryStatistics()
+          .addFilteredRowsOfChunkLevel(firstChunkMetadata.getStatistics().getCount());
       skipCurrentChunk();
       return;
     }
@@ -646,7 +665,8 @@ public class SeriesScanUtil implements Accountable {
       return;
     }
     List<IPageReader> pageReaderList =
-        FileLoaderUtils.loadPageReaderList(chunkMetaData, scanOptions.getGlobalTimeFilter());
+        FileLoaderUtils.loadPageReaderList(
+            chunkMetaData, scanOptions.getGlobalTimeFilter(), getTsDataTypeList());
 
     // init TsBlockBuilder for each page reader
     pageReaderList.forEach(p -> p.initTsBlockBuilder(getTsDataTypeList()));
@@ -687,6 +707,12 @@ public class SeriesScanUtil implements Accountable {
                       pageReader,
                       false)));
     }
+
+    if (LOGGER.isDebugEnabled()) {
+      for (IPageReader pageReader : pageReaderList) {
+        LOGGER.debug("[SeriesScanUtil] pageReader.isModified() is {}", pageReader.isModified());
+      }
+    }
   }
 
   private void unpackOneFakeMemChunkMetaData(
@@ -703,28 +729,50 @@ public class SeriesScanUtil implements Accountable {
     MemPointIterator memPointIterator =
         readOnlyMemChunk.createMemPointIterator(
             orderUtils.getScanOrder(), scanOptions.getGlobalTimeFilter());
-    for (Statistics<? extends Serializable> statistics : statisticsList) {
-      long orderTime = orderUtils.getOrderTime(statistics);
-      boolean canSkip =
-          (orderUtils.getAscending() && orderTime > satisfiedTimeRange.getMax())
-              || (!orderUtils.getAscending() && orderTime < satisfiedTimeRange.getMin());
-      if (canSkip) {
-        break;
+    if (orderUtils.getAscending()) {
+      for (Statistics<? extends Serializable> statistics : statisticsList) {
+        long orderTime = orderUtils.getOrderTime(statistics);
+        if (orderTime > satisfiedTimeRange.getMax()) {
+          break;
+        }
+        IVersionPageReader versionPageReader =
+            new LazyMemVersionPageReader(
+                context,
+                timestampInFileName,
+                chunkMetaData.getVersion(),
+                chunkMetaData.getOffsetOfChunkHeader(),
+                isAligned,
+                statistics,
+                memPointIterator,
+                chunkMetaData.isSeq());
+        if (chunkMetaData.isSeq()) {
+          seqPageReaders.add(versionPageReader);
+        } else {
+          unSeqPageReaders.add(versionPageReader);
+        }
       }
-      IVersionPageReader versionPageReader =
-          new LazyMemVersionPageReader(
-              context,
-              timestampInFileName,
-              chunkMetaData.getVersion(),
-              chunkMetaData.getOffsetOfChunkHeader(),
-              isAligned,
-              statistics,
-              memPointIterator,
-              chunkMetaData.isSeq());
-      if (chunkMetaData.isSeq()) {
-        seqPageReaders.add(versionPageReader);
-      } else {
-        unSeqPageReaders.add(versionPageReader);
+    } else {
+      for (int i = statisticsList.size() - 1; i >= 0; i--) {
+        Statistics<? extends Serializable> statistics = statisticsList.get(i);
+        long orderTime = orderUtils.getOrderTime(statistics);
+        if (orderTime < satisfiedTimeRange.getMin()) {
+          break;
+        }
+        IVersionPageReader versionPageReader =
+            new LazyMemVersionPageReader(
+                context,
+                timestampInFileName,
+                chunkMetaData.getVersion(),
+                chunkMetaData.getOffsetOfChunkHeader(),
+                isAligned,
+                statistics,
+                memPointIterator,
+                chunkMetaData.isSeq());
+        if (chunkMetaData.isSeq()) {
+          seqPageReaders.add(versionPageReader);
+        } else {
+          unSeqPageReaders.add(versionPageReader);
+        }
       }
     }
   }
@@ -789,13 +837,30 @@ public class SeriesScanUtil implements Accountable {
     firstPageReader = null;
   }
 
+  /**
+   * Logic of Filter Application and Predicate Splitting:
+   *
+   * <p>1. Predicate Splitting (determined during query planning): - AND connection (e.g., `where s1
+   * > 300 and time < 100`): The predicate is split. `time < 100` goes to `globalTimeFilter`, and
+   * `s1 > 300` goes to `pushDownFilter`. - OR connection (e.g., `where s1 > 300 or time < 100`):
+   * The entire predicate is assigned to `pushDownFilter`. `globalTimeFilter` remains empty (accepts
+   * all).
+   *
+   * <p>2. Filter Application in nextPage(): - Case 1: hasCachedNextOverlappedPage (Overlapped data
+   * processed by MergeReader) The `cachedTsBlock` comes from `mergeReader`. The source PageReaders
+   * of the mergeReader have already applied `globalTimeFilter` during their initialization/loading
+   * phase. Therefore, `filterAndPaginateCachedBlock(cachedTsBlock)` ONLY applies `pushDownFilter`
+   * (and pagination).
+   *
+   * <p>- Case 2: Non-overlapped data (firstPageReader) The `firstPageReader` also has
+   * `globalTimeFilter` applied internally. We explicitly call
+   * `firstPageReader.addPushDownFilter(...)` to ensure the value filter is applied.
+   */
   public TsBlock nextPage() throws IOException {
 
     if (hasCachedNextOverlappedPage) {
       hasCachedNextOverlappedPage = false;
-      TsBlock res =
-          applyPushDownFilterAndLimitOffset(
-              cachedTsBlock, scanOptions.getPushDownFilter(), paginationController);
+      TsBlock res = filterAndPaginateCachedBlock(cachedTsBlock);
       cachedTsBlock = null;
 
       // cached tsblock has handled by pagination controller & push down filter, return directly
@@ -824,7 +889,7 @@ public class SeriesScanUtil implements Accountable {
         if (!lazyMemVersionPageReader.hasNextBatch()) {
           firstPageReader = null;
         }
-        return tsBlock;
+        return tsBlock == null ? null : getTransferedDataTypeTsBlock(tsBlock);
       }
 
       TsBlock tsBlock;
@@ -839,19 +904,493 @@ public class SeriesScanUtil implements Accountable {
 
       firstPageReader = null;
 
-      return tsBlock;
+      return getTransferedDataTypeTsBlock(tsBlock);
     }
   }
 
-  private TsBlock applyPushDownFilterAndLimitOffset(
-      TsBlock tsBlock, Filter pushDownFilter, PaginationController paginationController) {
-    if (pushDownFilter == null) {
+  private TsBlock filterAndPaginateCachedBlock(TsBlock tsBlock) {
+    if (scanOptions.getPushDownFilter() == null) {
       return paginationController.applyTsBlock(tsBlock);
     }
+    if (this.context.isVerbose()) {
+      return TsBlockUtil.applyFilterAndLimitOffsetToTsBlock(
+          tsBlock,
+          new TsBlockBuilder(getTsDataTypeList()),
+          scanOptions.getPushDownFilter(),
+          paginationController,
+          this.context.getQueryStatistics()::addFilteredRowsOfRowLevel);
+    }
     return TsBlockUtil.applyFilterAndLimitOffsetToTsBlock(
-        tsBlock, new TsBlockBuilder(getTsDataTypeList()), pushDownFilter, paginationController);
+        tsBlock,
+        new TsBlockBuilder(getTsDataTypeList()),
+        scanOptions.getPushDownFilter(),
+        paginationController);
   }
 
+  private TsBlock getTransferedDataTypeTsBlock(TsBlock tsBlock) {
+    Column[] valueColumns = tsBlock.getValueColumns();
+    int length = tsBlock.getValueColumnCount();
+    boolean isTypeInconsistent = false;
+    if (length > 0) {
+      for (int i = 0; i < length; i++) {
+        TSDataType finalDataType = getTsDataTypeList().get(i);
+        if ((valueColumns[i].getDataType() != finalDataType)
+            && (!SchemaUtils.isUsingSameColumn(valueColumns[i].getDataType(), finalDataType)
+                || (valueColumns[i].getDataType().equals(TSDataType.DATE)
+                    && (finalDataType == TSDataType.STRING || finalDataType == TSDataType.TEXT)))) {
+          isTypeInconsistent = true;
+          break;
+        }
+      }
+    }
+
+    if (!isTypeInconsistent) {
+      return tsBlock;
+    }
+
+    int positionCount = tsBlock.getPositionCount();
+    Column[] newValueColumns = new Column[length];
+    for (int i = 0; i < length; i++) {
+      TSDataType sourceType = valueColumns[i].getDataType();
+      TSDataType finalDataType = getTsDataTypeList().get(i);
+      switch (finalDataType) {
+        case BOOLEAN:
+          if (sourceType == TSDataType.BOOLEAN) {
+            newValueColumns[i] = valueColumns[i];
+          } else {
+            newValueColumns[i] =
+                new BooleanColumn(
+                    positionCount,
+                    Optional.of(new boolean[positionCount]),
+                    new boolean[positionCount]);
+            for (int j = 0; j < valueColumns[i].getPositionCount(); j++) {
+              newValueColumns[i].isNull()[j] = true;
+            }
+          }
+          break;
+        case INT32:
+          if (sourceType == TSDataType.INT32) {
+            newValueColumns[i] = valueColumns[i];
+          } else {
+            newValueColumns[i] =
+                new IntColumn(
+                    positionCount,
+                    Optional.of(new boolean[positionCount]),
+                    new int[positionCount],
+                    TSDataType.INT32);
+            for (int j = 0; j < valueColumns[i].getPositionCount(); j++) {
+              newValueColumns[i].isNull()[j] = true;
+            }
+          }
+          break;
+        case INT64:
+          if (sourceType == TSDataType.INT64) {
+            newValueColumns[i] = valueColumns[i];
+          } else if (sourceType == TSDataType.INT32) {
+            newValueColumns[i] =
+                new LongColumn(
+                    positionCount,
+                    Optional.of(new boolean[positionCount]),
+                    new long[positionCount]);
+
+            for (int j = 0; j < valueColumns[i].getPositionCount(); j++) {
+              newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
+              if (!valueColumns[i].isNull()[j]) {
+                newValueColumns[i].getLongs()[j] =
+                    ((Number) valueColumns[i].getInts()[j]).longValue();
+              }
+            }
+          } else if (sourceType == TSDataType.TIMESTAMP) {
+            newValueColumns[i] = valueColumns[i];
+          } else {
+            newValueColumns[i] =
+                new LongColumn(
+                    positionCount,
+                    Optional.of(new boolean[positionCount]),
+                    new long[positionCount]);
+            for (int j = 0; j < valueColumns[i].getPositionCount(); j++) {
+              newValueColumns[i].isNull()[j] = true;
+            }
+          }
+          break;
+        case FLOAT:
+          if (sourceType == TSDataType.FLOAT) {
+            newValueColumns[i] = valueColumns[i];
+          } else if (sourceType == TSDataType.INT32) {
+            newValueColumns[i] =
+                new FloatColumn(
+                    positionCount,
+                    Optional.of(new boolean[positionCount]),
+                    new float[positionCount]);
+
+            for (int j = 0; j < valueColumns[i].getPositionCount(); j++) {
+              newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
+              if (!valueColumns[i].isNull()[j]) {
+                newValueColumns[i].getFloats()[j] =
+                    ((Number) valueColumns[i].getInts()[j]).floatValue();
+              }
+            }
+          } else {
+            newValueColumns[i] =
+                new FloatColumn(
+                    positionCount,
+                    Optional.of(new boolean[positionCount]),
+                    new float[positionCount]);
+            for (int j = 0; j < valueColumns[i].getPositionCount(); j++) {
+              newValueColumns[i].isNull()[j] = true;
+            }
+          }
+          break;
+        case DOUBLE:
+          if (sourceType == TSDataType.DOUBLE) {
+            newValueColumns[i] = valueColumns[i];
+          } else if (sourceType == TSDataType.INT32) {
+            newValueColumns[i] =
+                new DoubleColumn(
+                    positionCount,
+                    Optional.of(new boolean[positionCount]),
+                    new double[positionCount]);
+
+            for (int j = 0; j < valueColumns[i].getPositionCount(); j++) {
+              newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
+              if (!valueColumns[i].isNull()[j]) {
+                newValueColumns[i].getDoubles()[j] =
+                    ((Number) valueColumns[i].getInts()[j]).doubleValue();
+              }
+            }
+          } else if (sourceType == TSDataType.INT64) {
+            newValueColumns[i] =
+                new DoubleColumn(
+                    positionCount,
+                    Optional.of(new boolean[positionCount]),
+                    new double[positionCount]);
+
+            for (int j = 0; j < valueColumns[i].getPositionCount(); j++) {
+              newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
+              if (!valueColumns[i].isNull()[j]) {
+                newValueColumns[i].getDoubles()[j] =
+                    ((Number) valueColumns[i].getLongs()[j]).doubleValue();
+              }
+            }
+          } else if (sourceType == TSDataType.FLOAT) {
+            newValueColumns[i] =
+                new DoubleColumn(
+                    positionCount,
+                    Optional.of(new boolean[positionCount]),
+                    new double[positionCount]);
+
+            for (int j = 0; j < valueColumns[i].getPositionCount(); j++) {
+              newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
+              if (!valueColumns[i].isNull()[j]) {
+                newValueColumns[i].getDoubles()[j] =
+                    ((Number) valueColumns[i].getFloats()[j]).doubleValue();
+              }
+            }
+          } else if (sourceType == TSDataType.TIMESTAMP) {
+            newValueColumns[i] =
+                new DoubleColumn(
+                    positionCount,
+                    Optional.of(new boolean[positionCount]),
+                    new double[positionCount]);
+
+            for (int j = 0; j < valueColumns[i].getPositionCount(); j++) {
+              newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
+              if (!valueColumns[i].isNull()[j]) {
+                newValueColumns[i].getDoubles()[j] =
+                    ((Number) valueColumns[i].getLongs()[j]).doubleValue();
+              }
+            }
+          } else {
+            newValueColumns[i] =
+                new DoubleColumn(
+                    positionCount,
+                    Optional.of(new boolean[positionCount]),
+                    new double[positionCount]);
+            for (int j = 0; j < valueColumns[i].getPositionCount(); j++) {
+              newValueColumns[i].isNull()[j] = true;
+            }
+          }
+          break;
+        case TEXT:
+          if (SchemaUtils.isUsingSameColumn(sourceType, TSDataType.TEXT)) {
+            newValueColumns[i] = valueColumns[i];
+          } else if (sourceType == TSDataType.INT32) {
+            newValueColumns[i] =
+                new BinaryColumn(
+                    positionCount,
+                    Optional.of(new boolean[positionCount]),
+                    new Binary[positionCount]);
+
+            for (int j = 0; j < valueColumns[i].getPositionCount(); j++) {
+              newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
+              if (!valueColumns[i].isNull()[j]) {
+                newValueColumns[i].getBinaries()[j] =
+                    new Binary(
+                        String.valueOf(valueColumns[i].getInts()[j]), StandardCharsets.UTF_8);
+              }
+            }
+          } else if (sourceType == TSDataType.DATE) {
+            newValueColumns[i] =
+                new BinaryColumn(
+                    positionCount,
+                    Optional.of(new boolean[positionCount]),
+                    new Binary[positionCount]);
+
+            for (int j = 0; j < valueColumns[i].getPositionCount(); j++) {
+              newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
+              if (!valueColumns[i].isNull()[j]) {
+                newValueColumns[i].getBinaries()[j] =
+                    new Binary(
+                        TSDataType.getDateStringValue(valueColumns[i].getInts()[j]),
+                        StandardCharsets.UTF_8);
+              }
+            }
+          } else if (sourceType == TSDataType.INT64 || sourceType == TSDataType.TIMESTAMP) {
+            newValueColumns[i] =
+                new BinaryColumn(
+                    positionCount,
+                    Optional.of(new boolean[positionCount]),
+                    new Binary[positionCount]);
+
+            for (int j = 0; j < valueColumns[i].getPositionCount(); j++) {
+              newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
+              if (!valueColumns[i].isNull()[j]) {
+                newValueColumns[i].getBinaries()[j] =
+                    new Binary(
+                        String.valueOf(valueColumns[i].getLongs()[j]), StandardCharsets.UTF_8);
+              }
+            }
+          } else if (sourceType == TSDataType.FLOAT) {
+            newValueColumns[i] =
+                new BinaryColumn(
+                    positionCount,
+                    Optional.of(new boolean[positionCount]),
+                    new Binary[positionCount]);
+
+            for (int j = 0; j < valueColumns[i].getPositionCount(); j++) {
+              newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
+              if (!valueColumns[i].isNull()[j]) {
+                newValueColumns[i].getBinaries()[j] =
+                    new Binary(
+                        String.valueOf(valueColumns[i].getFloats()[j]), StandardCharsets.UTF_8);
+              }
+            }
+          } else if (sourceType == TSDataType.DOUBLE) {
+            newValueColumns[i] =
+                new BinaryColumn(
+                    positionCount,
+                    Optional.of(new boolean[positionCount]),
+                    new Binary[positionCount]);
+
+            for (int j = 0; j < valueColumns[i].getPositionCount(); j++) {
+              newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
+              if (!valueColumns[i].isNull()[j]) {
+                newValueColumns[i].getBinaries()[j] =
+                    new Binary(
+                        String.valueOf(valueColumns[i].getDoubles()[j]), StandardCharsets.UTF_8);
+              }
+            }
+          } else if (sourceType == TSDataType.BOOLEAN) {
+            newValueColumns[i] =
+                new BinaryColumn(
+                    positionCount,
+                    Optional.of(new boolean[positionCount]),
+                    new Binary[positionCount]);
+
+            for (int j = 0; j < valueColumns[i].getPositionCount(); j++) {
+              newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
+              if (!valueColumns[i].isNull()[j]) {
+                newValueColumns[i].getBinaries()[j] =
+                    new Binary(
+                        String.valueOf(valueColumns[i].getBooleans()[j]), StandardCharsets.UTF_8);
+              }
+            }
+          } else {
+            newValueColumns[i] =
+                new BinaryColumn(
+                    positionCount,
+                    Optional.of(new boolean[positionCount]),
+                    new Binary[positionCount]);
+            for (int j = 0; j < valueColumns[i].getPositionCount(); j++) {
+              newValueColumns[i].isNull()[j] = true;
+            }
+          }
+          break;
+        case TIMESTAMP:
+          if (SchemaUtils.isUsingSameColumn(sourceType, TSDataType.TIMESTAMP)) {
+            newValueColumns[i] = valueColumns[i];
+          } else if (sourceType == TSDataType.INT32) {
+            newValueColumns[i] =
+                new LongColumn(
+                    positionCount,
+                    Optional.of(new boolean[positionCount]),
+                    new long[positionCount]);
+
+            for (int j = 0; j < valueColumns[i].getPositionCount(); j++) {
+              newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
+              if (!valueColumns[i].isNull()[j]) {
+                newValueColumns[i].getLongs()[j] =
+                    ((Number) valueColumns[i].getInts()[j]).longValue();
+              }
+            }
+          } else if (sourceType == TSDataType.INT64) {
+            newValueColumns[i] = valueColumns[i];
+          } else {
+            newValueColumns[i] =
+                new LongColumn(
+                    positionCount,
+                    Optional.of(new boolean[positionCount]),
+                    new long[positionCount]);
+            for (int j = 0; j < valueColumns[i].getPositionCount(); j++) {
+              newValueColumns[i].isNull()[j] = true;
+            }
+          }
+          break;
+        case DATE:
+          if (SchemaUtils.isUsingSameColumn(sourceType, TSDataType.DATE)) {
+            newValueColumns[i] = valueColumns[i];
+          } else {
+            newValueColumns[i] =
+                new IntColumn(
+                    positionCount, Optional.of(new boolean[positionCount]), new int[positionCount]);
+            for (int j = 0; j < valueColumns[i].getPositionCount(); j++) {
+              newValueColumns[i].isNull()[j] = true;
+            }
+          }
+          break;
+        case BLOB:
+          if (SchemaUtils.isUsingSameColumn(sourceType, TSDataType.BLOB)) {
+            newValueColumns[i] = valueColumns[i];
+          } else {
+            newValueColumns[i] =
+                new BinaryColumn(
+                    positionCount,
+                    Optional.of(new boolean[positionCount]),
+                    new Binary[positionCount]);
+            for (int j = 0; j < valueColumns[i].getPositionCount(); j++) {
+              newValueColumns[i].isNull()[j] = true;
+            }
+          }
+          break;
+        case STRING:
+          if (SchemaUtils.isUsingSameColumn(sourceType, TSDataType.STRING)) {
+            newValueColumns[i] = valueColumns[i];
+          } else if (sourceType == TSDataType.INT32) {
+            newValueColumns[i] =
+                new BinaryColumn(
+                    positionCount,
+                    Optional.of(new boolean[positionCount]),
+                    new Binary[positionCount]);
+
+            for (int j = 0; j < valueColumns[i].getPositionCount(); j++) {
+              newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
+              if (!valueColumns[i].isNull()[j]) {
+                newValueColumns[i].getBinaries()[j] =
+                    new Binary(
+                        String.valueOf(valueColumns[i].getInts()[j]), StandardCharsets.UTF_8);
+              }
+            }
+          } else if (sourceType == TSDataType.DATE) {
+            newValueColumns[i] =
+                new BinaryColumn(
+                    positionCount,
+                    Optional.of(new boolean[positionCount]),
+                    new Binary[positionCount]);
+
+            for (int j = 0; j < valueColumns[i].getPositionCount(); j++) {
+              newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
+              if (!valueColumns[i].isNull()[j]) {
+                newValueColumns[i].getBinaries()[j] =
+                    new Binary(
+                        TSDataType.getDateStringValue(valueColumns[i].getInts()[j]),
+                        StandardCharsets.UTF_8);
+              }
+            }
+          } else if (sourceType == TSDataType.INT64 || sourceType == TSDataType.TIMESTAMP) {
+            newValueColumns[i] =
+                new BinaryColumn(
+                    positionCount,
+                    Optional.of(new boolean[positionCount]),
+                    new Binary[positionCount]);
+
+            for (int j = 0; j < valueColumns[i].getPositionCount(); j++) {
+              newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
+              if (!valueColumns[i].isNull()[j]) {
+                newValueColumns[i].getBinaries()[j] =
+                    new Binary(
+                        String.valueOf(valueColumns[i].getLongs()[j]), StandardCharsets.UTF_8);
+              }
+            }
+          } else if (sourceType == TSDataType.FLOAT) {
+            newValueColumns[i] =
+                new BinaryColumn(
+                    positionCount,
+                    Optional.of(new boolean[positionCount]),
+                    new Binary[positionCount]);
+
+            for (int j = 0; j < valueColumns[i].getPositionCount(); j++) {
+              newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
+              if (!valueColumns[i].isNull()[j]) {
+                newValueColumns[i].getBinaries()[j] =
+                    new Binary(
+                        String.valueOf(valueColumns[i].getFloats()[j]), StandardCharsets.UTF_8);
+              }
+            }
+          } else if (sourceType == TSDataType.DOUBLE) {
+            newValueColumns[i] =
+                new BinaryColumn(
+                    positionCount,
+                    Optional.of(new boolean[positionCount]),
+                    new Binary[positionCount]);
+
+            for (int j = 0; j < valueColumns[i].getPositionCount(); j++) {
+              newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
+              if (!valueColumns[i].isNull()[j]) {
+                newValueColumns[i].getBinaries()[j] =
+                    new Binary(
+                        String.valueOf(valueColumns[i].getDoubles()[j]), StandardCharsets.UTF_8);
+              }
+            }
+          } else if (sourceType == TSDataType.BOOLEAN) {
+            newValueColumns[i] =
+                new BinaryColumn(
+                    positionCount,
+                    Optional.of(new boolean[positionCount]),
+                    new Binary[positionCount]);
+
+            for (int j = 0; j < valueColumns[i].getPositionCount(); j++) {
+              newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
+              if (!valueColumns[i].isNull()[j]) {
+                newValueColumns[i].getBinaries()[j] =
+                    new Binary(
+                        String.valueOf(valueColumns[i].getBooleans()[j]), StandardCharsets.UTF_8);
+              }
+            }
+          } else {
+            newValueColumns[i] =
+                new BinaryColumn(
+                    positionCount,
+                    Optional.of(new boolean[positionCount]),
+                    new Binary[positionCount]);
+            for (int j = 0; j < valueColumns[i].getPositionCount(); j++) {
+              newValueColumns[i].isNull()[j] = true;
+            }
+          }
+          break;
+        case OBJECT:
+          newValueColumns[i] = valueColumns[i];
+        case VECTOR:
+        case UNKNOWN:
+        default:
+          break;
+      }
+    }
+
+    tsBlock = new TsBlock(tsBlock.getTimeColumn(), newValueColumns);
+    return tsBlock;
+  }
+
+  /** filter data in whole page level, and apply the offset at the same time */
   private void filterFirstPageReader() {
     if (firstPageReader == null || firstPageReader.isModified()) {
       return;
@@ -862,6 +1401,10 @@ public class SeriesScanUtil implements Accountable {
     // globalTimeFilter.canSkip() must be FALSE
     Filter pushDownFilter = scanOptions.getPushDownFilter();
     if (pushDownFilter != null && pushDownFilter.canSkip(pageReader)) {
+      // record the page level filtered data
+      this.context
+          .getQueryStatistics()
+          .addFilteredRowsOfPageLevel(pageReader.getStatistics().getCount());
       skipCurrentPage();
       return;
     }
@@ -913,7 +1456,6 @@ public class SeriesScanUtil implements Accountable {
                   ? Math.max(mergeReader.getCurrentReadStopTime(), initialEndPointTime)
                   : Math.min(mergeReader.getCurrentReadStopTime(), initialEndPointTime);
           while (mergeReader.hasNextTimeValuePair()) {
-
             /*
              * get current first point in mergeReader, this maybe overlapped later
              */
@@ -1121,7 +1663,16 @@ public class SeriesScanUtil implements Accountable {
       case BLOB:
       case OBJECT:
       case STRING:
-        builder.getColumnBuilder(0).writeBinary(timeValuePair.getValue().getBinary());
+        if (timeValuePair.getValue().getDataType() == TSDataType.DATE) {
+          builder
+              .getColumnBuilder(0)
+              .writeBinary(
+                  new Binary(
+                      TSDataType.getDateStringValue(timeValuePair.getValue().getInt()),
+                      StandardCharsets.UTF_8));
+        } else {
+          builder.getColumnBuilder(0).writeBinary(timeValuePair.getValue().getBinary());
+        }
         break;
       case VECTOR:
         TsPrimitiveType[] values = timeValuePair.getValue().getVector();
@@ -1239,7 +1790,7 @@ public class SeriesScanUtil implements Accountable {
   private TsBlock nextOverlappedPage() throws IOException {
     if (hasCachedNextOverlappedPage || hasNextOverlappedPage()) {
       hasCachedNextOverlappedPage = false;
-      return cachedTsBlock;
+      return getTransferedDataTypeTsBlock(cachedTsBlock);
     }
     throw new IOException("No more batch data");
   }
@@ -1278,7 +1829,7 @@ public class SeriesScanUtil implements Accountable {
     /*
      * find end time of the first TimeSeriesMetadata
      */
-    long endTime = -1L;
+    Long endTime = null;
     if (!seqTimeSeriesMetadata.isEmpty() && unSeqTimeSeriesMetadata.isEmpty()) {
       // only has seq
       endTime = orderUtils.getOverlapCheckTime(seqTimeSeriesMetadata.get(0).getStatistics());
@@ -1296,7 +1847,7 @@ public class SeriesScanUtil implements Accountable {
     /*
      * unpack all directly overlapped seq/unseq files with first TimeSeriesMetadata
      */
-    if (endTime != -1) {
+    if (endTime != null) {
       unpackAllOverlappedTsFilesToTimeSeriesMetadata(endTime);
     }
 
@@ -1325,7 +1876,8 @@ public class SeriesScanUtil implements Accountable {
     if (firstTimeSeriesMetadata == null) {
       return;
     }
-
+    // if the time range is overLapped, current file cannot be considered as truth, so all filters
+    // are invalid
     if (currentFileOverlapped() || firstTimeSeriesMetadata.isModified()) {
       return;
     }
@@ -1333,6 +1885,11 @@ public class SeriesScanUtil implements Accountable {
     // globalTimeFilter.canSkip() must be FALSE
     Filter pushDownFilter = scanOptions.getPushDownFilter();
     if (pushDownFilter != null && pushDownFilter.canSkip(firstTimeSeriesMetadata)) {
+
+      // record the timeSeries level filtered data
+      this.context
+          .getQueryStatistics()
+          .addFilteredRowsOfTimeSeriesLevel(firstTimeSeriesMetadata.getStatistics().getCount());
       skipCurrentFile();
       return;
     }
@@ -1495,9 +2052,17 @@ public class SeriesScanUtil implements Accountable {
     public TsBlock getAllSatisfiedPageData(boolean ascending) throws IOException {
       long startTime = System.nanoTime();
       try {
-        TsBlock tsBlock = data.getAllSatisfiedData();
+
+        TsBlock tsBlock =
+            this.context.isVerbose()
+                ? data.getAllSatisfiedData(
+                    this.context.getQueryStatistics()::addFilteredRowsOfRowLevel)
+                : data.getAllSatisfiedData();
         if (!ascending) {
           tsBlock.reverse();
+        }
+        if (LOGGER.isDebugEnabled()) {
+          LOGGER.debug("[getAllSatisfiedPageData] TsBlock:{}", CommonUtils.toString(tsBlock));
         }
         return tsBlock;
       } finally {

@@ -145,7 +145,7 @@ public class CreatePipePluginProcedure extends AbstractNodeProcedure<CreatePipeP
       }
     } catch (PipeException e) {
       // The pipe plugin has already created, we should end the procedure
-      LOGGER.warn(
+      LOGGER.info(
           "Pipe plugin {} is already created, end the CreatePipePluginProcedure({})",
           pluginName,
           pluginName);

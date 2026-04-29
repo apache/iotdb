@@ -43,7 +43,7 @@ import java.util.function.Consumer;
 /**
  * DeletionResource is designed for IoTConsensusV2 to manage the lifecycle of all deletion
  * operations including realtime deletion and historical deletion. In order to be compatible with
- * user pipe framework, PipeConsensus will use {@link PipeDeleteDataNodeEvent}
+ * user pipe framework, IoTConsensusV2 will use {@link PipeDeleteDataNodeEvent}
  */
 public class DeletionResource implements PersistentResource {
   private static final Logger LOGGER = LoggerFactory.getLogger(DeletionResource.class);
@@ -58,25 +58,21 @@ public class DeletionResource implements PersistentResource {
   private volatile Exception cause;
 
   public DeletionResource(
-      AbstractDeleteDataNode deleteDataNode,
-      Consumer<DeletionResource> removeHook,
-      String regionId) {
+      AbstractDeleteDataNode deleteDataNode, Consumer<DeletionResource> removeHook, int regionId) {
     this.deleteDataNode = deleteDataNode;
     this.removeHook = removeHook;
     this.currentStatus = Status.RUNNING;
     this.consensusGroupId =
-        ConsensusGroupId.Factory.create(
-            TConsensusGroupType.DataRegion.getValue(), Integer.parseInt(regionId));
+        ConsensusGroupId.Factory.create(TConsensusGroupType.DataRegion.getValue(), regionId);
     this.pipeTaskReferenceCount =
         new AtomicInteger(
             DataRegionConsensusImpl.getInstance().getReplicationNum(consensusGroupId) - 1);
   }
 
   public synchronized void decreaseReference() {
-    if (pipeTaskReferenceCount.get() == 1) {
+    if (pipeTaskReferenceCount.decrementAndGet() == 0) {
       removeSelf();
     }
-    pipeTaskReferenceCount.decrementAndGet();
   }
 
   public void removeSelf() {
@@ -151,7 +147,7 @@ public class DeletionResource implements PersistentResource {
   }
 
   public static DeletionResource deserialize(
-      final ByteBuffer buffer, final String regionId, final Consumer<DeletionResource> removeHook)
+      final ByteBuffer buffer, final int regionId, final Consumer<DeletionResource> removeHook)
       throws IOException {
     AbstractDeleteDataNode node = DeleteNodeType.deserializeFromDAL(buffer);
     return new DeletionResource(node, removeHook, regionId);

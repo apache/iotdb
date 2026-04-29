@@ -20,4 +20,13 @@ package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode;
 
 import org.apache.iotdb.commons.schema.node.IMNode;
 
-public interface IMemMNode extends IMNode<IMemMNode> {}
+public interface IMemMNode extends IMNode<IMemMNode> {
+
+  /**
+   * The count of measurement nodes contained in the subtree rooted at this node. The counter is
+   * maintained in memory only.
+   */
+  long getSubtreeMeasurementCount();
+
+  void setSubtreeMeasurementCount(long subtreeMeasurementCount);
+}

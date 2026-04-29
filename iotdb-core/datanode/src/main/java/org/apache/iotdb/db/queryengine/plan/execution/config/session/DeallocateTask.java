@@ -19,9 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.execution.config.session;
 
-import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.protocol.session.IClientSession;
-import org.apache.iotdb.db.protocol.session.PreparedStatementInfo;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
@@ -54,19 +52,12 @@ public class DeallocateTask implements IConfigTask {
       return future;
     }
 
-    // Remove the prepared statement
-    PreparedStatementInfo removedInfo = session.removePreparedStatement(statementName);
-    if (removedInfo == null) {
-      future.setException(
-          new SemanticException(
-              String.format("Prepared statement '%s' does not exist", statementName)));
-      return future;
+    try {
+      PreparedStatementHelper.unregister(session, statementName);
+      future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+    } catch (Exception e) {
+      future.setException(e);
     }
-
-    // Release the memory allocated for this PreparedStatement from the shared MemoryBlock
-    PreparedStatementMemoryManager.getInstance().release(removedInfo.getMemorySizeInBytes());
-
-    future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
     return future;
   }
 }

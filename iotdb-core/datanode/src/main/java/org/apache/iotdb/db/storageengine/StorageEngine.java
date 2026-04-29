@@ -42,6 +42,7 @@ import org.apache.iotdb.commons.schema.ttl.TTLCache;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.utils.PathUtils;
+import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.consensus.ConsensusFactory;
@@ -71,6 +72,7 @@ import org.apache.iotdb.db.storageengine.dataregion.flush.CompressionRatio;
 import org.apache.iotdb.db.storageengine.dataregion.flush.FlushListener;
 import org.apache.iotdb.db.storageengine.dataregion.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.storageengine.dataregion.flush.TsFileFlushPolicy.DirectFlushPolicy;
+import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageIndex.TableDiskUsageIndex;
 import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALException;
 import org.apache.iotdb.db.storageengine.dataregion.wal.recover.WALRecoverManager;
@@ -419,6 +421,7 @@ public class StorageEngine implements IService {
     if (cachedThreadPool != null) {
       cachedThreadPool.shutdownNow();
     }
+    TableDiskUsageIndex.getInstance().close();
     dataRegionMap.clear();
   }
 
@@ -553,6 +556,11 @@ public class StorageEngine implements IService {
     checkResults(tasks, "Failed to sync close processor.");
   }
 
+  public boolean containsDatabase(final String database) {
+    return dataRegionMap.values().stream()
+        .anyMatch(dataRegion -> Objects.equals(database, dataRegion.getDatabaseName()));
+  }
+
   public void syncCloseProcessorsInDatabase(String databaseName, boolean isSeq) {
     List<Future<Void>> tasks = new ArrayList<>();
     for (DataRegion dataRegion : dataRegionMap.values()) {
@@ -660,22 +668,37 @@ public class StorageEngine implements IService {
     }
   }
 
-  public void operateFlush(TFlushReq req) {
+  public TSStatus operateFlush(final TFlushReq req, final boolean onLocal) {
+    final StorageEngine storageEngine = StorageEngine.getInstance();
     if (req.getRegionIds() != null && !req.getRegionIds().isEmpty()) {
-      StorageEngine.getInstance().syncCloseProcessorsInRegion(req.getRegionIds());
+      storageEngine.syncCloseProcessorsInRegion(req.getRegionIds());
     } else if (req.storageGroups == null || req.storageGroups.isEmpty()) {
       StorageEngine.getInstance().syncCloseAllProcessor();
       WALManager.getInstance().syncDeleteOutdatedFilesInWALNodes();
     } else {
+      if (onLocal) {
+        final List<String> noExistDB =
+            req.storageGroups.stream()
+                .filter(database -> !storageEngine.containsDatabase(database))
+                .collect(Collectors.toList());
+        if (!noExistDB.isEmpty()) {
+          final StringBuilder sb = new StringBuilder();
+          noExistDB.forEach(database -> sb.append(database).append(","));
+          return RpcUtils.getStatus(
+              TSStatusCode.DATABASE_NOT_EXIST,
+              "Database " + sb.subSequence(0, sb.length() - 1) + " does not exist on local");
+        }
+      }
       for (String databaseName : req.storageGroups) {
         if (req.isSeq == null) {
-          StorageEngine.getInstance().syncCloseProcessorsInDatabase(databaseName);
+          storageEngine.syncCloseProcessorsInDatabase(databaseName);
         } else {
-          StorageEngine.getInstance()
-              .syncCloseProcessorsInDatabase(databaseName, Boolean.parseBoolean(req.isSeq));
+          storageEngine.syncCloseProcessorsInDatabase(
+              databaseName, Boolean.parseBoolean(req.isSeq));
         }
       }
     }
+    return StatusUtils.OK;
   }
 
   public void clearCache() {
@@ -790,7 +813,7 @@ public class StorageEngine implements IService {
         region.syncDeleteDataFiles();
         region.deleteFolder(systemDir);
         region.deleteDALFolderAndClose();
-        PipeDataNodeAgent.receiver().pipeConsensus().releaseReceiverResource(regionId);
+        PipeDataNodeAgent.receiver().iotConsensusV2().releaseReceiverResource(regionId);
         switch (CONFIG.getDataRegionConsensusProtocolClass()) {
           case ConsensusFactory.IOT_CONSENSUS:
           case ConsensusFactory.IOT_CONSENSUS_V2:

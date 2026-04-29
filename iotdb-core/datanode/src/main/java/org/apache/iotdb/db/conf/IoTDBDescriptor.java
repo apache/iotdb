@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.conf;
 
+import org.apache.iotdb.calc.exception.QueryProcessException;
 import org.apache.iotdb.commons.binaryallocator.BinaryAllocator;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
@@ -33,9 +34,8 @@ import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TCQConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TRatisConfig;
-import org.apache.iotdb.consensus.config.PipeConsensusConfig;
+import org.apache.iotdb.consensus.config.IoTConsensusV2Config;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.pipe.resource.log.PipePeriodicalLogReducer;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.LastCacheLoadStrategy;
 import org.apache.iotdb.db.service.metrics.IoTDBInternalLocalReporter;
@@ -54,7 +54,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
 import org.apache.iotdb.db.storageengine.load.disk.ILoadDiskSelector;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
-import org.apache.iotdb.db.utils.DateTimeUtils;
+import org.apache.iotdb.db.utils.DataNodeDateTimeUtils;
 import org.apache.iotdb.db.utils.datastructure.TVListSortAlgorithm;
 import org.apache.iotdb.external.api.IPropertiesLoader;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
@@ -101,6 +101,7 @@ public class IoTDBDescriptor {
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBDescriptor.class);
 
   private static final CommonDescriptor commonDescriptor = CommonDescriptor.getInstance();
+  private static final CommonConfig commonConfig = commonDescriptor.getConfig();
 
   private static final IoTDBConfig conf = new IoTDBConfig();
   private static final DataNodeMemoryConfig memoryConfig = new DataNodeMemoryConfig();
@@ -537,13 +538,14 @@ public class IoTDBDescriptor {
                 "merge_threshold_of_explain_analyze",
                 Integer.toString(conf.getMergeThresholdOfExplainAnalyze()))));
 
-    conf.setModeMapSizeThreshold(
+    commonConfig.setModeMapSizeThreshold(
         Integer.parseInt(
             properties.getProperty(
-                "mode_map_size_threshold", Integer.toString(conf.getModeMapSizeThreshold()))));
+                "mode_map_size_threshold",
+                Integer.toString(commonConfig.getModeMapSizeThreshold()))));
 
-    if (conf.getModeMapSizeThreshold() <= 0) {
-      conf.setModeMapSizeThreshold(10000);
+    if (commonConfig.getModeMapSizeThreshold() <= 0) {
+      commonConfig.setModeMapSizeThreshold(10000);
     }
 
     conf.setMaxAllowedConcurrentQueries(
@@ -906,11 +908,6 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "pipe_task_thread_count", Integer.toString(conf.getPipeTaskThreadCount()).trim())));
 
-    conf.setMaxObjectSizeInByte(
-        Long.parseLong(
-            properties.getProperty(
-                "max_object_file_size_in_byte", String.valueOf(conf.getMaxObjectSizeInByte()))));
-
     // At the same time, set TSFileConfig
     List<FSType> fsTypes = new ArrayList<>();
     fsTypes.add(FSType.LOCAL);
@@ -1055,7 +1052,30 @@ public class IoTDBDescriptor {
             properties.getProperty("quota_enable", String.valueOf(conf.isQuotaEnable()))));
 
     // The buffer for sort operator to calculate
-    loadFixedSizeLimitForQuery(properties, "sort_buffer_size_in_bytes", conf::setSortBufferSize);
+    loadFixedSizeLimitForQuery(
+        properties,
+        "sort_buffer_size_in_bytes",
+        (v) -> {
+          commonDescriptor.getConfig().setSortBufferSize(v);
+        });
+
+    // The buffer for cte materialization.
+    long cteBufferSizeInBytes =
+        Long.parseLong(
+            properties.getProperty(
+                "cte_buffer_size_in_bytes", Long.toString(commonConfig.getCteBufferSize())));
+    if (cteBufferSizeInBytes > 0) {
+      commonConfig.setCteBufferSize(cteBufferSizeInBytes);
+    }
+
+    // max number of rows for cte materialization
+    int maxRowsInCteBuffer =
+        Integer.parseInt(
+            properties.getProperty(
+                "max_rows_in_cte_buffer", Integer.toString(commonConfig.getMaxRowsInCteBuffer())));
+    if (maxRowsInCteBuffer > 0) {
+      commonConfig.setMaxRowsInCteBuffer(maxRowsInCteBuffer);
+    }
 
     loadFixedSizeLimitForQuery(
         properties, "mods_cache_size_limit_per_fi_in_bytes", conf::setModsCacheSizeLimitPerFI);
@@ -1126,11 +1146,96 @@ public class IoTDBDescriptor {
     // update trusted_uri_pattern
     loadTrustedUriPattern(properties);
 
+    int partitionTableRecoverWorkerNum =
+        Integer.parseInt(
+            properties.getProperty(
+                "partition_table_recover_worker_num",
+                String.valueOf(conf.getPartitionTableRecoverWorkerNum())));
+    if (partitionTableRecoverWorkerNum <= 0) {
+      LOGGER.warn(
+          "partition_table_recover_worker_num should be greater than 0, "
+              + "but current value is {}, ignore that and use the default value {}",
+          partitionTableRecoverWorkerNum,
+          conf.getPartitionTableRecoverWorkerNum());
+      partitionTableRecoverWorkerNum = conf.getPartitionTableRecoverWorkerNum();
+    }
+    conf.setPartitionTableRecoverWorkerNum(partitionTableRecoverWorkerNum);
+    int partitionTableRecoverMaxReadMBsPerSecond =
+        Integer.parseInt(
+            properties.getProperty(
+                "partition_table_recover_max_read_megabytes_per_second",
+                String.valueOf(conf.getPartitionTableRecoverMaxReadMBsPerSecond())));
+    if (partitionTableRecoverMaxReadMBsPerSecond <= 0) {
+      LOGGER.warn(
+          "partition_table_recover_max_read_megabytes_per_second should be greater than 0, "
+              + "but current value is {}, ignore that and use the default value {}",
+          partitionTableRecoverMaxReadMBsPerSecond,
+          conf.getPartitionTableRecoverMaxReadMBsPerSecond());
+      partitionTableRecoverMaxReadMBsPerSecond = conf.getPartitionTableRecoverMaxReadMBsPerSecond();
+    }
+    conf.setPartitionTableRecoverMaxReadMBsPerSecond(partitionTableRecoverMaxReadMBsPerSecond);
+
     conf.setIncludeNullValueInWriteThroughputMetric(
         Boolean.parseBoolean(
             properties.getProperty(
                 "include_null_value_in_write_throughput_metric",
                 String.valueOf(conf.isIncludeNullValueInWriteThroughputMetric()))));
+
+    conf.setEnableDelayAnalyzer(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_delay_analyzer",
+                ConfigurationFileUtils.getConfigurationDefaultValue("enable_delay_analyzer"))));
+
+    int delayAnalyzerWindowSize =
+        Integer.parseInt(
+            properties.getProperty(
+                "delay_analyzer_window_size",
+                ConfigurationFileUtils.getConfigurationDefaultValue("delay_analyzer_window_size")));
+    if (delayAnalyzerWindowSize > 0) {
+      LOGGER.info("[DelayAnalyzer] Set delay_analyzer_window_size to {}", delayAnalyzerWindowSize);
+      conf.setDelayAnalyzerWindowSize(delayAnalyzerWindowSize);
+    }
+
+    int delayAnalyzerMinWindowSize =
+        Integer.parseInt(
+            properties.getProperty(
+                "delay_analyzer_min_window_size",
+                ConfigurationFileUtils.getConfigurationDefaultValue(
+                    "delay_analyzer_min_window_size")));
+    if (delayAnalyzerMinWindowSize > 0) {
+      conf.setDelayAnalyzerMinWindowSize(delayAnalyzerMinWindowSize);
+    }
+
+    int delayAnalyzerMaxWindowSize =
+        Integer.parseInt(
+            properties.getProperty(
+                "delay_analyzer_max_window_size",
+                ConfigurationFileUtils.getConfigurationDefaultValue(
+                    "delay_analyzer_max_window_size")));
+    if (delayAnalyzerMaxWindowSize > 0) {
+      conf.setDelayAnalyzerMaxWindowSize(delayAnalyzerMaxWindowSize);
+    }
+
+    double delayAnalyzerConfidenceLevel =
+        Double.parseDouble(
+            properties.getProperty(
+                "delay_analyzer_confidence_level",
+                ConfigurationFileUtils.getConfigurationDefaultValue(
+                    "delay_analyzer_confidence_level")));
+    if (delayAnalyzerConfidenceLevel > 0 && delayAnalyzerConfidenceLevel <= 1) {
+      conf.setDelayAnalyzerConfidenceLevel(delayAnalyzerConfidenceLevel);
+    }
+
+    // max sub-task num for information table scan
+    int maxSubTaskNumForInformationTableScan =
+        Integer.parseInt(
+            properties.getProperty(
+                "max_sub_task_num_for_information_table_scan",
+                Integer.toString(conf.getMaxSubTaskNumForInformationTableScan())));
+    if (maxSubTaskNumForInformationTableScan > 0) {
+      conf.setMaxSubTaskNumForInformationTableScan(maxSubTaskNumForInformationTableScan);
+    }
   }
 
   private void loadFixedSizeLimitForQuery(
@@ -1199,7 +1304,7 @@ public class IoTDBDescriptor {
     }
     conf.setIotConsensusV2Mode(
         properties.getProperty(
-            "iot_consensus_v2_mode", PipeConsensusConfig.ReplicateMode.BATCH.getValue()));
+            "iot_consensus_v2_mode", IoTConsensusV2Config.ReplicateMode.BATCH.getValue()));
     int deletionAheadLogBufferQueueCapacity =
         Integer.parseInt(
             properties.getProperty(
@@ -2166,7 +2271,10 @@ public class IoTDBDescriptor {
                   ConfigurationFileUtils.getConfigurationDefaultValue("tvlist_sort_threshold"))));
 
       // sort_buffer_size_in_bytes
-      loadFixedSizeLimitForQuery(properties, "sort_buffer_size_in_bytes", conf::setSortBufferSize);
+      loadFixedSizeLimitForQuery(
+          properties,
+          "sort_buffer_size_in_bytes",
+          v -> commonDescriptor.getConfig().setSortBufferSize(v));
 
       loadFixedSizeLimitForQuery(
           properties, "mods_cache_size_limit_per_fi_in_bytes", conf::setModsCacheSizeLimitPerFI);
@@ -2177,10 +2285,35 @@ public class IoTDBDescriptor {
                   "include_null_value_in_write_throughput_metric",
                   ConfigurationFileUtils.getConfigurationDefaultValue(
                       "include_null_value_in_write_throughput_metric"))));
-      conf.setMaxObjectSizeInByte(
+
+      // The buffer for cte materialization.
+      long cteBufferSizeInBytes =
           Long.parseLong(
               properties.getProperty(
-                  "max_object_file_size_in_byte", String.valueOf(conf.getMaxObjectSizeInByte()))));
+                  "cte_buffer_size_in_bytes", Long.toString(commonConfig.getCteBufferSize())));
+      if (cteBufferSizeInBytes > 0) {
+        commonConfig.setCteBufferSize(cteBufferSizeInBytes);
+      }
+      // max number of rows for cte materialization
+      int maxRowsInCteBuffer =
+          Integer.parseInt(
+              properties.getProperty(
+                  "max_rows_in_cte_buffer",
+                  Integer.toString(commonConfig.getMaxRowsInCteBuffer())));
+      if (maxRowsInCteBuffer > 0) {
+        commonConfig.setMaxRowsInCteBuffer(maxRowsInCteBuffer);
+      }
+
+      // max sub-task num for information table scan
+      int maxSubTaskNumForInformationTableScan =
+          Integer.parseInt(
+              properties.getProperty(
+                  "max_sub_task_num_for_information_table_scan",
+                  Integer.toString(conf.getMaxSubTaskNumForInformationTableScan())));
+      if (maxSubTaskNumForInformationTableScan > 0) {
+        conf.setMaxSubTaskNumForInformationTableScan(maxSubTaskNumForInformationTableScan);
+      }
+
     } catch (Exception e) {
       if (e instanceof InterruptedException) {
         Thread.currentThread().interrupt();
@@ -2506,8 +2639,10 @@ public class IoTDBDescriptor {
     String initialByteArrayLengthForMemoryControl =
         properties.getProperty("udf_initial_byte_array_length_for_memory_control");
     if (initialByteArrayLengthForMemoryControl != null) {
-      conf.setUdfInitialByteArrayLengthForMemoryControl(
-          Integer.parseInt(initialByteArrayLengthForMemoryControl.trim()));
+      commonDescriptor
+          .getConfig()
+          .setUdfInitialByteArrayLengthForMemoryControl(
+              Integer.parseInt(initialByteArrayLengthForMemoryControl.trim()));
     }
 
     conf.setUdfDir(properties.getProperty("udf_lib_dir", conf.getUdfDir()));
@@ -2639,7 +2774,7 @@ public class IoTDBDescriptor {
     }
 
     conf.setContinuousQueryMinimumEveryInterval(
-        DateTimeUtils.convertDurationStrToLong(
+        DataNodeDateTimeUtils.convertDurationStrToLong(
             properties.getProperty("continuous_query_minimum_every_interval", "1s").trim(),
             CommonDescriptor.getInstance().getConfig().getTimestampPrecision(),
             false));
@@ -2716,11 +2851,11 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "partition_cache_size", Integer.toString(conf.getPartitionCacheSize()))));
 
-    conf.setDriverTaskExecutionTimeSliceInMs(
+    commonConfig.setDriverTaskExecutionTimeSliceInMs(
         Integer.parseInt(
             properties.getProperty(
                 "driver_task_execution_time_slice_in_ms",
-                Integer.toString(conf.getDriverTaskExecutionTimeSliceInMs()))));
+                Integer.toString(commonConfig.getDriverTaskExecutionTimeSliceInMs()))));
   }
 
   /** Get default encode algorithm by data type */

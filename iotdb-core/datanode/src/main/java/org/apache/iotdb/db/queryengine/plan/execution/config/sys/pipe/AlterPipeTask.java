@@ -75,25 +75,25 @@ public class AlterPipeTask implements IConfigTask {
             CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
 
     // support now() function
-    PipeFunctionSupport.applyNowFunctionToExtractorAttributes(
+    PipeFunctionSupport.applyNowFunction2SourceAttributes(
         attributes,
         PipeSourceConstant.SOURCE_START_TIME_KEY,
         PipeSourceConstant.EXTRACTOR_START_TIME_KEY,
         currentTime);
 
-    PipeFunctionSupport.applyNowFunctionToExtractorAttributes(
+    PipeFunctionSupport.applyNowFunction2SourceAttributes(
         attributes,
         PipeSourceConstant.SOURCE_END_TIME_KEY,
         PipeSourceConstant.EXTRACTOR_END_TIME_KEY,
         currentTime);
 
-    PipeFunctionSupport.applyNowFunctionToExtractorAttributes(
+    PipeFunctionSupport.applyNowFunction2SourceAttributes(
         attributes,
         PipeSourceConstant.SOURCE_HISTORY_START_TIME_KEY,
         PipeSourceConstant.EXTRACTOR_HISTORY_START_TIME_KEY,
         currentTime);
 
-    PipeFunctionSupport.applyNowFunctionToExtractorAttributes(
+    PipeFunctionSupport.applyNowFunction2SourceAttributes(
         attributes,
         PipeSourceConstant.SOURCE_HISTORY_END_TIME_KEY,
         PipeSourceConstant.EXTRACTOR_HISTORY_END_TIME_KEY,

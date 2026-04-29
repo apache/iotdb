@@ -40,13 +40,13 @@ public class DeletionReader implements Closeable {
   private static final Logger LOGGER = LoggerFactory.getLogger(DeletionReader.class);
   private static final int MAGIC_STRING_BYTES_SIZE =
       DeletionResourceManager.MAGIC_VERSION_V1.getBytes(StandardCharsets.UTF_8).length;
-  private final String regionId;
+  private final int regionId;
   private final Consumer<DeletionResource> removeHook;
   private final File logFile;
   private final FileInputStream fileInputStream;
   private final FileChannel fileChannel;
 
-  public DeletionReader(File logFile, String regionId, Consumer<DeletionResource> removeHook)
+  public DeletionReader(File logFile, int regionId, Consumer<DeletionResource> removeHook)
       throws IOException {
     this.logFile = logFile;
     this.regionId = regionId;

@@ -26,6 +26,7 @@ import org.apache.iotdb.confignode.procedure.impl.node.AddConfigNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveAINodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveConfigNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveDataNodesProcedure;
+import org.apache.iotdb.confignode.procedure.impl.partition.DataPartitionTableIntegrityCheckProcedure;
 import org.apache.iotdb.confignode.procedure.impl.pipe.plugin.CreatePipePluginProcedure;
 import org.apache.iotdb.confignode.procedure.impl.pipe.plugin.DropPipePluginProcedure;
 import org.apache.iotdb.confignode.procedure.impl.pipe.runtime.PipeHandleLeaderChangeProcedure;
@@ -44,6 +45,7 @@ import org.apache.iotdb.confignode.procedure.impl.region.RegionMigrateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.region.RemoveRegionPeerProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.AlterEncodingCompressorProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.AlterLogicalViewProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.AlterTimeSeriesDataTypeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeactivateTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeleteDatabaseProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeleteLogicalViewProcedure;
@@ -52,6 +54,7 @@ import org.apache.iotdb.confignode.procedure.impl.schema.SetTTLProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.SetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.UnsetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.AddTableColumnProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.AlterTableColumnDataTypeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.CreateTableProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.DeleteDevicesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableColumnProcedure;
@@ -144,6 +147,9 @@ public class ProcedureFactory implements IProcedureFactory {
         break;
       case DELETE_TIMESERIES_PROCEDURE:
         procedure = new DeleteTimeSeriesProcedure(false);
+        break;
+      case ALTER_TIMESERIES_DATATYPE_PROCEDURE:
+        procedure = new AlterTimeSeriesDataTypeProcedure(false);
         break;
       case DELETE_LOGICAL_VIEW_PROCEDURE:
         procedure = new DeleteLogicalViewProcedure(false);
@@ -240,6 +246,9 @@ public class ProcedureFactory implements IProcedureFactory {
       case DROP_VIEW_COLUMN_PROCEDURE:
         procedure = new DropViewColumnProcedure(false);
         break;
+      case ALTER_TABLE_COLUMN_DATATYPE_PROCEDURE:
+        procedure = new AlterTableColumnDataTypeProcedure(false);
+        break;
       case DROP_TABLE_PROCEDURE:
         procedure = new DropTableProcedure(false);
         break;
@@ -311,6 +320,12 @@ public class ProcedureFactory implements IProcedureFactory {
         break;
       case PIPE_ENRICHED_DROP_TABLE_COLUMN_PROCEDURE:
         procedure = new DropTableColumnProcedure(true);
+        break;
+      case PIPE_ENRICHED_ALTER_COLUMN_DATATYPE_PROCEDURE:
+        procedure = new AlterTableColumnDataTypeProcedure(true);
+        break;
+      case PIPE_ENRICHED_ALTER_TIMESERIES_DATATYPE_PROCEDURE:
+        procedure = new AlterTimeSeriesDataTypeProcedure(true);
         break;
       case PIPE_ENRICHED_DELETE_DEVICES_PROCEDURE:
         procedure = new DeleteDevicesProcedure(true);
@@ -390,6 +405,9 @@ public class ProcedureFactory implements IProcedureFactory {
       case ADD_NEVER_FINISH_SUB_PROCEDURE_PROCEDURE:
         procedure = new AddNeverFinishSubProcedureProcedure();
         break;
+      case DATA_PARTITION_TABLE_INTEGRITY_CHECK_PROCEDURE:
+        procedure = new DataPartitionTableIntegrityCheckProcedure();
+        break;
       default:
         LOGGER.error("Unknown Procedure type: {}", typeCode);
         throw new IOException("Unknown Procedure type: " + typeCode);
@@ -428,6 +446,8 @@ public class ProcedureFactory implements IProcedureFactory {
       return ProcedureType.ALTER_ENCODING_COMPRESSOR_PROCEDURE;
     } else if (procedure instanceof DeleteTimeSeriesProcedure) {
       return ProcedureType.DELETE_TIMESERIES_PROCEDURE;
+    } else if (procedure instanceof AlterTimeSeriesDataTypeProcedure) {
+      return ProcedureType.ALTER_TIMESERIES_DATATYPE_PROCEDURE;
     } else if (procedure instanceof ReconstructRegionProcedure) {
       return ProcedureType.RECONSTRUCT_REGION_PROCEDURE;
     } else if (procedure instanceof NotifyRegionMigrationProcedure) {
@@ -474,6 +494,8 @@ public class ProcedureFactory implements IProcedureFactory {
       return ProcedureType.DROP_TABLE_COLUMN_PROCEDURE;
     } else if (procedure instanceof DropViewProcedure) {
       return ProcedureType.DROP_VIEW_PROCEDURE;
+    } else if (procedure instanceof AlterTableColumnDataTypeProcedure) {
+      return ProcedureType.ALTER_TABLE_COLUMN_DATATYPE_PROCEDURE;
     } else if (procedure instanceof DropTableProcedure) {
       return ProcedureType.DROP_TABLE_PROCEDURE;
     } else if (procedure instanceof DeleteDevicesProcedure) {
@@ -536,6 +558,8 @@ public class ProcedureFactory implements IProcedureFactory {
       return ProcedureType.NEVER_FINISH_PROCEDURE;
     } else if (procedure instanceof AddNeverFinishSubProcedureProcedure) {
       return ProcedureType.ADD_NEVER_FINISH_SUB_PROCEDURE_PROCEDURE;
+    } else if (procedure instanceof DataPartitionTableIntegrityCheckProcedure) {
+      return ProcedureType.DATA_PARTITION_TABLE_INTEGRITY_CHECK_PROCEDURE;
     }
     throw new UnsupportedOperationException(
         "Procedure type " + procedure.getClass() + " is not supported");

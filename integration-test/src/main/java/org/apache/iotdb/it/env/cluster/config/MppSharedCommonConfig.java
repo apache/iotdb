@@ -196,9 +196,9 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setIoTConsensusV2Mode(String ioTConsensusV2Mode) {
-    cnConfig.setIoTConsensusV2Mode(ioTConsensusV2Mode);
-    dnConfig.setIoTConsensusV2Mode(ioTConsensusV2Mode);
+  public CommonConfig setIoTConsensusV2Mode(String iotConsensusV2Mode) {
+    cnConfig.setIoTConsensusV2Mode(iotConsensusV2Mode);
+    dnConfig.setIoTConsensusV2Mode(iotConsensusV2Mode);
     return this;
   }
 
@@ -595,12 +595,6 @@ public class MppSharedCommonConfig implements CommonConfig {
     return this;
   }
 
-  public CommonConfig setSubscriptionEnabled(boolean subscriptionEnabled) {
-    dnConfig.setSubscriptionEnabled(subscriptionEnabled);
-    cnConfig.setSubscriptionEnabled(subscriptionEnabled);
-    return this;
-  }
-
   @Override
   public CommonConfig setDefaultDatabaseLevel(int defaultDatabaseLevel) {
     dnConfig.setDefaultDatabaseLevel(defaultDatabaseLevel);
@@ -689,6 +683,20 @@ public class MppSharedCommonConfig implements CommonConfig {
   public CommonConfig setRestrictObjectLimit(boolean restrictObjectLimit) {
     cnConfig.setRestrictObjectLimit(restrictObjectLimit);
     dnConfig.setRestrictObjectLimit(restrictObjectLimit);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setCteBufferSize(long cteBufferSize) {
+    dnConfig.setCteBufferSize(cteBufferSize);
+    cnConfig.setCteBufferSize(cteBufferSize);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setMaxRowsInCteBuffer(int maxRows) {
+    dnConfig.setMaxRowsInCteBuffer(maxRows);
+    cnConfig.setMaxRowsInCteBuffer(maxRows);
     return this;
   }
 }

@@ -156,7 +156,7 @@ public class LoadTsFileMemoryManager {
     try {
       forceAllocateFromQuery(bytesNeeded);
       if (LOGGER.isDebugEnabled()) {
-        LOGGER.info(
+        LOGGER.debug(
             "Load: Force resized LoadTsFileMemoryBlock with memory from query engine, size added: {}, new size: {}",
             bytesNeeded,
             newSizeInBytes);
@@ -180,7 +180,6 @@ public class LoadTsFileMemoryManager {
       final long actuallyAllocateMemoryInBytes =
           tryAllocateFromQuery(MEMORY_TOTAL_SIZE_FROM_QUERY_IN_BYTES >> 2);
       dataCacheMemoryBlock = new LoadTsFileDataCacheMemoryBlock(actuallyAllocateMemoryInBytes);
-      usedMemorySizeInBytes.addAndGet(actuallyAllocateMemoryInBytes);
       LOGGER.info(
           "Create Data Cache Memory Block {}, allocate memory {}",
           dataCacheMemoryBlock,

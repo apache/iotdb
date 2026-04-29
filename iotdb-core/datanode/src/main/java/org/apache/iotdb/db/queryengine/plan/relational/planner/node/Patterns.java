@@ -19,21 +19,50 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.node;
 
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.calc.plan.relational.utils.matching.Pattern;
+import org.apache.iotdb.calc.plan.relational.utils.matching.Property;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ApplyNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AssignUniqueId;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.CorrelatedJoinNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.EnforceSingleRowNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ExceptNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.FillNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.FilterNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.GapFillNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.GroupNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.IntersectNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.JoinNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.LimitNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.MarkDistinctNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.MergeSortNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.OffsetNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.OutputNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.PatternRecognitionNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ProjectNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.RowNumberNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.RowsPerMatch;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.SemiJoinNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.SortNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TableFunctionNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TableFunctionProcessorNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TopKNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TopKRankingNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.UnionNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.WindowNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Lookup;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Pattern;
-import org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Property;
 
 import java.util.List;
 import java.util.Optional;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static com.google.common.collect.Iterables.getOnlyElement;
-import static org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Pattern.typeOf;
-import static org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Property.optionalProperty;
-import static org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Property.property;
+import static org.apache.iotdb.calc.plan.relational.utils.matching.Pattern.typeOf;
+import static org.apache.iotdb.calc.plan.relational.utils.matching.Property.optionalProperty;
+import static org.apache.iotdb.calc.plan.relational.utils.matching.Property.property;
 
 public final class Patterns {
   private Patterns() {}
@@ -137,6 +166,10 @@ public final class Patterns {
     return typeOf(ExplainAnalyzeNode.class);
   }
 
+  public static Pattern<CopyToNode> copyTo() {
+    return typeOf(CopyToNode.class);
+  }
+
   public static Pattern<ProjectNode> project() {
     return typeOf(ProjectNode.class);
   }
@@ -221,11 +254,6 @@ public final class Patterns {
   {
       return typeOf(UnnestNode.class);
   }
-
-  public static Pattern<WindowNode> window()
-  {
-      return typeOf(WindowNode.class);
-  }
   */
 
   public static Pattern<TableFunctionNode> tableFunction() {
@@ -240,18 +268,19 @@ public final class Patterns {
     return typeOf(WindowNode.class);
   }
 
+  public static Pattern<GroupNode> groupNode() {
+    return typeOf(GroupNode.class);
+  }
+
+  public static Pattern<RowNumberNode> rowNumber() {
+    return typeOf(RowNumberNode.class);
+  }
+
+  public static Pattern<TopKRankingNode> topNRanking() {
+    return typeOf(TopKRankingNode.class);
+  }
+
   /*
-
-  public static Pattern<RowNumberNode> rowNumber()
-  {
-      return typeOf(RowNumberNode.class);
-  }
-
-  public static Pattern<TopNRankingNode> topNRanking()
-  {
-      return typeOf(TopNRankingNode.class);
-  }
-
   public static Pattern<DistinctLimitNode> distinctLimit()
   {
       return typeOf(DistinctLimitNode.class);

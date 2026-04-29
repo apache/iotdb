@@ -859,5 +859,57 @@ public class IoTDBWindowTVFIT {
         expectedHeader,
         retArray,
         DATABASE_NAME);
+
+    // test flat pattern with smooth=0.0 should not crash (was IndexOutOfBoundsException due to
+    // NaN from 0/0)
+    // pattern '1,1,1,1,1,2,3,4,3' is flat->up->down, no data segment matches this sign sequence
+    retArray = new String[] {};
+    tableResultSetEqualByDataTypeTest(
+        "select * from pattern_match(data => t1 ORDER BY time, time_col => 'time', data_col => 'value', pattern => '1.0,1.0,1.0,1.0,1.0,2.0,3.0,4.0,3.0', smooth => 0.0, threshold => 1.0, smooth_on_pattern => false)",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    // test negative smooth should be rejected
+    tableAssertTestFail(
+        "select * from pattern_match(data => t1 ORDER BY time, time_col => 'time', data_col => 'value', pattern => '1.0,2.0,1.0', smooth => -0.5, threshold => 10.0, width => 1000.0, height => 500.0, smooth_on_pattern => false)",
+        "smooth must be a non-negative number",
+        DATABASE_NAME);
+
+    // test negative threshold should be rejected
+    tableAssertTestFail(
+        "select * from pattern_match(data => t1 ORDER BY time, time_col => 'time', data_col => 'value', pattern => '1.0,2.0,1.0', smooth => 0.5, threshold => -1.1, width => 1000.0, height => 500.0, smooth_on_pattern => false)",
+        "threshold must be a non-negative number",
+        DATABASE_NAME);
+
+    // test negative width should be rejected
+    tableAssertTestFail(
+        "select * from pattern_match(data => t1 ORDER BY time, time_col => 'time', data_col => 'value', pattern => '1.0,2.0,1.0', smooth => 0.5, threshold => 10.0, width => -1.0, height => 500.0, smooth_on_pattern => false)",
+        "width must be a non-negative number",
+        DATABASE_NAME);
+
+    // test negative height should be rejected
+    tableAssertTestFail(
+        "select * from pattern_match(data => t1 ORDER BY time, time_col => 'time', data_col => 'value', pattern => '1.0,2.0,1.0', smooth => 0.5, threshold => 10.0, width => 1000.0, height => -10.0, smooth_on_pattern => false)",
+        "height must be a non-negative number",
+        DATABASE_NAME);
+
+    // test invalid pattern with non-numeric characters should be rejected
+    tableAssertTestFail(
+        "select * from pattern_match(data => t1 ORDER BY time, time_col => 'time', data_col => 'value', pattern => 'abc,def,ghi', smooth => 0.5, threshold => 10.0, width => 1000.0, height => 500.0, smooth_on_pattern => false)",
+        "Invalid pattern",
+        DATABASE_NAME);
+
+    // test empty pattern should be rejected
+    tableAssertTestFail(
+        "select * from pattern_match(data => t1 ORDER BY time, time_col => 'time', data_col => 'value', pattern => '', smooth => 0.5, threshold => 10.0, width => 1000.0, height => 500.0, smooth_on_pattern => false)",
+        "Invalid pattern",
+        DATABASE_NAME);
+
+    // test single-point pattern should be rejected (need at least 2 points)
+    tableAssertTestFail(
+        "select * from pattern_match(data => t1 ORDER BY time, time_col => 'time', data_col => 'value', pattern => '1', smooth => 0.5, threshold => 10.0, width => 1000.0, height => 500.0, smooth_on_pattern => false)",
+        "Invalid pattern",
+        DATABASE_NAME);
   }
 }

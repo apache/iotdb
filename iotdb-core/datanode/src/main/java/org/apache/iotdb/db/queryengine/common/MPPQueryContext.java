@@ -19,28 +19,39 @@
 
 package org.apache.iotdb.db.queryengine.common;
 
+import org.apache.iotdb.calc.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.audit.AuditEventType;
 import org.apache.iotdb.commons.audit.AuditLogOperation;
 import org.apache.iotdb.commons.audit.IAuditEntity;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.queryengine.common.SessionInfo;
+import org.apache.iotdb.commons.queryengine.plan.relational.analyzer.NodeRef;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Identifier;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Query;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Table;
+import org.apache.iotdb.commons.queryengine.utils.cte.CteDataStore;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.analyze.lock.SchemaLockType;
-import org.apache.iotdb.db.queryengine.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.NotThreadSafeMemoryReservationManager;
 import org.apache.iotdb.db.queryengine.statistics.QueryPlanStatistics;
 
+import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.read.filter.basic.Filter;
+import org.apache.tsfile.utils.Pair;
 
 import java.time.ZoneId;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -54,12 +65,23 @@ public class MPPQueryContext implements IAuditEntity {
   private String sql;
   private final QueryId queryId;
 
+  /** The type of explanation for a query. */
+  public enum ExplainType {
+    NONE,
+    EXPLAIN,
+    EXPLAIN_ANALYZE,
+  }
+
   // LocalQueryId is kept to adapt to the old client, it's unique in current datanode.
   // Now it's only be used by EXPLAIN ANALYZE to get queryExecution.
   private long localQueryId;
   private SessionInfo session;
   private QueryType queryType = QueryType.READ;
+
+  /** the max executing time of query in ms. Unit: millisecond */
   private long timeOut;
+
+  // time unit is ms
   private long startTime;
 
   private TEndPoint localDataBlockEndpoint;
@@ -82,7 +104,12 @@ public class MPPQueryContext implements IAuditEntity {
 
   private final Set<SchemaLockType> acquiredLocks = new HashSet<>();
 
-  private boolean isExplainAnalyze = false;
+  // Determines the explanation mode for the query:
+  // - NONE: Normal query execution without explanation
+  // - EXPLAIN: Show the logical and physical query plan without execution
+  // - EXPLAIN_ANALYZE: Execute the query and collect detailed execution statistics
+  private ExplainType explainType = ExplainType.NONE;
+  private boolean verbose = false;
 
   private QueryPlanStatistics queryPlanStatistics = null;
 
@@ -103,6 +130,35 @@ public class MPPQueryContext implements IAuditEntity {
 
   private boolean userQuery = false;
 
+  /**
+   * When true (e.g. SHOW QUERIES), operator and exchange memory may use fallback when pool is
+   * insufficient. Set from analysis via {@link #setNeedSetHighestPriority(boolean)}.
+   */
+  private boolean needSetHighestPriority = false;
+
+  private boolean debug = false;
+
+  private Map<NodeRef<Table>, Query> cteQueries = new HashMap<>();
+
+  // Stores the EXPLAIN/EXPLAIN ANALYZE results for Common Table Expressions (CTEs)
+  // Key: CTE table reference
+  // Value: Pair containing (max line length of the explain output, list of formatted explain lines)
+  // This ensures consistent formatting between the main query and its CTE sub-queries
+  private final Map<NodeRef<Table>, Pair<Integer, List<String>>> cteExplainResults =
+      new LinkedHashMap<>();
+  // Tracks the materialization time cost (in nanoseconds) for each CTE to help optimize query
+  // planning
+  private final Map<NodeRef<Table>, Long> cteMaterializationCosts = new HashMap<>();
+
+  // Indicates whether this query context is for a sub-query triggered by the main query.
+  // Sub-queries are independent queries spawned from the main query (e.g., CTE sub-queries).
+  // When true, CTE materialization is skipped as it's handled by the main query context.
+  private boolean innerTriggeredQuery = false;
+
+  // Tables in the subquery
+  private final Map<NodeRef<Query>, List<Identifier>> subQueryTables = new HashMap<>();
+
+  @TestOnly
   public MPPQueryContext(QueryId queryId) {
     this.queryId = queryId;
     this.endPointBlackList = ConcurrentHashMap.newKeySet();
@@ -117,12 +173,7 @@ public class MPPQueryContext implements IAuditEntity {
       SessionInfo session,
       TEndPoint localDataBlockEndpoint,
       TEndPoint localInternalEndpoint) {
-    this(queryId);
-    this.sql = sql;
-    this.session = session;
-    this.localDataBlockEndpoint = localDataBlockEndpoint;
-    this.localInternalEndpoint = localInternalEndpoint;
-    this.initResultNodeContext();
+    this(sql, queryId, -1, session, localDataBlockEndpoint, localInternalEndpoint);
   }
 
   public MPPQueryContext(
@@ -170,8 +221,18 @@ public class MPPQueryContext implements IAuditEntity {
   }
 
   public void prepareForRetry() {
+    if (!isInnerTriggeredQuery()) {
+      cleanUpCte();
+    }
     this.initResultNodeContext();
     this.releaseAllMemoryReservedForFrontEnd();
+  }
+
+  private void cleanUpCte() {
+    cteQueries.clear();
+    cteExplainResults.clear();
+    cteMaterializationCosts.clear();
+    subQueryTables.clear();
   }
 
   private void initResultNodeContext() {
@@ -190,10 +251,12 @@ public class MPPQueryContext implements IAuditEntity {
     return queryType;
   }
 
+  /** the max executing time of query in ms. Unit: millisecond */
   public long getTimeOut() {
     return timeOut;
   }
 
+  /** the max executing time of query in ms. Unit: millisecond */
   public void setTimeOut(long timeOut) {
     this.timeOut = timeOut;
   }
@@ -282,12 +345,28 @@ public class MPPQueryContext implements IAuditEntity {
     return session.getZoneId();
   }
 
-  public void setExplainAnalyze(boolean explainAnalyze) {
-    isExplainAnalyze = explainAnalyze;
+  public void setExplainType(ExplainType explainType) {
+    this.explainType = explainType;
+  }
+
+  public ExplainType getExplainType() {
+    return explainType;
   }
 
   public boolean isExplainAnalyze() {
-    return isExplainAnalyze;
+    return explainType == ExplainType.EXPLAIN_ANALYZE;
+  }
+
+  public boolean isExplain() {
+    return explainType == ExplainType.EXPLAIN;
+  }
+
+  public void setVerbose(boolean verbose) {
+    this.verbose = verbose;
+  }
+
+  public boolean isVerbose() {
+    return verbose;
   }
 
   public long getAnalyzeCost() {
@@ -428,11 +507,79 @@ public class MPPQueryContext implements IAuditEntity {
   }
 
   public boolean isQuery() {
-    return queryType != QueryType.WRITE;
+    return queryType == QueryType.READ || queryType == QueryType.READ_WRITE;
   }
 
   public void setUserQuery(boolean userQuery) {
     this.userQuery = userQuery;
+  }
+
+  public boolean needSetHighestPriority() {
+    return needSetHighestPriority;
+  }
+
+  public void setNeedSetHighestPriority(boolean needSetHighestPriority) {
+    this.needSetHighestPriority = needSetHighestPriority;
+  }
+
+  public boolean isDebug() {
+    return debug;
+  }
+
+  public void setDebug(boolean debug) {
+    this.debug = debug;
+  }
+
+  public boolean isInnerTriggeredQuery() {
+    return innerTriggeredQuery;
+  }
+
+  public void setInnerTriggeredQuery(boolean innerTriggeredQuery) {
+    this.innerTriggeredQuery = innerTriggeredQuery;
+  }
+
+  public void addCteMaterializationCost(Table table, long cost) {
+    cteMaterializationCosts.put(NodeRef.of(table), cost);
+  }
+
+  public Map<NodeRef<Table>, Long> getCteMaterializationCosts() {
+    return cteMaterializationCosts;
+  }
+
+  public void addCteQuery(Table table, Query query) {
+    cteQueries.put(NodeRef.of(table), query);
+  }
+
+  public Map<NodeRef<Table>, Query> getCteQueries() {
+    return cteQueries;
+  }
+
+  public CteDataStore getCteDataStore(Table table) {
+    Query query = cteQueries.get(NodeRef.of(table));
+    if (query == null) {
+      return null;
+    }
+    return query.getCteDataStore();
+  }
+
+  public void setCteQueries(Map<NodeRef<Table>, Query> cteQueries) {
+    this.cteQueries = cteQueries;
+  }
+
+  public void addSubQueryTables(Query query, List<Identifier> tables) {
+    subQueryTables.put(NodeRef.of(query), tables);
+  }
+
+  public List<Identifier> getTables(Query query) {
+    return subQueryTables.getOrDefault(NodeRef.of(query), ImmutableList.of());
+  }
+
+  public void addCteExplainResult(Table table, Pair<Integer, List<String>> cteExplainResult) {
+    cteExplainResults.put(NodeRef.of(table), cteExplainResult);
+  }
+
+  public Map<NodeRef<Table>, Pair<Integer, List<String>>> getCteExplainResults() {
+    return cteExplainResults;
   }
 
   // ================= Authentication Interfaces =========================
@@ -459,6 +606,9 @@ public class MPPQueryContext implements IAuditEntity {
 
   @Override
   public String getCliHostname() {
+    if (session == null || session.getCliHostname() == null) {
+      return "UNKNOWN";
+    }
     return session.getCliHostname();
   }
 

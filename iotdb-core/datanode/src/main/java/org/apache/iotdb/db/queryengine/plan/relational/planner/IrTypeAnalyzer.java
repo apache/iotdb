@@ -19,50 +19,56 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
-import org.apache.iotdb.db.exception.sql.SemanticException;
-import org.apache.iotdb.db.queryengine.common.SessionInfo;
+import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.commons.queryengine.common.SessionInfo;
+import org.apache.iotdb.commons.queryengine.plan.relational.analyzer.NodeRef;
+import org.apache.iotdb.commons.queryengine.plan.relational.function.OperatorType;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ArithmeticBinaryExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ArithmeticUnaryExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.BetweenPredicate;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.BinaryLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.BooleanLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Cast;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.CoalesceExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ComparisonExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.CurrentDatabase;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.CurrentUser;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.DoubleLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Extract;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.FloatLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.FunctionCall;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.GenericLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IfExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.InListExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.InPredicate;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IsNotNullPredicate;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IsNullPredicate;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LikePredicate;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LogicalExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LongLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NotExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NullIfExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NullLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Row;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SearchedCaseExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.StringLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolReference;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.TimeDurationLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.WhenClause;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
-import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
-import org.apache.iotdb.db.queryengine.plan.relational.function.OperatorType;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.OperatorNotFoundException;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AllowAllAccessControl;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ArithmeticBinaryExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ArithmeticUnaryExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BetweenPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BinaryLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Cast;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CoalesceExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CurrentDatabase;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CurrentUser;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DoubleLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Extract;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GenericLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IfExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InListExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IsNotNullPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IsNullPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LikePredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NotExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullIfExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Row;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SearchedCaseExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StringLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
+import org.apache.iotdb.db.queryengine.plan.relational.type.TypeCoercionUtils;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.LinkedHashMultimap;
 import org.apache.tsfile.read.common.type.BlobType;
 import org.apache.tsfile.read.common.type.DateType;
 import org.apache.tsfile.read.common.type.RowType;
@@ -71,18 +77,24 @@ import org.apache.tsfile.read.common.type.TimestampType;
 import org.apache.tsfile.read.common.type.Type;
 
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static java.util.Objects.requireNonNull;
-import static org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignatureTranslator.toTypeSignature;
+import static org.apache.iotdb.commons.queryengine.plan.relational.type.TypeSignatureTranslator.toTypeSignature;
+import static org.apache.iotdb.commons.queryengine.utils.TimestampPrecisionUtils.currPrecision;
 import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
 import static org.apache.tsfile.read.common.type.DoubleType.DOUBLE;
+import static org.apache.tsfile.read.common.type.FloatType.FLOAT;
 import static org.apache.tsfile.read.common.type.IntType.INT32;
 import static org.apache.tsfile.read.common.type.LongType.INT64;
 import static org.apache.tsfile.read.common.type.UnknownType.UNKNOWN;
@@ -115,7 +127,7 @@ public class IrTypeAnalyzer {
     return getTypes(session, inputTypes, expression).get(NodeRef.of(expression));
   }
 
-  private static class Visitor extends AstVisitor<Type, Context> {
+  private static class Visitor implements AstVisitor<Type, Context> {
     private static final AccessControl ALLOW_ALL_ACCESS_CONTROL = new AllowAllAccessControl();
 
     private final PlannerContext plannerContext;
@@ -151,11 +163,11 @@ public class IrTypeAnalyzer {
           return type;
         }
       }
-      return super.process(node, context);
+      return AstVisitor.super.process(node, context);
     }
 
     @Override
-    protected Type visitSymbolReference(SymbolReference node, Context context) {
+    public Type visitSymbolReference(SymbolReference node, Context context) {
       Symbol symbol = Symbol.from(node);
       Type type = context.getArgumentTypes().get(symbol);
       if (type == null) {
@@ -166,38 +178,38 @@ public class IrTypeAnalyzer {
     }
 
     @Override
-    protected Type visitNotExpression(NotExpression node, Context context) {
+    public Type visitNotExpression(NotExpression node, Context context) {
       process(node.getValue(), context);
       return setExpressionType(node, BOOLEAN);
     }
 
     @Override
-    protected Type visitLogicalExpression(LogicalExpression node, Context context) {
+    public Type visitLogicalExpression(LogicalExpression node, Context context) {
       node.getTerms().forEach(term -> process(term, context));
       return setExpressionType(node, BOOLEAN);
     }
 
     @Override
-    protected Type visitComparisonExpression(ComparisonExpression node, Context context) {
+    public Type visitComparisonExpression(ComparisonExpression node, Context context) {
       process(node.getLeft(), context);
       process(node.getRight(), context);
       return setExpressionType(node, BOOLEAN);
     }
 
     @Override
-    protected Type visitIsNullPredicate(IsNullPredicate node, Context context) {
+    public Type visitIsNullPredicate(IsNullPredicate node, Context context) {
       process(node.getValue(), context);
       return setExpressionType(node, BOOLEAN);
     }
 
     @Override
-    protected Type visitIsNotNullPredicate(IsNotNullPredicate node, Context context) {
+    public Type visitIsNotNullPredicate(IsNotNullPredicate node, Context context) {
       process(node.getValue(), context);
       return setExpressionType(node, BOOLEAN);
     }
 
     @Override
-    protected Type visitNullIfExpression(NullIfExpression node, Context context) {
+    public Type visitNullIfExpression(NullIfExpression node, Context context) {
       Type firstType = process(node.getFirst(), context);
       Type ignored = process(node.getSecond(), context);
 
@@ -212,7 +224,7 @@ public class IrTypeAnalyzer {
     }
 
     @Override
-    protected Type visitIfExpression(IfExpression node, Context context) {
+    public Type visitIfExpression(IfExpression node, Context context) {
       Type conditionType = process(node.getCondition(), context);
       checkArgument(conditionType.equals(BOOLEAN), "Condition must be boolean: %s", conditionType);
 
@@ -227,42 +239,36 @@ public class IrTypeAnalyzer {
     }
 
     @Override
-    protected Type visitSearchedCaseExpression(SearchedCaseExpression node, Context context) {
-      LinkedHashSet<Type> resultTypes =
-          node.getWhenClauses().stream()
-              .map(
-                  clause -> {
-                    Type operandType = process(clause.getOperand(), context);
-                    if (!operandType.equals(BOOLEAN)) {
-                      throw new SemanticException(
-                          String.format("When clause operand must be boolean: %s", operandType));
-                    }
-                    return setExpressionType(clause, process(clause.getResult(), context));
-                  })
-              .collect(Collectors.toCollection(LinkedHashSet::new));
-
-      if (resultTypes.size() != 1) {
-        throw new SemanticException(
-            String.format("All result types must be the same: %s", resultTypes));
+    public Type visitSearchedCaseExpression(SearchedCaseExpression node, Context context) {
+      for (WhenClause whenClause : node.getWhenClauses()) {
+        coerceType(
+            context,
+            whenClause.getOperand(),
+            BOOLEAN,
+            (actualType) -> String.format("When clause operand must be boolean: %s", actualType));
       }
-      Type resultType = resultTypes.iterator().next();
-      node.getDefaultValue()
-          .ifPresent(
-              defaultValue -> {
-                Type defaultType = process(defaultValue, context);
-                if (!defaultType.equals(resultType)) {
-                  throw new SemanticException(
-                      String.format(
-                          "Default result type must be the same as WHEN result types: %s vs %s",
-                          defaultType, resultType));
-                }
-              });
 
-      return setExpressionType(node, resultType);
+      List<Expression> expressions = new ArrayList<>();
+      for (WhenClause whenClause : node.getWhenClauses()) {
+        expressions.add(whenClause.getResult());
+      }
+      node.getDefaultValue().ifPresent(expressions::add);
+
+      Type type =
+          coerceToSingleType(
+              context, expressions, "All result types and default result type must be the same");
+      setExpressionType(node, type);
+
+      for (WhenClause whenClause : node.getWhenClauses()) {
+        Type whenClauseType = process(whenClause.getResult(), context);
+        setExpressionType(whenClause, whenClauseType);
+      }
+
+      return type;
     }
 
     @Override
-    protected Type visitSimpleCaseExpression(SimpleCaseExpression node, Context context) {
+    public Type visitSimpleCaseExpression(SimpleCaseExpression node, Context context) {
       Type operandType = process(node.getOperand(), context);
 
       LinkedHashSet<Type> resultTypes =
@@ -302,7 +308,7 @@ public class IrTypeAnalyzer {
     }
 
     @Override
-    protected Type visitCoalesceExpression(CoalesceExpression node, Context context) {
+    public Type visitCoalesceExpression(CoalesceExpression node, Context context) {
       LinkedHashSet<Type> types =
           node.getOperands().stream()
               .map(operand -> process(operand, context))
@@ -316,18 +322,18 @@ public class IrTypeAnalyzer {
     }
 
     @Override
-    protected Type visitArithmeticUnary(ArithmeticUnaryExpression node, Context context) {
+    public Type visitArithmeticUnary(ArithmeticUnaryExpression node, Context context) {
       return setExpressionType(node, process(node.getValue(), context));
     }
 
     @Override
-    protected Type visitExtract(Extract node, Context context) {
+    public Type visitExtract(Extract node, Context context) {
       process(node.getExpression(), context);
       return setExpressionType(node, INT64);
     }
 
     @Override
-    protected Type visitArithmeticBinary(ArithmeticBinaryExpression node, Context context) {
+    public Type visitArithmeticBinary(ArithmeticBinaryExpression node, Context context) {
       ImmutableList.Builder<Type> argumentTypes = ImmutableList.builder();
       argumentTypes.add(process(node.getLeft(), context));
       argumentTypes.add(process(node.getRight(), context));
@@ -345,17 +351,17 @@ public class IrTypeAnalyzer {
     }
 
     @Override
-    protected Type visitStringLiteral(StringLiteral node, Context context) {
+    public Type visitStringLiteral(StringLiteral node, Context context) {
       return setExpressionType(node, StringType.STRING);
     }
 
     @Override
-    protected Type visitBinaryLiteral(BinaryLiteral node, Context context) {
+    public Type visitBinaryLiteral(BinaryLiteral node, Context context) {
       return setExpressionType(node, BlobType.BLOB);
     }
 
     @Override
-    protected Type visitLongLiteral(LongLiteral node, Context context) {
+    public Type visitLongLiteral(LongLiteral node, Context context) {
       if (node.getParsedValue() >= Integer.MIN_VALUE
           && node.getParsedValue() <= Integer.MAX_VALUE) {
         return setExpressionType(node, INT32);
@@ -365,17 +371,22 @@ public class IrTypeAnalyzer {
     }
 
     @Override
-    protected Type visitDoubleLiteral(DoubleLiteral node, Context context) {
+    public Type visitDoubleLiteral(DoubleLiteral node, Context context) {
       return setExpressionType(node, DOUBLE);
     }
 
     @Override
-    protected Type visitBooleanLiteral(BooleanLiteral node, Context context) {
+    public Type visitFloatLiteral(FloatLiteral node, Context context) {
+      return setExpressionType(node, FLOAT);
+    }
+
+    @Override
+    public Type visitBooleanLiteral(BooleanLiteral node, Context context) {
       return setExpressionType(node, BOOLEAN);
     }
 
     @Override
-    protected Type visitGenericLiteral(GenericLiteral node, Context context) {
+    public Type visitGenericLiteral(GenericLiteral node, Context context) {
       Type type;
       if (DateType.DATE.getTypeEnum().name().equals(node.getType())) {
         type = DateType.DATE;
@@ -390,12 +401,23 @@ public class IrTypeAnalyzer {
     }
 
     @Override
-    protected Type visitNullLiteral(NullLiteral node, Context context) {
+    public Type visitNullLiteral(NullLiteral node, Context context) {
       return setExpressionType(node, UNKNOWN);
     }
 
     @Override
-    protected Type visitFunctionCall(FunctionCall node, Context context) {
+    public Type visitTimeDurationLiteral(TimeDurationLiteral node, Context context) {
+      long value = node.getValue().getTotalDuration(currPrecision);
+
+      if (value >= Integer.MIN_VALUE && value <= Integer.MAX_VALUE) {
+        return setExpressionType(node, INT32);
+      }
+      // keep the original type
+      return setExpressionType(node, INT64);
+    }
+
+    @Override
+    public Type visitFunctionCall(FunctionCall node, Context context) {
       // Function should already be resolved in IR
       List<Type> argumentTypes = new ArrayList<>(node.getArguments().size());
       for (int i = 0; i < node.getArguments().size(); i++) {
@@ -411,7 +433,7 @@ public class IrTypeAnalyzer {
     }
 
     @Override
-    protected Type visitBetweenPredicate(BetweenPredicate node, Context context) {
+    public Type visitBetweenPredicate(BetweenPredicate node, Context context) {
       process(node.getValue(), context);
       process(node.getMin(), context);
       process(node.getMax(), context);
@@ -427,7 +449,7 @@ public class IrTypeAnalyzer {
     }
 
     @Override
-    protected Type visitInPredicate(InPredicate node, Context context) {
+    public Type visitInPredicate(InPredicate node, Context context) {
       Expression value = node.getValue();
       InListExpression valueList = (InListExpression) node.getValueList();
 
@@ -442,7 +464,7 @@ public class IrTypeAnalyzer {
     }
 
     @Override
-    protected Type visitRow(Row node, Context context) {
+    public Type visitRow(Row node, Context context) {
       List<Type> types =
           node.getItems().stream().map(child -> process(child, context)).collect(toImmutableList());
 
@@ -450,7 +472,7 @@ public class IrTypeAnalyzer {
     }
 
     @Override
-    protected Type visitLikePredicate(LikePredicate node, Context context) {
+    public Type visitLikePredicate(LikePredicate node, Context context) {
       process(node.getValue(), context);
       process(node.getPattern(), context);
       node.getEscape().ifPresent(e -> process(e, context));
@@ -458,25 +480,85 @@ public class IrTypeAnalyzer {
     }
 
     @Override
-    protected Type visitCurrentDatabase(final CurrentDatabase node, final Context context) {
+    public Type visitCurrentDatabase(final CurrentDatabase node, final Context context) {
       return setExpressionType(node, StringType.STRING);
     }
 
     @Override
-    protected Type visitCurrentUser(final CurrentUser node, final Context context) {
+    public Type visitCurrentUser(final CurrentUser node, final Context context) {
       return setExpressionType(node, StringType.STRING);
     }
 
     @Override
-    protected Type visitExpression(Expression node, Context context) {
+    public Type visitExpression(Expression node, Context context) {
       throw new UnsupportedOperationException(
           "Not a valid IR expression: " + node.getClass().getName());
     }
 
     @Override
-    protected Type visitNode(Node node, Context context) {
+    public Type visitNode(Node node, Context context) {
       throw new UnsupportedOperationException(
           "Not a valid IR expression: " + node.getClass().getName());
+    }
+
+    // Only allow INT32 -> INT64 coercion to suppress some related bugs for now
+    private void coerceType(
+        Context context, Expression expression, Type expectedType, Function<Type, String> message) {
+      Type actualType = process(expression, context);
+      coerceType(expression, expectedType, actualType, message);
+    }
+
+    private Type coerceToSingleType(
+        Context context, List<Expression> expressions, String description) {
+      LinkedHashMultimap<Type, NodeRef<Expression>> typeExpressions = LinkedHashMultimap.create();
+
+      for (Expression expression : expressions) {
+        Type type = process(expression, context);
+        typeExpressions.put(type, NodeRef.of(expression));
+      }
+      Set<Type> types = typeExpressions.keySet();
+      Iterator<Type> iterator = types.iterator();
+      Type superType = iterator.next();
+      if (types.size() == 1) {
+        return superType;
+      }
+      while (iterator.hasNext()) {
+        Type current = iterator.next();
+        if (TypeCoercionUtils.canCoerceTo(current, superType)) {
+          continue;
+        }
+        if (TypeCoercionUtils.canCoerceTo(superType, current)) {
+          superType = current;
+        }
+        throw new SemanticException(String.format(description + ": %s vs %s", superType, current));
+      }
+      for (Type type : types) {
+        Set<NodeRef<Expression>> nodeRefs = typeExpressions.get(type);
+        if (type.equals(superType)) {
+          continue;
+        }
+        if (!TypeCoercionUtils.canCoerceTo(type, superType)) {
+          throw new SemanticException("Cannot coerce type " + type + " to " + superType);
+        }
+        addOrReplaceExpressionType(nodeRefs, superType);
+      }
+      return superType;
+    }
+
+    private void coerceType(
+        Expression expression,
+        Type actualType,
+        Type expectedType,
+        Function<Type, String> errorMsg) {
+      if (!TypeCoercionUtils.canCoerceTo(actualType, expectedType)) {
+        throw new SemanticException(errorMsg.apply(actualType));
+      }
+      setExpressionType(expression, actualType);
+    }
+
+    private void addOrReplaceExpressionType(
+        Collection<NodeRef<Expression>> expressions, Type superType) {
+      expressions.forEach(expression -> expressionTypes.put(expression, superType));
     }
   }
 

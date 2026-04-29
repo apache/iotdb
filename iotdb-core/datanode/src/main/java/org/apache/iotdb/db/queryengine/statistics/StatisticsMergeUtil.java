@@ -70,8 +70,6 @@ public class StatisticsMergeUtil {
       } else {
         TOperatorStatistics operatorStatistics = entry.getValue();
         operatorStatistics.setCount(1);
-        // Can't merge specifiedInfo of String-type, so just clear it
-        operatorStatistics.getSpecifiedInfo().clear();
         // keep the first one in operatorStatisticsMap as the only-one leadOverloadOperator
         leadOverloadOperators.put(
             operatorStatistics.getOperatorType(), operatorStatistics.getPlanNodeId());

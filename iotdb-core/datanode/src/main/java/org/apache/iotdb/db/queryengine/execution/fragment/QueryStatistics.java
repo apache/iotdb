@@ -92,6 +92,15 @@ public class QueryStatistics {
   // statistics for count and time of page decode
   private final AtomicLong pageReaderMaxUsedMemorySize = new AtomicLong(0);
 
+  // statistics for count of chunk with metadata errors
+  private final AtomicLong chunkWithMetadataErrorsCount = new AtomicLong(0);
+
+  // statistics for filtered data
+  private final AtomicLong timeSeriesIndexFilteredRows = new AtomicLong(0);
+  private final AtomicLong chunkIndexFilteredRows = new AtomicLong(0);
+  private final AtomicLong pageIndexFilteredRows = new AtomicLong(0);
+  private final AtomicLong rowScanFilteredRows = new AtomicLong(0);
+
   public AtomicLong getLoadTimeSeriesMetadataDiskSeqCount() {
     return loadTimeSeriesMetadataDiskSeqCount;
   }
@@ -288,6 +297,43 @@ public class QueryStatistics {
     return loadTimeSeriesMetadataFromDiskTime;
   }
 
+  public AtomicLong getChunkWithMetadataErrorsCount() {
+    return chunkWithMetadataErrorsCount;
+  }
+
+  public AtomicLong getTimeSeriesIndexFilteredRows() {
+    return this.timeSeriesIndexFilteredRows;
+  }
+
+  public void addFilteredRowsOfTimeSeriesLevel(long count) {
+    this.timeSeriesIndexFilteredRows.addAndGet(count);
+  }
+
+  public AtomicLong getChunkIndexFilteredRows() {
+    return this.chunkIndexFilteredRows;
+  }
+
+  public void addFilteredRowsOfChunkLevel(long count) {
+    this.chunkIndexFilteredRows.addAndGet(count);
+  }
+
+  public AtomicLong getPageIndexFilteredRows() {
+    return this.pageIndexFilteredRows;
+  }
+
+  public void addFilteredRowsOfPageLevel(long count) {
+    this.pageIndexFilteredRows.addAndGet(count);
+  }
+
+  // rows level, only explain analyze verbose would lead to recording the filtered data in row level
+  public AtomicLong getRowScanFilteredRows() {
+    return this.rowScanFilteredRows;
+  }
+
+  public void addFilteredRowsOfRowLevel(long count) {
+    this.rowScanFilteredRows.addAndGet(count);
+  }
+
   public TQueryStatistics toThrift() {
     return new TQueryStatistics(
         loadTimeSeriesMetadataDiskSeqCount.get(),
@@ -336,6 +382,11 @@ public class QueryStatistics {
         loadTimeSeriesMetadataActualIOSize.get(),
         loadChunkFromCacheCount.get(),
         loadChunkFromDiskCount.get(),
-        loadChunkActualIOSize.get());
+        loadChunkActualIOSize.get(),
+        chunkWithMetadataErrorsCount.get(),
+        timeSeriesIndexFilteredRows.get(),
+        chunkIndexFilteredRows.get(),
+        pageIndexFilteredRows.get(),
+        rowScanFilteredRows.get());
   }
 }

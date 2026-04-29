@@ -26,12 +26,6 @@ import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.AbstractCompactionTest;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICompactionPerformer;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.constant.InnerSeqCompactionPerformer;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.constant.InnerUnseqCompactionPerformer;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.FastCompactionPerformer;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.ReadChunkCompactionPerformer;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.ReadPointCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
@@ -86,16 +80,6 @@ public class TableModelCompactionWithTTLTest extends AbstractCompactionTest {
         });
   }
 
-  public ICompactionPerformer getPerformer() {
-    if (performerType.equalsIgnoreCase(InnerSeqCompactionPerformer.READ_CHUNK.toString())) {
-      return new ReadChunkCompactionPerformer();
-    } else if (performerType.equalsIgnoreCase(InnerUnseqCompactionPerformer.FAST.toString())) {
-      return new FastCompactionPerformer(false);
-    } else {
-      return new ReadPointCompactionPerformer();
-    }
-  }
-
   @Test
   public void testAllDataExpired() throws IOException {
     createTable("t1", 1);
@@ -115,7 +99,8 @@ public class TableModelCompactionWithTTLTest extends AbstractCompactionTest {
     }
     seqResources.add(resource1);
     InnerSpaceCompactionTask task =
-        new InnerSpaceCompactionTask(0, tsFileManager, seqResources, true, getPerformer(), 0);
+        new InnerSpaceCompactionTask(
+            0, tsFileManager, seqResources, true, getPerformer(performerType), 0);
     Assert.assertTrue(task.start());
     Assert.assertEquals(0, tsFileManager.getTsFileList(true).size());
   }
@@ -143,7 +128,8 @@ public class TableModelCompactionWithTTLTest extends AbstractCompactionTest {
     }
     seqResources.add(resource1);
     InnerSpaceCompactionTask task =
-        new InnerSpaceCompactionTask(0, tsFileManager, seqResources, true, getPerformer(), 0);
+        new InnerSpaceCompactionTask(
+            0, tsFileManager, seqResources, true, getPerformer(performerType), 0);
     Assert.assertTrue(task.start());
     TsFileResource target = tsFileManager.getTsFileList(true).get(0);
     Assert.assertTrue(target.getFileStartTime() > startTime && target.getFileEndTime() == endTime);
@@ -171,7 +157,8 @@ public class TableModelCompactionWithTTLTest extends AbstractCompactionTest {
     }
     seqResources.add(resource1);
     InnerSpaceCompactionTask task =
-        new InnerSpaceCompactionTask(0, tsFileManager, seqResources, true, getPerformer(), 0);
+        new InnerSpaceCompactionTask(
+            0, tsFileManager, seqResources, true, getPerformer(performerType), 0);
     Assert.assertTrue(task.start());
     TsFileResource target = tsFileManager.getTsFileList(true).get(0);
     Assert.assertTrue(target.getFileStartTime() == startTime && target.getFileEndTime() == endTime);

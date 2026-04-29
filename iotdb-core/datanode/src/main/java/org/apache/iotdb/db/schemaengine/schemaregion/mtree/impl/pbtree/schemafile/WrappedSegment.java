@@ -105,17 +105,16 @@ public class WrappedSegment implements ISegment<ByteBuffer, ICachedMNode> {
     }
   }
 
-  public WrappedSegment(ByteBuffer buffer) throws RecordDuplicatedException {
+  public WrappedSegment(ByteBuffer buffer) {
     this(buffer, true);
   }
 
   @TestOnly
-  public WrappedSegment(int size) throws RecordDuplicatedException {
+  public WrappedSegment(int size) {
     this(ByteBuffer.allocate(size));
   }
 
-  public static ISegment<ByteBuffer, ICachedMNode> initAsSegment(ByteBuffer buffer)
-      throws RecordDuplicatedException {
+  public static ISegment<ByteBuffer, ICachedMNode> initAsSegment(ByteBuffer buffer) {
     if (buffer == null) {
       return null;
     }
@@ -559,7 +558,6 @@ public class WrappedSegment implements ISegment<ByteBuffer, ICachedMNode> {
 
   @Override
   public int updateRecord(String key, ByteBuffer uBuffer) throws MetadataException {
-
     int idx = binarySearchOnKeys(key);
     if (idx < 0) {
       throw new MetadataException(String.format("Record[key:%s] Not Existed.", key));
@@ -614,8 +612,8 @@ public class WrappedSegment implements ISegment<ByteBuffer, ICachedMNode> {
     }
 
     // shift offsets forward
-    if (idx != recordNum) {
-      int shift = recordNum - idx;
+    if (idx != recordNum - 1) {
+      int shift = recordNum - idx - 1;
       this.buffer.position(SchemaFileConfig.SEG_HEADER_SIZE + idx * 2);
       ShortBuffer lb = this.buffer.asReadOnlyBuffer().asShortBuffer();
       lb.get();

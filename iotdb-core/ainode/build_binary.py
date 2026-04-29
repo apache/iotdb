@@ -31,7 +31,7 @@ from pathlib import Path
 def get_venv_base_dir():
     """
     Get the base directory for virtual environments outside the project.
-    
+
     Returns:
         Path: Base directory path
         - Linux/macOS: ~/.cache/iotdb-ainode-build/
@@ -51,13 +51,13 @@ def get_venv_base_dir():
 def setup_venv():
     """
     Create virtual environment outside the project directory.
-    
+
     The virtual environment is created in a platform-specific location:
     - Linux/macOS: ~/.cache/iotdb-ainode-build/<project-name>/
     - Windows: %LOCALAPPDATA%\\iotdb-ainode-build\\<project-name>\\
-    
+
     The same venv is reused across multiple builds of the same project.
-    
+
     Returns:
         Path: Path to the virtual environment directory
     """
@@ -423,7 +423,7 @@ def install_dependencies(venv_python, venv_dir, script_dir):
         [str(poetry_exe), "lock"],
         cwd=str(script_dir),
         env=venv_env,
-        check=True,
+        check=False,
         capture_output=True,
         text=True,
     )
@@ -431,30 +431,24 @@ def install_dependencies(venv_python, venv_dir, script_dir):
         print(result.stdout)
     if result.stderr:
         print(result.stderr)
+    if result.returncode != 0:
+        print(f"ERROR: poetry lock failed with exit code {result.returncode}")
+        sys.exit(1)
     verify_poetry_env()  # Verify after lock
+
+    accelerator = detect_accelerator()
+    print(f"Selected accelerator: {accelerator}")
 
     print("Running poetry install...")
     subprocess.run(
-        [str(poetry_exe), "lock"],
+        [str(poetry_exe), "install", "--no-root"],
         cwd=str(script_dir),
         env=venv_env,
         check=True,
-        capture_output=True,
         text=True,
     )
     verify_poetry_env()  # Verify before install
-    result = subprocess.run(
-        [str(poetry_exe), "install"],
-        cwd=str(script_dir),
-        env=venv_env,
-        check=True,
-        capture_output=True,
-        text=True,
-    )
-    if result.stdout:
-        print(result.stdout)
-    if result.stderr:
-        print(result.stderr)
+    poetry_install_with_accel(poetry_exe, script_dir, venv_env, accelerator)
     verify_poetry_env()  # Verify after install
 
     # Verify installation by checking if key packages are installed
@@ -518,6 +512,36 @@ def check_pyinstaller(venv_python):
             "This indicates that poetry install may have failed or didn't complete correctly."
         )
         return False
+
+
+def detect_accelerator():
+    """Auto-detect accelerator: prefer NPU if available, else CUDA GPU, otherwise CPU."""
+
+    # Try NVIDIA CUDA detection
+    try:
+        cuda_result = subprocess.run(
+            ["nvidia-smi", "-L"], capture_output=True, text=True, check=False
+        )
+        if cuda_result.returncode == 0 and "GPU" in cuda_result.stdout:
+            return "cuda"
+    except FileNotFoundError:
+        pass
+
+    return "cpu"
+
+
+def poetry_install_with_accel(poetry_exe, script_dir, venv_env, accelerator):
+    """Run poetry install selecting dependency groups: cuda(default), npu."""
+    cmd = [str(poetry_exe), "install"]
+    print(f"Running poetry install for accelerator={accelerator} -> {' '.join(cmd)}")
+    subprocess.run(
+        cmd,
+        cwd=str(script_dir),
+        env=venv_env,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
 
 
 def build():

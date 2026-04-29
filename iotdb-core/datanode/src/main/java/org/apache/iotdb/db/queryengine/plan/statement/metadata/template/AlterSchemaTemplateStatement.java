@@ -74,7 +74,7 @@ public class AlterSchemaTemplateStatement extends Statement implements IConfigSt
 
   @Override
   public QueryType getQueryType() {
-    return QueryType.WRITE;
+    return QueryType.OTHER;
   }
 
   @Override

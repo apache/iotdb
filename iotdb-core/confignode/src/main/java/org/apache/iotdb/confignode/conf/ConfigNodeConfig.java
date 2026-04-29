@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.property.ClientPoolProperty.DefaultProperty;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.confignode.manager.load.balancer.RegionBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.router.leader.AbstractLeaderBalancer;
@@ -76,6 +77,9 @@ public class ConfigNodeConfig {
 
   /** Data region consensus protocol. */
   private String dataRegionConsensusProtocolClass = ConsensusFactory.IOT_CONSENSUS;
+
+  /** IoTConsensusV2 replicate mode: "batch" or "stream". */
+  private String iotConsensusV2Mode = "batch";
 
   /** Default number of DataRegion replicas. */
   private int dataReplicationFactor = 1;
@@ -316,6 +320,8 @@ public class ConfigNodeConfig {
 
   private long forceWalPeriodForConfigNodeSimpleInMs = 100;
 
+  private long partitionTableRecoverWaitAllDnUpTimeoutInMs = 60000;
+
   public ConfigNodeConfig() {
     // empty constructor
   }
@@ -372,6 +378,7 @@ public class ConfigNodeConfig {
 
   public void setConfigNodeId(int configNodeId) {
     this.configNodeId = configNodeId;
+    CommonDescriptor.getInstance().getConfig().setNodeId(configNodeId);
   }
 
   public String getInternalAddress() {
@@ -528,6 +535,14 @@ public class ConfigNodeConfig {
 
   public void setDataRegionConsensusProtocolClass(String dataRegionConsensusProtocolClass) {
     this.dataRegionConsensusProtocolClass = dataRegionConsensusProtocolClass;
+  }
+
+  public String getIotConsensusV2Mode() {
+    return iotConsensusV2Mode;
+  }
+
+  public void setIotConsensusV2Mode(String iotConsensusV2Mode) {
+    this.iotConsensusV2Mode = iotConsensusV2Mode;
   }
 
   public int getDataRegionPerDataNode() {
@@ -1274,5 +1289,14 @@ public class ConfigNodeConfig {
 
   public void setFailureDetectorPhiAcceptablePauseInMs(long failureDetectorPhiAcceptablePauseInMs) {
     this.failureDetectorPhiAcceptablePauseInMs = failureDetectorPhiAcceptablePauseInMs;
+  }
+
+  public long getPartitionTableRecoverWaitAllDnUpTimeoutInMs() {
+    return partitionTableRecoverWaitAllDnUpTimeoutInMs;
+  }
+
+  public void setPartitionTableRecoverWaitAllDnUpTimeoutInMs(
+      long partitionTableRecoverWaitAllDnUpTimeoutInMs) {
+    this.partitionTableRecoverWaitAllDnUpTimeoutInMs = partitionTableRecoverWaitAllDnUpTimeoutInMs;
   }
 }

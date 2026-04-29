@@ -46,6 +46,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalBatchActi
 import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalCreateMultiTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalCreateTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterEncodingCompressorStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterTimeSeriesDataTypeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDevicesStatement;
@@ -90,6 +91,11 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTimeSeriesSta
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTriggersStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowVariablesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.UnSetTTLStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.externalservice.CreateExternalServiceStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.externalservice.DropExternalServiceStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.externalservice.ShowExternalServiceStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.externalservice.StartExternalServiceStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.externalservice.StopExternalServiceStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.CreateModelStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.CreateTrainingStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.DropModelStatement;
@@ -146,6 +152,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSqlDialectStatement
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSystemStatusStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowCurrentSqlDialectStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowCurrentUserStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowDiskUsageStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowVersionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StartRepairDataStatement;
@@ -935,6 +942,43 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
     return checkGlobalAuth(auditEntity, PrivilegeType.USE_TRIGGER, auditObject);
   }
 
+  // ======================= externalService related ================================
+  @Override
+  public TSStatus visitCreateExternalService(
+      CreateExternalServiceStatement createExternalServiceStatement,
+      TreeAccessCheckContext context) {
+    return checkGlobalAuth(
+        context, PrivilegeType.SYSTEM, () -> createExternalServiceStatement.toString());
+  }
+
+  @Override
+  public TSStatus visitStartExternalService(
+      StartExternalServiceStatement startExternalServiceStatement, TreeAccessCheckContext context) {
+    return checkGlobalAuth(
+        context, PrivilegeType.SYSTEM, () -> startExternalServiceStatement.toString());
+  }
+
+  @Override
+  public TSStatus visitStopExternalService(
+      StopExternalServiceStatement stopExternalServiceStatement, TreeAccessCheckContext context) {
+    return checkGlobalAuth(
+        context, PrivilegeType.SYSTEM, () -> stopExternalServiceStatement.toString());
+  }
+
+  @Override
+  public TSStatus visitDropExternalService(
+      DropExternalServiceStatement dropExternalServiceStatement, TreeAccessCheckContext context) {
+    return checkGlobalAuth(
+        context, PrivilegeType.SYSTEM, () -> dropExternalServiceStatement.toString());
+  }
+
+  @Override
+  public TSStatus visitShowExternalService(
+      ShowExternalServiceStatement showExternalServiceStatement, TreeAccessCheckContext context) {
+    return checkGlobalAuth(
+        context, PrivilegeType.SYSTEM, () -> showExternalServiceStatement.toString());
+  }
+
   // ============================== database related ===========================
   @Override
   public TSStatus visitSetDatabase(
@@ -1451,6 +1495,22 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   }
 
   @Override
+  public TSStatus visitAlterTimeSeries(
+      AlterTimeSeriesDataTypeStatement statement, TreeAccessCheckContext context) {
+    context.setAuditLogOperation(AuditLogOperation.DDL);
+    // audit db is read-only
+    if (includeByAuditTreeDB(statement.getPath())
+        && !context.getUsername().equals(AuthorityChecker.INTERNAL_AUDIT_USER)) {
+      AUDIT_LOGGER.recordObjectAuthenticationAuditLog(
+          context.setResult(false),
+          () -> statement.getPaths().stream().distinct().collect(Collectors.toList()).toString());
+      return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
+          .setMessage(String.format(READ_ONLY_DB_ERROR_MSG, TREE_MODEL_AUDIT_DATABASE));
+    }
+    return checkTimeSeriesPermission(context, statement::getPaths, PrivilegeType.WRITE_SCHEMA);
+  }
+
+  @Override
   public TSStatus visitAlterEncodingCompressor(
       final AlterEncodingCompressorStatement alterEncodingCompressorStatement,
       final TreeAccessCheckContext context) {
@@ -1729,6 +1789,15 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
       statement.setAllowedUsername(context.getUsername());
     }
     return SUCCEED;
+  }
+
+  @Override
+  public TSStatus visitShowDiskUsage(
+      ShowDiskUsageStatement showDiskUsageStatement, TreeAccessCheckContext context) {
+    return checkGlobalAuth(
+        context.setAuditLogOperation(AuditLogOperation.QUERY),
+        PrivilegeType.SYSTEM,
+        () -> showDiskUsageStatement.getPathPattern().toString());
   }
 
   @Override

@@ -39,8 +39,8 @@ public class ShowDevicesResult extends ShowSchemaResult implements IDeviceSchema
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(ShowDevicesResult.class);
 
-  private Boolean isAligned;
-  private int templateId;
+  private final Boolean isAligned;
+  private final int templateId;
 
   private Function<String, Binary> attributeProvider;
 

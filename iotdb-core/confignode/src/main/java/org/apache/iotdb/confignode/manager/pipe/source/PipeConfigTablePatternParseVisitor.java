@@ -30,6 +30,7 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeCrea
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteDevicesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.AbstractTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.AlterColumnDataTypePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RenameTableColumnPlan;
@@ -109,6 +110,12 @@ public class PipeConfigTablePatternParseVisitor
   public Optional<ConfigPhysicalPlan> visitRenameTableColumn(
       final RenameTableColumnPlan renameTableColumnPlan, final TablePattern pattern) {
     return visitAbstractTablePlan(renameTableColumnPlan, pattern);
+  }
+
+  @Override
+  public Optional<ConfigPhysicalPlan> visitAlterColumnDataType(
+      final AlterColumnDataTypePlan alterColumnDataTypePlan, final TablePattern pattern) {
+    return visitAbstractTablePlan(alterColumnDataTypePlan, pattern);
   }
 
   @Override

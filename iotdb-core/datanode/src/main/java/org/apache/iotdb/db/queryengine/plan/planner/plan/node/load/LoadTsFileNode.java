@@ -20,10 +20,10 @@
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.load;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PipeEnriched;
@@ -46,13 +46,19 @@ public class LoadTsFileNode extends WritePlanNode {
   private final List<TsFileResource> resources;
   private final List<Boolean> isTableModel;
   private final String database;
+  private final boolean needDecode4TimeColumn;
 
   public LoadTsFileNode(
-      PlanNodeId id, List<TsFileResource> resources, List<Boolean> isTableModel, String database) {
+      final PlanNodeId id,
+      final List<TsFileResource> resources,
+      final List<Boolean> isTableModel,
+      final String database,
+      final boolean needDecode4TimeColumn) {
     super(id);
     this.resources = resources;
     this.isTableModel = isTableModel;
     this.database = database;
+    this.needDecode4TimeColumn = needDecode4TimeColumn;
   }
 
   @Override
@@ -121,7 +127,8 @@ public class LoadTsFileNode extends WritePlanNode {
               isTableModel.get(i),
               database,
               statement.isDeleteAfterLoad(),
-              statement.getWritePointCount(i)));
+              statement.getWritePointCount(i),
+              needDecode4TimeColumn));
     }
     return res;
   }
@@ -143,7 +150,10 @@ public class LoadTsFileNode extends WritePlanNode {
                 isTableModel.get(i),
                 database,
                 statement.isDeleteAfterLoad(),
-                statement.getWritePointCount(i)));
+                statement.getWritePointCount(i),
+                needDecode4TimeColumn));
+      } else {
+        throw new IllegalStateException("LoadTsFile statement is null during table model split.");
       }
     }
     return res;

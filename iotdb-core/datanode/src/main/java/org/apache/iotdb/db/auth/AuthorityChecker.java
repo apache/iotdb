@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDBPrivilege;
 import org.apache.iotdb.confignode.rpc.thrift.TListUserInfo;
@@ -84,7 +85,7 @@ public class AuthorityChecker {
   public static final TSStatus SUCCEED = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
 
   public static final int INTERNAL_AUDIT_USER_ID = 4;
-  public static final String INTERNAL_AUDIT_USER = "__internal_auditor";
+  public static final String INTERNAL_AUDIT_USER = User.BUILTIN_INTERNAL_AUDIT_LOG_USERNAME;
 
   public static String ANY_SCOPE = "any";
 
@@ -114,6 +115,7 @@ public class AuthorityChecker {
     return accessControl;
   }
 
+  @TestOnly
   public static void setAccessControl(AccessControl accessControl) {
     AuthorityChecker.accessControl = accessControl;
   }
@@ -131,17 +133,27 @@ public class AuthorityChecker {
     return authorityFetcher.get().getAuthorCache().invalidateCache(username, roleName);
   }
 
+  public static void invalidateAllCache() {
+    authorityFetcher.get().getAuthorCache().invalidAllCache();
+  }
+
   public static User getUser(String username) {
-    return authorityFetcher.get().getUser(username);
+    return authorityFetcher.get().getUser(username, false);
   }
 
   public static Optional<Long> getUserId(String username) {
-    User user = authorityFetcher.get().getUser(username);
+    User user = authorityFetcher.get().getUser(username, false);
     return Optional.ofNullable(user == null ? null : user.getUserId());
   }
 
-  public static TSStatus checkUser(String userName, String password) {
-    TSStatus status = authorityFetcher.get().checkUser(userName, password);
+  public static TSStatus checkUser(final String userName, final String password) {
+    return checkUser(userName, password, false);
+  }
+
+  public static TSStatus checkUser(
+      final String userName, final String password, final boolean useEncryptedPassword) {
+    final TSStatus status =
+        authorityFetcher.get().checkUser(userName, password, useEncryptedPassword);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return status;
     }

@@ -68,6 +68,7 @@ public class LoadTsFileStatement extends Statement {
   private List<Boolean> isTableModel;
   private List<TsFileResource> resources;
   private List<Long> writePointCountList;
+  private boolean needDecode4TimeColumn;
 
   public LoadTsFileStatement(String filePath) throws FileNotFoundException {
     this.file = new File(filePath).getAbsoluteFile();
@@ -223,6 +224,14 @@ public class LoadTsFileStatement extends Statement {
     return isGeneratedByPipe;
   }
 
+  public boolean isNeedDecode4TimeColumn() {
+    return needDecode4TimeColumn;
+  }
+
+  public void enableNeedDecode4TimeColumn() {
+    this.needDecode4TimeColumn = true;
+  }
+
   public List<File> getTsFiles() {
     return tsFiles;
   }
@@ -361,8 +370,8 @@ public class LoadTsFileStatement extends Statement {
 
   @TableModel
   @Override
-  public org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement toRelationalStatement(
-      MPPQueryContext context) {
+  public org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement
+      toRelationalStatement(MPPQueryContext context) {
     final Map<String, String> loadAttributes = new HashMap<>();
 
     loadAttributes.put(DATABASE_LEVEL_KEY, String.valueOf(databaseLevel));

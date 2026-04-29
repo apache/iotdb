@@ -159,6 +159,23 @@ public class TTLInfo implements SnapshotProcessor {
   }
 
   /**
+   * Get the maximum ttl of the corresponding database level.
+   *
+   * @param database the path of the database.
+   * @return the maximum ttl of the corresponding database level.
+   */
+  public long getDatabaseLevelTTL(final String database) {
+    lock.readLock().lock();
+    try {
+      return ttlCache.getDatabaseLevelTTL(database);
+    } catch (IllegalPathException e) {
+      return TTLCache.NULL_TTL;
+    } finally {
+      lock.readLock().unlock();
+    }
+  }
+
+  /**
    * Get the maximum ttl of the subtree of the corresponding database.
    *
    * @param database the path of the database.

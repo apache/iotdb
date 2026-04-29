@@ -1,15 +1,20 @@
 /*
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.iotdb.relational.it.db.it;
@@ -1101,6 +1106,42 @@ public class IoTDBAuthenticationTableIT {
           String.format(
               "load '%s' with ('database-level'='2', 'database-name'='test')",
               tmpDir.getAbsolutePath()));
+    }
+  }
+
+  @Test
+  public void testAlter() throws IoTDBConnectionException, StatementExecutionException {
+    try (ITableSession sessionRoot = EnvFactory.getEnv().getTableSessionConnection()) {
+      sessionRoot.executeNonQueryStatement("CREATE DATABASE test3");
+      sessionRoot.executeNonQueryStatement("USE test3");
+      sessionRoot.executeNonQueryStatement("CREATE TABLE t1 (c1 INT32)");
+
+      // test users
+      sessionRoot.executeNonQueryStatement("CREATE USER userA 'userA1234567'");
+      sessionRoot.executeNonQueryStatement("CREATE USER userB 'userB1234567'");
+
+      try (ITableSession sessionA =
+              EnvFactory.getEnv().getTableSessionConnection("userA", "userA1234567");
+          ITableSession sessionB =
+              EnvFactory.getEnv().getTableSessionConnection("userB", "userB1234567")) {
+        sessionRoot.executeNonQueryStatement(
+            "GRANT SELECT,INSERT,DELETE ON test3.t1 TO USER userA");
+        sessionRoot.executeNonQueryStatement(
+            "GRANT SELECT,ALTER,INSERT,DELETE ON test3.t1 TO USER userB");
+        sessionA.executeNonQueryStatement("USE test3");
+        sessionB.executeNonQueryStatement("USE test3");
+
+        try {
+          sessionA.executeNonQueryStatement("ALTER TABLE t1 ALTER COLUMN c1 SET DATA TYPE FLOAT");
+          fail("Should have thrown an exception");
+        } catch (StatementExecutionException e) {
+          assertEquals(
+              "803: Access Denied: No permissions for this operation, please add privilege ALTER ON test3.t1",
+              e.getMessage());
+        }
+
+        sessionB.executeNonQueryStatement("ALTER TABLE t1 ALTER COLUMN c1 SET DATA TYPE FLOAT");
+      }
     }
   }
 }

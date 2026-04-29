@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.iterator;
 
 import org.apache.iotdb.commons.exception.MetadataException;
@@ -30,11 +31,16 @@ import java.util.Map;
 // only use for IConfigMNode and IMemMNode
 public class MemoryTraverserIterator<N extends IMNode<N>> extends AbstractTraverserIterator<N> {
   public MemoryTraverserIterator(
-      IMTreeStore<N> store,
-      IDeviceMNode<N> parent,
-      Map<Integer, Template> templateMap,
-      IMNodeFactory<N> nodeFactory)
+      final IMTreeStore<N> store,
+      final IDeviceMNode<N> parent,
+      final Map<Integer, Template> templateMap,
+      final IMNodeFactory<N> nodeFactory)
       throws MetadataException {
     super(store, parent, templateMap, nodeFactory);
+  }
+
+  @Override
+  protected void releaseSkippedNode(final N node) {
+    // Do nothing
   }
 }

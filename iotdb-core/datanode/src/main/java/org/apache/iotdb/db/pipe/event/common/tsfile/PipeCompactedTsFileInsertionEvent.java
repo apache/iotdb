@@ -38,7 +38,7 @@ import java.util.stream.Collectors;
 
 public class PipeCompactedTsFileInsertionEvent extends PipeTsFileInsertionEvent {
 
-  private final String dataRegionId;
+  private final int dataRegionId;
   private final Set<String> originFilePaths;
   private final List<Long> commitIds;
 
@@ -70,7 +70,7 @@ public class PipeCompactedTsFileInsertionEvent extends PipeTsFileInsertionEvent 
         anyOfOriginalEvents.getStartTime(),
         anyOfOriginalEvents.getEndTime());
 
-    this.dataRegionId = String.valueOf(committerKey.getRegionId());
+    this.dataRegionId = committerKey.getRegionId();
     this.originFilePaths =
         originalEvents.stream()
             .map(PipeTsFileInsertionEvent::getTsFile)
@@ -91,6 +91,7 @@ public class PipeCompactedTsFileInsertionEvent extends PipeTsFileInsertionEvent 
     // init fields of PipeTsFileInsertionEvent
     flushPointCount = bindFlushPointCount(originalEvents);
     overridingProgressIndex = bindOverridingProgressIndex(originalEvents);
+    bindTsFileDedupScopeID(anyOfOriginalEvents.getTsFileDedupScopeID());
   }
 
   private static boolean bindIsWithMod(Set<PipeTsFileInsertionEvent> originalEvents) {
@@ -177,17 +178,17 @@ public class PipeCompactedTsFileInsertionEvent extends PipeTsFileInsertionEvent 
   }
 
   @Override
-  public boolean equalsInPipeConsensus(final Object o) {
+  public boolean equalsInIoTConsensusV2(final Object o) {
     throw new UnsupportedOperationException(
-        "PipeCompactedTsFileInsertionEvent does not support equalsInPipeConsensus.");
+        "PipeCompactedTsFileInsertionEvent does not support equalsInIoTConsensusV2.");
   }
 
   @Override
   public void eliminateProgressIndex() {
-    if (Objects.isNull(overridingProgressIndex)) {
+    if (Objects.isNull(overridingProgressIndex) && Objects.nonNull(getTsFileDedupScopeID())) {
       for (final String originFilePath : originFilePaths) {
         PipeTsFileEpochProgressIndexKeeper.getInstance()
-            .eliminateProgressIndex(dataRegionId, pipeName, originFilePath);
+            .eliminateProgressIndex(dataRegionId, getTsFileDedupScopeID(), originFilePath);
       }
     }
   }

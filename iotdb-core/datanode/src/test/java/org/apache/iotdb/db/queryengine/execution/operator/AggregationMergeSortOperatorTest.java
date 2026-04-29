@@ -19,14 +19,14 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator;
 
+import org.apache.iotdb.calc.execution.operator.process.AggregationMergeSortOperator;
+import org.apache.iotdb.calc.execution.operator.process.ProcessOperator;
+import org.apache.iotdb.calc.utils.datastructure.SortKey;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.execution.aggregation.CountAccumulator;
 import org.apache.iotdb.db.queryengine.execution.driver.DriverContext;
-import org.apache.iotdb.db.queryengine.execution.operator.process.AggregationMergeSortOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.process.ProcessOperator;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.queryengine.plan.statement.component.SortItem;
-import org.apache.iotdb.db.utils.datastructure.SortKey;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
@@ -41,7 +41,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 
-import static org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.MergeSortComparator.getComparator;
+import static org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.MergeSortComparatorUtils.getComparator;
 import static org.junit.Assert.assertEquals;
 
 public class AggregationMergeSortOperatorTest {

@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.execution.aggregation;
 
+import org.apache.iotdb.calc.execution.aggregation.Accumulator;
+
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
@@ -115,17 +117,17 @@ public class MinValueAccumulator implements Accumulator {
     switch (seriesDataType) {
       case INT32:
       case DATE:
-        updateIntResult((int) statistics.getMinValue());
+        updateIntResult(((Number) statistics.getMinValue()).intValue());
         break;
       case INT64:
       case TIMESTAMP:
-        updateLongResult((long) statistics.getMinValue());
+        updateLongResult(((Number) statistics.getMinValue()).longValue());
         break;
       case FLOAT:
-        updateFloatResult((float) statistics.getMinValue());
+        updateFloatResult(((Number) statistics.getMinValue()).floatValue());
         break;
       case DOUBLE:
-        updateDoubleResult((double) statistics.getMinValue());
+        updateDoubleResult(((Number) statistics.getMinValue()).doubleValue());
         break;
       case STRING:
         updateBinaryResult((Binary) statistics.getMinValue());

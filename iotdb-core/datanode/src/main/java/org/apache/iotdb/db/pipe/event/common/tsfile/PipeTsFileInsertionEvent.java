@@ -33,6 +33,7 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
+import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.commons.pipe.resource.ref.PipePhantomReferenceManager.PipeEventResource;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.pipe.event.ReferenceTrackableEvent;
@@ -88,17 +89,18 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
 
   protected final boolean isLoaded;
   protected final boolean isGeneratedByPipe;
-  protected final boolean isGeneratedByPipeConsensus;
+  protected final boolean isGeneratedByIoTConsensusV2;
   protected final boolean isGeneratedByHistoricalExtractor;
   private final AtomicBoolean isClosed;
   private final AtomicReference<TsFileInsertionEventParser> eventParser;
 
-  // The point count of the TsFile. Used for metrics on PipeConsensus' receiver side.
+  // The point count of the TsFile. Used for metrics on IoTConsensusV2' receiver side.
   // May be updated after it is flushed. Should be negative if not set.
   protected long flushPointCount = TsFileProcessor.FLUSH_POINT_COUNT_NOT_SET;
 
   protected volatile ProgressIndex overridingProgressIndex;
   private Set<String> tableNames;
+  private String tsFileDedupScopeID;
 
   // This is set to check the tsFile paths by privilege
   private Map<IDeviceID, String[]> treeSchemaMap;
@@ -182,7 +184,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
 
     this.isLoaded = isLoaded;
     this.isGeneratedByPipe = resource.isGeneratedByPipe();
-    this.isGeneratedByPipeConsensus = resource.isGeneratedByPipeConsensus();
+    this.isGeneratedByIoTConsensusV2 = resource.isGeneratedByIoTConsensusV2();
     this.isGeneratedByHistoricalExtractor = isGeneratedByHistoricalExtractor;
     this.tableNames = tableNames;
 
@@ -298,8 +300,8 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   }
 
   /**
-   * Only used for metrics on PipeConsensus' receiver side. If the event is recovered after data
-   * node's restart, the flushPointCount can be not set. It's totally fine for the PipeConsensus'
+   * Only used for metrics on IoTConsensusV2' receiver side. If the event is recovered after data
+   * node's restart, the flushPointCount can be not set. It's totally fine for the IoTConsensusV2'
    * receiver side. The receiver side will count the actual point count from the TsFile.
    *
    * <p>If you want to get the actual point count with no risk, you can call {@link
@@ -398,14 +400,24 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   }
 
   public void eliminateProgressIndex() {
-    if (Objects.isNull(overridingProgressIndex) && Objects.nonNull(resource)) {
+    if (Objects.isNull(overridingProgressIndex)
+        && Objects.nonNull(resource)
+        && Objects.nonNull(tsFileDedupScopeID)) {
       PipeTsFileEpochProgressIndexKeeper.getInstance()
-          .eliminateProgressIndex(resource.getDataRegionId(), pipeName, resource.getTsFilePath());
+          .eliminateProgressIndex(
+              Integer.parseInt(resource.getDataRegionId()),
+              tsFileDedupScopeID,
+              resource.getTsFilePath());
     }
   }
 
-  public boolean shouldParse4Privilege() {
-    return shouldParse4Privilege;
+  public PipeTsFileInsertionEvent bindTsFileDedupScopeID(final String tsFileDedupScopeID) {
+    this.tsFileDedupScopeID = tsFileDedupScopeID;
+    return this;
+  }
+
+  public String getTsFileDedupScopeID() {
+    return tsFileDedupScopeID;
   }
 
   @Override
@@ -422,25 +434,26 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
       final long startTime,
       final long endTime) {
     return new PipeTsFileInsertionEvent(
-        getRawIsTableModelEvent(),
-        getSourceDatabaseNameFromDataRegion(),
-        resource,
-        tsFile,
-        isWithMod,
-        isLoaded,
-        isGeneratedByHistoricalExtractor,
-        tableNames,
-        pipeName,
-        creationTime,
-        pipeTaskMeta,
-        treePattern,
-        tablePattern,
-        userId,
-        userName,
-        cliHostname,
-        skipIfNoPrivileges,
-        startTime,
-        endTime);
+            getRawIsTableModelEvent(),
+            getSourceDatabaseNameFromDataRegion(),
+            resource,
+            tsFile,
+            isWithMod,
+            isLoaded,
+            isGeneratedByHistoricalExtractor,
+            tableNames,
+            pipeName,
+            creationTime,
+            pipeTaskMeta,
+            treePattern,
+            tablePattern,
+            userId,
+            userName,
+            cliHostname,
+            skipIfNoPrivileges,
+            startTime,
+            endTime)
+        .bindTsFileDedupScopeID(tsFileDedupScopeID);
   }
 
   @Override
@@ -565,6 +578,17 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   }
 
   @Override
+  public boolean shouldParseTime() {
+    if (!isTimeParsed
+        && Objects.nonNull(resource)
+        && startTime <= resource.getFileStartTime()
+        && resource.getFileEndTime() <= endTime) {
+      isTimeParsed = true;
+    }
+    return !isTimeParsed;
+  }
+
+  @Override
   public boolean mayEventPathsOverlappedWithPattern() {
     if (Objects.isNull(resource) || !resource.isClosed() || isTableModelEvent()) {
       return true;
@@ -649,8 +673,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
                 callerName,
                 getTsFile(),
                 tabletEventCount,
-                retryCount,
-                e);
+                retryCount);
           } else if (LOGGER.isDebugEnabled()) {
             LOGGER.debug(
                 "{}: failed to allocate memory for parsing TsFile {}, tablet event no. {}, retry count is {}, will keep retrying.",
@@ -696,7 +719,11 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
                   "Interrupted when waiting for closing TsFile %s.", resource.getTsFilePath())
               : String.format(
                   "Parse TsFile %s error. Because: %s", resource.getTsFilePath(), e.getMessage());
-      LOGGER.warn(errorMsg, e);
+      if (e instanceof PipeRuntimeOutOfMemoryCriticalException) {
+        PipeLogger.log(LOGGER::warn, errorMsg);
+      } else {
+        PipeLogger.log(LOGGER::warn, e, errorMsg);
+      }
       throw new PipeException(errorMsg, e);
     }
   }
@@ -720,35 +747,36 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
       final double waitTimeSeconds = (currentTime - startTime) / 1000.0;
       if (elapsedRecordTimeSeconds > 10.0) {
         LOGGER.info(
-            "Wait for resource enough for parsing {} for {} seconds.",
+            "Wait for memory enough for parsing {} for {} seconds.",
             resource != null ? resource.getTsFilePath() : "tsfile",
             waitTimeSeconds);
         lastRecordTime = currentTime;
       } else if (LOGGER.isDebugEnabled()) {
         LOGGER.debug(
-            "Wait for resource enough for parsing {} for {} seconds.",
+            "Wait for memory enough for parsing {} for {} seconds.",
             resource != null ? resource.getTsFilePath() : "tsfile",
             waitTimeSeconds);
       }
 
       if (waitTimeSeconds * 1000 > timeoutMs) {
         // should contain 'TimeoutException' in exception message
-        throw new PipeException(
-            String.format("TimeoutException: Waited %s seconds", waitTimeSeconds));
+        throw new PipeRuntimeOutOfMemoryCriticalException(
+            String.format(
+                "TimeoutException: Waited %s seconds for memory to parse TsFile", waitTimeSeconds));
       }
     }
 
     final long currentTime = System.currentTimeMillis();
     final double waitTimeSeconds = (currentTime - startTime) / 1000.0;
     LOGGER.info(
-        "Wait for resource enough for parsing {} for {} seconds.",
+        "Wait for memory enough for parsing {} for {} seconds.",
         resource != null ? resource.getTsFilePath() : "tsfile",
         waitTimeSeconds);
   }
 
-  /** The method is used to prevent circular replication in PipeConsensus */
-  public boolean isGeneratedByPipeConsensus() {
-    return isGeneratedByPipeConsensus;
+  /** The method is used to prevent circular replication in IoTConsensusV2 */
+  public boolean isGeneratedByIoTConsensusV2() {
+    return isGeneratedByIoTConsensusV2;
   }
 
   public boolean isGeneratedByHistoricalExtractor() {

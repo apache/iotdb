@@ -78,20 +78,25 @@ class PipeAgentLauncher {
         curList.add(uninstalledOrConflictedPipePluginMetaList.get(index + offset));
         offset++;
       }
-      index += (offset + 1);
+      index += offset;
       fetchAndSavePipePluginJars(curList);
     }
 
     // create instances of pipe plugins and do registration
-    try {
-      for (PipePluginMeta meta : resourcesInformationHolder.getPipePluginMetaList()) {
-        if (meta.isBuiltin()) {
-          continue;
-        }
-        PipeDataNodeAgent.plugin().doRegister(meta);
+    for (PipePluginMeta meta : resourcesInformationHolder.getPipePluginMetaList()) {
+      if (meta.isBuiltin()) {
+        continue;
       }
-    } catch (Exception e) {
-      throw new StartupException(e);
+      try {
+        PipeDataNodeAgent.plugin().doRegister(meta);
+      } catch (Throwable e) {
+        PipeDataNodeAgent.plugin().markPluginLoadFailure(meta, e);
+        // Ignore a single broken plugin and continue startup.
+        LOGGER.warn(
+            "Failure when register pipe plugin {}. Skip this plugin and continue startup.",
+            meta.getPluginName(),
+            e);
+      }
     }
   }
 
@@ -160,7 +165,7 @@ class PipeAgentLauncher {
         ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       final TGetAllPipeInfoResp getAllPipeInfoResp = configNodeClient.getAllPipeInfo();
       if (getAllPipeInfoResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        throw new StartupException("Failed to get pipe task meta from config node.");
+        LOGGER.warn("Failed to get pipe metas, will be synced by configNode later...");
       }
 
       PipeDataNodeAgent.task()

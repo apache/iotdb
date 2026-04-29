@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.event.common.tsfile.parser.table;
 
 import org.apache.iotdb.commons.audit.IAuditEntity;
+import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
@@ -70,6 +71,7 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
       final boolean isWithMod)
       throws IOException {
     super(
+        tsFile,
         pipeName,
         creationTime,
         null,
@@ -79,7 +81,8 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
         pipeTaskMeta,
         entity,
         true,
-        sourceEvent);
+        sourceEvent,
+        isWithMod);
 
     this.isWithMod = isWithMod;
     try {
@@ -92,7 +95,7 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
               .forceAllocateForTabletWithRetry(currentModifications.ramBytesUsed());
       long tableSize =
           Math.min(
-              PipeConfig.getInstance().getPipeDataStructureTabletSizeInBytes(),
+              IoTDBDescriptor.getInstance().getConfig().getPipeDataStructureTabletSizeInBytes(),
               IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize());
 
       this.allocatedMemoryBlockForChunk =
@@ -106,7 +109,9 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
       this.allocatedMemoryBlockForTableSchemas =
           PipeDataNodeResourceManager.memory()
               .forceAllocateForTabletWithRetry(
-                  PipeConfig.getInstance().getPipeDataStructureTabletSizeInBytes());
+                  IoTDBDescriptor.getInstance()
+                      .getConfig()
+                      .getPipeDataStructureTabletSizeInBytes());
 
       this.startTime = startTime;
       this.endTime = endTime;
@@ -182,7 +187,7 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
                 }
 
                 private boolean hasTablePrivilege(final String tableName) {
-                  return Objects.isNull(entity)
+                  if (Objects.isNull(entity)
                       || Objects.isNull(sourceEvent)
                       || Objects.isNull(sourceEvent.getTableModelDatabaseName())
                       || AuthorityChecker.getAccessControl()
@@ -190,7 +195,18 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
                               entity.getUsername(),
                               new QualifiedObjectName(
                                   sourceEvent.getTableModelDatabaseName(), tableName),
-                              entity);
+                              entity)) {
+                    return true;
+                  }
+                  if (!skipIfNoPrivileges) {
+                    throw new AccessDeniedException(
+                        String.format(
+                            "No privilege for SELECT for user %s at table %s.%s",
+                            entity.getUsername(),
+                            sourceEvent.getTableModelDatabaseName(),
+                            tableName));
+                  }
+                  return false;
                 }
 
                 @Override

@@ -22,8 +22,8 @@ package org.apache.iotdb.db.queryengine.plan.execution.config;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
+import org.apache.iotdb.commons.queryengine.common.SqlDialect;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.execution.QueryStateMachine;
@@ -72,6 +72,10 @@ public class ConfigExecution implements IQueryExecution {
                   TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode(),
                   TSStatusCode.DATABASE_CONFLICT.getStatusCode(),
                   TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode(),
+                  TSStatusCode.UDF_LOAD_CLASS_ERROR.getStatusCode(),
+                  TSStatusCode.DROP_UDF_ERROR.getStatusCode(),
+                  TSStatusCode.UDF_DOWNLOAD_ERROR.getStatusCode(),
+                  TSStatusCode.UDF_ALREADY_EXISTS.getStatusCode(),
                   TSStatusCode.PATH_NOT_EXIST.getStatusCode(),
                   TSStatusCode.MEASUREMENT_ALREADY_EXISTS_IN_TEMPLATE.getStatusCode(),
                   TSStatusCode.SCHEMA_QUOTA_EXCEEDED.getStatusCode(),
@@ -112,6 +116,12 @@ public class ConfigExecution implements IQueryExecution {
 
   private final StatementType statementType;
   private long totalExecutionTime;
+
+  // -1 if previous rpc is finished and next client req hasn't come yet, unit is ns
+  // it will be updated in fetchResult rpc
+  // currently, ConfigExecution will return result is just one call, so this field is not used. But
+  // we will keep it for future use when ConfigExecution may return result in multiple calls
+  private volatile long startTimeOfCurrentRpc = System.nanoTime();
 
   public ConfigExecution(
       MPPQueryContext context,
@@ -223,11 +233,6 @@ public class ConfigExecution implements IQueryExecution {
   }
 
   @Override
-  public void stopAndCleanup() {
-    // do nothing
-  }
-
-  @Override
   public void stopAndCleanup(Throwable t) {
     // do nothing
   }
@@ -301,7 +306,7 @@ public class ConfigExecution implements IQueryExecution {
 
   @Override
   public boolean isQuery() {
-    return context.getQueryType() != QueryType.WRITE;
+    return context.isQuery();
   }
 
   @Override
@@ -327,11 +332,30 @@ public class ConfigExecution implements IQueryExecution {
   @Override
   public void recordExecutionTime(long executionTime) {
     totalExecutionTime += executionTime;
+    // recordExecutionTime is called after current rpc finished, so we need to set
+    // startTimeOfCurrentRpc to -1
+    this.startTimeOfCurrentRpc = -1;
+  }
+
+  @Override
+  public void updateCurrentRpcStartTime(long startTime) {
+    this.startTimeOfCurrentRpc = startTime;
+  }
+
+  @Override
+  public boolean isActive() {
+    return startTimeOfCurrentRpc == -1;
   }
 
   @Override
   public long getTotalExecutionTime() {
-    return totalExecutionTime;
+    return totalExecutionTime
+        + (startTimeOfCurrentRpc == -1 ? 0 : System.nanoTime() - startTimeOfCurrentRpc);
+  }
+
+  @Override
+  public long getTimeout() {
+    return context.getTimeOut();
   }
 
   @Override
@@ -345,7 +369,7 @@ public class ConfigExecution implements IQueryExecution {
   }
 
   @Override
-  public IClientSession.SqlDialect getSQLDialect() {
+  public SqlDialect getSQLDialect() {
     return context.getSession().getSqlDialect();
   }
 
@@ -357,5 +381,10 @@ public class ConfigExecution implements IQueryExecution {
   @Override
   public String getClientHostname() {
     return context.getCliHostname();
+  }
+
+  @Override
+  public boolean isDebug() {
+    return context.isDebug();
   }
 }

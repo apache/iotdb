@@ -25,6 +25,7 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import java.util.ArrayList;
@@ -34,6 +35,7 @@ import java.util.function.BiFunction;
 
 public abstract class DataNodeTSStatusTaskExecutor<Q>
     extends DataNodeRegionTaskExecutor<Q, TSStatus> {
+  protected List<TSStatus> successResult = new ArrayList<>();
 
   protected DataNodeTSStatusTaskExecutor(
       final ConfigNodeProcedureEnv env,
@@ -56,6 +58,7 @@ public abstract class DataNodeTSStatusTaskExecutor<Q>
       final TSStatus response) {
     final List<TConsensusGroupId> failedRegionList = new ArrayList<>();
     if (response.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      failureMap.remove(dataNodeLocation);
       return failedRegionList;
     }
 
@@ -69,6 +72,42 @@ public abstract class DataNodeTSStatusTaskExecutor<Q>
     } else {
       failedRegionList.addAll(consensusGroupIdList);
     }
+    if (!failedRegionList.isEmpty()) {
+      failureMap.put(dataNodeLocation, RpcUtils.extractFailureStatues(response));
+    } else {
+      failureMap.remove(dataNodeLocation);
+    }
     return failedRegionList;
+  }
+
+  protected List<TConsensusGroupId> processResponseOfOneDataNodeWithSuccessResult(
+      final TDataNodeLocation dataNodeLocation,
+      final List<TConsensusGroupId> consensusGroupIdList,
+      final TSStatus response) {
+    final List<TConsensusGroupId> failedRegionList = new ArrayList<>();
+    if (response.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      successResult.add(response);
+    } else if (response.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
+      List<TSStatus> subStatusList = response.getSubStatus();
+      for (int i = 0; i < subStatusList.size(); i++) {
+        if (subStatusList.get(i).getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          successResult.add(subStatusList.get(i));
+        } else {
+          failedRegionList.add(consensusGroupIdList.get(i));
+        }
+      }
+    } else {
+      failedRegionList.addAll(consensusGroupIdList);
+    }
+    if (!failedRegionList.isEmpty()) {
+      failureMap.put(dataNodeLocation, RpcUtils.extractFailureStatues(response));
+    } else {
+      failureMap.remove(dataNodeLocation);
+    }
+    return failedRegionList;
+  }
+
+  public List<TSStatus> getSuccessResult() {
+    return successResult;
   }
 }

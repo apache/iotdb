@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.procedure.impl.pipe.task;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.agent.task.PipeTaskAgent;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMeta;
@@ -30,6 +31,7 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.schema.SchemaConstant;
+import org.apache.iotdb.commons.schema.table.Audit;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.AlterPipePlanV2;
@@ -107,14 +109,18 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
                 PipeSourceConstant.EXTRACTOR_IOTDB_USER_KEY,
                 PipeSourceConstant.SOURCE_IOTDB_USER_KEY,
                 PipeSourceConstant.EXTRACTOR_IOTDB_USERNAME_KEY,
-                PipeSourceConstant.SOURCE_IOTDB_USERNAME_KEY);
+                PipeSourceConstant.SOURCE_IOTDB_USERNAME_KEY,
+                PipeSourceConstant.EXTRACTOR_IOTDB_PASSWORD_KEY,
+                PipeSourceConstant.SOURCE_IOTDB_PASSWORD_KEY);
     final boolean checkSink =
         new PipeParameters(alterPipeRequest.getConnectorAttributes())
             .hasAnyAttributes(
                 PipeSinkConstant.CONNECTOR_IOTDB_USER_KEY,
                 PipeSinkConstant.SINK_IOTDB_USER_KEY,
                 PipeSinkConstant.CONNECTOR_IOTDB_USERNAME_KEY,
-                PipeSinkConstant.SINK_IOTDB_USERNAME_KEY);
+                PipeSinkConstant.SINK_IOTDB_USERNAME_KEY,
+                PipeSinkConstant.CONNECTOR_IOTDB_PASSWORD_KEY,
+                PipeSinkConstant.SINK_IOTDB_PASSWORD_KEY);
 
     pipeTaskInfo.get().checkAndUpdateRequestBeforeAlterPipe(alterPipeRequest);
 
@@ -187,6 +193,8 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
                     && !databaseName.startsWith(SchemaConstant.SYSTEM_DATABASE + ".")
                     && !databaseName.equals(SchemaConstant.AUDIT_DATABASE)
                     && !databaseName.startsWith(SchemaConstant.AUDIT_DATABASE + ".")
+                    && !databaseName.equals(Audit.TABLE_MODEL_AUDIT_DATABASE)
+                    && !databaseName.startsWith(Audit.TABLE_MODEL_AUDIT_DATABASE + ".")
                     && !Objects.isNull(currentPipeTaskMeta)
                     && !(PipeTaskAgent.isHistoryOnlyPipe(
                             currentPipeStaticMeta.getSourceParameters())
@@ -202,7 +210,12 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
                   updatedConsensusGroupIdToTaskMetaMap.put(
                       regionGroupId.getId(),
                       new PipeTaskMeta(
-                          currentPipeTaskMeta.getProgressIndex(),
+                          PipeTaskAgent.isRealtimeOnlyPipe(
+                                      currentPipeStaticMeta.getSourceParameters())
+                                  && !PipeTaskAgent.isRealtimeOnlyPipe(
+                                      updatedPipeStaticMeta.getSourceParameters())
+                              ? MinimumProgressIndex.INSTANCE
+                              : currentPipeTaskMeta.getProgressIndex(),
                           PipeTaskMeta.isNewlyAdded(currentPipeTaskMeta.getLeaderNodeId())
                                   && !(!PipeTaskAgent.isHistoryOnlyPipe(
                                           currentPipeStaticMeta.getSourceParameters())

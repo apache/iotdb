@@ -25,6 +25,10 @@ import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
 import org.apache.iotdb.confignode.rpc.thrift.TDescTableResp;
 import org.apache.iotdb.consensus.common.DataSet;
 
+import org.apache.tsfile.enums.TSDataType;
+
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
@@ -32,12 +36,17 @@ public class DescTableResp implements DataSet {
   private final TSStatus status;
   private final TsTable table;
   private final Set<String> preDeletedColumns;
+  private final Map<String, TSDataType> preAlteredColumns;
 
   public DescTableResp(
-      final TSStatus status, final TsTable table, final Set<String> preDeletedColumns) {
+      final TSStatus status,
+      final TsTable table,
+      final Set<String> preDeletedColumns,
+      final Map<String, TSDataType> preAlteredColumns) {
     this.status = status;
     this.table = table;
     this.preDeletedColumns = preDeletedColumns;
+    this.preAlteredColumns = preAlteredColumns;
   }
 
   public TDescTableResp convertToTDescTableResp() {
@@ -47,6 +56,14 @@ public class DescTableResp implements DataSet {
                 Objects.nonNull(table)
                     ? TsTableInternalRPCUtil.serializeSingleTsTable(table)
                     : null);
-    return Objects.nonNull(preDeletedColumns) ? resp.setPreDeletedColumns(preDeletedColumns) : resp;
+    if (Objects.nonNull(preDeletedColumns)) {
+      resp.setPreDeletedColumns(preDeletedColumns);
+    }
+    if (Objects.nonNull(preAlteredColumns)) {
+      Map<String, Byte> preAlteredColumnsMap = new HashMap<>();
+      preAlteredColumns.forEach((col, type) -> preAlteredColumnsMap.put(col, type.serialize()));
+      resp.setPreAlteredColumns(preAlteredColumnsMap);
+    }
+    return resp;
   }
 }

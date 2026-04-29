@@ -167,7 +167,17 @@ public class IoTDBMaintainAuthIT {
     // case 12: show queries
     // non-root users can access its own queries
     expectedHeader =
-        new String[] {"query_id", "start_time", "datanode_id", "elapsed_time", "statement", "user"};
+        new String[] {
+          "query_id",
+          "start_time",
+          "datanode_id",
+          "elapsed_time",
+          "statement",
+          "user",
+          "wait_time_in_server",
+          "client_ip",
+          "timeout"
+        };
     tableQueryNoVerifyResultTest("show queries", expectedHeader, USER_2, PASSWORD);
 
     // case 13: kill query

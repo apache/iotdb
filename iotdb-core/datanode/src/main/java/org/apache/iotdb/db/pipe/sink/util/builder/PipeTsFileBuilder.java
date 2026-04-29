@@ -106,9 +106,7 @@ public abstract class PipeTsFileBuilder {
         return baseDir;
       }
       throw new PipeException(
-          String.format(
-              "Failed to create batch file dir %s. (Batch id = %s)",
-              baseDir.getPath(), currentBatchId.get()));
+          String.format("Failed to create batch file dir. (Batch id = %s)", currentBatchId.get()));
     }
   }
 

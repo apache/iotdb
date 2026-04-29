@@ -19,6 +19,8 @@
 import os
 from pathlib import Path
 
+import torch
+
 from iotdb.ainode.core.config import AINodeDescriptor
 from iotdb.ainode.core.log import Logger
 from iotdb.ainode.core.model.model_constants import ModelCategory
@@ -28,7 +30,7 @@ from iotdb.ainode.core.model.utils import import_class_from_path, temporary_sys_
 logger = Logger()
 
 
-def load_pipeline(model_info: ModelInfo, device: str, **model_kwargs):
+def load_pipeline(model_info: ModelInfo, device: torch.device, **model_kwargs):
     if model_info.model_type == "sktime":
         from iotdb.ainode.core.model.sktime.pipeline_sktime import SktimePipeline
 

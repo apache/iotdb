@@ -25,10 +25,11 @@ import java.util.List;
 import java.util.Objects;
 
 public class DeserializedBatchIndexedConsensusRequest
-    implements IConsensusRequest, Comparable<DeserializedBatchIndexedConsensusRequest> {
+    implements org.apache.iotdb.commons.request.IConsensusRequest,
+        Comparable<DeserializedBatchIndexedConsensusRequest> {
   private final long startSyncIndex;
   private final long endSyncIndex;
-  private final List<IConsensusRequest> insertNodes;
+  private final List<org.apache.iotdb.commons.request.IConsensusRequest> insertNodes;
   private long memorySize;
 
   public DeserializedBatchIndexedConsensusRequest(
@@ -47,11 +48,11 @@ public class DeserializedBatchIndexedConsensusRequest
     return endSyncIndex;
   }
 
-  public List<IConsensusRequest> getInsertNodes() {
+  public List<org.apache.iotdb.commons.request.IConsensusRequest> getInsertNodes() {
     return insertNodes;
   }
 
-  public void add(IConsensusRequest insertNode) {
+  public void add(org.apache.iotdb.commons.request.IConsensusRequest insertNode) {
     this.insertNodes.add(insertNode);
     this.memorySize += insertNode.getMemorySize();
   }

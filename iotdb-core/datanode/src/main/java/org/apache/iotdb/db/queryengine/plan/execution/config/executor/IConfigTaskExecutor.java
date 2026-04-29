@@ -24,6 +24,8 @@ import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSetConfigurationReq;
 import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.commons.queryengine.common.SessionInfo;
+import org.apache.iotdb.commons.queryengine.common.SqlDialect;
 import org.apache.iotdb.commons.schema.cache.CacheClearOptions;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
@@ -33,7 +35,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TSpaceQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TThrottleQuotaResp;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
-import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.ExtendRegionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.MigrateRegionTask;
@@ -46,6 +47,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCluster;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterEncodingCompressorStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountTimeSlotListStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateContinuousQueryStatement;
@@ -100,6 +102,7 @@ import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
 import com.google.common.util.concurrent.SettableFuture;
+import org.apache.tsfile.enums.TSDataType;
 
 import javax.annotation.Nullable;
 
@@ -256,6 +259,9 @@ public interface IConfigTaskExecutor {
   SettableFuture<ConfigTaskResult> alterLogicalView(
       AlterLogicalViewStatement alterLogicalViewStatement, MPPQueryContext context);
 
+  SettableFuture<ConfigTaskResult> alterTimeSeriesDataType(
+      String queryId, AlterTimeSeriesStatement alterTimeSeriesStatement);
+
   TSStatus alterLogicalViewByPipe(
       AlterLogicalViewNode alterLogicalViewNode, boolean shouldMarkAsPipeRequest);
 
@@ -310,6 +316,16 @@ public interface IConfigTaskExecutor {
 
   void handlePipeConfigClientExit(String clientId);
 
+  SettableFuture<ConfigTaskResult> createExternalService(String serviceName, String className);
+
+  SettableFuture<ConfigTaskResult> startExternalService(String serviceName);
+
+  SettableFuture<ConfigTaskResult> stopExternalService(String serviceName);
+
+  SettableFuture<ConfigTaskResult> dropExternalService(String serviceName, boolean forcedly);
+
+  SettableFuture<ConfigTaskResult> showExternalService(int dataNodeId);
+
   // =============================== table syntax =========================================
 
   SettableFuture<ConfigTaskResult> showDatabases(
@@ -356,6 +372,16 @@ public interface IConfigTaskExecutor {
       final String queryId,
       final boolean tableIfExists,
       final boolean columnIfExists,
+      final boolean isView);
+
+  SettableFuture<ConfigTaskResult> alterColumnDataType(
+      final String database,
+      final String tableName,
+      final String columnName,
+      final TSDataType newType,
+      final String queryId,
+      final boolean tableIfExists,
+      boolean ifColumnExists,
       final boolean isView);
 
   SettableFuture<ConfigTaskResult> alterTableRenameColumn(
@@ -420,7 +446,7 @@ public interface IConfigTaskExecutor {
 
   SettableFuture<ConfigTaskResult> showCurrentSqlDialect(String sqlDialect);
 
-  SettableFuture<ConfigTaskResult> setSqlDialect(IClientSession.SqlDialect sqlDialect);
+  SettableFuture<ConfigTaskResult> setSqlDialect(SqlDialect sqlDialect);
 
   SettableFuture<ConfigTaskResult> showCurrentUser(String currentUser);
 

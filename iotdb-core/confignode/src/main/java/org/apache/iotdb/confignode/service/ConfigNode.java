@@ -469,7 +469,7 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
     return new ConfigNodeRPCServiceProcessor(configManager);
   }
 
-  private void waitForLeaderElected() {
+  private TConfigNodeLocation waitForLeaderElected() {
     while (!configManager.getConsensusManager().isLeaderExist()) {
       LOGGER.info("Leader has not been elected yet, wait for 1 second");
       try {
@@ -479,6 +479,7 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
         LOGGER.warn("Unexpected interruption during waiting for leader election.");
       }
     }
+    return configManager.getConsensusManager().getLeaderLocation();
   }
 
   /**

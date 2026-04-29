@@ -19,14 +19,15 @@
 package org.apache.iotdb.db.queryengine.plan.relational.planner.node;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.IPlanVisitor;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -81,11 +82,11 @@ public class InformationSchemaTableScanNode extends TableScanNode {
     this.regionReplicaSet = regionReplicaSet;
   }
 
-  private InformationSchemaTableScanNode() {}
+  protected InformationSchemaTableScanNode() {}
 
   @Override
-  public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitInformationSchemaTableScan(this, context);
+  public <R, C> R accept(IPlanVisitor<R, C> visitor, C context) {
+    return ((PlanVisitor<R, C>) visitor).visitInformationSchemaTableScan(this, context);
   }
 
   @Override
@@ -102,15 +103,20 @@ public class InformationSchemaTableScanNode extends TableScanNode {
   }
 
   @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.INFORMATION_SCHEMA_TABLE_SCAN_NODE;
+  }
+
+  @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
-    PlanNodeType.INFORMATION_SCHEMA_TABLE_SCAN_NODE.serialize(byteBuffer);
+    getType().serialize(byteBuffer);
 
     TableScanNode.serializeMemberVariables(this, byteBuffer, true);
   }
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
-    PlanNodeType.INFORMATION_SCHEMA_TABLE_SCAN_NODE.serialize(stream);
+    getType().serialize(stream);
 
     TableScanNode.serializeMemberVariables(this, stream, true);
   }

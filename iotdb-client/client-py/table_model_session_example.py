@@ -158,5 +158,9 @@ with session.execute_query_statement("select * from table5 order by time") as da
     df = dataset.todf()
     print(df)
 
+with session.execute_query_statement("select * from table5 order by time") as dataset:
+    while dataset.has_next_df():
+        print(dataset.next_df())
+
 # close session connection.
 session.close()

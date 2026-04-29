@@ -2498,6 +2498,15 @@ public class IoTDBTableAggregationIT {
         DATABASE_NAME,
         2);
 
+    expectedHeader = new String[] {"device_id", "_col1"};
+    retArray = new String[] {"d01,0xcafebabe55,", "d02,0xcafebabe50,"};
+    repeatTest(
+        "select device_id, last(s8) from table1 where device_id = 'd01' or device_id = 'd02' group by device_id order by device_id",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME,
+        2);
+
     expectedHeader =
         new String[] {
           "_col0", "_col1", "_col2", "_col3", "_col4", "_col5", "_col6", "_col7", "_col8", "_col9",
@@ -4343,6 +4352,18 @@ public class IoTDBTableAggregationIT {
           "2024-09-24T06:15:55.000Z,shanghai,55,null,",
         },
         DATABASE_NAME);
+
+    tableResultSetEqualTest(
+        "select approx_percentile(s1,null,0.5) from table1",
+        new String[] {"_col0"},
+        new String[] {"null,"},
+        DATABASE_NAME);
+
+    tableResultSetEqualTest(
+        "select 1 as g, approx_percentile(s1,null,0.5) from table1 group by 1",
+        new String[] {"g", "_col1"},
+        new String[] {"1,null,"},
+        DATABASE_NAME);
   }
 
   @Test
@@ -4422,6 +4443,18 @@ public class IoTDBTableAggregationIT {
     tableAssertTestFail(
         "select approx_percentile(s5,0.5) from table1",
         "701: Aggregation functions [approx_percentile] should have value column as numeric type [INT32, INT64, FLOAT, DOUBLE, TIMESTAMP]",
+        DATABASE_NAME);
+    tableAssertTestFail(
+        "select approx_percentile(s1,-1,0.5) from table1",
+        "701: weight must be >= 1, was -1",
+        DATABASE_NAME);
+    tableAssertTestFail(
+        "select approx_percentile(s1,s2,0.5) from table1",
+        "701: Aggregation functions [approx_percentile] do not support weight as INT64 type",
+        DATABASE_NAME);
+    tableAssertTestFail(
+        "select 1 as g, approx_percentile(s1,s2,0.5) from table1 group by 1",
+        "701: Aggregation functions [approx_percentile] do not support weight as INT64 type",
         DATABASE_NAME);
   }
 

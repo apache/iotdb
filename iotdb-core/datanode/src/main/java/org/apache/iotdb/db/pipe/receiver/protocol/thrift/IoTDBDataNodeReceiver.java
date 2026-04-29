@@ -105,7 +105,6 @@ import org.apache.iotdb.db.storageengine.rescon.disk.FolderManager;
 import org.apache.iotdb.db.storageengine.rescon.disk.strategy.DirectoryStrategyType;
 import org.apache.iotdb.db.tools.schema.SRStatementGenerator;
 import org.apache.iotdb.db.tools.schema.SchemaRegionSnapshotParser;
-import org.apache.iotdb.db.utils.DataNodeAuthUtils;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -136,8 +135,8 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static org.apache.iotdb.commons.utils.ErrorHandlingCommonUtils.getRootCause;
 import static org.apache.iotdb.db.exception.metadata.DatabaseNotSetException.DATABASE_NOT_SET;
-import static org.apache.iotdb.db.utils.ErrorHandlingUtils.getRootCause;
 
 public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
 
@@ -647,10 +646,11 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
             .flatMap(parsedStatement -> batchVisitor.process(parsedStatement, null))
             .ifPresent(statement -> results.add(executeStatementAndClassifyExceptions(statement)));
       } else if (treeOrTableStatement
-          instanceof org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement) {
-        final org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement originalStatement =
-            (org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement)
-                treeOrTableStatement;
+          instanceof org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement) {
+        final org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement
+            originalStatement =
+                (org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement)
+                    treeOrTableStatement;
 
         if (!executionTypes.contains(StatementType.AUTO_CREATE_DEVICE_MNODE)) {
           continue;
@@ -700,7 +700,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
         ? new TPipeTransferResp(executeStatementAndClassifyExceptions((Statement) statement))
         : new TPipeTransferResp(
             executeStatementForTableModelWithPermissionCheck(
-                (org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement) statement,
+                (org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement) statement,
                 null));
   }
 
@@ -830,17 +830,20 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
 
       final TSStatus result =
           executeStatementWithPermissionCheckAndRetryOnDataTypeMismatch(statement);
-      if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-          || result.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+      final int code = result.getCode();
+      if (code == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+          || code == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
         return result;
       } else {
-        PipeLogger.log(
-            LOGGER::warn,
-            "Receiver id = %s: Failure status encountered while executing statement %s: %s",
-            receiverId.get(),
-            statement.getPipeLoggingString(),
-            result);
-        return statement.accept(STATEMENT_STATUS_VISITOR, result);
+        if (code != TSStatusCode.OUT_OF_TTL.getStatusCode()) {
+          PipeLogger.log(
+              LOGGER::warn,
+              "Receiver id = %s: Failure status encountered while executing statement %s: %s",
+              receiverId.get(),
+              statement.getPipeLoggingString(),
+              result);
+        }
+        return STATEMENT_STATUS_VISITOR.process(statement, result);
       }
     } catch (final Exception e) {
       PipeLogger.log(
@@ -849,7 +852,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
           "Receiver id = %s: Exception encountered while executing statement %s: ",
           receiverId.get(),
           statement.getPipeLoggingString());
-      return statement.accept(STATEMENT_EXCEPTION_VISITOR, e);
+      return STATEMENT_EXCEPTION_VISITOR.process(statement, e);
     } finally {
       if (Objects.nonNull(allocatedMemoryBlock)) {
         allocatedMemoryBlock.close();
@@ -952,14 +955,6 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       return RpcUtils.getStatus(openSessionResp.getCode(), openSessionResp.getMessage());
     }
 
-    long userId = AuthorityChecker.getUserId(username).orElse(-1L);
-    Long timeToExpire = DataNodeAuthUtils.checkPasswordExpiration(userId, password);
-    if (timeToExpire != null && timeToExpire <= System.currentTimeMillis()) {
-      return RpcUtils.getStatus(
-          TSStatusCode.ILLEGAL_PASSWORD.getStatusCode(),
-          "Password has expired, please use \"ALTER USER\" to change to a new one");
-    }
-
     return AuthorityChecker.checkUser(username, password);
   }
 
@@ -1050,12 +1045,13 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
             ClusterPartitionFetcher.getInstance(),
             ClusterSchemaFetcher.getInstance(),
             IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold(),
-            false)
+            false,
+            statement.isDebug())
         .status;
   }
 
   private TSStatus executeStatementForTableModelWithPermissionCheck(
-      final org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement statement,
+      final org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement statement,
       final String databaseName) {
     try {
       final TSStatus status = loginIfNecessary();
@@ -1075,7 +1071,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
                   "",
                   LocalExecutionPlanner.getInstance().metadata,
                   IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold(),
-                  false)
+                  false,
+                  statement.isDebug())
               .status;
 
       // Delete data & Update device attribute is itself idempotent

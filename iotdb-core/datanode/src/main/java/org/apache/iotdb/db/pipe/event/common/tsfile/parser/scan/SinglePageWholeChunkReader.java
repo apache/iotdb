@@ -43,7 +43,7 @@ public class SinglePageWholeChunkReader extends AbstractChunkReader {
   private final EncryptParameter encryptParam;
 
   public SinglePageWholeChunkReader(Chunk chunk) throws IOException {
-    super(Long.MIN_VALUE, null);
+    super(Long.MIN_VALUE, null, null);
 
     this.chunkHeader = chunk.getHeader();
     this.chunkDataBuffer = chunk.getData();

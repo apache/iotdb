@@ -20,12 +20,14 @@
 package org.apache.iotdb.pipe.it.single;
 
 import org.apache.iotdb.db.it.utils.TestUtils;
+import org.apache.iotdb.it.env.MultiEnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT1;
 import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.pipe.it.dual.tablemodel.TableModelUtils;
 
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -41,6 +43,23 @@ import static org.junit.Assert.fail;
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT1.class})
 public class IoTDBPipePermissionIT extends AbstractPipeSingleIT {
+
+  @Before
+  public void setUp() {
+    MultiEnvFactory.createEnv(1);
+    env = MultiEnvFactory.getEnv(0);
+    env.getConfig()
+        .getCommonConfig()
+        .setAutoCreateSchemaEnabled(true)
+        .setPipeMemoryManagementEnabled(false)
+        .setDataReplicationFactor(1)
+        .setSchemaReplicationFactor(1)
+        .setIsPipeEnableMemoryCheck(false)
+        .setPipeAutoSplitFullEnabled(false);
+    // 1C1D to directly show the remaining count
+    env.initClusterEnvironment(1, 1);
+  }
+
   @Test
   public void testSinkPermission() {
     TestUtils.executeNonQuery(env, "create user `thulab` 'StrngPsWd@623451'", null);
@@ -165,6 +184,38 @@ public class IoTDBPipePermissionIT extends AbstractPipeSingleIT {
       Assert.assertFalse(result.next());
     } catch (Exception e) {
       fail(e.getMessage());
+    }
+
+    // Tree model
+    try (final Connection connection = env.getConnection();
+        final Statement statement = connection.createStatement()) {
+      statement.execute("CREATE DATABASE root.test_sink");
+      statement.execute(
+          "CREATE ALIGNED TIMESERIES root.test_sink.d1(s_int INT32,s_long INT64,s_float float,s_double double)");
+      statement.execute(
+          "INSERT INTO root.test_sink.d1(time,s_int,s_long,s_float,s_double) VALUES (2025-01-01 03:50:14,1,1,1,1),(2025-01-01 03:50:30,12,14,16.24,18.5),(2025-01-01 03:51:45,22,24,26.24,28.5),(2025-01-01 03:51:59,32,34,36.46,38.6),(2025-01-01 03:52:00,10,14,16.46,18.6)");
+      statement.execute("CREATE USER user_new 'paSs1234@56789'");
+      // Do not grant SYSTEM privilege to avoid auto creation
+      statement.execute("GRANT write ON root.** TO USER user_new");
+      statement.execute(
+          "create pipe user_sink_pipe with source ('pattern'='root.test_sink.d1') with processor ('processor'='aggregate-processor', 'output.database'='root.user_sink_db', 'operators'='avg') with sink ('sink'='write-back-sink','user'='user_new','password'='paSs1234@56789')");
+
+      final long startTime = System.currentTimeMillis();
+      while (System.currentTimeMillis() - startTime <= 20_000L) {
+        try (final ResultSet set = statement.executeQuery("show pipe user_sink_pipe")) {
+          Assert.assertTrue(set.next());
+          try {
+            Assert.assertEquals("0", set.getString(8));
+            return;
+          } catch (final Throwable t) {
+            // Retry
+          }
+        }
+      }
+      Assert.fail();
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail();
     }
   }
 

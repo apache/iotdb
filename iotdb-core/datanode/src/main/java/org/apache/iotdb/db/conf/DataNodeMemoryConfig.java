@@ -64,7 +64,8 @@ public class DataNodeMemoryConfig {
   private int queryThreadCount = Runtime.getRuntime().availableProcessors();
 
   /** Max bytes of each FragmentInstance for DataExchange */
-  private long maxBytesPerFragmentInstance = Runtime.getRuntime().maxMemory() * 3 / 10 * 200 / 1001;
+  private long maxBytesPerFragmentInstance =
+      Runtime.getRuntime().maxMemory() * 3 / 10 * 200 / 1001 / queryThreadCount;
 
   /** The memory manager of on heap */
   private MemoryManager onHeapMemoryManager;
@@ -410,13 +411,7 @@ public class DataNodeMemoryConfig {
         Boolean.parseBoolean(
             properties.getProperty(
                 "meta_data_cache_enable", Boolean.toString(isMetaDataCacheEnable()))));
-    setQueryThreadCount(
-        Integer.parseInt(
-            properties.getProperty("query_thread_count", Integer.toString(getQueryThreadCount()))));
 
-    if (getQueryThreadCount() <= 0) {
-      setQueryThreadCount(Runtime.getRuntime().availableProcessors());
-    }
     try {
       // update enable query memory estimation for memory control
       setEnableQueryMemoryEstimation(
@@ -485,8 +480,6 @@ public class DataNodeMemoryConfig {
       dataExchangeMemorySize += partForDataExchange;
       operatorsMemorySize += partForOperators;
     }
-    // set max bytes per fragment instance
-    setMaxBytesPerFragmentInstance(dataExchangeMemorySize);
 
     bloomFilterCacheMemoryManager =
         queryEngineMemoryManager.getOrCreateMemoryManager(
@@ -504,6 +497,11 @@ public class DataNodeMemoryConfig {
         queryEngineMemoryManager.getOrCreateMemoryManager("DataExchange", dataExchangeMemorySize);
     timeIndexMemoryManager =
         queryEngineMemoryManager.getOrCreateMemoryManager("TimeIndex", timeIndexMemorySize);
+
+    // must be called after dataExchangeMemoryManager being inited.
+    setQueryThreadCount(
+        Integer.parseInt(
+            properties.getProperty("query_thread_count", Integer.toString(getQueryThreadCount()))));
   }
 
   public double getRejectProportion() {
@@ -572,7 +570,6 @@ public class DataNodeMemoryConfig {
       queryThreadCount = Runtime.getRuntime().availableProcessors();
     }
     this.queryThreadCount = queryThreadCount;
-    // TODO @spricoder: influence dynamic change of memory size
     if (getDataExchangeMemoryManager() != null) {
       this.maxBytesPerFragmentInstance =
           getDataExchangeMemoryManager().getTotalMemorySizeInBytes() / queryThreadCount;

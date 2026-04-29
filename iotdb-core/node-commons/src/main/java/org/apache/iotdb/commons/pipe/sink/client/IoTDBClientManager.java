@@ -58,7 +58,7 @@ public abstract class IoTDBClientManager {
   private static final int MAX_CONNECTION_TIMEOUT_MS = 24 * 60 * 60 * 1000; // 1 day
   private static final int FIRST_ADJUSTMENT_TIMEOUT_MS = 6 * 60 * 60 * 1000; // 6 hours
   protected static final AtomicInteger CONNECTION_TIMEOUT_MS =
-      new AtomicInteger(PipeConfig.getInstance().getPipeConnectorTransferTimeoutMs());
+      new AtomicInteger(PipeConfig.getInstance().getPipeSinkTransferTimeoutMs());
 
   protected IoTDBClientManager(
       final List<TEndPoint> endPointList,

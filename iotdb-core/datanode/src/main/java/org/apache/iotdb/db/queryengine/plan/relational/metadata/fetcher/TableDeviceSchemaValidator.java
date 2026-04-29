@@ -19,10 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher;
 
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
-import org.apache.iotdb.commons.schema.table.TsTable;
-import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
@@ -244,6 +242,7 @@ public class TableDeviceSchemaValidator {
             LocalExecutionPlanner.getInstance().metadata,
             // Never timeout for write statement
             Long.MAX_VALUE,
+            false,
             false);
     if (executionResult.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new IoTDBRuntimeException(
@@ -252,16 +251,7 @@ public class TableDeviceSchemaValidator {
   }
 
   public static void checkObject4DeviceId(final Object[] deviceId) {
-    if (!CommonDescriptor.getInstance().getConfig().isRestrictObjectLimit()) {
-      return;
-    }
-    for (final Object part : deviceId) {
-      final String value = (String) part;
-      if (Objects.nonNull(value) && TsTable.isInvalid4ObjectType(value)) {
-        throw new SemanticException(
-            TsTable.getObjectStringError("deviceId", Arrays.toString(deviceId)));
-      }
-    }
+    throw new SemanticException("The object type column is not supported.");
   }
 
   private static class ValidateResult {

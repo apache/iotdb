@@ -19,10 +19,10 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.last;
 
-import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
-import org.apache.iotdb.db.queryengine.execution.operator.Operator;
+import org.apache.iotdb.calc.execution.operator.Operator;
+import org.apache.iotdb.calc.execution.operator.process.ProcessOperator;
+import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
-import org.apache.iotdb.db.queryengine.execution.operator.process.ProcessOperator;
 
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
@@ -112,12 +112,10 @@ public class LastQueryOperator implements ProcessOperator {
         && !tsBlockBuilder.isFull()) {
       if (children.get(currentIndex).hasNextWithTimer()) {
         TsBlock tsBlock = children.get(currentIndex).nextWithTimer();
-        if (tsBlock == null) {
-          return null;
-        } else if (!tsBlock.isEmpty()) {
+        if (tsBlock != null && !tsBlock.isEmpty()) {
           LastQueryUtil.appendLastValue(tsBlockBuilder, tsBlock);
-          return null;
         }
+        return null;
       } else {
         children.get(currentIndex).close();
         children.set(currentIndex, null);

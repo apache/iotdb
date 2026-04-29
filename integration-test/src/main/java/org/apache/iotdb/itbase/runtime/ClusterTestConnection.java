@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.itbase.runtime;
 
+import org.apache.iotdb.it.env.cluster.env.AbstractEnv;
+
 import org.apache.tsfile.external.commons.lang3.Validate;
 
 import java.sql.Array;
@@ -43,20 +45,24 @@ import java.util.concurrent.Executor;
 /** The implementation of {@link Connection} in cluster test. */
 public class ClusterTestConnection implements Connection {
 
+  public final AbstractEnv env;
   public final NodeConnection writeConnection;
   public final List<NodeConnection> readConnections;
   private boolean isClosed;
 
   public ClusterTestConnection(
-      NodeConnection writeConnection, List<NodeConnection> readConnections) {
+      final NodeConnection writeConnection,
+      final List<NodeConnection> readConnections,
+      final AbstractEnv env) {
     Validate.notNull(readConnections);
     this.writeConnection = writeConnection;
     this.readConnections = readConnections;
+    this.env = env;
   }
 
   @Override
   public Statement createStatement() throws SQLException {
-    return new ClusterTestStatement(writeConnection, readConnections);
+    return new ClusterTestStatement(writeConnection, readConnections, env);
   }
 
   @Override

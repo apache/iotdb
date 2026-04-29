@@ -55,7 +55,7 @@ public class IoTDBStatement implements Statement {
 
   private final IoTDBConnection connection;
 
-  private ResultSet resultSet = null;
+  protected ResultSet resultSet = null;
   private int fetchSize;
   private int maxRows = 0;
 
@@ -66,7 +66,7 @@ public class IoTDBStatement implements Statement {
    * Timeout of query can be set by users. Unit: s. A negative number means using the default
    * configuration of server. And value 0 will disable the function of query timeout.
    */
-  private int queryTimeout = -1;
+  protected int queryTimeout = -1;
 
   protected IClientRPCService.Iface client;
   private List<String> batchSQLList;
@@ -82,7 +82,7 @@ public class IoTDBStatement implements Statement {
   /** Add SQLWarnings to the warningChain if needed. */
   private SQLWarning warningChain = null;
 
-  private long sessionId;
+  protected long sessionId;
   private long stmtId = -1;
   private long queryId = -1;
 

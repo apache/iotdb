@@ -21,14 +21,19 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.queryengine.common.SessionInfo;
+import org.apache.iotdb.commons.queryengine.common.SqlDialect;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
+import org.apache.iotdb.commons.queryengine.plan.relational.type.InternalTypeManager;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
+import org.apache.iotdb.db.queryengine.common.MPPQueryContext.ExplainType;
 import org.apache.iotdb.db.queryengine.common.QueryId;
-import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analyzer;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.StatementAnalyzerFactory;
@@ -37,13 +42,12 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestMetadata;
 import org.apache.iotdb.db.queryengine.plan.relational.execution.querystats.PlanOptimizersStatsCollector;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.TableDistributedPlanner;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.PredicateWithUncorrelatedScalarSubqueryReconstructor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.DataNodeLocationSupplierFactory;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PlanOptimizer;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AllowAllAccessControl;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.rewrite.StatementRewriteFactory;
-import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 
 import com.google.common.collect.ImmutableList;
 import org.mockito.Mockito;
@@ -66,7 +70,7 @@ public class PlanTester {
           ZoneId.systemDefault(),
           IoTDBConstant.ClientVersion.V_1_0,
           "db",
-          IClientSession.SqlDialect.TABLE);
+          SqlDialect.TABLE);
   private final Metadata metadata;
 
   private DistributedQueryPlan distributedQueryPlan;
@@ -99,23 +103,47 @@ public class PlanTester {
 
   public PlanTester(Metadata metadata) {
     this.metadata = metadata;
+    IoTDBDescriptor.getInstance().getConfig().setDataNodeId(1);
   }
 
   public LogicalQueryPlan createPlan(String sql) {
-    return createPlan(sessionInfo, sql, NOOP, createPlanOptimizersStatsCollector());
+    return createPlan(sessionInfo, sql, NOOP, createPlanOptimizersStatsCollector(), false, null);
+  }
+
+  public LogicalQueryPlan createPlan(
+      String sql,
+      PredicateWithUncorrelatedScalarSubqueryReconstructor
+          predicateWithUncorrelatedScalarSubqueryReconstructor) {
+    return createPlan(
+        sessionInfo,
+        sql,
+        NOOP,
+        createPlanOptimizersStatsCollector(),
+        false,
+        predicateWithUncorrelatedScalarSubqueryReconstructor);
+  }
+
+  public LogicalQueryPlan createPlan(String sql, boolean explain) {
+    return createPlan(sessionInfo, sql, NOOP, createPlanOptimizersStatsCollector(), explain, null);
   }
 
   public LogicalQueryPlan createPlan(SessionInfo sessionInfo, String sql) {
-    return createPlan(sessionInfo, sql, NOOP, createPlanOptimizersStatsCollector());
+    return createPlan(sessionInfo, sql, NOOP, createPlanOptimizersStatsCollector(), false, null);
   }
 
   public LogicalQueryPlan createPlan(
       SessionInfo sessionInfo,
       String sql,
       WarningCollector warningCollector,
-      PlanOptimizersStatsCollector planOptimizersStatsCollector) {
+      PlanOptimizersStatsCollector planOptimizersStatsCollector,
+      boolean explain,
+      PredicateWithUncorrelatedScalarSubqueryReconstructor
+          predicateWithUncorrelatedScalarSubqueryReconstructor) {
     distributedQueryPlan = null;
     MPPQueryContext context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
+    if (explain) {
+      context.setExplainType(ExplainType.EXPLAIN);
+    }
 
     Analysis analysis = analyze(sql, metadata, context);
     this.analysis = analysis;
@@ -124,10 +152,18 @@ public class PlanTester {
     TableLogicalPlanner logicalPlanner =
         new TableLogicalPlanner(
             context, metadata, sessionInfo, symbolAllocator, WarningCollector.NOOP);
+    if (predicateWithUncorrelatedScalarSubqueryReconstructor != null) {
+      logicalPlanner.setPredicateWithUncorrelatedScalarSubqueryReconstructor(
+          predicateWithUncorrelatedScalarSubqueryReconstructor);
+    }
 
     plan = logicalPlanner.plan(analysis);
 
     return plan;
+  }
+
+  public Analysis getAnalysis() {
+    return analysis;
   }
 
   public LogicalQueryPlan createPlan(
@@ -160,8 +196,7 @@ public class PlanTester {
     Mockito.when(clientSession.getDatabaseName()).thenReturn(databaseName);
     Statement statement = sqlParser.createStatement(sql, ZoneId.systemDefault(), clientSession);
     SessionInfo session =
-        new SessionInfo(
-            0, "test", ZoneId.systemDefault(), databaseName, IClientSession.SqlDialect.TABLE);
+        new SessionInfo(0, "test", ZoneId.systemDefault(), databaseName, SqlDialect.TABLE);
     return analyzeStatement(statement, metadata, context, sqlParser, session);
   }
 

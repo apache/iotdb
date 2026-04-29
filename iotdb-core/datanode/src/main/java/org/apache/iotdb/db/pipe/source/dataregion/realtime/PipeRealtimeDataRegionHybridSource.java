@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.source.dataregion.realtime;
 
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeNonCriticalException;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.event.common.deletion.PipeDeleteDataNodeEvent;
@@ -57,7 +58,7 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
     } else if (eventToExtract instanceof PipeHeartbeatEvent) {
       extractHeartbeat(event);
     } else if (eventToExtract instanceof PipeDeleteDataNodeEvent) {
-      extractDirectly(event);
+      pendingQueue.offer(event);
     } else {
       throw new UnsupportedOperationException(
           String.format(
@@ -82,7 +83,8 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
     if (canNotUseTabletAnymore(event)) {
       event.getTsFileEpoch().migrateState(this, curState -> TsFileEpoch.State.USING_TSFILE);
       PipeTsFileEpochProgressIndexKeeper.getInstance()
-          .registerProgressIndex(dataRegionId, pipeName, event.getTsFileEpoch().getResource());
+          .registerProgressIndex(
+              dataRegionId, getTsFileDedupScopeID(), event.getTsFileEpoch().getResource());
     } else {
       event
           .getTsFileEpoch()
@@ -115,21 +117,7 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
         if (state == TsFileEpoch.State.USING_BOTH) {
           event.skipReportOnCommit();
         }
-        if (!pendingQueue.waitedOffer(event)) {
-          // This would not happen, but just in case.
-          // pendingQueue is unbounded, so it should never reach capacity.
-          final String errorMessage =
-              String.format(
-                  "extractTabletInsertion: pending queue of PipeRealtimeDataRegionHybridExtractor %s "
-                      + "has reached capacity, discard tablet event %s, current state %s",
-                  this, event, event.getTsFileEpoch().getState(this));
-          LOGGER.error(errorMessage);
-          PipeDataNodeAgent.runtime()
-              .report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
-
-          // Ignore the tablet event.
-          event.decreaseReferenceCount(PipeRealtimeDataRegionHybridSource.class.getName(), false);
-        }
+        pendingQueue.offer(event);
         break;
       default:
         throw new UnsupportedOperationException(
@@ -169,27 +157,14 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
       case USING_TABLET:
         // If the state is USING_TABLET, discard the event
         PipeTsFileEpochProgressIndexKeeper.getInstance()
-            .eliminateProgressIndex(dataRegionId, pipeName, event.getTsFileEpoch().getFilePath());
+            .eliminateProgressIndex(
+                dataRegionId, getTsFileDedupScopeID(), event.getTsFileEpoch().getFilePath());
         event.decreaseReferenceCount(PipeRealtimeDataRegionHybridSource.class.getName(), false);
         return;
       case EMPTY:
       case USING_TSFILE:
       case USING_BOTH:
-        if (!pendingQueue.waitedOffer(event)) {
-          // This would not happen, but just in case.
-          // pendingQueue is unbounded, so it should never reach capacity.
-          final String errorMessage =
-              String.format(
-                  "extractTsFileInsertion: pending queue of PipeRealtimeDataRegionHybridExtractor %s "
-                      + "has reached capacity, discard TsFile event %s, current state %s",
-                  this, event, event.getTsFileEpoch().getState(this));
-          LOGGER.error(errorMessage);
-          PipeDataNodeAgent.runtime()
-              .report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
-
-          // Ignore the tsfile event.
-          event.decreaseReferenceCount(PipeRealtimeDataRegionHybridSource.class.getName(), false);
-        }
+        pendingQueue.offer(event);
         break;
       default:
         throw new UnsupportedOperationException(
@@ -205,11 +180,22 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
     final long floatingMemoryUsageInByte =
         PipeDataNodeAgent.task().getFloatingMemoryUsageInByte(pipeName);
     final long pipeCount = PipeDataNodeAgent.task().getPipeCount();
-    final long totalFloatingMemorySizeInBytes =
+    long totalFloatingMemorySizeInBytes =
         PipeDataNodeResourceManager.memory().getTotalFloatingMemorySizeInBytes();
+    // If the occupied memory has reached the max, it may cause a large latency to the receiver due
+    // to queuing. To reduce the latency, we lower the memory limit forcibly in the single tsFile
+    // since the tsFile is doomed to be transferred, then more downgrading will just cause more
+    // latency to a few points and will greatly reduce the incoming latencies.
+    if (PipeConfig.getInstance().getPipeRealtimeForceDowngradingEnabled()
+        && !event.maySourceOnlyUseTablets(this)) {
+      totalFloatingMemorySizeInBytes =
+          (long)
+              ((double) totalFloatingMemorySizeInBytes
+                  * PipeConfig.getInstance().getPipeRealtimeForceDowngradingProportion());
+    }
     final boolean mayInsertNodeMemoryReachDangerousThreshold =
         floatingMemoryUsageInByte * pipeCount >= totalFloatingMemorySizeInBytes;
-    if (mayInsertNodeMemoryReachDangerousThreshold && event.mayExtractorUseTablets(this)) {
+    if (mayInsertNodeMemoryReachDangerousThreshold && event.maySourceOnlyUseTablets(this)) {
       final PipeDataNodeRemainingEventAndTimeOperator operator =
           PipeDataNodeSinglePipeMetrics.getInstance().remainingEventAndTimeOperatorMap.get(pipeID);
       LOGGER.info(
@@ -231,7 +217,7 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
     PipeRealtimeEvent realtimeEvent = (PipeRealtimeEvent) pendingQueue.directPoll();
 
     while (realtimeEvent != null) {
-      final Event suppliedEvent;
+      Event suppliedEvent;
 
       // Used to judge the type of the event, not directly for supplying.
       final Event eventToSupply = realtimeEvent.getEvent();
@@ -255,6 +241,7 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
           PipeRealtimeDataRegionHybridSource.class.getName(), false);
 
       if (suppliedEvent != null) {
+        suppliedEvent = assignReplicateIndexIfNeeded(realtimeEvent, suppliedEvent);
         maySkipIndex4Event(realtimeEvent);
         return suppliedEvent;
       }
@@ -299,7 +286,8 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
       PipeDataNodeAgent.runtime()
           .report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
       PipeTsFileEpochProgressIndexKeeper.getInstance()
-          .eliminateProgressIndex(dataRegionId, pipeName, event.getTsFileEpoch().getFilePath());
+          .eliminateProgressIndex(
+              dataRegionId, getTsFileDedupScopeID(), event.getTsFileEpoch().getFilePath());
       return null;
     }
   }

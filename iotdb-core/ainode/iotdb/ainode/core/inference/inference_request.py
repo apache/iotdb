@@ -49,21 +49,20 @@ class InferenceRequest:
         self.model_id = model_id
         self.inputs = inputs
         self.infer_kwargs = infer_kwargs
-        self.output_length = (
-            output_length  # Number of time series data points to generate
-        )
+        self.output_length = output_length
 
         self.batch_size = inputs.size(0)
-        self.variable_size = inputs.size(1)
+        self.target_count = inputs.size(1)
+        self.input_length = inputs.size(2)
         self.state = InferenceRequestState.WAITING
         self.cur_step_idx = 0  # Current write position in the output step index
         self.assigned_pool_id = -1  # The pool handling this request
         self.assigned_device_id = -1  # The device handling this request
 
-        # Preallocate output buffer [batch_size, max_new_tokens]
+        # Preallocate output buffer [batch_size, target_count, output_length]
         self.output_tensor = torch.zeros(
-            self.batch_size, self.variable_size, output_length, device="cpu"
-        )  # shape: [batch_size, target_count, predict_length]
+            self.batch_size, self.target_count, output_length, device="cpu"
+        )
 
     def mark_running(self):
         self.state = InferenceRequestState.RUNNING
@@ -81,7 +80,7 @@ class InferenceRequest:
         while step_output.ndim < 3:
             step_output = step_output.unsqueeze(0)
 
-        batch_size, variable_size, step_size = step_output.shape
+        batch_size, target_count, step_size = step_output.shape
         end_idx = self.cur_step_idx + step_size
 
         if end_idx > self.output_length:

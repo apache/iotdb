@@ -348,9 +348,17 @@ public class ModificationFile implements AutoCloseable {
 
   public static ModificationFile getExclusiveMods(TsFileResource tsFileResource) {
     String tsFilePath = tsFileResource.getTsFilePath();
+    File tsfile = tsFileResource.getTsFile();
+    String tsFileName = tsfile.getName();
+    int index = tsFileName.indexOf(IoTDBConstant.PATH_SEPARATOR);
     // replace the temp suffix with the final name
-    tsFilePath = tsFilePath.replace(IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX, TSFILE_SUFFIX);
-    tsFilePath = tsFilePath.replace(IoTDBConstant.CROSS_COMPACTION_TMP_FILE_SUFFIX, TSFILE_SUFFIX);
+    if (index != -1) {
+      String parent = tsfile.getParent();
+      tsFilePath =
+          (parent != null ? (parent + File.separator) : "")
+              + tsFileName.substring(0, index)
+              + TSFILE_SUFFIX;
+    }
     return new ModificationFile(tsFilePath + FILE_SUFFIX, true);
   }
 

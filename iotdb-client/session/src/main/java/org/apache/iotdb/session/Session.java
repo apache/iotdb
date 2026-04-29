@@ -470,6 +470,7 @@ public class Session implements ISession {
     this.zoneId = builder.zoneId;
     this.thriftDefaultBufferSize = builder.thriftDefaultBufferSize;
     this.thriftMaxFrameSize = builder.thriftMaxFrameSize;
+    this.connectionTimeoutInMs = builder.connectionTimeoutInMs;
     this.version = builder.version;
     this.useSSL = builder.useSSL;
     this.trustStore = builder.trustStore;
@@ -1161,8 +1162,7 @@ public class Session implements ISession {
   @Override
   public SessionDataSet executeLastDataQuery(List<String> paths)
       throws StatementExecutionException, IoTDBConnectionException {
-    long time = 0L;
-    return executeLastDataQuery(paths, time, queryTimeoutInMs);
+    return executeLastDataQuery(paths, Long.MIN_VALUE, queryTimeoutInMs);
   }
 
   @Override

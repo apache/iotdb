@@ -27,11 +27,13 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.SchemaConstant;
+import org.apache.iotdb.commons.schema.table.Audit;
 import org.apache.iotdb.commons.schema.table.NonCommittableTsTable;
 import org.apache.iotdb.commons.schema.table.TableNodeStatus;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
+import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.schema.template.Template;
@@ -63,6 +65,7 @@ import org.apache.iotdb.confignode.consensus.request.write.database.SetDataRepli
 import org.apache.iotdb.confignode.consensus.request.write.database.SetSchemaReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.PreAlterColumnDataTypePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableColumnCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.SetViewCommentPlan;
@@ -179,7 +182,8 @@ public class ClusterSchemaManager {
       clusterSchemaInfo.isDatabaseNameValid(
           schema.getName(), schema.isSetIsTableModel() && schema.isIsTableModel());
       if (!schema.getName().equals(SchemaConstant.SYSTEM_DATABASE)
-          && !schema.getName().equals(SchemaConstant.AUDIT_DATABASE)) {
+          && !schema.getName().equals(SchemaConstant.AUDIT_DATABASE)
+          && !schema.getName().equals(Audit.TABLE_MODEL_AUDIT_DATABASE)) {
         clusterSchemaInfo.checkDatabaseLimit();
       }
       // Cache DatabaseSchema
@@ -488,7 +492,8 @@ public class ClusterSchemaManager {
     for (final TDatabaseSchema databaseSchema : databaseSchemaMap.values()) {
       if (!isDatabaseExist(databaseSchema.getName())
           || databaseSchema.getName().equals(SchemaConstant.SYSTEM_DATABASE)
-          || databaseSchema.getName().equals(SchemaConstant.AUDIT_DATABASE)) {
+          || databaseSchema.getName().equals(SchemaConstant.AUDIT_DATABASE)
+          || databaseSchema.getName().equals(Audit.TABLE_MODEL_AUDIT_DATABASE)) {
         // filter the pre deleted database and the system database
         databaseNum--;
       }
@@ -498,7 +503,8 @@ public class ClusterSchemaManager {
         new AdjustMaxRegionGroupNumPlan();
     for (final TDatabaseSchema databaseSchema : databaseSchemaMap.values()) {
       if (databaseSchema.getName().equals(SchemaConstant.SYSTEM_DATABASE)
-          || databaseSchema.getName().equals(SchemaConstant.AUDIT_DATABASE)) {
+          || databaseSchema.getName().equals(SchemaConstant.AUDIT_DATABASE)
+          || databaseSchema.getName().equals(Audit.TABLE_MODEL_AUDIT_DATABASE)) {
         // filter the system database
         continue;
       }
@@ -828,7 +834,9 @@ public class ClusterSchemaManager {
     TSStatus errorResp = null;
     final boolean isSystemDatabase =
         databaseSchema.getName().equals(SchemaConstant.SYSTEM_DATABASE);
-    final boolean isAuditDatabase = databaseSchema.getName().equals(SchemaConstant.AUDIT_DATABASE);
+    final boolean isAuditDatabase =
+        databaseSchema.getName().equals(SchemaConstant.AUDIT_DATABASE)
+            || databaseSchema.getName().equals(Audit.TABLE_MODEL_AUDIT_DATABASE);
 
     if (databaseSchema.getTTL() < 0) {
       errorResp =
@@ -1354,7 +1362,7 @@ public class ClusterSchemaManager {
       return result.get();
     }
 
-    final TsTable expandedTable = TsTable.deserialize(ByteBuffer.wrap(originalTable.serialize()));
+    final TsTable expandedTable = new TsTable(originalTable);
 
     final String errorMsg =
         String.format(
@@ -1384,6 +1392,43 @@ public class ClusterSchemaManager {
       expandedTable.checkTableNameAndObjectNames4Object();
     }
     return new Pair<>(StatusUtils.OK, expandedTable);
+  }
+
+  public synchronized Pair<TSStatus, TsTable> tableColumnCheckForColumnAltering(
+      final String database,
+      final String tableName,
+      final String columnName,
+      final TSDataType dataType,
+      final boolean isGeneratedByPipe)
+      throws MetadataException {
+    final TsTable originalTable = getTableIfExists(database, tableName).orElse(null);
+
+    if (Objects.isNull(originalTable)) {
+      return new Pair<>(
+          RpcUtils.getStatus(
+              TSStatusCode.TABLE_NOT_EXISTS,
+              String.format("Table '%s.%s' does not exist", database, tableName)),
+          null);
+    }
+
+    TSStatus tsStatus =
+        executePlan(
+            new PreAlterColumnDataTypePlan(database, tableName, columnName, dataType),
+            isGeneratedByPipe);
+    if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return new Pair<>(tsStatus, null);
+    }
+
+    final TsTable alteredTable = new TsTable(originalTable);
+    TsTableColumnSchema tsTableColumnSchema = alteredTable.getColumnSchema(columnName);
+    tsTableColumnSchema.setDataType(dataType);
+    if (tsTableColumnSchema instanceof FieldColumnSchema) {
+      FieldColumnSchema fieldColumnSchema = ((FieldColumnSchema) tsTableColumnSchema);
+      fieldColumnSchema.setEncoding(
+          SchemaUtils.getDataTypeCompatibleEncoding(dataType, fieldColumnSchema.getEncoding()));
+    }
+
+    return new Pair<>(RpcUtils.SUCCESS_STATUS, alteredTable);
   }
 
   public synchronized Pair<TSStatus, TsTable> tableColumnCheckForColumnRenaming(
@@ -1433,7 +1478,7 @@ public class ClusterSchemaManager {
           null);
     }
 
-    final TsTable expandedTable = TsTable.deserialize(ByteBuffer.wrap(originalTable.serialize()));
+    final TsTable expandedTable = new TsTable(originalTable);
 
     expandedTable.renameColumnSchema(oldName, newName);
 
@@ -1470,7 +1515,7 @@ public class ClusterSchemaManager {
           null);
     }
 
-    final TsTable expandedTable = TsTable.deserialize(ByteBuffer.wrap(originalTable.serialize()));
+    final TsTable expandedTable = new TsTable(originalTable);
     expandedTable.renameTable(newName);
     return new Pair<>(RpcUtils.SUCCESS_STATUS, expandedTable);
   }
@@ -1557,7 +1602,7 @@ public class ClusterSchemaManager {
       return new Pair<>(RpcUtils.SUCCESS_STATUS, null);
     }
 
-    final TsTable updatedTable = TsTable.deserialize(ByteBuffer.wrap(originalTable.serialize()));
+    final TsTable updatedTable = new TsTable(originalTable);
     updatedProperties.forEach(
         (k, v) -> {
           originalProperties.put(k, originalTable.getPropValue(k).orElse(null));

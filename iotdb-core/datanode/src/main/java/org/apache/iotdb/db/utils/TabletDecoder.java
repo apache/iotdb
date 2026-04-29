@@ -192,7 +192,6 @@ public class TabletDecoder {
       case STRING:
       case BLOB:
       case TEXT:
-      case OBJECT:
         Binary[] binaryCol = new Binary[rowSize];
         if (encoding == TSEncoding.PLAIN) {
           // PlainEncoder uses var int, which may cause compatibility problem
@@ -208,6 +207,7 @@ public class TabletDecoder {
         break;
       case UNKNOWN:
       case VECTOR:
+      default:
         throw new IllegalArgumentException("Unsupported data type: " + dataType);
     }
     return column;

@@ -20,10 +20,12 @@
 package org.apache.iotdb.confignode.manager.pipe.source;
 
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePatternOperations;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanVisitor;
@@ -32,6 +34,7 @@ import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSche
 import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeAlterEncodingCompressorPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeAlterTimeSeriesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeactivateTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteLogicalViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteTimeSeriesPlan;
@@ -40,7 +43,6 @@ import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSch
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.ExtendSchemaTemplatePlan;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionWritePlanEvent;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.schemaengine.template.alter.TemplateExtendInfo;
 
 import org.apache.tsfile.utils.Pair;
@@ -314,6 +316,25 @@ public class PipeConfigTreePatternParseVisitor
     // pattern and TTL path are each either a prefix path or a full path
     return !intersectionList.isEmpty()
         ? Optional.of(new SetTTLPlan(intersectionList.get(0).getNodes(), setTTLPlan.getTTL()))
+        : Optional.empty();
+  }
+
+  @Override
+  public Optional<ConfigPhysicalPlan> visitPipeAlterTimeSeries(
+      final PipeAlterTimeSeriesPlan pipeAlterTimeSeriesPlan,
+      final IoTDBTreePatternOperations pattern) {
+    final PartialPath partialPath = pipeAlterTimeSeriesPlan.getMeasurementPath();
+    final List<PartialPath> intersectionList =
+        pattern.matchPrefixPath(partialPath.getFullPath())
+            ? Collections.singletonList(partialPath)
+            : pattern.getIntersection(partialPath);
+    // The alter time series path must be a full path
+    return !intersectionList.isEmpty()
+        ? Optional.of(
+            new PipeAlterTimeSeriesPlan(
+                new MeasurementPath(intersectionList.get(0).getNodes()),
+                pipeAlterTimeSeriesPlan.getOperationType(),
+                pipeAlterTimeSeriesPlan.getDataType()))
         : Optional.empty();
   }
 }

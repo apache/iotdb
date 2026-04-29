@@ -24,10 +24,10 @@ import org.apache.iotdb.commons.pipe.agent.plugin.builtin.sink.donothing.DoNothi
 import org.apache.iotdb.commons.pipe.agent.plugin.constructor.PipeSinkConstructor;
 import org.apache.iotdb.commons.pipe.agent.plugin.meta.DataNodePipePluginMetaKeeper;
 import org.apache.iotdb.db.pipe.sink.protocol.airgap.IoTDBDataRegionAirGapSink;
+import org.apache.iotdb.db.pipe.sink.protocol.iotconsensusv2.IoTConsensusV2AsyncSink;
 import org.apache.iotdb.db.pipe.sink.protocol.legacy.IoTDBLegacyPipeSink;
 import org.apache.iotdb.db.pipe.sink.protocol.opcda.OpcDaSink;
 import org.apache.iotdb.db.pipe.sink.protocol.opcua.OpcUaSink;
-import org.apache.iotdb.db.pipe.sink.protocol.pipeconsensus.PipeConsensusAsyncSink;
 import org.apache.iotdb.db.pipe.sink.protocol.thrift.async.IoTDBDataRegionAsyncSink;
 import org.apache.iotdb.db.pipe.sink.protocol.thrift.sync.IoTDBDataRegionSyncSink;
 import org.apache.iotdb.db.pipe.sink.protocol.websocket.WebSocketSink;
@@ -54,8 +54,12 @@ class PipeDataRegionSinkConstructor extends PipeSinkConstructor {
         BuiltinPipePlugin.IOTDB_THRIFT_ASYNC_CONNECTOR.getPipePluginName(),
         IoTDBDataRegionAsyncSink::new);
     pluginConstructors.put(
+        BuiltinPipePlugin.IOT_CONSENSUS_V2_ASYNC_CONNECTOR.getPipePluginName(),
+        IoTConsensusV2AsyncSink::new);
+    // Keep the pre-rename plugin name wired to the new implementation for stale PipeMeta.
+    pluginConstructors.put(
         BuiltinPipePlugin.PIPE_CONSENSUS_ASYNC_CONNECTOR.getPipePluginName(),
-        PipeConsensusAsyncSink::new);
+        IoTConsensusV2AsyncSink::new);
     pluginConstructors.put(
         BuiltinPipePlugin.IOTDB_LEGACY_PIPE_CONNECTOR.getPipePluginName(),
         IoTDBLegacyPipeSink::new);
@@ -95,7 +99,11 @@ class PipeDataRegionSinkConstructor extends PipeSinkConstructor {
     pluginConstructors.put(
         BuiltinPipePlugin.SUBSCRIPTION_SINK.getPipePluginName(), DoNothingSink::new);
     pluginConstructors.put(
+        BuiltinPipePlugin.IOT_CONSENSUS_V2_ASYNC_SINK.getPipePluginName(),
+        IoTConsensusV2AsyncSink::new);
+    // Keep the pre-rename plugin name wired to the new implementation for stale PipeMeta.
+    pluginConstructors.put(
         BuiltinPipePlugin.PIPE_CONSENSUS_ASYNC_SINK.getPipePluginName(),
-        PipeConsensusAsyncSink::new);
+        IoTConsensusV2AsyncSink::new);
   }
 }

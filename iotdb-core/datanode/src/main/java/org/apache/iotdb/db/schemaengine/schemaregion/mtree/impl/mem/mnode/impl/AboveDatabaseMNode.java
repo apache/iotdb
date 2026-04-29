@@ -33,4 +33,14 @@ public class AboveDatabaseMNode extends AbstractAboveDatabaseMNode<IMemMNode, Ba
   public IMemMNode getAsMNode() {
     return this;
   }
+
+  @Override
+  public long getSubtreeMeasurementCount() {
+    return basicMNode.getSubtreeMeasurementCount();
+  }
+
+  @Override
+  public void setSubtreeMeasurementCount(long subtreeMeasurementCount) {
+    basicMNode.setSubtreeMeasurementCount(subtreeMeasurementCount);
+  }
 }

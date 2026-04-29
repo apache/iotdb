@@ -70,7 +70,7 @@ public interface CommonConfig {
 
   CommonConfig setDataRegionConsensusProtocolClass(String dataRegionConsensusProtocolClass);
 
-  CommonConfig setIoTConsensusV2Mode(String ioTConsensusV2Mode);
+  CommonConfig setIoTConsensusV2Mode(String iotConsensusV2Mode);
 
   CommonConfig setSchemaRegionGroupExtensionPolicy(String schemaRegionGroupExtensionPolicy);
 
@@ -184,8 +184,6 @@ public interface CommonConfig {
   CommonConfig setSubscriptionPrefetchTsFileBatchMaxSizeInBytes(
       int subscriptionPrefetchTsFileBatchMaxSizeInBytes);
 
-  CommonConfig setSubscriptionEnabled(boolean subscriptionEnabled);
-
   default CommonConfig setDefaultDatabaseLevel(int defaultDatabaseLevel) {
     return this;
   }
@@ -213,4 +211,8 @@ public interface CommonConfig {
   CommonConfig setAuditableOperationResult(String auditableOperationResult);
 
   CommonConfig setRestrictObjectLimit(boolean restrictObjectLimit);
+
+  CommonConfig setCteBufferSize(long cteBufferSize);
+
+  CommonConfig setMaxRowsInCteBuffer(int maxRows);
 }

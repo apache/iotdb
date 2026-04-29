@@ -40,6 +40,7 @@ import java.sql.Statement;
 
 import static org.apache.iotdb.ainode.utils.AINodeTestUtils.BUILTIN_MODEL_MAP;
 import static org.apache.iotdb.ainode.utils.AINodeTestUtils.checkHeader;
+import static org.apache.iotdb.ainode.utils.AINodeTestUtils.errorTest;
 import static org.apache.iotdb.ainode.utils.AINodeTestUtils.prepareDataInTree;
 
 @RunWith(IoTDBTestRunner.class)
@@ -48,6 +49,8 @@ public class AINodeCallInferenceIT {
 
   private static final String CALL_INFERENCE_SQL_TEMPLATE =
       "CALL INFERENCE(%s, \"SELECT s%d FROM root.AI LIMIT %d\", generateTime=true, outputLength=%d)";
+  private static final String CALL_INFERENCE_BY_DEFAULT_SQL_TEMPLATE =
+      "CALL INFERENCE(%s, \"SELECT s%d FROM root.AI LIMIT 256\")";
   private static final int DEFAULT_INPUT_LENGTH = 256;
   private static final int DEFAULT_OUTPUT_LENGTH = 48;
 
@@ -69,6 +72,8 @@ public class AINodeCallInferenceIT {
       try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TREE_SQL_DIALECT);
           Statement statement = connection.createStatement()) {
         callInferenceTest(statement, modelInfo);
+        callInferenceByDefaultTest(statement, modelInfo);
+        callInferenceErrorTest(statement, modelInfo);
       }
     }
   }
@@ -95,5 +100,36 @@ public class AINodeCallInferenceIT {
         Assert.assertEquals(DEFAULT_OUTPUT_LENGTH, count);
       }
     }
+  }
+
+  public static void callInferenceByDefaultTest(
+      Statement statement, AINodeTestUtils.FakeModelInfo modelInfo) throws SQLException {
+    // Invoke call inference for specified models, there should exist result.
+    for (int i = 0; i < 4; i++) {
+      String callInferenceSQL =
+          String.format(CALL_INFERENCE_BY_DEFAULT_SQL_TEMPLATE, modelInfo.getModelId(), i);
+      try (ResultSet resultSet = statement.executeQuery(callInferenceSQL)) {
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        checkHeader(resultSetMetaData, "output");
+        int count = 0;
+        while (resultSet.next()) {
+          count++;
+        }
+        // Ensure the call inference return results
+        Assert.assertTrue(count > 0);
+      }
+    }
+  }
+
+  public static void callInferenceErrorTest(
+      Statement statement, AINodeTestUtils.FakeModelInfo modelInfo) {
+    String multiVariateSQL =
+        String.format(
+            "CALL INFERENCE(%s, \"SELECT s0,s1 FROM root.AI LIMIT 128\", generateTime=true, outputLength=10)",
+            modelInfo.getModelId());
+    errorTest(
+        statement,
+        multiVariateSQL,
+        "701: Call inference function should not contain more than one input column, found [2] input columns.");
   }
 }

@@ -32,6 +32,7 @@ import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.commons.utils.FileUtils;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -91,9 +92,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
-import static org.apache.iotdb.db.utils.constant.SqlConstant.ROOT;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.TREE_MODEL_DATABASE_PREFIX;
 
 /**
  * {@link LoadTsFileManager} is used for dealing with {@link LoadTsFilePieceNode} and {@link
@@ -226,7 +224,7 @@ public class LoadTsFileManager {
       }
     }
 
-    final Optional<CleanupTask> cleanupTask = Optional.of(uuid2CleanupTask.get(uuid));
+    final Optional<CleanupTask> cleanupTask = Optional.ofNullable(uuid2CleanupTask.get(uuid));
     cleanupTask.ifPresent(CleanupTask::markLoadTaskRunning);
     try {
       final AtomicReference<Exception> exception = new AtomicReference<>();
@@ -306,7 +304,7 @@ public class LoadTsFileManager {
       return false;
     }
 
-    final Optional<CleanupTask> cleanupTask = Optional.of(uuid2CleanupTask.get(uuid));
+    final Optional<CleanupTask> cleanupTask = Optional.ofNullable(uuid2CleanupTask.get(uuid));
     cleanupTask.ifPresent(CleanupTask::markLoadTaskRunning);
     try {
       uuid2WriterManager.get(uuid).loadAll(isGeneratedByPipe, timePartitionProgressIndexMap);
@@ -348,7 +346,7 @@ public class LoadTsFileManager {
       final DataRegion dataRegion,
       final String databaseName,
       final long writePointCount,
-      final boolean isGeneratedByPipeConsensusLeader) {
+      final boolean isGeneratedByIoTConsensusV2Leader) {
     MemTableFlushTask.recordFlushPointsMetricInternal(
         writePointCount, databaseName, dataRegion.getDataRegionIdString());
     MetricService.getInstance()
@@ -375,7 +373,7 @@ public class LoadTsFileManager {
                     Integer.parseInt(dataRegion.getDataRegionIdString())));
     // It may happen that the replicationNum is 0 when load and db deletion occurs
     // concurrently, so we can just not to count the number of points in this case
-    if (replicationNum != 0 && !isGeneratedByPipeConsensusLeader) {
+    if (replicationNum != 0 && !isGeneratedByIoTConsensusV2Leader) {
       MetricService.getInstance()
           .count(
               writePointCount / replicationNum,
@@ -489,7 +487,7 @@ public class LoadTsFileManager {
       final String tableName =
           chunkData.getDevice() != null ? chunkData.getDevice().getTableName() : null;
       if (tableName != null
-          && !(tableName.startsWith(TREE_MODEL_DATABASE_PREFIX) || tableName.equals(ROOT))) {
+          && PathUtils.isTableModelDatabase(partitionInfo.getDataRegion().getDatabaseName())) {
         // If the table does not exist, it means that the table is all deleted by mods
         final TsTable table =
             DataNodeTableCache.getInstance()
@@ -588,7 +586,12 @@ public class LoadTsFileManager {
             tsFileResource,
             timePartitionProgressIndexMap.getOrDefault(
                 entry.getKey().getTimePartitionSlot(), MinimumProgressIndex.INSTANCE));
-        dataRegion.loadNewTsFile(tsFileResource, true, isGeneratedByPipe, false);
+        dataRegion.loadNewTsFile(
+            tsFileResource,
+            true,
+            isGeneratedByPipe,
+            false,
+            Optional.ofNullable(writer.getTableSizeMap()));
 
         // Metrics
         dataRegion

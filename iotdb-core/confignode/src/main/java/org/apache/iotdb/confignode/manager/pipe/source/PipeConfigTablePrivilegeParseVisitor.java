@@ -32,6 +32,7 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeCrea
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteDevicesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.AbstractTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.AlterColumnDataTypePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RenameTableColumnPlan;
@@ -368,5 +369,10 @@ public class PipeConfigTablePrivilegeParseVisitor
   private Optional<ConfigPhysicalPlan> visitUserRolePlan(
       final AuthorRelationalPlan plan, final IAuditEntity userEntity) {
     return PipeConfigTreePrivilegeParseVisitor.visitUserRolePlan(plan, userEntity);
+  }
+
+  public Optional<ConfigPhysicalPlan> visitAlterColumnDataType(
+      final AlterColumnDataTypePlan alterColumnDataTypePlan, final IAuditEntity userEntity) {
+    return visitAbstractTablePlan(alterColumnDataTypePlan, userEntity);
   }
 }

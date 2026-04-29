@@ -28,7 +28,7 @@ import org.apache.iotdb.commons.consensus.index.impl.RecoverProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.SimpleProgressIndex;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeName;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ReplicateProgressManager;
-import org.apache.iotdb.consensus.pipe.metric.PipeConsensusSyncLagManager;
+import org.apache.iotdb.consensus.pipe.metric.IoTConsensusV2SyncLagManager;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.storageengine.StorageEngine;
@@ -142,7 +142,7 @@ public class ReplicateProgressDataNodeManager implements ReplicateProgressManage
         (key, value) ->
             ((value == null ? MinimumProgressIndex.INSTANCE : value)
                 .updateToMinimumEqualOrIsAfterProgressIndex(
-                    PipeDataNodeAgent.runtime().assignProgressIndexForPipeConsensus())));
+                    PipeDataNodeAgent.runtime().assignProgressIndexForIoTConsensusV2())));
   }
 
   @Override
@@ -153,7 +153,7 @@ public class ReplicateProgressDataNodeManager implements ReplicateProgressManage
   @Override
   public long getSyncLagForSpecificConsensusPipe(
       ConsensusGroupId consensusGroupId, ConsensusPipeName consensusPipeName) {
-    return PipeConsensusSyncLagManager.getInstance(consensusGroupId.toString())
+    return IoTConsensusV2SyncLagManager.getInstance(consensusGroupId.toString())
         .getSyncLagForRegionMigration(
             consensusPipeName,
             this.consensusPipe2pinnedCommitIndexForMigration.getOrDefault(consensusPipeName, 0L));
@@ -164,7 +164,7 @@ public class ReplicateProgressDataNodeManager implements ReplicateProgressManage
       ConsensusGroupId consensusGroupId, ConsensusPipeName consensusPipeName) {
     this.consensusPipe2pinnedCommitIndexForMigration.put(
         consensusPipeName,
-        PipeConsensusSyncLagManager.getInstance(consensusGroupId.toString())
+        IoTConsensusV2SyncLagManager.getInstance(consensusGroupId.toString())
             .getCurrentLeaderReplicateIndex(consensusPipeName));
   }
 }

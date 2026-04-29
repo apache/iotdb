@@ -65,7 +65,7 @@ public class TsFileDeduplicationBlockingPendingQueue extends SubscriptionBlockin
 
   @Override
   public void directOffer(final Event event) {
-    inputPendingQueue.directOffer(event);
+    inputPendingQueue.offer(event);
   }
 
   private synchronized Event filter(final Event event) { // make it synchronized

@@ -204,6 +204,14 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeTableModelDualManualIT {
         Collections.singletonList("create table test(a tag)"), "COMMENT ON COLUMN test.a IS 'tag'");
   }
 
+  @Test
+  public void testAlterColumnDataTypeIdempotent() throws Exception {
+    testTableConfigIdempotent(
+        Collections.singletonList(
+            "CREATE TABLE t1 (time TIMESTAMP TIME,dId STRING TAG,s1 INT32 FIELD)"),
+        "ALTER TABLE t1 ALTER COLUMN s1 SET DATA TYPE INT64");
+  }
+
   private void testTableConfigIdempotent(final List<String> beforeSqlList, final String testSql)
       throws Exception {
     final String database = "test";

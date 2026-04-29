@@ -28,6 +28,6 @@ public class GlobalRPCRateLimiter extends GlobalRateLimiter {
 
   @Override
   protected double getThroughputBytesPerSecond() {
-    return CONFIG.getPipeAllConnectorsRateLimitBytesPerSecond();
+    return CONFIG.getPipeAllSinksRateLimitBytesPerSecond();
   }
 }

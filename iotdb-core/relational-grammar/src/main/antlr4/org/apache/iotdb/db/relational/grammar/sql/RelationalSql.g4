@@ -26,7 +26,7 @@ tokens {
 }
 
 singleStatement
-    : statement EOF
+    : DEBUG? statement EOF
     ;
 
 
@@ -83,6 +83,13 @@ statement
     | showFunctionsStatement
     | dropFunctionStatement
     | createFunctionStatement
+
+    // ExternalService Statement
+    | createServiceStatement
+    | startServiceStatement
+    | stopServiceStatement
+    | dropServiceStatement
+    | showServiceStatement
 
     // Load Statement
     | loadTsFileStatement
@@ -180,6 +187,9 @@ statement
     | executeImmediateStatement
     | deallocateStatement
 
+    // Copy Statement
+    | copyToStatement
+
     // View, Trigger, CQ, Quota are not supported yet
     ;
 
@@ -255,6 +265,7 @@ alterTableStatement
     | ALTER TABLE (IF EXISTS)? tableName=qualifiedName DROP COLUMN (IF EXISTS)? column=identifier                     #dropColumn
     // set TTL can use this
     | ALTER TABLE (IF EXISTS)? tableName=qualifiedName SET PROPERTIES propertyAssignments                #setTableProperties
+    | ALTER TABLE (IF EXISTS)? tableName=qualifiedName ALTER COLUMN (IF EXISTS)? column=identifier SET DATA TYPE new_type=type #alterColumnDataType
     ;
 
 commentStatement
@@ -373,6 +384,27 @@ showFunctionsStatement
     ;
 
 
+// -------------------------------------------- ExternalService Statement ----------------------------------------------------------
+createServiceStatement
+    : CREATE SERVICE serviceName=identifier
+        AS className=string
+    ;
+
+startServiceStatement
+    : START SERVICE serviceName=identifier
+    ;
+
+stopServiceStatement
+    : STOP SERVICE serviceName=identifier
+    ;
+
+dropServiceStatement
+    : DROP SERVICE serviceName=identifier FORCEDLY?
+    ;
+
+showServiceStatement
+    : SHOW SERVICES (ON targetDataNodeId=INTEGER_VALUE)?
+    ;
 
 // -------------------------------------------- Load Statement ---------------------------------------------------------
 loadTsFileStatement
@@ -650,7 +682,6 @@ showQueriesStatement
         limitOffsetClause
     ;
 
-
 killQueryStatement
     : KILL (QUERY queryId=string | ALL QUERIES)
     ;
@@ -668,6 +699,7 @@ clearCacheOptions
     : ATTRIBUTE
     | QUERY
     | ALL
+    | AUTH
     ;
 
 localOrClusterMode
@@ -880,11 +912,29 @@ deallocateStatement
     : DEALLOCATE PREPARE statementName=identifier
     ;
 
+// ---------------------------------------- Copy Statement ---------------------------------------------------------
+copyToStatement
+    : COPY '(' query ')' TO fileName=string ((WITH)? copyToStatementOptions)?
+    | COPY tableName=qualifiedName ('(' tableColumns=identifierList ')')? TO fileName=string ((WITH)? copyToStatementOptions)?
+    ;
+
+copyToStatementOptions
+    : '(' copyToStatementOption (',' copyToStatementOption)* ')'
+    ;
+
+copyToStatementOption
+    : FORMAT identifier
+    | TABLE identifier
+    | TAGS '(' identifierList ')'
+    | TIME identifier
+    | MEMORY_THRESHOLD memory=INTEGER_VALUE
+    ;
+
 // ------------------------------------------- Query Statement ---------------------------------------------------------
 queryStatement
     : query                                                        #statementDefault
-    | EXPLAIN query                                                #explain
-    | EXPLAIN ANALYZE VERBOSE? query                               #explainAnalyze
+    | EXPLAIN (query | executeStatement | executeImmediateStatement) #explain
+    | EXPLAIN ANALYZE VERBOSE? (query | executeStatement | executeImmediateStatement) #explainAnalyze
     ;
 
 query
@@ -968,6 +1018,7 @@ queryPrimary
     | TABLE qualifiedName                  #table
     | VALUES expression (',' expression)*  #inlineTable
     | '(' queryNoWith ')'                  #subquery
+    | fromFirstQuerySpecification          #fromFirstQueryPrimary
     ;
 
 sortItem
@@ -977,6 +1028,15 @@ sortItem
 querySpecification
     : SELECT setQuantifier? selectItem (',' selectItem)*
       (FROM relation (',' relation)*)?
+      (WHERE where=booleanExpression)?
+      (GROUP BY groupBy)?
+      (HAVING having=booleanExpression)?
+      (WINDOW windowDefinition (',' windowDefinition)*)?
+    ;
+
+fromFirstQuerySpecification
+    : FROM relation (',' relation)*
+      (SELECT setQuantifier? selectItem (',' selectItem)*)?
       (WHERE where=booleanExpression)?
       (GROUP BY groupBy)?
       (HAVING having=booleanExpression)?
@@ -1019,7 +1079,7 @@ groupingSet
     ;
 
 namedQuery
-    : name=identifier (columnAliases)? AS '(' query ')'
+    : name=identifier (columnAliases)? AS MATERIALIZED? '(' query ')'
     ;
 
 setQuantifier
@@ -1422,27 +1482,27 @@ authorizationUser
 
 nonReserved
     // IMPORTANT: this rule must only contain tokens. Nested rules are not supported. See SqlParser.exitNonReserved
-    : ABSENT | ADD | ADMIN | AFTER | ALL | ANALYZE | ANY | ARRAY | ASC | AT | ATTRIBUTE | AUDIT | AUTHORIZATION | AVAILABLE
+    : ABSENT | ADD | ADMIN | AFTER | ALL | ANALYZE | ANY | ARRAY | ASC | AT | ATTRIBUTE | AUDIT | AUTH | AUTHORIZATION | AVAILABLE
     | BEGIN | BERNOULLI | BOTH
-    | CACHE | CALL | CALLED | CASCADE | CATALOG | CATALOGS | CHAR | CHARACTER | CHARSET | CLEAR | CLUSTER | CLUSTERID | COLUMN | COLUMNS | COMMENT | COMMIT | COMMITTED | CONDITION | CONDITIONAL | CONFIGNODES | CONFIGNODE | CONFIGURATION | CONNECTOR | CONSTANT | COPARTITION | COUNT | CURRENT
-    | DATA | DATABASE | DATABASES | DATANODE | DATANODES | DATASET | DATE | DAY | DECLARE | DEFAULT | DEFINE | DEFINER | DENY | DESC | DESCRIPTOR | DETAILS| DETERMINISTIC | DEVICES | DISTRIBUTED | DO | DOUBLE
+    | CACHE | CALL | CALLED | CASCADE | CATALOG | CATALOGS | CHAR | CHARACTER | CHARSET | CLEAR | CLUSTER | CLUSTERID | COLUMN | COLUMNS | COMMENT | COMMIT | COMMITTED | CONDITION | CONDITIONAL | CONFIGNODES | CONFIGNODE | CONFIGURATION | CONNECTOR | CONSTANT | COPARTITION | COPY | COUNT | CURRENT
+    | DATA | DATABASE | DATABASES | DATANODE | DATANODES | DATASET | DATE | DAY | DEBUG | DECLARE | DEFAULT | DEFINE | DEFINER | DENY | DESC | DESCRIPTOR | DETAILS| DETERMINISTIC | DEVICES | DISTRIBUTED | DO | DOUBLE
     | ELSEIF | EMPTY | ENCODING | ERROR | EXCLUDING | EXPLAIN | EXTRACTOR
-    | FETCH | FIELD | FILTER | FINAL | FIRST | FLUSH | FOLLOWING | FORMAT | FUNCTION | FUNCTIONS
+    | FETCH | FIELD | FILTER | FINAL | FIRST | FLUSH | FOLLOWING | FORCEDLY | FORMAT | FUNCTION | FUNCTIONS
     | GRACE | GRANT | GRANTED | GRANTS | GRAPHVIZ | GROUPS
     | HOUR | HYPERPARAMETERS
     | INDEX | INDEXES | IF | IGNORE | IMMEDIATE | INCLUDING | INITIAL | INPUT | INTERVAL | INVOKER | IO | ITERATE | ISOLATION
     | JSON
     | KEEP | KEY | KEYS | KILL
     | LANGUAGE | LAST | LATERAL | LEADING | LEAVE | LEVEL | LIMIT | LINEAR | LOAD | LOCAL | LOGICAL | LOOP
-    | MANAGE_ROLE | MANAGE_USER | MAP | MATCH | MATCHED | MATCHES | MATCH_RECOGNIZE | MATERIALIZED | MEASURES | METHOD | MERGE | MICROSECOND | MIGRATE | MILLISECOND | MINUTE | MODEL | MODELS | MODIFY | MONTH
+    | MANAGE_ROLE | MANAGE_USER | MAP | MATCH | MATCHED | MATCHES | MATCH_RECOGNIZE | MATERIALIZED | MEASURES | MEMORY_THRESHOLD | METHOD | MERGE | MICROSECOND | MIGRATE | MILLISECOND | MINUTE | MODEL | MODELS | MODIFY | MONTH
     | NANOSECOND | NESTED | NEXT | NFC | NFD | NFKC | NFKD | NO | NODEID | NONE | NULLIF | NULLS
     | OBJECT | OF | OFFSET | OMIT | ONE | ONLY | OPTION | ORDINALITY | OUTPUT | OVER | OVERFLOW
     | PARTITION | PARTITIONS | PASSING | PAST | PATH | PATTERN | PER | PERIOD | PERMUTE | PIPE | PIPEPLUGIN | PIPEPLUGINS | PIPES | PLAN | POSITION | PRECEDING | PRECISION | PRIVILEGES | PREVIOUS | PROCESSLIST | PROCESSOR | PROPERTIES | PRUNE
     | QUERIES | QUERY | QUOTES
     | RANGE | READ | READONLY | RECONSTRUCT | REFRESH | REGION | REGIONID | REGIONS | REMOVE | RENAME | REPAIR | REPEAT | REPEATABLE | REPLACE | RESET | RESPECT | RESTRICT | RETURN | RETURNING | RETURNS | REVOKE | ROLE | ROLES | ROLLBACK | ROOT | ROW | ROWS | RPR_FIRST | RPR_LAST | RUNNING
-    | SERIESSLOTID | SCALAR | SCHEMA | SCHEMAS | SECOND | SECURITY | SEEK | SERIALIZABLE | SESSION | SET | SETS
+    | SERIESSLOTID | SERVICE | SERVICES | SCALAR | SCHEMA | SCHEMAS | SECOND | SECURITY | SEEK | SERIALIZABLE | SESSION | SET | SETS
     | SECURITY | SHOW | SINK | SOME | SOURCE | START | STATS | STOP | SUBSCRIPTION | SUBSCRIPTIONS | SUBSET | SUBSTRING | SYSTEM
-    | TABLES | TABLESAMPLE | TAG | TEXT | TEXT_STRING | TIES | TIME | TIMEPARTITION | TIMER | TIMER_XL | TIMESERIES | TIMESLOTID | TIMESTAMP | TO | TOPIC | TOPICS | TRAILING | TRANSACTION | TRUNCATE | TRY_CAST | TYPE
+    | TABLES | TABLESAMPLE | TAG | TAGS | TEXT | TEXT_STRING | TIES | TIME | TIMEPARTITION | TIMER | TIMER_XL | TIMESERIES | TIMESLOTID | TIMESTAMP | TO | TOPIC | TOPICS | TRAILING | TRANSACTION | TRUNCATE | TRY_CAST | TYPE
     | UNBOUNDED | UNCOMMITTED | UNCONDITIONAL | UNIQUE | UNKNOWN | UNMATCHED | UNTIL | UPDATE | URI | URLS | USE | USED | USER | UTF16 | UTF32 | UTF8
     | VALIDATE | VALUE | VARIABLES | VARIATION | VERBOSE | VERSION | VIEW
     | WEEK | WHILE | WINDOW | WITHIN | WITHOUT | WORK | WRAPPER | WRITE
@@ -1469,6 +1529,7 @@ ASC: 'ASC';
 ASOF: 'ASOF';
 AT: 'AT';
 ATTRIBUTE: 'ATTRIBUTE';
+AUTH: 'AUTH';
 AUTHORIZATION: 'AUTHORIZATION';
 BEGIN: 'BEGIN';
 BERNOULLI: 'BERNOULLI';
@@ -1505,6 +1566,7 @@ CONSTANT: 'CONSTANT';
 CONSTRAINT: 'CONSTRAINT';
 COUNT: 'COUNT';
 COPARTITION: 'COPARTITION';
+COPY: 'COPY';
 CREATE: 'CREATE';
 CROSS: 'CROSS';
 CUBE: 'CUBE';
@@ -1532,6 +1594,7 @@ DATE_BIN: 'DATE_BIN';
 DATE_BIN_GAPFILL: 'DATE_BIN_GAPFILL';
 DAY: 'DAY' | 'D';
 DEALLOCATE: 'DEALLOCATE';
+DEBUG: 'DEBUG';
 DECLARE: 'DECLARE';
 DEFAULT: 'DEFAULT';
 DEFINE: 'DEFINE';
@@ -1575,6 +1638,7 @@ FIRST: 'FIRST';
 FLUSH: 'FLUSH';
 FOLLOWING: 'FOLLOWING';
 FOR: 'FOR';
+FORCEDLY: 'FORCEDLY';
 FORMAT: 'FORMAT';
 FROM: 'FROM';
 FULL: 'FULL';
@@ -1651,6 +1715,7 @@ MATCHES: 'MATCHES';
 MATCH_RECOGNIZE: 'MATCH_RECOGNIZE';
 MATERIALIZED: 'MATERIALIZED';
 MEASURES: 'MEASURES';
+MEMORY_THRESHOLD: 'MEMORY_THRESHOLD';
 METHOD: 'METHOD';
 MERGE: 'MERGE';
 MICROSECOND: 'US';
@@ -1763,6 +1828,8 @@ SECURITY: 'SECURITY';
 SEEK: 'SEEK';
 SELECT: 'SELECT';
 SERIALIZABLE: 'SERIALIZABLE';
+SERVICE: 'SERVICE';
+SERVICES: 'SERVICES';
 SESSION: 'SESSION';
 SET: 'SET';
 SETS: 'SETS';
@@ -1784,6 +1851,7 @@ TABLE: 'TABLE';
 TABLES: 'TABLES';
 TABLESAMPLE: 'TABLESAMPLE';
 TAG: 'TAG';
+TAGS: 'TAGS';
 TEXT: 'TEXT';
 TEXT_STRING: 'STRING';
 THEN: 'THEN';

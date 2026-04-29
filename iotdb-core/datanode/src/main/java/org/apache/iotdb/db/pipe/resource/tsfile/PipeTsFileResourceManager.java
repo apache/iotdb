@@ -355,13 +355,18 @@ public class PipeTsFileResourceManager {
     }
   }
 
-  public void unpinTsFileResource(final TsFileResource resource, final @Nullable String pipeName)
+  public void unpinTsFileResource(
+      final TsFileResource resource,
+      final boolean shouldTransferModFile,
+      final @Nullable String pipeName)
       throws IOException {
-    final File pinnedFile = getHardlinkOrCopiedFileInPipeDir(resource.getTsFile(), pipeName);
-    decreaseFileReference(pinnedFile, pipeName);
+    decreaseFileReference(
+        getHardlinkOrCopiedFileInPipeDir(resource.getTsFile(), pipeName), pipeName);
 
-    if (resource.sharedModFileExists()) {
-      decreaseFileReference(resource.getSharedModFile().getFile(), pipeName);
+    if (shouldTransferModFile && resource.exclusiveModFileExists()) {
+      decreaseFileReference(
+          getHardlinkOrCopiedFileInPipeDir(resource.getExclusiveModFile().getFile(), pipeName),
+          pipeName);
     }
   }
 

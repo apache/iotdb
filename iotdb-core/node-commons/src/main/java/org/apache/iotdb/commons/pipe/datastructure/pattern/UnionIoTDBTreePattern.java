@@ -74,6 +74,11 @@ public class UnionIoTDBTreePattern extends IoTDBTreePatternOperations {
   }
 
   @Override
+  public boolean isSingle() {
+    return false;
+  }
+
+  @Override
   public boolean isLegal() {
     return patterns.stream().allMatch(TreePattern::isLegal);
   }
@@ -96,6 +101,11 @@ public class UnionIoTDBTreePattern extends IoTDBTreePatternOperations {
   @Override
   public boolean mayOverlapWithDevice(final IDeviceID device) {
     return patterns.stream().anyMatch(p -> p.mayOverlapWithDevice(device));
+  }
+
+  @Override
+  public boolean overlapWithDevice(final IDeviceID device) {
+    return patterns.stream().anyMatch(p -> p.overlapWithDevice(device));
   }
 
   @Override

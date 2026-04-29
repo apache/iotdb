@@ -1,0 +1,87 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+package org.apache.iotdb.confignode.consensus.request.write.externalservice;
+
+import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
+import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+
+import org.apache.tsfile.utils.ReadWriteIOUtils;
+
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.Objects;
+
+public class DropExternalServicePlan extends ConfigPhysicalPlan {
+
+  private int dataNodeId;
+  private String serviceName;
+
+  public DropExternalServicePlan() {
+    super(ConfigPhysicalPlanType.DropExternalService);
+  }
+
+  public DropExternalServicePlan(int dataNodeId, String serviceName) {
+    super(ConfigPhysicalPlanType.DropExternalService);
+    this.dataNodeId = dataNodeId;
+    this.serviceName = serviceName;
+  }
+
+  public int getDataNodeId() {
+    return dataNodeId;
+  }
+
+  public String getServiceName() {
+    return serviceName;
+  }
+
+  @Override
+  protected void serializeImpl(DataOutputStream stream) throws IOException {
+    stream.writeShort(getType().getPlanType());
+    ReadWriteIOUtils.write(dataNodeId, stream);
+    ReadWriteIOUtils.write(serviceName, stream);
+  }
+
+  @Override
+  protected void deserializeImpl(ByteBuffer buffer) throws IOException {
+    dataNodeId = ReadWriteIOUtils.readInt(buffer);
+    serviceName = ReadWriteIOUtils.readString(buffer);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    if (!super.equals(o)) {
+      return false;
+    }
+    DropExternalServicePlan that = (DropExternalServicePlan) o;
+    return dataNodeId == that.dataNodeId && Objects.equals(serviceName, that.serviceName);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(super.hashCode(), dataNodeId, serviceName);
+  }
+}

@@ -23,13 +23,13 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryCollectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryMergeNode;
@@ -60,6 +60,7 @@ public class LastQueryTest {
             new MeasurementSchema("s1", TSDataType.BOOLEAN),
             new MeasurementSchema("s2", TSDataType.INT32)),
         null,
+        false,
         null);
     lastQueryNode.addDeviceLastQueryScanNode(
         new PlanNodeId("test_last_query_scan2"),
@@ -67,6 +68,7 @@ public class LastQueryTest {
         false,
         Collections.singletonList(new MeasurementSchema("s0", TSDataType.BOOLEAN)),
         null,
+        false,
         null);
 
     Analysis analysis = Util.constructAnalysis();
@@ -256,6 +258,7 @@ public class LastQueryTest {
           selectPath.isUnderAlignedEntity(),
           Collections.singletonList(selectPath.getMeasurementSchema()),
           null,
+          false,
           null);
     }
 

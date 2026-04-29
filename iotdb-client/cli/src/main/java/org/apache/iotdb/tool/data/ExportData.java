@@ -224,18 +224,22 @@ public class ExportData extends AbstractDataTool {
         exportData = new ExportDataTable();
         exportData.init();
       }
-      if (sqlDialectTree && queryCommand == null) {
-        LineReader lineReader =
-            JlineUtils.getLineReader(
-                new CliContext(System.in, System.out, System.err, ExitType.EXCEPTION),
-                username,
-                host,
-                port);
-        String sql = lineReader.readLine(Constants.EXPORT_CLI_PREFIX + "> please input query: ");
-        ioTPrinter.println(sql);
-        String[] values = sql.trim().split(";");
-        for (int i = 0; i < values.length; i++) {
-          exportData.exportBySql(values[i], i);
+      if (queryCommand == null) {
+        if (sqlDialectTree) {
+          LineReader lineReader =
+              JlineUtils.getLineReader(
+                  new CliContext(System.in, System.out, System.err, ExitType.EXCEPTION),
+                  username,
+                  host,
+                  port);
+          String sql = lineReader.readLine(Constants.EXPORT_CLI_PREFIX + "> please input query: ");
+          ioTPrinter.println(sql);
+          String[] values = sql.trim().split(";");
+          for (int i = 0; i < values.length; i++) {
+            exportData.exportBySql(values[i], i);
+          }
+        } else {
+          exportData.exportBySql(null, 0);
         }
       } else {
         String[] values = queryCommand.trim().split(";");

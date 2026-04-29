@@ -65,7 +65,9 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
 
+import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -102,6 +104,30 @@ public class RepairUnsortedFileCompactionTest extends AbstractRepairDataTest {
         .getConfig()
         .setEnableCrossSpaceCompaction(enableCrossSpaceCompaction);
     super.tearDown();
+  }
+
+  @Test
+  public void testMoveOldVersionResourceFile() throws IOException {
+    String pathStr =
+        this.getClass().getClassLoader().getResource("v3tsfile/compaction-test-tsfile").getFile();
+    File v3TsFile = new File(pathStr);
+    File v3TsFileResource = new File(pathStr + "-resource");
+    TsFileResource resource1 = createEmptyFileAndResource(true);
+    Files.copy(v3TsFile.toPath(), resource1.getTsFile().toPath());
+    Files.copy(
+        v3TsFileResource.toPath(), new File(resource1.getTsFilePath() + ".resource").toPath());
+    resource1.deserialize();
+    resource1.setTsFileRepairStatus(TsFileRepairStatus.NEED_TO_REPAIR_BY_MOVE);
+
+    RepairUnsortedFileCompactionTask task =
+        new RepairUnsortedFileCompactionTask(0, tsFileManager, resource1, true, 0);
+    Assert.assertTrue(task.start());
+
+    TsFileResource resource2 =
+        new TsFileResource(tsFileManager.getTsFileList(false).get(0).getTsFile());
+    resource2.deserialize();
+    Assert.assertEquals(
+        ArrayDeviceTimeIndex.ARRAY_DEVICE_TIME_INDEX_TYPE, resource2.getTimeIndexType());
   }
 
   @Test

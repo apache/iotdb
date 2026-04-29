@@ -183,6 +183,11 @@ public class TopicMeta {
   /////////////////////////////// utilities ///////////////////////////////
 
   public Map<String, String> generateExtractorAttributes(final String username) {
+    return generateExtractorAttributes(username, null);
+  }
+
+  public Map<String, String> generateExtractorAttributes(
+      final String username, final String password) {
     final Map<String, String> extractorAttributes = new HashMap<>();
     // disable meta sync
     extractorAttributes.put("source", "iotdb-source");
@@ -190,6 +195,9 @@ public class TopicMeta {
     extractorAttributes.put("inclusion.exclusion", "data.delete");
     // user
     extractorAttributes.put("username", username);
+    if (Objects.nonNull(password)) {
+      extractorAttributes.put("password", password);
+    }
     // TODO: currently set skipif to no-privileges
     extractorAttributes.put("skipif", "no-privileges");
     // sql dialect

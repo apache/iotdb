@@ -423,6 +423,11 @@ public abstract class EnrichedEvent implements Event {
     return true;
   }
 
+  // If user has privilege: Do nothing
+  // If user doesn't have privilege, and skip if == true: set shouldParse4Privilege = true
+  // (The DeleteDataEvent will be parsed regardless of the flag, while insert node and tsFile will
+  // be parsed iff this flag == true)
+  // If user doesn't have privilege, and skip if == false: throw exception
   public void throwIfNoPrivilege() throws Exception {
     // Do nothing by default
   }
@@ -489,10 +494,10 @@ public abstract class EnrichedEvent implements Event {
   }
 
   /**
-   * Used for pipeConsensus. In PipeConsensus, we only need committerKey, commitId and rebootTimes
+   * Used for iotConsensusV2. In IoTConsensusV2, we only need committerKey, commitId and rebootTimes
    * to uniquely identify an event
    */
-  public boolean equalsInPipeConsensus(final Object o) {
+  public boolean equalsInIoTConsensusV2(final Object o) {
     if (this == o) {
       return true;
     }

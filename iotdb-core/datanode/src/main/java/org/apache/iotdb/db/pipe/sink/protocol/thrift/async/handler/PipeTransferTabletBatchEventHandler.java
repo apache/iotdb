@@ -123,7 +123,7 @@ public class PipeTransferTabletBatchEventHandler extends PipeTransferTrackableHa
           events.size(),
           events.stream().map(EnrichedEvent::getPipeName).collect(Collectors.toSet()));
     } finally {
-      connector.addFailureEventsToRetryQueue(events);
+      connector.addFailureEventsToRetryQueue(events, exception);
     }
   }
 

@@ -26,6 +26,10 @@ import java.util.Set;
 
 public class MqttClientSession extends IClientSession {
 
+  public String getClientID() {
+    return clientID;
+  }
+
   private final String clientID;
 
   public MqttClientSession(String clientID) {
@@ -34,7 +38,7 @@ public class MqttClientSession extends IClientSession {
 
   @Override
   public String getClientAddress() {
-    return clientID;
+    return "";
   }
 
   @Override

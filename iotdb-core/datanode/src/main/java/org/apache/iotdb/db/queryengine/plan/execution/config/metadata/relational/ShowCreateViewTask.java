@@ -19,12 +19,12 @@
 
 package org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational;
 
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
-import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeaderFactory;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
@@ -99,7 +99,13 @@ public class ShowCreateViewTask extends AbstractTableTask {
               .append("TAG");
           break;
         case TIME:
-          continue;
+          builder
+              .append(getIdentifier(schema.getColumnName()))
+              .append(" ")
+              .append(schema.getDataType())
+              .append(" ")
+              .append("TIME");
+          break;
         case FIELD:
           builder
               .append(getIdentifier(schema.getColumnName()))
@@ -122,7 +128,7 @@ public class ShowCreateViewTask extends AbstractTableTask {
       builder.append(",");
     }
 
-    if (table.getColumnList().size() > 1) {
+    if (!table.getColumnList().isEmpty()) {
       builder.deleteCharAt(builder.length() - 1);
     }
 
@@ -136,9 +142,13 @@ public class ShowCreateViewTask extends AbstractTableTask {
       builder.append(" RESTRICT");
     }
 
+    String ttlString = table.getPropValue(TsTable.TTL_PROPERTY).orElse(TTL_INFINITE);
+    if (ttlString.equals(TTL_INFINITE)) {
+      ttlString = "'" + ttlString + "'";
+    }
     builder
         .append(" WITH (ttl=")
-        .append(table.getPropValue(TsTable.TTL_PROPERTY).orElse("'" + TTL_INFINITE + "'"))
+        .append(ttlString)
         .append(", need_last_cache=")
         .append(table.getPropValue(TsTable.NEED_LAST_CACHE_PROPERTY).orElse("true"))
         .append(")");
@@ -148,7 +158,7 @@ public class ShowCreateViewTask extends AbstractTableTask {
     final String[] pathNodes = TreeViewSchema.getPrefixPattern(table).getNodes();
     builder.append(pathNodes[0]);
     for (int i = 1; i < pathNodes.length - 1; ++i) {
-      builder.append(".\"").append(pathNodes[i]).append("\"");
+      builder.append(".\"").append(pathNodes[i].replace("`", "")).append("\"");
     }
     builder.append(".").append(pathNodes[pathNodes.length - 1]);
 

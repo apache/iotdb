@@ -93,9 +93,8 @@ public class DiskAlignedChunkMetadataLoader implements IChunkMetadataLoader {
         final long t2 = System.nanoTime();
         alignedChunkMetadataList.removeIf(
             alignedChunkMetaData ->
-                (globalTimeFilter != null && globalTimeFilter.canSkip(alignedChunkMetaData))
-                    || alignedChunkMetaData.getStartTime() > alignedChunkMetaData.getEndTime());
-
+                ChunkMetadataLoaderUtils.shouldSkipAndRecord(
+                    alignedChunkMetaData, globalTimeFilter, context));
         if (context.isDebug()) {
           DEBUG_LOGGER.info("After removed by filter Chunk meta data list is: ");
           alignedChunkMetadataList.forEach(c -> DEBUG_LOGGER.info(c.toString()));

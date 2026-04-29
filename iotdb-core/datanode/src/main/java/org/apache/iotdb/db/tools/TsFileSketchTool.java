@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.tools;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.file.IMetadataIndexEntry;
 import org.apache.tsfile.file.MetaMarker;
 import org.apache.tsfile.file.header.ChunkGroupHeader;
@@ -30,6 +31,7 @@ import org.apache.tsfile.file.metadata.DeviceMetadataIndexEntry;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.MetadataIndexNode;
+import org.apache.tsfile.file.metadata.TableSchema;
 import org.apache.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.tsfile.file.metadata.TsFileMetadata;
 import org.apache.tsfile.file.metadata.enums.MetadataIndexNodeType;
@@ -40,6 +42,7 @@ import org.apache.tsfile.read.common.Chunk;
 import org.apache.tsfile.read.common.Path;
 import org.apache.tsfile.utils.BloomFilter;
 import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.Schema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -87,6 +90,7 @@ public class TsFileSketchTool {
       this.filename = filename;
       pw = new PrintWriter(new FileWriter(outFile));
       reader = new TsFileSketchToolReader(filename);
+      reader.setEnableCacheTableSchemaMap();
       StringBuilder str1 = new StringBuilder();
       for (int i = 0; i < 21; i++) {
         str1.append("|");
@@ -188,6 +192,9 @@ public class TsFileSketchTool {
         printIndexOfTimerseriesIndex(reader.getFileMetadataPos(), rootNode);
       }
 
+      // tableSchema
+      printTableSchemaMap(tsFileMetaData.getTableSchemaMap());
+
       // metaOffset
       printlnBoth(
           pw, String.format("%20s", "") + "|\t[meta offset] " + tsFileMetaData.getMetaOffset());
@@ -264,6 +271,29 @@ public class TsFileSketchTool {
     printlnBoth(
         pw,
         String.format("%20s", "") + "|\t\t<endOffset, " + metadataIndexNode.getEndOffset() + ">");
+  }
+
+  private void printTableSchemaMap(Map<String, TableSchema> tableSchemaMap) {
+    if (tableSchemaMap == null || tableSchemaMap.isEmpty()) {
+      return;
+    }
+    printlnBoth(pw, String.format("%20s", "") + "|\t[TableSchemaMap]");
+    for (Entry<String, TableSchema> entry : tableSchemaMap.entrySet()) {
+      String tableName = entry.getKey();
+      TableSchema tableSchema = entry.getValue();
+      printlnBoth(pw, String.format("%20s", "") + String.format("|\t\t[TableSchema] " + tableName));
+      List<ColumnCategory> columnTypes = tableSchema.getColumnTypes();
+      List<IMeasurementSchema> columnSchemas = tableSchema.getColumnSchemas();
+      for (int i = 0; i < columnTypes.size(); i++) {
+        IMeasurementSchema columnSchema = columnSchemas.get(i);
+        printlnBoth(
+            pw,
+            String.format("%20s", "")
+                + String.format(
+                    "|\t\t\t[%s, %s, %s]",
+                    columnSchema.getMeasurementName(), columnSchema.getType(), columnTypes.get(i)));
+      }
+    }
   }
 
   private void printFileInfo() {

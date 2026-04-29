@@ -19,14 +19,16 @@
 
 package org.apache.iotdb.db.queryengine.plan.parser;
 
+import org.apache.iotdb.calc.exception.QueryProcessException;
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.commons.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.GreaterEqualExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.LessThanExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.LogicAndExpression;
@@ -34,8 +36,6 @@ import org.apache.iotdb.db.queryengine.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
-import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementTestUtils;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
@@ -63,6 +63,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.ShowNode
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.UnsetSchemaTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.CreateLogicalViewStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.AuthorStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowDiskUsageStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.isession.template.TemplateNode;
 import org.apache.iotdb.rpc.StatementExecutionException;
@@ -119,6 +120,37 @@ import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 public class StatementGeneratorTest {
+
+  @Test
+  public void testShowDiskUsage() {
+
+    Statement showDiskUsage =
+        StatementGenerator.createStatement(
+            "show disk_usage from root.test.** order by database, datanodeid, regionid, timepartition, sizeinbytes",
+            ZonedDateTime.now().getOffset());
+    Assert.assertTrue(showDiskUsage instanceof ShowDiskUsageStatement);
+    Assert.assertEquals(
+        ((ShowDiskUsageStatement) showDiskUsage).getSortItemList().get(0),
+        new SortItem(OrderByKey.DATABASE, Ordering.ASC));
+    Assert.assertEquals(
+        ((ShowDiskUsageStatement) showDiskUsage).getSortItemList().get(1),
+        new SortItem(OrderByKey.DATANODEID, Ordering.ASC));
+    Assert.assertEquals(
+        ((ShowDiskUsageStatement) showDiskUsage).getSortItemList().get(2),
+        new SortItem(OrderByKey.REGIONID, Ordering.ASC));
+    Assert.assertEquals(
+        ((ShowDiskUsageStatement) showDiskUsage).getSortItemList().get(3),
+        new SortItem(OrderByKey.TIMEPARTITION, Ordering.ASC));
+    Assert.assertEquals(
+        ((ShowDiskUsageStatement) showDiskUsage).getSortItemList().get(4),
+        new SortItem(OrderByKey.SIZEINBYTES, Ordering.ASC));
+
+    Assert.assertThrows(
+        SemanticException.class,
+        () ->
+            StatementGenerator.createStatement(
+                "show disk_usage from root.test.** order by a", ZonedDateTime.now().getOffset()));
+  }
 
   @Test
   public void testShowQueries() {

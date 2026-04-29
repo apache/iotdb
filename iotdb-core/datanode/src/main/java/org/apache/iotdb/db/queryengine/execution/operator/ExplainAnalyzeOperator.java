@@ -19,16 +19,19 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator;
 
+import org.apache.iotdb.calc.execution.operator.Operator;
+import org.apache.iotdb.calc.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
+import org.apache.iotdb.commons.queryengine.plan.relational.analyzer.NodeRef;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Table;
 import org.apache.iotdb.db.exception.mpp.FragmentInstanceFetchException;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
-import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
-import org.apache.iotdb.db.queryengine.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.execution.QueryExecution;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
@@ -45,6 +48,7 @@ import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.common.block.column.TimeColumnBuilder;
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -56,6 +60,11 @@ import java.util.Map;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
+import static org.apache.iotdb.commons.conf.IoTDBConstant.BLANK;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.CTE_QUERY;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.MAIN_QUERY;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.SPACE;
+
 public class ExplainAnalyzeOperator implements ProcessOperator {
   private static final Logger logger =
       LoggerFactory.getLogger(IoTDBConstant.EXPLAIN_ANALYZE_LOGGER_NAME);
@@ -63,6 +72,8 @@ public class ExplainAnalyzeOperator implements ProcessOperator {
       RamUsageEstimator.shallowSizeOfInstance(ExplainAnalyzeOperator.class);
   private static final String LOG_TITLE =
       "---------------------Intermediate Results of EXPLAIN ANALYZE---------------------:";
+  private static final double NS_TO_MS_FACTOR = 1.0 / 1000000;
+
   private final OperatorContext operatorContext;
   private final Operator child;
   private final boolean verbose;
@@ -142,7 +153,7 @@ public class ExplainAnalyzeOperator implements ProcessOperator {
       for (int i = 0;
           i < fragmentInstanceStatisticsDrawer.getMaxLineLength() - line.getValue().length();
           i++) {
-        sb.append(" ");
+        sb.append(SPACE);
       }
       analyzeResult.add(sb.toString());
     }
@@ -172,8 +183,10 @@ public class ExplainAnalyzeOperator implements ProcessOperator {
   }
 
   private TsBlock buildResult() throws FragmentInstanceFetchException {
-
-    List<String> analyzeResult = buildFragmentInstanceStatistics(instances, verbose);
+    Map<NodeRef<Table>, Pair<Integer, List<String>>> cteAnalyzeResults =
+        mppQueryContext.getCteExplainResults();
+    List<String> mainAnalyzeResult = buildFragmentInstanceStatistics(instances, verbose);
+    List<String> analyzeResult = mergeAnalyzeResults(cteAnalyzeResults, mainAnalyzeResult);
 
     TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(TSDataType.TEXT));
     TimeColumnBuilder timeColumnBuilder = builder.getTimeColumnBuilder();
@@ -185,6 +198,64 @@ public class ExplainAnalyzeOperator implements ProcessOperator {
       builder.declarePosition();
     }
     return builder.build();
+  }
+
+  private List<String> mergeAnalyzeResults(
+      Map<NodeRef<Table>, Pair<Integer, List<String>>> cteAnalyzeResults,
+      List<String> mainAnalyzeResult) {
+    if (cteAnalyzeResults.isEmpty()) {
+      return mainAnalyzeResult;
+    }
+
+    final int maxLineLength =
+        Math.max(
+            cteAnalyzeResults.values().stream().mapToInt(p -> p.left).max().orElse(0),
+            fragmentInstanceStatisticsDrawer.getMaxLineLength());
+
+    List<String> analyzeResult = new ArrayList<>();
+    cteAnalyzeResults.forEach(
+        (table, pair) -> {
+          analyzeResult.add(String.format("%s : '%s'", CTE_QUERY, table.getNode().getName()));
+          for (String line : pair.right) {
+            StringBuilder sb = new StringBuilder();
+            sb.append(line);
+            for (int i = 0; i < maxLineLength - line.length(); i++) {
+              sb.append(SPACE);
+            }
+            analyzeResult.add(sb.toString());
+          }
+          analyzeResult.add(BLANK);
+        });
+
+    analyzeResult.add(MAIN_QUERY);
+    mainAnalyzeResult.forEach(
+        line -> {
+          StringBuilder sb = new StringBuilder();
+          sb.append(line);
+          for (int i = 0; i < maxLineLength - line.length(); i++) {
+            sb.append(SPACE);
+          }
+          analyzeResult.add(sb.toString());
+          if (line.contains("Logical Plan Cost:")) {
+            mppQueryContext
+                .getCteMaterializationCosts()
+                .forEach(
+                    (tableRef, cost) -> {
+                      sb.setLength(0);
+                      sb.append(
+                          String.format(
+                              "  %s Materialization Total Cost: %.3f ms",
+                              tableRef.getNode().getName().toString(), cost * NS_TO_MS_FACTOR));
+                      int currentLength = sb.length();
+                      for (int i = 0; i < maxLineLength - currentLength; i++) {
+                        sb.append(SPACE);
+                      }
+                      analyzeResult.add(sb.toString());
+                    });
+          }
+        });
+
+    return analyzeResult;
   }
 
   @Override

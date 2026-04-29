@@ -39,7 +39,6 @@ AINODE_CLUSTER_INGRESS_ADDRESS = "127.0.0.1"
 AINODE_CLUSTER_INGRESS_PORT = 6667
 AINODE_CLUSTER_INGRESS_USERNAME = "root"
 AINODE_CLUSTER_INGRESS_PASSWORD = "root"
-AINODE_CLUSTER_INGRESS_TIME_ZONE = "UTC+8"
 
 # RPC config
 AINODE_THRIFT_COMPRESSION_ENABLED = False
@@ -53,10 +52,10 @@ AINODE_INFERENCE_MAX_OUTPUT_LENGTH = 2880
 # TODO: Should be optimized
 AINODE_INFERENCE_MODEL_MEM_USAGE_MAP = {
     "sundial": 1036 * 1024**2,  # 1036 MiB
-    "timer": 856 * 1024**2,  # 856 MiB
+    "timer_xl": 856 * 1024**2,  # 856 MiB
 }  # the memory usage of each model in bytes
 
-AINODE_INFERENCE_MEMORY_USAGE_RATIO = 0.4  # the device space allocated for inference
+AINODE_INFERENCE_MEMORY_USAGE_RATIO = 0.2  # the device space allocated for inference
 AINODE_INFERENCE_EXTRA_MEMORY_RATIO = (
     1.2  # the overhead ratio for inference, used to estimate the pool size
 )
@@ -87,6 +86,8 @@ class TSStatusCode(Enum):
     DROP_BUILTIN_MODEL_ERROR = 1506
     DROP_MODEL_ERROR = 1507
     UNAVAILABLE_AI_DEVICE_ERROR = 1508
+    LOAD_MODEL_ERROR = 1509
+    UNLOAD_MODEL_ERROR = 1510
 
     INVALID_URI_ERROR = 1511
     INVALID_INFERENCE_CONFIG = 1512

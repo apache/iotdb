@@ -70,7 +70,7 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
 
   @Override
   public void runMayThrow() throws Throwable {
-    socket.setSoTimeout(PipeConfig.getInstance().getPipeConnectorTransferTimeoutMs());
+    socket.setSoTimeout(PipeConfig.getInstance().getPipeSinkTransferTimeoutMs());
     socket.setKeepAlive(true);
 
     LOGGER.info("Pipe air gap receiver {} started. Socket: {}", receiverId, socket);
@@ -133,27 +133,7 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
                   .setVersion(ReadWriteIOUtils.readByte(byteBuffer))
                   .setType(ReadWriteIOUtils.readShort(byteBuffer))
                   .setBody(byteBuffer.slice());
-      final TPipeTransferResp resp = agent.receive(req);
-
-      final TSStatus status = resp.getStatus();
-      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        ok();
-      } else if (status.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()
-          || status.getCode()
-              == TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode()) {
-        LOGGER.info(
-            "Pipe air gap receiver {}: TSStatus {} is encountered at the air gap receiver, will ignore.",
-            receiverId,
-            resp.getStatus());
-        ok();
-      } else {
-        LOGGER.warn(
-            "Pipe air gap receiver {}: Handle data failed, status: {}, req: {}",
-            receiverId,
-            resp.getStatus(),
-            req);
-        fail();
-      }
+      handleReq(req, System.currentTimeMillis());
     } catch (final PipeConnectionException e) {
       LOGGER.info(
           "Pipe air gap receiver {}: Socket {} closed when listening to data. Because: {}",
@@ -167,6 +147,49 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
           receiverId,
           socket,
           e);
+      fail();
+    }
+  }
+
+  private void handleReq(final AirGapPseudoTPipeTransferRequest req, final long startTime)
+      throws IOException {
+    final TPipeTransferResp resp = agent.receive(req);
+
+    final TSStatus status = resp.getStatus();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      ok();
+    } else if (status.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()
+        || status.getCode()
+            == TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode()) {
+      LOGGER.info(
+          "Pipe air gap receiver {}: TSStatus {} is encountered at the air gap receiver, will ignore.",
+          receiverId,
+          resp.getStatus());
+      ok();
+    } else if (status.getCode()
+        == TSStatusCode.PIPE_RECEIVER_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode()) {
+      try {
+        Thread.sleep(PipeConfig.getInstance().getPipeAirGapRetryLocalIntervalMs());
+      } catch (final InterruptedException e) {
+        Thread.currentThread().interrupt();
+      }
+      LOGGER.info(
+          "Temporary unavailable exception encountered at air gap receiver, will retry locally.");
+      if (System.currentTimeMillis() - startTime
+          < PipeConfig.getInstance().getPipeAirGapRetryMaxMs()) {
+        handleReq(req, startTime);
+      } else {
+        LOGGER.warn(
+            "Pipe air gap receiver {}: Temporary unavailable retry timed out, returning FAIL to sender.",
+            receiverId);
+        fail();
+      }
+    } else {
+      LOGGER.warn(
+          "Pipe air gap receiver {}: Handle data failed, status: {}, req: {}",
+          receiverId,
+          resp.getStatus(),
+          req);
       fail();
     }
   }
@@ -204,12 +227,20 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
     }
   }
 
-  private byte[] readData(final InputStream inputStream) throws IOException {
+  byte[] readData(final InputStream inputStream) throws IOException {
     final int length = readLength(inputStream);
 
     if (length <= 0) {
       // Will fail() after checkSum()
       return new byte[0];
+    }
+
+    final int maxLength = PipeConfig.getInstance().getPipeAirGapReceiverMaxPayloadSizeInBytes();
+    if (length > maxLength) {
+      throw new IOException(
+          String.format(
+              "AirGap payload length (%d) exceeds maximum allowed (%d). Closing connection from %s",
+              length, maxLength, socket.getRemoteSocketAddress()));
     }
 
     final byte[] resultBuffer = new byte[length];
@@ -220,11 +251,16 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
     return resultBuffer;
   }
 
+  private int readLength(final InputStream inputStream) throws IOException {
+    return readLength(inputStream, false);
+  }
+
   /**
    * Read the length of the following data. The thread may typically block here when there is no
    * data to read.
    */
-  private int readLength(final InputStream inputStream) throws IOException {
+  private int readLength(final InputStream inputStream, final boolean isELanguage)
+      throws IOException {
     final byte[] doubleIntLengthBytes = new byte[2 * INT_LEN];
     readTillFull(inputStream, doubleIntLengthBytes);
 
@@ -233,10 +269,16 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
     if (Arrays.equals(
         doubleIntLengthBytes,
         BytesUtils.subBytes(AirGapELanguageConstant.E_LANGUAGE_PREFIX, 0, 2 * INT_LEN))) {
+      if (isELanguage) {
+        throw new IOException(
+            String.format(
+                "Detected suspicious nested E-Language prefix. Closing connection from %s",
+                socket.getRemoteSocketAddress()));
+      }
       isELanguagePayload = true;
       skipTillEnough(
           inputStream, (long) AirGapELanguageConstant.E_LANGUAGE_PREFIX.length - 2 * INT_LEN);
-      return readLength(inputStream);
+      return readLength(inputStream, true);
     }
 
     final byte[] dataLengthBytes = BytesUtils.subBytes(doubleIntLengthBytes, 0, INT_LEN);

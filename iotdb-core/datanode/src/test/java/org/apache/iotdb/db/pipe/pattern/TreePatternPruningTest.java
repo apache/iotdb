@@ -21,9 +21,9 @@ package org.apache.iotdb.db.pipe.pattern;
 
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
-import org.apache.iotdb.commons.pipe.datastructure.pattern.PrefixTreePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.UnionIoTDBTreePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.WithExclusionIoTDBTreePattern;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
@@ -40,7 +40,7 @@ public class TreePatternPruningTest {
         new PipeParameters(
             new HashMap<String, String>() {
               {
-                put(PipeSourceConstant.SOURCE_PATH_KEY, "root.db.d1.*,root.db.d1.s1");
+                put(PipeSourceConstant.SOURCE_PATTERN_INCLUSION_KEY, "root.db.d1.*,root.db.d1.s1");
               }
             });
 
@@ -56,7 +56,7 @@ public class TreePatternPruningTest {
         new PipeParameters(
             new HashMap<String, String>() {
               {
-                put(PipeSourceConstant.SOURCE_PATH_KEY, "root.db.d1,root.db.d1");
+                put(PipeSourceConstant.SOURCE_PATTERN_INCLUSION_KEY, "root.db.d1,root.db.d1");
               }
             });
 
@@ -72,8 +72,8 @@ public class TreePatternPruningTest {
         new PipeParameters(
             new HashMap<String, String>() {
               {
-                put(PipeSourceConstant.SOURCE_PATH_KEY, "root.sg.d1,root.sg.d2");
-                put(PipeSourceConstant.SOURCE_PATH_EXCLUSION_KEY, "root.sg.d1");
+                put(PipeSourceConstant.SOURCE_PATTERN_INCLUSION_KEY, "root.sg.d1,root.sg.d2");
+                put(PipeSourceConstant.SOURCE_PATTERN_EXCLUSION_KEY, "root.sg.d1");
               }
             });
 
@@ -89,8 +89,8 @@ public class TreePatternPruningTest {
         new PipeParameters(
             new HashMap<String, String>() {
               {
-                put(PipeSourceConstant.SOURCE_PATH_KEY, "root.sg.d1");
-                put(PipeSourceConstant.SOURCE_PATH_EXCLUSION_KEY, "root.sg.**");
+                put(PipeSourceConstant.SOURCE_PATTERN_INCLUSION_KEY, "root.sg.d1");
+                put(PipeSourceConstant.SOURCE_PATTERN_EXCLUSION_KEY, "root.sg.**");
               }
             });
 
@@ -108,8 +108,10 @@ public class TreePatternPruningTest {
         new PipeParameters(
             new HashMap<String, String>() {
               {
-                put(PipeSourceConstant.SOURCE_PATH_KEY, "root.sg.A,root.sg.B,root.sg.A.sub");
-                put(PipeSourceConstant.SOURCE_PATH_EXCLUSION_KEY, "root.sg.A,root.sg.A.**");
+                put(
+                    PipeSourceConstant.SOURCE_PATTERN_INCLUSION_KEY,
+                    "root.sg.A,root.sg.B,root.sg.A.sub");
+                put(PipeSourceConstant.SOURCE_PATTERN_EXCLUSION_KEY, "root.sg.A,root.sg.A.**");
               }
             });
 
@@ -120,21 +122,21 @@ public class TreePatternPruningTest {
   }
 
   @Test
-  public void testComplexPruning_Prefix() {
+  public void testLegacyPatternMultipleRulesRejected() {
     final PipeParameters params =
         new PipeParameters(
             new HashMap<String, String>() {
               {
-                put(PipeSourceConstant.SOURCE_PATTERN_KEY, "root.sg.A,root.sg.B,root.sg.A.sub");
-                put(PipeSourceConstant.SOURCE_PATTERN_EXCLUSION_KEY, "root.sg.A");
-                put(PipeSourceConstant.SOURCE_PATTERN_FORMAT_KEY, "prefix");
+                put(PipeSourceConstant.SOURCE_PATTERN_KEY, "root.sg.A,root.sg.B");
               }
             });
 
-    final TreePattern result = TreePattern.parsePipePatternFromSourceParameters(params);
-
-    Assert.assertTrue(result instanceof PrefixTreePattern);
-    Assert.assertEquals("root.sg.B", result.getPattern());
+    try {
+      TreePattern.parsePipePatternFromSourceParameters(params);
+      Assert.fail("Should throw PipeException for legacy multi-pattern parameters");
+    } catch (final PipeException ignored) {
+      // Expected exception
+    }
   }
 
   @Test
@@ -143,8 +145,8 @@ public class TreePatternPruningTest {
         new PipeParameters(
             new HashMap<String, String>() {
               {
-                put(PipeSourceConstant.SOURCE_PATH_KEY, "root.sg.d1,root.sg.d2");
-                put(PipeSourceConstant.SOURCE_PATH_EXCLUSION_KEY, "root.other");
+                put(PipeSourceConstant.SOURCE_PATTERN_INCLUSION_KEY, "root.sg.d1,root.sg.d2");
+                put(PipeSourceConstant.SOURCE_PATTERN_EXCLUSION_KEY, "root.other");
               }
             });
 
@@ -152,5 +154,42 @@ public class TreePatternPruningTest {
 
     Assert.assertTrue(result instanceof UnionIoTDBTreePattern);
     Assert.assertEquals("root.sg.d1,root.sg.d2", result.getPattern());
+  }
+
+  @Test
+  public void testLegacyPathMultipleRulesRejected() {
+    final PipeParameters params =
+        new PipeParameters(
+            new HashMap<String, String>() {
+              {
+                put(PipeSourceConstant.SOURCE_PATH_KEY, "root.sg.d1,root.sg.d2");
+              }
+            });
+
+    try {
+      TreePattern.parsePipePatternFromSourceParameters(params);
+      Assert.fail("Should throw PipeException for legacy multi-path parameters");
+    } catch (final PipeException ignored) {
+      // Expected exception
+    }
+  }
+
+  @Test
+  public void testWithExclusionPreserved() {
+    final PipeParameters params =
+        new PipeParameters(
+            new HashMap<String, String>() {
+              {
+                put(
+                    PipeSourceConstant.SOURCE_PATTERN_INCLUSION_KEY,
+                    "root.test.g_0.d_2*.**,root.test.g_0.d_20.s_0");
+                put(PipeSourceConstant.SOURCE_PATTERN_EXCLUSION_KEY, "root.test.g_0.d_20.**");
+              }
+            });
+
+    final TreePattern result = TreePattern.parsePipePatternFromSourceParameters(params);
+    Assert.assertTrue(result instanceof WithExclusionIoTDBTreePattern);
+    Assert.assertEquals(
+        "INCLUSION(root.test.g_0.d_2*.**), EXCLUSION(root.test.g_0.d_20.**)", result.getPattern());
   }
 }

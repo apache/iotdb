@@ -34,6 +34,7 @@ struct TSStatus {
   3: optional list<TSStatus> subStatus
   4: optional TEndPoint redirectNode
   5: optional bool needRetry
+  6: optional binary responseData
 }
 
 enum TConsensusGroupType {
@@ -259,6 +260,20 @@ struct TTestConnectionResp {
 struct TNodeLocations {
   1: optional list<TConfigNodeLocation> configNodeLocations
   2: optional list<TDataNodeLocation> dataNodeLocations
+}
+
+struct TExternalServiceListResp {
+  1: required TSStatus status
+  2: required list<TExternalServiceEntry> externalServiceInfos
+}
+
+
+struct TExternalServiceEntry {
+  1: required string serviceName
+  2: required string className
+  3: required byte state
+  4: required i32 dataNodeId
+  5: required byte serviceType
 }
 
 enum TAggregationType {

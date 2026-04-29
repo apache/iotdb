@@ -19,11 +19,11 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern;
 
-import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.expression.ArithmeticOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.expression.BinaryComputation;
-import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.expression.ComparisonOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.expression.Computation;
-import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.expression.ReferenceComputation;
+import org.apache.iotdb.calc.execution.operator.process.rowpattern.expression.ArithmeticOperator;
+import org.apache.iotdb.calc.execution.operator.process.rowpattern.expression.BinaryComputation;
+import org.apache.iotdb.calc.execution.operator.process.rowpattern.expression.ComparisonOperator;
+import org.apache.iotdb.calc.execution.operator.process.rowpattern.expression.Computation;
+import org.apache.iotdb.calc.execution.operator.process.rowpattern.expression.ReferenceComputation;
 
 import org.junit.Test;
 

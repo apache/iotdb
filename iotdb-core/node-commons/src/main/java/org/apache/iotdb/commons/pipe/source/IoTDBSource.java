@@ -30,9 +30,12 @@ import org.apache.iotdb.pipe.api.PipeExtractor;
 import org.apache.iotdb.pipe.api.annotation.TableModel;
 import org.apache.iotdb.pipe.api.annotation.TreeModel;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
+import org.apache.iotdb.pipe.api.customizer.configuration.PipeRuntimeEnvironment;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeParameterNotValidException;
+
+import javax.annotation.Nonnull;
 
 import java.util.Arrays;
 import java.util.Objects;
@@ -40,10 +43,12 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_IOTDB_PASSWORD_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_IOTDB_SKIP_IF_NO_PRIVILEGES;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_IOTDB_USERNAME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_IOTDB_USER_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_SKIP_IF_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_IOTDB_PASSWORD_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_IOTDB_USERNAME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_IOTDB_USER_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.SOURCE_SKIP_IF_KEY;
@@ -154,13 +159,14 @@ public abstract class IoTDBSource implements PipeExtractor {
   public void customize(
       final PipeParameters parameters, final PipeExtractorRuntimeConfiguration configuration)
       throws Exception {
-    final PipeTaskSourceRuntimeEnvironment environment =
-        ((PipeTaskSourceRuntimeEnvironment) configuration.getRuntimeEnvironment());
+    final PipeRuntimeEnvironment environment = configuration.getRuntimeEnvironment();
     regionId = environment.getRegionId();
     pipeName = environment.getPipeName();
     creationTime = environment.getCreationTime();
     taskID = pipeName + "_" + regionId + "_" + creationTime;
-    pipeTaskMeta = environment.getPipeTaskMeta();
+    if (environment instanceof PipeTaskSourceRuntimeEnvironment) {
+      pipeTaskMeta = ((PipeTaskSourceRuntimeEnvironment) environment).getPipeTaskMeta();
+    }
 
     final boolean isDoubleLiving =
         parameters.getBooleanOrDefault(
@@ -199,7 +205,14 @@ public abstract class IoTDBSource implements PipeExtractor {
     userEntity.setAuditLogOperation(AuditLogOperation.QUERY);
 
     skipIfNoPrivileges = getSkipIfNoPrivileges(parameters);
+    final String password =
+        parameters.getStringByKeys(EXTRACTOR_IOTDB_PASSWORD_KEY, SOURCE_IOTDB_PASSWORD_KEY);
+    if (Objects.nonNull(password)) {
+      login(password);
+    }
   }
+
+  protected abstract void login(final @Nonnull String password);
 
   public static boolean getSkipIfNoPrivileges(final PipeParameters extractorParameters) {
     final String extractorSkipIfValue =

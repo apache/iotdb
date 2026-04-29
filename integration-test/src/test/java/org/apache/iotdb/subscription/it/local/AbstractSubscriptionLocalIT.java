@@ -36,7 +36,6 @@ public abstract class AbstractSubscriptionLocalIT extends AbstractSubscriptionIT
     EnvFactory.getEnv()
         .getConfig()
         .getCommonConfig()
-        .setSubscriptionEnabled(true)
         .setPipeMemoryManagementEnabled(false)
         .setIsPipeEnableMemoryCheck(false);
 

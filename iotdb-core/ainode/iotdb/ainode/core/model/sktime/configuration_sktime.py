@@ -153,7 +153,7 @@ class AttributeConfig:
 # Model configuration definitions - using concise dictionary format
 MODEL_CONFIGS = {
     "NAIVE_FORECASTER": {
-        "predict_length": AttributeConfig("predict_length", 1, "int", 1, 5000),
+        "output_length": AttributeConfig("output_length", 1, "int", 1, 5000),
         "strategy": AttributeConfig(
             "strategy", "last", "str", choices=["last", "mean", "drift"]
         ),
@@ -161,7 +161,7 @@ MODEL_CONFIGS = {
         "sp": AttributeConfig("sp", 1, "int", 1, 5000),
     },
     "EXPONENTIAL_SMOOTHING": {
-        "predict_length": AttributeConfig("predict_length", 1, "int", 1, 5000),
+        "output_length": AttributeConfig("output_length", 1, "int", 1, 5000),
         "damped_trend": AttributeConfig("damped_trend", False, "bool"),
         "initialization_method": AttributeConfig(
             "initialization_method",
@@ -174,7 +174,7 @@ MODEL_CONFIGS = {
         "use_brute": AttributeConfig("use_brute", False, "bool"),
     },
     "ARIMA": {
-        "predict_length": AttributeConfig("predict_length", 1, "int", 1, 5000),
+        "output_length": AttributeConfig("output_length", 1, "int", 1, 5000),
         "order": AttributeConfig("order", (1, 0, 0), "tuple", value_type=int),
         "seasonal_order": AttributeConfig(
             "seasonal_order", (0, 0, 0, 0), "tuple", value_type=int
@@ -212,7 +212,7 @@ MODEL_CONFIGS = {
         "concentrate_scale": AttributeConfig("concentrate_scale", False, "bool"),
     },
     "STL_FORECASTER": {
-        "predict_length": AttributeConfig("predict_length", 1, "int", 1, 5000),
+        "output_length": AttributeConfig("output_length", 1, "int", 1, 5000),
         "sp": AttributeConfig("sp", 2, "int", 1, 5000),
         "seasonal": AttributeConfig("seasonal", 7, "int", 1, 5000),
         "trend": AttributeConfig("trend", None, "int"),

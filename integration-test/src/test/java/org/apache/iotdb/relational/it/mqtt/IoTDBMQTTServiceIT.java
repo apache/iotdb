@@ -69,6 +69,7 @@ public class IoTDBMQTTServiceIT {
     mqtt.setPassword(PASSWORD);
     mqtt.setConnectAttemptsMax(3);
     mqtt.setReconnectDelay(10);
+    mqtt.setClientId("clientId01");
 
     connection = mqtt.blockingConnection();
     connection.connect();
@@ -103,7 +104,9 @@ public class IoTDBMQTTServiceIT {
                 try (final SessionDataSet dataSet =
                     session.executeQueryStatement(
                         "select tag1,tag2,field1,field2,field3 from test1 where time = 1")) {
-                  assertEquals(5, dataSet.getColumnNames().size());
+                  if (dataSet.getColumnNames().size() != 5 || !dataSet.hasNext()) {
+                    return false;
+                  }
                   List<Field> fields = dataSet.next().getFields();
                   assertEquals("t1", fields.get(0).getStringValue());
                   assertEquals("t2", fields.get(1).getStringValue());
@@ -138,7 +141,9 @@ public class IoTDBMQTTServiceIT {
                 try (final SessionDataSet dataSet =
                     session.executeQueryStatement(
                         "select tag1,tag2,attr3,attr4,field1,field2,field3 from test2 where time = 1")) {
-                  assertEquals(7, dataSet.getColumnNames().size());
+                  if (dataSet.getColumnNames().size() != 7 || !dataSet.hasNext()) {
+                    return false;
+                  }
                   List<Field> fields = dataSet.next().getFields();
                   assertEquals("t1", fields.get(0).getStringValue());
                   assertEquals("t2", fields.get(1).getStringValue());

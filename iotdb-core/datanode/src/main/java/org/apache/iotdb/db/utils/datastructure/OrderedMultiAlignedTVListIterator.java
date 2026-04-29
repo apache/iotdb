@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.utils.datastructure;
 
+import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -49,7 +50,8 @@ public class OrderedMultiAlignedTVListIterator extends MultiAlignedTVListIterato
       Integer floatPrecision,
       List<TSEncoding> encodingList,
       boolean ignoreAllNullRows,
-      int maxNumberOfPointsInPage) {
+      int maxNumberOfPointsInPage,
+      QueryContext queryContext) {
     super(
         tsDataTypes,
         columnIndexList,
@@ -62,7 +64,8 @@ public class OrderedMultiAlignedTVListIterator extends MultiAlignedTVListIterato
         floatPrecision,
         encodingList,
         ignoreAllNullRows,
-        maxNumberOfPointsInPage);
+        maxNumberOfPointsInPage,
+        queryContext);
     this.bitMap = new BitMap(tsDataTypeList.size());
     this.ignoreAllNullRows = ignoreAllNullRows;
   }

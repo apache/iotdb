@@ -220,26 +220,21 @@ public class SubscriptionInfo implements SnapshotProcessor {
     }
   }
 
-  public void validatePipePluginUsageByTopicInternal(String pipePluginName)
+  private void validatePipePluginUsageByTopicInternal(String pipePluginName)
       throws SubscriptionException {
-    acquireReadLock();
-    try {
-      topicMetaKeeper
-          .getAllTopicMeta()
-          .forEach(
-              meta -> {
-                if (pipePluginName.equals(meta.getConfig().getAttribute().get("processor"))) {
-                  final String exceptionMessage =
-                      String.format(
-                          "PipePlugin '%s' is already used by Topic '%s' as a processor.",
-                          pipePluginName, meta.getTopicName());
-                  LOGGER.warn(exceptionMessage);
-                  throw new SubscriptionException(exceptionMessage);
-                }
-              });
-    } finally {
-      releaseReadLock();
-    }
+    topicMetaKeeper
+        .getAllTopicMeta()
+        .forEach(
+            meta -> {
+              if (pipePluginName.equals(meta.getConfig().getAttribute().get("processor"))) {
+                final String exceptionMessage =
+                    String.format(
+                        "PipePlugin '%s' is already used by Topic '%s' as a processor.",
+                        pipePluginName, meta.getTopicName());
+                LOGGER.warn(exceptionMessage);
+                throw new SubscriptionException(exceptionMessage);
+              }
+            });
   }
 
   public void validateBeforeAlteringTopic(TopicMeta topicMeta) throws SubscriptionException {
@@ -335,21 +330,25 @@ public class SubscriptionInfo implements SnapshotProcessor {
   public TSStatus alterTopic(AlterTopicPlan plan) {
     acquireWriteLock();
     try {
-      topicMetaKeeper.removeTopicMeta(plan.getTopicMeta().getTopicName());
-      topicMetaKeeper.addTopicMeta(plan.getTopicMeta().getTopicName(), plan.getTopicMeta());
-      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      return alterTopicInternal(plan);
     } finally {
       releaseWriteLock();
     }
   }
 
-  public TSStatus alterMultipleTopics(AlterMultipleTopicsPlan plan) {
+  private TSStatus alterTopicInternal(final AlterTopicPlan plan) {
+    topicMetaKeeper.removeTopicMeta(plan.getTopicMeta().getTopicName());
+    topicMetaKeeper.addTopicMeta(plan.getTopicMeta().getTopicName(), plan.getTopicMeta());
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  }
+
+  public TSStatus alterMultipleTopics(final AlterMultipleTopicsPlan plan) {
     acquireWriteLock();
     try {
-      TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      final TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       status.setSubStatus(new ArrayList<>());
-      for (AlterTopicPlan subPlan : plan.getSubPlans()) {
-        TSStatus innerStatus = alterTopic(subPlan);
+      for (final AlterTopicPlan subPlan : plan.getSubPlans()) {
+        final TSStatus innerStatus = alterTopicInternal(subPlan);
         status.getSubStatus().add(innerStatus);
         if (innerStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           status.setCode(TSStatusCode.ALTER_TOPIC_ERROR.getStatusCode());

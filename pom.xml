@@ -47,6 +47,7 @@
         <module>distribution</module>
         <module>example</module>
         <module>library-udf</module>
+        <module>external-service-impl</module>
     </modules>
     <properties>
         <!-- This was the last version to support Java 8 -->
@@ -60,7 +61,7 @@
         <argLine/>
         <awaitility.version>4.2.0</awaitility.version>
         <boost.include.dir/>
-        <bouncycastle.version>1.81</bouncycastle.version>
+        <bouncycastle.version>1.84</bouncycastle.version>
         <!-- This was the last version to support Java 8 -->
         <caffeine.version>2.9.3</caffeine.version>
         <cglib.version>3.3.0</cglib.version>
@@ -68,7 +69,6 @@
         <commons-cli.version>1.5.0</commons-cli.version>
         <commons-codec.version>1.16.1</commons-codec.version>
         <commons-csv.version>1.10.0</commons-csv.version>
-        <commons-jexl3.version>3.3</commons-jexl3.version>
         <commons-math3.version>3.6.1</commons-math3.version>
         <commons-pool2.version>2.11.1</commons-pool2.version>
         <commons-lang3.version>3.18.0</commons-lang3.version>
@@ -82,7 +82,7 @@
         <findbugs.jsr305.version>3.0.2</findbugs.jsr305.version>
         <fusesource-mqtt-client.version>1.16</fusesource-mqtt-client.version>
         <!-- JDK1.8 only support google java format 1.7-->
-        <google.java.format.version>1.22.0</google.java.format.version>
+        <google.java.format.version>1.28.0</google.java.format.version>
         <gson.version>2.13.1</gson.version>
         <guava.version>32.1.2-jre</guava.version>
         <!-- This was the last version to support Java 8 -->
@@ -94,7 +94,7 @@
       https://github.com/apache/iotdb-bin-resources/tree/main/iotdb-tools-thrift
     -->
         <iotdb-tools-thrift.version>0.14.1.0</iotdb-tools-thrift.version>
-        <jackson.version>2.16.2</jackson.version>
+        <jackson.version>2.18.6</jackson.version>
         <!-- This is the last version to support the javax namespace -->
         <jakarta.servlet-api.version>4.0.4</jakarta.servlet-api.version>
         <!-- This is the last version to support the javax namespace -->
@@ -106,11 +106,9 @@
         <!-- This is the last version to support the javax namespace -->
         <jersey.version>2.40</jersey.version>
         <!-- This was the last version to support Java 8 -->
-        <jetty.version>9.4.57.v20241219</jetty.version>
-        <jjwt.version>0.12.7</jjwt.version>
+        <jetty.version>9.4.58.v20250814</jetty.version>
         <jline.version>3.26.2</jline.version>
         <jna.version>5.14.0</jna.version>
-        <json-smart.version>2.5.2</json-smart.version>
         <jtransforms.version>3.1</jtransforms.version>
         <junit.version>4.13.2</junit.version>
         <!-- This was the last version to support Java 8 -->
@@ -127,21 +125,13 @@
         <!--mockito.version>4.11.0</mockito.version-->
         <moquette.version>0.18.0</moquette.version>
         <netty.version>4.1.126.Final</netty.version>
-        <nimbus-jose-jwt.version>9.37.4</nimbus-jose-jwt.version>
-        <oauth2-oidc-sdk.version>10.15</oauth2-oidc-sdk.version>
         <!-- This was the last version to support Java 8 -->
         <openapi.generator.version>6.6.0</openapi.generator.version>
         <osgi.version>7.0.0</osgi.version>
         <pax-jdbc-common.version>1.5.6</pax-jdbc-common.version>
         <powermock.version>2.0.9</powermock.version>
-        <ratis-thirdparty-misc.version>1.0.10</ratis-thirdparty-misc.version>
-        <!--
-      This is an unreleased version of a custom branch. The 8-character part after the version number
-      This is an unreleased version of a custom branch. The 8-character part after the version number
-      is for ensuring the SNAPSHOT will stay available. We should however have the Ratis folks do a
-      new release soon, as releasing with this version is more than sub-ideal.
-    -->
-        <ratis.version>3.2.1</ratis.version>
+        <ratis-thirdparty-misc.version>1.0.11</ratis-thirdparty-misc.version>
+        <ratis.version>3.2.2</ratis.version>
         <reactive-streams.version>1.0.4</reactive-streams.version>
         <reactor-netty.version>1.2.9</reactor-netty.version>
         <reactor.version>3.7.9</reactor.version>
@@ -159,7 +149,8 @@
         <sonar.organization>apache</sonar.organization>
         <!-- Override this to `true`, if you want to disable spotless -->
         <spotless.skip>false</spotless.skip>
-        <spotless.version>2.43.0</spotless.version>
+        <spotless.version>2.44.5</spotless.version>
+        <clang.format.version>17.0.6</clang.format.version>
         <!-- This was the last version to support Java 8 -->
         <swagger.version>1.6.14</swagger.version>
         <thrift.exec-cmd.executable>chmod</thrift.exec-cmd.executable>
@@ -173,7 +164,7 @@
         <thrift.version>0.14.1</thrift.version>
         <xz.version>1.9</xz.version>
         <zstd-jni.version>1.5.6-3</zstd-jni.version>
-        <tsfile.version>2.2.0-251223-SNAPSHOT</tsfile.version>
+        <tsfile.version>2.3.0-260422-SNAPSHOT</tsfile.version>
     </properties>
     <!--
     if we claim dependencies in dependencyManagement, then we do not claim
@@ -378,11 +369,6 @@
                 <version>${airlift-units.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.jsonwebtoken</groupId>
-                <artifactId>jjwt-api</artifactId>
-                <version>${jjwt.version}</version>
-            </dependency>
-            <dependency>
                 <groupId>org.eclipse.milo</groupId>
                 <artifactId>stack-core</artifactId>
                 <version>${milo.version}</version>
@@ -459,21 +445,6 @@
                 <version>${h2.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.jsonwebtoken</groupId>
-                <artifactId>jjwt-impl</artifactId>
-                <version>${jjwt.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>io.jsonwebtoken</groupId>
-                <artifactId>jjwt-jackson</artifactId>
-                <version>${jjwt.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.nimbusds</groupId>
-                <artifactId>oauth2-oidc-sdk</artifactId>
-                <version>${oauth2-oidc-sdk.version}</version>
-            </dependency>
-            <dependency>
                 <groupId>org.apache.httpcomponents</groupId>
                 <artifactId>httpclient</artifactId>
                 <version>${httpclient.version}</version>
@@ -494,19 +465,9 @@
                 <version>${powermock.version}</version>
             </dependency>
             <dependency>
-                <groupId>com.nimbusds</groupId>
-                <artifactId>nimbus-jose-jwt</artifactId>
-                <version>${nimbus-jose-jwt.version}</version>
-            </dependency>
-            <dependency>
                 <groupId>cglib</groupId>
                 <artifactId>cglib</artifactId>
                 <version>${cglib.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.commons</groupId>
-                <artifactId>commons-jexl3</artifactId>
-                <version>${commons-jexl3.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.github.luben</groupId>
@@ -640,11 +601,6 @@
                 <version>${caffeine.version}</version>
             </dependency>
             <dependency>
-                <groupId>net.minidev</groupId>
-                <artifactId>json-smart</artifactId>
-                <version>${json-smart.version}</version>
-            </dependency>
-            <dependency>
                 <groupId>org.apache.httpcomponents</groupId>
                 <artifactId>httpcore</artifactId>
                 <version>${httpcore.version}</version>
@@ -724,10 +680,7 @@
                 <artifactId>jersey-hk2</artifactId>
                 <version>${jersey.version}</version>
             </dependency>
-            <!-- Conflict:
-        json-smart (pulls in 9.3),
-        cglib (pulls in 7.1)
-      -->
+            <!-- Conflict: cglib pulls in 7.1 -->
             <dependency>
                 <groupId>org.ow2.asm</groupId>
                 <artifactId>asm</artifactId>
@@ -901,9 +854,9 @@
                     <version>1.7.1</version>
                 </plugin>
                 <plugin>
-                    <groupId>com.googlecode.cmake-maven-project</groupId>
+                    <groupId>io.github.cmake-maven-plugin</groupId>
                     <artifactId>cmake-maven-plugin</artifactId>
-                    <version>3.29.3-b2</version>
+                    <version>4.2.3-b1</version>
                 </plugin>
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
@@ -1574,9 +1527,9 @@
         </profile>
         <!-- Current version of spotless cannot support JDK11 below -->
         <profile>
-            <id>.java-11-below</id>
+            <id>.java-17-below</id>
             <activation>
-                <jdk>(,11]</jdk>
+                <jdk>(,17)</jdk>
             </activation>
             <properties>
                 <!-- This was the last version to support Java 8, Just for run -->

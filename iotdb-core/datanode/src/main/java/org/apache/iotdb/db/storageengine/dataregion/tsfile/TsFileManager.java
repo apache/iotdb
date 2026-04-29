@@ -146,6 +146,18 @@ public class TsFileManager {
     }
   }
 
+  public Pair<List<TsFileResource>, List<TsFileResource>> getTsFileListSnapshot(
+      long timePartition) {
+    readLock();
+    try {
+      return new Pair<>(
+          new ArrayList<>(sequenceFiles.getOrDefault(timePartition, new TsFileResourceList())),
+          new ArrayList<>(unsequenceFiles.getOrDefault(timePartition, new TsFileResourceList())));
+    } finally {
+      readUnlock();
+    }
+  }
+
   public List<TsFileResource> getTsFileList(boolean sequence, long startTime, long endTime) {
     // the iteration of ConcurrentSkipListMap is not concurrent secure
     // so we must add read lock here

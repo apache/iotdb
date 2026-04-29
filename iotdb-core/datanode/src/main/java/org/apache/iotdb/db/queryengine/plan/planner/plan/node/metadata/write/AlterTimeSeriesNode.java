@@ -22,18 +22,22 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.IPlanVisitor;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterTimeSeriesStatement.AlterType;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.NotImplementedException;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -44,6 +48,7 @@ import java.util.Map;
 import java.util.Objects;
 
 public class AlterTimeSeriesNode extends WritePlanNode {
+  private static final Logger LOGGER = LoggerFactory.getLogger(AlterTimeSeriesNode.class);
   private MeasurementPath path;
   private AlterType alterType;
 
@@ -62,6 +67,8 @@ public class AlterTimeSeriesNode extends WritePlanNode {
   private Map<String, String> attributesMap;
 
   private boolean isAlterView;
+
+  private TSDataType dataType;
 
   private TRegionReplicaSet regionReplicaSet;
 
@@ -82,6 +89,40 @@ public class AlterTimeSeriesNode extends WritePlanNode {
     this.tagsMap = tagsMap;
     this.attributesMap = attributesMap;
     this.isAlterView = isAlterView;
+  }
+
+  public AlterTimeSeriesNode(
+      PlanNodeId id,
+      MeasurementPath path,
+      AlterType alterType,
+      Map<String, String> alterMap,
+      String alias,
+      Map<String, String> tagsMap,
+      Map<String, String> attributesMap,
+      boolean isAlterView,
+      TSDataType dataType) {
+    super(id);
+    this.path = path;
+    this.alterType = alterType;
+    this.alterMap = alterMap;
+    this.alias = alias;
+    this.tagsMap = tagsMap;
+    this.attributesMap = attributesMap;
+    this.isAlterView = isAlterView;
+    this.dataType = dataType;
+  }
+
+  public AlterTimeSeriesNode(
+      PlanNodeId id,
+      MeasurementPath path,
+      AlterType alterType,
+      boolean isAlterView,
+      TSDataType dataType) {
+    super(id);
+    this.path = path;
+    this.alterType = alterType;
+    this.isAlterView = isAlterView;
+    this.dataType = dataType;
   }
 
   public MeasurementPath getPath() {
@@ -140,6 +181,14 @@ public class AlterTimeSeriesNode extends WritePlanNode {
     isAlterView = alterView;
   }
 
+  public TSDataType getDataType() {
+    return dataType;
+  }
+
+  public void setDataType(TSDataType dataType) {
+    this.dataType = dataType;
+  }
+
   @Override
   public List<PlanNode> getChildren() {
     return null;
@@ -178,6 +227,7 @@ public class AlterTimeSeriesNode extends WritePlanNode {
     Map<String, String> alterMap = null;
     Map<String, String> tagsMap = null;
     Map<String, String> attributesMap = null;
+    TSDataType dataType = null;
 
     int length = byteBuffer.getInt();
     byte[] bytes = new byte[length];
@@ -226,14 +276,27 @@ public class AlterTimeSeriesNode extends WritePlanNode {
       attributesMap = ReadWriteIOUtils.readMap(byteBuffer);
     }
 
+    // dataType
+    if (byteBuffer.get() == 1) {
+      dataType = ReadWriteIOUtils.readDataType(byteBuffer);
+    }
+
     id = ReadWriteIOUtils.readString(byteBuffer);
     return new AlterTimeSeriesNode(
-        new PlanNodeId(id), path, alterType, alterMap, alias, tagsMap, attributesMap, isAlterView);
+        new PlanNodeId(id),
+        path,
+        alterType,
+        alterMap,
+        alias,
+        tagsMap,
+        attributesMap,
+        isAlterView,
+        dataType);
   }
 
   @Override
-  public <R, C> R accept(PlanVisitor<R, C> visitor, C schemaRegion) {
-    return visitor.visitAlterTimeSeries(this, schemaRegion);
+  public <R, C> R accept(final IPlanVisitor<R, C> visitor, final C schemaRegion) {
+    return ((PlanVisitor<R, C>) visitor).visitAlterTimeSeries(this, schemaRegion);
   }
 
   @Override
@@ -284,6 +347,14 @@ public class AlterTimeSeriesNode extends WritePlanNode {
     } else {
       byteBuffer.put((byte) 1);
       ReadWriteIOUtils.write(attributesMap, byteBuffer);
+    }
+
+    // dataType
+    if (dataType != null) {
+      byteBuffer.put((byte) 1);
+      ReadWriteIOUtils.write(dataType, byteBuffer);
+    } else {
+      byteBuffer.put((byte) 0);
     }
   }
 
@@ -336,6 +407,14 @@ public class AlterTimeSeriesNode extends WritePlanNode {
       stream.write((byte) 1);
       ReadWriteIOUtils.write(attributesMap, stream);
     }
+
+    // dataType
+    if (dataType != null) {
+      stream.write((byte) 1);
+      ReadWriteIOUtils.write(dataType, stream);
+    } else {
+      stream.write((byte) 0);
+    }
   }
 
   @Override
@@ -355,13 +434,14 @@ public class AlterTimeSeriesNode extends WritePlanNode {
         && Objects.equals(alterMap, that.alterMap)
         && Objects.equals(alias, that.alias)
         && Objects.equals(tagsMap, that.tagsMap)
-        && Objects.equals(attributesMap, that.attributesMap);
+        && Objects.equals(attributesMap, that.attributesMap)
+        && Objects.equals(dataType, that.dataType);
   }
 
   @Override
   public int hashCode() {
     return Objects.hash(
-        this.getPlanNodeId(), path, alias, alterType, alterMap, attributesMap, tagsMap);
+        this.getPlanNodeId(), path, alias, alterType, alterMap, attributesMap, tagsMap, dataType);
   }
 
   @Override

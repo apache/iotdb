@@ -23,13 +23,13 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.exception.runtime.SerializationRunTimeException;
 import org.apache.iotdb.commons.partition.ExecutorType;
+import org.apache.iotdb.commons.queryengine.common.SessionInfo;
+import org.apache.iotdb.commons.request.IConsensusRequest;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
-import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
-import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeUtil;
 
@@ -79,6 +79,9 @@ public class FragmentInstance implements IConsensusRequest {
   // We need to cache and calculate the statistics of this FragmentInstance if it is.
   private boolean isExplainAnalyze = false;
 
+  private final boolean debug;
+  private final boolean verbose;
+
   // We can add some more params for a specific FragmentInstance
   // So that we can make different FragmentInstance owns different data range.
 
@@ -88,7 +91,9 @@ public class FragmentInstance implements IConsensusRequest {
       TimePredicate globalTimePredicate,
       QueryType type,
       long timeOut,
-      SessionInfo sessionInfo) {
+      SessionInfo sessionInfo,
+      boolean debug,
+      boolean verbose) {
     this.fragment = fragment;
     this.globalTimePredicate = globalTimePredicate;
     this.id = id;
@@ -96,6 +101,8 @@ public class FragmentInstance implements IConsensusRequest {
     this.timeOut = timeOut > 0 ? timeOut : CONFIG.getQueryTimeoutThreshold();
     this.isRoot = false;
     this.sessionInfo = sessionInfo;
+    this.debug = debug;
+    this.verbose = verbose;
   }
 
   public FragmentInstance(
@@ -106,8 +113,10 @@ public class FragmentInstance implements IConsensusRequest {
       long timeOut,
       SessionInfo sessionInfo,
       boolean isExplainAnalyze,
-      boolean isRoot) {
-    this(fragment, id, globalTimePredicate, type, timeOut, sessionInfo);
+      boolean debug,
+      boolean isRoot,
+      boolean verbose) {
+    this(fragment, id, globalTimePredicate, type, timeOut, sessionInfo, debug, verbose);
     this.isRoot = isRoot;
     this.isExplainAnalyze = isExplainAnalyze;
   }
@@ -119,8 +128,10 @@ public class FragmentInstance implements IConsensusRequest {
       long timeOut,
       SessionInfo sessionInfo,
       boolean isExplainAnalyze,
-      boolean isRoot) {
-    this(fragment, id, null, type, timeOut, sessionInfo);
+      boolean debug,
+      boolean isRoot,
+      boolean verbose) {
+    this(fragment, id, null, type, timeOut, sessionInfo, debug, verbose);
     this.isRoot = isRoot;
     this.isExplainAnalyze = isExplainAnalyze;
   }
@@ -132,8 +143,10 @@ public class FragmentInstance implements IConsensusRequest {
       QueryType type,
       long timeOut,
       SessionInfo sessionInfo,
-      int dataNodeFINum) {
-    this(fragment, id, globalTimePredicate, type, timeOut, sessionInfo);
+      int dataNodeFINum,
+      boolean debug,
+      boolean verbose) {
+    this(fragment, id, globalTimePredicate, type, timeOut, sessionInfo, debug, verbose);
     this.dataNodeFINum = dataNodeFINum;
   }
 
@@ -200,6 +213,14 @@ public class FragmentInstance implements IConsensusRequest {
     this.dataNodeFINum = dataNodeFINum;
   }
 
+  public boolean isDebug() {
+    return debug;
+  }
+
+  public boolean isVerbose() {
+    return verbose;
+  }
+
   public String toString() {
     StringBuilder ret = new StringBuilder();
     ret.append(String.format("FragmentInstance-%s:", getId()));
@@ -229,13 +250,24 @@ public class FragmentInstance implements IConsensusRequest {
     TimePredicate globalTimePredicate = hasTimePredicate ? TimePredicate.deserialize(buffer) : null;
     QueryType queryType = QueryType.values()[ReadWriteIOUtils.readInt(buffer)];
     int dataNodeFINum = ReadWriteIOUtils.readInt(buffer);
+    boolean debug = ReadWriteIOUtils.readBool(buffer);
+    boolean verbose = ReadWriteIOUtils.readBool(buffer);
     FragmentInstance fragmentInstance =
         new FragmentInstance(
-            planFragment, id, globalTimePredicate, queryType, timeOut, sessionInfo, dataNodeFINum);
+            planFragment,
+            id,
+            globalTimePredicate,
+            queryType,
+            timeOut,
+            sessionInfo,
+            dataNodeFINum,
+            debug,
+            verbose);
     boolean hasHostDataNode = ReadWriteIOUtils.readBool(buffer);
     fragmentInstance.hostDataNode =
         hasHostDataNode ? ThriftCommonsSerDeUtils.deserializeTDataNodeLocation(buffer) : null;
     fragmentInstance.isExplainAnalyze = ReadWriteIOUtils.readBool(buffer);
+    fragmentInstance.setHighestPriority(ReadWriteIOUtils.readBool(buffer));
     return fragmentInstance;
   }
 
@@ -255,11 +287,14 @@ public class FragmentInstance implements IConsensusRequest {
       }
       ReadWriteIOUtils.write(type.ordinal(), outputStream);
       ReadWriteIOUtils.write(dataNodeFINum, outputStream);
+      ReadWriteIOUtils.write(debug, outputStream);
+      ReadWriteIOUtils.write(verbose, outputStream);
       ReadWriteIOUtils.write(hostDataNode != null, outputStream);
       if (hostDataNode != null) {
         ThriftCommonsSerDeUtils.serializeTDataNodeLocation(hostDataNode, outputStream);
       }
       ReadWriteIOUtils.write(isExplainAnalyze, outputStream);
+      ReadWriteIOUtils.write(isHighestPriority, outputStream);
       return ByteBuffer.wrap(publicBAOS.getBuf(), 0, publicBAOS.size());
     } catch (IOException e) {
       LOGGER.error("Unexpected error occurs when serializing this FragmentInstance.", e);

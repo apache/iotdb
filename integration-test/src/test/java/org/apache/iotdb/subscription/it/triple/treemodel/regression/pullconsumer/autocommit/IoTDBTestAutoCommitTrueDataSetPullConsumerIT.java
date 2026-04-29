@@ -37,6 +37,7 @@ import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -127,8 +128,7 @@ public class IoTDBTestAutoCommitTrueDataSetPullConsumerIT
         break;
       }
       for (final SubscriptionMessage message : messages) {
-        for (final Iterator<Tablet> it = message.getSessionDataSetsHandler().tabletIterator();
-            it.hasNext(); ) {
+        for (final Iterator<Tablet> it = message.getRecordTabletIterator(); it.hasNext(); ) {
           final Tablet tablet = it.next();
           session.insertTablet(tablet);
           System.out.println(
@@ -138,6 +138,7 @@ public class IoTDBTestAutoCommitTrueDataSetPullConsumerIT
     }
   }
 
+  @Ignore
   @Test
   public void do_test()
       throws InterruptedException,

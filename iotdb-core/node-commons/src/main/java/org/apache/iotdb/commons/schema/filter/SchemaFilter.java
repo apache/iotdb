@@ -119,6 +119,9 @@ public abstract class SchemaFilter implements Accountable {
       final List<SchemaFilter> result,
       final SchemaFilter schemaFilter,
       final SchemaFilterType filterType) {
+    if (schemaFilter == null) {
+      return;
+    }
     if (schemaFilter.getSchemaFilterType().equals(filterType)) {
       result.add(schemaFilter);
     }

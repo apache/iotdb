@@ -22,6 +22,8 @@ package org.apache.iotdb.db.storageengine.dataregion.memtable;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.exception.DataTypeInconsistentException;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 
@@ -175,6 +177,11 @@ public class AlignedWritableMemChunkGroup implements IWritableMemChunkGroup {
     AlignedWritableMemChunkGroup memChunkGroup = new AlignedWritableMemChunkGroup();
     memChunkGroup.memChunk = AlignedWritableMemChunk.deserialize(stream, isTableModel);
     return memChunkGroup;
+  }
+
+  @Override
+  public void checkDataType(InsertNode node) throws DataTypeInconsistentException {
+    memChunk.checkDataType(node);
   }
 
   protected static AlignedWritableMemChunkGroup deserializeSingleTVListMemChunks(

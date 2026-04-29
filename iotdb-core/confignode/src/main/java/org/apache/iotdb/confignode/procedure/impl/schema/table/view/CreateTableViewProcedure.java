@@ -91,23 +91,20 @@ public class CreateTableViewProcedure extends CreateTableProcedure {
           } else {
             oldView = oldTableAndStatus.get().getLeft();
             oldStatus = oldTableAndStatus.get().getRight();
-            setNextState(CreateTableState.PRE_CREATE);
           }
-        } else {
-          final TDatabaseSchema schema =
-              env.getConfigManager().getClusterSchemaManager().getDatabaseSchemaByName(database);
-          if (!table.getPropValue(TsTable.TTL_PROPERTY).isPresent()
-              && schema.isSetTTL()
-              && schema.getTTL() != Long.MAX_VALUE) {
-            table.addProp(TsTable.TTL_PROPERTY, String.valueOf(schema.getTTL()));
-          }
-          if (!table.getPropValue(TsTable.NEED_LAST_CACHE_PROPERTY).isPresent()
-              && schema.isSetNeedLastCache()) {
-            table.addProp(
-                TsTable.NEED_LAST_CACHE_PROPERTY, String.valueOf(schema.isNeedLastCache()));
-          }
-          setNextState(CreateTableState.PRE_CREATE);
         }
+        final TDatabaseSchema schema =
+            env.getConfigManager().getClusterSchemaManager().getDatabaseSchemaByName(database);
+        if (!table.getPropValue(TsTable.TTL_PROPERTY).isPresent()
+            && schema.isSetTTL()
+            && schema.getTTL() != Long.MAX_VALUE) {
+          table.addProp(TsTable.TTL_PROPERTY, String.valueOf(schema.getTTL()));
+        }
+        if (!table.getPropValue(TsTable.NEED_LAST_CACHE_PROPERTY).isPresent()
+            && schema.isSetNeedLastCache()) {
+          table.addProp(TsTable.NEED_LAST_CACHE_PROPERTY, String.valueOf(schema.isNeedLastCache()));
+        }
+        setNextState(CreateTableState.PRE_CREATE);
       } catch (final MetadataException | DatabaseNotExistsException e) {
         setFailure(new ProcedureException(e));
       }

@@ -112,6 +112,11 @@ public class IoTDBSeriesPermissionIT {
         "803: No permissions for this operation, please add privilege WRITE_SCHEMA",
         "test",
         "test123123456");
+    assertNonQueryTestFail(
+        "alter timeseries root.test.d1.s1 set data type float",
+        "803: No permissions for this operation, please add privilege WRITE_SCHEMA on [root.test.d1.s1]",
+        "test",
+        "test123123456");
 
     grantUserSeriesPrivilege("test", PrivilegeType.WRITE_SCHEMA, "root.test.**");
 
@@ -126,6 +131,8 @@ public class IoTDBSeriesPermissionIT {
     executeNonQuery(
         "create timeseries root.test.d1.s1 with dataType = int32", "test", "test123123456");
     executeNonQuery("ALTER timeseries root.test.d1.s1 ADD TAGS tag3=v3", "test", "test123123456");
+    executeNonQuery(
+        "alter timeseries root.test.d1.s1 set data type float", "test", "test123123456");
     executeNonQuery("drop timeseries root.test.d1.s1", "test", "test123123456");
     executeNonQuery("set TTL to root.test.** 10000", "test", "test123123456");
     executeNonQuery("unset TTL to root.test.**", "test", "test123123456");

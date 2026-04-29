@@ -30,7 +30,6 @@
     <packaging>pom</packaging>
     <name>IoTDB: Protocol</name>
     <modules>
-        <module>openapi</module>
         <module>thrift-datanode</module>
         <module>thrift-commons</module>
         <module>thrift-confignode</module>

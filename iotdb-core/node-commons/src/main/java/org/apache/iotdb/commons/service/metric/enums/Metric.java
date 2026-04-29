@@ -60,8 +60,8 @@ public enum Metric {
   IOT_CONSENSUS("iot_consensus"),
   IOT_SEND_LOG("iot_send_log"),
   IOT_RECEIVE_LOG("iot_receive_log"),
-  PIPE_CONSENSUS("pipe_consensus"),
-  PIPE_CONSENSUS_MODE("pipe_consensus_mode"),
+  IOT_CONSENSUS_V2("iot_consensus_v2"),
+  IOT_CONSENSUS_V2_MODE("iot_consensus_v2_mode"),
   PIPE_SEND_EVENT("pipe_send_event"),
   PIPE_RETRY_SEND_EVENT("pipe_retry_send_event"),
   PIPE_RECEIVE_EVENT("pipe_receive_event"),
@@ -91,6 +91,7 @@ public enum Metric {
   PAM_RELEASED_COUNT("primitive_array_manager_released_count"),
   PAM_ALLOCATED_FAILURE_COUNT("primitive_array_manager_allocated_failure_count"),
   PAM_RELEASED_FAILURE_COUNT("primitive_array_manager_released_failure_count"),
+  TABLE_DISK_USAGE_CACHE("table_disk_usage_cache"),
 
   // compaction related
   DATA_WRITTEN("data_written"),

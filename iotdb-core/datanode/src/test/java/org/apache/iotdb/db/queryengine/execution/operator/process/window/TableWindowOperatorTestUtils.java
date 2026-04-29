@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.window;
 
+import org.apache.iotdb.calc.plan.planner.CommonOperatorUtils;
+
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
@@ -27,8 +29,6 @@ import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
 
 import java.util.Arrays;
 import java.util.Collections;
-
-import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator.TIME_COLUMN_TEMPLATE;
 
 public class TableWindowOperatorTestUtils {
   public static TsBlock createIntsTsBlockWithoutNulls(int[] inputs) {
@@ -40,7 +40,8 @@ public class TableWindowOperatorTestUtils {
     }
 
     return tsBlockBuilder.build(
-        new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, tsBlockBuilder.getPositionCount()));
+        new RunLengthEncodedColumn(
+            CommonOperatorUtils.TIME_COLUMN_TEMPLATE, tsBlockBuilder.getPositionCount()));
   }
 
   public static TsBlock createIntsTsBlockWithoutNulls(int[] inputs, int offset) {
@@ -54,7 +55,8 @@ public class TableWindowOperatorTestUtils {
     }
 
     return tsBlockBuilder.build(
-        new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, tsBlockBuilder.getPositionCount()));
+        new RunLengthEncodedColumn(
+            CommonOperatorUtils.TIME_COLUMN_TEMPLATE, tsBlockBuilder.getPositionCount()));
   }
 
   public static TsBlock createIntsTsBlockWithoutNulls(
@@ -70,7 +72,8 @@ public class TableWindowOperatorTestUtils {
     }
 
     return tsBlockBuilder.build(
-        new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, tsBlockBuilder.getPositionCount()));
+        new RunLengthEncodedColumn(
+            CommonOperatorUtils.TIME_COLUMN_TEMPLATE, tsBlockBuilder.getPositionCount()));
   }
 
   public static TsBlock createIntsTsBlockWithNulls(int[] inputs) {
@@ -87,7 +90,8 @@ public class TableWindowOperatorTestUtils {
     }
 
     return tsBlockBuilder.build(
-        new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, tsBlockBuilder.getPositionCount()));
+        new RunLengthEncodedColumn(
+            CommonOperatorUtils.TIME_COLUMN_TEMPLATE, tsBlockBuilder.getPositionCount()));
   }
 
   public static TsBlock createIntsTsBlockWithNulls(int[] inputs, int offset) {
@@ -106,7 +110,8 @@ public class TableWindowOperatorTestUtils {
     }
 
     return tsBlockBuilder.build(
-        new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, tsBlockBuilder.getPositionCount()));
+        new RunLengthEncodedColumn(
+            CommonOperatorUtils.TIME_COLUMN_TEMPLATE, tsBlockBuilder.getPositionCount()));
   }
 
   public static TsBlock createIntsTsBlockWithNulls(int[] inputs, int startOffset, int endOffset) {
@@ -126,6 +131,7 @@ public class TableWindowOperatorTestUtils {
     }
 
     return tsBlockBuilder.build(
-        new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, tsBlockBuilder.getPositionCount()));
+        new RunLengthEncodedColumn(
+            CommonOperatorUtils.TIME_COLUMN_TEMPLATE, tsBlockBuilder.getPositionCount()));
   }
 }

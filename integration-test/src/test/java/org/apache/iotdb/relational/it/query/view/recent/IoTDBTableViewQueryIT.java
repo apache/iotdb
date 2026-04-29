@@ -349,8 +349,8 @@ public class IoTDBTableViewQueryIT {
           false);
       compareQueryResults(
           session,
-          "select * from (select time, battery as device1 from view1 where battery = 'b1') as t1 full outer join (select time, battery as device2 from view2 where battery = 'b') as t2 using(time)",
-          "select * from (select time, battery as device1 from table1 where battery = 'b1') as t1 full outer join (select time, battery as device2 from table1 where battery = 'b') as t2 using(time)",
+          "select * from (select time, battery as battery1 from view1 where battery = 'b1') as t1 full outer join (select time, battery as battery2 from view2 where battery = 'b') as t2 using(time)",
+          "select * from (select time, battery as battery1 from table1 where battery = 'b1') as t1 full outer join (select time, battery as battery2 from table1 where battery = 'b') as t2 using(time)",
           true);
       compareQueryResults(
           session,
@@ -379,6 +379,54 @@ public class IoTDBTableViewQueryIT {
           session,
           "select count(distinct battery) from view4 where battery = 'b1'",
           "select count(distinct battery) from table1 where battery = 'b1'",
+          true);
+
+      compareQueryResults(
+          session,
+          "select count(time) from view1 where time > 604800000",
+          "select count(time) from table1 where time > 604800000",
+          true);
+
+      compareQueryResults(
+          session,
+          "select count(battery),count(time) from view1 where time > 604800000",
+          "select count(battery),count(time) from table1 where time > 604800000",
+          true);
+
+      compareQueryResults(
+          session,
+          "select count(battery),count(time),count(current) from view1 where time > 604800000",
+          "select count(battery),count(time),count(current) from table1 where time > 604800000",
+          true);
+
+      compareQueryResults(
+          session,
+          "select distinct battery from view1 where time > 604800000",
+          "select distinct battery from table1 where time > 604800000",
+          true);
+
+      compareQueryResults(
+          session,
+          "select count(current) from view1 where time > 604800000 group by battery",
+          "select count(current) from table1 where time > 604800000 group by battery",
+          true);
+
+      compareQueryResults(
+          session,
+          "select count(current) from view1 group by date_bin(2ms,time)",
+          "select count(current) from table1 group by date_bin(2ms,time)",
+          true);
+
+      compareQueryResults(
+          session,
+          "select count(current) from view1 group by battery,date_bin(2ms,time)",
+          "select count(current) from table1 group by battery,date_bin(2ms,time)",
+          true);
+
+      compareQueryResults(
+          session,
+          "select last(columns(*)) from view1 group by battery,date_bin(2ms,time)",
+          "select last(columns(*)) from table1 group by battery,date_bin(2ms,time)",
           true);
     }
   }

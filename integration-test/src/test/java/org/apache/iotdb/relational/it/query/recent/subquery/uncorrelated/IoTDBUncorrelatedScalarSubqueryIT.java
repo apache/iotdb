@@ -265,6 +265,11 @@ public class IoTDBUncorrelatedScalarSubqueryIT {
         "701: Scalar sub-query has returned multiple rows.",
         DATABASE_NAME);
 
+    tableAssertTestFail(
+        "select s1 from table1 where time = (select time from table4)",
+        "701: Scalar sub-query has returned multiple rows.",
+        DATABASE_NAME);
+
     // Legality check: subquery can not be parsed
     tableAssertTestFail(
         "select s1 from table1 where s1 = (select s1 from)", "mismatched input", DATABASE_NAME);

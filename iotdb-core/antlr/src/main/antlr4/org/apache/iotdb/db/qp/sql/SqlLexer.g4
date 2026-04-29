@@ -233,6 +233,10 @@ DATA
     : D A T A
     ;
 
+TYPE
+    : T Y P E
+    ;
+
 DATABASE
     : D A T A B A S E
     ;
@@ -310,6 +314,10 @@ DISCARD
     : D I S C A R D
     ;
 
+DISK_USAGE
+    : D I S K '_' U S A G E
+    ;
+
 DROP
     : D R O P
     ;
@@ -377,6 +385,11 @@ FLUSH
 FOR
     : F O R
     ;
+
+FORCEDLY
+    : F O R C E D L Y
+    ;
+
 
 FROM
     : F R O M
@@ -782,6 +795,14 @@ SERIESSLOTID
     : S E R I E S S L O T I D
     ;
 
+SERVICE
+    : S E R V I C E
+    ;
+
+SERVICES
+    : S E R V I C E S
+    ;
+
 SESSION
     : S E S S I O N
     ;
@@ -804,6 +825,10 @@ SHOW
 
 SINK
     : S I N K
+    ;
+
+SIZEINBYTES
+    : S I Z E I N B Y T E S
     ;
 
 SLIMIT
@@ -1168,6 +1193,10 @@ SECURITY
 
 AUDIT
     : A U D I T
+    ;
+
+AUTH
+    : A U T H
     ;
 
 REPAIR

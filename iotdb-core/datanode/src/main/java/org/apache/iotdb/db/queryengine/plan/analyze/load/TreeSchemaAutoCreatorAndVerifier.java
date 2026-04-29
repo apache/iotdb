@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze.load;
 
+import org.apache.iotdb.calc.utils.constant.SqlConstant;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.auth.AuthException;
@@ -26,6 +27,7 @@ import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
@@ -37,7 +39,6 @@ import org.apache.iotdb.db.exception.load.LoadAnalyzeException;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeTypeMismatchException;
 import org.apache.iotdb.db.exception.load.LoadFileException;
 import org.apache.iotdb.db.exception.load.LoadRuntimeOutOfMemoryException;
-import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
@@ -52,7 +53,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.DatabaseSchemaSta
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDatabaseStatement;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
-import org.apache.iotdb.db.utils.constant.SqlConstant;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
@@ -252,17 +252,41 @@ public class TreeSchemaAutoCreatorAndVerifier {
   }
 
   private void makeSureNoDuplicatedMeasurementsInDevices() throws LoadAnalyzeException {
+    boolean hasDuplicates = false;
+    final Map<IDeviceID, Set<MeasurementSchema>> deduplicatedDevice2TimeSeries = new HashMap<>();
+
     for (final Map.Entry<IDeviceID, Set<MeasurementSchema>> entry :
         schemaCache.getDevice2TimeSeries().entrySet()) {
       final IDeviceID device = entry.getKey();
       final Map<String, MeasurementSchema> measurement2Schema = new HashMap<>();
+      boolean deviceHasDuplicates = false;
+
       for (final MeasurementSchema timeseriesSchema : entry.getValue()) {
         final String measurement = timeseriesSchema.getMeasurementName();
-        if (measurement2Schema.containsKey(measurement)) {
-          throw new LoadAnalyzeException(
-              String.format("Duplicated measurements %s in device %s.", measurement, device));
+        final MeasurementSchema existingSchema = measurement2Schema.get(measurement);
+
+        if (existingSchema != null) {
+          if (existingSchema.getType() != timeseriesSchema.getType()) {
+            throw new LoadAnalyzeException(
+                String.format("Duplicated measurements %s in device %s.", measurement, device));
+          }
+          deviceHasDuplicates = true;
+          hasDuplicates = true;
+        } else {
+          measurement2Schema.put(measurement, timeseriesSchema);
         }
-        measurement2Schema.put(measurement, timeseriesSchema);
+      }
+
+      if (deviceHasDuplicates) {
+        deduplicatedDevice2TimeSeries.put(device, new HashSet<>(measurement2Schema.values()));
+      }
+    }
+
+    if (hasDuplicates) {
+      Map<IDeviceID, Set<MeasurementSchema>> device2TimeSeries = schemaCache.getDevice2TimeSeries();
+      for (final Map.Entry<IDeviceID, Set<MeasurementSchema>> entry :
+          deduplicatedDevice2TimeSeries.entrySet()) {
+        device2TimeSeries.put(entry.getKey(), new HashSet<>(entry.getValue()));
       }
     }
   }
@@ -349,6 +373,7 @@ public class TreeSchemaAutoCreatorAndVerifier {
                 loadTsFileAnalyzer.partitionFetcher,
                 loadTsFileAnalyzer.schemaFetcher,
                 IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold(),
+                false,
                 false);
     if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
         && result.status.code != TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode()

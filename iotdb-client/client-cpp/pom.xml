@@ -38,6 +38,7 @@
         <cmake.root.dir>${project.build.directory}/dependency/cmake/</cmake.root.dir>
         <thrift.exec.absolute.path>${project.build.directory}/thrift/bin/${thrift.executable}</thrift.exec.absolute.path>
         <maven.test.skip>${ctest.skip.tests}</maven.test.skip>
+        <with.ssl>false</with.ssl>
     </properties>
     <dependencies>
         <dependency>
@@ -50,28 +51,6 @@
     <build>
         <plugins>
             <!-- Build and do session integration test -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-resources-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>copy-test-resources</id>
-                        <goals>
-                            <goal>copy-resources</goal>
-                        </goals>
-                        <phase>validate</phase>
-                        <configuration>
-                            <outputDirectory>${project.build.directory}/build/test</outputDirectory>
-                            <resources>
-                                <resource>
-                                    <directory>${project.basedir}/src/test</directory>
-                                    <filtering>true</filtering>
-                                </resource>
-                            </resources>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-resources-plugin</artifactId>
@@ -92,6 +71,22 @@
                                         <include>**/*.cpp</include>
                                         <include>**/*.cc</include>
                                     </includes>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>copy-test-resources</id>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <phase>validate</phase>
+                        <configuration>
+                            <outputDirectory>${project.build.directory}/build/test</outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory>${project.basedir}/src/test</directory>
+                                    <filtering>true</filtering>
                                 </resource>
                             </resources>
                         </configuration>
@@ -129,7 +124,7 @@
                 <artifactId>download-maven-plugin</artifactId>
                 <executions>
                     <!-- Download the Catch2 header file. -->
-                    <execution>
+                    <!-- <execution>
                         <id>get-catch2</id>
                         <goals>
                             <goal>wget</goal>
@@ -141,7 +136,7 @@
                             <outputDirectory>${project.build.directory}/build/test/catch2</outputDirectory>
                             <skip>${ctest.skip.tests}</skip>
                         </configuration>
-                    </execution>
+                    </execution> -->
                 </executions>
             </plugin>
             <plugin>
@@ -207,7 +202,7 @@
                 </executions>
             </plugin>
             <plugin>
-                <groupId>com.googlecode.cmake-maven-project</groupId>
+                <groupId>io.github.cmake-maven-plugin</groupId>
                 <artifactId>cmake-maven-plugin</artifactId>
                 <executions>
                     <!-- Uses a CMake generator to generate the build using the build tool of choice -->
@@ -220,9 +215,10 @@
                         <configuration>
                             <generator>${cmake.generator}</generator>
                             <sourcePath>${project.build.directory}/build/main</sourcePath>
-                            <targetPath>${project.build.directory}/build/main</targetPath>
+                            <projectDirectory>${project.build.directory}/build/main</projectDirectory>
                             <options>
                                 <option>-DBOOST_INCLUDEDIR=${boost.include.dir}</option>
+                                <option>-DWITH_SSL=${with.ssl}</option>
                             </options>
                         </configuration>
                     </execution>
@@ -236,9 +232,10 @@
                         <configuration>
                             <generator>${cmake.generator}</generator>
                             <sourcePath>${project.build.directory}/build/test</sourcePath>
-                            <targetPath>${project.build.directory}/build/test</targetPath>
+                            <projectDirectory>${project.build.directory}/build/test</projectDirectory>
                             <options>
                                 <option>-DBOOST_INCLUDEDIR=${boost.include.dir}</option>
+                                <option>-DWITH_SSL=${with.ssl}</option>
                             </options>
                         </configuration>
                     </execution>
@@ -276,8 +273,9 @@
                         </goals>
                         <phase>integration-test</phase>
                         <configuration>
-                            <buildDirectory>${project.build.directory}/build/test</buildDirectory>
-                            <skipTests>${ctest.skip.tests}</skipTests>
+                            <config>${cmake.build.type}</config>
+                            <projectDirectory>${project.build.directory}/build/test</projectDirectory>
+                            <skipTests>${maven.test.skip}</skipTests>
                         </configuration>
                     </execution>
                 </executions>
@@ -317,8 +315,8 @@
                             <skip>${ctest.skip.tests}</skip>
                             <name>iotdb-server</name>
                             <waitForInterrupt>false</waitForInterrupt>
-                            <!-- Maximum time in seconds to wait after launching IoTDB -->
-                            <waitAfterLaunch>15</waitAfterLaunch>
+                            <!-- Maximum time in seconds to wait after launching IoTDB (JVM cold start on Windows can exceed 15s) -->
+                            <waitAfterLaunch>45</waitAfterLaunch>
                             <!-- Redirect IoTDB server log to /dev/null -->
                             <processLogFile>${project.build.directory}/build/test/test.log</processLogFile>
                             <arguments>
@@ -418,8 +416,8 @@
                 </os>
             </activation>
             <properties>
-                <iotdb.start.script>start-standalone.bat</iotdb.start.script>
-                <iotdb.stop.script>stop-standalone.bat</iotdb.stop.script>
+                <iotdb.start.script>windows/start-standalone.bat</iotdb.start.script>
+                <iotdb.stop.script>windows/stop-standalone.bat</iotdb.stop.script>
                 <os.suffix>win</os.suffix>
             </properties>
         </profile>
@@ -433,7 +431,7 @@
             <build>
                 <plugins>
                     <plugin>
-                        <groupId>com.googlecode.cmake-maven-project</groupId>
+                        <groupId>io.github.cmake-maven-plugin</groupId>
                         <artifactId>cmake-maven-plugin</artifactId>
                         <executions>
                             <execution>
@@ -442,6 +440,40 @@
                                 <!-- This effectively skips the execution -->
                             </execution>
                         </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <!-- Spotless &lt;clangFormat&gt; needs Spotless 2.44+; root POM downgrades to 2.27.1 on JDK8 and cannot parse cpp config. Only register C++ rules when JDK 11+. -->
+        <profile>
+            <id>spotless-cpp</id>
+            <activation>
+                <jdk>[11,)</jdk>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>com.diffplug.spotless</groupId>
+                        <artifactId>spotless-maven-plugin</artifactId>
+                        <version>2.44.5</version>
+                        <configuration>
+                            <cpp>
+                                <includes>
+                                    <include>src/**/*.h</include>
+                                    <include>src/**/*.hpp</include>
+                                    <include>src/**/*.c</include>
+                                    <include>src/**/*.cc</include>
+                                    <include>src/**/*.cpp</include>
+                                </includes>
+                                <excludes>
+                                    <exclude>src/test/catch2/**</exclude>
+                                </excludes>
+                                <clangFormat>
+                                    <version>${clang.format.version}</version>
+                                    <style>file</style>
+                                </clangFormat>
+                            </cpp>
+                        </configuration>
                     </plugin>
                 </plugins>
             </build>

@@ -41,9 +41,6 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
-import java.io.File;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
@@ -109,6 +106,14 @@ public class IoTDBTableIT {
               showTablesColumnHeaders.get(i).getColumnName(), metaData.getColumnName(i + 1));
         }
         assertFalse(resultSet.next());
+      }
+
+      try {
+        statement.execute(
+            "create table test1.table1(region_id STRING TAG, plant_id STRING TAG, device_id STRING TAG, model STRING ATTRIBUTE, temperature FLOAT FIELD, humidity DOUBLE FIELD) with (ttl=100, ttl=200, ttl=300)");
+        fail();
+      } catch (final SQLException e) {
+        assertEquals("701: Duplicated property: ttl", e.getMessage());
       }
 
       // or use full qualified table name
@@ -307,7 +312,7 @@ public class IoTDBTableIT {
       }
 
       statement.execute(
-          "create table table2(region_id STRING TAG, plant_id STRING TAG, color STRING ATTRIBUTE, temperature FLOAT FIELD) with (TTL=6600000)");
+          "create table table2(t1 TIMESTAMP TIME, region_id STRING TAG, plant_id STRING TAG, color STRING ATTRIBUTE, temperature FLOAT FIELD) with (TTL=6600000)");
 
       statement.execute("alter table table2 add column speed DOUBLE FIELD COMMENT 'fast'");
 
@@ -315,7 +320,7 @@ public class IoTDBTableIT {
           statement.executeQuery("show create table table2"),
           "Table,Create Table,",
           Collections.singleton(
-              "table2,CREATE TABLE \"table2\" (\"region_id\" STRING TAG,\"plant_id\" STRING TAG,\"color\" STRING ATTRIBUTE,\"temperature\" FLOAT FIELD,\"speed\" DOUBLE FIELD COMMENT 'fast') WITH (ttl=6600000, need_last_cache=true),"));
+              "table2,CREATE TABLE \"table2\" (\"t1\" TIMESTAMP TIME,\"region_id\" STRING TAG,\"plant_id\" STRING TAG,\"color\" STRING ATTRIBUTE,\"temperature\" FLOAT FIELD,\"speed\" DOUBLE FIELD COMMENT 'fast') WITH (ttl=6600000, need_last_cache=true),"));
 
       try {
         statement.execute("alter table table2 add column speed DOUBLE FIELD");
@@ -423,7 +428,7 @@ public class IoTDBTableIT {
         assertEquals(columnNames.length, cnt);
       }
 
-      columnNames = new String[] {"time", "region_id", "plant_id", "color", "temperature", "speed"};
+      columnNames = new String[] {"t1", "region_id", "plant_id", "color", "temperature", "speed"};
       dataTypes = new String[] {"TIMESTAMP", "STRING", "STRING", "STRING", "FLOAT", "DOUBLE"};
       categories = new String[] {"TIME", "TAG", "TAG", "ATTRIBUTE", "FIELD", "FIELD"};
 
@@ -452,7 +457,7 @@ public class IoTDBTableIT {
 
       // Test comment
       // Before
-      columnNames = new String[] {"time", "region_id", "plant_id", "temperature", "speed"};
+      columnNames = new String[] {"t1", "region_id", "plant_id", "temperature", "speed"};
       dataTypes = new String[] {"TIMESTAMP", "STRING", "STRING", "FLOAT", "DOUBLE"};
       categories = new String[] {"TIME", "TAG", "TAG", "FIELD", "FIELD"};
       statuses = new String[] {"USING", "USING", "USING", "USING", "USING"};
@@ -479,9 +484,9 @@ public class IoTDBTableIT {
       }
 
       // After
-      statement.execute("COMMENT ON COLUMN table2.region_id IS '重庆'");
+      statement.execute("COMMENT ON COLUMN table2.region_id IS '閲嶅簡'");
       statement.execute("COMMENT ON COLUMN table2.region_id IS NULL");
-      statement.execute("COMMENT ON COLUMN test2.table2.time IS 'recent'");
+      statement.execute("COMMENT ON COLUMN test2.table2.t1 IS 'recent'");
       statement.execute("COMMENT ON COLUMN test2.table2.region_id IS ''");
 
       comments = new String[] {"recent", "", null, null, "fast"};
@@ -528,7 +533,7 @@ public class IoTDBTableIT {
       }
 
       try {
-        statement.execute("alter table table2 drop column time");
+        statement.execute("alter table table2 drop column t1");
       } catch (final SQLException e) {
         assertEquals("701: Dropping tag or time column is not supported.", e.getMessage());
       }
@@ -619,31 +624,15 @@ public class IoTDBTableIT {
       }
 
       // Test time column
-      statement.execute("create table test100 (time time)");
-      statement.execute("create table test101 (time timestamp time)");
+      // More time column tests are included in other IT
+      statement.execute("create table test100 (t1 time) with (ttl='INF')");
+      statement.execute("create table test101 (t1 timestamp time)");
 
-      try {
-        statement.execute("create table test102 (time timestamp tag)");
-        fail();
-      } catch (final SQLException e) {
-        assertEquals(
-            "701: The time column category shall be bounded with column name 'time'.",
-            e.getMessage());
-      }
-
-      try {
-        statement.execute("create table test102 (time tag)");
-        fail();
-      } catch (final SQLException e) {
-        assertEquals("701: The time column's type shall be 'timestamp'.", e.getMessage());
-      }
-
-      try {
-        statement.execute("create table test102 (time time, time time)");
-        fail();
-      } catch (final SQLException e) {
-        assertEquals("701: Columns in table shall not share the same name time.", e.getMessage());
-      }
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("show create table test100"),
+          "Table,Create Table,",
+          Collections.singleton(
+              "test100,CREATE TABLE \"test100\" (\"t1\" TIMESTAMP TIME) WITH (ttl='INF'),"));
     } catch (final SQLException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -788,144 +777,14 @@ public class IoTDBTableIT {
   }
 
   @Test
-  public void testTableObjectCheck() throws Exception {
-    final Set<String> illegal = new HashSet<>(Arrays.asList("./", ".", "..", ".\\", "../hack"));
-    for (final String single : illegal) {
-      testObject4SingleIllegalPath(single);
-    }
-  }
-
-  private void testObject4SingleIllegalPath(final String illegal) throws Exception {
-    try (final Connection connection =
-            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
-        final Statement statement = connection.createStatement();
-        final ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
-      statement.execute("create database if not exists db2");
-      statement.execute("use db2");
-      statement.execute(String.format("create table \"%s\" ()", illegal));
-
-      try {
-        statement.execute(String.format("alter table \"%s\" add column a object", illegal));
-        fail();
-      } catch (final SQLException e) {
-        Assert.assertEquals(
-            String.format(
-                "701: When there are object fields, the tableName %s shall not be '.', '..' or contain './', '.\\'",
-                illegal),
-            e.getMessage());
-      }
-
-      // Test auto-create
-      String testObject =
-          System.getProperty("user.dir")
-              + File.separator
-              + "target"
-              + File.separator
-              + "test-classes"
-              + File.separator
-              + "object-example.pt";
-
-      List<IMeasurementSchema> schemaList = new ArrayList<>();
-      schemaList.add(new MeasurementSchema("a", TSDataType.STRING));
-      schemaList.add(new MeasurementSchema("b", TSDataType.STRING));
-      schemaList.add(new MeasurementSchema("c", TSDataType.INT32));
-      schemaList.add(new MeasurementSchema(illegal, TSDataType.OBJECT));
-      final List<ColumnCategory> columnTypes =
-          Arrays.asList(
-              ColumnCategory.TAG,
-              ColumnCategory.ATTRIBUTE,
-              ColumnCategory.FIELD,
-              ColumnCategory.FIELD);
-      final Tablet tablet =
-          new Tablet(
-              illegal,
-              IMeasurementSchema.getMeasurementNameList(schemaList),
-              IMeasurementSchema.getDataTypeList(schemaList),
-              columnTypes,
-              1);
-      tablet.addTimestamp(0, System.currentTimeMillis());
-      tablet.addValue(schemaList.get(0).getMeasurementName(), 0, "d1");
-      tablet.addValue(schemaList.get(1).getMeasurementName(), 0, "a1");
-      tablet.addValue(schemaList.get(2).getMeasurementName(), 0, 0);
-      tablet.addValue(0, 3, true, 0, Files.readAllBytes(Paths.get(testObject)));
-
-      try {
-        session.executeNonQueryStatement("use db2");
-        session.insert(tablet);
-      } catch (final Exception e) {
-        Assert.assertEquals(
-            String.format(
-                "701: When there are object fields, the tableName %s shall not be '.', '..' or contain './', '.\\'",
-                illegal),
-            e.getMessage());
-      }
-
-      try {
-        statement.execute(String.format("create table test (\"%s\" object)", illegal));
-        fail();
-      } catch (final SQLException e) {
-        Assert.assertEquals(
-            String.format(
-                "701: When there are object fields, the objectName %s shall not be '.', '..' or contain './', '.\\'",
-                illegal),
-            e.getMessage());
-      }
-
-      statement.execute("create table test (a tag, b attribute, c int32, d object)");
-
-      // Cannot auto-extend illegal column
-      tablet.setTableName("test");
-      try {
-        session.executeNonQueryStatement("use db2");
-        session.insert(tablet);
-      } catch (final Exception e) {
-        Assert.assertEquals(
-            String.format(
-                "701: When there are object fields, the objectName %s shall not be '.', '..' or contain './', '.\\'",
-                illegal),
-            e.getMessage());
-      }
-
-      // It's OK if you don't write object
-      statement.execute(String.format("insert into test (a, b, c) values ('%s', 1, 1)", illegal));
-      try {
-        statement.execute(
-            String.format(
-                "insert into test (a, b, c, d) values ('%s', 1, 1, to_object(true, 0, X'aa'))",
-                illegal));
-        fail();
-      } catch (final SQLException e) {
-        Assert.assertEquals(
-            String.format(
-                "507: When there are object fields, the deviceId [test, %s] shall not be '.', '..' or contain './', '.\\'",
-                illegal),
-            e.getMessage());
-      }
-
-      try {
-        statement.execute(String.format("alter table test add column \"%s\" object", illegal));
-        fail();
-      } catch (final SQLException e) {
-        Assert.assertEquals(
-            String.format(
-                "701: When there are object fields, the objectName %s shall not be '.', '..' or contain './', '.\\'",
-                illegal),
-            e.getMessage());
-      }
-
-      statement.execute("drop database db2");
-    }
-  }
-
-  @Test
   public void testTreeViewTable() throws Exception {
     try (final Connection connection = EnvFactory.getEnv().getConnection();
         final Statement statement = connection.createStatement()) {
       statement.execute("create database root.another");
-      statement.execute("create database root.`重庆`.b");
-      statement.execute("create timeSeries root.`重庆`.b.c.S1 int32");
-      statement.execute("create timeSeries root.`重庆`.b.c.s2 string");
-      statement.execute("create timeSeries root.`重庆`.b.S1 int32");
+      statement.execute("create database root.`閲嶅簡`.`1`.b");
+      statement.execute("create timeSeries root.`閲嶅簡`.`1`.b.`2`.S1 int32");
+      statement.execute("create timeSeries root.`閲嶅簡`.`1`.b.`2`.s2 string");
+      statement.execute("create timeSeries root.`閲嶅簡`.`1`.b.S1 int32");
     } catch (SQLException e) {
       fail(e.getMessage());
     }
@@ -944,13 +803,13 @@ public class IoTDBTableIT {
             "701: Cannot specify view pattern to match more than one tree database.",
             e.getMessage());
       }
-      statement.execute("create view tree_table (tag1 tag, tag2 tag) as root.\"重庆\".**");
+      statement.execute("create view tree_table (tag1 tag, tag2 tag) as root.\"閲嶅簡\".\"1\".**");
       statement.execute("drop view tree_table");
     }
 
     try (final Connection connection = EnvFactory.getEnv().getConnection();
         final Statement statement = connection.createStatement()) {
-      statement.execute("create timeSeries root.`重庆`.b.d.s1 int32");
+      statement.execute("create timeSeries root.`閲嶅簡`.`1`.b.`1`.s1 int32");
     } catch (SQLException e) {
       fail(e.getMessage());
     }
@@ -961,7 +820,7 @@ public class IoTDBTableIT {
       statement.execute("use tree_view_db");
 
       try {
-        statement.execute("create view tree_table (tag1 tag, tag2 tag) as root.\"重庆\".**");
+        statement.execute("create view tree_table (tag1 tag, tag2 tag) as root.\"閲嶅簡\".\"1\".**");
         fail();
       } catch (final SQLException e) {
         final Set<String> result =
@@ -975,13 +834,13 @@ public class IoTDBTableIT {
 
     try (final Connection connection = EnvFactory.getEnv().getConnection();
         final Statement statement = connection.createStatement()) {
-      statement.execute("drop timeSeries root.`重庆`.b.d.s1");
+      statement.execute("drop timeSeries root.`閲嶅簡`.`1`.b.`1`.s1");
       statement.execute("create device template t1 (S1 boolean, s9 int32)");
-      statement.execute("set schema template t1 to root.`重庆`.b.d");
-      statement.execute("create timeSeries root.`重庆`.b.c.f.g.h.S1 int32");
+      statement.execute("set schema template t1 to root.`閲嶅簡`.`1`.b.`1`");
+      statement.execute("create timeSeries root.`閲嶅簡`.`1`.b.`2`.f.g.h.S1 int32");
 
       // Put schema cache
-      statement.execute("select S1, s2 from root.`重庆`.b.c");
+      statement.execute("select S1, s2 from root.`閲嶅簡`.`1`.b.`2`");
     } catch (SQLException e) {
       fail(e.getMessage());
     }
@@ -992,7 +851,7 @@ public class IoTDBTableIT {
       statement.execute("use tree_view_db");
 
       try {
-        statement.execute("create view tree_table (tag1 tag, tag2 tag) as root.\"重庆\".**");
+        statement.execute("create view tree_table (tag1 tag, tag2 tag) as root.\"閲嶅簡\".\"1\".**");
         fail();
       } catch (final SQLException e) {
         assertEquals(
@@ -1002,7 +861,7 @@ public class IoTDBTableIT {
 
       try {
         statement.execute(
-            "create view tree_table (tag1 tag, tag2 tag, S1 field) as root.\"重庆\".**");
+            "create view tree_table (tag1 tag, tag2 tag, S1 field) as root.\"閲嶅簡\".\"1\".**");
         fail();
       } catch (final SQLException e) {
         assertEquals(
@@ -1013,7 +872,7 @@ public class IoTDBTableIT {
 
     try (final Connection connection = EnvFactory.getEnv().getConnection();
         final Statement statement = connection.createStatement()) {
-      statement.execute("create timeSeries root.`重庆`.b.e.s1 int32");
+      statement.execute("create timeSeries root.`閲嶅簡`.`1`.b.e.s1 int32");
     } catch (SQLException e) {
       fail(e.getMessage());
     }
@@ -1034,7 +893,7 @@ public class IoTDBTableIT {
       // Temporary
       try {
         statement.execute(
-            "create or replace view tree_table (tag1 tag, tag2 tag, S1 int32 field, s3 boolean from S1) as root.\"重庆\".**");
+            "create or replace view tree_table (tag1 tag, tag2 tag, S1 int32 field, s3 boolean from S1) as root.\"閲嶅簡\".\"1\".**");
         fail();
       } catch (final SQLException e) {
         assertEquals(
@@ -1043,14 +902,14 @@ public class IoTDBTableIT {
 
       try {
         statement.execute(
-            "create or replace view tree_table (tag1 tag, tag2 tag, S1 int32 field, s3 from s2, s8 field) as root.\"重庆\".**");
+            "create or replace view tree_table (tag1 tag, tag2 tag, S1 int32 field, s3 from s2, s8 field) as root.\"閲嶅簡\".\"1\".**");
         fail();
       } catch (final SQLException e) {
         assertEquals("528: Measurements not found for s8, cannot auto detect", e.getMessage());
       }
 
       statement.execute(
-          "create or replace view tree_table (tag1 tag, tag2 tag, S1 int32 field, s3 from s2) as root.\"重庆\".**");
+          "create or replace view tree_table (tag1 tag, tag2 tag, S1 int32 field, s3 from s2) as root.\"閲嶅簡\".\"1\".**");
 
       // Cannot be written
       try {
@@ -1098,11 +957,15 @@ public class IoTDBTableIT {
       TestUtils.assertResultSetEqual(
           statement.executeQuery("show devices from view_table where tag1 = 'b'"),
           "tag1,tag2,",
-          new HashSet<>(Arrays.asList("b,c,", "b,null,", "b,e,")));
+          new HashSet<>(Arrays.asList("b,`2`,", "b,null,", "b,e,")));
       TestUtils.assertResultSetEqual(
           statement.executeQuery("show devices from view_table where tag1 = 'b' and tag2 is null"),
           "tag1,tag2,",
           Collections.singleton("b,null,"));
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("show devices from view_table where tag1 = 'b' and tag2 = '`2`'"),
+          "tag1,tag2,",
+          Collections.singleton("b,`2`,"));
       TestUtils.assertResultSetEqual(
           statement.executeQuery("count devices from view_table"),
           "count(devices),",
@@ -1114,7 +977,7 @@ public class IoTDBTableIT {
         final Statement statement = connection.createStatement()) {
       // Test create & replace + restrict
       statement.execute(
-          "create or replace view tree_view_db.view_table (tag1 tag, tag2 tag, s11 int32 field, s3 from s2) restrict with (ttl=100) as root.`重庆`.**");
+          "create or replace view tree_view_db.view_table (tag1 tag, tag2 tag, s11 int32 field, s3 from s2) restrict with (ttl=100) as root.`閲嶅簡`.`1`.**");
       fail();
     } catch (final SQLException e) {
       assertTrue(
@@ -1135,7 +998,7 @@ public class IoTDBTableIT {
                 .getConnection("testUser", "testUser123456", BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
       statement.execute(
-          "create or replace view tree_view_db.view_table (tag1 tag, tag2 tag, s11 int32 field, s3 from s2) restrict with (ttl=100) as root.\"重庆\".**");
+          "create or replace view tree_view_db.view_table (tag1 tag, tag2 tag, s11 int32 field, s3 from s2) restrict with (ttl=100) as root.\"閲嶅簡\".\"1\".**");
       fail();
     } catch (final SQLException e) {
       assertEquals(
@@ -1156,7 +1019,7 @@ public class IoTDBTableIT {
                 .getConnection("testUser", "testUser123456", BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
       statement.execute(
-          "create or replace view tree_view_db.view_table (tag1 tag, tag2 tag, s11 int32 field, s3 from s2) restrict with (ttl=100) as root.\"重庆\".**");
+          "create or replace view tree_view_db.view_table (tag1 tag, tag2 tag, s11 int32 field, s3 from s2) restrict with (ttl=100) as root.\"閲嶅簡\".\"1\".**");
       fail();
     } catch (final SQLException e) {
       assertEquals(
@@ -1166,7 +1029,7 @@ public class IoTDBTableIT {
 
     try (final Connection connection = EnvFactory.getEnv().getConnection();
         final Statement statement = connection.createStatement()) {
-      statement.execute("grant read_schema on root.`重庆`.** to user testUser");
+      statement.execute("grant read_schema on root.`閲嶅簡`.** to user testUser");
     } catch (final SQLException e) {
       fail(e.getMessage());
     }
@@ -1176,7 +1039,7 @@ public class IoTDBTableIT {
                 .getConnection("testUser", "testUser123456", BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
       statement.execute(
-          "create or replace view tree_view_db.view_table (tag1 tag, tag2 tag, s11 int32 field, s3 from s2) restrict with (ttl=100) as root.\"重庆\".**");
+          "create or replace view tree_view_db.view_table (tag1 tag, tag2 tag, s11 int32 field, s3 from s2) restrict with (ttl=100) as root.\"閲嶅簡\".\"1\".**");
       fail();
     } catch (final SQLException e) {
       assertEquals(
@@ -1186,19 +1049,24 @@ public class IoTDBTableIT {
 
     try (final Connection connection = EnvFactory.getEnv().getConnection();
         final Statement statement = connection.createStatement()) {
-      statement.execute("grant read_data on root.`重庆`.** to user testUser");
+      statement.execute("grant read_data on root.`閲嶅簡`.** to user testUser");
     } catch (final SQLException e) {
       fail(e.getMessage());
     }
 
     try (final Connection connection =
-            EnvFactory.getEnv()
-                .getConnection("testUser", "testUser123456", BaseEnv.TABLE_SQL_DIALECT);
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
+      statement.execute("alter database tree_view_db set properties ttl=100");
       statement.execute(
-          "create or replace view tree_view_db.view_table (tag1 tag, tag2 tag, s11 int32 field, s3 from s2) restrict with (ttl=100) as root.\"重庆\".**");
+          "create or replace view tree_view_db.view_table (tag1 tag, tag2 tag, s11 int32 field, s3 from s2) restrict as root.\"閲嶅簡\".\"1\".**");
+
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("show tables from tree_view_db"),
+          "TableName,TTL(ms),",
+          Collections.singleton("view_table,100,"));
     } catch (final SQLException e) {
-      fail();
+      fail(e.getMessage());
     }
 
     try (final Connection connection =
@@ -1215,14 +1083,14 @@ public class IoTDBTableIT {
           statement.executeQuery("show create view view_table"),
           "View,Create View,",
           Collections.singleton(
-              "view_table,CREATE VIEW \"view_table\" (\"tag1\" STRING TAG,\"tag2\" STRING TAG,\"s11\" INT32 FIELD,\"s3\" STRING FIELD FROM \"s2\") RESTRICT WITH (ttl=100, need_last_cache=true) AS root.\"重庆\".**,"));
+              "view_table,CREATE VIEW \"view_table\" (\"time\" TIMESTAMP TIME,\"tag1\" STRING TAG,\"tag2\" STRING TAG,\"s11\" INT32 FIELD,\"s3\" STRING FIELD FROM \"s2\") RESTRICT WITH (ttl=100, need_last_cache=true) AS root.\"閲嶅簡\".\"1\".**,"));
 
       // Can also use "show create table"
       TestUtils.assertResultSetEqual(
           statement.executeQuery("show create table view_table"),
           "View,Create View,",
           Collections.singleton(
-              "view_table,CREATE VIEW \"view_table\" (\"tag1\" STRING TAG,\"tag2\" STRING TAG,\"s11\" INT32 FIELD,\"s3\" STRING FIELD FROM \"s2\") RESTRICT WITH (ttl=100, need_last_cache=true) AS root.\"重庆\".**,"));
+              "view_table,CREATE VIEW \"view_table\" (\"time\" TIMESTAMP TIME,\"tag1\" STRING TAG,\"tag2\" STRING TAG,\"s11\" INT32 FIELD,\"s3\" STRING FIELD FROM \"s2\") RESTRICT WITH (ttl=100, need_last_cache=true) AS root.\"閲嶅簡\".\"1\".**,"));
 
       statement.execute("create table a ()");
       try {

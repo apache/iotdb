@@ -473,6 +473,14 @@ struct TAlterEncodingCompressorReq {
   5: optional byte compressor
 }
 
+struct TAlterTimeSeriesReq {
+  1: required list<common.TConsensusGroupId> schemaRegionIdList
+  2: required string queryId
+  3: required binary measurementPath
+  4: required byte operationType
+  5: required binary updateInfo
+}
+
 struct TConstructSchemaBlackListWithTemplateReq {
   1: required list<common.TConsensusGroupId> schemaRegionIdList
   2: required map<string, list<i32>> templateSetInfo
@@ -671,6 +679,36 @@ struct TAuditLogReq {
 }
 
 /**
+* BEGIN: Data Partition Table Integrity Check Structures
+**/
+
+struct TGetEarliestTimeslotsResp {
+  1: required common.TSStatus status
+  2: optional map<string, i64> databaseToEarliestTimeslot
+}
+
+struct TGenerateDataPartitionTableReq {
+  1: required set<string> databases
+}
+
+struct TGenerateDataPartitionTableResp {
+  1: required common.TSStatus status
+  2: required i32 errorCode
+  3: optional string message
+}
+
+struct TGenerateDataPartitionTableHeartbeatResp {
+  1: required common.TSStatus status
+  2: required i32 errorCode
+  3: optional string message
+  4: optional list<binary> databaseScopedDataPartitionTables
+}
+
+/**
+* END: Data Partition Table Integrity Check Structures
+**/
+
+/**
 * BEGIN: Used for EXPLAIN ANALYZE
 **/
 struct TOperatorStatistics{
@@ -741,6 +779,13 @@ struct TQueryStatistics {
   45: i64 loadChunkFromCacheCount
   46: i64 loadChunkFromDiskCount
   47: i64 loadChunkActualIOSize
+
+  48: i64 chunkWithMetadataErrorsCount
+
+  49: i64 timeSeriesIndexFilteredRows
+  50: i64 chunkIndexFilteredRows
+  51: i64 pageIndexFilteredRows
+  52: i64 rowScanFilteredRows
 }
 
 
@@ -771,12 +816,6 @@ struct TFetchFragmentInstanceStatisticsResp {
 struct TKillQueryInstanceReq {
   1: optional string queryId
   2: optional string allowedUsername
-}
-
-struct TReadObjectReq {
-  1: string relativePath
-  2: i64 offset
-  3: i32 size
 }
 
 /**
@@ -1017,6 +1056,11 @@ service IDataNodeRPCService {
    **/
   common.TSStatus dropPipePlugin(TDropPipePluginInstanceReq req)
 
+  /**
+   * Config node will get built-in services info from data nodes.
+   **/
+  common.TExternalServiceListResp getBuiltInService()
+
   /* Maintenance Tools */
 
   common.TSStatus merge()
@@ -1091,6 +1135,11 @@ service IDataNodeRPCService {
    * Alter matched timeseries to specific encoding and compressor in target schemaRegions
    */
   common.TSStatus alterEncodingCompressor(TAlterEncodingCompressorReq req)
+
+  /**
+   * Alter timeseries measurement
+   **/
+  common.TSStatus alterTimeSeriesDataType(TAlterTimeSeriesReq req)
 
   /**
    * Construct schema black list in target schemaRegion to block R/W on matched timeseries represent by template
@@ -1217,7 +1266,6 @@ service IDataNodeRPCService {
    */
   common.TSStatus deleteColumnData(TDeleteColumnDataReq req)
 
-
   /**
    * Construct table device black list
    */
@@ -1264,7 +1312,29 @@ service IDataNodeRPCService {
    */
   common.TSStatus writeAuditLog(TAuditLogReq req);
 
-  binary readObject(TReadObjectReq req);
+  /**
+  * BEGIN: Data Partition Table Integrity Check
+  **/
+
+  /**
+   * Get earliest timeslot information from DataNode
+   * Returns map of database name to earliest timeslot id
+   */
+  TGetEarliestTimeslotsResp getEarliestTimeslots()
+
+  /**
+   * Request DataNode to generate DataPartitionTable by scanning tsfile resources
+   */
+  TGenerateDataPartitionTableResp generateDataPartitionTable(TGenerateDataPartitionTableReq req)
+
+  /**
+   * Check the status of DataPartitionTable generation task
+   */
+  TGenerateDataPartitionTableHeartbeatResp generateDataPartitionTableHeartbeat(TGenerateDataPartitionTableReq req)
+
+  /**
+  * END: Data Partition Table Integrity Check
+  **/
 }
 
 service MPPDataExchangeService {

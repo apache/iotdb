@@ -121,6 +121,8 @@ struct TRuntimeConfiguration {
   8: required TAuditConfig auditConfig
   9: required string superUserName
   10: optional bool enableSeparationOfAdminPowers
+  // use 'optional' here to support rolling upgrade
+  11: optional list<common.TExternalServiceEntry> allUserDefinedServiceInfo
 }
 
 struct TDataNodeRegisterReq {
@@ -312,6 +314,17 @@ struct TCountTimeSlotListResp {
     2: optional i64 count
 }
 
+struct TGetRegionGroupsByTimeReq {
+    1: required string database
+    2: required i64 startTime
+    3: required i64 endTime
+}
+
+struct TGetRegionGroupsByTimeResp {
+    1: required common.TSStatus status
+    2: optional set<common.TRegionReplicaSet> regionReplicaSets
+}
+
 struct TGetSeriesSlotListReq {
     1: required string database
     2: required common.TConsensusGroupType type
@@ -444,6 +457,7 @@ struct TAuthizedPatternTreeResp {
 struct TLoginReq {
   1: required string userrname
   2: required string password
+  3: optional bool useEncryptedPassword
 }
 
 // reqtype : tree, relational, system
@@ -946,6 +960,13 @@ struct TDeleteTimeSeriesReq {
   4: optional bool mayDeleteAudit
 }
 
+struct TAlterTimeSeriesReq {
+  1: required string queryId
+  2: required binary measurementPath
+  3: required byte operationType
+  4: required binary updateInfo
+}
+
 struct TDeleteLogicalViewReq {
   1: required string queryId
   2: required binary pathPatternTree
@@ -1084,6 +1105,14 @@ struct TShowCQResp {
   2: required list<TCQEntry> cqList
 }
 
+// ====================================================
+// ExternalService
+// ====================================================
+struct TCreateExternalServiceReq {
+  1: required i32 dataNodeId
+  2: required string serviceName
+  3: required string className
+}
 
 struct TDeactivateSchemaTemplateReq {
   1: required string queryId
@@ -1225,6 +1254,7 @@ struct TDescTableResp {
    1: required common.TSStatus status
    2: optional binary tableInfo
    3: optional set<string> preDeletedColumns
+   4: optional map<string, byte> preAlteredColumns
 }
 
 struct TDescTable4InformationSchemaResp {
@@ -1235,6 +1265,7 @@ struct TDescTable4InformationSchemaResp {
 struct TTableColumnInfo {
    1: required binary tableInfo
    2: optional set<string> preDeletedColumns
+   3: optional map<string, byte> preAlteredColumns
 }
 
 struct TFetchTableResp {
@@ -1845,6 +1876,11 @@ service IConfigNodeRPCService {
    */
   common.TSStatus deleteTimeSeries(TDeleteTimeSeriesReq req)
 
+  /**
+   * Alter timeseries measurement
+   **/
+  common.TSStatus alterTimeSeriesDataType(TAlterTimeSeriesReq req)
+
   common.TSStatus deleteLogicalView(TDeleteLogicalViewReq req)
 
   common.TSStatus alterLogicalView(TAlterLogicalViewReq req)
@@ -1949,6 +1985,9 @@ service IConfigNodeRPCService {
   /** Get the given database's assigned SeriesSlots */
   TGetSeriesSlotListResp getSeriesSlotList(TGetSeriesSlotListReq req)
 
+  /** Get a database's DataRegion groups that overlap a time range */
+  TGetRegionGroupsByTimeResp getRegionGroupsByTime(TGetRegionGroupsByTimeReq req)
+
   // ====================================================
   // CQ
   // ====================================================
@@ -1971,6 +2010,19 @@ service IConfigNodeRPCService {
    * Return the cq table of config leader
    */
   TShowCQResp showCQ()
+
+  // ====================================================
+  // ExternalService
+  // ====================================================
+  common.TSStatus createExternalService(TCreateExternalServiceReq req)
+
+  common.TSStatus startExternalService(i32 dataNodeId, string serviceName)
+
+  common.TSStatus stopExternalService(i32 dataNodeId, string serviceName)
+
+  common.TSStatus dropExternalService(i32 dataNodeId, string serviceName)
+
+  common.TExternalServiceListResp showExternalService(i32 dataNodeId)
 
   // ======================================================
   // Quota

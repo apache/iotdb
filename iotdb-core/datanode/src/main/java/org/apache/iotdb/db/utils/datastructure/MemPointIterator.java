@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.utils.datastructure;
 
+import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
 import org.apache.tsfile.read.common.TimeRange;
@@ -43,9 +44,11 @@ public abstract class MemPointIterator implements IPointReader {
   protected TimeRange timeRange;
   protected List<TsBlock> tsBlocks;
   protected boolean streamingQueryMemChunk = true;
+  protected QueryContext queryContext = null;
 
-  public MemPointIterator(Ordering scanOrder) {
+  public MemPointIterator(Ordering scanOrder, QueryContext queryContext) {
     this.scanOrder = scanOrder;
+    this.queryContext = queryContext;
   }
 
   public abstract TsBlock getBatch(int tsBlockIndex);
@@ -72,6 +75,11 @@ public abstract class MemPointIterator implements IPointReader {
     skipToCurrentTimeRangeStartPosition();
   }
 
+  /**
+   * counting the filtered data row is affected by: 1. Null data rows (marked as null in the bitMap)
+   * 2. Deleted data rows 3. Repeated timestamp rows (multiple versions may exist for the same
+   * timestamp)
+   */
   protected void skipToCurrentTimeRangeStartPosition() {}
 
   protected boolean isCurrentTimeExceedTimeRange(long time) {
@@ -89,6 +97,14 @@ public abstract class MemPointIterator implements IPointReader {
     }
     tsBlocks = tsBlocks == null ? new ArrayList<>() : tsBlocks;
     tsBlocks.add(tsBlock);
+  }
+
+  public void setQueryContext(QueryContext queryContext) {
+    this.queryContext = queryContext;
+  }
+
+  public QueryContext getQueryContext() {
+    return queryContext;
   }
 
   @Override

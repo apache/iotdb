@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze.schema;
 
+import org.apache.iotdb.calc.exception.MemoryNotEnoughException;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
@@ -32,10 +33,10 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
-import org.apache.iotdb.db.queryengine.exception.MemoryNotEnoughException;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
+import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.internal.DeviceSchemaFetchStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.internal.SeriesSchemaFetchStatement;
@@ -98,7 +99,8 @@ class ClusterSchemaFetchExecutor {
         ClusterPartitionFetcher.getInstance(),
         schemaFetcher,
         timeout,
-        false);
+        false,
+        statement.isDebug());
   }
 
   /**
@@ -264,30 +266,38 @@ class ClusterSchemaFetchExecutor {
             String.format("Fetch Schema failed, because %s", executionResult.status.getMessage()),
             executionResult.status.getCode());
       }
+      IQueryExecution queryExecution = coordinator.getQueryExecution(queryId);
       try (SetThreadName ignored = new SetThreadName(executionResult.queryId.getId())) {
         ClusterSchemaTree result = new ClusterSchemaTree();
         ClusterSchemaTree.SchemaNodeBatchDeserializer deserializer =
             new ClusterSchemaTree.SchemaNodeBatchDeserializer();
         Set<String> databaseSet = new HashSet<>();
-        while (coordinator.getQueryExecution(queryId).hasNextResult()) {
-          // The query will be transited to FINISHED when invoking getBatchResult() at the last time
-          // So we don't need to clean up it manually
-          Optional<TsBlock> tsBlock;
-          try {
-            tsBlock = coordinator.getQueryExecution(queryId).getBatchResult();
-          } catch (IoTDBException e) {
-            t = e;
-            throw new QuerySchemaFetchFailedException(
-                String.format("Fetch Schema failed: %s", e.getMessage()), e.getErrorCode());
+        if (queryExecution != null) {
+          while (queryExecution.hasNextResult()) {
+            // The query will be transited to FINISHED when invoking getBatchResult() at the last
+            // time
+            // So we don't need to clean up it manually
+            Optional<TsBlock> tsBlock;
+            try {
+              tsBlock = queryExecution.getBatchResult();
+            } catch (IoTDBException e) {
+              t = e;
+              throw new QuerySchemaFetchFailedException(
+                  String.format("Fetch Schema failed: %s", e.getMessage()), e.getErrorCode());
+            }
+            if (!tsBlock.isPresent() || tsBlock.get().isEmpty()) {
+              break;
+            }
+            Column column = tsBlock.get().getColumn(0);
+            for (int i = 0; i < column.getPositionCount(); i++) {
+              parseFetchedData(column.getBinary(i), result, deserializer, databaseSet, context);
+            }
           }
-          if (!tsBlock.isPresent() || tsBlock.get().isEmpty()) {
-            break;
-          }
-          Column column = tsBlock.get().getColumn(0);
-          for (int i = 0; i < column.getPositionCount(); i++) {
-            parseFetchedData(column.getBinary(i), result, deserializer, databaseSet, context);
-          }
+        } else {
+          throw new RuntimeException(
+              String.format("Fetch Schema failed, because queryExecution is null for %s", queryId));
         }
+
         result.setDatabases(databaseSet);
         return result;
       }
@@ -295,7 +305,7 @@ class ClusterSchemaFetchExecutor {
       t = throwable;
       throw throwable;
     } finally {
-      coordinator.cleanupQueryExecution(queryId, null, t);
+      coordinator.cleanupQueryExecution(queryId, (org.apache.thrift.TBase<?, ?>) null, t);
     }
   }
 

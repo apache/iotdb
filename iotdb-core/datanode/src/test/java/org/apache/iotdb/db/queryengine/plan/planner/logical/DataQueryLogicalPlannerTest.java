@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.planner.logical;
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
@@ -29,7 +30,6 @@ import org.apache.iotdb.db.queryengine.plan.expression.binary.GreaterThanExpress
 import org.apache.iotdb.db.queryengine.plan.expression.binary.LogicAndExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.DeviceViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.GroupByLevelNode;
@@ -90,6 +90,7 @@ public class DataQueryLogicalPlannerTest {
         d1s1Path.isUnderAlignedEntity(),
         measurementSchemas,
         null,
+        false,
         null);
 
     measurementSchemas =
@@ -104,11 +105,18 @@ public class DataQueryLogicalPlannerTest {
         d2s1Path.isUnderAlignedEntity(),
         measurementSchemas,
         null,
+        false,
         null);
 
     AlignedPath aPath = (AlignedPath) schemaMap.get("root.sg.d2.a");
     lastQueryNode.addDeviceLastQueryScanNode(
-        queryId.genPlanNodeId(), aPath.getDevicePath(), true, aPath.getSchemaList(), null, null);
+        queryId.genPlanNodeId(),
+        aPath.getDevicePath(),
+        true,
+        aPath.getSchemaList(),
+        null,
+        false,
+        null);
 
     PlanNode actualPlan = parseSQLToPlanNode(sql);
     Assert.assertEquals(actualPlan, lastQueryNode);
@@ -135,6 +143,7 @@ public class DataQueryLogicalPlannerTest {
         s3Path.isUnderAlignedEntity(),
         measurementSchemas,
         null,
+        false,
         null);
 
     SortNode sortNode =

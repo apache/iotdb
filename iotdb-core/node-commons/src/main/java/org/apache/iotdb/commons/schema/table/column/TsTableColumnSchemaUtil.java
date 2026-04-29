@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.schema.table.column;
 
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.ByteArrayOutputStream;
@@ -101,6 +102,17 @@ public class TsTableColumnSchemaUtil {
     for (TsTableColumnSchema columnSchema : columnSchemaList) {
       serialize(columnSchema, stream);
     }
+  }
+
+  public static byte[] serialize(String columnName, TSDataType dataType) {
+    ByteArrayOutputStream stream = new ByteArrayOutputStream();
+    try {
+      ReadWriteIOUtils.writeVar(columnName, stream);
+      stream.write(dataType.serialize());
+    } catch (IOException ignored) {
+
+    }
+    return stream.toByteArray();
   }
 
   public static List<TsTableColumnSchema> deserializeColumnSchemaList(ByteBuffer buffer) {

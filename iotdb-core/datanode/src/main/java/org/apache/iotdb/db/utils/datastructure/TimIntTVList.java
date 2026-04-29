@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.utils.datastructure;
 
+import org.apache.tsfile.enums.TSDataType;
+
 public class TimIntTVList extends IntTVList {
   private final TimSort policy;
 
@@ -25,8 +27,13 @@ public class TimIntTVList extends IntTVList {
     policy = new TimSort(this);
   }
 
+  TimIntTVList(TSDataType dataType) {
+    policy = new TimSort(this);
+    this.dataType = dataType;
+  }
+
   @Override
-  public synchronized void sort() {
+  public synchronized int sort() {
     policy.checkSortedTimestampsAndIndices();
     if (!sorted) {
       policy.sort(0, rowCount);
@@ -35,6 +42,7 @@ public class TimIntTVList extends IntTVList {
     policy.clearSortedTime();
     sorted = true;
     seqRowCount = rowCount;
+    return rowCount;
   }
 
   @Override

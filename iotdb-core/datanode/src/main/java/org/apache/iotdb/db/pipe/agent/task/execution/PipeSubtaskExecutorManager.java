@@ -21,7 +21,7 @@ package org.apache.iotdb.db.pipe.agent.task.execution;
 
 import org.apache.iotdb.commons.consensus.iotv2.container.IoTV2GlobalComponentContainer;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
-import org.apache.iotdb.db.pipe.consensus.PipeConsensusSubtaskExecutor;
+import org.apache.iotdb.db.pipe.consensus.IoTConsensusV2SubtaskExecutor;
 import org.apache.iotdb.db.subscription.task.execution.SubscriptionSubtaskExecutor;
 
 import java.util.function.Supplier;
@@ -43,8 +43,8 @@ public class PipeSubtaskExecutorManager {
     return connectorExecutorSupplier;
   }
 
-  public PipeConsensusSubtaskExecutor getConsensusExecutor() {
-    return (PipeConsensusSubtaskExecutor)
+  public IoTConsensusV2SubtaskExecutor getConsensusExecutor() {
+    return (IoTConsensusV2SubtaskExecutor)
         IoTV2GlobalComponentContainer.getInstance().getConsensusExecutor();
   }
 
@@ -63,7 +63,7 @@ public class PipeSubtaskExecutorManager {
             : null;
     // IoTV2 uses global singleton executor pool.
     IoTV2GlobalComponentContainer.getInstance()
-        .setConsensusExecutor(new PipeConsensusSubtaskExecutor());
+        .setConsensusExecutor(new IoTConsensusV2SubtaskExecutor());
   }
 
   private static class PipeTaskExecutorHolder {

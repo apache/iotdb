@@ -20,3 +20,5 @@
 *
 !distribution
 !docker/src/main/DockerCompose/start-1c1d.sh
+!docker/src/main/ainode-build-data/
+!docker/src/main/ainode-entrypoint.sh

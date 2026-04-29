@@ -23,15 +23,15 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.DeviceContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.TimeseriesContext;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.OffsetNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.DeviceRegionScanNode;
@@ -216,13 +216,13 @@ public class RegionScanLogicalPlannerTest {
     DeviceRegionScanNode regionScanNode =
         new DeviceRegionScanNode(queryId.genPlanNodeId(), deviceContextMap, false, null);
 
-    LimitNode limitNode = new LimitNode(queryId.genPlanNodeId(), 20);
-    limitNode.addChild(regionScanNode);
     OffsetNode offsetNode = new OffsetNode(queryId.genPlanNodeId(), 10);
-    offsetNode.addChild(limitNode);
+    offsetNode.addChild(regionScanNode);
+    LimitNode limitNode = new LimitNode(queryId.genPlanNodeId(), 20);
+    limitNode.addChild(offsetNode);
 
     PlanNode actualPlan = parseSQLToPlanNode(sql);
-    Assert.assertEquals(actualPlan, offsetNode);
+    Assert.assertEquals(actualPlan, limitNode);
   }
 
   @Test

@@ -18,17 +18,18 @@
  */
 package org.apache.iotdb.db.queryengine.plan.execution;
 
+import org.apache.iotdb.calc.metric.QueryExecutionMetricSet;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
+import org.apache.iotdb.commons.queryengine.common.SqlDialect;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.KilledByOthersException;
 import org.apache.iotdb.db.exception.query.QueryTimeoutRuntimeException;
-import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
@@ -37,8 +38,8 @@ import org.apache.iotdb.db.queryengine.execution.QueryStateMachine;
 import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeService;
 import org.apache.iotdb.db.queryengine.execution.exchange.source.ISourceHandle;
 import org.apache.iotdb.db.queryengine.execution.exchange.source.SourceHandle;
-import org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet;
 import org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet;
+import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.execution.memory.MemorySourceHandle;
@@ -71,9 +72,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Throwables.throwIfUnchecked;
+import static org.apache.iotdb.calc.metric.QueryExecutionMetricSet.WAIT_FOR_RESULT;
+import static org.apache.iotdb.commons.utils.ErrorHandlingCommonUtils.getRootCause;
 import static org.apache.iotdb.db.queryengine.common.DataNodeEndPoints.isSameNode;
-import static org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet.WAIT_FOR_RESULT;
-import static org.apache.iotdb.db.utils.ErrorHandlingUtils.getRootCause;
 import static org.apache.iotdb.rpc.TSStatusCode.DATE_OUT_OF_RANGE;
 
 /**
@@ -108,8 +109,13 @@ public class QueryExecution implements IQueryExecution {
 
   private final AtomicBoolean stopped;
 
-  // cost time in ns
+  // cost time in ns of finished rpc
   private long totalExecutionTime = 0;
+
+  // -1 if previous rpc is finished and next client req hasn't come yet, unit is ns
+  // it will be updated in fetchResult rpc
+  // protected by synchronized(this)
+  private volatile long startTimeOfCurrentRpc = System.nanoTime();
 
   private static final QueryExecutionMetricSet QUERY_EXECUTION_METRIC_SET =
       QueryExecutionMetricSet.getInstance();
@@ -123,6 +129,7 @@ public class QueryExecution implements IQueryExecution {
     this.context = context;
     this.planner = planner;
     this.analysis = analyze(context);
+    context.setNeedSetHighestPriority(analysis.needSetHighestPriority());
     this.stateMachine = new QueryStateMachine(context.getQueryId(), executor);
 
     // We add the abort logic inside the QueryExecution.
@@ -133,14 +140,19 @@ public class QueryExecution implements IQueryExecution {
             if (!state.isDone()) {
               return;
             }
+            Throwable cause = null;
             if (state == QueryState.FAILED
                 || state == QueryState.ABORTED
                 || state == QueryState.CANCELED) {
-              LOGGER.debug("[ReleaseQueryResource] state is: {}", state);
-              Throwable cause = stateMachine.getFailureException();
+              if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug("[ReleaseQueryResource] state is: {}", state);
+              }
+              cause = stateMachine.getFailureException();
               releaseResource(cause);
+
+              this.cleanUpCoordinatorContextMapIfNeeded(cause);
             }
-            this.stop(null);
+            this.stop(cause);
           }
         });
     this.stopped = new AtomicBoolean(false);
@@ -201,7 +213,7 @@ public class QueryExecution implements IQueryExecution {
     // When some columns in one insert failed, other column will continue executing insertion.
     // The error message should be return to client, therefore we need to set it after the insertion
     // of other column finished.
-    if (context.getQueryType() == QueryType.WRITE && analysis.isFailed()) {
+    if (!context.isQuery() && analysis.isFailed()) {
       stateMachine.transitionToFailed(analysis.getFailStatus());
     }
   }
@@ -321,33 +333,20 @@ public class QueryExecution implements IQueryExecution {
     }
   }
 
-  // Stop the query and clean up all the resources this query occupied
-  @Override
-  public void stopAndCleanup() {
-    stop(null);
-    releaseResource();
-  }
-
   @Override
   public void cancel() {
-    stateMachine.transitionToCanceled(
-        new KilledByOthersException(),
-        new TSStatus(TSStatusCode.QUERY_WAS_KILLED.getStatusCode())
-            .setMessage(KilledByOthersException.MESSAGE));
-  }
-
-  /** Release the resources that current QueryExecution hold. */
-  private void releaseResource() {
-    // close ResultHandle to unblock client's getResult request
-    // Actually, we should not close the ResultHandle when the QueryExecution is Finished.
-    // There are only two scenarios where the ResultHandle should be closed:
-    //   1. The client fetch all the result and the ResultHandle is finished.
-    //   2. The client's connection is closed that all owned QueryExecution should be cleaned up
-    // If the QueryExecution's state is abnormal, we should also abort the resultHandle without
-    // waiting it to be finished.
-    if (resultHandle != null) {
-      resultHandle.close();
-      cleanUpResultHandle();
+    Throwable cause = new KilledByOthersException();
+    boolean cancelled =
+        stateMachine.transitionToCanceled(
+            cause,
+            new TSStatus(TSStatusCode.QUERY_WAS_KILLED.getStatusCode())
+                .setMessage(KilledByOthersException.MESSAGE));
+    if (!cancelled) {
+      // cancel failed, means this query has already in a done state, we can do nothing to change
+      // the state but clean up the resource if needed
+      // we don't need to do cleanUpCoordinatorContextMapIfNeeded if cancel succeed, because it will
+      // be called in callback logic in QueryStateMachine of this QueryExecution
+      this.cleanUpCoordinatorContextMapIfNeeded(cause);
     }
   }
 
@@ -356,7 +355,7 @@ public class QueryExecution implements IQueryExecution {
     // We don't need to deal with MemorySourceHandle because it doesn't register to memory pool
     // We don't need to deal with LocalSourceHandle because the SharedTsBlockQueue uses the upstream
     // FragmentInstanceId to register
-    if (resultHandleCleanUp.compareAndSet(false, true) && resultHandle instanceof SourceHandle) {
+    if (resultHandle instanceof SourceHandle) {
       TFragmentInstanceId fragmentInstanceId = resultHandle.getLocalFragmentInstanceId();
       MPPDataExchangeService.getInstance()
           .getMPPDataExchangeManager()
@@ -384,7 +383,7 @@ public class QueryExecution implements IQueryExecution {
     //   2. The client's connection is closed that all owned QueryExecution should be cleaned up
     // If the QueryExecution's state is abnormal, we should also abort the resultHandle without
     // waiting it to be finished.
-    if (resultHandle != null) {
+    if (resultHandle != null && resultHandleCleanUp.compareAndSet(false, true)) {
       if (t != null) {
         resultHandle.abort(t);
       } else {
@@ -392,6 +391,32 @@ public class QueryExecution implements IQueryExecution {
       }
       cleanUpResultHandle();
     }
+  }
+
+  /**
+   * Clear up Coordinator.queryExecutionMap by calling Coordinator.cleanupQueryExecution if there is
+   * no RPC in progress for this query (that is, the current RPC has finished and {@code
+   * startTimeOfCurrentRpc == -1}). In cases where an RPC is still active, the finally block in
+   * ClientRPCServiceImpl is responsible for performing the cleanup.
+   */
+  private synchronized void cleanUpCoordinatorContextMapIfNeeded(Throwable t) {
+    if (isActive()) {
+      Coordinator.getInstance()
+          .cleanupQueryExecution(
+              context.getLocalQueryId(), (org.apache.thrift.TBase<?, ?>) null, t);
+    }
+  }
+
+  /**
+   * Check if there is an active RPC for this query. If {@code startTimeOfCurrentRpc == -1}, it
+   * means there is no active RPC, otherwise there is an active RPC. An active RPC means that the
+   * client is still fetching results and the QueryExecution should not be cleaned up until the RPC
+   * finishes. On the other hand, if there is no active RPC, it means that the client has finished
+   * fetching results or has not started fetching results yet, and the QueryExecution can be safely
+   * cleaned up.
+   */
+  public synchronized boolean isActive() {
+    return startTimeOfCurrentRpc == -1;
   }
 
   /**
@@ -586,7 +611,8 @@ public class QueryExecution implements IQueryExecution {
                     context.getResultNodeContext().getUpStreamPlanNodeId().getId(),
                     context.getResultNodeContext().getUpStreamFragmentInstanceId().toThrift(),
                     0, // Upstream of result ExchangeNode will only have one child.
-                    stateMachine::transitionToFailed)
+                    stateMachine::transitionToFailed,
+                    context.needSetHighestPriority())
             : MPPDataExchangeService.getInstance()
                 .getMPPDataExchangeManager()
                 .createSourceHandle(
@@ -595,13 +621,14 @@ public class QueryExecution implements IQueryExecution {
                     0,
                     upstreamEndPoint,
                     context.getResultNodeContext().getUpStreamFragmentInstanceId().toThrift(),
-                    stateMachine::transitionToFailed);
+                    stateMachine::transitionToFailed,
+                    context.needSetHighestPriority());
   }
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private ExecutionResult getExecutionResult(QueryState state) {
     TSStatusCode statusCode;
-    if (context.getQueryType() == QueryType.WRITE && analysis.isFailed()) {
+    if (!context.isQuery() && analysis.isFailed()) {
       // For WRITE, the state should be FINISHED
       statusCode =
           state == QueryState.FINISHED
@@ -647,7 +674,7 @@ public class QueryExecution implements IQueryExecution {
 
   @Override
   public boolean isQuery() {
-    return context.getQueryType() != QueryType.WRITE;
+    return context.isQuery();
   }
 
   @Override
@@ -671,13 +698,27 @@ public class QueryExecution implements IQueryExecution {
   }
 
   @Override
-  public void recordExecutionTime(long executionTime) {
+  public synchronized void recordExecutionTime(long executionTime) {
     totalExecutionTime += executionTime;
+    // recordExecutionTime is called after current rpc finished, so we need to set
+    // startTimeOfCurrentRpc to -1
+    this.startTimeOfCurrentRpc = -1;
   }
 
   @Override
-  public long getTotalExecutionTime() {
-    return totalExecutionTime;
+  public synchronized void updateCurrentRpcStartTime(long startTime) {
+    this.startTimeOfCurrentRpc = startTime;
+  }
+
+  @Override
+  public synchronized long getTotalExecutionTime() {
+    return totalExecutionTime
+        + (startTimeOfCurrentRpc == -1 ? 0 : System.nanoTime() - startTimeOfCurrentRpc);
+  }
+
+  @Override
+  public long getTimeout() {
+    return context.getTimeOut();
   }
 
   @Override
@@ -691,7 +732,7 @@ public class QueryExecution implements IQueryExecution {
   }
 
   @Override
-  public IClientSession.SqlDialect getSQLDialect() {
+  public SqlDialect getSQLDialect() {
     return context.getSession().getSqlDialect();
   }
 
@@ -703,6 +744,11 @@ public class QueryExecution implements IQueryExecution {
   @Override
   public String getClientHostname() {
     return context.getCliHostname();
+  }
+
+  @Override
+  public boolean isDebug() {
+    return context.isDebug();
   }
 
   public MPPQueryContext getContext() {

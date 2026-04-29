@@ -99,8 +99,8 @@ public class MemAlignedChunkMetadataLoader implements IChunkMetadataLoader {
         long t2 = System.nanoTime();
         chunkMetadataList.removeIf(
             chunkMetaData ->
-                (globalTimeFilter != null && globalTimeFilter.canSkip(chunkMetaData))
-                    || chunkMetaData.getStartTime() > chunkMetaData.getEndTime());
+                ChunkMetadataLoaderUtils.shouldSkipAndRecord(
+                    chunkMetaData, globalTimeFilter, context));
         SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
             CHUNK_METADATA_FILTER_ALIGNED_MEM, System.nanoTime() - t2);
       }

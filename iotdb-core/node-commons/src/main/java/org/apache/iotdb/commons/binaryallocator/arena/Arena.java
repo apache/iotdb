@@ -216,7 +216,12 @@ public class Arena {
 
     private long resize() {
       average.update();
-      int needRemain = (int) Math.ceil(average.average()) - getActiveSize();
+      float averageActiveSize = average.average();
+      if (averageActiveSize < 0.0001f) {
+        // avoid keeping the last binary forever
+        averageActiveSize = 0.0f;
+      }
+      int needRemain = (int) Math.ceil(averageActiveSize) - getActiveSize();
       return evict(getQueueSize() - needRemain);
     }
 

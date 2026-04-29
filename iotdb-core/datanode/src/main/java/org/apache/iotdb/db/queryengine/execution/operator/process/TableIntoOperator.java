@@ -19,15 +19,16 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process;
 
+import org.apache.iotdb.calc.execution.operator.Operator;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.parameter.InputLocation;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.protocol.client.DataNodeInternalClient;
-import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
-import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 
 import com.google.common.util.concurrent.Futures;
@@ -67,7 +68,8 @@ public class TableIntoOperator extends AbstractIntoOperator {
       Map<String, TSDataType> measurementToDataTypeMap,
       boolean isAligned,
       ExecutorService intoOperationExecutor,
-      long statementSizePerLine) {
+      long statementSizePerLine,
+      ColumnSchema timeColumnOfTargetTable) {
     super(operatorContext, child, inputColumnTypes, intoOperationExecutor, statementSizePerLine);
     this.maxReturnSize = MAX_RETURN_SIZE;
     insertTabletStatementGenerator =
@@ -79,7 +81,8 @@ public class TableIntoOperator extends AbstractIntoOperator {
             inputColumnTypes,
             inputColumnCategories,
             isAligned,
-            maxRowNumberInStatement);
+            maxRowNumberInStatement,
+            timeColumnOfTargetTable.getName());
   }
 
   @Override
@@ -112,6 +115,11 @@ public class TableIntoOperator extends AbstractIntoOperator {
 
     finished = true;
     return constructResultTsBlock();
+  }
+
+  @Override
+  protected TsBlock tryToReturnPartialResult() {
+    return null;
   }
 
   @Override

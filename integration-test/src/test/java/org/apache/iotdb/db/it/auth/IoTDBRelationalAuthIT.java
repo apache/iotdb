@@ -564,8 +564,21 @@ public class IoTDBRelationalAuthIT {
       try {
         adminStmt.execute("ALTER USER nonExist SET PASSWORD 'asdfer1124566'");
       } catch (SQLException e) {
-        assertEquals("701: User nonExist not found", e.getMessage());
+        assertEquals("804: User nonExist does not exist", e.getMessage());
       }
+    }
+  }
+
+  @Test
+  public void testUserNameMustNotStartWithDoubleUnderscore() throws SQLException {
+    try (Connection adminCon = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement adminStmt = adminCon.createStatement()) {
+      Assert.assertThrows(
+          SQLException.class, () -> adminStmt.execute("create user __badx 'password123456'"));
+      adminStmt.execute("create user gooduser 'password123456'");
+      Assert.assertThrows(
+          SQLException.class, () -> adminStmt.execute("ALTER USER gooduser RENAME TO __badx"));
+      adminStmt.execute("DROP USER gooduser");
     }
   }
 

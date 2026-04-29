@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
@@ -43,6 +44,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegionParams;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionLoader;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionParams;
+import org.apache.iotdb.db.schemaengine.schemaregion.impl.SchemaRegionMemoryImpl;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatReq;
@@ -253,6 +255,26 @@ public class SchemaEngine {
     return new ArrayList<>(schemaRegionMap.keySet());
   }
 
+  public void updateSubtreeMeasurementCountForTemplate(final int templateId, final long delta) {
+    if (delta == 0) {
+      return;
+    }
+    for (final ISchemaRegion schemaRegion : schemaRegionMap.values()) {
+      if (schemaRegion instanceof SchemaRegionMemoryImpl) {
+        try {
+          ((SchemaRegionMemoryImpl) schemaRegion)
+              .updateSubtreeMeasurementCountForTemplate(templateId, delta);
+        } catch (MetadataException e) {
+          logger.warn(
+              "Failed to update subtree measurement count for template {} in schemaRegion {}",
+              templateId,
+              schemaRegion.getSchemaRegionId(),
+              e);
+        }
+      }
+    }
+  }
+
   public synchronized void createSchemaRegion(
       final String storageGroup, final SchemaRegionId schemaRegionId) throws MetadataException {
     if (this.schemaRegionMap == null) {
@@ -366,15 +388,20 @@ public class SchemaEngine {
         .filter(
             entry ->
                 schemaIds.contains(entry.getKey().getId())
-                    && SchemaRegionConsensusImpl.getInstance().isLeader(entry.getKey()))
+                    && SchemaRegionConsensusImpl.getInstance().isLeader(entry.getKey())
+                    && !entry
+                        .getValue()
+                        .getDatabaseFullPath()
+                        .equals(SystemConstant.AUDIT_DATABASE))
         .forEach(
             entry ->
-                timeSeriesNum.put(entry.getKey().getId(), getTimeSeriesNumber(entry.getValue())));
+                timeSeriesNum.put(
+                    entry.getKey().getId(), getTimeSeriesNumber4Quota(entry.getValue())));
     return timeSeriesNum;
   }
 
   // not including view number
-  private long getTimeSeriesNumber(ISchemaRegion schemaRegion) {
+  private long getTimeSeriesNumber4Quota(final ISchemaRegion schemaRegion) {
     return schemaRegion.getSchemaRegionStatistics().getSeriesNumber(false)
         + schemaRegion.getSchemaRegionStatistics().getTable2DevicesNumMap().entrySet().stream()
             .map(
@@ -383,8 +410,16 @@ public class SchemaEngine {
                       DataNodeTableCache.getInstance()
                           .getTable(
                               PathUtils.unQualifyDatabaseName(schemaRegion.getDatabaseFullPath()),
-                              tableEntry.getKey());
-                  return Objects.nonNull(table) ? table.getFieldNum() * tableEntry.getValue() : 0;
+                              tableEntry.getKey(),
+                              false);
+                  if (Objects.isNull(table)) {
+                    logger.warn(
+                        "Failed to get table {}.{} when calculating the time series number. Maybe the cluster is restarting or the table is being dropped.",
+                        PathUtils.unQualifyDatabaseName(schemaRegion.getDatabaseFullPath()),
+                        tableEntry.getKey());
+                    return 0L;
+                  }
+                  return table.getFieldNum() * tableEntry.getValue();
                 })
             .reduce(0L, Long::sum);
   }
@@ -430,13 +465,20 @@ public class SchemaEngine {
       SchemaRegionConsensusImpl.getInstance().getAllConsensusGroupIds().stream()
           .filter(
               consensusGroupId ->
-                  SchemaRegionConsensusImpl.getInstance().isLeader(consensusGroupId))
+                  SchemaRegionConsensusImpl.getInstance().isLeader(consensusGroupId)
+                      && Optional.ofNullable(schemaRegionMap.get((SchemaRegionId) consensusGroupId))
+                          .map(
+                              schemaRegion ->
+                                  !schemaRegion
+                                      .getDatabaseFullPath()
+                                      .equals(SystemConstant.AUDIT_DATABASE))
+                          .orElse(false))
           .forEach(
               consensusGroupId ->
                   tmp.put(
                       consensusGroupId.getId(),
                       Optional.ofNullable(schemaRegionMap.get(consensusGroupId))
-                          .map(this::getTimeSeriesNumber)
+                          .map(this::getTimeSeriesNumber4Quota)
                           .orElse(0L)));
     }
   }

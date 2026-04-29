@@ -22,6 +22,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.wr
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionLastTimeCheckFailedException;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CompactionTaskSummary;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.AlignedPageElement;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.ChunkMetadataElement;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.flushcontroller.AbstractCompactionFlushController;
@@ -104,6 +105,8 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
   protected ModEntry ttlDeletionForCurrentDevice;
 
   private EncryptParameter encryptParameter;
+
+  protected CompactionTaskSummary compactionTaskSummary;
 
   public abstract void startChunkGroup(IDeviceID deviceId, boolean isAlign) throws IOException;
 
@@ -340,4 +343,8 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
   }
 
   public abstract void setSchemaForAllTargetFile(List<Schema> schemas);
+
+  public void setCompactionTaskSummary(CompactionTaskSummary compactionTaskSummary) {
+    this.compactionTaskSummary = compactionTaskSummary;
+  }
 }

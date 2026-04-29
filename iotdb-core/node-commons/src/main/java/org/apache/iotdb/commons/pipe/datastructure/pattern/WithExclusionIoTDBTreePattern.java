@@ -73,6 +73,11 @@ public class WithExclusionIoTDBTreePattern extends IoTDBTreePatternOperations {
   }
 
   @Override
+  public boolean isSingle() {
+    return false;
+  }
+
+  @Override
   public boolean isLegal() {
     return inclusionPattern.isLegal() && exclusionPattern.isLegal();
   }
@@ -95,6 +100,11 @@ public class WithExclusionIoTDBTreePattern extends IoTDBTreePatternOperations {
   @Override
   public boolean mayOverlapWithDevice(final IDeviceID device) {
     return inclusionPattern.mayOverlapWithDevice(device) && !exclusionPattern.coversDevice(device);
+  }
+
+  @Override
+  public boolean overlapWithDevice(final IDeviceID device) {
+    return inclusionPattern.overlapWithDevice(device) && !exclusionPattern.coversDevice(device);
   }
 
   @Override

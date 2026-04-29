@@ -63,6 +63,11 @@ public class WithExclusionTreePattern extends TreePattern {
   }
 
   @Override
+  public boolean isSingle() {
+    return false;
+  }
+
+  @Override
   public boolean isLegal() {
     return inclusionPattern.isLegal() && exclusionPattern.isLegal();
   }
@@ -89,6 +94,12 @@ public class WithExclusionTreePattern extends TreePattern {
   public boolean mayOverlapWithDevice(final IDeviceID device) {
     // May overlap if inclusion overlaps AND exclusion doesn't fully cover it.
     return inclusionPattern.mayOverlapWithDevice(device) && !exclusionPattern.coversDevice(device);
+  }
+
+  @Override
+  public boolean overlapWithDevice(final IDeviceID device) {
+    // May overlap if inclusion overlaps AND exclusion doesn't fully cover it.
+    return inclusionPattern.overlapWithDevice(device) && !exclusionPattern.coversDevice(device);
   }
 
   @Override

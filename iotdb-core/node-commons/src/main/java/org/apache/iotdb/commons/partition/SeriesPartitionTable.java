@@ -37,10 +37,12 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListMap;
@@ -49,14 +51,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 public class SeriesPartitionTable {
-
-  // should only be used in CN scope, in DN scope should directly use
-  // TimePartitionUtils.getTimePartitionInterval()
-  private static final long TIME_PARTITION_INTERVAL =
-      CommonDateTimeUtils.convertMilliTimeWithPrecision(
-          TimePartitionUtils.getTimePartitionInterval(),
-          CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
-
   private final ConcurrentSkipListMap<TTimePartitionSlot, List<TConsensusGroupId>>
       seriesPartitionMap;
 
@@ -73,7 +67,13 @@ public class SeriesPartitionTable {
   }
 
   public void putDataPartition(TTimePartitionSlot timePartitionSlot, TConsensusGroupId groupId) {
-    seriesPartitionMap.computeIfAbsent(timePartitionSlot, empty -> new Vector<>()).add(groupId);
+    List<TConsensusGroupId> groupList =
+        seriesPartitionMap.computeIfAbsent(timePartitionSlot, empty -> new Vector<>());
+    synchronized (groupList) {
+      if (!groupList.contains(groupId)) {
+        groupList.add(groupId);
+      }
+    }
   }
 
   /**
@@ -255,19 +255,40 @@ public class SeriesPartitionTable {
    */
   public List<TTimePartitionSlot> autoCleanPartitionTable(
       long TTL, TTimePartitionSlot currentTimeSlot) {
+    final long timePartitionInterval =
+        CommonDateTimeUtils.convertMilliTimeWithPrecision(
+            TimePartitionUtils.getTimePartitionInterval(),
+            CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
     List<TTimePartitionSlot> removedTimePartitions = new ArrayList<>();
     Iterator<Map.Entry<TTimePartitionSlot, List<TConsensusGroupId>>> iterator =
         seriesPartitionMap.entrySet().iterator();
     while (iterator.hasNext()) {
       Map.Entry<TTimePartitionSlot, List<TConsensusGroupId>> entry = iterator.next();
       TTimePartitionSlot timePartitionSlot = entry.getKey();
-      if (timePartitionSlot.getStartTime() + TIME_PARTITION_INTERVAL + TTL
+      if (timePartitionSlot.getStartTime() + timePartitionInterval + TTL
           <= currentTimeSlot.getStartTime()) {
         removedTimePartitions.add(timePartitionSlot);
         iterator.remove();
       }
     }
     return removedTimePartitions;
+  }
+
+  public void merge(SeriesPartitionTable sourceMap) {
+    if (sourceMap == null) return;
+    sourceMap.seriesPartitionMap.forEach(
+        (timeSlot, groups) -> {
+          List<TConsensusGroupId> groupList =
+              this.seriesPartitionMap.computeIfAbsent(timeSlot, k -> new ArrayList<>());
+          synchronized (groupList) {
+            Set<TConsensusGroupId> groupSet = new HashSet<>(groupList);
+            for (TConsensusGroupId groupId : groups) {
+              if (!groupSet.contains(groupId)) {
+                groupList.add(groupId);
+              }
+            }
+          }
+        });
   }
 
   public void serialize(OutputStream outputStream, TProtocol protocol)

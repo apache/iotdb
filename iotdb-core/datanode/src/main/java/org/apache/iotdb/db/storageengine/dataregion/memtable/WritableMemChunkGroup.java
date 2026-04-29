@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.db.exception.DataTypeInconsistentException;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
@@ -29,6 +31,7 @@ import org.apache.tsfile.encrypt.EncryptUtils;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.io.DataInputStream;
 import java.io.IOException;
@@ -209,6 +212,21 @@ public class WritableMemChunkGroup implements IWritableMemChunkGroup {
       memChunkGroup.memChunkMap.put(measurement, memChunk);
     }
     return memChunkGroup;
+  }
+
+  @Override
+  public void checkDataType(InsertNode node) throws DataTypeInconsistentException {
+    for (MeasurementSchema incomingSchema : node.getMeasurementSchemas()) {
+      if (incomingSchema == null) {
+        continue;
+      }
+
+      IWritableMemChunk memChunk = memChunkMap.get(incomingSchema.getMeasurementName());
+      if (memChunk != null && memChunk.getSchema().getType() != incomingSchema.getType()) {
+        throw new DataTypeInconsistentException(
+            memChunk.getWorkingTVList().getDataType(), incomingSchema.getType());
+      }
+    }
   }
 
   public static WritableMemChunkGroup deserializeSingleTVListMemChunks(DataInputStream stream)

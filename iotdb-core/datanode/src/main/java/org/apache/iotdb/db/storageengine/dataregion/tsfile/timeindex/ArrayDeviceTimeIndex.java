@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.exception.load.PartitionViolationException;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
+import com.google.common.util.concurrent.RateLimiter;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.IDeviceID.Deserializer;
 import org.apache.tsfile.utils.FilePathUtils;
@@ -95,7 +96,7 @@ public class ArrayDeviceTimeIndex implements ITimeIndex {
 
   @Override
   public void serialize(OutputStream outputStream) throws IOException {
-    ReadWriteIOUtils.write(getTimeIndexType(), outputStream);
+    ReadWriteIOUtils.write(ARRAY_DEVICE_TIME_INDEX_TYPE, outputStream);
     int deviceNum = deviceToIndex.size();
 
     ReadWriteIOUtils.write(deviceNum, outputStream);
@@ -168,6 +169,12 @@ public class ArrayDeviceTimeIndex implements ITimeIndex {
 
   @Override
   public Set<IDeviceID> getDevices(String tsFilePath, TsFileResource tsFileResource) {
+    return deviceToIndex.keySet();
+  }
+
+  @Override
+  public Set<IDeviceID> getDevices(
+      String tsFilePath, TsFileResource tsFileResource, RateLimiter limiter) {
     return deviceToIndex.keySet();
   }
 

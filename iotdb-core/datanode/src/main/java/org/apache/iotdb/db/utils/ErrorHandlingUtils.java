@@ -19,16 +19,17 @@
 
 package org.apache.iotdb.db.utils;
 
+import org.apache.iotdb.calc.exception.QueryProcessException;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.QuerySchemaFetchFailedException;
+import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.commons.utils.ErrorHandlingCommonUtils;
 import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.QueryInBatchStatementException;
 import org.apache.iotdb.db.exception.StorageGroupNotReadyException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.query.QueryTimeoutRuntimeException;
-import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.protocol.thrift.OperationType;
 import org.apache.iotdb.db.queryengine.plan.planner.exceptions.ReplicaSetUnreachableException;
 import org.apache.iotdb.db.queryengine.plan.planner.exceptions.RootFIPlacementException;
@@ -46,6 +47,7 @@ import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 
 import static org.apache.iotdb.commons.utils.StatusUtils.needRetry;
+import static org.apache.iotdb.db.protocol.thrift.OperationType.DISPATCH_FRAGMENT_INSTANCE;
 
 public class ErrorHandlingUtils {
 
@@ -60,17 +62,18 @@ public class ErrorHandlingUtils {
       "The read statement is not allowed in batch: ";
 
   private static final String ERROR_OPERATION_LOG = "Status code: {}, operation: {} failed";
+  private static final String EXCEPTION_PATTERN = "[%s] Exception occurred: %s failed. ";
 
   public static TSStatus onNpeOrUnexpectedException(
       Exception e, String operation, TSStatusCode statusCode) {
-    String message = String.format("[%s] Exception occurred: %s failed. ", statusCode, operation);
+    String message = String.format(EXCEPTION_PATTERN, statusCode, operation);
     if (e instanceof IOException || e instanceof NullPointerException) {
       LOGGER.error(ERROR_OPERATION_LOG, statusCode, operation, e);
     } else {
       LOGGER.warn(ERROR_OPERATION_LOG, statusCode, operation, e);
     }
     if (e instanceof SemanticException) {
-      Throwable rootCause = getRootCause(e);
+      Throwable rootCause = ErrorHandlingCommonUtils.getRootCause(e);
       if (e.getCause() instanceof IoTDBException) {
         return RpcUtils.getStatus(
             ((IoTDBException) e.getCause()).getErrorCode(), rootCause.getMessage());
@@ -87,11 +90,14 @@ public class ErrorHandlingUtils {
     return onNpeOrUnexpectedException(e, operation.getName(), statusCode);
   }
 
-  public static Throwable getRootCause(Throwable e) {
-    while (e.getCause() != null) {
-      e = e.getCause();
-    }
-    return e;
+  public static TSStatus onThriftFrameOversizeException(Throwable t) {
+    TSStatus status =
+        new TSStatus(TSStatusCode.THRIFT_FRAME_OVERSIZE.getStatusCode()).setNeedRetry(false);
+    String message =
+        String.format(EXCEPTION_PATTERN, status, DISPATCH_FRAGMENT_INSTANCE)
+            + ErrorHandlingCommonUtils.getRootCause(t).getMessage();
+    LOGGER.warn(message);
+    return status.setMessage(message);
   }
 
   public static TSStatus onQueryException(Exception e, String operation, TSStatusCode statusCode) {
@@ -121,6 +127,9 @@ public class ErrorHandlingUtils {
             || status.getCode() == TSStatusCode.CANNOT_FETCH_FI_STATE.getStatusCode()
             || status.getCode() == TSStatusCode.QUERY_EXECUTION_MEMORY_NOT_ENOUGH.getStatusCode()
             || status.getCode() == TSStatusCode.EXECUTE_UDF_ERROR.getStatusCode()
+            || status.getCode() == TSStatusCode.TEMPLATE_INCOMPATIBLE.getStatusCode()
+            || status.getCode() == TSStatusCode.PATH_ALREADY_EXIST.getStatusCode()
+            || status.getCode() == TSStatusCode.PIPE_NOT_EXIST_ERROR.getStatusCode()
             || status.getCode() == TSStatusCode.QUERY_TIMEOUT.getStatusCode()) {
           LOGGER.info(message);
         } else {
@@ -143,7 +152,7 @@ public class ErrorHandlingUtils {
   }
 
   private static TSStatus tryCatchQueryException(Exception e) {
-    Throwable rootCause = getRootCause(e);
+    Throwable rootCause = ErrorHandlingCommonUtils.getRootCause(e);
     // ignore logging sg not ready exception
     if (rootCause instanceof StorageGroupNotReadyException) {
       return RpcUtils.getStatus(TSStatusCode.STORAGE_ENGINE_NOT_READY, rootCause.getMessage());
@@ -220,7 +229,7 @@ public class ErrorHandlingUtils {
       LOGGER.warn(message, e);
       return RpcUtils.getStatus(Arrays.asList(batchException.getFailingStatus()));
     } else if (e instanceof IoTDBException) {
-      Throwable rootCause = getRootCause(e);
+      Throwable rootCause = ErrorHandlingCommonUtils.getRootCause(e);
       // ignore logging sg not ready exception
       if (!(rootCause instanceof StorageGroupNotReadyException)) {
         LOGGER.warn(message, e);

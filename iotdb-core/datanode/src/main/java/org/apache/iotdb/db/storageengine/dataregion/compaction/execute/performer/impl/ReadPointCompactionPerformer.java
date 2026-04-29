@@ -150,6 +150,7 @@ public class ReadPointCompactionPerformer
     summary.setTemporalFileNum(targetFiles.size());
     try (AbstractCompactionWriter compactionWriter =
         getCompactionWriter(seqFiles, unseqFiles, targetFiles)) {
+      compactionWriter.setCompactionTaskSummary(summary);
       // Do not close device iterator, because tsfile reader is managed by FileReaderManager.
       MultiTsFileDeviceIterator deviceIterator =
           new MultiTsFileDeviceIterator(seqFiles, unseqFiles);

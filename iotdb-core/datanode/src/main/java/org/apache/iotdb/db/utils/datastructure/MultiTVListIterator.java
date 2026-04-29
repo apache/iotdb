@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.utils.datastructure;
 
+import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -60,8 +61,9 @@ public abstract class MultiTVListIterator extends MemPointIterator {
       List<TimeRange> deletionList,
       Integer floatPrecision,
       TSEncoding encoding,
-      int maxNumberOfPointsInPage) {
-    super(scanOrder);
+      int maxNumberOfPointsInPage,
+      QueryContext queryContext) {
+    super(scanOrder, queryContext);
     this.tsDataType = tsDataType;
     this.tvListIterators = new ArrayList<>(tvLists.size());
     if (scanOrder.isAscending()) {
@@ -76,7 +78,8 @@ public abstract class MultiTVListIterator extends MemPointIterator {
                 deletionList,
                 null,
                 null,
-                maxNumberOfPointsInPage);
+                maxNumberOfPointsInPage,
+                queryContext);
         tvListIterators.add(iterator);
       }
     } else {
@@ -91,7 +94,8 @@ public abstract class MultiTVListIterator extends MemPointIterator {
                 deletionList,
                 null,
                 null,
-                maxNumberOfPointsInPage);
+                maxNumberOfPointsInPage,
+                queryContext);
         tvListIterators.add(iterator);
       }
     }
@@ -143,6 +147,7 @@ public abstract class MultiTVListIterator extends MemPointIterator {
   @Override
   public TsBlock nextBatch() {
     TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(tsDataType));
+    long filteredRowsByPushDownFilter = 0;
     switch (tsDataType) {
       case BOOLEAN:
         while (hasNextTimeValuePair() && builder.getPositionCount() < maxNumberOfPointsInPage) {
@@ -152,6 +157,8 @@ public abstract class MultiTVListIterator extends MemPointIterator {
             builder.getTimeColumnBuilder().writeLong(currentTime);
             builder.getColumnBuilder(0).writeBoolean(aBoolean);
             builder.declarePosition();
+          } else {
+            filteredRowsByPushDownFilter++;
           }
           next();
         }
@@ -165,6 +172,8 @@ public abstract class MultiTVListIterator extends MemPointIterator {
             builder.getTimeColumnBuilder().writeLong(currentTime);
             builder.getColumnBuilder(0).writeInt(anInt);
             builder.declarePosition();
+          } else {
+            filteredRowsByPushDownFilter++;
           }
           next();
         }
@@ -178,6 +187,8 @@ public abstract class MultiTVListIterator extends MemPointIterator {
             builder.getTimeColumnBuilder().writeLong(currentTime);
             builder.getColumnBuilder(0).writeLong(aLong);
             builder.declarePosition();
+          } else {
+            filteredRowsByPushDownFilter++;
           }
           next();
         }
@@ -195,6 +206,8 @@ public abstract class MultiTVListIterator extends MemPointIterator {
             builder.getTimeColumnBuilder().writeLong(currentTime);
             builder.getColumnBuilder(0).writeFloat(aFloat);
             builder.declarePosition();
+          } else {
+            filteredRowsByPushDownFilter++;
           }
           next();
         }
@@ -212,6 +225,8 @@ public abstract class MultiTVListIterator extends MemPointIterator {
             builder.getTimeColumnBuilder().writeLong(currentTime);
             builder.getColumnBuilder(0).writeDouble(aDouble);
             builder.declarePosition();
+          } else {
+            filteredRowsByPushDownFilter++;
           }
           next();
         }
@@ -227,6 +242,8 @@ public abstract class MultiTVListIterator extends MemPointIterator {
             builder.getTimeColumnBuilder().writeLong(currentTime);
             builder.getColumnBuilder(0).writeBinary(binary);
             builder.declarePosition();
+          } else {
+            filteredRowsByPushDownFilter++;
           }
           next();
         }
@@ -235,6 +252,13 @@ public abstract class MultiTVListIterator extends MemPointIterator {
         throw new UnSupportedDataTypeException(
             String.format("Data type %s is not supported.", tsDataType));
     }
+
+    if (this.getQueryContext().isVerbose() && filteredRowsByPushDownFilter > 0) {
+      this.getQueryContext()
+          .getQueryStatistics()
+          .addFilteredRowsOfRowLevel(filteredRowsByPushDownFilter);
+    }
+
     // There is no need to process pushDownFilter here because it has been applied when
     // constructing the tsBlock
     TsBlock tsBlock = paginationController.applyTsBlock(builder.build());

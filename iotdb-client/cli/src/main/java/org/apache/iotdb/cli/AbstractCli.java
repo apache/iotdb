@@ -88,7 +88,6 @@ public abstract class AbstractCli {
   static final int CODE_ERROR = 1;
 
   static final String ISO8601_ARGS = "disableISO8601";
-  static final List<String> AGGREGRATE_TIME_LIST = new ArrayList<>();
   static final String RPC_COMPRESS_ARGS = "c";
   private static final String RPC_COMPRESS_NAME = "rpcCompressed";
   static final String TIMEOUT_ARGS = "timeout";

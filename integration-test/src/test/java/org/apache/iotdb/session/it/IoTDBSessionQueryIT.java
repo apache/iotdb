@@ -22,6 +22,7 @@ package org.apache.iotdb.session.it;
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.it.utils.AlignedWriteUtil;
+import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.it.env.EnvFactory;
@@ -29,6 +30,7 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.rpc.RedirectException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 
 import org.junit.AfterClass;
@@ -40,7 +42,9 @@ import org.junit.runner.RunWith;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import static org.apache.iotdb.db.it.utils.TestUtils.assertResultSetEqual;
 import static org.junit.Assert.fail;
@@ -149,10 +153,13 @@ public class IoTDBSessionQueryIT {
 
   @Test
   public void lastQueryTest() throws IoTDBConnectionException {
-    String[] retArray = new String[] {"23,root.sg1.d1.s1,230000.0,FLOAT"};
+    Set<String> retArray =
+        new HashSet<>(
+            Arrays.asList("-40,root.sg1.d2.s6,40.0,DOUBLE", "23,root.sg1.d1.s1,230000.0,FLOAT"));
 
-    List<String> selectedPaths = Collections.singletonList("root.sg1.d1.s1");
+    List<String> selectedPaths = Arrays.asList("root.sg1.d1.s1", "root.sg1.d2.s6");
 
+    // Does not guarantee sequence
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       try (SessionDataSet resultSet = session.executeLastDataQuery(selectedPaths)) {
         assertResultSetEqual(resultSet, lastQueryColumnNames, retArray, true);
@@ -239,6 +246,81 @@ public class IoTDBSessionQueryIT {
         assertResultSetEqual(resultSet, lastQueryColumnNames, retArray2, true);
       }
     } catch (StatementExecutionException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void lastQueryWithPrefixTest() throws IoTDBConnectionException {
+    // Only used in 1D scenarios
+    if (EnvFactory.getEnv().getDataNodeWrapperList().size() > 1) {
+      return;
+    }
+    final Set<String> retArray =
+        new HashSet<>(
+            Arrays.asList(
+                "30,root.sg1.d1.s3,30,INT64",
+                "30,root.sg1.d1.s4,false,BOOLEAN",
+                "40,root.sg1.d1.s5,aligned_test40,TEXT",
+                "23,root.sg1.d1.s1,230000.0,FLOAT",
+                "40,root.sg1.d1.s2,40,INT32"));
+
+    try (final ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      // Push last cache first
+      try (final SessionDataSet resultSet =
+          session.executeFastLastDataQueryForOnePrefixPath(Arrays.asList("root", "sg1", "d1"))) {
+        assertResultSetEqual(resultSet, lastQueryColumnNames, retArray, true);
+      }
+
+      try (final SessionDataSet resultSet =
+          session.executeFastLastDataQueryForOnePrefixPath(Arrays.asList("root", "sg1", "d1"))) {
+        assertResultSetEqual(resultSet, lastQueryColumnNames, retArray, true);
+      }
+    } catch (StatementExecutionException | RedirectException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void lastQueryWithoutPermissionTest() throws IoTDBConnectionException {
+    // Only used in 1D scenarios
+    if (EnvFactory.getEnv().getDataNodeWrapperList().size() > 1) {
+      return;
+    }
+    final String[] retArray = new String[] {};
+    final Set<String> retArray2 =
+        new HashSet<>(
+            Arrays.asList(
+                "30,root.sg1.d1.s3,30,INT64",
+                "30,root.sg1.d1.s4,false,BOOLEAN",
+                "40,root.sg1.d1.s5,aligned_test40,TEXT",
+                "23,root.sg1.d1.s1,230000.0,FLOAT",
+                "40,root.sg1.d1.s2,40,INT32"));
+    TestUtils.executeNonQuery(EnvFactory.getEnv(), "create user abcd 'veryComplexPassword@123'");
+
+    try (final ISession session =
+            EnvFactory.getEnv().getSessionConnection("abcd", "veryComplexPassword@123");
+        final ISession rootSession = EnvFactory.getEnv().getSessionConnection()) {
+      // Push last cache first
+      try (final SessionDataSet resultSet =
+          rootSession.executeFastLastDataQueryForOnePrefixPath(
+              Arrays.asList("root", "sg1", "d1"))) {
+        assertResultSetEqual(resultSet, lastQueryColumnNames, retArray2, true);
+      }
+
+      try (final SessionDataSet resultSet =
+          session.executeLastDataQueryForOneDevice(
+              "root.sg1", "root.sg1.d1", Arrays.asList("notExist", "s1"), true)) {
+        assertResultSetEqual(resultSet, lastQueryColumnNames, retArray, true);
+      }
+
+      try (final SessionDataSet resultSet =
+          session.executeFastLastDataQueryForOnePrefixPath(Arrays.asList("root", "sg1", "d1"))) {
+        assertResultSetEqual(resultSet, lastQueryColumnNames, retArray, true);
+      }
+    } catch (StatementExecutionException | RedirectException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }

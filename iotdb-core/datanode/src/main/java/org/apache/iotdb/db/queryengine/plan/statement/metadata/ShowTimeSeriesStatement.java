@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.statement.metadata;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
+import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.queryengine.plan.statement.component.WhereCondition;
 
 import java.util.Collections;
@@ -42,6 +43,8 @@ public class ShowTimeSeriesStatement extends ShowStatement {
   // if is true, the result will be sorted according to the inserting frequency of the time series
   private final boolean orderByHeat;
   private WhereCondition timeCondition;
+  // order by timeseries name
+  private Ordering timeseriesOrdering;
 
   public ShowTimeSeriesStatement(PartialPath pathPattern, boolean orderByHeat) {
     super();
@@ -63,6 +66,18 @@ public class ShowTimeSeriesStatement extends ShowStatement {
 
   public boolean isOrderByHeat() {
     return orderByHeat;
+  }
+
+  public boolean isOrderByTimeseries() {
+    return timeseriesOrdering != null;
+  }
+
+  public Ordering getTimeseriesOrdering() {
+    return timeseriesOrdering;
+  }
+
+  public void setTimeseriesOrdering(Ordering timeseriesOrdering) {
+    this.timeseriesOrdering = timeseriesOrdering;
   }
 
   public void setTimeCondition(WhereCondition timeCondition) {

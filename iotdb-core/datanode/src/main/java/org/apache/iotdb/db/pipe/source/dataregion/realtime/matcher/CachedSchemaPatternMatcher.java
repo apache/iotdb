@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.pipe.source.dataregion.realtime.matcher;
 
 import org.apache.iotdb.commons.audit.UserEntity;
-import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.db.auth.AuthorityChecker;
@@ -32,8 +31,6 @@ import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.PipeRealtimeDataRegionSource;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.utils.Pair;
@@ -45,6 +42,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -60,8 +58,9 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
   protected final ReentrantReadWriteLock lock;
   protected final Set<PipeRealtimeDataRegionSource> sources;
 
-  protected final Cache<IDeviceID, Set<PipeRealtimeDataRegionSource>> deviceToSourcesCache;
-  protected final Cache<Pair<String, IDeviceID>, Set<PipeRealtimeDataRegionSource>>
+  // Use full cache to avoid queue stuck and block insertion
+  protected final Map<IDeviceID, Set<PipeRealtimeDataRegionSource>> deviceToSourcesCache;
+  protected final Map<Pair<String, IDeviceID>, Set<PipeRealtimeDataRegionSource>>
       databaseAndTableToSourcesCache;
 
   public CachedSchemaPatternMatcher() {
@@ -70,14 +69,8 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
     // iterated by {@link #assignToSource}, at the same time the sources may be added or
     // removed by {@link #register} and {@link #deregister}.
     this.sources = new CopyOnWriteArraySet<>();
-    this.deviceToSourcesCache =
-        Caffeine.newBuilder()
-            .maximumSize(PipeConfig.getInstance().getPipeSourceMatcherCacheSize())
-            .build();
-    this.databaseAndTableToSourcesCache =
-        Caffeine.newBuilder()
-            .maximumSize(PipeConfig.getInstance().getPipeSourceMatcherCacheSize())
-            .build();
+    this.deviceToSourcesCache = new ConcurrentHashMap<>();
+    this.databaseAndTableToSourcesCache = new ConcurrentHashMap<>();
   }
 
   @Override
@@ -85,8 +78,8 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
     lock.writeLock().lock();
     try {
       sources.add(source);
-      deviceToSourcesCache.invalidateAll();
-      databaseAndTableToSourcesCache.invalidateAll();
+      deviceToSourcesCache.clear();
+      databaseAndTableToSourcesCache.clear();
     } finally {
       lock.writeLock().unlock();
     }
@@ -97,8 +90,8 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
     lock.writeLock().lock();
     try {
       sources.remove(source);
-      deviceToSourcesCache.invalidateAll();
-      databaseAndTableToSourcesCache.invalidateAll();
+      deviceToSourcesCache.clear();
+      databaseAndTableToSourcesCache.clear();
     } finally {
       lock.writeLock().unlock();
     }
@@ -109,7 +102,7 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
     lock.writeLock().lock();
     try {
       // Will invalidate device cache
-      databaseAndTableToSourcesCache.invalidateAll();
+      databaseAndTableToSourcesCache.clear();
     } finally {
       lock.writeLock().unlock();
     }
@@ -207,7 +200,7 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
       final Set<PipeRealtimeDataRegionSource> matchedSources) {
     // 1. try to get matched sources from cache, if not success, match them by device
     final Set<PipeRealtimeDataRegionSource> sourcesFilteredByDevice =
-        deviceToSourcesCache.get(device, this::filterSourcesByDevice);
+        deviceToSourcesCache.computeIfAbsent(device, this::filterSourcesByDevice);
     // this would not happen
     if (sourcesFilteredByDevice == null) {
       LOGGER.warn(
@@ -271,7 +264,7 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
       final TreePattern treePattern = source.getTreePattern();
       if (Objects.isNull(treePattern)
           || (treePattern.isTreeModelDataAllowedToBeCaptured()
-              && treePattern.mayOverlapWithDevice(device))) {
+              && treePattern.overlapWithDevice(device))) {
         filteredSources.add(source);
       }
     }
@@ -291,7 +284,7 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
     }
 
     final Set<PipeRealtimeDataRegionSource> sourcesFilteredByDatabaseAndTable =
-        databaseAndTableToSourcesCache.get(
+        databaseAndTableToSourcesCache.computeIfAbsent(
             new Pair<>(databaseName, tableName), this::filterSourcesByDatabaseAndTable);
     // this would not happen
     if (sourcesFilteredByDatabaseAndTable == null) {
@@ -350,10 +343,8 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
     lock.writeLock().lock();
     try {
       sources.clear();
-      deviceToSourcesCache.invalidateAll();
-      deviceToSourcesCache.cleanUp();
-      databaseAndTableToSourcesCache.invalidateAll();
-      databaseAndTableToSourcesCache.cleanUp();
+      deviceToSourcesCache.clear();
+      databaseAndTableToSourcesCache.clear();
     } finally {
       lock.writeLock().unlock();
     }

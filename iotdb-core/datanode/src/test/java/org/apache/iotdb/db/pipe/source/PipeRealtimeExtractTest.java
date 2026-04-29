@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskSourceRuntimeEnvironment;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.PipeRealtimeDataRegionHybridSource;
@@ -33,7 +34,6 @@ import org.apache.iotdb.db.pipe.source.dataregion.realtime.PipeRealtimeDataRegio
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.PipeRealtimeDataRegionSource;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.PipeRealtimeDataRegionTsFileSource;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.listener.PipeInsertionDataNodeListener;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
@@ -70,8 +70,8 @@ public class PipeRealtimeExtractTest {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeRealtimeExtractTest.class);
 
-  private final String dataRegion1 = "1";
-  private final String dataRegion2 = "2";
+  private final int dataRegion1 = 1;
+  private final int dataRegion2 = 2;
   private final String pattern1 = "root.sg.d";
   private final String pattern2 = "root.sg.d.a";
   private final String[] device = new String[] {"root", "sg", "d"};
@@ -151,31 +151,19 @@ public class PipeRealtimeExtractTest {
       final PipeTaskRuntimeConfiguration configuration0 =
           new PipeTaskRuntimeConfiguration(
               new PipeTaskSourceRuntimeEnvironment(
-                  "1",
-                  1,
-                  Integer.parseInt(dataRegion1),
-                  new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1)));
+                  "1", 1, dataRegion1, new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1)));
       final PipeTaskRuntimeConfiguration configuration1 =
           new PipeTaskRuntimeConfiguration(
               new PipeTaskSourceRuntimeEnvironment(
-                  "1",
-                  1,
-                  Integer.parseInt(dataRegion1),
-                  new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1)));
+                  "1", 1, dataRegion1, new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1)));
       final PipeTaskRuntimeConfiguration configuration2 =
           new PipeTaskRuntimeConfiguration(
               new PipeTaskSourceRuntimeEnvironment(
-                  "1",
-                  1,
-                  Integer.parseInt(dataRegion2),
-                  new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1)));
+                  "1", 1, dataRegion2, new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1)));
       final PipeTaskRuntimeConfiguration configuration3 =
           new PipeTaskRuntimeConfiguration(
               new PipeTaskSourceRuntimeEnvironment(
-                  "1",
-                  1,
-                  Integer.parseInt(dataRegion2),
-                  new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1)));
+                  "1", 1, dataRegion2, new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1)));
 
       // Some parameters of extractor are validated and initialized during the validation process.
       extractor0.validate(new PipeParameterValidator(parameters0));
@@ -274,7 +262,7 @@ public class PipeRealtimeExtractTest {
   }
 
   private Future<?> write2DataRegion(
-      final int writeNum, final String dataRegionId, final int startNum) {
+      final int writeNum, final int dataRegionId, final int startNum) {
     final File dataRegionDir =
         new File(tsFileDir.getPath() + File.separator + dataRegionId + File.separator + "0");
     final boolean ignored = dataRegionDir.mkdirs();
@@ -305,7 +293,7 @@ public class PipeRealtimeExtractTest {
             PipeInsertionDataNodeListener.getInstance()
                 .listenToInsertNode(
                     dataRegionId,
-                    dataRegionId,
+                    Integer.toString(dataRegionId),
                     new InsertRowNode(
                         new PlanNodeId(String.valueOf(i)),
                         new PartialPath(device),
@@ -319,7 +307,7 @@ public class PipeRealtimeExtractTest {
             PipeInsertionDataNodeListener.getInstance()
                 .listenToInsertNode(
                     dataRegionId,
-                    dataRegionId,
+                    Integer.toString(dataRegionId),
                     new InsertRowNode(
                         new PlanNodeId(String.valueOf(i)),
                         new PartialPath(device),
@@ -331,7 +319,7 @@ public class PipeRealtimeExtractTest {
                         false),
                     resource);
             PipeInsertionDataNodeListener.getInstance()
-                .listenToTsFile(dataRegionId, dataRegionId, resource, false);
+                .listenToTsFile(dataRegionId, Integer.toString(dataRegionId), resource, false);
           }
         });
   }

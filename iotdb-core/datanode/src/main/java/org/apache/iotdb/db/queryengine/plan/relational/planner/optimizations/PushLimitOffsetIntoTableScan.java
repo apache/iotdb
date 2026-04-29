@@ -19,29 +19,32 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations;
 
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.OrderingScheme;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.FilterNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.GapFillNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.GroupNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.JoinNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.LimitNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.LinearFillNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.PreviousFillNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ProjectNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.SortNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.StreamSortNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TableFunctionProcessorNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TopKNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.commons.schema.table.InformationSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingScheme;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CteScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GapFillNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GroupNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LinearFillNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PreviousFillNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.StreamSortNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionProcessorNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 
 import java.util.HashSet;
 import java.util.Map;
@@ -52,7 +55,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizati
 /**
  * <b>Optimization phase:</b> Logical plan planning.
  *
- * <p>The LIMIT OFFSET condition can be pushed down to the DeviceTableScanNode, when the following
+ * <p>The LIMIT OFFSET condition can be pushed down to the TableScanNode, when the following
  * conditions are met:
  * <li>Time series query (not aggregation query).
  * <li>The query expressions are all scalar expression.
@@ -70,7 +73,7 @@ public class PushLimitOffsetIntoTableScan implements PlanOptimizer {
     return plan.accept(new Rewriter(context.getAnalysis()), new Context());
   }
 
-  private static class Rewriter extends PlanVisitor<PlanNode, Context> {
+  private static class Rewriter implements PlanVisitor<PlanNode, Context> {
     private final Analysis analysis;
 
     public Rewriter(Analysis analysis) {
@@ -104,9 +107,9 @@ public class PushLimitOffsetIntoTableScan implements PlanOptimizer {
       // In Filter-TableScan and Filter-Project-TableScan case, limit can not be pushed down.
       // In later, we need consider other case such as Filter-Values.
       // FilterNode in outer query can not be pushed down.
-      if (node.getChild() instanceof DeviceTableScanNode
+      if (node.getChild() instanceof TableScanNode
           || (node.getChild() instanceof ProjectNode
-              && ((ProjectNode) node.getChild()).getChild() instanceof DeviceTableScanNode)) {
+              && ((ProjectNode) node.getChild()).getChild() instanceof TableScanNode)) {
         context.enablePushDown = false;
         return node;
       }
@@ -161,10 +164,10 @@ public class PushLimitOffsetIntoTableScan implements PlanOptimizer {
         context.enablePushDown = false;
         return node;
       } else {
-        DeviceTableScanNode deviceTableScanNode = subContext.deviceTableScanNode;
-        context.deviceTableScanNode = deviceTableScanNode;
-        if (deviceTableScanNode != null) {
-          deviceTableScanNode.setPushDownLimit(node.getCount());
+        TableScanNode tableScanNode = subContext.tableScanNode;
+        context.tableScanNode = tableScanNode;
+        if (tableScanNode != null) {
+          tableScanNode.setPushDownLimit(node.getCount());
         }
         return node;
       }
@@ -182,14 +185,19 @@ public class PushLimitOffsetIntoTableScan implements PlanOptimizer {
         return node;
       }
 
-      DeviceTableScanNode deviceTableScanNode = subContext.deviceTableScanNode;
-      context.deviceTableScanNode = deviceTableScanNode;
+      TableScanNode tableScanNode = subContext.tableScanNode;
+      context.tableScanNode = tableScanNode;
+
+      if (!(tableScanNode instanceof DeviceTableScanNode)) {
+        context.enablePushDown = false;
+        return node;
+      }
       OrderingScheme orderingScheme = node.getOrderingScheme();
       Map<Symbol, ColumnSchema> tableColumnSchema =
-          analysis.getTableColumnSchema(deviceTableScanNode.getQualifiedObjectName());
+          analysis.getTableColumnSchema(tableScanNode.getQualifiedObjectName());
       Set<Symbol> sortSymbols = new HashSet<>();
       for (Symbol orderBy : orderingScheme.getOrderBy()) {
-        if (deviceTableScanNode.isTimeColumn(orderBy)) {
+        if (tableScanNode.isTimeColumn(orderBy)) {
           break;
         }
 
@@ -211,7 +219,7 @@ public class PushLimitOffsetIntoTableScan implements PlanOptimizer {
           break;
         }
       }
-      deviceTableScanNode.setPushLimitToEachDevice(pushLimitToEachDevice);
+      ((DeviceTableScanNode) tableScanNode).setPushLimitToEachDevice(pushLimitToEachDevice);
       return node;
     }
 
@@ -233,14 +241,25 @@ public class PushLimitOffsetIntoTableScan implements PlanOptimizer {
 
     @Override
     public PlanNode visitDeviceTableScan(DeviceTableScanNode node, Context context) {
-      context.deviceTableScanNode = node;
+      context.tableScanNode = node;
+      return node;
+    }
+
+    @Override
+    public PlanNode visitCteScan(CteScanNode node, Context context) {
+      context.enablePushDown = false;
       return node;
     }
 
     @Override
     public PlanNode visitInformationSchemaTableScan(
         InformationSchemaTableScanNode node, Context context) {
-      context.enablePushDown = false;
+      if (InformationSchema.supportsPushDownLimitOffset(
+          node.getQualifiedObjectName().getObjectName())) {
+        context.tableScanNode = node;
+      } else {
+        context.enablePushDown = false;
+      }
       return node;
     }
 
@@ -262,9 +281,9 @@ public class PushLimitOffsetIntoTableScan implements PlanOptimizer {
   }
 
   private static class Context {
-    // means if limit and offset can be pushed down into DeviceTableScanNode
+    // means if limit and offset can be pushed down into TableScanNode
     private boolean enablePushDown = true;
-    private DeviceTableScanNode deviceTableScanNode;
+    private TableScanNode tableScanNode;
     private boolean existSortNode = false;
     private boolean existLimitNode = false;
   }

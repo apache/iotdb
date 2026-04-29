@@ -35,6 +35,8 @@ import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
+import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
@@ -105,13 +107,15 @@ public class IoTDBOtherUserConsumerIT extends AbstractSubscriptionTreeRegression
     Thread.sleep(1000);
   }
 
-  // @Test
+  @Ignore
+  @Test
   public void testPrivilege() throws IoTDBConnectionException, StatementExecutionException {
     session_src.executeNonQueryStatement("create user " + userName + " '" + passwd + "';");
     session_src.executeNonQueryStatement("grant read,write on root.** to user " + userName);
   }
 
-  // @Test
+  @Ignore
+  @Test
   // TODO: Failed to fetch all endpoints, only the admin user can perform this operation...
   public void testNormal()
       throws TException,

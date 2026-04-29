@@ -31,6 +31,8 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 
+import javax.annotation.Nullable;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -67,7 +69,10 @@ public class IoTDBTreePattern extends IoTDBTreePatternOperations {
   //////////////////////////// Tree Pattern Operations ////////////////////////////
 
   public static <T> List<T> applyReversedIndexesOnList(
-      final List<Integer> filteredIndexes, final List<T> originalList) {
+      final List<Integer> filteredIndexes, final @Nullable List<T> originalList) {
+    if (Objects.isNull(originalList)) {
+      return null;
+    }
     // No need to sort, the caller guarantees that the filtered sequence == original sequence
     final List<T> filteredList = new ArrayList<>(originalList.size() - filteredIndexes.size());
     int filteredIndexPos = 0;
@@ -102,6 +107,11 @@ public class IoTDBTreePattern extends IoTDBTreePatternOperations {
   }
 
   @Override
+  public boolean isSingle() {
+    return true;
+  }
+
+  @Override
   public boolean isLegal() {
     if (!pattern.startsWith("root")) {
       return false;
@@ -129,7 +139,7 @@ public class IoTDBTreePattern extends IoTDBTreePatternOperations {
   public boolean coversDevice(final IDeviceID device) {
     try {
       return patternPartialPath.include(
-          new MeasurementPath(device, IoTDBConstant.ONE_LEVEL_PATH_WILDCARD));
+          measurementPathGetter.apply(device, IoTDBConstant.ONE_LEVEL_PATH_WILDCARD));
     } catch (final IllegalPathException e) {
       return false;
     }
@@ -150,6 +160,16 @@ public class IoTDBTreePattern extends IoTDBTreePatternOperations {
       // Another way is to use patternPath.overlapWith("device.*"),
       // there will be no false positives but time cost may be higher.
       return patternPartialPath.matchPrefixPath(devicePathGetter.apply(device));
+    } catch (final IllegalPathException e) {
+      return false;
+    }
+  }
+
+  @Override
+  public boolean overlapWithDevice(final IDeviceID device) {
+    try {
+      return patternPartialPath.overlapWith(
+          measurementPathGetter.apply(device, IoTDBConstant.ONE_LEVEL_PATH_WILDCARD));
     } catch (final IllegalPathException e) {
       return false;
     }

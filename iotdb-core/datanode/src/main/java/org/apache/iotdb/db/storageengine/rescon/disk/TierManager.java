@@ -30,6 +30,7 @@ import org.apache.iotdb.db.storageengine.rescon.disk.strategy.RandomOnDiskUsable
 import org.apache.iotdb.metrics.utils.FileStoreUtils;
 
 import com.google.common.io.BaseEncoding;
+import org.apache.ratis.util.MemoizedCheckedSupplier;
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.tsfile.fileSystem.FSType;
 import org.apache.tsfile.utils.FSUtils;
@@ -79,6 +80,13 @@ public class TierManager {
   private final Map<String, Integer> unSeqDir2TierLevel = new HashMap<>();
 
   private List<String> objectDirs;
+
+  private List<String> copyToTargetDirs;
+
+  //  private FolderManager copyToFolderManager;
+
+  private MemoizedCheckedSupplier<FolderManager, DiskSpaceInsufficientException>
+      copyToFolderManager;
 
   /** total space of each tier, Long.MAX_VALUE when one tier contains remote storage */
   private long[] tierDiskTotalSpace;
@@ -161,6 +169,21 @@ public class TierManager {
         unSeqDir2TierLevel.put(dir, tierLevel);
       }
 
+      if (tierLevel == 0) {
+        copyToTargetDirs =
+            Arrays.stream(tierDirs[tierLevel])
+                .filter(Objects::nonNull)
+                .map(
+                    v ->
+                        FSFactoryProducer.getFSFactory()
+                            .getFile(v, IoTDBConstant.COPY_TO_TARGET_FOLDER_NAME)
+                            .getPath())
+                .collect(Collectors.toList());
+        copyToFolderManager =
+            MemoizedCheckedSupplier.valueOf(
+                () -> new FolderManager(copyToTargetDirs, directoryStrategyType));
+      }
+
       objectDirs =
           Arrays.stream(tierDirs[tierLevel])
               .filter(Objects::nonNull)
@@ -224,6 +247,10 @@ public class TierManager {
     return sequence
         ? seqTiers.get(tierLevel).getNextFolder()
         : unSeqTiers.get(tierLevel).getNextFolder();
+  }
+
+  public String getNextFolderForCopyToTargetFile() throws DiskSpaceInsufficientException {
+    return copyToFolderManager.get().getNextFolder();
   }
 
   public String getNextFolderForObjectFile() throws DiskSpaceInsufficientException {

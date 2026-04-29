@@ -25,12 +25,15 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.isession.SessionConfig;
+import org.apache.iotdb.it.env.cluster.env.AbstractEnv;
+import org.apache.iotdb.it.env.cluster.node.ConfigNodeWrapper;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2DualTreeAutoBasic;
 import org.apache.iotdb.pipe.it.dual.treemodel.auto.AbstractPipeDualTreeModelAutoIT;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.tsfile.external.commons.lang3.SystemUtils;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -38,13 +41,21 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.sql.Connection;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 
 import static org.junit.Assert.fail;
 
@@ -333,6 +344,68 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualTreeModelAutoIT {
           client.showPipe(new TShowPipeReq().setUserName(SessionConfig.DEFAULT_USER)).pipeInfoList;
       showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertEquals(1, showPipeResult.size());
+    }
+  }
+
+  @Test
+  public void testDirectoryErrors() throws SQLException {
+    try (final Connection connection = senderEnv.getConnection();
+        final Statement statement = connection.createStatement()) {
+      List<String> wrongDirs = Arrays.asList(".", "..", "/hackYou", "..\\hackYouTwice");
+      if (SystemUtils.IS_OS_WINDOWS) {
+        wrongDirs = new ArrayList<>(wrongDirs);
+        wrongDirs.add("BombWindows/:*?");
+        wrongDirs.add("AUX");
+      }
+      for (final String name : wrongDirs) {
+        testDirectoryError(name, statement);
+      }
+    }
+  }
+
+  private void testDirectoryError(final String wrongDir, final Statement statement) {
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+
+    final String receiverIp = receiverDataNode.getIp();
+    final int receiverPort = receiverDataNode.getPort();
+
+    try {
+      statement.execute(
+          String.format(
+              "create pipe `"
+                  + wrongDir
+                  + "` with source ()"
+                  + " with processor ()"
+                  + " with sink ("
+                  + "'sink'='invalid-param',"
+                  + "'sink.ip'='%s',"
+                  + "'sink.port'='%s',"
+                  + "'sink.batch.enable'='false')",
+              receiverIp,
+              receiverPort));
+      fail();
+    } catch (final Exception ignore) {
+      // Expected
+    }
+
+    try {
+      statement.execute(
+          String.format(
+              "create pipePlugin `"
+                  + wrongDir
+                  + "` as 'org.apache.iotdb.db.pipe.example.TestProcessor' USING URI '%s'",
+              new File(
+                          System.getProperty("user.dir")
+                              + File.separator
+                              + "target"
+                              + File.separator
+                              + "test-classes"
+                              + File.separator)
+                      .toURI()
+                  + "PipePlugin.jar"));
+      fail();
+    } catch (final SQLException e) {
+      Assert.assertTrue(e.getMessage().contains("701: Failed to create pipe plugin"));
     }
   }
 
@@ -796,7 +869,7 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualTreeModelAutoIT {
         fail();
       } catch (final SQLException e) {
         Assert.assertEquals(
-            "1603: Failed to get executable for PipePlugin TestProcessor, please check the URI.",
+            "701: Failed to get executable for PipePlugin TestProcessor, please check the URI.",
             e.getMessage());
       }
       try {
@@ -818,6 +891,98 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualTreeModelAutoIT {
     } catch (final SQLException e) {
       e.printStackTrace();
       fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testShowPipePluginAfterJarDeletedAndClusterRestart() throws Exception {
+    final String pluginName = "TEST_MISSING_JAR_PROCESSOR";
+    final String pluginClassName = "org.apache.iotdb.CountPointProcessor";
+    final Path pluginJarPath =
+        Paths.get(
+                System.getProperty("user.dir"),
+                "src",
+                "test",
+                "resources",
+                "pipe-count-point-processor-example.jar")
+            .toAbsolutePath();
+    System.out.println(pluginJarPath.toUri());
+
+    try (final Connection connection = senderEnv.getConnection();
+        final Statement statement = connection.createStatement()) {
+      statement.execute(
+          String.format(
+              "create pipePlugin %s as '%s' USING URI '%s'",
+              pluginName, pluginClassName, pluginJarPath.toUri()));
+    }
+
+    senderEnv.shutdownAllDataNodes();
+    senderEnv.shutdownAllConfigNodes();
+
+    deletePluginJarUnderConfigNodes(pluginName);
+
+    senderEnv.startAllConfigNodes();
+    senderEnv.startAllDataNodes();
+    ((AbstractEnv) senderEnv).checkClusterStatusWithoutUnknown();
+
+    boolean pluginFound = false;
+    boolean exceptionMessageFound = false;
+    SQLException lastException = null;
+    for (int retry = 0; retry < 10; retry++) {
+      try (final Connection connection = senderEnv.getConnection();
+          final Statement statement = connection.createStatement();
+          final ResultSet resultSet = statement.executeQuery("show pipeplugins")) {
+        while (resultSet.next()) {
+          if (pluginName.equalsIgnoreCase(resultSet.getString("PluginName"))) {
+            pluginFound = true;
+            final String exceptionMessage = resultSet.getString("ExceptionMessage");
+            exceptionMessageFound = exceptionMessage != null && !exceptionMessage.trim().isEmpty();
+            break;
+          }
+        }
+        lastException = null;
+        break;
+      } catch (final SQLException e) {
+        lastException = e;
+        Thread.sleep(1000);
+      }
+    }
+    if (lastException != null) {
+      throw lastException;
+    }
+
+    Assert.assertTrue("Expected plugin in show pipe plugins result.", pluginFound);
+    Assert.assertTrue(
+        "Expected non-empty ExceptionMessage after deleting plugin jar and restarting cluster.",
+        exceptionMessageFound);
+
+    try (final Connection connection = senderEnv.getConnection();
+        final Statement statement = connection.createStatement()) {
+      statement.execute(String.format("drop pipePlugin %s", pluginName));
+    }
+  }
+
+  private void deletePluginJarUnderConfigNodes(final String pluginName) throws IOException {
+    for (final ConfigNodeWrapper configNodeWrapper : senderEnv.getConfigNodeWrapperList()) {
+      final Path pluginJarDirPath =
+          Paths.get(
+              configNodeWrapper.getNodePath(), "ext", "pipe", "install", pluginName.toUpperCase());
+      if (!Files.exists(pluginJarDirPath)) {
+        continue;
+      }
+      try (final Stream<Path> children = Files.walk(pluginJarDirPath)) {
+        children
+            .filter(path -> !path.equals(pluginJarDirPath))
+            .sorted(Comparator.reverseOrder())
+            .forEach(
+                path -> {
+                  try {
+                    Files.deleteIfExists(path);
+                  } catch (final IOException e) {
+                    throw new RuntimeException(e);
+                  }
+                });
+      }
     }
   }
 }

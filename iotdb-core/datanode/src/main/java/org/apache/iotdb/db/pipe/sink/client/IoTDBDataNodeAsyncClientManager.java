@@ -119,14 +119,15 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
 
     receiverAttributes =
         String.format(
-            "%s-%s-%s-%s-%s-%s",
+            "%s-%s-%s-%s-%s-%s-%s",
             Base64.getEncoder()
                 .encodeToString((userEntity.getUsername() + ":" + password).getBytes()),
             shouldReceiverConvertOnTypeMismatch,
             loadTsFileStrategy,
             validateTsFile,
             shouldMarkAsPipeRequest,
-            isTSFileUsed);
+            isTSFileUsed,
+            skipIfNoPrivileges);
     synchronized (IoTDBDataNodeAsyncClientManager.class) {
       if (!ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER.containsKey(receiverAttributes)) {
         ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER.putIfAbsent(
@@ -312,7 +313,7 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
           PipeTransferHandshakeConstant.HANDSHAKE_KEY_SKIP_IF,
           Boolean.toString(skipIfNoPrivileges));
 
-      client.setTimeoutDynamically(PipeConfig.getInstance().getPipeConnectorHandshakeTimeoutMs());
+      client.setTimeoutDynamically(PipeConfig.getInstance().getPipeSinkHandshakeTimeoutMs());
       client.pipeTransfer(PipeTransferDataNodeHandshakeV2Req.toTPipeTransferReq(params), callback);
       waitHandshakeFinished(isHandshakeFinished);
 
@@ -331,7 +332,7 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
         resp.set(null);
         exception.set(null);
 
-        client.setTimeoutDynamically(PipeConfig.getInstance().getPipeConnectorHandshakeTimeoutMs());
+        client.setTimeoutDynamically(PipeConfig.getInstance().getPipeSinkHandshakeTimeoutMs());
         client.pipeTransfer(
             PipeTransferDataNodeHandshakeV1Req.toTPipeTransferReq(
                 CommonDescriptor.getInstance().getConfig().getTimestampPrecision()),
@@ -477,7 +478,7 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
 
       while (true) {
         final TEndPoint targetNodeUrl = endPointList.get((int) (Math.random() * clientSize));
-        if (isUnhealthy(targetNodeUrl) && n <= clientSize) {
+        if (isUnhealthy(targetNodeUrl) && n < clientSize) {
           n++;
           continue;
         }
@@ -498,7 +499,7 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
       long n = 0;
       while (true) {
         for (final TEndPoint targetNodeUrl : endPointList) {
-          if (isUnhealthy(targetNodeUrl) && n <= clientSize) {
+          if (isUnhealthy(targetNodeUrl) && n < clientSize) {
             n++;
             continue;
           }

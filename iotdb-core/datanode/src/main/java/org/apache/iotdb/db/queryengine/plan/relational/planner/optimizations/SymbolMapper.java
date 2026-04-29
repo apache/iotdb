@@ -19,31 +19,33 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations;
 
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.DataOrganizationSpecification;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingScheme;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.DataOrganizationSpecification;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.OrderingScheme;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.SortOrder;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ApplyNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.LimitNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.Measure;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.PatternRecognitionNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.RowNumberNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TopKNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TopKRankingNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.WindowNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.rowpattern.AggregationValuePointer;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.rowpattern.ClassifierValuePointer;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.rowpattern.ExpressionAndValuePointers;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.rowpattern.IrLabel;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.rowpattern.MatchNumberValuePointer;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.rowpattern.ScalarValuePointer;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.rowpattern.ValuePointer;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.ExpressionRewriter;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.ExpressionTreeRewriter;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ApplyNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.Measure;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PatternRecognitionNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.WindowNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.AggregationValuePointer;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.ClassifierValuePointer;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.ExpressionAndValuePointers;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.IrLabel;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.MatchNumberValuePointer;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.ScalarValuePointer;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.ValuePointer;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -52,7 +54,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -60,7 +61,7 @@ import java.util.stream.Collectors;
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static com.google.common.collect.ImmutableSet.toImmutableSet;
 import static java.util.Objects.requireNonNull;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.groupingSets;
+import static org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode.groupingSets;
 
 public class SymbolMapper {
   private final Function<Symbol, Symbol> mappingFunction;
@@ -265,17 +266,10 @@ public class SymbolMapper {
                       function.isIgnoreNulls()));
             });
 
-    ImmutableList<Symbol> newPartitionBy =
-        node.getSpecification().getPartitionBy().stream().map(this::map).collect(toImmutableList());
-    Optional<OrderingScheme> newOrderingScheme =
-        node.getSpecification().getOrderingScheme().map(this::map);
-    DataOrganizationSpecification newSpecification =
-        new DataOrganizationSpecification(newPartitionBy, newOrderingScheme);
-
     return new WindowNode(
         node.getPlanNodeId(),
         source,
-        newSpecification,
+        mapAndDistinct(node.getSpecification()),
         newFunctions.buildOrThrow(),
         node.getHashSymbol().map(this::map),
         node.getPrePartitionedInputs().stream().map(this::map).collect(toImmutableSet()),
@@ -293,6 +287,27 @@ public class SymbolMapper {
         frame.getSortKeyCoercedForFrameEndComparison().map(this::map),
         frame.getOriginalStartValue(),
         frame.getOriginalEndValue());
+  }
+
+  public TopKRankingNode map(TopKRankingNode node, PlanNode source) {
+    return new TopKRankingNode(
+        node.getPlanNodeId(),
+        source,
+        mapAndDistinct(node.getSpecification()),
+        node.getRankingType(),
+        map(node.getRankingSymbol()),
+        node.getMaxRankingPerPartition(),
+        node.isPartial());
+  }
+
+  public RowNumberNode map(RowNumberNode node, PlanNode source) {
+    return new RowNumberNode(
+        node.getPlanNodeId(),
+        source,
+        map(node.getPartitionBy()),
+        node.isOrderSensitive(),
+        map(node.getRowNumberSymbol()),
+        node.getMaxRowCountPerPartition());
   }
 
   public TopKNode map(TopKNode node, List<PlanNode> source) {

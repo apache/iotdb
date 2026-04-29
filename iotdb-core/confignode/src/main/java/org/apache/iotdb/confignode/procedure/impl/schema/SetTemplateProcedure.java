@@ -51,6 +51,7 @@ import org.apache.iotdb.db.schemaengine.template.TemplateInternalRPCUtil;
 import org.apache.iotdb.mpp.rpc.thrift.TCheckTimeSeriesExistenceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCheckTimeSeriesExistenceResp;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTemplateReq;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -293,6 +294,7 @@ public class SetTemplateProcedure
                 respList.add(response);
                 final List<TConsensusGroupId> failedRegionList = new ArrayList<>();
                 if (response.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+                  failureMap.remove(dataNodeLocation);
                   return failedRegionList;
                 }
 
@@ -308,6 +310,12 @@ public class SetTemplateProcedure
                 } else {
                   failedRegionList.addAll(consensusGroupIdList);
                 }
+                if (!failedRegionList.isEmpty()) {
+                  failureMap.put(
+                      dataNodeLocation, RpcUtils.extractFailureStatues(response.getStatus()));
+                } else {
+                  failureMap.remove(dataNodeLocation);
+                }
                 return failedRegionList;
               }
 
@@ -320,11 +328,11 @@ public class SetTemplateProcedure
                         new MetadataException(
                             String.format(
                                 "Set template %s to %s failed when [check time series existence on DataNode] because "
-                                    + "failed to check time series existence in all replicaset of schemaRegion %s. Failure nodes: %s",
+                                    + "failed to check time series existence in all replicaset of schemaRegion %s. Failures: %s",
                                 templateName,
                                 templateSetPath,
                                 consensusGroupId.id,
-                                dataNodeLocationSet))));
+                                printFailureMap()))));
                 interruptTask();
               }
             };

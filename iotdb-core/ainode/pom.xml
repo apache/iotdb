@@ -97,40 +97,6 @@
                     <skip>true</skip>
                 </configuration>
             </plugin>
-            <plugin>
-                <groupId>org.codehaus.gmaven</groupId>
-                <artifactId>groovy-maven-plugin</artifactId>
-                <version>2.1.1</version>
-                <executions>
-                    <!--
-                      The python versioning follows slightly different rules than Maven.
-                      This little script makes sure the python project file is always in
-                      sync with the maven module.
-                    -->
-                    <execution>
-                        <id>sync-python-version</id>
-                        <phase>validate</phase>
-                        <goals>
-                            <goal>execute</goal>
-                        </goals>
-                        <configuration>
-                            <source>${project.basedir}/resources/syncPythonVersion.groovy</source>
-                        </configuration>
-                    </execution>
-                </executions>
-                <dependencies>
-                    <dependency>
-                        <groupId>org.apache.groovy</groupId>
-                        <artifactId>groovy</artifactId>
-                        <version>4.0.22</version>
-                    </dependency>
-                    <dependency>
-                        <groupId>org.apache.groovy</groupId>
-                        <artifactId>groovy-toml</artifactId>
-                        <version>4.0.22</version>
-                    </dependency>
-                </dependencies>
-            </plugin>
             <!-- Copy external resources and prepare the pom.properties file -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>

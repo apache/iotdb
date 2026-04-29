@@ -25,12 +25,13 @@ import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.queryengine.common.SessionInfo;
+import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.sink.payload.legacy.PipeData;
 import org.apache.iotdb.db.pipe.sink.payload.legacy.TsFilePipeData;
 import org.apache.iotdb.db.protocol.session.SessionManager;
-import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
@@ -53,6 +54,7 @@ import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.time.ZoneId;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -125,7 +127,8 @@ public class IoTDBLegacyPipeReceiverAgent {
   }
 
   private boolean validatePipeName(final TSyncIdentityInfo info) {
-    return info.isSetPipeName() && !info.getPipeName().contains(File.separator);
+    return info.isSetPipeName()
+        && Objects.isNull(FileUtils.getIllegalError4Directory(info.getPipeName()));
   }
 
   private void createConnection(final SyncIdentityInfo identityInfo) {
@@ -162,6 +165,7 @@ public class IoTDBLegacyPipeReceiverAgent {
                   partitionFetcher,
                   schemaFetcher,
                   IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold(),
+                  false,
                   false);
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
           && result.status.code != TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode()
