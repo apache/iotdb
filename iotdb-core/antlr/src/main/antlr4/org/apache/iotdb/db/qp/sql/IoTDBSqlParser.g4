@@ -89,6 +89,7 @@ utilityStatement
     | showQueries | showCurrentTimestamp | killQuery | grantWatermarkEmbedding
     | revokeWatermarkEmbedding | loadConfiguration | loadTimeseries | loadFile
     | removeFile | unloadFile
+    | repairDataPartitionTable
     ;
 
 /**
@@ -1086,6 +1087,11 @@ startRepairData
 // Stop Repair Data
 stopRepairData
     : STOP REPAIR DATA (ON (LOCAL | CLUSTER))?
+    ;
+
+// Repair Data Partition Table
+repairDataPartitionTable
+    : REPAIR DATA PARTITION TABLE
     ;
 
 // Explain

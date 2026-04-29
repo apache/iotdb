@@ -123,6 +123,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.FlushStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.KillQueryStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.LoadConfigurationStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.MergeStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.RepairDataPartitionTable;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetConfigurationStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSystemStatusStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
@@ -437,6 +438,11 @@ public abstract class StatementVisitor<R, C> {
 
   public R visitStopRepairData(StopRepairDataStatement stopRepairDataStatement, C context) {
     return visitStatement(stopRepairDataStatement, context);
+  }
+
+  public R visitRepairDataPartitionTable(
+      RepairDataPartitionTable repairDataPartitionTable, C context) {
+    return visitStatement(repairDataPartitionTable, context);
   }
 
   public R visitLoadConfiguration(

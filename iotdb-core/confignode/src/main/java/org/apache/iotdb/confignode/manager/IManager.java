@@ -448,6 +448,8 @@ public interface IManager {
   TDataPartitionTableResp getOrCreateDataPartition(
       GetOrCreateDataPartitionPlan getOrCreateDataPartitionPlan);
 
+  TSStatus dataPartitionTableIntegrityCheck();
+
   /**
    * Operate Permission.
    *

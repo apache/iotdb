@@ -675,6 +675,11 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
+  public TSStatus dataPartitionTableIntegrityCheck() {
+    return configManager.dataPartitionTableIntegrityCheck();
+  }
+
+  @Override
   public TSStatus operatePermission(final TAuthorizerReq req) {
     if (req.getAuthorType() < 0 || req.getAuthorType() >= AuthorType.values().length) {
       throw new IndexOutOfBoundsException("Invalid Author Type ordinal");

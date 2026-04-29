@@ -1235,16 +1235,6 @@ public class ProcedureManager {
     }
   }
 
-  /** Used to repair the lost data partition table */
-  public TSStatus dataPartitionTableIntegrityCheck() {
-    DataPartitionTableIntegrityCheckProcedure procedure;
-    synchronized (this) {
-      procedure = new DataPartitionTableIntegrityCheckProcedure();
-      executor.submitProcedure(procedure);
-    }
-    return waitingProcedureFinished(procedure, 86400000);
-  }
-
   /**
    * Generate {@link CreateTriggerProcedure} and wait until it finished.
    *
