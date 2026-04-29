@@ -27,6 +27,7 @@ public class FilesystemCommandParser {
 
   private static final String DEFAULT_PATH = ".";
   private static final int DEFAULT_TREE_DEPTH = Integer.MAX_VALUE;
+  private static final int DEFAULT_HEAD_LIMIT = 10;
 
   private FilesystemCommandParser() {}
 
@@ -53,7 +54,7 @@ public class FilesystemCommandParser {
     String[] tokens = line.split("\\s+");
     String command = tokens[0].toLowerCase(Locale.ROOT);
     if ("ls".equals(command)) {
-      return FilesystemCommand.path(FilesystemCommand.Type.LS, pathArgument(tokens));
+      return parseLs(tokens);
     }
     if ("ll".equals(command)) {
       return FilesystemCommand.path(FilesystemCommand.Type.LL, pathArgument(tokens));
@@ -65,7 +66,10 @@ public class FilesystemCommandParser {
       return FilesystemCommand.path(FilesystemCommand.Type.STAT, pathArgument(tokens));
     }
     if ("cat".equals(command)) {
-      return FilesystemCommand.path(FilesystemCommand.Type.CAT, pathArgument(tokens));
+      return parseCat(tokens);
+    }
+    if ("head".equals(command)) {
+      return parseHead(tokens);
     }
     if ("paste".equals(command)) {
       return parsePaste(tokens);
@@ -93,6 +97,71 @@ public class FilesystemCommandParser {
       paths.add(tokens[i]);
     }
     return FilesystemCommand.paths(FilesystemCommand.Type.PASTE, paths);
+  }
+
+  private static FilesystemCommand parseLs(String[] tokens) {
+    FilesystemCommand.Type type = FilesystemCommand.Type.LS;
+    String path = DEFAULT_PATH;
+
+    for (int i = 1; i < tokens.length; i++) {
+      String token = tokens[i];
+      if (token.startsWith("-")) {
+        for (int j = 1; j < token.length(); j++) {
+          char option = token.charAt(j);
+          if (option == 'l') {
+            type = FilesystemCommand.Type.LL;
+          } else if (option != 'a') {
+            return FilesystemCommand.invalid("Unsupported ls option: -" + option);
+          }
+        }
+      } else {
+        path = token;
+      }
+    }
+    return FilesystemCommand.path(type, path);
+  }
+
+  private static FilesystemCommand parseCat(String[] tokens) {
+    if (tokens.length < 2) {
+      return FilesystemCommand.path(FilesystemCommand.Type.CAT, DEFAULT_PATH);
+    }
+    List<String> paths = new ArrayList<>();
+    for (int i = 1; i < tokens.length; i++) {
+      paths.add(tokens[i]);
+    }
+    return FilesystemCommand.paths(FilesystemCommand.Type.CAT, paths);
+  }
+
+  private static FilesystemCommand parseHead(String[] tokens) {
+    String path = DEFAULT_PATH;
+    int limit = DEFAULT_HEAD_LIMIT;
+
+    for (int i = 1; i < tokens.length; i++) {
+      String token = tokens[i];
+      if ("-n".equals(token)) {
+        if (i + 1 >= tokens.length) {
+          return FilesystemCommand.invalid("Missing head line count");
+        }
+        try {
+          limit = Integer.parseInt(tokens[++i]);
+        } catch (NumberFormatException e) {
+          return FilesystemCommand.invalid("Invalid head line count: " + tokens[i]);
+        }
+      } else if (token.startsWith("-") && token.length() > 1) {
+        try {
+          limit = Integer.parseInt(token.substring(1));
+        } catch (NumberFormatException e) {
+          return FilesystemCommand.invalid("Unsupported head option: " + token);
+        }
+      } else {
+        path = token;
+      }
+    }
+
+    if (limit < 0) {
+      return FilesystemCommand.invalid("Invalid head line count: " + limit);
+    }
+    return FilesystemCommand.head(path, limit);
   }
 
   private static FilesystemCommand parseTree(String[] tokens) {

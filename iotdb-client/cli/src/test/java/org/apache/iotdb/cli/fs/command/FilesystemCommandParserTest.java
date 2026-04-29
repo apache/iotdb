@@ -44,6 +44,14 @@ public class FilesystemCommandParserTest {
   }
 
   @Test
+  public void parseLsLongOptionAsLongListCommand() {
+    FilesystemCommand command = FilesystemCommandParser.parse("ls -la /db1");
+
+    assertEquals(FilesystemCommand.Type.LL, command.getType());
+    assertEquals("/db1", command.getPath());
+  }
+
+  @Test
   public void parsePathCommand() {
     FilesystemCommand command = FilesystemCommandParser.parse("  ls   /root/sg  ");
 
@@ -57,6 +65,26 @@ public class FilesystemCommandParserTest {
 
     assertEquals(FilesystemCommand.Type.CAT, command.getType());
     assertEquals("/db1/table1", command.getPath());
+  }
+
+  @Test
+  public void parseCatMultiplePaths() {
+    FilesystemCommand command =
+        FilesystemCommandParser.parse("cat /db1/table1/tag1 /db1/table1/s1");
+
+    assertEquals(FilesystemCommand.Type.CAT, command.getType());
+    assertEquals(2, command.getPaths().size());
+    assertEquals("/db1/table1/tag1", command.getPaths().get(0));
+    assertEquals("/db1/table1/s1", command.getPaths().get(1));
+  }
+
+  @Test
+  public void parseHeadLimitAndPath() {
+    FilesystemCommand command = FilesystemCommandParser.parse("head -n 5 /db1/table1");
+
+    assertEquals(FilesystemCommand.Type.HEAD, command.getType());
+    assertEquals("/db1/table1", command.getPath());
+    assertEquals(5, command.getLimit());
   }
 
   @Test

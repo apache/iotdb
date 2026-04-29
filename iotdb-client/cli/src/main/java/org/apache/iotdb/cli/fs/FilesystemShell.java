@@ -44,7 +44,7 @@ public class FilesystemShell {
   private static final int DEFAULT_READ_LIMIT = 20;
   private static final List<String> COMMANDS =
       Arrays.asList(
-          "pwd", "ls", "ll", "cd", "stat", "cat", "paste", "tree", "help", "exit", "quit");
+          "pwd", "ls", "ll", "cd", "stat", "cat", "head", "paste", "tree", "help", "exit", "quit");
 
   private final CliContext ctx;
   private final FilesystemSchemaProvider provider;
@@ -74,7 +74,10 @@ public class FilesystemShell {
         printNode(provider.describe(resolve(command.getPath())));
         return true;
       case CAT:
-        printRows(provider.read(resolve(command.getPath()), DEFAULT_READ_LIMIT));
+        printSequentialReads(command.getPaths(), DEFAULT_READ_LIMIT);
+        return true;
+      case HEAD:
+        printRows(provider.read(resolve(command.getPath()), command.getLimit()));
         return true;
       case PASTE:
         printRows(provider.read(resolve(command.getPaths()), DEFAULT_READ_LIMIT));
@@ -172,6 +175,12 @@ public class FilesystemShell {
     }
   }
 
+  private void printSequentialReads(List<String> paths, int limit) throws SQLException {
+    for (String path : paths) {
+      printRows(provider.read(resolve(path), limit));
+    }
+  }
+
   private static String joinValues(SqlRow row) {
     StringBuilder builder = new StringBuilder();
     for (String value : row.asMap().values()) {
@@ -191,8 +200,10 @@ public class FilesystemShell {
     ctx.getPrinter().println("ll [path]");
     ctx.getPrinter().println("cd <path>");
     ctx.getPrinter().println("stat [path]");
-    ctx.getPrinter().println("cat <path>");
+    ctx.getPrinter().println("cat <path>...");
+    ctx.getPrinter().println("head [-n lines] <path>");
     ctx.getPrinter().println("paste <path>...");
+    ctx.getPrinter().println("tree [-L depth] [path]");
     ctx.getPrinter().println("exit");
   }
 

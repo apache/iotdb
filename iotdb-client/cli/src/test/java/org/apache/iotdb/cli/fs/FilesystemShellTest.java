@@ -107,6 +107,20 @@ public class FilesystemShellTest {
   }
 
   @Test
+  public void executeLsLongOptionPrintsLongListing() throws SQLException {
+    when(provider.list(FsPath.absolute("/")))
+        .thenReturn(
+            Arrays.asList(
+                new FsNode("testtest", FsPath.absolute("/testtest"), FsNodeType.TABLE_DATABASE)));
+
+    assertTrue(shell.execute("ls -l /"));
+
+    assertTrue(out.toString().contains("dr-xr-xr-x"));
+    assertTrue(out.toString().contains("testtest"));
+    verify(provider).list(FsPath.absolute("/"));
+  }
+
+  @Test
   public void executeCdUpdatesCurrentPath() throws SQLException {
     when(provider.describe(FsPath.absolute("/root")))
         .thenReturn(new FsNode("root", FsPath.absolute("/root"), FsNodeType.TREE_ROOT));
@@ -151,6 +165,32 @@ public class FilesystemShellTest {
     assertTrue(out.toString().contains("1\ta\t42"));
     assertFalse(out.toString().contains("{"));
     verify(provider).read(FsPath.absolute("/db1/table1"), 20);
+  }
+
+  @Test
+  public void executeCatReadsMultiplePathsSequentially() throws SQLException {
+    when(provider.read(FsPath.absolute("/db1/table1/tag1"), 20))
+        .thenReturn(Arrays.asList(SqlRow.of("Time", "1", "tag1", "a")));
+    when(provider.read(FsPath.absolute("/db1/table1/s1"), 20))
+        .thenReturn(Arrays.asList(SqlRow.of("Time", "1", "s1", "42")));
+
+    assertTrue(shell.execute("cat /db1/table1/tag1 /db1/table1/s1"));
+
+    assertTrue(out.toString().contains("1\ta"));
+    assertTrue(out.toString().contains("1\t42"));
+    verify(provider).read(FsPath.absolute("/db1/table1/tag1"), 20);
+    verify(provider).read(FsPath.absolute("/db1/table1/s1"), 20);
+  }
+
+  @Test
+  public void executeHeadReadsPathWithLimit() throws SQLException {
+    when(provider.read(FsPath.absolute("/db1/table1"), 5))
+        .thenReturn(Arrays.asList(SqlRow.of("Time", "1", "tag1", "a", "s1", "42")));
+
+    assertTrue(shell.execute("head -n 5 /db1/table1"));
+
+    assertTrue(out.toString().contains("1\ta\t42"));
+    verify(provider).read(FsPath.absolute("/db1/table1"), 5);
   }
 
   @Test

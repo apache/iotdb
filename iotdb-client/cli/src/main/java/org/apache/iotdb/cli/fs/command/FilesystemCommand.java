@@ -31,6 +31,7 @@ public class FilesystemCommand {
     CD,
     STAT,
     CAT,
+    HEAD,
     PASTE,
     TREE,
     SQL,
@@ -43,6 +44,7 @@ public class FilesystemCommand {
   private final String path;
   private final List<String> paths;
   private final int depth;
+  private final int limit;
   private final String statement;
   private final String errorMessage;
 
@@ -51,39 +53,48 @@ public class FilesystemCommand {
       String path,
       List<String> paths,
       int depth,
+      int limit,
       String statement,
       String errorMessage) {
     this.type = type;
     this.path = path;
     this.paths = paths;
     this.depth = depth;
+    this.limit = limit;
     this.statement = statement;
     this.errorMessage = errorMessage;
   }
 
   public static FilesystemCommand simple(Type type) {
-    return new FilesystemCommand(type, "", Collections.emptyList(), -1, "", "");
+    return new FilesystemCommand(type, "", Collections.emptyList(), -1, -1, "", "");
   }
 
   public static FilesystemCommand path(Type type, String path) {
-    return new FilesystemCommand(type, path, Collections.singletonList(path), -1, "", "");
+    return new FilesystemCommand(type, path, Collections.singletonList(path), -1, -1, "", "");
   }
 
   public static FilesystemCommand paths(Type type, List<String> paths) {
     String path = paths.isEmpty() ? "" : paths.get(0);
-    return new FilesystemCommand(type, path, Collections.unmodifiableList(paths), -1, "", "");
+    return new FilesystemCommand(type, path, Collections.unmodifiableList(paths), -1, -1, "", "");
+  }
+
+  public static FilesystemCommand head(String path, int limit) {
+    return new FilesystemCommand(
+        Type.HEAD, path, Collections.singletonList(path), -1, limit, "", "");
   }
 
   public static FilesystemCommand tree(String path, int depth) {
-    return new FilesystemCommand(Type.TREE, path, Collections.singletonList(path), depth, "", "");
+    return new FilesystemCommand(
+        Type.TREE, path, Collections.singletonList(path), depth, -1, "", "");
   }
 
   public static FilesystemCommand sql(String statement) {
-    return new FilesystemCommand(Type.SQL, "", Collections.emptyList(), -1, statement, "");
+    return new FilesystemCommand(Type.SQL, "", Collections.emptyList(), -1, -1, statement, "");
   }
 
   public static FilesystemCommand invalid(String errorMessage) {
-    return new FilesystemCommand(Type.INVALID, "", Collections.emptyList(), -1, "", errorMessage);
+    return new FilesystemCommand(
+        Type.INVALID, "", Collections.emptyList(), -1, -1, "", errorMessage);
   }
 
   public Type getType() {
@@ -100,6 +111,10 @@ public class FilesystemCommand {
 
   public int getDepth() {
     return depth;
+  }
+
+  public int getLimit() {
+    return limit;
   }
 
   public String getStatement() {
