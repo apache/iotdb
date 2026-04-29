@@ -58,6 +58,8 @@ public class WebSocketConnectorServer extends WebSocketServer {
   // Map<pipeName, Map<eventId, Tuple<connector, event>>>
   private final ConcurrentHashMap<String, ConcurrentHashMap<Long, EventWaitingForAck>>
       eventsWaitingForAck = new ConcurrentHashMap<>();
+
+  // Pipe name, creation time, region id
   private final Set<Triple<String, Long, Integer>> droppedPipeTaskKeys =
       ConcurrentHashMap.newKeySet();
 

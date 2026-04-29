@@ -46,6 +46,8 @@ public abstract class BlockingPendingQueue<E extends Event> {
   protected final PipeEventCounter eventCounter;
 
   protected final AtomicBoolean isClosed = new AtomicBoolean(false);
+
+  // Pipe name, creation time, region id
   protected final Set<Triple<String, Long, Integer>> droppedPipeTaskKeys =
       ConcurrentHashMap.newKeySet();
 
