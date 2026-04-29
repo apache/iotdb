@@ -124,7 +124,9 @@ public class ImportData extends AbstractDataTool {
     }
     int ftIndex = argList.indexOf(Constants.MINUS + Constants.FILE_TYPE_ARGS); // -ft
     if (ftIndex < 0) {
-      ftIndex = argList.indexOf(Constants.MINUS + Constants.FILE_TYPE_NAME); // -file_type
+      ftIndex =
+          argList.indexOf(
+              Constants.MINUS + Constants.MINUS + Constants.FILE_TYPE_NAME); // --file_type
     }
     int helpIndex = argList.indexOf(Constants.MINUS + Constants.HELP_ARGS);
     if (helpIndex >= 0) {

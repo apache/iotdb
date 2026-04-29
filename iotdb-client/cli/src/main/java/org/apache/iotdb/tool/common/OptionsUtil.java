@@ -728,6 +728,11 @@ public class OptionsUtil extends Constants {
             .desc(OBJECT_FILE_PATHS_DESC)
             .build();
     options.addOption(opObjectPaths);
+
+    Option opDatabase =
+        Option.builder(DB_ARGS).longOpt(DB_NAME).argName(DB_ARGS).hasArg().desc(DB_DESC).build();
+    options.addOption(opDatabase);
+
     return options;
   }
 
