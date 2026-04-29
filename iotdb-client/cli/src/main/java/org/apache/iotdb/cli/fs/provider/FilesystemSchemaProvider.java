@@ -34,6 +34,14 @@ public interface FilesystemSchemaProvider {
 
   List<SqlRow> read(FsPath path, int limit) throws SQLException;
 
+  default List<SqlRow> tail(FsPath path, int limit) throws SQLException {
+    throw new SQLException("Path does not support tail: " + path);
+  }
+
+  default long count(FsPath path) throws SQLException {
+    throw new SQLException("Path does not support count: " + path);
+  }
+
   default List<SqlRow> read(List<FsPath> paths, int limit) throws SQLException {
     if (paths.size() == 1) {
       return read(paths.get(0), limit);

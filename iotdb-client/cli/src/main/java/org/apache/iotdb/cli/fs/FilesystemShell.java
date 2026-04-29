@@ -24,7 +24,9 @@ import org.apache.iotdb.cli.fs.command.FilesystemCommandParser;
 import org.apache.iotdb.cli.fs.node.FsNode;
 import org.apache.iotdb.cli.fs.node.FsNodeType;
 import org.apache.iotdb.cli.fs.path.FsPath;
+import org.apache.iotdb.cli.fs.provider.FilesystemMutationProvider;
 import org.apache.iotdb.cli.fs.provider.FilesystemSchemaProvider;
+import org.apache.iotdb.cli.fs.provider.UnsupportedFilesystemMutationProvider;
 import org.apache.iotdb.cli.fs.sql.SqlRow;
 import org.apache.iotdb.cli.utils.CliContext;
 
@@ -44,15 +46,28 @@ public class FilesystemShell {
   private static final int DEFAULT_READ_LIMIT = 20;
   private static final List<String> COMMANDS =
       Arrays.asList(
-          "pwd", "ls", "ll", "cd", "stat", "cat", "head", "paste", "tree", "help", "exit", "quit");
+          "pwd", "ls", "ll", "cd", "stat", "cat", "head", "tail", "wc", "grep", "find", "less",
+          "more", "file", "du", "mkdir", "rm", "mv", "paste", "tree", "help", "exit", "quit");
 
   private final CliContext ctx;
   private final FilesystemSchemaProvider provider;
+  private final FilesystemMutationProvider mutationProvider;
+  private final boolean writeEnabled;
   private FsPath currentPath = FsPath.absolute("/");
 
   public FilesystemShell(CliContext ctx, FilesystemSchemaProvider provider) {
+    this(ctx, provider, new UnsupportedFilesystemMutationProvider(), false);
+  }
+
+  public FilesystemShell(
+      CliContext ctx,
+      FilesystemSchemaProvider provider,
+      FilesystemMutationProvider mutationProvider,
+      boolean writeEnabled) {
     this.ctx = ctx;
     this.provider = provider;
+    this.mutationProvider = mutationProvider;
+    this.writeEnabled = writeEnabled;
   }
 
   public boolean execute(String input) throws SQLException {
@@ -78,6 +93,37 @@ public class FilesystemShell {
         return true;
       case HEAD:
         printRows(provider.read(resolve(command.getPath()), command.getLimit()));
+        return true;
+      case TAIL:
+        printRows(provider.tail(resolve(command.getPath()), command.getLimit()));
+        return true;
+      case WC:
+        printLineCount(command.getPath());
+        return true;
+      case GREP:
+        printMatchingRows(command.getPath(), command.getPattern());
+        return true;
+      case FIND:
+        printFind(resolve(command.getPath()), command.getPattern());
+        return true;
+      case LESS:
+      case MORE:
+        printRows(provider.read(resolve(command.getPath()), DEFAULT_READ_LIMIT));
+        return true;
+      case FILE:
+        printFile(command.getPath());
+        return true;
+      case DU:
+        printDiskUsage(command.getPath());
+        return true;
+      case MKDIR:
+        mkdir(command.getPath());
+        return true;
+      case RM:
+        remove(command.getPath());
+        return true;
+      case MV:
+        move(command.getPaths());
         return true;
       case PASTE:
         printRows(provider.read(resolve(command.getPaths()), DEFAULT_READ_LIMIT));
@@ -151,8 +197,15 @@ public class FilesystemShell {
   }
 
   private void printNodes(List<FsNode> nodes) {
+    StringBuilder builder = new StringBuilder();
     for (FsNode node : nodes) {
-      ctx.getPrinter().println(node.getName());
+      if (builder.length() > 0) {
+        builder.append(',');
+      }
+      builder.append(node.getName());
+    }
+    if (builder.length() > 0) {
+      ctx.getPrinter().println(builder.toString());
     }
   }
 
@@ -181,6 +234,80 @@ public class FilesystemShell {
     }
   }
 
+  private void printLineCount(String path) throws SQLException {
+    FsPath resolvedPath = resolve(path);
+    ctx.getPrinter().println(provider.count(resolvedPath) + " " + resolvedPath);
+  }
+
+  private void printMatchingRows(String path, String pattern) throws SQLException {
+    for (SqlRow row : provider.read(resolve(path), DEFAULT_READ_LIMIT)) {
+      String line = joinValues(row);
+      if (line.contains(pattern)) {
+        ctx.getPrinter().println(line);
+      }
+    }
+  }
+
+  private void printFind(FsPath path, String pattern) throws SQLException {
+    FsNode node = provider.describe(path);
+    if (matchesFind(node, pattern)) {
+      ctx.getPrinter().println(path.toString());
+    }
+    if (!isDirectory(node.getType())) {
+      return;
+    }
+    for (FsNode child : provider.list(path)) {
+      printFind(child.getPath(), pattern);
+    }
+  }
+
+  private static boolean matchesFind(FsNode node, String pattern) {
+    return pattern == null || pattern.isEmpty() || node.getName().equals(pattern);
+  }
+
+  private void printFile(String path) throws SQLException {
+    FsPath resolvedPath = resolve(path);
+    ctx.getPrinter().println(resolvedPath + ": " + provider.describe(resolvedPath).getType());
+  }
+
+  private void printDiskUsage(String path) throws SQLException {
+    FsPath resolvedPath = resolve(path);
+    ctx.getPrinter().println(provider.count(resolvedPath) + "\t" + resolvedPath);
+  }
+
+  private void mkdir(String path) throws SQLException {
+    FsPath resolvedPath = resolve(path);
+    if (!ensureWritable("mkdir", resolvedPath)) {
+      return;
+    }
+    mutationProvider.mkdir(resolvedPath);
+  }
+
+  private void remove(String path) throws SQLException {
+    FsPath resolvedPath = resolve(path);
+    if (!ensureWritable("rm", resolvedPath)) {
+      return;
+    }
+    mutationProvider.remove(resolvedPath);
+  }
+
+  private void move(List<String> paths) throws SQLException {
+    FsPath source = resolve(paths.get(0));
+    FsPath target = resolve(paths.get(1));
+    if (!ensureWritable("mv", source)) {
+      return;
+    }
+    mutationProvider.move(source, target);
+  }
+
+  private boolean ensureWritable(String command, FsPath path) {
+    if (writeEnabled) {
+      return true;
+    }
+    ctx.getPrinter().println(command + ": " + path + ": Read-only file system");
+    return false;
+  }
+
   private static String joinValues(SqlRow row) {
     StringBuilder builder = new StringBuilder();
     for (String value : row.asMap().values()) {
@@ -202,6 +329,17 @@ public class FilesystemShell {
     ctx.getPrinter().println("stat [path]");
     ctx.getPrinter().println("cat <path>...");
     ctx.getPrinter().println("head [-n lines] <path>");
+    ctx.getPrinter().println("tail [-n lines] <path>");
+    ctx.getPrinter().println("wc -l <path>");
+    ctx.getPrinter().println("grep <pattern> <path>");
+    ctx.getPrinter().println("find [path] [-name pattern]");
+    ctx.getPrinter().println("less <path>");
+    ctx.getPrinter().println("more <path>");
+    ctx.getPrinter().println("file <path>");
+    ctx.getPrinter().println("du <path>");
+    ctx.getPrinter().println("mkdir <path>");
+    ctx.getPrinter().println("rm <path>");
+    ctx.getPrinter().println("mv <source> <target>");
     ctx.getPrinter().println("paste <path>...");
     ctx.getPrinter().println("tree [-L depth] [path]");
     ctx.getPrinter().println("exit");

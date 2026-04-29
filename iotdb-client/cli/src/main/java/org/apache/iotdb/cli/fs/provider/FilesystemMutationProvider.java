@@ -17,14 +17,17 @@
  * under the License.
  */
 
-package org.apache.iotdb.cli.fs.sql;
+package org.apache.iotdb.cli.fs.provider;
+
+import org.apache.iotdb.cli.fs.path.FsPath;
 
 import java.sql.SQLException;
-import java.util.List;
 
-public interface SqlExecutor {
+public interface FilesystemMutationProvider {
 
-  List<SqlRow> query(String sql) throws SQLException;
+  void mkdir(FsPath path) throws SQLException;
 
-  void execute(String sql) throws SQLException;
+  void remove(FsPath path) throws SQLException;
+
+  void move(FsPath source, FsPath target) throws SQLException;
 }

@@ -27,6 +27,7 @@ import org.apache.iotdb.cli.fs.sql.SqlRow;
 
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class TableFilesystemSchemaProvider implements FilesystemSchemaProvider {
@@ -85,6 +86,46 @@ public class TableFilesystemSchemaProvider implements FilesystemSchemaProvider {
           "SELECT " + path.getFileName() + " FROM " + tablePath + " LIMIT " + limit);
     }
     throw new SQLException("Path is not readable: " + path);
+  }
+
+  @Override
+  public List<SqlRow> tail(FsPath path, int limit) throws SQLException {
+    int depth = path.getSegments().size();
+    List<SqlRow> rows;
+    if (depth == 2) {
+      rows =
+          executor.query(
+              "SELECT * FROM " + toTablePath(path) + " ORDER BY time DESC LIMIT " + limit);
+    } else if (depth == 3) {
+      String tablePath = toTablePath(parent(path));
+      rows =
+          executor.query(
+              "SELECT "
+                  + path.getFileName()
+                  + " FROM "
+                  + tablePath
+                  + " ORDER BY time DESC LIMIT "
+                  + limit);
+    } else {
+      throw new SQLException("Path is not readable: " + path);
+    }
+    Collections.reverse(rows);
+    return rows;
+  }
+
+  @Override
+  public long count(FsPath path) throws SQLException {
+    int depth = path.getSegments().size();
+    List<SqlRow> rows;
+    if (depth == 2) {
+      rows = executor.query("SELECT COUNT(*) FROM " + toTablePath(path));
+    } else if (depth == 3) {
+      String tablePath = toTablePath(parent(path));
+      rows = executor.query("SELECT COUNT(" + path.getFileName() + ") FROM " + tablePath);
+    } else {
+      throw new SQLException("Path is not countable: " + path);
+    }
+    return countValue(rows);
   }
 
   @Override
@@ -180,6 +221,13 @@ public class TableFilesystemSchemaProvider implements FilesystemSchemaProvider {
       builder.append(path.getFileName());
     }
     return builder.toString();
+  }
+
+  private static long countValue(List<SqlRow> rows) {
+    if (rows.isEmpty() || rows.get(0).asMap().isEmpty()) {
+      return 0;
+    }
+    return Long.parseLong(rows.get(0).asMap().values().iterator().next());
   }
 
   private static FsPath parent(FsPath path) {

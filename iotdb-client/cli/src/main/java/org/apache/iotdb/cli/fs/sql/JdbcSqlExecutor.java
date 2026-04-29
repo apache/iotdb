@@ -54,4 +54,11 @@ public class JdbcSqlExecutor implements SqlExecutor {
       return rows;
     }
   }
+
+  @Override
+  public void execute(String sql) throws SQLException {
+    try (Statement statement = connection.createStatement()) {
+      statement.execute(sql);
+    }
+  }
 }

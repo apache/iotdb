@@ -71,6 +71,39 @@ public class FilesystemCommandParser {
     if ("head".equals(command)) {
       return parseHead(tokens);
     }
+    if ("tail".equals(command)) {
+      return parseTail(tokens);
+    }
+    if ("wc".equals(command)) {
+      return parseWc(tokens);
+    }
+    if ("grep".equals(command)) {
+      return parseGrep(tokens);
+    }
+    if ("find".equals(command)) {
+      return parseFind(tokens);
+    }
+    if ("less".equals(command)) {
+      return FilesystemCommand.path(FilesystemCommand.Type.LESS, pathArgument(tokens));
+    }
+    if ("more".equals(command)) {
+      return FilesystemCommand.path(FilesystemCommand.Type.MORE, pathArgument(tokens));
+    }
+    if ("file".equals(command)) {
+      return FilesystemCommand.path(FilesystemCommand.Type.FILE, pathArgument(tokens));
+    }
+    if ("du".equals(command)) {
+      return FilesystemCommand.path(FilesystemCommand.Type.DU, pathArgument(tokens));
+    }
+    if ("mkdir".equals(command)) {
+      return FilesystemCommand.path(FilesystemCommand.Type.MKDIR, pathArgument(tokens));
+    }
+    if ("rm".equals(command)) {
+      return parseRm(tokens);
+    }
+    if ("mv".equals(command)) {
+      return parseMv(tokens);
+    }
     if ("paste".equals(command)) {
       return parsePaste(tokens);
     }
@@ -97,6 +130,26 @@ public class FilesystemCommandParser {
       paths.add(tokens[i]);
     }
     return FilesystemCommand.paths(FilesystemCommand.Type.PASTE, paths);
+  }
+
+  private static FilesystemCommand parseRm(String[] tokens) {
+    if (tokens.length < 2) {
+      return FilesystemCommand.invalid("Missing rm path");
+    }
+    if (tokens[1].startsWith("-")) {
+      return FilesystemCommand.invalid("Unsupported rm option: " + tokens[1]);
+    }
+    return FilesystemCommand.path(FilesystemCommand.Type.RM, tokens[1]);
+  }
+
+  private static FilesystemCommand parseMv(String[] tokens) {
+    if (tokens.length < 3) {
+      return FilesystemCommand.invalid("Usage: mv <source> <target>");
+    }
+    List<String> paths = new ArrayList<>();
+    paths.add(tokens[1]);
+    paths.add(tokens[2]);
+    return FilesystemCommand.paths(FilesystemCommand.Type.MV, paths);
   }
 
   private static FilesystemCommand parseLs(String[] tokens) {
@@ -162,6 +215,80 @@ public class FilesystemCommandParser {
       return FilesystemCommand.invalid("Invalid head line count: " + limit);
     }
     return FilesystemCommand.head(path, limit);
+  }
+
+  private static FilesystemCommand parseTail(String[] tokens) {
+    String path = DEFAULT_PATH;
+    int limit = DEFAULT_HEAD_LIMIT;
+
+    for (int i = 1; i < tokens.length; i++) {
+      String token = tokens[i];
+      if ("-n".equals(token)) {
+        if (i + 1 >= tokens.length) {
+          return FilesystemCommand.invalid("Missing tail line count");
+        }
+        try {
+          limit = Integer.parseInt(tokens[++i]);
+        } catch (NumberFormatException e) {
+          return FilesystemCommand.invalid("Invalid tail line count: " + tokens[i]);
+        }
+      } else if (token.startsWith("-") && token.length() > 1) {
+        try {
+          limit = Integer.parseInt(token.substring(1));
+        } catch (NumberFormatException e) {
+          return FilesystemCommand.invalid("Unsupported tail option: " + token);
+        }
+      } else {
+        path = token;
+      }
+    }
+
+    if (limit < 0) {
+      return FilesystemCommand.invalid("Invalid tail line count: " + limit);
+    }
+    return FilesystemCommand.tail(path, limit);
+  }
+
+  private static FilesystemCommand parseWc(String[] tokens) {
+    String option = "-l";
+    String path = DEFAULT_PATH;
+
+    for (int i = 1; i < tokens.length; i++) {
+      String token = tokens[i];
+      if (token.startsWith("-")) {
+        if (!"-l".equals(token)) {
+          return FilesystemCommand.invalid("Unsupported wc option: " + token);
+        }
+        option = token;
+      } else {
+        path = token;
+      }
+    }
+    return FilesystemCommand.option(FilesystemCommand.Type.WC, option, path);
+  }
+
+  private static FilesystemCommand parseGrep(String[] tokens) {
+    if (tokens.length < 3) {
+      return FilesystemCommand.invalid("Usage: grep <pattern> <path>");
+    }
+    return FilesystemCommand.pattern(FilesystemCommand.Type.GREP, tokens[1], tokens[2]);
+  }
+
+  private static FilesystemCommand parseFind(String[] tokens) {
+    String path = tokens.length > 1 ? tokens[1] : DEFAULT_PATH;
+    String pattern = "";
+
+    for (int i = 2; i < tokens.length; i++) {
+      if ("-name".equals(tokens[i])) {
+        if (i + 1 >= tokens.length) {
+          return FilesystemCommand.invalid("Missing find name pattern");
+        }
+        pattern = tokens[++i];
+      } else {
+        return FilesystemCommand.invalid("Unsupported find option: " + tokens[i]);
+      }
+    }
+    return FilesystemCommand.pattern(FilesystemCommand.Type.FIND, pattern, path);
   }
 
   private static FilesystemCommand parseTree(String[] tokens) {

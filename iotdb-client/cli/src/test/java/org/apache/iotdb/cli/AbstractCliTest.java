@@ -137,6 +137,35 @@ public class AbstractCliTest {
   }
 
   @Test
+  public void testFsWriteModeEnabled() throws ParseException, ArgsErrorException {
+    CliContext ctx = new CliContext(System.in, System.out, System.err, ExitType.EXCEPTION);
+    Options options = AbstractCli.createOptions();
+    CommandLineParser parser = new DefaultParser();
+    CommandLine commandLine =
+        parser.parse(options, new String[] {"-u", "root", "--fs_write_mode", "enabled"});
+
+    assertEquals(AbstractCli.FS_WRITE_MODE_ENABLED, AbstractCli.getFsWriteMode(ctx, commandLine));
+  }
+
+  @Test
+  public void testFsWriteModeRejectsInvalidValue() throws ParseException {
+    CliContext ctx = new CliContext(System.in, System.out, System.err, ExitType.EXCEPTION);
+    Options options = AbstractCli.createOptions();
+    CommandLineParser parser = new DefaultParser();
+    CommandLine commandLine =
+        parser.parse(options, new String[] {"-u", "root", "--fs_write_mode", "bad"});
+
+    try {
+      AbstractCli.getFsWriteMode(ctx, commandLine);
+      fail();
+    } catch (ArgsErrorException e) {
+      assertEquals(
+          "IoTDB: Unsupported fs write mode 'bad'. Supported values are disabled and enabled.",
+          e.getMessage());
+    }
+  }
+
+  @Test
   public void testAccessModeRejectsInvalidValue() throws ParseException {
     CliContext ctx = new CliContext(System.in, System.out, System.err, ExitType.EXCEPTION);
     Options options = AbstractCli.createOptions();

@@ -27,6 +27,7 @@ import org.apache.iotdb.cli.fs.sql.SqlRow;
 
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -76,6 +77,34 @@ public class TreeFilesystemSchemaProvider implements FilesystemSchemaProvider {
     FsPath devicePath = parent(path);
     return executor.query(
         "SELECT " + measurement + " FROM " + toTreePath(devicePath) + " LIMIT " + limit);
+  }
+
+  @Override
+  public List<SqlRow> tail(FsPath path, int limit) throws SQLException {
+    String measurement = path.getFileName();
+    FsPath devicePath = parent(path);
+    List<SqlRow> rows =
+        executor.query(
+            "SELECT "
+                + measurement
+                + " FROM "
+                + toTreePath(devicePath)
+                + " ORDER BY time DESC LIMIT "
+                + limit);
+    Collections.reverse(rows);
+    return rows;
+  }
+
+  @Override
+  public long count(FsPath path) throws SQLException {
+    String measurement = path.getFileName();
+    FsPath devicePath = parent(path);
+    List<SqlRow> rows =
+        executor.query("SELECT COUNT(" + measurement + ") FROM " + toTreePath(devicePath));
+    if (rows.isEmpty() || rows.get(0).asMap().isEmpty()) {
+      return 0;
+    }
+    return Long.parseLong(rows.get(0).asMap().values().iterator().next());
   }
 
   private List<FsNode> listTreeRoots() throws SQLException {

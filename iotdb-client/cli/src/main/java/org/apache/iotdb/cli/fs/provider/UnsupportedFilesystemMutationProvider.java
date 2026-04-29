@@ -17,14 +17,32 @@
  * under the License.
  */
 
-package org.apache.iotdb.cli.fs.sql;
+package org.apache.iotdb.cli.fs.provider;
+
+import org.apache.iotdb.cli.fs.path.FsPath;
 
 import java.sql.SQLException;
-import java.util.List;
 
-public interface SqlExecutor {
+public class UnsupportedFilesystemMutationProvider implements FilesystemMutationProvider {
 
-  List<SqlRow> query(String sql) throws SQLException;
+  private static final String UNSUPPORTED = "Filesystem write operation is not supported";
 
-  void execute(String sql) throws SQLException;
+  @Override
+  public void mkdir(FsPath path) throws SQLException {
+    throw unsupported();
+  }
+
+  @Override
+  public void remove(FsPath path) throws SQLException {
+    throw unsupported();
+  }
+
+  @Override
+  public void move(FsPath source, FsPath target) throws SQLException {
+    throw unsupported();
+  }
+
+  private static SQLException unsupported() {
+    return new SQLException(UNSUPPORTED);
+  }
 }

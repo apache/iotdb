@@ -172,6 +172,32 @@ public class TableFilesystemSchemaProviderTest {
   }
 
   @Test
+  public void tailTableSelectsNewestRowsAndReturnsOriginalOrder() throws SQLException {
+    when(executor.query("SELECT * FROM db1.table1 ORDER BY time DESC LIMIT 2"))
+        .thenReturn(
+            SqlRow.list(
+                SqlRow.of("Time", "2", "tag1", "b", "s1", "43"),
+                SqlRow.of("Time", "1", "tag1", "a", "s1", "42")));
+
+    List<SqlRow> rows = provider.tail(FsPath.absolute("/db1/table1"), 2);
+
+    assertEquals("1", rows.get(0).get("Time"));
+    assertEquals("2", rows.get(1).get("Time"));
+    verify(executor).query("SELECT * FROM db1.table1 ORDER BY time DESC LIMIT 2");
+  }
+
+  @Test
+  public void countTableSelectsRowCount() throws SQLException {
+    when(executor.query("SELECT COUNT(*) FROM db1.table1"))
+        .thenReturn(SqlRow.list(SqlRow.of("count", "2")));
+
+    long count = provider.count(FsPath.absolute("/db1/table1"));
+
+    assertEquals(2L, count);
+    verify(executor).query("SELECT COUNT(*) FROM db1.table1");
+  }
+
+  @Test
   public void readColumnsSelectsMultipleColumnsFromSameTable() throws SQLException {
     when(executor.query("SELECT tag1, s1 FROM db1.table1 LIMIT 5"))
         .thenReturn(SqlRow.list(SqlRow.of("Time", "1", "tag1", "a", "s1", "42")));

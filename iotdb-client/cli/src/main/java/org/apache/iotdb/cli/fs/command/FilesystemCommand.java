@@ -32,6 +32,17 @@ public class FilesystemCommand {
     STAT,
     CAT,
     HEAD,
+    TAIL,
+    WC,
+    GREP,
+    FIND,
+    LESS,
+    MORE,
+    FILE,
+    DU,
+    MKDIR,
+    RM,
+    MV,
     PASTE,
     TREE,
     SQL,
@@ -45,6 +56,8 @@ public class FilesystemCommand {
   private final List<String> paths;
   private final int depth;
   private final int limit;
+  private final String option;
+  private final String pattern;
   private final String statement;
   private final String errorMessage;
 
@@ -54,6 +67,8 @@ public class FilesystemCommand {
       List<String> paths,
       int depth,
       int limit,
+      String option,
+      String pattern,
       String statement,
       String errorMessage) {
     this.type = type;
@@ -61,40 +76,60 @@ public class FilesystemCommand {
     this.paths = paths;
     this.depth = depth;
     this.limit = limit;
+    this.option = option;
+    this.pattern = pattern;
     this.statement = statement;
     this.errorMessage = errorMessage;
   }
 
   public static FilesystemCommand simple(Type type) {
-    return new FilesystemCommand(type, "", Collections.emptyList(), -1, -1, "", "");
+    return new FilesystemCommand(type, "", Collections.emptyList(), -1, -1, "", "", "", "");
   }
 
   public static FilesystemCommand path(Type type, String path) {
-    return new FilesystemCommand(type, path, Collections.singletonList(path), -1, -1, "", "");
+    return new FilesystemCommand(
+        type, path, Collections.singletonList(path), -1, -1, "", "", "", "");
   }
 
   public static FilesystemCommand paths(Type type, List<String> paths) {
     String path = paths.isEmpty() ? "" : paths.get(0);
-    return new FilesystemCommand(type, path, Collections.unmodifiableList(paths), -1, -1, "", "");
+    return new FilesystemCommand(
+        type, path, Collections.unmodifiableList(paths), -1, -1, "", "", "", "");
   }
 
   public static FilesystemCommand head(String path, int limit) {
     return new FilesystemCommand(
-        Type.HEAD, path, Collections.singletonList(path), -1, limit, "", "");
+        Type.HEAD, path, Collections.singletonList(path), -1, limit, "", "", "", "");
+  }
+
+  public static FilesystemCommand tail(String path, int limit) {
+    return new FilesystemCommand(
+        Type.TAIL, path, Collections.singletonList(path), -1, limit, "", "", "", "");
+  }
+
+  public static FilesystemCommand option(Type type, String option, String path) {
+    return new FilesystemCommand(
+        type, path, Collections.singletonList(path), -1, -1, option, "", "", "");
+  }
+
+  public static FilesystemCommand pattern(Type type, String pattern, String path) {
+    return new FilesystemCommand(
+        type, path, Collections.singletonList(path), -1, -1, "", pattern, "", "");
   }
 
   public static FilesystemCommand tree(String path, int depth) {
     return new FilesystemCommand(
-        Type.TREE, path, Collections.singletonList(path), depth, -1, "", "");
+        Type.TREE, path, Collections.singletonList(path), depth, -1, "", "", "", "");
   }
 
   public static FilesystemCommand sql(String statement) {
-    return new FilesystemCommand(Type.SQL, "", Collections.emptyList(), -1, -1, statement, "");
+    return new FilesystemCommand(
+        Type.SQL, "", Collections.emptyList(), -1, -1, "", "", statement, "");
   }
 
   public static FilesystemCommand invalid(String errorMessage) {
     return new FilesystemCommand(
-        Type.INVALID, "", Collections.emptyList(), -1, -1, "", errorMessage);
+        Type.INVALID, "", Collections.emptyList(), -1, -1, "", "", "", errorMessage);
   }
 
   public Type getType() {
@@ -115,6 +150,14 @@ public class FilesystemCommand {
 
   public int getLimit() {
     return limit;
+  }
+
+  public String getOption() {
+    return option;
+  }
+
+  public String getPattern() {
+    return pattern;
   }
 
   public String getStatement() {

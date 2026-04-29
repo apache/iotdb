@@ -152,7 +152,8 @@ public class JlineUtils {
   static Completer createCompleter(String accessMode) {
     if ("filesystem".equalsIgnoreCase(accessMode)) {
       return new StringsCompleter(
-          "pwd", "ls", "ll", "cd", "stat", "cat", "head", "paste", "tree", "help", "exit", "quit");
+          "pwd", "ls", "ll", "cd", "stat", "cat", "head", "tail", "wc", "grep", "find", "less",
+          "more", "file", "du", "mkdir", "rm", "mv", "paste", "tree", "help", "exit", "quit");
     }
     return new StringsCompleter(SQL_KEYWORDS);
   }

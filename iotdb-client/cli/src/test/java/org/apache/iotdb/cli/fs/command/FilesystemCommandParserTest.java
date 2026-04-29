@@ -88,6 +88,54 @@ public class FilesystemCommandParserTest {
   }
 
   @Test
+  public void parseTailLimitAndPath() {
+    FilesystemCommand command = FilesystemCommandParser.parse("tail -n 3 /db1/table1");
+
+    assertEquals(FilesystemCommand.Type.TAIL, command.getType());
+    assertEquals("/db1/table1", command.getPath());
+    assertEquals(3, command.getLimit());
+  }
+
+  @Test
+  public void parseWcLineCountAndPath() {
+    FilesystemCommand command = FilesystemCommandParser.parse("wc -l /db1/table1");
+
+    assertEquals(FilesystemCommand.Type.WC, command.getType());
+    assertEquals("/db1/table1", command.getPath());
+    assertEquals("-l", command.getOption());
+  }
+
+  @Test
+  public void parseGrepPatternAndPath() {
+    FilesystemCommand command = FilesystemCommandParser.parse("grep spricoder /db1/table1");
+
+    assertEquals(FilesystemCommand.Type.GREP, command.getType());
+    assertEquals("/db1/table1", command.getPath());
+    assertEquals("spricoder", command.getPattern());
+  }
+
+  @Test
+  public void parseFindNamePatternAndPath() {
+    FilesystemCommand command = FilesystemCommandParser.parse("find /db1 -name table1");
+
+    assertEquals(FilesystemCommand.Type.FIND, command.getType());
+    assertEquals("/db1", command.getPath());
+    assertEquals("table1", command.getPattern());
+  }
+
+  @Test
+  public void parseLessMoreFileAndDu() {
+    assertEquals(
+        FilesystemCommand.Type.LESS, FilesystemCommandParser.parse("less /db1/table1").getType());
+    assertEquals(
+        FilesystemCommand.Type.MORE, FilesystemCommandParser.parse("more /db1/table1").getType());
+    assertEquals(
+        FilesystemCommand.Type.FILE, FilesystemCommandParser.parse("file /db1/table1").getType());
+    assertEquals(
+        FilesystemCommand.Type.DU, FilesystemCommandParser.parse("du /db1/table1").getType());
+  }
+
+  @Test
   public void parsePastePaths() {
     FilesystemCommand command =
         FilesystemCommandParser.parse("paste /db1/table1/tag1 /db1/table1/s1");
@@ -96,6 +144,23 @@ public class FilesystemCommandParserTest {
     assertEquals(2, command.getPaths().size());
     assertEquals("/db1/table1/tag1", command.getPaths().get(0));
     assertEquals("/db1/table1/s1", command.getPaths().get(1));
+  }
+
+  @Test
+  public void parseWriteCommands() {
+    FilesystemCommand mkdir = FilesystemCommandParser.parse("mkdir /db1");
+    assertEquals(FilesystemCommand.Type.MKDIR, mkdir.getType());
+    assertEquals("/db1", mkdir.getPath());
+
+    FilesystemCommand rm = FilesystemCommandParser.parse("rm /db1/table1");
+    assertEquals(FilesystemCommand.Type.RM, rm.getType());
+    assertEquals("/db1/table1", rm.getPath());
+
+    FilesystemCommand mv = FilesystemCommandParser.parse("mv /db1/table1 /db1/table2");
+    assertEquals(FilesystemCommand.Type.MV, mv.getType());
+    assertEquals(2, mv.getPaths().size());
+    assertEquals("/db1/table1", mv.getPaths().get(0));
+    assertEquals("/db1/table2", mv.getPaths().get(1));
   }
 
   @Test

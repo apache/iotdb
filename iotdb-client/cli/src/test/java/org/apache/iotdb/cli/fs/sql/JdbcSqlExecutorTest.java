@@ -68,4 +68,14 @@ public class JdbcSqlExecutorTest {
     verify(resultSet).close();
     verify(statement).close();
   }
+
+  @Test
+  public void executeRunsStatement() throws Exception {
+    when(connection.createStatement()).thenReturn(statement);
+
+    new JdbcSqlExecutor(connection).execute("CREATE DATABASE db1");
+
+    verify(statement).execute("CREATE DATABASE db1");
+    verify(statement).close();
+  }
 }

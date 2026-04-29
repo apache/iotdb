@@ -74,6 +74,10 @@ public abstract class AbstractCli {
   static final String ACCESS_MODE_NAME = "access mode";
   static final String ACCESS_MODE_SQL = "sql";
   static final String ACCESS_MODE_FILESYSTEM = "filesystem";
+  static final String FS_WRITE_MODE_ARGS = "fs_write_mode";
+  static final String FS_WRITE_MODE_NAME = "fs write mode";
+  static final String FS_WRITE_MODE_DISABLED = "disabled";
+  static final String FS_WRITE_MODE_ENABLED = "enabled";
 
   private static final String EXECUTE_ARGS = "e";
 
@@ -141,6 +145,7 @@ public abstract class AbstractCli {
   static String execute;
   static boolean hasExecuteSQL = false;
   static String accessMode = ACCESS_MODE_SQL;
+  static String fsWriteMode = FS_WRITE_MODE_DISABLED;
 
   static Set<String> keywordSet = new HashSet<>();
 
@@ -166,6 +171,7 @@ public abstract class AbstractCli {
     keywordSet.add("-" + ISO8601_ARGS);
     keywordSet.add("-" + RPC_COMPRESS_ARGS);
     keywordSet.add("--" + ACCESS_MODE_ARGS);
+    keywordSet.add("--" + FS_WRITE_MODE_ARGS);
   }
 
   static Options createOptions() {
@@ -238,6 +244,17 @@ public abstract class AbstractCli {
             .build();
     options.addOption(accessMode);
 
+    Option fsWriteMode =
+        Option.builder()
+            .longOpt(FS_WRITE_MODE_ARGS)
+            .argName(FS_WRITE_MODE_NAME)
+            .hasArg()
+            .desc(
+                "Filesystem write mode, supports disabled and enabled. Default is disabled."
+                    + " (optional)")
+            .build();
+    options.addOption(fsWriteMode);
+
     Option isRpcCompressed =
         Option.builder(RPC_COMPRESS_ARGS)
             .argName(RPC_COMPRESS_NAME)
@@ -279,6 +296,24 @@ public abstract class AbstractCli {
 
   static void setAccessMode(String accessMode) {
     AbstractCli.accessMode = accessMode;
+  }
+
+  static String getFsWriteMode(CliContext ctx, CommandLine commandLine) throws ArgsErrorException {
+    String value = commandLine.getOptionValue(FS_WRITE_MODE_ARGS, FS_WRITE_MODE_DISABLED);
+    String normalized = value.toLowerCase(Locale.ROOT);
+    if (FS_WRITE_MODE_DISABLED.equals(normalized) || FS_WRITE_MODE_ENABLED.equals(normalized)) {
+      return normalized;
+    }
+    String msg =
+        String.format(
+            "%s: Unsupported fs write mode '%s'. Supported values are disabled and enabled.",
+            IOTDB, value);
+    ctx.getPrinter().println(msg);
+    throw new ArgsErrorException(msg);
+  }
+
+  static void setFsWriteMode(String fsWriteMode) {
+    AbstractCli.fsWriteMode = fsWriteMode;
   }
 
   static String checkRequiredArg(

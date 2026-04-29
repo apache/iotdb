@@ -72,6 +72,32 @@ public class CliFilesystemModeTest {
   }
 
   @Test
+  public void createFilesystemShellUsesWriteModeForTableDialect() throws Exception {
+    when(connection.getSqlDialect()).thenReturn("table");
+    when(connection.createStatement()).thenReturn(statement);
+    AbstractCli.setFsWriteMode(AbstractCli.FS_WRITE_MODE_ENABLED);
+    try {
+      FilesystemShell shell = Cli.createFilesystemShell(ctx, connection);
+      shell.execute("mkdir /db1");
+    } finally {
+      AbstractCli.setFsWriteMode(AbstractCli.FS_WRITE_MODE_DISABLED);
+    }
+
+    verify(statement).execute("CREATE DATABASE db1");
+  }
+
+  @Test
+  public void createFilesystemShellRejectsWriteWhenWriteModeDisabled() throws Exception {
+    when(connection.getSqlDialect()).thenReturn("table");
+    AbstractCli.setFsWriteMode(AbstractCli.FS_WRITE_MODE_DISABLED);
+
+    FilesystemShell shell = Cli.createFilesystemShell(ctx, connection);
+    shell.execute("mkdir /db1");
+
+    org.junit.Assert.assertTrue(out.toString().contains("Read-only file system"));
+  }
+
+  @Test
   public void createFilesystemShellUsesTreeProviderForTreeDialect() throws Exception {
     when(connection.getSqlDialect()).thenReturn("tree");
     mockSingleColumnQuery("SHOW CHILD PATHS root.sg", "ChildPaths", "root.sg.d1");

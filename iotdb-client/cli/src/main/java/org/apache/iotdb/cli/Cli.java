@@ -20,9 +20,12 @@
 package org.apache.iotdb.cli;
 
 import org.apache.iotdb.cli.fs.FilesystemShell;
+import org.apache.iotdb.cli.fs.provider.FilesystemMutationProvider;
 import org.apache.iotdb.cli.fs.provider.FilesystemSchemaProvider;
+import org.apache.iotdb.cli.fs.provider.TableFilesystemMutationProvider;
 import org.apache.iotdb.cli.fs.provider.TableFilesystemSchemaProvider;
 import org.apache.iotdb.cli.fs.provider.TreeFilesystemSchemaProvider;
+import org.apache.iotdb.cli.fs.provider.UnsupportedFilesystemMutationProvider;
 import org.apache.iotdb.cli.fs.sql.JdbcSqlExecutor;
 import org.apache.iotdb.cli.type.ExitType;
 import org.apache.iotdb.cli.utils.CliContext;
@@ -145,6 +148,7 @@ public class Cli extends AbstractCli {
         setSqlDialect(commandLine.getOptionValue(Config.SQL_DIALECT));
       }
       setAccessMode(getAccessMode(ctx, commandLine));
+      setFsWriteMode(getFsWriteMode(ctx, commandLine));
     } catch (ArgsErrorException e) {
       ctx.getPrinter()
           .println(IOTDB_ERROR_PREFIX + ": Input params error because " + e.getMessage());
@@ -224,6 +228,11 @@ public class Cli extends AbstractCli {
           .println(
               IOTDB_ERROR_PREFIX + ": Can't execute filesystem command because " + e.getMessage());
       ctx.exit(CODE_ERROR);
+    } catch (TException e) {
+      ctx.getPrinter()
+          .println(
+              IOTDB_ERROR_PREFIX + ": Can't execute filesystem command because " + e.getMessage());
+      ctx.exit(CODE_ERROR);
     }
   }
 
@@ -264,12 +273,16 @@ public class Cli extends AbstractCli {
   static FilesystemShell createFilesystemShell(CliContext ctx, IoTDBConnection connection) {
     JdbcSqlExecutor executor = new JdbcSqlExecutor(connection);
     FilesystemSchemaProvider provider;
+    FilesystemMutationProvider mutationProvider;
     if (Constant.TABLE_DIALECT.equalsIgnoreCase(connection.getSqlDialect())) {
       provider = new TableFilesystemSchemaProvider(executor);
+      mutationProvider = new TableFilesystemMutationProvider(executor);
     } else {
       provider = new TreeFilesystemSchemaProvider(executor);
+      mutationProvider = new UnsupportedFilesystemMutationProvider();
     }
-    return new FilesystemShell(ctx, provider);
+    return new FilesystemShell(
+        ctx, provider, mutationProvider, FS_WRITE_MODE_ENABLED.equals(fsWriteMode));
   }
 
   private static boolean readerReadLine(CliContext ctx, IoTDBConnection connection) {
