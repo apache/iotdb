@@ -24,6 +24,13 @@ public class PipeSourceConstant {
   public static final String EXTRACTOR_KEY = "extractor";
   public static final String SOURCE_KEY = "source";
 
+  public static final String EXTRACTOR_IOTDB_USER_KEY = "extractor.user";
+  public static final String SOURCE_IOTDB_USER_KEY = "source.user";
+  public static final String EXTRACTOR_IOTDB_USERNAME_KEY = "extractor.username";
+  public static final String SOURCE_IOTDB_USERNAME_KEY = "source.username";
+  public static final String EXTRACTOR_IOTDB_PASSWORD_KEY = "extractor.password";
+  public static final String SOURCE_IOTDB_PASSWORD_KEY = "source.password";
+
   public static final String EXTRACTOR_INCLUSION_KEY = "extractor.inclusion";
   public static final String SOURCE_INCLUSION_KEY = "source.inclusion";
   public static final String EXTRACTOR_INCLUSION_DEFAULT_VALUE = "data.insert";

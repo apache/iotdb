@@ -22,6 +22,7 @@ package org.apache.iotdb.confignode.procedure.impl.subscription.subscription;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
+import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerMeta;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
@@ -89,7 +90,11 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionAndP
     subscriptionInfo.get().validateBeforeSubscribe(subscribeReq);
 
     // Construct AlterConsumerGroupProcedure
+    final String consumerId = subscribeReq.getConsumerId();
     final String consumerGroupId = subscribeReq.getConsumerGroupId();
+    final ConsumerGroupMeta consumerGroupMeta =
+        subscriptionInfo.get().getConsumerGroupMeta(consumerGroupId);
+    final ConsumerMeta consumerMeta = consumerGroupMeta.getConsumerMeta(consumerId);
     final ConsumerGroupMeta updatedConsumerGroupMeta =
         subscriptionInfo.get().deepCopyConsumerGroupMeta(consumerGroupId);
     updatedConsumerGroupMeta.addSubscription(
@@ -110,7 +115,9 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionAndP
             new CreatePipeProcedureV2(
                 new TCreatePipeReq()
                     .setPipeName(pipeName)
-                    .setExtractorAttributes(topicMeta.generateExtractorAttributes())
+                    .setExtractorAttributes(
+                        topicMeta.generateExtractorAttributes(
+                            consumerMeta.getUsername(), consumerMeta.getSubscriptionAuthPassword()))
                     .setProcessorAttributes(topicMeta.generateProcessorAttributes())
                     .setConnectorAttributes(topicMeta.generateConnectorAttributes(consumerGroupId)),
                 pipeTaskInfo));

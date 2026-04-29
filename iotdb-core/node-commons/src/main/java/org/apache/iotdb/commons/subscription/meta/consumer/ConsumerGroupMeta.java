@@ -136,6 +136,10 @@ public class ConsumerGroupMeta {
     return consumerIdToConsumerMeta.containsKey(consumerId);
   }
 
+  public ConsumerMeta getConsumerMeta(final String consumerId) {
+    return consumerIdToConsumerMeta.get(consumerId);
+  }
+
   public boolean isEmpty() {
     // When there are no consumers in a consumer group, it means that the ConsumerGroupMeta is
     // empty, and at this time, the topicNameToSubscribedConsumerIdSet is also empty.

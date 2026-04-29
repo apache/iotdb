@@ -258,6 +258,12 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
     }
 
     @Override
+    public Builder encryptedPassword(final String encryptedPassword) {
+      super.encryptedPassword(encryptedPassword);
+      return this;
+    }
+
+    @Override
     public Builder consumerId(final String consumerId) {
       super.consumerId(consumerId);
       return this;

@@ -32,6 +32,7 @@ import org.apache.iotdb.db.queryengine.common.DeviceContext;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
+import org.apache.iotdb.db.queryengine.exception.MemoryNotEnoughException;
 import org.apache.iotdb.db.queryengine.metric.DriverSchedulerMetricSet;
 import org.apache.iotdb.db.queryengine.metric.QueryRelatedResourceMetricSet;
 import org.apache.iotdb.db.queryengine.metric.QueryResourceMetricSet;
@@ -152,6 +153,7 @@ public class FragmentInstanceContext extends QueryContext {
   private long unclosedUnseqFileNum = 0;
   private long closedSeqFileNum = 0;
   private long closedUnseqFileNum = 0;
+  private boolean highestPriority = false;
 
   public static FragmentInstanceContext createFragmentInstanceContext(
       FragmentInstanceId id, FragmentInstanceStateMachine stateMachine, SessionInfo sessionInfo) {
@@ -898,9 +900,22 @@ public class FragmentInstanceContext extends QueryContext {
                 memoryReservationManager.releaseMemoryVirtually(tvList.getReservedMemoryBytes());
             FragmentInstanceContext queryContext =
                 (FragmentInstanceContext) queryContextSet.iterator().next();
-            queryContext
-                .getMemoryReservationContext()
-                .reserveMemoryVirtually(releasedBytes.left, releasedBytes.right);
+            try {
+              queryContext
+                  .getMemoryReservationContext()
+                  .reserveMemoryVirtually(releasedBytes.left, releasedBytes.right);
+            } catch (MemoryNotEnoughException ex) {
+              LOGGER.warn(
+                  "MemoryNotEnoughException when transferring TVList ownership from query {} to another query {}.",
+                  this.getId(),
+                  queryContext.getId());
+            } catch (RuntimeException ex) {
+              LOGGER.warn(
+                  "Unexpected Exception when transferring TVList ownership from query {} to another query {}.",
+                  this.getId(),
+                  queryContext.getId(),
+                  ex);
+            }
 
             if (LOGGER.isDebugEnabled()) {
               LOGGER.debug(
@@ -1126,6 +1141,18 @@ public class FragmentInstanceContext extends QueryContext {
 
   public boolean ignoreNotExistsDevice() {
     return ignoreNotExistsDevice;
+  }
+
+  /**
+   * Same flag as {@link
+   * org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis#needSetHighestPriority()}.
+   */
+  public boolean isHighestPriority() {
+    return highestPriority;
+  }
+
+  public void setHighestPriority(boolean highestPriority) {
+    this.highestPriority = highestPriority;
   }
 
   public boolean isSingleSourcePath() {

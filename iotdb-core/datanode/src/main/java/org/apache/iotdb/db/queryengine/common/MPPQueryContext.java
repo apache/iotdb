@@ -100,6 +100,12 @@ public class MPPQueryContext {
 
   private boolean userQuery = false;
 
+  /**
+   * When true (e.g. SHOW QUERIES), operator and exchange memory may use fallback when pool is
+   * insufficient. Set from analysis via {@link #setNeedSetHighestPriority(boolean)}.
+   */
+  private boolean needSetHighestPriority = false;
+
   @TestOnly
   public MPPQueryContext(QueryId queryId) {
     this.queryId = queryId;
@@ -404,6 +410,14 @@ public class MPPQueryContext {
 
   public void setUserQuery(boolean userQuery) {
     this.userQuery = userQuery;
+  }
+
+  public boolean needSetHighestPriority() {
+    return needSetHighestPriority;
+  }
+
+  public void setNeedSetHighestPriority(boolean needSetHighestPriority) {
+    this.needSetHighestPriority = needSetHighestPriority;
   }
 
   public String getClientHostName() {

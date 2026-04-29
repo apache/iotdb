@@ -55,6 +55,7 @@ import org.apache.iotdb.db.queryengine.plan.parser.StatementGenerator;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.schemaengine.SchemaEngine;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.utils.CommonUtils;
@@ -102,7 +103,7 @@ public class RestApiServiceImpl extends RestApiService {
   public Response executeFastLastQueryStatement(
       PrefixPathList prefixPathList, SecurityContext securityContext) {
     Long queryId = null;
-    Statement statement = null;
+    QueryStatement statement = null;
     boolean finish = false;
     long startTime = System.nanoTime();
 
@@ -113,27 +114,30 @@ public class RestApiServiceImpl extends RestApiService {
           new PartialPath(prefixPathList.getPrefixPaths().toArray(new String[0]));
       final Map<PartialPath, Map<String, TimeValuePair>> resultMap = new HashMap<>();
 
+      // Check permission, the cost is rather low because the req only contains one prefix path
+      final IClientSession clientSession = SESSION_MANAGER.getCurrSession();
+      final TSLastDataQueryReq tsLastDataQueryReq =
+          FastLastHandler.createTSLastDataQueryReq(clientSession, prefixPathList);
+      statement = StatementGenerator.createStatement(tsLastDataQueryReq);
+
+      final Response response = authorizationHandler.checkAuthority(securityContext, statement);
+      if (response != null) {
+        return response;
+      }
+
       final String prefixString = prefixPath.toString();
       for (ISchemaRegion region : SchemaEngine.getInstance().getAllSchemaRegions()) {
         if (!prefixString.startsWith(region.getDatabaseFullPath())
             && !region.getDatabaseFullPath().startsWith(prefixString)) {
           continue;
         }
-        region.fillLastQueryMap(prefixPath, resultMap);
+        region.fillLastQueryMap(prefixPath, resultMap, statement.getAuthorityScope());
       }
       // Check cache first
       if (!DataNodeSchemaCache.getInstance().getDeviceSchemaCache().getLastCache(resultMap)) {
-        IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
-        TSLastDataQueryReq tsLastDataQueryReq =
-            FastLastHandler.createTSLastDataQueryReq(clientSession, prefixPathList);
-        statement = StatementGenerator.createStatement(tsLastDataQueryReq);
-
         if (ExecuteStatementHandler.validateStatement(statement)) {
           return FastLastHandler.buildErrorResponse(TSStatusCode.EXECUTE_STATEMENT_ERROR);
         }
-
-        Optional.ofNullable(authorizationHandler.checkAuthority(securityContext, statement))
-            .ifPresent(Response.class::cast);
 
         queryId = SESSION_MANAGER.requestQueryId();
         SessionInfo sessionInfo = SESSION_MANAGER.getSessionInfo(clientSession);

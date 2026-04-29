@@ -75,6 +75,7 @@ public abstract class TCompressedElasticFramedTransport extends TElasticFramedTr
       writeCompressBuffer.resizeIfNecessary(maxCompressedLength);
       int compressedLength =
           compress(writeBuffer.getBuffer(), 0, length, writeCompressBuffer.getBuffer(), 0);
+      checkWriteFrameSize(compressedLength);
       RpcStat.writeCompressedBytes.addAndGet(compressedLength);
       TFramedTransport.encodeFrameSize(compressedLength, i32buf);
       underlying.write(i32buf, 0, 4);

@@ -464,6 +464,11 @@ public class PipeDescriptor {
             properties.getProperty(
                 "pipe_receiver_req_decompressed_max_length_in_bytes",
                 String.valueOf(config.getPipeReceiverReqDecompressedMaxLengthInBytes()))));
+    config.setPipeAirGapReceiverMaxPayloadSizeInBytes(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_air_gap_receiver_max_payload_size_in_bytes",
+                String.valueOf(config.getPipeAirGapReceiverMaxPayloadSizeInBytes()))));
     config.setPipeReceiverLoadConversionEnabled(
         Boolean.parseBoolean(
             properties.getProperty(

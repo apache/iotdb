@@ -199,9 +199,20 @@ public class TElasticFramedTransport extends TTransport {
     readBuffer.fill(underlying, size);
   }
 
+  protected void checkWriteFrameSize(int size) throws TTransportException {
+    if (size <= thriftMaxFrameSize) {
+      return;
+    }
+    close();
+    throw new TTransportException(
+        TTransportException.CORRUPTED_DATA,
+        "Frame size (" + size + ") larger than protect max size (" + thriftMaxFrameSize + ")!");
+  }
+
   @Override
   public void flush() throws TTransportException {
     int length = writeBuffer.getPos();
+    checkWriteFrameSize(length);
     TFramedTransport.encodeFrameSize(length, i32buf);
     underlying.write(i32buf, 0, 4);
     underlying.write(writeBuffer.getBuffer(), 0, length);
