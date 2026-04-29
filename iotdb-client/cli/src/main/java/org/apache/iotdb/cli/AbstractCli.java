@@ -48,6 +48,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
 
@@ -68,6 +69,11 @@ public abstract class AbstractCli {
 
   static final String USERNAME_ARGS = "u";
   static final String USERNAME_NAME = "username";
+
+  static final String ACCESS_MODE_ARGS = "access_mode";
+  static final String ACCESS_MODE_NAME = "access mode";
+  static final String ACCESS_MODE_SQL = "sql";
+  static final String ACCESS_MODE_FILESYSTEM = "filesystem";
 
   private static final String EXECUTE_ARGS = "e";
 
@@ -134,6 +140,7 @@ public abstract class AbstractCli {
 
   static String execute;
   static boolean hasExecuteSQL = false;
+  static String accessMode = ACCESS_MODE_SQL;
 
   static Set<String> keywordSet = new HashSet<>();
 
@@ -158,6 +165,7 @@ public abstract class AbstractCli {
     keywordSet.add("-" + EXECUTE_ARGS);
     keywordSet.add("-" + ISO8601_ARGS);
     keywordSet.add("-" + RPC_COMPRESS_ARGS);
+    keywordSet.add("--" + ACCESS_MODE_ARGS);
   }
 
   static Options createOptions() {
@@ -221,6 +229,15 @@ public abstract class AbstractCli {
             .build();
     options.addOption(execute);
 
+    Option accessMode =
+        Option.builder()
+            .longOpt(ACCESS_MODE_ARGS)
+            .argName(ACCESS_MODE_NAME)
+            .hasArg()
+            .desc("Access mode, supports sql and filesystem. Default is sql. (optional)")
+            .build();
+    options.addOption(accessMode);
+
     Option isRpcCompressed =
         Option.builder(RPC_COMPRESS_ARGS)
             .argName(RPC_COMPRESS_NAME)
@@ -244,6 +261,24 @@ public abstract class AbstractCli {
             .build();
     options.addOption(sqlDialect);
     return options;
+  }
+
+  static String getAccessMode(CliContext ctx, CommandLine commandLine) throws ArgsErrorException {
+    String value = commandLine.getOptionValue(ACCESS_MODE_ARGS, ACCESS_MODE_SQL);
+    String normalized = value.toLowerCase(Locale.ROOT);
+    if (ACCESS_MODE_SQL.equals(normalized) || ACCESS_MODE_FILESYSTEM.equals(normalized)) {
+      return normalized;
+    }
+    String msg =
+        String.format(
+            "%s: Unsupported access mode '%s'. Supported values are sql and filesystem.",
+            IOTDB, value);
+    ctx.getPrinter().println(msg);
+    throw new ArgsErrorException(msg);
+  }
+
+  static void setAccessMode(String accessMode) {
+    AbstractCli.accessMode = accessMode;
   }
 
   static String checkRequiredArg(

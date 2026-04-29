@@ -116,6 +116,45 @@ public class AbstractCliTest {
   }
 
   @Test
+  public void testAccessModeDefaultSql() throws ParseException, ArgsErrorException {
+    CliContext ctx = new CliContext(System.in, System.out, System.err, ExitType.EXCEPTION);
+    Options options = AbstractCli.createOptions();
+    CommandLineParser parser = new DefaultParser();
+    CommandLine commandLine = parser.parse(options, new String[] {"-u", "root"});
+
+    assertEquals(AbstractCli.ACCESS_MODE_SQL, AbstractCli.getAccessMode(ctx, commandLine));
+  }
+
+  @Test
+  public void testAccessModeFilesystem() throws ParseException, ArgsErrorException {
+    CliContext ctx = new CliContext(System.in, System.out, System.err, ExitType.EXCEPTION);
+    Options options = AbstractCli.createOptions();
+    CommandLineParser parser = new DefaultParser();
+    CommandLine commandLine =
+        parser.parse(options, new String[] {"-u", "root", "--access_mode", "filesystem"});
+
+    assertEquals(AbstractCli.ACCESS_MODE_FILESYSTEM, AbstractCli.getAccessMode(ctx, commandLine));
+  }
+
+  @Test
+  public void testAccessModeRejectsInvalidValue() throws ParseException {
+    CliContext ctx = new CliContext(System.in, System.out, System.err, ExitType.EXCEPTION);
+    Options options = AbstractCli.createOptions();
+    CommandLineParser parser = new DefaultParser();
+    CommandLine commandLine =
+        parser.parse(options, new String[] {"-u", "root", "--access_mode", "unknown"});
+
+    try {
+      AbstractCli.getAccessMode(ctx, commandLine);
+      fail();
+    } catch (ArgsErrorException e) {
+      assertEquals(
+          "IoTDB: Unsupported access mode 'unknown'. Supported values are sql and filesystem.",
+          e.getMessage());
+    }
+  }
+
+  @Test
   public void testRemovePasswordArgs() {
     AbstractCli.init();
     String[] input = new String[] {"-h", "127.0.0.1", "-p", "6667", "-u", "root", "-pw", "root"};

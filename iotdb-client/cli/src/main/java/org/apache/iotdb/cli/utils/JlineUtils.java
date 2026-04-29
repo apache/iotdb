@@ -21,9 +21,11 @@ package org.apache.iotdb.cli.utils;
 
 import org.apache.iotdb.db.qp.sql.SqlLexer;
 
+import org.jline.reader.Completer;
 import org.jline.reader.LineReader;
 import org.jline.reader.LineReader.Option;
 import org.jline.reader.LineReaderBuilder;
+import org.jline.reader.impl.LineReaderImpl;
 import org.jline.reader.impl.completer.StringsCompleter;
 import org.jline.terminal.Size;
 import org.jline.terminal.Terminal;
@@ -55,6 +57,12 @@ public class JlineUtils {
           .collect(Collectors.toSet());
 
   public static LineReader getLineReader(CliContext ctx, String username, String host, String port)
+      throws IOException {
+    return getLineReader(ctx, username, host, port, "sql");
+  }
+
+  public static LineReader getLineReader(
+      CliContext ctx, String username, String host, String port, String accessMode)
       throws IOException {
     Logger.getLogger("org.jline").setLevel(Level.OFF);
 
@@ -107,7 +115,7 @@ public class JlineUtils {
     // avoid incorrect inputs.
     //    builder.highlighter(new IoTDBSyntaxHighlighter());
 
-    builder.completer(new StringsCompleter(SQL_KEYWORDS));
+    builder.completer(createCompleter(accessMode));
 
     builder.option(Option.CASE_INSENSITIVE_SEARCH, true);
     builder.option(Option.CASE_INSENSITIVE, true);
@@ -139,5 +147,19 @@ public class JlineUtils {
     // Enable autosuggestions
     autosuggestionWidgets.enable();
     return lineReader;
+  }
+
+  static Completer createCompleter(String accessMode) {
+    if ("filesystem".equalsIgnoreCase(accessMode)) {
+      return new StringsCompleter(
+          "pwd", "ls", "ll", "cd", "stat", "cat", "paste", "tree", "help", "exit", "quit");
+    }
+    return new StringsCompleter(SQL_KEYWORDS);
+  }
+
+  public static void setCompleter(LineReader lineReader, Completer completer) {
+    if (lineReader instanceof LineReaderImpl) {
+      ((LineReaderImpl) lineReader).setCompleter(completer);
+    }
   }
 }

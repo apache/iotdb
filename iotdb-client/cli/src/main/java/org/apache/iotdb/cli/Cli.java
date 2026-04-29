@@ -19,11 +19,17 @@
 
 package org.apache.iotdb.cli;
 
+import org.apache.iotdb.cli.fs.FilesystemShell;
+import org.apache.iotdb.cli.fs.provider.FilesystemSchemaProvider;
+import org.apache.iotdb.cli.fs.provider.TableFilesystemSchemaProvider;
+import org.apache.iotdb.cli.fs.provider.TreeFilesystemSchemaProvider;
+import org.apache.iotdb.cli.fs.sql.JdbcSqlExecutor;
 import org.apache.iotdb.cli.type.ExitType;
 import org.apache.iotdb.cli.utils.CliContext;
 import org.apache.iotdb.cli.utils.JlineUtils;
 import org.apache.iotdb.exception.ArgsErrorException;
 import org.apache.iotdb.jdbc.Config;
+import org.apache.iotdb.jdbc.Constant;
 import org.apache.iotdb.jdbc.IoTDBConnection;
 import org.apache.iotdb.rpc.RpcUtils;
 
@@ -98,7 +104,7 @@ public class Cli extends AbstractCli {
       ctx.getPrinter().println(IOTDB_ERROR_PREFIX + ": Exit cli with error: " + e.getMessage());
       ctx.exit(CODE_ERROR);
     }
-    LineReader lineReader = JlineUtils.getLineReader(ctx, username, host, port);
+    LineReader lineReader = JlineUtils.getLineReader(ctx, username, host, port, accessMode);
     if (ctx.isDisableCliHistory()) {
       lineReader.getVariables().put(LineReader.DISABLE_HISTORY, Boolean.TRUE);
     }
@@ -138,6 +144,11 @@ public class Cli extends AbstractCli {
       if (commandLine.hasOption(Config.SQL_DIALECT)) {
         setSqlDialect(commandLine.getOptionValue(Config.SQL_DIALECT));
       }
+      setAccessMode(getAccessMode(ctx, commandLine));
+    } catch (ArgsErrorException e) {
+      ctx.getPrinter()
+          .println(IOTDB_ERROR_PREFIX + ": Input params error because " + e.getMessage());
+      return false;
     } catch (ParseException e) {
       ctx.getPrinter()
           .println(
@@ -170,7 +181,11 @@ public class Cli extends AbstractCli {
       constructProperties();
       if (hasExecuteSQL && password != null) {
         ctx.getLineReader().getVariables().put(LineReader.DISABLE_HISTORY, Boolean.TRUE);
-        executeSql(ctx);
+        if (ACCESS_MODE_FILESYSTEM.equals(accessMode)) {
+          executeFilesystemCommand(ctx);
+        } else {
+          executeSql(ctx);
+        }
       }
       receiveCommands(ctx);
     } catch (Exception e) {
@@ -195,6 +210,23 @@ public class Cli extends AbstractCli {
     }
   }
 
+  private static void executeFilesystemCommand(CliContext ctx) {
+    try (IoTDBConnection connection =
+        (IoTDBConnection)
+            DriverManager.getConnection(Config.IOTDB_URL_PREFIX + host + ":" + port + "/", info)) {
+      connection.setQueryTimeout(queryTimeout);
+      properties = connection.getServerProperties();
+      timestampPrecision = properties.getTimestampPrecision();
+      createFilesystemShell(ctx, connection).execute(execute);
+      ctx.exit(CODE_OK);
+    } catch (SQLException e) {
+      ctx.getPrinter()
+          .println(
+              IOTDB_ERROR_PREFIX + ": Can't execute filesystem command because " + e.getMessage());
+      ctx.exit(CODE_ERROR);
+    }
+  }
+
   private static void receiveCommands(CliContext ctx) throws TException {
     try (IoTDBConnection connection =
         (IoTDBConnection)
@@ -206,6 +238,17 @@ public class Cli extends AbstractCli {
       echoStarting(ctx);
       displayLogo(ctx, properties.getLogo(), properties.getVersion(), properties.getBuildInfo());
       ctx.getPrinter().println(String.format("Successfully login at %s:%s", host, port));
+      if (ACCESS_MODE_FILESYSTEM.equals(accessMode)) {
+        FilesystemShell shell = createFilesystemShell(ctx, connection);
+        JlineUtils.setCompleter(ctx.getLineReader(), shell.createCompleter());
+        while (true) {
+          boolean readLine = filesystemReaderReadLine(ctx, shell);
+          if (readLine) {
+            break;
+          }
+        }
+        return;
+      }
       while (true) {
         boolean readLine = readerReadLine(ctx, connection);
         if (readLine) {
@@ -216,6 +259,17 @@ public class Cli extends AbstractCli {
       ctx.getErr().printf("%s: %s%n", IOTDB_ERROR_PREFIX, e.getMessage());
       ctx.exit(CODE_ERROR);
     }
+  }
+
+  static FilesystemShell createFilesystemShell(CliContext ctx, IoTDBConnection connection) {
+    JdbcSqlExecutor executor = new JdbcSqlExecutor(connection);
+    FilesystemSchemaProvider provider;
+    if (Constant.TABLE_DIALECT.equalsIgnoreCase(connection.getSqlDialect())) {
+      provider = new TableFilesystemSchemaProvider(executor);
+    } else {
+      provider = new TreeFilesystemSchemaProvider(executor);
+    }
+    return new FilesystemShell(ctx, provider);
   }
 
   private static boolean readerReadLine(CliContext ctx, IoTDBConnection connection) {
@@ -239,6 +293,33 @@ public class Cli extends AbstractCli {
       throw e;
     }
     return false;
+  }
+
+  static boolean filesystemReaderReadLine(CliContext ctx, FilesystemShell shell) {
+    String s = "";
+    try {
+      s = ctx.getLineReader().readLine(cliPrefix + ":fs> ", null);
+      return !shell.execute(s);
+    } catch (SQLException e) {
+      ctx.getPrinter().println(filesystemCommandName(s) + ": " + e.getMessage());
+    } catch (UserInterruptException e) {
+      readLine(ctx);
+    } catch (EndOfFileException e) {
+      ctx.exit(CODE_OK);
+    } catch (IllegalArgumentException e) {
+      if (e.getMessage().contains("history")) {
+        return false;
+      }
+      throw e;
+    }
+    return false;
+  }
+
+  private static String filesystemCommandName(String input) {
+    if (input == null || input.trim().isEmpty()) {
+      return "filesystem";
+    }
+    return input.trim().split("\\s+", 2)[0];
   }
 
   private static void readLine(CliContext ctx) {
