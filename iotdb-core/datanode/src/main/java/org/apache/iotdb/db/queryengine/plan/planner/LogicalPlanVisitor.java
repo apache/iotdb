@@ -585,8 +585,8 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
       planBuilder =
           planBuilder
               .planDeviceRegionScan(analysis.getDevicePathToContextMap(), false)
-              .planLimit(showDevicesStatement.getLimit())
-              .planOffset(showDevicesStatement.getOffset());
+              .planOffset(showDevicesStatement.getOffset())
+              .planLimit(showDevicesStatement.getLimit());
       return planBuilder.getRoot();
     }
 

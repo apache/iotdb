@@ -275,7 +275,10 @@ public class LoadTsFileScheduler implements IScheduler {
         final StringBuilder failedTsFiles =
             new StringBuilder(
                 !tsFileNodeList.isEmpty()
-                    ? tsFileNodeList.get(0).getTsFileResource().getTsFilePath()
+                    ? tsFileNodeList
+                        .get(failedTsFileNodeIndexes.get(0))
+                        .getTsFileResource()
+                        .getTsFilePath()
                     : "");
         final ListIterator<Integer> iterator = failedTsFileNodeIndexes.listIterator(1);
         while (iterator.hasNext()) {

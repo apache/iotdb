@@ -159,7 +159,7 @@ public class LoadTsFileCostMetricsSet implements IMetricSet {
                     stage));
 
     metricService.remove(
-        MetricType.RATE,
+        MetricType.COUNTER,
         Metric.LOAD_DISK_IO.toString(),
         Tag.NAME.toString(),
         String.valueOf(IoTDBDescriptor.getInstance().getConfig().getDataNodeId()));

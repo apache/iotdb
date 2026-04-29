@@ -25,11 +25,13 @@ import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.RecoverProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.SimpleProgressIndex;
+import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeType;
+import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipePlanV2;
@@ -41,8 +43,10 @@ import org.apache.iotdb.confignode.procedure.impl.pipe.AbstractOperatePipeProced
 import org.apache.iotdb.confignode.procedure.impl.pipe.PipeTaskOperation;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.pipe.api.PipePlugin;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -53,6 +57,8 @@ import org.slf4j.LoggerFactory;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -136,7 +142,68 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
             createPipeRequest.getProcessorAttributes(),
             createPipeRequest.getConnectorAttributes());
 
+    checkAndEnrichSourceAuthentication(env, createPipeRequest.getExtractorAttributes());
+
     return pipeTaskInfo.get().checkBeforeCreatePipe(createPipeRequest);
+  }
+
+  public static void checkAndEnrichSourceAuthentication(
+      final ConfigNodeProcedureEnv env, final Map<String, String> sourceAttributes) {
+    if (Objects.isNull(sourceAttributes)) {
+      return;
+    }
+    final PipeParameters sourceParameters = new PipeParameters(sourceAttributes);
+
+    final String pluginName =
+        sourceParameters
+            .getStringOrDefault(
+                Arrays.asList(PipeSourceConstant.EXTRACTOR_KEY, PipeSourceConstant.SOURCE_KEY),
+                BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
+            .toLowerCase();
+
+    if (!pluginName.equals(BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
+        && !pluginName.equals(BuiltinPipePlugin.IOTDB_SOURCE.getPipePluginName())) {
+      return;
+    }
+
+    if (sourceParameters.hasAttribute(PipeSourceConstant.EXTRACTOR_IOTDB_USER_KEY)
+        || sourceParameters.hasAttribute(PipeSourceConstant.SOURCE_IOTDB_USER_KEY)
+        || sourceParameters.hasAttribute(PipeSourceConstant.EXTRACTOR_IOTDB_USERNAME_KEY)
+        || sourceParameters.hasAttribute(PipeSourceConstant.SOURCE_IOTDB_USERNAME_KEY)
+        || sourceParameters.hasAttribute(PipeSourceConstant.EXTRACTOR_IOTDB_PASSWORD_KEY)
+        || sourceParameters.hasAttribute(PipeSourceConstant.SOURCE_IOTDB_PASSWORD_KEY)) {
+      final String username =
+          sourceParameters.getStringByKeys(
+              PipeSourceConstant.EXTRACTOR_IOTDB_USER_KEY,
+              PipeSourceConstant.SOURCE_IOTDB_USER_KEY,
+              PipeSourceConstant.EXTRACTOR_IOTDB_USERNAME_KEY,
+              PipeSourceConstant.SOURCE_IOTDB_USERNAME_KEY);
+      final String password =
+          sourceParameters.getStringByKeys(
+              PipeSourceConstant.EXTRACTOR_IOTDB_PASSWORD_KEY,
+              PipeSourceConstant.SOURCE_IOTDB_PASSWORD_KEY);
+      String hashedPassword = null;
+      if (Objects.nonNull(password)) {
+        final TPermissionInfoResp loginResp =
+            env.getConfigManager().getPermissionManager().login(username, password, true);
+        if (Objects.nonNull(loginResp)
+            && Objects.nonNull(loginResp.getStatus())
+            && loginResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          hashedPassword = password;
+        }
+      }
+      if (Objects.isNull(hashedPassword)) {
+        hashedPassword =
+            env.getConfigManager().getPermissionManager().login4Pipe(username, password);
+      }
+      if (Objects.isNull(hashedPassword)) {
+        throw new PipeException("Authentication failed.");
+      }
+      sourceParameters.addOrReplaceEquivalentAttributes(
+          new PipeParameters(
+              Collections.singletonMap(
+                  PipeSourceConstant.SOURCE_IOTDB_PASSWORD_KEY, hashedPassword)));
+    }
   }
 
   @Override

@@ -86,11 +86,15 @@ final class SubscriptionProvider extends SubscriptionSession {
   private final long heartbeatIntervalMs;
   private final int connectionTimeoutInMs;
   private int dataNodeId;
+  private final String username;
+  private final String password;
+  private final String encryptedPassword;
 
   SubscriptionProvider(
       final TEndPoint endPoint,
       final String username,
       final String password,
+      final String encryptedPassword,
       final String consumerId,
       final String consumerGroupId,
       final int thriftMaxFrameSize,
@@ -101,6 +105,9 @@ final class SubscriptionProvider extends SubscriptionSession {
     this.endPoint = endPoint;
     this.consumerId = consumerId;
     this.consumerGroupId = consumerGroupId;
+    this.username = username;
+    this.password = password;
+    this.encryptedPassword = encryptedPassword;
     this.heartbeatIntervalMs = heartbeatIntervalMs;
     this.connectionTimeoutInMs = connectionTimeoutInMs;
   }
@@ -149,6 +156,11 @@ final class SubscriptionProvider extends SubscriptionSession {
     final Map<String, String> consumerAttributes = new HashMap<>();
     consumerAttributes.put(ConsumerConstant.CONSUMER_GROUP_ID_KEY, consumerGroupId);
     consumerAttributes.put(ConsumerConstant.CONSUMER_ID_KEY, consumerId);
+    consumerAttributes.put(ConsumerConstant.USERNAME_KEY, username);
+    consumerAttributes.put(ConsumerConstant.PASSWORD_KEY, password);
+    if (encryptedPassword != null) {
+      consumerAttributes.put(ConsumerConstant.ENCRYPTED_PASSWORD_KEY, encryptedPassword);
+    }
     consumerAttributes.put(
         ConsumerConstant.HEARTBEAT_INTERVAL_MS_KEY, String.valueOf(heartbeatIntervalMs));
     consumerAttributes.put(

@@ -1085,12 +1085,13 @@ public class MTreeBelowSGMemoryImpl {
   }
 
   public int fillLastQueryMap(
-      final PartialPath prefixPath, final Map<PartialPath, Map<String, TimeValuePair>> mapToFill)
+      final PartialPath prefixPath,
+      final Map<PartialPath, Map<String, TimeValuePair>> mapToFill,
+      final PathPatternTree scope)
       throws MetadataException {
     final int[] sensorNum = {0};
     try (final EntityUpdater<IMemMNode> updater =
-        new EntityUpdater<IMemMNode>(
-            rootNode, prefixPath, store, true, SchemaConstant.ALL_MATCH_SCOPE) {
+        new EntityUpdater<IMemMNode>(rootNode, prefixPath, store, true, scope) {
 
           @Override
           protected void updateEntity(final IDeviceMNode<IMemMNode> node) {

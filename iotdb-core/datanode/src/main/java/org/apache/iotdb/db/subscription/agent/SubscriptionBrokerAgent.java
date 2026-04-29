@@ -279,7 +279,7 @@ public class SubscriptionBrokerAgent {
    */
   private static class Cache<T> {
 
-    private T value;
+    private volatile T value;
     private volatile boolean valid = false;
     private final Supplier<T> supplier;
 

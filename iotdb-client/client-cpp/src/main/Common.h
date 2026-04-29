@@ -480,5 +480,13 @@ public:
     static std::shared_ptr<TSFetchResultsResp> getTSFetchResultsResp(const TSStatus& status);
 };
 
+class UrlUtils {
+public:
+    UrlUtils() = delete;
+
+    /** Parse host:port; aligns with Java UrlUtils.parseTEndPointIpv4AndIpv6Url plus test edge cases. */
+    static TEndPoint parseTEndPointIpv4AndIpv6Url(const std::string& endPointUrl);
+};
+
 
 #endif

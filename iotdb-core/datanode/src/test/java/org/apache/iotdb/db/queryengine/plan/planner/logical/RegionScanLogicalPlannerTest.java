@@ -224,13 +224,13 @@ public class RegionScanLogicalPlannerTest {
     DeviceRegionScanNode regionScanNode =
         new DeviceRegionScanNode(queryId.genPlanNodeId(), deviceContextMap, false, null);
 
-    LimitNode limitNode = new LimitNode(queryId.genPlanNodeId(), 20);
-    limitNode.addChild(regionScanNode);
     OffsetNode offsetNode = new OffsetNode(queryId.genPlanNodeId(), 10);
-    offsetNode.addChild(limitNode);
+    offsetNode.addChild(regionScanNode);
+    LimitNode limitNode = new LimitNode(queryId.genPlanNodeId(), 20);
+    limitNode.addChild(offsetNode);
 
     PlanNode actualPlan = parseSQLToPlanNode(sql);
-    Assert.assertEquals(actualPlan, offsetNode);
+    Assert.assertEquals(actualPlan, limitNode);
   }
 
   @Test

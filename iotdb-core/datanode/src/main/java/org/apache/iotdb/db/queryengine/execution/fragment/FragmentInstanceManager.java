@@ -158,6 +158,7 @@ public class FragmentInstanceManager {
                                 dataRegion,
                                 instance.getGlobalTimePredicate(),
                                 dataNodeQueryContextMap));
+                context.setHighestPriority(instance.isHighestPriority());
 
                 try {
                   List<PipelineDriverFactory> driverFactories =
@@ -259,6 +260,7 @@ public class FragmentInstanceManager {
                       fragmentInstanceId ->
                           createFragmentInstanceContext(
                               fragmentInstanceId, stateMachine, instance.getSessionInfo()));
+              context.setHighestPriority(instance.isHighestPriority());
 
               try {
                 List<PipelineDriverFactory> driverFactories =

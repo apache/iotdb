@@ -930,7 +930,7 @@ public class NodeManager {
     if (!targetDataNodes.isEmpty()) {
       DataNodeAsyncRequestContext<Object, TSStatus> clientHandler =
           new DataNodeAsyncRequestContext<>(
-              CnToDnAsyncRequestType.SET_CONFIGURATION, req, dataNodeLocationMap);
+              CnToDnAsyncRequestType.SET_CONFIGURATION, req, targetDataNodes);
       CnToDnInternalServiceAsyncRequestManager.getInstance()
           .sendAsyncRequestWithRetry(clientHandler);
       responseList.addAll(clientHandler.getResponseList());

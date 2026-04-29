@@ -114,7 +114,16 @@ public class TsFileInsertionQueryDataContainer extends TsFileInsertionDataContai
       final Map<IDeviceID, Boolean> deviceIsAlignedMap,
       final boolean isWithMod)
       throws IOException {
-    super(pipeName, creationTime, pattern, startTime, endTime, pipeTaskMeta, sourceEvent);
+    super(
+        tsFile,
+        pipeName,
+        creationTime,
+        pattern,
+        startTime,
+        endTime,
+        pipeTaskMeta,
+        sourceEvent,
+        isWithMod);
 
     try {
       currentModifications =
