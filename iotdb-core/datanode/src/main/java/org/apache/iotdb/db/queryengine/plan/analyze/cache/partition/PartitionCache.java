@@ -93,6 +93,10 @@ public class PartitionCache {
       IoTDBDescriptor.getInstance().getMemoryConfig();
   private static final List<String> ROOT_PATH = Arrays.asList("root", "**");
 
+  private static boolean isNeedLastCacheEnabled(final TDatabaseSchema databaseSchema) {
+    return !databaseSchema.isSetNeedLastCache() || databaseSchema.isNeedLastCache();
+  }
+
   /** calculate slotId by device */
   private final String seriesSlotExecutorName = config.getSeriesPartitionExecutorClass();
 
@@ -579,7 +583,7 @@ public class PartitionCache {
     try {
       databaseMap.forEach(
           (database, schema) ->
-              database2NeedLastCacheCache.put(database, schema.isNeedLastCache()));
+              database2NeedLastCacheCache.put(database, isNeedLastCacheEnabled(schema)));
     } finally {
       databaseCacheLock.writeLock().unlock();
     }

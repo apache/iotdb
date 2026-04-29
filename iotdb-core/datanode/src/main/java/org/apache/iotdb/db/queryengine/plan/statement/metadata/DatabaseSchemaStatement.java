@@ -40,6 +40,7 @@ public class DatabaseSchemaStatement extends Statement implements IConfigStateme
   private Integer dataRegionGroupNum = null;
   private boolean enablePrintExceptionLog = true;
   private boolean needLastCache = true;
+  private boolean isNeedLastCacheSet = false;
 
   // Deprecated
   private Integer schemaReplicationFactor = null;
@@ -123,8 +124,13 @@ public class DatabaseSchemaStatement extends Statement implements IConfigStateme
     return needLastCache;
   }
 
+  public boolean isSetNeedLastCache() {
+    return isNeedLastCacheSet;
+  }
+
   public void setNeedLastCache(final boolean needLastCache) {
     this.needLastCache = needLastCache;
+    this.isNeedLastCacheSet = true;
   }
 
   @Override
