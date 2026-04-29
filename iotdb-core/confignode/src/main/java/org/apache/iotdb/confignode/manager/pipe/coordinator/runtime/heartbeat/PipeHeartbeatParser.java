@@ -59,7 +59,7 @@ public class PipeHeartbeatParser {
     this.configManager = configManager;
 
     heartbeatCounter = 0;
-    registeredNodeNumber = 1;
+    registeredNodeNumber = getExpectedHeartbeatNodeCount();
 
     needWriteConsensusOnConfigNodes = new AtomicBoolean(false);
     needPushPipeMetaToDataNodes = new AtomicBoolean(false);
@@ -73,17 +73,8 @@ public class PipeHeartbeatParser {
     if (heartbeatCount % registeredNodeNumber == 0) {
       canSubmitHandleMetaChangeProcedure.set(true);
 
-      // registeredNodeNumber may be changed, update it here when we can submit procedure
-      registeredNodeNumber = configManager.getNodeManager().getRegisteredNodeCount();
-      if (registeredNodeNumber <= 0) {
-        LOGGER.warn(
-            "registeredNodeNumber is {} when parseHeartbeat from node (id={}).",
-            registeredNodeNumber,
-            nodeId);
-        // registeredNodeNumber can not be set to 0 in this class, otherwise may cause
-        // DivideByZeroException
-        registeredNodeNumber = 1;
-      }
+      // The expected reporter set may be changed, update it at the end of the current round.
+      registeredNodeNumber = getExpectedHeartbeatNodeCount();
     }
 
     if (pipeHeartbeat.isEmpty()
@@ -114,19 +105,30 @@ public class PipeHeartbeatParser {
                 if (canSubmitHandleMetaChangeProcedure.get()
                     && (needWriteConsensusOnConfigNodes.get()
                         || needPushPipeMetaToDataNodes.get())) {
-                  configManager
+                  if (configManager
                       .getProcedureManager()
                       .pipeHandleMetaChange(
-                          needWriteConsensusOnConfigNodes.get(), needPushPipeMetaToDataNodes.get());
-
-                  // Reset flags after procedure is submitted
-                  needWriteConsensusOnConfigNodes.set(false);
-                  needPushPipeMetaToDataNodes.set(false);
+                          needWriteConsensusOnConfigNodes.get(),
+                          needPushPipeMetaToDataNodes.get())) {
+                    needWriteConsensusOnConfigNodes.set(false);
+                    needPushPipeMetaToDataNodes.set(false);
+                  }
                 }
               } finally {
                 configManager.getPipeManager().getPipeTaskCoordinator().unlock();
               }
             });
+  }
+
+  private int getExpectedHeartbeatNodeCount() {
+    final int expectedNodeCount =
+        configManager.getNodeManager().getRegisteredDataNodeCount()
+            + (PipeConfig.getInstance().isSeperatedPipeHeartbeatEnabled() ? 1 : 0);
+    if (expectedNodeCount <= 0) {
+      LOGGER.warn("Expected pipe heartbeat node count is {}, fallback to 1.", expectedNodeCount);
+      return 1;
+    }
+    return expectedNodeCount;
   }
 
   private void parseHeartbeatAndSaveMetaChangeLocally(

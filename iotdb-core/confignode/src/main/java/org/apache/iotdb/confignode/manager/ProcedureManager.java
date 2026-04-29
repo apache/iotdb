@@ -1689,7 +1689,7 @@ public class ProcedureManager {
     }
   }
 
-  public void pipeHandleMetaChange(
+  public boolean pipeHandleMetaChange(
       boolean needWriteConsensusOnConfigNodes, boolean needPushPipeMetaToDataNodes) {
     try {
       final long procedureId =
@@ -1697,8 +1697,10 @@ public class ProcedureManager {
               new PipeHandleMetaChangeProcedure(
                   needWriteConsensusOnConfigNodes, needPushPipeMetaToDataNodes));
       LOGGER.info("PipeHandleMetaChangeProcedure was submitted, procedureId: {}.", procedureId);
+      return true;
     } catch (Exception e) {
       LOGGER.warn("PipeHandleMetaChangeProcedure was failed to submit.", e);
+      return false;
     }
   }
 
