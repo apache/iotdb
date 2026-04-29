@@ -393,7 +393,9 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
         logWriter.close();
         logWriter = null;
       }
-      tagManager.clear();
+      if (tagManager != null) {
+        tagManager.clear();
+      }
 
       isRecovering = true;
       initialized = false;
