@@ -182,8 +182,20 @@ class ScpRemoteFileTransfer implements RemoteFileTransfer {
   private void executeRemoteCommand(ClientSession s, String command) throws IOException {
     try (ChannelExec channel = s.createExecChannel(command)) {
       channel.open().verify(CONNECT_TIMEOUT_MS, TimeUnit.MILLISECONDS);
-      channel.waitFor(WAIT_FOR_CLOSED, CONNECT_TIMEOUT_MS);
-    } catch (Exception ignore) {
+      final Set<ClientChannelEvent> events = channel.waitFor(WAIT_FOR_CLOSED, CONNECT_TIMEOUT_MS);
+      if (!events.contains(ClientChannelEvent.CLOSED)) {
+        throw new IOException("Remote command timed out: " + command);
+      }
+
+      final Integer exitStatus = channel.getExitStatus();
+      if (exitStatus != null && exitStatus != 0) {
+        throw new IOException(
+            String.format("Remote command failed with exit code %s: %s", exitStatus, command));
+      }
+    } catch (IOException e) {
+      throw e;
+    } catch (Exception e) {
+      throw new IOException("Failed to execute remote command: " + command, e);
     }
   }
 

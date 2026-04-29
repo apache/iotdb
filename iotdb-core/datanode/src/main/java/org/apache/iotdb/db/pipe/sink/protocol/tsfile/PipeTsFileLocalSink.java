@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.sink.protocol.tsfile;
 
 import org.apache.iotdb.commons.pipe.sink.protocol.PipeBatchMetricsSettable;
+import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
@@ -69,10 +70,9 @@ public class PipeTsFileLocalSink implements PipeSink, PipeBatchMetricsSettable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTsFileLocalSink.class);
 
-  private final TsFileNameGenerator tsFileNameGenerator = new TsFileNameGenerator();
-
   private FileTransfer fileTransfer;
   private PipeTabletEventTsFileBatch eventTsFileBatch;
+  private List<Pair<String, Pair<File, File>>> sealedBatchedTsFiles;
 
   private Histogram tsFileBatchSizeHistogram = new DoNothingHistogram();
   private Histogram tsFileBatchTimeIntervalHistogram = new DoNothingHistogram();
@@ -164,18 +164,27 @@ public class PipeTsFileLocalSink implements PipeSink, PipeBatchMetricsSettable {
       return;
     }
     if (tsFileInsertionEvent instanceof PipeTsFileInsertionEvent) {
-      final File tsFile = tsFileInsertionEvent.getTsFile();
+      final PipeTsFileInsertionEvent event = (PipeTsFileInsertionEvent) tsFileInsertionEvent;
+      if (!event.waitForTsFileClose()) {
+        LOGGER.warn(
+            "Pipe skipping temporary TsFile which shouldn't be transferred: {}", event.getTsFile());
+        return;
+      }
+
+      final File tsFile = event.getTsFile();
       if (tsFile != null && tsFile.exists()) {
         fileTransfer.transferFile(
             tsFile,
             PipeObjectPathUtil.resolveLinkedObjectDirectory(
-                ((PipeTsFileInsertionEvent) tsFileInsertionEvent).getTsFileResource(),
-                ((PipeTsFileInsertionEvent) tsFileInsertionEvent).getPipeName()),
-            tsFileNameGenerator.nextFileName());
+                event.getTsFileResource(), event.getPipeName()),
+            TsFileNameGenerator.targetNameForEvent(event));
       }
     } else {
-      fileTransfer.transferFile(
-          tsFileInsertionEvent.getTsFile(), null, tsFileNameGenerator.nextFileName());
+      final File tsFile = tsFileInsertionEvent.getTsFile();
+      if (tsFile != null && tsFile.exists()) {
+        fileTransfer.transferFile(
+            tsFile, null, TsFileNameGenerator.targetNameForEvent(tsFileInsertionEvent));
+      }
     }
   }
 
@@ -192,8 +201,14 @@ public class PipeTsFileLocalSink implements PipeSink, PipeBatchMetricsSettable {
 
   @Override
   public void close() throws Exception {
+    cleanupSealedBatchedTsFiles();
+    if (eventTsFileBatch != null) {
+      eventTsFileBatch.close();
+      eventTsFileBatch = null;
+    }
     if (fileTransfer != null) {
       fileTransfer.close();
+      fileTransfer = null;
     }
   }
 
@@ -238,7 +253,7 @@ public class PipeTsFileLocalSink implements PipeSink, PipeBatchMetricsSettable {
     if (!eventTsFileBatch.shouldEmit() || eventTsFileBatch.isEmpty()) {
       return;
     }
-    final List<Pair<String, Pair<File, File>>> list = eventTsFileBatch.sealTsFiles();
+    final List<Pair<String, Pair<File, File>>> list = getOrSealBatchedTsFiles();
     for (final Pair<String, Pair<File, File>> sealed : list) {
       final Pair<File, File> tsFileAndObjectDir = sealed.getRight();
       if (tsFileAndObjectDir == null) {
@@ -247,10 +262,42 @@ public class PipeTsFileLocalSink implements PipeSink, PipeBatchMetricsSettable {
       final File tsFile = tsFileAndObjectDir.getLeft();
       final File objectDir = tsFileAndObjectDir.getRight();
       if (tsFile != null && tsFile.exists()) {
-        fileTransfer.transferFile(tsFile, objectDir, tsFileNameGenerator.nextFileName());
+        fileTransfer.transferFile(
+            tsFile, objectDir, TsFileNameGenerator.targetNameForGeneratedFile(tsFile));
       }
     }
     eventTsFileBatch.decreaseEventsReferenceCount(PipeTsFileLocalSink.class.getName(), true);
+    cleanupSealedBatchedTsFiles();
     eventTsFileBatch.onSuccess();
+  }
+
+  private List<Pair<String, Pair<File, File>>> getOrSealBatchedTsFiles() throws Exception {
+    if (sealedBatchedTsFiles == null) {
+      sealedBatchedTsFiles = eventTsFileBatch.sealTsFiles();
+    }
+    return sealedBatchedTsFiles;
+  }
+
+  private void cleanupSealedBatchedTsFiles() {
+    if (sealedBatchedTsFiles == null) {
+      return;
+    }
+
+    for (final Pair<String, Pair<File, File>> sealed : sealedBatchedTsFiles) {
+      if (sealed == null || sealed.getRight() == null) {
+        continue;
+      }
+
+      final File tsFile = sealed.getRight().getLeft();
+      final File objectDir = sealed.getRight().getRight();
+      if (tsFile != null && tsFile.exists()) {
+        FileUtils.deleteFileOrDirectory(tsFile, true);
+      }
+      if (objectDir != null && objectDir.exists()) {
+        FileUtils.deleteFileOrDirectory(objectDir, true);
+      }
+    }
+
+    sealedBatchedTsFiles = null;
   }
 }
