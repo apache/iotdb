@@ -2043,7 +2043,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
 
   protected TSStatus checkGlobalAuth(
       IAuditEntity context, PrivilegeType requiredPrivilege, AuditEventType auditEventType) {
-    if (checkHasGlobalAuth(context, requiredPrivilege, false)) {
+    if (checkHasGlobalAuth(context, requiredPrivilege, auditEventType, false)) {
       return SUCCEED;
     }
     TSStatus result = AuthorityChecker.getTSStatus(false, requiredPrivilege);
@@ -2066,14 +2066,27 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   }
 
   protected boolean checkHasGlobalAuth(
-      IAuditEntity context, PrivilegeType requiredPrivilege, boolean checkGrantOption) {
-    if (AuthorityChecker.SUPER_USER.equals(context.getUsername())) {
-      return true;
-    }
-    return checkGrantOption
-        ? AuthorityChecker.checkSystemPermissionGrantOption(
-            context.getUsername(), requiredPrivilege)
-        : AuthorityChecker.checkSystemPermission(context.getUsername(), requiredPrivilege);
+      IAuditEntity context,
+      PrivilegeType requiredPrivilege,
+      AuditEventType auditEventType,
+      boolean checkGrantOption) {
+    boolean result =
+        AuthorityChecker.SUPER_USER.equals(context.getUsername())
+            || (checkGrantOption
+                ? AuthorityChecker.checkSystemPermissionGrantOption(
+                    context.getUsername(), requiredPrivilege)
+                : AuthorityChecker.checkSystemPermission(context.getUsername(), requiredPrivilege));
+
+    IAuditEntity auditEntity = context.setResult(result);
+    AUDIT_LOGGER.log(
+        auditEntity.setAuditEventType(auditEventType),
+        () ->
+            String.format(
+                OPERATION_AUDIT_STR,
+                auditEntity.getUsername(),
+                auditEntity.getUserId(),
+                auditEventType));
+    return result;
   }
 
   protected boolean checkHasGlobalAuth(
