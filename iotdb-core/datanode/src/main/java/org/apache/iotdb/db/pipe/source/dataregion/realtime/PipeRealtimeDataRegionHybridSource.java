@@ -220,7 +220,7 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
     PipeTsFileEpochProgressIndexAndFlushManager.getInstance().flushAllTimeoutTsFiles();
 
     while (realtimeEvent != null) {
-      final Event suppliedEvent;
+      Event suppliedEvent;
 
       // Used to judge the type of the event, not directly for supplying.
       final Event eventToSupply = realtimeEvent.getEvent();
@@ -244,6 +244,7 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
           PipeRealtimeDataRegionHybridSource.class.getName(), false);
 
       if (suppliedEvent != null) {
+        suppliedEvent = assignReplicateIndexIfNeeded(realtimeEvent, suppliedEvent);
         maySkipIndex4Event(realtimeEvent);
         return suppliedEvent;
       }

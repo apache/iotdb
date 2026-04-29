@@ -24,11 +24,15 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
+import org.apache.iotdb.confignode.client.sync.CnToDnSyncRequestType;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.ProcedureManager;
+import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.manager.pipe.coordinator.PipeManager;
 import org.apache.iotdb.confignode.manager.pipe.coordinator.task.PipeTaskCoordinator;
@@ -45,6 +49,9 @@ import java.util.HashMap;
 import java.util.Map;
 
 import static org.apache.iotdb.consensus.ConsensusFactory.IOT_CONSENSUS_V2;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -59,7 +66,8 @@ public class RegionMaintainHandlerConsensusPipeTest {
   private PipeManager pipeManager;
   private PipeTaskCoordinator pipeTaskCoordinator;
   private ProcedureManager procedureManager;
-  private RegionMaintainHandler handler;
+  private LoadManager loadManager;
+  private TestRegionMaintainHandler handler;
 
   private String originalConsensusProtocol;
 
@@ -76,13 +84,15 @@ public class RegionMaintainHandlerConsensusPipeTest {
     pipeManager = mock(PipeManager.class);
     pipeTaskCoordinator = mock(PipeTaskCoordinator.class);
     procedureManager = mock(ProcedureManager.class);
+    loadManager = mock(LoadManager.class);
 
     when(configManager.getPartitionManager()).thenReturn(partitionManager);
     when(configManager.getPipeManager()).thenReturn(pipeManager);
     when(configManager.getProcedureManager()).thenReturn(procedureManager);
+    when(configManager.getLoadManager()).thenReturn(loadManager);
     when(pipeManager.getPipeTaskCoordinator()).thenReturn(pipeTaskCoordinator);
 
-    handler = new RegionMaintainHandler(configManager);
+    handler = new TestRegionMaintainHandler(configManager);
   }
 
   @After
@@ -255,6 +265,34 @@ public class RegionMaintainHandlerConsensusPipeTest {
   }
 
   @Test
+  public void testDeleteOldRegionPeerUsesSingleAttemptWhenNodeUnknown() {
+    TDataNodeLocation loc1 = makeLocation(1, "127.0.0.1", 40010);
+    when(loadManager.getNodeStatus(loc1.getDataNodeId())).thenReturn(NodeStatus.Unknown);
+
+    handler.submitDeleteOldRegionPeerTask(
+        1L, loc1, new TConsensusGroupId(TConsensusGroupType.DataRegion, 100));
+
+    verify(loadManager, times(1)).getNodeStatus(loc1.getDataNodeId());
+    assertFalse(handler.lastUseFullRetry);
+    assertEquals(CnToDnSyncRequestType.DELETE_OLD_REGION_PEER, handler.lastRequestType);
+    assertEquals(loc1.getInternalEndPoint(), handler.lastEndPoint);
+  }
+
+  @Test
+  public void testDeleteOldRegionPeerKeepsFullRetryWhenNodeRunning() {
+    TDataNodeLocation loc1 = makeLocation(1, "127.0.0.1", 40010);
+    when(loadManager.getNodeStatus(loc1.getDataNodeId())).thenReturn(NodeStatus.Running);
+
+    handler.submitDeleteOldRegionPeerTask(
+        1L, loc1, new TConsensusGroupId(TConsensusGroupType.DataRegion, 100));
+
+    verify(loadManager, times(1)).getNodeStatus(loc1.getDataNodeId());
+    assertTrue(handler.lastUseFullRetry);
+    assertEquals(CnToDnSyncRequestType.DELETE_OLD_REGION_PEER, handler.lastRequestType);
+    assertEquals(loc1.getInternalEndPoint(), handler.lastEndPoint);
+  }
+
+  @Test
   public void testThreeNodeReplicaSetCreatesAllSixPipes() {
     TDataNodeLocation loc1 = makeLocation(1, "127.0.0.1", 40010);
     TDataNodeLocation loc2 = makeLocation(2, "127.0.0.2", 40010);
@@ -286,5 +324,27 @@ public class RegionMaintainHandlerConsensusPipeTest {
     verify(procedureManager, never()).createConsensusPipeAsync(any());
     verify(procedureManager, never()).dropConsensusPipeAsync(any());
     verify(procedureManager, never()).startConsensusPipe(any());
+  }
+
+  private static class TestRegionMaintainHandler extends RegionMaintainHandler {
+    private boolean lastUseFullRetry;
+    private TEndPoint lastEndPoint;
+    private CnToDnSyncRequestType lastRequestType;
+
+    private TestRegionMaintainHandler(ConfigManager configManager) {
+      super(configManager);
+    }
+
+    @Override
+    protected TSStatus submitDataNodeSyncRequest(
+        TEndPoint endPoint,
+        Object request,
+        CnToDnSyncRequestType requestType,
+        boolean useFullRetry) {
+      lastEndPoint = endPoint;
+      lastRequestType = requestType;
+      lastUseFullRetry = useFullRetry;
+      return new TSStatus(200);
+    }
   }
 }
