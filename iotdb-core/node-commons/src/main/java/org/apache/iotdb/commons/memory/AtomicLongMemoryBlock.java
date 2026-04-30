@@ -104,15 +104,13 @@ public class AtomicLongMemoryBlock extends IMemoryBlock {
     long next;
     do {
       prev = usedMemoryInBytes.get();
-      if (sizeInByte > prev) {
-        LOGGER.warn(
-            "The memory cost to be released is larger than the memory cost of memory block {}",
-            this);
-        next = 0;
-      } else {
-        next = prev - sizeInByte;
-      }
+      next = sizeInByte > prev ? 0 : prev - sizeInByte;
     } while (!usedMemoryInBytes.compareAndSet(prev, next));
+    if (sizeInByte > prev) {
+      // print log after compareAndSet was success
+      LOGGER.warn(
+          "The memory cost to be released is larger than the memory cost of memory block {}", this);
+    }
     return next;
   }
 
