@@ -1064,8 +1064,9 @@ public abstract class AlignedTVList extends TVList {
   }
 
   @Override
-  public synchronized long calculateRamSize() {
-    return timestamps.size() * alignedTvListArrayMemCost();
+  public synchronized RamInfo calculateRamSize() {
+    return new RamInfo(
+        timestamps.size(), alignedTvListArrayMemCost(), rowCount, new ArrayList<>(dataTypes));
   }
 
   /**

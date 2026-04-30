@@ -137,7 +137,7 @@ public class ReadOnlyMemChunk {
       int queryRowCount = entry.getValue();
       if (!tvList.isSorted() && queryRowCount > tvList.seqRowCount()) {
         entry.setValue(tvList.sort());
-        long tvListRamSize = tvList.calculateRamSize();
+        long tvListRamSize = tvList.calculateRamSize().getRamSize();
         tvList.lockQueryList();
         try {
           FragmentInstanceContext ownerQuery = (FragmentInstanceContext) tvList.getOwnerQuery();
@@ -294,7 +294,7 @@ public class ReadOnlyMemChunk {
       int queryLength = entry.getValue();
       if (!tvList.isSorted() && queryLength > tvList.seqRowCount()) {
         entry.setValue(tvList.sort());
-        long tvListRamSize = tvList.calculateRamSize();
+        long tvListRamSize = tvList.calculateRamSize().getRamSize();
         tvList.lockQueryList();
         try {
           FragmentInstanceContext ownerQuery = (FragmentInstanceContext) tvList.getOwnerQuery();

@@ -103,7 +103,7 @@ public abstract class AbstractWritableMemChunk implements IWritableMemChunk {
   }
 
   private void tryReleaseTvList(TVList tvList) {
-    long tvListRamSize = tvList.calculateRamSize();
+    long tvListRamSize = tvList.calculateRamSize().getRamSize();
     tvList.lockQueryList();
     try {
       if (tvList.getQueryContextSet().isEmpty()) {
