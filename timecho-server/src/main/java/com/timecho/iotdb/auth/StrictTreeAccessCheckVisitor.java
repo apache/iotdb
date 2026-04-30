@@ -20,6 +20,7 @@
 package com.timecho.iotdb.auth;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.audit.AuditEventType;
 import org.apache.iotdb.commons.audit.AuditLogOperation;
 import org.apache.iotdb.commons.audit.IAuditEntity;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
@@ -56,6 +57,18 @@ public class StrictTreeAccessCheckVisitor extends TreeAccessCheckVisitor {
       IAuditEntity context, PrivilegeType requiredPrivilege, Supplier<String> auditObject) {
     return super.checkGlobalAuth(
         context, requiredPrivilege.getReplacedPrivilegeType(), auditObject);
+  }
+
+  @Override
+  protected boolean checkHasGlobalAuth(IAuditEntity context, PrivilegeType requiredPrivilege,
+      Supplier<String> auditObject) {
+    return super.checkHasGlobalAuth(context, requiredPrivilege, auditObject);
+  }
+
+  @Override
+  protected boolean checkHasGlobalAuth(IAuditEntity context, PrivilegeType requiredPrivilege,
+      AuditEventType auditEventType, boolean checkGrantOption) {
+    return super.checkHasGlobalAuth(context, requiredPrivilege, auditEventType, checkGrantOption);
   }
 
   @Override
