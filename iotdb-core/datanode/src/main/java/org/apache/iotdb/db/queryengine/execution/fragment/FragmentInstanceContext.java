@@ -70,6 +70,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
@@ -155,6 +156,9 @@ public class FragmentInstanceContext extends QueryContext {
   private long closedUnseqFileNum = 0;
   private boolean highestPriority = false;
 
+  // accessed value columns on each referenced AlignedTVList.
+  private final Map<TVList, Set<Integer>> alignedTVListColumnAccessMap = new ConcurrentHashMap<>();
+
   public static FragmentInstanceContext createFragmentInstanceContext(
       FragmentInstanceId id, FragmentInstanceStateMachine stateMachine, SessionInfo sessionInfo) {
     FragmentInstanceContext instanceContext =
@@ -203,6 +207,23 @@ public class FragmentInstanceContext extends QueryContext {
 
   public void setQueryDataSourceType(QueryDataSourceType queryDataSourceType) {
     this.queryDataSourceType = queryDataSourceType;
+  }
+
+  public void putAccessedColumns(TVList tvList, List<Integer> columnIndexList) {
+    Set<Integer> accessedColumns =
+        alignedTVListColumnAccessMap.computeIfAbsent(tvList, ignored -> new HashSet<>());
+    for (Integer columnIndex : columnIndexList) {
+      if (columnIndex != null && columnIndex >= 0) {
+        accessedColumns.add(columnIndex);
+      }
+    }
+  }
+
+  public Set<Integer> getAccessedAlignedColumns(TVList tvList) {
+    Set<Integer> accessedColumns = alignedTVListColumnAccessMap.get(tvList);
+    return accessedColumns == null
+        ? Collections.emptySet()
+        : Collections.unmodifiableSet(accessedColumns);
   }
 
   @TestOnly

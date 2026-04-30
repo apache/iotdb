@@ -52,6 +52,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -141,32 +142,14 @@ public abstract class AlignedTVList extends TVList {
   public synchronized AlignedTVList clone() {
     AlignedTVList cloneList = AlignedTVList.newAlignedList(new ArrayList<>(dataTypes));
     cloneAs(cloneList);
-    System.arraycopy(
-        memoryBinaryChunkSize, 0, cloneList.memoryBinaryChunkSize, 0, dataTypes.size());
-    for (int i = 0; i < values.size(); i++) {
-      // Clone value
-      List<Object> columnValues = values.get(i);
-      for (Object valueArray : columnValues) {
-        cloneList.values.get(i).add(cloneValue(dataTypes.get(i), valueArray));
-      }
-      // Clone bitmap in columnIndex
-      if (bitMaps != null && bitMaps.get(i) != null) {
-        List<BitMap> columnBitMaps = bitMaps.get(i);
-        if (cloneList.bitMaps == null) {
-          cloneList.bitMaps = new ArrayList<>(dataTypes.size());
-          for (int j = 0; j < dataTypes.size(); j++) {
-            cloneList.bitMaps.add(null);
-          }
-        }
-        if (cloneList.bitMaps.get(i) == null) {
-          List<BitMap> cloneColumnBitMaps = new ArrayList<>();
-          for (BitMap bitMap : columnBitMaps) {
-            cloneColumnBitMaps.add(bitMap == null ? null : bitMap.clone());
-          }
-          cloneList.bitMaps.set(i, cloneColumnBitMaps);
-        }
-      }
-    }
+    cloneColumnDataTo(cloneList, null);
+    return cloneList;
+  }
+
+  public synchronized AlignedTVList clone(Set<Integer> columnsToClone) {
+    AlignedTVList cloneList = AlignedTVList.newAlignedList(new ArrayList<>(dataTypes));
+    cloneAs(cloneList);
+    cloneColumnDataTo(cloneList, columnsToClone);
     return cloneList;
   }
 
@@ -625,6 +608,48 @@ public abstract class AlignedTVList extends TVList {
     }
   }
 
+  private void cloneColumnDataTo(AlignedTVList cloneList, Set<Integer> columnsToClone) {
+    boolean cloneAllColumns = columnsToClone == null;
+    System.arraycopy(
+        memoryBinaryChunkSize, 0, cloneList.memoryBinaryChunkSize, 0, dataTypes.size());
+    for (int i = 0; i < values.size(); i++) {
+      List<Object> columnValues = values.get(i);
+      boolean shouldCloneColumn = cloneAllColumns || columnsToClone.contains(i);
+      if (!shouldCloneColumn) {
+        cloneList.values.set(i, columnValues);
+        values.set(i, null);
+        if (bitMaps != null && bitMaps.get(i) != null) {
+          ensureBitMapsInitialized(cloneList);
+          cloneList.bitMaps.set(i, bitMaps.get(i));
+          bitMaps.set(i, null);
+        }
+        memoryBinaryChunkSize[i] = 0;
+        continue;
+      }
+
+      for (Object valueArray : columnValues) {
+        cloneList.values.get(i).add(cloneValue(dataTypes.get(i), valueArray));
+      }
+      if (bitMaps != null && bitMaps.get(i) != null) {
+        ensureBitMapsInitialized(cloneList);
+        List<BitMap> cloneColumnBitMaps = new ArrayList<>();
+        for (BitMap bitMap : bitMaps.get(i)) {
+          cloneColumnBitMaps.add(bitMap == null ? null : bitMap.clone());
+        }
+        cloneList.bitMaps.set(i, cloneColumnBitMaps);
+      }
+    }
+  }
+
+  private void ensureBitMapsInitialized(AlignedTVList cloneList) {
+    if (cloneList.bitMaps == null) {
+      cloneList.bitMaps = new ArrayList<>(dataTypes.size());
+      for (int i = 0; i < dataTypes.size(); i++) {
+        cloneList.bitMaps.add(null);
+      }
+    }
+  }
+
   @Override
   protected void clearValue() {
     for (int i = 0; i < dataTypes.size(); i++) {
@@ -880,7 +905,7 @@ public abstract class AlignedTVList extends TVList {
     // value & bitmap array mem size
     for (int column = 0; column < dataTypes.size(); column++) {
       TSDataType type = dataTypes.get(column);
-      if (type != null) {
+      if (type != null && values.get(column) != null) {
         size += (long) PrimitiveArrayManager.ARRAY_SIZE * (long) type.getDataTypeSize();
         if (bitMaps != null && bitMaps.get(column) != null) {
           size += (long) PrimitiveArrayManager.ARRAY_SIZE / 8 + 1;
