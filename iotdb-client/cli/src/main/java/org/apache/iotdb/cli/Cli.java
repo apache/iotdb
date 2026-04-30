@@ -221,7 +221,7 @@ public class Cli extends AbstractCli {
       connection.setQueryTimeout(queryTimeout);
       properties = connection.getServerProperties();
       timestampPrecision = properties.getTimestampPrecision();
-      createFilesystemShell(ctx, connection).execute(execute);
+      createFilesystemShell(ctx, connection).executeNonInteractive(execute);
       ctx.exit(CODE_OK);
     } catch (SQLException e) {
       ctx.getPrinter()

@@ -30,6 +30,7 @@ import org.apache.iotdb.cli.utils.CliContext;
 
 import org.jline.reader.Candidate;
 import org.jline.reader.Completer;
+import org.jline.reader.LineReader;
 import org.jline.reader.ParsedLine;
 import org.jline.reader.impl.DefaultParser;
 import org.junit.Before;
@@ -58,6 +59,7 @@ public class FilesystemShellTest {
 
   @Mock private FilesystemSchemaProvider provider;
   @Mock private FilesystemMutationProvider mutationProvider;
+  @Mock private LineReader lineReader;
 
   private ByteArrayOutputStream out;
   private FilesystemShell shell;
@@ -200,6 +202,58 @@ public class FilesystemShellTest {
     verify(mutationProvider).remove(FsPath.absolute("/db1/table1.csv"));
     verify(mutationProvider)
         .move(FsPath.absolute("/db1/table1.csv"), FsPath.absolute("/db1/table2.csv"));
+  }
+
+  @Test
+  public void executeTeeRejectsReadOnlyMode() throws SQLException {
+    assertTrue(shell.execute("tee -a /db1/table1.csv"));
+
+    assertTrue(out.toString().contains("tee: /db1/table1.csv: Read-only file system"));
+    verifyZeroInteractions(mutationProvider);
+  }
+
+  @Test
+  public void executeTeeReadsInteractiveBufferUntilWriteQuit() throws SQLException {
+    CliContext ctx = shellContext();
+    ctx.setLineReader(lineReader);
+    shell = new FilesystemShell(ctx, provider, mutationProvider, true);
+    when(lineReader.readLine("tee> ", null)).thenReturn("time,key,value", "1,spricoder,2.0", ":wq");
+
+    assertTrue(shell.execute("tee -a /db1/table1.csv"));
+
+    verify(mutationProvider)
+        .append(
+            FsPath.absolute("/db1/table1.csv"), Arrays.asList("time,key,value", "1,spricoder,2.0"));
+  }
+
+  @Test
+  public void executeTeeQuitWarnsBeforeDiscardingInteractiveBuffer() throws SQLException {
+    CliContext ctx = shellContext();
+    ctx.setLineReader(lineReader);
+    shell = new FilesystemShell(ctx, provider, mutationProvider, true);
+    when(lineReader.readLine("tee> ", null)).thenReturn("time,key,value", ":q", ":q!");
+
+    assertTrue(shell.execute("tee -a /db1/table1.csv"));
+
+    assertTrue(out.toString().contains("tee: use :wq to write or :q! to quit without writing"));
+    verifyZeroInteractions(mutationProvider);
+  }
+
+  @Test
+  public void executeTeeNonInteractiveReadsStandardInputUntilEof() throws SQLException {
+    CliContext ctx =
+        new CliContext(
+            new ByteArrayInputStream("time,key,value\n1,spricoder,2.0\n".getBytes()),
+            new PrintStream(out),
+            System.err,
+            ExitType.EXCEPTION);
+    shell = new FilesystemShell(ctx, provider, mutationProvider, true);
+
+    assertTrue(shell.executeNonInteractive("tee -a /db1/table1.csv"));
+
+    verify(mutationProvider)
+        .append(
+            FsPath.absolute("/db1/table1.csv"), Arrays.asList("time,key,value", "1,spricoder,2.0"));
   }
 
   @Test

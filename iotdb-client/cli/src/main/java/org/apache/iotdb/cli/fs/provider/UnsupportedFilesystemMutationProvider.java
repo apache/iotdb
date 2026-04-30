@@ -22,6 +22,7 @@ package org.apache.iotdb.cli.fs.provider;
 import org.apache.iotdb.cli.fs.path.FsPath;
 
 import java.sql.SQLException;
+import java.util.List;
 
 public class UnsupportedFilesystemMutationProvider implements FilesystemMutationProvider {
 
@@ -39,6 +40,11 @@ public class UnsupportedFilesystemMutationProvider implements FilesystemMutation
 
   @Override
   public void move(FsPath source, FsPath target) throws SQLException {
+    throw unsupported();
+  }
+
+  @Override
+  public void append(FsPath path, List<String> lines) throws SQLException {
     throw unsupported();
   }
 

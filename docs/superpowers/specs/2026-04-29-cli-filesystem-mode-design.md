@@ -219,6 +219,7 @@ semantics wherever the same command exists. Provider support can still vary by d
 | `mkdir <path>` | Write-gated command. With table mode and `--fs_write_mode enabled`, `mkdir /db` creates a database. Otherwise it returns a read-only or unsupported error. | `mkdir /newdb` |
 | `rm <path>` | Write-gated command. With table mode and `--fs_write_mode enabled`, only `rm /db/table.csv` is allowed and maps to table drop. | `rm /db/table.csv` |
 | `mv <source> <target>` | Write-gated command. With table mode and `--fs_write_mode enabled`, only same-database table CSV rename is allowed. | `mv /db/t1.csv /db/t2.csv` |
+| `tee -a <path>` | Write-gated append command. With table mode and `--fs_write_mode enabled`, only `tee -a /db/table.csv` appends CSV records as rows. | `tee -a /db/table.csv` |
 | `help` | Print filesystem-mode help. | `help` |
 | `exit` / `quit` | Exit filesystem mode. | `exit` |
 
@@ -251,6 +252,7 @@ Raw SQL should be run in the default SQL access mode.
 | `stat /db/table.meta` | `SHOW TABLES FROM db`, filtered to the table and rendered as filesystem metadata for the metadata sidecar. |
 | `cat /db/table.csv` | `SELECT * FROM db.table LIMIT <limit>`, formatted as CSV records. |
 | `cut -d, -f2,3 /db/table.csv` | Delimiter-based text field projection over the CSV records. |
+| `tee -a /db/table.csv` | Parse CSV input with Apache Commons CSV, validate columns and required `time`, then execute chunked `INSERT INTO db.table(...) VALUES ...`. |
 | `cat /db/table.schema` | `DESC db.table DETAILS`, formatted as CSV with IoTDB result columns preserved. |
 | `cat /db/table.meta` | `SHOW TABLES DETAILS FROM db`, filtered to the table and formatted as CSV with IoTDB result columns preserved. |
 | `stat /db/table/col` | Legacy compatibility: `DESC db.table DETAILS`, filtered to the column. |
@@ -321,6 +323,102 @@ example, if `cat time` is resolved from `/testtest` to `/testtest/time`, table m
 table path and may receive a server error such as `550: Table 'testtest.time' does not exist`. That
 error should be printed as `cat: 550: ...`, then the prompt should continue.
 
+## Append Data Write Semantics
+
+Table data writes use Unix append semantics over the table CSV file:
+
+```bash
+tee -a /db/table.csv
+```
+
+Only append writes are in scope for the first data-write implementation. Truncation, overwrite,
+random writes, partial row deletion, and shell redirection such as `>> /db/table.csv` are out of
+scope because filesystem mode is an IoTDB CLI command surface, not an operating-system mount.
+
+Append writes are allowed only when all of these conditions hold:
+
+- CLI is running with `--access_mode filesystem`.
+- CLI is running with `--sql_dialect table`.
+- CLI is running with `--fs_write_mode enabled`.
+- Target path is exactly a table data file of the form `/<database>/<table>.csv`.
+- Command is `tee -a`; `tee` without `-a` is rejected.
+
+The sidecar files remain read-only metadata views:
+
+- `tee -a /db/table.schema` is rejected.
+- `tee -a /db/table.meta` is rejected.
+- Legacy column paths such as `/db/table/col` are not writable append targets.
+- Tree-mode paths remain non-writable even when `--fs_write_mode enabled` is set.
+
+### Input Modes
+
+Non-interactive mode reads CSV from standard input until EOF, then submits once:
+
+```bash
+printf 'time,key,value\n1,spricoder,2.0\n' | \
+  start-cli.sh -h 127.0.0.1 -p 6667 -u root -pw root \
+  --sql_dialect table --access_mode filesystem --fs_write_mode enabled \
+  -e 'tee -a /db/table.csv'
+```
+
+Interactive mode enters an append buffer:
+
+```text
+IoTDB:fs> tee -a /db/table.csv
+time,key,value
+1,spricoder,2.0
+2,spricoder,1.5
+:wq
+```
+
+The append buffer supports a minimal Vim-style command set:
+
+- `:wq`: validate, submit, and exit the append buffer after a successful write.
+- `:q!`: discard the buffer and exit.
+- `:q`: exit only when the buffer is empty; otherwise print guidance to use `:wq` or `:q!`.
+
+The first version intentionally does not support `:w`, because writing while keeping the buffer
+open creates ambiguity around repeated submissions and buffer clearing.
+
+### CSV Input Rules
+
+Append input is CSV and is parsed with a proven CSV parser, not by ad hoc string splitting.
+
+- Both header and headerless input are supported.
+- Header input may provide a subset of columns, but it must include `time`.
+- Headerless input must provide all columns in the current `/db/table.csv` output order.
+- Every appended record must explicitly provide `time`.
+- `time` must not be empty and must not be `\N`.
+- `\N` represents SQL `NULL` for non-time columns.
+- Empty fields are not automatically treated as `NULL`.
+- Client-side validation checks path, write mode, CSV shape, known columns, and required `time`.
+- IoTDB remains responsible for type validation, timestamp-format validation, permissions, and
+  final insert semantics.
+
+### SQL Mapping And Failure Semantics
+
+The provider should map validated append input to table-model SQL:
+
+```sql
+INSERT INTO db.table(col1,col2,...) VALUES (...), (...), ...
+```
+
+Implementation rules:
+
+- Use `DESC db.table DETAILS` or an equivalent schema query to get the table columns and output
+  order.
+- Use SQL identifier rendering and SQL literal escaping helpers; never concatenate raw user values
+  into SQL.
+- Convert `\N` to `NULL`.
+- Submit rows in fixed-size chunks, for example 1000 records per `INSERT`, to avoid oversized SQL
+  statements.
+- Client-side validation must pass for the full buffer before any write is attempted.
+- If a server-side insert fails, the CLI does not compensate or retry automatically. Server state is
+  whatever IoTDB actually committed.
+- In interactive mode, a server-side failure keeps the append buffer so the user can correct input
+  or abandon it with `:q!`.
+- In non-interactive mode, a failure prints a command-prefixed error and exits with failure.
+
 ## Proposed Code Structure
 
 New code should live under `org.apache.iotdb.cli.fs`.
@@ -332,6 +430,7 @@ New code should live under `org.apache.iotdb.cli.fs`.
 - `node/FsNode`, `node/FsNodeType`, `node/FsNodeMetadata`: typed metadata model.
 - `provider/FilesystemSchemaProvider`: schema and data read provider interface.
 - `provider/FilesystemMutationProvider`: write-gated mutation provider interface.
+- `provider/TableCsvAppendPlanner` or equivalent helper: CSV append validation and SQL planning.
 - `provider/TreeFilesystemSchemaProvider`: tree-model SQL mapping.
 - `provider/TableFilesystemSchemaProvider`: table-model SQL mapping.
 - `provider/TableFilesystemMutationProvider`: opt-in table-model write mapping.
@@ -363,6 +462,8 @@ The mutation provider owns the current write-gated operations:
 - `mkdir(FsPath path)`
 - `remove(FsPath path)`
 - `move(FsPath source, FsPath target)`
+- `append(FsPath path, List<String> csvLines)` or an equivalent table-mode append method for
+  `tee -a /db/table.csv`
 
 When writes are disabled, `FilesystemShell` rejects `mkdir`, `rm`, and `mv` before calling the
 mutation provider. When writes are enabled, table mode uses `TableFilesystemMutationProvider`; tree
@@ -373,6 +474,7 @@ The current table-model write boundary is intentionally narrow:
 - `mkdir /db` creates a database directory.
 - `rm /db/table.csv` drops the table data file and therefore the table.
 - `mv /db/t1.csv /db/t2.csv` renames a table within the same database.
+- `tee -a /db/table.csv` appends CSV records as table rows.
 
 The sidecar files are metadata views, not independently writable objects:
 

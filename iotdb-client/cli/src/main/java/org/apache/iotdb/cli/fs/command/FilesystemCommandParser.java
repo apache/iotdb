@@ -111,6 +111,9 @@ public class FilesystemCommandParser {
     if ("paste".equals(command)) {
       return parsePaste(tokens);
     }
+    if ("tee".equals(command)) {
+      return parseTee(tokens);
+    }
     if ("tree".equals(command)) {
       return parseTree(tokens);
     }
@@ -134,6 +137,16 @@ public class FilesystemCommandParser {
       paths.add(tokens[i]);
     }
     return FilesystemCommand.paths(FilesystemCommand.Type.PASTE, paths);
+  }
+
+  private static FilesystemCommand parseTee(String[] tokens) {
+    if (tokens.length != 3) {
+      return FilesystemCommand.invalid("Usage: tee -a <path>");
+    }
+    if (!"-a".equals(tokens[1])) {
+      return FilesystemCommand.invalid("Unsupported tee option: " + tokens[1]);
+    }
+    return FilesystemCommand.option(FilesystemCommand.Type.TEE, "-a", tokens[2]);
   }
 
   private static FilesystemCommand parseCut(String[] tokens) {

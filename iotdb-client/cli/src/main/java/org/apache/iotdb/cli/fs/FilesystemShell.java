@@ -32,9 +32,14 @@ import org.apache.iotdb.cli.utils.CliContext;
 
 import org.jline.reader.Candidate;
 import org.jline.reader.Completer;
+import org.jline.reader.EndOfFileException;
 import org.jline.reader.LineReader;
 import org.jline.reader.ParsedLine;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -48,8 +53,8 @@ public class FilesystemShell {
   private static final List<String> COMMANDS =
       Arrays.asList(
           "pwd", "ls", "ll", "cd", "stat", "cat", "head", "tail", "wc", "grep", "find", "less",
-          "more", "file", "du", "mkdir", "rm", "mv", "cut", "paste", "tree", "help", "exit",
-          "quit");
+          "more", "file", "du", "mkdir", "rm", "mv", "cut", "paste", "tree", "help", "exit", "quit",
+          "tee");
 
   private final CliContext ctx;
   private final FilesystemSchemaProvider provider;
@@ -133,6 +138,9 @@ public class FilesystemShell {
       case PASTE:
         printRows(provider.read(resolve(command.getPaths()), DEFAULT_READ_LIMIT));
         return true;
+      case TEE:
+        append(command.getPath(), false);
+        return true;
       case HELP:
         printHelp();
         return true;
@@ -149,6 +157,15 @@ public class FilesystemShell {
         ctx.getPrinter().println("Unsupported filesystem command: " + command.getType());
         return true;
     }
+  }
+
+  public boolean executeNonInteractive(String input) throws SQLException {
+    FilesystemCommand command = FilesystemCommandParser.parse(input);
+    if (command.getType() == FilesystemCommand.Type.TEE) {
+      append(command.getPath(), true);
+      return true;
+    }
+    return execute(input);
   }
 
   public Completer createCompleter() {
@@ -363,6 +380,68 @@ public class FilesystemShell {
     mutationProvider.move(source, target);
   }
 
+  private void append(String path, boolean nonInteractive) throws SQLException {
+    FsPath resolvedPath = resolve(path);
+    if (!ensureWritable("tee", resolvedPath)) {
+      return;
+    }
+    if (nonInteractive || ctx.getLineReader() == null) {
+      mutationProvider.append(resolvedPath, readStandardInputLines());
+      return;
+    }
+    appendInteractive(resolvedPath);
+  }
+
+  private List<String> readStandardInputLines() throws SQLException {
+    List<String> lines = new ArrayList<>();
+    try {
+      BufferedReader reader =
+          new BufferedReader(new InputStreamReader(ctx.getIn(), StandardCharsets.UTF_8));
+      String line;
+      while ((line = reader.readLine()) != null) {
+        lines.add(line);
+      }
+      return lines;
+    } catch (IOException e) {
+      throw new SQLException("Failed to read standard input", e);
+    }
+  }
+
+  private void appendInteractive(FsPath path) throws SQLException {
+    List<String> lines = new ArrayList<>();
+    while (true) {
+      String line;
+      try {
+        line = ctx.getLineReader().readLine("tee> ", null);
+      } catch (EndOfFileException e) {
+        if (!lines.isEmpty()) {
+          ctx.getPrinter().println("tee: use :wq to write or :q! to quit without writing");
+        }
+        return;
+      }
+      if (":wq".equals(line)) {
+        try {
+          mutationProvider.append(path, lines);
+          return;
+        } catch (SQLException e) {
+          ctx.getPrinter().println("tee: " + e.getMessage());
+          continue;
+        }
+      }
+      if (":q!".equals(line)) {
+        return;
+      }
+      if (":q".equals(line)) {
+        if (lines.isEmpty()) {
+          return;
+        }
+        ctx.getPrinter().println("tee: use :wq to write or :q! to quit without writing");
+        continue;
+      }
+      lines.add(line);
+    }
+  }
+
   private boolean ensureWritable(String command, FsPath path) {
     if (writeEnabled) {
       return true;
@@ -405,6 +484,7 @@ public class FilesystemShell {
     ctx.getPrinter().println("mv <source> <target>");
     ctx.getPrinter().println("cut -d<delimiter> -f<fields> <path>");
     ctx.getPrinter().println("paste <path>...");
+    ctx.getPrinter().println("tee -a <path>");
     ctx.getPrinter().println("tree [-L depth] [path]");
     ctx.getPrinter().println("exit");
   }

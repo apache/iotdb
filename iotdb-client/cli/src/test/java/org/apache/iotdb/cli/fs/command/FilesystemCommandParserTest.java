@@ -195,6 +195,26 @@ public class FilesystemCommandParserTest {
   }
 
   @Test
+  public void parseTeeAppendPath() {
+    FilesystemCommand command = FilesystemCommandParser.parse("tee -a /db1/table1.csv");
+
+    assertEquals(FilesystemCommand.Type.TEE, command.getType());
+    assertEquals("-a", command.getOption());
+    assertEquals("/db1/table1.csv", command.getPath());
+  }
+
+  @Test
+  public void parseTeeRequiresAppendOptionAndPath() {
+    assertEquals(
+        FilesystemCommand.Type.INVALID,
+        FilesystemCommandParser.parse("tee /db1/table1.csv").getType());
+    assertEquals(FilesystemCommand.Type.INVALID, FilesystemCommandParser.parse("tee -a").getType());
+    assertEquals(
+        FilesystemCommand.Type.INVALID,
+        FilesystemCommandParser.parse("tee -p /db1/table1.csv").getType());
+  }
+
+  @Test
   public void parseWriteCommands() {
     FilesystemCommand mkdir = FilesystemCommandParser.parse("mkdir /db1");
     assertEquals(FilesystemCommand.Type.MKDIR, mkdir.getType());

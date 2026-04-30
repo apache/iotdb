@@ -64,6 +64,23 @@ public class TableFilesystemMutationProvider implements FilesystemMutationProvid
     executor.execute("ALTER TABLE " + toTablePath(source) + " RENAME TO " + tableName(target));
   }
 
+  @Override
+  public void append(FsPath path, List<String> lines) throws SQLException {
+    if (!isDataFile(path)) {
+      throw invalidOperation();
+    }
+    if (lines == null || lines.isEmpty()) {
+      return;
+    }
+    String tablePath = toTablePath(path);
+    List<String> statements =
+        TableCsvAppendPlanner.plan(
+            tablePath, executor.query("DESC " + tablePath + " DETAILS"), lines);
+    for (String statement : statements) {
+      executor.execute(statement);
+    }
+  }
+
   private static SQLException invalidOperation() {
     return new SQLException(INVALID_WRITE_OPERATION);
   }

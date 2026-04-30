@@ -28,10 +28,12 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 import java.sql.SQLException;
+import java.util.Arrays;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 public class TableFilesystemMutationProviderTest {
 
@@ -96,6 +98,61 @@ public class TableFilesystemMutationProviderTest {
     assertInvalidOperation(
         () ->
             provider.move(FsPath.absolute("/db1/table1.csv"), FsPath.absolute("/db2/table1.csv")));
+  }
+
+  @Test
+  public void appendCsvWithHeaderBuildsMultiRowInsert() throws SQLException {
+    mockTableSchema();
+
+    provider.append(
+        FsPath.absolute("/db1/table1.csv"),
+        Arrays.asList("time,key,value", "1,spricoder,2.0", "2,other,\\N"));
+
+    verify(executor).query("DESC db1.table1 DETAILS");
+    verify(executor)
+        .execute(
+            "INSERT INTO db1.table1(time, key, value) VALUES "
+                + "(1, 'spricoder', 2.0), (2, 'other', NULL)");
+  }
+
+  @Test
+  public void appendCsvWithoutHeaderUsesFullSchemaOrder() throws SQLException {
+    mockTableSchema();
+
+    provider.append(FsPath.absolute("/db1/table1.csv"), Arrays.asList("1,spricoder,2.0"));
+
+    verify(executor)
+        .execute("INSERT INTO db1.table1(time, key, value) VALUES (1, 'spricoder', 2.0)");
+  }
+
+  @Test
+  public void appendCsvWithHeaderAllowsPartialColumns() throws SQLException {
+    mockTableSchema();
+
+    provider.append(FsPath.absolute("/db1/table1.csv"), Arrays.asList("time,value", "1,2.0"));
+
+    verify(executor).execute("INSERT INTO db1.table1(time, value) VALUES (1, 2.0)");
+  }
+
+  @Test
+  public void appendRejectsSidecarAndMissingTime() throws SQLException {
+    assertInvalidOperation(
+        () -> provider.append(FsPath.absolute("/db1/table1.schema"), Arrays.asList("time", "1")));
+
+    mockTableSchema();
+    assertInvalidOperation(
+        () -> provider.append(FsPath.absolute("/db1/table1.csv"), Arrays.asList("key", "a")));
+  }
+
+  private void mockTableSchema() throws SQLException {
+    when(executor.query("DESC db1.table1 DETAILS"))
+        .thenReturn(
+            org.apache.iotdb.cli.fs.sql.SqlRow.list(
+                org.apache.iotdb.cli.fs.sql.SqlRow.of(
+                    "ColumnName", "time", "DataType", "TIMESTAMP"),
+                org.apache.iotdb.cli.fs.sql.SqlRow.of("ColumnName", "key", "DataType", "STRING"),
+                org.apache.iotdb.cli.fs.sql.SqlRow.of(
+                    "ColumnName", "value", "DataType", "DOUBLE")));
   }
 
   private static void assertInvalidOperation(SqlOperation operation) throws SQLException {

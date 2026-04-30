@@ -102,6 +102,7 @@ These notes capture follow-up implementation experience for quickly resuming thi
   - `mkdir /db` creates a database.
   - `rm /db/table.csv` drops a table.
   - `mv /db/t1.csv /db/t2.csv` renames a table inside the same database.
+  - `tee -a /db/table.csv` appends CSV records as table rows.
   - Forbid `rm` or `mv` of `/db/table.schema` and `/db/table.meta`.
   - Forbid `rm /db`.
   - Forbid cross-database rename such as `mv /db1/t.csv /db2/t.csv`.
@@ -116,6 +117,43 @@ These notes capture follow-up implementation experience for quickly resuming thi
   `cat time` resolves to `/testtest/time`; table mode interpreted that as table `testtest.time`;
   the server returned `550`; the unchecked propagation exited the CLI. Keep a regression test for
   this behavior.
+
+## Data Append Design
+
+The first table data-write implementation supports only append semantics over CSV table files:
+
+```bash
+tee -a /db/table.csv
+```
+
+Design decisions already approved:
+
+- Only append writes are supported. Truncate, overwrite, random writes, row deletion, and operating
+  system redirection such as `>> /db/table.csv` are out of scope.
+- The target must be a table-mode data file `/<database>/<table>.csv`.
+- `tee` without `-a`, sidecar files, legacy column paths, and tree-mode paths are rejected.
+- Writes require `--access_mode filesystem --sql_dialect table --fs_write_mode enabled`.
+- Non-interactive mode reads CSV from stdin until EOF and then submits.
+- Interactive mode enters an append buffer. `:wq` validates and submits, `:q!` discards, and `:q`
+  exits only if the buffer is empty.
+- The first version does not support `:w`.
+- CSV parsing should use Apache Commons CSV or another proven parser already available to the
+  module.
+- Header and headerless input are both supported.
+- Header input may write a subset of columns but must include `time`.
+- Headerless input must provide all columns in the current `/db/table.csv` output order.
+- Every record must explicitly provide `time`; `time` cannot be empty or `\N`.
+- `\N` is the explicit SQL `NULL` marker for non-time columns. Empty fields are not automatically
+  NULL.
+- Client-side validation covers path, write mode, CSV shape, known columns, and required `time`.
+- IoTDB performs type validation, timestamp-format validation, permissions checks, and final insert
+  semantics.
+- Validated records map to SQL of the form
+  `INSERT INTO db.table(col1,col2,...) VALUES (...), (...), ...`.
+- Insert statements should be chunked, for example 1000 records per statement.
+- The full buffer must pass client validation before any insert is attempted.
+- Server-side insert failure is not compensated or retried automatically. Interactive mode keeps the
+  buffer; non-interactive mode exits with failure.
 
 ## Supported Command Quick Reference
 
@@ -142,6 +180,7 @@ These notes capture follow-up implementation experience for quickly resuming thi
 | `mkdir <path>` | Write-gated; in table mode with writes enabled, creates a database. | `mkdir /newdb` |
 | `rm <path>` | Write-gated; in table mode with writes enabled, only table CSV drop is allowed. | `rm /db/table.csv` |
 | `mv <source> <target>` | Write-gated; in table mode with writes enabled, only same-database table CSV rename is allowed. | `mv /db/t1.csv /db/t2.csv` |
+| `tee -a <path>` | Write-gated; in table mode with writes enabled, appends CSV input to a table data file. | `tee -a /db/table.csv` |
 | `help` | Print filesystem-mode help. | `help` |
 | `exit` / `quit` | Exit filesystem mode. | `exit` |
 

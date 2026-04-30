@@ -22,6 +22,7 @@ package org.apache.iotdb.cli.fs.provider;
 import org.apache.iotdb.cli.fs.path.FsPath;
 
 import java.sql.SQLException;
+import java.util.List;
 
 public interface FilesystemMutationProvider {
 
@@ -30,4 +31,6 @@ public interface FilesystemMutationProvider {
   void remove(FsPath path) throws SQLException;
 
   void move(FsPath source, FsPath target) throws SQLException;
+
+  void append(FsPath path, List<String> lines) throws SQLException;
 }

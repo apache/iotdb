@@ -45,6 +45,7 @@ public class FilesystemCommand {
     MV,
     CUT,
     PASTE,
+    TEE,
     TREE,
     SQL,
     HELP,
