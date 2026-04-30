@@ -62,7 +62,7 @@ public class StrictTreeAccessCheckVisitor extends TreeAccessCheckVisitor {
   @Override
   protected boolean checkHasGlobalAuth(
       IAuditEntity context, PrivilegeType requiredPrivilege, Supplier<String> auditObject) {
-    return super.checkHasGlobalAuth(context, requiredPrivilege, auditObject);
+    return checkHasGlobalAuth(context, requiredPrivilege, auditObject, false);
   }
 
   @Override
@@ -71,7 +71,8 @@ public class StrictTreeAccessCheckVisitor extends TreeAccessCheckVisitor {
       PrivilegeType requiredPrivilege,
       AuditEventType auditEventType,
       boolean checkGrantOption) {
-    return super.checkHasGlobalAuth(context, requiredPrivilege, auditEventType, checkGrantOption);
+    return super.checkHasGlobalAuth(
+        context, requiredPrivilege.getReplacedPrivilegeType(), auditEventType, checkGrantOption);
   }
 
   @Override
