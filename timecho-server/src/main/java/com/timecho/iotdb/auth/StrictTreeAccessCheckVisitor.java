@@ -66,6 +66,13 @@ public class StrictTreeAccessCheckVisitor extends TreeAccessCheckVisitor {
   }
 
   @Override
+  protected TSStatus checkGlobalAuth(
+      IAuditEntity context, PrivilegeType requiredPrivilege, AuditEventType auditEventType) {
+    return super.checkGlobalAuth(
+        context, requiredPrivilege.getReplacedPrivilegeType(), auditEventType);
+  }
+
+  @Override
   protected boolean checkHasGlobalAuth(
       IAuditEntity context,
       PrivilegeType requiredPrivilege,
