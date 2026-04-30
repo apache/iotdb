@@ -21,7 +21,7 @@ package org.apache.iotdb.confignode.procedure.impl.pipe.task;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusPlanV2;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusWithStoppedByRuntimeExceptionPlanV2;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.impl.pipe.AbstractOperatePipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.impl.pipe.PipeTaskOperation;
@@ -44,6 +44,7 @@ public class StopPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   private static final Logger LOGGER = LoggerFactory.getLogger(StopPipeProcedureV2.class);
 
   private String pipeName;
+  private boolean isStoppedByRuntimeExceptionBeforeStop;
 
   public StopPipeProcedureV2() {
     super();
@@ -71,7 +72,8 @@ public class StopPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   @Override
   public void executeFromCalculateInfoForTask(ConfigNodeProcedureEnv env) throws PipeException {
     LOGGER.info("StopPipeProcedureV2: executeFromCalculateInfoForTask({})", pipeName);
-    // Do nothing
+    isStoppedByRuntimeExceptionBeforeStop =
+        pipeTaskInfo.get().isStoppedByRuntimeException(pipeName);
   }
 
   @Override
@@ -83,7 +85,9 @@ public class StopPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
       response =
           env.getConfigManager()
               .getConsensusManager()
-              .write(new SetPipeStatusPlanV2(pipeName, PipeStatus.STOPPED));
+              .write(
+                  new SetPipeStatusWithStoppedByRuntimeExceptionPlanV2(
+                      pipeName, PipeStatus.STOPPED, false));
     } catch (ConsensusException e) {
       LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
       response = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
@@ -128,7 +132,9 @@ public class StopPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
       response =
           env.getConfigManager()
               .getConsensusManager()
-              .write(new SetPipeStatusPlanV2(pipeName, PipeStatus.RUNNING));
+              .write(
+                  new SetPipeStatusWithStoppedByRuntimeExceptionPlanV2(
+                      pipeName, PipeStatus.RUNNING, isStoppedByRuntimeExceptionBeforeStop));
     } catch (ConsensusException e) {
       LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
       response = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
@@ -159,12 +165,14 @@ public class StopPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     stream.writeShort(ProcedureType.STOP_PIPE_PROCEDURE_V2.getTypeCode());
     super.serialize(stream);
     ReadWriteIOUtils.write(pipeName, stream);
+    ReadWriteIOUtils.write(isStoppedByRuntimeExceptionBeforeStop, stream);
   }
 
   @Override
   public void deserialize(ByteBuffer byteBuffer) {
     super.deserialize(byteBuffer);
     pipeName = ReadWriteIOUtils.readString(byteBuffer);
+    isStoppedByRuntimeExceptionBeforeStop = ReadWriteIOUtils.readBool(byteBuffer);
   }
 
   @Override
@@ -179,11 +187,17 @@ public class StopPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     return getProcId() == that.getProcId()
         && getCurrentState().equals(that.getCurrentState())
         && getCycles() == that.getCycles()
+        && isStoppedByRuntimeExceptionBeforeStop == that.isStoppedByRuntimeExceptionBeforeStop
         && pipeName.equals(that.pipeName);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(getProcId(), getCurrentState(), getCycles(), pipeName);
+    return Objects.hash(
+        getProcId(),
+        getCurrentState(),
+        getCycles(),
+        pipeName,
+        isStoppedByRuntimeExceptionBeforeStop);
   }
 }

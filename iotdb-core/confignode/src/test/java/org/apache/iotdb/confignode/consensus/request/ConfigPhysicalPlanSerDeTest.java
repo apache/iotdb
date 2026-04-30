@@ -113,6 +113,7 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipeP
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.OperateMultiplePipesPlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusPlanV2;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusWithStoppedByRuntimeExceptionPlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.DeleteProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.quota.SetSpaceQuotaPlan;
@@ -988,6 +989,28 @@ public class ConfigPhysicalPlanSerDeTest {
   }
 
   @Test
+  public void SetPipeStatusWithStoppedByRuntimeExceptionPlanV2Test() throws IOException {
+    final SetPipeStatusWithStoppedByRuntimeExceptionPlanV2
+        setPipeStatusWithStoppedByRuntimeExceptionPlanV2 =
+            new SetPipeStatusWithStoppedByRuntimeExceptionPlanV2(
+                "pipe", org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus.STOPPED, true);
+    final SetPipeStatusWithStoppedByRuntimeExceptionPlanV2
+        setPipeStatusWithStoppedByRuntimeExceptionPlanV21 =
+            (SetPipeStatusWithStoppedByRuntimeExceptionPlanV2)
+            ConfigPhysicalPlan.Factory.create(
+                setPipeStatusWithStoppedByRuntimeExceptionPlanV2.serializeToByteBuffer());
+    Assert.assertEquals(
+        setPipeStatusWithStoppedByRuntimeExceptionPlanV2.getPipeName(),
+        setPipeStatusWithStoppedByRuntimeExceptionPlanV21.getPipeName());
+    Assert.assertEquals(
+        setPipeStatusWithStoppedByRuntimeExceptionPlanV2.getPipeStatus(),
+        setPipeStatusWithStoppedByRuntimeExceptionPlanV21.getPipeStatus());
+    Assert.assertEquals(
+        setPipeStatusWithStoppedByRuntimeExceptionPlanV2.isStoppedByRuntimeException(),
+        setPipeStatusWithStoppedByRuntimeExceptionPlanV21.isStoppedByRuntimeException());
+  }
+
+  @Test
   public void DropPipePlanV2Test() throws IOException {
     final DropPipePlanV2 dropPipePlanV2 = new DropPipePlanV2("demo");
     final DropPipePlanV2 dropPipePlanV21 =
@@ -1028,7 +1051,6 @@ public class ConfigPhysicalPlanSerDeTest {
     final SetPipeStatusPlanV2 setPipeStatusPlanV2 =
         new SetPipeStatusPlanV2(
             "testSet", org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus.RUNNING);
-
     final List<ConfigPhysicalPlan> subPlans = new ArrayList<>();
     subPlans.add(createPipePlanV2);
     subPlans.add(alterPipePlanV2);
