@@ -84,10 +84,10 @@ public class FilesystemShell {
         ctx.getPrinter().println(currentPath.toString());
         return true;
       case LS:
-        printNodes(provider.list(resolve(command.getPath())), isAllOption(command));
+        printList(command.getPath(), isAllOption(command), false);
         return true;
       case LL:
-        printLongNodes(provider.list(resolve(command.getPath())), isAllOption(command));
+        printList(command.getPath(), isAllOption(command), true);
         return true;
       case CD:
         changeDirectory(command.getPath());
@@ -136,7 +136,7 @@ public class FilesystemShell {
         printCut(command.getPath(), command.getOption(), command.getPattern());
         return true;
       case PASTE:
-        printRows(provider.read(resolve(command.getPaths()), DEFAULT_READ_LIMIT));
+        printPaste(command.getPaths());
         return true;
       case TEE:
         append(command.getPath(), false);
@@ -173,6 +173,15 @@ public class FilesystemShell {
   }
 
   private void printTree(FsPath path, int depth) throws SQLException {
+    FsNode node = provider.describe(path);
+    if (node.getType() == FsNodeType.UNKNOWN) {
+      ctx.getPrinter().println("tree: " + path + ": No such file or directory");
+      return;
+    }
+    if (!isDirectory(node.getType())) {
+      ctx.getPrinter().println(node.getName());
+      return;
+    }
     printTreeChildren(path, 0, depth);
   }
 
@@ -216,6 +225,28 @@ public class FilesystemShell {
       resolvedPaths.add(resolve(path));
     }
     return resolvedPaths;
+  }
+
+  private void printList(String path, boolean all, boolean longListing) throws SQLException {
+    FsPath resolvedPath = resolve(path);
+    FsNode node = provider.describe(resolvedPath);
+    if (node.getType() == FsNodeType.UNKNOWN) {
+      ctx.getPrinter().println("ls: " + resolvedPath + ": No such file or directory");
+      return;
+    }
+    if (!isDirectory(node.getType())) {
+      if (longListing) {
+        ctx.getPrinter().println(longMode(node.getType()) + "  1 iotdb iotdb 0 " + node.getName());
+      } else {
+        ctx.getPrinter().println(node.getName());
+      }
+      return;
+    }
+    if (longListing) {
+      printLongNodes(provider.list(resolvedPath), all);
+    } else {
+      printNodes(provider.list(resolvedPath), all);
+    }
   }
 
   private void printNodes(List<FsNode> nodes, boolean all) {
@@ -313,6 +344,19 @@ public class FilesystemShell {
     FsPath resolvedPath = resolve(path);
     for (String line : readableLines(resolvedPath, DEFAULT_READ_LIMIT)) {
       ctx.getPrinter().println(cutLine(line, delimiter, fields));
+    }
+  }
+
+  private void printPaste(List<String> paths) throws SQLException {
+    List<List<String>> files = new ArrayList<>();
+    int maxLines = 0;
+    for (String path : paths) {
+      List<String> lines = readableLines(resolve(path), DEFAULT_READ_LIMIT);
+      files.add(lines);
+      maxLines = Math.max(maxLines, lines.size());
+    }
+    for (int i = 0; i < maxLines; i++) {
+      ctx.getPrinter().println(pasteLine(files, i));
     }
   }
 
@@ -495,9 +539,7 @@ public class FilesystemShell {
         || type == FsNodeType.TREE_DATABASE
         || type == FsNodeType.TREE_INTERNAL_PATH
         || type == FsNodeType.TREE_DEVICE
-        || type == FsNodeType.TABLE_DATABASE
-        || type == FsNodeType.TABLE_TABLE
-        || type == FsNodeType.TABLE_VIEW;
+        || type == FsNodeType.TABLE_DATABASE;
   }
 
   private static String longMode(FsNodeType type) {
@@ -536,6 +578,20 @@ public class FilesystemShell {
         builder.append(delimiter);
       }
       builder.append(values[i]);
+    }
+    return builder.toString();
+  }
+
+  private static String pasteLine(List<List<String>> files, int lineIndex) {
+    StringBuilder builder = new StringBuilder();
+    for (int i = 0; i < files.size(); i++) {
+      if (i > 0) {
+        builder.append('\t');
+      }
+      List<String> lines = files.get(i);
+      if (lineIndex < lines.size()) {
+        builder.append(lines.get(lineIndex));
+      }
     }
     return builder.toString();
   }

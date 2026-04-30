@@ -38,6 +38,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 
 import static org.junit.Assert.assertFalse;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -45,8 +46,6 @@ public class CliFilesystemModeTest {
 
   @Mock private IoTDBConnection connection;
   @Mock private Statement statement;
-  @Mock private ResultSet resultSet;
-  @Mock private ResultSetMetaData metaData;
   @Mock private FilesystemShell shell;
   @Mock private LineReader lineReader;
 
@@ -63,11 +62,13 @@ public class CliFilesystemModeTest {
   @Test
   public void createFilesystemShellUsesTableProviderForTableDialect() throws Exception {
     when(connection.getSqlDialect()).thenReturn("table");
+    mockSingleColumnQuery("SHOW DATABASES", "Database", "db1");
     mockSingleColumnQuery("SHOW TABLES FROM db1", "TableName", "table1");
 
     FilesystemShell shell = Cli.createFilesystemShell(ctx, connection);
     shell.execute("ls /db1");
 
+    verify(statement).executeQuery("SHOW DATABASES");
     verify(statement).executeQuery("SHOW TABLES FROM db1");
   }
 
@@ -100,11 +101,13 @@ public class CliFilesystemModeTest {
   @Test
   public void createFilesystemShellUsesTreeProviderForTreeDialect() throws Exception {
     when(connection.getSqlDialect()).thenReturn("tree");
+    mockSingleColumnQuery("SHOW DATABASES", "Database", "root.sg");
     mockSingleColumnQuery("SHOW CHILD PATHS root.sg", "ChildPaths", "root.sg.d1");
 
     FilesystemShell shell = Cli.createFilesystemShell(ctx, connection);
     shell.execute("ls /root/sg");
 
+    verify(statement).executeQuery("SHOW DATABASES");
     verify(statement).executeQuery("SHOW CHILD PATHS root.sg");
   }
 
@@ -122,6 +125,8 @@ public class CliFilesystemModeTest {
   }
 
   private void mockSingleColumnQuery(String sql, String column, String value) throws Exception {
+    ResultSet resultSet = mock(ResultSet.class);
+    ResultSetMetaData metaData = mock(ResultSetMetaData.class);
     when(connection.createStatement()).thenReturn(statement);
     when(statement.executeQuery(sql)).thenReturn(resultSet);
     when(resultSet.getMetaData()).thenReturn(metaData);

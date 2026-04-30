@@ -71,7 +71,7 @@ public class TableFilesystemSchemaProvider implements FilesystemSchemaProvider {
       if (parseTableFile(path).kind != TableFileKind.UNKNOWN) {
         return new ArrayList<>();
       }
-      return listColumns(path);
+      return new ArrayList<>();
     }
     return new ArrayList<>();
   }
@@ -90,15 +90,8 @@ public class TableFilesystemSchemaProvider implements FilesystemSchemaProvider {
       if (file.kind != TableFileKind.UNKNOWN) {
         return describeTableFile(path, file);
       }
-      return describeTable(path);
     }
-    String columnName = path.getFileName();
-    for (FsNode node : listColumns(parent(path))) {
-      if (columnName.equals(node.getName())) {
-        return node;
-      }
-    }
-    return new FsNode(columnName, path, FsNodeType.UNKNOWN);
+    return unknown(path);
   }
 
   @Override
@@ -106,15 +99,8 @@ public class TableFilesystemSchemaProvider implements FilesystemSchemaProvider {
     int depth = path.getSegments().size();
     TableFileRef file = parseTableFile(path);
     if (depth == 2 && file.kind == TableFileKind.DATA_CSV) {
+      ensureExists(path, file);
       return executor.query("SELECT * FROM " + file.toTablePath() + " LIMIT " + limit);
-    }
-    if (depth == 2 && file.kind == TableFileKind.UNKNOWN) {
-      return executor.query("SELECT * FROM " + toTablePath(path) + " LIMIT " + limit);
-    }
-    if (depth == 3) {
-      String tablePath = toTablePath(parent(path));
-      return executor.query(
-          "SELECT " + path.getFileName() + " FROM " + tablePath + " LIMIT " + limit);
     }
     throw new SQLException("Path is not readable: " + path);
   }
@@ -123,14 +109,18 @@ public class TableFilesystemSchemaProvider implements FilesystemSchemaProvider {
   public List<String> readLines(FsPath path, int limit) throws SQLException {
     TableFileRef file = parseTableFile(path);
     if (file.kind == TableFileKind.DATA_CSV) {
-      return rowsToCsvLines(
-          executor.query("SELECT * FROM " + file.toTablePath() + " LIMIT " + limit));
+      ensureExists(path, file);
+      return head(
+          rowsToCsvLines(executor.query("SELECT * FROM " + file.toTablePath() + " LIMIT " + limit)),
+          limit);
     }
     if (file.kind == TableFileKind.SCHEMA) {
-      return rowsToCsvLines(executor.query("DESC " + file.toTablePath() + " DETAILS"));
+      ensureExists(path, file);
+      return head(rowsToCsvLines(executor.query("DESC " + file.toTablePath() + " DETAILS")), limit);
     }
     if (file.kind == TableFileKind.META) {
-      return metaLines(file);
+      ensureExists(path, file);
+      return head(metaLines(file), limit);
     }
     throw new SQLException("Path is not readable as text: " + path);
   }
@@ -141,23 +131,10 @@ public class TableFilesystemSchemaProvider implements FilesystemSchemaProvider {
     TableFileRef file = parseTableFile(path);
     List<SqlRow> rows;
     if (depth == 2 && file.kind == TableFileKind.DATA_CSV) {
+      ensureExists(path, file);
       rows =
           executor.query(
               "SELECT * FROM " + file.toTablePath() + " ORDER BY time DESC LIMIT " + limit);
-    } else if (depth == 2 && file.kind == TableFileKind.UNKNOWN) {
-      rows =
-          executor.query(
-              "SELECT * FROM " + toTablePath(path) + " ORDER BY time DESC LIMIT " + limit);
-    } else if (depth == 3) {
-      String tablePath = toTablePath(parent(path));
-      rows =
-          executor.query(
-              "SELECT "
-                  + path.getFileName()
-                  + " FROM "
-                  + tablePath
-                  + " ORDER BY time DESC LIMIT "
-                  + limit);
     } else {
       throw new SQLException("Path is not readable: " + path);
     }
@@ -168,14 +145,18 @@ public class TableFilesystemSchemaProvider implements FilesystemSchemaProvider {
   @Override
   public List<String> tailLines(FsPath path, int limit) throws SQLException {
     TableFileRef file = parseTableFile(path);
-    if (file.kind != TableFileKind.DATA_CSV) {
-      throw new SQLException("Path does not support tail: " + path);
+    if (file.kind == TableFileKind.SCHEMA || file.kind == TableFileKind.META) {
+      return tail(readLines(path, Integer.MAX_VALUE), limit);
     }
-    List<SqlRow> rows =
-        executor.query(
-            "SELECT * FROM " + file.toTablePath() + " ORDER BY time DESC LIMIT " + limit);
-    Collections.reverse(rows);
-    return rowsToCsvLines(rows);
+    if (file.kind == TableFileKind.DATA_CSV) {
+      ensureExists(path, file);
+      List<SqlRow> rows =
+          executor.query(
+              "SELECT * FROM " + file.toTablePath() + " ORDER BY time DESC LIMIT " + limit);
+      Collections.reverse(rows);
+      return tail(rowsToCsvLines(rows), limit);
+    }
+    throw new SQLException("Path does not support tail: " + path);
   }
 
   @Override
@@ -184,16 +165,15 @@ public class TableFilesystemSchemaProvider implements FilesystemSchemaProvider {
     TableFileRef file = parseTableFile(path);
     List<SqlRow> rows;
     if (depth == 2 && file.kind == TableFileKind.DATA_CSV) {
+      ensureExists(path, file);
       rows = executor.query("SELECT COUNT(*) FROM " + file.toTablePath());
-    } else if (depth == 2 && file.kind == TableFileKind.UNKNOWN) {
-      rows = executor.query("SELECT COUNT(*) FROM " + toTablePath(path));
-    } else if (depth == 3) {
-      String tablePath = toTablePath(parent(path));
-      rows = executor.query("SELECT COUNT(" + path.getFileName() + ") FROM " + tablePath);
+      return countValue(rows) + 1;
+    } else if (depth == 2
+        && (file.kind == TableFileKind.SCHEMA || file.kind == TableFileKind.META)) {
+      return readLines(path, Integer.MAX_VALUE).size();
     } else {
       throw new SQLException("Path is not countable: " + path);
     }
-    return countValue(rows);
   }
 
   @Override
@@ -201,14 +181,13 @@ public class TableFilesystemSchemaProvider implements FilesystemSchemaProvider {
     if (paths.size() == 1) {
       return read(paths.get(0), limit);
     }
-    FsPath tablePath = parent(paths.get(0));
-    for (FsPath path : paths) {
-      if (path.getSegments().size() != 3 || !tablePath.equals(parent(path))) {
-        throw new SQLException("Paths must be columns from the same table");
-      }
+    throw new SQLException("Multiple paths should be read as regular files");
+  }
+
+  private void ensureExists(FsPath path, TableFileRef file) throws SQLException {
+    if (!tableExists(parent(path), file.table)) {
+      throw new SQLException("Path does not exist: " + path);
     }
-    return executor.query(
-        "SELECT " + columnList(paths) + " FROM " + toTablePath(tablePath) + " LIMIT " + limit);
   }
 
   private List<FsNode> listDatabases() throws SQLException {
@@ -232,16 +211,6 @@ public class TableFilesystemSchemaProvider implements FilesystemSchemaProvider {
     return new FsNode(database, path, FsNodeType.UNKNOWN);
   }
 
-  private FsNode describeTable(FsPath path) throws SQLException {
-    String table = path.getFileName();
-    for (FsNode node : listTables(parent(path))) {
-      if (table.equals(node.getName())) {
-        return node;
-      }
-    }
-    return new FsNode(table, path, FsNodeType.UNKNOWN);
-  }
-
   private FsNode describeTableFile(FsPath path, TableFileRef file) throws SQLException {
     for (String table : listTableNames(parent(path))) {
       if (table.equals(file.table)) {
@@ -249,18 +218,6 @@ public class TableFilesystemSchemaProvider implements FilesystemSchemaProvider {
       }
     }
     return new FsNode(path.getFileName(), path, FsNodeType.UNKNOWN);
-  }
-
-  private List<FsNode> listTables(FsPath databasePath) throws SQLException {
-    List<FsNode> nodes = new ArrayList<>();
-    for (String table : listTableNames(databasePath)) {
-      nodes.add(
-          new FsNode(
-              table,
-              FsPath.absolute("/" + databasePath.getFileName() + "/" + table),
-              FsNodeType.TABLE_TABLE));
-    }
-    return nodes;
   }
 
   private List<FsNode> listTableFiles(FsPath databasePath) throws SQLException {
@@ -292,7 +249,8 @@ public class TableFilesystemSchemaProvider implements FilesystemSchemaProvider {
   private List<String> listTableNames(FsPath databasePath) throws SQLException {
     String database = databasePath.getFileName();
     List<String> tables = new ArrayList<>();
-    for (SqlRow row : executor.query("SHOW TABLES FROM " + database)) {
+    for (SqlRow row :
+        executor.query("SHOW TABLES FROM " + TableFilesystemSql.identifier(database))) {
       String table = row.get("TableName");
       if (table != null) {
         tables.add(table);
@@ -301,33 +259,20 @@ public class TableFilesystemSchemaProvider implements FilesystemSchemaProvider {
     return tables;
   }
 
-  private List<FsNode> listColumns(FsPath tablePath) throws SQLException {
-    List<String> segments = tablePath.getSegments();
-    String database = segments.get(0);
-    String table = segments.get(1);
-    List<FsNode> nodes = new ArrayList<>();
-    for (SqlRow row : executor.query("DESC " + database + "." + table + " DETAILS")) {
-      String column = row.get("ColumnName");
-      if (column != null) {
-        nodes.add(
-            new FsNode(
-                column,
-                FsPath.absolute("/" + database + "/" + table + "/" + column),
-                FsNodeType.TABLE_COLUMN,
-                row.asMap()));
+  private boolean tableExists(FsPath databasePath, String table) throws SQLException {
+    for (String tableName : listTableNames(databasePath)) {
+      if (tableName.equals(table)) {
+        return true;
       }
     }
-    return nodes;
-  }
-
-  private static String toTablePath(FsPath path) {
-    List<String> segments = path.getSegments();
-    return segments.get(0) + "." + segments.get(1);
+    return false;
   }
 
   private List<String> metaLines(TableFileRef file) throws SQLException {
     List<SqlRow> rows = new ArrayList<>();
-    for (SqlRow row : executor.query("SHOW TABLES DETAILS FROM " + file.database)) {
+    for (SqlRow row :
+        executor.query(
+            "SHOW TABLES DETAILS FROM " + TableFilesystemSql.identifier(file.database))) {
       if (file.table.equals(row.get("TableName"))) {
         rows.add(row);
       }
@@ -394,17 +339,6 @@ public class TableFilesystemSchemaProvider implements FilesystemSchemaProvider {
     return new TableFileRef(database, table, kind).metadata();
   }
 
-  private static String columnList(List<FsPath> paths) {
-    StringBuilder builder = new StringBuilder();
-    for (FsPath path : paths) {
-      if (builder.length() > 0) {
-        builder.append(", ");
-      }
-      builder.append(path.getFileName());
-    }
-    return builder.toString();
-  }
-
   private static long countValue(List<SqlRow> rows) {
     if (rows.isEmpty() || rows.get(0).asMap().isEmpty()) {
       return 0;
@@ -422,6 +356,24 @@ public class TableFilesystemSchemaProvider implements FilesystemSchemaProvider {
       builder.append(segments.get(i));
     }
     return FsPath.absolute(builder.toString());
+  }
+
+  private static FsNode unknown(FsPath path) {
+    return new FsNode(path.getFileName(), path, FsNodeType.UNKNOWN);
+  }
+
+  private static List<String> head(List<String> lines, int limit) {
+    if (limit < 0 || lines.size() <= limit) {
+      return lines;
+    }
+    return new ArrayList<>(lines.subList(0, limit));
+  }
+
+  private static List<String> tail(List<String> lines, int limit) {
+    if (limit < 0 || lines.size() <= limit) {
+      return lines;
+    }
+    return new ArrayList<>(lines.subList(lines.size() - limit, lines.size()));
   }
 
   private static class TableFileRef {
@@ -457,7 +409,7 @@ public class TableFilesystemSchemaProvider implements FilesystemSchemaProvider {
     }
 
     private String toTablePath() {
-      return database + "." + table;
+      return TableFilesystemSql.tablePath(database, table);
     }
 
     private FsNodeType nodeType() {

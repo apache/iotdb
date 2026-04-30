@@ -42,7 +42,7 @@ public class TableFilesystemMutationProvider implements FilesystemMutationProvid
     if (path.getSegments().size() != 1) {
       throw invalidOperation();
     }
-    executor.execute("CREATE DATABASE " + path.getFileName());
+    executor.execute("CREATE DATABASE " + TableFilesystemSql.identifier(path.getFileName()));
   }
 
   @Override
@@ -61,7 +61,11 @@ public class TableFilesystemMutationProvider implements FilesystemMutationProvid
     if (!parent(source).equals(parent(target))) {
       throw invalidOperation();
     }
-    executor.execute("ALTER TABLE " + toTablePath(source) + " RENAME TO " + tableName(target));
+    executor.execute(
+        "ALTER TABLE "
+            + toTablePath(source)
+            + " RENAME TO "
+            + TableFilesystemSql.identifier(tableName(target)));
   }
 
   @Override
@@ -72,10 +76,12 @@ public class TableFilesystemMutationProvider implements FilesystemMutationProvid
     if (lines == null || lines.isEmpty()) {
       return;
     }
-    String tablePath = toTablePath(path);
     List<String> statements =
         TableCsvAppendPlanner.plan(
-            tablePath, executor.query("DESC " + tablePath + " DETAILS"), lines);
+            databaseName(path),
+            tableName(path),
+            executor.query("DESC " + toTablePath(path) + " DETAILS"),
+            lines);
     for (String statement : statements) {
       executor.execute(statement);
     }
@@ -86,8 +92,11 @@ public class TableFilesystemMutationProvider implements FilesystemMutationProvid
   }
 
   private static String toTablePath(FsPath path) {
-    List<String> segments = path.getSegments();
-    return segments.get(0) + "." + tableName(path);
+    return TableFilesystemSql.tablePath(databaseName(path), tableName(path));
+  }
+
+  private static String databaseName(FsPath path) {
+    return path.getSegments().get(0);
   }
 
   private static boolean isDataFile(FsPath path) {

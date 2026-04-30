@@ -155,9 +155,10 @@ The table data file is the primary path for user data operations:
 - `/<database>/<table>.meta`: sidecar table metadata rendered as CSV from the table row returned by
   `SHOW TABLES DETAILS FROM <database>`, preserving the column names and values returned by IoTDB.
 
-The legacy column-oriented path `/<database>/<table>/<column>` is not the primary table-model
-filesystem abstraction. It may remain as a compatibility path for existing read behavior during a
-migration period, or be documented as the migration source when moving users to the sidecar model.
+Bare table paths and column-oriented paths are intentionally outside the table filesystem model.
+`/<database>/<table>` must not be exposed as a directory, and
+`/<database>/<table>/<column>` must not be exposed as a regular file. Users inspect the table
+through the `.csv`, `.schema`, and `.meta` sidecars.
 
 | Filesystem Path | IoTDB Object | Node Type | Discovery |
 | --- | --- | --- | --- |
@@ -166,11 +167,11 @@ migration period, or be documented as the migration source when moving users to 
 | `/<database>/<table>.csv` | Table data regular file | `TABLE_DATA_FILE` | `SHOW TABLES FROM <database>` |
 | `/<database>/<table>.schema` | Schema sidecar regular file | `TABLE_SCHEMA_FILE` | Exists via `SHOW TABLES FROM <database>`; content via `DESC <database>.<table> DETAILS` |
 | `/<database>/<table>.meta` | Metadata sidecar regular file | `TABLE_META_FILE` | Exists via `SHOW TABLES FROM <database>`; content via `SHOW TABLES DETAILS FROM <database>` |
-| `/<database>/<table>/<column>` | Legacy column compatibility path | `TABLE_COLUMN` | `DESC <database>.<table> DETAILS` |
 
 Table-model devices from `SHOW DEVICES FROM <table>` are not part of the first version's base path
-hierarchy because they are data-instance-oriented rather than schema-container-oriented. They can
-be added later as a virtual directory such as `/<database>/<table>/.devices`.
+hierarchy because they are data-instance-oriented rather than schema-container-oriented. If device
+metadata is exposed later, it must use a sidecar-compatible regular file path rather than turning
+`/<database>/<table>` into a directory.
 
 ## Path Rules
 
@@ -182,8 +183,8 @@ be added later as a virtual directory such as `/<database>/<table>/.devices`.
 - Table-model paths use `/database/table.csv`, `/database/table.schema`, and
   `/database/table.meta`. The database component is a directory; the table data and sidecar paths
   are regular files.
-- Legacy table-model paths of the form `/database/table/column` are compatibility paths or
-  migration inputs, not the primary table filesystem model.
+- Table-model paths of the form `/database/table` and `/database/table/column` are not filesystem
+  objects in the sidecar model.
 - Wildcard paths are not treated as filesystem nodes in the first version. Users should run
   wildcard SQL through normal SQL mode.
 - SQL escaping and identifier quoting must be centralized in provider helper methods. Command
@@ -203,18 +204,18 @@ semantics wherever the same command exists. Provider support can still vary by d
 | `ll [-a] [path]` | Long listing alias. Uses read-only permissions by default: directories as `dr-xr-xr-x`, files as `-r--r--r--`. | `ll -a /db` |
 | `cd <path>` | Change the current directory only if the target is a directory node. | `cd /db` |
 | `stat [path]` | Print filesystem-style metadata, including path, Unix type, and provider metadata. | `stat /db/table.csv` |
-| `cat <path>...` | Print one or more readable paths sequentially. Table `.csv`, `.schema`, and `.meta` sidecars print CSV lines; legacy table/column paths print tab-separated values. | `cat /db/table.csv` |
+| `cat <path>...` | Print one or more readable paths sequentially. Table `.csv`, `.schema`, and `.meta` sidecars print CSV lines. | `cat /db/table.csv` |
 | `head [-n lines] <path>` | Print the first rows or text lines for a readable path. Short numeric form such as `head -5 <path>` is also parsed. | `head -n 5 /db/table.csv` |
-| `tail [-n lines] <path>` | Print the last rows or text lines where the provider supports tail. Table `.csv` uses `ORDER BY time DESC LIMIT n` internally and returns original order. | `tail -n 5 /db/table.csv` |
-| `wc -l <path>` | Print logical row or line count plus path. Only `-l` is supported. | `wc -l /db/table.csv` |
+| `tail [-n lines] <path>` | Print the last file lines where the provider supports tail. Table `.csv` uses `ORDER BY time DESC LIMIT n` internally and returns original order. | `tail -n 5 /db/table.csv` |
+| `wc -l <path>` | Print file-line count plus path. Only `-l` is supported. | `wc -l /db/table.schema` |
 | `grep <pattern> <path>` | Print lines or rows containing the literal pattern. This is substring matching, not regular-expression matching. | `grep spricoder /db/table.csv` |
 | `find [path] [-name name]` | Recursively list the starting path and descendants whose node name exactly matches `name`; without `-name`, it prints all visited paths. | `find /db -name table.csv` |
 | `less <path>` | Current implementation prints readable content like `cat` with the default read limit; it is not an interactive pager. | `less /db/table.csv` |
 | `more <path>` | Current implementation prints readable content like `cat` with the default read limit; it is not an interactive pager. | `more /db/table.schema` |
 | `file <path>` | Print the Unix type for the path: `directory`, `regular file`, or `unknown`. | `file /db/table.meta` |
-| `du <path>` | Print logical count plus path, using the provider count operation. | `du /db/table.csv` |
+| `du <path>` | Print provider count plus path. Table sidecars use file-line counts. | `du /db/table.csv` |
 | `cut -d<delimiter> -f<fields> <path>` | Apply Unix delimiter-based field selection to each line. The delimiter must be one character. Field lists and closed ranges such as `2,3` and `1-2` are supported. | `cut -d, -f2,3 /db/table.csv` |
-| `paste <path>...` | Read multiple file-like paths side by side. Table mode currently supports legacy same-table column paths and optimizes them to one SQL projection. | `paste /db/table/key /db/table/value` |
+| `paste <path>...` | Read multiple regular files side by side and join corresponding lines with tabs. | `paste /db/t1.csv /db/t2.csv` |
 | `tree [-L depth] [path]` | Recursively print descendants with indentation and names only. `-L` limits recursion depth. | `tree -L 2 /db` |
 | `mkdir <path>` | Write-gated command. With table mode and `--fs_write_mode enabled`, `mkdir /db` creates a database. Otherwise it returns a read-only or unsupported error. | `mkdir /newdb` |
 | `rm <path>` | Write-gated command. With table mode and `--fs_write_mode enabled`, only `rm /db/table.csv` is allowed and maps to table drop. | `rm /db/table.csv` |
@@ -252,11 +253,12 @@ Raw SQL should be run in the default SQL access mode.
 | `stat /db/table.meta` | `SHOW TABLES FROM db`, filtered to the table and rendered as filesystem metadata for the metadata sidecar. |
 | `cat /db/table.csv` | `SELECT * FROM db.table LIMIT <limit>`, formatted as CSV records. |
 | `cut -d, -f2,3 /db/table.csv` | Delimiter-based text field projection over the CSV records. |
+| `paste /db/t1.csv /db/t2.csv` | Read each regular file as CSV/text lines and join corresponding lines with tabs. |
 | `tee -a /db/table.csv` | Parse CSV input with Apache Commons CSV, validate columns and required `time`, then execute chunked `INSERT INTO db.table(...) VALUES ...`. |
 | `cat /db/table.schema` | `DESC db.table DETAILS`, formatted as CSV with IoTDB result columns preserved. |
 | `cat /db/table.meta` | `SHOW TABLES DETAILS FROM db`, filtered to the table and formatted as CSV with IoTDB result columns preserved. |
-| `stat /db/table/col` | Legacy compatibility: `DESC db.table DETAILS`, filtered to the column. |
-| `cat /db/table/col` | Legacy compatibility: `SELECT col FROM db.table LIMIT <limit>`. |
+| `/db/table` | Not a table-mode filesystem object in the sidecar model; should describe as `unknown` and reject reads. |
+| `/db/table/col` | Not a table-mode filesystem object in the sidecar model; should describe as `unknown` and reject reads. |
 
 ## Unix Output Semantics
 
@@ -267,12 +269,12 @@ exposing internal implementation types or Java debug-style structures in normal 
   `ls -1`; it must not introduce comma-separated output or database-specific listing dialects.
 - `ls -a` and `ll -a` include `.` and `..` before normal entries.
 - `tree` prints the hierarchy with indentation and names only.
-- `cat` prints regular file content without Java object formatting. For table data files this is
-  CSV; for legacy compatibility table/column paths this remains tab-separated row values.
+- `cat` prints regular file content without Java object formatting. For table sidecars this is CSV.
 - `cut -d, -f2,3 /db/table.csv` is the Unix-compatible way to project fields from table CSV
   content. It performs delimiter-based text cutting like Unix `cut`; it does not parse CSV quoting
   or introduce table-specific column-selection flags.
-- `paste` prints multiple file-like paths side by side as tab-separated values.
+- `paste` prints multiple regular files side by side as tab-separated values. It does not select
+  database columns.
 - `less` and `more` are currently non-interactive read aliases with the default read limit.
 - `stat` is the command that may expose typed metadata, because Unix `stat` is explicitly about
   object metadata.
@@ -282,9 +284,9 @@ exposing internal implementation types or Java debug-style structures in normal 
 - Error output should follow a command-prefixed style such as `cat: <message>` or
   `cd: <path>: Not a directory`.
 
-This means provider-internal node types such as `TABLE_DATABASE`, `TABLE_COLUMN`, or
+This means provider-internal node types such as `TABLE_DATABASE`, `TABLE_DATA_FILE`, or
 `TREE_DATABASE` must not appear in `ls` or `tree` output. Similarly, `SqlRow.asMap().toString()`
-must not be used for `cat` or `paste` output.
+must not be used for `cat`, `paste`, or sidecar output.
 
 ## Completion Semantics
 
@@ -305,23 +307,21 @@ Table-mode read behavior is currently:
 - `cat /db/table.schema` maps to `DESC db.table DETAILS` and preserves IoTDB result columns in CSV.
 - `cat /db/table.meta` maps to `SHOW TABLES DETAILS FROM db`, filters to the table row, and
   preserves IoTDB result columns in CSV.
-- Legacy `cat /db/table/column` may map to `SELECT column FROM db.table LIMIT <limit>` during the
-  migration period.
-- Legacy `paste /db/table/col1 /db/table/col2` may map to
-  `SELECT col1, col2 FROM db.table LIMIT <limit>` when all paths are columns from the same table.
+Table-mode no longer exposes `/db/table` as a directory or `/db/table/column` as a file. Those paths
+are unknown in the sidecar model and must not trigger table or column SQL reads.
 
-Although `paste` is implemented through one optimized SQL query for table mode, the user-facing
-semantics remain Unix-like: users pass multiple file paths to a standard Unix command rather than
-using a database-specific `select` command or `cat --columns` dialect.
+`paste` remains Unix-like: users pass multiple regular file paths and the shell joins
+corresponding lines with tabs. It must not become a database-specific `select` command or
+`cat --columns` dialect.
 
 For CSV-first table files, multi-column projection should prefer Unix `cut` syntax such as
 `cut -d, -f2,3 /db/table.csv`. The implementation may later optimize this internally, but the
 public interface must remain the standard `cut` form.
 
 In interactive filesystem mode, a single command failure must not terminate the CLI session. For
-example, if `cat time` is resolved from `/testtest` to `/testtest/time`, table mode treats that as a
-table path and may receive a server error such as `550: Table 'testtest.time' does not exist`. That
-error should be printed as `cat: 550: ...`, then the prompt should continue.
+example, if `cat time` is resolved from `/testtest` to `/testtest/time`, table mode should reject it
+as not readable because it is not `.csv`, `.schema`, or `.meta`. The error should be printed with
+the command name, then the prompt should continue.
 
 ## Append Data Write Semantics
 
@@ -347,7 +347,7 @@ The sidecar files remain read-only metadata views:
 
 - `tee -a /db/table.schema` is rejected.
 - `tee -a /db/table.meta` is rejected.
-- Legacy column paths such as `/db/table/col` are not writable append targets.
+- Column paths such as `/db/table/col` are not filesystem objects and are not writable append targets.
 - Tree-mode paths remain non-writable even when `--fs_write_mode enabled` is set.
 
 ### Input Modes
@@ -454,8 +454,8 @@ Filesystem mode separates reads from mutations. The schema provider owns read op
 - `readLines(FsPath path)` for text sidecars such as `.csv`, `.schema`, and `.meta`
 - `tail(FsPath path)` / `tailLines(FsPath path)` where the provider supports tail
 - `count(FsPath path)` where the provider supports logical count
-- `read(List<FsPath> paths)` for provider-optimized multi-path reads such as legacy table-column
-  `paste`
+- `read(List<FsPath> paths)` remains available for providers that need optimized multi-path reads,
+  but table mode sidecar `paste` is implemented as regular file line joining in the shell.
 
 The mutation provider owns the current write-gated operations:
 
@@ -541,8 +541,8 @@ Unit tests should cover the behavior without needing a live IoTDB instance where
   commands, and the parser-only `sql` form.
 - Provider tests with a mocked `SqlExecutor`, verifying tree-mode path-to-SQL mapping.
 - Provider tests with a mocked `SqlExecutor`, verifying table-mode path-to-SQL mapping, CSV
-  sidecars, IoTDB-preserved `.schema`/`.meta` content, multi-column legacy reads, and table
-  mutation restrictions.
+  sidecars, IoTDB-preserved `.schema`/`.meta` content, rejection of bare table and column paths,
+  and table mutation restrictions.
 - CLI option tests extending existing CLI unit coverage for default `access_mode`, filesystem
   mode, invalid mode values, and `fs_write_mode`.
 - Shell tests proving SQL mode remains the default and filesystem mode dispatches to

@@ -86,6 +86,8 @@ public class FilesystemShellTest {
 
   @Test
   public void executeLsPrintsChildNodes() throws SQLException {
+    when(provider.describe(FsPath.absolute("/")))
+        .thenReturn(new FsNode("/", FsPath.absolute("/"), FsNodeType.VIRTUAL_ROOT));
     when(provider.list(FsPath.absolute("/")))
         .thenReturn(
             Arrays.asList(
@@ -97,27 +99,34 @@ public class FilesystemShellTest {
     assertEquals("root" + System.lineSeparator() + "test" + System.lineSeparator(), out.toString());
     assertFalse(out.toString().contains(","));
     assertFalse(out.toString().contains("TREE_ROOT"));
+    verify(provider).describe(FsPath.absolute("/"));
     verify(provider).list(FsPath.absolute("/"));
   }
 
   @Test
   public void executeLlPrintsLongListing() throws SQLException {
+    when(provider.describe(FsPath.absolute("/")))
+        .thenReturn(new FsNode("/", FsPath.absolute("/"), FsNodeType.VIRTUAL_ROOT));
     when(provider.list(FsPath.absolute("/")))
         .thenReturn(
             Arrays.asList(
                 new FsNode("testtest", FsPath.absolute("/testtest"), FsNodeType.TABLE_DATABASE),
-                new FsNode("value", FsPath.absolute("/value"), FsNodeType.TABLE_COLUMN)));
+                new FsNode(
+                    "value.csv", FsPath.absolute("/value.csv"), FsNodeType.TABLE_DATA_FILE)));
 
     assertTrue(shell.execute("ll /"));
 
     assertTrue(out.toString().contains("dr-xr-xr-x"));
     assertTrue(out.toString().contains("-r--r--r--"));
     assertTrue(out.toString().contains("testtest"));
+    verify(provider).describe(FsPath.absolute("/"));
     verify(provider).list(FsPath.absolute("/"));
   }
 
   @Test
   public void executeLsLongOptionPrintsLongListing() throws SQLException {
+    when(provider.describe(FsPath.absolute("/")))
+        .thenReturn(new FsNode("/", FsPath.absolute("/"), FsNodeType.VIRTUAL_ROOT));
     when(provider.list(FsPath.absolute("/")))
         .thenReturn(
             Arrays.asList(
@@ -127,11 +136,14 @@ public class FilesystemShellTest {
 
     assertTrue(out.toString().contains("dr-xr-xr-x"));
     assertTrue(out.toString().contains("testtest"));
+    verify(provider).describe(FsPath.absolute("/"));
     verify(provider).list(FsPath.absolute("/"));
   }
 
   @Test
   public void executeLsAllPrintsDotEntries() throws SQLException {
+    when(provider.describe(FsPath.absolute("/")))
+        .thenReturn(new FsNode("/", FsPath.absolute("/"), FsNodeType.VIRTUAL_ROOT));
     when(provider.list(FsPath.absolute("/")))
         .thenReturn(
             Arrays.asList(
@@ -147,11 +159,14 @@ public class FilesystemShellTest {
             + "testtest"
             + System.lineSeparator(),
         out.toString());
+    verify(provider).describe(FsPath.absolute("/"));
     verify(provider).list(FsPath.absolute("/"));
   }
 
   @Test
   public void executeLlAllPrintsDotEntriesInLongListing() throws SQLException {
+    when(provider.describe(FsPath.absolute("/")))
+        .thenReturn(new FsNode("/", FsPath.absolute("/"), FsNodeType.VIRTUAL_ROOT));
     when(provider.list(FsPath.absolute("/")))
         .thenReturn(
             Arrays.asList(
@@ -163,7 +178,35 @@ public class FilesystemShellTest {
     assertTrue(out.toString().contains("dr-xr-xr-x  1 iotdb iotdb 0 .."));
     assertTrue(out.toString().contains("dr-xr-xr-x  1 iotdb iotdb 0 testtest"));
     assertFalse(out.toString().contains("-a"));
+    verify(provider).describe(FsPath.absolute("/"));
     verify(provider).list(FsPath.absolute("/"));
+  }
+
+  @Test
+  public void executeLsRegularFilePrintsFileName() throws SQLException {
+    when(provider.describe(FsPath.absolute("/db1/table1.csv")))
+        .thenReturn(
+            new FsNode(
+                "table1.csv", FsPath.absolute("/db1/table1.csv"), FsNodeType.TABLE_DATA_FILE));
+
+    assertTrue(shell.execute("ls /db1/table1.csv"));
+
+    assertEquals("table1.csv" + System.lineSeparator(), out.toString());
+    verify(provider).describe(FsPath.absolute("/db1/table1.csv"));
+    verify(provider, times(0)).list(FsPath.absolute("/db1/table1.csv"));
+  }
+
+  @Test
+  public void executeLsUnknownPathPrintsNoSuchFile() throws SQLException {
+    when(provider.describe(FsPath.absolute("/db1/table1")))
+        .thenReturn(new FsNode("table1", FsPath.absolute("/db1/table1"), FsNodeType.UNKNOWN));
+
+    assertTrue(shell.execute("ls /db1/table1"));
+
+    assertEquals(
+        "ls: /db1/table1: No such file or directory" + System.lineSeparator(), out.toString());
+    verify(provider).describe(FsPath.absolute("/db1/table1"));
+    verify(provider, times(0)).list(FsPath.absolute("/db1/table1"));
   }
 
   @Test
@@ -258,6 +301,8 @@ public class FilesystemShellTest {
 
   @Test
   public void executeTreePrintsChildrenUntilDepth() throws SQLException {
+    when(provider.describe(FsPath.absolute("/")))
+        .thenReturn(new FsNode("/", FsPath.absolute("/"), FsNodeType.VIRTUAL_ROOT));
     when(provider.list(FsPath.absolute("/")))
         .thenReturn(
             Arrays.asList(new FsNode("root", FsPath.absolute("/root"), FsNodeType.TREE_ROOT)));
@@ -271,20 +316,34 @@ public class FilesystemShellTest {
     assertTrue(out.toString().contains("sg"));
     assertFalse(out.toString().contains("TREE_ROOT"));
     assertFalse(out.toString().contains("TREE_DATABASE"));
+    verify(provider).describe(FsPath.absolute("/"));
     verify(provider).list(FsPath.absolute("/"));
     verify(provider).list(FsPath.absolute("/root"));
   }
 
   @Test
-  public void executeCatReadsTablePath() throws SQLException {
-    when(provider.read(FsPath.absolute("/db1/table1"), 20))
-        .thenReturn(Arrays.asList(SqlRow.of("Time", "1", "tag1", "a", "s1", "42")));
+  public void executeTreeUnknownPathPrintsNoSuchFile() throws SQLException {
+    when(provider.describe(FsPath.absolute("/db1/table1")))
+        .thenReturn(new FsNode("table1", FsPath.absolute("/db1/table1"), FsNodeType.UNKNOWN));
 
-    assertTrue(shell.execute("cat /db1/table1"));
+    assertTrue(shell.execute("tree /db1/table1"));
 
-    assertTrue(out.toString().contains("1\ta\t42"));
-    assertFalse(out.toString().contains("{"));
-    verify(provider).read(FsPath.absolute("/db1/table1"), 20);
+    assertEquals(
+        "tree: /db1/table1: No such file or directory" + System.lineSeparator(), out.toString());
+    verify(provider).describe(FsPath.absolute("/db1/table1"));
+    verify(provider, times(0)).list(FsPath.absolute("/db1/table1"));
+  }
+
+  @Test
+  public void executeCatReadsSchemaFileLines() throws SQLException {
+    when(provider.readLines(FsPath.absolute("/db1/table1.schema"), 20))
+        .thenReturn(Arrays.asList("ColumnName,DataType", "key,STRING"));
+
+    assertTrue(shell.execute("cat /db1/table1.schema"));
+
+    assertTrue(out.toString().contains("ColumnName,DataType"));
+    assertTrue(out.toString().contains("key,STRING"));
+    verify(provider).readLines(FsPath.absolute("/db1/table1.schema"), 20);
   }
 
   @Test
@@ -300,29 +359,37 @@ public class FilesystemShellTest {
   }
 
   @Test
-  public void executeCatReadsMultiplePathsSequentially() throws SQLException {
-    when(provider.read(FsPath.absolute("/db1/table1/tag1"), 20))
-        .thenReturn(Arrays.asList(SqlRow.of("Time", "1", "tag1", "a")));
-    when(provider.read(FsPath.absolute("/db1/table1/s1"), 20))
-        .thenReturn(Arrays.asList(SqlRow.of("Time", "1", "s1", "42")));
+  public void executeCatReadsMultipleTextFilesSequentially() throws SQLException {
+    when(provider.readLines(FsPath.absolute("/db1/table1.csv"), 20))
+        .thenReturn(Arrays.asList("time,key", "1,a"));
+    when(provider.readLines(FsPath.absolute("/db1/table1.meta"), 20))
+        .thenReturn(Arrays.asList("TableName,Status", "table1,USING"));
 
-    assertTrue(shell.execute("cat /db1/table1/tag1 /db1/table1/s1"));
+    assertTrue(shell.execute("cat /db1/table1.csv /db1/table1.meta"));
 
-    assertTrue(out.toString().contains("1\ta"));
-    assertTrue(out.toString().contains("1\t42"));
-    verify(provider).read(FsPath.absolute("/db1/table1/tag1"), 20);
-    verify(provider).read(FsPath.absolute("/db1/table1/s1"), 20);
+    assertEquals(
+        "time,key"
+            + System.lineSeparator()
+            + "1,a"
+            + System.lineSeparator()
+            + "TableName,Status"
+            + System.lineSeparator()
+            + "table1,USING"
+            + System.lineSeparator(),
+        out.toString());
+    verify(provider).readLines(FsPath.absolute("/db1/table1.csv"), 20);
+    verify(provider).readLines(FsPath.absolute("/db1/table1.meta"), 20);
   }
 
   @Test
-  public void executeHeadReadsPathWithLimit() throws SQLException {
-    when(provider.read(FsPath.absolute("/db1/table1"), 5))
-        .thenReturn(Arrays.asList(SqlRow.of("Time", "1", "tag1", "a", "s1", "42")));
+  public void executeHeadReadsSchemaFileLinesWithLimit() throws SQLException {
+    when(provider.readLines(FsPath.absolute("/db1/table1.schema"), 5))
+        .thenReturn(Arrays.asList("ColumnName,DataType", "key,STRING"));
 
-    assertTrue(shell.execute("head -n 5 /db1/table1"));
+    assertTrue(shell.execute("head -n 5 /db1/table1.schema"));
 
-    assertTrue(out.toString().contains("1\ta\t42"));
-    verify(provider).read(FsPath.absolute("/db1/table1"), 5);
+    assertTrue(out.toString().contains("ColumnName,DataType"));
+    verify(provider).readLines(FsPath.absolute("/db1/table1.schema"), 5);
   }
 
   @Test
@@ -338,14 +405,14 @@ public class FilesystemShellTest {
   }
 
   @Test
-  public void executeTailReadsPathWithLimit() throws SQLException {
-    when(provider.tail(FsPath.absolute("/db1/table1"), 3))
-        .thenReturn(Arrays.asList(SqlRow.of("Time", "2", "tag1", "b", "s1", "43")));
+  public void executeTailReadsSchemaFileLinesWithLimit() throws SQLException {
+    when(provider.tailLines(FsPath.absolute("/db1/table1.schema"), 3))
+        .thenReturn(Arrays.asList("key,STRING", "value,DOUBLE"));
 
-    assertTrue(shell.execute("tail -n 3 /db1/table1"));
+    assertTrue(shell.execute("tail -n 3 /db1/table1.schema"));
 
-    assertTrue(out.toString().contains("2\tb\t43"));
-    verify(provider).tail(FsPath.absolute("/db1/table1"), 3);
+    assertTrue(out.toString().contains("value,DOUBLE"));
+    verify(provider).tailLines(FsPath.absolute("/db1/table1.schema"), 3);
   }
 
   @Test
@@ -384,17 +451,17 @@ public class FilesystemShellTest {
 
   @Test
   public void executeGrepPrintsOnlyMatchingRows() throws SQLException {
-    when(provider.read(FsPath.absolute("/db1/table1"), 20))
+    when(provider.read(FsPath.absolute("/root/sg/d1/s1"), 20))
         .thenReturn(
             Arrays.asList(
                 SqlRow.of("Time", "1", "tag1", "spricoder", "s1", "42"),
                 SqlRow.of("Time", "2", "tag1", "other", "s1", "43")));
 
-    assertTrue(shell.execute("grep spricoder /db1/table1"));
+    assertTrue(shell.execute("grep spricoder /root/sg/d1/s1"));
 
     assertTrue(out.toString().contains("1\tspricoder\t42"));
     assertFalse(out.toString().contains("2\tother\t43"));
-    verify(provider).read(FsPath.absolute("/db1/table1"), 20);
+    verify(provider).read(FsPath.absolute("/root/sg/d1/s1"), 20);
   }
 
   @Test
@@ -403,34 +470,36 @@ public class FilesystemShellTest {
         .thenReturn(new FsNode("/", FsPath.absolute("/"), FsNodeType.VIRTUAL_ROOT));
     when(provider.describe(FsPath.absolute("/db1")))
         .thenReturn(new FsNode("db1", FsPath.absolute("/db1"), FsNodeType.TABLE_DATABASE));
-    when(provider.describe(FsPath.absolute("/db1/table1")))
-        .thenReturn(new FsNode("table1", FsPath.absolute("/db1/table1"), FsNodeType.TABLE_TABLE));
+    when(provider.describe(FsPath.absolute("/db1/table1.csv")))
+        .thenReturn(
+            new FsNode(
+                "table1.csv", FsPath.absolute("/db1/table1.csv"), FsNodeType.TABLE_DATA_FILE));
     when(provider.list(FsPath.absolute("/")))
         .thenReturn(
             Arrays.asList(new FsNode("db1", FsPath.absolute("/db1"), FsNodeType.TABLE_DATABASE)));
     when(provider.list(FsPath.absolute("/db1")))
         .thenReturn(
             Arrays.asList(
-                new FsNode("table1", FsPath.absolute("/db1/table1"), FsNodeType.TABLE_TABLE)));
-    when(provider.list(FsPath.absolute("/db1/table1"))).thenReturn(new ArrayList<>());
+                new FsNode(
+                    "table1.csv", FsPath.absolute("/db1/table1.csv"), FsNodeType.TABLE_DATA_FILE)));
 
-    assertTrue(shell.execute("find / -name table1"));
+    assertTrue(shell.execute("find / -name table1.csv"));
 
-    assertTrue(out.toString().contains("/db1/table1"));
+    assertTrue(out.toString().contains("/db1/table1.csv"));
     verify(provider).list(FsPath.absolute("/"));
     verify(provider).list(FsPath.absolute("/db1"));
   }
 
   @Test
-  public void executeLessAndMoreReadPath() throws SQLException {
-    when(provider.read(FsPath.absolute("/db1/table1"), 20))
-        .thenReturn(Arrays.asList(SqlRow.of("Time", "1", "tag1", "a", "s1", "42")));
+  public void executeLessAndMoreReadMetaFileLines() throws SQLException {
+    when(provider.readLines(FsPath.absolute("/db1/table1.meta"), 20))
+        .thenReturn(Arrays.asList("TableName,Status", "table1,USING"));
 
-    assertTrue(shell.execute("less /db1/table1"));
-    assertTrue(shell.execute("more /db1/table1"));
+    assertTrue(shell.execute("less /db1/table1.meta"));
+    assertTrue(shell.execute("more /db1/table1.meta"));
 
-    assertTrue(out.toString().contains("1\ta\t42"));
-    verify(provider, times(2)).read(FsPath.absolute("/db1/table1"), 20);
+    assertTrue(out.toString().contains("table1,USING"));
+    verify(provider, times(2)).readLines(FsPath.absolute("/db1/table1.meta"), 20);
   }
 
   @Test
@@ -468,12 +537,11 @@ public class FilesystemShellTest {
   @Test
   public void executeFilePrintsUnixFileType() throws SQLException {
     when(provider.describe(FsPath.absolute("/db1/table1")))
-        .thenReturn(new FsNode("table1", FsPath.absolute("/db1/table1"), FsNodeType.TABLE_TABLE));
+        .thenReturn(new FsNode("table1", FsPath.absolute("/db1/table1"), FsNodeType.UNKNOWN));
 
     assertTrue(shell.execute("file /db1/table1"));
 
-    assertTrue(out.toString().contains("/db1/table1: directory"));
-    assertFalse(out.toString().contains("TABLE_TABLE"));
+    assertTrue(out.toString().contains("/db1/table1: unknown"));
     verify(provider).describe(FsPath.absolute("/db1/table1"));
   }
 
@@ -488,20 +556,24 @@ public class FilesystemShellTest {
   }
 
   @Test
-  public void executePasteReadsMultiplePaths() throws SQLException {
-    when(provider.read(
-            Arrays.asList(FsPath.absolute("/db1/table1/tag1"), FsPath.absolute("/db1/table1/s1")),
-            20))
-        .thenReturn(Arrays.asList(SqlRow.of("Time", "1", "tag1", "a", "s1", "42")));
+  public void executePasteReadsMultipleTextFilesLineByLine() throws SQLException {
+    when(provider.readLines(FsPath.absolute("/db1/table1.csv"), 20))
+        .thenReturn(Arrays.asList("time,key", "1,a", "2,b"));
+    when(provider.readLines(FsPath.absolute("/db1/table2.csv"), 20))
+        .thenReturn(Arrays.asList("time,value", "1,42"));
 
-    assertTrue(shell.execute("paste /db1/table1/tag1 /db1/table1/s1"));
+    assertTrue(shell.execute("paste /db1/table1.csv /db1/table2.csv"));
 
-    assertTrue(out.toString().contains("1\ta\t42"));
-    assertFalse(out.toString().contains("{"));
-    verify(provider)
-        .read(
-            Arrays.asList(FsPath.absolute("/db1/table1/tag1"), FsPath.absolute("/db1/table1/s1")),
-            20);
+    assertEquals(
+        "time,key\ttime,value"
+            + System.lineSeparator()
+            + "1,a\t1,42"
+            + System.lineSeparator()
+            + "2,b\t"
+            + System.lineSeparator(),
+        out.toString());
+    verify(provider).readLines(FsPath.absolute("/db1/table1.csv"), 20);
+    verify(provider).readLines(FsPath.absolute("/db1/table2.csv"), 20);
   }
 
   @Test
@@ -541,7 +613,8 @@ public class FilesystemShellTest {
         .thenReturn(
             Arrays.asList(
                 new FsNode("testtest", FsPath.absolute("/testtest"), FsNodeType.TABLE_DATABASE),
-                new FsNode("value", FsPath.absolute("/value"), FsNodeType.TABLE_COLUMN)));
+                new FsNode(
+                    "value.csv", FsPath.absolute("/value.csv"), FsNodeType.TABLE_DATA_FILE)));
 
     List<String> values = complete(shell.createCompleter(), "cd t");
 

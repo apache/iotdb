@@ -17,19 +17,20 @@
  * under the License.
  */
 
-package org.apache.iotdb.cli.fs.node;
+package org.apache.iotdb.cli.fs.provider;
 
-public enum FsNodeType {
-  VIRTUAL_ROOT,
-  TREE_ROOT,
-  TREE_DATABASE,
-  TREE_INTERNAL_PATH,
-  TREE_DEVICE,
-  TREE_TIMESERIES,
-  TABLE_DATABASE,
-  TABLE_VIEW,
-  TABLE_DATA_FILE,
-  TABLE_SCHEMA_FILE,
-  TABLE_META_FILE,
-  UNKNOWN
+final class TableFilesystemSql {
+
+  private TableFilesystemSql() {}
+
+  static String tablePath(String database, String table) {
+    return identifier(database) + "." + identifier(table);
+  }
+
+  static String identifier(String value) {
+    if (value.matches("[A-Za-z_][A-Za-z0-9_]*")) {
+      return value;
+    }
+    return "\"" + value.replace("\"", "\"\"") + "\"";
+  }
 }

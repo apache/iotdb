@@ -46,7 +46,8 @@ class TableCsvAppendPlanner {
 
   private TableCsvAppendPlanner() {}
 
-  static List<String> plan(String tablePath, List<SqlRow> schemaRows, List<String> lines)
+  static List<String> plan(
+      String database, String table, List<SqlRow> schemaRows, List<String> lines)
       throws SQLException {
     List<CSVRecord> records = parse(lines);
     if (records.isEmpty()) {
@@ -60,7 +61,7 @@ class TableCsvAppendPlanner {
     if (csv.rows.isEmpty()) {
       return new ArrayList<>();
     }
-    return buildStatements(tablePath, csv.columns, csv.rows);
+    return buildStatements(database, table, csv.columns, csv.rows);
   }
 
   private static List<CSVRecord> parse(List<String> lines) throws SQLException {
@@ -213,13 +214,13 @@ class TableCsvAppendPlanner {
   }
 
   private static List<String> buildStatements(
-      String tablePath, List<TableColumn> columns, List<String> rows) {
+      String database, String table, List<TableColumn> columns, List<String> rows) {
     List<String> statements = new ArrayList<>();
     for (int start = 0; start < rows.size(); start += INSERT_BATCH_SIZE) {
       int end = Math.min(start + INSERT_BATCH_SIZE, rows.size());
       statements.add(
           "INSERT INTO "
-              + identifierPath(tablePath)
+              + TableFilesystemSql.tablePath(database, table)
               + "("
               + columnList(columns)
               + ") VALUES "
@@ -228,31 +229,12 @@ class TableCsvAppendPlanner {
     return statements;
   }
 
-  private static String identifierPath(String tablePath) {
-    String[] parts = tablePath.split("\\.", -1);
-    StringBuilder builder = new StringBuilder();
-    for (String part : parts) {
-      if (builder.length() > 0) {
-        builder.append('.');
-      }
-      builder.append(identifier(part));
-    }
-    return builder.toString();
-  }
-
   private static String columnList(List<TableColumn> columns) {
     List<String> names = new ArrayList<>();
     for (TableColumn column : columns) {
-      names.add(identifier(column.name));
+      names.add(TableFilesystemSql.identifier(column.name));
     }
     return join(names, ", ");
-  }
-
-  private static String identifier(String value) {
-    if (value.matches("[A-Za-z_][A-Za-z0-9_]*")) {
-      return value;
-    }
-    return "\"" + value.replace("\"", "\"\"") + "\"";
   }
 
   private static String join(List<String> values, String delimiter) {

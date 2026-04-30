@@ -68,7 +68,7 @@ public class TableFilesystemMutationProviderTest {
   }
 
   @Test
-  public void removeRejectsRootDatabaseSchemaMetaAndLegacyTableLevel() throws SQLException {
+  public void removeRejectsRootDatabaseSchemaMetaBareTableAndColumnPaths() throws SQLException {
     assertInvalidOperation(() -> provider.remove(FsPath.absolute("/")));
     assertInvalidOperation(() -> provider.remove(FsPath.absolute("/db1")));
     assertInvalidOperation(() -> provider.remove(FsPath.absolute("/db1/table1")));
@@ -135,6 +135,17 @@ public class TableFilesystemMutationProviderTest {
   }
 
   @Test
+  public void appendCsvQuotesSpecialIdentifiers() throws SQLException {
+    mockSpecialTableSchema();
+
+    provider.append(FsPath.absolute("/db-1/table-1.csv"), Arrays.asList("time,key-value", "1,a"));
+
+    verify(executor).query("DESC \"db-1\".\"table-1\" DETAILS");
+    verify(executor)
+        .execute("INSERT INTO \"db-1\".\"table-1\"(time, \"key-value\") VALUES (1, 'a')");
+  }
+
+  @Test
   public void appendRejectsSidecarAndMissingTime() throws SQLException {
     assertInvalidOperation(
         () -> provider.append(FsPath.absolute("/db1/table1.schema"), Arrays.asList("time", "1")));
@@ -153,6 +164,16 @@ public class TableFilesystemMutationProviderTest {
                 org.apache.iotdb.cli.fs.sql.SqlRow.of("ColumnName", "key", "DataType", "STRING"),
                 org.apache.iotdb.cli.fs.sql.SqlRow.of(
                     "ColumnName", "value", "DataType", "DOUBLE")));
+  }
+
+  private void mockSpecialTableSchema() throws SQLException {
+    when(executor.query("DESC \"db-1\".\"table-1\" DETAILS"))
+        .thenReturn(
+            org.apache.iotdb.cli.fs.sql.SqlRow.list(
+                org.apache.iotdb.cli.fs.sql.SqlRow.of(
+                    "ColumnName", "time", "DataType", "TIMESTAMP"),
+                org.apache.iotdb.cli.fs.sql.SqlRow.of(
+                    "ColumnName", "key-value", "DataType", "STRING")));
   }
 
   private static void assertInvalidOperation(SqlOperation operation) throws SQLException {
