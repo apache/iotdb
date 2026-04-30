@@ -57,9 +57,11 @@ public class PipeTaskInfoAutoRestartTest {
     final String pipeName = "runningPipe";
     createPipe(pipeName, PipeStatus.RUNNING);
 
-    Assert.assertTrue(pipeTaskInfo.recordDataNodePushPipeMetaExceptions(createErrorRespMap(pipeName)));
+    Assert.assertTrue(
+        pipeTaskInfo.recordDataNodePushPipeMetaExceptions(createErrorRespMap(pipeName)));
 
-    final PipeRuntimeMeta runtimeMeta = pipeTaskInfo.getPipeMetaByPipeName(pipeName).getRuntimeMeta();
+    final PipeRuntimeMeta runtimeMeta =
+        pipeTaskInfo.getPipeMetaByPipeName(pipeName).getRuntimeMeta();
     Assert.assertEquals(PipeStatus.STOPPED, runtimeMeta.getStatus().get());
     Assert.assertTrue(runtimeMeta.getIsStoppedByRuntimeException());
 
@@ -73,9 +75,11 @@ public class PipeTaskInfoAutoRestartTest {
     createPipe(pipeName, PipeStatus.STOPPED);
 
     Assert.assertTrue(pipeTaskInfo.isPipeStoppedByUser(pipeName));
-    Assert.assertTrue(pipeTaskInfo.recordDataNodePushPipeMetaExceptions(createErrorRespMap(pipeName)));
+    Assert.assertTrue(
+        pipeTaskInfo.recordDataNodePushPipeMetaExceptions(createErrorRespMap(pipeName)));
 
-    final PipeRuntimeMeta runtimeMeta = pipeTaskInfo.getPipeMetaByPipeName(pipeName).getRuntimeMeta();
+    final PipeRuntimeMeta runtimeMeta =
+        pipeTaskInfo.getPipeMetaByPipeName(pipeName).getRuntimeMeta();
     Assert.assertEquals(PipeStatus.STOPPED, runtimeMeta.getStatus().get());
     Assert.assertFalse(runtimeMeta.getIsStoppedByRuntimeException());
     Assert.assertTrue(pipeTaskInfo.isPipeStoppedByUser(pipeName));
