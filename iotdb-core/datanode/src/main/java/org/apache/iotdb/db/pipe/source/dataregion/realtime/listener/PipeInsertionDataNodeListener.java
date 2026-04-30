@@ -86,7 +86,7 @@ public class PipeInsertionDataNodeListener {
   }
 
   public synchronized void stopListenAndAssign(
-      final int dataRegionId, final PipeRealtimeDataRegionSource extractor) {
+      final int dataRegionId, final PipeRealtimeDataRegionSource source) {
     PipeDataRegionAssigner assignerToClose = null;
 
     synchronized (this) {
@@ -95,12 +95,12 @@ public class PipeInsertionDataNodeListener {
         return;
       }
 
-      assigner.stopAssignTo(extractor);
+      assigner.stopAssignTo(source);
 
-      if (extractor.isNeedListenToTsFile()) {
+      if (source.isNeedListenToTsFile()) {
         listenToTsFileSourceCount.decrementAndGet();
       }
-      if (extractor.isNeedListenToInsertNode()) {
+      if (source.isNeedListenToInsertNode()) {
         listenToInsertNodeSourceCount.decrementAndGet();
       }
 
