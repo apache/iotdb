@@ -138,12 +138,13 @@ public class DeviceAttributeStore implements IDeviceAttributeStore {
     long memUsage = MAP_SIZE + RamUsageEstimator.NUM_BYTES_OBJECT_REF;
     final Map<String, Binary> attributeMap = new HashMap<>();
     for (int i = 0; i < nameList.size(); i++) {
-      final Binary value = (Binary) valueList[i];
-      if (valueList[i] != null) {
-        attributeMap.put(nameList.get(i), value);
-        memUsage += MemUsageUtil.computeKVMemUsageInMap(nameList.get(i), value);
-        addTableAttributeMemory(tableName, value.ramBytesUsed());
+      if (valueList[i] == null || valueList[i] == Constants.NONE) {
+        continue;
       }
+      final Binary value = (Binary) valueList[i];
+      attributeMap.put(nameList.get(i), value);
+      memUsage += MemUsageUtil.computeKVMemUsageInMap(nameList.get(i), value);
+      addTableAttributeMemory(tableName, value.ramBytesUsed());
     }
     deviceAttributeList.add(attributeMap);
     requestMemory(memUsage);

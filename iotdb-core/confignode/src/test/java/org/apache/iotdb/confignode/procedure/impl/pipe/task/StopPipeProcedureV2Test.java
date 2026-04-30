@@ -129,8 +129,7 @@ public class StopPipeProcedureV2Test {
     Mockito.verify(consensusManager, Mockito.times(2)).write(planCaptor.capture());
 
     assertEquals(
-        new SetPipeStatusWithStoppedByRuntimeExceptionPlanV2(
-            pipeName, PipeStatus.STOPPED, false),
+        new SetPipeStatusWithStoppedByRuntimeExceptionPlanV2(pipeName, PipeStatus.STOPPED, false),
         planCaptor.getAllValues().get(0));
     assertEquals(
         new SetPipeStatusWithStoppedByRuntimeExceptionPlanV2(pipeName, PipeStatus.RUNNING, true),

@@ -997,8 +997,8 @@ public class ConfigPhysicalPlanSerDeTest {
     final SetPipeStatusWithStoppedByRuntimeExceptionPlanV2
         setPipeStatusWithStoppedByRuntimeExceptionPlanV21 =
             (SetPipeStatusWithStoppedByRuntimeExceptionPlanV2)
-            ConfigPhysicalPlan.Factory.create(
-                setPipeStatusWithStoppedByRuntimeExceptionPlanV2.serializeToByteBuffer());
+                ConfigPhysicalPlan.Factory.create(
+                    setPipeStatusWithStoppedByRuntimeExceptionPlanV2.serializeToByteBuffer());
     Assert.assertEquals(
         setPipeStatusWithStoppedByRuntimeExceptionPlanV2.getPipeName(),
         setPipeStatusWithStoppedByRuntimeExceptionPlanV21.getPipeName());

@@ -213,11 +213,15 @@ public class PipeTaskInfoConsensusPipeTest {
     final String pipeName = "userPipe";
     createPipe(pipeName, PipeStatus.STOPPED);
 
-    pipeTaskInfo.getPipeMetaByPipeName(pipeName).getRuntimeMeta().setIsStoppedByRuntimeException(true);
+    pipeTaskInfo
+        .getPipeMetaByPipeName(pipeName)
+        .getRuntimeMeta()
+        .setIsStoppedByRuntimeException(true);
 
     Assert.assertTrue(pipeTaskInfo.autoRestart());
     Assert.assertEquals(
-        PipeStatus.RUNNING, pipeTaskInfo.getPipeMetaByPipeName(pipeName).getRuntimeMeta().getStatus().get());
+        PipeStatus.RUNNING,
+        pipeTaskInfo.getPipeMetaByPipeName(pipeName).getRuntimeMeta().getStatus().get());
 
     pipeTaskInfo.setPipeStatusWithStoppedByRuntimeException(
         new SetPipeStatusWithStoppedByRuntimeExceptionPlanV2(pipeName, PipeStatus.STOPPED, false));
@@ -226,6 +230,7 @@ public class PipeTaskInfoConsensusPipeTest {
     Assert.assertTrue(pipeTaskInfo.isPipeStoppedByUser(pipeName));
     Assert.assertFalse(pipeTaskInfo.autoRestart());
     Assert.assertEquals(
-        PipeStatus.STOPPED, pipeTaskInfo.getPipeMetaByPipeName(pipeName).getRuntimeMeta().getStatus().get());
+        PipeStatus.STOPPED,
+        pipeTaskInfo.getPipeMetaByPipeName(pipeName).getRuntimeMeta().getStatus().get());
   }
 }
