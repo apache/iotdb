@@ -38,7 +38,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.OptionalLong;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.apache.iotdb.commons.schema.SchemaConstant.NON_TEMPLATE;
@@ -80,29 +79,21 @@ public class TableDeviceCacheEntry {
   }
 
   int invalidateAttribute() {
-    final AtomicInteger size = new AtomicInteger(0);
-    deviceSchema.updateAndGet(
-        schema -> {
-          if (schema instanceof TableAttributeSchema) {
-            size.set(schema.estimateSize());
-            return null;
-          }
-          return schema;
-        });
-    return size.get();
+    IDeviceSchema schema;
+    do {
+      schema = deviceSchema.get();
+      if (!(schema instanceof TableAttributeSchema)) {
+        return 0;
+      }
+    } while (!deviceSchema.compareAndSet(schema, null));
+    return schema.estimateSize();
   }
 
   int invalidateAttributeColumn(final String attribute) {
-    final AtomicInteger size = new AtomicInteger(0);
-    deviceSchema.updateAndGet(
-        schema -> {
-          if (schema instanceof TableAttributeSchema) {
-            size.set(((TableAttributeSchema) schema).removeAttribute(attribute));
-            return schema;
-          }
-          return schema;
-        });
-    return size.get();
+    final IDeviceSchema schema = deviceSchema.get();
+    return schema instanceof TableAttributeSchema
+        ? ((TableAttributeSchema) schema).removeAttribute(attribute)
+        : 0;
   }
 
   Map<String, Binary> getAttributeMap() {
@@ -162,17 +153,15 @@ public class TableDeviceCacheEntry {
   }
 
   int invalidateTreeSchema() {
-    final AtomicInteger size = new AtomicInteger(0);
-    deviceSchema.updateAndGet(
-        schema -> {
-          if (schema instanceof TreeDeviceNormalSchema
-              || schema instanceof TreeDeviceTemplateSchema) {
-            size.set(schema.estimateSize());
-            return null;
-          }
-          return schema;
-        });
-    return size.get();
+    IDeviceSchema schema;
+    do {
+      schema = deviceSchema.get();
+      if (!(schema instanceof TreeDeviceNormalSchema)
+          && !(schema instanceof TreeDeviceTemplateSchema)) {
+        return 0;
+      }
+    } while (!deviceSchema.compareAndSet(schema, null));
+    return schema.estimateSize();
   }
 
   /////////////////////////////// Last Cache ///////////////////////////////
@@ -240,15 +229,14 @@ public class TableDeviceCacheEntry {
   }
 
   int invalidateLastCache() {
-    final AtomicInteger size = new AtomicInteger(0);
-    lastCache.updateAndGet(
-        cacheEntry -> {
-          if (Objects.nonNull(cacheEntry)) {
-            size.set(cacheEntry.estimateSize());
-          }
-          return null;
-        });
-    return size.get();
+    TableDeviceLastCache cacheEntry;
+    do {
+      cacheEntry = lastCache.get();
+      if (Objects.isNull(cacheEntry)) {
+        return 0;
+      }
+    } while (!lastCache.compareAndSet(cacheEntry, null));
+    return cacheEntry.estimateSize();
   }
 
   /////////////////////////////// Management ///////////////////////////////
