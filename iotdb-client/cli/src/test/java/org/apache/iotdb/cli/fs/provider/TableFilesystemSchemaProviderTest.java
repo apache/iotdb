@@ -71,11 +71,29 @@ public class TableFilesystemSchemaProviderTest {
 
     List<FsNode> children = provider.list(FsPath.absolute("/db1"));
 
-    assertEquals(2, children.size());
-    assertEquals("/db1/table1", children.get(0).getPath().toString());
-    assertEquals(FsNodeType.TABLE_TABLE, children.get(0).getType());
-    assertEquals("/db1/view1", children.get(1).getPath().toString());
+    assertEquals(6, children.size());
+    assertEquals("table1.csv", children.get(0).getName());
+    assertEquals("/db1/table1.csv", children.get(0).getPath().toString());
+    assertEquals(FsNodeType.TABLE_DATA_FILE, children.get(0).getType());
+    assertEquals("table1.schema", children.get(1).getName());
+    assertEquals(FsNodeType.TABLE_SCHEMA_FILE, children.get(1).getType());
+    assertEquals("table1.meta", children.get(2).getName());
+    assertEquals(FsNodeType.TABLE_META_FILE, children.get(2).getType());
+    assertEquals("view1.csv", children.get(3).getName());
     verify(executor).query("SHOW TABLES FROM db1");
+  }
+
+  @Test
+  public void describeTableCsvReturnsDataFileNode() throws SQLException {
+    when(executor.query("SHOW TABLES FROM db1"))
+        .thenReturn(SqlRow.list(SqlRow.of("TableName", "table1")));
+
+    FsNode node = provider.describe(FsPath.absolute("/db1/table1.csv"));
+
+    assertEquals("table1.csv", node.getName());
+    assertEquals(FsNodeType.TABLE_DATA_FILE, node.getType());
+    assertEquals("table1", node.getMetadata().get("table"));
+    assertEquals("csv", node.getMetadata().get("format"));
   }
 
   @Test
@@ -172,6 +190,66 @@ public class TableFilesystemSchemaProviderTest {
   }
 
   @Test
+  public void readTableCsvReturnsCsvLinesWithHeader() throws SQLException {
+    when(executor.query("SELECT * FROM db1.table1 LIMIT 5"))
+        .thenReturn(SqlRow.list(SqlRow.of("Time", "1", "tag1", "a", "s1", "42")));
+
+    List<String> lines = provider.readLines(FsPath.absolute("/db1/table1.csv"), 5);
+
+    assertEquals("Time,tag1,s1", lines.get(0));
+    assertEquals("1,a,42", lines.get(1));
+    verify(executor).query("SELECT * FROM db1.table1 LIMIT 5");
+  }
+
+  @Test
+  public void readTableSchemaReturnsIoTDBDescCsvLines() throws SQLException {
+    when(executor.query("DESC db1.table1 DETAILS"))
+        .thenReturn(
+            SqlRow.list(
+                SqlRow.of("ColumnName", "tag1", "DataType", "STRING", "Category", "TAG"),
+                SqlRow.of("ColumnName", "s1", "DataType", "INT32", "Category", "FIELD")));
+
+    List<String> lines = provider.readLines(FsPath.absolute("/db1/table1.schema"), 5);
+
+    assertEquals("ColumnName,DataType,Category", lines.get(0));
+    assertEquals("tag1,STRING,TAG", lines.get(1));
+    assertEquals("s1,INT32,FIELD", lines.get(2));
+    verify(executor).query("DESC db1.table1 DETAILS");
+  }
+
+  @Test
+  public void readTableMetaReturnsIoTDBTableCsvLines() throws SQLException {
+    when(executor.query("SHOW TABLES DETAILS FROM db1"))
+        .thenReturn(
+            SqlRow.list(
+                SqlRow.of(
+                    "TableName",
+                    "table1",
+                    "TTL(ms)",
+                    "3600000",
+                    "Status",
+                    "USING",
+                    "Comment",
+                    "main table"),
+                SqlRow.of(
+                    "TableName",
+                    "table2",
+                    "TTL(ms)",
+                    "INF",
+                    "Status",
+                    "USING",
+                    "Comment",
+                    "archive")));
+
+    List<String> lines = provider.readLines(FsPath.absolute("/db1/table1.meta"), 5);
+
+    assertEquals("TableName,TTL(ms),Status,Comment", lines.get(0));
+    assertEquals("table1,3600000,USING,main table", lines.get(1));
+    assertEquals(2, lines.size());
+    verify(executor).query("SHOW TABLES DETAILS FROM db1");
+  }
+
+  @Test
   public void tailTableSelectsNewestRowsAndReturnsOriginalOrder() throws SQLException {
     when(executor.query("SELECT * FROM db1.table1 ORDER BY time DESC LIMIT 2"))
         .thenReturn(
@@ -191,7 +269,7 @@ public class TableFilesystemSchemaProviderTest {
     when(executor.query("SELECT COUNT(*) FROM db1.table1"))
         .thenReturn(SqlRow.list(SqlRow.of("count", "2")));
 
-    long count = provider.count(FsPath.absolute("/db1/table1"));
+    long count = provider.count(FsPath.absolute("/db1/table1.csv"));
 
     assertEquals(2L, count);
     verify(executor).query("SELECT COUNT(*) FROM db1.table1");

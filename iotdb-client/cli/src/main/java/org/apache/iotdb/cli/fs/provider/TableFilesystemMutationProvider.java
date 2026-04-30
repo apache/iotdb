@@ -29,6 +29,7 @@ public class TableFilesystemMutationProvider implements FilesystemMutationProvid
 
   private static final String INVALID_WRITE_OPERATION =
       "Invalid filesystem write operation for this path";
+  private static final String CSV_SUFFIX = ".csv";
 
   private final SqlExecutor executor;
 
@@ -46,7 +47,7 @@ public class TableFilesystemMutationProvider implements FilesystemMutationProvid
 
   @Override
   public void remove(FsPath path) throws SQLException {
-    if (path.getSegments().size() != 2) {
+    if (!isDataFile(path)) {
       throw invalidOperation();
     }
     executor.execute("DROP TABLE " + toTablePath(path));
@@ -54,13 +55,13 @@ public class TableFilesystemMutationProvider implements FilesystemMutationProvid
 
   @Override
   public void move(FsPath source, FsPath target) throws SQLException {
-    if (source.getSegments().size() != 2 || target.getSegments().size() != 2) {
+    if (!isDataFile(source) || !isDataFile(target)) {
       throw invalidOperation();
     }
     if (!parent(source).equals(parent(target))) {
       throw invalidOperation();
     }
-    executor.execute("ALTER TABLE " + toTablePath(source) + " RENAME TO " + target.getFileName());
+    executor.execute("ALTER TABLE " + toTablePath(source) + " RENAME TO " + tableName(target));
   }
 
   private static SQLException invalidOperation() {
@@ -69,7 +70,16 @@ public class TableFilesystemMutationProvider implements FilesystemMutationProvid
 
   private static String toTablePath(FsPath path) {
     List<String> segments = path.getSegments();
-    return segments.get(0) + "." + segments.get(1);
+    return segments.get(0) + "." + tableName(path);
+  }
+
+  private static boolean isDataFile(FsPath path) {
+    return path.getSegments().size() == 2 && path.getFileName().endsWith(CSV_SUFFIX);
+  }
+
+  private static String tableName(FsPath path) {
+    String fileName = path.getFileName();
+    return fileName.substring(0, fileName.length() - CSV_SUFFIX.length());
   }
 
   private static FsPath parent(FsPath path) {

@@ -34,7 +34,15 @@ public interface FilesystemSchemaProvider {
 
   List<SqlRow> read(FsPath path, int limit) throws SQLException;
 
+  default List<String> readLines(FsPath path, int limit) throws SQLException {
+    throw new SQLException("Path is not readable as text: " + path);
+  }
+
   default List<SqlRow> tail(FsPath path, int limit) throws SQLException {
+    throw new SQLException("Path does not support tail: " + path);
+  }
+
+  default List<String> tailLines(FsPath path, int limit) throws SQLException {
     throw new SQLException("Path does not support tail: " + path);
   }
 

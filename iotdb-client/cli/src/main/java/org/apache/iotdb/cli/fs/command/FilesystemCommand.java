@@ -43,6 +43,7 @@ public class FilesystemCommand {
     MKDIR,
     RM,
     MV,
+    CUT,
     PASTE,
     TREE,
     SQL,
@@ -115,6 +116,11 @@ public class FilesystemCommand {
   public static FilesystemCommand pattern(Type type, String pattern, String path) {
     return new FilesystemCommand(
         type, path, Collections.singletonList(path), -1, -1, "", pattern, "", "");
+  }
+
+  public static FilesystemCommand cut(String delimiter, String fields, String path) {
+    return new FilesystemCommand(
+        Type.CUT, path, Collections.singletonList(path), -1, -1, delimiter, fields, "", "");
   }
 
   public static FilesystemCommand tree(String path, int depth) {

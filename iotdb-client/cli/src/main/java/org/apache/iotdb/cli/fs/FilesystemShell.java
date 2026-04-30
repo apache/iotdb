@@ -40,6 +40,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 public class FilesystemShell {
 
@@ -47,7 +48,8 @@ public class FilesystemShell {
   private static final List<String> COMMANDS =
       Arrays.asList(
           "pwd", "ls", "ll", "cd", "stat", "cat", "head", "tail", "wc", "grep", "find", "less",
-          "more", "file", "du", "mkdir", "rm", "mv", "paste", "tree", "help", "exit", "quit");
+          "more", "file", "du", "mkdir", "rm", "mv", "cut", "paste", "tree", "help", "exit",
+          "quit");
 
   private final CliContext ctx;
   private final FilesystemSchemaProvider provider;
@@ -77,10 +79,10 @@ public class FilesystemShell {
         ctx.getPrinter().println(currentPath.toString());
         return true;
       case LS:
-        printNodes(provider.list(resolve(command.getPath())));
+        printNodes(provider.list(resolve(command.getPath())), isAllOption(command));
         return true;
       case LL:
-        printLongNodes(provider.list(resolve(command.getPath())));
+        printLongNodes(provider.list(resolve(command.getPath())), isAllOption(command));
         return true;
       case CD:
         changeDirectory(command.getPath());
@@ -92,10 +94,10 @@ public class FilesystemShell {
         printSequentialReads(command.getPaths(), DEFAULT_READ_LIMIT);
         return true;
       case HEAD:
-        printRows(provider.read(resolve(command.getPath()), command.getLimit()));
+        printHead(command.getPath(), command.getLimit());
         return true;
       case TAIL:
-        printRows(provider.tail(resolve(command.getPath()), command.getLimit()));
+        printTail(command.getPath(), command.getLimit());
         return true;
       case WC:
         printLineCount(command.getPath());
@@ -108,7 +110,7 @@ public class FilesystemShell {
         return true;
       case LESS:
       case MORE:
-        printRows(provider.read(resolve(command.getPath()), DEFAULT_READ_LIMIT));
+        printReadable(command.getPath(), DEFAULT_READ_LIMIT);
         return true;
       case FILE:
         printFile(command.getPath());
@@ -124,6 +126,9 @@ public class FilesystemShell {
         return true;
       case MV:
         move(command.getPaths());
+        return true;
+      case CUT:
+        printCut(command.getPath(), command.getOption(), command.getPattern());
         return true;
       case PASTE:
         printRows(provider.read(resolve(command.getPaths()), DEFAULT_READ_LIMIT));
@@ -196,29 +201,31 @@ public class FilesystemShell {
     return resolvedPaths;
   }
 
-  private void printNodes(List<FsNode> nodes) {
-    StringBuilder builder = new StringBuilder();
-    for (FsNode node : nodes) {
-      if (builder.length() > 0) {
-        builder.append(',');
-      }
-      builder.append(node.getName());
+  private void printNodes(List<FsNode> nodes, boolean all) {
+    if (all) {
+      ctx.getPrinter().println(".");
+      ctx.getPrinter().println("..");
     }
-    if (builder.length() > 0) {
-      ctx.getPrinter().println(builder.toString());
+    for (FsNode node : nodes) {
+      ctx.getPrinter().println(node.getName());
     }
   }
 
-  private void printLongNodes(List<FsNode> nodes) {
+  private void printLongNodes(List<FsNode> nodes, boolean all) {
+    if (all) {
+      ctx.getPrinter().println(longMode(FsNodeType.VIRTUAL_ROOT) + "  1 iotdb iotdb 0 .");
+      ctx.getPrinter().println(longMode(FsNodeType.VIRTUAL_ROOT) + "  1 iotdb iotdb 0 ..");
+    }
     for (FsNode node : nodes) {
       ctx.getPrinter().println(longMode(node.getType()) + "  1 iotdb iotdb 0 " + node.getName());
     }
   }
 
   private void printNode(FsNode node) {
-    ctx.getPrinter().println(node.getName() + "\t" + node.getType());
+    ctx.getPrinter().println("File: " + node.getPath());
+    ctx.getPrinter().println("Type: " + unixType(node.getType()));
     for (Map.Entry<String, String> entry : node.getMetadata().entrySet()) {
-      ctx.getPrinter().println(entry.getKey() + "\t" + entry.getValue());
+      ctx.getPrinter().println(entry.getKey() + ": " + entry.getValue());
     }
   }
 
@@ -228,10 +235,38 @@ public class FilesystemShell {
     }
   }
 
+  private void printLines(List<String> lines) {
+    for (String line : lines) {
+      ctx.getPrinter().println(line);
+    }
+  }
+
   private void printSequentialReads(List<String> paths, int limit) throws SQLException {
     for (String path : paths) {
-      printRows(provider.read(resolve(path), limit));
+      printReadable(path, limit);
     }
+  }
+
+  private void printReadable(String path, int limit) throws SQLException {
+    FsPath resolvedPath = resolve(path);
+    if (isTextFile(resolvedPath)) {
+      printLines(provider.readLines(resolvedPath, limit));
+      return;
+    }
+    printRows(provider.read(resolvedPath, limit));
+  }
+
+  private void printHead(String path, int limit) throws SQLException {
+    printReadable(path, limit);
+  }
+
+  private void printTail(String path, int limit) throws SQLException {
+    FsPath resolvedPath = resolve(path);
+    if (isTextFile(resolvedPath)) {
+      printLines(provider.tailLines(resolvedPath, limit));
+      return;
+    }
+    printRows(provider.tail(resolvedPath, limit));
   }
 
   private void printLineCount(String path) throws SQLException {
@@ -240,12 +275,39 @@ public class FilesystemShell {
   }
 
   private void printMatchingRows(String path, String pattern) throws SQLException {
-    for (SqlRow row : provider.read(resolve(path), DEFAULT_READ_LIMIT)) {
+    FsPath resolvedPath = resolve(path);
+    if (isTextFile(resolvedPath)) {
+      for (String line : provider.readLines(resolvedPath, DEFAULT_READ_LIMIT)) {
+        if (line.contains(pattern)) {
+          ctx.getPrinter().println(line);
+        }
+      }
+      return;
+    }
+    for (SqlRow row : provider.read(resolvedPath, DEFAULT_READ_LIMIT)) {
       String line = joinValues(row);
       if (line.contains(pattern)) {
         ctx.getPrinter().println(line);
       }
     }
+  }
+
+  private void printCut(String path, String delimiter, String fields) throws SQLException {
+    FsPath resolvedPath = resolve(path);
+    for (String line : readableLines(resolvedPath, DEFAULT_READ_LIMIT)) {
+      ctx.getPrinter().println(cutLine(line, delimiter, fields));
+    }
+  }
+
+  private List<String> readableLines(FsPath path, int limit) throws SQLException {
+    if (isTextFile(path)) {
+      return provider.readLines(path, limit);
+    }
+    List<String> lines = new ArrayList<>();
+    for (SqlRow row : provider.read(path, limit)) {
+      lines.add(joinValues(row));
+    }
+    return lines;
   }
 
   private void printFind(FsPath path, String pattern) throws SQLException {
@@ -267,7 +329,8 @@ public class FilesystemShell {
 
   private void printFile(String path) throws SQLException {
     FsPath resolvedPath = resolve(path);
-    ctx.getPrinter().println(resolvedPath + ": " + provider.describe(resolvedPath).getType());
+    ctx.getPrinter()
+        .println(resolvedPath + ": " + unixType(provider.describe(resolvedPath).getType()));
   }
 
   private void printDiskUsage(String path) throws SQLException {
@@ -340,6 +403,7 @@ public class FilesystemShell {
     ctx.getPrinter().println("mkdir <path>");
     ctx.getPrinter().println("rm <path>");
     ctx.getPrinter().println("mv <source> <target>");
+    ctx.getPrinter().println("cut -d<delimiter> -f<fields> <path>");
     ctx.getPrinter().println("paste <path>...");
     ctx.getPrinter().println("tree [-L depth] [path]");
     ctx.getPrinter().println("exit");
@@ -361,6 +425,86 @@ public class FilesystemShell {
       return "dr-xr-xr-x";
     }
     return "-r--r--r--";
+  }
+
+  private static String unixType(FsNodeType type) {
+    if (isDirectory(type)) {
+      return "directory";
+    }
+    if (type == FsNodeType.UNKNOWN) {
+      return "unknown";
+    }
+    return "regular file";
+  }
+
+  private static boolean isAllOption(FilesystemCommand command) {
+    return "-a".equals(command.getOption());
+  }
+
+  private static String cutLine(String line, String delimiter, String fields) {
+    if (!line.contains(delimiter)) {
+      return line;
+    }
+    String[] values = line.split(Pattern.quote(delimiter), -1);
+    boolean[] selected = selectedFields(fields, values.length);
+    StringBuilder builder = new StringBuilder();
+    for (int i = 0; i < values.length; i++) {
+      if (!selected[i]) {
+        continue;
+      }
+      if (builder.length() > 0) {
+        builder.append(delimiter);
+      }
+      builder.append(values[i]);
+    }
+    return builder.toString();
+  }
+
+  private static boolean[] selectedFields(String fields, int fieldCount) {
+    boolean[] selected = new boolean[fieldCount];
+    for (String field : fields.split(",")) {
+      selectField(field.trim(), selected);
+    }
+    return selected;
+  }
+
+  private static void selectField(String field, boolean[] selected) {
+    if (field.isEmpty()) {
+      return;
+    }
+    int dash = field.indexOf('-');
+    if (dash < 0) {
+      selectFieldNumber(field, selected);
+      return;
+    }
+    int start = parsePositiveInt(field.substring(0, dash));
+    int end = parsePositiveInt(field.substring(dash + 1));
+    if (start <= 0 || end <= 0 || start > end) {
+      return;
+    }
+    for (int i = start; i <= end && i <= selected.length; i++) {
+      selected[i - 1] = true;
+    }
+  }
+
+  private static void selectFieldNumber(String field, boolean[] selected) {
+    int fieldNumber = parsePositiveInt(field);
+    if (fieldNumber > 0 && fieldNumber <= selected.length) {
+      selected[fieldNumber - 1] = true;
+    }
+  }
+
+  private static int parsePositiveInt(String value) {
+    try {
+      return Integer.parseInt(value);
+    } catch (NumberFormatException e) {
+      return -1;
+    }
+  }
+
+  private static boolean isTextFile(FsPath path) {
+    String fileName = path.getFileName();
+    return fileName.endsWith(".csv") || fileName.endsWith(".schema") || fileName.endsWith(".meta");
   }
 
   private class FilesystemCompleter implements Completer {

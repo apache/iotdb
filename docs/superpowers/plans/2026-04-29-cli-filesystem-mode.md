@@ -23,7 +23,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add an explicit read-only filesystem mode to IoTDB CLI while preserving default SQL CLI behavior.
+**Goal:** Add an explicit filesystem mode to IoTDB CLI while preserving default SQL CLI behavior.
+Filesystem mode is read-only by default; table mode has an opt-in minimal write loop behind
+`--fs_write_mode enabled`.
 
 **Architecture:** Add a small `org.apache.iotdb.cli.fs` subsystem with path parsing, command parsing, typed nodes, and tree/table schema providers backed by JDBC SQL. Existing `Cli` keeps ownership of startup parsing and dispatches to filesystem mode only when `--access_mode filesystem` is passed.
 
@@ -42,9 +44,12 @@
 - Create `iotdb-client/cli/src/main/java/org/apache/iotdb/cli/fs/node/FsNode.java`: typed filesystem node.
 - Create `iotdb-client/cli/src/main/java/org/apache/iotdb/cli/fs/sql/SqlExecutor.java`: minimal JDBC query abstraction.
 - Create `iotdb-client/cli/src/main/java/org/apache/iotdb/cli/fs/sql/SqlRow.java`: row data object for tests and providers.
-- Create `iotdb-client/cli/src/main/java/org/apache/iotdb/cli/fs/provider/FilesystemSchemaProvider.java`: read-only provider interface.
+- Create `iotdb-client/cli/src/main/java/org/apache/iotdb/cli/fs/provider/FilesystemSchemaProvider.java`: schema and data read provider interface.
+- Create `iotdb-client/cli/src/main/java/org/apache/iotdb/cli/fs/provider/FilesystemMutationProvider.java`: write-gated mutation provider interface.
 - Create `iotdb-client/cli/src/main/java/org/apache/iotdb/cli/fs/provider/TreeFilesystemSchemaProvider.java`: tree SQL mapping.
 - Create `iotdb-client/cli/src/main/java/org/apache/iotdb/cli/fs/provider/TableFilesystemSchemaProvider.java`: table SQL mapping.
+- Create `iotdb-client/cli/src/main/java/org/apache/iotdb/cli/fs/provider/TableFilesystemMutationProvider.java`: table write mapping.
+- Create `iotdb-client/cli/src/main/java/org/apache/iotdb/cli/fs/provider/UnsupportedFilesystemMutationProvider.java`: unsupported mutation provider.
 - Create `iotdb-client/cli/src/main/java/org/apache/iotdb/cli/fs/FilesystemShell.java`: command execution surface and interactive shell.
 - Test `iotdb-client/cli/src/test/java/org/apache/iotdb/cli/fs/path/FsPathTest.java`.
 - Test `iotdb-client/cli/src/test/java/org/apache/iotdb/cli/fs/command/FilesystemCommandParserTest.java`.
@@ -58,17 +63,52 @@ These notes capture follow-up implementation experience for quickly resuming thi
 
 - The current filesystem mode commands are implemented in-process by `FilesystemCommandParser` and
   `FilesystemShell`; they do not call `/bin/ls`, `/bin/cat`, or `java.nio.file.FileSystem`.
-- Keep user-visible output Unix-like:
-  - `ls` prints names only.
+- `FilesystemCommandParser` currently parses `sql <statement>`, but `FilesystemShell` does not
+  execute it and will report `Unsupported filesystem command: SQL`. Raw SQL should be run in SQL
+  access mode until this command is explicitly implemented.
+- Keep user-visible output strictly aligned with standard Unix/POSIX filesystem command semantics.
+  Any deviation is a bug unless it is explicitly documented as a temporary compatibility exception.
+  - `ls` prints names only. The baseline output should be one entry per line, matching `ls -1`; do
+    not use comma-separated output.
+  - `ls -a` and `ll -a` include `.` and `..`; `ll` reuses `ls` option parsing as the long-listing
+    alias.
   - `tree` prints indented names only.
-  - `cat` and `paste` print tab-separated values.
+  - `cat /db/table.csv` prints CSV records. Legacy compatibility table/column paths and `paste`
+    continue to print tab-separated values.
+  - `cut -d, -f2,3 /db/table.csv` is the Unix-compatible multi-field projection form for CSV-first
+    table files. It is delimiter-based text cutting, not CSV quote parsing and not a database
+    column-selection dialect.
+  - `less` and `more` are non-interactive read aliases today; they print readable content with the
+    default read limit.
   - `stat` is the place to show metadata.
-- Do not add filesystem command dialects such as `cat --columns` or `select`. Multi-column reads use
+- Do not add filesystem command dialects such as `cat --columns` or `select`. Multi-column reads
+  should use `cut` for CSV-first table files; legacy column paths may still use
   `paste /db/table/col1 /db/table/col2`.
 - Table provider can optimize Unix-looking commands internally:
-  - `cat /db/table` -> `SELECT * FROM db.table LIMIT 20`
-  - `cat /db/table/col` -> `SELECT col FROM db.table LIMIT 20`
-  - `paste /db/table/col1 /db/table/col2` -> `SELECT col1, col2 FROM db.table LIMIT 20`
+  - Table mode is CSV-first: a database is a directory, and each table is exposed as
+    `/db/table.csv` with `/db/table.schema` and `/db/table.meta` sidecar regular files.
+  - `ls /db` should list `table.csv`, `table.schema`, and `table.meta` entries for each table.
+  - `cat /db/table.csv` -> `SELECT * FROM db.table LIMIT 20`, formatted as CSV.
+  - `cut -d, -f2,3 /db/table.csv` -> delimiter-based field selection over the CSV records.
+  - `cat /db/table.schema` -> `DESC db.table DETAILS`, formatted as CSV with IoTDB result columns
+    preserved.
+  - `cat /db/table.meta` -> `SHOW TABLES DETAILS FROM db`, filtered to the table and formatted as
+    CSV with IoTDB result columns preserved.
+  - Legacy `/db/table/column` paths may remain as compatibility paths or migration sources.
+  - Legacy `cat /db/table/col` -> `SELECT col FROM db.table LIMIT 20`
+  - Legacy `paste /db/table/col1 /db/table/col2` -> `SELECT col1, col2 FROM db.table LIMIT 20`
+- Table-mode write boundaries are intentionally narrow and only active with
+  `--fs_write_mode enabled`:
+  - `mkdir /db` creates a database.
+  - `rm /db/table.csv` drops a table.
+  - `mv /db/t1.csv /db/t2.csv` renames a table inside the same database.
+  - Forbid `rm` or `mv` of `/db/table.schema` and `/db/table.meta`.
+  - Forbid `rm /db`.
+  - Forbid cross-database rename such as `mv /db1/t.csv /db2/t.csv`.
+- Tree-mode writes remain unsupported even when `--fs_write_mode enabled` is set.
+- Filesystem completion is mode-aware after login: filesystem mode installs
+  `FilesystemShell.createCompleter()`, which completes command names at the first word and path
+  children later, appending `/` to directories.
 - Interactive filesystem command errors must be handled at the single-command loop level. A
   `SQLException` from `FilesystemShell.execute()` should print `<command>: <message>` and continue
   the prompt, not bubble out to `receiveCommands()` and exit the CLI.
@@ -76,6 +116,34 @@ These notes capture follow-up implementation experience for quickly resuming thi
   `cat time` resolves to `/testtest/time`; table mode interpreted that as table `testtest.time`;
   the server returned `550`; the unchecked propagation exited the CLI. Keep a regression test for
   this behavior.
+
+## Supported Command Quick Reference
+
+| Command | Description | Example |
+| --- | --- | --- |
+| `pwd` | Print the current filesystem path. | `pwd` |
+| `ls [-a|-l|-la] [path]` | List child names; `-a` includes dot entries and `-l` enables long listing. | `ls -la /db` |
+| `ll [-a] [path]` | Long listing alias with read-only permissions in output. | `ll -a /db` |
+| `cd <path>` | Change directory when the target is a directory node. | `cd /db` |
+| `stat [path]` | Print filesystem-style metadata for a node. | `stat /db/table.csv` |
+| `cat <path>...` | Print readable paths sequentially. | `cat /db/table.csv` |
+| `head [-n lines] <path>` | Print the first rows or text lines; short form such as `-5` is accepted. | `head -n 5 /db/table.csv` |
+| `tail [-n lines] <path>` | Print the last rows or text lines where supported. | `tail -n 5 /db/table.csv` |
+| `wc -l <path>` | Print logical count and path. | `wc -l /db/table.csv` |
+| `grep <pattern> <path>` | Print rows or lines containing a literal substring. | `grep spricoder /db/table.csv` |
+| `find [path] [-name name]` | Recursively print matching paths; `-name` is exact node-name matching. | `find /db -name table.csv` |
+| `less <path>` | Non-interactive read alias using the default read limit. | `less /db/table.csv` |
+| `more <path>` | Non-interactive read alias using the default read limit. | `more /db/table.schema` |
+| `file <path>` | Print `directory`, `regular file`, or `unknown`. | `file /db/table.meta` |
+| `du <path>` | Print logical count and path using provider count. | `du /db/table.csv` |
+| `cut -d<delimiter> -f<fields> <path>` | Delimiter-based Unix field selection; supports lists and closed ranges. | `cut -d, -f2,3 /db/table.csv` |
+| `paste <path>...` | Print multiple readable paths side by side; table mode supports legacy same-table column paths. | `paste /db/table/key /db/table/value` |
+| `tree [-L depth] [path]` | Print descendants with indentation and names only. | `tree -L 2 /db` |
+| `mkdir <path>` | Write-gated; in table mode with writes enabled, creates a database. | `mkdir /newdb` |
+| `rm <path>` | Write-gated; in table mode with writes enabled, only table CSV drop is allowed. | `rm /db/table.csv` |
+| `mv <source> <target>` | Write-gated; in table mode with writes enabled, only same-database table CSV rename is allowed. | `mv /db/t1.csv /db/t2.csv` |
+| `help` | Print filesystem-mode help. | `help` |
+| `exit` / `quit` | Exit filesystem mode. | `exit` |
 
 ## Subagent Usage Notes
 
@@ -168,7 +236,7 @@ test commands listed below.
 - The broader filesystem-mode focused suite is:
 
   ```bash
-  mvn test -o -nsu -Dtest=AbstractCliTest,CliFilesystemModeTest,FsPathTest,FilesystemCommandParserTest,TreeFilesystemSchemaProviderTest,TableFilesystemSchemaProviderTest,FilesystemShellTest,JdbcSqlExecutorTest
+  mvn test -o -nsu -Dtest=AbstractCliTest,CliFilesystemModeTest,JlineUtilsTest,FsPathTest,FilesystemCommandParserTest,TreeFilesystemSchemaProviderTest,TableFilesystemSchemaProviderTest,TableFilesystemMutationProviderTest,FilesystemShellTest,JdbcSqlExecutorTest
   ```
 
 - Maven/Develocity may print `Operation not permitted` stack traces for writes under
@@ -249,7 +317,11 @@ Expected: all tree provider tests pass.
 
 - [ ] **Step 1: Write failing `TableFilesystemSchemaProviderTest`**
 
-Use a mocked `SqlExecutor` to verify `list(/)`, `list(/db)`, `list(/db/table)`, `describe(/db/table/col)`, and `read(/db/table/col)` issue expected SQL and return typed nodes.
+Use a mocked `SqlExecutor` to verify `list(/)`, `list(/db)`, `describe(/db/table.csv)`,
+`read(/db/table.csv)`, `describe(/db/table.schema)`, `readLines(/db/table.schema)`,
+`describe(/db/table.meta)`, and `readLines(/db/table.meta)` issue expected SQL and return typed nodes
+or text lines.
+Also cover legacy `/db/table/col` paths if compatibility behavior remains enabled.
 
 - [ ] **Step 2: Run test to verify it fails**
 
@@ -258,7 +330,10 @@ Expected: compilation failure or missing behavior.
 
 - [ ] **Step 3: Implement table provider**
 
-Implement database/table/column mapping with centralized identifier rendering.
+Implement CSV-first database/table sidecar mapping with centralized identifier rendering:
+`/db/table.csv` is the table data regular file, `/db/table.schema` is the schema sidecar regular
+file, and `/db/table.meta` is the metadata sidecar regular file. Keep `/db/table/column` only as a
+legacy compatibility path or migration source.
 
 - [ ] **Step 4: Run test to verify it passes**
 
@@ -282,22 +357,23 @@ Add the long option and route filesystem mode to `FilesystemShell` without chang
 
 - [ ] **Step 4: Run focused tests**
 
-Run: `mvn test -pl iotdb-client/cli -Dtest=AbstractCliTest,FsPathTest,FilesystemCommandParserTest,TreeFilesystemSchemaProviderTest,TableFilesystemSchemaProviderTest`
+Run: `mvn test -pl iotdb-client/cli -Dtest=AbstractCliTest,CliFilesystemModeTest,JlineUtilsTest,FsPathTest,FilesystemCommandParserTest,TreeFilesystemSchemaProviderTest,TableFilesystemSchemaProviderTest,TableFilesystemMutationProviderTest,FilesystemShellTest,JdbcSqlExecutorTest`
 Expected: all focused tests pass.
 
 ### Task 6: Verification
 
 - [ ] **Step 1: Run CLI module unit tests**
 
-Run: `mvn test -pl iotdb-client/cli`
-Expected: CLI module unit tests pass, or any unrelated pre-existing failure is documented with output.
+Run: `mvn test -o -nsu -Dtest=AbstractCliTest,CliFilesystemModeTest,JlineUtilsTest,FsPathTest,FilesystemCommandParserTest,TreeFilesystemSchemaProviderTest,TableFilesystemSchemaProviderTest,TableFilesystemMutationProviderTest,FilesystemShellTest,JdbcSqlExecutorTest` from `iotdb-client/cli`.
+Expected: focused filesystem-mode unit tests pass, or any unrelated pre-existing failure is
+documented with output.
 
 - [ ] **Step 2: Run formatting**
 
-Run: `mvn spotless:apply -pl iotdb-client/cli`
+Run: `mvn spotless:apply -o -nsu` from `iotdb-client/cli`.
 Expected: formatting applied without errors.
 
 - [ ] **Step 3: Re-run focused tests after formatting**
 
-Run: `mvn test -pl iotdb-client/cli -Dtest=AbstractCliTest,FsPathTest,FilesystemCommandParserTest,TreeFilesystemSchemaProviderTest,TableFilesystemSchemaProviderTest`
+Run: `mvn test -o -nsu -Dtest=AbstractCliTest,CliFilesystemModeTest,JlineUtilsTest,FsPathTest,FilesystemCommandParserTest,TreeFilesystemSchemaProviderTest,TableFilesystemSchemaProviderTest,TableFilesystemMutationProviderTest,FilesystemShellTest,JdbcSqlExecutorTest` from `iotdb-client/cli`.
 Expected: all focused tests pass.

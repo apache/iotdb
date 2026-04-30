@@ -55,26 +55,29 @@ public class TableFilesystemMutationProviderTest {
   @Test
   public void mkdirRejectsRootAndTableLevel() throws SQLException {
     assertInvalidOperation(() -> provider.mkdir(FsPath.absolute("/")));
-    assertInvalidOperation(() -> provider.mkdir(FsPath.absolute("/db1/table1")));
+    assertInvalidOperation(() -> provider.mkdir(FsPath.absolute("/db1/table1.csv")));
   }
 
   @Test
-  public void removeTableDropsTable() throws SQLException {
-    provider.remove(FsPath.absolute("/db1/table1"));
+  public void removeTableCsvDropsTable() throws SQLException {
+    provider.remove(FsPath.absolute("/db1/table1.csv"));
 
     verify(executor).execute("DROP TABLE db1.table1");
   }
 
   @Test
-  public void removeRejectsRootDatabaseAndColumnLevel() throws SQLException {
+  public void removeRejectsRootDatabaseSchemaMetaAndLegacyTableLevel() throws SQLException {
     assertInvalidOperation(() -> provider.remove(FsPath.absolute("/")));
     assertInvalidOperation(() -> provider.remove(FsPath.absolute("/db1")));
+    assertInvalidOperation(() -> provider.remove(FsPath.absolute("/db1/table1")));
+    assertInvalidOperation(() -> provider.remove(FsPath.absolute("/db1/table1.schema")));
+    assertInvalidOperation(() -> provider.remove(FsPath.absolute("/db1/table1.meta")));
     assertInvalidOperation(() -> provider.remove(FsPath.absolute("/db1/table1/s1")));
   }
 
   @Test
-  public void moveTableRenamesTableInSameDatabase() throws SQLException {
-    provider.move(FsPath.absolute("/db1/table1"), FsPath.absolute("/db1/table2"));
+  public void moveTableCsvRenamesTableInSameDatabase() throws SQLException {
+    provider.move(FsPath.absolute("/db1/table1.csv"), FsPath.absolute("/db1/table2.csv"));
 
     verify(executor).execute("ALTER TABLE db1.table1 RENAME TO table2");
   }
@@ -83,9 +86,16 @@ public class TableFilesystemMutationProviderTest {
   public void moveRejectsUnsafeLevelsAndCrossDatabaseRename() throws SQLException {
     assertInvalidOperation(() -> provider.move(FsPath.absolute("/db1"), FsPath.absolute("/db2")));
     assertInvalidOperation(
+        () -> provider.move(FsPath.absolute("/db1/table1"), FsPath.absolute("/db1/table2")));
+    assertInvalidOperation(
+        () ->
+            provider.move(
+                FsPath.absolute("/db1/table1.schema"), FsPath.absolute("/db1/table2.schema")));
+    assertInvalidOperation(
         () -> provider.move(FsPath.absolute("/db1/table1/s1"), FsPath.absolute("/db1/table1/s2")));
     assertInvalidOperation(
-        () -> provider.move(FsPath.absolute("/db1/table1"), FsPath.absolute("/db2/table1")));
+        () ->
+            provider.move(FsPath.absolute("/db1/table1.csv"), FsPath.absolute("/db2/table1.csv")));
   }
 
   private static void assertInvalidOperation(SqlOperation operation) throws SQLException {

@@ -26,6 +26,7 @@ import java.util.Locale;
 public class FilesystemCommandParser {
 
   private static final String DEFAULT_PATH = ".";
+  private static final String DEFAULT_CUT_DELIMITER = "\t";
   private static final int DEFAULT_TREE_DEPTH = Integer.MAX_VALUE;
   private static final int DEFAULT_HEAD_LIMIT = 10;
 
@@ -54,10 +55,10 @@ public class FilesystemCommandParser {
     String[] tokens = line.split("\\s+");
     String command = tokens[0].toLowerCase(Locale.ROOT);
     if ("ls".equals(command)) {
-      return parseLs(tokens);
+      return parseList(tokens, false);
     }
     if ("ll".equals(command)) {
-      return FilesystemCommand.path(FilesystemCommand.Type.LL, pathArgument(tokens));
+      return parseList(tokens, true);
     }
     if ("cd".equals(command)) {
       return FilesystemCommand.path(FilesystemCommand.Type.CD, pathArgument(tokens));
@@ -104,6 +105,9 @@ public class FilesystemCommandParser {
     if ("mv".equals(command)) {
       return parseMv(tokens);
     }
+    if ("cut".equals(command)) {
+      return parseCut(tokens);
+    }
     if ("paste".equals(command)) {
       return parsePaste(tokens);
     }
@@ -132,6 +136,46 @@ public class FilesystemCommandParser {
     return FilesystemCommand.paths(FilesystemCommand.Type.PASTE, paths);
   }
 
+  private static FilesystemCommand parseCut(String[] tokens) {
+    String delimiter = DEFAULT_CUT_DELIMITER;
+    String fields = "";
+    String path = "";
+
+    for (int i = 1; i < tokens.length; i++) {
+      String token = tokens[i];
+      if ("-d".equals(token)) {
+        if (i + 1 >= tokens.length) {
+          return FilesystemCommand.invalid("Missing cut delimiter");
+        }
+        delimiter = tokens[++i];
+      } else if (token.startsWith("-d") && token.length() > 2) {
+        delimiter = token.substring(2);
+      } else if ("-f".equals(token)) {
+        if (i + 1 >= tokens.length) {
+          return FilesystemCommand.invalid("Missing cut fields");
+        }
+        fields = tokens[++i];
+      } else if (token.startsWith("-f") && token.length() > 2) {
+        fields = token.substring(2);
+      } else if (token.startsWith("-")) {
+        return FilesystemCommand.invalid("Unsupported cut option: " + token);
+      } else {
+        path = token;
+      }
+    }
+
+    if (delimiter.length() != 1) {
+      return FilesystemCommand.invalid("Cut delimiter must be a single character");
+    }
+    if (fields.isEmpty()) {
+      return FilesystemCommand.invalid("Missing cut fields");
+    }
+    if (path.isEmpty()) {
+      return FilesystemCommand.invalid("Missing cut path");
+    }
+    return FilesystemCommand.cut(delimiter, fields, path);
+  }
+
   private static FilesystemCommand parseRm(String[] tokens) {
     if (tokens.length < 2) {
       return FilesystemCommand.invalid("Missing rm path");
@@ -152,9 +196,10 @@ public class FilesystemCommandParser {
     return FilesystemCommand.paths(FilesystemCommand.Type.MV, paths);
   }
 
-  private static FilesystemCommand parseLs(String[] tokens) {
-    FilesystemCommand.Type type = FilesystemCommand.Type.LS;
+  private static FilesystemCommand parseList(String[] tokens, boolean longMode) {
+    FilesystemCommand.Type type = longMode ? FilesystemCommand.Type.LL : FilesystemCommand.Type.LS;
     String path = DEFAULT_PATH;
+    boolean all = false;
 
     for (int i = 1; i < tokens.length; i++) {
       String token = tokens[i];
@@ -163,7 +208,9 @@ public class FilesystemCommandParser {
           char option = token.charAt(j);
           if (option == 'l') {
             type = FilesystemCommand.Type.LL;
-          } else if (option != 'a') {
+          } else if (option == 'a') {
+            all = true;
+          } else {
             return FilesystemCommand.invalid("Unsupported ls option: -" + option);
           }
         }
@@ -171,7 +218,7 @@ public class FilesystemCommandParser {
         path = token;
       }
     }
-    return FilesystemCommand.path(type, path);
+    return FilesystemCommand.option(type, all ? "-a" : "", path);
   }
 
   private static FilesystemCommand parseCat(String[] tokens) {

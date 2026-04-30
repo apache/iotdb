@@ -44,11 +44,30 @@ public class FilesystemCommandParserTest {
   }
 
   @Test
+  public void parseLlAllOptionAsCurrentDirectoryLongListCommand() {
+    FilesystemCommand command = FilesystemCommandParser.parse("ll -a");
+
+    assertEquals(FilesystemCommand.Type.LL, command.getType());
+    assertEquals(".", command.getPath());
+    assertEquals("-a", command.getOption());
+  }
+
+  @Test
+  public void parseLlCombinedOptionsAndPath() {
+    FilesystemCommand command = FilesystemCommandParser.parse("ll -al /db1");
+
+    assertEquals(FilesystemCommand.Type.LL, command.getType());
+    assertEquals("/db1", command.getPath());
+    assertEquals("-a", command.getOption());
+  }
+
+  @Test
   public void parseLsLongOptionAsLongListCommand() {
     FilesystemCommand command = FilesystemCommandParser.parse("ls -la /db1");
 
     assertEquals(FilesystemCommand.Type.LL, command.getType());
     assertEquals("/db1", command.getPath());
+    assertEquals("-a", command.getOption());
   }
 
   @Test
@@ -144,6 +163,35 @@ public class FilesystemCommandParserTest {
     assertEquals(2, command.getPaths().size());
     assertEquals("/db1/table1/tag1", command.getPaths().get(0));
     assertEquals("/db1/table1/s1", command.getPaths().get(1));
+  }
+
+  @Test
+  public void parseCutDelimiterFieldsAndPath() {
+    FilesystemCommand command = FilesystemCommandParser.parse("cut -d, -f2,3 /db1/table1.csv");
+
+    assertEquals(FilesystemCommand.Type.CUT, command.getType());
+    assertEquals(",", command.getOption());
+    assertEquals("2,3", command.getPattern());
+    assertEquals("/db1/table1.csv", command.getPath());
+  }
+
+  @Test
+  public void parseCutSeparatedOptionArguments() {
+    FilesystemCommand command = FilesystemCommandParser.parse("cut -d , -f 1-2 /db1/table1.csv");
+
+    assertEquals(FilesystemCommand.Type.CUT, command.getType());
+    assertEquals(",", command.getOption());
+    assertEquals("1-2", command.getPattern());
+    assertEquals("/db1/table1.csv", command.getPath());
+  }
+
+  @Test
+  public void parseCutRequiresFieldsAndPath() {
+    assertEquals(
+        FilesystemCommand.Type.INVALID,
+        FilesystemCommandParser.parse("cut -d, /db1/table1.csv").getType());
+    assertEquals(
+        FilesystemCommand.Type.INVALID, FilesystemCommandParser.parse("cut -f2,3").getType());
   }
 
   @Test
