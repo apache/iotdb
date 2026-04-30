@@ -1216,7 +1216,9 @@ public class Coordinator {
 
     @Override
     public long ramBytesUsed() {
+      // The result of this method is fixed
       return INSTANCE_SIZE
+          + sizeOfCharArray(queryId.length())
           + sizeOfCharArray(statement.length())
           + sizeOfCharArray(user.length())
           + sizeOfCharArray(clientHost.length());
