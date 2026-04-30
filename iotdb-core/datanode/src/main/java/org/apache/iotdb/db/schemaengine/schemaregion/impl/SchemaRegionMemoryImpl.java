@@ -1338,19 +1338,17 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
    *
    * @param node the CreateAliasSeriesNode containing rollback information
    * @param newPath the alias path to delete
-   * @throws MetadataException if the path is not an alias series or other errors occur
+   * @throws MetadataException if other errors occur
    */
   private void rollbackCreateAliasSeries(
       final CreateAliasSeriesNode node, final PartialPath newPath) throws MetadataException {
     try {
       // Get the alias measurement node (verify it exists)
       final IMeasurementMNode<IMemMNode> aliasNode = mTree.getMeasurementMNode(newPath);
-      // Verify it's an alias series (IS_RENAMED=true)
+      // Rollback must be idempotent. If alias creation never took effect and the target path is
+      // still occupied by a physical/invalid series, leave it untouched.
       if (!aliasNode.isRenamed()) {
-        throw new MetadataException(
-            String.format(
-                "Timeseries [%s] is not an alias series, cannot rollback createAliasSeries",
-                newPath.getFullPath()));
+        return;
       }
       // Physically delete the alias node
       final IMeasurementMNode<IMemMNode> aliasNodeToDelete = mTree.deleteTimeSeries(newPath);
@@ -1442,7 +1440,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     physicalNode.setAliasPath(null);
 
     // Update statistics (decrease invalid series count)
-    regionStatistics.addInvalidSeries(-1L);
+    regionStatistics.deleteInvalidSeries(1L);
+    regionStatistics.addMeasurement(1L);
 
     // Write log
     writeToMLog(node);
@@ -1773,6 +1772,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     }
 
     // Update statistics
+    regionStatistics.addMeasurement(1L);
     regionStatistics.deleteInvalidSeries(1L);
 
     // Write log

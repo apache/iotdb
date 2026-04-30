@@ -56,15 +56,21 @@ import org.apache.iotdb.mpp.rpc.thrift.TUpdatePhysicalAliasRefReq;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.thrift.TException;
+import org.apache.thrift.protocol.TBinaryProtocol;
+import org.apache.thrift.transport.TIOStreamTransport;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.HashMap;
@@ -92,11 +98,19 @@ public class RenameTimeSeriesProcedure
   private transient ByteBuffer newPathBytes;
   private transient String requestMessage;
 
-  // Transient: Execution Context (Rebuilt on restart)
-  private transient TRenameTimeSeriesResp analysisContext;
+  // Persisted execution context for resuming transform and rollback after restart
+  private TRenameTimeSeriesResp analysisContext;
 
-  // Transient: Rollback Stack (Runtime only)
-  private final transient Deque<Runnable> rollbackStack = new ArrayDeque<>();
+  // Persisted rollback actions. The newest action is at the front of the deque.
+  private final Deque<RollbackAction> rollbackActions = new ArrayDeque<>();
+
+  protected enum RollbackAction {
+    ROLLBACK_CREATE_ALIAS,
+    ROLLBACK_MARK_SERIES_INVALID,
+    ROLLBACK_MARK_SERIES_ENABLED,
+    ROLLBACK_DROP_ALIAS_SERIES,
+    ROLLBACK_UPDATE_PHYSICAL_ALIAS_REF
+  }
 
   public RenameTimeSeriesProcedure(final boolean isGeneratedByPipe) {
     super(isGeneratedByPipe);
@@ -119,6 +133,22 @@ public class RenameTimeSeriesProcedure
         String.format("Rename %s to %s", oldPath.getFullPath(), newPath.getFullPath());
     this.oldPathBytes = oldPath.serialize();
     this.newPathBytes = newPath.serialize();
+  }
+
+  protected final void setAnalysisContext(final TRenameTimeSeriesResp analysisContext) {
+    this.analysisContext = analysisContext;
+  }
+
+  protected final TRenameTimeSeriesResp getAnalysisContext() {
+    return analysisContext;
+  }
+
+  protected final void registerRollbackAction(final RollbackAction rollbackAction) {
+    rollbackActions.push(rollbackAction);
+  }
+
+  protected final List<RollbackAction> getRollbackActionsSnapshot() {
+    return new ArrayList<>(rollbackActions);
   }
 
   @Override
@@ -149,7 +179,7 @@ public class RenameTimeSeriesProcedure
 
           if (isFailed()) {
             // Execution failed, framework triggers rollbackState.
-            // rollbackStack already contains the rollback op for the failed step (and previous
+            // rollbackActions already contains the rollback op for the failed step (and previous
             // steps).
             return Flow.NO_MORE_STATE;
           }
@@ -206,7 +236,7 @@ public class RenameTimeSeriesProcedure
     if (resp == null || resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       handleLockFailure(resp);
     } else {
-      this.analysisContext = resp;
+      setAnalysisContext(resp);
     }
   }
 
@@ -234,6 +264,15 @@ public class RenameTimeSeriesProcedure
   // ==================== Core Logic: Transformation (Updated Pattern) ====================
 
   private void transformMetadata(final ConfigNodeProcedureEnv env) {
+    if (analysisContext == null) {
+      setFailure(
+          new ProcedureException(
+              new MetadataException(
+                  "Missing schema info when transforming rename metadata for "
+                      + oldPath.getFullPath())));
+      return;
+    }
+
     boolean isRenamed = analysisContext.isIsRenamed();
     PartialPath physicalPath = null;
     if (analysisContext.isSetPhysicalPath()) {
@@ -267,18 +306,7 @@ public class RenameTimeSeriesProcedure
     }
 
     // --- Step 1: Create Alias ---
-    rollbackStack.push(
-        () ->
-            executeRegionTask(
-                "rollback: create alias",
-                env,
-                newRegion,
-                CnToDnAsyncRequestType.CREATE_ALIAS_SERIES,
-                (loc, ids) ->
-                    new TCreateAliasSeriesReq(
-                            ids, oldPathBytes, newPathBytes, analysisContext.getTimeSeriesInfo())
-                        .setIsGeneratedByPipe(isGeneratedByPipe)
-                        .setIsRollback(true)));
+    registerRollbackAction(RollbackAction.ROLLBACK_CREATE_ALIAS);
 
     executeRegionTask(
         "create alias",
@@ -295,17 +323,7 @@ public class RenameTimeSeriesProcedure
     }
 
     // --- Step 2: Mark Disabled ---
-    rollbackStack.push(
-        () ->
-            executeRegionTask(
-                "rollback: mark disabled",
-                env,
-                oldRegion,
-                CnToDnAsyncRequestType.MARK_SERIES_INVALID,
-                (loc, ids) ->
-                    new TMarkSeriesInvalidReq(ids, oldPathBytes, newPathBytes)
-                        .setIsGeneratedByPipe(isGeneratedByPipe)
-                        .setIsRollback(true)));
+    registerRollbackAction(RollbackAction.ROLLBACK_MARK_SERIES_INVALID);
     executeRegionTask(
         "mark disabled",
         env,
@@ -357,19 +375,7 @@ public class RenameTimeSeriesProcedure
     ByteBuffer physBytes = physicalPath.serialize();
 
     // --- Step 1: Mark Series Enabled ---
-    rollbackStack.push(
-        () ->
-            executeRegionTask(
-                "rollback: mark series enabled",
-                env,
-                physRegion,
-                CnToDnAsyncRequestType.MARK_SERIES_ENABLED,
-                (loc, ids) ->
-                    new TMarkSeriesEnabledReq(ids, physBytes)
-                        .setAliasPath(oldPathBytes)
-                        .setTimeSeriesInfo(analysisContext.getTimeSeriesInfo())
-                        .setIsGeneratedByPipe(isGeneratedByPipe)
-                        .setIsRollback(true)));
+    registerRollbackAction(RollbackAction.ROLLBACK_MARK_SERIES_ENABLED);
 
     executeRegionTask(
         "mark series enabled",
@@ -388,19 +394,7 @@ public class RenameTimeSeriesProcedure
 
     // --- Step 2: Drop Alias ---
     // Register Rollback 2 BEFORE Execute: Re-create the alias we are about to drop
-    rollbackStack.push(
-        () ->
-            executeRegionTask(
-                "rollback: drop alias",
-                env,
-                aliasRegion,
-                CnToDnAsyncRequestType.DROP_ALIAS_SERIES,
-                (loc, ids) ->
-                    new TDropAliasSeriesReq(ids, oldPathBytes)
-                        .setPhysicalPath(physBytes)
-                        .setTimeSeriesInfo(analysisContext.getTimeSeriesInfo())
-                        .setIsGeneratedByPipe(isGeneratedByPipe)
-                        .setIsRollback(false)));
+    registerRollbackAction(RollbackAction.ROLLBACK_DROP_ALIAS_SERIES);
 
     // Execute 2: Drop Alias
     executeRegionTask(
@@ -444,18 +438,7 @@ public class RenameTimeSeriesProcedure
     ByteBuffer physBytes = physicalPath.serialize();
 
     // --- Step 1: Create New Alias ---
-    rollbackStack.push(
-        () ->
-            executeRegionTask(
-                "rollback: create new alias",
-                env,
-                oldRegion,
-                CnToDnAsyncRequestType.CREATE_ALIAS_SERIES,
-                (loc, ids) ->
-                    new TCreateAliasSeriesReq(
-                            ids, physBytes, newPathBytes, analysisContext.getTimeSeriesInfo())
-                        .setIsGeneratedByPipe(isGeneratedByPipe)
-                        .setIsRollback(true)));
+    registerRollbackAction(RollbackAction.ROLLBACK_CREATE_ALIAS);
     executeRegionTask(
         "create new alias",
         env,
@@ -472,18 +455,7 @@ public class RenameTimeSeriesProcedure
 
     // --- Step 2: Update Ref ---
     // Register Rollback 2 BEFORE Execute: Revert ref to old alias
-    rollbackStack.push(
-        () ->
-            executeRegionTask(
-                "rollback: update physical ref",
-                env,
-                physRegion,
-                CnToDnAsyncRequestType.UPDATE_PHYSICAL_ALIAS_REF,
-                (loc, ids) ->
-                    new TUpdatePhysicalAliasRefReq(ids, physBytes, newPathBytes)
-                        .setOldAliasPath(oldPathBytes)
-                        .setIsGeneratedByPipe(isGeneratedByPipe)
-                        .setIsRollback(true)));
+    registerRollbackAction(RollbackAction.ROLLBACK_UPDATE_PHYSICAL_ALIAS_REF);
 
     // Execute 2: Update Ref
     executeRegionTask(
@@ -501,19 +473,7 @@ public class RenameTimeSeriesProcedure
     }
 
     // --- Step 3: Drop Old Alias ---
-    rollbackStack.push(
-        () ->
-            executeRegionTask(
-                "rollback: drop old alias",
-                env,
-                newRegion,
-                CnToDnAsyncRequestType.DROP_ALIAS_SERIES,
-                (loc, ids) ->
-                    new TDropAliasSeriesReq(ids, oldPathBytes)
-                        .setPhysicalPath(physBytes)
-                        .setTimeSeriesInfo(analysisContext.getTimeSeriesInfo())
-                        .setIsGeneratedByPipe(isGeneratedByPipe)
-                        .setIsRollback(true)));
+    registerRollbackAction(RollbackAction.ROLLBACK_DROP_ALIAS_SERIES);
 
     executeRegionTask(
         "drop old alias",
@@ -536,24 +496,19 @@ public class RenameTimeSeriesProcedure
 
     LOGGER.info("Rolling back rename time series {} from state {}", requestMessage, state);
 
-    if (analysisContext == null || isFailed()) {
-      unlock(env);
-      return;
-    }
-
-    // Runtime Failure: Execute Fine-Grained Stack Rollback
-    // Because we push BEFORE execute, the top of the stack matches the
-    // current (potentially failed) step, or the last successful step.
-    // Idempotency of rollback actions ensures safety even if execution didn't happen.
-    if (state == RenameTimeSeriesState.TRANSFORM_METADATA && !rollbackStack.isEmpty()) {
+    // Runtime failure: execute fine-grained rollback actions in LIFO order.
+    // Because we register BEFORE execute, the top action matches the current
+    // (potentially failed) step, or the last successful step. Each action is
+    // removed before execution to avoid retrying the same failing action forever.
+    if (state == RenameTimeSeriesState.TRANSFORM_METADATA && !rollbackActions.isEmpty()) {
       LOGGER.info("Executing precise stack-based rollback for {}", requestMessage);
-      while (!rollbackStack.isEmpty()) {
+      while (!rollbackActions.isEmpty()) {
+        final RollbackAction rollbackAction = rollbackActions.pop();
         try {
-          Runnable runnable = rollbackStack.peek();
-          runnable.run();
-          rollbackStack.pop();
+          executeRollbackAction(env, rollbackAction);
         } catch (Exception e) {
-          LOGGER.error("Failed to execute rollback step for {}", requestMessage, e);
+          LOGGER.error(
+              "Failed to execute rollback step {} for {}", rollbackAction, requestMessage, e);
         }
       }
     }
@@ -567,7 +522,7 @@ public class RenameTimeSeriesProcedure
     SchemaUtils.invalidateCache(env, true, oldPath, newPath);
   }
 
-  private void unlock(final ConfigNodeProcedureEnv env) {
+  protected void unlock(final ConfigNodeProcedureEnv env) {
     final Map<TConsensusGroupId, TRegionReplicaSet> group =
         getRelatedSchemaRegionGroup(env, oldPath);
     if (!group.isEmpty()) {
@@ -608,7 +563,7 @@ public class RenameTimeSeriesProcedure
     }
   }
 
-  private <Q> void executeRegionTask(
+  protected <Q> void executeRegionTask(
       String taskName,
       ConfigNodeProcedureEnv env,
       Map<TConsensusGroupId, TRegionReplicaSet> regionGroup,
@@ -624,7 +579,113 @@ public class RenameTimeSeriesProcedure
     task.execute();
   }
 
-  // ==================== Serialization (Stateless) ====================
+  private void executeRollbackAction(
+      final ConfigNodeProcedureEnv env, final RollbackAction rollbackAction) {
+    if (analysisContext == null) {
+      throw new IllegalStateException("Missing rollback context for " + requestMessage);
+    }
+
+    final PartialPath physicalPath = getPhysicalPathFromAnalysisContext();
+    switch (rollbackAction) {
+      case ROLLBACK_CREATE_ALIAS:
+        final PartialPath sourcePath = getRollbackCreateAliasSourcePath(physicalPath);
+        final ByteBuffer sourcePathBytes = sourcePath.serialize();
+        executeRegionTask(
+            "rollback: create alias",
+            env,
+            getRelatedSchemaRegionGroup(env, newPath),
+            CnToDnAsyncRequestType.CREATE_ALIAS_SERIES,
+            (loc, ids) ->
+                new TCreateAliasSeriesReq(
+                        ids, sourcePathBytes, newPathBytes, analysisContext.getTimeSeriesInfo())
+                    .setIsGeneratedByPipe(isGeneratedByPipe)
+                    .setIsRollback(true));
+        return;
+      case ROLLBACK_MARK_SERIES_INVALID:
+        executeRegionTask(
+            "rollback: mark disabled",
+            env,
+            getRelatedSchemaRegionGroup(env, oldPath),
+            CnToDnAsyncRequestType.MARK_SERIES_INVALID,
+            (loc, ids) ->
+                new TMarkSeriesInvalidReq(ids, oldPathBytes, newPathBytes)
+                    .setIsGeneratedByPipe(isGeneratedByPipe)
+                    .setIsRollback(true));
+        return;
+      case ROLLBACK_MARK_SERIES_ENABLED:
+        if (physicalPath == null) {
+          throw new IllegalStateException("Missing physical path for rollback mark enabled");
+        }
+        final ByteBuffer physicalPathBytesForEnable = physicalPath.serialize();
+        executeRegionTask(
+            "rollback: mark series enabled",
+            env,
+            getRelatedSchemaRegionGroup(env, physicalPath),
+            CnToDnAsyncRequestType.MARK_SERIES_ENABLED,
+            (loc, ids) ->
+                new TMarkSeriesEnabledReq(ids, physicalPathBytesForEnable)
+                    .setAliasPath(oldPathBytes)
+                    .setTimeSeriesInfo(analysisContext.getTimeSeriesInfo())
+                    .setIsGeneratedByPipe(isGeneratedByPipe)
+                    .setIsRollback(true));
+        return;
+      case ROLLBACK_DROP_ALIAS_SERIES:
+        if (physicalPath == null) {
+          throw new IllegalStateException("Missing physical path for rollback drop alias");
+        }
+        final ByteBuffer physicalPathBytesForDrop = physicalPath.serialize();
+        executeRegionTask(
+            "rollback: drop alias",
+            env,
+            getRelatedSchemaRegionGroup(env, oldPath),
+            CnToDnAsyncRequestType.DROP_ALIAS_SERIES,
+            (loc, ids) ->
+                new TDropAliasSeriesReq(ids, oldPathBytes)
+                    .setPhysicalPath(physicalPathBytesForDrop)
+                    .setTimeSeriesInfo(analysisContext.getTimeSeriesInfo())
+                    .setIsGeneratedByPipe(isGeneratedByPipe)
+                    .setIsRollback(true));
+        return;
+      case ROLLBACK_UPDATE_PHYSICAL_ALIAS_REF:
+        if (physicalPath == null) {
+          throw new IllegalStateException("Missing physical path for rollback update alias ref");
+        }
+        final ByteBuffer physicalPathBytesForRef = physicalPath.serialize();
+        executeRegionTask(
+            "rollback: update physical ref",
+            env,
+            getRelatedSchemaRegionGroup(env, physicalPath),
+            CnToDnAsyncRequestType.UPDATE_PHYSICAL_ALIAS_REF,
+            (loc, ids) ->
+                new TUpdatePhysicalAliasRefReq(ids, physicalPathBytesForRef, newPathBytes)
+                    .setOldAliasPath(oldPathBytes)
+                    .setIsGeneratedByPipe(isGeneratedByPipe)
+                    .setIsRollback(true));
+        return;
+      default:
+        throw new IllegalArgumentException("Unknown rollback action: " + rollbackAction);
+    }
+  }
+
+  private PartialPath getPhysicalPathFromAnalysisContext() {
+    if (analysisContext == null || !analysisContext.isSetPhysicalPath()) {
+      return null;
+    }
+    return (PartialPath)
+        PathDeserializeUtil.deserialize(ByteBuffer.wrap(analysisContext.getPhysicalPath()));
+  }
+
+  private PartialPath getRollbackCreateAliasSourcePath(final PartialPath physicalPath) {
+    if (analysisContext != null
+        && analysisContext.isIsRenamed()
+        && physicalPath != null
+        && !newPath.equals(physicalPath)) {
+      return physicalPath;
+    }
+    return oldPath;
+  }
+
+  // ==================== Serialization ====================
 
   @Override
   public void serialize(final DataOutputStream stream) throws IOException {
@@ -636,6 +697,8 @@ public class RenameTimeSeriesProcedure
     ReadWriteIOUtils.write(queryId, stream);
     oldPath.serialize(stream);
     newPath.serialize(stream);
+    serializeAnalysisContext(stream);
+    serializeRollbackActions(stream);
   }
 
   @Override
@@ -645,9 +708,69 @@ public class RenameTimeSeriesProcedure
     oldPath = (PartialPath) PathDeserializeUtil.deserialize(byteBuffer);
     newPath = (PartialPath) PathDeserializeUtil.deserialize(byteBuffer);
     generateRequestBytes();
+
+    analysisContext = null;
+    rollbackActions.clear();
+    if (!byteBuffer.hasRemaining()) {
+      return;
+    }
+
+    analysisContext = deserializeAnalysisContext(byteBuffer);
+    if (!byteBuffer.hasRemaining()) {
+      return;
+    }
+    deserializeRollbackActions(byteBuffer);
   }
 
-  private Map<TConsensusGroupId, TRegionReplicaSet> getRelatedSchemaRegionGroup(
+  private void serializeAnalysisContext(final DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(analysisContext != null, stream);
+    if (analysisContext == null) {
+      return;
+    }
+
+    try (final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream()) {
+      analysisContext.write(new TBinaryProtocol(new TIOStreamTransport(byteArrayOutputStream)));
+      final byte[] bytes = byteArrayOutputStream.toByteArray();
+      ReadWriteIOUtils.write(bytes.length, stream);
+      stream.write(bytes);
+    } catch (TException e) {
+      throw new IOException("Failed to serialize rename analysis context", e);
+    }
+  }
+
+  private TRenameTimeSeriesResp deserializeAnalysisContext(final ByteBuffer byteBuffer) {
+    if (!ReadWriteIOUtils.readBool(byteBuffer)) {
+      return null;
+    }
+
+    final int length = ReadWriteIOUtils.readInt(byteBuffer);
+    final byte[] bytes = new byte[length];
+    byteBuffer.get(bytes);
+
+    final TRenameTimeSeriesResp resp = new TRenameTimeSeriesResp();
+    try {
+      resp.read(new TBinaryProtocol(new TIOStreamTransport(new ByteArrayInputStream(bytes))));
+      return resp;
+    } catch (TException e) {
+      throw new IllegalArgumentException("Failed to deserialize rename analysis context", e);
+    }
+  }
+
+  private void serializeRollbackActions(final DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(rollbackActions.size(), stream);
+    for (final RollbackAction rollbackAction : rollbackActions) {
+      ReadWriteIOUtils.write(rollbackAction.ordinal(), stream);
+    }
+  }
+
+  private void deserializeRollbackActions(final ByteBuffer byteBuffer) {
+    final int rollbackActionSize = ReadWriteIOUtils.readInt(byteBuffer);
+    for (int i = 0; i < rollbackActionSize; i++) {
+      rollbackActions.addLast(RollbackAction.values()[ReadWriteIOUtils.readInt(byteBuffer)]);
+    }
+  }
+
+  protected Map<TConsensusGroupId, TRegionReplicaSet> getRelatedSchemaRegionGroup(
       final ConfigNodeProcedureEnv env, final PartialPath path) {
     PathPatternTree patternTree = new PathPatternTree();
     patternTree.appendFullPath(path);
@@ -655,7 +778,7 @@ public class RenameTimeSeriesProcedure
     return env.getConfigManager().getRelatedSchemaRegionGroup(patternTree, false);
   }
 
-  private Map<TConsensusGroupId, TRegionReplicaSet> getOrCreateRelatedSchemaRegionGroup(
+  protected Map<TConsensusGroupId, TRegionReplicaSet> getOrCreateRelatedSchemaRegionGroup(
       final ConfigNodeProcedureEnv env, final PartialPath path) {
     // Step 1: Find or create database for the path
     try {

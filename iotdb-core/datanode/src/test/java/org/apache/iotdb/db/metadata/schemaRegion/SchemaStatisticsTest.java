@@ -22,9 +22,13 @@ package org.apache.iotdb.db.metadata.schemaRegion;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.schema.node.IMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
 import org.apache.iotdb.commons.schema.template.Template;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.CreateAliasSeriesNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.MarkSeriesEnabledNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.MarkSeriesInvalidNode;
 import org.apache.iotdb.db.schemaengine.SchemaEngine;
 import org.apache.iotdb.db.schemaengine.rescon.CachedSchemaEngineStatistics;
 import org.apache.iotdb.db.schemaengine.rescon.CachedSchemaRegionStatistics;
@@ -35,6 +39,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICa
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.loader.MNodeFactoryLoader;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.SchemaRegionWritePlanFactory;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
+import org.apache.iotdb.mpp.rpc.thrift.TTimeSeriesInfo;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
@@ -43,6 +48,8 @@ import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -344,6 +351,38 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
     }
   }
 
+  private void assertSeriesStatistics(
+      final ISchemaRegion schemaRegion,
+      final long visibleSeriesCount,
+      final long totalSeriesCount,
+      final boolean hasInvalidSeries) {
+    Assert.assertEquals(
+        visibleSeriesCount, schemaRegion.getSchemaRegionStatistics().getSeriesNumber(false, false));
+    Assert.assertEquals(
+        totalSeriesCount, schemaRegion.getSchemaRegionStatistics().getSeriesNumber(false, true));
+    Assert.assertEquals(
+        hasInvalidSeries, schemaRegion.getSchemaRegionStatistics().hasInvalidSeries());
+  }
+
+  private TTimeSeriesInfo createAliasTimeSeriesInfo(final PartialPath path, final String alias)
+      throws Exception {
+    final TTimeSeriesInfo timeSeriesInfo = new TTimeSeriesInfo();
+    final MeasurementPath measurementPath =
+        new MeasurementPath(path.getFullPath(), TSDataType.INT64);
+    final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    final DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+    measurementPath.serialize(dataOutputStream);
+    timeSeriesInfo.setPath(byteArrayOutputStream.toByteArray());
+    timeSeriesInfo.setDataType(TSDataType.INT64.ordinal());
+    timeSeriesInfo.setEncoding(TSEncoding.PLAIN.ordinal());
+    timeSeriesInfo.setCompressor(CompressionType.SNAPPY.ordinal());
+    timeSeriesInfo.setMeasurementAlias(alias);
+    timeSeriesInfo.setProps(Collections.emptyMap());
+    timeSeriesInfo.setTags(Collections.emptyMap());
+    timeSeriesInfo.setAttributes(Collections.emptyMap());
+    return timeSeriesInfo;
+  }
+
   @Test
   public void testSeriesNumStatistics() throws Exception {
     final ISchemaRegion schemaRegion1 = getSchemaRegion("root.sg1", 0);
@@ -367,6 +406,78 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
     Assert.assertEquals(2, schemaRegion1.getSchemaRegionStatistics().getSeriesNumber(true, true));
     Assert.assertEquals(2, schemaRegion2.getSchemaRegionStatistics().getSeriesNumber(true, true));
     Assert.assertEquals(4, engineStatistics.getTotalSeriesNumber());
+  }
+
+  @Test
+  public void testRollbackMarkSeriesEnabledStatistics() throws Exception {
+    final ISchemaRegion schemaRegion = getSchemaRegion("root.sg", 0);
+    final PartialPath physicalPath = new PartialPath("root.sg.d1.s1");
+    final PartialPath aliasPath = new PartialPath("root.sg.d1.alias_s1");
+    final TTimeSeriesInfo timeSeriesInfo = createAliasTimeSeriesInfo(physicalPath, "alias_s1");
+
+    SchemaRegionTestUtil.createSimpleTimeSeriesInt64(schemaRegion, physicalPath.getFullPath());
+    schemaRegion.createAliasSeries(
+        new CreateAliasSeriesNode(
+            new PlanNodeId("createAlias"), physicalPath, aliasPath, timeSeriesInfo, false));
+    schemaRegion.markSeriesInvalid(
+        new MarkSeriesInvalidNode(new PlanNodeId("markInvalid"), physicalPath, aliasPath, false));
+    assertSeriesStatistics(schemaRegion, 1, 2, true);
+
+    schemaRegion.markSeriesEnabled(
+        new MarkSeriesEnabledNode(
+            new PlanNodeId("markEnabled"), physicalPath, aliasPath, timeSeriesInfo, false));
+    assertSeriesStatistics(schemaRegion, 2, 2, false);
+
+    schemaRegion.markSeriesEnabled(
+        new MarkSeriesEnabledNode(
+            new PlanNodeId("rollbackMarkEnabled"), physicalPath, aliasPath, timeSeriesInfo, true));
+    assertSeriesStatistics(schemaRegion, 1, 2, true);
+  }
+
+  @Test
+  public void testRollbackMarkSeriesInvalidStatistics() throws Exception {
+    final ISchemaRegion schemaRegion = getSchemaRegion("root.sg", 0);
+    final PartialPath physicalPath = new PartialPath("root.sg.d1.s1");
+    final PartialPath aliasPath = new PartialPath("root.sg.d1.alias_s1");
+    final TTimeSeriesInfo timeSeriesInfo = createAliasTimeSeriesInfo(physicalPath, "alias_s1");
+
+    SchemaRegionTestUtil.createSimpleTimeSeriesInt64(schemaRegion, physicalPath.getFullPath());
+    schemaRegion.createAliasSeries(
+        new CreateAliasSeriesNode(
+            new PlanNodeId("createAlias"), physicalPath, aliasPath, timeSeriesInfo, false));
+    assertSeriesStatistics(schemaRegion, 2, 2, false);
+
+    schemaRegion.markSeriesInvalid(
+        new MarkSeriesInvalidNode(new PlanNodeId("markInvalid"), physicalPath, aliasPath, false));
+    assertSeriesStatistics(schemaRegion, 1, 2, true);
+
+    schemaRegion.markSeriesInvalid(
+        new MarkSeriesInvalidNode(
+            new PlanNodeId("rollbackMarkInvalid"), physicalPath, aliasPath, true));
+    assertSeriesStatistics(schemaRegion, 2, 2, false);
+  }
+
+  @Test
+  public void testRollbackCreateAliasShouldIgnoreExistingPhysicalSeries() throws Exception {
+    final ISchemaRegion schemaRegion = getSchemaRegion("root.sg", 0);
+    final PartialPath physicalPath = new PartialPath("root.sg.d1.s1");
+    final PartialPath existingTargetPath = new PartialPath("root.sg.d1.s_exist");
+    final TTimeSeriesInfo timeSeriesInfo = createAliasTimeSeriesInfo(physicalPath, "s_exist");
+
+    SchemaRegionTestUtil.createSimpleTimeSeriesInt64(schemaRegion, physicalPath.getFullPath());
+    SchemaRegionTestUtil.createSimpleTimeSeriesInt64(
+        schemaRegion, existingTargetPath.getFullPath());
+    assertSeriesStatistics(schemaRegion, 2, 2, false);
+
+    schemaRegion.createAliasSeries(
+        new CreateAliasSeriesNode(
+            new PlanNodeId("rollbackCreateAlias"),
+            physicalPath,
+            existingTargetPath,
+            timeSeriesInfo,
+            true));
+
+    assertSeriesStatistics(schemaRegion, 2, 2, false);
   }
 
   @Test
