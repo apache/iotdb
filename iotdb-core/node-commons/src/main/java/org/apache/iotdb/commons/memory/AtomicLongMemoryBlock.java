@@ -100,16 +100,20 @@ public class AtomicLongMemoryBlock extends IMemoryBlock {
 
   @Override
   public long release(long sizeInByte) {
-    return usedMemoryInBytes.updateAndGet(
-        memCost -> {
-          if (sizeInByte > memCost) {
-            LOGGER.warn(
-                "The memory cost to be released is larger than the memory cost of memory block {}",
-                this);
-            return 0;
-          }
-          return memCost - sizeInByte;
-        });
+    long prev;
+    long next;
+    do {
+      prev = usedMemoryInBytes.get();
+      if (sizeInByte > prev) {
+        LOGGER.warn(
+            "The memory cost to be released is larger than the memory cost of memory block {}",
+            this);
+        next = 0;
+      } else {
+        next = prev - sizeInByte;
+      }
+    } while (!usedMemoryInBytes.compareAndSet(prev, next));
+    return next;
   }
 
   @Override
