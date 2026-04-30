@@ -32,32 +32,32 @@ public class PipeDataNodeTask implements PipeTask {
   private final String pipeName;
   private final int regionId;
 
-  private final PipeTaskStage extractorStage;
+  private final PipeTaskStage sourceStage;
   private final PipeTaskStage processorStage;
-  private final PipeTaskStage connectorStage;
+  private final PipeTaskStage sinkStage;
 
   private volatile boolean isCompleted = false;
 
   public PipeDataNodeTask(
       final String pipeName,
       final int regionId,
-      final PipeTaskStage extractorStage,
+      final PipeTaskStage sourceStage,
       final PipeTaskStage processorStage,
-      final PipeTaskStage connectorStage) {
+      final PipeTaskStage sinkStage) {
     this.pipeName = pipeName;
     this.regionId = regionId;
 
-    this.extractorStage = extractorStage;
+    this.sourceStage = sourceStage;
     this.processorStage = processorStage;
-    this.connectorStage = connectorStage;
+    this.sinkStage = sinkStage;
   }
 
   @Override
   public void create() {
     final long startTime = System.currentTimeMillis();
-    extractorStage.create();
+    sourceStage.create();
     processorStage.create();
-    connectorStage.create();
+    sinkStage.create();
     LOGGER.info(
         "Create pipe DN task {} successfully within {} ms",
         this,
@@ -67,9 +67,9 @@ public class PipeDataNodeTask implements PipeTask {
   @Override
   public void drop() {
     final long startTime = System.currentTimeMillis();
-    extractorStage.drop();
+    sourceStage.drop();
     processorStage.drop();
-    connectorStage.drop();
+    sinkStage.drop();
     LOGGER.info(
         "Drop pipe DN task {} successfully within {} ms",
         this,
@@ -79,9 +79,9 @@ public class PipeDataNodeTask implements PipeTask {
   @Override
   public void start() {
     final long startTime = System.currentTimeMillis();
-    extractorStage.start();
+    sourceStage.start();
     processorStage.start();
-    connectorStage.start();
+    sinkStage.start();
     LOGGER.info(
         "Start pipe DN task {} successfully within {} ms",
         this,
@@ -91,9 +91,9 @@ public class PipeDataNodeTask implements PipeTask {
   @Override
   public void stop() {
     final long startTime = System.currentTimeMillis();
-    extractorStage.stop();
+    sourceStage.stop();
     processorStage.stop();
-    connectorStage.stop();
+    sinkStage.stop();
     LOGGER.info(
         "Stop pipe DN task {} successfully within {} ms",
         this,

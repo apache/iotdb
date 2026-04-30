@@ -1076,68 +1076,184 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     return visitor.visitInsertTablet(this, context);
   }
 
-  public TimeValuePair composeLastTimeValuePair(int measurementIndex) {
+  public TimeValuePair composeLastTimeValuePair(
+      int measurementIndex, int startOffset, int endOffset) {
     if (measurementIndex >= columns.length || Objects.isNull(dataTypes[measurementIndex])) {
       return null;
     }
 
     // get non-null value
-    int lastIdx = rowCount - 1;
+    int lastIdx = Math.min(endOffset - 1, rowCount - 1);
     if (bitMaps != null && bitMaps[measurementIndex] != null) {
       BitMap bitMap = bitMaps[measurementIndex];
-      while (lastIdx >= 0) {
+      while (lastIdx >= startOffset) {
         if (!bitMap.isMarked(lastIdx)) {
           break;
         }
         lastIdx--;
       }
     }
-    if (lastIdx < 0) {
+    if (lastIdx < startOffset) {
+      return null;
+    }
+    return composeTimeValuePair(measurementIndex, lastIdx);
+  }
+
+  public TimeValuePair composeLastTimeValuePair(int measurementIndex) {
+    return composeLastTimeValuePair(measurementIndex, 0, rowCount);
+  }
+
+  protected TimeValuePair composeLastTimeValuePair(
+      final int measurementIndex,
+      final TSStatus[] results,
+      final int startOffset,
+      final int endOffset) {
+    if (results == null) {
+      return composeLastTimeValuePair(measurementIndex, startOffset, endOffset);
+    }
+    if (measurementIndex >= columns.length || Objects.isNull(dataTypes[measurementIndex])) {
       return null;
     }
 
+    final BitMap bitMap = bitMaps == null ? null : bitMaps[measurementIndex];
+    int lastIdx = Math.min(endOffset - 1, rowCount - 1);
+    while (lastIdx >= startOffset) {
+      if (results[lastIdx] != null
+          && results[lastIdx].getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        lastIdx--;
+        continue;
+      }
+      if (bitMap != null && bitMap.isMarked(lastIdx)) {
+        lastIdx--;
+        continue;
+      }
+      break;
+    }
+    return lastIdx < startOffset ? null : composeTimeValuePair(measurementIndex, lastIdx);
+  }
+
+  private TimeValuePair composeTimeValuePair(final int measurementIndex, final int rowIndex) {
     TsPrimitiveType value;
     switch (dataTypes[measurementIndex]) {
       case INT32:
       case DATE:
         int[] intValues = (int[]) columns[measurementIndex];
-        value = new TsPrimitiveType.TsInt(intValues[lastIdx]);
+        value = new TsPrimitiveType.TsInt(intValues[rowIndex]);
         break;
       case INT64:
       case TIMESTAMP:
         long[] longValues = (long[]) columns[measurementIndex];
-        value = new TsPrimitiveType.TsLong(longValues[lastIdx]);
+        value = new TsPrimitiveType.TsLong(longValues[rowIndex]);
         break;
       case FLOAT:
         float[] floatValues = (float[]) columns[measurementIndex];
-        value = new TsPrimitiveType.TsFloat(floatValues[lastIdx]);
+        value = new TsPrimitiveType.TsFloat(floatValues[rowIndex]);
         break;
       case DOUBLE:
         double[] doubleValues = (double[]) columns[measurementIndex];
-        value = new TsPrimitiveType.TsDouble(doubleValues[lastIdx]);
+        value = new TsPrimitiveType.TsDouble(doubleValues[rowIndex]);
         break;
       case BOOLEAN:
         boolean[] boolValues = (boolean[]) columns[measurementIndex];
-        value = new TsPrimitiveType.TsBoolean(boolValues[lastIdx]);
+        value = new TsPrimitiveType.TsBoolean(boolValues[rowIndex]);
         break;
       case TEXT:
       case BLOB:
       case STRING:
         Binary[] binaryValues = (Binary[]) columns[measurementIndex];
-        value = new TsPrimitiveType.TsBinary(binaryValues[lastIdx]);
+        value = new TsPrimitiveType.TsBinary(binaryValues[rowIndex]);
         break;
       default:
         throw new UnSupportedDataTypeException(
             String.format(DATATYPE_UNSUPPORTED, dataTypes[measurementIndex]));
     }
-    return new TimeValuePair(times[lastIdx], value);
+    return new TimeValuePair(times[rowIndex], value);
+  }
+
+  public IDeviceID getDeviceID(int rowIdx) {
+    if (deviceID != null) {
+      return deviceID;
+    }
+    deviceID = DeviceIDFactory.getInstance().getDeviceID(targetPath);
+    return deviceID;
+  }
+
+  protected static class PartitionSplitInfo {
+
+    // for each List in split, they are range1.start, range1.end, range2.start, range2.end, ...
+    List<Integer> ranges = new ArrayList<>();
+    List<TTimePartitionSlot> timePartitionSlots = new ArrayList<>();
+    List<TRegionReplicaSet> replicaSets;
+  }
+
+  /**
+   * Split the tablet of the given range according to Table deviceID.
+   *
+   * @param start inclusive
+   * @param end exclusive
+   * @return each the number in the pair is the end offset of a device
+   */
+  public List<Pair<IDeviceID, Integer>> splitByDevice(int start, int end) {
+    return Collections.singletonList(new Pair<>(getDeviceID(), end));
+  }
+
+  /**
+   * @param results insertion result of each row
+   * @param ttl the ttl
+   * @return the position of the first alive row
+   * @throws OutOfTTLException if all rows have expired the TTL
+   */
+  public int checkTTL(TSStatus[] results, long ttl) throws OutOfTTLException {
+    return checkTTLInternal(results, ttl, true);
+  }
+
+  protected int checkTTLInternal(TSStatus[] results, long ttl, boolean breakOnFirstAlive)
+      throws OutOfTTLException {
+
+    /*
+     * assume that batch has been sorted by client
+     */
+    int loc = 0;
+    int firstAliveLoc = -1;
+    while (loc < getRowCount()) {
+      long currTime = getTimes()[loc];
+      // skip points that do not satisfy TTL
+      if (!isAlive(currTime, ttl)) {
+        results[loc] =
+            RpcUtils.getStatus(
+                TSStatusCode.OUT_OF_TTL,
+                String.format(
+                    "Insertion time [%s] is less than ttl time bound [%s]",
+                    DateTimeUtils.convertLongToDate(currTime),
+                    DateTimeUtils.convertLongToDate(CommonDateTimeUtils.currentTime() - ttl)));
+      } else {
+        if (firstAliveLoc == -1) {
+          firstAliveLoc = loc;
+        }
+        if (breakOnFirstAlive) {
+          break;
+        }
+      }
+      loc++;
+    }
+
+    if (firstAliveLoc == -1) {
+      // no alive data
+      throw new OutOfTTLException(
+          getTimes()[getTimes().length - 1], (CommonDateTimeUtils.currentTime() - ttl));
+    }
+    return firstAliveLoc;
   }
 
   public void updateLastCache(final String databaseName) {
+    updateLastCache(databaseName, null);
+  }
+
+  public void updateLastCache(final String databaseName, final TSStatus[] results) {
     final String[] rawMeasurements = getRawMeasurements();
     final TimeValuePair[] timeValuePairs = new TimeValuePair[rawMeasurements.length];
     for (int i = 0; i < rawMeasurements.length; i++) {
-      timeValuePairs[i] = composeLastTimeValuePair(i);
+      timeValuePairs[i] = composeLastTimeValuePair(i, results, 0, rowCount);
     }
     DataNodeSchemaCache.getInstance()
         .updateLastCacheIfExists(
