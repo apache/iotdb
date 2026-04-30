@@ -331,7 +331,8 @@ public abstract class TableOperatorGenerator<
                           ImmutableList.of(),
                           0,
                           context.getTableTypeProvider(),
-                          metadata);
+                          metadata,
+                          context.getMemoryReservationManager());
 
                   return visitor.process(p, filterColumnTransformerContext);
                 })
@@ -358,7 +359,8 @@ public abstract class TableOperatorGenerator<
             filterOutputDataTypes,
             inputLocations.size(),
             context.getTableTypeProvider(),
-            metadata);
+            metadata,
+            context.getMemoryReservationManager());
 
     for (Expression expression : projectExpressions) {
       projectOutputTransformerList.add(

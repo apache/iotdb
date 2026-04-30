@@ -497,16 +497,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
             receiverFileDirWithIdSuffix.get().getPath());
       }
     }
-    Path baseDir = receiverFileDirWithIdSuffix.get().toPath().toAbsolutePath().normalize();
-    Path targetPath = baseDir.resolve(fileName).toAbsolutePath().normalize();
-
-    if (!targetPath.startsWith(baseDir)) {
-      LOGGER.error(
-          "Receiver id = {}: Path traversal attempt detected! Filename: {}",
-          receiverId.get(),
-          fileName);
-      throw new IOException("Illegal fileName: " + fileName + " (Path traversal detected)");
-    }
+    final Path targetPath = resolveReceiverFilePath(fileName);
 
     writingFile = targetPath.toFile();
     writingFileWriter = new RandomAccessFile(writingFile, "rw");
@@ -517,7 +508,37 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
   }
 
   private boolean isFileExistedAndNameCorrect(final String fileName) {
-    return writingFile != null && writingFile.exists() && writingFile.getName().equals(fileName);
+    try {
+      return writingFile != null
+          && writingFile.exists()
+          && receiverFileDirWithIdSuffix.get() != null
+          && writingFile
+              .toPath()
+              .toAbsolutePath()
+              .normalize()
+              .equals(resolveReceiverFilePath(fileName));
+    } catch (final IOException e) {
+      PipeLogger.log(
+          LOGGER::warn,
+          e,
+          "Receiver id = %s: Illegal file name %s when checking writing file.",
+          receiverId.get(),
+          fileName);
+      return false;
+    }
+  }
+
+  private Path resolveReceiverFilePath(final String fileName) throws IOException {
+    try {
+      return PipeReceiverFilePathUtils.resolveFilePath(
+          receiverFileDirWithIdSuffix.get().toPath(), fileName);
+    } catch (final IOException e) {
+      LOGGER.error(
+          "Receiver id = {}: Path traversal attempt detected! Filename: {}",
+          receiverId.get(),
+          fileName);
+      throw e;
+    }
   }
 
   private void closeCurrentWritingFileWriter(final boolean fsyncBeforeClose) {
@@ -680,15 +701,22 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
   // Support null in fileName list, which means that this file is optional and is currently absent
   protected final TPipeTransferResp handleTransferFileSealV2(final PipeTransferFileSealReqV2 req) {
     final List<String> fileNames = req.getFileNames();
-    final List<File> files =
-        fileNames.stream()
-            .map(
-                fileName ->
-                    Objects.nonNull(fileName)
-                        ? new File(receiverFileDirWithIdSuffix.get(), fileName)
-                        : null)
-            .collect(Collectors.toList());
     try {
+      final List<File> files =
+          fileNames.stream()
+              .map(
+                  fileName -> {
+                    if (Objects.isNull(fileName)) {
+                      return null;
+                    }
+                    try {
+                      return resolveReceiverFilePath(fileName).toFile();
+                    } catch (final IOException e) {
+                      throw new IllegalArgumentException(e);
+                    }
+                  })
+              .collect(Collectors.toList());
+
       if (!isWritingFileAvailable()) {
         final TSStatus status =
             RpcUtils.getStatus(
@@ -754,17 +782,20 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       }
       return new TPipeTransferResp(status);
     } catch (final Exception e) {
+      final Throwable rootCause = e instanceof IllegalArgumentException ? e.getCause() : e;
       PipeLogger.log(
           LOGGER::warn,
-          e,
+          rootCause,
           "Receiver id = %s: Failed to seal file %s from req %s.",
           receiverId.get(),
-          files,
+          fileNames,
           req);
       return new TPipeTransferResp(
           RpcUtils.getStatus(
               TSStatusCode.PIPE_TRANSFER_FILE_ERROR,
-              String.format("Failed to seal file %s because %s", files, e.getMessage())));
+              String.format(
+                  "Failed to seal file %s because %s",
+                  fileNames, rootCause == null ? e.getMessage() : rootCause.getMessage())));
     } finally {
       // If the writing file is not sealed successfully, the writing file will be deleted.
       // All pieces of the writing file and its mod(if exists) should be retransmitted by the

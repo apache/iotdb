@@ -57,6 +57,12 @@ public class SubscriptionTreePullConsumerBuilder extends AbstractSubscriptionPul
   }
 
   @Override
+  public SubscriptionTreePullConsumerBuilder encryptedPassword(final String encryptedPassword) {
+    super.encryptedPassword(encryptedPassword);
+    return this;
+  }
+
+  @Override
   public SubscriptionTreePullConsumerBuilder consumerId(final String consumerId) {
     super.consumerId(consumerId);
     return this;

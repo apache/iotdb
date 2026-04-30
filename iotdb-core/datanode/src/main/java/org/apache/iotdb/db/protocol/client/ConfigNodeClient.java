@@ -703,6 +703,12 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
+  public TSStatus dataPartitionTableIntegrityCheck() throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.dataPartitionTableIntegrityCheck(), status -> !updateConfigNodeLeader(status));
+  }
+
+  @Override
   public TSStatus operatePermission(TAuthorizerReq req) throws TException {
     return executeRemoteCallWithRetry(
         () -> client.operatePermission(req), status -> !updateConfigNodeLeader(status));

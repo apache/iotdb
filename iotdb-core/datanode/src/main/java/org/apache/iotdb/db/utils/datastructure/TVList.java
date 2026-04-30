@@ -28,6 +28,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
 import org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager;
 import org.apache.iotdb.db.utils.MathUtils;
 
+import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.TimeValuePair;
@@ -61,6 +62,42 @@ import static org.apache.tsfile.utils.RamUsageEstimator.NUM_BYTES_OBJECT_REF;
 
 public abstract class TVList implements WALEntryValue {
   protected static final String ERR_DATATYPE_NOT_CONSISTENT = "DataType not consistent";
+
+  public static class RamInfo {
+    private final int timestampsSize;
+    private final long arrayMemCost;
+    private final int rowCount;
+    private final List<TSDataType> dataTypes;
+
+    public RamInfo(
+        int timestampCount, long arrayMemCost, int rowCount, List<TSDataType> dataTypes) {
+      this.timestampsSize = timestampCount;
+      this.rowCount = rowCount;
+      this.arrayMemCost = arrayMemCost;
+      this.dataTypes = dataTypes;
+    }
+
+    public long getRamSize() {
+      return timestampsSize * arrayMemCost;
+    }
+
+    public int getTimestampsSize() {
+      return timestampsSize;
+    }
+
+    public int getRowCount() {
+      return rowCount;
+    }
+
+    public long getArrayMemCost() {
+      return arrayMemCost;
+    }
+
+    public List<TSDataType> getDataTypes() {
+      return dataTypes;
+    }
+  }
+
   // list of timestamp array, add 1 when expanded -> data point timestamp array
   // index relation: arrayIndex -> elementIndex
   protected List<long[]> timestamps;
@@ -165,8 +202,9 @@ public abstract class TVList implements WALEntryValue {
     return size;
   }
 
-  public synchronized long calculateRamSize() {
-    return timestamps.size() * tvListArrayMemCost();
+  public synchronized RamInfo calculateRamSize() {
+    return new RamInfo(
+        timestamps.size(), tvListArrayMemCost(), rowCount, ImmutableList.of(getDataType()));
   }
 
   public synchronized boolean isSorted() {

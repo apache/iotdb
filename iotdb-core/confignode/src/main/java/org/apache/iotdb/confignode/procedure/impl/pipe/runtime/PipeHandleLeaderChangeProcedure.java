@@ -164,7 +164,11 @@ public class PipeHandleLeaderChangeProcedure extends AbstractOperatePipeProcedur
       final int oldDataRegionLeaderId = ReadWriteIOUtils.readInt(byteBuffer);
       final int newDataRegionLeaderId = ReadWriteIOUtils.readInt(byteBuffer);
       regionGroupToOldAndNewLeaderPairMap.put(
-          new TConsensusGroupId(TConsensusGroupType.DataRegion, dataRegionGroupId),
+          new TConsensusGroupId(
+              dataRegionGroupId == Integer.MIN_VALUE
+                  ? TConsensusGroupType.ConfigRegion
+                  : TConsensusGroupType.DataRegion,
+              dataRegionGroupId),
           new Pair<>(oldDataRegionLeaderId, newDataRegionLeaderId));
     }
   }

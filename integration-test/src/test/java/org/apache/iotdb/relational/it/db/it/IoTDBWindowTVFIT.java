@@ -893,5 +893,23 @@ public class IoTDBWindowTVFIT {
         "select * from pattern_match(data => t1 ORDER BY time, time_col => 'time', data_col => 'value', pattern => '1.0,2.0,1.0', smooth => 0.5, threshold => 10.0, width => 1000.0, height => -10.0, smooth_on_pattern => false)",
         "height must be a non-negative number",
         DATABASE_NAME);
+
+    // test invalid pattern with non-numeric characters should be rejected
+    tableAssertTestFail(
+        "select * from pattern_match(data => t1 ORDER BY time, time_col => 'time', data_col => 'value', pattern => 'abc,def,ghi', smooth => 0.5, threshold => 10.0, width => 1000.0, height => 500.0, smooth_on_pattern => false)",
+        "Invalid pattern",
+        DATABASE_NAME);
+
+    // test empty pattern should be rejected
+    tableAssertTestFail(
+        "select * from pattern_match(data => t1 ORDER BY time, time_col => 'time', data_col => 'value', pattern => '', smooth => 0.5, threshold => 10.0, width => 1000.0, height => 500.0, smooth_on_pattern => false)",
+        "Invalid pattern",
+        DATABASE_NAME);
+
+    // test single-point pattern should be rejected (need at least 2 points)
+    tableAssertTestFail(
+        "select * from pattern_match(data => t1 ORDER BY time, time_col => 'time', data_col => 'value', pattern => '1', smooth => 0.5, threshold => 10.0, width => 1000.0, height => 500.0, smooth_on_pattern => false)",
+        "Invalid pattern",
+        DATABASE_NAME);
   }
 }

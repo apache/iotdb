@@ -44,8 +44,8 @@ public class DataNodeInternalRPCService extends ThriftService
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
 
-  private final AtomicReference<DataNodeInternalRPCServiceImpl> impl = new AtomicReference<>();
-  private DataNodeContext dataNodeContext;
+  protected final AtomicReference<DataNodeInternalRPCServiceImpl> impl = new AtomicReference<>();
+  protected DataNodeContext dataNodeContext;
 
   private DataNodeInternalRPCService() {}
 

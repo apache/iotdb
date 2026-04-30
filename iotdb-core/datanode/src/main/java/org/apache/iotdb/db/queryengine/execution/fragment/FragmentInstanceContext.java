@@ -934,7 +934,7 @@ public class FragmentInstanceContext extends QueryContext {
    */
   private void releaseTVListOwnedByQuery() {
     for (TVList tvList : tvListSet) {
-      long tvListRamSize = tvList.calculateRamSize();
+      long tvListRamSize = tvList.calculateRamSize().getRamSize();
       tvList.lockQueryList();
       Set<QueryContext> queryContextSet = tvList.getQueryContextSet();
       try {

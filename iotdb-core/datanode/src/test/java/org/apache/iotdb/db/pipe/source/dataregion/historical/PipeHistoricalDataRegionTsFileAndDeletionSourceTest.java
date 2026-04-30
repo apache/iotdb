@@ -19,10 +19,17 @@
 
 package org.apache.iotdb.db.pipe.source.dataregion.historical;
 
+import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
+import org.apache.iotdb.commons.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
+import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskSourceRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.datastructure.resource.PersistentResource;
 import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 
 import org.junit.Assert;
@@ -35,11 +42,39 @@ import java.nio.file.Files;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
 public class PipeHistoricalDataRegionTsFileAndDeletionSourceTest {
+
+  @Test
+  public void testDeletionOnlyCustomizeInitializesSourceContext() throws Exception {
+    final PipeHistoricalDataRegionTsFileAndDeletionSource source =
+        new PipeHistoricalDataRegionTsFileAndDeletionSource();
+    final PipeParameters parameters =
+        new PipeParameters(
+            new HashMap<String, String>() {
+              {
+                put(PipeSourceConstant.EXTRACTOR_INCLUSION_KEY, "data.delete");
+              }
+            });
+
+    source.validate(new PipeParameterValidator(parameters));
+    source.customize(
+        parameters,
+        new PipeTaskRuntimeConfiguration(
+            new PipeTaskSourceRuntimeEnvironment(
+                "pipe", 1, 123, new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1))));
+
+    Assert.assertEquals("pipe", getPrivateField(source, "pipeName"));
+    Assert.assertEquals(123, getPrivateField(source, "dataRegionId"));
+    Assert.assertEquals(false, getPrivateField(source, "shouldExtractInsertion"));
+    Assert.assertEquals(true, getPrivateField(source, "shouldExtractDeletion"));
+    Assert.assertNotNull(getPrivateField(source, "treePattern"));
+    Assert.assertNotNull(getPrivateField(source, "tablePattern"));
+  }
 
   @Test
   public void testSupplyReturnsProgressReportEventAfterSkippingDuplicateHistoricalTsFile()
@@ -116,6 +151,15 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSourceTest {
         PipeHistoricalDataRegionTsFileAndDeletionSource.class.getDeclaredField(fieldName);
     field.setAccessible(true);
     field.set(source, value);
+  }
+
+  private static Object getPrivateField(
+      final PipeHistoricalDataRegionTsFileAndDeletionSource source, final String fieldName)
+      throws ReflectiveOperationException {
+    final Field field =
+        PipeHistoricalDataRegionTsFileAndDeletionSource.class.getDeclaredField(fieldName);
+    field.setAccessible(true);
+    return field.get(source);
   }
 
   private static class TestablePipeHistoricalDataRegionTsFileAndDeletionSource

@@ -5280,8 +5280,10 @@ public class StatementAnalyzer {
         } else {
           throw new SemanticException(
               String.format(
-                  "Invalid scalar argument value. Expected type %s, got %s",
-                  argumentSpecification.getType(), constantValue.getClass().getSimpleName()));
+                  "Invalid scalar argument '%s'. Expected type %s, got %s",
+                  argumentSpecification.getName(),
+                  argumentSpecification.getType(),
+                  constantValue.getClass().getSimpleName()));
         }
       }
       for (Function<Object, String> checker : argumentSpecification.getCheckers()) {

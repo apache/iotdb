@@ -156,6 +156,8 @@ public interface IConfigTaskExecutor {
 
   SettableFuture<ConfigTaskResult> stopRepairData(boolean onCluster);
 
+  SettableFuture<ConfigTaskResult> repairDataPartitionTable();
+
   SettableFuture<ConfigTaskResult> flush(TFlushReq tFlushReq, boolean onCluster);
 
   SettableFuture<ConfigTaskResult> clearCache(boolean onCluster, Set<CacheClearOptions> options);

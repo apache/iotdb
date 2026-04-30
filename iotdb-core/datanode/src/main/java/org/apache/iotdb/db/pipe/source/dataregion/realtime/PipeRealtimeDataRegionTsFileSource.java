@@ -114,6 +114,7 @@ public class PipeRealtimeDataRegionTsFileSource extends PipeRealtimeDataRegionSo
           PipeRealtimeDataRegionTsFileSource.class.getName(), false);
 
       if (suppliedEvent != null) {
+        suppliedEvent = assignReplicateIndexIfNeeded(realtimeEvent, suppliedEvent);
         maySkipIndex4Event(realtimeEvent);
         return suppliedEvent;
       }

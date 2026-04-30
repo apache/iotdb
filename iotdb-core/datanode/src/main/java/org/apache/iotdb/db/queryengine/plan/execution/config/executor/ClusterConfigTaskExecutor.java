@@ -1459,6 +1459,27 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
+  public SettableFuture<ConfigTaskResult> repairDataPartitionTable() {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    TSStatus tsStatus = new TSStatus();
+
+    try (ConfigNodeClient client =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      // Send request to ConfigNode to trigger DataPartitionTableIntegrityCheckProcedure
+      tsStatus = client.dataPartitionTableIntegrityCheck();
+    } catch (ClientManagerException | TException e) {
+      future.setException(e);
+    }
+
+    if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+    } else {
+      future.setException(new IoTDBException(tsStatus));
+    }
+    return future;
+  }
+
+  @Override
   public SettableFuture<ConfigTaskResult> loadConfiguration(boolean onCluster) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     TSStatus tsStatus = new TSStatus();

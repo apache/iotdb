@@ -627,6 +627,11 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
+  public TSStatus dataPartitionTableIntegrityCheck() {
+    return configManager.dataPartitionTableIntegrityCheck();
+  }
+
+  @Override
   public TSStatus operatePermission(final TAuthorizerReq req) {
     ConfigPhysicalPlanType configPhysicalPlanType =
         AuthorInfo.getConfigPhysicalPlanTypeFromAuthorType(req.getAuthorType());

@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.utils;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PathPrivilege;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -144,13 +145,63 @@ public class AuthUtils {
   }
 
   /**
-   * Validate username
+   * Validate username string (length, allowed characters) only, without {@code __} rules.
    *
    * @param username username
    * @throws AuthException contains message why username is invalid
    */
   public static void validateUsername(String username) throws AuthException {
     validateName(username);
+  }
+
+  /**
+   * Usernames for built-in users created with a fixed id via {@code tryToCreateBuiltinUser}: the
+   * default superuser (id {@link IoTDBConstant#SUPER_USER_ID}) and the three separation-of-duties
+   * admins (ids {@link User#INTERNAL_SYSTEM_ADMIN}, {@link User#INTERNAL_SECURITY_ADMIN}, {@link
+   * User#INTERNAL_AUDIT_ADMIN}) may use any valid name; all other internal ids must use a name with
+   * prefix {@link User#BUILTIN_USERNAME_PREFIX}.
+   */
+  public static void validateInternalBuiltinUsername(String username, long userId)
+      throws AuthException {
+    validateName(username);
+    if (userId == IoTDBConstant.SUPER_USER_ID) {
+      return;
+    }
+    if (userId == User.INTERNAL_SYSTEM_ADMIN
+        || userId == User.INTERNAL_SECURITY_ADMIN
+        || userId == User.INTERNAL_AUDIT_ADMIN) {
+      return;
+    }
+    if (!User.isSystemReservedUsername(username)) {
+      throw new AuthException(
+          TSStatusCode.ILLEGAL_PASSWORD,
+          "Internal user names (except the default superuser and separation-of-duties admins) must "
+              + "start with \""
+              + User.BUILTIN_USERNAME_PREFIX
+              + "\"");
+    }
+  }
+
+  /**
+   * Validate a login name that is being <b>newly assigned</b>: {@code CREATE USER}, or the target
+   * name of {@code RENAME USER}. Same as {@link #validateName(String)} plus disallows the {@link
+   * User#BUILTIN_USERNAME_PREFIX} prefix. Existing accounts that already use a {@code __} name are
+   * unchanged; they may keep using it, but cannot {@code RENAME} to another {@code __}-prefixed
+   * name.
+   *
+   * @param username username
+   * @throws AuthException contains message why username is invalid
+   */
+  public static void validateNewUserUsername(String username) throws AuthException {
+    validateName(username);
+    if (User.isSystemReservedUsername(username)) {
+      throw new AuthException(
+          TSStatusCode.ILLEGAL_PASSWORD,
+          "User names starting with \""
+              + User.BUILTIN_USERNAME_PREFIX
+              + "\" are reserved for system use and cannot be used for new users or as a rename "
+              + "target");
+    }
   }
 
   /**

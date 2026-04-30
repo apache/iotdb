@@ -48,6 +48,7 @@ public class SubscriptionTreePushConsumer extends AbstractSubscriptionPushConsum
       final TEndPoint endPoint,
       final String username,
       final String password,
+      final String encryptedPassword,
       final String consumerId,
       final String consumerGroupId,
       final int thriftMaxFrameSize,
@@ -57,6 +58,7 @@ public class SubscriptionTreePushConsumer extends AbstractSubscriptionPushConsum
         endPoint,
         username,
         password,
+        encryptedPassword,
         consumerId,
         consumerGroupId,
         thriftMaxFrameSize,
@@ -79,6 +81,7 @@ public class SubscriptionTreePushConsumer extends AbstractSubscriptionPushConsum
             .nodeUrls(builder.nodeUrls)
             .username(builder.username)
             .password(builder.password)
+            .encryptedPassword(builder.encryptedPassword)
             .consumerId(builder.consumerId)
             .consumerGroupId(builder.consumerGroupId)
             .heartbeatIntervalMs(builder.heartbeatIntervalMs)
@@ -185,6 +188,7 @@ public class SubscriptionTreePushConsumer extends AbstractSubscriptionPushConsum
 
     private String username = SessionConfig.DEFAULT_USER;
     private String password = SessionConfig.DEFAULT_PASSWORD;
+    private String encryptedPassword;
 
     private String consumerId;
     private String consumerGroupId;
@@ -228,6 +232,11 @@ public class SubscriptionTreePushConsumer extends AbstractSubscriptionPushConsum
 
     public Builder password(final String password) {
       this.password = password;
+      return this;
+    }
+
+    public Builder encryptedPassword(final String encryptedPassword) {
+      this.encryptedPassword = encryptedPassword;
       return this;
     }
 

@@ -20,6 +20,7 @@ package org.apache.iotdb.db.queryengine.plan.planner;
 
 import org.apache.iotdb.calc.execution.operator.Operator;
 import org.apache.iotdb.calc.plan.planner.ITableOperatorGeneratorContext;
+import org.apache.iotdb.calc.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.commons.queryengine.plan.analyze.ITableTypeProvider;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -312,6 +313,11 @@ public class LocalExecutionPlanContext implements ITableOperatorGeneratorContext
   @Override
   public ITableTypeProvider getTableTypeProvider() {
     return typeProvider;
+  }
+
+  @Override
+  public MemoryReservationManager getMemoryReservationManager() {
+    return driverContext.getFragmentInstanceContext().getMemoryReservationContext();
   }
 
   public FragmentInstanceContext getInstanceContext() {

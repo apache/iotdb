@@ -36,6 +36,7 @@ import org.apache.iotdb.commons.schema.node.utils.IMNodeIterator;
 import org.apache.iotdb.commons.schema.table.TableNodeStatus;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.utils.MetadataUtils;
@@ -55,6 +56,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.mtree.traverser.collector.M
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.traverser.collector.MNodeCollector;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.traverser.counter.DatabaseCounter;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.MetaFormatUtils;
+import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -1016,8 +1018,14 @@ public class ConfigMTree {
       throws MetadataException {
     final ConfigTableNode node = getTableNode(database, tableName);
     final TsTable table = getTable(database, tableName);
-    if (Objects.nonNull(table.getColumnSchema(columnName))) {
-      table.getColumnSchema(columnName).setDataType(dataType);
+    final TsTableColumnSchema columnSchema = table.getColumnSchema(columnName);
+    if (Objects.nonNull(columnSchema)) {
+      columnSchema.setDataType(dataType);
+      if (columnSchema instanceof FieldColumnSchema) {
+        final FieldColumnSchema fieldColumnSchema = (FieldColumnSchema) columnSchema;
+        fieldColumnSchema.setEncoding(
+            SchemaUtils.getDataTypeCompatibleEncoding(dataType, fieldColumnSchema.getEncoding()));
+      }
       node.removePreAlteredColumn(columnName);
     }
   }
@@ -1034,7 +1042,17 @@ public class ConfigMTree {
     }
     if (!node.getPreAlteredColumns().isEmpty()) {
       node.getPreAlteredColumns()
-          .forEach((col, type) -> newTable.getColumnSchema(col).setDataType(type));
+          .forEach(
+              (col, type) -> {
+                final TsTableColumnSchema columnSchema = newTable.getColumnSchema(col);
+                columnSchema.setDataType(type);
+                if (columnSchema instanceof FieldColumnSchema) {
+                  final FieldColumnSchema fieldColumnSchema = (FieldColumnSchema) columnSchema;
+                  fieldColumnSchema.setEncoding(
+                      SchemaUtils.getDataTypeCompatibleEncoding(
+                          type, fieldColumnSchema.getEncoding()));
+                }
+              });
     }
     return newTable;
   }

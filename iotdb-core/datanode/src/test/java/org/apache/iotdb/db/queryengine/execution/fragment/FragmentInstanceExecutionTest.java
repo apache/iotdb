@@ -146,7 +146,7 @@ public class FragmentInstanceExecutionTest {
         // mock flush's behavior
         fragmentInstanceContext1
             .getMemoryReservationContext()
-            .reserveMemoryCumulatively(tvList.calculateRamSize());
+            .reserveMemoryCumulatively(tvList.calculateRamSize().getRamSize());
         tvList.setOwnerQuery(fragmentInstanceContext1);
 
         fragmentInstanceContext1.decrementNumOfUnClosedDriver();
@@ -226,7 +226,7 @@ public class FragmentInstanceExecutionTest {
         pointReader.nextTimeValuePair();
       }
       assertTrue(tvList.isSorted());
-      assertEquals(tvList.calculateRamSize(), tvList.getReservedMemoryBytes());
+      assertEquals(tvList.calculateRamSize().getRamSize(), tvList.getReservedMemoryBytes());
     } catch (QueryProcessException
         | IOException
         | MetadataException
