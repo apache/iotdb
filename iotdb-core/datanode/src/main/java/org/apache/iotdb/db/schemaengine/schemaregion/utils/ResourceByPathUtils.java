@@ -216,6 +216,7 @@ public abstract class ResourceByPathUtils {
           listRamInfo.getArrayMemCost(),
           listRamInfo.getRowCount(),
           listRamInfo.getDataTypes());
+      throw ex;
     } finally {
       list.unlockQueryList();
     }
