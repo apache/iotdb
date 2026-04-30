@@ -129,7 +129,7 @@ public abstract class TableScanNode extends SourceNode {
     return outputSymbols.stream().map(Symbol::getName).collect(Collectors.toList());
   }
 
-  public List<Symbol> getIdColumnsInTableStore(Metadata metadata, SessionInfo session) {
+  public List<Symbol> getTagColumnsInTableStore(Metadata metadata, SessionInfo session) {
     return Objects.requireNonNull(
             metadata.getTableSchema(session, qualifiedObjectName).orElse(null))
         .getColumns()

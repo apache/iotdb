@@ -135,7 +135,7 @@ public:
   size_t rowSize;      //the number of rows to include in this tablet
   size_t maxRowNumber; // the maximum number of rows for this tablet
   bool isAligned;      // whether this tablet store data of aligned timeseries or not
-  std::vector<int> idColumnIndexes;
+  std::vector<int> tagColumnIndexes;
 
   Tablet() = default;
 
@@ -183,10 +183,10 @@ public:
     // create value columns
     values.resize(schemas.size());
     createColumns();
-    // init idColumnIndexs
+    // init tagColumnIndexes
     for (size_t i = 0; i < this->columnTypes.size(); i++) {
       if (this->columnTypes[i] == ColumnCategory::TAG) {
-        idColumnIndexes.push_back(i);
+        tagColumnIndexes.push_back(i);
       }
     }
     // create bitMaps
@@ -205,7 +205,7 @@ public:
       : deviceId(other.deviceId), schemas(other.schemas), schemaNameIndex(other.schemaNameIndex),
         columnTypes(other.columnTypes), timestamps(other.timestamps),
         maxRowNumber(other.maxRowNumber), bitMaps(other.bitMaps), rowSize(other.rowSize),
-        isAligned(other.isAligned), idColumnIndexes(other.idColumnIndexes) {
+        isAligned(other.isAligned), tagColumnIndexes(other.tagColumnIndexes) {
     values.resize(other.values.size());
     for (size_t i = 0; i < other.values.size(); ++i) {
       if (!other.values[i])
@@ -226,7 +226,7 @@ public:
       maxRowNumber = other.maxRowNumber;
       rowSize = other.rowSize;
       isAligned = other.isAligned;
-      idColumnIndexes = other.idColumnIndexes;
+      tagColumnIndexes = other.tagColumnIndexes;
       bitMaps = other.bitMaps;
       values.resize(other.values.size());
       for (size_t i = 0; i < other.values.size(); ++i) {

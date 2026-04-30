@@ -39,7 +39,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Objects;
 
-// Return whether input expression can not be bounded to a single ID
+// Return whether the input expression can not be bounded by tag-only predicates.
 public class CheckSchemaPredicateVisitor
     implements AstVisitor<Boolean, CheckSchemaPredicateVisitor.Context> {
 
@@ -57,7 +57,7 @@ public class CheckSchemaPredicateVisitor
     if (node.getOperator().equals(LogicalExpression.Operator.AND)) {
       if (System.currentTimeMillis() - lastLogTime >= LOG_INTERVAL_MS) {
         LOGGER.info(
-            "And expression encountered during id determined checking, will be classified into fuzzy expression. Sql: {}",
+            "And expression encountered during tag-determined checking, will be classified into fuzzy expression. Sql: {}",
             context.queryContext.getSql());
         lastLogTime = System.currentTimeMillis();
       }
@@ -75,7 +75,7 @@ public class CheckSchemaPredicateVisitor
     if (node.getValue().getExpressionType().equals(TableExpressionType.LOGICAL_EXPRESSION)) {
       if (System.currentTimeMillis() - lastLogTime >= LOG_INTERVAL_MS) {
         LOGGER.info(
-            "Logical expression type encountered in not expression child during id determined checking, will be classified into fuzzy expression. Sql: {}",
+            "Logical expression type encountered in not expression child during tag-determined checking, will be classified into fuzzy expression. Sql: {}",
             context.queryContext.getSql());
         lastLogTime = System.currentTimeMillis();
       }

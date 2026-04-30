@@ -355,7 +355,7 @@ public class RelationPlanner implements AstVisitor<RelationPlan, Void> {
     // on the basis of that the order of fields is same with the column category order of segments
     // in DeviceEntry
     final Map<Symbol, Integer> tagAndAttributeIndexMap = new HashMap<>();
-    int idIndex = 0;
+    int tagIndex = 0;
     for (final Field field : fields) {
       final TsTableColumnCategory category = field.getColumnCategory();
       final Symbol symbol = symbolAllocator.newSymbol(field);
@@ -365,7 +365,7 @@ public class RelationPlanner implements AstVisitor<RelationPlan, Void> {
           new ColumnSchema(
               field.getName().orElse(null), field.getType(), field.isHidden(), category));
       if (category == TsTableColumnCategory.TAG) {
-        tagAndAttributeIndexMap.put(symbol, idIndex++);
+        tagAndAttributeIndexMap.put(symbol, tagIndex++);
       }
     }
 

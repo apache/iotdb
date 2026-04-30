@@ -190,8 +190,8 @@ public class PushAggregationIntoTableScan implements PlanOptimizer {
         return PushDownLevel.NOOP;
       } else if (singleDeviceEntry
           || ImmutableSet.copyOf(groupingKeys)
-              .containsAll(tableScanNode.getIdColumnsInTableStore(metadata, session))) {
-        // If all ID columns appear in groupingKeys and no Measurement column appears, we can push
+              .containsAll(tableScanNode.getTagColumnsInTableStore(metadata, session))) {
+        // If all tag columns appear in groupingKeys and no Measurement column appears, we can push
         // down completely.
         return PushDownLevel.COMPLETE;
       } else {
