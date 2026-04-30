@@ -85,6 +85,9 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionAndPip
       throws SubscriptionException {
     LOGGER.info("DropSubscriptionProcedure: executeFromValidate");
 
+    alterConsumerGroupProcedure = null;
+    dropPipeProcedures = new ArrayList<>();
+
     subscriptionInfo.get().validateBeforeUnsubscribe(unsubscribeReq);
 
     // Construct AlterConsumerGroupProcedure
@@ -141,8 +144,7 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionAndPip
       response = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       response.setMessage(e.getMessage());
     }
-    if (response.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        && response.getSubStatusSize() > 0) {
+    if (response.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new SubscriptionException(
           String.format(
               "Failed to drop subscription with request %s on config nodes, because %s",
