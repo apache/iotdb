@@ -219,8 +219,8 @@ public class CommonConfig {
 
   private int pipeDataStructureTabletRowSize = 2048;
 
-  // 60MB
-  private int pipeDataStructureTabletSizeInBytes = 60 * 1024 * 1024;
+  // 16MB
+  private int pipeDataStructureTabletSizeInBytes = 16 * 1024 * 1024;
   private double pipeDataStructureTabletMemoryBlockAllocationRejectThreshold = 0.3;
   private double pipeDataStructureTsFileMemoryBlockAllocationRejectThreshold = 0.3;
   private volatile double pipeTotalFloatingMemoryProportion = 0.5;

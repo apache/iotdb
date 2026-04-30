@@ -80,6 +80,7 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipeP
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.OperateMultiplePipesPlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusPlanV2;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusWithStoppedByRuntimeExceptionPlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.DeleteProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.quota.SetSpaceQuotaPlan;
@@ -503,6 +504,9 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           break;
         case SetPipeStatusV2:
           plan = new SetPipeStatusPlanV2();
+          break;
+        case SetPipeStatusWithStoppedByRuntimeExceptionV2:
+          plan = new SetPipeStatusWithStoppedByRuntimeExceptionPlanV2();
           break;
         case DropPipeV2:
           plan = new DropPipePlanV2();
