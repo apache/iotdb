@@ -129,12 +129,8 @@ public class TableDeviceSchemaValidator {
       if (attributeMap == null) {
         result.missingDeviceIndexList.add(i);
       } else {
-        for (int j = 0, attributeSize = attributeKeyList.size(); j < attributeSize; j++) {
-          if (!Objects.equals(
-              attributeMap.get(attributeKeyList.get(j)), attributeValueList.get(i)[j])) {
-            result.attributeUpdateDeviceIndexList.add(i);
-            break;
-          }
+        if (isAttributeUpdateRequired(attributeKeyList, attributeValueList.get(i), attributeMap)) {
+          result.attributeUpdateDeviceIndexList.add(i);
         }
       }
     }
@@ -184,18 +180,23 @@ public class TableDeviceSchemaValidator {
       final ValidateResult result,
       final int index,
       final Map<String, Binary> attributeMap) {
-    final Object[] deviceAttributeValueList = attributeValueList.get(index);
-    for (int j = 0, size = attributeKeyList.size(); j < size; j++) {
-      if (deviceAttributeValueList[j] != null) {
-        final String key = attributeKeyList.get(j);
-        final Binary value = attributeMap.get(key);
+    if (isAttributeUpdateRequired(attributeKeyList, attributeValueList.get(index), attributeMap)) {
+      result.attributeUpdateDeviceIndexList.add(index);
+    }
+  }
 
-        if (!deviceAttributeValueList[j].equals(value)) {
-          result.attributeUpdateDeviceIndexList.add(index);
-          break;
-        }
+  static boolean isAttributeUpdateRequired(
+      final List<String> attributeKeyList,
+      final Object[] deviceAttributeValueList,
+      final Map<String, Binary> attributeMap) {
+    for (int j = 0, size = attributeKeyList.size(); j < size; j++) {
+      final Object inputValue =
+          deviceAttributeValueList.length > j ? deviceAttributeValueList[j] : null;
+      if (!Objects.equals(attributeMap.get(attributeKeyList.get(j)), inputValue)) {
+        return true;
       }
     }
+    return false;
   }
 
   private void autoCreateOrUpdateDeviceSchema(
