@@ -34,6 +34,7 @@ import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.write.record.Tablet;
+import org.awaitility.Awaitility;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -51,6 +52,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertNull;
 
@@ -292,8 +294,13 @@ public class IoTDBObjectDeleteIT {
       session.executeNonQueryStatement("drop database db1");
     }
 
-    Assert.assertFalse(objectFileExists("object_table", "1", "5", "3", "file", "1.bin"));
-    Assert.assertFalse(objectFileExists("object_table", "1", "5", "3", "file", "2.bin"));
+    Awaitility.await()
+        .atMost(5, TimeUnit.SECONDS)
+        .untilAsserted(
+            () -> {
+              Assert.assertFalse(objectFileExists("object_table", "1", "5", "3", "file", "1.bin"));
+              Assert.assertFalse(objectFileExists("object_table", "1", "5", "3", "file", "2.bin"));
+            });
   }
 
   @Test
