@@ -97,7 +97,7 @@ public class IoTDBConfigRegionSink extends IoTDBSslSyncSink {
   protected PipeTransferFilePieceReq getTransferSingleFilePieceReq(
       final String fileName, final long position, final byte[] payLoad) {
     throw new UnsupportedOperationException(
-        "The config region connector does not support transferring single file piece req.");
+        "The config region sink does not support transferring single file piece req.");
   }
 
   @Override
@@ -114,13 +114,13 @@ public class IoTDBConfigRegionSink extends IoTDBSslSyncSink {
   @Override
   public void transfer(final TabletInsertionEvent tabletInsertionEvent) throws Exception {
     throw new UnsupportedOperationException(
-        "IoTDBConfigRegionConnector can't transfer TabletInsertionEvent.");
+        "IoTDBConfigRegionSink can't transfer TabletInsertionEvent.");
   }
 
   @Override
   public void transfer(final TsFileInsertionEvent tsFileInsertionEvent) throws Exception {
     throw new UnsupportedOperationException(
-        "IoTDBConfigRegionConnector can't transfer TsFileInsertionEvent.");
+        "IoTDBConfigRegionSink can't transfer TsFileInsertionEvent.");
   }
 
   @Override
@@ -130,8 +130,7 @@ public class IoTDBConfigRegionSink extends IoTDBSslSyncSink {
     } else if (event instanceof PipeConfigRegionSnapshotEvent) {
       doTransferWrapper((PipeConfigRegionSnapshotEvent) event);
     } else if (!(event instanceof PipeHeartbeatEvent)) {
-      LOGGER.warn(
-          "IoTDBConfigRegionConnector does not support transferring generic event: {}.", event);
+      LOGGER.warn("IoTDBConfigRegionSink does not support transferring generic event: {}.", event);
     }
   }
 

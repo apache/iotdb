@@ -32,8 +32,8 @@ public class PipeTransferTabletRawEventHandler extends PipeTransferTabletInserti
   public PipeTransferTabletRawEventHandler(
       final PipeRawTabletInsertionEvent event,
       final TPipeTransferReq req,
-      final IoTDBDataRegionAsyncSink connector) {
-    super(event, req, connector);
+      final IoTDBDataRegionAsyncSink sink) {
+    super(event, req, sink);
   }
 
   @Override
@@ -45,7 +45,7 @@ public class PipeTransferTabletRawEventHandler extends PipeTransferTabletInserti
 
   @Override
   protected void updateLeaderCache(final TSStatus status) {
-    connector.updateLeaderCache(
+    sink.updateLeaderCache(
         ((PipeRawTabletInsertionEvent) event).getDeviceId(), status.getRedirectNode());
   }
 }

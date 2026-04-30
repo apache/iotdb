@@ -52,13 +52,13 @@ public class IoTDBSchemaRegionAirGapSink extends IoTDBDataNodeAirGapSink {
   @Override
   public void transfer(final TabletInsertionEvent tabletInsertionEvent) throws Exception {
     throw new UnsupportedOperationException(
-        "IoTDBSchemaRegionAirGapConnector can't transfer TabletInsertionEvent.");
+        "IoTDBSchemaRegionAirGapSink can't transfer TabletInsertionEvent.");
   }
 
   @Override
   public void transfer(final TsFileInsertionEvent tsFileInsertionEvent) throws Exception {
     throw new UnsupportedOperationException(
-        "IoTDBSchemaRegionAirGapConnector can't transfer TsFileInsertionEvent.");
+        "IoTDBSchemaRegionAirGapSink can't transfer TsFileInsertionEvent.");
   }
 
   @Override
@@ -73,8 +73,7 @@ public class IoTDBSchemaRegionAirGapSink extends IoTDBDataNodeAirGapSink {
         doTransferWrapper(socket, (PipeSchemaRegionSnapshotEvent) event);
       } else if (!(event instanceof PipeHeartbeatEvent)) {
         LOGGER.warn(
-            "IoTDBSchemaRegionAirGapConnector does not support transferring generic event: {}.",
-            event);
+            "IoTDBSchemaRegionAirGapSink does not support transferring generic event: {}.", event);
       }
     } catch (final IOException e) {
       isSocketAlive.set(socketIndex, false);

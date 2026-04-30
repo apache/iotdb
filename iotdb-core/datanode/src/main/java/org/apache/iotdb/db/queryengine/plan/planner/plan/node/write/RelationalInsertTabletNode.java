@@ -371,6 +371,10 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
 
   @Override
   public void updateLastCache(final String databaseName) {
+    updateLastCache(databaseName, null);
+  }
+
+  public void updateLastCache(final String databaseName, final TSStatus[] results) {
     final String[] rawMeasurements = getRawMeasurements();
 
     final List<Pair<IDeviceID, Integer>> deviceEndOffsetPairs = splitByDevice(0, rowCount);
@@ -381,7 +385,7 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
 
       final TimeValuePair[] timeValuePairs = new TimeValuePair[rawMeasurements.length];
       for (int i = 0; i < rawMeasurements.length; i++) {
-        timeValuePairs[i] = composeLastTimeValuePair(i, startOffset, endOffset);
+        timeValuePairs[i] = composeLastTimeValuePair(i, results, startOffset, endOffset);
       }
       TableDeviceSchemaCache.getInstance()
           .updateLastCacheIfExists(databaseName, deviceID, rawMeasurements, timeValuePairs);

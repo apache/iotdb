@@ -35,13 +35,13 @@ import org.slf4j.LoggerFactory;
 
 import java.util.function.Consumer;
 
-import static org.apache.iotdb.commons.concurrent.ThreadName.PIPE_EXTRACTOR_DISRUPTOR;
+import static org.apache.iotdb.commons.concurrent.ThreadName.PIPE_SOURCE_DISRUPTOR;
 
 public class DisruptorQueue {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DisruptorQueue.class);
   private static final IoTDBDaemonThreadFactory THREAD_FACTORY =
-      new IoTDBDaemonThreadFactory(PIPE_EXTRACTOR_DISRUPTOR.getName());
+      new IoTDBDaemonThreadFactory(PIPE_SOURCE_DISRUPTOR.getName());
 
   private final PipeMemoryBlock allocatedMemoryBlock;
   private final Disruptor<EventContainer> disruptor;
