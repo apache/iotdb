@@ -138,14 +138,11 @@ public class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOper
             + rawTabletEventCount.get()
             + insertNodeEventCount.get();
 
-    dataRegionCommitMeter.updateAndGet(
-        meter -> {
-          if (Objects.nonNull(meter)) {
-            lastDataRegionCommitSmoothingValue =
-                pipeRemainingTimeCommitRateAverageTime.getMeterRate(meter);
-          }
-          return meter;
-        });
+    final Meter dataRegionMeter = dataRegionCommitMeter.get();
+    if (Objects.nonNull(dataRegionMeter)) {
+      lastDataRegionCommitSmoothingValue =
+          pipeRemainingTimeCommitRateAverageTime.getMeterRate(dataRegionMeter);
+    }
     final double dataRegionRemainingTime;
     if (totalDataRegionWriteEventCount <= 0) {
       dataRegionRemainingTime = 0;
@@ -162,14 +159,11 @@ public class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOper
             .reduce(Long::sum)
             .orElse(0L);
 
-    schemaRegionCommitMeter.updateAndGet(
-        meter -> {
-          if (Objects.nonNull(meter)) {
-            lastSchemaRegionCommitSmoothingValue =
-                pipeRemainingTimeCommitRateAverageTime.getMeterRate(meter);
-          }
-          return meter;
-        });
+    final Meter schemaRegionMeter = schemaRegionCommitMeter.get();
+    if (Objects.nonNull(schemaRegionMeter)) {
+      lastSchemaRegionCommitSmoothingValue =
+          pipeRemainingTimeCommitRateAverageTime.getMeterRate(schemaRegionMeter);
+    }
     final double schemaRegionRemainingTime;
     if (totalSchemaRegionWriteEventCount <= 0) {
       schemaRegionRemainingTime = 0;
@@ -199,23 +193,17 @@ public class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOper
   //////////////////////////// Rate ////////////////////////////
 
   void markDataRegionCommit() {
-    dataRegionCommitMeter.updateAndGet(
-        meter -> {
-          if (Objects.nonNull(meter)) {
-            meter.mark();
-          }
-          return meter;
-        });
+    final Meter meter = dataRegionCommitMeter.get();
+    if (Objects.nonNull(meter)) {
+      meter.mark();
+    }
   }
 
   void markSchemaRegionCommit() {
-    schemaRegionCommitMeter.updateAndGet(
-        meter -> {
-          if (Objects.nonNull(meter)) {
-            meter.mark();
-          }
-          return meter;
-        });
+    final Meter meter = schemaRegionCommitMeter.get();
+    if (Objects.nonNull(meter)) {
+      meter.mark();
+    }
   }
 
   void markTsFileCollectInvocationCount(final long collectInvocationCount) {
