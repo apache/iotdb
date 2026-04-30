@@ -172,7 +172,9 @@ public class StopPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   public void deserialize(ByteBuffer byteBuffer) {
     super.deserialize(byteBuffer);
     pipeName = ReadWriteIOUtils.readString(byteBuffer);
-    isStoppedByRuntimeExceptionBeforeStop = ReadWriteIOUtils.readBool(byteBuffer);
+    // Legacy persisted procedures do not carry this field.
+    isStoppedByRuntimeExceptionBeforeStop =
+        byteBuffer.hasRemaining() && ReadWriteIOUtils.readBool(byteBuffer);
   }
 
   @Override
