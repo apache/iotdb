@@ -23,7 +23,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class AtomicLongMemoryBlock extends IMemoryBlock {
@@ -58,30 +57,30 @@ public class AtomicLongMemoryBlock extends IMemoryBlock {
 
   @Override
   public boolean allocate(long sizeInByte) {
-    AtomicBoolean result = new AtomicBoolean(false);
-    usedMemoryInBytes.updateAndGet(
-        memCost -> {
-          if (memCost + sizeInByte > totalMemorySizeInBytes) {
-            return memCost;
-          }
-          result.set(true);
-          return memCost + sizeInByte;
-        });
-    return result.get();
+    long prev;
+    long next;
+    do {
+      prev = usedMemoryInBytes.get();
+      if (prev + sizeInByte > totalMemorySizeInBytes) {
+        return false;
+      }
+      next = prev + sizeInByte;
+    } while (!usedMemoryInBytes.compareAndSet(prev, next));
+    return true;
   }
 
   @Override
   public boolean allocateIfSufficient(final long sizeInByte, final double maxRatio) {
-    AtomicBoolean result = new AtomicBoolean(false);
-    usedMemoryInBytes.updateAndGet(
-        memCost -> {
-          if (memCost + sizeInByte > totalMemorySizeInBytes * maxRatio) {
-            return memCost;
-          }
-          result.set(true);
-          return memCost + sizeInByte;
-        });
-    return result.get();
+    long prev;
+    long next;
+    do {
+      prev = usedMemoryInBytes.get();
+      if (prev + sizeInByte > totalMemorySizeInBytes * maxRatio) {
+        return false;
+      }
+      next = prev + sizeInByte;
+    } while (!usedMemoryInBytes.compareAndSet(prev, next));
+    return true;
   }
 
   @Override
