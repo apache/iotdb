@@ -138,6 +138,9 @@ public class DeviceAttributeStore implements IDeviceAttributeStore {
     long memUsage = MAP_SIZE + RamUsageEstimator.NUM_BYTES_OBJECT_REF;
     final Map<String, Binary> attributeMap = new HashMap<>();
     for (int i = 0; i < nameList.size(); i++) {
+        if (valueList.length <= i) {
+            break;
+      }
       if (valueList[i] == null || valueList[i] == Constants.NONE) {
         continue;
       }
