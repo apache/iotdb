@@ -43,6 +43,7 @@ import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
@@ -53,8 +54,8 @@ public class FilesystemShell {
   private static final List<String> COMMANDS =
       Arrays.asList(
           "pwd", "ls", "ll", "cd", "stat", "cat", "head", "tail", "wc", "grep", "find", "less",
-          "more", "file", "du", "mkdir", "rm", "mv", "cut", "paste", "tree", "help", "exit", "quit",
-          "tee");
+          "more", "file", "du", "mkdir", "rm", "mv", "cut", "paste", "join", "tree", "help", "exit",
+          "quit", "tee");
 
   private final CliContext ctx;
   private final FilesystemSchemaProvider provider;
@@ -137,6 +138,9 @@ public class FilesystemShell {
         return true;
       case PASTE:
         printPaste(command.getPaths());
+        return true;
+      case JOIN:
+        printJoin(command.getPaths(), command.getOption(), command.getPattern());
         return true;
       case TEE:
         append(command.getPath(), false);
@@ -360,6 +364,27 @@ public class FilesystemShell {
     }
   }
 
+  private void printJoin(List<String> paths, String delimiter, String fields) throws SQLException {
+    int[] joinFields = joinFields(fields);
+    List<String> leftLines = readableLines(resolve(paths.get(0)), DEFAULT_READ_LIMIT);
+    List<String> rightLines = readableLines(resolve(paths.get(1)), DEFAULT_READ_LIMIT);
+    Map<String, List<String[]>> rightRows = joinRowsByKey(rightLines, delimiter, joinFields[1]);
+
+    for (String leftLine : leftLines) {
+      String[] left = splitJoinFields(leftLine, delimiter);
+      if (!hasField(left, joinFields[0])) {
+        continue;
+      }
+      List<String[]> matches = rightRows.get(left[joinFields[0] - 1]);
+      if (matches == null) {
+        continue;
+      }
+      for (String[] right : matches) {
+        ctx.getPrinter().println(joinLine(left, right, joinFields[0], joinFields[1], delimiter));
+      }
+    }
+  }
+
   private List<String> readableLines(FsPath path, int limit) throws SQLException {
     if (isTextFile(path)) {
       return provider.readLines(path, limit);
@@ -528,6 +553,7 @@ public class FilesystemShell {
     ctx.getPrinter().println("mv <source> <target>");
     ctx.getPrinter().println("cut -d<delimiter> -f<fields> <path>");
     ctx.getPrinter().println("paste <path>...");
+    ctx.getPrinter().println("join [-t delimiter] [-1 field] [-2 field] <path1> <path2>");
     ctx.getPrinter().println("tee -a <path>");
     ctx.getPrinter().println("tree [-L depth] [path]");
     ctx.getPrinter().println("exit");
@@ -594,6 +620,58 @@ public class FilesystemShell {
       }
     }
     return builder.toString();
+  }
+
+  private static int[] joinFields(String fields) {
+    String[] values = fields.split(",", -1);
+    return new int[] {parsePositiveInt(values[0]), parsePositiveInt(values[1])};
+  }
+
+  private static Map<String, List<String[]>> joinRowsByKey(
+      List<String> lines, String delimiter, int keyField) {
+    Map<String, List<String[]>> rowsByKey = new LinkedHashMap<>();
+    for (String line : lines) {
+      String[] fields = splitJoinFields(line, delimiter);
+      if (!hasField(fields, keyField)) {
+        continue;
+      }
+      String key = fields[keyField - 1];
+      rowsByKey.computeIfAbsent(key, ignored -> new ArrayList<>()).add(fields);
+    }
+    return rowsByKey;
+  }
+
+  private static String[] splitJoinFields(String line, String delimiter) {
+    if (delimiter.isEmpty()) {
+      String trimmed = line.trim();
+      if (trimmed.isEmpty()) {
+        return new String[0];
+      }
+      return trimmed.split("\\s+");
+    }
+    return line.split(Pattern.quote(delimiter), -1);
+  }
+
+  private static boolean hasField(String[] fields, int fieldNumber) {
+    return fieldNumber > 0 && fieldNumber <= fields.length;
+  }
+
+  private static String joinLine(
+      String[] left, String[] right, int leftKeyField, int rightKeyField, String delimiter) {
+    String outputDelimiter = delimiter.isEmpty() ? " " : delimiter;
+    List<String> output = new ArrayList<>();
+    output.add(left[leftKeyField - 1]);
+    addNonKeyFields(output, left, leftKeyField);
+    addNonKeyFields(output, right, rightKeyField);
+    return String.join(outputDelimiter, output);
+  }
+
+  private static void addNonKeyFields(List<String> output, String[] fields, int keyField) {
+    for (int i = 0; i < fields.length; i++) {
+      if (i != keyField - 1) {
+        output.add(fields[i]);
+      }
+    }
   }
 
   private static boolean[] selectedFields(String fields, int fieldCount) {

@@ -27,6 +27,7 @@ public class FilesystemCommandParser {
 
   private static final String DEFAULT_PATH = ".";
   private static final String DEFAULT_CUT_DELIMITER = "\t";
+  private static final String DEFAULT_JOIN_DELIMITER = "";
   private static final int DEFAULT_TREE_DEPTH = Integer.MAX_VALUE;
   private static final int DEFAULT_HEAD_LIMIT = 10;
 
@@ -111,6 +112,9 @@ public class FilesystemCommandParser {
     if ("paste".equals(command)) {
       return parsePaste(tokens);
     }
+    if ("join".equals(command)) {
+      return parseJoin(tokens);
+    }
     if ("tee".equals(command)) {
       return parseTee(tokens);
     }
@@ -137,6 +141,63 @@ public class FilesystemCommandParser {
       paths.add(tokens[i]);
     }
     return FilesystemCommand.paths(FilesystemCommand.Type.PASTE, paths);
+  }
+
+  private static FilesystemCommand parseJoin(String[] tokens) {
+    String delimiter = DEFAULT_JOIN_DELIMITER;
+    int leftField = 1;
+    int rightField = 1;
+    List<String> paths = new ArrayList<>();
+
+    for (int i = 1; i < tokens.length; i++) {
+      String token = tokens[i];
+      if ("-t".equals(token)) {
+        if (i + 1 >= tokens.length) {
+          return invalidJoinUsage();
+        }
+        delimiter = tokens[++i];
+      } else if (token.startsWith("-t") && token.length() > 2) {
+        delimiter = token.substring(2);
+      } else if ("-1".equals(token)) {
+        if (i + 1 >= tokens.length) {
+          return invalidJoinUsage();
+        }
+        leftField = parseJoinField(tokens[++i]);
+      } else if ("-2".equals(token)) {
+        if (i + 1 >= tokens.length) {
+          return invalidJoinUsage();
+        }
+        rightField = parseJoinField(tokens[++i]);
+      } else if (token.startsWith("-")) {
+        return FilesystemCommand.invalid("Unsupported join option: " + token);
+      } else {
+        paths.add(token);
+      }
+    }
+
+    if (delimiter.length() > 1) {
+      return FilesystemCommand.invalid("Join delimiter must be a single character");
+    }
+    if (leftField <= 0 || rightField <= 0) {
+      return FilesystemCommand.invalid("Invalid join field");
+    }
+    if (paths.size() != 2) {
+      return invalidJoinUsage();
+    }
+    return FilesystemCommand.join(delimiter, leftField + "," + rightField, paths);
+  }
+
+  private static int parseJoinField(String value) {
+    try {
+      return Integer.parseInt(value);
+    } catch (NumberFormatException e) {
+      return -1;
+    }
+  }
+
+  private static FilesystemCommand invalidJoinUsage() {
+    return FilesystemCommand.invalid(
+        "Usage: join [-t delimiter] [-1 field] [-2 field] <path1> <path2>");
   }
 
   private static FilesystemCommand parseTee(String[] tokens) {

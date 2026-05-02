@@ -577,6 +577,96 @@ public class FilesystemShellTest {
   }
 
   @Test
+  public void executeJoinMatchesCsvRowsByFirstField() throws SQLException {
+    when(provider.readLines(FsPath.absolute("/db1/table1.csv"), 20))
+        .thenReturn(Arrays.asList("key,value", "a,10", "b,20", "c,30"));
+    when(provider.readLines(FsPath.absolute("/db1/table2.csv"), 20))
+        .thenReturn(Arrays.asList("key,status", "a,ok", "b,bad", "d,missing"));
+
+    assertTrue(shell.execute("join -t, /db1/table1.csv /db1/table2.csv"));
+
+    assertEquals(
+        "key,value,status"
+            + System.lineSeparator()
+            + "a,10,ok"
+            + System.lineSeparator()
+            + "b,20,bad"
+            + System.lineSeparator(),
+        out.toString());
+    verify(provider).readLines(FsPath.absolute("/db1/table1.csv"), 20);
+    verify(provider).readLines(FsPath.absolute("/db1/table2.csv"), 20);
+  }
+
+  @Test
+  public void executeJoinSupportsDifferentKeyFields() throws SQLException {
+    when(provider.readLines(FsPath.absolute("/db1/table1.csv"), 20))
+        .thenReturn(Arrays.asList("time,key,value", "1,a,10", "2,b,20"));
+    when(provider.readLines(FsPath.absolute("/db1/table2.csv"), 20))
+        .thenReturn(Arrays.asList("key,status", "a,ok", "b,bad"));
+
+    assertTrue(shell.execute("join -t, -1 2 -2 1 /db1/table1.csv /db1/table2.csv"));
+
+    assertEquals(
+        "key,time,value,status"
+            + System.lineSeparator()
+            + "a,1,10,ok"
+            + System.lineSeparator()
+            + "b,2,20,bad"
+            + System.lineSeparator(),
+        out.toString());
+  }
+
+  @Test
+  public void executeJoinPrintsCartesianMatchesForDuplicateKeys() throws SQLException {
+    when(provider.readLines(FsPath.absolute("/db1/table1.csv"), 20))
+        .thenReturn(Arrays.asList("a,10", "a,11"));
+    when(provider.readLines(FsPath.absolute("/db1/table2.csv"), 20))
+        .thenReturn(Arrays.asList("a,ok", "a,good"));
+
+    assertTrue(shell.execute("join -t, /db1/table1.csv /db1/table2.csv"));
+
+    assertEquals(
+        "a,10,ok"
+            + System.lineSeparator()
+            + "a,10,good"
+            + System.lineSeparator()
+            + "a,11,ok"
+            + System.lineSeparator()
+            + "a,11,good"
+            + System.lineSeparator(),
+        out.toString());
+  }
+
+  @Test
+  public void executeJoinSkipsRowsWithoutKeyOrMatch() throws SQLException {
+    when(provider.readLines(FsPath.absolute("/db1/table1.csv"), 20))
+        .thenReturn(Arrays.asList("a,10", "missing-key", "b,20"));
+    when(provider.readLines(FsPath.absolute("/db1/table2.csv"), 20))
+        .thenReturn(Arrays.asList("a,ok", "c,unused"));
+
+    assertTrue(shell.execute("join -t, -1 2 -2 1 /db1/table1.csv /db1/table2.csv"));
+
+    assertEquals("", out.toString());
+  }
+
+  @Test
+  public void executeJoinUsesReadableRowsForNonTextPath() throws SQLException {
+    when(provider.read(FsPath.absolute("/root/sg/d1/s1"), 20))
+        .thenReturn(
+            Arrays.asList(SqlRow.of("Time", "1", "s1", "10"), SqlRow.of("Time", "2", "s1", "20")));
+    when(provider.read(FsPath.absolute("/root/sg/d1/s2"), 20))
+        .thenReturn(
+            Arrays.asList(
+                SqlRow.of("Time", "1", "s2", "ok"), SqlRow.of("Time", "3", "s2", "skip")));
+
+    assertTrue(shell.execute("join /root/sg/d1/s1 /root/sg/d1/s2"));
+
+    assertEquals("1 10 ok" + System.lineSeparator(), out.toString());
+    verify(provider).read(FsPath.absolute("/root/sg/d1/s1"), 20);
+    verify(provider).read(FsPath.absolute("/root/sg/d1/s2"), 20);
+  }
+
+  @Test
   public void executeCutSelectsCsvFieldsByNumber() throws SQLException {
     when(provider.readLines(FsPath.absolute("/db1/table1.csv"), 20))
         .thenReturn(Arrays.asList("time,key,value", "1,spricoder,2.0", "2,other,3.0"));
@@ -621,6 +711,13 @@ public class FilesystemShellTest {
     assertTrue(values.contains("testtest/"));
     assertFalse(values.contains("value"));
     verify(provider).list(FsPath.absolute("/"));
+  }
+
+  @Test
+  public void completerCompletesJoinCommand() {
+    List<String> values = complete(shell.createCompleter(), "j");
+
+    assertTrue(values.contains("join"));
   }
 
   private static List<String> complete(Completer completer, String line) {

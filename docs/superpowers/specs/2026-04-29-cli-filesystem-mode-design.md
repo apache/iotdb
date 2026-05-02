@@ -216,6 +216,7 @@ semantics wherever the same command exists. Provider support can still vary by d
 | `du <path>` | Print provider count plus path. Table sidecars use file-line counts. | `du /db/table.csv` |
 | `cut -d<delimiter> -f<fields> <path>` | Apply Unix delimiter-based field selection to each line. The delimiter must be one character. Field lists and closed ranges such as `2,3` and `1-2` are supported. | `cut -d, -f2,3 /db/table.csv` |
 | `paste <path>...` | Read multiple regular files side by side and join corresponding lines with tabs. | `paste /db/t1.csv /db/t2.csv` |
+| `join [-t delimiter] [-1 field] [-2 field] <path1> <path2>` | Apply Unix inner join semantics to two readable files using 1-based fields. Default delimiter is whitespace; with `-t`, output uses the same delimiter. Inputs are expected to be sorted by join key. | `join -t, -1 2 -2 1 /db/t1.csv /db/t2.csv` |
 | `tree [-L depth] [path]` | Recursively print descendants with indentation and names only. `-L` limits recursion depth. | `tree -L 2 /db` |
 | `mkdir <path>` | Write-gated command. With table mode and `--fs_write_mode enabled`, `mkdir /db` creates a database. Otherwise it returns a read-only or unsupported error. | `mkdir /newdb` |
 | `rm <path>` | Write-gated command. With table mode and `--fs_write_mode enabled`, only `rm /db/table.csv` is allowed and maps to table drop. | `rm /db/table.csv` |
@@ -254,6 +255,7 @@ Raw SQL should be run in the default SQL access mode.
 | `cat /db/table.csv` | `SELECT * FROM db.table LIMIT <limit>`, formatted as CSV records. |
 | `cut -d, -f2,3 /db/table.csv` | Delimiter-based text field projection over the CSV records. |
 | `paste /db/t1.csv /db/t2.csv` | Read each regular file as CSV/text lines and join corresponding lines with tabs. |
+| `join -t, -1 2 -2 1 /db/t1.csv /db/t2.csv` | Read both regular files as text lines and perform Unix-style inner join on the selected fields. |
 | `tee -a /db/table.csv` | Parse CSV input with Apache Commons CSV, validate columns and required `time`, then execute chunked `INSERT INTO db.table(...) VALUES ...`. |
 | `cat /db/table.schema` | `DESC db.table DETAILS`, formatted as CSV with IoTDB result columns preserved. |
 | `cat /db/table.meta` | `SHOW TABLES DETAILS FROM db`, filtered to the table and formatted as CSV with IoTDB result columns preserved. |
@@ -275,6 +277,9 @@ exposing internal implementation types or Java debug-style structures in normal 
   or introduce table-specific column-selection flags.
 - `paste` prints multiple regular files side by side as tab-separated values. It does not select
   database columns.
+- `join` performs the standard Unix text join over exactly two readable files. It is not SQL join,
+  does not sort inputs, and treats CSV headers as ordinary input lines. Default delimiter handling
+  follows Unix whitespace splitting; `-t,` is the CSV sidecar form.
 - `less` and `more` are currently non-interactive read aliases with the default read limit.
 - `stat` is the command that may expose typed metadata, because Unix `stat` is explicitly about
   object metadata.
@@ -313,6 +318,10 @@ are unknown in the sidecar model and must not trigger table or column SQL reads.
 `paste` remains Unix-like: users pass multiple regular file paths and the shell joins
 corresponding lines with tabs. It must not become a database-specific `select` command or
 `cat --columns` dialect.
+
+`join` also remains Unix-like: users pass exactly two regular file paths and optional text field
+selection flags. It must not become a SQL join alias or infer database relationships from table
+metadata.
 
 For CSV-first table files, multi-column projection should prefer Unix `cut` syntax such as
 `cut -d, -f2,3 /db/table.csv`. The implementation may later optimize this internally, but the
@@ -425,7 +434,7 @@ New code should live under `org.apache.iotdb.cli.fs`.
 
 - `FilesystemShell`: filesystem-mode command loop and `-e` single-command execution.
 - `command/*`: command parsing and command value objects for filesystem commands such as `pwd`,
-  `ls`, `cd`, `stat`, `cat`, `cut`, `paste`, `tree`, and `help`.
+  `ls`, `cd`, `stat`, `cat`, `cut`, `paste`, `join`, `tree`, and `help`.
 - `path/FsPath`: path normalization and resolution for absolute and relative paths.
 - `node/FsNode`, `node/FsNodeType`, `node/FsNodeMetadata`: typed metadata model.
 - `provider/FilesystemSchemaProvider`: schema and data read provider interface.
@@ -455,7 +464,8 @@ Filesystem mode separates reads from mutations. The schema provider owns read op
 - `tail(FsPath path)` / `tailLines(FsPath path)` where the provider supports tail
 - `count(FsPath path)` where the provider supports logical count
 - `read(List<FsPath> paths)` remains available for providers that need optimized multi-path reads,
-  but table mode sidecar `paste` is implemented as regular file line joining in the shell.
+  but table mode sidecar `paste` and `join` are implemented as regular file text operations in the
+  shell.
 
 The mutation provider owns the current write-gated operations:
 
@@ -537,7 +547,7 @@ Unit tests should cover the behavior without needing a live IoTDB instance where
 - `FsPath` tests for absolute paths, relative paths, `.`, `..`, empty input, and attempts to move
   above root.
 - Command parser tests for valid and invalid forms of all supported shell commands, including
-  listing options, `head`/`tail` limits, `wc -l`, `find -name`, `cut`, `paste`, write-gated
+  listing options, `head`/`tail` limits, `wc -l`, `find -name`, `cut`, `paste`, `join`, write-gated
   commands, and the parser-only `sql` form.
 - Provider tests with a mocked `SqlExecutor`, verifying tree-mode path-to-SQL mapping.
 - Provider tests with a mocked `SqlExecutor`, verifying table-mode path-to-SQL mapping, CSV

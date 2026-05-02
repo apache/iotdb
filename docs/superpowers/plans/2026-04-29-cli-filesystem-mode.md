@@ -98,6 +98,8 @@ These notes capture follow-up implementation experience for quickly resuming thi
     of the sidecar model and should resolve to `unknown` or a not-readable error.
   - `paste /db/table1.csv /db/table2.csv` -> read each regular file as lines and join
     corresponding lines with tabs, padding missing trailing lines with empty fields.
+  - `join -t, -1 2 -2 1 /db/table1.csv /db/table2.csv` -> Unix text join over regular file lines.
+    It is not SQL join, does not sort inputs, and treats headers as ordinary lines.
 - Table-mode write boundaries are intentionally narrow and only active with
   `--fs_write_mode enabled`:
   - `mkdir /db` creates a database.
@@ -178,6 +180,7 @@ Design decisions already approved:
 | `du <path>` | Print provider count and path; table sidecars use file-line counts. | `du /db/table.csv` |
 | `cut -d<delimiter> -f<fields> <path>` | Delimiter-based Unix field selection; supports lists and closed ranges. | `cut -d, -f2,3 /db/table.csv` |
 | `paste <path>...` | Print multiple regular files side by side, joining corresponding lines with tabs. | `paste /db/t1.csv /db/t2.csv` |
+| `join [-t delimiter] [-1 field] [-2 field] <path1> <path2>` | Inner join two readable files by 1-based text fields; inputs are expected to be sorted by the join key like Unix `join`. | `join -t, -1 2 -2 1 /db/t1.csv /db/t2.csv` |
 | `tree [-L depth] [path]` | Print descendants with indentation and names only. | `tree -L 2 /db` |
 | `mkdir <path>` | Write-gated; in table mode with writes enabled, creates a database. | `mkdir /newdb` |
 | `rm <path>` | Write-gated; in table mode with writes enabled, only table CSV drop is allowed. | `rm /db/table.csv` |
@@ -203,8 +206,8 @@ Good subagent tasks for this branch:
 - Reviewing docs for consistency after implementation changes.
 - Assigning natural layers independently: `FsPath`, command parser, tree provider, table provider,
   shell output, CLI dispatch, and docs.
-- Checking whether `ls`, `tree`, `cat`, `paste`, and `stat` still match the design document's Unix
-  output semantics.
+- Checking whether `ls`, `tree`, `cat`, `paste`, `join`, and `stat` still match the design
+  document's Unix output semantics.
 - Reviewing whether SQL mode remains the default and whether existing SQL CLI behavior is still
   isolated from filesystem mode.
 - Inspecting exception paths, especially interactive filesystem commands where one failed command

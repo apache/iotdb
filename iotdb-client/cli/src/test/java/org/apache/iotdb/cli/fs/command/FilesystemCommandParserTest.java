@@ -169,6 +169,64 @@ public class FilesystemCommandParserTest {
   }
 
   @Test
+  public void parseJoinPathsUsesDefaultDelimiterAndFields() {
+    FilesystemCommand command =
+        FilesystemCommandParser.parse("join /db1/table1.csv /db1/table2.csv");
+
+    assertEquals(FilesystemCommand.Type.JOIN, command.getType());
+    assertEquals("", command.getOption());
+    assertEquals("1,1", command.getPattern());
+    assertEquals(2, command.getPaths().size());
+    assertEquals("/db1/table1.csv", command.getPaths().get(0));
+    assertEquals("/db1/table2.csv", command.getPaths().get(1));
+  }
+
+  @Test
+  public void parseJoinDelimiterAndFields() {
+    FilesystemCommand command =
+        FilesystemCommandParser.parse("join -t, -1 2 -2 1 /db1/table1.csv /db1/table2.csv");
+
+    assertEquals(FilesystemCommand.Type.JOIN, command.getType());
+    assertEquals(",", command.getOption());
+    assertEquals("2,1", command.getPattern());
+    assertEquals("/db1/table1.csv", command.getPaths().get(0));
+    assertEquals("/db1/table2.csv", command.getPaths().get(1));
+  }
+
+  @Test
+  public void parseJoinSeparatedDelimiter() {
+    FilesystemCommand command =
+        FilesystemCommandParser.parse("join -t , /db1/table1.csv /db1/table2.csv");
+
+    assertEquals(FilesystemCommand.Type.JOIN, command.getType());
+    assertEquals(",", command.getOption());
+    assertEquals("1,1", command.getPattern());
+  }
+
+  @Test
+  public void parseJoinRejectsInvalidArguments() {
+    assertEquals(FilesystemCommand.Type.INVALID, FilesystemCommandParser.parse("join").getType());
+    assertEquals(
+        FilesystemCommand.Type.INVALID,
+        FilesystemCommandParser.parse("join /db1/table1.csv").getType());
+    assertEquals(
+        FilesystemCommand.Type.INVALID,
+        FilesystemCommandParser.parse("join /db1/a.csv /db1/b.csv /db1/c.csv").getType());
+    assertEquals(
+        FilesystemCommand.Type.INVALID,
+        FilesystemCommandParser.parse("join -t /db1/a.csv /db1/b.csv").getType());
+    assertEquals(
+        FilesystemCommand.Type.INVALID,
+        FilesystemCommandParser.parse("join -t:: /db1/a.csv /db1/b.csv").getType());
+    assertEquals(
+        FilesystemCommand.Type.INVALID,
+        FilesystemCommandParser.parse("join -1 0 /db1/a.csv /db1/b.csv").getType());
+    assertEquals(
+        FilesystemCommand.Type.INVALID,
+        FilesystemCommandParser.parse("join -x /db1/a.csv /db1/b.csv").getType());
+  }
+
+  @Test
   public void parseCutDelimiterFieldsAndPath() {
     FilesystemCommand command = FilesystemCommandParser.parse("cut -d, -f2,3 /db1/table1.csv");
 

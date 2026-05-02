@@ -51,6 +51,13 @@ public class JlineUtilsTest {
     assertFalse(values.contains("CREATE"));
   }
 
+  @Test
+  public void filesystemCompleterIncludesJoinCommand() {
+    List<String> values = complete(JlineUtils.createCompleter("filesystem"), "j");
+
+    assertTrue(values.contains("join"));
+  }
+
   private static List<String> complete(Completer completer, String line) {
     ParsedLine parsedLine = new DefaultParser().parse(line, line.length());
     List<Candidate> candidates = new ArrayList<>();

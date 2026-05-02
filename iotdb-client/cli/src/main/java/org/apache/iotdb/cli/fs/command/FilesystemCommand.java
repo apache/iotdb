@@ -45,6 +45,7 @@ public class FilesystemCommand {
     MV,
     CUT,
     PASTE,
+    JOIN,
     TEE,
     TREE,
     SQL,
@@ -122,6 +123,12 @@ public class FilesystemCommand {
   public static FilesystemCommand cut(String delimiter, String fields, String path) {
     return new FilesystemCommand(
         Type.CUT, path, Collections.singletonList(path), -1, -1, delimiter, fields, "", "");
+  }
+
+  public static FilesystemCommand join(String delimiter, String fields, List<String> paths) {
+    String path = paths.isEmpty() ? "" : paths.get(0);
+    return new FilesystemCommand(
+        Type.JOIN, path, Collections.unmodifiableList(paths), -1, -1, delimiter, fields, "", "");
   }
 
   public static FilesystemCommand tree(String path, int depth) {
