@@ -34,12 +34,27 @@ public class UnsupportedFilesystemMutationProvider implements FilesystemMutation
   }
 
   @Override
+  public void rmdir(FsPath path) throws SQLException {
+    throw unsupported();
+  }
+
+  @Override
   public void remove(FsPath path) throws SQLException {
     throw unsupported();
   }
 
   @Override
+  public void removeRecursive(FsPath path) throws SQLException {
+    throw unsupported();
+  }
+
+  @Override
   public void move(FsPath source, FsPath target) throws SQLException {
+    throw unsupported();
+  }
+
+  @Override
+  public void copy(FsPath source, FsPath target) throws SQLException {
     throw unsupported();
   }
 

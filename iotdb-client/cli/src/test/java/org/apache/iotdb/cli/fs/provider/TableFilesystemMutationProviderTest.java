@@ -78,6 +78,28 @@ public class TableFilesystemMutationProviderTest {
   }
 
   @Test
+  public void rmdirDatabaseDropsDatabase() throws SQLException {
+    provider.rmdir(FsPath.absolute("/db1"));
+
+    verify(executor).execute("DROP DATABASE db1");
+  }
+
+  @Test
+  public void removeRecursiveDatabaseDropsDatabase() throws SQLException {
+    provider.removeRecursive(FsPath.absolute("/db1"));
+
+    verify(executor).execute("DROP DATABASE db1");
+  }
+
+  @Test
+  public void rmdirAndRemoveRecursiveRejectUnsafeLevels() throws SQLException {
+    assertInvalidOperation(() -> provider.rmdir(FsPath.absolute("/")));
+    assertInvalidOperation(() -> provider.rmdir(FsPath.absolute("/db1/table1.csv")));
+    assertInvalidOperation(() -> provider.removeRecursive(FsPath.absolute("/")));
+    assertInvalidOperation(() -> provider.removeRecursive(FsPath.absolute("/db1/table1.csv")));
+  }
+
+  @Test
   public void moveTableCsvRenamesTableInSameDatabase() throws SQLException {
     provider.move(FsPath.absolute("/db1/table1.csv"), FsPath.absolute("/db1/table2.csv"));
 
@@ -98,6 +120,22 @@ public class TableFilesystemMutationProviderTest {
     assertInvalidOperation(
         () ->
             provider.move(FsPath.absolute("/db1/table1.csv"), FsPath.absolute("/db2/table1.csv")));
+  }
+
+  @Test
+  public void copySchemaCreatesTableLikeSource() throws SQLException {
+    provider.copy(FsPath.absolute("/db1/table1.schema"), FsPath.absolute("/db1/table2.schema"));
+
+    verify(executor).execute("CREATE TABLE db1.table2 LIKE db1.table1");
+  }
+
+  @Test
+  public void copyRejectsNonSchemaPaths() throws SQLException {
+    assertInvalidOperation(
+        () ->
+            provider.copy(FsPath.absolute("/db1/table1.csv"), FsPath.absolute("/db1/table2.csv")));
+    assertInvalidOperation(
+        () -> provider.copy(FsPath.absolute("/db1/table1.schema"), FsPath.absolute("/db1")));
   }
 
   @Test

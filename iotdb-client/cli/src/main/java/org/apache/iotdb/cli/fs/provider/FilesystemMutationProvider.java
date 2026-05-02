@@ -28,9 +28,15 @@ public interface FilesystemMutationProvider {
 
   void mkdir(FsPath path) throws SQLException;
 
+  void rmdir(FsPath path) throws SQLException;
+
   void remove(FsPath path) throws SQLException;
 
+  void removeRecursive(FsPath path) throws SQLException;
+
   void move(FsPath source, FsPath target) throws SQLException;
+
+  void copy(FsPath source, FsPath target) throws SQLException;
 
   void append(FsPath path, List<String> lines) throws SQLException;
 }

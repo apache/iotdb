@@ -293,6 +293,42 @@ public class FilesystemCommandParserTest {
   }
 
   @Test
+  public void parseRmdirCommand() {
+    FilesystemCommand command = FilesystemCommandParser.parse("rmdir /db1");
+
+    assertEquals(FilesystemCommand.Type.RMDIR, command.getType());
+    assertEquals("/db1", command.getPath());
+  }
+
+  @Test
+  public void parseRmRecursiveCommand() {
+    FilesystemCommand command = FilesystemCommandParser.parse("rm -r /db1");
+
+    assertEquals(FilesystemCommand.Type.RM, command.getType());
+    assertEquals("-r", command.getOption());
+    assertEquals("/db1", command.getPath());
+  }
+
+  @Test
+  public void parseCpCommand() {
+    FilesystemCommand command =
+        FilesystemCommandParser.parse("cp /db1/table1.schema /db1/table2.schema");
+
+    assertEquals(FilesystemCommand.Type.CP, command.getType());
+    assertEquals(2, command.getPaths().size());
+    assertEquals("/db1/table1.schema", command.getPaths().get(0));
+    assertEquals("/db1/table2.schema", command.getPaths().get(1));
+  }
+
+  @Test
+  public void parseLsRecursiveAsTreeCommand() {
+    FilesystemCommand command = FilesystemCommandParser.parse("ls -R /db1");
+
+    assertEquals(FilesystemCommand.Type.TREE, command.getType());
+    assertEquals("/db1", command.getPath());
+  }
+
+  @Test
   public void parseTreeDepthBeforePath() {
     FilesystemCommand command = FilesystemCommandParser.parse("tree -L 2 /root/sg");
 

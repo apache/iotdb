@@ -54,8 +54,8 @@ public class FilesystemShell {
   private static final List<String> COMMANDS =
       Arrays.asList(
           "pwd", "ls", "ll", "cd", "stat", "cat", "head", "tail", "wc", "grep", "find", "less",
-          "more", "file", "du", "mkdir", "rm", "mv", "cut", "paste", "join", "tree", "help", "exit",
-          "quit", "tee");
+          "more", "file", "du", "mkdir", "rmdir", "rm", "mv", "cp", "cut", "paste", "join", "tree",
+          "help", "exit", "quit", "tee");
 
   private final CliContext ctx;
   private final FilesystemSchemaProvider provider;
@@ -127,11 +127,17 @@ public class FilesystemShell {
       case MKDIR:
         mkdir(command.getPath());
         return true;
+      case RMDIR:
+        rmdir(command.getPath());
+        return true;
       case RM:
-        remove(command.getPath());
+        remove(command.getPath(), command.getOption());
         return true;
       case MV:
         move(command.getPaths());
+        return true;
+      case CP:
+        copy(command.getPaths());
         return true;
       case CUT:
         printCut(command.getPath(), command.getOption(), command.getPattern());
@@ -432,9 +438,21 @@ public class FilesystemShell {
     mutationProvider.mkdir(resolvedPath);
   }
 
-  private void remove(String path) throws SQLException {
+  private void rmdir(String path) throws SQLException {
+    FsPath resolvedPath = resolve(path);
+    if (!ensureWritable("rmdir", resolvedPath)) {
+      return;
+    }
+    mutationProvider.rmdir(resolvedPath);
+  }
+
+  private void remove(String path, String option) throws SQLException {
     FsPath resolvedPath = resolve(path);
     if (!ensureWritable("rm", resolvedPath)) {
+      return;
+    }
+    if ("-r".equals(option)) {
+      mutationProvider.removeRecursive(resolvedPath);
       return;
     }
     mutationProvider.remove(resolvedPath);
@@ -447,6 +465,15 @@ public class FilesystemShell {
       return;
     }
     mutationProvider.move(source, target);
+  }
+
+  private void copy(List<String> paths) throws SQLException {
+    FsPath source = resolve(paths.get(0));
+    FsPath target = resolve(paths.get(1));
+    if (!ensureWritable("cp", source)) {
+      return;
+    }
+    mutationProvider.copy(source, target);
   }
 
   private void append(String path, boolean nonInteractive) throws SQLException {
@@ -549,8 +576,10 @@ public class FilesystemShell {
     ctx.getPrinter().println("file <path>");
     ctx.getPrinter().println("du <path>");
     ctx.getPrinter().println("mkdir <path>");
+    ctx.getPrinter().println("rmdir <path>");
     ctx.getPrinter().println("rm <path>");
     ctx.getPrinter().println("mv <source> <target>");
+    ctx.getPrinter().println("cp <source> <target>");
     ctx.getPrinter().println("cut -d<delimiter> -f<fields> <path>");
     ctx.getPrinter().println("paste <path>...");
     ctx.getPrinter().println("join [-t delimiter] [-1 field] [-2 field] <path1> <path2>");

@@ -248,6 +248,28 @@ public class FilesystemShellTest {
   }
 
   @Test
+  public void executeStandardWriteCommandsWhenEnabled() throws SQLException {
+    shell = new FilesystemShell(shellContext(), provider, mutationProvider, true);
+
+    assertTrue(shell.execute("rmdir /db1"));
+    assertTrue(shell.execute("rm -r /db2"));
+    assertTrue(shell.execute("cp /db1/table1.schema /db1/table2.schema"));
+
+    verify(mutationProvider).rmdir(FsPath.absolute("/db1"));
+    verify(mutationProvider).removeRecursive(FsPath.absolute("/db2"));
+    verify(mutationProvider)
+        .copy(FsPath.absolute("/db1/table1.schema"), FsPath.absolute("/db1/table2.schema"));
+  }
+
+  @Test
+  public void executeRecursiveRemoveRejectsReadOnlyMode() throws SQLException {
+    assertTrue(shell.execute("rm -r /db1"));
+
+    assertTrue(out.toString().contains("rm: /db1: Read-only file system"));
+    verifyZeroInteractions(mutationProvider);
+  }
+
+  @Test
   public void executeTeeRejectsReadOnlyMode() throws SQLException {
     assertTrue(shell.execute("tee -a /db1/table1.csv"));
 
@@ -319,6 +341,28 @@ public class FilesystemShellTest {
     verify(provider).describe(FsPath.absolute("/"));
     verify(provider).list(FsPath.absolute("/"));
     verify(provider).list(FsPath.absolute("/root"));
+  }
+
+  @Test
+  public void executeLsRecursivePrintsChildren() throws SQLException {
+    when(provider.describe(FsPath.absolute("/")))
+        .thenReturn(new FsNode("/", FsPath.absolute("/"), FsNodeType.VIRTUAL_ROOT));
+    when(provider.list(FsPath.absolute("/")))
+        .thenReturn(
+            Arrays.asList(new FsNode("db1", FsPath.absolute("/db1"), FsNodeType.TABLE_DATABASE)));
+    when(provider.list(FsPath.absolute("/db1")))
+        .thenReturn(
+            Arrays.asList(
+                new FsNode(
+                    "table1.csv", FsPath.absolute("/db1/table1.csv"), FsNodeType.TABLE_DATA_FILE)));
+
+    assertTrue(shell.execute("ls -R /"));
+
+    assertTrue(out.toString().contains("db1"));
+    assertTrue(out.toString().contains("table1.csv"));
+    verify(provider).describe(FsPath.absolute("/"));
+    verify(provider).list(FsPath.absolute("/"));
+    verify(provider).list(FsPath.absolute("/db1"));
   }
 
   @Test

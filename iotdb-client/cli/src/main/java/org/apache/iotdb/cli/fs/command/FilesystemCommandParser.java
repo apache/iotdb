@@ -100,11 +100,17 @@ public class FilesystemCommandParser {
     if ("mkdir".equals(command)) {
       return FilesystemCommand.path(FilesystemCommand.Type.MKDIR, pathArgument(tokens));
     }
+    if ("rmdir".equals(command)) {
+      return FilesystemCommand.path(FilesystemCommand.Type.RMDIR, pathArgument(tokens));
+    }
     if ("rm".equals(command)) {
       return parseRm(tokens);
     }
     if ("mv".equals(command)) {
       return parseMv(tokens);
+    }
+    if ("cp".equals(command)) {
+      return parseCp(tokens);
     }
     if ("cut".equals(command)) {
       return parseCut(tokens);
@@ -255,6 +261,9 @@ public class FilesystemCommandParser {
       return FilesystemCommand.invalid("Missing rm path");
     }
     if (tokens[1].startsWith("-")) {
+      if ("-r".equals(tokens[1]) && tokens.length >= 3) {
+        return FilesystemCommand.option(FilesystemCommand.Type.RM, "-r", tokens[2]);
+      }
       return FilesystemCommand.invalid("Unsupported rm option: " + tokens[1]);
     }
     return FilesystemCommand.path(FilesystemCommand.Type.RM, tokens[1]);
@@ -270,10 +279,21 @@ public class FilesystemCommandParser {
     return FilesystemCommand.paths(FilesystemCommand.Type.MV, paths);
   }
 
+  private static FilesystemCommand parseCp(String[] tokens) {
+    if (tokens.length < 3) {
+      return FilesystemCommand.invalid("Usage: cp <source> <target>");
+    }
+    List<String> paths = new ArrayList<>();
+    paths.add(tokens[1]);
+    paths.add(tokens[2]);
+    return FilesystemCommand.paths(FilesystemCommand.Type.CP, paths);
+  }
+
   private static FilesystemCommand parseList(String[] tokens, boolean longMode) {
     FilesystemCommand.Type type = longMode ? FilesystemCommand.Type.LL : FilesystemCommand.Type.LS;
     String path = DEFAULT_PATH;
     boolean all = false;
+    boolean recursive = false;
 
     for (int i = 1; i < tokens.length; i++) {
       String token = tokens[i];
@@ -284,6 +304,8 @@ public class FilesystemCommandParser {
             type = FilesystemCommand.Type.LL;
           } else if (option == 'a') {
             all = true;
+          } else if (option == 'R') {
+            recursive = true;
           } else {
             return FilesystemCommand.invalid("Unsupported ls option: -" + option);
           }
@@ -291,6 +313,9 @@ public class FilesystemCommandParser {
       } else {
         path = token;
       }
+    }
+    if (recursive) {
+      return FilesystemCommand.tree(path, DEFAULT_TREE_DEPTH);
     }
     return FilesystemCommand.option(type, all ? "-a" : "", path);
   }
