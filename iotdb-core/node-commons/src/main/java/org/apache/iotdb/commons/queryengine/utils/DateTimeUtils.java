@@ -28,6 +28,7 @@ import java.time.DateTimeException;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
@@ -36,6 +37,7 @@ import java.time.format.DateTimeFormatterBuilder;
 import java.time.format.ResolverStyle;
 import java.time.format.SignStyle;
 import java.time.temporal.ChronoField;
+import java.time.temporal.TemporalAccessor;
 import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
@@ -479,6 +481,57 @@ public class DateTimeUtils {
             .toFormatter();
   }
 
+  private static final DateTimeFormatter ISO_LOCAL_DATE_TIME_WITH_NS_T;
+  private static final DateTimeFormatter ISO_LOCAL_DATE_TIME_WITH_SLASH_NS_T;
+  private static final DateTimeFormatter ISO_LOCAL_DATE_TIME_WITH_DOT_NS_T;
+  private static final DateTimeFormatter ISO_LOCAL_DATE_TIME_WITH_NS_SPACE;
+  private static final DateTimeFormatter ISO_LOCAL_DATE_TIME_WITH_SLASH_NS_SPACE;
+  private static final DateTimeFormatter ISO_LOCAL_DATE_TIME_WITH_DOT_NS_SPACE;
+
+  static {
+    ISO_LOCAL_DATE_TIME_WITH_NS_T =
+        new DateTimeFormatterBuilder()
+            .append(ISO_LOCAL_DATE_WIDTH_1_2)
+            .appendLiteral('T')
+            .append(ISO_LOCAL_TIME_WITH_NS)
+            .toFormatter();
+
+    ISO_LOCAL_DATE_TIME_WITH_SLASH_NS_T =
+        new DateTimeFormatterBuilder()
+            .append(ISO_LOCAL_DATE_WITH_SLASH)
+            .appendLiteral('T')
+            .append(ISO_LOCAL_TIME_WITH_NS)
+            .toFormatter();
+
+    ISO_LOCAL_DATE_TIME_WITH_DOT_NS_T =
+        new DateTimeFormatterBuilder()
+            .append(ISO_LOCAL_DATE_WITH_DOT)
+            .appendLiteral('T')
+            .append(ISO_LOCAL_TIME_WITH_NS)
+            .toFormatter();
+
+    ISO_LOCAL_DATE_TIME_WITH_NS_SPACE =
+        new DateTimeFormatterBuilder()
+            .append(ISO_LOCAL_DATE_WIDTH_1_2)
+            .appendLiteral(' ')
+            .append(ISO_LOCAL_TIME_WITH_NS)
+            .toFormatter();
+
+    ISO_LOCAL_DATE_TIME_WITH_SLASH_NS_SPACE =
+        new DateTimeFormatterBuilder()
+            .append(ISO_LOCAL_DATE_WITH_SLASH)
+            .appendLiteral(' ')
+            .append(ISO_LOCAL_TIME_WITH_NS)
+            .toFormatter();
+
+    ISO_LOCAL_DATE_TIME_WITH_DOT_NS_SPACE =
+        new DateTimeFormatterBuilder()
+            .append(ISO_LOCAL_DATE_WITH_DOT)
+            .appendLiteral(' ')
+            .append(ISO_LOCAL_TIME_WITH_NS)
+            .toFormatter();
+  }
+
   public static final DateTimeFormatter formatter =
       new DateTimeFormatterBuilder()
           /**
@@ -537,6 +590,12 @@ public class DateTimeUtils {
 
           /** such as '2011.12.03 10:15:30+01:00' or '2011.12.03 10:15:30.123456789+01:00'. */
           .appendOptional(ISO_OFFSET_DATE_TIME_WITH_DOT_WITH_SPACE_NS)
+          .appendOptional(ISO_LOCAL_DATE_TIME_WITH_NS_T)
+          .appendOptional(ISO_LOCAL_DATE_TIME_WITH_SLASH_NS_T)
+          .appendOptional(ISO_LOCAL_DATE_TIME_WITH_DOT_NS_T)
+          .appendOptional(ISO_LOCAL_DATE_TIME_WITH_NS_SPACE)
+          .appendOptional(ISO_LOCAL_DATE_TIME_WITH_SLASH_NS_SPACE)
+          .appendOptional(ISO_LOCAL_DATE_TIME_WITH_DOT_NS_SPACE)
           .toFormatter()
           .withResolverStyle(ResolverStyle.STRICT);
 
@@ -548,22 +607,54 @@ public class DateTimeUtils {
     }
   }
 
+  /**
+   * @deprecated Use {@link #convertDatetimeStrToLong(String, ZoneId, String)} instead.
+   */
+  @Deprecated
+  public static long convertDatetimeStrToLong(
+      String str, ZoneOffset offset, String timestampPrecision) {
+    return convertDatetimeStrToLong(str, (ZoneId) offset, 0, timestampPrecision);
+  }
+
+  /**
+   * @deprecated Use {@link #convertDatetimeStrToLong(String, ZoneId, int, String)} instead.
+   */
+  @Deprecated
+  public static long convertDatetimeStrToLong(
+      String str, ZoneOffset offset, int depth, String timestampPrecision) {
+    return convertDatetimeStrToLong(str, (ZoneId) offset, depth, timestampPrecision);
+  }
+
   public static long convertDatetimeStrToLong(String str, ZoneId zoneId) {
     return convertDatetimeStrToLong(
-        str,
-        toZoneOffset(str, zoneId),
-        0,
-        CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
+        str, zoneId, 0, CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
   }
 
   public static long convertDatetimeStrToLong(
       String str, ZoneId zoneId, String timestampPrecision) {
-    return convertDatetimeStrToLong(str, toZoneOffset(str, zoneId), 0, timestampPrecision);
+    return convertDatetimeStrToLong(str, zoneId, 0, timestampPrecision);
   }
 
+  /**
+   * @deprecated Use {@link #getInstantWithPrecision(String, String, ZoneId)} instead.
+   */
+  @Deprecated
   public static long getInstantWithPrecision(String str, String timestampPrecision) {
-    ZonedDateTime zonedDateTime = ZonedDateTime.parse(str, formatter);
-    Instant instant = zonedDateTime.toInstant();
+    return getInstantWithPrecision(str, timestampPrecision, ZoneId.systemDefault());
+  }
+
+  public static long getInstantWithPrecision(String str, String timestampPrecision, ZoneId zoneId) {
+    TemporalAccessor parsed = formatter.parseBest(str, OffsetDateTime::from, LocalDateTime::from);
+    Instant instant;
+    if (parsed instanceof OffsetDateTime) {
+      instant = ((OffsetDateTime) parsed).toInstant();
+    } else {
+      instant = ((LocalDateTime) parsed).atZone(zoneId).toInstant();
+    }
+    return getInstantWithPrecision(instant, timestampPrecision);
+  }
+
+  public static long getInstantWithPrecision(Instant instant, String timestampPrecision) {
     if ("us".equals(timestampPrecision) || "microsecond".equals(timestampPrecision)) {
       if (instant.getEpochSecond() < 0 && instant.getNano() > 0) {
         // adjustment can reduce the loss of the division
@@ -583,22 +674,19 @@ public class DateTimeUtils {
 
   /** convert date time string to millisecond, microsecond or nanosecond. */
   public static long convertDatetimeStrToLong(
-      String str, ZoneOffset offset, int depth, String timestampPrecision) {
+      String str, ZoneId zoneId, int depth, String timestampPrecision) {
     if (depth >= 2) {
       throw new DateTimeException(
           String.format(
-              "Failed to convert %s to millisecond, zone offset is %s, "
+              "Failed to convert %s to millisecond, zoneId is %s, "
                   + "please input like 2011-12-03T10:15:30 or 2011-12-03T10:15:30+01:00",
-              str, offset));
+              str, zoneId));
     }
     if (str.contains("Z")) {
       return convertDatetimeStrToLong(
-          str.substring(0, str.indexOf('Z')) + "+00:00", offset, depth, timestampPrecision);
+          str.substring(0, str.indexOf('Z')) + "+00:00", zoneId, depth, timestampPrecision);
     } else if (str.length() == 10) {
-      return convertDatetimeStrToLong(str + "T00:00:00", offset, depth, timestampPrecision);
-    } else if (str.length() - str.lastIndexOf('+') != 6
-        && str.length() - str.lastIndexOf('-') != 6) {
-      return convertDatetimeStrToLong(str + offset, offset, depth + 1, timestampPrecision);
+      return convertDatetimeStrToLong(str + "T00:00:00", zoneId, depth, timestampPrecision);
     } else if (str.contains("[") || str.contains("]")) {
       throw new DateTimeException(
           String.format(
@@ -606,7 +694,7 @@ public class DateTimeUtils {
                   + "please input like 2011-12-03T10:15:30 or 2011-12-03T10:15:30+01:00",
               str));
     }
-    return getInstantWithPrecision(str, timestampPrecision);
+    return getInstantWithPrecision(str, timestampPrecision, zoneId);
   }
 
   public static TimeUnit timestampPrecisionStringToTimeUnit(String timestampPrecision) {
@@ -662,22 +750,9 @@ public class DateTimeUtils {
     return ZonedDateTime.ofInstant(Instant.ofEpochMilli(timestamp), zoneId);
   }
 
-  /** Converts string to ZoneOffset. Truncates seconds for HH:mm database compatibility. */
-  public static ZoneOffset toZoneOffset(String str, ZoneId zoneId) {
-    if (str.endsWith("Z")) {
-      return ZoneOffset.UTC;
-    }
-
-    int offsetIndex = Math.max(str.lastIndexOf('+'), str.lastIndexOf('-'));
-    if (offsetIndex != -1 && str.length() - offsetIndex == 6) {
-      return ZoneOffset.of(str.substring(offsetIndex));
-    }
-
-    long millis = convertDatetimeStrToLong(str, ZoneOffset.UTC, 0, "ms");
-    LocalDateTime localDateTime =
-        LocalDateTime.ofInstant(Instant.ofEpochMilli(millis), ZoneOffset.UTC);
-    ZoneOffset offset = zoneId.getRules().getOffset(localDateTime);
-    return ZoneOffset.ofTotalSeconds((offset.getTotalSeconds() / 60) * 60);
+  @Deprecated()
+  public static ZoneOffset toZoneOffset(ZoneId zoneId) {
+    return zoneId.getRules().getOffset(Instant.now());
   }
 
   public static ZonedDateTime convertMillsecondToZonedDateTime(long millisecond) {
