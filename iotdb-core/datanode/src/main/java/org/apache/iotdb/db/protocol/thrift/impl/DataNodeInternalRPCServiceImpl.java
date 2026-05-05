@@ -423,7 +423,9 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       CommonDescriptor.getInstance().getConfig().getDnConnectionTimeoutInMS();
 
   private static final ExecutorService TOPOLOGY_PROBING_EXECUTOR =
-      IoTDBThreadPoolFactory.newFixedThreadPool(2, ThreadName.DATANODE_TOPOLOGY_PROBING.getName());
+      IoTDBThreadPoolFactory.newFixedThreadPool(
+          Math.max(1, Runtime.getRuntime().availableProcessors() / 4),
+          ThreadName.DATANODE_TOPOLOGY_PROBING.getName());
 
   private final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
 

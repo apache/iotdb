@@ -57,6 +57,7 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -65,7 +66,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -91,7 +91,6 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
 
   /* (fromDataNodeId, toDataNodeId) -> heartbeat history */
   private final Map<Pair<Integer, Integer>, List<AbstractHeartbeatSample>> heartbeats;
-  private final List<Integer> startingDataNodes = new CopyOnWriteArrayList<>();
 
   private final IFailureDetector failureDetector;
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
@@ -194,14 +193,15 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
   }
 
   private synchronized void topologyProbing() {
-    // 1. get the latest datanode list, filter out starting ones
+    // 1. get Running DataNodes only
     final List<TDataNodeLocation> dataNodeLocations = new ArrayList<>();
     final Set<Integer> dataNodeIds = new HashSet<>();
     for (final TDataNodeConfiguration dataNodeConf :
         configManager.getNodeManager().getRegisteredDataNodes()) {
       final TDataNodeLocation location = dataNodeConf.getLocation();
-      if (startingDataNodes.contains(location.getDataNodeId())) {
-        continue; // we shall wait for internal endpoint to be ready
+      if (configManager.getLoadManager().getNodeStatus(location.getDataNodeId())
+          != NodeStatus.Running) {
+        continue;
       }
       dataNodeLocations.add(location);
       dataNodeIds.add(location.getDataNodeId());
@@ -297,7 +297,6 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
    */
   private void pushTopologyToDataNodes(
       Map<Integer, Set<Integer>> latestTopology, List<TDataNodeLocation> dataNodeLocations) {
-    // Build dataNodes map once for all pushes
     final Map<Integer, TDataNodeLocation> dataNodesMap =
         dataNodeLocations.stream()
             .collect(Collectors.toMap(TDataNodeLocation::getDataNodeId, loc -> loc));
@@ -311,9 +310,13 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
         continue;
       }
 
+      // Per-node topology: only this DataNode's own reachable set
+      final Map<Integer, Set<Integer>> perNodeTopology = new HashMap<>();
+      perNodeTopology.put(nodeId, new HashSet<>(reachableSet));
+
       final TDataNodeHeartbeatReq req =
           new TDataNodeHeartbeatReq(System.nanoTime(), false, false, 0L, 0L);
-      req.setTopology(latestTopology);
+      req.setTopology(perNodeTopology);
       req.setDataNodes(dataNodesMap);
 
       final TEndPoint endPoint = location.getInternalEndPoint();
@@ -324,14 +327,10 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
                 req,
                 new AsyncMethodCallback<TDataNodeHeartbeatResp>() {
                   @Override
-                  public void onComplete(TDataNodeHeartbeatResp response) {
-                    // No-op: topology push is fire-and-forget
-                  }
+                  public void onComplete(TDataNodeHeartbeatResp response) {}
 
                   @Override
-                  public void onError(Exception exception) {
-                    // No-op: topology push failures are silently ignored
-                  }
+                  public void onError(Exception exception) {}
                 });
         lastPushedTopology.put(nodeId, new HashSet<>(reachableSet));
       } catch (Exception e) {
@@ -388,11 +387,7 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
         continue;
       }
       if (changeEvent.getLeft() == null) {
-        // if a new datanode registered, DO NOT trigger probing immediately
-        startingDataNodes.add(nodeId);
         continue;
-      } else {
-        startingDataNodes.remove(nodeId);
       }
 
       final Set<Pair<Integer, Integer>> affectedPairs =
@@ -404,13 +399,10 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
               .collect(Collectors.toSet());
 
       if (changeEvent.getRight() == null) {
-        // datanode removed from cluster, clean up probing history
         affectedPairs.forEach(heartbeats::remove);
       } else {
-        // we only trigger probing immediately if node comes around from UNKNOWN to RUNNING
         if (NodeStatus.Unknown.equals(changeEvent.getLeft().getStatus())
             && NodeStatus.Running.equals(changeEvent.getRight().getStatus())) {
-          // let's clear the history when a new node comes around
           affectedPairs.forEach(pair -> heartbeats.put(pair, new ArrayList<>()));
           awaitForSignal.signal();
         }
