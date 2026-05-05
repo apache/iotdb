@@ -204,6 +204,15 @@ public class ConfigNodeConfig {
   /** Acceptable pause duration for Phi accrual failure detector */
   private long failureDetectorPhiAcceptablePauseInMs = 10000;
 
+  /** Base interval in ms for topology probing. Actual interval scales with DataNode count. */
+  private long topologyProbingBaseIntervalInMs = 5000;
+
+  /** Reference DataNode count for adaptive probing interval scaling. */
+  private int topologyProbingReferenceNodeCount = 10;
+
+  /** Ratio of probing timeout to probing interval (must be less than 1.0). */
+  private double topologyProbingTimeoutRatio = 0.5;
+
   /** The policy of cluster RegionGroups' leader distribution. */
   private String leaderDistributionPolicy = AbstractLeaderBalancer.CFD_POLICY;
 
@@ -1287,5 +1296,29 @@ public class ConfigNodeConfig {
 
   public void setFailureDetectorPhiAcceptablePauseInMs(long failureDetectorPhiAcceptablePauseInMs) {
     this.failureDetectorPhiAcceptablePauseInMs = failureDetectorPhiAcceptablePauseInMs;
+  }
+
+  public long getTopologyProbingBaseIntervalInMs() {
+    return topologyProbingBaseIntervalInMs;
+  }
+
+  public void setTopologyProbingBaseIntervalInMs(long topologyProbingBaseIntervalInMs) {
+    this.topologyProbingBaseIntervalInMs = topologyProbingBaseIntervalInMs;
+  }
+
+  public int getTopologyProbingReferenceNodeCount() {
+    return topologyProbingReferenceNodeCount;
+  }
+
+  public void setTopologyProbingReferenceNodeCount(int topologyProbingReferenceNodeCount) {
+    this.topologyProbingReferenceNodeCount = topologyProbingReferenceNodeCount;
+  }
+
+  public double getTopologyProbingTimeoutRatio() {
+    return topologyProbingTimeoutRatio;
+  }
+
+  public void setTopologyProbingTimeoutRatio(double topologyProbingTimeoutRatio) {
+    this.topologyProbingTimeoutRatio = topologyProbingTimeoutRatio;
   }
 }

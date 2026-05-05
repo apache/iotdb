@@ -322,6 +322,24 @@ public class ConfigNodeDescriptor {
                 "failure_detector_phi_acceptable_pause_in_ms",
                 String.valueOf(conf.getFailureDetectorPhiAcceptablePauseInMs()))));
 
+    conf.setTopologyProbingBaseIntervalInMs(
+        Long.parseLong(
+            properties.getProperty(
+                "topology_probing_base_interval_in_ms",
+                String.valueOf(conf.getTopologyProbingBaseIntervalInMs()))));
+
+    conf.setTopologyProbingReferenceNodeCount(
+        Integer.parseInt(
+            properties.getProperty(
+                "topology_probing_reference_node_count",
+                String.valueOf(conf.getTopologyProbingReferenceNodeCount()))));
+
+    conf.setTopologyProbingTimeoutRatio(
+        Double.parseDouble(
+            properties.getProperty(
+                "topology_probing_timeout_ratio",
+                String.valueOf(conf.getTopologyProbingTimeoutRatio()))));
+
     String leaderDistributionPolicy =
         properties.getProperty("leader_distribution_policy", conf.getLeaderDistributionPolicy());
     if (AbstractLeaderBalancer.GREEDY_POLICY.equals(leaderDistributionPolicy)

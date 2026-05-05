@@ -152,7 +152,7 @@ public class ClusterTopology {
       for (int fromId : dataNodes.keySet()) {
         for (int toId : dataNodes.keySet()) {
           boolean originReachable =
-              latestTopology.getOrDefault(fromId, Collections.emptySet()).contains(toId);
+              this.topologyMap.get().getOrDefault(fromId, Collections.emptySet()).contains(toId);
           boolean newReachable =
               latestTopology.getOrDefault(fromId, Collections.emptySet()).contains(toId);
           if (originReachable != newReachable) {

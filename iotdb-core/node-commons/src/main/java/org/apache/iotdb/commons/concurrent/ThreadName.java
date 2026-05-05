@@ -196,6 +196,7 @@ public enum ThreadName {
   INFLUXDB_RPC_PROCESSOR("InfluxdbRPC-Processor"),
   STORAGE_ENGINE_CACHED_POOL("StorageEngine"),
   DATANODE_SHUTDOWN_HOOK("DataNode-Shutdown-Hook"),
+  DATANODE_TOPOLOGY_PROBING("DataNode-Topology-Probing"),
   UPGRADE_TASK("UpgradeThread"),
   REGION_MIGRATE("Region-Migrate-Pool"),
   STORAGE_ENGINE_RECOVER_TRIGGER("StorageEngine-RecoverTrigger"),
