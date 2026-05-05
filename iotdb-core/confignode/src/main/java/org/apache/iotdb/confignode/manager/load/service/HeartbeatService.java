@@ -167,8 +167,6 @@ public class HeartbeatService {
       heartbeatReq.setSpaceQuotaUsage(configManager.getClusterQuotaManager().getSpaceQuotaUsage());
     }
 
-    // Topology is now pushed independently by TopologyService, no longer piggybacked on heartbeat
-
     // We broadcast region operations list every 100 heartbeat loops
     if (heartbeatCounter.get() % 100 == 0) {
       heartbeatReq.setCurrentRegionOperations(

@@ -204,11 +204,8 @@ public class ConfigNodeConfig {
   /** Acceptable pause duration for Phi accrual failure detector */
   private long failureDetectorPhiAcceptablePauseInMs = 10000;
 
-  /** Base interval in ms for topology probing. Actual interval scales with DataNode count. */
+  /** Base interval in ms for topology probing. */
   private long topologyProbingBaseIntervalInMs = 5000;
-
-  /** Reference DataNode count for adaptive probing interval scaling. */
-  private int topologyProbingReferenceNodeCount = 10;
 
   /** Ratio of probing timeout to probing interval (must be less than 1.0). */
   private double topologyProbingTimeoutRatio = 0.5;
@@ -1304,14 +1301,6 @@ public class ConfigNodeConfig {
 
   public void setTopologyProbingBaseIntervalInMs(long topologyProbingBaseIntervalInMs) {
     this.topologyProbingBaseIntervalInMs = topologyProbingBaseIntervalInMs;
-  }
-
-  public int getTopologyProbingReferenceNodeCount() {
-    return topologyProbingReferenceNodeCount;
-  }
-
-  public void setTopologyProbingReferenceNodeCount(int topologyProbingReferenceNodeCount) {
-    this.topologyProbingReferenceNodeCount = topologyProbingReferenceNodeCount;
   }
 
   public double getTopologyProbingTimeoutRatio() {

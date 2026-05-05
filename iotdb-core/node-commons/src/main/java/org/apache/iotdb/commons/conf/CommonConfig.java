@@ -155,7 +155,7 @@ public class CommonConfig {
    */
   private int selectorNumOfClientManager = 1;
 
-  private int heartbeatSelectorNumOfClientManager = 4;
+  private int heartbeatSelectorNumOfClientManager = 0;
 
   /** Whether to use thrift compression. */
   private boolean isRpcThriftCompressionEnabled = false;
@@ -700,6 +700,9 @@ public class CommonConfig {
   }
 
   public int getHeartbeatSelectorNumOfClientManager() {
+    if (heartbeatSelectorNumOfClientManager <= 0) {
+      return Math.max(1, Runtime.getRuntime().availableProcessors() / 4);
+    }
     return heartbeatSelectorNumOfClientManager;
   }
 

@@ -328,12 +328,6 @@ public class ConfigNodeDescriptor {
                 "topology_probing_base_interval_in_ms",
                 String.valueOf(conf.getTopologyProbingBaseIntervalInMs()))));
 
-    conf.setTopologyProbingReferenceNodeCount(
-        Integer.parseInt(
-            properties.getProperty(
-                "topology_probing_reference_node_count",
-                String.valueOf(conf.getTopologyProbingReferenceNodeCount()))));
-
     conf.setTopologyProbingTimeoutRatio(
         Double.parseDouble(
             properties.getProperty(

@@ -158,15 +158,9 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
    */
   private boolean mayWait() {
     try {
-      long baseInterval = CONF.getTopologyProbingBaseIntervalInMs();
-      int dataNodeCount =
-          configManager.getNodeManager().getRegisteredDataNodes().size() - startingDataNodes.size();
-      int referenceNodeCount = CONF.getTopologyProbingReferenceNodeCount();
-      long interval = Math.max(baseInterval, baseInterval * dataNodeCount / referenceNodeCount);
-      this.awaitForSignal.await(interval, TimeUnit.MILLISECONDS);
+      this.awaitForSignal.await(CONF.getTopologyProbingBaseIntervalInMs(), TimeUnit.MILLISECONDS);
       return true;
     } catch (InterruptedException e) {
-      // we don't reset the interrupt flag here since we may reuse this thread again.
       return false;
     }
   }
@@ -213,13 +207,9 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
       dataNodeIds.add(location.getDataNodeId());
     }
 
-    // 2. compute adaptive interval and timeout from N = dataNodeLocations.size()
+    // 2. compute probing timeout
     final long baseInterval = CONF.getTopologyProbingBaseIntervalInMs();
-    final int referenceNodeCount = CONF.getTopologyProbingReferenceNodeCount();
-    final double timeoutRatio = CONF.getTopologyProbingTimeoutRatio();
-    final int dataNodeCount = dataNodeLocations.size();
-    final long interval = Math.max(baseInterval, baseInterval * dataNodeCount / referenceNodeCount);
-    final long timeout = (long) (interval * timeoutRatio);
+    final long timeout = (long) (baseInterval * CONF.getTopologyProbingTimeoutRatio());
 
     // 3. select sqrt(N) probers via rotating selection
     final List<TDataNodeLocation> probers = selectProbers(dataNodeLocations);
