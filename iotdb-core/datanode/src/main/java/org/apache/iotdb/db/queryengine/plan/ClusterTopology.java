@@ -39,22 +39,33 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
+/**
+ * Tracks this DataNode's view of cluster network topology for partition-aware query planning. Only
+ * stores the set of DataNodes reachable from this node, pushed by ConfigNode's TopologyService.
+ */
 public class ClusterTopology {
   private static final Logger LOGGER = LoggerFactory.getLogger(ClusterTopology.class);
   private final Integer myself;
   private final AtomicReference<Map<Integer, TDataNodeLocation>> dataNodes;
+
+  /** DataNode IDs reachable from this node. Empty means not yet probed by TopologyService. */
   private final AtomicReference<Set<Integer>> myReachableNodes;
+
   private final AtomicBoolean isPartitioned = new AtomicBoolean();
 
   public static ClusterTopology getInstance() {
     return ClusterTopologyHolder.INSTANCE;
   }
 
+  /** Filters a replica set to only include DataNodes reachable from this node. */
   public TRegionReplicaSet getValidatedReplicaSet(TRegionReplicaSet origin) {
     if (!isPartitioned.get() || origin == null) {
       return origin;
     }
     final Set<Integer> reachable = myReachableNodes.get();
+    if (reachable.isEmpty()) {
+      return origin;
+    }
     final List<TDataNodeLocation> locations = new ArrayList<>();
     for (final TDataNodeLocation location : origin.getDataNodeLocations()) {
       if (reachable.contains(location.getDataNodeId())) {
@@ -64,6 +75,7 @@ public class ClusterTopology {
     return new TRegionReplicaSet(origin.getRegionId(), locations);
   }
 
+  /** Filters region-to-scan mappings, keeping only replicas reachable from this node. */
   public <T> Set<Map.Entry<TRegionReplicaSet, T>> filterReachableCandidates(
       Set<Map.Entry<TRegionReplicaSet, T>> input) {
     if (!isPartitioned.get()) {
@@ -86,6 +98,9 @@ public class ClusterTopology {
       final TRegionReplicaSet replicaSet = newMap.get(gid);
       if (replicaSet != null) {
         candidateMap.put(replicaSet, entry.getValue());
+      } else {
+        // Topology not yet available for this region — return original to avoid silent data loss
+        candidateMap.put(entry.getKey(), entry.getValue());
       }
     }
     return candidateMap.entrySet();
@@ -102,6 +117,9 @@ public class ClusterTopology {
     }
 
     final Set<Integer> reachable = this.myReachableNodes.get();
+    if (reachable.isEmpty()) {
+      return all;
+    }
     final Map<Integer, TDataNodeLocation> dataNodesCurrent = this.dataNodes.get();
 
     final List<TRegionReplicaSet> reachableSetCandidates = new ArrayList<>();
@@ -113,11 +131,15 @@ public class ClusterTopology {
               .collect(Collectors.toList());
       if (!validLocations.isEmpty()) {
         reachableSetCandidates.add(new TRegionReplicaSet(replicaSet.getRegionId(), validLocations));
+      } else {
+        // No reachable replica — return full set so upper layer can handle or report the error
+        reachableSetCandidates.add(replicaSet);
       }
     }
     return reachableSetCandidates;
   }
 
+  /** Called by ConfigNode's TopologyService push. Updates this node's reachable set. */
   public void updateTopology(
       final Map<Integer, TDataNodeLocation> dataNodes, Map<Integer, Set<Integer>> latestTopology) {
     final Set<Integer> newReachable = latestTopology.getOrDefault(myself, Collections.emptySet());

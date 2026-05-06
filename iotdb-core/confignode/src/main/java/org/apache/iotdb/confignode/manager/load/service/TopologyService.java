@@ -21,13 +21,9 @@ package org.apache.iotdb.confignode.manager.load.service;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TNodeLocations;
 import org.apache.iotdb.common.rpc.thrift.TTestConnectionResp;
 import org.apache.iotdb.common.rpc.thrift.TTestConnectionResult;
-import org.apache.iotdb.commons.client.ClientPoolFactory;
-import org.apache.iotdb.commons.client.IClientManager;
-import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
@@ -49,7 +45,6 @@ import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatResp;
 
 import org.apache.ratis.util.AwaitForSignal;
-import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -95,15 +90,10 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
   private final IFailureDetector failureDetector;
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
 
-  /** Rotation index for sqrt(N) prober selection. */
   private int proberRotationIndex = 0;
 
-  /** Last topology pushed to each DataNode, used to detect changes. */
+  /** Last topology pushed to each DataNode, updated only on successful push. */
   private final Map<Integer, Set<Integer>> lastPushedTopology = new ConcurrentHashMap<>();
-
-  /** Client manager for pushing topology updates to DataNodes via heartbeat RPC. */
-  private final IClientManager<TEndPoint, AsyncDataNodeInternalServiceClient>
-      topologyPushClientManager;
 
   public TopologyService(
       IManager configManager, Consumer<Map<Integer, Set<Integer>>> topologyChangeListener) {
@@ -112,12 +102,7 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
     this.heartbeats = new ConcurrentHashMap<>();
     this.shouldRun = new AtomicBoolean(false);
     this.awaitForSignal = new AwaitForSignal(this.getClass().getSimpleName());
-    this.topologyPushClientManager =
-        new IClientManager.Factory<TEndPoint, AsyncDataNodeInternalServiceClient>()
-            .createClientManager(
-                new ClientPoolFactory.AsyncDataNodeHeartbeatServiceClientPoolFactory());
 
-    // here we use the same failure
     switch (CONF.getFailureDetector()) {
       case IFailureDetector.PHI_ACCRUAL_DETECTOR:
         this.failureDetector =
@@ -151,10 +136,6 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
     LOGGER.info("Topology Probing has stopped successfully");
   }
 
-  /**
-   * Schedule the {@link #topologyProbing} task either: 1. every adaptive probing interval. 2.
-   * Manually triggered by outside events (node restart / register, etc.).
-   */
   private boolean mayWait() {
     try {
       this.awaitForSignal.await(CONF.getTopologyProbingBaseIntervalInMs(), TimeUnit.MILLISECONDS);
@@ -208,11 +189,13 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
     }
 
     // 2. compute probing timeout
-    final long baseInterval = CONF.getTopologyProbingBaseIntervalInMs();
-    final long timeout = (long) (baseInterval * CONF.getTopologyProbingTimeoutRatio());
+    final long timeout =
+        (long) (CONF.getTopologyProbingBaseIntervalInMs() * CONF.getTopologyProbingTimeoutRatio());
 
     // 3. select sqrt(N) probers via rotating selection
     final List<TDataNodeLocation> probers = selectProbers(dataNodeLocations);
+    final Set<Integer> proberIds =
+        probers.stream().map(TDataNodeLocation::getDataNodeId).collect(Collectors.toSet());
 
     // 4. build TNodeLocations with ALL DataNode locations (so probers test all targets)
     final TNodeLocations nodeLocations = new TNodeLocations();
@@ -224,7 +207,7 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
         probers.stream()
             .collect(Collectors.toMap(TDataNodeLocation::getDataNodeId, location -> location));
 
-    // 6. send async requests ONLY to probers (not all DataNodes) with computed timeout
+    // 6. send async requests ONLY to probers with computed timeout
     final DataNodeAsyncRequestContext<TNodeLocations, TTestConnectionResp>
         dataNodeAsyncRequestContext =
             new DataNodeAsyncRequestContext<>(
@@ -263,7 +246,7 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
       }
     }
 
-    // 8. use failure detector to identify potential network partitions (on ALL heartbeat pairs)
+    // 8. run failure detector only on pairs from current probers (not all pairs)
     final Map<Integer, Set<Integer>> latestTopology =
         dataNodeLocations.stream()
             .collect(Collectors.toMap(TDataNodeLocation::getDataNodeId, k -> new HashSet<>()));
@@ -271,6 +254,14 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
         heartbeats.entrySet()) {
       final int fromId = entry.getKey().getLeft();
       final int toId = entry.getKey().getRight();
+
+      if (!proberIds.contains(fromId)) {
+        // Not in this batch — carry forward as reachable if history is non-empty and last known OK
+        if (!entry.getValue().isEmpty()) {
+          Optional.ofNullable(latestTopology.get(fromId)).ifPresent(s -> s.add(toId));
+        }
+        continue;
+      }
 
       if (!entry.getValue().isEmpty()
           && !failureDetector.isAvailable(entry.getKey(), entry.getValue())) {
@@ -292,8 +283,8 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
   }
 
   /**
-   * Push topology changes to DataNodes via heartbeat RPC. Each DataNode only receives a push when
-   * its own reachable set has changed since the last push.
+   * Push topology changes to DataNodes via PUSH_TOPOLOGY request. Each DataNode receives only its
+   * own reachable set. lastPushedTopology is updated only on successful push.
    */
   private void pushTopologyToDataNodes(
       Map<Integer, Set<Integer>> latestTopology, List<TDataNodeLocation> dataNodeLocations) {
@@ -301,54 +292,51 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
         dataNodeLocations.stream()
             .collect(Collectors.toMap(TDataNodeLocation::getDataNodeId, loc -> loc));
 
+    final Map<Integer, TDataNodeLocation> targetMap = new HashMap<>();
     for (final TDataNodeLocation location : dataNodeLocations) {
       final int nodeId = location.getDataNodeId();
       final Set<Integer> reachableSet = latestTopology.getOrDefault(nodeId, Collections.emptySet());
       final Set<Integer> lastPushed = lastPushedTopology.get(nodeId);
-
       if (lastPushed != null && lastPushed.equals(reachableSet)) {
         continue;
       }
+      targetMap.put(nodeId, location);
+    }
 
-      // Per-node topology: only this DataNode's own reachable set
+    if (targetMap.isEmpty()) {
+      return;
+    }
+
+    final DataNodeAsyncRequestContext<TDataNodeHeartbeatReq, TDataNodeHeartbeatResp> context =
+        new DataNodeAsyncRequestContext<>(CnToDnAsyncRequestType.PUSH_TOPOLOGY, targetMap);
+    for (final Map.Entry<Integer, TDataNodeLocation> entry : targetMap.entrySet()) {
+      final int nodeId = entry.getKey();
+      final Set<Integer> reachableSet = latestTopology.getOrDefault(nodeId, Collections.emptySet());
       final Map<Integer, Set<Integer>> perNodeTopology = new HashMap<>();
       perNodeTopology.put(nodeId, new HashSet<>(reachableSet));
-
       final TDataNodeHeartbeatReq req =
           new TDataNodeHeartbeatReq(System.nanoTime(), false, false, 0L, 0L);
       req.setTopology(perNodeTopology);
       req.setDataNodes(dataNodesMap);
-
-      final TEndPoint endPoint = location.getInternalEndPoint();
-      try {
-        topologyPushClientManager
-            .borrowClient(endPoint)
-            .getDataNodeHeartBeat(
-                req,
-                new AsyncMethodCallback<TDataNodeHeartbeatResp>() {
-                  @Override
-                  public void onComplete(TDataNodeHeartbeatResp response) {}
-
-                  @Override
-                  public void onError(Exception exception) {}
-                });
-        lastPushedTopology.put(nodeId, new HashSet<>(reachableSet));
-      } catch (Exception e) {
-        LOGGER.debug(
-            "Failed to push topology to DataNode {} at {}: {}", nodeId, endPoint, e.getMessage());
-      }
+      context.putRequest(nodeId, req);
     }
+
+    CnToDnInternalServiceAsyncRequestManager.getInstance()
+        .sendAsyncRequestWithTimeoutInMs(context, CONF.getTopologyProbingBaseIntervalInMs());
+
+    context
+        .getResponseMap()
+        .forEach(
+            (nodeId, resp) -> {
+              Set<Integer> reachableSet =
+                  latestTopology.getOrDefault(nodeId, Collections.emptySet());
+              lastPushedTopology.put(nodeId, new HashSet<>(reachableSet));
+            });
   }
 
-  /**
-   * We only consider warning (one vs remaining) network partition. If we need to cover more
-   * complicated scenarios like (many vs many) network partition, we shall use graph algorithms
-   * then.
-   */
   private void logAsymmetricPartition(final Map<Integer, Set<Integer>> topology) {
     final Set<Integer> nodes = topology.keySet();
     if (nodes.size() == 1) {
-      // 1 DataNode
       return;
     }
 
@@ -358,11 +346,9 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
           continue;
         }
 
-        // whether we have asymmetric partition [from -> to]
         final Set<Integer> reachableFrom = topology.get(from);
         final Set<Integer> reachableTo = topology.get(to);
         if (reachableFrom.size() <= 1 || reachableTo.size() <= 1) {
-          // symmetric partition for (from) or (to)
           continue;
         }
         if (!reachableTo.contains(from) && !reachableFrom.contains(to)) {
@@ -372,40 +358,21 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
     }
   }
 
-  /** We only listen to datanode remove / restart / register events */
+  /** Clean up heartbeat and push state when a node is removed or entering Removing status. */
   @Override
   public void onNodeStatisticsChanged(NodeStatisticsChangeEvent event) {
-    final Set<Integer> datanodeIds =
-        configManager.getNodeManager().getRegisteredDataNodeLocations().keySet();
-    final Map<Integer, Pair<NodeStatistics, NodeStatistics>> changes =
-        event.getDifferentNodeStatisticsMap();
     for (final Map.Entry<Integer, Pair<NodeStatistics, NodeStatistics>> entry :
-        changes.entrySet()) {
+        event.getDifferentNodeStatisticsMap().entrySet()) {
       final Integer nodeId = entry.getKey();
-      final Pair<NodeStatistics, NodeStatistics> changeEvent = entry.getValue();
-      if (!datanodeIds.contains(nodeId)) {
-        continue;
-      }
-      if (changeEvent.getLeft() == null) {
-        continue;
-      }
-
-      final Set<Pair<Integer, Integer>> affectedPairs =
-          heartbeats.keySet().stream()
-              .filter(
-                  pair ->
-                      Objects.equals(pair.getLeft(), nodeId)
-                          || Objects.equals(pair.getRight(), nodeId))
-              .collect(Collectors.toSet());
-
-      if (changeEvent.getRight() == null) {
-        affectedPairs.forEach(heartbeats::remove);
-      } else {
-        if (NodeStatus.Unknown.equals(changeEvent.getLeft().getStatus())
-            && NodeStatus.Running.equals(changeEvent.getRight().getStatus())) {
-          affectedPairs.forEach(pair -> heartbeats.put(pair, new ArrayList<>()));
-          awaitForSignal.signal();
-        }
+      final Pair<NodeStatistics, NodeStatistics> change = entry.getValue();
+      if (change.getRight() == null || NodeStatus.Removing.equals(change.getRight().getStatus())) {
+        heartbeats
+            .keySet()
+            .removeIf(
+                pair ->
+                    Objects.equals(pair.getLeft(), nodeId)
+                        || Objects.equals(pair.getRight(), nodeId));
+        lastPushedTopology.remove(nodeId);
       }
     }
   }

@@ -43,6 +43,7 @@ import org.apache.iotdb.confignode.client.async.handlers.rpc.PipeHeartbeatRPCHan
 import org.apache.iotdb.confignode.client.async.handlers.rpc.PipePushMetaRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.SchemaUpdateRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.SubmitTestConnectionTaskRPCHandler;
+import org.apache.iotdb.confignode.client.async.handlers.rpc.TopologyPushRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.TransferLeaderRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.TreeDeviceViewFieldDetectionHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.subscription.CheckSchemaRegionUsingTemplateRPCHandler;
@@ -64,6 +65,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TCreateFunctionInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreatePipePluginInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateSchemaRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateTriggerInstanceReq;
+import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeactivateTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteColumnDataReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteDataForDeleteSchemaReq;
@@ -407,6 +409,11 @@ public class CnToDnInternalServiceAsyncRequestManager
         CnToDnAsyncRequestType.TEST_CONNECTION,
         (req, client, handler) ->
             client.testConnectionEmptyRPC((DataNodeTSStatusRPCHandler) handler));
+    actionMapBuilder.put(
+        CnToDnAsyncRequestType.PUSH_TOPOLOGY,
+        (req, client, handler) ->
+            client.getDataNodeHeartBeat(
+                (TDataNodeHeartbeatReq) req, (TopologyPushRPCHandler) handler));
     actionMapBuilder.put(
         CnToDnAsyncRequestType.INSERT_RECORD,
         (req, client, handler) ->
