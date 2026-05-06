@@ -30,7 +30,6 @@ import javax.annotation.concurrent.ThreadSafe;
 
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.apache.iotdb.commons.schema.SchemaConstant.NON_TEMPLATE;
@@ -94,15 +93,14 @@ public class DeviceCacheEntry {
   }
 
   int invalidateSchema() {
-    final AtomicInteger size = new AtomicInteger(0);
-    deviceSchema.updateAndGet(
-        schema -> {
-          if (Objects.nonNull(schema)) {
-            size.set(schema.estimateSize());
-          }
-          return null;
-        });
-    return size.get();
+    IDeviceSchema schema;
+    do {
+      schema = deviceSchema.get();
+      if (Objects.isNull(schema)) {
+        return 0;
+      }
+    } while (!deviceSchema.compareAndSet(schema, null));
+    return schema.estimateSize();
   }
 
   /////////////////////////////// Last Cache ///////////////////////////////
@@ -150,15 +148,14 @@ public class DeviceCacheEntry {
   }
 
   int invalidateLastCache() {
-    final AtomicInteger size = new AtomicInteger(0);
-    lastCache.updateAndGet(
-        cacheEntry -> {
-          if (Objects.nonNull(cacheEntry)) {
-            size.set(cacheEntry.estimateSize());
-          }
-          return null;
-        });
-    return size.get();
+    DeviceLastCache cacheEntry;
+    do {
+      cacheEntry = lastCache.get();
+      if (Objects.isNull(cacheEntry)) {
+        return 0;
+      }
+    } while (!lastCache.compareAndSet(cacheEntry, null));
+    return cacheEntry.estimateSize();
   }
 
   /////////////////////////////// Management ///////////////////////////////
