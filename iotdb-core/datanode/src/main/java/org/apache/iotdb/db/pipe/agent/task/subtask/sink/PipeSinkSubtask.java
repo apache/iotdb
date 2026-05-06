@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.sink.protocol.IoTDBSink;
 import org.apache.iotdb.commons.pipe.sink.protocol.PipeBatchMetricsSettable;
+import org.apache.iotdb.commons.pipe.sink.protocol.PipeConnectorWithEventDiscard;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.commons.utils.ErrorHandlingCommonUtils;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
@@ -199,9 +200,10 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
    * When a pipe is dropped, the connector maybe reused and will not be closed. So we just discard
    * its queued events in the output pipe connector.
    */
-  public void discardEventsOfPipe(final String pipeNameToDrop, int regionId) {
+  public void discardEventsOfPipe(
+      final String pipeNameToDrop, final long creationTimeToDrop, final int regionId) {
     // Try to remove the events as much as possible
-    inputPendingQueue.discardEventsOfPipe(pipeNameToDrop, regionId);
+    inputPendingQueue.discardEventsOfPipe(pipeNameToDrop, creationTimeToDrop, regionId);
 
     try {
       increaseHighPriorityTaskCount();
@@ -215,6 +217,7 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
         // will.
         if (lastEvent instanceof EnrichedEvent
             && pipeNameToDrop.equals(((EnrichedEvent) lastEvent).getPipeName())
+            && creationTimeToDrop == ((EnrichedEvent) lastEvent).getCreationTime()
             && regionId == ((EnrichedEvent) lastEvent).getRegionId()) {
           // Do not clear the last event's reference counts because it may be on transferring
           lastEvent = null;
@@ -238,6 +241,7 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
         // "nonnull" detection.
         if (lastExceptionEvent instanceof EnrichedEvent
             && pipeNameToDrop.equals(((EnrichedEvent) lastExceptionEvent).getPipeName())
+            && creationTimeToDrop == ((EnrichedEvent) lastExceptionEvent).getCreationTime()
             && regionId == ((EnrichedEvent) lastExceptionEvent).getRegionId()) {
           clearReferenceCountAndReleaseLastExceptionEvent();
         }
@@ -246,8 +250,9 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
       decreaseHighPriorityTaskCount();
     }
 
-    if (outputPipeSink instanceof IoTDBSink) {
-      ((IoTDBSink) outputPipeSink).discardEventsOfPipe(pipeNameToDrop, regionId);
+    if (outputPipeSink instanceof PipeConnectorWithEventDiscard) {
+      ((PipeConnectorWithEventDiscard) outputPipeSink)
+          .discardEventsOfPipe(pipeNameToDrop, creationTimeToDrop, regionId);
     }
   }
 
