@@ -1101,10 +1101,6 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     return composeTimeValuePair(measurementIndex, lastIdx);
   }
 
-  public TimeValuePair composeLastTimeValuePair(int measurementIndex) {
-    return composeLastTimeValuePair(measurementIndex, 0, rowCount);
-  }
-
   protected TimeValuePair composeLastTimeValuePair(
       final int measurementIndex,
       final TSStatus[] results,
