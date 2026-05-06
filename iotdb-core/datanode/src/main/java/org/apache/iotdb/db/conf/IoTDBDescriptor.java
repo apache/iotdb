@@ -291,11 +291,23 @@ public class IoTDBDescriptor {
                 "dn_max_client_count_for_each_node_in_client_manager",
                 String.valueOf(conf.getMaxClientNumForEachNode()))));
 
-    conf.setSelectorNumOfClientManager(
+    int dnMaxIdleClientNumForEachNode =
+        Integer.parseInt(
+            properties.getProperty(
+                "dn_max_idle_client_count_for_each_node_in_client_manager",
+                String.valueOf(conf.getMaxIdleClientNumForEachNode())));
+    if (dnMaxIdleClientNumForEachNode >= 0) {
+      conf.setMaxIdleClientNumForEachNode(dnMaxIdleClientNumForEachNode);
+    }
+
+    int dnSelectorNumOfClientManager =
         Integer.parseInt(
             properties.getProperty(
                 "dn_selector_thread_nums_of_client_manager",
-                String.valueOf(conf.getSelectorNumOfClientManager()))));
+                String.valueOf(conf.getSelectorNumOfClientManager())));
+    if (dnSelectorNumOfClientManager > 0) {
+      conf.setSelectorNumOfClientManager(dnSelectorNumOfClientManager);
+    }
 
     conf.setRpcPort(
         Integer.parseInt(
