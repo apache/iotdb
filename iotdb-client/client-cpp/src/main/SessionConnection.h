@@ -255,11 +255,7 @@ void SessionConnection::callWithRetryAndVerifyWithRedirection(std::function<T()>
   }
 
   if (result.getException()) {
-    try {
-      std::rethrow_exception(result.getException());
-    } catch (const std::exception& e) {
-      throw IoTDBConnectionException(e.what());
-    }
+    throw IoTDBConnectionException(extractExceptionMessage(result.getException()));
   }
 }
 
@@ -274,11 +270,7 @@ void SessionConnection::callWithRetryAndVerifyWithRedirectionForMultipleDevices(
     RpcUtils::verifySuccess(status);
   }
   if (result.getException()) {
-    try {
-      std::rethrow_exception(result.getException());
-    } catch (const std::exception& e) {
-      throw IoTDBConnectionException(e.what());
-    }
+    throw IoTDBConnectionException(extractExceptionMessage(result.getException()));
   }
   result.exception = nullptr;
 }
@@ -289,11 +281,7 @@ SessionConnection::callWithRetryAndVerify(std::function<T()> rpc) {
   auto result = callWithRetry<T>(rpc);
   RpcUtils::verifySuccess(result.getResult());
   if (result.getException()) {
-    try {
-      std::rethrow_exception(result.getException());
-    } catch (const std::exception& e) {
-      throw IoTDBConnectionException(e.what());
-    }
+    throw IoTDBConnectionException(extractExceptionMessage(result.getException()));
   }
   return result;
 }
