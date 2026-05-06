@@ -118,7 +118,6 @@ public class PipeTaskCoordinator {
     return status;
   }
 
-
   /** Caller should ensure that the method is called in the lock {@link #lock()}. */
   private TSStatus stopPipe(String pipeName) {
     final TSStatus status = configManager.getProcedureManager().stopPipe(pipeName);
