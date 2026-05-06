@@ -140,8 +140,20 @@ public class IoTDBPipeAutoSplitIT extends AbstractPipeDualTreeModelAutoIT {
             "insert into root.test.device(time, field) values(0,1),(1,2)",
             "delete from root.test.device.* where time == 0",
             String.format(
-                "create pipe a2b with source ('inclusion'='all') with sink ('node-urls'='%s')",
+                "create pipe a2b with source ('inclusion'='all') with sink "
+                    + "('node-urls'='%s', 'enable-send-tsfile-limit'='false')",
                 receiverDataNode.getIpAndPortString())));
+
+    try (final SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+      final List<TShowPipeInfo> showPipeResult =
+          client.showPipe(new TShowPipeReq().setUserName(SessionConfig.DEFAULT_USER)).pipeInfoList;
+      showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
+      Assert.assertTrue(
+          showPipeResult.stream()
+              .filter(i -> Objects.equals(i.id, "a2b_history"))
+              .anyMatch(i -> i.pipeConnector.contains("enable-send-tsfile-limit=false")));
+    }
 
     TestUtils.assertDataEventuallyOnEnv(
         receiverEnv,
