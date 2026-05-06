@@ -22,6 +22,7 @@ package org.apache.iotdb.confignode.manager.load.service;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TNodeLocations;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TTestConnectionResp;
 import org.apache.iotdb.common.rpc.thrift.TTestConnectionResult;
 import org.apache.iotdb.commons.cluster.NodeStatus;
@@ -41,8 +42,7 @@ import org.apache.iotdb.confignode.manager.load.cache.node.NodeHeartbeatSample;
 import org.apache.iotdb.confignode.manager.load.cache.node.NodeStatistics;
 import org.apache.iotdb.confignode.manager.load.subscriber.IClusterStatusSubscriber;
 import org.apache.iotdb.confignode.manager.load.subscriber.NodeStatisticsChangeEvent;
-import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatReq;
-import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatResp;
+import org.apache.iotdb.mpp.rpc.thrift.TUpdateClusterTopologyReq;
 
 import org.apache.ratis.util.AwaitForSignal;
 import org.apache.tsfile.utils.Pair;
@@ -307,17 +307,15 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
       return;
     }
 
-    final DataNodeAsyncRequestContext<TDataNodeHeartbeatReq, TDataNodeHeartbeatResp> context =
+    final DataNodeAsyncRequestContext<TUpdateClusterTopologyReq, TSStatus> context =
         new DataNodeAsyncRequestContext<>(CnToDnAsyncRequestType.PUSH_TOPOLOGY, targetMap);
     for (final Map.Entry<Integer, TDataNodeLocation> entry : targetMap.entrySet()) {
       final int nodeId = entry.getKey();
       final Set<Integer> reachableSet = latestTopology.getOrDefault(nodeId, Collections.emptySet());
       final Map<Integer, Set<Integer>> perNodeTopology = new HashMap<>();
       perNodeTopology.put(nodeId, new HashSet<>(reachableSet));
-      final TDataNodeHeartbeatReq req =
-          new TDataNodeHeartbeatReq(System.nanoTime(), false, false, 0L, 0L);
-      req.setTopology(perNodeTopology);
-      req.setDataNodes(dataNodesMap);
+      final TUpdateClusterTopologyReq req =
+          new TUpdateClusterTopologyReq(dataNodesMap, perNodeTopology);
       context.putRequest(nodeId, req);
     }
 

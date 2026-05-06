@@ -203,13 +203,6 @@ public abstract class DataNodeAsyncRequestRPCHandler<Response>
             (Map<Integer, TExternalServiceListResp>) responseMap,
             countDownLatch);
       case PUSH_TOPOLOGY:
-        return new TopologyPushRPCHandler(
-            requestType,
-            requestId,
-            targetDataNode,
-            dataNodeLocationMap,
-            (Map<Integer, TDataNodeHeartbeatResp>) responseMap,
-            countDownLatch);
       case SET_TTL:
       case CREATE_DATA_REGION:
       case CREATE_SCHEMA_REGION:

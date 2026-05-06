@@ -320,6 +320,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TTableDeviceDeletionWithPatternAndFilterR
 import org.apache.iotdb.mpp.rpc.thrift.TTableDeviceDeletionWithPatternOrModReq;
 import org.apache.iotdb.mpp.rpc.thrift.TTableDeviceInvalidateCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TTsFilePieceReq;
+import org.apache.iotdb.mpp.rpc.thrift.TUpdateClusterTopologyReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTableReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTriggerLocationReq;
@@ -2190,6 +2191,12 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
+  @Override
+  public TSStatus updateClusterTopology(TUpdateClusterTopologyReq req) throws TException {
+    clusterTopology.updateTopology(req.getDataNodes(), req.getTopology());
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  }
+
   private PathPatternTree filterPathPatternTree(PathPatternTree patternTree, String database) {
     PathPatternTree filteredPatternTree = new PathPatternTree();
     try {
@@ -2282,10 +2289,6 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
           .updateConfigNodeList(new ArrayList<>(req.getConfigNodeEndPoints()))) {
         resp.setConfirmedConfigNodeEndPoints(req.getConfigNodeEndPoints());
       }
-    }
-
-    if (req.isSetTopology() && req.isSetDataNodes()) {
-      clusterTopology.updateTopology(req.getDataNodes(), req.getTopology());
     }
 
     if (req.isSetCurrentRegionOperations()) {
