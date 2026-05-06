@@ -29,14 +29,12 @@ public abstract class DataNodeInternalServiceRequestManager<RequestType>
     extends AsyncRequestManager<
         RequestType, TDataNodeLocation, AsyncDataNodeInternalServiceClient> {
 
-  private final int selectorNumOfAsyncClientManager;
-
   protected DataNodeInternalServiceRequestManager(int selectorNumOfAsyncClientManager) {
-    this.selectorNumOfAsyncClientManager = selectorNumOfAsyncClientManager;
+    super(selectorNumOfAsyncClientManager);
   }
 
   @Override
-  protected void initClientManager() {
+  protected void initClientManager(int selectorNumOfAsyncClientManager) {
     clientManager =
         new IClientManager.Factory<TEndPoint, AsyncDataNodeInternalServiceClient>()
             .createClientManager(
