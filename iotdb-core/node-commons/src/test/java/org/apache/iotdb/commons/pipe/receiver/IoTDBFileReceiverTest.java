@@ -20,10 +20,12 @@
 package org.apache.iotdb.commons.pipe.receiver;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeRequestType;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferFileSealReqV1;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferFileSealReqV2;
+import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferHandshakeV1Req;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
@@ -33,6 +35,8 @@ import org.junit.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.RandomAccessFile;
+import java.lang.reflect.Field;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
@@ -86,14 +90,84 @@ public class IoTDBFileReceiverTest {
     }
   }
 
+  @Test
+  public void testHandshakeResetsWritingFileState() throws Exception {
+    final Path baseDir = Files.createTempDirectory("iotdb-file-receiver-test");
+    final DummyFileReceiver receiver = new DummyFileReceiver(baseDir.toFile());
+    try {
+      receiver.handshake();
+      receiver.createWritingFile("normal.tsfile", true);
+      receiver.writeToCurrentWritingFile(new byte[] {1, 2, 3});
+
+      final File oldReceiverDir = receiver.getCurrentReceiverDir();
+      Assert.assertNotNull(receiver.getCurrentWritingFile());
+      Assert.assertNotNull(receiver.getCurrentWritingFileWriter());
+
+      receiver.handshake();
+
+      Assert.assertFalse(oldReceiverDir.exists());
+      Assert.assertNull(receiver.getCurrentWritingFile());
+      Assert.assertNull(receiver.getCurrentWritingFileWriter());
+      Assert.assertNotEquals(
+          oldReceiverDir.getAbsolutePath(), receiver.getCurrentReceiverDir().getAbsolutePath());
+    } finally {
+      receiver.handleExit();
+    }
+  }
+
+  @Test
+  public void testSealFileV1FailureDeletesTransferredFile() throws Exception {
+    final Path baseDir = Files.createTempDirectory("iotdb-file-receiver-test");
+    final DummyFileReceiver receiver = new DummyFileReceiver(baseDir.toFile());
+    try {
+      receiver.createWritingFile("normal.tsfile", true);
+      receiver.writeToCurrentWritingFile(new byte[] {1, 2, 3});
+      receiver.setLoadFileV1Status(
+          new TSStatus(TSStatusCode.PIPE_TRANSFER_FILE_ERROR.getStatusCode()));
+
+      final File transferredFile = receiver.getWritingFileInBaseDir("normal.tsfile");
+      final TPipeTransferResp response = receiver.sealFileV1("normal.tsfile", 3L);
+
+      Assert.assertEquals(
+          TSStatusCode.PIPE_TRANSFER_FILE_ERROR.getStatusCode(), response.getStatus().getCode());
+      Assert.assertFalse(transferredFile.exists());
+      Assert.assertNull(receiver.getCurrentWritingFile());
+      Assert.assertNull(receiver.getCurrentWritingFileWriter());
+    } finally {
+      receiver.handleExit();
+    }
+  }
+
   private static class DummyFileReceiver extends IoTDBFileReceiver {
 
+    private final File receiverFileBaseDir;
+    private TSStatus loadFileV1Status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+
     DummyFileReceiver(final File baseDir) {
+      receiverFileBaseDir = baseDir;
       receiverFileDirWithIdSuffix.set(baseDir);
     }
 
     void createWritingFile(final String fileName, final boolean isSingleFile) throws IOException {
       updateWritingFileIfNeeded(fileName, isSingleFile);
+    }
+
+    void handshake() throws IOException {
+      handleTransferHandshakeV1(
+          DummyHandshakeReq.toTPipeTransferReq(
+              CommonDescriptor.getInstance().getConfig().getTimestampPrecision()));
+    }
+
+    void writeToCurrentWritingFile(final byte[] bytes) throws Exception {
+      getCurrentWritingFileWriter().write(bytes);
+    }
+
+    void setLoadFileV1Status(final TSStatus status) {
+      loadFileV1Status = status;
+    }
+
+    TPipeTransferResp sealFileV1(final String fileName, final long fileLength) throws IOException {
+      return handleTransferFileSealV1(DummyFileSealReqV1.toTPipeTransferReq(fileName, fileLength));
     }
 
     TPipeTransferResp sealFiles(final List<String> fileNames, final List<Long> fileLengths)
@@ -106,9 +180,27 @@ public class IoTDBFileReceiverTest {
       return receiverFileDirWithIdSuffix.get().toPath().resolve(fileName).toFile();
     }
 
+    File getCurrentReceiverDir() {
+      return receiverFileDirWithIdSuffix.get();
+    }
+
+    File getCurrentWritingFile() throws Exception {
+      return (File) getField("writingFile").get(this);
+    }
+
+    RandomAccessFile getCurrentWritingFileWriter() throws Exception {
+      return (RandomAccessFile) getField("writingFileWriter").get(this);
+    }
+
+    private Field getField(final String fieldName) throws NoSuchFieldException {
+      final Field field = IoTDBFileReceiver.class.getDeclaredField(fieldName);
+      field.setAccessible(true);
+      return field;
+    }
+
     @Override
     protected String getReceiverFileBaseDir() {
-      return receiverFileDirWithIdSuffix.get().getAbsolutePath();
+      return receiverFileBaseDir.getAbsolutePath();
     }
 
     @Override
@@ -139,7 +231,7 @@ public class IoTDBFileReceiverTest {
     @Override
     protected TSStatus loadFileV1(
         final PipeTransferFileSealReqV1 req, final String fileAbsolutePath) {
-      return new TSStatus(200);
+      return loadFileV1Status;
     }
 
     @Override
@@ -157,6 +249,34 @@ public class IoTDBFileReceiverTest {
     @Override
     public TPipeTransferResp receive(TPipeTransferReq req) {
       return null;
+    }
+  }
+
+  private static class DummyHandshakeReq extends PipeTransferHandshakeV1Req {
+
+    static DummyHandshakeReq toTPipeTransferReq(final String timestampPrecision)
+        throws IOException {
+      return (DummyHandshakeReq)
+          new DummyHandshakeReq().convertToTPipeTransferReq(timestampPrecision);
+    }
+
+    @Override
+    protected PipeRequestType getPlanType() {
+      return PipeRequestType.HANDSHAKE_DATANODE_V1;
+    }
+  }
+
+  private static class DummyFileSealReqV1 extends PipeTransferFileSealReqV1 {
+
+    static DummyFileSealReqV1 toTPipeTransferReq(final String fileName, final long fileLength)
+        throws IOException {
+      return (DummyFileSealReqV1)
+          new DummyFileSealReqV1().convertToTPipeTransferReq(fileName, fileLength);
+    }
+
+    @Override
+    protected PipeRequestType getPlanType() {
+      return PipeRequestType.TRANSFER_TS_FILE_SEAL;
     }
   }
 
