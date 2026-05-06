@@ -377,7 +377,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
   ///////////////////////// Heartbeat /////////////////////////
 
   public void collectPipeMetaList(final TDataNodeHeartbeatResp resp) throws TException {
-    if (!tryReadLockWithTimeOut(
+    if (!tryReadLockWithTimeOutInMs(
         CommonDescriptor.getInstance().getConfig().getDnConnectionTimeoutInMS() * 2L / 3)) {
       return;
     }
