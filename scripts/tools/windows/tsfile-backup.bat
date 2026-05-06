@@ -38,12 +38,12 @@ if NOT DEFINED JAVA_HOME goto :err_java
 
 @REM Automatically scan and locate the plugin JAR (no delayed expansion required)
 set "PLUGIN_JAR="
-for %%f in ("%TOOL_ROOT%\lib\tsfile-remote-sink-*-jar-with-dependencies.jar") do (
+for %%f in ("%TOOL_ROOT%\ext\pipe\tsfile-remote-sink-*-jar-with-dependencies.jar") do (
     set "PLUGIN_JAR=%%f"
 )
 
 if "%PLUGIN_JAR%"=="" (
-    echo [ERROR] tsfile-remote-sink plugin JAR not found under %TOOL_ROOT%\lib\
+    echo [ERROR] tsfile-remote-sink plugin JAR not found under %TOOL_ROOT%\ext\pipe\
     set ret_code=1
     goto finally
 )

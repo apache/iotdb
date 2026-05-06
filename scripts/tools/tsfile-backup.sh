@@ -31,8 +31,8 @@ fi
 
 TOOL_ROOT="$(cd "$(dirname "$0")/.."; pwd)"
 PLUGIN_JAR=""
-if [ -d "$TOOL_ROOT/lib" ]; then
-  for f in "$TOOL_ROOT/lib"/tsfile-remote-sink-*-jar-with-dependencies.jar; do
+if [ -d "$TOOL_ROOT/ext/pipe" ]; then
+  for f in "$TOOL_ROOT/ext/pipe"/tsfile-remote-sink-*-jar-with-dependencies.jar; do
     if [ -f "$f" ]; then
       PLUGIN_JAR="$f"
       break
@@ -46,7 +46,7 @@ if [ -z "${IOTDB_HOME}" ]; then
 fi
 
 if [ -z "$PLUGIN_JAR" ] || [ ! -f "$PLUGIN_JAR" ]; then
-  echo "[ERROR] tsfile-remote-sink plugin JAR not found under $TOOL_ROOT/lib/." >&2
+  echo "[ERROR] tsfile-remote-sink plugin JAR not found under $TOOL_ROOT/ext/pipe/." >&2
   echo "        Use this script from the tsfile-backup distribution, or set TSFILE_REMOTE_SINK_JAR / --plugin_jar." >&2
   exit 1
 fi
