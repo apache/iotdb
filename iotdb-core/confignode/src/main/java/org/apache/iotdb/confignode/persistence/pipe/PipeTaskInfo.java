@@ -843,6 +843,14 @@ public class PipeTaskInfo implements SnapshotProcessor {
                   final PipeRuntimeMeta runtimeMeta =
                       pipeMetaKeeper.getPipeMeta(message.getPipeName()).getRuntimeMeta();
 
+                  // Keep user-stopped pipes out of the auto-restart flow. Otherwise, a failed
+                  // STOPPED meta sync can turn a manually stopped pipe into a runtime-stopped one
+                  // and the next PipeMetaSyncer round will restart it automatically.
+                  if (PipeStatus.STOPPED.equals(runtimeMeta.getStatus().get())
+                      && !runtimeMeta.getIsStoppedByRuntimeException()) {
+                    return;
+                  }
+
                   // Mark the status of the pipe with exception as stopped
                   runtimeMeta.getStatus().set(PipeStatus.STOPPED);
                   runtimeMeta.setIsStoppedByRuntimeException(true);
