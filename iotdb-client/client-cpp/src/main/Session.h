@@ -1066,19 +1066,19 @@ void Session::insertOnce(std::unordered_map<std::shared_ptr<SessionConnection>, 
   auto req = insertGroup.begin()->second;
   try {
     insertConsumer(connection, req);
-  } catch (RedirectException e) {
+  } catch (const RedirectException& e) {
     for (const auto& deviceEndPoint : e.deviceEndPointMap) {
       handleRedirection(deviceEndPoint.first, deviceEndPoint.second);
     }
-  } catch (IoTDBConnectionException e) {
+  } catch (const IoTDBConnectionException& e) {
     if (endPointToSessionConnection.size() > 1) {
       removeBrokenSessionConnection(connection);
       try {
         insertConsumer(defaultSessionConnection_, req);
-      } catch (RedirectException e) {
+      } catch (const RedirectException& e) {
       }
     } else {
-      throw e;
+      throw;
     }
   }
 }

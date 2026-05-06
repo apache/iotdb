@@ -19,6 +19,31 @@
 
 #include "Common.h"
 #include <boost/date_time/gregorian/gregorian.hpp>
+#include <typeinfo>
+
+std::string extractExceptionMessage(const std::exception& exception) {
+  const char* what = exception.what();
+  if (what != nullptr) {
+    std::string message(what);
+    if (!message.empty() && message != "std::exception") {
+      return message;
+    }
+  }
+  return std::string("Unhandled exception type: ") + typeid(exception).name();
+}
+
+std::string extractExceptionMessage(const std::exception_ptr& exceptionPtr) {
+  if (exceptionPtr == nullptr) {
+    return "Unknown exception";
+  }
+  try {
+    std::rethrow_exception(exceptionPtr);
+  } catch (const std::exception& exception) {
+    return extractExceptionMessage(exception);
+  } catch (...) {
+    return "Unknown non-std exception";
+  }
+}
 
 int32_t parseDateExpressionToInt(const boost::gregorian::date& date) {
   if (date.is_not_a_date()) {
