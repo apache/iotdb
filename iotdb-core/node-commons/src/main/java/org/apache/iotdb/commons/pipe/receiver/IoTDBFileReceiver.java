@@ -126,6 +126,10 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
             String.format(
                 "Pipe-Receiver-%s-%s:%s", receiverId.get(), getSenderHost(), getSenderPort()));
 
+    // Handshake restarts the transfer session. Reset the current writing state before recycling the
+    // old receiver dir, otherwise the old file handle can survive across handshakes.
+    resetCurrentWritingFileState();
+
     // Clear the original receiver file dir if exists
     if (receiverFileDirWithIdSuffix.get() != null) {
       if (receiverFileDirWithIdSuffix.get().exists()) {
@@ -547,6 +551,11 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
     }
   }
 
+  private void resetCurrentWritingFileState() {
+    closeCurrentWritingFileWriter(false);
+    writingFile = null;
+  }
+
   private void deleteFile(final File file) {
     if (file.exists()) {
       try {
@@ -589,6 +598,8 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
   }
 
   protected final TPipeTransferResp handleTransferFileSealV1(final PipeTransferFileSealReqV1 req) {
+    File sealedWritingFile = null;
+    boolean shouldDeleteSealedFile = true;
     try {
       if (!isWritingFileAvailable()) {
         final TSStatus status =
@@ -605,7 +616,8 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
         return resp;
       }
 
-      final String fileAbsolutePath = writingFile.getAbsolutePath();
+      sealedWritingFile = writingFile;
+      final String fileAbsolutePath = sealedWritingFile.getAbsolutePath();
 
       // Sync here is necessary to ensure that the data is written to the disk. Or data region may
       // load the file before the data is written to the disk and cause unexpected behavior after
@@ -624,11 +636,13 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       writingFileWriter.close();
       writingFileWriter = null;
 
-      // writingFile will be deleted after load if no exception occurs
+      // Clear the reference before loading so the next file transfer can not reuse the same path.
+      // The loader owns cleanup after a successful load.
       writingFile = null;
 
       final TSStatus status = loadFileV1(req, fileAbsolutePath);
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        shouldDeleteSealedFile = false;
         LOGGER.info(
             "Receiver id = {}: Seal file {} successfully.", receiverId.get(), fileAbsolutePath);
       } else {
@@ -657,7 +671,13 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       // All pieces of the writing file and its mod (if exists) should be retransmitted by the
       // sender.
       closeCurrentWritingFileWriter(false);
-      deleteCurrentWritingFile();
+      if (shouldDeleteSealedFile) {
+        if (writingFile != null) {
+          deleteCurrentWritingFile();
+        } else if (sealedWritingFile != null) {
+          deleteFile(sealedWritingFile);
+        }
+      }
     }
   }
 
