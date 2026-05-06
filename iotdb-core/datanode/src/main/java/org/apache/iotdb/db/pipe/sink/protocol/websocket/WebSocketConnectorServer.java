@@ -369,8 +369,6 @@ public class WebSocketConnectorServer extends WebSocketServer {
     synchronized (queue) {
       queue.put(new EventWaitingForTransfer(eventIdGenerator.incrementAndGet(), connector, event));
     }
-
-    queue.put(new EventWaitingForTransfer(eventIdGenerator.incrementAndGet(), connector, event));
   }
 
   private class TransferThread extends Thread {
