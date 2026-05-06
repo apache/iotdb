@@ -1370,21 +1370,14 @@ public class DataRegion implements IDataRegionForQuery {
   private List<TsFileProcessor> insertRowsWithTypeConsistencyCheck(
       TsFileProcessor tsFileProcessor, InsertRowsNode subInsertRowsNode, long[] costsForMetrics)
       throws WriteProcessException {
-    try {
-      tsFileProcessor.insertRows(subInsertRowsNode, costsForMetrics);
-      return Collections.singletonList(tsFileProcessor);
-    } catch (DataTypeInconsistentException e) {
-      InsertRowNode firstRow = subInsertRowsNode.getInsertRowNodeList().get(0);
-      long timePartitionId = TimePartitionUtils.getTimePartitionId(firstRow.getTime());
-      // flush both MemTables so that the new type can be inserted into a new MemTable
-      flushWorkingProcessorsForTimePartition(timePartitionId);
-      return retryInsertRowsAfterFlush(subInsertRowsNode, timePartitionId, costsForMetrics);
-    }
+    tsFileProcessor.insert(subInsertRowsNode, costsForMetrics);
+    return Collections.singletonList(tsFileProcessor);
   }
 
   private InsertRowsNode createGroupedInsertRowsNode(
       final InsertRowsNode sourceInsertRowsNode, final InsertRowNode firstInsertRowNode) {
-    final InsertRowsNode groupedInsertRowsNode = sourceInsertRowsNode.emptyClone();
+    final InsertRowsNode groupedInsertRowsNode =
+        new InsertRowsNode(sourceInsertRowsNode.getPlanNodeId());
     initializeGroupedInsertRowsNode(groupedInsertRowsNode, firstInsertRowNode);
     return groupedInsertRowsNode;
   }
@@ -1461,7 +1454,7 @@ public class DataRegion implements IDataRegionForQuery {
     final List<TsFileProcessor> insertedProcessors = new ArrayList<>(retriedProcessorMap.size());
     for (Entry<TsFileProcessor, InsertRowsNode> retriedEntry : retriedProcessorMap.entrySet()) {
       final TsFileProcessor retriedProcessor = retriedEntry.getKey();
-      retriedProcessor.insertRows(retriedEntry.getValue(), costsForMetrics);
+      retriedProcessor.insert(retriedEntry.getValue(), costsForMetrics);
       insertedProcessors.add(retriedProcessor);
     }
     return insertedProcessors;

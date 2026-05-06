@@ -1017,7 +1017,7 @@ public class DataRegionTest {
     final TsFileProcessor processor = Mockito.mock(TsFileProcessor.class);
     Mockito.doThrow(new WriteProcessException("mock insert rows failure"))
         .when(processor)
-        .insertRows(any(InsertRowsNode.class), any(long[].class));
+        .insert(any(InsertRowsNode.class), any(long[].class));
     Mockito.when(processor.shouldFlush()).thenReturn(false);
     Mockito.when(processor.isSequence()).thenReturn(true);
     dataRegion1.setTsFileProcessorSupplier((timePartitionId, sequence) -> processor);
