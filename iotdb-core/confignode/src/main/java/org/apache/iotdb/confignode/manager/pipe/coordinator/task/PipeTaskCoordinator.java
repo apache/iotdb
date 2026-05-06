@@ -119,7 +119,7 @@ public class PipeTaskCoordinator {
   }
 
   /** Caller should ensure that the method is called in the lock {@link #lock()}. */
-  private TSStatus stopPipe(String pipeName) {
+  public TSStatus stopPipe(String pipeName) {
     final TSStatus status = configManager.getProcedureManager().stopPipe(pipeName);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.warn("Failed to stop pipe {}. Result status: {}.", pipeName, status);
