@@ -760,12 +760,12 @@ public class ConfigPlanExecutor {
     return result.get();
   }
 
-  public void loadSnapshot(final File latestSnapshotRootDir) {
+  public boolean loadSnapshot(final File latestSnapshotRootDir) {
     if (!latestSnapshotRootDir.exists()) {
       LOGGER.error(
           "snapshot directory [{}] is not exist, can not load snapshot with this directory.",
           latestSnapshotRootDir.getAbsolutePath());
-      return;
+      return false;
     }
 
     final AtomicBoolean result = new AtomicBoolean(true);
@@ -793,6 +793,7 @@ public class ConfigPlanExecutor {
           "[ConfigNodeSnapshot] Load snapshot success, latestSnapshotRootDir: {}",
           latestSnapshotRootDir);
     }
+    return result.get();
   }
 
   private DataSet getSchemaNodeManagementPartition(ConfigPhysicalPlan req) {

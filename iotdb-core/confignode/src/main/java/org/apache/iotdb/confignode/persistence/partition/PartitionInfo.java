@@ -243,7 +243,9 @@ public class PartitionInfo implements SnapshotProcessor {
    */
   public TSStatus pollRegionMaintainTask() {
     synchronized (regionMaintainTaskList) {
-      regionMaintainTaskList.remove(0);
+      if (!regionMaintainTaskList.isEmpty()) {
+        regionMaintainTaskList.remove(0);
+      }
       return RpcUtils.SUCCESS_STATUS;
     }
   }
@@ -1008,9 +1010,14 @@ public class PartitionInfo implements SnapshotProcessor {
         databasePartitionTableEntry.getValue().serialize(bufferedOutputStream, protocol);
       }
 
+      final List<RegionMaintainTask> copiedRegionMaintainTaskList;
+      synchronized (regionMaintainTaskList) {
+        copiedRegionMaintainTaskList = new ArrayList<>(regionMaintainTaskList);
+      }
+
       // serialize regionCleanList
-      ReadWriteIOUtils.write(regionMaintainTaskList.size(), bufferedOutputStream);
-      for (RegionMaintainTask task : regionMaintainTaskList) {
+      ReadWriteIOUtils.write(copiedRegionMaintainTaskList.size(), bufferedOutputStream);
+      for (RegionMaintainTask task : copiedRegionMaintainTaskList) {
         task.serialize(bufferedOutputStream, protocol);
       }
 
