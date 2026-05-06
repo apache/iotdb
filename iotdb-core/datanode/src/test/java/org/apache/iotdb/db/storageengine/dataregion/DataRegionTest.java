@@ -38,8 +38,8 @@ import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.WriteProcessRejectException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.common.QueryId;
-import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeSchemaCache;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeSchemaCache;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
@@ -94,13 +94,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
 
-import static org.apache.iotdb.db.queryengine.plan.statement.StatementTestUtils.genInsertRowNode;
-import static org.apache.iotdb.db.queryengine.plan.statement.StatementTestUtils.genInsertTabletNode;
-import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 
@@ -1079,7 +1073,8 @@ public class DataRegionTest {
             measurementId,
             new MeasurementSchema(
                 measurementId, TSDataType.INT32, TSEncoding.PLAIN, CompressionType.UNCOMPRESSED));
-    DataNodeSchemaCache.getInstance().declareLastCache(dataRegion1.getDatabaseName(), lastCachePath);
+    DataNodeSchemaCache.getInstance()
+        .declareLastCache(dataRegion1.getDatabaseName(), lastCachePath);
 
     final List<Integer> indexList = Arrays.asList(0, 1);
     final List<InsertRowNode> nodes = new ArrayList<>();
@@ -1098,8 +1093,7 @@ public class DataRegionTest {
       dataRegion1.insert(insertRowsNode);
       Assert.fail("Expected BatchProcessException");
     } catch (BatchProcessException e) {
-      final TimeValuePair lastCache =
-          DataNodeSchemaCache.getInstance().getLastCache(lastCachePath);
+      final TimeValuePair lastCache = DataNodeSchemaCache.getInstance().getLastCache(lastCachePath);
       Assert.assertNotNull(lastCache);
       Assert.assertEquals(1, lastCache.getTimestamp());
       Assert.assertEquals(10, lastCache.getValue().getInt());
@@ -1137,7 +1131,8 @@ public class DataRegionTest {
             measurementId,
             new MeasurementSchema(
                 measurementId, TSDataType.INT32, TSEncoding.PLAIN, CompressionType.UNCOMPRESSED));
-    DataNodeSchemaCache.getInstance().declareLastCache(dataRegion1.getDatabaseName(), lastCachePath);
+    DataNodeSchemaCache.getInstance()
+        .declareLastCache(dataRegion1.getDatabaseName(), lastCachePath);
 
     final String[] measurements = new String[] {measurementId};
     final TSDataType[] dataTypes = new TSDataType[] {TSDataType.INT32};
@@ -1164,8 +1159,7 @@ public class DataRegionTest {
       dataRegion1.insertTablet(insertTabletNode);
       Assert.fail("Expected BatchProcessException");
     } catch (BatchProcessException e) {
-      final TimeValuePair lastCache =
-          DataNodeSchemaCache.getInstance().getLastCache(lastCachePath);
+      final TimeValuePair lastCache = DataNodeSchemaCache.getInstance().getLastCache(lastCachePath);
       Assert.assertNotNull(lastCache);
       Assert.assertEquals(1, lastCache.getTimestamp());
       Assert.assertEquals(10, lastCache.getValue().getInt());

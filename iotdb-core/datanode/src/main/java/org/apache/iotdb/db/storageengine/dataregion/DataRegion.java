@@ -1488,6 +1488,7 @@ public class DataRegion implements IDataRegionForQuery {
       sourceInsertRowsNode.getResults().put(failedIndex, failureStatus);
     }
   }
+
   private void tryToUpdateInsertRowsLastCache(List<InsertRowNode> nodeList) {
     for (InsertRowNode node : nodeList) {
       node.updateLastCache(databaseName);
@@ -3799,7 +3800,8 @@ public class DataRegion implements IDataRegionForQuery {
         InsertRowsNode subInsertRowsNode = entry.getValue();
         try {
           List<TsFileProcessor> insertedProcessors =
-              insertRowsWithTypeConsistencyCheck(entry.getKey(), subInsertRowsNode, costsForMetrics);
+              insertRowsWithTypeConsistencyCheck(
+                  entry.getKey(), subInsertRowsNode, costsForMetrics);
           executedInsertRowNodeList.addAll(subInsertRowsNode.getInsertRowNodeList());
           for (TsFileProcessor tsFileProcessor : insertedProcessors) {
             // check memtable size and may asyncTryToFlush the work memtable

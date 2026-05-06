@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.write;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -37,6 +38,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferVie
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.NotImplementedException;
@@ -1168,81 +1170,6 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
             String.format(DATATYPE_UNSUPPORTED, dataTypes[measurementIndex]));
     }
     return new TimeValuePair(times[rowIndex], value);
-  }
-
-  public IDeviceID getDeviceID(int rowIdx) {
-    if (deviceID != null) {
-      return deviceID;
-    }
-    deviceID = DeviceIDFactory.getInstance().getDeviceID(targetPath);
-    return deviceID;
-  }
-
-  protected static class PartitionSplitInfo {
-
-    // for each List in split, they are range1.start, range1.end, range2.start, range2.end, ...
-    List<Integer> ranges = new ArrayList<>();
-    List<TTimePartitionSlot> timePartitionSlots = new ArrayList<>();
-    List<TRegionReplicaSet> replicaSets;
-  }
-
-  /**
-   * Split the tablet of the given range according to Table deviceID.
-   *
-   * @param start inclusive
-   * @param end exclusive
-   * @return each the number in the pair is the end offset of a device
-   */
-  public List<Pair<IDeviceID, Integer>> splitByDevice(int start, int end) {
-    return Collections.singletonList(new Pair<>(getDeviceID(), end));
-  }
-
-  /**
-   * @param results insertion result of each row
-   * @param ttl the ttl
-   * @return the position of the first alive row
-   * @throws OutOfTTLException if all rows have expired the TTL
-   */
-  public int checkTTL(TSStatus[] results, long ttl) throws OutOfTTLException {
-    return checkTTLInternal(results, ttl, true);
-  }
-
-  protected int checkTTLInternal(TSStatus[] results, long ttl, boolean breakOnFirstAlive)
-      throws OutOfTTLException {
-
-    /*
-     * assume that batch has been sorted by client
-     */
-    int loc = 0;
-    int firstAliveLoc = -1;
-    while (loc < getRowCount()) {
-      long currTime = getTimes()[loc];
-      // skip points that do not satisfy TTL
-      if (!isAlive(currTime, ttl)) {
-        results[loc] =
-            RpcUtils.getStatus(
-                TSStatusCode.OUT_OF_TTL,
-                String.format(
-                    "Insertion time [%s] is less than ttl time bound [%s]",
-                    DateTimeUtils.convertLongToDate(currTime),
-                    DateTimeUtils.convertLongToDate(CommonDateTimeUtils.currentTime() - ttl)));
-      } else {
-        if (firstAliveLoc == -1) {
-          firstAliveLoc = loc;
-        }
-        if (breakOnFirstAlive) {
-          break;
-        }
-      }
-      loc++;
-    }
-
-    if (firstAliveLoc == -1) {
-      // no alive data
-      throw new OutOfTTLException(
-          getTimes()[getTimes().length - 1], (CommonDateTimeUtils.currentTime() - ttl));
-    }
-    return firstAliveLoc;
   }
 
   public void updateLastCache(final String databaseName) {
