@@ -24,18 +24,30 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.PrefixTreePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileInsertionEventParser;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.query.TsFileInsertionEventQueryParser;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.scan.TsFileInsertionEventScanParser;
+import org.apache.iotdb.db.pipe.event.common.tsfile.parser.table.TsFileInsertionEventTableParser;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionTestFileWriter;
+import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate;
+import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.pipe.api.access.Row;
+import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.StringArrayDeviceID;
+import org.apache.tsfile.file.metadata.TableSchema;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.TsFileSequenceReader;
@@ -45,9 +57,12 @@ import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.TsFileGeneratorUtils;
 import org.apache.tsfile.write.TsFileWriter;
+import org.apache.tsfile.write.chunk.AlignedChunkWriterImpl;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
+import org.apache.tsfile.write.schema.Schema;
+import org.apache.tsfile.write.writer.TsFileIOWriter;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -60,12 +75,14 @@ import java.io.IOException;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 
 import static org.junit.Assert.fail;
 
@@ -96,6 +113,7 @@ public class TsFileInsertionEventParserTest {
         .getConfig()
         .setPipeMemoryManagementEnabled(isPipeMemoryManagementEnabled);
     if (alignedTsFile != null) {
+      ModificationFile.getExclusiveMods(alignedTsFile).delete();
       alignedTsFile.delete();
     }
     if (nonalignedTsFile != null) {
@@ -118,6 +136,126 @@ public class TsFileInsertionEventParserTest {
     final long startTime = System.currentTimeMillis();
     testToTabletInsertionEvents(false);
     System.out.println(System.currentTimeMillis() - startTime);
+  }
+
+  @Test
+  public void testTableParserWithAllNullFields() throws Exception {
+    alignedTsFile = new File("table-all-null.tsfile");
+    writeTableTsFileWithNullableFields(true);
+
+    assertParsedTablets(parseTableTablets(false), Arrays.asList("tag1", "s1", "s2"), 3, true);
+  }
+
+  @Test
+  public void testTableParserWithMixedAllNullFields() throws Exception {
+    alignedTsFile = new File("table-mixed-all-null.tsfile");
+    writeTableTsFileWithNullableFields(false);
+
+    assertParsedTablets(parseTableTablets(false), Arrays.asList("tag1", "s1", "s2"), 3, false);
+  }
+
+  @Test
+  public void testTableParserWithAllNullFieldsAndDeletedValueChunk() throws Exception {
+    alignedTsFile = new File("table-all-null-with-mod.tsfile");
+    writeTableTsFileWithNullableFields(false);
+    try (final ModificationFile modificationFile =
+        new ModificationFile(ModificationFile.getExclusiveMods(alignedTsFile), false)) {
+      modificationFile.write(
+          new TableDeletionEntry(
+              new DeletionPredicate(
+                  "table1", new IDPredicate.NOP(), Collections.singletonList("s2")),
+              new TimeRange(100, 102)));
+    }
+
+    assertParsedTablets(parseTableTablets(true), Arrays.asList("tag1", "s1"), 3, true);
+  }
+
+  private void writeTableTsFileWithNullableFields(final boolean allFieldsNull) throws Exception {
+    final List<IMeasurementSchema> tableSchemaList =
+        Arrays.asList(
+            new MeasurementSchema("tag1", TSDataType.STRING),
+            new MeasurementSchema("s1", TSDataType.INT64),
+            new MeasurementSchema("s2", TSDataType.DOUBLE));
+    final List<ColumnCategory> columnCategoryList =
+        Arrays.asList(ColumnCategory.TAG, ColumnCategory.FIELD, ColumnCategory.FIELD);
+
+    final Schema schema = new Schema();
+    schema.registerTableSchema(new TableSchema("table1", tableSchemaList, columnCategoryList));
+    try (final TsFileIOWriter writer = new TsFileIOWriter(alignedTsFile)) {
+      writer.setSchema(schema);
+      final IDeviceID deviceID = new StringArrayDeviceID(new String[] {"table1", "tagA"});
+      writer.startChunkGroup(deviceID);
+
+      final AlignedChunkWriterImpl chunkWriter =
+          new AlignedChunkWriterImpl(tableSchemaList.subList(1, tableSchemaList.size()));
+      for (int i = 0; i < 3; i++) {
+        final long time = 100 + i;
+        chunkWriter.getTimeChunkWriter().write(time);
+        chunkWriter.getValueChunkWriterByIndex(0).write(time, 0L, true);
+        chunkWriter.getValueChunkWriterByIndex(1).write(time, 1.0 + i, allFieldsNull);
+      }
+      chunkWriter.writeToFileWriter(writer);
+      writer.endChunkGroup();
+      writer.endFile();
+    }
+  }
+
+  private List<Tablet> parseTableTablets(final boolean isWithMod) throws IOException {
+    final List<Tablet> parsedTablets = new ArrayList<>();
+    try (final TsFileInsertionEventTableParser parser =
+        new TsFileInsertionEventTableParser(
+            alignedTsFile,
+            new TablePattern(true, null, null),
+            Long.MIN_VALUE,
+            Long.MAX_VALUE,
+            null,
+            null,
+            null,
+            isWithMod)) {
+      for (final TabletInsertionEvent event : parser.toTabletInsertionEvents()) {
+        Assert.assertTrue(event instanceof PipeRawTabletInsertionEvent);
+        parsedTablets.add(((PipeRawTabletInsertionEvent) event).convertToTablet());
+      }
+    }
+    return parsedTablets;
+  }
+
+  private void assertParsedTablets(
+      final List<Tablet> tablets,
+      final List<String> expectedColumns,
+      final int expectedRowCount,
+      final boolean expectS2Null) {
+    Assert.assertFalse(tablets.isEmpty());
+    int rowCount = 0;
+    for (final Tablet tablet : tablets) {
+      if (tablet.getRowSize() == 0) {
+        continue;
+      }
+
+      Assert.assertEquals("table1", tablet.getTableName());
+      Assert.assertEquals(
+          expectedColumns,
+          tablet.getSchemas().stream()
+              .map(IMeasurementSchema::getMeasurementName)
+              .collect(Collectors.toList()));
+      Assert.assertEquals(ColumnCategory.TAG, tablet.getColumnTypes().get(0));
+      for (int i = 1; i < tablet.getColumnTypes().size(); i++) {
+        Assert.assertEquals(ColumnCategory.FIELD, tablet.getColumnTypes().get(i));
+      }
+
+      for (int i = 0; i < tablet.getRowSize(); i++, rowCount++) {
+        Assert.assertEquals(100 + rowCount, tablet.getTimestamp(i));
+        Assert.assertFalse(tablet.isNull(i, 0));
+        Assert.assertTrue(tablet.isNull(i, 1));
+        if (expectedColumns.size() > 2) {
+          Assert.assertEquals(expectS2Null, tablet.isNull(i, 2));
+          if (!expectS2Null) {
+            Assert.assertEquals(1.0 + rowCount, (double) tablet.getValue(i, 2), 0.0);
+          }
+        }
+      }
+    }
+    Assert.assertEquals(expectedRowCount, rowCount);
   }
 
   public void testToTabletInsertionEvents(final boolean isQuery) throws Exception {

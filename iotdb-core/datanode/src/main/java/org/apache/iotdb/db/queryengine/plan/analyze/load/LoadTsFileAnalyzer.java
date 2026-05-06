@@ -54,11 +54,17 @@ import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.encrypt.EncryptParameter;
 import org.apache.tsfile.encrypt.EncryptUtils;
 import org.apache.tsfile.external.commons.io.FileUtils;
+import org.apache.tsfile.file.metadata.AbstractAlignedChunkMetadata;
+import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.MetadataIndexNode;
 import org.apache.tsfile.file.metadata.TableSchema;
 import org.apache.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.TsFileSequenceReaderTimeseriesMetadataIterator;
+import org.apache.tsfile.read.controller.IMetadataQuerier;
+import org.apache.tsfile.read.controller.MetadataQuerierByFileImpl;
+import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -69,6 +75,7 @@ import java.nio.BufferUnderflowException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -381,7 +388,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
                   .getLoadTsFileAnalyzeSchemaBatchReadTimeSeriesMetadataCount());
 
       // check if the tsfile is empty
-      if (!timeseriesMetadataIterator.hasNext()) {
+      if (!isTableModelFile && !timeseriesMetadataIterator.hasNext()) {
         throw new LoadEmptyFileException(tsFile.getAbsolutePath());
       }
 
@@ -410,7 +417,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
                 sessionInfo.getDatabaseName().orElse(null),
                 SqlDialect.TABLE);
         context.setSession(newSessionInfo);
-        doAnalyzeSingleTableFile(tsFile, reader, timeseriesMetadataIterator, tableSchemaMap);
+        doAnalyzeSingleTableFile(tsFile, reader, tableSchemaMap);
       } else {
         final SessionInfo newSessionInfo =
             new SessionInfo(
@@ -525,13 +532,10 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
   private void doAnalyzeSingleTableFile(
       final File tsFile,
       final TsFileSequenceReader reader,
-      final TsFileSequenceReaderTimeseriesMetadataIterator timeseriesMetadataIterator,
       final Map<String, TableSchema> tableSchemaMap)
-      throws IOException, LoadAnalyzeException {
+      throws IOException, LoadAnalyzeException, LoadEmptyFileException {
     // construct tsfile resource
     final TsFileResource tsFileResource = constructTsFileResource(reader, tsFile);
-
-    long writePointCount = 0;
 
     if (Objects.isNull(databaseForTableData)) {
       // If database is not specified, use the database from current session.
@@ -553,23 +557,9 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     getOrCreateTableSchemaCache().setTableSchemaMap(tableSchemaMap);
     getOrCreateTableSchemaCache().setCurrentModificationsAndTimeIndex(tsFileResource, reader);
 
-    while (timeseriesMetadataIterator.hasNext()) {
-      final Map<IDeviceID, List<TimeseriesMetadata>> device2TimeseriesMetadata =
-          timeseriesMetadataIterator.next();
-
-      // Update time index no matter if resource file exists or not, because resource file may be
-      // untrusted
-      TsFileResourceUtils.updateTsFileResource(
-          device2TimeseriesMetadata,
-          tsFileResource,
-          IoTDBDescriptor.getInstance().getConfig().isCacheLastValuesForLoad());
-      getOrCreateTableSchemaCache().setCurrentTimeIndex(tsFileResource.getTimeIndex());
-
-      for (IDeviceID deviceId : device2TimeseriesMetadata.keySet()) {
-        getOrCreateTableSchemaCache().autoCreateAndVerify(deviceId);
-      }
-
-      writePointCount += getWritePointCount(device2TimeseriesMetadata);
+    final long writePointCount = updateTableTsFileResourceAndVerifySchema(reader, tsFileResource);
+    if (tsFileResource.getDevices().isEmpty()) {
+      throw new LoadEmptyFileException(tsFile.getAbsolutePath());
     }
 
     getOrCreateTableSchemaCache().flush();
@@ -587,6 +577,50 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
     addTsFileResource(tsFileResource);
     addWritePointCount(writePointCount);
+  }
+
+  private long updateTableTsFileResourceAndVerifySchema(
+      final TsFileSequenceReader reader, final TsFileResource tsFileResource)
+      throws IOException, LoadAnalyzeException {
+    long writePointCount = 0;
+    final IMetadataQuerier metadataQuerier = new MetadataQuerierByFileImpl(reader);
+    final List<String> tableNames =
+        new ArrayList<>(metadataQuerier.getWholeFileMetadata().getTableSchemaMap().keySet());
+
+    for (final String tableName : tableNames) {
+      final MetadataIndexNode tableRoot =
+          metadataQuerier.getWholeFileMetadata().getTableMetadataIndexNode(tableName);
+      if (Objects.isNull(tableRoot)) {
+        continue;
+      }
+
+      final Iterator<Pair<IDeviceID, MetadataIndexNode>> deviceIterator =
+          metadataQuerier.deviceIterator(tableRoot, null);
+      while (deviceIterator.hasNext()) {
+        final IDeviceID deviceId = deviceIterator.next().getLeft();
+        boolean hasChunk = false;
+
+        for (final AbstractAlignedChunkMetadata alignedChunkMetadata :
+            reader.getAlignedChunkMetadata(deviceId, false)) {
+          if (Objects.isNull(alignedChunkMetadata)
+              || Objects.isNull(alignedChunkMetadata.getTimeChunkMetadata())) {
+            continue;
+          }
+
+          hasChunk = true;
+          tsFileResource.updateStartTime(deviceId, alignedChunkMetadata.getStartTime());
+          tsFileResource.updateEndTime(deviceId, alignedChunkMetadata.getEndTime());
+          writePointCount += getTableWritePointCount(alignedChunkMetadata);
+        }
+
+        if (hasChunk) {
+          getOrCreateTableSchemaCache().setCurrentTimeIndex(tsFileResource.getTimeIndex());
+          getOrCreateTableSchemaCache().autoCreateAndVerify(deviceId);
+        }
+      }
+    }
+
+    return writePointCount;
   }
 
   private TsFileResource constructTsFileResource(
@@ -634,6 +668,25 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
         .flatMap(List::stream)
         .mapToLong(t -> t.getStatistics().getCount())
         .sum();
+  }
+
+  private static long getTableWritePointCount(
+      final AbstractAlignedChunkMetadata alignedChunkMetadata) {
+    long writePointCount = 0;
+    boolean hasValueChunkMetadata = false;
+    for (final IChunkMetadata valueChunkMetadata :
+        alignedChunkMetadata.getValueChunkMetadataList()) {
+      if (Objects.nonNull(valueChunkMetadata)
+          && Objects.nonNull(valueChunkMetadata.getStatistics())) {
+        hasValueChunkMetadata = true;
+        writePointCount += valueChunkMetadata.getStatistics().getCount();
+      }
+    }
+    return hasValueChunkMetadata
+            || Objects.isNull(alignedChunkMetadata.getTimeChunkMetadata())
+            || Objects.isNull(alignedChunkMetadata.getTimeChunkMetadata().getStatistics())
+        ? writePointCount
+        : alignedChunkMetadata.getTimeChunkMetadata().getStatistics().getCount();
   }
 
   private void addWritePointCount(long writePointCount) {
