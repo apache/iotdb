@@ -36,9 +36,9 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * This class reads roles from local files through LocalFileRoleAccessor and manages them in a hash
@@ -63,12 +63,12 @@ public abstract class BasicRoleManager implements IEntityManager, SnapshotProces
   }
 
   protected BasicRoleManager() {
-    this.entityMap = new HashMap<>();
+    this.entityMap = new ConcurrentHashMap<>();
     this.lock = new HashLock();
   }
 
   protected BasicRoleManager(IEntityAccessor accessor) {
-    this.entityMap = new HashMap<>();
+    this.entityMap = new ConcurrentHashMap<>();
     this.accessor = accessor;
     this.lock = new HashLock();
     this.accessor.reset();
