@@ -44,13 +44,7 @@ public abstract class TCompressedElasticFramedTransport extends TElasticFramedTr
   protected void readFrame() throws TTransportException {
     underlying.readAll(i32buf, 0, 4);
     int size = TFramedTransport.decodeFrameSize(i32buf);
-
-    if (size < 0) {
-      close();
-      throw new TTransportException(
-          TTransportException.CORRUPTED_DATA, "Read a negative frame size (" + size + ")!");
-    }
-
+    checkFrameSize(size);
     readBuffer.fill(underlying, size);
     RpcStat.readCompressedBytes.addAndGet(size);
     try {
