@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.pipe.event;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.audit.IAuditEntity;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -516,9 +518,9 @@ public class PipeTabletInsertionEventTest {
 
     @Override
     public TSStatus checkSeriesPrivilege4Pipe(
-        final org.apache.iotdb.commons.audit.IAuditEntity context,
+        final IAuditEntity context,
         final java.util.List<? extends PartialPath> checkedPathsSupplier,
-        final org.apache.iotdb.commons.auth.entity.PrivilegeType permission) {
+        final PrivilegeType permission) {
       hasNullMeasurementPath =
           checkedPathsSupplier.stream().anyMatch(path -> path.getFullPath().endsWith(".null"));
       return hasNullMeasurementPath
