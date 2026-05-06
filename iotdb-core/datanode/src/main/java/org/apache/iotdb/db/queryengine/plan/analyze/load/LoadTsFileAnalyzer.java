@@ -42,6 +42,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
 import org.apache.iotdb.db.storageengine.load.active.ActiveLoadPathHelper;
 import org.apache.iotdb.db.storageengine.load.converter.LoadTsFileDataTypeConverter;
@@ -53,6 +54,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.encrypt.EncryptParameter;
 import org.apache.tsfile.encrypt.EncryptUtils;
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.file.metadata.AbstractAlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
@@ -60,11 +62,14 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.MetadataIndexNode;
 import org.apache.tsfile.file.metadata.TableSchema;
 import org.apache.tsfile.file.metadata.TimeseriesMetadata;
+import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.TsFileSequenceReaderTimeseriesMetadataIterator;
 import org.apache.tsfile.read.controller.IMetadataQuerier;
 import org.apache.tsfile.read.controller.MetadataQuerierByFileImpl;
 import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.utils.RamUsageEstimator;
+import org.apache.tsfile.utils.TsPrimitiveType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -75,6 +80,7 @@ import java.nio.BufferUnderflowException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -583,6 +589,18 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       final TsFileSequenceReader reader, final TsFileResource tsFileResource)
       throws IOException, LoadAnalyzeException {
     long writePointCount = 0;
+    if (tsFileResource.getTimeIndex().getTimeIndexType() == ITimeIndex.FILE_TIME_INDEX_TYPE) {
+      tsFileResource.setTimeIndex(
+          IoTDBDescriptor.getInstance().getConfig().getTimeIndexLevel().getTimeIndex());
+    }
+    Map<IDeviceID, Map<String, TimeValuePair>> deviceLastValues =
+        IoTDBDescriptor.getInstance().getConfig().isCacheLastValuesForLoad()
+            ? new HashMap<>()
+            : null;
+    long lastValuesMemCost = 0;
+    final long lastValuesMemoryBudget =
+        IoTDBDescriptor.getInstance().getConfig().getCacheLastValuesMemoryBudgetInByte();
+
     final IMetadataQuerier metadataQuerier = new MetadataQuerierByFileImpl(reader);
     final List<String> tableNames =
         new ArrayList<>(metadataQuerier.getWholeFileMetadata().getTableSchemaMap().keySet());
@@ -611,6 +629,18 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
           tsFileResource.updateStartTime(deviceId, alignedChunkMetadata.getStartTime());
           tsFileResource.updateEndTime(deviceId, alignedChunkMetadata.getEndTime());
           writePointCount += getTableWritePointCount(alignedChunkMetadata);
+          if (deviceLastValues != null) {
+            lastValuesMemCost =
+                updateTableDeviceLastValues(
+                    deviceLastValues,
+                    deviceId,
+                    alignedChunkMetadata,
+                    lastValuesMemCost,
+                    lastValuesMemoryBudget);
+            if (lastValuesMemCost > lastValuesMemoryBudget) {
+              deviceLastValues = null;
+            }
+          }
         }
 
         if (hasChunk) {
@@ -620,7 +650,87 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       }
     }
 
+    tsFileResource.setLastValues(convertTableDeviceLastValues(deviceLastValues));
     return writePointCount;
+  }
+
+  private static long updateTableDeviceLastValues(
+      final Map<IDeviceID, Map<String, TimeValuePair>> deviceLastValues,
+      final IDeviceID deviceId,
+      final AbstractAlignedChunkMetadata alignedChunkMetadata,
+      long lastValuesMemCost,
+      final long lastValuesMemoryBudget) {
+    for (final IChunkMetadata chunkMetadata : alignedChunkMetadata.getValueChunkMetadataList()) {
+      if (Objects.isNull(chunkMetadata)) {
+        continue;
+      }
+
+      Map<String, TimeValuePair> deviceMap = deviceLastValues.get(deviceId);
+      if (Objects.isNull(deviceMap)) {
+        deviceMap = new HashMap<>();
+        deviceLastValues.put(deviceId, deviceMap);
+        lastValuesMemCost += RamUsageEstimator.shallowSizeOf(deviceMap);
+        lastValuesMemCost += deviceId.ramBytesUsed();
+      }
+
+      final int previousSize = deviceMap.size();
+      final String measurement = chunkMetadata.getMeasurementUid();
+      final TimeValuePair oldPair = deviceMap.get(measurement);
+      if (Objects.nonNull(oldPair) && oldPair.getTimestamp() > chunkMetadata.getEndTime()) {
+        continue;
+      }
+
+      final TimeValuePair newPair = buildLastValuePair(chunkMetadata);
+      if (Objects.nonNull(oldPair)) {
+        lastValuesMemCost -= oldPair.getSize();
+      }
+      if (Objects.nonNull(newPair)) {
+        deviceMap.put(measurement, newPair);
+        lastValuesMemCost += newPair.getSize();
+      } else {
+        deviceMap.remove(measurement);
+      }
+      lastValuesMemCost +=
+          (long) (deviceMap.size() - previousSize) * RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY;
+      if (lastValuesMemCost > lastValuesMemoryBudget) {
+        return lastValuesMemCost;
+      }
+    }
+    return lastValuesMemCost;
+  }
+
+  private static TimeValuePair buildLastValuePair(final IChunkMetadata chunkMetadata) {
+    if (Objects.isNull(chunkMetadata.getStatistics())
+        || Objects.equals(chunkMetadata.getDataType(), TSDataType.BLOB)) {
+      return null;
+    }
+
+    final TsPrimitiveType lastValue =
+        TsPrimitiveType.getByType(
+            Objects.equals(chunkMetadata.getDataType(), TSDataType.VECTOR)
+                ? TSDataType.INT64
+                : chunkMetadata.getDataType(),
+            chunkMetadata.getStatistics().getLastValue());
+    return new TimeValuePair(chunkMetadata.getEndTime(), lastValue);
+  }
+
+  private static Map<IDeviceID, List<Pair<String, TimeValuePair>>> convertTableDeviceLastValues(
+      final Map<IDeviceID, Map<String, TimeValuePair>> deviceLastValues) {
+    if (Objects.isNull(deviceLastValues)) {
+      return null;
+    }
+
+    final Map<IDeviceID, List<Pair<String, TimeValuePair>>> finalDeviceLastValues =
+        new HashMap<>(deviceLastValues.size());
+    for (final Map.Entry<IDeviceID, Map<String, TimeValuePair>> entry :
+        deviceLastValues.entrySet()) {
+      final List<Pair<String, TimeValuePair>> lastValues = new ArrayList<>(entry.getValue().size());
+      for (final Map.Entry<String, TimeValuePair> lastValueEntry : entry.getValue().entrySet()) {
+        lastValues.add(new Pair<>(lastValueEntry.getKey(), lastValueEntry.getValue()));
+      }
+      finalDeviceLastValues.put(entry.getKey(), lastValues);
+    }
+    return finalDeviceLastValues;
   }
 
   private TsFileResource constructTsFileResource(
