@@ -508,10 +508,11 @@ cn_max_client_count_for_each_node_in_client_manager=1000
 
 # The maximum number of idle clients that can be retained for a node in a clientManager.
 # When the number of idle clients to a single node exceeds this number, excess idle clients will be evicted.
-# 0 means no limit, idle clients will not be evicted based on count.
+# Idle clients are determined by a time threshold (default 1 minute of inactivity).
+# 0 means no idle clients will be retained, connections are destroyed immediately upon return.
 # effectiveMode: restart
 # Datatype: int
-# cn_max_idle_client_count_for_each_node_in_client_manager=0
+# cn_max_idle_client_count_for_each_node_in_client_manager=1000
 
 # The maximum session idle time. unit: ms
 # Idle sessions are the ones that performs neither query or non-query operations for a period of time
@@ -566,10 +567,11 @@ dn_max_client_count_for_each_node_in_client_manager=1000
 
 # The maximum number of idle clients that can be retained for a node in a clientManager.
 # When the number of idle clients to a single node exceeds this number, excess idle clients will be evicted.
-# 0 means no limit, idle clients will not be evicted based on count.
+# Idle clients are determined by a time threshold (default 1 minute of inactivity).
+# 0 means no idle clients will be retained, connections are destroyed immediately upon return.
 # effectiveMode: restart
 # Datatype: int
-# dn_max_idle_client_count_for_each_node_in_client_manager=0
+# dn_max_idle_client_count_for_each_node_in_client_manager=1000
 
 ####################
 ### REST Service Configuration

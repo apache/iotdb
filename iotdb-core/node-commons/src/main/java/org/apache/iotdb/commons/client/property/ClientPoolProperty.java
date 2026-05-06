@@ -116,6 +116,6 @@ public class ClientPoolProperty<V> {
     public static final long MIN_IDLE_TIME_FOR_CLIENT_MS = TimeUnit.MINUTES.toMillis(1);
     public static final long TIME_BETWEEN_EVICTION_RUNS_MS = TimeUnit.MINUTES.toMillis(1);
     public static final int MAX_CLIENT_NUM_FOR_EACH_NODE = 1000;
-    public static final int MAX_IDLE_CLIENT_NUM_FOR_EACH_NODE = 0;
+    public static final int MAX_IDLE_CLIENT_NUM_FOR_EACH_NODE = 1000;
   }
 }
