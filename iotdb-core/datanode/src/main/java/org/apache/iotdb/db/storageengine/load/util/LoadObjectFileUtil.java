@@ -20,11 +20,17 @@
 package org.apache.iotdb.db.storageengine.load.util;
 
 import org.apache.iotdb.calc.utils.ObjectTypeUtils;
+import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.LoadFileException;
 import org.apache.iotdb.db.exception.load.ObjectFileCorruptedException;
+import org.apache.iotdb.db.pipe.event.common.tsfile.parser.util.ModsOperationUtil;
+import org.apache.iotdb.db.pipe.event.common.tsfile.parser.util.ModsOperationUtil.ModsInfo;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadSingleTsFileNode;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.encoding.decoder.Decoder;
@@ -54,6 +60,7 @@ import java.nio.ByteBuffer;
 import java.nio.file.FileStore;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -89,6 +96,8 @@ public class LoadObjectFileUtil {
     final File targetDir = new File(objectTempBaseDir, targetDirName);
     final File searchRoot =
         node.getObjectFileSearchRoot() != null ? node.getObjectFileSearchRoot() : targetDir;
+    final PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> modifications =
+        loadModificationsFromTsFile(tsFile);
 
     if (!targetDir.exists() && !targetDir.mkdirs() && !targetDir.exists()) {
       throw new LoadFileException(
@@ -102,7 +111,10 @@ public class LoadObjectFileUtil {
 
       while (iterator.hasNext()) {
         final Map<IDeviceID, List<TimeseriesMetadata>> deviceMetadataMap = iterator.next();
-        for (final List<TimeseriesMetadata> metadataList : deviceMetadataMap.values()) {
+        for (final Map.Entry<IDeviceID, List<TimeseriesMetadata>> entry :
+            deviceMetadataMap.entrySet()) {
+          final IDeviceID deviceID = entry.getKey();
+          final List<TimeseriesMetadata> metadataList = entry.getValue();
           final List<Map<Integer, long[]>> alignedTimeBatchesByChunkIndex =
               collectAlignedTimeBatchesByChunkIndex(reader, metadataList);
           for (final TimeseriesMetadata tsMetadata : metadataList) {
@@ -110,6 +122,8 @@ public class LoadObjectFileUtil {
               continue;
             }
 
+            final ModsInfo modsInfo =
+                buildMeasurementModsInfo(deviceID, tsMetadata.getMeasurementId(), modifications);
             int chunkIndex = 0;
             for (final IChunkMetadata chunkMetadata : tsMetadata.getChunkMetadataList()) {
               scanObjectChunkAndProcessFiles(
@@ -119,7 +133,8 @@ public class LoadObjectFileUtil {
                   searchRoot,
                   targetDir,
                   alignedTimeBatchesByChunkIndex,
-                  chunkIndex++);
+                  chunkIndex++,
+                  modsInfo);
             }
           }
         }
@@ -140,7 +155,8 @@ public class LoadObjectFileUtil {
       final File searchRoot,
       final File targetDir,
       final List<Map<Integer, long[]>> alignedTimeBatchesByChunkIndex,
-      final int chunkIndex)
+      final int chunkIndex,
+      final ModsInfo modsInfo)
       throws IOException, LoadFileException {
     reader.position(chunkMetadata.getOffsetOfChunkHeader());
     final byte marker = reader.readMarker();
@@ -170,7 +186,7 @@ public class LoadObjectFileUtil {
                     .nextValueBatch(times);
             final int len = Math.min(values.length, times.length);
             for (int i = 0; i < len; i++) {
-              if (values[i] == null) {
+              if (values[i] == null || ModsOperationUtil.isDelete(times[i], modsInfo)) {
                 continue;
               }
               final Binary binary = values[i].getBinary();
@@ -194,7 +210,7 @@ public class LoadObjectFileUtil {
                 .getAllSatisfiedPageData();
         while (batchData.hasCurrent()) {
           final Binary binary = batchData.getBinary();
-          if (binary != null) {
+          if (binary != null && !ModsOperationUtil.isDelete(batchData.currentTime(), modsInfo)) {
             final Pair<Long, String> lengthAndPath =
                 ObjectTypeUtils.parseObjectBinaryToSizeStringPathPair(binary);
             final long expectedLength = lengthAndPath.getLeft();
@@ -225,6 +241,30 @@ public class LoadObjectFileUtil {
       break;
     }
     return result;
+  }
+
+  private static PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer>
+      loadModificationsFromTsFile(final File tsFile) throws IOException {
+    final PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> modifications =
+        PatternTreeMapFactory.getModsPatternTreeMap();
+    for (final ModEntry modification : ModificationFile.readAllModifications(tsFile, true)) {
+      modifications.append(modification.keyOfPatternTree(), modification);
+    }
+    return modifications;
+  }
+
+  private static ModsInfo buildMeasurementModsInfo(
+      final IDeviceID deviceID,
+      final String measurement,
+      final PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> modifications) {
+    if (modifications == null || modifications.isEmpty()) {
+      return null;
+    }
+
+    final List<ModsInfo> modsInfos =
+        ModsOperationUtil.initializeMeasurementMods(
+            deviceID, Collections.singletonList(measurement), modifications);
+    return modsInfos.isEmpty() ? null : modsInfos.get(0);
   }
 
   private static Map<Integer, long[]> collectAlignedTimeBatchForChunk(

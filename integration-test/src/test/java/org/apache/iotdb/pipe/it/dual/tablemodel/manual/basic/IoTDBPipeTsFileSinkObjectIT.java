@@ -22,6 +22,7 @@ package org.apache.iotdb.pipe.it.dual.tablemodel.manual.basic;
 import org.apache.iotdb.calc.utils.ObjectTypeUtils;
 import org.apache.iotdb.db.it.utils.StandardObjectTableModelTsFileGenerator;
 import org.apache.iotdb.db.it.utils.TestUtils;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -66,6 +67,7 @@ public class IoTDBPipeTsFileSinkObjectIT extends AbstractPipeTableModelDualManua
   private static final String OBJECT_TABLE_NAME = "factory_metrics";
 
   private static final int OBJECT_MULTI_WEEK_DEVICE_COUNT = 5;
+
   private static final long HOUR_MS = 3600 * 1000L;
   private static final long DAY_MS = 24L * HOUR_MS;
   private static final long WEEK_MS = 7L * DAY_MS;
@@ -118,21 +120,21 @@ public class IoTDBPipeTsFileSinkObjectIT extends AbstractPipeTableModelDualManua
       session.executeNonQueryStatement(
           "CREATE TABLE IF NOT EXISTS t1 (id STRING TAG, file OBJECT FIELD)");
 
-      insertObjectData(session, "t1", 1, 250);
+      insertObjectData(session, "t1", 1, 900);
       TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
 
       session.executeNonQueryStatement(
           String.format(
               "CREATE PIPE p1 "
-                  + "WITH EXTRACTOR ("
-                  + "'extractor.capture.table'='true', "
-                  + "'extractor.database-name'='db1', "
-                  + "'extractor.table-name'='t1', "
-                  + "'extractor.inclusion'='data.insert', "
-                  + "'extractor.history.enable'='true', "
-                  + "'extractor.realtime.enable'='true' "
+                  + "WITH SOURCE ("
+                  + "'source.capture.table'='true', "
+                  + "'source.database-name'='db1', "
+                  + "'source.table-name'='t1', "
+                  + "'source.inclusion'='data.insert', "
+                  + "'source.history.enable'='true', "
+                  + "'source.realtime.enable'='true' "
                   + ") "
-                  + "WITH CONNECTOR ("
+                  + "WITH SINK ("
                   + "'sink'='tsfile-local-sink', "
                   + "'sink.local.target-path'='%s', "
                   + "'sink.batch.max-delay-seconds'='1', "
@@ -140,12 +142,12 @@ public class IoTDBPipeTsFileSinkObjectIT extends AbstractPipeTableModelDualManua
                   + ")",
               targetDir));
 
-      waitForAndVerifyExportedObjects(250, 1, 250, 0, 251, 500);
+      waitForAndVerifyExportedObjects(900, 1, 900, 0, 901, 2400);
 
-      insertObjectData(session, "t1", 251, 500);
+      insertObjectData(session, "t1", 901, 2400);
       TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
 
-      waitForAndVerifyExportedObjects(250, 1, 250, 250, 251, 500);
+      waitForAndVerifyExportedObjects(900, 1, 900, 1500, 901, 2400);
 
       session.executeNonQueryStatement("DROP PIPE p1");
     }
@@ -191,7 +193,7 @@ public class IoTDBPipeTsFileSinkObjectIT extends AbstractPipeTableModelDualManua
                   + "'source.history.enable'='true', "
                   + "'source.realtime.enable'='true' "
                   + ") "
-                  + "WITH CONNECTOR ("
+                  + "WITH SINK ("
                   + "'sink'='tsfile-local-sink', "
                   + "'sink.local.target-path'='%s', "
                   + "'sink.batch.max-delay-seconds'='1', "
@@ -394,6 +396,55 @@ public class IoTDBPipeTsFileSinkObjectIT extends AbstractPipeTableModelDualManua
         "History Object count mismatch after Pipe sync", expectedHistoryCount, historyFound);
     Assert.assertEquals(
         "Realtime Object count mismatch after Pipe sync", expectedRealtimeCount, realtimeFound);
+  }
+
+  private static void waitForExportedTsFilesWithMods(final File root, final long timeoutMs)
+      throws Exception {
+    final long deadline = System.currentTimeMillis() + timeoutMs;
+    while (System.currentTimeMillis() < deadline) {
+      final List<File> tsfiles = new ArrayList<>();
+      findTsFiles(root, tsfiles);
+      if (!tsfiles.isEmpty()) {
+        boolean allMods = true;
+        for (File tf : tsfiles) {
+          final File mod = new File(tf.getParent(), tf.getName() + ModificationFile.FILE_SUFFIX);
+          if (!mod.isFile()) {
+            allMods = false;
+            break;
+          }
+        }
+        if (allMods) {
+          Thread.sleep(2000);
+          return;
+        }
+      }
+      Thread.sleep(800);
+    }
+    Assert.fail(
+        "Timeout waiting for .tsfile and companion "
+            + ModificationFile.FILE_SUFFIX
+            + " under "
+            + root.getAbsolutePath());
+  }
+
+  private static void loadAllTsFilesUnderDir(final ITableSession session, final File root)
+      throws Exception {
+    final List<File> tsfiles = new ArrayList<>();
+    findTsFiles(root, tsfiles);
+    Assert.assertFalse(tsfiles.isEmpty());
+    tsfiles.sort(Comparator.comparing(File::getAbsolutePath));
+    for (File f : tsfiles) {
+      session.executeNonQueryStatement(String.format("LOAD '%s'", f.getAbsolutePath()));
+    }
+  }
+
+  private static long queryRowCount(final ITableSession session, final String table)
+      throws Exception {
+    try (SessionDataSet ds = session.executeQueryStatement("SELECT COUNT(*) FROM " + table)) {
+      final SessionDataSet.DataIterator it = ds.iterator();
+      Assert.assertTrue(it.next());
+      return it.getLong(1);
+    }
   }
 
   private static void findTsFiles(File dir, List<File> tsfiles) {

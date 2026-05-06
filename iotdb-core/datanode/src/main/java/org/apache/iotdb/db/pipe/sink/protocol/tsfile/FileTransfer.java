@@ -23,34 +23,31 @@ import java.io.File;
 import java.io.IOException;
 
 /**
- * FileTransfer - File transfer interface
+ * Abstraction for transferring exported TsFiles and their companion artifacts to a sink target.
  *
- * <p>Abstractions for different file transfer methods (e.g. local copy, SCP). Implementations must:
- *
- * <ul>
- *   <li>{@link #handshake()} - Test connection / reachability of the transfer target
- *   <li>{@link #transferFile(File, File, String)} - Transfer a single file (e.g. TSFile) to the
- *       target directory with the given file name
- * </ul>
+ * <p>Implementations may write to a local directory, a remote host, or any other file-oriented
+ * destination, but they must preserve the exported TsFile name and keep companion files aligned
+ * with it.
  */
 public interface FileTransfer extends AutoCloseable {
 
   /**
-   * Handshake / test connection. Verifies that the transfer target is reachable (e.g. local dir
-   * exists, remote host is reachable).
+   * Verifies that the transfer target is reachable and ready to accept files.
    *
-   * @throws IOException when connection test fails
+   * @throws IOException when the target cannot be prepared
    */
   void handshake() throws IOException;
 
   /**
-   * Transfer a single file (e.g. TSFile) to the target.
+   * Transfers one exported TsFile together with its optional companion files.
    *
-   * @param tsfile local source file (e.g. TSFile)
-   * @param objectPath target parent directory as File; if null, use implementation's default base
-   *     path
-   * @param targetFileName target file name at destination
-   * @throws IOException when transfer fails
+   * @param tsfile local TsFile to transfer
+   * @param modFile local companion mod file; may be null when no mod file exists
+   * @param objectPath local directory containing exported Object files; may be null when the TsFile
+   *     has no Object data
+   * @param targetFileName target file name used for the transferred TsFile
+   * @throws IOException when any part of the transfer fails
    */
-  void transferFile(File tsfile, File objectPath, String targetFileName) throws IOException;
+  void transferFile(File tsfile, File modFile, File objectPath, String targetFileName)
+      throws IOException;
 }

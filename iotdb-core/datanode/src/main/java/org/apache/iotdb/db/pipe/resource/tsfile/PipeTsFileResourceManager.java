@@ -23,6 +23,8 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -35,6 +37,7 @@ import javax.annotation.Nullable;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -132,6 +135,50 @@ public class PipeTsFileResourceManager {
     }
     increasePublicReference(resultFile, pipeName, isTsFile);
     return resultFile;
+  }
+
+  /**
+   * Resolves the pipe-directory TsFile path for {@code tsFile}, derives the companion mods file
+   * ({@code tsFileName + ModificationFileV1.FILE_SUFFIX}, i.e. {@code .mods}), creates parent
+   * directories if needed, writes {@code entries} with {@link ModificationFile}, and returns that
+   * mods file.
+   *
+   * @param entries modification entries to append (may be empty)
+   * @param tsFile original or pipe-hardlinked TsFile; used only to compute the mods path under pipe
+   *     dir
+   * @param pipeName pipe name for {@link #getHardlinkOrCopiedFileInPipeDir(File, String)}
+   * @return the written mods file under the pipe TsFile directory
+   * @throws IOException if the directory cannot be created or write fails
+   */
+  public File writeModEntriesForPipeTsFile(
+      final List<ModEntry> entries, final File tsFile, final @Nullable String pipeName)
+      throws IOException {
+    final List<ModEntry> toWrite = entries != null ? entries : Collections.emptyList();
+    final File pipeTsFile = getHardlinkOrCopiedFileInPipeDir(tsFile, pipeName);
+    final File parent = pipeTsFile.getParentFile();
+    if (parent != null && !parent.exists() && !parent.mkdirs()) {
+      throw new IOException("Failed to create directory: " + parent.getPath());
+    }
+    final File modsFile;
+
+    try (ModificationFile modificationFile =
+        new ModificationFile(ModificationFile.getExclusiveMods(pipeTsFile), false)) {
+      modificationFile.write(toWrite);
+      modsFile = modificationFile.getFile();
+    }
+
+    segmentLock.lock(modsFile);
+    try {
+      if (Objects.nonNull(pipeName)) {
+        hardlinkOrCopiedFileToPipeTsFileResourceMap
+            .computeIfAbsent(pipeName, k -> new ConcurrentHashMap<>())
+            .put(modsFile.getPath(), new PipeTsFileResource(modsFile));
+      }
+    } finally {
+      segmentLock.unlock(modsFile);
+    }
+    increasePublicReference(modsFile, pipeName, false);
+    return modsFile;
   }
 
   private boolean increaseReferenceIfExists(

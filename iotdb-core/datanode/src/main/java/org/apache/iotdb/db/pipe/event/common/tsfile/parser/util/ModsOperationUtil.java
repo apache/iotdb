@@ -20,19 +20,23 @@
 package org.apache.iotdb.db.pipe.event.common.tsfile.parser.util;
 
 import org.apache.iotdb.commons.path.PatternTreeMap;
+import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
 import org.apache.iotdb.db.utils.ModificationUtils;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.read.common.TimeRange;
 
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -53,18 +57,56 @@ public class ModsOperationUtil {
    */
   public static PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer>
       loadModificationsFromTsFile(File tsFile) {
-    PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> modifications =
-        PatternTreeMapFactory.getModsPatternTreeMap();
+    return buildModificationsPatternTreeMap(readAllModificationsFromTsFile(tsFile));
+  }
 
+  public static List<ModEntry> readAllModificationsFromTsFile(final File tsFile) {
     try {
-      ModificationFile.readAllModifications(tsFile, true)
-          .forEach(
-              modification -> modifications.append(modification.keyOfPatternTree(), modification));
+      return ModificationFile.readAllModifications(tsFile, true);
     } catch (Exception e) {
       throw new PipeException("Failed to load modifications from TsFile: " + tsFile.getPath(), e);
     }
+  }
 
+  public static PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer>
+      buildModificationsPatternTreeMap(final List<ModEntry> modEntries) {
+    final PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> modifications =
+        PatternTreeMapFactory.getModsPatternTreeMap();
+    for (final ModEntry modEntry : modEntries) {
+      modifications.append(modEntry.keyOfPatternTree(), modEntry);
+    }
     return modifications;
+  }
+
+  public static ModEntry buildObjectColumnDeletionEntries(
+      final TableDeletionEntry tableDeletionEntry, final Set<String> objectMeasurementNames) {
+    if (tableDeletionEntry == null
+        || objectMeasurementNames == null
+        || objectMeasurementNames.isEmpty()) {
+      return null;
+    }
+
+    final DeletionPredicate predicate = tableDeletionEntry.getPredicate();
+    final List<String> targetMeasurements;
+    if (predicate.getMeasurementNames().isEmpty()) {
+      targetMeasurements = new ArrayList<>(objectMeasurementNames);
+    } else {
+      targetMeasurements =
+          predicate.getMeasurementNames().stream()
+              .filter(objectMeasurementNames::contains)
+              .collect(Collectors.toList());
+    }
+
+    if (targetMeasurements.isEmpty()) {
+      return null;
+    }
+
+    return new TableDeletionEntry(
+        new DeletionPredicate(
+            predicate.getTableName(), predicate.getIdPredicate(), targetMeasurements),
+        new TimeRange(
+            tableDeletionEntry.getTimeRange().getMin(),
+            tableDeletionEntry.getTimeRange().getMax()));
   }
 
   /**

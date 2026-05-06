@@ -1,8 +1,11 @@
 package org.apache.iotdb.db.pipe.sink.protocol.tsfile;
 
+import org.apache.iotdb.commons.utils.FileUtils;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
+import org.apache.tsfile.common.constant.TsFileConstant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,7 +42,7 @@ public class LocalFileTransfer implements FileTransfer {
   }
 
   @Override
-  public void transferFile(File tsFile, File objectSourceDir, String targetName)
+  public void transferFile(File tsFile, File modFile, File objectSourceDir, String targetName)
       throws IOException {
     if (tsFile == null || !tsFile.exists()) {
       throw new PipeException("Source TsFile is missing");
@@ -49,7 +52,9 @@ public class LocalFileTransfer implements FileTransfer {
       copyObjectDirectory(objectSourceDir, targetName);
     }
 
-    copyTsFile(tsFile, targetName);
+    final String finalTsName = finalTsFileName(targetName);
+    exportModIfPresent(modFile, finalTsName);
+    exportTsFile(tsFile, finalTsName);
   }
 
   private void copyObjectDirectory(File sourceDir, String dirName) throws IOException {
@@ -82,16 +87,75 @@ public class LocalFileTransfer implements FileTransfer {
     }
   }
 
-  private void copyTsFile(File tsFile, String targetName) throws IOException {
-    String finalTsName = targetName.endsWith(".tsfile") ? targetName : targetName + ".tsfile";
-    File dest = new File(targetBaseDir, finalTsName);
+  private static String finalTsFileName(final String targetName) {
+    return targetName.endsWith(TsFileConstant.TSFILE_SUFFIX)
+        ? targetName
+        : targetName + TsFileConstant.TSFILE_SUFFIX;
+  }
 
-    Files.copy(tsFile.toPath(), dest.toPath(), StandardCopyOption.REPLACE_EXISTING);
-    LOGGER.info("Successfully transferred TsFile to {}", dest.getAbsolutePath());
+  private void exportTsFile(final File tsFile, final String finalTsName) throws IOException {
+    final File dest = new File(targetBaseDir, finalTsName);
+    transferByHardLinkOrCopy(tsFile, dest, "TsFile");
+  }
+
+  private void exportModIfPresent(final File modFile, final String finalTsName) throws IOException {
+    if (modFile == null || !modFile.exists()) {
+      return;
+    }
+    final String modDestName = finalTsName + ModificationFile.FILE_SUFFIX;
+    final File modDest = new File(targetBaseDir, modDestName);
+    transferByHardLinkOrCopy(modFile, modDest, "TsFile mod");
+  }
+
+  void transferByHardLinkOrCopy(final File source, final File dest, final String fileType)
+      throws IOException {
+    if (source.getCanonicalFile().equals(dest.getCanonicalFile())) {
+      LOGGER.info(
+          "Skip exporting {} because source and target are the same file: {}",
+          fileType,
+          dest.getAbsolutePath());
+      return;
+    }
+
+    final Path targetDirectory = dest.getParentFile().toPath();
+    if (!Files.exists(targetDirectory)) {
+      Files.createDirectories(targetDirectory);
+    }
+
+    if (isSameFileStore(source.toPath(), targetDirectory)) {
+      try {
+        createHardLink(source, dest);
+        LOGGER.info("Successfully hard-linked {} to {}", fileType, dest.getAbsolutePath());
+        return;
+      } catch (final IOException e) {
+        LOGGER.warn(
+            "Failed to hard-link {} to {}, fallback to copy.", fileType, dest.getAbsolutePath(), e);
+      }
+    } else {
+      LOGGER.info(
+          "Detected cross-filesystem export for {}, fallback to copy: {}",
+          fileType,
+          dest.getAbsolutePath());
+    }
+
+    copyFile(source, dest);
+    LOGGER.info("Successfully copied {} to {}", fileType, dest.getAbsolutePath());
+  }
+
+  boolean isSameFileStore(final Path sourcePath, final Path targetDirectory) throws IOException {
+    return Files.getFileStore(sourcePath).equals(Files.getFileStore(targetDirectory));
+  }
+
+  void createHardLink(final File source, final File dest) throws IOException {
+    FileUtils.createHardLink(source, dest);
+  }
+
+  private void copyFile(final File source, final File dest) throws IOException {
+    Files.copy(source.toPath(), dest.toPath(), StandardCopyOption.REPLACE_EXISTING);
   }
 
   @Override
   public void close() {
-    // No external resource is maintained by local transfer.
+    // No-op because local transfer does not keep any open connection or file handle.
   }
 }

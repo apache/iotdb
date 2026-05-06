@@ -173,8 +173,13 @@ public class PipeTsFileLocalSink implements PipeSink, PipeBatchMetricsSettable {
 
       final File tsFile = event.getTsFile();
       if (tsFile != null && tsFile.exists()) {
+        final File modFile =
+            event.isWithMod() && event.getModFile() != null && event.getModFile().exists()
+                ? event.getModFile()
+                : null;
         fileTransfer.transferFile(
             tsFile,
+            modFile,
             PipeObjectPathUtil.resolveLinkedObjectDirectory(
                 event.getTsFileResource(), event.getPipeName()),
             TsFileNameGenerator.targetNameForEvent(event));
@@ -183,7 +188,7 @@ public class PipeTsFileLocalSink implements PipeSink, PipeBatchMetricsSettable {
       final File tsFile = tsFileInsertionEvent.getTsFile();
       if (tsFile != null && tsFile.exists()) {
         fileTransfer.transferFile(
-            tsFile, null, TsFileNameGenerator.targetNameForEvent(tsFileInsertionEvent));
+            tsFile, null, null, TsFileNameGenerator.targetNameForEvent(tsFileInsertionEvent));
       }
     }
   }
@@ -263,7 +268,7 @@ public class PipeTsFileLocalSink implements PipeSink, PipeBatchMetricsSettable {
       final File objectDir = tsFileAndObjectDir.getRight();
       if (tsFile != null && tsFile.exists()) {
         fileTransfer.transferFile(
-            tsFile, objectDir, TsFileNameGenerator.targetNameForGeneratedFile(tsFile));
+            tsFile, null, objectDir, TsFileNameGenerator.targetNameForGeneratedFile(tsFile));
       }
     }
     eventTsFileBatch.decreaseEventsReferenceCount(PipeTsFileLocalSink.class.getName(), true);

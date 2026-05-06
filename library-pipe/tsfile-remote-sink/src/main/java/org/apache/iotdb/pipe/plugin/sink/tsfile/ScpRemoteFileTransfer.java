@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.pipe.plugin.sink.tsfile;
 
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
 import com.google.common.util.concurrent.RateLimiter;
@@ -104,11 +105,13 @@ class ScpRemoteFileTransfer implements RemoteFileTransfer {
   }
 
   @Override
-  public void transferFile(File tsFile, File objectSourceDir, String targetName)
+  public void transferFile(File tsFile, File modFile, File objectSourceDir, String targetName)
       throws IOException {
     try {
       syncObjectDirectory(objectSourceDir, targetName);
-      syncTsFile(tsFile, targetName);
+      final String finalTsName = computeFinalTsName(targetName);
+      syncModFile(modFile, finalTsName);
+      syncTsFile(tsFile, finalTsName);
     } catch (final Exception e) {
       invalidateSession();
       throw new IOException("Scp transfer failed: " + targetName, e);
@@ -155,13 +158,28 @@ class ScpRemoteFileTransfer implements RemoteFileTransfer {
     }
   }
 
-  private void syncTsFile(File tsFile, String targetName) throws IOException {
-    final String finalTsName =
-        targetName.endsWith(TSFILE_EXTENSION) ? targetName : targetName + TSFILE_EXTENSION;
+  private static String computeFinalTsName(final String targetName) {
+    return targetName.endsWith(TSFILE_EXTENSION) ? targetName : targetName + TSFILE_EXTENSION;
+  }
+
+  private void syncTsFile(final File tsFile, final String finalTsName) throws IOException {
     acquireTransferBytes(tsFile.length());
     ScpClientCreator.instance()
         .createScpClient(getSession())
         .upload(tsFile.toPath(), remoteBaseDir + UNIX_SEPARATOR + finalTsName);
+  }
+
+  private void syncModFile(final File modFile, final String finalTsName) throws IOException {
+    if (modFile == null || !modFile.exists()) {
+      return;
+    }
+    final String remoteModPath =
+        remoteBaseDir + UNIX_SEPARATOR + finalTsName + ModificationFile.FILE_SUFFIX;
+    acquireTransferBytes(modFile.length());
+    ScpClientCreator.instance()
+        .createScpClient(getSession())
+        .upload(modFile.toPath(), remoteModPath);
+    LOGGER.info("Successfully transferred TsFile mod to {}", remoteModPath);
   }
 
   private void ensureRemoteDirExists(ClientSession s, String dir) throws IOException {

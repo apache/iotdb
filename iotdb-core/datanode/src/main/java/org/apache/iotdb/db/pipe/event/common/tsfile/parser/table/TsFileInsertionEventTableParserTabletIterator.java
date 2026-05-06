@@ -59,6 +59,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.BiConsumer;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -82,6 +83,10 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
 
   private final boolean objectPathsOnly;
 
+  private final boolean collectObjectColumnModEntries;
+
+  private final BiConsumer<String, List<String>> tableObjectMeasurementsSink;
+
   // mods entry
   private final PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> modifications;
 
@@ -104,6 +109,7 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
   private List<ColumnCategory> columnTypes;
   private List<String> measurementList;
   private List<TSDataType> dataTypeList;
+  private List<String> objectMeasurementList;
   private int deviceIdSize;
 
   private List<ModsOperationUtil.ModsInfo> modsInfoList;
@@ -124,12 +130,16 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
       final PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> modifications,
       final long startTime,
       final long endTime,
-      final boolean objectPathsOnly)
+      final boolean objectPathsOnly,
+      final boolean collectObjectColumnModEntries,
+      final BiConsumer<String, List<String>> tableObjectMeasurementsSink)
       throws IOException {
 
     this.startTime = startTime;
     this.endTime = endTime;
     this.modifications = modifications;
+    this.collectObjectColumnModEntries = collectObjectColumnModEntries;
+    this.tableObjectMeasurementsSink = tableObjectMeasurementsSink;
 
     this.reader = tsFileSequenceReader;
     this.metadataQuerier = new MetadataQuerierByFileImpl(reader);
@@ -278,6 +288,7 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
               dataTypeList = new ArrayList<>();
               columnTypes = new ArrayList<>();
               measurementList = new ArrayList<>();
+              objectMeasurementList = new ArrayList<>();
 
               for (int i = 0; i < columnSchemaSize; i++) {
                 final IMeasurementSchema schema = tableSchema.getColumnSchemas().get(i);
@@ -290,8 +301,13 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
                     columnTypes.add(ColumnCategory.TAG);
                     measurementList.add(measurementName);
                     dataTypeList.add(schema.getType());
+                  } else if (schema.getType() == TSDataType.OBJECT) {
+                    objectMeasurementList.add(measurementName);
                   }
                 }
+              }
+              if (collectObjectColumnModEntries && tableObjectMeasurementsSink != null) {
+                tableObjectMeasurementsSink.accept(tableName, objectMeasurementList);
               }
               deviceIdSize = dataTypeList.size();
               state = State.INIT_CHUNK_METADATA;

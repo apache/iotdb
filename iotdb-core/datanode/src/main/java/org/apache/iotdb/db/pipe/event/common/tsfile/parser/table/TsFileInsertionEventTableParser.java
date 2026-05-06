@@ -33,6 +33,9 @@ import org.apache.iotdb.db.pipe.event.common.tsfile.parser.util.ModsOperationUti
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
+import org.apache.iotdb.db.utils.ModificationUtils;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
@@ -42,11 +45,24 @@ import org.apache.tsfile.write.record.Tablet;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
+import java.util.Set;
 
 public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser {
+
+  private final boolean collectObjectColumnModEntries;
+
+  private final List<ModEntry> originalModEntries;
+
+  private final Map<String, Set<String>> tableObjectMeasurements = new HashMap<>();
 
   private final long startTime;
   private final long endTime;
@@ -69,7 +85,8 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
       final IAuditEntity entity,
       final PipeInsertionEvent sourceEvent,
       final boolean isWithMod,
-      final boolean objectPathsOnly)
+      final boolean objectPathsOnly,
+      final boolean collectObjectColumnModEntries)
       throws IOException {
     super(
         tsFile,
@@ -87,12 +104,22 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
         objectPathsOnly,
         isWithMod);
 
+    this.collectObjectColumnModEntries = collectObjectColumnModEntries;
     this.isWithMod = isWithMod;
     try {
-      currentModifications =
-          isWithMod
-              ? ModsOperationUtil.loadModificationsFromTsFile(tsFile)
-              : PatternTreeMapFactory.getModsPatternTreeMap();
+      final boolean loadModificationsFromTsFile =
+          this.isWithMod || this.collectObjectColumnModEntries;
+      if (this.collectObjectColumnModEntries) {
+        originalModEntries = ModsOperationUtil.readAllModificationsFromTsFile(tsFile);
+        currentModifications =
+            ModsOperationUtil.buildModificationsPatternTreeMap(originalModEntries);
+      } else {
+        originalModEntries = Collections.emptyList();
+        currentModifications =
+            loadModificationsFromTsFile
+                ? ModsOperationUtil.loadModificationsFromTsFile(tsFile)
+                : PatternTreeMapFactory.getModsPatternTreeMap();
+      }
       allocatedMemoryBlockForModifications =
           PipeDataNodeResourceManager.memory()
               .forceAllocateForTabletWithRetry(currentModifications.ramBytesUsed());
@@ -150,7 +177,60 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
         entity,
         sourceEvent,
         isWithMod,
-        objectPathsOnly);
+        objectPathsOnly,
+        false);
+  }
+
+  private void recordTableObjectMeasurements(
+      final String tableName, final List<String> objectMeasurements) {
+    if (tableName == null
+        || tableName.isEmpty()
+        || objectMeasurements == null
+        || objectMeasurements.isEmpty()) {
+      return;
+    }
+    tableObjectMeasurements
+        .computeIfAbsent(tableName, ignored -> new LinkedHashSet<>())
+        .addAll(objectMeasurements);
+  }
+
+  private List<ModEntry> generateObjectColumnModEntries(List<ModEntry> generatedEntries) {
+    if (!collectObjectColumnModEntries
+        || originalModEntries.isEmpty()
+        || tableObjectMeasurements.isEmpty()) {
+      return Collections.emptyList();
+    }
+
+    for (final ModEntry modEntry : originalModEntries) {
+      if (!(modEntry instanceof TableDeletionEntry)) {
+        continue;
+      }
+
+      final TableDeletionEntry tableDeletionEntry = (TableDeletionEntry) modEntry;
+      final Set<String> objectMeasurements =
+          tableObjectMeasurements.get(tableDeletionEntry.getTableName());
+      if (objectMeasurements == null || objectMeasurements.isEmpty()) {
+        continue;
+      }
+
+      ModEntry entry =
+          ModsOperationUtil.buildObjectColumnDeletionEntries(
+              tableDeletionEntry, objectMeasurements);
+      if (entry != null) {
+        generatedEntries.add(entry);
+      }
+    }
+
+    return generatedEntries.isEmpty()
+        ? Collections.emptyList()
+        : ModificationUtils.sortAndMerge(generatedEntries);
+  }
+
+  @Override
+  public void drainGeneratedObjectColumnModEntriesTo(final List<ModEntry> modEntries) {
+    if (modEntries != null) {
+      modEntries.addAll(generateObjectColumnModEntries(new ArrayList<>()));
+    }
   }
 
   @Override
@@ -181,7 +261,12 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
                               currentModifications,
                               startTime,
                               endTime,
-                              objectPathsOnly);
+                              objectPathsOnly,
+                              collectObjectColumnModEntries,
+                              collectObjectColumnModEntries && objectPathsOnly
+                                  ? TsFileInsertionEventTableParser.this
+                                      ::recordTableObjectMeasurements
+                                  : null);
                     }
                     final boolean hasNext = tabletIterator.hasNext();
                     if (hasNext && !parseStartTimeRecorded) {

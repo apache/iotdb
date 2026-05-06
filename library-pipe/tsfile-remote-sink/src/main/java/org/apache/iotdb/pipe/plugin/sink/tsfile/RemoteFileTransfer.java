@@ -25,7 +25,8 @@ import java.io.IOException;
 interface RemoteFileTransfer {
   void handshake() throws IOException;
 
-  void transferFile(File tsFile, File objectSourceDir, String targetName) throws IOException;
+  void transferFile(File tsFile, File modFile, File objectSourceDir, String targetName)
+      throws IOException;
 
   void close() throws IOException;
 }

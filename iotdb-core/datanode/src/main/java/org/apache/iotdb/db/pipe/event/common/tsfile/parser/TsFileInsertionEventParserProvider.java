@@ -87,7 +87,7 @@ public class TsFileInsertionEventParserProvider {
    */
   public TsFileInsertionEventParser provide(final boolean isWithMod)
       throws IOException, IllegalPathException {
-    return this.provide(isWithMod, false);
+    return this.provide(isWithMod, false, false);
   }
 
   /**
@@ -100,6 +100,14 @@ public class TsFileInsertionEventParserProvider {
    * @throws IllegalPathException if a path in the TsFile is illegal
    */
   public TsFileInsertionEventParser provide(final boolean isWithMod, final boolean objectPathsOnly)
+      throws IOException, IllegalPathException {
+    return provide(isWithMod, objectPathsOnly, false);
+  }
+
+  public TsFileInsertionEventParser provide(
+      final boolean isWithMod,
+      final boolean objectPathsOnly,
+      final boolean collectObjectColumnModEntries)
       throws IOException, IllegalPathException {
     if (pipeName != null) {
       PipeTsFileToTabletsMetrics.getInstance()
@@ -118,7 +126,8 @@ public class TsFileInsertionEventParserProvider {
           entity,
           sourceEvent,
           isWithMod,
-          objectPathsOnly);
+          objectPathsOnly,
+          collectObjectColumnModEntries);
     }
 
     // Use scan container to save memory

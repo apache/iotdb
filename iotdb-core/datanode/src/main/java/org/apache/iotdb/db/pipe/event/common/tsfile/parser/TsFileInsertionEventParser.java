@@ -45,6 +45,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.List;
 
 public abstract class TsFileInsertionEventParser implements AutoCloseable {
 
@@ -154,6 +155,8 @@ public abstract class TsFileInsertionEventParser implements AutoCloseable {
    * @return {@link TabletInsertionEvent} in a streaming way
    */
   public abstract Iterable<TabletInsertionEvent> toTabletInsertionEvents();
+
+  public void drainGeneratedObjectColumnModEntriesTo(final List<ModEntry> modEntries) {}
 
   /**
    * Record parse start time when hasNext() is called for the first time and returns true. Should be

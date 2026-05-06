@@ -20,15 +20,18 @@
 package org.apache.iotdb.db.pipe.event.common.tsfile;
 
 import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 
 import java.util.Collections;
 import java.util.Iterator;
+import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 
@@ -38,6 +41,7 @@ public final class TsFileObjectPathIterator implements Iterator<String> {
 
   private final Iterator<TabletInsertionEvent> tabletEventIterator;
   private final PipeTsFileInsertionEvent tsfileEvent;
+  @Nullable private final List<ModEntry> modEntriesSink;
 
   private Iterator<String> currentPathIterator;
 
@@ -45,11 +49,18 @@ public final class TsFileObjectPathIterator implements Iterator<String> {
   private String nextPath = null;
   private boolean isClosed = false;
 
-  public TsFileObjectPathIterator(@Nonnull PipeTsFileInsertionEvent tsFileEvent) {
+  public TsFileObjectPathIterator(@Nonnull final PipeTsFileInsertionEvent tsFileEvent) {
+    this(tsFileEvent, null);
+  }
+
+  TsFileObjectPathIterator(
+      @Nonnull final PipeTsFileInsertionEvent tsFileEvent,
+      @Nullable final List<ModEntry> modEntriesSink) {
     Objects.requireNonNull(tsFileEvent, "tsFileEvent cannot be null");
 
     this.tabletEventIterator = tsFileEvent.toTabletInsertionEvents(true).iterator();
     this.tsfileEvent = tsFileEvent;
+    this.modEntriesSink = modEntriesSink;
 
     this.currentPathIterator = Collections.emptyIterator();
   }
@@ -139,7 +150,11 @@ public final class TsFileObjectPathIterator implements Iterator<String> {
       hasCachedNext = false;
       currentPathIterator = Collections.emptyIterator();
       if (tsfileEvent != null) {
-        tsfileEvent.close();
+        if (modEntriesSink != null) {
+          tsfileEvent.drainGeneratedObjectColumnModEntriesAndCloseParserTo(modEntriesSink);
+        } else {
+          tsfileEvent.closeParser();
+        }
       }
     }
   }

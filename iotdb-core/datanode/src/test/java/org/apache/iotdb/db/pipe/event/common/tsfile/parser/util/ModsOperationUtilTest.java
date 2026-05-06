@@ -19,14 +19,20 @@
 
 package org.apache.iotdb.db.pipe.event.common.tsfile.parser.util;
 
+import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate;
+import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate.NOP;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
 
 import org.apache.tsfile.read.common.TimeRange;
 import org.junit.Test;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -381,6 +387,47 @@ public class ModsOperationUtilTest {
 
     // Start from index 2, search for time 25, should return 2 (start index)
     assertEquals(2, binarySearchMods(mods, 25, 2));
+  }
+
+  @Test
+  public void testBuildObjectColumnDeletionEntriesForFullTableDeletion() {
+    final TableDeletionEntry tableDeletionEntry =
+        new TableDeletionEntry(new DeletionPredicate("table1", new NOP()), new TimeRange(0, 100));
+    final Set<String> objectMeasurements =
+        new LinkedHashSet<>(Arrays.asList("obj_col_1", "obj_col_2"));
+
+    final TableDeletionEntry generatedEntry =
+        (TableDeletionEntry)
+            ModsOperationUtil.buildObjectColumnDeletionEntries(
+                tableDeletionEntry, objectMeasurements);
+
+    assertEquals(
+        Arrays.asList("obj_col_1", "obj_col_2"),
+        generatedEntry.getPredicate().getMeasurementNames());
+    assertEquals(0, generatedEntry.getTimeRange().getMin());
+    assertEquals(100, generatedEntry.getTimeRange().getMax());
+  }
+
+  @Test
+  public void testBuildObjectColumnDeletionEntriesForSpecifiedMeasurements() {
+    final TableDeletionEntry tableDeletionEntry =
+        new TableDeletionEntry(
+            new DeletionPredicate(
+                "table1", new NOP(), Arrays.asList("s1", "obj_col_2", "obj_col_1")),
+            new TimeRange(0, 100));
+    final Set<String> objectMeasurements =
+        new LinkedHashSet<>(Arrays.asList("obj_col_1", "obj_col_2", "obj_col_3"));
+
+    final TableDeletionEntry generatedEntry =
+        (TableDeletionEntry)
+            ModsOperationUtil.buildObjectColumnDeletionEntries(
+                tableDeletionEntry, objectMeasurements);
+
+    assertEquals(
+        Arrays.asList("obj_col_2", "obj_col_1"),
+        generatedEntry.getPredicate().getMeasurementNames());
+    assertEquals(0, generatedEntry.getTimeRange().getMin());
+    assertEquals(100, generatedEntry.getTimeRange().getMax());
   }
 
   // Helper method to access the private binarySearchMods method for testing

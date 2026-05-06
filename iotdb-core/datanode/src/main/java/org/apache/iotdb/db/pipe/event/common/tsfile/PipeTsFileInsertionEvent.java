@@ -49,6 +49,7 @@ import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.assigner.PipeTsFileEpochProgressIndexAndFlushManager;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
@@ -369,22 +370,44 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   @Override
   public boolean internallyIncreaseResourceReferenceCount(final String holderMessage) {
     extractTime = System.nanoTime();
+    final List<ModEntry> linkedObjectColumnModEntries = new ArrayList<>();
     try {
       if (Objects.nonNull(pipeName)) {
-        final Iterator<String> pathIterator = objectPathIterator();
+        // In the real tsfile transfer path, the tsfile event is expected to observe a sealed
+        // resource here. The UNCLOSED case is mainly introduced by unit tests that manually mock
+        // an unsealed resource to verify realtime behavior before close.
+        final boolean shouldLinkObjectFiles =
+            !Objects.equals(hasObjectData, Boolean.FALSE) && resource.isClosed();
+        final Iterator<String> pathIterator =
+            shouldLinkObjectFiles
+                ? new TsFileObjectPathIterator(this, linkedObjectColumnModEntries)
+                : Collections.emptyIterator();
         final int linked =
             PipeDataNodeResourceManager.object().linkObjectFiles(resource, pathIterator, pipeName);
-        hasObjectData = linked > 0;
         if (linked > 0) {
+          hasObjectData = true;
           PipeDataNodeResourceManager.object().increaseReference(resource, pipeName);
+        } else if (shouldLinkObjectFiles) {
+          hasObjectData = false;
         }
 
-        PipeDataNodeResourceManager.object().setTsFileClosed(resource, pipeName);
+        if (resource.isClosed()) {
+          PipeDataNodeResourceManager.object().setTsFileClosed(resource, pipeName);
+        }
       }
       tsFile = PipeDataNodeResourceManager.tsfile().increaseFileReference(tsFile, true, pipeName);
       if (isWithMod) {
-        modFile =
-            PipeDataNodeResourceManager.tsfile().increaseFileReference(modFile, false, pipeName);
+        if (modFile != null) {
+          modFile =
+              PipeDataNodeResourceManager.tsfile().increaseFileReference(modFile, false, pipeName);
+        }
+      } else {
+        if (pipeName != null && !linkedObjectColumnModEntries.isEmpty()) {
+          modFile =
+              PipeDataNodeResourceManager.tsfile()
+                  .writeModEntriesForPipeTsFile(linkedObjectColumnModEntries, tsFile, pipeName);
+          isWithMod = true;
+        }
       }
       return true;
     } catch (final Exception e) {
@@ -409,7 +432,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         PipeDataNodeResourceManager.object().decreaseReference(resource, pipeName);
       }
       PipeDataNodeResourceManager.tsfile().decreaseFileReference(tsFile, pipeName);
-      if (isWithMod) {
+      if (isWithMod && modFile != null) {
         PipeDataNodeResourceManager.tsfile().decreaseFileReference(modFile, pipeName);
       }
       close();
@@ -874,7 +897,11 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
    */
   private TsFileInsertionEventParser initEventParser(final boolean objectPathsOnly) {
     try {
-      eventParser.compareAndSet(null, createParserProvider().provide(isWithMod, objectPathsOnly));
+      final boolean collectObjectColumnModEntries = objectPathsOnly && !isWithMod;
+      eventParser.compareAndSet(
+          null,
+          createParserProvider()
+              .provide(isWithMod, objectPathsOnly, collectObjectColumnModEntries));
       return eventParser.get();
     } catch (final Exception e) {
       close();
@@ -929,13 +956,33 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   /** Release the resource of {@link TsFileInsertionEventParser}. */
   @Override
   public void close() {
-    eventParser.getAndUpdate(
-        parser -> {
-          if (Objects.nonNull(parser)) {
-            parser.close();
-          }
-          return null;
-        });
+    closeParser();
+  }
+
+  public void closeParser() {
+    closeParserInternal(null);
+  }
+
+  public List<ModEntry> drainGeneratedObjectColumnModEntriesAndCloseParser() {
+    final List<ModEntry> modEntries = new ArrayList<>();
+    closeParserInternal(modEntries);
+    return modEntries;
+  }
+
+  public void drainGeneratedObjectColumnModEntriesAndCloseParserTo(
+      final List<ModEntry> modEntries) {
+    closeParserInternal(modEntries);
+  }
+
+  private void closeParserInternal(final List<ModEntry> modEntries) {
+    final TsFileInsertionEventParser parser = eventParser.getAndSet(null);
+    if (Objects.isNull(parser)) {
+      return;
+    }
+    if (modEntries != null) {
+      parser.drainGeneratedObjectColumnModEntriesTo(modEntries);
+    }
+    parser.close();
   }
 
   /////////////////////////// Object ///////////////////////////
@@ -980,7 +1027,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         this.eventParser);
   }
 
-  private static class PipeTsFileInsertionEventResource extends PipeEventResource {
+  private class PipeTsFileInsertionEventResource extends PipeEventResource {
 
     private final File tsFile;
     private final boolean isWithMod;
@@ -1020,17 +1067,11 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
           PipeDataNodeResourceManager.object().decreaseReference(resource, pipeName);
         }
         PipeDataNodeResourceManager.tsfile().decreaseFileReference(tsFile, pipeName);
-        if (isWithMod) {
+        if (isWithMod && modFile != null) {
           PipeDataNodeResourceManager.tsfile().decreaseFileReference(modFile, pipeName);
         }
 
-        eventParser.getAndUpdate(
-            parser -> {
-              if (Objects.nonNull(parser)) {
-                parser.close();
-              }
-              return null;
-            });
+        PipeTsFileInsertionEvent.this.close();
       } catch (final Exception e) {
         LOGGER.warn("Decrease reference count for TsFile {} error.", tsFile.getPath(), e);
       }
