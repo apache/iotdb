@@ -295,6 +295,7 @@ public enum ConfigPhysicalPlanType {
   ShowPipeV2((short) 1503),
   AlterPipeV2((short) 1504),
   OperateMultiplePipesV2((short) 1505),
+  SetPipeStatusWithStoppedByRuntimeExceptionV2((short) 1506),
 
   /** Pipe Runtime. */
   PipeHandleLeaderChange((short) 1600),
