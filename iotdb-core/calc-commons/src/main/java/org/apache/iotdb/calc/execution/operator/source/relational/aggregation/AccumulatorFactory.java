@@ -424,11 +424,15 @@ public class AccumulatorFactory {
       TAggregationType aggregationType, List<TSDataType> inputDataTypes) {
     switch (aggregationType) {
       case MAX_BY:
-        checkState(inputDataTypes.size() == 2, "Wrong inputDataTypes size.");
-      // return new MaxByAccumulator(inputDataTypes.get(0), inputDataTypes.get(1));
+        {
+          checkState(inputDataTypes.size() == 2, "Wrong inputDataTypes size.");
+          // return new MaxByAccumulator(inputDataTypes.get(0), inputDataTypes.get(1));
+        }
       case MIN_BY:
-        checkState(inputDataTypes.size() == 2, "Wrong inputDataTypes size.");
-      // return new MinByAccumulator(inputDataTypes.get(0), inputDataTypes.get(1));
+        {
+          checkState(inputDataTypes.size() == 2, "Wrong inputDataTypes size.");
+          // return new MinByAccumulator(inputDataTypes.get(0), inputDataTypes.get(1));
+        }
       default:
         throw new IllegalArgumentException("Invalid Aggregation function: " + aggregationType);
     }

@@ -166,127 +166,136 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
               return true;
             }
           case INIT_DATA:
-            if (chunkReader != null && chunkReader.hasNextSatisfiedPage()) {
-              batchData = chunkReader.nextPageData();
-              final long size = PipeMemoryWeightUtil.calculateBatchDataRamBytesUsed(batchData);
-              if (allocatedMemoryBlockForBatchData.getMemoryUsageInBytes() < size) {
-                PipeDataNodeResourceManager.memory()
-                    .forceResize(allocatedMemoryBlockForBatchData, size);
+            {
+              if (chunkReader != null && chunkReader.hasNextSatisfiedPage()) {
+                batchData = chunkReader.nextPageData();
+                final long size = PipeMemoryWeightUtil.calculateBatchDataRamBytesUsed(batchData);
+                if (allocatedMemoryBlockForBatchData.getMemoryUsageInBytes() < size) {
+                  PipeDataNodeResourceManager.memory()
+                      .forceResize(allocatedMemoryBlockForBatchData, size);
+                }
+                state = State.CHECK_DATA;
+                break;
               }
-              state = State.CHECK_DATA;
-              break;
             }
           case INIT_CHUNK_READER:
-            if (currentChunkMetadata != null
-                || (chunkMetadataList != null && chunkMetadataList.hasNext())) {
-              if (currentChunkMetadata == null) {
-                currentChunkMetadata = chunkMetadataList.next();
-                timeChunk = null;
-                offset = 0;
+            {
+              if (currentChunkMetadata != null
+                  || (chunkMetadataList != null && chunkMetadataList.hasNext())) {
+                if (currentChunkMetadata == null) {
+                  currentChunkMetadata = chunkMetadataList.next();
+                  timeChunk = null;
+                  offset = 0;
+                }
+                initChunkReader(currentChunkMetadata);
+                state = State.INIT_DATA;
+                break;
               }
-              initChunkReader(currentChunkMetadata);
-              state = State.INIT_DATA;
-              break;
             }
           case INIT_CHUNK_METADATA:
-            if (deviceMetaIterator != null && deviceMetaIterator.hasNext()) {
-              final Pair<IDeviceID, MetadataIndexNode> pair = deviceMetaIterator.next();
+            {
+              if (deviceMetaIterator != null && deviceMetaIterator.hasNext()) {
+                final Pair<IDeviceID, MetadataIndexNode> pair = deviceMetaIterator.next();
 
-              long size = 0;
-              List<AbstractAlignedChunkMetadata> iChunkMetadataList =
-                  reader.getAlignedChunkMetadata(pair.left, true);
+                long size = 0;
+                List<AbstractAlignedChunkMetadata> iChunkMetadataList =
+                    reader.getAlignedChunkMetadata(pair.left, true);
 
-              Iterator<AbstractAlignedChunkMetadata> chunkMetadataIterator =
-                  iChunkMetadataList.iterator();
-              while (chunkMetadataIterator.hasNext()) {
-                final AbstractAlignedChunkMetadata alignedChunkMetadata =
-                    chunkMetadataIterator.next();
-                if (alignedChunkMetadata == null) {
-                  throw new PipeException(
-                      "Table model tsfile parsing does not support this type of ChunkMeta");
-                }
+                Iterator<AbstractAlignedChunkMetadata> chunkMetadataIterator =
+                    iChunkMetadataList.iterator();
+                while (chunkMetadataIterator.hasNext()) {
+                  final AbstractAlignedChunkMetadata alignedChunkMetadata =
+                      chunkMetadataIterator.next();
+                  if (alignedChunkMetadata == null) {
+                    throw new PipeException(
+                        "Table model tsfile parsing does not support this type of ChunkMeta");
+                  }
 
-                // Reduce the number of times Chunks are read
-                if (alignedChunkMetadata.getEndTime() < startTime
-                    || alignedChunkMetadata.getStartTime() > endTime) {
-                  chunkMetadataIterator.remove();
-                  continue;
-                }
-
-                Iterator<IChunkMetadata> iChunkMetadataIterator =
-                    alignedChunkMetadata.getValueChunkMetadataList().iterator();
-                while (iChunkMetadataIterator.hasNext()) {
-                  IChunkMetadata iChunkMetadata = iChunkMetadataIterator.next();
-                  if (iChunkMetadata == null) {
-                    iChunkMetadataIterator.remove();
+                  // Reduce the number of times Chunks are read
+                  if (alignedChunkMetadata.getEndTime() < startTime
+                      || alignedChunkMetadata.getStartTime() > endTime) {
+                    chunkMetadataIterator.remove();
                     continue;
                   }
 
-                  if (!modifications.isEmpty()
-                      && ModsOperationUtil.isAllDeletedByMods(
-                          pair.getLeft(),
-                          iChunkMetadata.getMeasurementUid(),
-                          alignedChunkMetadata.getStartTime(),
-                          alignedChunkMetadata.getEndTime(),
-                          modifications)) {
-                    iChunkMetadataIterator.remove();
+                  Iterator<IChunkMetadata> iChunkMetadataIterator =
+                      alignedChunkMetadata.getValueChunkMetadataList().iterator();
+                  while (iChunkMetadataIterator.hasNext()) {
+                    IChunkMetadata iChunkMetadata = iChunkMetadataIterator.next();
+                    if (iChunkMetadata == null) {
+                      iChunkMetadataIterator.remove();
+                      continue;
+                    }
+
+                    if (!modifications.isEmpty()
+                        && ModsOperationUtil.isAllDeletedByMods(
+                            pair.getLeft(),
+                            iChunkMetadata.getMeasurementUid(),
+                            alignedChunkMetadata.getStartTime(),
+                            alignedChunkMetadata.getEndTime(),
+                            modifications)) {
+                      iChunkMetadataIterator.remove();
+                    }
+                  }
+
+                  if (alignedChunkMetadata.getValueChunkMetadataList().isEmpty()) {
+                    chunkMetadataIterator.remove();
+                    continue;
+                  }
+
+                  size +=
+                      PipeMemoryWeightUtil.calculateAlignedChunkMetaBytesUsed(alignedChunkMetadata);
+                  if (allocatedMemoryBlockForChunkMeta.getMemoryUsageInBytes() < size) {
+                    PipeDataNodeResourceManager.memory()
+                        .forceResize(allocatedMemoryBlockForChunkMeta, size);
                   }
                 }
 
-                if (alignedChunkMetadata.getValueChunkMetadataList().isEmpty()) {
-                  chunkMetadataIterator.remove();
-                  continue;
-                }
+                deviceID = pair.getLeft();
+                chunkMetadataList = iChunkMetadataList.iterator();
 
-                size +=
-                    PipeMemoryWeightUtil.calculateAlignedChunkMetaBytesUsed(alignedChunkMetadata);
-                if (allocatedMemoryBlockForChunkMeta.getMemoryUsageInBytes() < size) {
-                  PipeDataNodeResourceManager.memory()
-                      .forceResize(allocatedMemoryBlockForChunkMeta, size);
-                }
+                state = State.INIT_CHUNK_READER;
+                break;
               }
-
-              deviceID = pair.getLeft();
-              chunkMetadataList = iChunkMetadataList.iterator();
-
-              state = State.INIT_CHUNK_READER;
-              break;
             }
           case INIT_DEVICE_META:
-            if (filteredTableSchemaIterator != null && filteredTableSchemaIterator.hasNext()) {
-              final Map.Entry<String, TableSchema> entry = filteredTableSchemaIterator.next();
-              tableName = entry.getKey();
-              final TableSchema tableSchema = entry.getValue();
-              // The table name has changed, set to false
-              isSameTableName = false;
+            {
+              if (filteredTableSchemaIterator != null && filteredTableSchemaIterator.hasNext()) {
+                final Map.Entry<String, TableSchema> entry = filteredTableSchemaIterator.next();
+                tableName = entry.getKey();
+                final TableSchema tableSchema = entry.getValue();
+                // The table name has changed, set to false
+                isSameTableName = false;
 
-              final MetadataIndexNode tableRoot = fileMetadata.getTableMetadataIndexNode(tableName);
-              deviceMetaIterator = metadataQuerier.deviceIterator(tableRoot, null);
+                final MetadataIndexNode tableRoot =
+                    fileMetadata.getTableMetadataIndexNode(tableName);
+                deviceMetaIterator = metadataQuerier.deviceIterator(tableRoot, null);
 
-              final int columnSchemaSize = tableSchema.getColumnSchemas().size();
-              dataTypeList = new ArrayList<>();
-              columnTypes = new ArrayList<>();
-              measurementList = new ArrayList<>();
+                final int columnSchemaSize = tableSchema.getColumnSchemas().size();
+                dataTypeList = new ArrayList<>();
+                columnTypes = new ArrayList<>();
+                measurementList = new ArrayList<>();
 
-              for (int i = 0; i < columnSchemaSize; i++) {
-                final IMeasurementSchema schema = tableSchema.getColumnSchemas().get(i);
-                final ColumnCategory columnCategory = tableSchema.getColumnTypes().get(i);
-                if (schema != null
-                    && schema.getMeasurementName() != null
-                    && !schema.getMeasurementName().isEmpty()) {
-                  final String measurementName = schema.getMeasurementName();
-                  if (ColumnCategory.TAG.equals(columnCategory)) {
-                    columnTypes.add(ColumnCategory.TAG);
-                    measurementList.add(measurementName);
-                    dataTypeList.add(schema.getType());
+                for (int i = 0; i < columnSchemaSize; i++) {
+                  final IMeasurementSchema schema = tableSchema.getColumnSchemas().get(i);
+                  final ColumnCategory columnCategory = tableSchema.getColumnTypes().get(i);
+                  if (schema != null
+                      && schema.getMeasurementName() != null
+                      && !schema.getMeasurementName().isEmpty()) {
+                    final String measurementName = schema.getMeasurementName();
+                    if (ColumnCategory.TAG.equals(columnCategory)) {
+                      columnTypes.add(ColumnCategory.TAG);
+                      measurementList.add(measurementName);
+                      dataTypeList.add(schema.getType());
+                    }
                   }
                 }
+                deviceIdSize = dataTypeList.size();
+                state = State.INIT_CHUNK_METADATA;
+                break;
               }
-              deviceIdSize = dataTypeList.size();
-              state = State.INIT_CHUNK_METADATA;
-              break;
+              return false;
             }
-            return false;
         }
       }
     } catch (Exception e) {

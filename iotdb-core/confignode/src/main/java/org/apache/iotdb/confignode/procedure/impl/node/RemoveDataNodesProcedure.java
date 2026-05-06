@@ -116,6 +116,7 @@ public class RemoveDataNodesProcedure extends AbstractNodeProcedure<RemoveDataNo
                 removedDataNodes);
             return Flow.NO_MORE_STATE;
           }
+          break;
         case REMOVE_DATA_NODE_PREPARE:
           Map<Integer, NodeStatus> removedNodeStatusMap = new HashMap<>();
           removedDataNodes.forEach(
