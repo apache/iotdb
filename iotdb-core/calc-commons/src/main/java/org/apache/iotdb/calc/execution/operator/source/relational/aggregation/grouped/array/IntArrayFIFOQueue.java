@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.array;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
+
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -36,9 +38,10 @@ public class IntArrayFIFOQueue implements Serializable {
   public IntArrayFIFOQueue(int capacity) {
     if (capacity > 2147483638) {
       throw new IllegalArgumentException(
-          "Initial capacity (" + capacity + ") exceeds " + 2147483638);
+          CalcMessages.INITIAL_CAPACITY_IS_NEGATIVE + capacity + ") exceeds " + 2147483638);
     } else if (capacity < 0) {
-      throw new IllegalArgumentException("Initial capacity (" + capacity + ") is negative");
+      throw new IllegalArgumentException(
+          CalcMessages.INITIAL_CAPACITY_IS_NEGATIVE + capacity + CalcMessages.IS_NEGATIVE);
     } else {
       this.array = new int[Math.max(1, capacity + 1)];
       this.length = this.array.length;

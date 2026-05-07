@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.calc.execution.relational;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.calc.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.calc.plan.relational.metadata.ITypeMetadata;
 import org.apache.iotdb.calc.transformation.dag.column.ColumnTransformer;
@@ -340,7 +341,7 @@ public class ColumnTransformerBuilder
         }
         return getColumnTransformerFromCacheAndAddReferenceCount(node, context);
       default:
-        throw new UnsupportedOperationException("Unknown sign: " + node.getSign());
+        throw new UnsupportedOperationException(CalcMessages.UNKNOWN_SIGN + node.getSign());
     }
   }
 
@@ -563,7 +564,8 @@ public class ColumnTransformerBuilder
           INT64,
           new LongColumn(1, Optional.empty(), new long[] {Long.parseLong(literal.getValue())}));
     } else {
-      throw new SemanticException("Unsupported type in GenericLiteral: " + literal.getType());
+      throw new SemanticException(
+          CalcMessages.UNSUPPORTED_TYPE_IN_GENERIC_LITERAL + literal.getType());
     }
   }
 
@@ -1630,7 +1632,8 @@ public class ColumnTransformerBuilder
         }
         return new InBinaryMultiColumnTransformer(binarySet, valueColumnTransformerList);
       default:
-        throw new UnsupportedOperationException("unsupported data type: " + childType);
+        throw new UnsupportedOperationException(
+            CalcMessages.UNSUPPORTED_DATA_TYPE_LOWER + childType);
     }
   }
 

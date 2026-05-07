@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.calc.service;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.calc.transformation.datastructure.SerializableList.SerializationRecorder;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
@@ -58,12 +59,14 @@ public abstract class AbstractTemporaryQueryDataFileService implements IService 
         ServiceLoader.load(ITemporaryQueryDataFileServiceProvider.class);
     for (ITemporaryQueryDataFileServiceProvider provider : loader) {
       if (service != null) {
-        throw new IllegalStateException("Multiple ITemporaryQueryDataFileServiceProvider found");
+        throw new IllegalStateException(
+            CalcMessages.MULTIPLE_I_TEMPORARY_QUERY_DATA_FILE_SERVICE_PROVIDER_FOUND);
       }
       service = provider.getService();
     }
     if (service == null) {
-      throw new IllegalStateException("No ITemporaryQueryDataFileServiceProvider found");
+      throw new IllegalStateException(
+          CalcMessages.NO_I_TEMPORARY_QUERY_DATA_FILE_SERVICE_PROVIDER_FOUND);
     }
     return service;
   }

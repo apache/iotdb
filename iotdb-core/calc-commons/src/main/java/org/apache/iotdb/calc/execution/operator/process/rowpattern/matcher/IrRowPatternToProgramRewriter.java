@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.calc.execution.operator.process.rowpattern.matcher;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.rowpattern.IrAlternation;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.rowpattern.IrAnchor;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.rowpattern.IrConcatenation;
@@ -87,7 +88,7 @@ public class IrRowPatternToProgramRewriter {
           instructions.add(new MatchEnd());
           return null;
         default:
-          throw new IllegalStateException("unexpected anchor type: " + node.getType());
+          throw new IllegalStateException(CalcMessages.UNEXPECTED_ANCHOR_TYPE + node.getType());
       }
     }
 

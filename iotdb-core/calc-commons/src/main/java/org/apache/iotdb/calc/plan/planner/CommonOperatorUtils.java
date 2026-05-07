@@ -44,6 +44,7 @@ import org.apache.iotdb.calc.execution.operator.process.fill.previous.IntPreviou
 import org.apache.iotdb.calc.execution.operator.process.fill.previous.IntPreviousFillWithTimeDuration;
 import org.apache.iotdb.calc.execution.operator.process.fill.previous.LongPreviousFill;
 import org.apache.iotdb.calc.execution.operator.process.fill.previous.LongPreviousFillWithTimeDuration;
+import org.apache.iotdb.calc.i18n.CalcMessages;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.column.LongColumn;
@@ -57,7 +58,7 @@ import static org.apache.iotdb.commons.queryengine.utils.TimestampPrecisionUtils
 
 public class CommonOperatorUtils {
   public static final IdentityLinearFill IDENTITY_LINEAR_FILL = new IdentityLinearFill();
-  public static final String UNKNOWN_DATATYPE = "Unknown data type: ";
+  public static final String UNKNOWN_DATATYPE = CalcMessages.UNKNOWN_DATA_TYPE;
   public static final String CURRENT_DEVICE_INDEX_STRING = "CurrentDeviceIndex";
   public static final LongColumn TIME_COLUMN_TEMPLATE =
       new LongColumn(1, Optional.empty(), new long[] {0});
