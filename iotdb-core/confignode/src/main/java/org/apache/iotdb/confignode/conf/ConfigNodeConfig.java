@@ -205,7 +205,7 @@ public class ConfigNodeConfig {
   private long failureDetectorPhiAcceptablePauseInMs = 10000;
 
   /** Whether to enable topology probing between DataNodes. Supports hot-reload. */
-  private volatile boolean enableTopologyProbing = true;
+  private volatile boolean enableTopologyProbing = false;
 
   /** Base interval in ms for topology probing. */
   private long topologyProbingBaseIntervalInMs = 5000;
