@@ -4313,9 +4313,7 @@ public class IoTDBConfig {
   }
 
   public boolean isCacheLastValuesForLoad() {
-    return (lastCacheLoadStrategy == LastCacheLoadStrategy.UPDATE
-            || lastCacheLoadStrategy == LastCacheLoadStrategy.UPDATE_NO_BLOB)
-        && cacheLastValuesForLoad;
+    return lastCacheLoadStrategy == LastCacheLoadStrategy.UPDATE && cacheLastValuesForLoad;
   }
 
   public void setCacheLastValuesForLoad(boolean cacheLastValuesForLoad) {

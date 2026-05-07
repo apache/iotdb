@@ -2529,10 +2529,15 @@ public class IoTDBDescriptor {
             "load_disk_select_strategy_for_pipe_and_iotv2",
             ILoadDiskSelector.LoadDiskSelectorType.INHERIT_LOAD.getValue()));
 
-    conf.setLastCacheLoadStrategy(
-        LastCacheLoadStrategy.valueOf(
-            properties.getProperty(
-                "last_cache_operation_on_load", LastCacheLoadStrategy.UPDATE.name())));
+    final String lastCacheOperationOnLoad =
+        properties.getProperty("last_cache_operation_on_load", LastCacheLoadStrategy.UPDATE.name());
+    if ("UPDATE_NO_BLOB".equals(lastCacheOperationOnLoad)) {
+      LOGGER.warn(
+          "last_cache_operation_on_load=UPDATE_NO_BLOB is deprecated and treated as UPDATE.");
+      conf.setLastCacheLoadStrategy(LastCacheLoadStrategy.UPDATE);
+    } else {
+      conf.setLastCacheLoadStrategy(LastCacheLoadStrategy.valueOf(lastCacheOperationOnLoad));
+    }
 
     conf.setCacheLastValuesForLoad(
         Boolean.parseBoolean(
