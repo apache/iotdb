@@ -29,6 +29,7 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipeP
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.OperateMultiplePipesPlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusPlanV2;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusWithStoppedByRuntimeExceptionPlanV2;
 import org.apache.iotdb.confignode.manager.pipe.agent.PipeConfigNodeAgent;
 import org.apache.iotdb.confignode.manager.pipe.agent.runtime.PipeConfigRegionListener;
 import org.apache.iotdb.confignode.manager.pipe.agent.task.PipeConfigNodeSubtask;
@@ -121,6 +122,25 @@ public class PipeInfo implements SnapshotProcessor {
       LOGGER.error("Failed to set pipe status", e);
       return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode())
           .setMessage("Failed to set pipe status, because " + e.getMessage());
+    }
+  }
+
+  public TSStatus setPipeStatusWithStoppedByRuntimeException(
+      final SetPipeStatusWithStoppedByRuntimeExceptionPlanV2 plan) {
+    try {
+      pipeTaskInfo.setPipeStatusWithStoppedByRuntimeException(plan);
+
+      PipeConfigNodeAgent.task()
+          .handleSinglePipeMetaChanges(pipeTaskInfo.getPipeMetaByPipeName(plan.getPipeName()));
+      PipeTemporaryMetaInCoordinatorMetrics.getInstance()
+          .handleTemporaryMetaChanges(pipeTaskInfo.getPipeMetaList());
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } catch (final Exception e) {
+      LOGGER.error("Failed to set pipe status with stopped-by-runtime-exception flag", e);
+      return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode())
+          .setMessage(
+              "Failed to set pipe status with stopped-by-runtime-exception flag, because "
+                  + e.getMessage());
     }
   }
 
