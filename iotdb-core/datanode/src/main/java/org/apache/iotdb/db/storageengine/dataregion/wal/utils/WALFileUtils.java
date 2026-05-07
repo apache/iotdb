@@ -201,16 +201,12 @@ public class WALFileUtils {
   /**
    * Locate the first local searchIndex whose writer progress is equal to or strictly greater than
    * the given writer-local frontier. This is currently used by single-writer recovery paths, so it
-   * matches only entries from the supplied (nodeId, writerEpoch) pair.
+   * matches only entries from the supplied nodeId.
    *
    * @return [targetSearchIndex, exactMatchFlag], or null if no matching/later entry exists
    */
   public static long[] locateByWriterProgress(
-      final File logDir,
-      final int nodeId,
-      final long writerEpoch,
-      final long physicalTime,
-      final long localSeq) {
+      final File logDir, final int nodeId, final long physicalTime, final long localSeq) {
     final long[] exactSearchIndex = new long[] {-1L};
     final long[] firstAfterSearchIndex = new long[] {-1L};
     final long[] firstAfterPhysicalTime = new long[] {Long.MAX_VALUE};
@@ -219,7 +215,7 @@ public class WALFileUtils {
     forEachSealedSearchableRequest(
         logDir,
         request -> {
-          if (request.nodeId != nodeId || request.writerEpoch != writerEpoch) {
+          if (request.nodeId != nodeId) {
             return true;
           }
           final int cmp =
@@ -261,29 +257,20 @@ public class WALFileUtils {
   }
 
   public static long findSearchIndexByWriterProgress(
-      final File logDir,
-      final int nodeId,
-      final long writerEpoch,
-      final long physicalTime,
-      final long localSeq) {
-    final long[] located =
-        locateByWriterProgress(logDir, nodeId, writerEpoch, physicalTime, localSeq);
+      final File logDir, final int nodeId, final long physicalTime, final long localSeq) {
+    final long[] located = locateByWriterProgress(logDir, nodeId, physicalTime, localSeq);
     return located != null && located[1] == 1L ? located[0] : -1L;
   }
 
   public static long findSearchIndexAfterWriterProgress(
-      final File logDir,
-      final int nodeId,
-      final long writerEpoch,
-      final long physicalTime,
-      final long localSeq) {
+      final File logDir, final int nodeId, final long physicalTime, final long localSeq) {
     final long[] bestSearchIndex = new long[] {-1L};
     final long[] bestPhysicalTime = new long[] {Long.MAX_VALUE};
     final long[] bestLocalSeq = new long[] {Long.MAX_VALUE};
     forEachSealedSearchableRequest(
         logDir,
         request -> {
-          if (request.nodeId != nodeId || request.writerEpoch != writerEpoch) {
+          if (request.nodeId != nodeId) {
             return true;
           }
           if (compareWriterProgress(
@@ -322,19 +309,13 @@ public class WALFileUtils {
     private final long searchIndex;
     private final long physicalTime;
     private final int nodeId;
-    private final long writerEpoch;
     private final long localSeq;
 
     private SearchableRequestMeta(
-        final long searchIndex,
-        final long physicalTime,
-        final int nodeId,
-        final long writerEpoch,
-        final long localSeq) {
+        final long searchIndex, final long physicalTime, final int nodeId, final long localSeq) {
       this.searchIndex = searchIndex;
       this.physicalTime = physicalTime;
       this.nodeId = nodeId;
-      this.writerEpoch = writerEpoch;
       this.localSeq = localSeq;
     }
   }
@@ -351,7 +332,6 @@ public class WALFileUtils {
         long pendingSearchIndex = Long.MIN_VALUE;
         long pendingPhysicalTime = 0L;
         int pendingNodeId = -1;
-        long pendingWriterEpoch = 0L;
         long pendingLocalSeq = Long.MIN_VALUE;
         boolean hasPending = false;
 
@@ -366,7 +346,6 @@ public class WALFileUtils {
           final long currentLocalSeq = reader.getCurrentEntryLocalSeq();
           final long currentPhysicalTime = reader.getCurrentEntryPhysicalTime();
           final int currentNodeId = reader.getCurrentEntryNodeId();
-          final long currentWriterEpoch = reader.getCurrentEntryWriterEpoch();
 
           buffer.position(SEARCH_INDEX_OFFSET);
           final long bodySearchIndex = buffer.getLong();
@@ -374,9 +353,9 @@ public class WALFileUtils {
           final long currentSearchIndex = bodySearchIndex >= 0 ? bodySearchIndex : currentLocalSeq;
 
           if (hasPending
-              && pendingLocalSeq == currentLocalSeq
+              && pendingPhysicalTime == currentPhysicalTime
               && pendingNodeId == currentNodeId
-              && pendingWriterEpoch == currentWriterEpoch) {
+              && pendingLocalSeq == currentLocalSeq) {
             if (pendingSearchIndex < 0 && currentSearchIndex >= 0) {
               pendingSearchIndex = currentSearchIndex;
             }
@@ -389,7 +368,6 @@ public class WALFileUtils {
                       pendingSearchIndex >= 0 ? pendingSearchIndex : pendingLocalSeq,
                       pendingPhysicalTime,
                       pendingNodeId,
-                      pendingWriterEpoch,
                       pendingLocalSeq))) {
             return;
           }
@@ -398,7 +376,6 @@ public class WALFileUtils {
           pendingSearchIndex = currentSearchIndex;
           pendingPhysicalTime = currentPhysicalTime;
           pendingNodeId = currentNodeId;
-          pendingWriterEpoch = currentWriterEpoch;
           pendingLocalSeq = currentLocalSeq;
         }
 
@@ -408,7 +385,6 @@ public class WALFileUtils {
                     pendingSearchIndex >= 0 ? pendingSearchIndex : pendingLocalSeq,
                     pendingPhysicalTime,
                     pendingNodeId,
-                    pendingWriterEpoch,
                     pendingLocalSeq))) {
           return;
         }

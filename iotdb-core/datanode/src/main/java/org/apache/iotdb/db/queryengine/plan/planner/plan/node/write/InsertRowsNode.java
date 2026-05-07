@@ -151,13 +151,6 @@ public class InsertRowsNode extends InsertNode implements WALEntryValue {
   }
 
   @Override
-  public SearchNode setWriterEpoch(long writerEpoch) {
-    this.writerEpoch = writerEpoch;
-    insertRowNodeList.forEach(plan -> plan.setWriterEpoch(writerEpoch));
-    return this;
-  }
-
-  @Override
   public SearchNode setSyncIndex(long syncIndex) {
     this.syncIndex = syncIndex;
     insertRowNodeList.forEach(plan -> plan.setSyncIndex(syncIndex));
@@ -317,7 +310,6 @@ public class InsertRowsNode extends InsertNode implements WALEntryValue {
         tmpNode.setDataRegionReplicaSet(dataRegionReplicaSet);
         tmpNode.setPhysicalTime(getPhysicalTime());
         tmpNode.setNodeId(getNodeId());
-        tmpNode.setWriterEpoch(getWriterEpoch());
         tmpNode.setSyncIndex(getSyncIndex());
         tmpNode.addOneInsertRowNode(insertRowNode, i);
         splitMap.put(dataRegionReplicaSet, tmpNode);

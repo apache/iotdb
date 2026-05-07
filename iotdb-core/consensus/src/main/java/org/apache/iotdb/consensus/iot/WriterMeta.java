@@ -37,18 +37,12 @@ final class WriterMeta {
 
   private static final int FORMAT_VERSION = 1;
 
-  private final long writerEpoch;
   private final long lastAllocatedLocalSeq;
   private final long lastAssignedPhysicalTimeMs;
 
-  WriterMeta(long writerEpoch, long lastAllocatedLocalSeq, long lastAssignedPhysicalTimeMs) {
-    this.writerEpoch = writerEpoch;
+  WriterMeta(long lastAllocatedLocalSeq, long lastAssignedPhysicalTimeMs) {
     this.lastAllocatedLocalSeq = lastAllocatedLocalSeq;
     this.lastAssignedPhysicalTimeMs = lastAssignedPhysicalTimeMs;
-  }
-
-  long getWriterEpoch() {
-    return writerEpoch;
   }
 
   long getLastAllocatedLocalSeq() {
@@ -71,9 +65,7 @@ final class WriterMeta {
             String.format(
                 "Unsupported writer meta version %d in %s", version, path.toAbsolutePath()));
       }
-      return Optional.of(
-          new WriterMeta(
-              dataInputStream.readLong(), dataInputStream.readLong(), dataInputStream.readLong()));
+      return Optional.of(new WriterMeta(dataInputStream.readLong(), dataInputStream.readLong()));
     }
   }
 
@@ -94,7 +86,6 @@ final class WriterMeta {
                 StandardOpenOption.WRITE);
         DataOutputStream dataOutputStream = new DataOutputStream(outputStream(fileChannel))) {
       dataOutputStream.writeInt(FORMAT_VERSION);
-      dataOutputStream.writeLong(writerEpoch);
       dataOutputStream.writeLong(lastAllocatedLocalSeq);
       dataOutputStream.writeLong(lastAssignedPhysicalTimeMs);
       dataOutputStream.flush();

@@ -354,15 +354,10 @@ public class SubscriptionCommitContext implements Comparable<SubscriptionCommitC
         .thenComparing(SubscriptionCommitContext::getConsumerGroupId)
         .thenComparingLong(SubscriptionCommitContext::getSeekGeneration)
         .thenComparing(SubscriptionCommitContext::getRegionId)
+        .thenComparingLong(SubscriptionCommitContext::getPhysicalTime)
         .thenComparingInt(
             context ->
                 Objects.nonNull(context.getWriterId()) ? context.getWriterId().getNodeId() : -1)
-        .thenComparingLong(
-            context ->
-                Objects.nonNull(context.getWriterId())
-                    ? context.getWriterId().getWriterEpoch()
-                    : -1L)
-        .thenComparingLong(SubscriptionCommitContext::getPhysicalTime)
         .thenComparingLong(SubscriptionCommitContext::getLocalSeq)
         .compare(this, that);
   }

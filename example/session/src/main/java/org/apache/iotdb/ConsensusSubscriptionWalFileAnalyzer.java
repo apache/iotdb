@@ -230,23 +230,18 @@ public class ConsensusSubscriptionWalFileAnalyzer {
       metadataBuffer.getLong();
 
       final long requiredWriterMetadataBytes =
-          (long) entryCount * Long.BYTES * 2 + Short.BYTES * 2 + Integer.BYTES;
+          (long) entryCount * Long.BYTES * 2 + Short.BYTES + Integer.BYTES;
       if (metadataBuffer.remaining() < requiredWriterMetadataBytes) {
         analysis.footerWarning = "V3 metadata is truncated before writer progress arrays";
         return;
       }
 
       analysis.physicalTimesBytes = (long) entryCount * Long.BYTES;
-      analysis.localSeqsBytes = (long) entryCount * Long.BYTES;
-      for (int i = 0; i < entryCount; i++) {
-        metadataBuffer.getLong();
-      }
       for (int i = 0; i < entryCount; i++) {
         metadataBuffer.getLong();
       }
 
-      analysis.defaultWriterIdentityBytes = Short.BYTES * 2L;
-      metadataBuffer.getShort();
+      analysis.defaultWriterIdentityBytes = Short.BYTES;
       metadataBuffer.getShort();
 
       analysis.overrideCountFieldBytes = Integer.BYTES;
@@ -254,7 +249,6 @@ public class ConsensusSubscriptionWalFileAnalyzer {
 
       analysis.overrideIndexesBytes = (long) analysis.overrideCount * Integer.BYTES;
       analysis.overrideNodeIdsBytes = (long) analysis.overrideCount * Short.BYTES;
-      analysis.overrideWriterEpochsBytes = (long) analysis.overrideCount * Short.BYTES;
 
       for (int i = 0; i < analysis.overrideCount; i++) {
         metadataBuffer.getInt();
@@ -262,8 +256,10 @@ public class ConsensusSubscriptionWalFileAnalyzer {
       for (int i = 0; i < analysis.overrideCount; i++) {
         metadataBuffer.getShort();
       }
-      for (int i = 0; i < analysis.overrideCount; i++) {
-        metadataBuffer.getShort();
+
+      analysis.localSeqsBytes = (long) entryCount * Long.BYTES;
+      for (int i = 0; i < entryCount; i++) {
+        metadataBuffer.getLong();
       }
     }
 
@@ -403,15 +399,13 @@ public class ConsensusSubscriptionWalFileAnalyzer {
               formatPercent(analysis.getV3ExtensionBytes(), analysis.metadataBytes)));
       printSection("  min/max data ts", analysis.minMaxDataTsBytes, analysis.totalBytes);
       printSection("  physicalTimes[]", analysis.physicalTimesBytes, analysis.totalBytes);
-      printSection("  localSeqs[]", analysis.localSeqsBytes, analysis.totalBytes);
       printSection(
           "  default writer identity + override count",
           analysis.defaultWriterIdentityBytes + analysis.overrideCountFieldBytes,
           analysis.totalBytes);
       printSection("  overrideIndexes[]", analysis.overrideIndexesBytes, analysis.totalBytes);
       printSection("  overrideNodeIds[]", analysis.overrideNodeIdsBytes, analysis.totalBytes);
-      printSection(
-          "  overrideWriterEpochs[]", analysis.overrideWriterEpochsBytes, analysis.totalBytes);
+      printSection("  localSeqs[]", analysis.localSeqsBytes, analysis.totalBytes);
     }
     if (analysis.unknownMetadataBytes > 0) {
       printSection("unknown metadata tail", analysis.unknownMetadataBytes, analysis.totalBytes);
@@ -495,7 +489,6 @@ public class ConsensusSubscriptionWalFileAnalyzer {
     private long overrideCountFieldBytes;
     private long overrideIndexesBytes;
     private long overrideNodeIdsBytes;
-    private long overrideWriterEpochsBytes;
     private long unknownMetadataBytes;
 
     private String note;
@@ -519,12 +512,11 @@ public class ConsensusSubscriptionWalFileAnalyzer {
     private long getV3ExtensionBytes() {
       return minMaxDataTsBytes
           + physicalTimesBytes
-          + localSeqsBytes
           + defaultWriterIdentityBytes
           + overrideCountFieldBytes
           + overrideIndexesBytes
           + overrideNodeIdsBytes
-          + overrideWriterEpochsBytes;
+          + localSeqsBytes;
     }
   }
 }

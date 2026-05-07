@@ -68,7 +68,7 @@ public class SubscriptionCommitContextTest {
 
   @Test
   public void testDeserializeV2() throws IOException {
-    final WriterId writerId = new WriterId("region", 7, 8L);
+    final WriterId writerId = new WriterId("region", 7);
     final WriterProgress writerProgress = new WriterProgress(9L, 10L);
     final SubscriptionCommitContext original =
         new SubscriptionCommitContext(1, 2, "topic", "group", 3L, writerId, writerProgress);
@@ -86,10 +86,29 @@ public class SubscriptionCommitContextTest {
     assertTrue(parsed.isCommittable());
   }
 
+  @Test
+  public void testCompareToOrdersWriterProgressByPhysicalTimeNodeIdLocalSeq() {
+    assertTrue(writerContext(9, 100L, 100L).compareTo(writerContext(1, 101L, 1L)) < 0);
+    assertTrue(writerContext(7, 100L, 100L).compareTo(writerContext(8, 100L, 1L)) < 0);
+    assertTrue(writerContext(7, 100L, 1L).compareTo(writerContext(7, 100L, 2L)) < 0);
+  }
+
   @Test(expected = IllegalArgumentException.class)
   public void testDeserializeUnsupportedVersion() throws IOException {
     final ByteBuffer buffer = buildCurrentBufferWithVersion((byte) 1, 1, 2, "topic", "group", 3L);
     SubscriptionCommitContext.deserialize(buffer);
+  }
+
+  private static SubscriptionCommitContext writerContext(
+      final int writerNodeId, final long physicalTime, final long localSeq) {
+    return new SubscriptionCommitContext(
+        1,
+        2,
+        "topic",
+        "group",
+        3L,
+        new WriterId("region", writerNodeId),
+        new WriterProgress(physicalTime, localSeq));
   }
 
   private static ByteBuffer buildCurrentBuffer(

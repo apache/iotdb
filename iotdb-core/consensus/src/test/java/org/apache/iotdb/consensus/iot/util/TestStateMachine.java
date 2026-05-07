@@ -107,7 +107,6 @@ public class TestStateMachine implements IStateMachine, IStateMachine.EventApi {
               consensusRequest.getEndSyncIndex(),
               consensusRequest.getRequests().size(),
               consensusRequest.getSourcePeerId(),
-              lastIndexedRequest != null ? lastIndexedRequest.getWriterEpoch() : 0L,
               lastIndexedRequest != null ? lastIndexedRequest.getPhysicalTime() : 0L);
       for (IndexedConsensusRequest r : consensusRequest.getRequests()) {
         result.add(r);

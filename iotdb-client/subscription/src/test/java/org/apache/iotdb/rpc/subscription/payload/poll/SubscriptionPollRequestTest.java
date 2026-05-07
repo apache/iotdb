@@ -34,8 +34,8 @@ public class SubscriptionPollRequestTest {
   @Test
   public void testRoundTripWithProgressByTopic() throws IOException {
     final Map<WriterId, WriterProgress> writerPositions = new LinkedHashMap<>();
-    writerPositions.put(new WriterId("1_100", 7, 2L), new WriterProgress(1001L, 11L));
-    writerPositions.put(new WriterId("1_100", 8, 1L), new WriterProgress(999L, 9L));
+    writerPositions.put(new WriterId("1_100", 7), new WriterProgress(1001L, 11L));
+    writerPositions.put(new WriterId("1_100", 8), new WriterProgress(999L, 9L));
 
     final TopicProgress topicProgress =
         new TopicProgress(Collections.singletonMap("1_100", new RegionProgress(writerPositions)));

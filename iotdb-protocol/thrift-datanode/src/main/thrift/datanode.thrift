@@ -610,9 +610,8 @@ struct TSyncSubscriptionProgressReq {
   2: required string topicName
   3: required string regionId
   4: required i64 physicalTime
-  5: required i64 localSeq
-  6: optional i32 writerNodeId
-  7: optional i64 writerEpoch
+  5: required i32 writerNodeId
+  6: required i64 localSeq
 }
 struct TSubscriptionRuntimeStateEntry {
   1: required common.TConsensusGroupId regionId

@@ -253,7 +253,6 @@ public class ConsensusPrefetchingQueue {
   private volatile long batchPhysicalTime = 0L;
 
   private volatile int batchWriterNodeId = -1;
-  private volatile long batchWriterEpoch = 0L;
   private volatile String orderMode = TopicConstant.ORDER_MODE_DEFAULT_VALUE;
 
   protected enum ReplayLocateStatus {
@@ -767,7 +766,7 @@ public class ConsensusPrefetchingQueue {
     regionProgress
         .getWriterPositions()
         .keySet()
-        .forEach(writerId -> trackWriterLane(writerId.getNodeId(), writerId.getWriterEpoch()));
+        .forEach(writerId -> trackWriterLane(writerId.getNodeId()));
   }
 
   private void clearRecoveryWriterProgress() {
@@ -783,13 +782,12 @@ public class ConsensusPrefetchingQueue {
 
   private boolean hasComparableWriterProgress(final IndexedConsensusRequest request) {
     return request.getNodeId() >= 0
-        && request.getWriterEpoch() >= 0
         && request.getPhysicalTime() > 0
         && request.getProgressLocalSeq() >= 0;
   }
 
   private WriterId toWriterId(final IndexedConsensusRequest request) {
-    return new WriterId(consensusGroupId.toString(), request.getNodeId(), request.getWriterEpoch());
+    return new WriterId(consensusGroupId.toString(), request.getNodeId());
   }
 
   private WriterProgress toWriterProgress(final IndexedConsensusRequest request) {
@@ -923,7 +921,6 @@ public class ConsensusPrefetchingQueue {
   private boolean shouldTrackFollowerProgressForDedup(final IndexedConsensusRequest request) {
     return request.getSearchIndex() < 0
         && request.getNodeId() >= 0
-        && request.getWriterEpoch() >= 0
         && request.getProgressLocalSeq() >= 0;
   }
 
@@ -932,8 +929,7 @@ public class ConsensusPrefetchingQueue {
       return false;
     }
     final Long materializedLocalSeq =
-        materializedFollowerProgressByWriter.get(
-            new WriterLaneId(request.getNodeId(), request.getWriterEpoch()));
+        materializedFollowerProgressByWriter.get(new WriterLaneId(request.getNodeId()));
     return Objects.nonNull(materializedLocalSeq)
         && request.getProgressLocalSeq() <= materializedLocalSeq;
   }
@@ -943,9 +939,7 @@ public class ConsensusPrefetchingQueue {
       return;
     }
     materializedFollowerProgressByWriter.merge(
-        new WriterLaneId(request.getNodeId(), request.getWriterEpoch()),
-        request.getProgressLocalSeq(),
-        Math::max);
+        new WriterLaneId(request.getNodeId()), request.getProgressLocalSeq(), Math::max);
   }
 
   private int compareWriterProgress(
@@ -957,9 +951,9 @@ public class ConsensusPrefetchingQueue {
     return Long.compare(leftProgress.getLocalSeq(), rightProgress.getLocalSeq());
   }
 
-  private WriterLaneState trackWriterLane(final int writerNodeId, final long writerEpoch) {
+  private WriterLaneState trackWriterLane(final int writerNodeId) {
     return writerLanes.computeIfAbsent(
-        new WriterLaneId(writerNodeId, writerEpoch), ignored -> new WriterLaneState());
+        new WriterLaneId(writerNodeId), ignored -> new WriterLaneState());
   }
 
   private void refreshWriterLaneSafeFrontiers() {
@@ -967,8 +961,7 @@ public class ConsensusPrefetchingQueue {
         serverImpl.getWriterSafeFrontierTracker().snapshotEffectiveSafePts();
     for (final Map.Entry<WriterSafeFrontierTracker.WriterIdentity, Long> entry :
         safePts.entrySet()) {
-      final WriterLaneState laneState =
-          trackWriterLane(entry.getKey().getWriterNodeId(), entry.getKey().getWriterEpoch());
+      final WriterLaneState laneState = trackWriterLane(entry.getKey().getWriterNodeId());
       laneState.effectiveSafePt = Math.max(laneState.effectiveSafePt, entry.getValue());
     }
   }
@@ -1007,7 +1000,7 @@ public class ConsensusPrefetchingQueue {
       for (final Integer activeWriterNodeId : activeWriterNodeIds) {
         if (!seenActiveWriterNodeIds.contains(activeWriterNodeId)) {
           frontiers.add(
-              LaneFrontier.forBarrier(new WriterLaneId(activeWriterNodeId, 0L), Long.MIN_VALUE));
+              LaneFrontier.forBarrier(new WriterLaneId(activeWriterNodeId), Long.MIN_VALUE));
           break;
         }
       }
@@ -1020,7 +1013,7 @@ public class ConsensusPrefetchingQueue {
   }
 
   private void bufferRealtimeEntry(final PreparedEntry entry) {
-    final WriterLaneId laneId = new WriterLaneId(entry.writerNodeId, entry.writerEpoch);
+    final WriterLaneId laneId = new WriterLaneId(entry.writerNodeId);
     realtimeEntriesByLane
         .computeIfAbsent(laneId, ignored -> new TreeMap<>())
         .put(entry.localSeq, entry);
@@ -1749,9 +1742,6 @@ public class ConsensusPrefetchingQueue {
         if (indexedRequest.getNodeId() >= 0) {
           searchNode.setNodeId(indexedRequest.getNodeId());
         }
-        if (indexedRequest.getWriterEpoch() > 0) {
-          searchNode.setWriterEpoch(indexedRequest.getWriterEpoch());
-        }
         searchNodes.add(searchNode);
       } else {
         nonSearchNode = planNode;
@@ -1804,12 +1794,8 @@ public class ConsensusPrefetchingQueue {
             : insertNode.getPhysicalTime();
     final int writerNodeId =
         indexedRequest.getNodeId() >= 0 ? indexedRequest.getNodeId() : insertNode.getNodeId();
-    final long writerEpoch =
-        indexedRequest.getWriterEpoch() > 0
-            ? indexedRequest.getWriterEpoch()
-            : insertNode.getWriterEpoch();
 
-    trackWriterLane(writerNodeId, writerEpoch);
+    trackWriterLane(writerNodeId);
     final long maxTs = extractMaxTime(insertNode);
     if (maxTs > maxObservedTimestamp) {
       maxObservedTimestamp = maxTs;
@@ -1819,8 +1805,7 @@ public class ConsensusPrefetchingQueue {
       return null;
     }
 
-    return new PreparedEntry(
-        tablets, searchIndex, physicalTime, writerNodeId, writerEpoch, localSeq);
+    return new PreparedEntry(tablets, physicalTime, writerNodeId, localSeq, searchIndex);
   }
 
   private static long estimateTabletSize(final Tablet tablet) {
@@ -1891,8 +1876,7 @@ public class ConsensusPrefetchingQueue {
         batchWriterNodeId >= 0
             ? batchWriterNodeId
             : IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
-    final WriterId writerId =
-        new WriterId(consensusGroupId.toString(), effectiveNodeId, batchWriterEpoch);
+    final WriterId writerId = new WriterId(consensusGroupId.toString(), effectiveNodeId);
     final WriterProgress writerProgress = new WriterProgress(batchPhysicalTime, localSeq);
     return new SubscriptionCommitContext(
         IoTDBDescriptor.getInstance().getConfig().getDataNodeId(),
@@ -1904,23 +1888,18 @@ public class ConsensusPrefetchingQueue {
         writerProgress);
   }
 
-  private void updateBatchWriterProgress(
-      final long physicalTime, final int writerNodeId, final long writerEpoch) {
+  private void updateBatchWriterProgress(final long physicalTime, final int writerNodeId) {
     if (physicalTime > 0) {
       this.batchPhysicalTime = physicalTime;
     }
     if (writerNodeId >= 0) {
       this.batchWriterNodeId = writerNodeId;
     }
-    if (writerEpoch > 0) {
-      this.batchWriterEpoch = writerEpoch;
-    }
   }
 
   private void resetBatchWriterProgress() {
     this.batchPhysicalTime = 0L;
     this.batchWriterNodeId = -1;
-    this.batchWriterEpoch = 0L;
   }
 
   private long estimateTabletsBytes(final List<Tablet> tablets) {
@@ -1992,9 +1971,7 @@ public class ConsensusPrefetchingQueue {
     // Keep all consensus subscription modes on a single-writer commit/delivery shape so
     // SubscriptionCommitContext and RegionProgress remain per-writer.
     final boolean writerChanged =
-        !batchState.isEmpty()
-            && (batchState.writerNodeId != entry.getWriterNodeId()
-                || batchState.writerEpoch != entry.getWriterEpoch());
+        !batchState.isEmpty() && batchState.writerNodeId != entry.getWriterNodeId();
     return !(wouldExceedEntryLimit
         || wouldExceedTabletLimit
         || wouldExceedByteLimit
@@ -2058,8 +2035,7 @@ public class ConsensusPrefetchingQueue {
 
   private boolean flushBatch(
       final DeliveryBatchState batchState, final long expectedSeekGeneration) {
-    updateBatchWriterProgress(
-        batchState.physicalTime, batchState.writerNodeId, batchState.writerEpoch);
+    updateBatchWriterProgress(batchState.physicalTime, batchState.writerNodeId);
     if (!createAndEnqueueEvent(
         new ArrayList<>(batchState.tablets),
         batchState.startSearchIndex,
@@ -2234,7 +2210,7 @@ public class ConsensusPrefetchingQueue {
 
   private WriterId extractCommitWriterId(final SubscriptionCommitContext commitContext) {
     final WriterId writerId = commitContext.getWriterId();
-    return Objects.nonNull(writerId) ? writerId : new WriterId(consensusGroupId.toString(), -1, 0L);
+    return Objects.nonNull(writerId) ? writerId : new WriterId(consensusGroupId.toString(), -1);
   }
 
   private WriterProgress extractCommitWriterProgress(
@@ -2709,23 +2685,17 @@ public class ConsensusPrefetchingQueue {
     }
     final List<Long> physicalTimes = metadata.getPhysicalTimes();
     final List<Short> nodeIds = metadata.getNodeIds();
-    final List<Short> writerEpochs = metadata.getWriterEpochs();
     final List<Long> localSeqs = metadata.getLocalSeqs();
-    final int size =
-        Math.min(
-            Math.min(physicalTimes.size(), nodeIds.size()),
-            Math.min(writerEpochs.size(), localSeqs.size()));
+    final int size = Math.min(Math.min(physicalTimes.size(), nodeIds.size()), localSeqs.size());
     for (int i = 0; i < size; i++) {
       final int writerNodeId = nodeIds.get(i);
-      final long writerEpoch = writerEpochs.get(i);
       final long physicalTime = physicalTimes.get(i);
       final long localSeq = localSeqs.get(i);
       if (writerNodeId < 0 || physicalTime < 0L || localSeq < 0L) {
         continue;
       }
 
-      final WriterId writerId =
-          new WriterId(consensusGroupId.toString(), writerNodeId, writerEpoch);
+      final WriterId writerId = new WriterId(consensusGroupId.toString(), writerNodeId);
       final WriterProgress candidateProgress = new WriterProgress(physicalTime, localSeq);
       final WriterProgress currentProgress = tailProgressByWriter.get(writerId);
       if (Objects.isNull(currentProgress)
@@ -3237,15 +3207,13 @@ public class ConsensusPrefetchingQueue {
   private interface LaneBufferedEntry {
     List<Tablet> getTablets();
 
-    long getSearchIndex();
-
     long getPhysicalTime();
 
     int getWriterNodeId();
 
-    long getWriterEpoch();
-
     long getLocalSeq();
+
+    long getSearchIndex();
 
     OrderingKey getOrderingKey();
   }
@@ -3258,9 +3226,8 @@ public class ConsensusPrefetchingQueue {
     private long estimatedBytes;
     private long firstTabletTimeMs;
     private long physicalTime;
-    private long lastLocalSeq;
     private int writerNodeId;
-    private long writerEpoch;
+    private long lastLocalSeq;
     private int entryCount;
 
     private DeliveryBatchState() {
@@ -3280,7 +3247,6 @@ public class ConsensusPrefetchingQueue {
           firstTabletTimeMs = System.currentTimeMillis();
         }
         writerNodeId = entry.getWriterNodeId();
-        writerEpoch = entry.getWriterEpoch();
       }
       if (entry.getSearchIndex() >= 0) {
         if (startSearchIndex < 0) {
@@ -3293,7 +3259,6 @@ public class ConsensusPrefetchingQueue {
       physicalTime = entry.getPhysicalTime();
       lastLocalSeq = entry.getLocalSeq();
       writerNodeId = entry.getWriterNodeId();
-      writerEpoch = entry.getWriterEpoch();
       entryCount++;
     }
 
@@ -3306,18 +3271,15 @@ public class ConsensusPrefetchingQueue {
       physicalTime = 0L;
       lastLocalSeq = -1L;
       writerNodeId = -1;
-      writerEpoch = 0L;
       entryCount = 0;
     }
   }
 
   private static final class WriterLaneId {
     private final int writerNodeId;
-    private final long writerEpoch;
 
-    private WriterLaneId(final int writerNodeId, final long writerEpoch) {
+    private WriterLaneId(final int writerNodeId) {
       this.writerNodeId = writerNodeId;
-      this.writerEpoch = writerEpoch;
     }
 
     @Override
@@ -3329,12 +3291,12 @@ public class ConsensusPrefetchingQueue {
         return false;
       }
       final WriterLaneId that = (WriterLaneId) obj;
-      return writerNodeId == that.writerNodeId && writerEpoch == that.writerEpoch;
+      return writerNodeId == that.writerNodeId;
     }
 
     @Override
     public int hashCode() {
-      return Objects.hash(writerNodeId, writerEpoch);
+      return Objects.hash(writerNodeId);
     }
   }
 
@@ -3345,35 +3307,27 @@ public class ConsensusPrefetchingQueue {
 
   private static final class PreparedEntry implements LaneBufferedEntry {
     private final List<Tablet> tablets;
-    private final long searchIndex;
     private final long physicalTime;
     private final int writerNodeId;
-    private final long writerEpoch;
     private final long localSeq;
+    private final long searchIndex;
 
     private PreparedEntry(
         final List<Tablet> tablets,
-        final long searchIndex,
         final long physicalTime,
         final int writerNodeId,
-        final long writerEpoch,
-        final long localSeq) {
+        final long localSeq,
+        final long searchIndex) {
       this.tablets = tablets;
-      this.searchIndex = searchIndex;
       this.physicalTime = physicalTime;
       this.writerNodeId = writerNodeId;
-      this.writerEpoch = writerEpoch;
       this.localSeq = localSeq;
+      this.searchIndex = searchIndex;
     }
 
     @Override
     public List<Tablet> getTablets() {
       return tablets;
-    }
-
-    @Override
-    public long getSearchIndex() {
-      return searchIndex;
     }
 
     @Override
@@ -3387,18 +3341,18 @@ public class ConsensusPrefetchingQueue {
     }
 
     @Override
-    public long getWriterEpoch() {
-      return writerEpoch;
-    }
-
-    @Override
     public long getLocalSeq() {
       return localSeq;
     }
 
     @Override
+    public long getSearchIndex() {
+      return searchIndex;
+    }
+
+    @Override
     public OrderingKey getOrderingKey() {
-      return new OrderingKey(physicalTime, writerNodeId, writerEpoch, localSeq);
+      return new OrderingKey(physicalTime, writerNodeId, localSeq);
     }
   }
 
@@ -3420,9 +3374,7 @@ public class ConsensusPrefetchingQueue {
 
     private static LaneFrontier forBarrier(final WriterLaneId laneId, final long effectiveSafePt) {
       return new LaneFrontier(
-          laneId,
-          new OrderingKey(effectiveSafePt, Integer.MIN_VALUE, Long.MIN_VALUE, Long.MIN_VALUE),
-          true);
+          laneId, new OrderingKey(effectiveSafePt, Integer.MIN_VALUE, Long.MIN_VALUE), true);
     }
 
     @Override
@@ -3435,25 +3387,19 @@ public class ConsensusPrefetchingQueue {
         return isBarrier ? -1 : 1;
       }
       cmp = Integer.compare(laneId.writerNodeId, other.laneId.writerNodeId);
-      if (cmp != 0) {
-        return cmp;
-      }
-      return Long.compare(laneId.writerEpoch, other.laneId.writerEpoch);
+      return cmp;
     }
   }
 
-  /** Composite ordering key (physicalTime, nodeId, writerEpoch, localSeq) for lane ordering. */
+  /** Composite ordering key (physicalTime, nodeId, localSeq) for lane ordering. */
   static final class OrderingKey implements Comparable<OrderingKey> {
     final long physicalTime;
     final int nodeId;
-    final long writerEpoch;
     final long localSeq;
 
-    OrderingKey(
-        final long physicalTime, final int nodeId, final long writerEpoch, final long localSeq) {
+    OrderingKey(final long physicalTime, final int nodeId, final long localSeq) {
       this.physicalTime = physicalTime;
       this.nodeId = nodeId;
-      this.writerEpoch = writerEpoch;
       this.localSeq = localSeq;
     }
 
@@ -3464,10 +3410,6 @@ public class ConsensusPrefetchingQueue {
         return cmp;
       }
       cmp = Integer.compare(nodeId, o.nodeId);
-      if (cmp != 0) {
-        return cmp;
-      }
-      cmp = Long.compare(writerEpoch, o.writerEpoch);
       if (cmp != 0) {
         return cmp;
       }
@@ -3485,18 +3427,17 @@ public class ConsensusPrefetchingQueue {
       final OrderingKey that = (OrderingKey) o;
       return physicalTime == that.physicalTime
           && nodeId == that.nodeId
-          && writerEpoch == that.writerEpoch
           && localSeq == that.localSeq;
     }
 
     @Override
     public int hashCode() {
-      return Objects.hash(physicalTime, nodeId, writerEpoch, localSeq);
+      return Objects.hash(physicalTime, nodeId, localSeq);
     }
 
     @Override
     public String toString() {
-      return "(" + physicalTime + "," + nodeId + "," + writerEpoch + "," + localSeq + ")";
+      return "(" + physicalTime + "," + nodeId + "," + localSeq + ")";
     }
   }
 }

@@ -140,9 +140,9 @@ public class SubscriptionConsensusProgress {
     for (final Map.Entry<WriterId, WriterProgress> entry :
         committedRegionProgress.getWriterPositions().entrySet()) {
       if (Objects.isNull(bestWriterProgress)
-          || compareWriterProgress(entry.getValue(), bestWriterProgress) > 0
-          || (compareWriterProgress(entry.getValue(), bestWriterProgress) == 0
-              && compareWriterId(entry.getKey(), bestWriterId) > 0)) {
+          || compareWriterPosition(
+                  entry.getKey(), entry.getValue(), bestWriterId, bestWriterProgress)
+              > 0) {
         bestWriterId = entry.getKey();
         bestWriterProgress = entry.getValue();
       }
@@ -152,9 +152,16 @@ public class SubscriptionConsensusProgress {
         Objects.nonNull(bestWriterProgress) ? bestWriterProgress : new WriterProgress(0L, -1L));
   }
 
-  private static int compareWriterProgress(
-      final WriterProgress leftProgress, final WriterProgress rightProgress) {
+  private static int compareWriterPosition(
+      final WriterId leftWriterId,
+      final WriterProgress leftProgress,
+      final WriterId rightWriterId,
+      final WriterProgress rightProgress) {
     int cmp = Long.compare(leftProgress.getPhysicalTime(), rightProgress.getPhysicalTime());
+    if (cmp != 0) {
+      return cmp;
+    }
+    cmp = compareWriterId(leftWriterId, rightWriterId);
     if (cmp != 0) {
       return cmp;
     }
@@ -175,7 +182,7 @@ public class SubscriptionConsensusProgress {
     if (cmp != 0) {
       return cmp;
     }
-    return Long.compare(leftWriterId.getWriterEpoch(), rightWriterId.getWriterEpoch());
+    return 0;
   }
 
   private static final class DerivedCommittedWriterState {

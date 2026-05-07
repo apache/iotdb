@@ -62,16 +62,14 @@ public class WALMetaData implements SerializedSize {
   // V3 fields: file-level data timestamp range for timestamp-based seek
   private long minDataTs = Long.MAX_VALUE;
   private long maxDataTs = Long.MIN_VALUE;
-  // V3 extension for writer-based subscription progress.
+  // V3 extension for subscription progress.
   private final List<Long> physicalTimes;
   private final List<Short> nodeIds;
-  private final List<Short> writerEpochs;
   private final List<Long> localSeqs;
 
   private static final short DEFAULT_NODE_ID = (short) -1;
-  private static final short DEFAULT_WRITER_EPOCH = 0;
   private static final int V3_EMPTY_METADATA_REMAINING_WITHOUT_MEMTABLE_COUNT =
-      Long.BYTES * 2 + Short.BYTES * 2 + Integer.BYTES;
+      Long.BYTES * 2 + Short.BYTES + Integer.BYTES;
 
   public WALMetaData() {
     this(ConsensusReqReader.DEFAULT_SEARCH_INDEX, new ArrayList<>(), new HashSet<>());
@@ -83,23 +81,16 @@ public class WALMetaData implements SerializedSize {
     this.memTablesId = memTablesId;
     this.physicalTimes = new ArrayList<>();
     this.nodeIds = new ArrayList<>();
-    this.writerEpochs = new ArrayList<>();
     this.localSeqs = new ArrayList<>();
   }
 
   /** Adds an entry without explicit writer progress metadata. */
   public void add(int size, long searchIndex, long memTableId) {
-    add(size, searchIndex, memTableId, 0L, DEFAULT_NODE_ID, DEFAULT_WRITER_EPOCH, searchIndex);
+    add(size, searchIndex, memTableId, 0L, DEFAULT_NODE_ID, searchIndex);
   }
 
   public void add(
-      int size,
-      long searchIndex,
-      long memTableId,
-      long physicalTime,
-      int nodeId,
-      long writerEpoch,
-      long localSeq) {
+      int size, long searchIndex, long memTableId, long physicalTime, int nodeId, long localSeq) {
     if (buffersSize.isEmpty()) {
       firstSearchIndex = searchIndex;
     }
@@ -107,7 +98,6 @@ public class WALMetaData implements SerializedSize {
     memTablesId.add(memTableId);
     physicalTimes.add(physicalTime);
     nodeIds.add(toShortExact(nodeId, "nodeId"));
-    writerEpochs.add(toShortExact(writerEpoch, "writerEpoch"));
     localSeqs.add(localSeq);
   }
 
@@ -137,7 +127,6 @@ public class WALMetaData implements SerializedSize {
     memTablesId.addAll(metaData.getMemTablesId());
     physicalTimes.addAll(metaData.getPhysicalTimes());
     nodeIds.addAll(metaData.getNodeIds());
-    writerEpochs.addAll(metaData.getWriterEpochs());
     localSeqs.addAll(metaData.getLocalSeqs());
     if (metaData.minDataTs < this.minDataTs) {
       this.minDataTs = metaData.minDataTs;
@@ -160,13 +149,13 @@ public class WALMetaData implements SerializedSize {
     if (version == WALFileVersion.V3) {
       // minDataTs(long) + maxDataTs(long)
       size += Long.BYTES * 2;
-      // physicalTimes(long[]) + localSeqs(long[])
+      // physicalTimes(long[]) + nodeIds(short compressed) + localSeqs(long[])
       size += buffersSize.size() * Long.BYTES * 2;
-      // defaultNodeId(short) + defaultWriterEpoch(short) + overrideCount(int)
-      // + override ordinals(int[]) + override nodeIds(short[]) + override writerEpochs(short[])
-      final int overrideCount = getWriterOverrideCount();
-      size += Short.BYTES * 2 + Integer.BYTES;
-      size += overrideCount * (Integer.BYTES + Short.BYTES + Short.BYTES);
+      // defaultNodeId(short) + overrideCount(int)
+      // + override ordinals(int[]) + override nodeIds(short[])
+      final int overrideCount = getNodeIdOverrideCount();
+      size += Short.BYTES + Integer.BYTES;
+      size += overrideCount * (Integer.BYTES + Short.BYTES);
     }
     return size;
   }
@@ -193,25 +182,17 @@ public class WALMetaData implements SerializedSize {
       for (long physicalTime : physicalTimes) {
         buffer.putLong(physicalTime);
       }
-      for (long localSeq : localSeqs) {
-        buffer.putLong(localSeq);
-      }
       final short defaultNodeId = computeDefaultNodeId();
-      final short defaultWriterEpoch = computeDefaultWriterEpoch();
       final List<Integer> overrideIndexes = new ArrayList<>();
       final List<Short> overrideNodeIds = new ArrayList<>();
-      final List<Short> overrideWriterEpochs = new ArrayList<>();
       for (int i = 0; i < buffersSize.size(); i++) {
         final short nodeId = nodeIds.get(i);
-        final short writerEpoch = writerEpochs.get(i);
-        if (nodeId != defaultNodeId || writerEpoch != defaultWriterEpoch) {
+        if (nodeId != defaultNodeId) {
           overrideIndexes.add(i);
           overrideNodeIds.add(nodeId);
-          overrideWriterEpochs.add(writerEpoch);
         }
       }
       buffer.putShort(defaultNodeId);
-      buffer.putShort(defaultWriterEpoch);
       buffer.putInt(overrideIndexes.size());
       for (int overrideIndex : overrideIndexes) {
         buffer.putInt(overrideIndex);
@@ -219,8 +200,8 @@ public class WALMetaData implements SerializedSize {
       for (short nodeId : overrideNodeIds) {
         buffer.putShort(nodeId);
       }
-      for (short writerEpoch : overrideWriterEpochs) {
-        buffer.putShort(writerEpoch);
+      for (long localSeq : localSeqs) {
+        buffer.putLong(localSeq);
       }
     }
   }
@@ -252,35 +233,28 @@ public class WALMetaData implements SerializedSize {
     if (version == WALFileVersion.V3 && buffer.hasRemaining()) {
       result.minDataTs = buffer.getLong();
       result.maxDataTs = buffer.getLong();
-      if (buffer.remaining() >= entriesNum * Long.BYTES * 2 + Short.BYTES * 2 + Integer.BYTES) {
+      if (buffer.remaining() >= entriesNum * Long.BYTES * 2 + Short.BYTES + Integer.BYTES) {
         for (int i = 0; i < entriesNum; i++) {
           result.physicalTimes.add(buffer.getLong());
         }
-        for (int i = 0; i < entriesNum; i++) {
-          result.localSeqs.add(buffer.getLong());
-        }
         final short defaultNodeId = buffer.getShort();
-        final short defaultWriterEpoch = buffer.getShort();
         final int overrideCount = buffer.getInt();
         final int[] overrideIndexes = new int[overrideCount];
         final short[] overrideNodeIds = new short[overrideCount];
-        final short[] overrideWriterEpochs = new short[overrideCount];
         for (int i = 0; i < overrideCount; i++) {
           overrideIndexes[i] = buffer.getInt();
         }
         for (int i = 0; i < overrideCount; i++) {
           overrideNodeIds[i] = buffer.getShort();
         }
-        for (int i = 0; i < overrideCount; i++) {
-          overrideWriterEpochs[i] = buffer.getShort();
-        }
         for (int i = 0; i < entriesNum; i++) {
           result.nodeIds.add(defaultNodeId);
-          result.writerEpochs.add(defaultWriterEpoch);
         }
         for (int i = 0; i < overrideCount; i++) {
           result.nodeIds.set(overrideIndexes[i], overrideNodeIds[i]);
-          result.writerEpochs.set(overrideIndexes[i], overrideWriterEpochs[i]);
+        }
+        for (int i = 0; i < entriesNum; i++) {
+          result.localSeqs.add(buffer.getLong());
         }
       } else {
         result.rebuildWriterMetadataWithDefaults();
@@ -309,62 +283,36 @@ public class WALMetaData implements SerializedSize {
     return nodeIds;
   }
 
-  public List<Short> getWriterEpochs() {
-    return writerEpochs;
-  }
-
   public List<Long> getLocalSeqs() {
     return localSeqs;
   }
 
-  private short computeDefaultNodeId() {
-    return unpackNodeId(computeDefaultWriterIdentity());
-  }
-
-  private short computeDefaultWriterEpoch() {
-    return unpackWriterEpoch(computeDefaultWriterIdentity());
-  }
-
-  private int getWriterOverrideCount() {
+  private int getNodeIdOverrideCount() {
     final short defaultNodeId = computeDefaultNodeId();
-    final short defaultWriterEpoch = computeDefaultWriterEpoch();
     int count = 0;
     for (int i = 0; i < buffersSize.size(); i++) {
-      if (nodeIds.get(i) != defaultNodeId || writerEpochs.get(i) != defaultWriterEpoch) {
+      if (nodeIds.get(i) != defaultNodeId) {
         count++;
       }
     }
     return count;
   }
 
-  private int computeDefaultWriterIdentity() {
+  private short computeDefaultNodeId() {
     if (nodeIds.isEmpty()) {
-      return packWriterIdentity(DEFAULT_NODE_ID, DEFAULT_WRITER_EPOCH);
+      return DEFAULT_NODE_ID;
     }
-    final Map<Integer, Integer> counts = new HashMap<>();
-    int bestIdentity = packWriterIdentity(nodeIds.get(0), writerEpochs.get(0));
+    final Map<Short, Integer> counts = new HashMap<>();
+    short bestNodeId = nodeIds.get(0);
     int bestCount = 0;
-    for (int i = 0; i < nodeIds.size(); i++) {
-      final int identity = packWriterIdentity(nodeIds.get(i), writerEpochs.get(i));
-      final int count = counts.merge(identity, 1, Integer::sum);
+    for (final short nodeId : nodeIds) {
+      final int count = counts.merge(nodeId, 1, Integer::sum);
       if (count > bestCount) {
         bestCount = count;
-        bestIdentity = identity;
+        bestNodeId = nodeId;
       }
     }
-    return bestIdentity;
-  }
-
-  private static int packWriterIdentity(short nodeId, short writerEpoch) {
-    return ((nodeId & 0xFFFF) << 16) | (writerEpoch & 0xFFFF);
-  }
-
-  private static short unpackNodeId(int identity) {
-    return (short) (identity >>> 16);
-  }
-
-  private static short unpackWriterEpoch(int identity) {
-    return (short) identity;
+    return bestNodeId;
   }
 
   public WALMetaData copy() {
@@ -373,7 +321,6 @@ public class WALMetaData implements SerializedSize {
     copy.truncateOffSet = truncateOffSet;
     copy.physicalTimes.addAll(physicalTimes);
     copy.nodeIds.addAll(nodeIds);
-    copy.writerEpochs.addAll(writerEpochs);
     copy.localSeqs.addAll(localSeqs);
     copy.minDataTs = minDataTs;
     copy.maxDataTs = maxDataTs;
@@ -391,12 +338,10 @@ public class WALMetaData implements SerializedSize {
   private void rebuildWriterMetadataWithDefaults() {
     physicalTimes.clear();
     nodeIds.clear();
-    writerEpochs.clear();
     localSeqs.clear();
     for (int i = 0; i < buffersSize.size(); i++) {
       physicalTimes.add(0L);
       nodeIds.add(DEFAULT_NODE_ID);
-      writerEpochs.add(DEFAULT_WRITER_EPOCH);
       localSeqs.add(firstSearchIndex + i);
     }
   }

@@ -52,9 +52,6 @@ public abstract class SearchNode extends WritePlanNode implements ComparableCons
   /** Writer node id used as the second ordering key across multiple writers. */
   protected int nodeId = -1;
 
-  /** Writer-local lifecycle id. */
-  protected long writerEpoch = 0;
-
   /**
    * syncIndex carries the source Leader's searchIndex for replicated (Follower) writes. On Leader
    * nodes this stays at NO_CONSENSUS_INDEX (-1). Only stored in WALMetaData V3, never changes the
@@ -100,15 +97,6 @@ public abstract class SearchNode extends WritePlanNode implements ComparableCons
 
   public SearchNode setNodeId(int nodeId) {
     this.nodeId = nodeId;
-    return this;
-  }
-
-  public long getWriterEpoch() {
-    return writerEpoch;
-  }
-
-  public SearchNode setWriterEpoch(long writerEpoch) {
-    this.writerEpoch = writerEpoch;
     return this;
   }
 

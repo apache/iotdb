@@ -40,7 +40,7 @@ public class ConsensusSubscriptionCommitStateTest {
 
   @Test
   public void testCommitAdvancesContiguousWriterProgress() {
-    final WriterId writerId = new WriterId("1_1", 7, 2L);
+    final WriterId writerId = new WriterId("1_1", 7);
     final Map<WriterId, WriterProgress> initialCommitted = new LinkedHashMap<>();
     initialCommitted.put(writerId, new WriterProgress(100L, 0L));
     final ConsensusSubscriptionCommitManager.ConsensusSubscriptionCommitState state =
@@ -62,7 +62,6 @@ public class ConsensusSubscriptionCommitStateTest {
     assertEquals(102L, state.getCommittedPhysicalTime());
     assertEquals(2L, state.getCommittedLocalSeq());
     assertEquals(7, state.getCommittedWriterNodeId());
-    assertEquals(2L, state.getCommittedWriterEpoch());
     assertEquals(writerId, state.getCommittedWriterId());
     assertEquals(
         new WriterProgress(102L, 2L),
@@ -72,7 +71,6 @@ public class ConsensusSubscriptionCommitStateTest {
     assertEquals(103L, state.getCommittedPhysicalTime());
     assertEquals(3L, state.getCommittedLocalSeq());
     assertEquals(7, state.getCommittedWriterNodeId());
-    assertEquals(2L, state.getCommittedWriterEpoch());
   }
 
   @Test
@@ -81,8 +79,8 @@ public class ConsensusSubscriptionCommitStateTest {
         new ConsensusSubscriptionCommitManager.ConsensusSubscriptionCommitState(
             "2_5", new SubscriptionConsensusProgress());
     final Map<WriterId, WriterProgress> seekProgress = new LinkedHashMap<>();
-    final WriterId writerA = new WriterId("2_5", 4, 9L);
-    final WriterId writerB = new WriterId("2_5", 5, 3L);
+    final WriterId writerA = new WriterId("2_5", 4);
+    final WriterId writerB = new WriterId("2_5", 5);
     seekProgress.put(writerA, new WriterProgress(222L, 11L));
     seekProgress.put(writerB, new WriterProgress(230L, 4L));
     state.resetForSeek(new RegionProgress(seekProgress));
@@ -100,14 +98,34 @@ public class ConsensusSubscriptionCommitStateTest {
     assertEquals(230L, restored.getCommittedPhysicalTime());
     assertEquals(4L, restored.getCommittedLocalSeq());
     assertEquals(5, restored.getCommittedWriterNodeId());
-    assertEquals(3L, restored.getCommittedWriterEpoch());
     assertEquals(writerB, restored.getCommittedWriterId());
     assertEquals(new WriterProgress(230L, 4L), restored.getCommittedWriterProgress());
   }
 
   @Test
+  public void testDerivedCommittedWriterProgressOrdersByPhysicalTimeNodeIdLocalSeq() {
+    final WriterId writerA = new WriterId("2_6", 7);
+    final WriterId writerB = new WriterId("2_6", 8);
+
+    final Map<WriterId, WriterProgress> samePhysicalTimeProgress = new LinkedHashMap<>();
+    samePhysicalTimeProgress.put(writerA, new WriterProgress(100L, 100L));
+    samePhysicalTimeProgress.put(writerB, new WriterProgress(100L, 1L));
+    final SubscriptionConsensusProgress samePhysicalTime =
+        new SubscriptionConsensusProgress(new RegionProgress(samePhysicalTimeProgress), 0L);
+    assertEquals(writerB, samePhysicalTime.getCommittedWriterId());
+    assertEquals(new WriterProgress(100L, 1L), samePhysicalTime.getCommittedWriterProgress());
+
+    final WriterId writerC = new WriterId("2_6", 6);
+    samePhysicalTimeProgress.put(writerC, new WriterProgress(101L, 0L));
+    final SubscriptionConsensusProgress higherPhysicalTime =
+        new SubscriptionConsensusProgress(new RegionProgress(samePhysicalTimeProgress), 0L);
+    assertEquals(writerC, higherPhysicalTime.getCommittedWriterId());
+    assertEquals(new WriterProgress(101L, 0L), higherPhysicalTime.getCommittedWriterProgress());
+  }
+
+  @Test
   public void testDirectCommitWithoutOutstandingRequiresOutstandingMapping() {
-    final WriterId writerId = new WriterId("3_1", 9, 4L);
+    final WriterId writerId = new WriterId("3_1", 9);
     final Map<WriterId, WriterProgress> initialCommitted = new LinkedHashMap<>();
     initialCommitted.put(writerId, new WriterProgress(100L, 0L));
     final ConsensusSubscriptionCommitManager.ConsensusSubscriptionCommitState state =
@@ -125,7 +143,7 @@ public class ConsensusSubscriptionCommitStateTest {
         new ConsensusSubscriptionCommitManager.ConsensusSubscriptionCommitState(
             "3_2", new SubscriptionConsensusProgress());
 
-    final WriterId writerId = new WriterId("3_2", 8, 1L);
+    final WriterId writerId = new WriterId("3_2", 8);
     state.recordMapping(writerId, new WriterProgress(101L, 1L));
     state.recordMapping(writerId, new WriterProgress(102L, 2L));
     state.recordMapping(writerId, new WriterProgress(103L, 3L));
@@ -143,8 +161,8 @@ public class ConsensusSubscriptionCommitStateTest {
   @Test
   public void testBroadcastThrottleKeyIsPerWriter() {
     final String baseKey = "cg##topic##1_1";
-    final WriterId writerA = new WriterId("1_1", 7, 1L);
-    final WriterId writerB = new WriterId("1_1", 8, 1L);
+    final WriterId writerA = new WriterId("1_1", 7);
+    final WriterId writerB = new WriterId("1_1", 8);
 
     assertNotEquals(
         ConsensusSubscriptionCommitManager.buildBroadcastKey(baseKey, writerA),

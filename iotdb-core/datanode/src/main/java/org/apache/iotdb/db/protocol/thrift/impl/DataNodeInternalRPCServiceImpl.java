@@ -1584,9 +1584,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
               req.getTopicName(),
               req.getRegionId(),
               req.getPhysicalTime(),
-              req.getLocalSeq(),
-              req.isSetWriterNodeId() ? req.getWriterNodeId() : -1,
-              req.isSetWriterEpoch() ? req.getWriterEpoch() : 0L);
+              req.getWriterNodeId(),
+              req.getLocalSeq());
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (Exception e) {
       LOGGER.warn("Error occurred when receiving subscription progress broadcast", e);

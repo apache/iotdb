@@ -38,7 +38,7 @@ public class PipeSubscribeSeekReqTest {
   @Test
   public void testTopicProgressSeekRoundTrip() throws IOException {
     final Map<WriterId, WriterProgress> writerPositions = new LinkedHashMap<>();
-    writerPositions.put(new WriterId("1_100", 1, 2L), new WriterProgress(1000L, 10L));
+    writerPositions.put(new WriterId("1_100", 1), new WriterProgress(1000L, 10L));
     final TopicProgress original =
         new TopicProgress(Collections.singletonMap("1_100", new RegionProgress(writerPositions)));
 

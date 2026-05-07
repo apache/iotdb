@@ -1732,7 +1732,6 @@ public class DataRegion implements IDataRegionForQuery {
               v.setSearchIndex(insertRowNode.getSearchIndex());
               v.setPhysicalTime(insertRowsNode.getPhysicalTime());
               v.setNodeId(insertRowsNode.getNodeId());
-              v.setWriterEpoch(insertRowsNode.getWriterEpoch());
               v.setSyncIndex(insertRowsNode.getSyncIndex());
               v.setAligned(insertRowNode.isAligned());
               if (insertRowNode.isGeneratedByPipe()) {
@@ -3113,7 +3112,6 @@ public class DataRegion implements IDataRegionForQuery {
         .setSearchIndex(templateDeleteDataNode.getSearchIndex())
         .setPhysicalTime(templateDeleteDataNode.getPhysicalTime())
         .setNodeId(templateDeleteDataNode.getNodeId())
-        .setWriterEpoch(templateDeleteDataNode.getWriterEpoch())
         .setSyncIndex(templateDeleteDataNode.getSyncIndex());
     for (Map.Entry<Long, TsFileProcessor> entry : workSequenceTsFileProcessors.entrySet()) {
       if (TimePartitionUtils.satisfyPartitionId(
@@ -3221,7 +3219,6 @@ public class DataRegion implements IDataRegionForQuery {
             .setRoutingEpoch(sourceNode.getRoutingEpoch())
             .setPhysicalTime(sourceNode.getPhysicalTime())
             .setNodeId(sourceNode.getNodeId())
-            .setWriterEpoch(sourceNode.getWriterEpoch())
             .setSyncIndex(sourceNode.getSyncIndex());
       }
       getWALNode()
@@ -4531,7 +4528,6 @@ public class DataRegion implements IDataRegionForQuery {
                 v.setSearchIndex(insertRowNode.getSearchIndex());
                 v.setPhysicalTime(insertRowsOfOneDeviceNode.getPhysicalTime());
                 v.setNodeId(insertRowsOfOneDeviceNode.getNodeId());
-                v.setWriterEpoch(insertRowsOfOneDeviceNode.getWriterEpoch());
                 v.setSyncIndex(insertRowsOfOneDeviceNode.getSyncIndex());
                 v.setAligned(insertRowNode.isAligned());
                 if (insertRowNode.isGeneratedByPipe()) {

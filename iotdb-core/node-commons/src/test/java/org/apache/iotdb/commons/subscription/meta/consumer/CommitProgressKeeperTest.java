@@ -44,7 +44,7 @@ public class CommitProgressKeeperTest {
   public void testUpdateAndReplaceAllUseDefensiveCopies() throws Exception {
     final CommitProgressKeeper keeper = new CommitProgressKeeper();
     final String key = CommitProgressKeeper.generateKey("cg", "topic", "1_1", 3);
-    final RegionProgress regionProgress = createRegionProgress("1_1", 7, 2L, 100L, 10L);
+    final RegionProgress regionProgress = createRegionProgress("1_1", 7, 100L, 10L);
 
     final ByteBuffer source = serialize(regionProgress);
     keeper.updateRegionProgress(key, source);
@@ -56,7 +56,7 @@ public class CommitProgressKeeperTest {
     assertEquals(regionProgress, RegionProgress.deserialize(keeper.getRegionProgress(key)));
 
     final Map<String, ByteBuffer> replacement = new LinkedHashMap<>();
-    final RegionProgress replacementProgress = createRegionProgress("1_1", 8, 3L, 120L, 12L);
+    final RegionProgress replacementProgress = createRegionProgress("1_1", 8, 120L, 12L);
     final ByteBuffer replacementBuffer = serialize(replacementProgress);
     replacement.put(key, replacementBuffer);
 
@@ -74,11 +74,11 @@ public class CommitProgressKeeperTest {
     final RegionProgress firstProgress =
         createRegionProgress(
             "1_1",
-            new WriterId("1_1", 7, 2L),
+            new WriterId("1_1", 7),
             new WriterProgress(100L, 10L),
-            new WriterId("1_1", 8, 2L),
+            new WriterId("1_1", 8),
             new WriterProgress(110L, 11L));
-    final RegionProgress secondProgress = createRegionProgress("1_2", 9, 4L, 200L, 20L);
+    final RegionProgress secondProgress = createRegionProgress("1_2", 9, 200L, 20L);
 
     keeper.updateRegionProgress(firstKey, serialize(firstProgress));
     keeper.updateRegionProgress(secondKey, serialize(secondProgress));
@@ -104,15 +104,9 @@ public class CommitProgressKeeperTest {
   }
 
   private static RegionProgress createRegionProgress(
-      final String regionId,
-      final int nodeId,
-      final long writerEpoch,
-      final long physicalTime,
-      final long localSeq) {
+      final String regionId, final int nodeId, final long physicalTime, final long localSeq) {
     return createRegionProgress(
-        regionId,
-        new WriterId(regionId, nodeId, writerEpoch),
-        new WriterProgress(physicalTime, localSeq));
+        regionId, new WriterId(regionId, nodeId), new WriterProgress(physicalTime, localSeq));
   }
 
   private static RegionProgress createRegionProgress(

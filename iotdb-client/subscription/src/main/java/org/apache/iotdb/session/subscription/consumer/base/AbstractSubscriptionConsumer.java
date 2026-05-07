@@ -1935,7 +1935,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
     if (Objects.isNull(commitContext.getRegionId()) || commitContext.getRegionId().isEmpty()) {
       return null;
     }
-    return new WriterId(commitContext.getRegionId(), commitContext.getDataNodeId(), 0L);
+    return new WriterId(commitContext.getRegionId(), commitContext.getDataNodeId());
   }
 
   private WriterProgress extractWriterProgress(final SubscriptionCommitContext commitContext) {

@@ -114,14 +114,12 @@ public class IoTConsensusRPCServiceProcessor implements IoTConsensusIService.Ifa
     for (TLogEntry entry : req.getLogEntries()) {
       long routingEpoch = entry.isSetRoutingEpoch() ? entry.getRoutingEpoch() : 0L;
       long physicalTime = entry.isSetPhysicalTime() ? entry.getPhysicalTime() : 0L;
-      long writerEpoch = entry.isSetWriterEpoch() ? entry.getWriterEpoch() : 0L;
       logEntriesInThisBatch.add(
           impl.buildIndexedConsensusRequestForRemoteRequest(
               entry.getSearchIndex(),
               routingEpoch,
               physicalTime,
               sourceNodeId,
-              writerEpoch,
               entry.getData().stream()
                   .map(
                       entry.isFromWAL()
@@ -157,10 +155,7 @@ public class IoTConsensusRPCServiceProcessor implements IoTConsensusIService.Ifa
       return new TSyncSafeHlcRes().setStatus(status);
     }
     impl.observeRemoteSafeHlc(
-        req.getWriterNodeId(),
-        req.getWriterEpoch(),
-        req.getSafePhysicalTime(),
-        req.getBarrierLocalSeq());
+        req.getSafePhysicalTime(), req.getWriterNodeId(), req.getBarrierLocalSeq());
     return new TSyncSafeHlcRes()
         .setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
   }

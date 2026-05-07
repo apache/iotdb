@@ -253,7 +253,7 @@ public class ConsensusReqReaderTest {
   @Test
   public void testReqIteratorCarriesWriterMetadata() throws Exception {
     final InsertRowNode insertRowNode = getInsertRowNode(devicePath);
-    insertRowNode.setSearchIndex(1).setPhysicalTime(123456789L).setNodeId(7).setWriterEpoch(3L);
+    insertRowNode.setSearchIndex(1).setPhysicalTime(123456789L).setNodeId(7);
     walNode.log(0, insertRowNode);
     walNode.rollWALFile();
     walNode.rollWALFile();
@@ -265,7 +265,6 @@ public class ConsensusReqReaderTest {
     Assert.assertEquals(1L, request.getSearchIndex());
     Assert.assertEquals(123456789L, request.getPhysicalTime());
     Assert.assertEquals(7, request.getNodeId());
-    Assert.assertEquals(3L, request.getWriterEpoch());
   }
 
   @Test

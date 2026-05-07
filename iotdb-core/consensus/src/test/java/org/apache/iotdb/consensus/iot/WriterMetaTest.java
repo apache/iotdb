@@ -42,13 +42,12 @@ public class WriterMetaTest {
     final Path metaPath = temporaryFolder.newFile("writer.meta").toPath();
     Files.deleteIfExists(metaPath);
 
-    final WriterMeta expected = new WriterMeta(7L, 123L, 456L);
+    final WriterMeta expected = new WriterMeta(123L, 456L);
     expected.persist(metaPath);
 
     final Optional<WriterMeta> loaded = WriterMeta.load(metaPath);
 
     assertTrue(loaded.isPresent());
-    assertEquals(7L, loaded.get().getWriterEpoch());
     assertEquals(123L, loaded.get().getLastAllocatedLocalSeq());
     assertEquals(456L, loaded.get().getLastAssignedPhysicalTimeMs());
     assertFalse(Files.exists(tempPath(metaPath)));
@@ -60,13 +59,12 @@ public class WriterMetaTest {
     final File dir = temporaryFolder.newFolder("writer-meta");
     final Path metaPath = dir.toPath().resolve("writer.meta");
 
-    new WriterMeta(1L, 10L, 100L).persist(metaPath);
-    new WriterMeta(2L, 20L, 200L).persist(metaPath);
+    new WriterMeta(10L, 100L).persist(metaPath);
+    new WriterMeta(20L, 200L).persist(metaPath);
 
     final Optional<WriterMeta> loaded = WriterMeta.load(metaPath);
 
     assertTrue(loaded.isPresent());
-    assertEquals(2L, loaded.get().getWriterEpoch());
     assertEquals(20L, loaded.get().getLastAllocatedLocalSeq());
     assertEquals(200L, loaded.get().getLastAssignedPhysicalTimeMs());
     assertFalse(Files.exists(tempPath(metaPath)));

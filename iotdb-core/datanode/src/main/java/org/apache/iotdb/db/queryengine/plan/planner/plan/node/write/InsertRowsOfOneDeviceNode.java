@@ -121,13 +121,6 @@ public class InsertRowsOfOneDeviceNode extends InsertNode {
   }
 
   @Override
-  public SearchNode setWriterEpoch(long writerEpoch) {
-    this.writerEpoch = writerEpoch;
-    insertRowNodeList.forEach(plan -> plan.setWriterEpoch(writerEpoch));
-    return this;
-  }
-
-  @Override
   public SearchNode setSyncIndex(long syncIndex) {
     this.syncIndex = syncIndex;
     insertRowNodeList.forEach(plan -> plan.setSyncIndex(syncIndex));

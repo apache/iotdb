@@ -247,7 +247,6 @@ public class WALCompressionTest {
       Assert.assertTrue(metadata.getBuffersSize().isEmpty());
       Assert.assertTrue(metadata.getPhysicalTimes().isEmpty());
       Assert.assertTrue(metadata.getNodeIds().isEmpty());
-      Assert.assertTrue(metadata.getWriterEpochs().isEmpty());
       Assert.assertTrue(metadata.getLocalSeqs().isEmpty());
       Assert.assertEquals(metadataSize, dataInputStream.readInt());
       // Tail magic string
@@ -314,7 +313,6 @@ public class WALCompressionTest {
       Assert.assertTrue(metadata.getBuffersSize().isEmpty());
       Assert.assertTrue(metadata.getPhysicalTimes().isEmpty());
       Assert.assertTrue(metadata.getNodeIds().isEmpty());
-      Assert.assertTrue(metadata.getWriterEpochs().isEmpty());
       Assert.assertTrue(metadata.getLocalSeqs().isEmpty());
       Assert.assertEquals(metadataSize, dataInputStream.readInt());
       // Tail magic string

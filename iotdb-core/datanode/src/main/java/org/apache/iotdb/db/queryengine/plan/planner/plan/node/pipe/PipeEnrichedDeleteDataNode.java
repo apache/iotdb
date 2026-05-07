@@ -141,17 +141,6 @@ public class PipeEnrichedDeleteDataNode extends AbstractDeleteDataNode {
   }
 
   @Override
-  public long getWriterEpoch() {
-    return deleteDataNode.getWriterEpoch();
-  }
-
-  @Override
-  public SearchNode setWriterEpoch(final long writerEpoch) {
-    deleteDataNode.setWriterEpoch(writerEpoch);
-    return this;
-  }
-
-  @Override
   public long getSyncIndex() {
     return deleteDataNode.getSyncIndex();
   }

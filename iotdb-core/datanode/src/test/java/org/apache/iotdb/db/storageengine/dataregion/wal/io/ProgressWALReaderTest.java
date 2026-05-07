@@ -40,13 +40,11 @@ public class ProgressWALReaderTest {
     try {
       try (WALWriter writer = new WALWriter(walFile, WALFileVersion.V3)) {
         writer.write(
-            entryBuffer((byte) 1, (byte) 2, (byte) 3),
-            singleEntryMeta(3, 10L, 1L, 10000L, 1, 2L, 10L));
-        writer.write(
-            entryBuffer((byte) 4, (byte) 5), singleEntryMeta(2, 11L, 1L, 10010L, 1, 2L, 11L));
+            entryBuffer((byte) 1, (byte) 2, (byte) 3), singleEntryMeta(3, 10L, 1L, 10000L, 1, 10L));
+        writer.write(entryBuffer((byte) 4, (byte) 5), singleEntryMeta(2, 11L, 1L, 10010L, 1, 11L));
         writer.write(
             entryBuffer((byte) 6, (byte) 7, (byte) 8, (byte) 9),
-            singleEntryMeta(4, 12L, 2L, 20000L, 4, 1L, 1L));
+            singleEntryMeta(4, 12L, 2L, 20000L, 4, 1L));
       }
 
       try (ProgressWALReader reader = new ProgressWALReader(walFile)) {
@@ -55,7 +53,6 @@ public class ProgressWALReaderTest {
         assertEquals(0, reader.getCurrentEntryIndex());
         assertEquals(10000L, reader.getCurrentEntryPhysicalTime());
         assertEquals(1, reader.getCurrentEntryNodeId());
-        assertEquals(2L, reader.getCurrentEntryWriterEpoch());
         assertEquals(10L, reader.getCurrentEntryLocalSeq());
 
         assertTrue(reader.hasNext());
@@ -63,7 +60,6 @@ public class ProgressWALReaderTest {
         assertEquals(1, reader.getCurrentEntryIndex());
         assertEquals(10010L, reader.getCurrentEntryPhysicalTime());
         assertEquals(1, reader.getCurrentEntryNodeId());
-        assertEquals(2L, reader.getCurrentEntryWriterEpoch());
         assertEquals(11L, reader.getCurrentEntryLocalSeq());
 
         assertTrue(reader.hasNext());
@@ -71,7 +67,6 @@ public class ProgressWALReaderTest {
         assertEquals(2, reader.getCurrentEntryIndex());
         assertEquals(20000L, reader.getCurrentEntryPhysicalTime());
         assertEquals(4, reader.getCurrentEntryNodeId());
-        assertEquals(1L, reader.getCurrentEntryWriterEpoch());
         assertEquals(1L, reader.getCurrentEntryLocalSeq());
       }
     } finally {
@@ -87,15 +82,9 @@ public class ProgressWALReaderTest {
   }
 
   private static WALMetaData singleEntryMeta(
-      int size,
-      long searchIndex,
-      long memTableId,
-      long physicalTime,
-      int nodeId,
-      long writerEpoch,
-      long localSeq) {
+      int size, long searchIndex, long memTableId, long physicalTime, int nodeId, long localSeq) {
     WALMetaData metaData = new WALMetaData();
-    metaData.add(size, searchIndex, memTableId, physicalTime, nodeId, writerEpoch, localSeq);
+    metaData.add(size, searchIndex, memTableId, physicalTime, nodeId, localSeq);
     return metaData;
   }
 }

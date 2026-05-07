@@ -401,7 +401,6 @@ public class DeleteDataNode extends AbstractDeleteDataNode {
         .setSearchIndex(firstOne.searchIndex)
         .setPhysicalTime(firstOne.getPhysicalTime())
         .setNodeId(firstOne.getNodeId())
-        .setWriterEpoch(firstOne.getWriterEpoch())
         .setSyncIndex(firstOne.getSyncIndex());
   }
 }

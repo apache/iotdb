@@ -29,7 +29,6 @@ struct TLogEntry {
   4: required i64 memorySize
   5: optional i64 routingEpoch
   6: optional i64 physicalTime
-  7: optional i16 writerEpoch
 }
 
 struct TSyncLogEntriesReq {
@@ -46,10 +45,9 @@ struct TSyncLogEntriesRes {
 
 struct TSyncSafeHlcReq {
   1: required common.TConsensusGroupId consensusGroupId
-  2: required i32 writerNodeId
-  3: required i64 writerEpoch
-  4: required i64 safePhysicalTime
-  5: required i64 barrierLocalSeq
+  2: required i64 safePhysicalTime
+  3: required i32 writerNodeId
+  4: required i64 barrierLocalSeq
 }
 
 struct TSyncSafeHlcRes {

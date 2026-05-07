@@ -79,7 +79,6 @@ public class ProgressWALIterator implements Closeable {
   private long pendingLocalSeq = Long.MIN_VALUE;
   private long pendingPhysicalTime;
   private int pendingNodeId;
-  private long pendingWriterEpoch;
   private final List<IConsensusRequest> pendingRequests = new ArrayList<>();
 
   private IndexedConsensusRequest nextReady;
@@ -241,13 +240,12 @@ public class ProgressWALIterator implements Closeable {
           final long localSeq = currentReader.getCurrentEntryLocalSeq();
           final long physicalTime = currentReader.getCurrentEntryPhysicalTime();
           final int nodeId = currentReader.getCurrentEntryNodeId();
-          final long writerEpoch = currentReader.getCurrentEntryWriterEpoch();
 
           buffer.position(SEARCH_INDEX_OFFSET);
           final long bodySearchIndex = buffer.getLong();
           buffer.clear();
 
-          if (isSamePendingRequest(localSeq, nodeId, writerEpoch)) {
+          if (isSamePendingRequest(physicalTime, nodeId, localSeq)) {
             if (pendingSearchIndex < 0 && bodySearchIndex >= 0) {
               pendingSearchIndex = bodySearchIndex;
             }
@@ -256,7 +254,7 @@ public class ProgressWALIterator implements Closeable {
           }
 
           final IndexedConsensusRequest flushed = flushPending();
-          startPending(bodySearchIndex, localSeq, physicalTime, nodeId, writerEpoch, buffer);
+          startPending(bodySearchIndex, physicalTime, nodeId, localSeq, buffer);
           if (flushed != null && !shouldSkip(flushed)) {
             return flushed;
           }
@@ -453,25 +451,23 @@ public class ProgressWALIterator implements Closeable {
   }
 
   private boolean isSamePendingRequest(
-      final long localSeq, final int nodeId, final long writerEpoch) {
+      final long physicalTime, final int nodeId, final long localSeq) {
     return !pendingRequests.isEmpty()
-        && pendingLocalSeq == localSeq
+        && pendingPhysicalTime == physicalTime
         && pendingNodeId == nodeId
-        && pendingWriterEpoch == writerEpoch;
+        && pendingLocalSeq == localSeq;
   }
 
   private void startPending(
       final long searchIndex,
-      final long localSeq,
       final long physicalTime,
       final int nodeId,
-      final long writerEpoch,
+      final long localSeq,
       final ByteBuffer buffer) {
     pendingSearchIndex = searchIndex;
     pendingLocalSeq = localSeq;
     pendingPhysicalTime = physicalTime;
     pendingNodeId = nodeId;
-    pendingWriterEpoch = writerEpoch;
     pendingRequests.clear();
     pendingRequests.add(new IoTConsensusRequest(buffer));
   }
@@ -483,10 +479,7 @@ public class ProgressWALIterator implements Closeable {
     final IndexedConsensusRequest result =
         new IndexedConsensusRequest(
             pendingSearchIndex, pendingLocalSeq, new ArrayList<>(pendingRequests));
-    result
-        .setPhysicalTime(pendingPhysicalTime)
-        .setNodeId(pendingNodeId)
-        .setWriterEpoch(pendingWriterEpoch);
+    result.setPhysicalTime(pendingPhysicalTime).setNodeId(pendingNodeId);
     pendingRequests.clear();
     pendingSearchIndex = Long.MIN_VALUE;
     pendingLocalSeq = Long.MIN_VALUE;

@@ -771,18 +771,11 @@ public class SubscriptionBrokerAgent {
       final String topicName,
       final String regionId,
       final long physicalTime,
-      final long localSeq,
       final int writerNodeId,
-      final long writerEpoch) {
+      final long localSeq) {
     ConsensusSubscriptionCommitManager.getInstance()
         .receiveProgressBroadcast(
-            consumerGroupId,
-            topicName,
-            regionId,
-            physicalTime,
-            localSeq,
-            writerNodeId,
-            writerEpoch);
+            consumerGroupId, topicName, regionId, physicalTime, writerNodeId, localSeq);
   }
 
   /////////////////////////////// Cache ///////////////////////////////

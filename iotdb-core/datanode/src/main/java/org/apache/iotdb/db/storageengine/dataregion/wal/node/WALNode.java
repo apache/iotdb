@@ -667,7 +667,6 @@ public class WALNode implements IWALNode {
       // V3: track writer progress metadata for current entry group
       AtomicLong currentEntryLocalSeq = new AtomicLong(-1);
       AtomicLong currentEntryPhysicalTime = new AtomicLong(0);
-      AtomicLong currentEntryWriterEpoch = new AtomicLong(0);
       AtomicLong currentEntryNodeId = new AtomicLong(-1);
 
       long memorySize = 0;
@@ -683,8 +682,7 @@ public class WALNode implements IWALNode {
                       ? new IndexedConsensusRequest(nextSearchIndex, localSeq, tmpNodes.get())
                       : new IndexedConsensusRequest(nextSearchIndex, tmpNodes.get());
               req.setPhysicalTime(currentEntryPhysicalTime.get())
-                  .setNodeId((int) currentEntryNodeId.get())
-                  .setWriterEpoch(currentEntryWriterEpoch.get());
+                  .setNodeId((int) currentEntryNodeId.get());
               insertNodes.add(req);
               tmpNodes.set(new ArrayList<>());
               nextSearchIndex++;
@@ -720,7 +718,6 @@ public class WALNode implements IWALNode {
               } else if (currentWalEntryIndex == nextSearchIndex) {
                 currentEntryLocalSeq.set(walByteBufReader.getCurrentEntryLocalSeq());
                 currentEntryPhysicalTime.set(walByteBufReader.getCurrentEntryPhysicalTime());
-                currentEntryWriterEpoch.set(walByteBufReader.getCurrentEntryWriterEpoch());
                 currentEntryNodeId.set(walByteBufReader.getCurrentEntryNodeId());
                 if (type == WALEntryType.OBJECT_FILE_NODE) {
                   WALEntry walEntry =
@@ -752,7 +749,6 @@ public class WALNode implements IWALNode {
                 }
                 currentEntryLocalSeq.set(walByteBufReader.getCurrentEntryLocalSeq());
                 currentEntryPhysicalTime.set(walByteBufReader.getCurrentEntryPhysicalTime());
-                currentEntryWriterEpoch.set(walByteBufReader.getCurrentEntryWriterEpoch());
                 currentEntryNodeId.set(walByteBufReader.getCurrentEntryNodeId());
                 if (type == WALEntryType.OBJECT_FILE_NODE) {
                   WALEntry walEntry =

@@ -527,9 +527,8 @@ public class LogDispatcher {
       final TSStatus status =
           impl.syncSafeHlcToPeer(
               peer,
-              impl.getThisNode().getNodeId(),
-              impl.getCurrentWriterEpoch(),
               safeHlc.getSafePhysicalTime(),
+              impl.getThisNode().getNodeId(),
               safeHlc.getBarrierLocalSeq());
       if (status.getCode() == org.apache.iotdb.rpc.TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         lastIdleSafeHlcSentTimeMs = now;
@@ -630,7 +629,6 @@ public class LogDispatcher {
                 data.getSerializedRequests(), data.getSearchIndex(), true, data.getMemorySize());
         logEntry.setRoutingEpoch(data.getRoutingEpoch());
         logEntry.setPhysicalTime(data.getPhysicalTime());
-        logEntry.setWriterEpoch(writerEpochToShort(data.getWriterEpoch()));
         logBatches.addTLogEntry(logEntry);
       }
       // In the case of corrupt Data, we return true so that we can send a batch as soon as
@@ -648,7 +646,6 @@ public class LogDispatcher {
               request.getMemorySize());
       logEntry.setRoutingEpoch(request.getRoutingEpoch());
       logEntry.setPhysicalTime(request.getPhysicalTime());
-      logEntry.setWriterEpoch(writerEpochToShort(request.getWriterEpoch()));
       logBatches.addTLogEntry(logEntry);
     }
   }
@@ -659,12 +656,5 @@ public class LogDispatcher {
 
   public static AtomicLong getSenderMemSizeSum() {
     return senderMemSizeSum;
-  }
-
-  private static short writerEpochToShort(long writerEpoch) {
-    if (writerEpoch < Short.MIN_VALUE || writerEpoch > Short.MAX_VALUE) {
-      throw new IllegalArgumentException("writerEpoch exceeds short range: " + writerEpoch);
-    }
-    return (short) writerEpoch;
   }
 }

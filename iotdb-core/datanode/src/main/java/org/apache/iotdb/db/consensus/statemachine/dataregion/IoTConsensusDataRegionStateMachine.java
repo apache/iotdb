@@ -92,7 +92,6 @@ public class IoTConsensusDataRegionStateMachine extends DataRegionStateMachine {
               batchRequest.getEndSyncIndex(),
               batchRequest.getRequests().size(),
               batchRequest.getSourcePeerId(),
-              lastIndexedRequest != null ? lastIndexedRequest.getWriterEpoch() : 0L,
               lastIndexedRequest != null ? lastIndexedRequest.getPhysicalTime() : 0L);
       for (IndexedConsensusRequest indexedRequest : batchRequest.getRequests()) {
         final PlanNode planNode = grabPlanNode(indexedRequest);

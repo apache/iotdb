@@ -42,9 +42,6 @@ public class IndexedConsensusRequest implements IConsensusRequest {
   /** Writer node id used as the second ordering key across multiple writers. */
   private int nodeId = -1;
 
-  /** Writer-local lifecycle id. */
-  private long writerEpoch = 0;
-
   private final List<IConsensusRequest> requests;
   private final List<ByteBuffer> serializedRequests;
   private long memorySize = 0;
@@ -133,15 +130,6 @@ public class IndexedConsensusRequest implements IConsensusRequest {
 
   public IndexedConsensusRequest setNodeId(int nodeId) {
     this.nodeId = nodeId;
-    return this;
-  }
-
-  public long getWriterEpoch() {
-    return writerEpoch;
-  }
-
-  public IndexedConsensusRequest setWriterEpoch(long writerEpoch) {
-    this.writerEpoch = writerEpoch;
     return this;
   }
 

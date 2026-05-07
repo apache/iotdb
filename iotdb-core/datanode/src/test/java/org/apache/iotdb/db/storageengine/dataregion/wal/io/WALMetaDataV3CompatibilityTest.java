@@ -32,11 +32,11 @@ public class WALMetaDataV3CompatibilityTest {
   public void testV3RoundTrip() {
     WALMetaData original = new WALMetaData();
 
-    original.add(100, 10, 1, 10000L, 1, 2L, 10L);
-    original.add(200, 11, 1, 10010L, 1, 2L, 11L);
-    original.add(150, 12, 1, 10020L, 1, 2L, 12L);
-    original.add(300, 13, 2, 20000L, 4, 1L, 1L);
-    original.add(250, 14, 2, 20010L, 1, 2L, 14L);
+    original.add(100, 10, 1, 10000L, 1, 10L);
+    original.add(200, 11, 1, 10010L, 1, 11L);
+    original.add(150, 12, 1, 10020L, 1, 12L);
+    original.add(300, 13, 2, 20000L, 4, 1L);
+    original.add(250, 14, 2, 20010L, 1, 14L);
 
     original.updateTimestampRange(1600000000000L);
     original.updateTimestampRange(1600000001000L);
@@ -76,13 +76,6 @@ public class WALMetaDataV3CompatibilityTest {
     assertEquals(Short.valueOf((short) 4), deserialized.getNodeIds().get(3));
     assertEquals(Short.valueOf((short) 1), deserialized.getNodeIds().get(4));
 
-    assertEquals(5, deserialized.getWriterEpochs().size());
-    assertEquals(Short.valueOf((short) 2), deserialized.getWriterEpochs().get(0));
-    assertEquals(Short.valueOf((short) 2), deserialized.getWriterEpochs().get(1));
-    assertEquals(Short.valueOf((short) 2), deserialized.getWriterEpochs().get(2));
-    assertEquals(Short.valueOf((short) 1), deserialized.getWriterEpochs().get(3));
-    assertEquals(Short.valueOf((short) 2), deserialized.getWriterEpochs().get(4));
-
     assertEquals(5, deserialized.getLocalSeqs().size());
     assertEquals(Long.valueOf(10L), deserialized.getLocalSeqs().get(0));
     assertEquals(Long.valueOf(11L), deserialized.getLocalSeqs().get(1));
@@ -108,7 +101,6 @@ public class WALMetaDataV3CompatibilityTest {
     assertEquals(2, deserialized.getBuffersSize().size());
     assertTrue(deserialized.getPhysicalTimes().isEmpty());
     assertTrue(deserialized.getNodeIds().isEmpty());
-    assertTrue(deserialized.getWriterEpochs().isEmpty());
     assertTrue(deserialized.getLocalSeqs().isEmpty());
     assertEquals(Long.MAX_VALUE, deserialized.getMinDataTs());
     assertEquals(Long.MIN_VALUE, deserialized.getMaxDataTs());
@@ -117,9 +109,9 @@ public class WALMetaDataV3CompatibilityTest {
   @Test
   public void testV2SerializedSizeSmallerThanV3() {
     WALMetaData meta = new WALMetaData();
-    meta.add(100, 10, 1, 10L, 1, 2L, 10L);
-    meta.add(200, 11, 1, 11L, 1, 2L, 11L);
-    meta.add(300, 12, 1, 12L, 3, 1L, 12L);
+    meta.add(100, 10, 1, 10L, 1, 10L);
+    meta.add(200, 11, 1, 11L, 1, 11L);
+    meta.add(300, 12, 1, 12L, 3, 12L);
 
     int v2Size = meta.serializedSize(WALFileVersion.V2);
     int v3Size = meta.serializedSize(WALFileVersion.V3);
@@ -129,21 +121,21 @@ public class WALMetaDataV3CompatibilityTest {
     int expectedDiff =
         entryCount * Long.BYTES * 2
             + Long.BYTES * 2
-            + Short.BYTES * 2
+            + Short.BYTES
             + Integer.BYTES
-            + overrideCount * (Integer.BYTES + Short.BYTES + Short.BYTES);
+            + overrideCount * (Integer.BYTES + Short.BYTES);
     assertEquals(expectedDiff, v3Size - v2Size);
   }
 
   @Test
   public void testV3AddAllMerge() {
     WALMetaData meta1 = new WALMetaData();
-    meta1.add(100, 10, 1, 100L, 1, 2L, 10L);
-    meta1.add(200, 11, 1, 110L, 1, 2L, 11L);
+    meta1.add(100, 10, 1, 100L, 1, 10L);
+    meta1.add(200, 11, 1, 110L, 1, 11L);
     meta1.updateTimestampRange(100L);
 
     WALMetaData meta2 = new WALMetaData();
-    meta2.add(300, 12, 2, 200L, 4, 1L, 1L);
+    meta2.add(300, 12, 2, 200L, 4, 1L);
     meta2.updateTimestampRange(200L);
 
     meta1.addAll(meta2);
@@ -155,9 +147,6 @@ public class WALMetaDataV3CompatibilityTest {
     assertEquals(Short.valueOf((short) 1), meta1.getNodeIds().get(0));
     assertEquals(Short.valueOf((short) 1), meta1.getNodeIds().get(1));
     assertEquals(Short.valueOf((short) 4), meta1.getNodeIds().get(2));
-    assertEquals(Short.valueOf((short) 2), meta1.getWriterEpochs().get(0));
-    assertEquals(Short.valueOf((short) 2), meta1.getWriterEpochs().get(1));
-    assertEquals(Short.valueOf((short) 1), meta1.getWriterEpochs().get(2));
     assertEquals(Long.valueOf(10L), meta1.getLocalSeqs().get(0));
     assertEquals(Long.valueOf(11L), meta1.getLocalSeqs().get(1));
     assertEquals(Long.valueOf(1L), meta1.getLocalSeqs().get(2));
@@ -179,7 +168,6 @@ public class WALMetaDataV3CompatibilityTest {
     assertEquals(0, deserialized.getBuffersSize().size());
     assertTrue(deserialized.getPhysicalTimes().isEmpty());
     assertTrue(deserialized.getNodeIds().isEmpty());
-    assertTrue(deserialized.getWriterEpochs().isEmpty());
     assertTrue(deserialized.getLocalSeqs().isEmpty());
     assertEquals(Long.MAX_VALUE, deserialized.getMinDataTs());
     assertEquals(Long.MIN_VALUE, deserialized.getMaxDataTs());
@@ -192,7 +180,6 @@ public class WALMetaDataV3CompatibilityTest {
 
     assertEquals(Long.valueOf(0L), meta.getPhysicalTimes().get(0));
     assertEquals(Short.valueOf((short) -1), meta.getNodeIds().get(0));
-    assertEquals(Short.valueOf((short) 0), meta.getWriterEpochs().get(0));
     assertEquals(Long.valueOf(10L), meta.getLocalSeqs().get(0));
   }
 }

@@ -333,7 +333,6 @@ public class RelationalDeleteDataNode extends AbstractDeleteDataNode {
         .setSearchIndex(getSearchIndex())
         .setPhysicalTime(getPhysicalTime())
         .setNodeId(getNodeId())
-        .setWriterEpoch(getWriterEpoch())
         .setSyncIndex(getSyncIndex());
   }
 }

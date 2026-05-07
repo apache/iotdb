@@ -144,9 +144,6 @@ public class IoTConsensusServerImpl {
   /** Current routing epoch for ordered consensus subscription. Set by external routing changes. */
   private volatile long currentRoutingEpoch = 0;
 
-  /** Lifecycle identifier of the local writer for this region replica. */
-  private volatile long currentWriterEpoch = 1;
-
   /**
    * Maximum physical time known to this replica. Local writes assign from it; remote replication
    * can also raise it so future local writes do not regress behind observed remote events.
@@ -265,9 +262,8 @@ public class IoTConsensusServerImpl {
           writeToStateMachineEndTime - writeToStateMachineStartTime);
       if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         writerSafeFrontierTracker.recordAppliedProgress(
-            thisNode.getNodeId(),
-            currentWriterEpoch,
             indexedConsensusRequest.getPhysicalTime(),
+            thisNode.getNodeId(),
             indexedConsensusRequest.getLocalSeq());
         // The index is used when constructing batch in LogDispatcher. If its value
         // increases but the corresponding request does not exist or is not put into
@@ -723,9 +719,8 @@ public class IoTConsensusServerImpl {
 
   public TSStatus syncSafeHlcToPeer(
       final Peer targetPeer,
-      final int writerNodeId,
-      final long writerEpoch,
       final long safePhysicalTime,
+      final int writerNodeId,
       final long barrierLocalSeq) {
     try (SyncIoTConsensusServiceClient client =
         syncClientManager.borrowClient(targetPeer.getEndpoint())) {
@@ -733,19 +728,17 @@ public class IoTConsensusServerImpl {
           client.syncSafeHlc(
               new TSyncSafeHlcReq()
                   .setConsensusGroupId(thisNode.getGroupId().convertToTConsensusGroupId())
-                  .setWriterNodeId(writerNodeId)
-                  .setWriterEpoch(writerEpoch)
                   .setSafePhysicalTime(safePhysicalTime)
+                  .setWriterNodeId(writerNodeId)
                   .setBarrierLocalSeq(barrierLocalSeq));
       return res.getStatus();
     } catch (Exception e) {
       logger.debug(
-          "Failed to sync safeHLC to peer {} for group {}, writer=({}, {}), safePt={}, barrier={}",
+          "Failed to sync safeHLC to peer {} for group {}, safePt={}, writerNodeId={}, barrier={}",
           targetPeer,
           consensusGroupId,
-          writerNodeId,
-          writerEpoch,
           safePhysicalTime,
+          writerNodeId,
           barrierLocalSeq,
           e);
       return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode())
@@ -816,8 +809,7 @@ public class IoTConsensusServerImpl {
     }
     return new IndexedConsensusRequest(searchIndex.get() + 1, Collections.singletonList(request))
         .setPhysicalTime(assignPhysicalTimeInMs())
-        .setNodeId(thisNode.getNodeId())
-        .setWriterEpoch(currentWriterEpoch);
+        .setNodeId(thisNode.getNodeId());
   }
 
   public IndexedConsensusRequest buildIndexedConsensusRequestForRemoteRequest(
@@ -825,7 +817,6 @@ public class IoTConsensusServerImpl {
       long routingEpoch,
       long physicalTime,
       int nodeId,
-      long writerEpoch,
       List<IConsensusRequest> requests) {
     observePhysicalTimeLowerBound(physicalTime);
     IndexedConsensusRequest req =
@@ -833,7 +824,6 @@ public class IoTConsensusServerImpl {
     req.setRoutingEpoch(routingEpoch);
     req.setPhysicalTime(physicalTime);
     req.setNodeId(nodeId);
-    req.setWriterEpoch(writerEpoch);
     return req;
   }
 
@@ -841,31 +831,24 @@ public class IoTConsensusServerImpl {
     final long safePhysicalTime = assignPhysicalTimeInMs();
     final long barrierLocalSeq = searchIndex.get();
     writerSafeFrontierTracker.recordAppliedProgress(
-        thisNode.getNodeId(), currentWriterEpoch, safePhysicalTime, barrierLocalSeq);
+        safePhysicalTime, thisNode.getNodeId(), barrierLocalSeq);
     return new WriterSafeFrontierTracker.SafeHlc(safePhysicalTime, barrierLocalSeq);
   }
 
   public void observeRemoteSafeHlc(
-      final int writerNodeId,
-      final long writerEpoch,
-      final long safePhysicalTime,
-      final long barrierLocalSeq) {
+      final long safePhysicalTime, final int writerNodeId, final long barrierLocalSeq) {
     observePhysicalTimeLowerBound(safePhysicalTime);
     writerSafeFrontierTracker.observePendingSafeHlc(
-        writerNodeId, writerEpoch, safePhysicalTime, barrierLocalSeq);
+        safePhysicalTime, writerNodeId, barrierLocalSeq);
   }
 
   public void recordRemoteAppliedWriterProgress(
-      final int writerNodeId,
-      final long writerEpoch,
-      final long physicalTime,
-      final long appliedLocalSeq) {
-    writerSafeFrontierTracker.recordAppliedProgress(
-        writerNodeId, writerEpoch, physicalTime, appliedLocalSeq);
+      final long physicalTime, final int writerNodeId, final long appliedLocalSeq) {
+    writerSafeFrontierTracker.recordAppliedProgress(physicalTime, writerNodeId, appliedLocalSeq);
   }
 
-  public long getEffectiveSafePhysicalTime(final int writerNodeId, final long writerEpoch) {
-    return writerSafeFrontierTracker.getEffectiveSafePt(writerNodeId, writerEpoch);
+  public long getEffectiveSafePhysicalTime(final int writerNodeId) {
+    return writerSafeFrontierTracker.getEffectiveSafePt(writerNodeId);
   }
 
   public WriterSafeFrontierTracker getWriterSafeFrontierTracker() {
@@ -905,52 +888,35 @@ public class IoTConsensusServerImpl {
       final Optional<WriterMeta> writerMetaOptional = WriterMeta.load(writerMetaPath);
       if (writerMetaOptional.isPresent()) {
         final WriterMeta writerMeta = writerMetaOptional.get();
-        if (recoveredSearchIndex >= writerMeta.getLastAllocatedLocalSeq()) {
-          currentWriterEpoch = writerMeta.getWriterEpoch();
-          logger.info(
-              "Recovered writer meta for group {} from {}, writerEpoch={}, recoveredLocalSeq={}, "
-                  + "persistedLocalSeq={}",
-              consensusGroupId,
-              writerMetaPath,
-              currentWriterEpoch,
-              recoveredSearchIndex,
-              writerMeta.getLastAllocatedLocalSeq());
-        } else {
-          currentWriterEpoch = writerMeta.getWriterEpoch() + 1;
-          logger.warn(
-              "Recovered searchIndex {} is behind persisted writer localSeq {} for group {}. "
-                  + "Starting a new writerEpoch {}.",
-              recoveredSearchIndex,
-              writerMeta.getLastAllocatedLocalSeq(),
-              consensusGroupId,
-              currentWriterEpoch);
-        }
+        logger.info(
+            "Recovered writer meta for group {} from {}, recoveredLocalSeq={}, "
+                + "persistedLocalSeq={}",
+            consensusGroupId,
+            writerMetaPath,
+            recoveredSearchIndex,
+            writerMeta.getLastAllocatedLocalSeq());
         lastAssignedPhysicalTime.set(
             Math.max(writerMeta.getLastAssignedPhysicalTimeMs(), System.currentTimeMillis()));
         return;
       }
     } catch (IOException e) {
       logger.warn(
-          "Failed to load writer meta for group {} from {}. Starting with writerEpoch=1.",
+          "Failed to load writer meta for group {} from {}. Starting fresh writer metadata.",
           consensusGroupId,
           writerMetaPath,
           e);
     }
-    currentWriterEpoch = 1;
     lastAssignedPhysicalTime.set(System.currentTimeMillis());
     logger.info(
-        "Initialized fresh writer meta for group {}, writerEpoch={}, recoveredLocalSeq={}",
+        "Initialized fresh writer meta for group {}, recoveredLocalSeq={}",
         consensusGroupId,
-        currentWriterEpoch,
         recoveredSearchIndex);
   }
 
   private void persistWriterMetaOnSuccess(final IndexedConsensusRequest indexedConsensusRequest) {
     try {
       new WriterMeta(
-              currentWriterEpoch,
-              indexedConsensusRequest.getLocalSeq(),
-              indexedConsensusRequest.getPhysicalTime())
+              indexedConsensusRequest.getLocalSeq(), indexedConsensusRequest.getPhysicalTime())
           .persist(writerMetaPath);
     } catch (IOException e) {
       logger.warn(
@@ -988,10 +954,6 @@ public class IoTConsensusServerImpl {
 
   public long getSearchIndex() {
     return searchIndex.get();
-  }
-
-  public long getCurrentWriterEpoch() {
-    return currentWriterEpoch;
   }
 
   public ConsensusReqReader getConsensusReqReader() {
@@ -1319,10 +1281,7 @@ public class IoTConsensusServerImpl {
         if (subStatus.stream()
             .allMatch(status -> status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode())) {
           recordRemoteAppliedWriterProgress(
-              request.getWriterNodeId(),
-              request.getWriterEpoch(),
-              request.getEndPhysicalTime(),
-              request.getEndSyncIndex());
+              request.getEndPhysicalTime(), request.getWriterNodeId(), request.getEndSyncIndex());
         }
         long applyTime = System.nanoTime();
         ioTConsensusServerMetrics.recordApplyCost(applyTime - sortTime);

@@ -73,8 +73,8 @@ import java.util.concurrent.Executors;
  * <p>Committed progress is represented in per-writer terms via {@link WriterId} and {@link
  * WriterProgress}. Outstanding deliveries are tracked by writer-local slots, while commit
  * advancement is computed with ordered progress keys derived from {@code physicalTime}, {@code
- * writerNodeId}, {@code writerEpoch}, and {@code localSeq}. {@code searchIndex} is not the
- * committed frontier here; it only remains an implementation aid for WAL positioning elsewhere.
+ * writerNodeId}, and {@code localSeq}. {@code searchIndex} is not the committed frontier here; it
+ * only remains an implementation aid for WAL positioning elsewhere.
  *
  * <p>Key responsibilities:
  *
@@ -275,13 +275,6 @@ public class ConsensusSubscriptionCommitManager {
     return state != null ? state.getCommittedWriterNodeId() : -1;
   }
 
-  public long getCommittedWriterEpoch(
-      final String consumerGroupId, final String topicName, final ConsensusGroupId regionId) {
-    final String key = generateKey(consumerGroupId, topicName, regionId);
-    final ConsensusSubscriptionCommitState state = commitStates.get(key);
-    return state != null ? state.getCommittedWriterEpoch() : 0L;
-  }
-
   public WriterId getCommittedWriterId(
       final String consumerGroupId, final String topicName, final ConsensusGroupId regionId) {
     final String key = generateKey(consumerGroupId, topicName, regionId);
@@ -438,19 +431,16 @@ public class ConsensusSubscriptionCommitManager {
         return;
       }
       final String regionIdStr = regionId.toString();
+      final int writerNodeId =
+          Objects.nonNull(writerId) && writerId.getNodeId() >= 0 ? writerId.getNodeId() : -1;
       final TSyncSubscriptionProgressReq req =
           new TSyncSubscriptionProgressReq(
               consumerGroupId,
               topicName,
               regionIdStr,
               Objects.nonNull(writerProgress) ? writerProgress.getPhysicalTime() : 0L,
+              writerNodeId,
               Objects.nonNull(writerProgress) ? writerProgress.getLocalSeq() : -1L);
-      if (Objects.nonNull(writerId) && writerId.getNodeId() >= 0) {
-        req.setWriterNodeId(writerId.getNodeId());
-      }
-      if (Objects.nonNull(writerId) && writerId.getWriterEpoch() > 0) {
-        req.setWriterEpoch(writerId.getWriterEpoch());
-      }
 
       for (final TDataNodeLocation location : replicaSets.get(0).getDataNodeLocations()) {
         if (location.getDataNodeId() == localDataNodeId) {
@@ -483,14 +473,13 @@ public class ConsensusSubscriptionCommitManager {
       final String topicName,
       final String regionIdStr,
       final long physicalTime,
-      final long localSeq,
       final int writerNodeId,
-      final long writerEpoch) {
+      final long localSeq) {
     receiveProgressBroadcast(
         consumerGroupId,
         topicName,
         regionIdStr,
-        buildWriterId(regionIdStr, writerNodeId, writerEpoch),
+        buildWriterId(regionIdStr, writerNodeId),
         new WriterProgress(physicalTime, localSeq));
   }
 
@@ -569,17 +558,12 @@ public class ConsensusSubscriptionCommitManager {
     }
   }
 
-  private static WriterId buildWriterId(
-      final String regionIdStr, final int writerNodeId, final long writerEpoch) {
-    return writerNodeId >= 0 ? new WriterId(regionIdStr, writerNodeId, writerEpoch) : null;
+  private static WriterId buildWriterId(final String regionIdStr, final int writerNodeId) {
+    return writerNodeId >= 0 ? new WriterId(regionIdStr, writerNodeId) : null;
   }
 
   static String buildBroadcastKey(final String key, final WriterId writerId) {
-    return key
-        + KEY_SEPARATOR
-        + (Objects.nonNull(writerId) ? writerId.getNodeId() : -1)
-        + KEY_SEPARATOR
-        + (Objects.nonNull(writerId) ? writerId.getWriterEpoch() : 0L);
+    return key + KEY_SEPARATOR + (Objects.nonNull(writerId) ? writerId.getNodeId() : -1);
   }
 
   private ConsensusSubscriptionCommitState queryCommitProgressStateFromConfigNode(
@@ -734,11 +718,6 @@ public class ConsensusSubscriptionCommitManager {
       return Objects.nonNull(committedWriterId) ? committedWriterId.getNodeId() : -1;
     }
 
-    public long getCommittedWriterEpoch() {
-      final WriterId committedWriterId = getCommittedWriterId();
-      return Objects.nonNull(committedWriterId) ? committedWriterId.getWriterEpoch() : 0L;
-    }
-
     public WriterId getCommittedWriterId() {
       return getDerivedCommittedFrontierKey().toWriterId(regionId);
     }
@@ -781,13 +760,12 @@ public class ConsensusSubscriptionCommitManager {
         if (size > OUTSTANDING_SIZE_WARN_THRESHOLD && size % OUTSTANDING_SIZE_WARN_THRESHOLD == 1) {
           LOGGER.warn(
               "ConsensusSubscriptionCommitState: outstanding size ({}) exceeds threshold ({}), "
-                  + "consumers may not be committing. committed=({},{}), writer=({}, {})",
+                  + "consumers may not be committing. committed=({},{}), writerNodeId={}",
               size,
               OUTSTANDING_SIZE_WARN_THRESHOLD,
               getCommittedPhysicalTime(),
               getCommittedLocalSeq(),
-              getCommittedWriterNodeId(),
-              getCommittedWriterEpoch());
+              getCommittedWriterNodeId());
         }
       }
     }
@@ -819,20 +797,18 @@ public class ConsensusSubscriptionCommitManager {
         if (recordedKey == null) {
           if (recentlyCommittedKeys.contains(key)) {
             LOGGER.debug(
-                "ConsensusSubscriptionCommitState: idempotent re-commit for ({},{},{},{})",
+                "ConsensusSubscriptionCommitState: idempotent re-commit for ({},{},{})",
                 key.physicalTime,
-                key.localSeq,
                 key.writerNodeId,
-                key.writerEpoch);
+                key.localSeq);
             progress.incrementCommitIndex();
             return CommitOperationResult.handledWithoutAdvance();
           }
           LOGGER.warn(
-              "ConsensusSubscriptionCommitState: unknown key ({},{},{},{}) for commit",
+              "ConsensusSubscriptionCommitState: unknown key ({},{},{}) for commit",
               key.physicalTime,
-              key.localSeq,
               key.writerNodeId,
-              key.writerEpoch);
+              key.localSeq);
           return CommitOperationResult.unhandled();
         }
         final ProgressKey effectiveKey = recordedKey.resolveMissingFields(writerId, writerProgress);
@@ -867,11 +843,10 @@ public class ConsensusSubscriptionCommitManager {
       synchronized (this) {
         if (recentlyCommittedKeys.contains(incomingKey)) {
           LOGGER.debug(
-              "ConsensusSubscriptionCommitState: idempotent direct commit for ({},{},{},{})",
+              "ConsensusSubscriptionCommitState: idempotent direct commit for ({},{},{})",
               incomingKey.physicalTime,
-              incomingKey.localSeq,
               incomingKey.writerNodeId,
-              incomingKey.writerEpoch);
+              incomingKey.localSeq);
           progress.incrementCommitIndex();
           return CommitOperationResult.handledWithoutAdvance();
         }
@@ -880,11 +855,10 @@ public class ConsensusSubscriptionCommitManager {
         if (Objects.isNull(outstandingKey)) {
           LOGGER.warn(
               "ConsensusSubscriptionCommitState: reject direct commit without outstanding mapping "
-                  + "for ({},{},{},{})",
+                  + "for ({},{},{})",
               incomingKey.physicalTime,
-              incomingKey.localSeq,
               incomingKey.writerNodeId,
-              incomingKey.writerEpoch);
+              incomingKey.localSeq);
           return CommitOperationResult.unhandled();
         }
         final ProgressKey effectiveKey =
@@ -1022,9 +996,7 @@ public class ConsensusSubscriptionCommitManager {
     }
 
     private boolean sameWriter(final WriterId writerId, final ProgressKey key) {
-      return Objects.nonNull(writerId)
-          && writerId.getNodeId() == key.writerNodeId
-          && writerId.getWriterEpoch() == key.writerEpoch;
+      return Objects.nonNull(writerId) && writerId.getNodeId() == key.writerNodeId;
     }
 
     private CommitOperationResult buildCommitOperationResult(
@@ -1050,7 +1022,7 @@ public class ConsensusSubscriptionCommitManager {
           }
         }
       }
-      return Objects.nonNull(maxKey) ? maxKey : new ProgressKey(0L, -1L, -1, 0L);
+      return Objects.nonNull(maxKey) ? maxKey : new ProgressKey(0L, -1, -1L);
     }
 
     private void syncPersistedProgress() {
@@ -1127,22 +1099,22 @@ public class ConsensusSubscriptionCommitManager {
   }
 
   static final class ProgressSlot {
+    final long physicalTime;
     final int writerNodeId;
-    final long writerEpoch;
     final long localSeq;
 
-    private ProgressSlot(final int writerNodeId, final long writerEpoch, final long localSeq) {
+    private ProgressSlot(final long physicalTime, final int writerNodeId, final long localSeq) {
+      this.physicalTime = physicalTime;
       this.writerNodeId = writerNodeId;
-      this.writerEpoch = writerEpoch;
       this.localSeq = localSeq;
     }
 
-    static ProgressSlot of(final int writerNodeId, final long writerEpoch, final long localSeq) {
-      return new ProgressSlot(writerNodeId, writerEpoch, localSeq);
+    static ProgressSlot of(final long physicalTime, final int writerNodeId, final long localSeq) {
+      return new ProgressSlot(physicalTime, writerNodeId, localSeq);
     }
 
     static ProgressSlot from(final ProgressKey key) {
-      return new ProgressSlot(key.writerNodeId, key.writerEpoch, key.localSeq);
+      return new ProgressSlot(key.physicalTime, key.writerNodeId, key.localSeq);
     }
 
     @Override
@@ -1154,55 +1126,49 @@ public class ConsensusSubscriptionCommitManager {
         return false;
       }
       final ProgressSlot that = (ProgressSlot) o;
-      return writerNodeId == that.writerNodeId
-          && writerEpoch == that.writerEpoch
+      return physicalTime == that.physicalTime
+          && writerNodeId == that.writerNodeId
           && localSeq == that.localSeq;
     }
 
     @Override
     public int hashCode() {
-      return Objects.hash(writerNodeId, writerEpoch, localSeq);
+      return Objects.hash(physicalTime, writerNodeId, localSeq);
     }
 
     @Override
     public String toString() {
-      return "(" + writerNodeId + "," + writerEpoch + "," + localSeq + ")";
+      return "(" + physicalTime + "," + writerNodeId + "," + localSeq + ")";
     }
   }
 
   // ======================== ProgressKey ========================
 
   /**
-   * Comparable key for tracking commit progress: (physicalTime, localSeq). Physical time takes
-   * priority; within the same physical time, writer identity and local sequence determine order.
+   * Comparable key for tracking commit progress: (physicalTime, nodeId, localSeq). Physical time
+   * takes priority; within the same physical time, writer node id and source searchIndex determine
+   * order.
    */
   static final class ProgressKey implements Comparable<ProgressKey> {
     final long physicalTime;
-    final long localSeq;
     final int writerNodeId;
-    final long writerEpoch;
+    final long localSeq;
 
     ProgressKey(final long physicalTime, final long localSeq) {
-      this(physicalTime, localSeq, -1, 0L);
+      this(physicalTime, -1, localSeq);
     }
 
     ProgressKey(final WriterId writerId, final WriterProgress writerProgress) {
       this(
           Objects.nonNull(writerProgress) ? writerProgress.getPhysicalTime() : 0L,
-          Objects.nonNull(writerProgress) ? writerProgress.getLocalSeq() : -1L,
           Objects.nonNull(writerId) ? writerId.getNodeId() : -1,
-          Objects.nonNull(writerId) ? writerId.getWriterEpoch() : 0L);
+          Objects.nonNull(writerProgress) ? writerProgress.getLocalSeq() : -1L);
     }
 
-    ProgressKey(
-        final long physicalTime,
-        final long localSeq,
-        final int writerNodeId,
-        final long writerEpoch) {
+    ProgressKey(final long physicalTime, final int writerNodeId, final long localSeq) {
       this.physicalTime = physicalTime;
-      this.localSeq = localSeq;
       this.writerNodeId = writerNodeId;
-      this.writerEpoch = writerEpoch;
+      this.localSeq = localSeq;
     }
 
     ProgressKey resolveMissingFields(final WriterId writerId, final WriterProgress writerProgress) {
@@ -1220,22 +1186,16 @@ public class ConsensusSubscriptionCommitManager {
           this.writerNodeId >= 0
               ? this.writerNodeId
               : Objects.nonNull(writerId) ? writerId.getNodeId() : this.writerNodeId;
-      final long effectiveWriterEpoch =
-          this.writerEpoch > 0
-              ? this.writerEpoch
-              : Objects.nonNull(writerId) ? writerId.getWriterEpoch() : this.writerEpoch;
       if (effectivePhysicalTime == this.physicalTime
           && effectiveLocalSeq == this.localSeq
-          && effectiveWriterNodeId == this.writerNodeId
-          && effectiveWriterEpoch == this.writerEpoch) {
+          && effectiveWriterNodeId == this.writerNodeId) {
         return this;
       }
-      return new ProgressKey(
-          effectivePhysicalTime, effectiveLocalSeq, effectiveWriterNodeId, effectiveWriterEpoch);
+      return new ProgressKey(effectivePhysicalTime, effectiveWriterNodeId, effectiveLocalSeq);
     }
 
     WriterId toWriterId(final String regionId) {
-      return writerNodeId >= 0 ? new WriterId(regionId, writerNodeId, writerEpoch) : null;
+      return writerNodeId >= 0 ? new WriterId(regionId, writerNodeId) : null;
     }
 
     WriterProgress toWriterProgress() {
@@ -1252,10 +1212,6 @@ public class ConsensusSubscriptionCommitManager {
       if (cmp != 0) {
         return cmp;
       }
-      cmp = Long.compare(writerEpoch, o.writerEpoch);
-      if (cmp != 0) {
-        return cmp;
-      }
       return Long.compare(localSeq, o.localSeq);
     }
 
@@ -1269,19 +1225,18 @@ public class ConsensusSubscriptionCommitManager {
       }
       final ProgressKey that = (ProgressKey) o;
       return physicalTime == that.physicalTime
-          && localSeq == that.localSeq
           && writerNodeId == that.writerNodeId
-          && writerEpoch == that.writerEpoch;
+          && localSeq == that.localSeq;
     }
 
     @Override
     public int hashCode() {
-      return Objects.hash(physicalTime, localSeq, writerNodeId, writerEpoch);
+      return Objects.hash(physicalTime, writerNodeId, localSeq);
     }
 
     @Override
     public String toString() {
-      return "(" + physicalTime + "," + writerNodeId + "," + writerEpoch + "," + localSeq + ")";
+      return "(" + physicalTime + "," + writerNodeId + "," + localSeq + ")";
     }
   }
 

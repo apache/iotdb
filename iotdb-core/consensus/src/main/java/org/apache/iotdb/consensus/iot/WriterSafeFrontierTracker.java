@@ -40,11 +40,8 @@ public class WriterSafeFrontierTracker {
   private final Map<WriterIdentity, WriterFrontierState> states = new HashMap<>();
 
   public synchronized void recordAppliedProgress(
-      final int writerNodeId,
-      final long writerEpoch,
-      final long physicalTime,
-      final long appliedLocalSeq) {
-    final WriterIdentity writerIdentity = new WriterIdentity(writerNodeId, writerEpoch);
+      final long physicalTime, final int writerNodeId, final long appliedLocalSeq) {
+    final WriterIdentity writerIdentity = new WriterIdentity(writerNodeId);
     final WriterFrontierState state =
         states.computeIfAbsent(writerIdentity, ignored -> new WriterFrontierState());
     state.appliedLocalSeq = Math.max(state.appliedLocalSeq, appliedLocalSeq);
@@ -55,14 +52,11 @@ public class WriterSafeFrontierTracker {
   }
 
   public synchronized void observePendingSafeHlc(
-      final int writerNodeId,
-      final long writerEpoch,
-      final long safePhysicalTime,
-      final long barrierLocalSeq) {
+      final long safePhysicalTime, final int writerNodeId, final long barrierLocalSeq) {
     if (safePhysicalTime <= 0) {
       return;
     }
-    final WriterIdentity writerIdentity = new WriterIdentity(writerNodeId, writerEpoch);
+    final WriterIdentity writerIdentity = new WriterIdentity(writerNodeId);
     final WriterFrontierState state =
         states.computeIfAbsent(writerIdentity, ignored -> new WriterFrontierState());
     final SafeHlc candidate = new SafeHlc(safePhysicalTime, barrierLocalSeq);
@@ -90,13 +84,13 @@ public class WriterSafeFrontierTracker {
         candidate);
   }
 
-  public synchronized long getEffectiveSafePt(final int writerNodeId, final long writerEpoch) {
-    final WriterFrontierState state = states.get(new WriterIdentity(writerNodeId, writerEpoch));
+  public synchronized long getEffectiveSafePt(final int writerNodeId) {
+    final WriterFrontierState state = states.get(new WriterIdentity(writerNodeId));
     return Objects.nonNull(state) ? state.effectiveSafePt : 0L;
   }
 
-  public synchronized SafeHlc getPendingSafeHlc(final int writerNodeId, final long writerEpoch) {
-    final WriterFrontierState state = states.get(new WriterIdentity(writerNodeId, writerEpoch));
+  public synchronized SafeHlc getPendingSafeHlc(final int writerNodeId) {
+    final WriterFrontierState state = states.get(new WriterIdentity(writerNodeId));
     return Objects.nonNull(state) ? state.pendingSafeHlc : null;
   }
 
@@ -126,19 +120,13 @@ public class WriterSafeFrontierTracker {
 
   public static final class WriterIdentity {
     private final int writerNodeId;
-    private final long writerEpoch;
 
-    public WriterIdentity(final int writerNodeId, final long writerEpoch) {
+    public WriterIdentity(final int writerNodeId) {
       this.writerNodeId = writerNodeId;
-      this.writerEpoch = writerEpoch;
     }
 
     public int getWriterNodeId() {
       return writerNodeId;
-    }
-
-    public long getWriterEpoch() {
-      return writerEpoch;
     }
 
     @Override
@@ -150,22 +138,17 @@ public class WriterSafeFrontierTracker {
         return false;
       }
       final WriterIdentity that = (WriterIdentity) obj;
-      return writerNodeId == that.writerNodeId && writerEpoch == that.writerEpoch;
+      return writerNodeId == that.writerNodeId;
     }
 
     @Override
     public int hashCode() {
-      return Objects.hash(writerNodeId, writerEpoch);
+      return Objects.hash(writerNodeId);
     }
 
     @Override
     public String toString() {
-      return "WriterIdentity{"
-          + "writerNodeId="
-          + writerNodeId
-          + ", writerEpoch="
-          + writerEpoch
-          + '}';
+      return "WriterIdentity{" + "writerNodeId=" + writerNodeId + '}';
     }
   }
 

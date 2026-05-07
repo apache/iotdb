@@ -62,10 +62,6 @@ public class ProgressWALReader implements Closeable {
     return delegate.getCurrentEntryNodeId();
   }
 
-  public long getCurrentEntryWriterEpoch() {
-    return delegate.getCurrentEntryWriterEpoch();
-  }
-
   public long getCurrentEntryLocalSeq() {
     return delegate.getCurrentEntryLocalSeq();
   }

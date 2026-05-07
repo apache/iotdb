@@ -267,17 +267,6 @@ public class PipeEnrichedInsertNode extends InsertNode {
   }
 
   @Override
-  public long getWriterEpoch() {
-    return insertNode.getWriterEpoch();
-  }
-
-  @Override
-  public SearchNode setWriterEpoch(final long writerEpoch) {
-    insertNode.setWriterEpoch(writerEpoch);
-    return this;
-  }
-
-  @Override
   public long getSyncIndex() {
     return insertNode.getSyncIndex();
   }

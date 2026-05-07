@@ -30,12 +30,10 @@ public class WriterId {
 
   private final String regionId;
   private final int nodeId;
-  private final long writerEpoch;
 
-  public WriterId(final String regionId, final int nodeId, final long writerEpoch) {
+  public WriterId(final String regionId, final int nodeId) {
     this.regionId = regionId;
     this.nodeId = nodeId;
-    this.writerEpoch = writerEpoch;
   }
 
   public String getRegionId() {
@@ -46,21 +44,13 @@ public class WriterId {
     return nodeId;
   }
 
-  public long getWriterEpoch() {
-    return writerEpoch;
-  }
-
   public void serialize(final DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(regionId, stream);
     ReadWriteIOUtils.write(nodeId, stream);
-    ReadWriteIOUtils.write(writerEpoch, stream);
   }
 
   public static WriterId deserialize(final ByteBuffer buffer) {
-    return new WriterId(
-        ReadWriteIOUtils.readString(buffer),
-        ReadWriteIOUtils.readInt(buffer),
-        ReadWriteIOUtils.readLong(buffer));
+    return new WriterId(ReadWriteIOUtils.readString(buffer), ReadWriteIOUtils.readInt(buffer));
   }
 
   @Override
@@ -72,26 +62,16 @@ public class WriterId {
       return false;
     }
     final WriterId that = (WriterId) obj;
-    return nodeId == that.nodeId
-        && writerEpoch == that.writerEpoch
-        && Objects.equals(regionId, that.regionId);
+    return nodeId == that.nodeId && Objects.equals(regionId, that.regionId);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(regionId, nodeId, writerEpoch);
+    return Objects.hash(regionId, nodeId);
   }
 
   @Override
   public String toString() {
-    return "WriterId{"
-        + "regionId='"
-        + regionId
-        + '\''
-        + ", nodeId="
-        + nodeId
-        + ", writerEpoch="
-        + writerEpoch
-        + '}';
+    return "WriterId{" + "regionId='" + regionId + '\'' + ", nodeId=" + nodeId + '}';
   }
 }

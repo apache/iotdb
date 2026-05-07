@@ -117,14 +117,6 @@ public class WALByteBufReader implements Closeable {
     return -1;
   }
 
-  public long getCurrentEntryWriterEpoch() {
-    List<Short> writerEpochs = metaData.getWriterEpochs();
-    if (currentEntryIndex >= 0 && currentEntryIndex < writerEpochs.size()) {
-      return writerEpochs.get(currentEntryIndex);
-    }
-    return 0L;
-  }
-
   public long getCurrentEntryLocalSeq() {
     List<Long> localSeqs = metaData.getLocalSeqs();
     if (currentEntryIndex >= 0 && currentEntryIndex < localSeqs.size()) {

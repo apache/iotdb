@@ -57,9 +57,9 @@ public class ProgressWALIteratorTest {
 
     try {
       try (WALWriter writer = new WALWriter(firstWal, WALFileVersion.V3)) {
-        writer.write(searchableEntry(5L), singleEntryMeta(19, 5L, 1L, 1000L, 7, 3L, 105L));
-        writer.write(searchableEntry(5L), singleEntryMeta(19, 5L, 1L, 1000L, 7, 3L, 105L));
-        writer.write(searchableEntry(12L), singleEntryMeta(19, 12L, 1L, 2000L, 7, 4L, 112L));
+        writer.write(searchableEntry(5L), singleEntryMeta(19, 5L, 1L, 1000L, 7, 105L));
+        writer.write(searchableEntry(5L), singleEntryMeta(19, 5L, 1L, 1000L, 7, 105L));
+        writer.write(searchableEntry(12L), singleEntryMeta(19, 12L, 1L, 2000L, 7, 112L));
       }
       try (WALWriter ignored = new WALWriter(lastWal, WALFileVersion.V3)) {
         // Create a sealed successor so the first WAL becomes historical and readable.
@@ -72,7 +72,6 @@ public class ProgressWALIteratorTest {
         assertEquals(112L, request.getProgressLocalSeq());
         assertEquals(2000L, request.getPhysicalTime());
         assertEquals(7, request.getNodeId());
-        assertEquals(4L, request.getWriterEpoch());
         assertEquals(1, request.getRequests().size());
         assertFalse(iterator.hasNext());
       }
@@ -95,8 +94,8 @@ public class ProgressWALIteratorTest {
 
     try {
       try (WALWriter writer = new WALWriter(firstWal, WALFileVersion.V3)) {
-        writer.write(searchableEntry(9L), singleEntryMeta(19, 9L, 1L, 900L, 5, 2L, 1009L));
-        writer.write(searchableEntry(9L), singleEntryMeta(19, 9L, 1L, 900L, 5, 2L, 1009L));
+        writer.write(searchableEntry(9L), singleEntryMeta(19, 9L, 1L, 900L, 5, 1009L));
+        writer.write(searchableEntry(9L), singleEntryMeta(19, 9L, 1L, 900L, 5, 1009L));
       }
       try (WALWriter ignored = new WALWriter(lastWal, WALFileVersion.V3)) {
         // Create a sealed successor so the first WAL becomes historical and readable.
@@ -109,7 +108,6 @@ public class ProgressWALIteratorTest {
         assertEquals(1009L, request.getProgressLocalSeq());
         assertEquals(900L, request.getPhysicalTime());
         assertEquals(5, request.getNodeId());
-        assertEquals(2L, request.getWriterEpoch());
         assertEquals(2, request.getRequests().size());
         assertFalse(iterator.hasNext());
       }
@@ -132,8 +130,8 @@ public class ProgressWALIteratorTest {
 
     try {
       try (WALWriter writer = new WALWriter(firstWal, WALFileVersion.V3)) {
-        writer.write(searchableEntry(15L), singleEntryMeta(19, 15L, 1L, 1500L, 7, 1L, 1L));
-        writer.write(searchableEntry(16L), singleEntryMeta(19, 16L, 1L, 1501L, 8, 1L, 1L));
+        writer.write(searchableEntry(15L), singleEntryMeta(19, 15L, 1L, 1500L, 7, 1L));
+        writer.write(searchableEntry(16L), singleEntryMeta(19, 16L, 1L, 1501L, 8, 1L));
       }
       try (WALWriter ignored = new WALWriter(lastWal, WALFileVersion.V3)) {
         // Create a sealed successor so the first WAL becomes historical and readable.
@@ -176,13 +174,13 @@ public class ProgressWALIteratorTest {
 
     try {
       try (WALWriter writer = new WALWriter(firstWal, WALFileVersion.V3)) {
-        writer.write(searchableEntry(1L), singleEntryMeta(19, 1L, 1L, 100L, 7, 1L, 1L));
+        writer.write(searchableEntry(1L), singleEntryMeta(19, 1L, 1L, 100L, 7, 1L));
       }
       try (WALWriter writer = new WALWriter(secondWal, WALFileVersion.V3)) {
-        writer.write(searchableEntry(2L), singleEntryMeta(19, 2L, 1L, 200L, 7, 1L, 2L));
+        writer.write(searchableEntry(2L), singleEntryMeta(19, 2L, 1L, 200L, 7, 2L));
       }
       try (WALWriter writer = new WALWriter(thirdWal, WALFileVersion.V3)) {
-        writer.write(searchableEntry(3L), singleEntryMeta(19, 3L, 1L, 300L, 7, 1L, 3L));
+        writer.write(searchableEntry(3L), singleEntryMeta(19, 3L, 1L, 300L, 7, 3L));
       }
 
       try (ProgressWALIterator iterator = new ProgressWALIterator(dir.toFile(), Long.MIN_VALUE)) {
@@ -217,7 +215,7 @@ public class ProgressWALIteratorTest {
 
     try {
       try (WALWriter writer = new WALWriter(firstWal, WALFileVersion.V3)) {
-        writer.write(searchableEntry(-1L), singleEntryMeta(19, -1L, 1L, 900L, 5, 2L, 1009L));
+        writer.write(searchableEntry(-1L), singleEntryMeta(19, -1L, 1L, 900L, 5, 1009L));
       }
       try (WALWriter ignored = new WALWriter(lastWal, WALFileVersion.V3)) {
         // Create a readable successor for the first WAL file.
@@ -230,7 +228,6 @@ public class ProgressWALIteratorTest {
         assertEquals(1009L, request.getProgressLocalSeq());
         assertEquals(900L, request.getPhysicalTime());
         assertEquals(5, request.getNodeId());
-        assertEquals(2L, request.getWriterEpoch());
         assertFalse(iterator.hasNext());
       }
     } finally {
@@ -283,10 +280,9 @@ public class ProgressWALIteratorTest {
       final long memTableId,
       final long physicalTime,
       final int nodeId,
-      final long writerEpoch,
       final long localSeq) {
     final WALMetaData metaData = new WALMetaData();
-    metaData.add(size, searchIndex, memTableId, physicalTime, nodeId, writerEpoch, localSeq);
+    metaData.add(size, searchIndex, memTableId, physicalTime, nodeId, localSeq);
     return metaData;
   }
 }

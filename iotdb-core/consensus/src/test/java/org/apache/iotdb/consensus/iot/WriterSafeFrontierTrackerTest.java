@@ -30,33 +30,33 @@ public class WriterSafeFrontierTrackerTest {
   public void testPendingSafeHlcPromotesWhenBarrierIsApplied() {
     final WriterSafeFrontierTracker tracker = new WriterSafeFrontierTracker();
 
-    tracker.recordAppliedProgress(7, 2L, 100L, 10L);
-    assertEquals(100L, tracker.getEffectiveSafePt(7, 2L));
+    tracker.recordAppliedProgress(100L, 7, 10L);
+    assertEquals(100L, tracker.getEffectiveSafePt(7));
 
-    tracker.observePendingSafeHlc(7, 2L, 130L, 20L);
-    assertEquals(100L, tracker.getEffectiveSafePt(7, 2L));
-    assertEquals(130L, tracker.getPendingSafeHlc(7, 2L).getSafePhysicalTime());
+    tracker.observePendingSafeHlc(130L, 7, 20L);
+    assertEquals(100L, tracker.getEffectiveSafePt(7));
+    assertEquals(130L, tracker.getPendingSafeHlc(7).getSafePhysicalTime());
 
-    tracker.recordAppliedProgress(7, 2L, 125L, 19L);
-    assertEquals(125L, tracker.getEffectiveSafePt(7, 2L));
+    tracker.recordAppliedProgress(125L, 7, 19L);
+    assertEquals(125L, tracker.getEffectiveSafePt(7));
 
-    tracker.recordAppliedProgress(7, 2L, 126L, 20L);
-    assertEquals(130L, tracker.getEffectiveSafePt(7, 2L));
-    assertNull(tracker.getPendingSafeHlc(7, 2L));
+    tracker.recordAppliedProgress(126L, 7, 20L);
+    assertEquals(130L, tracker.getEffectiveSafePt(7));
+    assertNull(tracker.getPendingSafeHlc(7));
   }
 
   @Test
   public void testSameWriterKeepsOnlyNewestPendingSafeHlc() {
     final WriterSafeFrontierTracker tracker = new WriterSafeFrontierTracker();
 
-    tracker.observePendingSafeHlc(9, 3L, 200L, 30L);
-    tracker.observePendingSafeHlc(9, 3L, 220L, 35L);
+    tracker.observePendingSafeHlc(200L, 9, 30L);
+    tracker.observePendingSafeHlc(220L, 9, 35L);
 
-    assertEquals(220L, tracker.getPendingSafeHlc(9, 3L).getSafePhysicalTime());
-    assertEquals(35L, tracker.getPendingSafeHlc(9, 3L).getBarrierLocalSeq());
+    assertEquals(220L, tracker.getPendingSafeHlc(9).getSafePhysicalTime());
+    assertEquals(35L, tracker.getPendingSafeHlc(9).getBarrierLocalSeq());
 
-    tracker.observePendingSafeHlc(9, 3L, 210L, 32L);
-    assertEquals(220L, tracker.getPendingSafeHlc(9, 3L).getSafePhysicalTime());
-    assertEquals(35L, tracker.getPendingSafeHlc(9, 3L).getBarrierLocalSeq());
+    tracker.observePendingSafeHlc(210L, 9, 32L);
+    assertEquals(220L, tracker.getPendingSafeHlc(9).getSafePhysicalTime());
+    assertEquals(35L, tracker.getPendingSafeHlc(9).getBarrierLocalSeq());
   }
 }
