@@ -273,4 +273,14 @@ public final class QueryMessages {
       "无效输入：desc.length - offset < 8";
 
   private QueryMessages() {}
+
+  public static final String TIME_PRECISION_MUST_BE_ONE_OF = "时间精度必须是以下之一：h,m,s,ms,u,n";
+  public static final String QUERY_INVALID_INPUT = "无效输入：";
+  public static final String INVALID_INPUT_BYTES_OFFSET_LT_4 = "无效输入：bytes.length - offset < 4";
+  public static final String INVALID_INPUT_BYTES_OFFSET_LT_8 = "无效输入：bytes.length - offset < 8";
+  public static final String INVALID_INPUT_DESC_OFFSET_LT_4 = "无效输入：desc.length - offset < 4";
+  public static final String SIZE_OF_HASH_TABLE_CANNOT_EXCEED = "哈希表大小不能超过 10 亿条目";
+  public static final String NO_CHANNEL_GROUP_BY_HASH_NOT_SUPPORT_APPEND = "NoChannelGroupByHash 不支持 appendValuesTo";
+  public static final String NO_CHANNEL_GROUP_BY_HASH_NOT_SUPPORT_RAW_HASH = "NoChannelGroupByHash 不支持 getRawHash";
+  public static final String MULTIPLE_TABLE_FUNCTION_AI_NODE_PROVIDER = "找到多个 ITableFunctionAINodeServiceProvider";
 }

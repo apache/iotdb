@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.i18n.AuthMessages;
 import org.apache.iotdb.commons.i18n.UtilMessages;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
@@ -226,7 +227,8 @@ public class AuthUtils {
           TSStatusCode.ILLEGAL_PASSWORD,
           "The length of name must be less than or equal to " + NAME_MAX_LENGTH);
     } else if (str.contains(" ")) {
-      throw new AuthException(TSStatusCode.ILLEGAL_PASSWORD, "The name cannot contain spaces");
+      throw new AuthException(
+          TSStatusCode.ILLEGAL_PASSWORD, AuthMessages.NAME_CANNOT_CONTAIN_SPACES);
     } else if (!str.matches(REX_PATTERN)) {
       throw new AuthException(
           TSStatusCode.ILLEGAL_PASSWORD,
@@ -245,7 +247,8 @@ public class AuthUtils {
           TSStatusCode.ILLEGAL_PASSWORD,
           "The length of password must be less than or equal to " + PASSWORD_MAX_LENGTH);
     } else if (str.contains(" ")) {
-      throw new AuthException(TSStatusCode.ILLEGAL_PASSWORD, "The password cannot contain spaces");
+      throw new AuthException(
+          TSStatusCode.ILLEGAL_PASSWORD, AuthMessages.PASSWORD_CANNOT_CONTAIN_SPACES);
     } else if (!str.matches(REX_PATTERN)) {
       throw new AuthException(
           TSStatusCode.ILLEGAL_PASSWORD,

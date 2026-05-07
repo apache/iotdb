@@ -521,7 +521,8 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     }
 
     if (Objects.isNull(events)) {
-      throw new SubscriptionException(String.format("unexpected request type: %s", requestType));
+      throw new SubscriptionException(
+          String.format(DataNodeMiscMessages.UNEXPECTED_REQUEST_TYPE, requestType));
     }
 
     // generate response

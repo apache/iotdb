@@ -98,4 +98,7 @@ public final class AuthMessages {
   public static final String UNEXPECTED_PRIVILEGE_VALUE = "意外的权限值:";
 
   private AuthMessages() {}
+
+  public static final String NAME_CANNOT_CONTAIN_SPACES = "名称不能包含空格";
+  public static final String PASSWORD_CANNOT_CONTAIN_SPACES = "密码不能包含空格";
 }

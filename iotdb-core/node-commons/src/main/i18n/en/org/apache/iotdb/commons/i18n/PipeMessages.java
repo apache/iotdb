@@ -738,4 +738,16 @@ public final class PipeMessages {
       "{}: will retry for at least {} seconds. status: {}";
 
   private PipeMessages() {}
+
+  public static final String THROWING_EXCEPTION_IN_VALIDATE = "Throwing exception in validate";
+  public static final String THROWING_EXCEPTION_IN_CUSTOMIZE = "Throwing exception in customize";
+  public static final String THROWING_EXCEPTION_IN_PROCESS_TABLET = "Throwing exception in process(TabletInsertionEvent, EventCollector)";
+  public static final String THROWING_EXCEPTION_IN_PROCESS_TSFILE = "Throwing exception in process(TsFileInsertionEvent, EventCollector)";
+  public static final String THROWING_EXCEPTION_IN_PROCESS_EVENT = "Throwing exception in process(Event, EventCollector)";
+  public static final String THROWING_EXCEPTION_IN_CLOSE = "Throwing exception in close";
+  public static final String PIPE_INVALID_INPUT = "Invalid input: ";
+  public static final String ILLEGAL_DB_OR_TABLE_PATTERN = "Illegal database or table pattern. Detail: ";
+  public static final String PATH_TRAVERSAL_DETECTED = " (Path traversal detected)";
+  public static final String EVENT_NOT_SUPPORT_BINDING_PROGRESS_INDEX = "This event does not support binding progressIndex.";
+  public static final String UNSUPPORTED_VERSION = "Unsupported version %s";
 }

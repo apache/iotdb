@@ -66,4 +66,8 @@ public final class SchemaMessages {
   public static final String NOT_TTL_RULE_SET_FOR = "未设置 TTL 规则：%s";
 
   private SchemaMessages() {}
+
+  public static final String PATH_DUPLICATED = "路径重复：";
+  public static final String UNKNOWN_TABLE_UPDATE_OP_TYPE = "未知的表更新操作类型";
+  public static final String SCHEMA_INVALID_INPUT = "无效输入：";
 }

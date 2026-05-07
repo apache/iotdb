@@ -268,7 +268,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
 
-  public static final String ERROR_CODE = "error code: ";
+  public static final String ERROR_CODE = DataNodeMiscMessages.ERROR_CODE;
 
   private static final TSProtocolVersion CURRENT_RPC_VERSION =
       TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3;
@@ -649,7 +649,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
     @Override
     public Statement getTreeStatement(ZoneId zoneId) {
-      throw new UnsupportedOperationException("PreparedStatement is not supported for Tree model");
+      throw new UnsupportedOperationException(
+          DataNodeMiscMessages.PREPARED_STMT_NOT_SUPPORTED_FOR_TREE);
     }
 
     @Override
@@ -721,7 +722,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           String hexStr = "X'" + PreparedParameterSerde.bytesToHex(bytes) + "'";
           return new Pair<>(new BinaryLiteral(bytes), hexStr);
         default:
-          throw new IllegalArgumentException("Unknown parameter type: " + param.type);
+          throw new IllegalArgumentException(
+              DataNodeMiscMessages.UNKNOWN_PARAMETER_TYPE + param.type);
       }
     }
   }
@@ -1450,7 +1452,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         finished = true;
-        throw new RuntimeException("error code: " + result.status);
+        throw new RuntimeException(DataNodeMiscMessages.ERROR_CODE + result.status);
       }
 
       IQueryExecution queryExecution = COORDINATOR.getQueryExecution(queryId);
@@ -1664,7 +1666,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       } else if ("table".equalsIgnoreCase(sqlDialect)) {
         return SqlDialect.TABLE;
       } else {
-        throw new IllegalArgumentException("Unknown sql_dialect: " + sqlDialect);
+        throw new IllegalArgumentException(DataNodeMiscMessages.UNKNOWN_SQL_DIALECT + sqlDialect);
       }
     } else {
       return SqlDialect.TREE;
@@ -3181,7 +3183,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           try {
             tsBlock = queryExecution.getBatchResult();
           } catch (IoTDBException e) {
-            throw new RuntimeException("Fetch Schema failed. ", e);
+            throw new RuntimeException(DataNodeMiscMessages.FETCH_SCHEMA_FAILED, e);
           }
           if (!tsBlock.isPresent() || tsBlock.get().isEmpty()) {
             break;

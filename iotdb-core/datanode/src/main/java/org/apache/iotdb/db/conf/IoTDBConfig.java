@@ -4228,7 +4228,7 @@ public class IoTDBConfig {
   }
 
   public String getObjectStorageBucket() {
-    throw new UnsupportedOperationException("object storage is not supported yet");
+    throw new UnsupportedOperationException(DataNodeMiscMessages.OBJECT_STORAGE_NOT_SUPPORTED_YET);
   }
 
   public long getDataRatisPeriodicSnapshotInterval() {

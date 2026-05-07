@@ -493,4 +493,6 @@ public final class StorageEngineMessages {
   public static final String ACTIVE_LOAD_EXECUTOR_STOPPED = "Active load periodical jobs executor is stopped successfully.";
   public static final String ERROR_MOVING_FILE_TO_FAIL_DIR = "Error occurred during moving file {} to fail directory.";
   public static final String FAILED_COUNT_FILES_IN_FAIL_DIR = "Failed to count failed files in fail directory.";
+
+  public static final String STRING_NOT_LEGAL_REPAIR_LOG = "String '%s' is not a legal repair log";
 }

@@ -718,4 +718,16 @@ public final class PipeMessages {
       "{}：将至少重试 {} 秒。状态：{}";
 
   private PipeMessages() {}
+
+  public static final String THROWING_EXCEPTION_IN_VALIDATE = "在 validate 中抛出异常";
+  public static final String THROWING_EXCEPTION_IN_CUSTOMIZE = "在 customize 中抛出异常";
+  public static final String THROWING_EXCEPTION_IN_PROCESS_TABLET = "在 process(TabletInsertionEvent, EventCollector) 中抛出异常";
+  public static final String THROWING_EXCEPTION_IN_PROCESS_TSFILE = "在 process(TsFileInsertionEvent, EventCollector) 中抛出异常";
+  public static final String THROWING_EXCEPTION_IN_PROCESS_EVENT = "在 process(Event, EventCollector) 中抛出异常";
+  public static final String THROWING_EXCEPTION_IN_CLOSE = "在 close 中抛出异常";
+  public static final String PIPE_INVALID_INPUT = "无效输入：";
+  public static final String ILLEGAL_DB_OR_TABLE_PATTERN = "非法的数据库或表模式。详情：";
+  public static final String PATH_TRAVERSAL_DETECTED = "（检测到路径遍历）";
+  public static final String EVENT_NOT_SUPPORT_BINDING_PROGRESS_INDEX = "该事件不支持绑定 progressIndex。";
+  public static final String UNSUPPORTED_VERSION = "不支持的版本 %s";
 }

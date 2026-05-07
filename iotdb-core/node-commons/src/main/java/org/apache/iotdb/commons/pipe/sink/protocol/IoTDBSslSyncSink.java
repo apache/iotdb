@@ -22,6 +22,7 @@ package org.apache.iotdb.commons.pipe.sink.protocol;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.audit.UserEntity;
+import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.sink.client.IoTDBSyncClient;
 import org.apache.iotdb.commons.pipe.sink.client.IoTDBSyncClientManager;
@@ -71,7 +72,7 @@ public abstract class IoTDBSslSyncSink extends IoTDBSink {
 
   protected IoTDBSyncClientManager getClientManager() {
     if (clientManager == null) {
-      throw new IllegalStateException("IoTDB sync client manager has been closed");
+      throw new IllegalStateException(PipeMessages.SYNC_CLIENT_MANAGER_CLOSED);
     }
     return clientManager;
   }

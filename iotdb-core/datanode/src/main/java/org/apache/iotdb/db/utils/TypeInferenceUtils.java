@@ -332,7 +332,7 @@ public class TypeInferenceUtils {
       case STRING:
         return false;
       default:
-        throw new IllegalArgumentException("Unknown data type: " + fromType);
+        throw new IllegalArgumentException(DataNodeMiscMessages.UNKNOWN_DATA_TYPE + fromType);
     }
   }
 }

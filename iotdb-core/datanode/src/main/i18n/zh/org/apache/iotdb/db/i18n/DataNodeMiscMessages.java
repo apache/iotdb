@@ -843,4 +843,57 @@ public final class DataNodeMiscMessages {
   // ---------------------------------------------------------------------------
   public static final String TASK_ALREADY_STARTED =
       "任务已启动或已完成";
+
+  public static final String FROM_CONFIG_NODE = " 从 ConfigNode 获取失败。";
+  public static final String IS_NOT_SUPPORTED = " 不受支持";
+  public static final String CANNOT_SSL_HANDSHAKE_WITH_CN_LEADER = "无法与 ConfigNode-leader 进行 SSL 握手。";
+  public static final String CANNOT_CONNECT_TO_CN_LEADER = "无法连接到 ConfigNode-leader。";
+  public static final String CAPACITY_LARGER_THAN_INITIAL_PERMITS = "容量应大于初始许可数。";
+  public static final String CURRENT_TV_LIST_NOT_SORTED = "当前 TVList 未排序";
+  public static final String DN_CLIENT_NOT_SUPPORT_ADD_CONSENSUS_GROUP = "DataNode 到 ConfigNode 客户端不支持 addConsensusGroup。";
+  public static final String DN_CLIENT_NOT_SUPPORT_GET_HEARTBEAT = "DataNode 到 ConfigNode 客户端不支持 getConfigNodeHeartBeat。";
+  public static final String DN_CLIENT_NOT_SUPPORT_NOTIFY_REGISTER = "DataNode 到 ConfigNode 客户端不支持 notifyRegisterSuccess。";
+  public static final String DN_CLIENT_NOT_SUPPORT_REGISTER_CN = "DataNode 到 ConfigNode 客户端不支持 registerConfigNode。";
+  public static final String DN_CLIENT_NOT_SUPPORT_REMOVE_CONSENSUS_GROUP = "DataNode 到 ConfigNode 客户端不支持 removeConsensusGroup。";
+  public static final String DN_CLIENT_NOT_SUPPORT_REPORT_SHUTDOWN = "DataNode 到 ConfigNode 客户端不支持 reportConfigNodeShutdown。";
+  public static final String DN_CLIENT_NOT_SUPPORT_SET_STATUS = "DataNode 到 ConfigNode 客户端不支持 setDataNodeStatus。";
+  public static final String DN_CLIENT_NOT_SUPPORT_STOP_AND_CLEAR = "DataNode 到 ConfigNode 客户端不支持 stopAndClearConfigNode。";
+  public static final String ERROR_OCCURRED_DURING_CREATING_DIR = "创建目录时出错：";
+  public static final String EXPECTING_NON_EMPTY_STRING_FOR = "期望非空字符串：";
+  public static final String FAILED_TO_CONSTRUCT_PIPE_SINK = "构造 PipeSink 失败，原因：";
+  public static final String FAILED_TO_GET_UDF_JAR = "从 ConfigNode 获取 UDF jar 失败。";
+  public static final String FAILED_TO_GET_CONSUMER_GROUP_META = "从 ConfigNode 获取消费者组元数据失败。";
+  public static final String FAILED_TO_GET_TOPIC_META = "从 ConfigNode 获取 Topic 元数据失败。";
+  public static final String FAILED_TO_GET_TRIGGER_JAR = "从 ConfigNode 获取 Trigger jar 失败。";
+  public static final String FETCH_SCHEMA_FAILED = "获取 Schema 失败。";
+  public static final String INDEX_BELOW_START_POSITION = "索引低于起始位置：";
+  public static final String INDEX_EXCEEDS_END_POSITION = "索引超过结束位置：";
+  public static final String INDEX_OUT_OF_BOUND_ERROR = "索引越界错误！";
+  public static final String INVALID_PUSH_MULTI_PIPE_META_REQ = "无效的 TPushMultiPipeMetaReq";
+  public static final String INVALID_PUSH_MULTI_TOPIC_META_REQ = "无效的 TPushMultiTopicMetaReq";
+  public static final String INVALID_PUSH_SINGLE_PIPE_META_REQ = "无效的 TPushSinglePipeMetaReq";
+  public static final String INVALID_PARAM = "无效参数";
+  public static final String INVALID_PARAMETERS_CHECK_USER_GUIDE = "参数无效，请查看用户指南。";
+  public static final String INVALID_REQUEST = "无效请求 ";
+  public static final String PREPARED_STMT_NOT_SUPPORTED_FOR_TREE = "Tree 模型不支持 PreparedStatement";
+  public static final String FILE_LENGTH_LARGER_THAN_MAX = "文件长度超过 max_object_file_size_in_bytes";
+  public static final String UNKNOWN_CONSENSUS_GROUP_TYPE = "未知共识组类型：";
+  public static final String UNKNOWN_DATA_TYPE = "未知数据类型：";
+  public static final String UNKNOWN_PARAMETER_TYPE = "未知参数类型：";
+  public static final String UNKNOWN_SQL_DIALECT = "未知 sql_dialect：";
+  public static final String UNRECOGNIZED_MNODE_TYPE = "无法识别的 MNode 类型";
+  public static final String UNRECOGNIZED_DATATYPE = "无法识别的数据类型：";
+  public static final String UNSUPPORTED_COLUMN_GENERATOR_TYPE = "不支持的 ColumnGeneratorType：";
+  public static final String UNSUPPORTED_TRIGGER_FIRE_RESULT_TYPE = "不支持的 TriggerFireResult 类型";
+  public static final String UTILITY_CLASS = "工具类";
+  public static final String APPEND_SIZE_MUST_BE_POSITIVE = "appendSize 必须为正";
+  public static final String BLOCKS_SHOULD_NEVER_BE_ZERO = "blocks 不应为零。";
+  public static final String END_INDEX_MUST_BE_GE_START_INDEX = "endIndex 必须 >= startIndex";
+  public static final String ERROR_CODE = "错误码：";
+  public static final String NULL_RESPONSE_WHEN_SERIALIZING = "序列化时响应为空";
+  public static final String OBJECT_STORAGE_NOT_SUPPORTED_YET = "暂不支持对象存储";
+  public static final String REGISTERED_TASK_COUNT_LT_ZERO = "registeredTaskCount < 0";
+  public static final String REGISTERED_TASK_COUNT_LE_ZERO = "registeredTaskCount <= 0";
+  public static final String REQUEST_TYPE_NOT_SUPPORTED = "不支持的请求类型：";
+  public static final String UNEXPECTED_REQUEST_TYPE = "意外的请求类型：%s";
 }

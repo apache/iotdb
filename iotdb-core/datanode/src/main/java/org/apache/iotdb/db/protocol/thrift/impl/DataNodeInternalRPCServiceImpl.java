@@ -1338,7 +1338,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
             PipeMeta.deserialize4TaskAgent(ByteBuffer.wrap(req.getPipeMeta()));
         exceptionMessage = PipeDataNodeAgent.task().handleSinglePipeMetaChanges(pipeMeta);
       } else {
-        throw new Exception("Invalid TPushSinglePipeMetaReq");
+        throw new Exception(DataNodeMiscMessages.INVALID_PUSH_SINGLE_PIPE_META_REQ);
       }
       if (exceptionMessage != null) {
         if (exceptionMessage.message != null
@@ -1393,7 +1393,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
           }
         }
       } else {
-        throw new Exception("Invalid TPushMultiPipeMetaReq");
+        throw new Exception(DataNodeMiscMessages.INVALID_PUSH_MULTI_PIPE_META_REQ);
       }
 
       return hasException
@@ -1455,7 +1455,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                 .handleSingleTopicMetaChanges(
                     TopicMeta.deserialize(ByteBuffer.wrap(req.getTopicMeta())));
       } else {
-        throw new SubscriptionException("Invalid request " + req + " from config node.");
+        throw new SubscriptionException(
+            DataNodeMiscMessages.INVALID_REQUEST + req + " from config node.");
       }
 
       return exceptionMessage == null
@@ -1506,7 +1507,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
           }
         }
       } else {
-        throw new Exception("Invalid TPushMultiTopicMetaReq");
+        throw new Exception(DataNodeMiscMessages.INVALID_PUSH_MULTI_TOPIC_META_REQ);
       }
 
       return hasException
@@ -1570,7 +1571,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                 .handleSingleConsumerGroupMetaChanges(
                     ConsumerGroupMeta.deserialize(ByteBuffer.wrap(req.getConsumerGroupMeta())));
       } else {
-        throw new SubscriptionException("Invalid request " + req + " from config node.");
+        throw new SubscriptionException(
+            DataNodeMiscMessages.INVALID_REQUEST + req + " from config node.");
       }
 
       return exceptionMessage == null
@@ -2331,7 +2333,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         return SchemaRegionConsensusImpl.getInstance()
             .getLogicalClock(ConsensusGroupId.Factory.createFromTConsensusGroupId(groupId));
       default:
-        throw new IllegalArgumentException("Unknown consensus group type: " + groupId.getType());
+        throw new IllegalArgumentException(
+            DataNodeMiscMessages.UNKNOWN_CONSENSUS_GROUP_TYPE + groupId.getType());
     }
   }
 

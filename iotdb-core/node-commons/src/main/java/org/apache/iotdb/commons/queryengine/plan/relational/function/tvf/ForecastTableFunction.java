@@ -23,6 +23,7 @@ import org.apache.iotdb.ainode.rpc.thrift.TForecastReq;
 import org.apache.iotdb.ainode.rpc.thrift.TForecastResp;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.commons.i18n.QueryMessages;
 import org.apache.iotdb.commons.queryengine.plan.relational.utils.ResultColumnAppender;
 import org.apache.iotdb.commons.queryengine.plan.udf.TableUDFUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -250,7 +251,8 @@ public class ForecastTableFunction implements TableFunction {
         (int) ((ScalarArgument) arguments.get(OUTPUT_LENGTH_PARAMETER_NAME)).getValue();
     if (outputLength <= 0) {
       throw new SemanticException(
-          String.format("%s should be greater than 0", OUTPUT_LENGTH_PARAMETER_NAME));
+          String.format(
+              QueryMessages.PARAM_SHOULD_BE_GREATER_THAN_ZERO, OUTPUT_LENGTH_PARAMETER_NAME));
     }
 
     String timeColumn =
@@ -263,7 +265,8 @@ public class ForecastTableFunction implements TableFunction {
 
     long outputInterval = (long) ((ScalarArgument) arguments.get(OUTPUT_INTERVAL)).getValue();
     if (outputInterval < 0) {
-      throw new SemanticException(String.format("%s should be greater than 0", OUTPUT_INTERVAL));
+      throw new SemanticException(
+          String.format(QueryMessages.PARAM_SHOULD_BE_GREATER_THAN_ZERO, OUTPUT_INTERVAL));
     }
 
     // predicated columns should never contain partition by columns and time column

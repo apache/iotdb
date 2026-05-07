@@ -66,4 +66,8 @@ public final class SchemaMessages {
   public static final String NOT_TTL_RULE_SET_FOR = "Not TTL rule set for %s";
 
   private SchemaMessages() {}
+
+  public static final String PATH_DUPLICATED = "Path duplicated: ";
+  public static final String UNKNOWN_TABLE_UPDATE_OP_TYPE = "Unknown table update operation type";
+  public static final String SCHEMA_INVALID_INPUT = "Invalid input: ";
 }

@@ -137,4 +137,7 @@ public final class ServiceMessages {
   public static final String CPU_USAGE_UPDATE_TIME = "Time for update cpu usage is {} ns";
 
   private ServiceMessages() {}
+
+  public static final String UNKNOWN_SERVICE_TYPE = "Unknown ServiceType: ";
+  public static final String UNKNOWN_STATE = "Unknown State: ";
 }

@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.pipe.datastructure.queue;
 
+import org.apache.iotdb.commons.i18n.PipeMessages;
+
 import com.google.common.collect.ImmutableSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -68,7 +70,7 @@ public class ConcurrentIterableLinkedQueue<E> {
    */
   public void add(final E e) {
     if (e == null) {
-      throw new IllegalArgumentException("Null element is not allowed.");
+      throw new IllegalArgumentException(PipeMessages.NULL_ELEMENT_NOT_ALLOWED);
     }
 
     final LinkedListNode<E> newNode = new LinkedListNode<>(e);

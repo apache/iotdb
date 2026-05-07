@@ -273,4 +273,14 @@ public final class QueryMessages {
       "Invalid input: desc.length - offset < 8";
 
   private QueryMessages() {}
+
+  public static final String TIME_PRECISION_MUST_BE_ONE_OF = "time precision must be one of: h,m,s,ms,u,n";
+  public static final String QUERY_INVALID_INPUT = "Invalid input: ";
+  public static final String INVALID_INPUT_BYTES_OFFSET_LT_4 = "Invalid input: bytes.length - offset < 4";
+  public static final String INVALID_INPUT_BYTES_OFFSET_LT_8 = "Invalid input: bytes.length - offset < 8";
+  public static final String INVALID_INPUT_DESC_OFFSET_LT_4 = "Invalid input: desc.length - offset < 4";
+  public static final String SIZE_OF_HASH_TABLE_CANNOT_EXCEED = "Size of hash table cannot exceed 1 billion entries";
+  public static final String NO_CHANNEL_GROUP_BY_HASH_NOT_SUPPORT_APPEND = "NoChannelGroupByHash does not support appendValuesTo";
+  public static final String NO_CHANNEL_GROUP_BY_HASH_NOT_SUPPORT_RAW_HASH = "NoChannelGroupByHash does not support getRawHash";
+  public static final String MULTIPLE_TABLE_FUNCTION_AI_NODE_PROVIDER = "Multiple ITableFunctionAINodeServiceProvider found";
 }

@@ -107,4 +107,11 @@ public final class CommonMessages {
       "A ClassLoader to load the class could not be determined.";
 
   private CommonMessages() {}
+
+  public static final String COLLECTION_MUST_NOT_BE_NULL = "Collection must not be null.";
+  public static final String MAP_MUST_NOT_BE_NULL = "Map must not be null.";
+  public static final String MAP_ENTRY_MUST_NOT_BE_NULL = "Map Entry must not be null.";
+  public static final String ITERATOR_MUST_NOT_BE_NULL = "Iterator must not be null";
+  public static final String ITERATOR_REMOVE_ONLY_AFTER_NEXT = "Iterator remove() can only be called once after next()";
+  public static final String FAIL_TO_GET_DATA_TYPE_IN_ROW = "Fail to get data type in row ";
 }

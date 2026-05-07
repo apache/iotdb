@@ -103,4 +103,11 @@ public final class CommonMessages {
   public static final String CLASSLOADER_NOT_DETERMINED = "无法确定用于加载类的 ClassLoader。";
 
   private CommonMessages() {}
+
+  public static final String COLLECTION_MUST_NOT_BE_NULL = "集合不能为空。";
+  public static final String MAP_MUST_NOT_BE_NULL = "Map 不能为空。";
+  public static final String MAP_ENTRY_MUST_NOT_BE_NULL = "Map 条目不能为空。";
+  public static final String ITERATOR_MUST_NOT_BE_NULL = "迭代器不能为空";
+  public static final String ITERATOR_REMOVE_ONLY_AFTER_NEXT = "Iterator remove() 只能在 next() 之后调用一次";
+  public static final String FAIL_TO_GET_DATA_TYPE_IN_ROW = "获取行中数据类型失败，行时间：";
 }

@@ -80,7 +80,8 @@ public class RepairTaskRecoverLogParser {
     }
     String[] values = line.split(" ");
     if (values.length != 2) {
-      throw new RuntimeException(String.format("String '%s' is not a legal repair log", line));
+      throw new RuntimeException(
+          String.format(StorageEngineMessages.STRING_NOT_LEGAL_REPAIR_LOG, line));
     }
     repairTaskStartTime = Long.parseLong(values[1]);
   }
@@ -91,7 +92,8 @@ public class RepairTaskRecoverLogParser {
     }
     String[] values = line.split(" ");
     if (values.length != 4) {
-      throw new RuntimeException(String.format("String '%s' is not a legal repair log", line));
+      throw new RuntimeException(
+          String.format(StorageEngineMessages.STRING_NOT_LEGAL_REPAIR_LOG, line));
     }
     currentTimePartition = new RepairTimePartition(values[1], values[2], Long.parseLong(values[3]));
     currentTimePartitionCannotRepairFiles = new HashSet<>();
@@ -99,7 +101,8 @@ public class RepairTaskRecoverLogParser {
 
   private void parseFileLog(String line) {
     if (line.length() <= RepairLogger.cannotRepairFileLogPrefix.length()) {
-      throw new RuntimeException(String.format("String '%s' is not a legal repair log", line));
+      throw new RuntimeException(
+          String.format(StorageEngineMessages.STRING_NOT_LEGAL_REPAIR_LOG, line));
     }
     String filePath = line.substring(RepairLogger.cannotRepairFileLogPrefix.length());
     File f = new File(filePath.trim());

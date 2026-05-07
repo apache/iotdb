@@ -141,7 +141,7 @@ public class CommonPlanNodeDeserializer implements IPlanNodeDeserializer {
       case 1039:
         return ValuesNode.deserialize(buffer);
       default:
-        throw new IllegalArgumentException("Invalid node type: " + nodeType);
+        throw new IllegalArgumentException(QueryMessages.INVALID_NODE_TYPE + nodeType);
     }
   }
 }

@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.pipe.sink.protocol;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.sink.payload.airgap.AirGapELanguageConstant;
 import org.apache.iotdb.commons.pipe.sink.payload.airgap.AirGapOneByteResponse;
@@ -237,7 +238,7 @@ public abstract class IoTDBAirGapSink extends IoTDBSink {
     if (!send(socket, generateHandShakeV2Payload())) {
       supportModsIfIsDataNodeReceiver = false;
       if (!send(socket, generateHandShakeV1Payload())) {
-        throw new PipeConnectionException("Handshake error with target server, socket: " + socket);
+        throw new PipeConnectionException(PipeMessages.HANDSHAKE_ERROR_WITH_TARGET + socket);
       }
     } else {
       supportModsIfIsDataNodeReceiver = true;

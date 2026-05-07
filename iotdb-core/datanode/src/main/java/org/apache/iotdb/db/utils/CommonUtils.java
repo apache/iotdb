@@ -170,7 +170,7 @@ public class CommonUtils {
           throw new NumberFormatException(
               "data type is not consistent, input " + value + ", registered " + dataType);
         default:
-          throw new QueryProcessException("Unsupported data type:" + dataType);
+          throw new QueryProcessException(DataNodeMiscMessages.UNSUPPORTED_DATA_TYPE + dataType);
       }
     } catch (NumberFormatException e) {
       throw new QueryProcessException(e.getMessage());

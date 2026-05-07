@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.queryengine.plan.udf;
 
 import org.apache.iotdb.common.rpc.thrift.Model;
+import org.apache.iotdb.commons.i18n.QueryMessages;
 import org.apache.iotdb.commons.queryengine.plan.relational.function.TableBuiltinTableFunction;
 import org.apache.iotdb.commons.udf.UDFInformation;
 import org.apache.iotdb.commons.udf.UDFTable;
@@ -90,7 +91,7 @@ public class UDFManagementService {
 
   public Model checkAndGetModel(UDFInformation udfInformation) {
     if (!udfInformation.isAvailable()) {
-      throw new UDFManagementException("UDFInformation is not available");
+      throw new UDFManagementException(QueryMessages.UDF_INFORMATION_NOT_AVAILABLE);
     }
     Model model;
     if (udfInformation.getUdfType().isTreeModel()) {

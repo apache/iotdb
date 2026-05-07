@@ -318,7 +318,7 @@ public class SRStatementGenerator implements Iterator<Object>, Iterable<Object> 
         }
         break;
       default:
-        throw new IOException("Unrecognized MNode type" + type);
+        throw new IOException(DataNodeMiscMessages.UNRECOGNIZED_MNODE_TYPE + type);
     }
 
     regionStatistics.requestMemory(node.estimateSize());

@@ -81,7 +81,7 @@ public class SnapshotTaker {
     }
 
     if (!snapshotDir.exists() && !snapshotDir.mkdirs()) {
-      throw new IOException(String.format("Failed to create directory %s", snapshotDir));
+      throw new IOException(String.format(StorageEngineMessages.FAILED_TO_CREATE_DIR, snapshotDir));
     }
 
     File snapshotLog = new File(snapshotDir, SnapshotLogger.SNAPSHOT_LOG_NAME);

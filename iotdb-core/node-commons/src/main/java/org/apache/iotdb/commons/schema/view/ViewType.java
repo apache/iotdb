@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.commons.schema.view;
 
+import org.apache.iotdb.commons.i18n.SchemaMessages;
+
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -61,7 +63,7 @@ public enum ViewType {
       case 1:
         return ViewType.VIEW;
       default:
-        throw new IllegalArgumentException("Invalid input: " + type);
+        throw new IllegalArgumentException(SchemaMessages.SCHEMA_INVALID_INPUT + type);
     }
   }
 }

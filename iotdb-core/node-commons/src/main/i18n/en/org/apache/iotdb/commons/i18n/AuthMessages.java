@@ -111,4 +111,7 @@ public final class AuthMessages {
   public static final String UNEXPECTED_PRIVILEGE_VALUE = "Unexpected value:";
 
   private AuthMessages() {}
+
+  public static final String NAME_CANNOT_CONTAIN_SPACES = "The name cannot contain spaces";
+  public static final String PASSWORD_CANNOT_CONTAIN_SPACES = "The password cannot contain spaces";
 }

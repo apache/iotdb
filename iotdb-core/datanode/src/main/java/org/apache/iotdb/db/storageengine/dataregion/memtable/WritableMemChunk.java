@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager;
@@ -64,7 +65,7 @@ public class WritableMemChunk extends AbstractWritableMemChunk {
   private TVList list;
   private List<TVList> sortedList;
   private long sortedRowCount = 0;
-  private static final String UNSUPPORTED_TYPE = "Unsupported data type:";
+  private static final String UNSUPPORTED_TYPE = DataNodeMiscMessages.UNSUPPORTED_DATA_TYPE;
 
   private static final Logger LOGGER = LoggerFactory.getLogger(WritableMemChunk.class);
 

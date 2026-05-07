@@ -77,7 +77,7 @@ public class Template implements Serializable, Accountable {
     this.name = name;
     for (int i = 0; i < measurements.size(); i++) {
       if (schemaMap.containsKey(measurements.get(i))) {
-        throw new IllegalPathException("Path duplicated: " + measurements.get(i));
+        throw new IllegalPathException(SchemaMessages.PATH_DUPLICATED + measurements.get(i));
       }
       IMeasurementSchema schema =
           new MeasurementSchema(

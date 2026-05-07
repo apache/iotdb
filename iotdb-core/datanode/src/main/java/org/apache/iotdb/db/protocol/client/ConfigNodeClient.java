@@ -764,17 +764,17 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
 
   @Override
   public TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req) throws TException {
-    throw new TException("DataNode to ConfigNode client doesn't support registerConfigNode.");
+    throw new TException(DataNodeMiscMessages.DN_CLIENT_NOT_SUPPORT_REGISTER_CN);
   }
 
   @Override
   public TSStatus addConsensusGroup(TAddConsensusGroupReq registerResp) throws TException {
-    throw new TException("DataNode to ConfigNode client doesn't support addConsensusGroup.");
+    throw new TException(DataNodeMiscMessages.DN_CLIENT_NOT_SUPPORT_ADD_CONSENSUS_GROUP);
   }
 
   @Override
   public TSStatus notifyRegisterSuccess() throws TException {
-    throw new TException("DataNode to ConfigNode client doesn't support notifyRegisterSuccess.");
+    throw new TException(DataNodeMiscMessages.DN_CLIENT_NOT_SUPPORT_NOTIFY_REGISTER);
   }
 
   @Override
@@ -785,18 +785,18 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
 
   @Override
   public TSStatus deleteConfigNodePeer(TConfigNodeLocation configNodeLocation) throws TException {
-    throw new TException("DataNode to ConfigNode client doesn't support removeConsensusGroup.");
+    throw new TException(DataNodeMiscMessages.DN_CLIENT_NOT_SUPPORT_REMOVE_CONSENSUS_GROUP);
   }
 
   @Override
   public TSStatus reportConfigNodeShutdown(TConfigNodeLocation configNodeLocation)
       throws TException {
-    throw new TException("DataNode to ConfigNode client doesn't support reportConfigNodeShutdown.");
+    throw new TException(DataNodeMiscMessages.DN_CLIENT_NOT_SUPPORT_REPORT_SHUTDOWN);
   }
 
   @Override
   public TSStatus stopAndClearConfigNode(TConfigNodeLocation configNodeLocation) throws TException {
-    throw new TException("DataNode to ConfigNode client doesn't support stopAndClearConfigNode.");
+    throw new TException(DataNodeMiscMessages.DN_CLIENT_NOT_SUPPORT_STOP_AND_CLEAR);
   }
 
   @Override
@@ -868,7 +868,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
 
   @Override
   public TSStatus setDataNodeStatus(TSetDataNodeStatusReq req) throws TException {
-    throw new TException("DataNode to ConfigNode client doesn't support setDataNodeStatus.");
+    throw new TException(DataNodeMiscMessages.DN_CLIENT_NOT_SUPPORT_SET_STATUS);
   }
 
   @Override
@@ -961,7 +961,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   @Override
   public TConfigNodeHeartbeatResp getConfigNodeHeartBeat(TConfigNodeHeartbeatReq req)
       throws TException {
-    throw new TException("DataNode to ConfigNode client doesn't support getConfigNodeHeartBeat.");
+    throw new TException(DataNodeMiscMessages.DN_CLIENT_NOT_SUPPORT_GET_HEARTBEAT);
   }
 
   @Override

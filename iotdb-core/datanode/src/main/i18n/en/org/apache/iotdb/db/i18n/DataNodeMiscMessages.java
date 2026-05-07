@@ -844,4 +844,57 @@ public final class DataNodeMiscMessages {
   // ---------------------------------------------------------------------------
   public static final String TASK_ALREADY_STARTED =
       "Task is already started or completed";
+
+  public static final String FROM_CONFIG_NODE = "' from config node.'";
+  public static final String IS_NOT_SUPPORTED = "' is not supported'";
+  public static final String CANNOT_SSL_HANDSHAKE_WITH_CN_LEADER = "Cannot SSL Handshake with ConfigNode-leader.";
+  public static final String CANNOT_CONNECT_TO_CN_LEADER = "Cannot connect to ConfigNode-leader.";
+  public static final String CAPACITY_LARGER_THAN_INITIAL_PERMITS = "Capacity should be larger than initial permits.";
+  public static final String CURRENT_TV_LIST_NOT_SORTED = "Current TVList is not sorted";
+  public static final String DN_CLIENT_NOT_SUPPORT_ADD_CONSENSUS_GROUP = "DataNode to ConfigNode client doesn't support addConsensusGroup.";
+  public static final String DN_CLIENT_NOT_SUPPORT_GET_HEARTBEAT = "DataNode to ConfigNode client doesn't support getConfigNodeHeartBeat.";
+  public static final String DN_CLIENT_NOT_SUPPORT_NOTIFY_REGISTER = "DataNode to ConfigNode client doesn't support notifyRegisterSuccess.";
+  public static final String DN_CLIENT_NOT_SUPPORT_REGISTER_CN = "DataNode to ConfigNode client doesn't support registerConfigNode.";
+  public static final String DN_CLIENT_NOT_SUPPORT_REMOVE_CONSENSUS_GROUP = "DataNode to ConfigNode client doesn't support removeConsensusGroup.";
+  public static final String DN_CLIENT_NOT_SUPPORT_REPORT_SHUTDOWN = "DataNode to ConfigNode client doesn't support reportConfigNodeShutdown.";
+  public static final String DN_CLIENT_NOT_SUPPORT_SET_STATUS = "DataNode to ConfigNode client doesn't support setDataNodeStatus.";
+  public static final String DN_CLIENT_NOT_SUPPORT_STOP_AND_CLEAR = "DataNode to ConfigNode client doesn't support stopAndClearConfigNode.";
+  public static final String ERROR_OCCURRED_DURING_CREATING_DIR = "Error occurred during creating directory ";
+  public static final String EXPECTING_NON_EMPTY_STRING_FOR = "Expecting a non-empty string for ";
+  public static final String FAILED_TO_CONSTRUCT_PIPE_SINK = "Failed to construct PipeSink, because of ";
+  public static final String FAILED_TO_GET_UDF_JAR = "Failed to get UDF jar from config node.";
+  public static final String FAILED_TO_GET_CONSUMER_GROUP_META = "Failed to get consumer group meta from config node.";
+  public static final String FAILED_TO_GET_TOPIC_META = "Failed to get topic meta from config node.";
+  public static final String FAILED_TO_GET_TRIGGER_JAR = "Failed to get trigger jar from config node.";
+  public static final String FETCH_SCHEMA_FAILED = "Fetch Schema failed. ";
+  public static final String INDEX_BELOW_START_POSITION = "Index below startPosition: ";
+  public static final String INDEX_EXCEEDS_END_POSITION = "Index exceeds endPosition: ";
+  public static final String INDEX_OUT_OF_BOUND_ERROR = "Index out of bound error!";
+  public static final String INVALID_PUSH_MULTI_PIPE_META_REQ = "Invalid TPushMultiPipeMetaReq";
+  public static final String INVALID_PUSH_MULTI_TOPIC_META_REQ = "Invalid TPushMultiTopicMetaReq";
+  public static final String INVALID_PUSH_SINGLE_PIPE_META_REQ = "Invalid TPushSinglePipeMetaReq";
+  public static final String INVALID_PARAM = "Invalid param";
+  public static final String INVALID_PARAMETERS_CHECK_USER_GUIDE = "Invalid parameters. Please check the user guide.";
+  public static final String INVALID_REQUEST = "Invalid request ";
+  public static final String PREPARED_STMT_NOT_SUPPORTED_FOR_TREE = "PreparedStatement is not supported for Tree model";
+  public static final String FILE_LENGTH_LARGER_THAN_MAX = "The file length is larger than max_object_file_size_in_bytes";
+  public static final String UNKNOWN_CONSENSUS_GROUP_TYPE = "Unknown consensus group type: ";
+  public static final String UNKNOWN_DATA_TYPE = "Unknown data type: ";
+  public static final String UNKNOWN_PARAMETER_TYPE = "Unknown parameter type: ";
+  public static final String UNKNOWN_SQL_DIALECT = "Unknown sql_dialect: ";
+  public static final String UNRECOGNIZED_MNODE_TYPE = "Unrecognized MNode type";
+  public static final String UNRECOGNIZED_DATATYPE = "Unrecognized datatype: ";
+  public static final String UNSUPPORTED_COLUMN_GENERATOR_TYPE = "Unsupported ColumnGeneratorType: ";
+  public static final String UNSUPPORTED_TRIGGER_FIRE_RESULT_TYPE = "Unsupported TriggerFireResult Type";
+  public static final String UTILITY_CLASS = "Utility class";
+  public static final String APPEND_SIZE_MUST_BE_POSITIVE = "appendSize must be positive";
+  public static final String BLOCKS_SHOULD_NEVER_BE_ZERO = "blocks should never be zero.";
+  public static final String END_INDEX_MUST_BE_GE_START_INDEX = "endIndex must be >= startIndex";
+  public static final String ERROR_CODE = "error code: ";
+  public static final String NULL_RESPONSE_WHEN_SERIALIZING = "null response when serializing";
+  public static final String OBJECT_STORAGE_NOT_SUPPORTED_YET = "object storage is not supported yet";
+  public static final String REGISTERED_TASK_COUNT_LT_ZERO = "registeredTaskCount < 0";
+  public static final String REGISTERED_TASK_COUNT_LE_ZERO = "registeredTaskCount <= 0";
+  public static final String REQUEST_TYPE_NOT_SUPPORTED = "request type is not supported: ";
+  public static final String UNEXPECTED_REQUEST_TYPE = "unexpected request type: %s";
 }

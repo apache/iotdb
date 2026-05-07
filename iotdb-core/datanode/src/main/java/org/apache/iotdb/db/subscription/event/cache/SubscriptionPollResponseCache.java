@@ -49,7 +49,7 @@ public class SubscriptionPollResponseCache {
   public ByteBuffer serialize(final CachedSubscriptionPollResponse response) throws IOException {
     try {
       if (Objects.isNull(response)) {
-        throw new IOException("null response when serializing");
+        throw new IOException(DataNodeMiscMessages.NULL_RESPONSE_WHEN_SERIALIZING);
       }
       return this.cache.get(response);
     } catch (final Exception e) {
@@ -64,7 +64,7 @@ public class SubscriptionPollResponseCache {
   public Optional<ByteBuffer> trySerialize(final CachedSubscriptionPollResponse response) {
     try {
       if (Objects.isNull(response)) {
-        throw new IOException("null response when serializing");
+        throw new IOException(DataNodeMiscMessages.NULL_RESPONSE_WHEN_SERIALIZING);
       }
       return Optional.of(serialize(response));
     } catch (final IOException e) {

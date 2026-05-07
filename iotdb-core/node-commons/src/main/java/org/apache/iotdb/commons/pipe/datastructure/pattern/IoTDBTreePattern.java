@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.pipe.datastructure.pattern;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
@@ -54,7 +55,7 @@ public class IoTDBTreePattern extends IoTDBTreePatternOperations {
     try {
       patternPartialPath = new PartialPath(getPattern());
     } catch (final IllegalPathException e) {
-      throw new PipeException("Illegal IoTDBPipePattern: " + getPattern(), e);
+      throw new PipeException(PipeMessages.ILLEGAL_IOTDB_PIPE_PATTERN + getPattern(), e);
     }
   }
 

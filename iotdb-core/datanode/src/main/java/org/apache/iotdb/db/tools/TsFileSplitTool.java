@@ -312,6 +312,6 @@ public class TsFileSplitTool {
         return;
       }
     }
-    throw new UnsupportedOperationException("Invalid param");
+    throw new UnsupportedOperationException(DataNodeMiscMessages.INVALID_PARAM);
   }
 }

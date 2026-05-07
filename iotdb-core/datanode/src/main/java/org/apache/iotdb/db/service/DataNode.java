@@ -396,9 +396,9 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
         if (e.getCause() != null && e.getCause().getCause() != null) {
           Throwable cause = e.getCause().getCause();
           if (cause instanceof SSLHandshakeException) {
-            throw new StartupException("Cannot SSL Handshake with ConfigNode-leader.");
+            throw new StartupException(DataNodeMiscMessages.CANNOT_SSL_HANDSHAKE_WITH_CN_LEADER);
           } else if (cause.getMessage() != null && cause.getMessage().contains("IOException")) {
-            throw new StartupException("Cannot connect to ConfigNode-leader.");
+            throw new StartupException(DataNodeMiscMessages.CANNOT_CONNECT_TO_CN_LEADER);
           }
         }
         retry--;
@@ -595,7 +595,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     } else {
       /* Throw exception when register failed */
       logger.error(dataNodeRegisterResp.getStatus().getMessage());
-      throw new StartupException("Cannot register to the cluster.");
+      throw new StartupException(DataNodeMiscMessages.CANNOT_REGISTER_TO_CLUSTER);
     }
   }
 
@@ -1070,7 +1070,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
           udfInformationList.stream().map(UDFInformation::getJarName).collect(Collectors.toList());
       TGetJarInListResp resp = configNodeClient.getUDFJar(new TGetJarInListReq(jarNameList));
       if (resp.getStatus().getCode() == TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()) {
-        throw new StartupException("Failed to get UDF jar from config node.");
+        throw new StartupException(DataNodeMiscMessages.FAILED_TO_GET_UDF_JAR);
       }
       List<ByteBuffer> jarList = resp.getJarList();
       for (int i = 0; i < udfInformationList.size(); i++) {
@@ -1187,7 +1187,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
               .collect(Collectors.toList());
       TGetJarInListResp resp = configNodeClient.getTriggerJar(new TGetJarInListReq(jarNameList));
       if (resp.getStatus().getCode() == TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()) {
-        throw new StartupException("Failed to get trigger jar from config node.");
+        throw new StartupException(DataNodeMiscMessages.FAILED_TO_GET_TRIGGER_JAR);
       }
       List<ByteBuffer> jarList = resp.getJarList();
       for (int i = 0; i < triggerInformationList.size(); i++) {

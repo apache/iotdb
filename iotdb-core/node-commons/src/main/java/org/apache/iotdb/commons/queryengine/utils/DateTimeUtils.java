@@ -20,6 +20,7 @@ package org.apache.iotdb.commons.queryengine.utils;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
+import org.apache.iotdb.commons.i18n.QueryMessages;
 
 import org.apache.tsfile.utils.DateUtils;
 import org.apache.tsfile.utils.TimeDuration;
@@ -112,21 +113,21 @@ public class DateTimeUtils {
 
   public static Function<Long, Long> getExtractTimestampMsPartFunction() {
     if (extractTimestampMsPart == null) {
-      throw new IllegalArgumentException("ExtractTimestampMsPart is null");
+      throw new IllegalArgumentException(QueryMessages.EXTRACT_TIMESTAMP_MS_PART_NULL);
     }
     return extractTimestampMsPart;
   }
 
   public static Function<Long, Long> getExtractTimestampUsPartFunction() {
     if (extractTimestampUsPart == null) {
-      throw new IllegalArgumentException("ExtractTimestampUsPart is null");
+      throw new IllegalArgumentException(QueryMessages.EXTRACT_TIMESTAMP_US_PART_NULL);
     }
     return extractTimestampUsPart;
   }
 
   public static Function<Long, Long> getExtractTimestampNsPartFunction() {
     if (extractTimestampNsPart == null) {
-      throw new IllegalArgumentException("ExtractTimestampNsPart is null");
+      throw new IllegalArgumentException(QueryMessages.EXTRACT_TIMESTAMP_NS_PART_NULL);
     }
     return extractTimestampNsPart;
   }
@@ -714,7 +715,7 @@ public class DateTimeUtils {
       case "nanosecond":
         return TimeUnit.NANOSECONDS;
       default:
-        throw new IllegalArgumentException("time precision must be one of: h,m,s,ms,u,n");
+        throw new IllegalArgumentException(QueryMessages.TIME_PRECISION_MUST_BE_ONE_OF);
     }
   }
 

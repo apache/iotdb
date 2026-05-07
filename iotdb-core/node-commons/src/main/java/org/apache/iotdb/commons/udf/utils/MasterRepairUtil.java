@@ -115,7 +115,7 @@ public class MasterRepairUtil {
           throw new Exception(CommonMessages.VALUE_NOT_NUMERIC);
       }
     } catch (IOException e) {
-      throw new Exception("Fail to get data type in row " + row.getTime(), e);
+      throw new Exception(CommonMessages.FAIL_TO_GET_DATA_TYPE_IN_ROW + row.getTime(), e);
     }
     return ans;
   }

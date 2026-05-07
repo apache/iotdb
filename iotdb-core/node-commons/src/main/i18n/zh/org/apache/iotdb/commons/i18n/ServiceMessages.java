@@ -137,4 +137,7 @@ public final class ServiceMessages {
   public static final String CPU_USAGE_UPDATE_TIME = "CPU 使用率更新耗时 {} 纳秒";
 
   private ServiceMessages() {}
+
+  public static final String UNKNOWN_SERVICE_TYPE = "未知服务类型：";
+  public static final String UNKNOWN_STATE = "未知状态：";
 }

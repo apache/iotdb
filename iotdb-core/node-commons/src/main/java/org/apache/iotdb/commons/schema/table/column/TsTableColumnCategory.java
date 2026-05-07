@@ -103,7 +103,7 @@ public enum TsTableColumnCategory {
       case TIME:
         return TIME;
       default:
-        throw new IllegalArgumentException("Unknown column type: " + columnType);
+        throw new IllegalArgumentException(SchemaMessages.UNKNOWN_COLUMN_TYPE + columnType);
     }
   }
 

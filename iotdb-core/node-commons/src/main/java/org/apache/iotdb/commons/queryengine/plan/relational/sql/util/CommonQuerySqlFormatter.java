@@ -97,7 +97,7 @@ public class CommonQuerySqlFormatter implements CommonQueryAstVisitor<Void, Inte
 
   @Override
   public Void visitNode(Node node, Integer indent) {
-    throw new UnsupportedOperationException("not yet implemented: " + node);
+    throw new UnsupportedOperationException(QueryMessages.NOT_YET_IMPLEMENTED + node);
   }
 
   @Override
