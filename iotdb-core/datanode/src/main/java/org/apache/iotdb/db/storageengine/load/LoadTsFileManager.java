@@ -134,6 +134,34 @@ public class LoadTsFileManager {
     activeLoadAgent.start();
   }
 
+  private long getCleanupTaskDelayInMs() {
+    return CONFIG.getLoadCleanupTaskExecutionDelayTimeSeconds() * 1000L;
+  }
+
+  private void createCleanupTaskIfAbsent(final String uuid) {
+    synchronized (uuid2CleanupTask) {
+      if (uuid2CleanupTask.containsKey(uuid)) {
+        return;
+      }
+
+      final CleanupTask cleanupTask = new CleanupTask(uuid, getCleanupTaskDelayInMs());
+      uuid2CleanupTask.put(uuid, cleanupTask);
+      cleanupTaskQueue.add(cleanupTask);
+    }
+  }
+
+  private void rescheduleCleanupTask(final CleanupTask cleanupTask) {
+    synchronized (uuid2CleanupTask) {
+      if (uuid2CleanupTask.get(cleanupTask.uuid) != cleanupTask) {
+        return;
+      }
+
+      cleanupTaskQueue.remove(cleanupTask);
+      cleanupTask.resetScheduledTime();
+      cleanupTaskQueue.add(cleanupTask);
+    }
+  }
+
   private void registerCleanupTaskExecutor() {
     PipeDataNodeAgent.runtime()
         .registerPeriodicalJob(
@@ -205,26 +233,13 @@ public class LoadTsFileManager {
               uuid2WriterManager.put(uuid, writerManager);
               writerManager.close();
 
-              synchronized (uuid2CleanupTask) {
-                final CleanupTask cleanupTask =
-                    new CleanupTask(
-                        uuid, CONFIG.getLoadCleanupTaskExecutionDelayTimeSeconds() * 1000);
-                uuid2CleanupTask.put(uuid, cleanupTask);
-                cleanupTaskQueue.add(cleanupTask);
-              }
+              createCleanupTaskIfAbsent(uuid);
             });
   }
 
   public void writeToDataRegion(DataRegion dataRegion, LoadTsFilePieceNode pieceNode, String uuid)
       throws IOException, PageException {
-    if (!uuid2WriterManager.containsKey(uuid)) {
-      synchronized (uuid2CleanupTask) {
-        final CleanupTask cleanupTask =
-            new CleanupTask(uuid, CONFIG.getLoadCleanupTaskExecutionDelayTimeSeconds() * 1000);
-        uuid2CleanupTask.put(uuid, cleanupTask);
-        cleanupTaskQueue.add(cleanupTask);
-      }
-    }
+    createCleanupTaskIfAbsent(uuid);
 
     final Optional<CleanupTask> cleanupTask = Optional.ofNullable(uuid2CleanupTask.get(uuid));
     cleanupTask.ifPresent(CleanupTask::markLoadTaskRunning);
@@ -356,6 +371,8 @@ public class LoadTsFileManager {
       return false;
     }
 
+    createCleanupTaskIfAbsent(uuid);
+
     final Optional<CleanupTask> cleanupTask = Optional.ofNullable(uuid2CleanupTask.get(uuid));
     cleanupTask.ifPresent(CleanupTask::markLoadTaskRunning);
     try {
@@ -378,9 +395,10 @@ public class LoadTsFileManager {
 
   private void clean(String uuid) {
     synchronized (uuid2CleanupTask) {
-      final CleanupTask cleanupTask = uuid2CleanupTask.get(uuid);
+      final CleanupTask cleanupTask = uuid2CleanupTask.remove(uuid);
       if (cleanupTask != null) {
         cleanupTask.cancel();
+        cleanupTaskQueue.remove(cleanupTask);
       }
     }
 
@@ -897,12 +915,12 @@ public class LoadTsFileManager {
 
     public void markLoadTaskRunning() {
       isLoadTaskRunning = true;
-      resetScheduledTime();
+      rescheduleCleanupTask(this);
     }
 
     public void markLoadTaskNotRunning() {
       isLoadTaskRunning = false;
-      resetScheduledTime();
+      rescheduleCleanupTask(this);
     }
 
     public void resetScheduledTime() {
