@@ -621,8 +621,10 @@ public class ClientManagerTest {
                   .setConnectionTimeoutMs(CONNECTION_TIMEOUT)
                   .build()),
           new ClientPoolProperty.Builder<SyncDataNodeInternalServiceClient>()
-              .setMaxIdleClientNumForEachNode(
+              .setMaxClientNumForEachNode(
                   ClientPoolProperty.DefaultProperty.MAX_CLIENT_NUM_FOR_EACH_NODE)
+              .setMaxIdleClientNumForEachNode(
+                  ClientPoolProperty.DefaultProperty.MAX_IDLE_CLIENT_NUM_FOR_EACH_NODE)
               .build()
               .getConfig());
     }
@@ -640,8 +642,10 @@ public class ClientManagerTest {
               new ThriftClientProperty.Builder().setConnectionTimeoutMs(CONNECTION_TIMEOUT).build(),
               ThreadName.ASYNC_DATANODE_CLIENT_POOL.getName()),
           new ClientPoolProperty.Builder<AsyncDataNodeInternalServiceClient>()
-              .setMaxIdleClientNumForEachNode(
+              .setMaxClientNumForEachNode(
                   ClientPoolProperty.DefaultProperty.MAX_CLIENT_NUM_FOR_EACH_NODE)
+              .setMaxIdleClientNumForEachNode(
+                  ClientPoolProperty.DefaultProperty.MAX_IDLE_CLIENT_NUM_FOR_EACH_NODE)
               .build()
               .getConfig());
     }
