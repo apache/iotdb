@@ -205,6 +205,11 @@ public class ValuesNode extends SourceNode {
         planNodeId, outputSymbols, rowCount, flag ? Optional.of(rows) : Optional.empty());
   }
 
+  @Override
+  public List<Symbol> getOutputSymbols() {
+    return outputSymbols;
+  }
+
   public int getRowCount() {
     return rowCount;
   }
