@@ -614,11 +614,6 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
                   final long chunkSize = timeChunkSize + valueChunkSize;
                   if (chunkSize + chunkHeader.getDataSize()
                       > allocatedMemoryBlockForChunk.getMemoryUsageInBytes()) {
-                    if (valueChunkList.size() == 1
-                        && chunkSize > allocatedMemoryBlockForChunk.getMemoryUsageInBytes()) {
-                      PipeDataNodeResourceManager.memory()
-                          .forceResize(allocatedMemoryBlockForChunk, chunkSize);
-                    }
                     needReturn = recordAlignedChunk(valueChunkList, marker);
                   }
                 }
@@ -628,9 +623,11 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
                 firstChunkHeader4NextSequentialValueChunks = chunkHeader;
                 return;
               }
+              resizeChunkMemoryBlockIfFirstValueChunkExceedsLimit(valueChunkList, chunkHeader);
             } else {
               chunkHeader = firstChunkHeader4NextSequentialValueChunks;
               firstChunkHeader4NextSequentialValueChunks = null;
+              resizeChunkMemoryBlockIfFirstValueChunkExceedsLimit(valueChunkList, chunkHeader);
             }
 
             Chunk chunk =
@@ -774,6 +771,20 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
       return true;
     }
     return false;
+  }
+
+  private void resizeChunkMemoryBlockIfFirstValueChunkExceedsLimit(
+      final List<Chunk> valueChunkList, final ChunkHeader valueChunkHeader) {
+    if (!valueChunkList.isEmpty() || lastIndex < 0) {
+      return;
+    }
+
+    final long chunkSize =
+        PipeMemoryWeightUtil.calculateChunkRamBytesUsed(timeChunkList.get(lastIndex))
+            + valueChunkHeader.getDataSize();
+    if (chunkSize > allocatedMemoryBlockForChunk.getMemoryUsageInBytes()) {
+      PipeDataNodeResourceManager.memory().forceResize(allocatedMemoryBlockForChunk, chunkSize);
+    }
   }
 
   @Override
