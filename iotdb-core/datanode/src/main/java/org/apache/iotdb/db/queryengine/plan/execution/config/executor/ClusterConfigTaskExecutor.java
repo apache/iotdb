@@ -143,7 +143,6 @@ import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
-import org.apache.iotdb.db.protocol.client.DataNodeClientPoolFactory;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
@@ -305,13 +304,6 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
   private static final IClientManager<ConfigRegionId, ConfigNodeClient> CONFIG_NODE_CLIENT_MANAGER =
       ConfigNodeClientManager.getInstance();
-
-  /** FIXME Consolidate this clientManager with the upper one. */
-  private static final IClientManager<ConfigRegionId, ConfigNodeClient>
-      CLUSTER_DELETION_CONFIG_NODE_CLIENT_MANAGER =
-          new IClientManager.Factory<ConfigRegionId, ConfigNodeClient>()
-              .createClientManager(
-                  new DataNodeClientPoolFactory.ClusterDeletionConfigNodeClientPoolFactory());
 
   private static final class ClusterConfigTaskExecutorHolder {
 
@@ -1598,7 +1590,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     req.setPathPatternTree(
         serializePatternListToByteBuffer(deactivateTemplateStatement.getPathPatternList()));
     try (final ConfigNodeClient client =
-        CLUSTER_DELETION_CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       TSStatus tsStatus;
       do {
         try {
@@ -1699,7 +1691,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
             alterSchemaTemplateStatement.getOperationType(),
             alterSchemaTemplateStatement.getTemplateAlterInfo()));
     try (final ConfigNodeClient client =
-        CLUSTER_DELETION_CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       TSStatus tsStatus;
       do {
         try {
@@ -1754,7 +1746,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     req.setTemplateName(unsetSchemaTemplateStatement.getTemplateName());
     req.setPath(unsetSchemaTemplateStatement.getPath().getFullPath());
     try (final ConfigNodeClient client =
-        CLUSTER_DELETION_CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       TSStatus tsStatus;
       do {
         try {
@@ -2406,7 +2398,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
             queryId,
             serializePatternListToByteBuffer(deleteTimeSeriesStatement.getPathPatternList()));
     try (ConfigNodeClient client =
-        CLUSTER_DELETION_CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       TSStatus tsStatus;
       do {
         try {
@@ -2452,7 +2444,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
             queryId,
             serializePatternListToByteBuffer(deleteLogicalViewStatement.getPathPatternList()));
     try (ConfigNodeClient client =
-        CLUSTER_DELETION_CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       TSStatus tsStatus;
       do {
         try {
@@ -2541,7 +2533,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         new TDeleteLogicalViewReq(
             queryId, serializePatternListToByteBuffer(Collections.singletonList(oldName)));
     try (ConfigNodeClient client =
-        CLUSTER_DELETION_CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       TSStatus tsStatus;
       do {
         try {
@@ -2613,7 +2605,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         new TAlterLogicalViewReq(
             context.getQueryId().getId(), ByteBuffer.wrap(stream.toByteArray()));
     try (final ConfigNodeClient client =
-        CLUSTER_DELETION_CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       TSStatus tsStatus;
       do {
         try {
@@ -2675,7 +2667,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
             .setIsGeneratedByPipe(shouldMarkAsPipeRequest);
     TSStatus tsStatus;
     try (ConfigNodeClient client =
-        CLUSTER_DELETION_CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       do {
         try {
           tsStatus = client.alterLogicalView(req);

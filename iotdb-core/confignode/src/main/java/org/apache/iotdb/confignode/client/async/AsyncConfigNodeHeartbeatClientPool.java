@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.async.AsyncConfigNodeInternalServiceClient;
 import org.apache.iotdb.confignode.client.async.handlers.heartbeat.ConfigNodeHeartbeatHandler;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeHeartbeatReq;
 
 public class AsyncConfigNodeHeartbeatClientPool {
@@ -34,7 +35,8 @@ public class AsyncConfigNodeHeartbeatClientPool {
     clientManager =
         new IClientManager.Factory<TEndPoint, AsyncConfigNodeInternalServiceClient>()
             .createClientManager(
-                new ClientPoolFactory.AsyncConfigNodeHeartbeatServiceClientPoolFactory());
+                new ClientPoolFactory.AsyncConfigNodeHeartbeatServiceClientPoolFactory(
+                    ConfigNodeDescriptor.getInstance().getConf().getSelectorNumOfClientManager()));
   }
 
   /**

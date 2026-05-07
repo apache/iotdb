@@ -139,12 +139,6 @@ public class IoTDBConfig {
   /** ssl key Store password. */
   private String keyStorePwd = "";
 
-  /** Rpc Selector thread num */
-  private int rpcSelectorThreadCount = 1;
-
-  /** Min concurrent client number */
-  private int rpcMinConcurrentClientNum = Runtime.getRuntime().availableProcessors();
-
   /** Max concurrent client number */
   private int rpcMaxConcurrentClientNum = 1000;
 
@@ -999,6 +993,8 @@ public class IoTDBConfig {
    */
   private int maxClientNumForEachNode = DefaultProperty.MAX_CLIENT_NUM_FOR_EACH_NODE;
 
+  private int maxIdleClientNumForEachNode = DefaultProperty.MAX_IDLE_CLIENT_NUM_FOR_EACH_NODE;
+
   /**
    * Cache size of partition cache in {@link
    * org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher}
@@ -1034,9 +1030,6 @@ public class IoTDBConfig {
 
   /** ThreadPool size for read operation in coordinator */
   private int coordinatorReadExecutorSize = 20;
-
-  /** ThreadPool size for write operation in coordinator */
-  private int coordinatorWriteExecutorSize = 50;
 
   private int[] schemaMemoryProportion = new int[] {5, 4, 1};
 
@@ -1870,22 +1863,6 @@ public class IoTDBConfig {
 
   public void setUnSeqTsFileSize(long unSeqTsFileSize) {
     this.unSeqTsFileSize = unSeqTsFileSize;
-  }
-
-  public int getRpcSelectorThreadCount() {
-    return rpcSelectorThreadCount;
-  }
-
-  public void setRpcSelectorThreadCount(int rpcSelectorThreadCount) {
-    this.rpcSelectorThreadCount = rpcSelectorThreadCount;
-  }
-
-  public int getRpcMinConcurrentClientNum() {
-    return rpcMinConcurrentClientNum;
-  }
-
-  public void setRpcMinConcurrentClientNum(int rpcMinConcurrentClientNum) {
-    this.rpcMinConcurrentClientNum = rpcMinConcurrentClientNum;
   }
 
   public int getRpcMaxConcurrentClientNum() {
@@ -3338,6 +3315,14 @@ public class IoTDBConfig {
     this.maxClientNumForEachNode = maxClientNumForEachNode;
   }
 
+  public int getMaxIdleClientNumForEachNode() {
+    return maxIdleClientNumForEachNode;
+  }
+
+  public void setMaxIdleClientNumForEachNode(int maxIdleClientNumForEachNode) {
+    this.maxIdleClientNumForEachNode = maxIdleClientNumForEachNode;
+  }
+
   public int getSelectorNumOfClientManager() {
     return selectorNumOfClientManager;
   }
@@ -3482,14 +3467,6 @@ public class IoTDBConfig {
 
   public void setCoordinatorReadExecutorSize(int coordinatorReadExecutorSize) {
     this.coordinatorReadExecutorSize = coordinatorReadExecutorSize;
-  }
-
-  public int getCoordinatorWriteExecutorSize() {
-    return coordinatorWriteExecutorSize;
-  }
-
-  public void setCoordinatorWriteExecutorSize(int coordinatorWriteExecutorSize) {
-    this.coordinatorWriteExecutorSize = coordinatorWriteExecutorSize;
   }
 
   public TEndPoint getAddressAndPort() {
