@@ -176,15 +176,23 @@ public final class TableDeviceLastValueCollector {
   }
 
   private static TimeValuePair buildLastValuePair(final IChunkMetadata chunkMetadata) {
-    return Objects.isNull(chunkMetadata.getStatistics())
-        ? null
-        : buildLastValuePair(
-            chunkMetadata.getDataType(),
-            chunkMetadata.getStatistics().getLastValue(),
-            chunkMetadata.getEndTime());
+    if (Objects.isNull(chunkMetadata.getStatistics())
+        || chunkMetadata.getDataType() == TSDataType.BLOB) {
+      return null;
+    }
+
+    return buildLastValuePair(
+        chunkMetadata.getDataType(),
+        chunkMetadata.getStatistics().getLastValue(),
+        chunkMetadata.getEndTime());
   }
 
   private static TimeValuePair buildLastValuePair(final TimeseriesMetadata timeseriesMetadata) {
+    if (Objects.isNull(timeseriesMetadata.getStatistics())
+        || timeseriesMetadata.getTsDataType() == TSDataType.BLOB) {
+      return null;
+    }
+
     return buildLastValuePair(
         timeseriesMetadata.getTsDataType(),
         timeseriesMetadata.getStatistics().getLastValue(),
