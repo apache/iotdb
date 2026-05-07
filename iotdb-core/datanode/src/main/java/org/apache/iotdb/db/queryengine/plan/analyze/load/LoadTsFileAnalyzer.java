@@ -43,6 +43,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
+import org.apache.iotdb.db.storageengine.dataregion.utils.TableDeviceLastValueCollector;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
 import org.apache.iotdb.db.storageengine.load.active.ActiveLoadPathHelper;
 import org.apache.iotdb.db.storageengine.load.converter.LoadTsFileDataTypeConverter;
@@ -54,7 +55,6 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.encrypt.EncryptParameter;
 import org.apache.tsfile.encrypt.EncryptUtils;
-import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.file.metadata.AbstractAlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
@@ -62,14 +62,11 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.MetadataIndexNode;
 import org.apache.tsfile.file.metadata.TableSchema;
 import org.apache.tsfile.file.metadata.TimeseriesMetadata;
-import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.TsFileSequenceReaderTimeseriesMetadataIterator;
 import org.apache.tsfile.read.controller.IMetadataQuerier;
 import org.apache.tsfile.read.controller.MetadataQuerierByFileImpl;
 import org.apache.tsfile.utils.Pair;
-import org.apache.tsfile.utils.RamUsageEstimator;
-import org.apache.tsfile.utils.TsPrimitiveType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -80,7 +77,6 @@ import java.nio.BufferUnderflowException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -619,8 +615,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
       writePointCount += getWritePointCount(device2TimeseriesMetadata);
     }
-    Map<IDeviceID, Map<String, TimeValuePair>> deviceLastValues = null;
-    long lastValuesMemCost = 0;
+    TableDeviceLastValueCollector lastValueCollector = null;
     boolean hasFallbackProcessedDevice = false;
     final boolean isCacheLastValuesForLoad =
         IoTDBDescriptor.getInstance().getConfig().isCacheLastValuesForLoad();
@@ -653,12 +648,11 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
                 IoTDBDescriptor.getInstance().getConfig().getTimeIndexLevel().getTimeIndex());
           }
           if (isCacheLastValuesForLoad) {
-            if (devicesHandledByTimeseriesMetadataIterator.isEmpty()) {
-              deviceLastValues = new HashMap<>();
-            } else if (Objects.nonNull(tsFileResource.getLastValues())) {
-              deviceLastValues = restoreTableDeviceLastValues(tsFileResource.getLastValues());
-              lastValuesMemCost = calculateTableDeviceLastValuesMemoryCost(deviceLastValues);
-            }
+            lastValueCollector =
+                devicesHandledByTimeseriesMetadataIterator.isEmpty()
+                    ? TableDeviceLastValueCollector.create(lastValuesMemoryBudget)
+                    : TableDeviceLastValueCollector.restore(
+                        lastValuesMemoryBudget, tsFileResource.getLastValues());
           }
           hasFallbackProcessedDevice = true;
         }
@@ -676,17 +670,8 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
           tsFileResource.updateStartTime(deviceId, alignedChunkMetadata.getStartTime());
           tsFileResource.updateEndTime(deviceId, alignedChunkMetadata.getEndTime());
           writePointCount += getTableWritePointCount(alignedChunkMetadata);
-          if (deviceLastValues != null) {
-            lastValuesMemCost =
-                updateTableDeviceLastValues(
-                    deviceLastValues,
-                    deviceId,
-                    alignedChunkMetadata,
-                    lastValuesMemCost,
-                    lastValuesMemoryBudget);
-            if (lastValuesMemCost > lastValuesMemoryBudget) {
-              deviceLastValues = null;
-            }
+          if (Objects.nonNull(lastValueCollector)) {
+            lastValueCollector.update(deviceId, alignedChunkMetadata.getValueChunkMetadataList());
           }
         }
 
@@ -713,17 +698,8 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
             if (hasChunk) {
               writePointCount += getTableWritePointCount(timeseriesMetadataList);
-              if (deviceLastValues != null) {
-                lastValuesMemCost =
-                    updateTableDeviceLastValues(
-                        deviceLastValues,
-                        deviceId,
-                        timeseriesMetadataList,
-                        lastValuesMemCost,
-                        lastValuesMemoryBudget);
-                if (lastValuesMemCost > lastValuesMemoryBudget) {
-                  deviceLastValues = null;
-                }
+              if (Objects.nonNull(lastValueCollector)) {
+                lastValueCollector.update(deviceId, timeseriesMetadataList);
               }
             }
           }
@@ -738,130 +714,10 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       }
     }
 
-    if (hasFallbackProcessedDevice) {
-      tsFileResource.setLastValues(convertTableDeviceLastValues(deviceLastValues));
+    if (hasFallbackProcessedDevice && Objects.nonNull(lastValueCollector)) {
+      tsFileResource.setLastValues(lastValueCollector.toTsFileResourceLastValues());
     }
     return writePointCount;
-  }
-
-  private static long updateTableDeviceLastValues(
-      final Map<IDeviceID, Map<String, TimeValuePair>> deviceLastValues,
-      final IDeviceID deviceId,
-      final AbstractAlignedChunkMetadata alignedChunkMetadata,
-      long lastValuesMemCost,
-      final long lastValuesMemoryBudget) {
-    for (final IChunkMetadata chunkMetadata : alignedChunkMetadata.getValueChunkMetadataList()) {
-      if (Objects.isNull(chunkMetadata)) {
-        continue;
-      }
-
-      Map<String, TimeValuePair> deviceMap = deviceLastValues.get(deviceId);
-      if (Objects.isNull(deviceMap)) {
-        deviceMap = new HashMap<>();
-        deviceLastValues.put(deviceId, deviceMap);
-        lastValuesMemCost += RamUsageEstimator.shallowSizeOf(deviceMap);
-        lastValuesMemCost += deviceId.ramBytesUsed();
-      }
-
-      final int previousSize = deviceMap.size();
-      final String measurement = chunkMetadata.getMeasurementUid();
-      final TimeValuePair oldPair = deviceMap.get(measurement);
-      if (Objects.nonNull(oldPair) && oldPair.getTimestamp() > chunkMetadata.getEndTime()) {
-        continue;
-      }
-
-      final TimeValuePair newPair = buildLastValuePair(chunkMetadata);
-      if (Objects.nonNull(oldPair)) {
-        lastValuesMemCost -= oldPair.getSize();
-      }
-      if (Objects.nonNull(newPair)) {
-        deviceMap.put(measurement, newPair);
-        lastValuesMemCost += newPair.getSize();
-      } else {
-        deviceMap.remove(measurement);
-      }
-      lastValuesMemCost +=
-          (long) (deviceMap.size() - previousSize)
-              * RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY;
-      if (lastValuesMemCost > lastValuesMemoryBudget) {
-        return lastValuesMemCost;
-      }
-    }
-    return lastValuesMemCost;
-  }
-
-  private static long updateTableDeviceLastValues(
-      final Map<IDeviceID, Map<String, TimeValuePair>> deviceLastValues,
-      final IDeviceID deviceId,
-      final List<TimeseriesMetadata> timeseriesMetadataList,
-      long lastValuesMemCost,
-      final long lastValuesMemoryBudget) {
-    Map<String, TimeValuePair> deviceMap = deviceLastValues.get(deviceId);
-    if (Objects.isNull(deviceMap)) {
-      deviceMap = new HashMap<>();
-      deviceLastValues.put(deviceId, deviceMap);
-      lastValuesMemCost += RamUsageEstimator.shallowSizeOf(deviceMap);
-      lastValuesMemCost += deviceId.ramBytesUsed();
-    }
-
-    for (final TimeseriesMetadata timeseriesMetadata : timeseriesMetadataList) {
-      if (Objects.isNull(timeseriesMetadata)
-          || Objects.isNull(timeseriesMetadata.getStatistics())) {
-        continue;
-      }
-
-      final int previousSize = deviceMap.size();
-      final String measurement = timeseriesMetadata.getMeasurementId();
-      final TimeValuePair oldPair = deviceMap.get(measurement);
-      final TimeValuePair newPair = buildLastValuePair(timeseriesMetadata);
-      if (Objects.nonNull(oldPair)) {
-        lastValuesMemCost -= oldPair.getSize();
-      }
-
-      if (Objects.nonNull(newPair)) {
-        deviceMap.put(measurement, newPair);
-        lastValuesMemCost += newPair.getSize();
-      } else {
-        deviceMap.remove(measurement);
-      }
-      lastValuesMemCost +=
-          (long) (deviceMap.size() - previousSize)
-              * RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY;
-      if (lastValuesMemCost > lastValuesMemoryBudget) {
-        return lastValuesMemCost;
-      }
-    }
-    return lastValuesMemCost;
-  }
-
-  private static TimeValuePair buildLastValuePair(final IChunkMetadata chunkMetadata) {
-    if (Objects.isNull(chunkMetadata.getStatistics())
-        || Objects.equals(chunkMetadata.getDataType(), TSDataType.BLOB)) {
-      return null;
-    }
-
-    final TsPrimitiveType lastValue =
-        TsPrimitiveType.getByType(
-            Objects.equals(chunkMetadata.getDataType(), TSDataType.VECTOR)
-                ? TSDataType.INT64
-                : chunkMetadata.getDataType(),
-            chunkMetadata.getStatistics().getLastValue());
-    return new TimeValuePair(chunkMetadata.getEndTime(), lastValue);
-  }
-
-  private static TimeValuePair buildLastValuePair(final TimeseriesMetadata timeseriesMetadata) {
-    if (Objects.isNull(timeseriesMetadata.getStatistics())
-        || Objects.equals(timeseriesMetadata.getTsDataType(), TSDataType.BLOB)) {
-      return null;
-    }
-
-    final TsPrimitiveType lastValue =
-        TsPrimitiveType.getByType(
-            Objects.equals(timeseriesMetadata.getTsDataType(), TSDataType.VECTOR)
-                ? TSDataType.INT64
-                : timeseriesMetadata.getTsDataType(),
-            timeseriesMetadata.getStatistics().getLastValue());
-    return new TimeValuePair(timeseriesMetadata.getStatistics().getEndTime(), lastValue);
   }
 
   private static List<TimeseriesMetadata> getTimeseriesMetadata(
@@ -883,60 +739,6 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
   private static List<Object> getDeviceKey(final IDeviceID deviceId) {
     return Arrays.asList(deviceId.getSegments());
-  }
-
-  private static Map<IDeviceID, Map<String, TimeValuePair>> restoreTableDeviceLastValues(
-      final Map<IDeviceID, List<Pair<String, TimeValuePair>>> deviceLastValues) {
-    final Map<IDeviceID, Map<String, TimeValuePair>> restoredDeviceLastValues =
-        new HashMap<>(deviceLastValues.size());
-    for (final Map.Entry<IDeviceID, List<Pair<String, TimeValuePair>>> entry :
-        deviceLastValues.entrySet()) {
-      final Map<String, TimeValuePair> restoredLastValues = new HashMap<>(entry.getValue().size());
-      for (final Pair<String, TimeValuePair> lastValueEntry : entry.getValue()) {
-        restoredLastValues.put(lastValueEntry.getLeft(), lastValueEntry.getRight());
-      }
-      restoredDeviceLastValues.put(entry.getKey(), restoredLastValues);
-    }
-    return restoredDeviceLastValues;
-  }
-
-  private static long calculateTableDeviceLastValuesMemoryCost(
-      final Map<IDeviceID, Map<String, TimeValuePair>> deviceLastValues) {
-    long lastValuesMemCost = 0;
-    for (final Map.Entry<IDeviceID, Map<String, TimeValuePair>> entry :
-        deviceLastValues.entrySet()) {
-      lastValuesMemCost += entry.getKey().ramBytesUsed();
-      lastValuesMemCost += RamUsageEstimator.shallowSizeOf(entry.getValue());
-      lastValuesMemCost += RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY;
-      for (final Map.Entry<String, TimeValuePair> lastValueEntry : entry.getValue().entrySet()) {
-        lastValuesMemCost += RamUsageEstimator.sizeOf(lastValueEntry.getKey());
-        lastValuesMemCost +=
-            Objects.nonNull(lastValueEntry.getValue())
-                ? lastValueEntry.getValue().getSize()
-                : RamUsageEstimator.NUM_BYTES_OBJECT_REF;
-        lastValuesMemCost += RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY;
-      }
-    }
-    return lastValuesMemCost;
-  }
-
-  private static Map<IDeviceID, List<Pair<String, TimeValuePair>>> convertTableDeviceLastValues(
-      final Map<IDeviceID, Map<String, TimeValuePair>> deviceLastValues) {
-    if (Objects.isNull(deviceLastValues)) {
-      return null;
-    }
-
-    final Map<IDeviceID, List<Pair<String, TimeValuePair>>> finalDeviceLastValues =
-        new HashMap<>(deviceLastValues.size());
-    for (final Map.Entry<IDeviceID, Map<String, TimeValuePair>> entry :
-        deviceLastValues.entrySet()) {
-      final List<Pair<String, TimeValuePair>> lastValues = new ArrayList<>(entry.getValue().size());
-      for (final Map.Entry<String, TimeValuePair> lastValueEntry : entry.getValue().entrySet()) {
-        lastValues.add(new Pair<>(lastValueEntry.getKey(), lastValueEntry.getValue()));
-      }
-      finalDeviceLastValues.put(entry.getKey(), lastValues);
-    }
-    return finalDeviceLastValues;
   }
 
   private TsFileResource constructTsFileResource(
