@@ -270,6 +270,24 @@ public class ConfigNodeDescriptor {
                 "cn_max_client_count_for_each_node_in_client_manager",
                 String.valueOf(conf.getMaxClientNumForEachNode()))));
 
+    int cnMaxIdleClientNumForEachNode =
+        Integer.parseInt(
+            properties.getProperty(
+                "cn_max_idle_client_count_for_each_node_in_client_manager",
+                String.valueOf(conf.getMaxIdleClientNumForEachNode())));
+    if (cnMaxIdleClientNumForEachNode >= 0) {
+      conf.setMaxIdleClientNumForEachNode(cnMaxIdleClientNumForEachNode);
+    }
+
+    int cnSelectorNumOfClientManager =
+        Integer.parseInt(
+            properties.getProperty(
+                "cn_selector_thread_nums_of_client_manager",
+                String.valueOf(conf.getSelectorNumOfClientManager())));
+    if (cnSelectorNumOfClientManager > 0) {
+      conf.setSelectorNumOfClientManager(cnSelectorNumOfClientManager);
+    }
+
     conf.setSystemDir(properties.getProperty("cn_system_dir", conf.getSystemDir()));
 
     conf.setConsensusDir(properties.getProperty("cn_consensus_dir", conf.getConsensusDir()));

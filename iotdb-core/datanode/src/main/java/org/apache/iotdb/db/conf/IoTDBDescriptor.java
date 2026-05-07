@@ -292,11 +292,23 @@ public class IoTDBDescriptor {
                 "dn_max_client_count_for_each_node_in_client_manager",
                 String.valueOf(conf.getMaxClientNumForEachNode()))));
 
-    conf.setSelectorNumOfClientManager(
+    int dnMaxIdleClientNumForEachNode =
         Integer.parseInt(
             properties.getProperty(
-                "dn_selector_thread_count_of_client_manager",
-                String.valueOf(conf.getSelectorNumOfClientManager()))));
+                "dn_max_idle_client_count_for_each_node_in_client_manager",
+                String.valueOf(conf.getMaxIdleClientNumForEachNode())));
+    if (dnMaxIdleClientNumForEachNode >= 0) {
+      conf.setMaxIdleClientNumForEachNode(dnMaxIdleClientNumForEachNode);
+    }
+
+    int dnSelectorNumOfClientManager =
+        Integer.parseInt(
+            properties.getProperty(
+                "dn_selector_thread_nums_of_client_manager",
+                String.valueOf(conf.getSelectorNumOfClientManager())));
+    if (dnSelectorNumOfClientManager > 0) {
+      conf.setSelectorNumOfClientManager(dnSelectorNumOfClientManager);
+    }
 
     conf.setRpcPort(
         Integer.parseInt(
@@ -725,18 +737,6 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "0.13_data_insert_adapt", String.valueOf(conf.isEnable13DataInsertAdapt()))));
 
-    int rpcSelectorThreadNum =
-        Integer.parseInt(
-            properties.getProperty(
-                "dn_rpc_selector_thread_count",
-                Integer.toString(conf.getRpcSelectorThreadCount())));
-
-    if (rpcSelectorThreadNum <= 0) {
-      rpcSelectorThreadNum = 1;
-    }
-
-    conf.setRpcSelectorThreadCount(rpcSelectorThreadNum);
-
     int maxConcurrentClientNum =
         Integer.parseInt(
             properties.getProperty(
@@ -981,12 +981,6 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "coordinator_read_executor_size",
                 Integer.toString(conf.getCoordinatorReadExecutorSize()))));
-    conf.setCoordinatorWriteExecutorSize(
-        Integer.parseInt(
-            properties.getProperty(
-                "coordinator_write_executor_size",
-                Integer.toString(conf.getCoordinatorWriteExecutorSize()))));
-
     conf.setDataNodeTableSchemaCacheSize(
         Long.parseLong(
             properties.getProperty(
