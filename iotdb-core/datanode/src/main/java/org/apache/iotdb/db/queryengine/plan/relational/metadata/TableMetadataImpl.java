@@ -76,6 +76,8 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.calc.plan.relational.metadata.CommonMetadataUtils.isDecimalType;
+import static org.apache.iotdb.calc.plan.relational.metadata.CommonMetadataUtils.isNumericType;
 import static org.apache.iotdb.calc.transformation.dag.column.FailFunctionColumnTransformer.FAIL_FUNCTION_NAME;
 import static org.apache.tsfile.read.common.type.BlobType.BLOB;
 import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
@@ -217,7 +219,7 @@ public class TableMetadataImpl implements Metadata {
     if (TableBuiltinScalarFunction.DIFF.getFunctionName().equalsIgnoreCase(functionName)) {
       if (!CommonMetadataUtils.isOneNumericType(argumentTypes)
           && !(argumentTypes.size() == 2
-              && CommonMetadataUtils.isNumericType(argumentTypes.get(0))
+              && isNumericType(argumentTypes.get(0))
               && BOOLEAN.equals(argumentTypes.get(1)))) {
         throw new SemanticException(
             "Scalar function "
@@ -1265,7 +1267,7 @@ public class TableMetadataImpl implements Metadata {
         }
 
         Type valueColumnType = argumentTypes.get(0);
-        if (!CommonMetadataUtils.isNumericType(valueColumnType)) {
+        if (!isNumericType(valueColumnType)) {
           throw new SemanticException(
               String.format(
                   "Aggregation functions [%s] should have value column as numeric type [INT32, INT64, FLOAT, DOUBLE, TIMESTAMP]",
@@ -1273,7 +1275,7 @@ public class TableMetadataImpl implements Metadata {
         }
 
         Type percentageType = argumentTypes.get(argumentSize - 1);
-        if (!CommonMetadataUtils.isDecimalType(percentageType)) {
+        if (!isDecimalType(percentageType)) {
           throw new SemanticException(
               String.format(
                   "Aggregation functions [%s] should have percentage as decimal type",
