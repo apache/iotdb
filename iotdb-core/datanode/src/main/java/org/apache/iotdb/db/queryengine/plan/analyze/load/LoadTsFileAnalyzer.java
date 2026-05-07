@@ -691,7 +691,8 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
         deviceMap.remove(measurement);
       }
       lastValuesMemCost +=
-          (long) (deviceMap.size() - previousSize) * RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY;
+          (long) (deviceMap.size() - previousSize)
+              * RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY;
       if (lastValuesMemCost > lastValuesMemoryBudget) {
         return lastValuesMemCost;
       }
