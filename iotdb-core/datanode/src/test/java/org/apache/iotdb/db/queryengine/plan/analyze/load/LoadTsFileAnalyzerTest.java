@@ -199,7 +199,7 @@ public class LoadTsFileAnalyzerTest {
     for (int i = 0; i < 3; i++) {
       final long time = 100 + i;
       chunkWriter.getTimeChunkWriter().write(time);
-      chunkWriter.getValueChunkWriterByIndex(0).write(time, i, areAllFieldsNull);
+      chunkWriter.getValueChunkWriterByIndex(0).write(time, (long) i, areAllFieldsNull);
       chunkWriter.getValueChunkWriterByIndex(1).write(time, 0.5 + i, areAllFieldsNull);
     }
     chunkWriter.writeToFileWriter(writer);
