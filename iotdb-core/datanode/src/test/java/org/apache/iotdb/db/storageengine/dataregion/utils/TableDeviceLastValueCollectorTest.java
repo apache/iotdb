@@ -49,7 +49,7 @@ public class TableDeviceLastValueCollectorTest {
     Mockito.when(chunkMetadata.getDataType()).thenReturn(TSDataType.BLOB);
     Mockito.when(chunkMetadata.getMeasurementUid()).thenReturn("s1");
     Mockito.when(chunkMetadata.getEndTime()).thenReturn(1L);
-    Mockito.when(chunkMetadata.getStatistics()).thenReturn(statistics);
+    Mockito.doReturn(statistics).when(chunkMetadata).getStatistics();
     Mockito.when(statistics.getLastValue())
         .thenThrow(new AssertionError("BLOB last value should not be read"));
 
@@ -73,7 +73,7 @@ public class TableDeviceLastValueCollectorTest {
     Mockito.when(deviceID.ramBytesUsed()).thenReturn(0L);
     Mockito.when(timeseriesMetadata.getTsDataType()).thenReturn(TSDataType.BLOB);
     Mockito.when(timeseriesMetadata.getMeasurementId()).thenReturn("s1");
-    Mockito.when(timeseriesMetadata.getStatistics()).thenReturn(statistics);
+    Mockito.doReturn(statistics).when(timeseriesMetadata).getStatistics();
     Mockito.when(statistics.getEndTime()).thenReturn(1L);
     Mockito.when(statistics.getLastValue())
         .thenThrow(new AssertionError("BLOB last value should not be read"));
