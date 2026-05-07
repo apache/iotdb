@@ -507,7 +507,8 @@ public class CommonConfig {
           AuditEventType.DN_SHUTDOWN,
           AuditEventType.DESTROY_KEY,
           AuditEventType.AUDIT_STORAGE_FULL,
-          AuditEventType.GENERATE_KEY);
+          AuditEventType.GENERATE_KEY,
+          AuditEventType.LOGIN_REJECT_IP);
 
   /** The level of privilege required to record audit logs * */
   private PrivilegeLevel auditableOperationLevel = PrivilegeLevel.GLOBAL;
