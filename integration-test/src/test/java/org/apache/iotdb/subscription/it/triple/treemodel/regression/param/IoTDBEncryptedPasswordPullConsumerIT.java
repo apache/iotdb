@@ -26,7 +26,6 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.subscription.consumer.tree.SubscriptionTreePullConsumer;
 import org.apache.iotdb.subscription.it.triple.treemodel.regression.AbstractSubscriptionTreeRegressionIT;
-
 import org.apache.thrift.TException;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
@@ -44,7 +43,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
@@ -116,7 +114,7 @@ public class IoTDBEncryptedPasswordPullConsumerIT extends AbstractSubscriptionTr
           IOException,
           StatementExecutionException,
           InterruptedException {
-    consumer = createConsumer("encrypted-password-group", ENCRYPTED_PASSWORD);
+    consumer = createConsumer("encrypted_password_group", ENCRYPTED_PASSWORD);
 
     consumer.open();
     consumer.subscribe(TOPIC_NAME);
@@ -133,7 +131,7 @@ public class IoTDBEncryptedPasswordPullConsumerIT extends AbstractSubscriptionTr
   @Test
   public void testSubscribeFailsWithWrongEncryptedPassword()
       throws IoTDBConnectionException, StatementExecutionException {
-    consumer = createConsumer("wrong-encrypted-password-group", WRONG_ENCRYPTED_PASSWORD);
+    consumer = createConsumer("wrong_encrypted_password_group", WRONG_ENCRYPTED_PASSWORD);
 
     try {
       consumer.open();
