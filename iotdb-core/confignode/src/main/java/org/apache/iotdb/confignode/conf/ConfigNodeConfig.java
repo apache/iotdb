@@ -204,6 +204,9 @@ public class ConfigNodeConfig {
   /** Acceptable pause duration for Phi accrual failure detector */
   private long failureDetectorPhiAcceptablePauseInMs = 10000;
 
+  /** Whether to enable topology probing between DataNodes. Supports hot-reload. */
+  private volatile boolean enableTopologyProbing = true;
+
   /** Base interval in ms for topology probing. */
   private long topologyProbingBaseIntervalInMs = 5000;
 
@@ -1293,6 +1296,14 @@ public class ConfigNodeConfig {
 
   public void setFailureDetectorPhiAcceptablePauseInMs(long failureDetectorPhiAcceptablePauseInMs) {
     this.failureDetectorPhiAcceptablePauseInMs = failureDetectorPhiAcceptablePauseInMs;
+  }
+
+  public boolean isEnableTopologyProbing() {
+    return enableTopologyProbing;
+  }
+
+  public void setEnableTopologyProbing(boolean enableTopologyProbing) {
+    this.enableTopologyProbing = enableTopologyProbing;
   }
 
   public long getTopologyProbingBaseIntervalInMs() {

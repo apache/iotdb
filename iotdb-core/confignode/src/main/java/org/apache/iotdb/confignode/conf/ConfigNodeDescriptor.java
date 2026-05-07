@@ -322,6 +322,11 @@ public class ConfigNodeDescriptor {
                 "failure_detector_phi_acceptable_pause_in_ms",
                 String.valueOf(conf.getFailureDetectorPhiAcceptablePauseInMs()))));
 
+    conf.setEnableTopologyProbing(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_topology_probing", String.valueOf(conf.isEnableTopologyProbing()))));
+
     conf.setTopologyProbingBaseIntervalInMs(
         Long.parseLong(
             properties.getProperty(
@@ -785,6 +790,8 @@ public class ConfigNodeDescriptor {
     ConfigurationFileUtils.updateAppliedProperties(properties, true);
     Optional.ofNullable(properties.getProperty(IoTDBConstant.CLUSTER_NAME))
         .ifPresent(conf::setClusterName);
+    Optional.ofNullable(properties.getProperty("enable_topology_probing"))
+        .ifPresent(v -> conf.setEnableTopologyProbing(Boolean.parseBoolean(v)));
   }
 
   public static ConfigNodeDescriptor getInstance() {

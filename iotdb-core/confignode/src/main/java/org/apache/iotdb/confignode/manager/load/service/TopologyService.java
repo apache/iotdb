@@ -148,7 +148,9 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
   @Override
   public void run() {
     while (shouldRun.get() && mayWait()) {
-      topologyProbing();
+      if (CONF.isEnableTopologyProbing()) {
+        topologyProbing();
+      }
     }
   }
 

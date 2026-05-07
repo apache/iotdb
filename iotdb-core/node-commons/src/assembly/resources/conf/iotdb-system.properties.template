@@ -732,12 +732,6 @@ failure_detector_phi_acceptable_pause_in_ms=10000
 # Datatype: double
 # topology_probing_timeout_ratio=0.5
 
-# Selector thread (TAsyncClientManager) count for heartbeat async client pools.
-# 0 means auto: max(1, availableProcessors / 4)
-# effectiveMode: restart
-# Datatype: int
-# heartbeat_selector_num_of_client_manager=0
-
 # Disk remaining threshold at which DataNode is set to ReadOnly status
 # effectiveMode: restart
 # Datatype: double(percentage)

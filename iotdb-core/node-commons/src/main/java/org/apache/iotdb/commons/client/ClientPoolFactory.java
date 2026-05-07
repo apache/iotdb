@@ -182,8 +182,7 @@ public class ClientPoolFactory {
                   new ThriftClientProperty.Builder()
                       .setConnectionTimeoutMs(conf.getCnConnectionTimeoutInMS())
                       .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnabled())
-                      .setSelectorNumOfAsyncClientManager(
-                          conf.getHeartbeatSelectorNumOfClientManager())
+                      .setSelectorNumOfAsyncClientManager(conf.getSelectorNumOfClientManager())
                       .setPrintLogWhenEncounterException(false)
                       .build(),
                   ThreadName.ASYNC_CONFIGNODE_HEARTBEAT_CLIENT_POOL.getName()),
@@ -208,8 +207,7 @@ public class ClientPoolFactory {
                   new ThriftClientProperty.Builder()
                       .setConnectionTimeoutMs(conf.getCnConnectionTimeoutInMS())
                       .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnabled())
-                      .setSelectorNumOfAsyncClientManager(
-                          conf.getHeartbeatSelectorNumOfClientManager())
+                      .setSelectorNumOfAsyncClientManager(conf.getSelectorNumOfClientManager())
                       .setPrintLogWhenEncounterException(false)
                       .build(),
                   ThreadName.ASYNC_DATANODE_HEARTBEAT_CLIENT_POOL.getName()),

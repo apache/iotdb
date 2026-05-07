@@ -178,12 +178,6 @@ public class CommonDescriptor {
                     String.valueOf(config.getSelectorNumOfClientManager()))
                 .trim()));
 
-    config.setHeartbeatSelectorNumOfClientManager(
-        Integer.parseInt(
-            properties.getProperty(
-                "heartbeat_selector_num_of_client_manager",
-                String.valueOf(config.getHeartbeatSelectorNumOfClientManager()))));
-
     config.setMaxClientNumForEachNode(
         Integer.parseInt(
             properties
