@@ -231,10 +231,10 @@ public class Coordinator {
       ASYNC_INTERNAL_SERVICE_CLIENT_MANAGER =
           new IClientManager.Factory<TEndPoint, AsyncDataNodeInternalServiceClient>()
               .createClientManager(
-                  new ClientPoolFactory.AsyncDataNodeInternalServiceClientPoolFactory());
+                  new ClientPoolFactory.AsyncDataNodeInternalServiceClientPoolFactory(
+                      CONFIG.getSelectorNumOfClientManager()));
 
   private final ExecutorService executor;
-  private final ExecutorService writeOperationExecutor;
   private final ScheduledExecutorService scheduledExecutor;
   private final ExecutorService dispatchExecutor;
 
@@ -291,7 +291,6 @@ public class Coordinator {
     this.queryExecutionMap = new ConcurrentHashMap<>();
     this.typeManager = new InternalTypeManager();
     this.executor = getQueryExecutor();
-    this.writeOperationExecutor = getWriteExecutor();
     this.scheduledExecutor = getScheduledExecutor();
     int dispatchThreadNum = Math.max(20, Runtime.getRuntime().availableProcessors() * 2);
     this.dispatchExecutor =
@@ -463,7 +462,6 @@ public class Coordinator {
         new TreeModelPlanner(
             statement,
             executor,
-            writeOperationExecutor,
             scheduledExecutor,
             partitionFetcher,
             schemaFetcher,
@@ -867,12 +865,6 @@ public class Coordinator {
     int coordinatorReadExecutorSize = CONFIG.getCoordinatorReadExecutorSize();
     return IoTDBThreadPoolFactory.newFixedThreadPool(
         coordinatorReadExecutorSize, ThreadName.MPP_COORDINATOR_EXECUTOR_POOL.getName());
-  }
-
-  private ExecutorService getWriteExecutor() {
-    int coordinatorWriteExecutorSize = CONFIG.getCoordinatorWriteExecutorSize();
-    return IoTDBThreadPoolFactory.newFixedThreadPool(
-        coordinatorWriteExecutorSize, ThreadName.MPP_COORDINATOR_WRITE_EXECUTOR.getName());
   }
 
   private ScheduledExecutorService getScheduledExecutor() {
