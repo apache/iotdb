@@ -2260,6 +2260,19 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         }
 
         // 2. Send request to create the historical data synchronization pipeline
+        final Map<String, String> historySinkAttributes =
+            sinkPipeParameters.hasAnyAttributes(
+                    PipeSinkConstant.SINK_ENABLE_SEND_TSFILE_LIMIT,
+                    PipeSinkConstant.CONNECTOR_ENABLE_SEND_TSFILE_LIMIT)
+                ? createPipeStatement.getSinkAttributes()
+                : sinkPipeParameters
+                    .addOrReplaceEquivalentAttributesWithClone(
+                        new PipeParameters(
+                            Collections.singletonMap(
+                                PipeSinkConstant.SINK_ENABLE_SEND_TSFILE_LIMIT,
+                                Boolean.TRUE.toString())))
+                    .getAttribute();
+
         final TCreatePipeReq historyReq =
             new TCreatePipeReq()
                 // Append suffix to the pipeline name for historical data
@@ -2292,14 +2305,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                                     PipeSourceConstant.EXTRACTOR_EXCLUSION_DEFAULT_VALUE)))
                         .getAttribute())
                 .setProcessorAttributes(createPipeStatement.getProcessorAttributes())
-                .setConnectorAttributes(
-                    sinkPipeParameters
-                        .addOrReplaceEquivalentAttributesWithClone(
-                            new PipeParameters(
-                                Collections.singletonMap(
-                                    PipeSinkConstant.SINK_ENABLE_SEND_TSFILE_LIMIT,
-                                    Boolean.TRUE.toString())))
-                        .getAttribute());
+                .setConnectorAttributes(historySinkAttributes);
 
         final TSStatus historyTsStatus = configNodeClient.createPipe(historyReq);
         // If creation fails, immediately return with exception

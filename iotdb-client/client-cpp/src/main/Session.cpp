@@ -986,7 +986,7 @@ void Session::insertRecord(const string& deviceId, int64_t time, const vector<st
       } catch (RedirectException& e) {
       }
     } else {
-      throw e;
+      throw;
     }
   }
 }
@@ -1014,7 +1014,7 @@ void Session::insertRecord(const string& deviceId, int64_t time, const vector<st
       } catch (RedirectException& e) {
       }
     } else {
-      throw e;
+      throw;
     }
   }
 }
@@ -1040,7 +1040,7 @@ void Session::insertAlignedRecord(const string& deviceId, int64_t time,
       } catch (RedirectException& e) {
       }
     } else {
-      throw e;
+      throw;
     }
   }
 }
@@ -1069,7 +1069,7 @@ void Session::insertAlignedRecord(const string& deviceId, int64_t time,
       } catch (RedirectException& e) {
       }
     } else {
-      throw e;
+      throw;
     }
   }
 }
@@ -1237,7 +1237,7 @@ void Session::insertRecordsOfOneDevice(const string& deviceId, vector<int64_t>& 
       } catch (RedirectException& e) {
       }
     } else {
-      throw e;
+      throw;
     }
   }
 }
@@ -1291,7 +1291,7 @@ void Session::insertAlignedRecordsOfOneDevice(const string& deviceId, vector<int
       } catch (RedirectException& e) {
       }
     } else {
-      throw e;
+      throw;
     }
   }
 }
@@ -1343,7 +1343,7 @@ void Session::insertTablet(TSInsertTabletReq request) {
       } catch (RedirectException& e) {
       }
     } else {
-      throw e;
+      throw;
     }
   }
 }
@@ -2019,7 +2019,7 @@ std::unique_ptr<SessionDataSet> Session::executeQueryStatementMayRedirect(const 
     }
   } catch (exception& e) {
     log_error("Exception while executing query statement: %s", e.what());
-    throw e;
+    throw;
   }
 }
 
