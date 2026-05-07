@@ -224,7 +224,8 @@ public class TElasticFramedTransport extends TTransport {
             + "requests%s to the Non-SSL Thrift-RPC port, please confirm that you are using "
             + "the right configuration"),
     NEGATIVE_FRAME_SIZE("Read a negative frame size (%d)%s!"),
-    FRAME_SIZE_EXCEEDED("Frame size (%d) larger than protect max size (%d)%s!");
+    FRAME_SIZE_EXCEEDED("Frame size (%d) larger than protect max size (%d)%s!"),
+    STRING_LENGTH_EXCEEDED("String length (%d) larger than protect max size (%d)%s!");
 
     private final String messageFormat;
 
@@ -232,9 +233,9 @@ public class TElasticFramedTransport extends TTransport {
       this.messageFormat = messageFormat;
     }
 
-    void throwException(int size, String remoteInfo, int maxSize) throws TTransportException {
+    void throwException(long size, String remoteInfo, int maxSize) throws TTransportException {
       String message =
-          (this == FRAME_SIZE_EXCEEDED)
+          (this == FRAME_SIZE_EXCEEDED || this == STRING_LENGTH_EXCEEDED)
               ? String.format(messageFormat, size, maxSize, remoteInfo)
               : String.format(messageFormat, size, remoteInfo);
       throw new TTransportException(TTransportException.CORRUPTED_DATA, message);
@@ -277,8 +278,15 @@ public class TElasticFramedTransport extends TTransport {
 
   @Override
   public void checkReadBytesAvailable(long numBytes) throws TTransportException {
-    // do nothing now.
-    // here we can do some checkm, e.g., see whether the memory is enough.
+    if (numBytes >= thriftMaxFrameSize) {
+      SocketAddress remoteAddress = null;
+      if (underlying instanceof TSocket) {
+        remoteAddress = ((TSocket) underlying).getSocket().getRemoteSocketAddress();
+      }
+      String remoteInfo = (remoteAddress == null) ? "" : " from " + remoteAddress;
+      close();
+      FrameError.STRING_LENGTH_EXCEEDED.throwException(numBytes, remoteInfo, thriftMaxFrameSize);
+    }
   }
 
   @Override
