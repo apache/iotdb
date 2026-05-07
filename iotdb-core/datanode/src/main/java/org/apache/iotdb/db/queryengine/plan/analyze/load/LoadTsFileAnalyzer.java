@@ -81,11 +81,13 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.DATABASE_NOT_SPECIFIED;
 import static org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileCostMetricsSet.ANALYSIS;
@@ -594,6 +596,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       final TsFileResource tsFileResource)
       throws IOException, LoadAnalyzeException {
     long writePointCount = 0;
+    final Set<List<Object>> devicesHandledByTimeseriesMetadataIterator = new HashSet<>();
 
     while (timeseriesMetadataIterator.hasNext()) {
       final Map<IDeviceID, List<TimeseriesMetadata>> device2TimeseriesMetadata =
@@ -608,6 +611,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       getOrCreateTableSchemaCache().setCurrentTimeIndex(tsFileResource.getTimeIndex());
 
       for (final IDeviceID deviceId : device2TimeseriesMetadata.keySet()) {
+        devicesHandledByTimeseriesMetadataIterator.add(getDeviceKey(deviceId));
         if (!getOrCreateTableSchemaCache().isDeviceDeletedByMods(deviceId)) {
           getOrCreateTableSchemaCache().autoCreateAndVerify(deviceId);
         }
@@ -615,24 +619,14 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
       writePointCount += getWritePointCount(device2TimeseriesMetadata);
     }
-
-    if (!tsFileResource.getDevices().isEmpty()) {
-      return writePointCount;
-    }
-
-    if (tsFileResource.getTimeIndex().getTimeIndexType() == ITimeIndex.FILE_TIME_INDEX_TYPE) {
-      tsFileResource.setTimeIndex(
-          IoTDBDescriptor.getInstance().getConfig().getTimeIndexLevel().getTimeIndex());
-    }
-
-    Map<IDeviceID, Map<String, TimeValuePair>> deviceLastValues =
-        IoTDBDescriptor.getInstance().getConfig().isCacheLastValuesForLoad()
-            ? new HashMap<>()
-            : null;
+    Map<IDeviceID, Map<String, TimeValuePair>> deviceLastValues = null;
     long lastValuesMemCost = 0;
+    boolean hasFallbackProcessedDevice = false;
+    final boolean isCacheLastValuesForLoad =
+        IoTDBDescriptor.getInstance().getConfig().isCacheLastValuesForLoad();
     final long lastValuesMemoryBudget =
         IoTDBDescriptor.getInstance().getConfig().getCacheLastValuesMemoryBudgetInByte();
-    Map<IDeviceID, List<TimeseriesMetadata>> device2TimeseriesMetadata = null;
+    Map<IDeviceID, List<TimeseriesMetadata>> allTimeseriesMetadataByDevice = null;
 
     final IMetadataQuerier metadataQuerier = new MetadataQuerierByFileImpl(reader);
     final List<String> tableNames =
@@ -649,6 +643,26 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
           metadataQuerier.deviceIterator(tableRoot, null);
       while (deviceIterator.hasNext()) {
         final IDeviceID deviceId = deviceIterator.next().getLeft();
+        if (devicesHandledByTimeseriesMetadataIterator.contains(getDeviceKey(deviceId))) {
+          continue;
+        }
+
+        if (!hasFallbackProcessedDevice) {
+          if (tsFileResource.getTimeIndex().getTimeIndexType() == ITimeIndex.FILE_TIME_INDEX_TYPE) {
+            tsFileResource.setTimeIndex(
+                IoTDBDescriptor.getInstance().getConfig().getTimeIndexLevel().getTimeIndex());
+          }
+          if (isCacheLastValuesForLoad) {
+            if (devicesHandledByTimeseriesMetadataIterator.isEmpty()) {
+              deviceLastValues = new HashMap<>();
+            } else if (Objects.nonNull(tsFileResource.getLastValues())) {
+              deviceLastValues = restoreTableDeviceLastValues(tsFileResource.getLastValues());
+              lastValuesMemCost = calculateTableDeviceLastValuesMemoryCost(deviceLastValues);
+            }
+          }
+          hasFallbackProcessedDevice = true;
+        }
+
         boolean hasChunk = false;
 
         for (final AbstractAlignedChunkMetadata alignedChunkMetadata :
@@ -677,12 +691,12 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
         }
 
         if (!hasChunk) {
-          if (Objects.isNull(device2TimeseriesMetadata)) {
-            device2TimeseriesMetadata = reader.getAllTimeseriesMetadata(true);
+          if (Objects.isNull(allTimeseriesMetadataByDevice)) {
+            allTimeseriesMetadataByDevice = reader.getAllTimeseriesMetadata(true);
           }
 
           final List<TimeseriesMetadata> timeseriesMetadataList =
-              getTimeseriesMetadata(device2TimeseriesMetadata, deviceId);
+              getTimeseriesMetadata(allTimeseriesMetadataByDevice, deviceId);
           if (Objects.nonNull(timeseriesMetadataList)) {
             for (final TimeseriesMetadata timeseriesMetadata : timeseriesMetadataList) {
               if (Objects.isNull(timeseriesMetadata)
@@ -724,7 +738,9 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       }
     }
 
-    tsFileResource.setLastValues(convertTableDeviceLastValues(deviceLastValues));
+    if (hasFallbackProcessedDevice) {
+      tsFileResource.setLastValues(convertTableDeviceLastValues(deviceLastValues));
+    }
     return writePointCount;
   }
 
@@ -863,6 +879,45 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       }
     }
     return null;
+  }
+
+  private static List<Object> getDeviceKey(final IDeviceID deviceId) {
+    return Arrays.asList(deviceId.getSegments());
+  }
+
+  private static Map<IDeviceID, Map<String, TimeValuePair>> restoreTableDeviceLastValues(
+      final Map<IDeviceID, List<Pair<String, TimeValuePair>>> deviceLastValues) {
+    final Map<IDeviceID, Map<String, TimeValuePair>> restoredDeviceLastValues =
+        new HashMap<>(deviceLastValues.size());
+    for (final Map.Entry<IDeviceID, List<Pair<String, TimeValuePair>>> entry :
+        deviceLastValues.entrySet()) {
+      final Map<String, TimeValuePair> restoredLastValues = new HashMap<>(entry.getValue().size());
+      for (final Pair<String, TimeValuePair> lastValueEntry : entry.getValue()) {
+        restoredLastValues.put(lastValueEntry.getLeft(), lastValueEntry.getRight());
+      }
+      restoredDeviceLastValues.put(entry.getKey(), restoredLastValues);
+    }
+    return restoredDeviceLastValues;
+  }
+
+  private static long calculateTableDeviceLastValuesMemoryCost(
+      final Map<IDeviceID, Map<String, TimeValuePair>> deviceLastValues) {
+    long lastValuesMemCost = 0;
+    for (final Map.Entry<IDeviceID, Map<String, TimeValuePair>> entry :
+        deviceLastValues.entrySet()) {
+      lastValuesMemCost += entry.getKey().ramBytesUsed();
+      lastValuesMemCost += RamUsageEstimator.shallowSizeOf(entry.getValue());
+      lastValuesMemCost += RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY;
+      for (final Map.Entry<String, TimeValuePair> lastValueEntry : entry.getValue().entrySet()) {
+        lastValuesMemCost += RamUsageEstimator.sizeOf(lastValueEntry.getKey());
+        lastValuesMemCost +=
+            Objects.nonNull(lastValueEntry.getValue())
+                ? lastValueEntry.getValue().getSize()
+                : RamUsageEstimator.NUM_BYTES_OBJECT_REF;
+        lastValuesMemCost += RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY;
+      }
+    }
+    return lastValuesMemCost;
   }
 
   private static Map<IDeviceID, List<Pair<String, TimeValuePair>>> convertTableDeviceLastValues(
