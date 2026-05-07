@@ -163,7 +163,8 @@ public abstract class AbstractSameTypeNumericOperator implements IntermediateRes
       case TEXT:
       case BLOB:
       default:
-        throw new IOException(String.format("Unsupported output datatype %s", outPutDataType));
+        throw new IOException(
+            String.format(DataNodePipeMessages.UNSUPPORTED_OUTPUT_DATATYPE_FMT, outPutDataType));
     }
   }
 
@@ -190,7 +191,8 @@ public abstract class AbstractSameTypeNumericOperator implements IntermediateRes
       case DATE:
       case TIMESTAMP:
       default:
-        throw new IOException(String.format("Unsupported output datatype %s", outPutDataType));
+        throw new IOException(
+            String.format(DataNodePipeMessages.UNSUPPORTED_OUTPUT_DATATYPE_FMT, outPutDataType));
     }
   }
 }

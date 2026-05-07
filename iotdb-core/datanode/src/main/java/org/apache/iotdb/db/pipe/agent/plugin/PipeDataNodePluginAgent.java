@@ -253,10 +253,12 @@ public class PipeDataNodePluginAgent {
     final PipePluginMeta newPipePluginMeta = pipePluginMetaKeeper.getPipePluginMeta(newPluginName);
 
     if (oldPipePluginMeta == null) {
-      throw new PipeException(String.format("plugin %s is not registered.", oldPluginName));
+      throw new PipeException(
+          String.format(DataNodePipeMessages.PLUGIN_NOT_REGISTERED_FMT, oldPluginName));
     }
     if (newPipePluginMeta == null) {
-      throw new PipeException(String.format("plugin %s is not registered.", newPluginName));
+      throw new PipeException(
+          String.format(DataNodePipeMessages.PLUGIN_NOT_REGISTERED_FMT, newPluginName));
     }
 
     return Objects.equals(oldPipePluginMeta.getClassName(), (newPipePluginMeta.getClassName()));

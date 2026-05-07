@@ -292,4 +292,8 @@ public final class IoTConsensusMessages {
       "为 batch {}-{} 释放 {} 字节，当前总使用量 {}";
   public static final String FREE_MEMORY =
       "{} 释放 {} 字节，总内存大小：{} 字节。";
+  public static final String INTERRUPTED_AFTER_POLLING_AND_SLEEPING =
+      "轮询和等待后被中断";
+  public static final String INTERRUPTED_AFTER_GETTING_A_BATCH =
+      "获取批次后被中断";
 }

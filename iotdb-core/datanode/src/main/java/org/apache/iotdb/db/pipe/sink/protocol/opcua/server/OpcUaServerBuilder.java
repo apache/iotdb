@@ -137,7 +137,7 @@ public class OpcUaServerBuilder implements Closeable {
   public OpcUaServer build() throws Exception {
     Files.createDirectories(securityDir);
     if (!Files.exists(securityDir)) {
-      throw new PipeException("Unable to create security dir: " + securityDir);
+      throw new PipeException(DataNodePipeMessages.UNABLE_CREATE_SECURITY_DIR + securityDir);
     }
 
     final File pkiDir = securityDir.resolve("pki").toFile();

@@ -187,7 +187,7 @@ public class IoTDBStatement implements Statement {
 
   @Override
   public <T> T unwrap(Class<T> iface) throws SQLException {
-    throw new SQLException("Cannot unwrap to " + iface);
+    throw new SQLException(JdbcMessages.CANNOT_UNWRAP_TO + iface);
   }
 
   @Override

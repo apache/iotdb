@@ -254,6 +254,7 @@ public final class SessionMessages {
       "dropSchemaTemplate 发生意外错误";
   public static final String UNEXPECTED_ERROR_IN_CREATE_TIMESERIES_USING_SCHEMA_TEMPLATE =
       "createTimeseriesUsingSchemaTemplate 发生意外错误";
+  public static final String REDIRECT_TWICE_SUFFIX = " 重定向两次，请重试。";
 
   private SessionMessages() {}
 }

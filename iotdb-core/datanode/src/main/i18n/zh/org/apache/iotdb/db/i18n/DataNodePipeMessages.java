@@ -1299,5 +1299,25 @@ public final class DataNodePipeMessages {
   public static final String FAILED_TO_UNBIND_FROM_PIPE_TSFILE_TO =
       "解绑 from pipe tsfile to tablets metrics, pipe map is not empty, pipe: {} 失败";
 
+  // ---------------------------------------------------------------------------
+  // pipe – AbstractSameTypeNumericOperator
+  // ---------------------------------------------------------------------------
+  public static final String UNSUPPORTED_OUTPUT_DATATYPE_FMT = "不支持的输出数据类型 %s";
+
+  // ---------------------------------------------------------------------------
+  // pipe – IoTDBDataRegionSource
+  // ---------------------------------------------------------------------------
+  public static final String ILLEGAL_TREE_PATTERN_FMT = "Pattern \"%s\" 非法。";
+
+  // ---------------------------------------------------------------------------
+  // pipe – OpcUaServerBuilder
+  // ---------------------------------------------------------------------------
+  public static final String UNABLE_CREATE_SECURITY_DIR = "无法创建安全目录：";
+
+  // ---------------------------------------------------------------------------
+  // pipe – PipeDataNodePluginAgent
+  // ---------------------------------------------------------------------------
+  public static final String PLUGIN_NOT_REGISTERED_FMT = "插件 %s 未注册。";
+
   private DataNodePipeMessages() {}
 }

@@ -1024,7 +1024,7 @@ public class Session implements ISession {
           return getDefaultSessionConnection().executeQueryStatement(sql, queryTimeoutInMs);
         } catch (RedirectException redirectException) {
           logger.error(SessionMessages.REDIRECT_TWICE, sql, redirectException);
-          throw new StatementExecutionException(sql + " redirect twice, please try again.");
+          throw new StatementExecutionException(sql + SessionMessages.REDIRECT_TWICE_SUFFIX);
         }
       } else {
         throw new StatementExecutionException(MSG_DONOT_ENABLE_REDIRECT);

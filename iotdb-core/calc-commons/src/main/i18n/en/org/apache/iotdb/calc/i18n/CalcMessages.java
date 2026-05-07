@@ -57,6 +57,7 @@ public final class CalcMessages {
       "Illegal state in visitLogicalExpression";
   public static final String INDEX_OUT_OF_PARTITION_BOUNDS = "Index out of Partition's bounds!";
   public static final String INITIAL_CAPACITY_IS_NEGATIVE = "Initial capacity (";
+  public static final String CAPACITY_EXCEEDS = ") exceeds ";
   public static final String INPUT_ROW_UTILS_SHOULD_NOT_BE_INSTANTIATED =
       "InputRowUtils should not be instantiated.";
   public static final String INVALID_AGGREGATION_FUNCTION = "Invalid Aggregation function: ";

@@ -378,7 +378,7 @@ public class ColumnTransformerBuilder
         try {
           type = context.metadata.getType(toTypeSignature(node.getType()));
         } catch (TypeNotFoundException e) {
-          throw new SemanticException(String.format("Unknown type: %s", node.getType()));
+          throw new SemanticException(CalcMessages.UNKNOWN_TYPE + node.getType());
         }
         context.cache.put(
             node,

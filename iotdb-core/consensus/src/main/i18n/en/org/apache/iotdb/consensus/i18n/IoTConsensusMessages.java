@@ -294,4 +294,8 @@ public final class IoTConsensusMessages {
       "Freed {} bytes for batch {}-{}, current total usage {}";
   public static final String FREE_MEMORY =
       "{} free {} bytes, total memory size: {} bytes.";
+  public static final String INTERRUPTED_AFTER_POLLING_AND_SLEEPING =
+      "Interrupted after polling and sleeping";
+  public static final String INTERRUPTED_AFTER_GETTING_A_BATCH =
+      "Interrupted after getting a batch";
 }

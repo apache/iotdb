@@ -162,4 +162,5 @@ public final class ConsensusMessages {
   public static final String KEYSTORE_FILE_NOT_FOUND = "keystore 或 truststore 文件未找到";
   public static final String FAILED_TO_READ_KEYSTORE =
       "读取 keystore 或 truststore 失败。";
+  public static final String NOT_IMPLEMENTED_YET = "尚未实现";
 }

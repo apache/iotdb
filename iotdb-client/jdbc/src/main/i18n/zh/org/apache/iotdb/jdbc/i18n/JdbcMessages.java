@@ -179,6 +179,14 @@ public final class JdbcMessages {
   public static final String NOT_SUPPORT_SET_SAVEPOINT = "不支持 setSavepoint";
   public static final String USE_DATABASE_ERROR = "使用数据库错误：{}";
   public static final String RECONNECT_INTERRUPTED = "重新连接被中断。";
+  public static final String CANNOT_UNWRAP_TO = "无法解包为 ";
+  public static final String PARAMETER_IS_UNSET_PREFIX = "参数 #";
+  public static final String PARAMETER_IS_UNSET_SUFFIX = " 未设置";
+  public static final String FAILED_TO_PREPARE_STATEMENT = "预编译语句失败：";
+  public static final String FAILED_TO_EXECUTE_PREPARED_STATEMENT =
+      "执行预编译语句失败：";
+  public static final String FAILED_TO_GET_TIME_PRECISION = "获取时间精度失败：";
+  public static final String FAILED_TO_READ_BINARY_STREAM = "读取二进制流失败：";
 
   private JdbcMessages() {}
 }

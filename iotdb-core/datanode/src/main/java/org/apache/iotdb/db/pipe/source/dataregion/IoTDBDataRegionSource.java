@@ -311,7 +311,8 @@ public class IoTDBDataRegionSource extends IoTDBSource {
 
   private void validatePattern(final TreePattern treePattern) {
     if (!treePattern.isLegal()) {
-      throw new IllegalArgumentException(String.format("Pattern \"%s\" is illegal.", treePattern));
+      throw new IllegalArgumentException(
+          String.format(DataNodePipeMessages.ILLEGAL_TREE_PATTERN_FMT, treePattern));
     }
 
     if (shouldExtractDeletion

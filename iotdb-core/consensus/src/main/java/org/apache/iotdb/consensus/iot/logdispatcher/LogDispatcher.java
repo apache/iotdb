@@ -368,12 +368,13 @@ public class LogDispatcher {
             }
             // Immediately check for interrupts after poll and sleep
             if (Thread.interrupted() || stopped) {
-              throw new InterruptedException("Interrupted after polling and sleeping");
+              throw new InterruptedException(
+                  IoTConsensusMessages.INTERRUPTED_AFTER_POLLING_AND_SLEEPING);
             }
           }
           // Immediately check for interrupts after a time-consuming getBatch() operation
           if (Thread.interrupted() || stopped) {
-            throw new InterruptedException("Interrupted after getting a batch");
+            throw new InterruptedException(IoTConsensusMessages.INTERRUPTED_AFTER_GETTING_A_BATCH);
           }
           logDispatcherThreadMetrics.recordConstructBatchTime(System.nanoTime() - startTime);
           // we may block here if the synchronization pipeline is full

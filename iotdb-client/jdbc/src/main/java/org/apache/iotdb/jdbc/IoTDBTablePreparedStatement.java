@@ -115,7 +115,7 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
           parameterTypes[i] = Types.NULL;
         }
       } catch (TException | StatementExecutionException e) {
-        throw new SQLException("Failed to prepare statement: " + e.getMessage(), e);
+        throw new SQLException(JdbcMessages.FAILED_TO_PREPARE_STATEMENT + e.getMessage(), e);
       }
     } else {
       // For non-query statements, only keep text parameters for client-side substitution.
@@ -189,7 +189,10 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
       if (parameterTypes[i] == Types.NULL
           && parameterValues[i] == null
           && !parameters.containsKey(i + 1)) {
-        throw new SQLException("Parameter #" + (i + 1) + " is unset");
+        throw new SQLException(
+            JdbcMessages.PARAMETER_IS_UNSET_PREFIX
+                + (i + 1)
+                + JdbcMessages.PARAMETER_IS_UNSET_SUFFIX);
       }
     }
 
@@ -208,7 +211,7 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
       RpcUtils.verifySuccess(resp.getStatus());
       return resp;
     } catch (TException | StatementExecutionException e) {
-      throw new SQLException("Failed to execute prepared statement: " + e.getMessage(), e);
+      throw new SQLException(JdbcMessages.FAILED_TO_EXECUTE_PREPARED_STATEMENT + e.getMessage(), e);
     }
   }
 
@@ -434,7 +437,7 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
       setPreparedParameterValue(parameterIndex, time, Types.BIGINT);
       this.parameters.put(parameterIndex, Long.toString(time));
     } catch (TException e) {
-      throw new SQLException("Failed to get time precision: " + e.getMessage(), e);
+      throw new SQLException(JdbcMessages.FAILED_TO_GET_TIME_PRECISION + e.getMessage(), e);
     }
   }
 
@@ -558,7 +561,7 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
       byte[] bytes = ReadWriteIOUtils.readBytes(x, length);
       setBytes(parameterIndex, bytes);
     } catch (IOException e) {
-      throw new SQLException("Failed to read binary stream: " + e.getMessage(), e);
+      throw new SQLException(JdbcMessages.FAILED_TO_READ_BINARY_STREAM + e.getMessage(), e);
     }
   }
 
@@ -690,7 +693,8 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
     StringBuilder newSql = new StringBuilder(parts.get(0));
     for (int i = 1; i < parts.size(); i++) {
       if (!parameters.containsKey(i)) {
-        throw new SQLException("Parameter #" + i + " is unset");
+        throw new SQLException(
+            JdbcMessages.PARAMETER_IS_UNSET_PREFIX + i + JdbcMessages.PARAMETER_IS_UNSET_SUFFIX);
       }
       newSql.append(parameters.get(i));
       newSql.append(parts.get(i));

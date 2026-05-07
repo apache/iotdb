@@ -164,4 +164,5 @@ public final class ConsensusMessages {
   public static final String KEYSTORE_FILE_NOT_FOUND = "keystore or truststore file not found";
   public static final String FAILED_TO_READ_KEYSTORE =
       "Failed to read key store or trust store.";
+  public static final String NOT_IMPLEMENTED_YET = "not implemented yet";
 }

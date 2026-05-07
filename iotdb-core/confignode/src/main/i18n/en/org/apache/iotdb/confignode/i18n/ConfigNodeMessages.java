@@ -490,6 +490,7 @@ public final class ConfigNodeMessages {
   public static final String WRONG_NODE_TYPE = "Wrong node type";
   public static final String YOU_SHOULD_MANUALLY_DELETE_THE_PROCEDURE_WAL_DIR_BEFORE_CONFIGNODE =
       "You should manually delete the procedure wal dir before ConfigNode restart. {}";
+  public static final String NOT_SUPPORT = "not support";
 
   private ConfigNodeMessages() {}
 }

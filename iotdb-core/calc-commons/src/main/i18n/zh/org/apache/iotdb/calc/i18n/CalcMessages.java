@@ -55,6 +55,7 @@ public final class CalcMessages {
       "visitLogicalExpression 中状态非法";
   public static final String INDEX_OUT_OF_PARTITION_BOUNDS = "索引超出分区边界！";
   public static final String INITIAL_CAPACITY_IS_NEGATIVE = "初始容量 (";
+  public static final String CAPACITY_EXCEEDS = ") 超过 ";
   public static final String INPUT_ROW_UTILS_SHOULD_NOT_BE_INSTANTIATED =
       "InputRowUtils 不应被实例化。";
   public static final String INVALID_AGGREGATION_FUNCTION = "无效的聚合函数：";

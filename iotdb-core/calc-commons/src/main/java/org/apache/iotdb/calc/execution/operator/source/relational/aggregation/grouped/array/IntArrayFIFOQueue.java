@@ -38,7 +38,10 @@ public class IntArrayFIFOQueue implements Serializable {
   public IntArrayFIFOQueue(int capacity) {
     if (capacity > 2147483638) {
       throw new IllegalArgumentException(
-          CalcMessages.INITIAL_CAPACITY_IS_NEGATIVE + capacity + ") exceeds " + 2147483638);
+          CalcMessages.INITIAL_CAPACITY_IS_NEGATIVE
+              + capacity
+              + CalcMessages.CAPACITY_EXCEEDS
+              + 2147483638);
     } else if (capacity < 0) {
       throw new IllegalArgumentException(
           CalcMessages.INITIAL_CAPACITY_IS_NEGATIVE + capacity + CalcMessages.IS_NEGATIVE);

@@ -179,6 +179,14 @@ public final class JdbcMessages {
   public static final String NOT_SUPPORT_SET_SAVEPOINT = "Does not support setSavepoint";
   public static final String USE_DATABASE_ERROR = "Use database error: {}";
   public static final String RECONNECT_INTERRUPTED = "reconnect is interrupted.";
+  public static final String CANNOT_UNWRAP_TO = "Cannot unwrap to ";
+  public static final String PARAMETER_IS_UNSET_PREFIX = "Parameter #";
+  public static final String PARAMETER_IS_UNSET_SUFFIX = " is unset";
+  public static final String FAILED_TO_PREPARE_STATEMENT = "Failed to prepare statement: ";
+  public static final String FAILED_TO_EXECUTE_PREPARED_STATEMENT =
+      "Failed to execute prepared statement: ";
+  public static final String FAILED_TO_GET_TIME_PRECISION = "Failed to get time precision: ";
+  public static final String FAILED_TO_READ_BINARY_STREAM = "Failed to read binary stream: ";
 
   private JdbcMessages() {}
 }

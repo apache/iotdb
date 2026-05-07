@@ -1348,5 +1348,25 @@ public final class DataNodePipeMessages {
   public static final String FAILED_TO_UNBIND_FROM_PIPE_TSFILE_TO =
       "Failed to unbind from pipe tsfile to tablets metrics, pipe map is not empty, pipe: {}";
 
+  // ---------------------------------------------------------------------------
+  // pipe – AbstractSameTypeNumericOperator
+  // ---------------------------------------------------------------------------
+  public static final String UNSUPPORTED_OUTPUT_DATATYPE_FMT = "Unsupported output datatype %s";
+
+  // ---------------------------------------------------------------------------
+  // pipe – IoTDBDataRegionSource
+  // ---------------------------------------------------------------------------
+  public static final String ILLEGAL_TREE_PATTERN_FMT = "Pattern \"%s\" is illegal.";
+
+  // ---------------------------------------------------------------------------
+  // pipe – OpcUaServerBuilder
+  // ---------------------------------------------------------------------------
+  public static final String UNABLE_CREATE_SECURITY_DIR = "Unable to create security dir: ";
+
+  // ---------------------------------------------------------------------------
+  // pipe – PipeDataNodePluginAgent
+  // ---------------------------------------------------------------------------
+  public static final String PLUGIN_NOT_REGISTERED_FMT = "plugin %s is not registered.";
+
   private DataNodePipeMessages() {}
 }
