@@ -235,7 +235,7 @@ public class TElasticFramedTransport extends TTransport {
 
     void throwException(long size, String remoteInfo, int maxSize) throws TTransportException {
       String message =
-          (this == FRAME_SIZE_EXCEEDED)
+          (this == FRAME_SIZE_EXCEEDED || this == STRING_LENGTH_EXCEEDED)
               ? String.format(messageFormat, size, maxSize, remoteInfo)
               : String.format(messageFormat, size, remoteInfo);
       throw new TTransportException(TTransportException.CORRUPTED_DATA, message);
