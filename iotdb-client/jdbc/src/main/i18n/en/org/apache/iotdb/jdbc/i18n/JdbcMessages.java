@@ -39,7 +39,7 @@ public final class JdbcMessages {
   public static final String INVALID_STATISTICS_NAME = "Invalid statistics name!";
 
   // IoTDBStatement
-  public static final String CANNOT_UNWRAP_TO = "Cannot unwrap to %s";
+  public static final String CANNOT_UNWRAP_TO = "Cannot unwrap to ";
   public static final String CANCEL_STATEMENT_ERROR = "Error occurs when canceling statement.";
   public static final String CLOSE_STATEMENT_ERROR = "Error occurs when closing statement.";
   public static final String NOT_SUPPORT_CLOSE_ON_COMPLETION = "Not support closeOnCompletion";
@@ -66,18 +66,18 @@ public final class JdbcMessages {
       "Cannot %s after connection has been closed!";
 
   // IoTDBTablePreparedStatement
-  public static final String FAILED_TO_PREPARE_STATEMENT = "Failed to prepare statement: %s";
+  public static final String FAILED_TO_PREPARE_STATEMENT = "Failed to prepare statement: ";
   public static final String PARAMETER_UNSET = "Parameter #%d is unset";
   public static final String FAILED_TO_EXECUTE_PREPARED_STATEMENT =
-      "Failed to execute prepared statement: %s";
+      "Failed to execute prepared statement: ";
   public static final String FAILED_TO_DEALLOCATE_PREPARED_STATEMENT =
       "Failed to deallocate prepared statement: {}";
   public static final String ERROR_DEALLOCATING_PREPARED_STATEMENT =
       "Error deallocating prepared statement";
   public static final String FAILED_TO_GET_TIME_PRECISION =
-      "Failed to get time precision: %s";
+      "Failed to get time precision: ";
   public static final String FAILED_TO_READ_BINARY_STREAM =
-      "Failed to read binary stream: %s";
+      "Failed to read binary stream: ";
 
   // IoTDBPreparedStatement
   public static final String NO_TYPE_MATCHED = "No type was matched";
@@ -179,14 +179,8 @@ public final class JdbcMessages {
   public static final String NOT_SUPPORT_SET_SAVEPOINT = "Does not support setSavepoint";
   public static final String USE_DATABASE_ERROR = "Use database error: {}";
   public static final String RECONNECT_INTERRUPTED = "reconnect is interrupted.";
-  public static final String CANNOT_UNWRAP_TO = "Cannot unwrap to ";
   public static final String PARAMETER_IS_UNSET_PREFIX = "Parameter #";
   public static final String PARAMETER_IS_UNSET_SUFFIX = " is unset";
-  public static final String FAILED_TO_PREPARE_STATEMENT = "Failed to prepare statement: ";
-  public static final String FAILED_TO_EXECUTE_PREPARED_STATEMENT =
-      "Failed to execute prepared statement: ";
-  public static final String FAILED_TO_GET_TIME_PRECISION = "Failed to get time precision: ";
-  public static final String FAILED_TO_READ_BINARY_STREAM = "Failed to read binary stream: ";
 
   private JdbcMessages() {}
 }

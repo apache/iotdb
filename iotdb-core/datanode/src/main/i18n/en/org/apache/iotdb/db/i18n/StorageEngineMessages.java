@@ -378,6 +378,7 @@ public final class StorageEngineMessages {
   public static final String COPY_SOURCE_FILE_NOT_EXIST = "Copy source file {} doesn't exist";
   public static final String CANNOT_CREATE_DIRECTORY = "Cannot create directory ";
   public static final String CLEANING_UP_SNAPSHOT_DIR = "Cleaning up snapshot dir for {}";
+  public static final String FAILED_TO_CREATE_DIR = "Failed to create directory %s";
 
   // ======================== TsFile Resource ========================
 
