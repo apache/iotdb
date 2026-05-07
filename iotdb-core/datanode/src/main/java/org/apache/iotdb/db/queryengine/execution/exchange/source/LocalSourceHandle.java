@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.execution.exchange.source;
 
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeManager.SourceHandleListener;
 import org.apache.iotdb.db.queryengine.execution.exchange.SharedTsBlockQueue;
 import org.apache.iotdb.db.queryengine.metric.DataExchangeCostMetricSet;
@@ -117,7 +118,7 @@ public class LocalSourceHandle implements ISourceHandle {
       checkState();
 
       if (!queue.isBlocked().isDone()) {
-        throw new IllegalStateException("Source handle is blocked.");
+        throw new IllegalStateException(DataNodeQueryMessages.SOURCE_HANDLE_IS_BLOCKED);
       }
       TsBlock tsBlock;
       synchronized (queue) {

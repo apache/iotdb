@@ -32,6 +32,7 @@ import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncReques
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.load.cache.AbstractHeartbeatSample;
 import org.apache.iotdb.confignode.manager.load.cache.IFailureDetector;
@@ -121,7 +122,7 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
       future = this.topologyThread.submit(this);
     }
     shouldRun.set(true);
-    LOGGER.info("Topology Probing has started successfully");
+    LOGGER.info(ManagerMessages.TOPOLOGY_PROBING_HAS_STARTED_SUCCESSFULLY);
   }
 
   public synchronized void stopTopologyService() {
@@ -129,7 +130,7 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
     future.cancel(true);
     future = null;
     heartbeats.clear();
-    LOGGER.info("Topology Probing has stopped successfully");
+    LOGGER.info(ManagerMessages.TOPOLOGY_PROBING_HAS_STOPPED_SUCCESSFULLY);
   }
 
   /**
@@ -226,7 +227,7 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
 
       if (!entry.getValue().isEmpty()
           && !failureDetector.isAvailable(entry.getKey(), entry.getValue())) {
-        LOGGER.debug("Connection from DataNode {} to DataNode {} is broken", fromId, toId);
+        LOGGER.debug(ManagerMessages.CONNECTION_FROM_DATANODE_TO_DATANODE_IS_BROKEN, fromId, toId);
       } else {
         Optional.ofNullable(latestTopology.get(fromId)).ifPresent(s -> s.add(toId));
       }
@@ -266,7 +267,7 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
           continue;
         }
         if (!reachableTo.contains(from) && !reachableFrom.contains(to)) {
-          LOGGER.debug("[Topology] Asymmetric network partition from {} to {}", from, to);
+          LOGGER.debug(ManagerMessages.TOPOLOGY_ASYMMETRIC_NETWORK_PARTITION_FROM_TO, from, to);
         }
       }
     }

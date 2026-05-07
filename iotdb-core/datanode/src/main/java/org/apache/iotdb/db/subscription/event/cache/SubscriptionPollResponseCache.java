@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.subscription.event.cache;
 
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
@@ -77,7 +78,7 @@ public class SubscriptionPollResponseCache {
 
   public void invalidate(final CachedSubscriptionPollResponse response) {
     if (Objects.isNull(response)) {
-      LOGGER.warn("null response when invalidating, skip it");
+      LOGGER.warn(DataNodeMiscMessages.NULL_RESPONSE_INVALIDATING);
       return;
     }
     this.cache.invalidate(response);

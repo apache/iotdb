@@ -56,6 +56,7 @@ import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateResp;
 import org.apache.iotdb.service.rpc.thrift.TSSetSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSUnsetSchemaTemplateReq;
+import org.apache.iotdb.session.i18n.SessionMessages;
 import org.apache.iotdb.session.rpccompress.TabletEncoder;
 import org.apache.iotdb.session.template.MeasurementNode;
 import org.apache.iotdb.session.template.TemplateQueryType;
@@ -217,7 +218,7 @@ public class Session implements ISession {
       "All values are null and this submission is ignored,deviceId is [{}],times are [{}],measurements are [{}]";
   private static final String ALL_VALUES_ARE_NULL_MULTI_DEVICES =
       "All values are null and this submission is ignored,deviceIds are [{}],times are [{}],measurements are [{}]";
-  private static final String ALL_INSERT_DATA_IS_NULL = "All inserted data is null.";
+  private static final String ALL_INSERT_DATA_IS_NULL = SessionMessages.ALL_INSERT_DATA_IS_NULL;
 
   protected static final String TABLE = "table";
   protected static final String TREE = "tree";
@@ -431,7 +432,7 @@ public class Session implements ISession {
       boolean enableRedirection,
       Version version) {
     if (nodeUrls.isEmpty()) {
-      throw new IllegalArgumentException("nodeUrls shouldn't be empty.");
+      throw new IllegalArgumentException(SessionMessages.NODE_URLS_EMPTY);
     }
     nodeUrls = shuffleNodeUrls(nodeUrls);
     this.nodeUrls = nodeUrls;
@@ -448,7 +449,7 @@ public class Session implements ISession {
   public Session(AbstractSessionBuilder builder) {
     if (builder.nodeUrls != null) {
       if (builder.nodeUrls.isEmpty()) {
-        throw new IllegalArgumentException("nodeUrls shouldn't be empty.");
+        throw new IllegalArgumentException(SessionMessages.NODE_URLS_EMPTY);
       }
       builder.nodeUrls = shuffleNodeUrls(builder.nodeUrls);
       this.nodeUrls = builder.nodeUrls;
@@ -1022,7 +1023,7 @@ public class Session implements ISession {
         try {
           return getDefaultSessionConnection().executeQueryStatement(sql, queryTimeoutInMs);
         } catch (RedirectException redirectException) {
-          logger.error("{} redirect twice", sql, redirectException);
+          logger.error(SessionMessages.REDIRECT_TWICE, sql, redirectException);
           throw new StatementExecutionException(sql + " redirect twice, please try again.");
         }
       } else {
@@ -1072,7 +1073,7 @@ public class Session implements ISession {
           try {
             sessionConnection.executeNonQueryStatement(sql);
           } catch (Throwable t) {
-            logger.warn("failed to execute '{}' for {}", sql, entry.getKey());
+            logger.warn(SessionMessages.FAILED_TO_EXECUTE_FOR_ENDPOINT, sql, entry.getKey());
             iterator.remove();
           }
         }
@@ -1829,10 +1830,10 @@ public class Session implements ISession {
       }
     }
     if (valuesList.isEmpty()) {
-      logger.info("All values of the {} are null,null values are {}", deviceId, nullMap);
+      logger.info(SessionMessages.ALL_VALUES_NULL, deviceId, nullMap);
       return true;
     } else {
-      logger.info("Some values of {} are null,null values are {}", deviceId, nullMap);
+      logger.info(SessionMessages.SOME_VALUES_NULL, deviceId, nullMap);
     }
     return false;
   }
@@ -1876,10 +1877,10 @@ public class Session implements ISession {
       }
     }
     if (valuesList.isEmpty()) {
-      logger.info("All values of the {} are null,null values are {}", deviceId, nullMap);
+      logger.info(SessionMessages.ALL_VALUES_NULL, deviceId, nullMap);
       return true;
     } else {
-      logger.info("Some values of {} are null,null values are {}", deviceId, nullMap);
+      logger.info(SessionMessages.SOME_VALUES_NULL, deviceId, nullMap);
     }
     return false;
   }
@@ -2971,7 +2972,7 @@ public class Session implements ISession {
         completableFuture.join();
       } catch (CompletionException completionException) {
         Throwable cause = completionException.getCause();
-        logger.error("Meet error when async insert!", cause);
+        logger.error(SessionMessages.MEET_ERROR_WHEN_ASYNC_INSERT, cause);
         if (cause instanceof IoTDBConnectionException) {
           throw (IoTDBConnectionException) cause;
         } else {
@@ -3045,7 +3046,7 @@ public class Session implements ISession {
 
     for (IMeasurementSchema measurementSchema : tablet.getSchemas()) {
       if (measurementSchema.getMeasurementName() == null) {
-        throw new IllegalArgumentException("measurement should be non null value");
+        throw new IllegalArgumentException(SessionMessages.MEASUREMENT_NON_NULL);
       }
       request.addToMeasurements(measurementSchema.getMeasurementName());
       request.addToTypes(measurementSchema.getType().ordinal());
@@ -3068,7 +3069,7 @@ public class Session implements ISession {
               .serialize());
       for (IMeasurementSchema measurementSchema : tablet.getSchemas()) {
         if (measurementSchema.getMeasurementName() == null) {
-          throw new IllegalArgumentException("measurement should be non null value");
+          throw new IllegalArgumentException(SessionMessages.MEASUREMENT_NON_NULL);
         }
         encodingTypes.add(
             this.columnEncodersMap
@@ -3195,7 +3196,7 @@ public class Session implements ISession {
       List<Tablet> tablets, boolean sorted, boolean isAligned) throws BatchExecutionException {
     TSInsertTabletsReq request = new TSInsertTabletsReq();
     if (tablets.isEmpty()) {
-      throw new BatchExecutionException("No tablet is inserting!");
+      throw new BatchExecutionException(SessionMessages.NO_TABLET_INSERTING);
     }
     for (Tablet tablet : tablets) {
       updateTSInsertTabletsReq(request, tablet, sorted, isAligned);
@@ -3214,7 +3215,7 @@ public class Session implements ISession {
     request.setIsAligned(isAligned);
     for (IMeasurementSchema measurementSchema : tablet.getSchemas()) {
       if (measurementSchema.getMeasurementName() == null) {
-        throw new IllegalArgumentException("measurement should be non null value");
+        throw new IllegalArgumentException(SessionMessages.MEASUREMENT_NON_NULL);
       }
       measurements.add(measurementSchema.getMeasurementName());
       dataTypes.add(measurementSchema.getType().ordinal());
@@ -4228,7 +4229,7 @@ public class Session implements ISession {
         completableFuture.join();
       } catch (CompletionException completionException) {
         Throwable cause = completionException.getCause();
-        logger.error("Meet error when async insert!", cause);
+        logger.error(SessionMessages.MEET_ERROR_WHEN_ASYNC_INSERT, cause);
         if (cause instanceof IoTDBConnectionException) {
           throw (IoTDBConnectionException) cause;
         } else {
@@ -4295,7 +4296,7 @@ public class Session implements ISession {
 
   protected SessionConnection getDefaultSessionConnection() throws IoTDBConnectionException {
     if (defaultSessionConnection == null) {
-      throw new IoTDBConnectionException("Session is not open, please invoke Session.open() first");
+      throw new IoTDBConnectionException(SessionMessages.SESSION_NOT_OPEN);
     }
     return defaultSessionConnection;
   }

@@ -61,6 +61,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.QuerySpecifi
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SortItem;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.VariableDefinition;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.WindowFrame;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
@@ -697,7 +698,8 @@ public class QueryPlanner {
     if (frameOffset.get() instanceof LongLiteral) {
       long frameOffsetValue = ((LongLiteral) frameOffset.get()).getParsedValue();
       if (frameOffsetValue < 0) {
-        throw new SemanticException("Window frame offset value must not be negative or null");
+        throw new SemanticException(
+            DataNodeQueryMessages.WINDOW_FRAME_OFFSET_VALUE_MUST_NOT_BE_NEGATIVE);
       }
     }
 
@@ -723,7 +725,7 @@ public class QueryPlanner {
     if (isNumericType(type)) {
       return new Cast(new LongLiteral("0"), toSqlType(type));
     }
-    throw new IllegalArgumentException("unexpected type: " + type);
+    throw new IllegalArgumentException(DataNodeQueryMessages.UNEXPECTED_TYPE + type);
   }
 
   private static boolean hasExpressionsToUnfold(List<Analysis.SelectExpression> selectExpressions) {
@@ -788,7 +790,7 @@ public class QueryPlanner {
               .process(node.getFrom().orElse(null), null);
       return newPlanBuilder(relationPlan, analysis);
     } else {
-      throw new SemanticException("From clause must not be empty");
+      throw new SemanticException(DataNodeQueryMessages.FROM_CLAUSE_MUST_NOT_BE_EMPTY);
     }
   }
 
@@ -1091,7 +1093,8 @@ public class QueryPlanner {
     if (coercion == null) {
       return rewritten;
     } else {
-      throw new RuntimeException("Coercion result in analysis only can be empty");
+      throw new RuntimeException(
+          DataNodeQueryMessages.COERCION_RESULT_IN_ANALYSIS_ONLY_CAN_BE_EMPTY);
     }
   }
 
@@ -1302,7 +1305,8 @@ public class QueryPlanner {
                 subPlan.getRoot(),
                 valueFillAnalysis.getFilledValue()));
       default:
-        throw new IllegalArgumentException("Unknown fill method: " + fill.get().getFillMethod());
+        throw new IllegalArgumentException(
+            DataNodeQueryMessages.UNKNOWN_FILL_METHOD + fill.get().getFillMethod());
     }
   }
 

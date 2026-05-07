@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.manager.load.cache.node;
 
 import org.apache.iotdb.common.rpc.thrift.TLoadSample;
 import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.load.cache.AbstractHeartbeatSample;
 
 import org.slf4j.Logger;
@@ -86,7 +87,7 @@ public class DataNodeHeartbeatCache extends BaseNodeCache {
 
     if (forceUpdate) {
       LOGGER.debug(
-          "Force update NodeCache: status={}, currentNanoTime={}", status, currentNanoTime);
+          ManagerMessages.FORCE_UPDATE_NODECACHE_STATUS_CURRENTNANOTIME, status, currentNanoTime);
     }
   }
 

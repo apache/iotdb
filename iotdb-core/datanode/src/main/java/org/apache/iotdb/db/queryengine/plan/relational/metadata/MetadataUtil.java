@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnMetadata;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.QualifiedName;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -60,7 +61,7 @@ public class MetadataUtil {
 
   public static String checkLowerCase(String value, String name) {
     if (value == null) {
-      throw new NullPointerException(format("%s is null", name));
+      throw new NullPointerException(format(DataNodeQueryMessages.S_IS_NULL, name));
     }
     checkArgument(value.equals(value.toLowerCase(ENGLISH)), "%s is not lowercase: %s", name, value);
     return value;
@@ -71,7 +72,8 @@ public class MetadataUtil {
     requireNonNull(session, "session is null");
     requireNonNull(name, "name is null");
     if (name.getParts().size() > 2) {
-      throw new SemanticException(String.format("Too many dots in table name: %s", name));
+      throw new SemanticException(
+          String.format(DataNodeQueryMessages.TOO_MANY_DOTS_IN_TABLE_NAME, name));
     }
 
     final List<String> parts = Lists.reverse(name.getParts());

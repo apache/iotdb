@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DirectoryNotLegalException;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.flush.CompressionRatio;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
@@ -133,7 +134,7 @@ public class SnapshotTaker {
       try {
         snapshotLogger.close();
       } catch (Exception e) {
-        LOGGER.error("Failed to close snapshot logger", e);
+        LOGGER.error(StorageEngineMessages.FAILED_TO_CLOSE_SNAPSHOT_LOGGER, e);
       }
     }
   }
@@ -142,7 +143,8 @@ public class SnapshotTaker {
     File compressionRatioFile =
         CompressionRatio.getInstance().getCompressionRatioFile(dataRegion.getDataRegionIdString());
     if (compressionRatioFile != null) {
-      LOGGER.info("Snapshotting compression ratio {}.", compressionRatioFile.getName());
+      LOGGER.info(
+          StorageEngineMessages.SNAPSHOTTING_COMPRESSION_RATIO, compressionRatioFile.getName());
       try {
         File snapshotFile = new File(snapshotDir, compressionRatioFile.getName());
         if (snapshotFile.createNewFile()) {
@@ -262,14 +264,14 @@ public class SnapshotTaker {
       }
       return true;
     } catch (IOException e) {
-      LOGGER.error("Catch IOException when creating snapshot", e);
+      LOGGER.error(StorageEngineMessages.CATCH_IO_EXCEPTION_CREATING_SNAPSHOT, e);
       return false;
     }
   }
 
   private void createHardLink(File target, File source) throws IOException {
     if (!target.getParentFile().exists()) {
-      LOGGER.error("Hard link target dir {} doesn't exist", target.getParentFile());
+      LOGGER.error(StorageEngineMessages.HARD_LINK_TARGET_DIR_NOT_EXIST, target.getParentFile());
     }
     if (!checkHardLinkSourceFile(source)) {
       return;
@@ -294,7 +296,7 @@ public class SnapshotTaker {
     }
     if (!source.exists()) {
       File parent = source.getParentFile();
-      LOGGER.error("Hard link source file {} doesn't exist, this file will be ignored.", source);
+      LOGGER.error(StorageEngineMessages.HARD_LINK_SOURCE_FILE_NOT_EXIST, source);
       String tryMsg = "Try to show all files in parent dir...";
       if (parent == null) {
         tryMsg += "Cannot show files because parent dir is null";
@@ -309,10 +311,10 @@ public class SnapshotTaker {
 
   private void copyFile(File target, File source) throws IOException {
     if (!target.getParentFile().exists()) {
-      LOGGER.error("Copy target dir {} doesn't exist", target.getParentFile());
+      LOGGER.error(StorageEngineMessages.COPY_TARGET_DIR_NOT_EXIST, target.getParentFile());
     }
     if (!source.exists()) {
-      LOGGER.error("Copy source file {} doesn't exist", source);
+      LOGGER.error(StorageEngineMessages.COPY_SOURCE_FILE_NOT_EXIST, source);
     }
     Files.deleteIfExists(target.toPath());
     Files.copy(source.toPath(), target.toPath());
@@ -360,13 +362,13 @@ public class SnapshotTaker {
     }
     File dir = new File(stringBuilder.toString());
     if (!dir.exists() && !dir.mkdirs()) {
-      throw new IOException("Cannot create directory " + dir.getAbsolutePath());
+      throw new IOException(StorageEngineMessages.CANNOT_CREATE_DIRECTORY + dir.getAbsolutePath());
     }
     return new File(dir, tsFile.getName());
   }
 
   private void cleanUpWhenFail(String snapshotId) {
-    LOGGER.info("Cleaning up snapshot dir for {}", snapshotId);
+    LOGGER.info(StorageEngineMessages.CLEANING_UP_SNAPSHOT_DIR, snapshotId);
     for (String dataDir : IoTDBDescriptor.getInstance().getConfig().getLocalDataDirs()) {
       File dataDirForThisSnapshot =
           new File(

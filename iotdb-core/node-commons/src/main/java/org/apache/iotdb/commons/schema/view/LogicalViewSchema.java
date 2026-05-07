@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.schema.view;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.i18n.SchemaMessages;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
@@ -133,22 +134,26 @@ public class LogicalViewSchema
 
   @Override
   public List<String> getSubMeasurementsList() {
-    throw new UnsupportedOperationException("unsupported method for LogicalViewSchema");
+    throw new UnsupportedOperationException(
+        SchemaMessages.UNSUPPORTED_METHOD_FOR_LOGICAL_VIEW_SCHEMA);
   }
 
   @Override
   public List<TSDataType> getSubMeasurementsTSDataTypeList() {
-    throw new UnsupportedOperationException("unsupported method for LogicalViewSchema");
+    throw new UnsupportedOperationException(
+        SchemaMessages.UNSUPPORTED_METHOD_FOR_LOGICAL_VIEW_SCHEMA);
   }
 
   @Override
   public List<TSEncoding> getSubMeasurementsTSEncodingList() {
-    throw new UnsupportedOperationException("unsupported method for LogicalViewSchema");
+    throw new UnsupportedOperationException(
+        SchemaMessages.UNSUPPORTED_METHOD_FOR_LOGICAL_VIEW_SCHEMA);
   }
 
   @Override
   public List<Encoder> getSubMeasurementsEncoderList() {
-    throw new UnsupportedOperationException("unsupported method for LogicalViewSchema");
+    throw new UnsupportedOperationException(
+        SchemaMessages.UNSUPPORTED_METHOD_FOR_LOGICAL_VIEW_SCHEMA);
   }
 
   @Override
@@ -171,8 +176,7 @@ public class LogicalViewSchema
   @Override
   public int serializedSize() {
     throw new RuntimeException(
-        new UnsupportedOperationException(
-            "Can not calculate the size of view schemaengine before serializing."));
+        new UnsupportedOperationException(SchemaMessages.CANNOT_CALCULATE_VIEW_SCHEMA_SIZE));
   }
 
   @Override

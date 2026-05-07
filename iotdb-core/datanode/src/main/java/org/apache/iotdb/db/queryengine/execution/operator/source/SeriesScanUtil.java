@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.execution.operator.source;
 
 import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
@@ -288,7 +289,8 @@ public class SeriesScanUtil implements Accountable {
     }
 
     if (firstChunkMetadata != null || !cachedChunkMetadata.isEmpty()) {
-      throw new IllegalStateException("all cached chunks should be consumed first");
+      throw new IllegalStateException(
+          DataNodeQueryMessages.ALL_CACHED_CHUNKS_SHOULD_BE_CONSUMED_FIRST);
     }
 
     if (firstTimeSeriesMetadata != null) {
@@ -795,7 +797,8 @@ public class SeriesScanUtil implements Accountable {
               && mergeReaderTime <= firstPageReader.getStatistics().getEndTime())
           || (!orderUtils.getAscending()
               && mergeReaderTime >= firstPageReader.getStatistics().getStartTime())) {
-        throw new IllegalStateException("overlapped data should be consumed first");
+        throw new IllegalStateException(
+            DataNodeQueryMessages.OVERLAPPED_DATA_SHOULD_BE_CONSUMED_FIRST);
       }
     }
 
@@ -1792,7 +1795,7 @@ public class SeriesScanUtil implements Accountable {
       hasCachedNextOverlappedPage = false;
       return getTransferedDataTypeTsBlock(cachedTsBlock);
     }
-    throw new IOException("No more batch data");
+    throw new IOException(DataNodeQueryMessages.NO_MORE_BATCH_DATA);
   }
 
   /**
@@ -2213,7 +2216,8 @@ public class SeriesScanUtil implements Accountable {
 
     @Override
     public TsBlock getAllSatisfiedPageData(boolean ascending) {
-      throw new UnsupportedOperationException("getAllSatisfiedPageData() shouldn't be called here");
+      throw new UnsupportedOperationException(
+          DataNodeQueryMessages.GETALLSATISFIEDPAGEDATA_SHOULDN_T_BE_CALLED_HERE);
     }
 
     @Override
@@ -2223,7 +2227,8 @@ public class SeriesScanUtil implements Accountable {
 
     @Override
     public IPageReader getPageReader() {
-      throw new UnsupportedOperationException("getPageReader() shouldn't be called here");
+      throw new UnsupportedOperationException(
+          DataNodeQueryMessages.GETPAGEREADER_SHOULDN_T_BE_CALLED_HERE);
     }
 
     @Override

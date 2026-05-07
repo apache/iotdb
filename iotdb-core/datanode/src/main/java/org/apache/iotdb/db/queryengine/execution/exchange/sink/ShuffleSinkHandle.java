@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.execution.exchange.sink;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeManager;
 import org.apache.iotdb.db.queryengine.metric.DataExchangeCostMetricSet;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
@@ -211,7 +212,7 @@ public class ShuffleSinkHandle implements ISinkHandle {
       }
     }
     if (meetError) {
-      LOGGER.warn("Error occurred when try to abort channel.", firstException);
+      LOGGER.warn(DataNodeQueryMessages.ERROR_OCCURRED_WHEN_TRY_TO_ABORT_CHANNEL, firstException);
     }
     if (selfAborted) {
       sinkListener.onAborted(this);
@@ -251,7 +252,7 @@ public class ShuffleSinkHandle implements ISinkHandle {
       }
     }
     if (meetError) {
-      LOGGER.warn("Error occurred when try to close channel.", firstException);
+      LOGGER.warn(DataNodeQueryMessages.ERROR_OCCURRED_WHEN_TRY_TO_CLOSE_CHANNEL, firstException);
     }
     if (selfClosed) {
       sinkListener.onFinish(this);
@@ -285,7 +286,7 @@ public class ShuffleSinkHandle implements ISinkHandle {
       for (ISinkChannel channel : downStreamChannelList) {
         channel.checkState();
       }
-      throw new IllegalStateException("ShuffleSinkHandle is aborted.");
+      throw new IllegalStateException(DataNodeQueryMessages.SHUFFLESINKHANDLE_IS_ABORTED);
     }
   }
 
@@ -367,7 +368,8 @@ public class ShuffleSinkHandle implements ISinkHandle {
       case SIMPLE_ROUND_ROBIN:
         return new SimpleRoundRobinStrategy();
       default:
-        throw new UnsupportedOperationException("Unsupported type of shuffle strategy");
+        throw new UnsupportedOperationException(
+            DataNodeQueryMessages.UNSUPPORTED_TYPE_OF_SHUFFLE_STRATEGY);
     }
   }
 

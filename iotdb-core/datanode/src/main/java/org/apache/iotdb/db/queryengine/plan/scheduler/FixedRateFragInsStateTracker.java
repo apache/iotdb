@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.execution.QueryStateMachine;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceInfo;
@@ -163,7 +164,7 @@ public class FixedRateFragInsStateTracker extends AbstractFragInsStateTracker {
           } else {
             // if not reaching max retry count, add retry count, and wait for next fetching schedule
             metrics.addRetryCount();
-            logger.warn("error happened while fetching query state", e);
+            logger.warn(DataNodeQueryMessages.ERROR_HAPPENED_WHILE_FETCHING_QUERY_STATE, e);
           }
         }
       }

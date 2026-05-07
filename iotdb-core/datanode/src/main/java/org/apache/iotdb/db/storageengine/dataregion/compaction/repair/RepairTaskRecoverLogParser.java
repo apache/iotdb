@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.repair;
 
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -62,7 +64,7 @@ public class RepairTaskRecoverLogParser {
         } else if (curLine.startsWith(RepairLogger.cannotRepairFileLogPrefix)) {
           parseFileLog(curLine.trim());
         } else {
-          throw new IllegalArgumentException("Unknown format of repair log");
+          throw new IllegalArgumentException(StorageEngineMessages.UNKNOWN_REPAIR_LOG_FORMAT);
         }
       }
       if (currentTimePartitionCannotRepairFiles != null

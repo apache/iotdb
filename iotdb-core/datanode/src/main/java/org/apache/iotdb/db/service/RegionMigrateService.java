@@ -39,6 +39,7 @@ import org.apache.iotdb.consensus.exception.PeerAlreadyInConsensusGroupException
 import org.apache.iotdb.consensus.exception.PeerNotInConsensusGroupException;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.protocol.thrift.impl.DataNodeRegionManager;
 import org.apache.iotdb.mpp.rpc.thrift.TMaintainPeerReq;
 import org.apache.iotdb.mpp.rpc.thrift.TNotifyRegionMigrationReq;
@@ -132,9 +133,9 @@ public class RegionMigrateService implements IService {
     if (req.isSetIsStart() && req.isSetRegionId()) {
       regionMigrationStatusCache.notifyMigrating();
       if (req.isIsStart()) {
-        LOGGER.info("Region {} is notified to begin migrating", req.getRegionId());
+        LOGGER.info(DataNodeMiscMessages.REGION_BEGIN_MIGRATING, req.getRegionId());
       } else {
-        LOGGER.info("Region {} is notified to finish migrating", req.getRegionId());
+        LOGGER.info(DataNodeMiscMessages.REGION_FINISH_MIGRATING, req.getRegionId());
       }
     }
   }
@@ -254,7 +255,7 @@ public class RegionMigrateService implements IService {
           regionId,
           e);
     } catch (ConsensusException e) {
-      LOGGER.error("reset peer list fail", e);
+      LOGGER.error(DataNodeMiscMessages.RESET_PEER_LIST_FAIL, e);
       return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
     }
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
@@ -268,7 +269,7 @@ public class RegionMigrateService implements IService {
   public void start() throws StartupException {
     regionMigratePool =
         IoTDBThreadPoolFactory.newCachedThreadPool(ThreadName.REGION_MIGRATE.getName());
-    LOGGER.info("Region migrate service start");
+    LOGGER.info(DataNodeMiscMessages.REGION_MIGRATE_SERVICE_START);
   }
 
   @Override
@@ -276,7 +277,7 @@ public class RegionMigrateService implements IService {
     if (regionMigratePool != null) {
       regionMigratePool.shutdown();
     }
-    LOGGER.info("Region migrate service stop");
+    LOGGER.info(DataNodeMiscMessages.REGION_MIGRATE_SERVICE_STOP);
   }
 
   @Override

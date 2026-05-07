@@ -23,6 +23,7 @@ import org.apache.iotdb.calc.utils.IObjectFileService;
 import org.apache.iotdb.calc.utils.ObjectTypeUtils;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.ObjectFileNotExist;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -90,7 +91,7 @@ public class DataNodeObjectFileService implements IObjectFileService {
         deleteObjectFile(tmpFile);
         deleteObjectFile(bakFile);
       } catch (IOException e) {
-        logger.error("Failed to remove object file {}", file.getAbsolutePath(), e);
+        logger.error(DataNodeMiscMessages.FAILED_REMOVE_OBJECT_FILE, file.getAbsolutePath(), e);
       }
     }
     deleteEmptyParentDir(file);
@@ -120,14 +121,14 @@ public class DataNodeObjectFileService implements IObjectFileService {
         Files.deleteIfExists(dir.toPath());
         deleteEmptyParentDir(dir);
       } catch (IOException e) {
-        logger.error("Failed to remove empty object dir {}", dir.getAbsolutePath(), e);
+        logger.error(DataNodeMiscMessages.FAILED_REMOVE_EMPTY_OBJECT_DIR, dir.getAbsolutePath(), e);
       }
     }
   }
 
   private static void deleteObjectFile(File file) throws IOException {
     if (file.exists()) {
-      logger.info("Remove object file {}, size is {}(byte)", file.getAbsolutePath(), file.length());
+      logger.info(DataNodeMiscMessages.REMOVE_OBJECT_FILE, file.getAbsolutePath(), file.length());
     }
     Files.deleteIfExists(file.toPath());
   }

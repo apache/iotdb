@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.exchange.sink;
 
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeManager.SinkListener;
 import org.apache.iotdb.db.queryengine.execution.exchange.SharedTsBlockQueue;
 import org.apache.iotdb.db.queryengine.metric.DataExchangeCostMetricSet;
@@ -140,7 +141,7 @@ public class LocalSinkChannel implements ISinkChannel {
           return;
         }
         if (!blocked.isDone()) {
-          throw new IllegalStateException("Sink handle is blocked.");
+          throw new IllegalStateException(DataNodeQueryMessages.SINK_HANDLE_IS_BLOCKED);
         }
       }
 
@@ -252,7 +253,7 @@ public class LocalSinkChannel implements ISinkChannel {
           throw new IllegalStateException(e.getCause() == null ? e : e.getCause());
         }
       }
-      throw new IllegalStateException("LocalSinkChannel is ABORTED.");
+      throw new IllegalStateException(DataNodeQueryMessages.LOCALSINKCHANNEL_IS_ABORTED);
     }
   }
 

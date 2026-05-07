@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.transformer.binary;
 
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
 import org.apache.iotdb.db.queryengine.transformation.api.YieldableState;
 
@@ -47,7 +48,8 @@ public abstract class LogicBinaryTransformer extends BinaryTransformer {
   @Override
   protected void checkType() {
     if (leftReaderDataType != TSDataType.BOOLEAN || rightReaderDataType != TSDataType.BOOLEAN) {
-      throw new UnSupportedDataTypeException("Unsupported data type: " + TSDataType.BOOLEAN);
+      throw new UnSupportedDataTypeException(
+          DataNodeQueryMessages.UNSUPPORTED_DATA_TYPE_2 + TSDataType.BOOLEAN);
     }
   }
 

@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.db.auth.AuthorityChecker;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.deletion.PipeDeleteDataNodeEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
@@ -203,9 +204,7 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
         deviceToSourcesCache.computeIfAbsent(device, this::filterSourcesByDevice);
     // this would not happen
     if (sourcesFilteredByDevice == null) {
-      LOGGER.warn(
-          "Sources filtered by device is null when matching sources for tree model event.",
-          new Exception());
+      LOGGER.warn(DataNodePipeMessages.SOURCES_FILTERED_BY_DEVICE_IS_NULL_WHEN, new Exception());
       return;
     }
 
@@ -279,7 +278,7 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
     // this would not happen
     if (databaseName == null) {
       LOGGER.warn(
-          "Database name is null when matching sources for table model event.", new Exception());
+          DataNodePipeMessages.DATABASE_NAME_IS_NULL_WHEN_MATCHING_SOURCES, new Exception());
       return;
     }
 
@@ -288,9 +287,7 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
             new Pair<>(databaseName, tableName), this::filterSourcesByDatabaseAndTable);
     // this would not happen
     if (sourcesFilteredByDatabaseAndTable == null) {
-      LOGGER.warn(
-          "Sources filtered by database and table is null when matching sources for table model event.",
-          new Exception());
+      LOGGER.warn(DataNodePipeMessages.SOURCES_FILTERED_BY_DATABASE_AND_TABLE_IS, new Exception());
       return;
     }
     matchedSources.addAll(sourcesFilteredByDatabaseAndTable);

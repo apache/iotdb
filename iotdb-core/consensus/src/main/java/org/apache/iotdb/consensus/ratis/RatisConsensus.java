@@ -46,6 +46,8 @@ import org.apache.iotdb.consensus.exception.PeerAlreadyInConsensusGroupException
 import org.apache.iotdb.consensus.exception.PeerNotInConsensusGroupException;
 import org.apache.iotdb.consensus.exception.RatisReadUnavailableException;
 import org.apache.iotdb.consensus.exception.RatisRequestFailedException;
+import org.apache.iotdb.consensus.i18n.ConsensusMessages;
+import org.apache.iotdb.consensus.i18n.RatisMessages;
 import org.apache.iotdb.consensus.ratis.metrics.RatisMetricSet;
 import org.apache.iotdb.consensus.ratis.metrics.RatisMetricsManager;
 import org.apache.iotdb.consensus.ratis.utils.Retriable;
@@ -250,7 +252,7 @@ class RatisConsensus implements IConsensus {
             } catch (ConsensusGroupNotExistException ignore) {
 
             } catch (Exception e) {
-              logger.warn("Failed to reset peer list while start", e);
+              logger.warn(ConsensusMessages.FAILED_TO_RESET_PEER_LIST_WHILE_START, e);
             }
           };
       // make peers which are in list correct
@@ -269,7 +271,7 @@ class RatisConsensus implements IConsensus {
     try {
       diskGuardian.stop();
     } catch (InterruptedException e) {
-      logger.warn("{}: interrupted when shutting down add Executor with exception ", this, e);
+      logger.warn(ConsensusMessages.INTERRUPTED_WHEN_SHUTTING_DOWN_EXECUTOR_RATIS, this, e);
       Thread.currentThread().interrupt();
     } finally {
       clientManager.close();
@@ -288,7 +290,7 @@ class RatisConsensus implements IConsensus {
       reply = Retriable.attempt(caller, writeRetryPolicy, () -> caller, logger);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      logger.debug("{}: interrupted when retrying for write request {}", this, caller);
+      logger.debug(RatisMessages.INTERRUPTED_RETRYING_WRITE, this, caller);
     }
 
     if (reply == null) {
@@ -297,8 +299,7 @@ class RatisConsensus implements IConsensus {
           .setServerId(server.get().getId())
           .setGroupId(groupId)
           .setSuccess(false)
-          .setException(
-              new RaftException("null reply received in writeWithRetry for request " + caller))
+          .setException(new RaftException(RatisMessages.NULL_REPLY_IN_WRITE_WITH_RETRY + caller))
           .build();
     }
     return reply;
@@ -335,7 +336,7 @@ class RatisConsensus implements IConsensus {
       try {
         forceStepDownLeader(raftGroup);
       } catch (Exception e) {
-        logger.warn("leader {} read only, force step down failed due to, ", myself, e);
+        logger.warn(RatisMessages.LEADER_READ_ONLY_STEP_DOWN_FAILED, myself, e);
       }
       return StatusUtils.getStatus(TSStatusCode.SYSTEM_READ_ONLY);
     }
@@ -590,11 +591,7 @@ class RatisConsensus implements IConsensus {
             p ->
                 p.getId().equals(peerToAdd.getId())
                     || p.getAddress().equals(peerToAdd.getAddress()))) {
-      logger.warn(
-          "{}: try to add a peer {} with conflicting id or address in {}",
-          this,
-          peerToAdd,
-          group.getPeers());
+      logger.warn(RatisMessages.TRY_ADD_CONFLICTING_PEER, this, peerToAdd, group.getPeers());
       throw new PeerAlreadyInConsensusGroupException(groupId, peer);
     }
 
@@ -637,7 +634,7 @@ class RatisConsensus implements IConsensus {
   @Override
   public void recordCorrectPeerListBeforeStarting(
       Map<ConsensusGroupId, List<Peer>> correctPeerList) {
-    logger.info("Record correct peer list: {}", correctPeerList);
+    logger.info(ConsensusMessages.RECORD_CORRECT_PEER_LIST, correctPeerList);
     this.correctPeerListBeforeStart = correctPeerList;
   }
 
@@ -662,9 +659,7 @@ class RatisConsensus implements IConsensus {
                     myself.getId().equals(raftPeer.getId())
                         && myself.getAddress().equals(raftPeer.getAddress()));
     if (!myselfInCorrectPeers) {
-      logger.info(
-          "[RESET PEER LIST] Local peer is not in the correct peer list, delete local peer {}",
-          groupId);
+      logger.info(ConsensusMessages.RESET_PEER_LIST_DELETE_LOCAL_PEER, groupId);
       deleteLocalPeer(groupId);
       return;
     }
@@ -683,16 +678,12 @@ class RatisConsensus implements IConsensus {
       return;
     }
 
-    logger.info(
-        "[RESET PEER LIST] Peer list will be reset from {} to {}",
-        localRaftPeerSet,
-        correctRaftPeerSet);
+    logger.info(ConsensusMessages.RESET_PEER_LIST_WILL_RESET, localRaftPeerSet, correctRaftPeerSet);
     RaftClientReply reply = sendReconfiguration(newGroup);
     if (reply.isSuccess()) {
-      logger.info("[RESET PEER LIST] Peer list has been reset to {}", newGroupPeers);
+      logger.info(ConsensusMessages.RESET_PEER_LIST_RESET_SUCCESS, newGroupPeers);
     } else {
-      logger.warn(
-          "[RESET PEER LIST] Peer list failed to reset to {}, reply is {}", newGroup, reply);
+      logger.warn(ConsensusMessages.RESET_PEER_LIST_RESET_FAILED, newGroup, reply);
     }
   }
 
@@ -751,7 +742,7 @@ class RatisConsensus implements IConsensus {
       return server.get().getDivision(raftGroupId).getInfo().isLeader();
     } catch (IOException exception) {
       // if the read fails, simply return not leader
-      logger.info("isLeader request failed with exception: ", exception);
+      logger.info(RatisMessages.IS_LEADER_REQUEST_FAILED, exception);
       return false;
     }
   }
@@ -763,7 +754,7 @@ class RatisConsensus implements IConsensus {
       return server.get().getDivision(raftGroupId).getInfo().isLeaderReady();
     } catch (IOException exception) {
       // if the read fails, simply return not ready
-      logger.info("isLeaderReady request failed with exception: ", exception);
+      logger.info(RatisMessages.IS_LEADER_READY_REQUEST_FAILED, exception);
       return false;
     }
   }
@@ -775,7 +766,7 @@ class RatisConsensus implements IConsensus {
       return server.get().getDivision(raftGroupId).getInfo().getCurrentTerm();
     } catch (IOException exception) {
       // if the read fails, simply return 0
-      logger.info("getLogicalClock request failed with exception: ", exception);
+      logger.info(RatisMessages.GET_LOGICAL_CLOCK_REQUEST_FAILED, exception);
       return 0;
     }
   }
@@ -786,7 +777,7 @@ class RatisConsensus implements IConsensus {
       divisionInfo = server.get().getDivision(groupId).getInfo();
     } catch (IOException e) {
       // if the read fails, simply return not leader
-      logger.info("isLeaderReady checking failed with exception: ", e);
+      logger.info(RatisMessages.IS_LEADER_READY_CHECKING_FAILED, e);
       return false;
     }
 
@@ -809,11 +800,11 @@ class RatisConsensus implements IConsensus {
           logger);
       if (divisionInfo.isLeader() && !divisionInfo.isLeaderReady()) {
         logger.warn(
-            "{}: leader is still not ready after {}ms", groupId, DEFAULT_WAIT_LEADER_READY_TIMEOUT);
+            RatisMessages.LEADER_STILL_NOT_READY, groupId, DEFAULT_WAIT_LEADER_READY_TIMEOUT);
       }
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      logger.warn("Unexpected interruption when waitUntilLeaderReady", e);
+      logger.warn(RatisMessages.UNEXPECTED_INTERRUPTION_WAIT_LEADER_READY, e);
       return false;
     }
     return divisionInfo.isLeader();
@@ -833,7 +824,7 @@ class RatisConsensus implements IConsensus {
     try {
       leaderId = server.get().getDivision(raftGroupId).getInfo().getLeaderId();
     } catch (IOException e) {
-      logger.warn("fetch division info for group {} failed due to: ", groupId, e);
+      logger.warn(RatisMessages.FETCH_DIVISION_INFO_FAILED, groupId, e);
       return null;
     }
     if (leaderId == null) {
@@ -903,11 +894,7 @@ class RatisConsensus implements IConsensus {
           throw new RatisRequestFailedException(reply.getException());
         }
         logger.info(
-            "{} group {}: successfully taken snapshot at index {} with force = {}",
-            this,
-            raftGroupId,
-            reply.getLogIndex(),
-            force);
+            RatisMessages.TRIGGER_SNAPSHOT_SUCCESS, this, raftGroupId, reply.getLogIndex(), force);
       } catch (IOException ioException) {
         throw new RatisRequestFailedException(ioException);
       }
@@ -956,7 +943,7 @@ class RatisConsensus implements IConsensus {
         lastSeen.put(raftGroupId, raftGroup);
       }
     } catch (IOException e) {
-      logger.debug("get group {} failed ", raftGroupId, e);
+      logger.debug(RatisMessages.GET_GROUP_FAILED, raftGroupId, e);
     }
     return raftGroup;
   }
@@ -971,7 +958,7 @@ class RatisConsensus implements IConsensus {
     try {
       return clientManager.borrowClient(group);
     } catch (ClientManagerException e) {
-      logger.error("Borrow client from pool for group {} failed.", group, e);
+      logger.error(RatisMessages.BORROW_CLIENT_FROM_POOL_FAILED, group, e);
       // rethrow the exception
       throw e;
     }
@@ -981,7 +968,7 @@ class RatisConsensus implements IConsensus {
     try {
       return reconfigurationClientManager.borrowClient(group);
     } catch (ClientManagerException e) {
-      logger.error("Borrow client from pool for group {} failed.", group, e);
+      logger.error(RatisMessages.BORROW_CLIENT_FROM_POOL_FAILED, group, e);
       // rethrow the exception
       throw e;
     }

@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.planner.exceptions.ReplicaSetUnreachableException;
 
 import org.slf4j.Logger;
@@ -148,7 +149,7 @@ public class ClusterTopology {
   public void updateTopology(
       final Map<Integer, TDataNodeLocation> dataNodes, Map<Integer, Set<Integer>> latestTopology) {
     if (!latestTopology.equals(topologyMap.get())) {
-      LOGGER.info("[Topology] latest view from config-node: {}", latestTopology);
+      LOGGER.info(DataNodeQueryMessages.TOPOLOGY_LATEST_VIEW_FROM_CONFIG_NODE, latestTopology);
       for (int fromId : dataNodes.keySet()) {
         for (int toId : dataNodes.keySet()) {
           boolean originReachable =

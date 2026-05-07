@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.queryengine.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ClusterSchemaFetcher;
@@ -130,7 +131,7 @@ public class CompactionUtils {
       case SETTLE:
         return IoTDBConstant.SETTLE_SUFFIX;
       default:
-        logger.error("Current task type {} does not have tmp file suffix.", type);
+        logger.error(StorageEngineMessages.TASK_TYPE_NO_TMP_FILE_SUFFIX, type);
         return "";
     }
   }
@@ -208,7 +209,7 @@ public class CompactionUtils {
                     try {
                       return tsFileResource.getModFileForWrite();
                     } catch (IOException e) {
-                      logger.error("Can not get mod file of {}", tsFileResource, e);
+                      logger.error(StorageEngineMessages.CANNOT_GET_MOD_FILE, tsFileResource, e);
                       return null;
                     }
                   })
@@ -312,7 +313,7 @@ public class CompactionUtils {
 
   public static boolean deleteTsFilesInDisk(
       Collection<TsFileResource> mergeTsFiles, String storageGroupName) {
-    logger.info("{} [Compaction] Compaction starts to delete real file ", storageGroupName);
+    logger.info(StorageEngineMessages.COMPACTION_START_DELETE_REAL_FILE, storageGroupName);
     boolean result = true;
     for (TsFileResource mergeTsFile : mergeTsFiles) {
       if (!mergeTsFile.remove()) {
@@ -332,7 +333,7 @@ public class CompactionUtils {
   @TestOnly
   public static void deleteModificationForSourceFile(
       Collection<TsFileResource> sourceFiles, String storageGroupName) throws IOException {
-    logger.info("{} [Compaction] Start to delete modifications of source files", storageGroupName);
+    logger.info(StorageEngineMessages.COMPACTION_START_DELETE_SOURCE_MODS, storageGroupName);
     for (TsFileResource tsFileResource : sourceFiles) {
       tsFileResource.removeModFile();
     }
@@ -422,7 +423,8 @@ public class CompactionUtils {
           "[Compaction] delete file failed, file path is {}",
           resource.getTsFile().getAbsolutePath());
     } else {
-      logger.info("[Compaction] delete file: {}", resource.getTsFile().getAbsolutePath());
+      logger.info(
+          StorageEngineMessages.COMPACTION_DELETE_FILE, resource.getTsFile().getAbsolutePath());
     }
   }
 
@@ -600,7 +602,7 @@ public class CompactionUtils {
       } catch (FileNotFoundException | NoSuchFileException ignored) {
         // may be deleted by other thread
       } catch (IOException e) {
-        logger.warn("Failed to read file attributes: {}", currentFile, e);
+        logger.warn(StorageEngineMessages.FAILED_TO_READ_FILE_ATTRIBUTES, currentFile, e);
       }
     }
     File[] children = currentFile.listFiles();
@@ -619,7 +621,7 @@ public class CompactionUtils {
             canDistinguishDirectoryByFileName,
             lowerBoundInMS);
       } catch (Exception e) {
-        logger.warn("Failed to check table dir: {}", child, e);
+        logger.warn(StorageEngineMessages.FAILED_TO_CHECK_TABLE_DIR, child, e);
       }
     }
   }
@@ -649,11 +651,11 @@ public class CompactionUtils {
       Files.delete(file.toPath());
       FileMetrics.getInstance().decreaseObjectFileNum(1);
       FileMetrics.getInstance().decreaseObjectFileSize(attributes.size());
-      logger.info("Remove object file {}, size is {}(byte)", file.getPath(), attributes.size());
+      logger.info(StorageEngineMessages.REMOVE_OBJECT_FILE_SIZE, file.getPath(), attributes.size());
     } catch (FileNotFoundException | NoSuchFileException ignored) {
       // may be deleted by other thread
     } catch (Exception e) {
-      logger.warn("Failed to delete expired object file: {}", file, e);
+      logger.warn(StorageEngineMessages.FAILED_TO_DELETE_EXPIRED_OBJECT_FILE, file, e);
     }
   }
 

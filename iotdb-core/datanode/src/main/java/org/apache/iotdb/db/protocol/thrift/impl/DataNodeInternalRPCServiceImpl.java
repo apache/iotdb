@@ -112,6 +112,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.partition.DataPartitionTableGenerator;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
@@ -455,9 +456,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
           .until(dataNodeContext::isAllConsensusStarted);
       return null;
     } catch (AwaitTimeoutException e) {
-      LOGGER.warn(
-          "Consensus has not been started after {} seconds, rejecting region request",
-          consensusWaitTimeoutSeconds);
+      LOGGER.warn(DataNodeMiscMessages.CONSENSUS_NOT_STARTED, consensusWaitTimeoutSeconds);
       return RpcUtils.getStatus(
           TSStatusCode.CONSENSUS_NOT_INITIALIZED,
           "Consensus has not been started after " + consensusWaitTimeoutSeconds + " seconds");
@@ -466,7 +465,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TSendFragmentInstanceResp sendFragmentInstance(final TSendFragmentInstanceReq req) {
-    LOGGER.debug("receive FragmentInstance to group[{}]", req.getConsensusGroupId());
+    LOGGER.debug(DataNodeMiscMessages.RECEIVE_FRAGMENT_INSTANCE, req.getConsensusGroupId());
 
     // Deserialize ConsensusGroupId
     ConsensusGroupId groupId = null;
@@ -474,7 +473,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       try {
         groupId = ConsensusGroupId.Factory.createFromTConsensusGroupId(req.getConsensusGroupId());
       } catch (final Exception e) {
-        LOGGER.warn("Deserialize ConsensusGroupId failed. ", e);
+        LOGGER.warn(DataNodeMiscMessages.DESERIALIZE_CONSENSUS_GROUP_ID_FAILED, e);
         final TSendFragmentInstanceResp resp = new TSendFragmentInstanceResp(false);
         resp.setMessage("Deserialize ConsensusGroupId failed: " + e.getMessage());
         return resp;
@@ -487,7 +486,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     try {
       fragmentInstance = FragmentInstance.deserializeFrom(req.fragmentInstance.body);
     } catch (final Exception e) {
-      LOGGER.warn("Deserialize FragmentInstance failed.", e);
+      LOGGER.warn(DataNodeMiscMessages.DESERIALIZE_FRAGMENT_INSTANCE_FAILED, e);
       TSendFragmentInstanceResp resp = new TSendFragmentInstanceResp(false);
       resp.setMessage("Deserialize FragmentInstance failed: " + e.getMessage());
       return resp;
@@ -593,7 +592,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TLoadResp sendTsFilePieceNode(final TTsFilePieceReq req) {
-    LOGGER.info("Receive load node from uuid {}.", req.uuid);
+    LOGGER.info(DataNodeMiscMessages.RECEIVE_LOAD_NODE, req.uuid);
 
     final ConsensusGroupId groupId =
         ConsensusGroupId.Factory.createFromTConsensusGroupId(req.consensusGroupId);
@@ -694,7 +693,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
           ClusterTemplateManager.getInstance().invalid(database);
         }
         tableDeviceSchemaCache.invalidate(database);
-        LOGGER.info("Schema cache of {} has been invalidated", req.getFullPath());
+        LOGGER.info(DataNodeMiscMessages.SCHEMA_CACHE_INVALIDATED, req.getFullPath());
         return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       } finally {
         TreeDeviceSchemaCacheManager.getInstance().releaseWriteLock();
@@ -1322,7 +1321,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
               .setStatus(new TSStatus(TSStatusCode.PIPE_PUSH_META_ERROR.getStatusCode()))
               .setExceptionMessages(exceptionMessages);
     } catch (final Exception e) {
-      LOGGER.error("Error occurred when pushing pipe meta", e);
+      LOGGER.error(DataNodeMiscMessages.ERROR_PUSHING_PIPE_META, e);
       return new TPushPipeMetaResp()
           .setStatus(new TSStatus(TSStatusCode.PIPE_PUSH_META_ERROR.getStatusCode()));
     }
@@ -1358,7 +1357,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       return new TPushPipeMetaResp()
           .setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
     } catch (Exception e) {
-      LOGGER.error("Error occurred when pushing single pipe meta", e);
+      LOGGER.error(DataNodeMiscMessages.ERROR_PUSHING_SINGLE_PIPE_META, e);
       return new TPushPipeMetaResp()
           .setStatus(new TSStatus(TSStatusCode.PIPE_PUSH_META_ERROR.getStatusCode()));
     }
@@ -1404,7 +1403,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
           : new TPushPipeMetaResp()
               .setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
     } catch (Exception e) {
-      LOGGER.warn("Error occurred when pushing multi pipe meta", e);
+      LOGGER.warn(DataNodeMiscMessages.ERROR_PUSHING_MULTI_PIPE_META, e);
       return new TPushPipeMetaResp()
           .setStatus(new TSStatus(TSStatusCode.PIPE_PUSH_META_ERROR.getStatusCode()))
           .setExceptionMessages(exceptionMessages);
@@ -1433,7 +1432,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
               .setStatus(new TSStatus(TSStatusCode.TOPIC_PUSH_META_ERROR.getStatusCode()))
               .setExceptionMessages(Collections.singletonList(exceptionMessage));
     } catch (Exception e) {
-      LOGGER.warn("Error occurred when pushing topic meta", e);
+      LOGGER.warn(DataNodeMiscMessages.ERROR_PUSHING_TOPIC_META, e);
       return new TPushTopicMetaResp()
           .setStatus(new TSStatus(TSStatusCode.TOPIC_PUSH_META_ERROR.getStatusCode()));
     }
@@ -1466,7 +1465,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
               .setStatus(new TSStatus(TSStatusCode.TOPIC_PUSH_META_ERROR.getStatusCode()))
               .setExceptionMessages(Collections.singletonList(exceptionMessage));
     } catch (Exception e) {
-      LOGGER.warn("Error occurred when pushing single topic meta", e);
+      LOGGER.warn(DataNodeMiscMessages.ERROR_PUSHING_SINGLE_TOPIC_META, e);
       return new TPushTopicMetaResp()
           .setStatus(new TSStatus(TSStatusCode.TOPIC_PUSH_META_ERROR.getStatusCode()));
     }
@@ -1517,7 +1516,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
           : new TPushTopicMetaResp()
               .setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
     } catch (Exception e) {
-      LOGGER.warn("Error occurred when pushing multi topic meta", e);
+      LOGGER.warn(DataNodeMiscMessages.ERROR_PUSHING_MULTI_TOPIC_META, e);
       return new TPushTopicMetaResp()
           .setStatus(new TSStatus(TSStatusCode.TOPIC_PUSH_META_ERROR.getStatusCode()))
           .setExceptionMessages(exceptionMessages);
@@ -1546,7 +1545,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
               .setStatus(new TSStatus(TSStatusCode.CONSUMER_PUSH_META_ERROR.getStatusCode()))
               .setExceptionMessages(Collections.singletonList(exceptionMessage));
     } catch (Exception e) {
-      LOGGER.warn("Error occurred when pushing consumer group meta", e);
+      LOGGER.warn(DataNodeMiscMessages.ERROR_PUSHING_CONSUMER_GROUP_META, e);
       return new TPushConsumerGroupMetaResp()
           .setStatus(new TSStatus(TSStatusCode.CONSUMER_PUSH_META_ERROR.getStatusCode()));
     }
@@ -1581,7 +1580,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
               .setStatus(new TSStatus(TSStatusCode.CONSUMER_PUSH_META_ERROR.getStatusCode()))
               .setExceptionMessages(Collections.singletonList(exceptionMessage));
     } catch (Exception e) {
-      LOGGER.warn("Error occurred when pushing single consumer group meta", e);
+      LOGGER.warn(DataNodeMiscMessages.ERROR_PUSHING_SINGLE_CONSUMER_GROUP_META, e);
       return new TPushConsumerGroupMetaResp()
           .setStatus(new TSStatus(TSStatusCode.CONSUMER_PUSH_META_ERROR.getStatusCode()));
     }
@@ -1620,7 +1619,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       try {
         future.get();
       } catch (final ExecutionException | InterruptedException e) {
-        LOGGER.warn("Exception occurs when executing internal schema task: ", e);
+        LOGGER.warn(DataNodeMiscMessages.EXCEPTION_EXECUTING_INTERNAL_SCHEMA_TASK, e);
         statusList.add(
             new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode())
                 .setMessage(e.toString()));
@@ -1662,7 +1661,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       try {
         future.get();
       } catch (final ExecutionException | InterruptedException e) {
-        LOGGER.warn("Exception occurs when executing internal schema task: ", e);
+        LOGGER.warn(DataNodeMiscMessages.EXCEPTION_EXECUTING_INTERNAL_SCHEMA_TASK, e);
         statusList.add(
             new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode())
                 .setMessage(e.toString()));
@@ -1818,7 +1817,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                 req.oldName);
         break;
       default:
-        LOGGER.warn("Unsupported type {} when updating table", req.type);
+        LOGGER.warn(DataNodeMiscMessages.UNSUPPORTED_TYPE_UPDATING_TABLE, req.type);
         return RpcUtils.getStatus(TSStatusCode.ILLEGAL_PARAMETER);
     }
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
@@ -2356,7 +2355,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         result += gauge.getValue();
       }
     } catch (Exception e) {
-      LOGGER.warn("Failed to get memory from metric because: ", e);
+      LOGGER.warn(DataNodeMiscMessages.FAILED_GET_MEMORY_FROM_METRIC, e);
       return 0d;
     }
     return result;
@@ -2644,7 +2643,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         }
         break;
       default:
-        LOGGER.warn("Unsupported type {} when updating template", req.type);
+        LOGGER.warn(DataNodeMiscMessages.UNSUPPORTED_TYPE_UPDATING_TEMPLATE, req.type);
         return RpcUtils.getStatus(TSStatusCode.ILLEGAL_PARAMETER);
     }
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
@@ -2681,7 +2680,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TRegionLeaderChangeResp changeRegionLeader(TRegionLeaderChangeReq req) {
-    LOGGER.info("[ChangeRegionLeader] {}", req);
+    LOGGER.info(DataNodeMiscMessages.CHANGE_REGION_LEADER, req);
     TRegionLeaderChangeResp resp = new TRegionLeaderChangeResp();
 
     TSStatus consensusStatus = waitForConsensusStarted();
@@ -2753,7 +2752,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     if (regionId instanceof SchemaRegionId) {
       return SchemaRegionConsensusImpl.getInstance().isLeader(regionId);
     }
-    LOGGER.warn("region {} type is illegal", regionId);
+    LOGGER.warn(DataNodeMiscMessages.REGION_TYPE_ILLEGAL, regionId);
     return false;
   }
 
@@ -3110,7 +3109,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TSStatus cleanDataNodeCache(TCleanDataNodeCacheReq req) {
-    LOGGER.info("start disable data node in the request: {}", req);
+    LOGGER.info(DataNodeMiscMessages.START_DISABLE_DATA_NODE, req);
     TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     status.setMessage("disable datanode succeed");
     // TODO what need to clean?
@@ -3129,7 +3128,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TSStatus stopAndClearDataNode() {
     TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    LOGGER.info("Execute stopAndClearDataNode RPC method");
+    LOGGER.info(DataNodeMiscMessages.EXECUTE_STOP_AND_CLEAR);
 
     // kill the datanode process 30 seconds later
     // because datanode process cannot exit normally for the reason of InterruptedException
@@ -3138,7 +3137,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
               try {
                 TimeUnit.SECONDS.sleep(30);
               } catch (InterruptedException e) {
-                LOGGER.warn("Meets InterruptedException in stopAndClearDataNode RPC method");
+                LOGGER.warn(DataNodeMiscMessages.INTERRUPTED_STOP_AND_CLEAR);
               } finally {
                 LOGGER.info(
                     "Executing system.exit(0) in stopAndClearDataNode RPC method after 30 seconds");
@@ -3152,7 +3151,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       status.setMessage("Stop And Clear Data Node succeed");
       DataNode.getInstance().deleteDataNodeSystemProperties();
     } catch (Exception e) {
-      LOGGER.warn("Stop And Clear Data Node error", e);
+      LOGGER.warn(DataNodeMiscMessages.STOP_AND_CLEAR_ERROR, e);
       status.setCode(TSStatusCode.DATANODE_STOP_ERROR.getStatusCode());
       status.setMessage(e.getMessage());
     }
@@ -3226,9 +3225,9 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       resp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
       resp.setDatabaseToEarliestTimeslot(earliestTimeslots);
 
-      LOGGER.info("Retrieved earliest timeslots for {} databases", earliestTimeslots.size());
+      LOGGER.info(DataNodeMiscMessages.RETRIEVED_EARLIEST_TIMESLOTS, earliestTimeslots.size());
     } catch (Exception e) {
-      LOGGER.error("Failed to get earliest timeslots", e);
+      LOGGER.error(DataNodeMiscMessages.FAILED_GET_EARLIEST_TIMESLOTS, e);
       resp.setStatus(
           onIoTDBException(
               e,
@@ -3286,7 +3285,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       currentGeneratorFuture = currentGenerator.startGeneration();
       parseGenerationStatus(resp);
     } catch (Exception e) {
-      LOGGER.error("Failed to generate DataPartitionTable", e);
+      LOGGER.error(DataNodeMiscMessages.FAILED_GENERATE_DATA_PARTITION_TABLE, e);
       resp.setStatus(
           onIoTDBException(
               e,
@@ -3350,7 +3349,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         }
       }
     } catch (Exception e) {
-      LOGGER.error("Failed to check DataPartitionTable generation status", e);
+      LOGGER.error(DataNodeMiscMessages.FAILED_CHECK_DATA_PARTITION_TABLE_STATUS, e);
       resp.setStatus(
           onIoTDBException(
               e,
@@ -3385,7 +3384,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
             DataPartitionTableGeneratorState.SUCCESS.getCode(),
             "DataPartitionTable generation completed successfully",
             RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
-        LOGGER.info("DataPartitionTable generation completed with task ID: {}", currentTaskId);
+        LOGGER.info(DataNodeMiscMessages.DATA_PARTITION_TABLE_COMPLETED, currentTaskId);
         break;
       case FAILED:
         setResponseFields(
@@ -3393,7 +3392,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
             DataPartitionTableGeneratorState.FAILED.getCode(),
             "DataPartitionTable generation failed: " + currentGenerator.getErrorMessage(),
             RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR));
-        LOGGER.info("DataPartitionTable generation failed with task ID: {}", currentTaskId);
+        LOGGER.info(DataNodeMiscMessages.DATA_PARTITION_TABLE_FAILED, currentTaskId);
         break;
       default:
         setResponseFields(
@@ -3401,7 +3400,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
             DataPartitionTableGeneratorState.UNKNOWN.getCode(),
             "Unknown task status: " + currentGenerator.getStatus(),
             RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR));
-        LOGGER.info("DataPartitionTable generation failed with task ID: {}", currentTaskId);
+        LOGGER.info(DataNodeMiscMessages.DATA_PARTITION_TABLE_FAILED, currentTaskId);
         break;
     }
   }
@@ -3468,7 +3467,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
     // Wait for all tasks to complete
     CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
-    LOGGER.info("Process data directory for earliestTimeslots completed successfully");
+    LOGGER.info(DataNodeMiscMessages.PROCESS_DATA_DIR_COMPLETED);
   }
 
   private long findEarliestTimeslotInFiles(

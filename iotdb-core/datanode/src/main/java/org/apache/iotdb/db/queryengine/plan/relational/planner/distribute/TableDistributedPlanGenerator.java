@@ -75,6 +75,7 @@ import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.DataNodeEndPoints;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
@@ -187,7 +188,7 @@ public class TableDistributedPlanGenerator
       res.forEach(collectNode::addChild);
       return Collections.singletonList(collectNode);
     } else {
-      throw new IllegalStateException("List<PlanNode>.size should >= 1, but now is 0");
+      throw new IllegalStateException(DataNodeQueryMessages.LIST_PLANNODE_SIZE_SHOULD_1_BUT_NOW_IS);
     }
   }
 
@@ -651,7 +652,8 @@ public class TableDistributedPlanGenerator
           throw new IllegalStateException(
               "RIGHT Join should be transformed to LEFT Join in previous process");
         default:
-          throw new UnsupportedOperationException("Unsupported Join Type: " + node.getJoinType());
+          throw new UnsupportedOperationException(
+              DataNodeQueryMessages.UNSUPPORTED_JOIN_TYPE + node.getJoinType());
       }
     }
     return Collections.singletonList(node);
@@ -1318,7 +1320,8 @@ public class TableDistributedPlanGenerator
         finalAggregation.setChild(
             mergeChildrenViaCollectOrMergeSort(childOrdering, resultTableScanNodeList));
       } else {
-        throw new IllegalStateException("List<PlanNode>.size should >= 1, but now is 0");
+        throw new IllegalStateException(
+            DataNodeQueryMessages.LIST_PLANNODE_SIZE_SHOULD_1_BUT_NOW_IS);
       }
       resultTableScanNodeList = Collections.singletonList(finalAggregation);
     }
@@ -1500,7 +1503,8 @@ public class TableDistributedPlanGenerator
         finalAggregation.setChild(
             mergeChildrenViaCollectOrMergeSort(childOrdering, resultTableScanNodeList));
       } else {
-        throw new IllegalStateException("List<PlanNode>.size should >= 1, but now is 0");
+        throw new IllegalStateException(
+            DataNodeQueryMessages.LIST_PLANNODE_SIZE_SHOULD_1_BUT_NOW_IS);
       }
       resultTableScanNodeList = Collections.singletonList(finalAggregation);
     }

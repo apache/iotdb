@@ -34,6 +34,7 @@ import org.apache.iotdb.confignode.client.sync.CnToDnSyncRequestType;
 import org.apache.iotdb.confignode.client.sync.SyncDataNodeClientPool;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataPartitionPlan;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
@@ -167,7 +168,7 @@ public class DataPartitionTableIntegrityCheckProcedure
         case WRITE_PARTITION_TABLE_TO_CONSENSUS:
           return writePartitionTableToConsensus(env);
         default:
-          throw new ProcedureException("Unknown state: " + state);
+          throw new ProcedureException(ProcedureMessages.UNKNOWN_STATE + state);
       }
     } catch (Exception e) {
       LOG.error("[DataPartitionIntegrity] Error executing state {}: {}", state, e.getMessage(), e);
@@ -206,7 +207,7 @@ public class DataPartitionTableIntegrityCheckProcedure
         earliestTimeslots.clear();
         dataPartitionTables.clear();
         finalDataPartitionTables.clear();
-        throw new ProcedureException("Unknown state for rollback: " + state);
+        throw new ProcedureException(ProcedureMessages.UNKNOWN_STATE_FOR_ROLLBACK + state);
     }
   }
 
@@ -706,7 +707,8 @@ public class DataPartitionTableIntegrityCheckProcedure
       LOG.error("[DataPartitionIntegrity] No database lost data partition table");
       setFailure(
           "DataPartitionTableIntegrityCheckProcedure",
-          new ProcedureException("No database lost data partition table for consensus write"));
+          new ProcedureException(
+              ProcedureMessages.NO_DATABASE_LOST_DATA_PARTITION_TABLE_FOR_CONSENSUS_WRITE));
       return getFlow();
     }
 
@@ -714,7 +716,8 @@ public class DataPartitionTableIntegrityCheckProcedure
       LOG.error("[DataPartitionIntegrity] DataPartitionTable to write to consensus");
       setFailure(
           "DataPartitionTableIntegrityCheckProcedure",
-          new ProcedureException("No DataPartitionTable available for consensus write"));
+          new ProcedureException(
+              ProcedureMessages.NO_DATAPARTITIONTABLE_AVAILABLE_FOR_CONSENSUS_WRITE));
       return getFlow();
     }
 
@@ -738,7 +741,8 @@ public class DataPartitionTableIntegrityCheckProcedure
           LOG.error("[DataPartitionIntegrity] Failed to write DataPartitionTable to consensus log");
           setFailure(
               "DataPartitionTableIntegrityCheckProcedure",
-              new ProcedureException("Failed to write DataPartitionTable to consensus log"));
+              new ProcedureException(
+                  ProcedureMessages.FAILED_TO_WRITE_DATAPARTITIONTABLE_TO_CONSENSUS_LOG));
         }
       } catch (Exception e) {
         LOG.error("[DataPartitionIntegrity] Error writing DataPartitionTable to consensus log", e);
@@ -819,7 +823,7 @@ public class DataPartitionTableIntegrityCheckProcedure
               this.getClass().getSimpleName(),
               entry.getKey(),
               e);
-          throw new IOException("Failed to serialize dataPartitionTables", e);
+          throw new IOException(ProcedureMessages.FAILED_TO_SERIALIZE_DATAPARTITIONTABLES, e);
         }
       }
     }
@@ -851,7 +855,7 @@ public class DataPartitionTableIntegrityCheckProcedure
               "[DataPartitionIntegrity] {} serialize finalDataPartitionTables failed",
               this.getClass().getSimpleName(),
               e);
-          throw new IOException("Failed to serialize finalDataPartitionTables", e);
+          throw new IOException(ProcedureMessages.FAILED_TO_SERIALIZE_FINALDATAPARTITIONTABLES, e);
         }
       }
     } else {
@@ -872,7 +876,7 @@ public class DataPartitionTableIntegrityCheckProcedure
         stream.write(buf, 0, size);
       } catch (TException e) {
         LOG.error("[DataPartitionIntegrity] Failed to serialize skipDataNode", e);
-        throw new IOException("Failed to serialize skipDataNode", e);
+        throw new IOException(ProcedureMessages.FAILED_TO_SERIALIZE_SKIPDATANODE, e);
       }
     }
 
@@ -890,7 +894,7 @@ public class DataPartitionTableIntegrityCheckProcedure
         stream.write(buf, 0, size);
       } catch (TException e) {
         LOG.error("[DataPartitionIntegrity] Failed to serialize failedDataNode", e);
-        throw new IOException("Failed to serialize failedDataNode", e);
+        throw new IOException(ProcedureMessages.FAILED_TO_SERIALIZE_FAILEDDATANODE, e);
       }
     }
   }
@@ -938,7 +942,8 @@ public class DataPartitionTableIntegrityCheckProcedure
               this.getClass().getSimpleName(),
               dataNodeId,
               e);
-          throw new RuntimeException("Failed to deserialize dataPartitionTables", e);
+          throw new RuntimeException(
+              ProcedureMessages.FAILED_TO_DESERIALIZE_DATAPARTITIONTABLES, e);
         }
       }
 
@@ -978,7 +983,8 @@ public class DataPartitionTableIntegrityCheckProcedure
             "[DataPartitionIntegrity] {} deserialize finalDataPartitionTables failed",
             this.getClass().getSimpleName(),
             e);
-        throw new RuntimeException("Failed to deserialize finalDataPartitionTables", e);
+        throw new RuntimeException(
+            ProcedureMessages.FAILED_TO_DESERIALIZE_FINALDATAPARTITIONTABLES, e);
       }
     }
 

@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.tools.validate;
 
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
@@ -94,7 +95,7 @@ public class TsFileResourcePipeStatisticsSetTool {
         }
         i--;
       } else {
-        LOGGER.info("Unknown argument: {}", args[i]);
+        LOGGER.info(DataNodeMiscMessages.UNKNOWN_ARGUMENT, args[i]);
         LOGGER.info(USAGE);
         // Exit if an unknown argument is encountered
         System.exit(1);
@@ -102,7 +103,7 @@ public class TsFileResourcePipeStatisticsSetTool {
     }
 
     if (dataDirs.isEmpty()) {
-      LOGGER.info("No data directories provided. Please specify with --dirs <dir1> <dir2> ...");
+      LOGGER.info(DataNodeMiscMessages.NO_DATA_DIRS_PROVIDED);
       System.exit(1);
     }
 
@@ -290,7 +291,7 @@ public class TsFileResourcePipeStatisticsSetTool {
 
   private static void printStatistics() {
     LOGGER.info("------------------------------------------------------");
-    LOGGER.info("Validation and repair completed. Statistics:");
+    LOGGER.info(DataNodeMiscMessages.VALIDATION_REPAIR_COMPLETED);
     LOGGER.info(
         "Total time taken: {} ms, total TsFile resources: {}, set isGeneratedByPipe resources: {}, reset progressIndex resources: {}, changed resources: {}",
         System.currentTimeMillis() - runtime.get(),

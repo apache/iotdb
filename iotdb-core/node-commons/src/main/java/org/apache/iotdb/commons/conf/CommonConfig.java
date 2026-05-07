@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.client.property.ClientPoolProperty.DefaultProper
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.enums.HandleSystemErrorStrategy;
 import org.apache.iotdb.commons.enums.PipeRateAverage;
+import org.apache.iotdb.commons.i18n.ConfigMessages;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.KillPoint.KillPoint;
@@ -520,7 +521,7 @@ public class CommonConfig {
     try {
       homeDir = homeFile.getCanonicalPath();
     } catch (IOException e) {
-      logger.error("Fail to get canonical path of {}", homeFile, e);
+      logger.error(ConfigMessages.FAIL_TO_GET_CANONICAL_PATH, homeFile, e);
     }
     userFolder = FileUtils.addPrefix2FilePath(homeDir, userFolder);
     roleFolder = FileUtils.addPrefix2FilePath(homeDir, roleFolder);
@@ -746,17 +747,16 @@ public class CommonConfig {
   }
 
   public void setNodeStatus(NodeStatus newStatus) {
-    logger.info("Set system mode from {} to {}.", status, newStatus);
+    logger.info(ConfigMessages.SET_SYSTEM_MODE, status, newStatus);
     this.status = newStatus;
     this.statusReason = null;
 
     switch (newStatus) {
       case ReadOnly:
-        logger.warn("Change system status to ReadOnly! Only query statements are permitted!");
+        logger.warn(ConfigMessages.STATUS_CHANGE_TO_READ_ONLY);
         break;
       case Removing:
-        logger.info(
-            "Change system status to Removing! The current Node is being removed from cluster!");
+        logger.info(ConfigMessages.STATUS_CHANGE_TO_REMOVING);
         break;
       default:
         break;
@@ -803,9 +803,7 @@ public class CommonConfig {
     if (!("ms".equals(timestampPrecision)
         || "us".equals(timestampPrecision)
         || "ns".equals(timestampPrecision))) {
-      logger.error(
-          "Wrong timestamp precision, please set as: ms, us or ns ! Current is: {}",
-          timestampPrecision);
+      logger.error(ConfigMessages.WRONG_TIMESTAMP_PRECISION, timestampPrecision);
       System.exit(-1);
     }
     this.timestampPrecision = timestampPrecision;
@@ -1082,8 +1080,7 @@ public class CommonConfig {
       this.pipeSinkHandshakeTimeoutMs = Math.toIntExact(pipeSinkHandshakeTimeoutMs);
     } catch (ArithmeticException e) {
       this.pipeSinkHandshakeTimeoutMs = Integer.MAX_VALUE;
-      logger.warn(
-          "Given pipe connector handshake timeout is too large, set to {} ms.", Integer.MAX_VALUE);
+      logger.warn(ConfigMessages.PIPE_CONNECTOR_HANDSHAKE_TIMEOUT_TOO_LARGE, Integer.MAX_VALUE);
     } finally {
       if (fPipeSinkHandshakeTimeoutMs != this.pipeSinkHandshakeTimeoutMs) {
         logger.info(
@@ -1102,8 +1099,7 @@ public class CommonConfig {
       this.pipeAirGapSinkTabletTimeoutMs = Math.toIntExact(pipeAirGapSinkTabletTimeoutMs);
     } catch (ArithmeticException e) {
       this.pipeAirGapSinkTabletTimeoutMs = Integer.MAX_VALUE;
-      logger.warn(
-          "Given pipe air gap sink tablet timeout is too large, set to {} ms.", Integer.MAX_VALUE);
+      logger.warn(ConfigMessages.PIPE_AIR_GAP_SINK_TABLET_TIMEOUT_TOO_LARGE, Integer.MAX_VALUE);
     } finally {
       if (fPipeAirGapSinkTabletTimeoutMs != this.pipeAirGapSinkTabletTimeoutMs) {
         logger.info(
@@ -1122,8 +1118,7 @@ public class CommonConfig {
       this.pipeSinkTransferTimeoutMs = Math.toIntExact(pipeSinkTransferTimeoutMs);
     } catch (ArithmeticException e) {
       this.pipeSinkTransferTimeoutMs = Integer.MAX_VALUE;
-      logger.warn(
-          "Given pipe sink transfer timeout is too large, set to {} ms.", Integer.MAX_VALUE);
+      logger.warn(ConfigMessages.PIPE_SINK_TRANSFER_TIMEOUT_TOO_LARGE, Integer.MAX_VALUE);
     } finally {
       if (fPipeSinkTransferTimeoutMs != this.pipeSinkTransferTimeoutMs) {
         logger.info("pipeSinkTransferTimeoutMs is set to {}.", pipeSinkTransferTimeoutMs);
@@ -2800,9 +2795,9 @@ public class CommonConfig {
       try {
         auditableOperationType.add(AuditLogOperation.valueOf(operationType.trim().toUpperCase()));
       } catch (IllegalArgumentException e) {
-        logger.warn("Unsupported audit log operation type: {}", operationType);
+        logger.warn(ConfigMessages.UNSUPPORTED_AUDIT_LOG_OPERATION_TYPE, operationType);
         throw new IllegalArgumentException(
-            "Unsupported audit log operation type: " + operationType);
+            String.format(ConfigMessages.UNSUPPORTED_AUDIT_LOG_OPERATION_TYPE_EX, operationType));
       }
     }
     this.auditableOperationType = auditableOperationType;
@@ -2825,9 +2820,10 @@ public class CommonConfig {
       this.auditableOperationLevel =
           PrivilegeLevel.valueOf(auditableOperationLevelStr.trim().toUpperCase());
     } catch (IllegalArgumentException e) {
-      logger.warn("Unsupported audit log operation level: {}", auditableOperationLevelStr);
+      logger.warn(ConfigMessages.UNSUPPORTED_AUDIT_LOG_OPERATION_LEVEL, auditableOperationLevelStr);
       throw new IllegalArgumentException(
-          "Unsupported audit log operation level: " + auditableOperationLevelStr);
+          String.format(
+              ConfigMessages.UNSUPPORTED_AUDIT_LOG_OPERATION_LEVEL_EX, auditableOperationLevelStr));
     }
   }
 

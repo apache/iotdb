@@ -49,6 +49,7 @@ import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.agent.task.builder.PipeDataNodeBuilder;
 import org.apache.iotdb.db.pipe.agent.task.builder.PipeDataNodeTaskBuilder;
@@ -217,9 +218,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
           clearSchemaRegionListeningQueueIfNecessary(pipeMetaListFromCoordinator);
       closeSchemaRegionListeningQueueIfNecessary(validSchemaRegionIds, exceptionMessages);
     } catch (final Exception e) {
-      LOGGER.warn(
-          "Failed to clear/close the schema region listening queue, because {}. Will wait until success or the region's state machine is stopped.",
-          e.getMessage());
+      LOGGER.warn(DataNodePipeMessages.FAILED_TO_CLEAR_CLOSE_THE_SCHEMA_REGION, e.getMessage());
       // Do not use null pipe name to retain the field "required" to be compatible with the lower
       // versions
       exceptionMessages.add(
@@ -295,7 +294,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
                         schemaRegionId, new PipeOperateSchemaQueueNode(new PlanNodeId(""), false));
               } catch (final ConsensusException e) {
                 throw new PipeException(
-                    "Failed to close listening queue for SchemaRegion "
+                    DataNodePipeMessages.FAILED_TO_CLOSE_LISTENING_QUEUE_FOR_SCHEMAREGION
                         + schemaRegionId
                         + ", because "
                         + e.getMessage(),
@@ -482,7 +481,8 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
                 PipeConfig.getInstance().getPipeMetaReportMaxLogNumPerRound(),
                 PipeConfig.getInstance().getPipeMetaReportMaxLogIntervalRounds(),
                 pipeMetaKeeper.getPipeMetaCount());
-    LOGGER.debug("Received pipe heartbeat request {} from config node.", req.heartbeatId);
+    LOGGER.debug(
+        DataNodePipeMessages.RECEIVED_PIPE_HEARTBEAT_REQUEST_FROM_CONFIG_NODE, req.heartbeatId);
 
     final Set<Integer> dataRegionIds =
         StorageEngine.getInstance().getAllDataRegionIds().stream()
@@ -571,9 +571,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
 
   public boolean hasPipeReleaseRegionRelatedResource(final int consensusGroupId) {
     if (!tryReadLockWithTimeOut(10)) {
-      LOGGER.warn(
-          "Failed to check if pipe has release region related resource with consensus group id: {}.",
-          consensusGroupId);
+      LOGGER.warn(DataNodePipeMessages.FAILED_TO_CHECK_IF_PIPE_HAS_RELEASE, consensusGroupId);
       return false;
     }
 
@@ -616,7 +614,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       try {
         future.get();
       } catch (final ExecutionException | InterruptedException e) {
-        LOGGER.warn("Exception occurs when executing pipe task: ", e);
+        LOGGER.warn(DataNodePipeMessages.EXCEPTION_OCCURS_WHEN_EXECUTING_PIPE_TASK, e);
         throw new PipeException(e.toString());
       }
     }
@@ -637,9 +635,9 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
           configNodeClient.pushHeartbeat(
               IoTDBDescriptor.getInstance().getConfig().getDataNodeId(), resp);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != result.getCode()) {
-        LOGGER.warn("Failed to persist progress index to configNode, status: {}", result);
+        LOGGER.warn(DataNodePipeMessages.FAILED_TO_PERSIST_PROGRESS_INDEX_TO_CONFIGNODE, result);
       } else {
-        LOGGER.info("Successfully persisted all pipe's info to configNode.");
+        LOGGER.info(DataNodePipeMessages.SUCCESSFULLY_PERSISTED_ALL_PIPE_S_INFO_TO);
       }
     } catch (final Exception e) {
       LOGGER.warn(e.getMessage());
@@ -658,7 +656,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
 
     try {
       if (!pipeMetaKeeper.containsPipeMeta(pipeName)) {
-        throw new PipeException("Pipe meta not found: " + pipeName);
+        throw new PipeException(DataNodePipeMessages.PIPE_META_NOT_FOUND + pipeName);
       }
 
       return pipeMetaKeeper

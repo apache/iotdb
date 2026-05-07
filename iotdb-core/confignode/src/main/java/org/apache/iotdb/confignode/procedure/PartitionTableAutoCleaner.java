@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.confignode.consensus.request.write.partition.AutoCleanPartitionTablePlan;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 
@@ -52,7 +53,8 @@ public class PartitionTableAutoCleaner<Env> extends InternalProcedure<Env> {
     super(COMMON_CONFIG.getTTLCheckInterval());
     this.configManager = configManager;
     LOGGER.info(
-        "[PartitionTableCleaner] The PartitionTableAutoCleaner is started with cycle={}ms",
+        ProcedureMessages
+            .PARTITIONTABLECLEANER_THE_PARTITIONTABLEAUTOCLEANER_IS_STARTED_WITH_CYCLE_MS,
         COMMON_CONFIG.getTTLCheckInterval());
   }
 
@@ -78,7 +80,8 @@ public class PartitionTableAutoCleaner<Env> extends InternalProcedure<Env> {
       databaseTTLMap.put(database, databaseTTL);
     }
     LOGGER.info(
-        "[PartitionTableCleaner] Periodically activate PartitionTableAutoCleaner, databaseTTL: {}",
+        ProcedureMessages
+            .PARTITIONTABLECLEANER_PERIODICALLY_ACTIVATE_PARTITIONTABLEAUTOCLEANER_DATABASETTL,
         databaseTTLMap);
     for (String database : databases) {
       long databaseTTL = databaseTTLMap.get(database);
@@ -91,7 +94,8 @@ public class PartitionTableAutoCleaner<Env> extends InternalProcedure<Env> {
     }
     if (!databaseTTLMap.isEmpty()) {
       LOGGER.info(
-          "[PartitionTableCleaner] Periodically activate PartitionTableAutoCleaner for: {}",
+          ProcedureMessages
+              .PARTITIONTABLECLEANER_PERIODICALLY_ACTIVATE_PARTITIONTABLEAUTOCLEANER_FOR,
           databaseTTLMap);
       // Only clean the partition table when necessary
       TTimePartitionSlot currentTimePartitionSlot = getCurrentTimePartitionSlot();

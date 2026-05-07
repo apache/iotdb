@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.planner.distribution;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.DownStreamChannelLocation;
@@ -82,7 +83,7 @@ public class DistributionPlanner {
     List<PlanNode> planNodeList =
         rewriter.visit(logicalPlan.getRootNode(), new DistributionPlanContext(context));
     if (planNodeList.size() != 1) {
-      throw new IllegalStateException("root node must return only one");
+      throw new IllegalStateException(DataNodeQueryMessages.ROOT_NODE_MUST_RETURN_ONLY_ONE);
     } else {
       return planNodeList.get(0);
     }

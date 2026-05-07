@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.parser.ParsingException;
 
 import org.apache.tsfile.utils.Binary;
@@ -49,8 +50,7 @@ public class GenericLiteral extends Literal {
       // we explicitly disallow "X" as type name, so if the user arrived here,
       // it must be because that he intended to give a binaryLiteral instead, but
       // added whitespace between the X and quote
-      throw new ParsingException(
-          "Spaces are not allowed between 'X' and the starting quote of a binary literal");
+      throw new ParsingException(QueryMessages.GENERIC_LITERAL_NO_SPACE);
     }
     this.value = requireNonNull(value, "value is null");
   }

@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.utils;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.i18n.UtilMessages;
 
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
 import org.slf4j.Logger;
@@ -71,7 +72,7 @@ public class JVMCommonUtils {
       return IOUtils.retryNoException(5, 2000L, dirFile::getFreeSpace, space -> space > 0)
           .orElse(0L);
     } catch (Exception e) {
-      LOGGER.error("Unexpected error checking disk space for directory: {}", dir, e);
+      LOGGER.error(UtilMessages.UNEXPECTED_ERROR_CHECKING_DISK_SPACE_FOR_DIR, dir, e);
       return 0L;
     }
   }
@@ -86,8 +87,7 @@ public class JVMCommonUtils {
       long freeSpace =
           IOUtils.retryNoException(5, 2000L, dirFile::getFreeSpace, space -> space > 0).orElse(0L);
       if (freeSpace == 0) {
-        LOGGER.warn(
-            "Cannot get free space for {} after retries, please check the disk status", dir);
+        LOGGER.warn(UtilMessages.CANNOT_GET_FREE_SPACE, dir);
       }
       long totalSpace = dirFile.getTotalSpace();
       double ratio = 1.0 * freeSpace / totalSpace;
@@ -100,7 +100,7 @@ public class JVMCommonUtils {
       }
       return ratio;
     } catch (Exception e) {
-      LOGGER.error("Unexpected error checking disk space for {}", dir, e);
+      LOGGER.error(UtilMessages.UNEXPECTED_ERROR_CHECKING_DISK_SPACE, dir, e);
       return 0;
     }
   }

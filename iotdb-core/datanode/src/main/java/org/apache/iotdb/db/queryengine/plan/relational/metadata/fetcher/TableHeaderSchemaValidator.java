@@ -40,6 +40,7 @@ import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeTableColumnDisorderException;
 import org.apache.iotdb.db.exception.sql.ColumnCreationFailException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.lock.DataNodeSchemaLockManager;
 import org.apache.iotdb.db.queryengine.plan.analyze.lock.SchemaLockType;
@@ -112,7 +113,8 @@ public class TableHeaderSchemaValidator {
 
     final List<ColumnSchema> inputColumnList = tableSchema.getColumns();
     if (inputColumnList == null || inputColumnList.isEmpty()) {
-      throw new SemanticException("No column other than Time present, please check the request");
+      throw new SemanticException(
+          DataNodeQueryMessages.NO_COLUMN_OTHER_THAN_TIME_PRESENT_PLEASE_CHECK);
     }
     // Get directly if there is a table because we do not want "addColumn" to affect
     // original writings
@@ -258,7 +260,8 @@ public class TableHeaderSchemaValidator {
       }
     }
     if (noField) {
-      throw new SemanticException("No Field column present, please check the request");
+      throw new SemanticException(
+          DataNodeQueryMessages.NO_FIELD_COLUMN_PRESENT_PLEASE_CHECK_THE_REQUEST);
     }
 
     final List<ColumnSchema> resultColumnList = new ArrayList<>();
@@ -351,7 +354,8 @@ public class TableHeaderSchemaValidator {
     final int measurementCount = measurementInfo.getMeasurementCount();
 
     if (measurementCount == 0) {
-      throw new SemanticException("No column other than Time present, please check the request");
+      throw new SemanticException(
+          DataNodeQueryMessages.NO_COLUMN_OTHER_THAN_TIME_PRESENT_PLEASE_CHECK);
     }
 
     TsTable table =
@@ -475,7 +479,8 @@ public class TableHeaderSchemaValidator {
     }
 
     if (noField) {
-      throw new SemanticException("No Field column present, please check the request");
+      throw new SemanticException(
+          DataNodeQueryMessages.NO_FIELD_COLUMN_PRESENT_PLEASE_CHECK_THE_REQUEST);
     }
 
     measurementInfo.setAttributeColumnsPresent(hasAttribute);
@@ -610,7 +615,7 @@ public class TableHeaderSchemaValidator {
       DataNodeSchemaLockManager.getInstance()
           .takeReadLock(context, SchemaLockType.VALIDATE_VS_DELETION_TABLE);
     } catch (final ExecutionException | InterruptedException e) {
-      LOGGER.warn("Auto add table column failed.", e);
+      LOGGER.warn(DataNodeQueryMessages.AUTO_ADD_TABLE_COLUMN_FAILED, e);
       throw new RuntimeException(e);
     }
   }
@@ -665,7 +670,7 @@ public class TableHeaderSchemaValidator {
             .filter(columnDefinition -> TsTableColumnCategory.TIME == columnDefinition)
             .count();
     if (timeCandidateNums > 1) {
-      throw new SemanticException("A table cannot have more than one time column");
+      throw new SemanticException(DataNodeQueryMessages.A_TABLE_CANNOT_HAVE_MORE_THAN_ONE_TIME);
     }
     if (timeCandidateNums == 0) {
       // append the time column with default name "time" if user do not specify the time column
@@ -702,7 +707,8 @@ public class TableHeaderSchemaValidator {
       }
 
       if (category == TsTableColumnCategory.TIME && dataType != TSDataType.TIMESTAMP) {
-        throw new SemanticException("The time column's type shall be 'timestamp'.");
+        throw new SemanticException(
+            DataNodeQueryMessages.THE_TIME_COLUMN_S_TYPE_SHALL_BE_TIMESTAMP);
       }
 
       hasObject |= dataType == TSDataType.OBJECT;
@@ -728,7 +734,7 @@ public class TableHeaderSchemaValidator {
                     columnDefinition.getColumnCategory() == TsTableColumnCategory.TIME)
             .count();
     if (timeColumnCount > 1) {
-      throw new SemanticException("A table cannot have more than one time column");
+      throw new SemanticException(DataNodeQueryMessages.A_TABLE_CANNOT_HAVE_MORE_THAN_ONE_TIME);
     }
     if (timeColumnCount == 0) {
       // append the time column with default name "time" if user do not specify the time column
@@ -838,7 +844,7 @@ public class TableHeaderSchemaValidator {
       DataNodeSchemaLockManager.getInstance()
           .takeReadLock(context, SchemaLockType.VALIDATE_VS_DELETION_TABLE);
     } catch (final ExecutionException | InterruptedException e) {
-      LOGGER.warn("Auto add table column failed.", e);
+      LOGGER.warn(DataNodeQueryMessages.AUTO_ADD_TABLE_COLUMN_FAILED, e);
       throw new RuntimeException(e);
     }
   }
@@ -850,13 +856,15 @@ public class TableHeaderSchemaValidator {
       switch (inputColumn.getColumnCategory()) {
         case TAG:
           if (!inputColumn.getType().equals(StringType.STRING)) {
-            throw new SemanticException("Tag column only support data type STRING.");
+            throw new SemanticException(
+                DataNodeQueryMessages.TAG_COLUMN_ONLY_SUPPORT_DATA_TYPE_STRING);
           }
           columnSchemaList.add(new TagColumnSchema(inputColumn.getName(), TSDataType.STRING));
           break;
         case ATTRIBUTE:
           if (!inputColumn.getType().equals(StringType.STRING)) {
-            throw new SemanticException("Attribute column only support data type STRING.");
+            throw new SemanticException(
+                DataNodeQueryMessages.ATTRIBUTE_COLUMN_ONLY_SUPPORT_DATA_TYPE_STRING);
           }
           columnSchemaList.add(new AttributeColumnSchema(inputColumn.getName(), TSDataType.STRING));
           break;

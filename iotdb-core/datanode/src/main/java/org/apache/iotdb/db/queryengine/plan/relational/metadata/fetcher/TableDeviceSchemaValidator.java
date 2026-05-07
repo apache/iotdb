@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher;
 
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
@@ -252,7 +253,7 @@ public class TableDeviceSchemaValidator {
   }
 
   public static void checkObject4DeviceId(final Object[] deviceId) {
-    throw new SemanticException("The object type column is not supported.");
+    throw new SemanticException(DataNodeQueryMessages.THE_OBJECT_TYPE_COLUMN_IS_NOT_SUPPORTED);
   }
 
   private static class ValidateResult {

@@ -37,6 +37,7 @@ import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
 import org.apache.iotdb.consensus.exception.RatisReadUnavailableException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.mpp.FragmentInstanceDispatchException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.execution.executor.RegionExecutionResult;
 import org.apache.iotdb.db.queryengine.execution.executor.RegionReadExecutor;
@@ -168,7 +169,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
       }
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      LOGGER.warn("Interrupted when dispatching read async", e);
+      LOGGER.warn(DataNodeQueryMessages.INTERRUPTED_WHEN_DISPATCHING_READ_ASYNC, e);
       return immediateFuture(
           new FragInstanceDispatchResult(
               RpcUtils.getStatus(
@@ -320,7 +321,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
       }
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      LOGGER.error("Interrupted when dispatching write async", e);
+      LOGGER.error(DataNodeQueryMessages.INTERRUPTED_WHEN_DISPATCHING_WRITE_ASYNC, e);
       return immediateFuture(
           new FragInstanceDispatchResult(
               RpcUtils.getStatus(
@@ -612,7 +613,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
             ConsensusGroupId.Factory.createFromTConsensusGroupId(
                 instance.getRegionReplicaSet().getRegionId());
       } catch (final Throwable t) {
-        LOGGER.warn("Deserialize ConsensusGroupId failed. ", t);
+        LOGGER.warn(DataNodeQueryMessages.DESERIALIZE_CONSENSUSGROUPID_FAILED, t);
         throw new FragmentInstanceDispatchException(
             RpcUtils.getStatus(
                 TSStatusCode.EXECUTE_STATEMENT_ERROR,

@@ -36,6 +36,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TRatisConfig;
 import org.apache.iotdb.consensus.config.IoTConsensusV2Config;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.pipe.resource.log.PipePeriodicalLogReducer;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.LastCacheLoadStrategy;
 import org.apache.iotdb.db.service.metrics.IoTDBInternalLocalReporter;
@@ -130,7 +131,7 @@ public class IoTDBDescriptor {
       if (e instanceof InterruptedException) {
         Thread.currentThread().interrupt();
       }
-      LOGGER.error("Failed to update config file", e);
+      LOGGER.error(DataNodeMiscMessages.FAILED_UPDATE_CONFIG_FILE, e);
     }
   }
 
@@ -140,7 +141,7 @@ public class IoTDBDescriptor {
         ServiceLoader.load(IPropertiesLoader.class);
     boolean hasProperties = false;
     for (IPropertiesLoader loader : propertiesLoaderServiceLoader) {
-      LOGGER.info("Will reload properties from {} ", loader.getClass().getName());
+      LOGGER.info(DataNodeMiscMessages.WILL_RELOAD_PROPERTIES, loader.getClass().getName());
       hasProperties = true;
       Properties properties = loader.loadProperties();
       TrimProperties trimProperties = new TrimProperties();
@@ -213,7 +214,7 @@ public class IoTDBDescriptor {
     try {
       return new URL(urlString);
     } catch (MalformedURLException e) {
-      LOGGER.warn("get url failed", e);
+      LOGGER.warn(DataNodeMiscMessages.GET_URL_FAILED, e);
       return null;
     }
   }
@@ -226,19 +227,19 @@ public class IoTDBDescriptor {
     URL url = getPropsUrl(CommonConfig.SYSTEM_CONFIG_NAME);
     if (url != null) {
       try (InputStream inputStream = url.openStream()) {
-        LOGGER.info("Start to read config file {}", url);
+        LOGGER.info(DataNodeMiscMessages.START_READ_CONFIG_FILE, url);
         Properties properties = new Properties();
         properties.load(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
         commonProperties.putAll(properties);
         loadProperties(commonProperties);
       } catch (FileNotFoundException e) {
-        LOGGER.error("Fail to find config file {}, reject DataNode startup.", url, e);
+        LOGGER.error(DataNodeMiscMessages.FAIL_FIND_CONFIG_FILE, url, e);
         System.exit(-1);
       } catch (IOException e) {
-        LOGGER.error("Cannot load config file, reject DataNode startup.", e);
+        LOGGER.error(DataNodeMiscMessages.CANNOT_LOAD_CONFIG_FILE, e);
         System.exit(-1);
       } catch (Exception e) {
-        LOGGER.error("Incorrect format in config file, reject DataNode startup.", e);
+        LOGGER.error(DataNodeMiscMessages.INCORRECT_FORMAT_CONFIG_FILE, e);
         System.exit(-1);
       } finally {
         // update all data seriesPath
@@ -1193,7 +1194,7 @@ public class IoTDBDescriptor {
                 "delay_analyzer_window_size",
                 ConfigurationFileUtils.getConfigurationDefaultValue("delay_analyzer_window_size")));
     if (delayAnalyzerWindowSize > 0) {
-      LOGGER.info("[DelayAnalyzer] Set delay_analyzer_window_size to {}", delayAnalyzerWindowSize);
+      LOGGER.info(DataNodeMiscMessages.SET_DELAY_ANALYZER_WINDOW_SIZE, delayAnalyzerWindowSize);
       conf.setDelayAnalyzerWindowSize(delayAnalyzerWindowSize);
     }
 
@@ -1812,7 +1813,7 @@ public class IoTDBDescriptor {
       try {
         newThrottleThreshold = Math.min(newThrottleThreshold, fileStore.getUsableSpace());
       } catch (IOException e) {
-        LOGGER.error("Failed to get file size of {}, because", fileStore, e);
+        LOGGER.error(DataNodeMiscMessages.FAILED_GET_FILE_SIZE, fileStore, e);
       }
     }
     newThrottleThreshold = (long) (newThrottleThreshold * dirUseProportion * walFileStores.size());
@@ -1904,7 +1905,7 @@ public class IoTDBDescriptor {
                     ConfigurationFileUtils.getConfigurationDefaultValue("page_size_in_byte"))));
     if (TSFileDescriptor.getInstance().getConfig().getPageSizeInByte()
         > TSFileDescriptor.getInstance().getConfig().getGroupSizeInByte()) {
-      LOGGER.warn("page_size is greater than group size, will set it as the same with group size");
+      LOGGER.warn(DataNodeMiscMessages.PAGE_SIZE_GREATER_THAN_GROUP_SIZE);
       TSFileDescriptor.getInstance()
           .getConfig()
           .setPageSizeInByte(TSFileDescriptor.getInstance().getConfig().getGroupSizeInByte());
@@ -1999,7 +2000,7 @@ public class IoTDBDescriptor {
     if (properties.getProperty(IoTDBConstant.MQTT_HOST_NAME) != null) {
       conf.setMqttHost(properties.getProperty(IoTDBConstant.MQTT_HOST_NAME).trim());
     } else {
-      LOGGER.info("MQTT host is not configured, will use dn_rpc_address.");
+      LOGGER.info(DataNodeMiscMessages.MQTT_HOST_NOT_CONFIGURED);
       conf.setMqttHost(properties.getProperty(IoTDBConstant.DN_RPC_ADDRESS, conf.getRpcAddress()));
     }
 
@@ -2318,7 +2319,8 @@ public class IoTDBDescriptor {
       if (e instanceof InterruptedException) {
         Thread.currentThread().interrupt();
       }
-      throw new QueryProcessException(String.format("Fail to reload configuration because %s", e));
+      throw new QueryProcessException(
+          String.format(DataNodeMiscMessages.FAIL_RELOAD_CONFIGURATION_FMT, e));
     }
   }
 
@@ -2350,7 +2352,7 @@ public class IoTDBDescriptor {
       try {
         pattern = Pattern.compile(trustedUriPattern);
       } catch (Exception e) {
-        LOGGER.warn("Failed to parse trusted_uri_pattern {}", trustedUriPattern);
+        LOGGER.warn(DataNodeMiscMessages.FAILED_PARSE_TRUSTED_URI, trustedUriPattern);
         pattern = commonDescriptor.getConfig().getTrustedUriPattern();
       }
     } else {
@@ -2362,18 +2364,18 @@ public class IoTDBDescriptor {
   public synchronized void loadHotModifiedProps() throws QueryProcessException {
     URL url = getPropsUrl(CommonConfig.SYSTEM_CONFIG_NAME);
     if (url == null) {
-      LOGGER.warn("Couldn't load the configuration from any of the known sources.");
+      LOGGER.warn(DataNodeMiscMessages.COULD_NOT_LOAD_CONFIG);
       return;
     }
 
     TrimProperties commonProperties = new TrimProperties();
     try (InputStream inputStream = url.openStream()) {
-      LOGGER.info("Start to reload config file {}", url);
+      LOGGER.info(DataNodeMiscMessages.START_RELOAD_CONFIG_FILE, url);
       commonProperties.load(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
       ConfigurationFileUtils.loadConfigurationDefaultValueFromTemplate();
       loadHotModifiedProps(commonProperties);
     } catch (Exception e) {
-      LOGGER.warn("Fail to reload config file {}", url, e);
+      LOGGER.warn(DataNodeMiscMessages.FAIL_RELOAD_CONFIG_FILE, url, e);
       throw new QueryProcessException(
           String.format("Fail to reload config file %s because %s", url, e.getMessage()));
     } finally {
@@ -2384,7 +2386,7 @@ public class IoTDBDescriptor {
 
   public void reloadMetricProperties(TrimProperties properties) {
     ReloadLevel reloadLevel = MetricConfigDescriptor.getInstance().loadHotProps(properties, false);
-    LOGGER.info("Reload metric service in level {}", reloadLevel);
+    LOGGER.info(DataNodeMiscMessages.RELOAD_METRIC_SERVICE, reloadLevel);
     if (reloadLevel == ReloadLevel.RESTART_INTERNAL_REPORTER) {
       IoTDBInternalReporter internalReporter;
       if (MetricConfigDescriptor.getInstance().getMetricConfig().getInternalReportType()

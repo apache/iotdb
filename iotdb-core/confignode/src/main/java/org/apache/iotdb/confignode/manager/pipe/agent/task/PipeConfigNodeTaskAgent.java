@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.pipe.agent.PipeConfigNodeAgent;
 import org.apache.iotdb.confignode.manager.pipe.metric.overview.PipeConfigNodeRemainingTimeMetrics;
 import org.apache.iotdb.confignode.manager.pipe.metric.source.PipeConfigRegionSourceMetrics;
@@ -151,14 +152,14 @@ public class PipeConfigNodeTaskAgent extends PipeTaskAgent {
                         try {
                           return pipeMeta.deepCopy4TaskAgent();
                         } catch (Exception e) {
-                          throw new PipeException("failed to deep copy pipeMeta", e);
+                          throw new PipeException(ManagerMessages.FAILED_TO_DEEP_COPY_PIPEMETA, e);
                         }
                       })
                   .collect(Collectors.toList()));
       clearConfigRegionListeningQueueIfNecessary(pipeMetaListFromCoordinator);
       return exceptionMessages;
     } catch (final Exception e) {
-      throw new PipeException("failed to handle pipe meta changes", e);
+      throw new PipeException(ManagerMessages.FAILED_TO_HANDLE_PIPE_META_CHANGES, e);
     }
   }
 
@@ -209,7 +210,8 @@ public class PipeConfigNodeTaskAgent extends PipeTaskAgent {
                 PipeConfig.getInstance().getPipeMetaReportMaxLogNumPerRound(),
                 PipeConfig.getInstance().getPipeMetaReportMaxLogIntervalRounds(),
                 pipeMetaKeeper.getPipeMetaCount());
-    LOGGER.debug("Received pipe heartbeat request {} from config coordinator.", req.heartbeatId);
+    LOGGER.debug(
+        ManagerMessages.RECEIVED_PIPE_HEARTBEAT_REQUEST_FROM_CONFIG_COORDINATOR, req.heartbeatId);
 
     final List<ByteBuffer> pipeMetaBinaryList = new ArrayList<>();
     final List<Long> pipeRemainingEventCountList = new ArrayList<>();

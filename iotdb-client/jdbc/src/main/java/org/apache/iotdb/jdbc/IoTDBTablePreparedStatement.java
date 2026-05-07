@@ -20,6 +20,7 @@
 package org.apache.iotdb.jdbc;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.jdbc.i18n.JdbcMessages;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -69,7 +70,7 @@ import java.util.Map;
 public class IoTDBTablePreparedStatement extends IoTDBStatement implements PreparedStatement {
 
   private static final Logger logger = LoggerFactory.getLogger(IoTDBTablePreparedStatement.class);
-  private static final String METHOD_NOT_SUPPORTED_STRING = "Method not supported";
+  private static final String METHOD_NOT_SUPPORTED_STRING = JdbcMessages.METHOD_NOT_SUPPORTED;
 
   private final String sql;
   private final String preparedStatementName;
@@ -245,10 +246,10 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
       try {
         TSStatus status = client.deallocatePreparedStatement(req);
         if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          logger.warn("Failed to deallocate prepared statement: {}", status.getMessage());
+          logger.warn(JdbcMessages.FAILED_TO_DEALLOCATE_PREPARED_STATEMENT, status.getMessage());
         }
       } catch (TException e) {
-        logger.warn("Error deallocating prepared statement", e);
+        logger.warn(JdbcMessages.ERROR_DEALLOCATING_PREPARED_STATEMENT, e);
       }
     }
     super.close();

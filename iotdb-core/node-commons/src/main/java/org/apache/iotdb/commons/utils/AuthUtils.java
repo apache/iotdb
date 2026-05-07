@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.i18n.UtilMessages;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.commons.path.PathPatternUtil;
@@ -525,7 +526,7 @@ public class AuthUtils {
         path.serialize(dataOutputStream);
       }
     } catch (IOException e) {
-      LOGGER.error("Failed to serialize PartialPath list", e);
+      LOGGER.error(UtilMessages.FAILED_TO_SERIALIZE_PARTIAL_PATH_LIST, e);
     }
     return ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
   }
@@ -570,8 +571,8 @@ public class AuthUtils {
         return PrivilegeType.AUDIT;
       default:
         // Not reach here.
-        LOGGER.warn("Not support position");
-        throw new RuntimeException("Not support position");
+        LOGGER.warn(UtilMessages.UNSUPPORTED_POSITION);
+        throw new RuntimeException(UtilMessages.UNSUPPORTED_POSITION);
     }
   }
 
@@ -653,7 +654,7 @@ public class AuthUtils {
       case WRITE_SCHEMA:
         return 3;
       default:
-        throw new RuntimeException("Not support PrivilegeType " + pri);
+        throw new RuntimeException(UtilMessages.UNSUPPORTED_PRIVILEGE_TYPE + pri);
     }
   }
 
@@ -672,7 +673,7 @@ public class AuthUtils {
       case 5:
         return PrivilegeType.DELETE;
       default:
-        throw new RuntimeException("Not support position");
+        throw new RuntimeException(UtilMessages.UNSUPPORTED_POSITION);
     }
   }
 
@@ -691,7 +692,7 @@ public class AuthUtils {
       case DELETE:
         return 5;
       default:
-        throw new RuntimeException("Not support position");
+        throw new RuntimeException(UtilMessages.UNSUPPORTED_POSITION);
     }
   }
 }

@@ -48,6 +48,7 @@ import org.apache.iotdb.confignode.client.async.handlers.rpc.TreeDeviceViewField
 import org.apache.iotdb.confignode.client.async.handlers.rpc.subscription.CheckSchemaRegionUsingTemplateRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.subscription.ConsumerGroupPushMetaRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.subscription.TopicPushMetaRPCHandler;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.mpp.rpc.thrift.TActiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TAlterEncodingCompressorReq;
 import org.apache.iotdb.mpp.rpc.thrift.TAlterTimeSeriesReq;
@@ -501,7 +502,8 @@ public class CnToDnInternalServiceAsyncRequestManager
             .collect(Collectors.toList());
     if (!lackList.isEmpty()) {
       throw new UncheckedStartupException(
-          String.format("These request types should be added to actionMap: %s", lackList));
+          String.format(
+              ConfigNodeMessages.THESE_REQUEST_TYPES_SHOULD_BE_ADDED_TO_ACTIONMAP, lackList));
     }
   }
 

@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeIterator;
 import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.db.exception.metadata.cache.MNodeNotCachedException;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.schemaengine.metric.SchemaRegionCachedMetric;
 import org.apache.iotdb.db.schemaengine.rescon.CachedSchemaRegionStatistics;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.IMTreeStore;
@@ -554,7 +555,7 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
           file.clear();
           file.close();
         } catch (MetadataException | IOException e) {
-          LOGGER.error("Error occurred during PBTree clear, {}", e.getMessage(), e);
+          LOGGER.error(DataNodeSchemaMessages.ERROR_DURING_PBTREE_CLEAR, e.getMessage(), e);
         }
       }
       file = null;
@@ -628,7 +629,7 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
 
     } catch (Throwable e) {
       LOGGER.error(
-          "Error occurred during MTree flush, current SchemaRegionId is {}", schemaRegionId, e);
+          DataNodeSchemaMessages.ERROR_DURING_MTREE_FLUSH_SCHEMA_REGION, schemaRegionId, e);
     } finally {
       long time = System.currentTimeMillis() - startTime;
       if (time > 10_000) {

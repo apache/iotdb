@@ -54,6 +54,7 @@ import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
 import org.apache.iotdb.confignode.procedure.PartitionTableAutoCleaner;
@@ -233,7 +234,7 @@ public class ProcedureManager {
           CONFIG_NODE_CONFIG.getProcedureCompletedEvictTTL());
       executor.addInternalProcedure(partitionTableCleaner);
       store.start();
-      LOGGER.info("ProcedureManager is started successfully.");
+      LOGGER.info(ManagerMessages.PROCEDUREMANAGER_IS_STARTED_SUCCESSFULLY);
     }
   }
 
@@ -243,7 +244,7 @@ public class ProcedureManager {
       if (!executor.isRunning()) {
         executor.join();
         store.stop();
-        LOGGER.info("ProcedureManager is stopped successfully.");
+        LOGGER.info(ManagerMessages.PROCEDUREMANAGER_IS_STOPPED_SUCCESSFULLY);
       }
       executor.removeInternalProcedure(partitionTableCleaner);
     }
@@ -628,7 +629,8 @@ public class ProcedureManager {
     final RemoveConfigNodeProcedure removeConfigNodeProcedure =
         new RemoveConfigNodeProcedure(removeConfigNodePlan.getConfigNodeLocation());
     this.executor.submitProcedure(removeConfigNodeProcedure);
-    LOGGER.info("Submit RemoveConfigNodeProcedure successfully: {}", removeConfigNodePlan);
+    LOGGER.info(
+        ManagerMessages.SUBMIT_REMOVECONFIGNODEPROCEDURE_SUCCESSFULLY, removeConfigNodePlan);
   }
 
   /**
@@ -647,7 +649,7 @@ public class ProcedureManager {
     this.executor.submitProcedure(
         new RemoveDataNodesProcedure(removeDataNodePlan.getDataNodeLocations(), nodeStatusMap));
     LOGGER.info(
-        "Submit RemoveDataNodesProcedure successfully, {}",
+        ManagerMessages.SUBMIT_REMOVEDATANODESPROCEDURE_SUCCESSFULLY,
         removeDataNodePlan.getDataNodeLocations());
     return true;
   }
@@ -655,7 +657,8 @@ public class ProcedureManager {
   public boolean removeAINode(RemoveAINodePlan removeAINodePlan) {
     this.executor.submitProcedure(new RemoveAINodeProcedure(removeAINodePlan.getAINodeLocation()));
     LOGGER.info(
-        "Submit RemoveAINodeProcedure successfully, {}", removeAINodePlan.getAINodeLocation());
+        ManagerMessages.SUBMIT_REMOVEAINODEPROCEDURE_SUCCESSFULLY,
+        removeAINodePlan.getAINodeLocation());
     return true;
   }
 
@@ -1087,7 +1090,7 @@ public class ProcedureManager {
       if (optional.isPresent()) {
         regionGroupId = optional.get();
       } else {
-        LOGGER.error("get region group id fail");
+        LOGGER.error(ManagerMessages.GET_REGION_GROUP_ID_FAIL);
         return new TSStatus(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode())
             .setMessage("get region group id fail");
       }
@@ -1139,7 +1142,8 @@ public class ProcedureManager {
               coordinatorForAddPeer,
               coordinatorForRemovePeer));
       LOGGER.info(
-          "[MigrateRegion] Submit RegionMigrateProcedure successfully, Region: {}, Origin DataNode: {}, Dest DataNode: {}, Add Coordinator: {}, Remove Coordinator: {}",
+          ManagerMessages
+              .MIGRATEREGION_SUBMIT_REGIONMIGRATEPROCEDURE_SUCCESSFULLY_REGION_ORIGIN_DATANODE,
           regionGroupId,
           originalDataNode,
           destDataNode,
@@ -1162,7 +1166,10 @@ public class ProcedureManager {
             configManager
                 .getPartitionManager()
                 .generateTConsensusGroupIdByRegionId(x)
-                .orElseThrow(() -> new IllegalArgumentException("Region id " + x + " is invalid"));
+                .orElseThrow(
+                    () ->
+                        new IllegalArgumentException(
+                            ManagerMessages.REGION_ID + x + " is invalid"));
         final TDataNodeLocation coordinator =
             handler
                 .filterDataNodeWithOtherRegionReplica(
@@ -1183,7 +1190,7 @@ public class ProcedureManager {
           reconstructRegionProcedure -> {
             this.executor.submitProcedure(reconstructRegionProcedure);
             LOGGER.info(
-                "[ReconstructRegion] Submit ReconstructRegionProcedure successfully, {}",
+                ManagerMessages.RECONSTRUCTREGION_SUBMIT_RECONSTRUCTREGIONPROCEDURE_SUCCESSFULLY,
                 reconstructRegionProcedure);
           });
     }
@@ -1247,7 +1254,7 @@ public class ProcedureManager {
       if (optional.isPresent()) {
         regionId = optional.get();
       } else {
-        LOGGER.error("get region group id fail");
+        LOGGER.error(ManagerMessages.GET_REGION_GROUP_ID_FAIL);
         return new TSStatus(TSStatusCode.EXTEND_REGION_ERROR.getStatusCode())
             .setMessage("get region group id fail");
       }
@@ -1276,7 +1283,8 @@ public class ProcedureManager {
       AddRegionPeerProcedure procedure =
           new AddRegionPeerProcedure(regionId, coordinator, targetDataNode);
       this.executor.submitProcedure(procedure);
-      LOGGER.info("[ExtendRegion] Submit AddRegionPeerProcedure successfully: {}", procedure);
+      LOGGER.info(
+          ManagerMessages.EXTENDREGION_SUBMIT_ADDREGIONPEERPROCEDURE_SUCCESSFULLY, procedure);
 
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     }
@@ -1291,7 +1299,7 @@ public class ProcedureManager {
       if (optional.isPresent()) {
         regionId = optional.get();
       } else {
-        LOGGER.error("get region group id fail");
+        LOGGER.error(ManagerMessages.GET_REGION_GROUP_ID_FAIL);
         return new TSStatus(TSStatusCode.REMOVE_REGION_PEER_ERROR.getStatusCode())
             .setMessage("get region group id fail");
       }
@@ -1324,7 +1332,7 @@ public class ProcedureManager {
         // NodeManager.
         // In this case, simply clean up the partition table once and do nothing else.
         LOGGER.warn(
-            "Remove region: Target DataNode {} not found, will simply clean up the partition table of region {} and do nothing else.",
+            ManagerMessages.REMOVE_REGION_TARGET_DATANODE_NOT_FOUND_WILL_SIMPLY_CLEAN_UP,
             req.getDataNodeId(),
             req.getRegionId());
         this.executor
@@ -1340,7 +1348,8 @@ public class ProcedureManager {
           new RemoveRegionPeerProcedure(regionId, coordinator, targetDataNode);
       this.executor.submitProcedure(procedure);
       LOGGER.info(
-          "[RemoveRegionPeer] Submit RemoveRegionPeerProcedure successfully: {}", procedure);
+          ManagerMessages.REMOVEREGIONPEER_SUBMIT_REMOVEREGIONPEERPROCEDURE_SUCCESSFULLY,
+          procedure);
 
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     }
@@ -1494,10 +1503,10 @@ public class ProcedureManager {
     try {
       CreatePipeProcedureV2 procedure = new CreatePipeProcedureV2(req);
       executor.submitProcedure(procedure);
-      LOGGER.info("Submitted async consensus pipe creation: {}", req.getPipeName());
+      LOGGER.info(ManagerMessages.SUBMITTED_ASYNC_CONSENSUS_PIPE_CREATION, req.getPipeName());
     } catch (Exception e) {
       LOGGER.warn(
-          "Failed to submit async consensus pipe creation for {}: {}",
+          ManagerMessages.FAILED_TO_SUBMIT_ASYNC_CONSENSUS_PIPE_CREATION_FOR,
           req.getPipeName(),
           e.getMessage());
     }
@@ -1605,10 +1614,10 @@ public class ProcedureManager {
     try {
       DropPipeProcedureV2 procedure = new DropPipeProcedureV2(pipeName);
       executor.submitProcedure(procedure);
-      LOGGER.info("Submitted async consensus pipe drop: {}", pipeName);
+      LOGGER.info(ManagerMessages.SUBMITTED_ASYNC_CONSENSUS_PIPE_DROP, pipeName);
     } catch (Exception e) {
       LOGGER.warn(
-          "Failed to submit async consensus pipe drop for {}: {}", pipeName, e.getMessage());
+          ManagerMessages.FAILED_TO_SUBMIT_ASYNC_CONSENSUS_PIPE_DROP_FOR, pipeName, e.getMessage());
     }
   }
 
@@ -1649,9 +1658,10 @@ public class ProcedureManager {
       final long procedureId =
           executor.submitProcedure(
               new PipeHandleLeaderChangeProcedure(dataRegionGroupToOldAndNewLeaderPairMap));
-      LOGGER.info("PipeHandleLeaderChangeProcedure was submitted, procedureId: {}.", procedureId);
+      LOGGER.info(
+          ManagerMessages.PIPEHANDLELEADERCHANGEPROCEDURE_WAS_SUBMITTED_PROCEDUREID, procedureId);
     } catch (Exception e) {
-      LOGGER.warn("PipeHandleLeaderChangeProcedure was failed to submit.", e);
+      LOGGER.warn(ManagerMessages.PIPEHANDLELEADERCHANGEPROCEDURE_WAS_FAILED_TO_SUBMIT, e);
     }
   }
 
@@ -1662,10 +1672,11 @@ public class ProcedureManager {
           executor.submitProcedure(
               new PipeHandleMetaChangeProcedure(
                   needWriteConsensusOnConfigNodes, needPushPipeMetaToDataNodes));
-      LOGGER.info("PipeHandleMetaChangeProcedure was submitted, procedureId: {}.", procedureId);
+      LOGGER.info(
+          ManagerMessages.PIPEHANDLEMETACHANGEPROCEDURE_WAS_SUBMITTED_PROCEDUREID, procedureId);
       return true;
     } catch (Exception e) {
-      LOGGER.warn("PipeHandleMetaChangeProcedure was failed to submit.", e);
+      LOGGER.warn(ManagerMessages.PIPEHANDLEMETACHANGEPROCEDURE_WAS_FAILED_TO_SUBMIT, e);
       return false;
     }
   }
@@ -1886,7 +1897,8 @@ public class ProcedureManager {
   protected TSStatus waitingProcedureFinished(
       Procedure<?> procedure, final long procedureWaitRetryTimeout) {
     if (procedure == null) {
-      LOGGER.error("Unexpected null procedure parameters for waitingProcedureFinished");
+      LOGGER.error(
+          ManagerMessages.UNEXPECTED_NULL_PROCEDURE_PARAMETERS_FOR_WAITINGPROCEDUREFINISHED);
       return RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR);
     }
     TSStatus status;
@@ -2330,7 +2342,7 @@ public class ProcedureManager {
     for (Procedure<ConfigNodeProcedureEnv> procedure : getExecutor().getProcedures().values()) {
       if (!procedure.isFinished() && procedureClass.isInstance(procedure)) {
         LOGGER.info(
-            "[{}] procedure details are {}",
+            ManagerMessages.PROCEDURE_DETAILS_ARE,
             procedureClass.getSimpleName(),
             procedure.toStringDetails());
         return true;

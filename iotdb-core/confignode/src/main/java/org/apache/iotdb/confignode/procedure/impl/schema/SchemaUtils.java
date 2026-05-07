@@ -34,6 +34,7 @@ import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.consensus.exception.ConsensusException;
@@ -128,8 +129,12 @@ public class SchemaUtils {
                 exception[0] =
                     new MetadataException(
                         String.format(
-                            "Failed to execute in all replicaset of schemaRegion %s when checking the template %s on %s. Failure nodes: %s",
-                            consensusGroupId.id, template, patternTree, dataNodeLocationSet));
+                            ProcedureMessages
+                                .FAILED_TO_EXECUTE_IN_ALL_REPLICASET_OF_SCHEMAREGION_WHEN_CHECKING_2,
+                            consensusGroupId.id,
+                            template,
+                            patternTree,
+                            dataNodeLocationSet));
                 interruptTask();
               }
             };
@@ -212,8 +217,11 @@ public class SchemaUtils {
                 exception[0] =
                     new MetadataException(
                         String.format(
-                            "Failed to execute in all replicaset of schemaRegion %s when checking templates on path %s. Failures: %s",
-                            consensusGroupId.id, deleteDatabasePatternPaths, printFailureMap()));
+                            ProcedureMessages
+                                .FAILED_TO_EXECUTE_IN_ALL_REPLICASET_OF_SCHEMAREGION_WHEN_CHECKING,
+                            consensusGroupId.id,
+                            deleteDatabasePatternPaths,
+                            printFailureMap()));
                 interruptTask();
               }
             };

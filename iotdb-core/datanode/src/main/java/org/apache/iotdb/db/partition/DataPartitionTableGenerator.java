@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.partition.SeriesPartitionTable;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
@@ -115,7 +116,7 @@ public class DataPartitionTableGenerator {
   /** Start generating DataPartitionTable asynchronously. */
   public CompletableFuture<Void> startGeneration() {
     if (status != TaskStatus.NOT_STARTED) {
-      throw new IllegalStateException("Task is already started or completed");
+      throw new IllegalStateException(DataNodeMiscMessages.TASK_ALREADY_STARTED);
     }
 
     status = TaskStatus.IN_PROGRESS;
@@ -201,7 +202,7 @@ public class DataPartitionTableGenerator {
           processedTimePartitions.get(),
           failedTimePartitions.get());
     } catch (Exception e) {
-      LOG.error("Failed to generate DataPartitionTable", e);
+      LOG.error(DataNodeMiscMessages.FAILED_GENERATE_DATA_PARTITION_TABLE, e);
       status = TaskStatus.FAILED;
       errorMessage = "Generation failed: " + e.getMessage();
     }

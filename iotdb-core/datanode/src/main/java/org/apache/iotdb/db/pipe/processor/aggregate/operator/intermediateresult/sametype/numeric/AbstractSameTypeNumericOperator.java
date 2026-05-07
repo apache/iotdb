@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.processor.aggregate.operator.intermediateresult.sametype.numeric;
 
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.processor.aggregate.operator.intermediateresult.IntermediateResultOperator;
 import org.apache.iotdb.pipe.api.type.Binary;
 
@@ -96,25 +97,25 @@ public abstract class AbstractSameTypeNumericOperator implements IntermediateRes
   @Override
   public void updateValue(final boolean input, final long timestamp) {
     throw new UnsupportedOperationException(
-        "AbstractSameTypeNumericOperator does not support boolean input");
+        DataNodePipeMessages.ABSTRACTSAMETYPENUMERICOPERATOR_DOES_NOT_SUPPORT_BOOLEAN_INPUT);
   }
 
   @Override
   public void updateValue(final LocalDate input, final long timestamp) {
     throw new UnsupportedOperationException(
-        "AbstractSameTypeNumericOperator does not support date input");
+        DataNodePipeMessages.ABSTRACTSAMETYPENUMERICOPERATOR_DOES_NOT_SUPPORT_DATE_INPUT);
   }
 
   @Override
   public void updateValue(final String input, final long timestamp) {
     throw new UnsupportedOperationException(
-        "AbstractSameTypeNumericOperator does not support string input");
+        DataNodePipeMessages.ABSTRACTSAMETYPENUMERICOPERATOR_DOES_NOT_SUPPORT_STRING_INPUT);
   }
 
   @Override
   public void updateValue(final Binary input, final long timestamp) {
     throw new UnsupportedOperationException(
-        "AbstractSameTypeNumericOperator does not support binary input");
+        DataNodePipeMessages.ABSTRACTSAMETYPENUMERICOPERATOR_DOES_NOT_SUPPORT_BINARY_INPUT);
   }
 
   @Override

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.tool.schema;
 
+import org.apache.iotdb.cli.i18n.CliMessages;
 import org.apache.iotdb.cli.utils.IoTPrinter;
 import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.isession.SessionDataSet;
@@ -187,6 +188,6 @@ public class ImportSchemaTable extends AbstractImportSchema {
 
   @Override
   protected void importSchemaFromCsvFile(File file) {
-    throw new UnsupportedOperationException("Not supported yet.");
+    throw new UnsupportedOperationException(CliMessages.NOT_SUPPORTED_YET);
   }
 }

@@ -22,6 +22,7 @@ package org.apache.iotdb.confignode.procedure;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.scheduler.ProcedureScheduler;
@@ -167,7 +168,7 @@ public class ProcedureExecutor<Env> {
         case ROLLEDBACK:
         case INITIALIZING:
           LOG.error("Unexpected state:{} for {}", proc.getState(), proc);
-          throw new UnsupportedOperationException("Unexpected state");
+          throw new UnsupportedOperationException(ProcedureMessages.UNEXPECTED_STATE);
         default:
           break;
       }

@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.QueryTimeoutException;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.execution.driver.IDriver;
@@ -209,12 +210,13 @@ public class FragmentInstanceManager {
                   } else if (t instanceof UDFTypeMismatchException) {
                     stateMachine.failed(new SemanticException(t.getMessage()));
                   } else if (t instanceof UDFException) {
-                    logger.warn("Exception happened when executing UDTF: ", t);
+                    logger.warn(DataNodeQueryMessages.EXCEPTION_HAPPENED_WHEN_EXECUTING_UDTF, t);
                     stateMachine.failed(
                         new IoTDBRuntimeException(
                             t.getMessage(), TSStatusCode.EXECUTE_UDF_ERROR.getStatusCode(), true));
                   } else {
-                    logger.warn("error when create FragmentInstanceExecution.", t);
+                    logger.warn(
+                        DataNodeQueryMessages.ERROR_WHEN_CREATE_FRAGMENTINSTANCEEXECUTION, t);
                     stateMachine.failed(t);
                   }
                   clearFIRelatedResources(instanceId);
@@ -316,7 +318,7 @@ public class FragmentInstanceManager {
                 } else if (t instanceof IoTDBRuntimeException) {
                   stateMachine.failed(t);
                 } else {
-                  logger.warn("Execute error caused by ", t);
+                  logger.warn(DataNodeQueryMessages.EXECUTE_ERROR_CAUSED_BY, t);
                   stateMachine.failed(t);
                 }
                 clearFIRelatedResources(instanceId);

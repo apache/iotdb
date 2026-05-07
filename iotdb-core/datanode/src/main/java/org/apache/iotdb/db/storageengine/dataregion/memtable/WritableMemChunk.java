@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager;
 import org.apache.iotdb.db.utils.ModificationUtils;
@@ -440,7 +441,7 @@ public class WritableMemChunk extends AbstractWritableMemChunk {
           dataSizeInCurrentChunk += 8L + getBinarySize(value);
           break;
         default:
-          LOGGER.error("WritableMemChunk does not support data type: {}", tsDataType);
+          LOGGER.error(StorageEngineMessages.WRITABLE_MEM_CHUNK_UNSUPPORTED_TYPE, tsDataType);
           break;
       }
       pointNumInCurrentChunk++;

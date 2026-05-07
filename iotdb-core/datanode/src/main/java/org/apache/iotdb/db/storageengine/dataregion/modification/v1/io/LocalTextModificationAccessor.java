@@ -22,6 +22,7 @@ package org.apache.iotdb.db.storageengine.dataregion.modification.v1.io;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Modification;
 
@@ -117,7 +118,7 @@ public class LocalTextModificationAccessor
             }
           }
         } catch (IOException e) {
-          logger.warn("An error occurred when reading modifications", e);
+          logger.warn(StorageEngineMessages.ERROR_READING_MODIFICATIONS, e);
         }
         return true;
       }
@@ -140,7 +141,7 @@ public class LocalTextModificationAccessor
       cachedModification[0] = decodeModification(line);
       return true;
     } catch (IOException e) {
-      logger.warn("An error occurred when decode line-[{}] to modification", line);
+      logger.warn(StorageEngineMessages.ERROR_DECODE_LINE_TO_MODIFICATION, line);
       cachedModification[0] = null;
       reader.close();
       return false;
@@ -203,7 +204,7 @@ public class LocalTextModificationAccessor
     try (FileOutputStream outputStream =
         new FileOutputStream(FSFactoryProducer.getFSFactory().getFile(filePath), true)) {
       outputStream.getChannel().truncate(size);
-      logger.warn("The modifications[{}] will be truncated to size {}.", filePath, size);
+      logger.warn(StorageEngineMessages.MODIFICATIONS_WILL_BE_TRUNCATED, filePath, size);
     } catch (FileNotFoundException e) {
       logger.debug(NO_MODIFICATION_MSG, filePath);
     } catch (IOException e) {
@@ -228,11 +229,11 @@ public class LocalTextModificationAccessor
           filePointer--;
           lastChar = file.readByte();
         }
-        logger.warn("The last line of Mods is incomplete, will be truncated");
+        logger.warn(StorageEngineMessages.LAST_LINE_OF_MODS_INCOMPLETE);
         truncate(filePointer + 2);
       }
     } catch (IOException e) {
-      logger.error("An error occurred when reading modifications", e);
+      logger.error(StorageEngineMessages.ERROR_READING_MODIFICATIONS, e);
     }
   }
 
@@ -248,7 +249,7 @@ public class LocalTextModificationAccessor
     if (Modification.Type.DELETION.name().equals(fields[0])) {
       return decodeDeletion(fields);
     }
-    throw new IOException("Unknown modification type: " + fields[0]);
+    throw new IOException(StorageEngineMessages.UNKNOWN_MODIFICATION_TYPE + fields[0]);
   }
 
   private static String encodeDeletion(Deletion del) {
@@ -273,7 +274,7 @@ public class LocalTextModificationAccessor
    */
   private static Deletion decodeDeletion(String[] fields) throws IOException {
     if (fields.length < 4) {
-      throw new IOException("Incorrect deletion fields number: " + fields.length);
+      throw new IOException(StorageEngineMessages.INCORRECT_DELETION_FIELDS_NUMBER + fields.length);
     }
 
     String path = "";
@@ -290,14 +291,14 @@ public class LocalTextModificationAccessor
       endTimestamp = Long.parseLong(fields[fields.length - 1]);
       startTimestamp = Long.parseLong(fields[fields.length - 2]);
     } catch (NumberFormatException e) {
-      throw new IOException("Invalid timestamp: " + e.getMessage());
+      throw new IOException(StorageEngineMessages.INVALID_TIMESTAMP + e.getMessage());
     }
     try {
       String[] pathArray = Arrays.copyOfRange(fields, 1, fields.length - 3);
       path = String.join(SEPARATOR, pathArray);
       return new Deletion(new MeasurementPath(path), tsFileOffset, startTimestamp, endTimestamp);
     } catch (IllegalPathException e) {
-      throw new IOException("Invalid series path: " + path);
+      throw new IOException(StorageEngineMessages.INVALID_SERIES_PATH + path);
     }
   }
 
@@ -316,14 +317,14 @@ public class LocalTextModificationAccessor
       endTimestamp = Long.parseLong(fields[fields.length - 1]);
       versionNum = Long.parseLong(fields[fields.length - 2]);
     } catch (NumberFormatException e) {
-      throw new IOException("Invalid timestamp: " + e.getMessage());
+      throw new IOException(StorageEngineMessages.INVALID_TIMESTAMP + e.getMessage());
     }
     try {
       String[] pathArray = Arrays.copyOfRange(fields, 1, fields.length - 2);
       path = String.join(SEPARATOR, pathArray);
       return new Deletion(new MeasurementPath(path), versionNum, endTimestamp);
     } catch (IllegalPathException e) {
-      throw new IOException("Invalid series path: " + path);
+      throw new IOException(StorageEngineMessages.INVALID_SERIES_PATH + path);
     }
   }
 }

@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncAINodeClient;
 import org.apache.iotdb.commons.exception.UncheckedStartupException;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.collect.ImmutableMap;
@@ -74,7 +75,8 @@ public class SyncAINodeClientPool {
             .collect(Collectors.toList());
     if (!lackList.isEmpty()) {
       throw new UncheckedStartupException(
-          String.format("These request types should be added to actionMap: %s", lackList));
+          String.format(
+              ConfigNodeMessages.THESE_REQUEST_TYPES_SHOULD_BE_ADDED_TO_ACTIONMAP, lackList));
     }
   }
 
@@ -87,12 +89,13 @@ public class SyncAINodeClientPool {
       } catch (Exception e) {
         lastException = e;
         if (retry != DEFAULT_RETRY_NUM - 1) {
-          LOGGER.warn("{} failed on AINode {}, retrying {}...", requestType, endPoint, retry + 1);
+          LOGGER.warn(
+              ConfigNodeMessages.FAILED_ON_AINODE_RETRYING, requestType, endPoint, retry + 1);
           doRetryWait(retry);
         }
       }
     }
-    LOGGER.error("{} failed on AINode {}", requestType, endPoint, lastException);
+    LOGGER.error(ConfigNodeMessages.FAILED_ON_AINODE, requestType, endPoint, lastException);
     return new TSStatus(TSStatusCode.INTERNAL_REQUEST_RETRY_ERROR.getStatusCode())
         .setMessage("All retry failed due to: " + lastException.getMessage());
   }
@@ -106,12 +109,13 @@ public class SyncAINodeClientPool {
       } catch (Exception e) {
         lastException = e;
         if (retry != retryNum - 1) {
-          LOGGER.warn("{} failed on AINode {}, retrying {}...", requestType, endPoint, retry + 1);
+          LOGGER.warn(
+              ConfigNodeMessages.FAILED_ON_AINODE_RETRYING, requestType, endPoint, retry + 1);
           doRetryWait(retry);
         }
       }
     }
-    LOGGER.error("{} failed on AINode {}", requestType, endPoint, lastException);
+    LOGGER.error(ConfigNodeMessages.FAILED_ON_AINODE, requestType, endPoint, lastException);
     return new TSStatus(TSStatusCode.INTERNAL_REQUEST_RETRY_ERROR.getStatusCode())
         .setMessage("All retry failed due to: " + lastException.getMessage());
   }
@@ -131,7 +135,7 @@ public class SyncAINodeClientPool {
         TimeUnit.MILLISECONDS.sleep(3200L);
       }
     } catch (InterruptedException e) {
-      LOGGER.warn("Retry wait failed.", e);
+      LOGGER.warn(ConfigNodeMessages.RETRY_WAIT_FAILED, e);
       Thread.currentThread().interrupt();
     }
   }

@@ -54,6 +54,7 @@ import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
@@ -484,7 +485,7 @@ public class PartitionCache {
             // try to auto create database of failed device
             createDatabaseAndUpdateCache(result, deviceIDs, userName);
             if (!result.isSuccess()) {
-              throw new StatementAnalyzeException("Failed to get database Map");
+              throw new StatementAnalyzeException(DataNodeQueryMessages.FAILED_TO_GET_DATABASE_MAP);
             }
           } else {
             // check if it is to auto create the system or audit database

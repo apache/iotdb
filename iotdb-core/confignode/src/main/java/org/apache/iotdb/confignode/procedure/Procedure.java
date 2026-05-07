@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.procedure;
 
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.state.ProcedureLockState;
@@ -677,7 +678,7 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
       long timeDiff = System.currentTimeMillis() - lastUpdate;
       setFailure(
           "ProcedureExecutor",
-          new ProcedureException("Operation timed out after " + timeDiff + " ms."));
+          new ProcedureException(ProcedureMessages.OPERATION_TIMED_OUT_AFTER + timeDiff + " ms."));
       return true;
     }
     return false;

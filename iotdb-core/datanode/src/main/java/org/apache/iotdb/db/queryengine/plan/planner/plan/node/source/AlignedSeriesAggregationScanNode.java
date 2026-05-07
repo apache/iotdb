@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.IPlanVisitor;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeUtil;
@@ -309,7 +310,8 @@ public class AlignedSeriesAggregationScanNode extends SeriesAggregationSourceNod
     } else if (descriptorType == 1) {
       aggregationDescriptorList = typeProvider.getTemplatedInfo().getDescendingDescriptorList();
     } else {
-      throw new IllegalStateException("Unexpected descriptorType: " + descriptorType);
+      throw new IllegalStateException(
+          DataNodeQueryMessages.UNEXPECTED_DESCRIPTORTYPE + descriptorType);
     }
     AggregationStep step = AggregationStep.deserialize(byteBuffer);
     aggregationDescriptorList.forEach(aggregationDescriptor -> aggregationDescriptor.setStep(step));

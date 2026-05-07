@@ -30,6 +30,7 @@ import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DataTypeInconsistentException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.pipe.resource.memory.InsertNodeMemoryEstimator;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.AbstractMemTable;
@@ -99,7 +100,7 @@ public abstract class InsertNode extends SearchNode {
   @Override
   public final SearchNode merge(List<SearchNode> searchNodes) {
     if (searchNodes.isEmpty()) {
-      throw new IllegalArgumentException("insertNodes should never be empty");
+      throw new IllegalArgumentException(DataNodeQueryMessages.INSERTNODES_SHOULD_NEVER_BE_EMPTY);
     }
     if (searchNodes.size() == 1) {
       return searchNodes.get(0);
@@ -254,12 +255,14 @@ public abstract class InsertNode extends SearchNode {
 
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
-    throw new NotImplementedException("serializeAttributes of InsertNode is not implemented");
+    throw new NotImplementedException(
+        DataNodeQueryMessages.SERIALIZEATTRIBUTES_OF_INSERTNODE_IS_NOT_IMPLEMENTED);
   }
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
-    throw new NotImplementedException("serializeAttributes of InsertNode is not implemented");
+    throw new NotImplementedException(
+        DataNodeQueryMessages.SERIALIZEATTRIBUTES_OF_INSERTNODE_IS_NOT_IMPLEMENTED);
   }
 
   // region Serialization methods for WAL

@@ -27,6 +27,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertMultiTabletsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
@@ -175,7 +176,7 @@ public class InsertNodeMemoryEstimator {
           return 0L;
       }
     } catch (Exception e) {
-      LOGGER.warn("Failed to estimate size for InsertNode: {}", e.getMessage(), e);
+      LOGGER.warn(DataNodePipeMessages.FAILED_TO_ESTIMATE_SIZE_FOR_INSERTNODE, e.getMessage(), e);
       return 0L;
     }
   }

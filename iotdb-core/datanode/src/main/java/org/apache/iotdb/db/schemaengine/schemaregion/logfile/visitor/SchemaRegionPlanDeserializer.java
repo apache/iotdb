@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.AlterEncodingCompressorNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.ConstructTableDevicesBlackListNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.CreateOrUpdateTableDeviceNode;
@@ -95,7 +96,8 @@ public class SchemaRegionPlanDeserializer implements IDeserializer<ISchemaRegion
     public ISchemaRegionPlan visitSchemaRegionPlan(
         final ISchemaRegionPlan plan, final ByteBuffer byteBuffer) {
       throw new UnsupportedOperationException(
-          String.format("%s plan doesn't support deserialization.", plan.getPlanType().name()));
+          String.format(
+              DataNodeSchemaMessages.PLAN_NOT_SUPPORT_DESERIALIZATION, plan.getPlanType().name()));
     }
 
     @Override

@@ -22,6 +22,7 @@ package org.apache.iotdb.db.storageengine.dataregion.modification;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.FileUtils;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Modification;
@@ -291,7 +292,7 @@ public class ModificationFile implements AutoCloseable {
       try {
         inputStream.close();
       } catch (IOException e) {
-        LOGGER.info("Cannot close mod file input stream of {}", file, e);
+        LOGGER.info(StorageEngineMessages.CANNOT_CLOSE_MOD_FILE_INPUT_STREAM, file, e);
       } finally {
         inputStream = null;
       }
@@ -308,7 +309,7 @@ public class ModificationFile implements AutoCloseable {
         } catch (EOFException e) {
           close();
         } catch (IOException e) {
-          LOGGER.info("Cannot read mod file input stream of {}", file, e);
+          LOGGER.info(StorageEngineMessages.CANNOT_READ_MOD_FILE_INPUT_STREAM, file, e);
           close();
         }
       }
@@ -407,14 +408,14 @@ public class ModificationFile implements AutoCloseable {
             compactedModificationFile.write(settledModifications);
           }
         } catch (IOException e) {
-          LOGGER.error("compact mods file exception of {}", file, e);
+          LOGGER.error(StorageEngineMessages.COMPACT_MODS_FILE_EXCEPTION, file, e);
         }
         // remove origin mods file
         this.remove();
         fileExists = true;
         // rename new mods file to origin name
         Files.move(new File(newModsFileName).toPath(), file.toPath());
-        LOGGER.info("{} settle successful", file);
+        LOGGER.info(StorageEngineMessages.SETTLE_SUCCESSFUL, file);
 
         if (getFileLength() > COMPACT_THRESHOLD) {
           LOGGER.warn(
@@ -423,7 +424,7 @@ public class ModificationFile implements AutoCloseable {
               getFileLength());
         }
       } catch (IOException e) {
-        LOGGER.error("remove origin file or rename new mods file error.", e);
+        LOGGER.error(StorageEngineMessages.REMOVE_ORIGIN_OR_RENAME_MODS_ERROR, e);
       }
       hasCompacted = true;
     }

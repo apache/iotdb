@@ -22,6 +22,7 @@ package org.apache.iotdb.confignode.procedure.impl.node;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.commons.exception.runtime.ThriftSerDeException;
 import org.apache.iotdb.commons.utils.ThriftConfigNodeSerDeUtils;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.state.AddConfigNodeState;
@@ -88,7 +89,7 @@ public class AddConfigNodeProcedure extends AbstractNodeProcedure<AddConfigNodeS
       }
     } catch (Exception e) {
       if (isRollbackSupported(state)) {
-        setFailure(new ProcedureException("Add ConfigNode failed " + state));
+        setFailure(new ProcedureException(ProcedureMessages.ADD_CONFIGNODE_FAILED + state));
       } else {
         LOG.error(
             "Retrievable error trying to add config node {}, state {}",
@@ -96,7 +97,7 @@ public class AddConfigNodeProcedure extends AbstractNodeProcedure<AddConfigNodeS
             state,
             e);
         if (getCycles() > RETRY_THRESHOLD) {
-          setFailure(new ProcedureException("State stuck at " + state));
+          setFailure(new ProcedureException(ProcedureMessages.STATE_STUCK_AT + state));
         }
       }
     }

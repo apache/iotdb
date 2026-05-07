@@ -36,6 +36,7 @@ import org.apache.iotdb.confignode.consensus.request.write.function.CreateFuncti
 import org.apache.iotdb.confignode.consensus.request.write.function.UpdateFunctionPlan;
 import org.apache.iotdb.confignode.consensus.response.JarResp;
 import org.apache.iotdb.confignode.consensus.response.function.FunctionTableResp;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.udf.api.exception.UDFManagementException;
@@ -83,12 +84,12 @@ public class UDFInfo implements SnapshotProcessor {
   }
 
   public void acquireUDFTableLock() {
-    LOGGER.info("acquire UDFTableLock");
+    LOGGER.info(ConfigNodeMessages.ACQUIRE_UDFTABLELOCK);
     udfTableLock.lock();
   }
 
   public void releaseUDFTableLock() {
-    LOGGER.info("release UDFTableLock");
+    LOGGER.info(ConfigNodeMessages.RELEASE_UDFTABLELOCK);
     udfTableLock.unlock();
   }
 
@@ -98,15 +99,18 @@ public class UDFInfo implements SnapshotProcessor {
     if (udfTable.containsUDF(model, udfName)
         && udfTable.getUDFInformation(model, udfName).isAvailable()) {
       throw new IoTDBRuntimeException(
-          String.format("Failed to create UDF [%s], the same name UDF has been created", udfName),
+          String.format(
+              ConfigNodeMessages.FAILED_TO_CREATE_UDF_THE_SAME_NAME_UDF_HAS_BEEN, udfName),
           TSStatusCode.UDF_ALREADY_EXISTS.getStatusCode());
     }
 
     if (existedJarToMD5.containsKey(jarName) && !existedJarToMD5.get(jarName).equals(jarMD5)) {
       throw new IoTDBRuntimeException(
           String.format(
-              "Failed to create UDF [%s], the same name Jar [%s] but different MD5 [%s] has existed",
-              udfName, jarName, jarMD5),
+              ConfigNodeMessages.FAILED_TO_CREATE_UDF_THE_SAME_NAME_JAR_BUT_DIFFERENT,
+              udfName,
+              jarName,
+              jarMD5),
           TSStatusCode.UDF_ALREADY_EXISTS.getStatusCode());
     }
   }
@@ -118,7 +122,8 @@ public class UDFInfo implements SnapshotProcessor {
       return udfTable.getUDFInformation(model, udfName);
     }
     throw new UDFManagementException(
-        String.format("Failed to drop UDF [%s], this UDF has not been created", udfName));
+        String.format(
+            ConfigNodeMessages.FAILED_TO_DROP_UDF_THIS_UDF_HAS_NOT_BEEN_CREATED, udfName));
   }
 
   public boolean needToSaveJar(String jarName) {
@@ -169,7 +174,7 @@ public class UDFInfo implements SnapshotProcessor {
                 UDFExecutableManager.getInstance().getFileStringUnderInstallByName(jarName)));
       }
     } catch (Exception e) {
-      LOGGER.error("Get UDF_Jar failed", e);
+      LOGGER.error(ConfigNodeMessages.GET_UDF_JAR_FAILED, e);
       return new JarResp(
           new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
               .setMessage("Get UDF_Jar failed, because " + e.getMessage()),
@@ -207,7 +212,7 @@ public class UDFInfo implements SnapshotProcessor {
     File snapshotFile = new File(snapshotDir, SNAPSHOT_FILENAME);
     if (snapshotFile.exists() && snapshotFile.isFile()) {
       LOGGER.error(
-          "Failed to take snapshot, because snapshot file [{}] is already exist.",
+          ConfigNodeMessages.FAILED_TO_TAKE_SNAPSHOT_BECAUSE_SNAPSHOT_FILE_IS_ALREADY_EXIST,
           snapshotFile.getAbsolutePath());
       return false;
     }
@@ -230,7 +235,7 @@ public class UDFInfo implements SnapshotProcessor {
     File snapshotFile = new File(snapshotDir, SNAPSHOT_FILENAME);
     if (!snapshotFile.exists() || !snapshotFile.isFile()) {
       LOGGER.error(
-          "Failed to load snapshot,snapshot file [{}] is not exist.",
+          ConfigNodeMessages.FAILED_TO_LOAD_SNAPSHOT_SNAPSHOT_FILE_IS_NOT_EXIST_2,
           snapshotFile.getAbsolutePath());
       return;
     }

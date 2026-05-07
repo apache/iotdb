@@ -47,6 +47,7 @@ import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFu
 import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeTableColumnDisorderException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
@@ -1363,11 +1364,13 @@ public class TableMetadataImpl implements Metadata {
             UDFDataTypeTransformer.transformUDFDataTypeToReadType(
                 scalarFunctionAnalysis.getOutputDataType());
         if (returnType == ObjectType.OBJECT) {
-          throw new SemanticException("OBJECT type is not supported as return type");
+          throw new SemanticException(
+              DataNodeQueryMessages.OBJECT_TYPE_IS_NOT_SUPPORTED_AS_RETURN_TYPE);
         }
         return returnType;
       } catch (Exception e) {
-        throw new SemanticException("Invalid function parameters: " + e.getMessage());
+        throw new SemanticException(
+            DataNodeQueryMessages.INVALID_FUNCTION_PARAMETERS + e.getMessage());
       } finally {
         scalarFunction.beforeDestroy();
       }
@@ -1386,17 +1389,19 @@ public class TableMetadataImpl implements Metadata {
             UDFDataTypeTransformer.transformUDFDataTypeToReadType(
                 aggregateFunctionAnalysis.getOutputDataType());
         if (returnType == ObjectType.OBJECT) {
-          throw new SemanticException("OBJECT type is not supported as return type");
+          throw new SemanticException(
+              DataNodeQueryMessages.OBJECT_TYPE_IS_NOT_SUPPORTED_AS_RETURN_TYPE);
         }
         return returnType;
       } catch (Exception e) {
-        throw new SemanticException("Invalid function parameters: " + e.getMessage());
+        throw new SemanticException(
+            DataNodeQueryMessages.INVALID_FUNCTION_PARAMETERS + e.getMessage());
       } finally {
         aggregateFunction.beforeDestroy();
       }
     }
 
-    throw new SemanticException("Unknown function: " + functionName);
+    throw new SemanticException(DataNodeQueryMessages.UNKNOWN_FUNCTION + functionName);
   }
 
   @Override

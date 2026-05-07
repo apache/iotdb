@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.process.MultiChildProcessNode;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.process.SingleChildProcessNode;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
@@ -86,7 +87,7 @@ public class PredicatePushDown implements PlanOptimizer {
 
     @Override
     public PlanNode visitPlan(PlanNode node, RewriterContext context) {
-      throw new IllegalArgumentException("Unexpected plan node: " + node);
+      throw new IllegalArgumentException(DataNodeQueryMessages.UNEXPECTED_PLAN_NODE + node);
     }
 
     @Override
@@ -220,7 +221,8 @@ public class PredicatePushDown implements PlanOptimizer {
               pushDownConjunctsMap.getOrDefault(
                   sourcePath.getDevicePath(), Collections.emptyList()));
         } else {
-          throw new IllegalArgumentException("sourcePath must be MeasurementPath or AlignedPath");
+          throw new IllegalArgumentException(
+              DataNodeQueryMessages.SOURCEPATH_MUST_BE_MEASUREMENTPATH_OR_ALIGNEDPATH);
         }
       }
     }

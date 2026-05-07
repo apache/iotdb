@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.exception.CpuNotEnoughException;
@@ -388,7 +389,7 @@ public class DriverScheduler implements IDriverScheduler, IService {
           try {
             task.getDriver().failed(task.getAbortCause().get());
           } catch (Exception e) {
-            logger.error("Clear DriverTask failed", e);
+            logger.error(DataNodeQueryMessages.CLEAR_DRIVERTASK_FAILED, e);
           }
         }
         if (task.getStatus() == DriverTaskStatus.ABORTED) {
@@ -399,7 +400,7 @@ public class DriverScheduler implements IDriverScheduler, IService {
                     task.getDriverTaskId().getFragmentId().getId(),
                     task.getDriverTaskId().getFragmentInstanceId().getInstanceId()));
           } catch (Exception e) {
-            logger.error("Clear DriverTask failed", e);
+            logger.error(DataNodeQueryMessages.CLEAR_DRIVERTASK_FAILED, e);
           }
         }
       } finally {

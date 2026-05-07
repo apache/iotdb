@@ -42,6 +42,7 @@ import org.apache.iotdb.confignode.consensus.response.JarResp;
 import org.apache.iotdb.confignode.consensus.response.trigger.TransferringTriggersResp;
 import org.apache.iotdb.confignode.consensus.response.trigger.TriggerLocationResp;
 import org.apache.iotdb.confignode.consensus.response.trigger.TriggerTableResp;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.rpc.thrift.TTriggerState;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -89,12 +90,12 @@ public class TriggerInfo implements SnapshotProcessor {
   }
 
   public void acquireTriggerTableLock() {
-    LOGGER.info("acquire TriggerTableLock");
+    LOGGER.info(ConfigNodeMessages.ACQUIRE_TRIGGERTABLELOCK);
     triggerTableLock.lock();
   }
 
   public void releaseTriggerTableLock() {
-    LOGGER.info("release TriggerTableLock");
+    LOGGER.info(ConfigNodeMessages.RELEASE_TRIGGERTABLELOCK);
     triggerTableLock.unlock();
   }
 
@@ -104,15 +105,17 @@ public class TriggerInfo implements SnapshotProcessor {
     if (triggerTable.containsTrigger(triggerName)) {
       throw new TriggerManagementException(
           String.format(
-              "Failed to create trigger [%s], the same name trigger has been created",
+              ConfigNodeMessages.FAILED_TO_CREATE_TRIGGER_THE_SAME_NAME_TRIGGER_HAS_BEEN,
               triggerName));
     }
 
     if (existedJarToMD5.containsKey(jarName) && !existedJarToMD5.get(jarName).equals(jarMD5)) {
       throw new TriggerManagementException(
           String.format(
-              "Failed to create trigger [%s], the same name Jar [%s] but different MD5 [%s] has existed",
-              triggerName, jarName, jarMD5));
+              ConfigNodeMessages.FAILED_TO_CREATE_TRIGGER_THE_SAME_NAME_JAR_BUT_DIFFERENT,
+              triggerName,
+              jarName,
+              jarMD5));
     }
   }
 
@@ -123,7 +126,8 @@ public class TriggerInfo implements SnapshotProcessor {
     }
     throw new TriggerManagementException(
         String.format(
-            "Failed to drop trigger [%s], this trigger has not been created", triggerName));
+            ConfigNodeMessages.FAILED_TO_DROP_TRIGGER_THIS_TRIGGER_HAS_NOT_BEEN_CREATED,
+            triggerName));
   }
 
   public boolean needToSaveJar(String jarName) {
@@ -202,7 +206,7 @@ public class TriggerInfo implements SnapshotProcessor {
                 TriggerExecutableManager.getInstance().getFileStringUnderInstallByName(jarName)));
       }
     } catch (Exception e) {
-      LOGGER.error("Get TriggerJar failed", e);
+      LOGGER.error(ConfigNodeMessages.GET_TRIGGERJAR_FAILED, e);
       return new JarResp(
           new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
               .setMessage("Get TriggerJar failed, because " + e.getMessage()),
@@ -242,7 +246,7 @@ public class TriggerInfo implements SnapshotProcessor {
     File snapshotFile = new File(snapshotDir, SNAPSHOT_FILENAME);
     if (snapshotFile.exists() && snapshotFile.isFile()) {
       LOGGER.error(
-          "Failed to take snapshot, because snapshot file [{}] is already exist.",
+          ConfigNodeMessages.FAILED_TO_TAKE_SNAPSHOT_BECAUSE_SNAPSHOT_FILE_IS_ALREADY_EXIST,
           snapshotFile.getAbsolutePath());
       return false;
     }
@@ -264,7 +268,7 @@ public class TriggerInfo implements SnapshotProcessor {
     File snapshotFile = new File(snapshotDir, SNAPSHOT_FILENAME);
     if (!snapshotFile.exists() || !snapshotFile.isFile()) {
       LOGGER.error(
-          "Failed to load snapshot,snapshot file [{}] is not exist.",
+          ConfigNodeMessages.FAILED_TO_LOAD_SNAPSHOT_SNAPSHOT_FILE_IS_NOT_EXIST_2,
           snapshotFile.getAbsolutePath());
       return;
     }

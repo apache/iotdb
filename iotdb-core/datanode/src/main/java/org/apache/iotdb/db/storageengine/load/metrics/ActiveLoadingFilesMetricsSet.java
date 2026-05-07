@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.load.metrics;
 
 import org.apache.iotdb.commons.service.metric.enums.Tag;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
@@ -64,7 +65,7 @@ public abstract class ActiveLoadingFilesMetricsSet implements IMetricSet {
   public void updatePendingFileCounterInDir(final String dirName, final long number) {
     final Counter counter = dir2PendingFileCounterMap.get(dirName);
     if (counter == null) {
-      LOGGER.debug("Failed to update file counter, dir({}) does not exist", dirName);
+      LOGGER.debug(StorageEngineMessages.FAILED_UPDATE_FILE_COUNTER_DIR_NOT_EXIST, dirName);
       return;
     }
     counter.inc(number - counter.getCount());

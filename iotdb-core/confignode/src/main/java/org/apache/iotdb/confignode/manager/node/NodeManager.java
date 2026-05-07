@@ -63,6 +63,8 @@ import org.apache.iotdb.confignode.consensus.response.datanode.ConfigurationResp
 import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeConfigurationResp;
 import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeRegisterResp;
 import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeToStatusResp;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.ClusterManager;
 import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.PermissionManager;
@@ -414,7 +416,7 @@ public class NodeManager {
    */
   public DataSet removeDataNode(RemoveDataNodePlan removeDataNodePlan) {
     configManager.getProcedureManager().getEnv().getSubmitRegionMigrateLock().lock();
-    LOGGER.info("NodeManager start to remove DataNode {}", removeDataNodePlan);
+    LOGGER.info(ManagerMessages.NODEMANAGER_START_TO_REMOVE_DATANODE, removeDataNodePlan);
     try {
       // Checks if the RemoveDataNode request is valid
       RemoveDataNodeHandler removeDataNodeHandler =
@@ -423,7 +425,7 @@ public class NodeManager {
           removeDataNodeHandler.checkRemoveDataNodeRequest(removeDataNodePlan);
       if (preCheckStatus.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         LOGGER.error(
-            "The remove DataNode request check failed. req: {}, check result: {}",
+            ManagerMessages.THE_REMOVE_DATANODE_REQUEST_CHECK_FAILED_REQ_CHECK_RESULT,
             removeDataNodePlan,
             preCheckStatus.getStatus());
         return preCheckStatus;
@@ -453,7 +455,7 @@ public class NodeManager {
       dataSet.setStatus(status);
 
       LOGGER.info(
-          "NodeManager submit RemoveDataNodePlan finished, removeDataNodePlan: {}",
+          ManagerMessages.NODEMANAGER_SUBMIT_REMOVEDATANODEPLAN_FINISHED_REMOVEDATANODEPLAN,
           removeDataNodePlan);
       return dataSet;
     } finally {
@@ -576,7 +578,7 @@ public class NodeManager {
       status.setMessage("Server rejected the request, maybe requests are too many");
     }
 
-    LOGGER.info("NodeManager submit RemoveAINodePlan finished, {}", removeAINodePlan);
+    LOGGER.info(ManagerMessages.NODEMANAGER_SUBMIT_REMOVEAINODEPLAN_FINISHED, removeAINodePlan);
     return status;
   }
 
@@ -614,7 +616,7 @@ public class NodeManager {
     try {
       return (AINodeConfigurationResp) getConsensusManager().read(req);
     } catch (ConsensusException e) {
-      LOGGER.warn("Failed in the read API executing the consensus layer due to: ", e);
+      LOGGER.warn(ConfigNodeMessages.FAILED_IN_THE_READ_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
       TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());
       AINodeConfigurationResp response = new AINodeConfigurationResp();
@@ -634,7 +636,7 @@ public class NodeManager {
     try {
       return (DataNodeConfigurationResp) getConsensusManager().read(req);
     } catch (ConsensusException e) {
-      LOGGER.warn("Failed in the read API executing the consensus layer due to: ", e);
+      LOGGER.warn(ConfigNodeMessages.FAILED_IN_THE_READ_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
       TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());
       DataNodeConfigurationResp response = new DataNodeConfigurationResp();

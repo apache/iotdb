@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.WrappedThreadPoolExecutor;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.CachedMTreeStore;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.lock.LockManager;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memcontrol.IReleaseFlushStrategy;
@@ -93,7 +94,7 @@ public class Scheduler {
       flushExecutor.flushVolatileNodes(flushNodeNum, flushMemSize);
     } catch (MetadataException e) {
       LOGGER.warn(
-          "Error occurred during MTree flush, current SchemaRegionId is {} because {}",
+          DataNodeSchemaMessages.ERROR_DURING_MTREE_FLUSH_SCHEMA_REGION_BECAUSE,
           regionId,
           e.getMessage(),
           e);

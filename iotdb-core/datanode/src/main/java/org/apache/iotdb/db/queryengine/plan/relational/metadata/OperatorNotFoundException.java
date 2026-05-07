@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.queryengine.plan.relational.function.OperatorType;
 import org.apache.iotdb.commons.queryengine.plan.relational.type.TypeSignature;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
@@ -90,7 +91,7 @@ public class OperatorNotFoundException extends IoTDBException {
             "Cannot check if %s is distinct from %s", argumentTypes.get(0), argumentTypes.get(1));
       case CAST:
         return format(
-            "Cannot cast %s to %s",
+            DataNodeQueryMessages.CANNOT_CAST_TO,
             argumentTypes.get(0),
             returnType.orElseThrow(() -> new NoSuchElementException("No value present")));
       case SUBSCRIPT:

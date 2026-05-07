@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.service;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.StartupException;
+import org.apache.iotdb.commons.i18n.ServiceMessages;
 
 import org.apache.thrift.TProcessor;
 import org.slf4j.Logger;
@@ -47,14 +48,15 @@ public abstract class ThriftService implements IService {
 
   public String getRPCServiceStatus() {
     if (thriftServiceThread == null) {
-      logger.debug("Start latch is null when getting status");
+      logger.debug(ServiceMessages.START_LATCH_NULL_WHEN_GETTING_STATUS);
     } else {
-      logger.debug("Start status is {} when getting status", thriftServiceThread.isServing());
+      logger.debug(
+          ServiceMessages.START_STATUS_WHEN_GETTING_STATUS, thriftServiceThread.isServing());
     }
     if (stopLatch == null) {
-      logger.debug("Stop latch is null when getting status");
+      logger.debug(ServiceMessages.STOP_LATCH_NULL_WHEN_GETTING_STATUS);
     } else {
-      logger.debug("Stop latch is {} when getting status", stopLatch.getCount());
+      logger.debug(ServiceMessages.STOP_LATCH_WHEN_GETTING_STATUS, stopLatch.getCount());
     }
 
     if (thriftServiceThread != null && thriftServiceThread.isServing()) {

@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.consensus.request.write.cq.ActiveCQPlan;
 import org.apache.iotdb.confignode.consensus.request.write.cq.AddCQPlan;
 import org.apache.iotdb.confignode.consensus.request.write.cq.DropCQPlan;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.manager.cq.CQScheduleTask;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
@@ -99,20 +100,20 @@ public class CreateCQProcedure extends AbstractNodeProcedure<CreateCQState> {
           activeCQ(env);
           return Flow.NO_MORE_STATE;
         default:
-          throw new IllegalArgumentException("Unknown CreateCQState: " + state);
+          throw new IllegalArgumentException(ProcedureMessages.UNKNOWN_CREATECQSTATE + state);
       }
     } catch (Exception t) {
       if (isRollbackSupported(state)) {
-        LOGGER.error("Fail in CreateCQProcedure", t);
+        LOGGER.error(ProcedureMessages.FAIL_IN_CREATECQPROCEDURE, t);
         setFailure(new ProcedureException(t));
       } else {
         LOGGER.error(
-            "Retrievable error trying to create cq [{}], state [{}]", req.getCqId(), state, t);
+            ProcedureMessages.RETRIEVABLE_ERROR_TRYING_TO_CREATE_CQ_STATE, req.getCqId(), state, t);
         if (getCycles() > RETRY_THRESHOLD) {
           setFailure(
               new ProcedureException(
                   String.format(
-                      "Fail to create trigger [%s] at STATE [%s]", req.getCqId(), state)));
+                      ProcedureMessages.FAIL_TO_CREATE_TRIGGER_AT_STATE, req.getCqId(), state)));
         }
       }
     }
@@ -132,13 +133,13 @@ public class CreateCQProcedure extends AbstractNodeProcedure<CreateCQState> {
       res.setMessage(e.getMessage());
     }
     if (res.code == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      LOGGER.debug("Finish init CQ {} successfully", req.cqId);
+      LOGGER.debug(ProcedureMessages.FINISH_INIT_CQ_SUCCESSFULLY, req.cqId);
       setNextState(INACTIVE);
     } else if (res.code == TSStatusCode.CQ_ALREADY_EXIST.getStatusCode()) {
-      LOGGER.info("Failed to init CQ {} because such cq already exists", req.cqId);
+      LOGGER.info(ProcedureMessages.FAILED_TO_INIT_CQ_BECAUSE_SUCH_CQ_ALREADY_EXISTS, req.cqId);
       setFailure(new ProcedureException(new IoTDBException(res)));
     } else {
-      LOGGER.warn("Failed to init CQ {} because of unknown reasons {}", req.cqId, res);
+      LOGGER.warn(ProcedureMessages.FAILED_TO_INIT_CQ_BECAUSE_OF_UNKNOWN_REASONS, req.cqId, res);
       setFailure(new ProcedureException(new IoTDBException(res)));
     }
   }
@@ -153,14 +154,17 @@ public class CreateCQProcedure extends AbstractNodeProcedure<CreateCQState> {
       res.setMessage(e.getMessage());
     }
     if (res.code == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      LOGGER.debug("Finish Scheduling CQ {} successfully", req.cqId);
+      LOGGER.debug(ProcedureMessages.FINISH_SCHEDULING_CQ_SUCCESSFULLY, req.cqId);
     } else if (res.code == TSStatusCode.NO_SUCH_CQ.getStatusCode()) {
-      LOGGER.warn("Failed to active CQ {} because of no such cq: {}", req.cqId, res.message);
+      LOGGER.warn(
+          ProcedureMessages.FAILED_TO_ACTIVE_CQ_BECAUSE_OF_NO_SUCH_CQ, req.cqId, res.message);
     } else if (res.code == TSStatusCode.CQ_ALREADY_ACTIVE.getStatusCode()) {
-      LOGGER.warn("Failed to active CQ {} because this cq has already been active", req.cqId);
+      LOGGER.warn(ProcedureMessages.FAILED_TO_ACTIVE_CQ_BECAUSE_THIS_CQ_HAS_ALREADY_BEEN, req.cqId);
     } else {
       LOGGER.warn(
-          "Failed to active CQ {} successfully because of unknown reasons {}", req.cqId, res);
+          ProcedureMessages.FAILED_TO_ACTIVE_CQ_SUCCESSFULLY_BECAUSE_OF_UNKNOWN_REASONS,
+          req.cqId,
+          res);
     }
   }
 
@@ -173,7 +177,7 @@ public class CreateCQProcedure extends AbstractNodeProcedure<CreateCQState> {
         // do nothing
         break;
       case INACTIVE:
-        LOGGER.info("Start [INACTIVE] rollback of CQ {}", req.cqId);
+        LOGGER.info(ProcedureMessages.START_INACTIVE_ROLLBACK_OF_CQ, req.cqId);
         TSStatus res;
         try {
           res = env.getConfigManager().getConsensusManager().write(new DropCQPlan(req.cqId, md5));
@@ -183,22 +187,22 @@ public class CreateCQProcedure extends AbstractNodeProcedure<CreateCQState> {
           res.setMessage(e.getMessage());
         }
         if (res.code == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          LOGGER.info("Finish [INACTIVE] rollback of CQ {} successfully", req.cqId);
+          LOGGER.info(ProcedureMessages.FINISH_INACTIVE_ROLLBACK_OF_CQ_SUCCESSFULLY, req.cqId);
         } else if (res.code == TSStatusCode.NO_SUCH_CQ.getStatusCode()) {
           LOGGER.warn(
-              "Failed to do [INACTIVE] rollback of CQ {} because of no such cq: {}",
+              ProcedureMessages.FAILED_TO_DO_INACTIVE_ROLLBACK_OF_CQ_BECAUSE_OF_NO,
               req.cqId,
               res.message);
         } else {
           LOGGER.warn(
-              "Failed to do [INACTIVE] rollback of CQ {} because of unknown reasons {}",
+              ProcedureMessages.FAILED_TO_DO_INACTIVE_ROLLBACK_OF_CQ_BECAUSE_OF_UNKNOWN,
               req.cqId,
               res);
         }
 
         break;
       default:
-        throw new IllegalArgumentException("Unknown CreateCQState: " + state);
+        throw new IllegalArgumentException(ProcedureMessages.UNKNOWN_CREATECQSTATE + state);
     }
   }
 

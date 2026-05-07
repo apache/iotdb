@@ -22,6 +22,7 @@ package org.apache.iotdb.confignode.procedure.impl.node;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.commons.exception.runtime.ThriftSerDeException;
 import org.apache.iotdb.commons.utils.ThriftConfigNodeSerDeUtils;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.state.RemoveConfigNodeState;
@@ -76,7 +77,8 @@ public class RemoveConfigNodeProcedure extends AbstractNodeProcedure<RemoveConfi
     } catch (Exception e) {
       if (isRollbackSupported(state)) {
         setFailure(
-            new ProcedureException("Remove Config Node" + removedConfigNode + " failed " + state));
+            new ProcedureException(
+                ProcedureMessages.REMOVE_CONFIG_NODE + removedConfigNode + " failed " + state));
       } else {
         LOG.error(
             "Retrievable error trying to remove config node {}, state {}",
@@ -84,7 +86,7 @@ public class RemoveConfigNodeProcedure extends AbstractNodeProcedure<RemoveConfi
             state,
             e);
         if (getCycles() > RETRY_THRESHOLD) {
-          setFailure(new ProcedureException("State stuck at " + state));
+          setFailure(new ProcedureException(ProcedureMessages.STATE_STUCK_AT + state));
         }
       }
     }

@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.cq.TimeoutPolicy;
 import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.consensus.request.write.cq.UpdateCQLastExecTimePlan;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.persistence.cq.CQInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
@@ -172,13 +173,13 @@ public class CQScheduleTask implements Runnable {
         configManager.getNodeManager().getLowestLoadDataNode();
     // no usable DataNode to execute CQ
     if (!targetDataNode.isPresent()) {
-      LOGGER.warn("There is no RUNNING DataNode to execute CQ {}", cqId);
+      LOGGER.warn(ManagerMessages.THERE_IS_NO_RUNNING_DATANODE_TO_EXECUTE_CQ, cqId);
       if (needSubmit()) {
         submitSelf(retryWaitTimeInMS, TimeUnit.MILLISECONDS);
       }
     } else {
       LOGGER.info(
-          "[StartExecuteCQ] execute CQ {} on DataNode[{}], time range is [{}, {}), current time is {}",
+          ManagerMessages.STARTEXECUTECQ_EXECUTE_CQ_ON_DATANODE_TIME_RANGE_IS_CURRENT_TIME,
           cqId,
           targetDataNode.get().dataNodeId,
           startTime,
@@ -192,7 +193,7 @@ public class CQScheduleTask implements Runnable {
                 .getAsyncClient(targetDataNode.get());
         client.executeCQ(executeCQReq, new AsyncExecuteCQCallback(startTime, endTime));
       } catch (Exception t) {
-        LOGGER.warn("Execute CQ {} failed", cqId, t);
+        LOGGER.warn(ManagerMessages.EXECUTE_CQ_FAILED, cqId, t);
         if (needSubmit()) {
           submitSelf(retryWaitTimeInMS, TimeUnit.MILLISECONDS);
         }
@@ -232,7 +233,7 @@ public class CQScheduleTask implements Runnable {
         executionTime =
             executionTime + ((now - executionTime - 1) / everyInterval + 1) * everyInterval;
       } else {
-        throw new IllegalArgumentException("Unknown TimeoutPolicy: " + timeoutPolicy);
+        throw new IllegalArgumentException(ManagerMessages.UNKNOWN_TIMEOUTPOLICY + timeoutPolicy);
       }
     }
 
@@ -241,7 +242,7 @@ public class CQScheduleTask implements Runnable {
       if (response.code == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
 
         LOGGER.info(
-            "[EndExecuteCQ] {}, time range is [{}, {}), current time is {}",
+            ManagerMessages.ENDEXECUTECQ_TIME_RANGE_IS_CURRENT_TIME_IS,
             cqId,
             startTime,
             endTime,
@@ -261,13 +262,13 @@ public class CQScheduleTask implements Runnable {
         // may still update failed because stale CQTask in old leader may update it in advance
         if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           LOGGER.warn(
-              "Failed to update the last execution time {} of CQ {}, because {}",
+              ManagerMessages.FAILED_TO_UPDATE_THE_LAST_EXECUTION_TIME_OF_CQ_BECAUSE,
               executionTime,
               cqId,
               result.getMessage());
           // no such cq, we don't need to submit it again
           if (result.getCode() == TSStatusCode.NO_SUCH_CQ.getStatusCode()) {
-            LOGGER.info("Stop submitting CQ {} because {}", cqId, result.getMessage());
+            LOGGER.info(ManagerMessages.STOP_SUBMITTING_CQ_BECAUSE, cqId, result.getMessage());
             return;
           }
         }
@@ -277,12 +278,11 @@ public class CQScheduleTask implements Runnable {
           submitSelf();
         } else {
           LOGGER.info(
-              "Stop submitting CQ {} because current node is not leader or current scheduled thread pool is shut down.",
-              cqId);
+              ManagerMessages.STOP_SUBMITTING_CQ_BECAUSE_CURRENT_NODE_IS_NOT_LEADER_OR, cqId);
         }
 
       } else {
-        LOGGER.warn("Execute CQ {} failed, TSStatus is {}", cqId, response);
+        LOGGER.warn(ManagerMessages.EXECUTE_CQ_FAILED_TSSTATUS_IS, cqId, response);
         if (needSubmit()) {
           submitSelf(retryWaitTimeInMS, TimeUnit.MILLISECONDS);
         }
@@ -291,7 +291,7 @@ public class CQScheduleTask implements Runnable {
 
     @Override
     public void onError(Exception exception) {
-      LOGGER.warn("Execute CQ {} failed", cqId, exception);
+      LOGGER.warn(ManagerMessages.EXECUTE_CQ_FAILED, cqId, exception);
       if (needSubmit()) {
         submitSelf(retryWaitTimeInMS, TimeUnit.MILLISECONDS);
       }

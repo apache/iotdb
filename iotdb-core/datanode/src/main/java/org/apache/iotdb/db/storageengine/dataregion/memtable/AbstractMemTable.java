@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DataTypeInconsistentException;
 import org.apache.iotdb.db.exception.WriteProcessException;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
@@ -999,7 +1000,8 @@ public abstract class AbstractMemTable implements IMemTable {
             DataNodeDevicePathCache.getInstance()
                 .getPartialPath(ReadWriteIOUtils.readString(stream));
       } catch (IllegalPathException e) {
-        throw new IllegalArgumentException("Cannot deserialize OldMemTableSnapshot", e);
+        throw new IllegalArgumentException(
+            StorageEngineMessages.CANNOT_DESERIALIZE_OLD_MEMTABLE_SNAPSHOT, e);
       }
       IDeviceID deviceID = deviceIDFactory.getDeviceID(devicePath);
       boolean isAligned = ReadWriteIOUtils.readBool(stream);

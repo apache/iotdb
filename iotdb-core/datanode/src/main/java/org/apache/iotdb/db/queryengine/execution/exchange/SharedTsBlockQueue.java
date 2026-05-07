@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.execution.exchange;
 
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.LocalSinkChannel;
 import org.apache.iotdb.db.queryengine.execution.exchange.source.LocalSourceHandle;
@@ -208,7 +209,7 @@ public class SharedTsBlockQueue {
       } catch (ExecutionException e) {
         throw new IllegalStateException(e.getCause() == null ? e : e.getCause());
       }
-      throw new IllegalStateException("queue has been destroyed");
+      throw new IllegalStateException(DataNodeQueryMessages.QUEUE_HAS_BEEN_DESTROYED);
     }
     Pair<TsBlock, Long> tsBlockWithReservedBytes = queue.remove();
     long reservedBytes = tsBlockWithReservedBytes.right;

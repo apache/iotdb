@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 import org.apache.iotdb.consensus.config.IoTConsensusConfig;
+import org.apache.iotdb.consensus.i18n.IoTConsensusMessages;
 import org.apache.iotdb.consensus.iot.IoTConsensusServerImpl;
 import org.apache.iotdb.consensus.iot.client.AsyncIoTConsensusServiceClient;
 import org.apache.iotdb.consensus.iot.client.DispatchLogHandler;
@@ -113,11 +114,11 @@ public class LogDispatcher {
       int timeout = 10;
       try {
         if (!executorService.awaitTermination(timeout, TimeUnit.SECONDS)) {
-          logger.error("Unable to shutdown LogDispatcher service after {} seconds", timeout);
+          logger.error(IoTConsensusMessages.UNABLE_TO_SHUTDOWN_LOG_DISPATCHER, timeout);
         }
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
-        logger.error("Unexpected Interruption when closing LogDispatcher service ");
+        logger.error(IoTConsensusMessages.UNEXPECTED_INTERRUPTION_CLOSING_LOG_DISPATCHER);
       }
     }
     stopped = true;
@@ -187,13 +188,13 @@ public class LogDispatcher {
         threads.forEach(
             thread -> {
               logger.debug(
-                  "{}->{}: Push a log to the queue, where the queue length is {}",
+                  IoTConsensusMessages.PUSH_LOG_TO_QUEUE,
                   impl.getThisNode().getGroupId(),
                   thread.getPeer().getEndpoint().getIp(),
                   thread.getPendingEntriesSize());
               if (!thread.offer(request)) {
                 logger.debug(
-                    "{}: Log queue of {} is full, ignore the log to this node, searchIndex: {}",
+                    IoTConsensusMessages.LOG_QUEUE_FULL,
                     impl.getThisNode().getGroupId(),
                     thread.getPeer(),
                     request.getSearchIndex());
@@ -318,7 +319,7 @@ public class LogDispatcher {
     private void processStopped() {
       try {
         if (!runFinished.await(30, TimeUnit.SECONDS)) {
-          logger.info("{}: Dispatcher for {} didn't stop after 30s.", impl.getThisNode(), peer);
+          logger.info(IoTConsensusMessages.DISPATCHER_DID_NOT_STOP, impl.getThisNode(), peer);
         }
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
@@ -348,7 +349,7 @@ public class LogDispatcher {
 
     @Override
     public void run() {
-      logger.info("{}: Dispatcher for {} starts", impl.getThisNode(), peer);
+      logger.info(IoTConsensusMessages.DISPATCHER_STARTS, impl.getThisNode(), peer);
       try {
         Batch batch;
         while (!Thread.interrupted() && !stopped) {
@@ -386,10 +387,10 @@ public class LogDispatcher {
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
       } catch (Exception e) {
-        logger.error("Unexpected error in logDispatcher for peer {}", peer, e);
+        logger.error(IoTConsensusMessages.UNEXPECTED_ERROR_IN_LOG_DISPATCHER, peer, e);
       }
       runFinished.countDown();
-      logger.info("{}: Dispatcher for {} exits", impl.getThisNode(), peer);
+      logger.info(IoTConsensusMessages.DISPATCHER_EXITS, impl.getThisNode(), peer);
     }
 
     public void updateSafelyDeletedSearchIndex() {
@@ -411,7 +412,7 @@ public class LogDispatcher {
       synchronized (impl.getIndexObject()) {
         maxIndex = impl.getSearchIndex() + 1;
         logger.debug(
-            "{}: startIndex: {}, maxIndex: {}, pendingEntries size: {}, bufferedEntries size: {}",
+            IoTConsensusMessages.GET_BATCH_START_INDEX,
             impl.getThisNode().getGroupId(),
             startIndex,
             maxIndex,
@@ -444,7 +445,9 @@ public class LogDispatcher {
         constructBatchFromWAL(startIndex, maxIndex, batches);
         batches.buildIndex();
         logger.debug(
-            "{} : accumulated a {} from wal when empty", impl.getThisNode().getGroupId(), batches);
+            IoTConsensusMessages.ACCUMULATED_FROM_WAL_WHEN_EMPTY,
+            impl.getThisNode().getGroupId(),
+            batches);
       } else {
         // Notice that prev searchIndex >= startIndex
         iterator = bufferedEntries.iterator();
@@ -458,7 +461,9 @@ public class LogDispatcher {
           if (hasCorruptedData || !batches.canAccumulate()) {
             batches.buildIndex();
             logger.debug(
-                "{} : accumulated a {} from wal", impl.getThisNode().getGroupId(), batches);
+                IoTConsensusMessages.ACCUMULATED_FROM_WAL,
+                impl.getThisNode().getGroupId(),
+                batches);
             return batches;
           }
         }
@@ -469,7 +474,9 @@ public class LogDispatcher {
         if (!batches.canAccumulate()) {
           batches.buildIndex();
           logger.debug(
-              "{} : accumulated a {} from queue", impl.getThisNode().getGroupId(), batches);
+              IoTConsensusMessages.ACCUMULATED_FROM_QUEUE,
+              impl.getThisNode().getGroupId(),
+              batches);
           return batches;
         }
 
@@ -483,7 +490,7 @@ public class LogDispatcher {
             if (hasCorruptedData || !batches.canAccumulate()) {
               batches.buildIndex();
               logger.debug(
-                  "gap {} : accumulated a {} from queue and wal when gap",
+                  IoTConsensusMessages.ACCUMULATED_FROM_QUEUE_AND_WAL_GAP,
                   impl.getThisNode().getGroupId(),
                   batches);
               return batches;
@@ -499,7 +506,9 @@ public class LogDispatcher {
         }
         batches.buildIndex();
         logger.debug(
-            "{} : accumulated a {} from queue and wal", impl.getThisNode().getGroupId(), batches);
+            IoTConsensusMessages.ACCUMULATED_FROM_QUEUE_AND_WAL,
+            impl.getThisNode().getGroupId(),
+            batches);
       }
       return batches;
     }
@@ -511,13 +520,13 @@ public class LogDispatcher {
             new TSyncLogEntriesReq(
                 selfPeerId, peer.getGroupId().convertToTConsensusGroupId(), batch.getLogEntries());
         logger.debug(
-            "Send Batch[startIndex:{}, endIndex:{}] to ConsensusGroup:{}",
+            IoTConsensusMessages.SEND_BATCH,
             batch.getStartIndex(),
             batch.getEndIndex(),
             peer.getGroupId().convertToTConsensusGroupId());
         client.syncLogEntries(req, handler);
       } catch (Exception e) {
-        logger.error("Can not sync logs to peer {} because", peer, e);
+        logger.error(IoTConsensusMessages.CANNOT_SYNC_LOGS_TO_PEER, peer, e);
         handler.onError(e);
       }
     }
@@ -528,7 +537,7 @@ public class LogDispatcher {
 
     private boolean constructBatchFromWAL(long currentIndex, long maxIndex, Batch logBatches) {
       logger.debug(
-          "DataRegion[{}]->{}: currentIndex: {}, maxIndex: {}",
+          IoTConsensusMessages.DATA_REGION_CONSTRUCT_FROM_WAL,
           peer.getGroupId().getId(),
           peer.getEndpoint().getIp(),
           currentIndex,
@@ -539,27 +548,22 @@ public class LogDispatcher {
       // Even if there is no WAL files, these code won't produce error.
       walEntryIterator.skipTo(targetIndex);
       while (targetIndex < maxIndex && logBatches.canAccumulate()) {
-        logger.debug("construct from WAL for one Entry, index : {}", targetIndex);
+        logger.debug(IoTConsensusMessages.CONSTRUCT_FROM_WAL, targetIndex);
         try {
           walEntryIterator.waitForNextReady();
         } catch (InterruptedException e) {
           Thread.currentThread().interrupt();
-          logger.warn("wait for next WAL entry is interrupted");
+          logger.warn(IoTConsensusMessages.WAIT_NEXT_WAL_INTERRUPTED);
         }
         IndexedConsensusRequest data = walEntryIterator.next();
         if (data.getSearchIndex() < targetIndex) {
           // if the index of request is smaller than currentIndex, then continue
           logger.warn(
-              "search for one Entry which index is {}, but find a smaller one, index : {}",
-              targetIndex,
-              data.getSearchIndex());
+              IoTConsensusMessages.SEARCH_ENTRY_FOUND_SMALLER, targetIndex, data.getSearchIndex());
           continue;
         } else if (data.getSearchIndex() > targetIndex) {
           logger.warn(
-              "search for one Entry which index is {}, but find a larger one, index : {}."
-                  + "Perhaps the wal file is corrupted, in which case we skip it and choose a larger index to replicate",
-              targetIndex,
-              data.getSearchIndex());
+              IoTConsensusMessages.SEARCH_ENTRY_FOUND_LARGER, targetIndex, data.getSearchIndex());
           hasCorruptedData = true;
         }
         targetIndex = data.getSearchIndex() + 1;

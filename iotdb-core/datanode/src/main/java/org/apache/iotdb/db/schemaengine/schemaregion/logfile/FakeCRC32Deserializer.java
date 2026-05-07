@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.schemaengine.schemaregion.logfile;
 
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -63,7 +65,7 @@ public class FakeCRC32Deserializer<T> implements IDeserializer<T> {
       LOGGER.error("Read log length {} is negative.", logLength);
       throw new IOException(
           new IllegalArgumentException(
-              String.format("Read log length %s is negative.", logLength)));
+              String.format(DataNodeSchemaMessages.READ_LOG_LENGTH_NEGATIVE, logLength)));
     }
 
     byte[] logBuffer = new byte[logLength];

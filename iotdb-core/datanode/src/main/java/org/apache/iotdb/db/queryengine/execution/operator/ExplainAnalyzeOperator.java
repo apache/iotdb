@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.commons.queryengine.plan.relational.analyzer.NodeRef;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Table;
 import org.apache.iotdb.db.exception.mpp.FragmentInstanceFetchException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
@@ -178,7 +179,8 @@ public class ExplainAnalyzeOperator implements ProcessOperator {
       String res = logContent.toString();
       logger.info(res);
     } catch (Exception e) {
-      logger.error("Error occurred when logging intermediate result of analyze.", e);
+      logger.error(
+          DataNodeQueryMessages.ERROR_OCCURRED_WHEN_LOGGING_INTERMEDIATE_RESULT_OF_ANALYZE, e);
     }
   }
 

@@ -36,6 +36,7 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.LoadFileException;
 import org.apache.iotdb.db.exception.mpp.FragmentInstanceDispatchException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.SubPlan;
@@ -118,7 +119,7 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
             } catch (FragmentInstanceDispatchException e) {
               return new FragInstanceDispatchResult(e.getFailureStatus());
             } catch (Exception t) {
-              LOGGER.warn("cannot dispatch FI for load operation", t);
+              LOGGER.warn(DataNodeQueryMessages.CANNOT_DISPATCH_FI_FOR_LOAD_OPERATION, t);
               return new FragInstanceDispatchResult(
                   RpcUtils.getStatus(
                       TSStatusCode.INTERNAL_SERVER_ERROR, "Unexpected errors: " + t.getMessage()));
@@ -151,7 +152,7 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
   }
 
   public void dispatchLocally(FragmentInstance instance) throws FragmentInstanceDispatchException {
-    LOGGER.info("Receive load node from uuid {}.", uuid);
+    LOGGER.info(DataNodeQueryMessages.RECEIVE_LOAD_NODE_FROM_UUID, uuid);
 
     ConsensusGroupId groupId =
         ConsensusGroupId.Factory.createFromTConsensusGroupId(
@@ -195,13 +196,13 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
                 ? TableDiskUsageStatisticUtil.calculateTableSizeMap(cloneTsFileResource)
                 : Optional.empty());
       } catch (LoadFileException e) {
-        LOGGER.warn("Load TsFile Node {} error.", planNode, e);
+        LOGGER.warn(DataNodeQueryMessages.LOAD_TSFILE_NODE_ERROR, planNode, e);
         TSStatus resultStatus = new TSStatus();
         resultStatus.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
         resultStatus.setMessage(e.getMessage());
         throw new FragmentInstanceDispatchException(resultStatus);
       } catch (IOException e) {
-        LOGGER.warn("Serialize TsFileResource {} error.", filePath, e);
+        LOGGER.warn(DataNodeQueryMessages.SERIALIZE_TSFILERESOURCE_ERROR, filePath, e);
         TSStatus resultStatus = new TSStatus();
         resultStatus.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
         resultStatus.setMessage(e.getMessage());

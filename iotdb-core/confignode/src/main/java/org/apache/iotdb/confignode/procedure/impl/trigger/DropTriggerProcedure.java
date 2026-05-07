@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.trigger.exception.TriggerManagementException;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.DeleteTriggerInTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggerStateInTablePlan;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.persistence.TriggerInfo;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
@@ -88,7 +89,7 @@ public class DropTriggerProcedure extends AbstractNodeProcedure<DropTriggerState
             setNextState(DropTriggerState.DATA_NODE_DROPPED);
           } else {
             throw new TriggerManagementException(
-                String.format("Fail to drop trigger [%s] on Data Nodes", triggerName));
+                String.format(ProcedureMessages.FAIL_TO_DROP_TRIGGER_ON_DATA_NODES, triggerName));
           }
           break;
 
@@ -108,7 +109,7 @@ public class DropTriggerProcedure extends AbstractNodeProcedure<DropTriggerState
           return Flow.NO_MORE_STATE;
 
         default:
-          throw new IllegalArgumentException("Unknown DropTriggerState: " + state);
+          throw new IllegalArgumentException(ProcedureMessages.UNKNOWN_DROPTRIGGERSTATE + state);
       }
     } catch (Exception e) {
       if (isRollbackSupported(state)) {
@@ -120,7 +121,8 @@ public class DropTriggerProcedure extends AbstractNodeProcedure<DropTriggerState
         if (getCycles() > RETRY_THRESHOLD) {
           setFailure(
               new ProcedureException(
-                  String.format("Fail to drop trigger [%s] at STATE [%s]", triggerName, state)));
+                  String.format(
+                      ProcedureMessages.FAIL_TO_DROP_TRIGGER_AT_STATE, triggerName, state)));
         }
       }
     }

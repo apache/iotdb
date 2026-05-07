@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.schema.table.column;
 
+import org.apache.iotdb.commons.i18n.SchemaMessages;
+
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -85,7 +87,8 @@ public enum TsTableColumnCategory {
       case TIME:
         return ColumnCategory.TIME;
       default:
-        throw new IllegalArgumentException("Unsupported column type in TsFile: " + this);
+        throw new IllegalArgumentException(
+            String.format(SchemaMessages.UNSUPPORTED_COLUMN_TYPE_IN_TSFILE, this));
     }
   }
 

@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.statement.PipeStatementInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
@@ -414,7 +415,7 @@ public class WriteBackSink implements PipeConnector {
         throw e;
       }
       LOGGER.debug(
-          "Execute statement {} to database {}, skip because no permission.",
+          DataNodePipeMessages.EXECUTE_STATEMENT_TO_DATABASE_SKIP_BECAUSE_NO,
           statement.getClass().getSimpleName(),
           dataBaseName);
       return StatusUtils.OK;
@@ -488,7 +489,8 @@ public class WriteBackSink implements PipeConnector {
       if (e instanceof InterruptedException) {
         Thread.currentThread().interrupt();
       }
-      throw new PipeException("Auto create database failed because: " + e.getMessage());
+      throw new PipeException(
+          DataNodePipeMessages.AUTO_CREATE_DATABASE_FAILED_BECAUSE + e.getMessage());
     }
 
     ALREADY_CREATED_DATABASES.add(database);

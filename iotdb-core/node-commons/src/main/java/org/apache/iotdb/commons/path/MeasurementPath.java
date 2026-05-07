@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.path;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.i18n.PathMessages;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -48,7 +49,7 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDC
 public class MeasurementPath extends PartialPath {
 
   private static final String NODES_LENGTH_ERROR =
-      "nodes.length for MeasurementPath should always be greater than 1, current is: %s";
+      PathMessages.NODES_LENGTH_SHOULD_BE_GREATER_THAN_ONE;
 
   private static final Logger logger = LoggerFactory.getLogger(MeasurementPath.class);
 
@@ -250,7 +251,7 @@ public class MeasurementPath extends PartialPath {
         newMeasurementPath.setTagMap(new HashMap<>(tagMap));
       }
     } catch (IllegalPathException e) {
-      logger.warn("path is illegal: {}", this.getFullPath(), e);
+      logger.warn(PathMessages.PATH_IS_ILLEGAL, this.getFullPath(), e);
     }
     return newMeasurementPath;
   }

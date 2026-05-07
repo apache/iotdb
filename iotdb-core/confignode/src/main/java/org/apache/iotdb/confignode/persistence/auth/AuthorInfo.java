@@ -37,6 +37,7 @@ import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorRelationalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.consensus.response.auth.PermissionInfoResp;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.db.queryengine.plan.relational.type.AuthorRType;
@@ -64,13 +65,13 @@ public class AuthorInfo implements SnapshotProcessor {
       authorizer = BasicAuthorizer.getInstance();
       authorPlanExecutor = new AuthorPlanExecutor(authorizer);
     } catch (AuthException e) {
-      LOGGER.error("get user or role permissionInfo failed because ", e);
+      LOGGER.error(ConfigNodeMessages.GET_USER_OR_ROLE_PERMISSIONINFO_FAILED_BECAUSE, e);
     }
   }
 
   public static ConfigPhysicalPlanType getConfigPhysicalPlanTypeFromAuthorType(int authorType) {
     if (authorType < 0) {
-      throw new IndexOutOfBoundsException("Invalid Author Type ordinal");
+      throw new IndexOutOfBoundsException(ConfigNodeMessages.INVALID_AUTHOR_TYPE_ORDINAL);
     }
     ConfigPhysicalPlanType configPhysicalPlanType;
     if (authorType >= AuthorType.RENAME_USER.ordinal()) {
@@ -83,7 +84,7 @@ public class AuthorInfo implements SnapshotProcessor {
         case UPDATE_USER_MIN_SESSION:
           return ConfigPhysicalPlanType.UpdateUserMinSession;
         default:
-          throw new IndexOutOfBoundsException("Invalid Author Type ordinal");
+          throw new IndexOutOfBoundsException(ConfigNodeMessages.INVALID_AUTHOR_TYPE_ORDINAL);
       }
     } else {
       configPhysicalPlanType =
@@ -259,7 +260,8 @@ public class AuthorInfo implements SnapshotProcessor {
 
   public TSStatus enableSeparationOfAdminPowers(
       String systemAdminUsername, String securityAdminUsername, String auditAdminUsername) {
-    throw new UnsupportedOperationException("EnableSeparationOfAdminPowers is not supported");
+    throw new UnsupportedOperationException(
+        ConfigNodeMessages.ENABLESEPARATIONOFADMINPOWERS_IS_NOT_SUPPORTED);
   }
 
   @TestOnly

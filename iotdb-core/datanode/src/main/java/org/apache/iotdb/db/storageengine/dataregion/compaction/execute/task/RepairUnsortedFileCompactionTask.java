@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.RepairUnsortedFileCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
@@ -192,7 +193,8 @@ public class RepairUnsortedFileCompactionTask extends InnerSpaceCompactionTask {
     }
     boolean isSuccess = super.doCompaction();
     if (!isSuccess) {
-      LOGGER.info("Failed to repair file {}", sourceFile.getTsFile().getAbsolutePath());
+      LOGGER.info(
+          StorageEngineMessages.FAILED_TO_REPAIR_FILE, sourceFile.getTsFile().getAbsolutePath());
       sourceFile.setTsFileRepairStatus(TsFileRepairStatus.CAN_NOT_REPAIR);
     }
     return isSuccess;

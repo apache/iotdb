@@ -19,6 +19,7 @@
 package org.apache.iotdb.confignode.writelog.io;
 
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -77,7 +78,7 @@ public class SingleFileLogReader implements ILogReader {
 
       int readLen = logStream.read(buffer, 0, logSize);
       if (readLen < logSize) {
-        throw new IOException("Reach eof");
+        throw new IOException(ConfigNodeMessages.REACH_EOF);
       }
 
       final long checkSum = logStream.readLong();
@@ -86,10 +87,12 @@ public class SingleFileLogReader implements ILogReader {
       if (checkSummer.getValue() != checkSum) {
         throw new IOException(
             String.format(
-                "The check sum of the No.%d log batch is incorrect! In "
+                ConfigNodeMessages.THE_CHECK_SUM_OF_THE_NO_LOG_BATCH_IS_INCORRECT
                     + "file: "
                     + "%d Calculated: %d.",
-                idx, checkSum, checkSummer.getValue()));
+                idx,
+                checkSum,
+                checkSummer.getValue()));
       }
 
       batchLogReader = new BatchLogReader(ByteBuffer.wrap(buffer));

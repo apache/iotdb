@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.batch.PipeTabletEventPlainBatch;
 import org.apache.iotdb.db.pipe.sink.protocol.thrift.async.IoTDBDataRegionAsyncSink;
 import org.apache.iotdb.db.pipe.sink.util.cacher.LeaderCacheUtils;
@@ -83,7 +84,7 @@ public class PipeTransferTabletBatchEventHandler extends PipeTransferTrackableHa
   protected boolean onCompleteInternal(final TPipeTransferResp response) {
     // Just in case
     if (response == null) {
-      onError(new PipeException("TPipeTransferResp is null"));
+      onError(new PipeException(DataNodePipeMessages.TPIPETRANSFERRESP_IS_NULL));
       return false;
     }
 

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.queryengine.plan.planner.plan.node;
 
+import org.apache.iotdb.commons.i18n.QueryMessages;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AssignUniqueId;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.EnforceSingleRowNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ExceptNode;
@@ -52,12 +53,12 @@ public class CommonPlanNodeDeserializer implements IPlanNodeDeserializer {
 
   @Override
   public PlanNode deserializeFromWAL(DataInputStream stream) throws IOException {
-    throw new UnsupportedOperationException("Not supported for CommonPlanNodeDeserializer");
+    throw new UnsupportedOperationException(QueryMessages.NOT_SUPPORTED_FOR_COMMON_DESERIALIZER);
   }
 
   @Override
   public PlanNode deserializeFromWAL(ByteBuffer buffer) {
-    throw new UnsupportedOperationException("Not supported for CommonPlanNodeDeserializer");
+    throw new UnsupportedOperationException(QueryMessages.NOT_SUPPORTED_FOR_COMMON_DESERIALIZER);
   }
 
   @Override

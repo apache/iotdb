@@ -50,6 +50,7 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.task.OperateMult
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusPlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusWithStoppedByRuntimeExceptionPlanV2;
 import org.apache.iotdb.confignode.consensus.response.pipe.task.PipeTableResp;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.manager.pipe.resource.PipeConfigNodeResourceManager;
 import org.apache.iotdb.confignode.procedure.impl.pipe.runtime.PipeHandleMetaChangeProcedure;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
@@ -332,7 +333,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
   private void checkBeforeDropPipeInternal(final String pipeName) {
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug(
-          "Check before drop pipe {}, pipe exists: {}.", pipeName, isPipeExisted(pipeName));
+          ConfigNodeMessages.CHECK_BEFORE_DROP_PIPE_PIPE_EXISTS, pipeName, isPipeExisted(pipeName));
     }
     // No matter whether the pipe exists, we allow the drop operation executed on all nodes to
     // ensure the consistency.
@@ -473,12 +474,13 @@ public class PipeTaskInfo implements SnapshotProcessor {
             dropPipe((DropPipePlanV2) subPlan);
           } else {
             throw new PipeException(
-                String.format("Unsupported subPlan type: %s", subPlan.getClass().getName()));
+                String.format(
+                    ConfigNodeMessages.UNSUPPORTED_SUBPLAN_TYPE, subPlan.getClass().getName()));
           }
           status.getSubStatus().add(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
         } catch (final Exception e) {
           // If one of the subPlan fails, we stop operating the rest of the pipes
-          LOGGER.error("Failed to operate pipe", e);
+          LOGGER.error(ConfigNodeMessages.FAILED_TO_OPERATE_PIPE, e);
           status.setCode(TSStatusCode.PIPE_ERROR.getStatusCode());
           status.getSubStatus().add(new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode()));
           break;
@@ -635,7 +637,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
                             // don't know about RegionLeader Map and will be balanced in the meta
                             // sync procedure
                             LOGGER.info(
-                                "Pipe {} is using external source, skip region leader change. PipeHandleLeaderChangePlan: {}",
+                                ConfigNodeMessages.PIPE_IS_USING_EXTERNAL_SOURCE_SKIP_REGION,
                                 pipeMeta.getStaticMeta().getPipeName(),
                                 plan.getConsensusGroupId2NewLeaderIdMap());
                             return;
@@ -699,7 +701,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
   }
 
   private TSStatus handleMetaChangesInternal(final PipeHandleMetaChangePlan plan) {
-    LOGGER.debug("Handling pipe meta changes ...");
+    LOGGER.debug(ConfigNodeMessages.HANDLING_PIPE_META_CHANGES);
 
     pipeMetaKeeper.clear();
 
@@ -903,7 +905,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
             });
 
     if (needRestart.get()) {
-      LOGGER.info("PipeMetaSyncer is trying to restart the pipes: {}", pipeToRestart);
+      LOGGER.info(ConfigNodeMessages.PIPEMETASYNCER_IS_TRYING_TO_RESTART_THE_PIPES, pipeToRestart);
     }
     return needRestart.get();
   }
@@ -955,7 +957,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
       final File snapshotFile = new File(snapshotDir, SNAPSHOT_FILE_NAME);
       if (snapshotFile.exists() && snapshotFile.isFile()) {
         LOGGER.error(
-            "Failed to take snapshot, because snapshot file [{}] is already exist.",
+            ConfigNodeMessages.FAILED_TO_TAKE_SNAPSHOT_BECAUSE_SNAPSHOT_FILE_IS_ALREADY_EXIST,
             snapshotFile.getAbsolutePath());
         return false;
       }
@@ -977,7 +979,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
       final File snapshotFile = new File(snapshotDir, SNAPSHOT_FILE_NAME);
       if (!snapshotFile.exists() || !snapshotFile.isFile()) {
         LOGGER.error(
-            "Failed to load snapshot,snapshot file [{}] is not exist.",
+            ConfigNodeMessages.FAILED_TO_LOAD_SNAPSHOT_SNAPSHOT_FILE_IS_NOT_EXIST_2,
             snapshotFile.getAbsolutePath());
         return;
       }
@@ -1011,7 +1013,8 @@ public class PipeTaskInfo implements SnapshotProcessor {
 
     if (!restartedConsensusPipes.isEmpty()) {
       LOGGER.info(
-          "Recovered consensus pipes {} as RUNNING during snapshot load.", restartedConsensusPipes);
+          ConfigNodeMessages.RECOVERED_CONSENSUS_PIPES_AS_RUNNING_DURING_SNAPSHOT_LOAD,
+          restartedConsensusPipes);
     }
   }
 

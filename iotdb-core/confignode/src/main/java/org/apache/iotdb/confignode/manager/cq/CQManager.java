@@ -28,6 +28,7 @@ import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.read.cq.ShowCQPlan;
 import org.apache.iotdb.confignode.consensus.request.write.cq.DropCQPlan;
 import org.apache.iotdb.confignode.consensus.response.cq.ShowCQResp;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.persistence.cq.CQInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
@@ -80,7 +81,7 @@ public class CQManager {
     try {
       return configManager.getConsensusManager().write(new DropCQPlan(req.cqId));
     } catch (ConsensusException e) {
-      LOGGER.warn("Unexpected error happened while dropping cq {}: ", req.cqId, e);
+      LOGGER.warn(ManagerMessages.UNEXPECTED_ERROR_HAPPENED_WHILE_DROPPING_CQ, req.cqId, e);
       // consensus layer related errors
       TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());
@@ -93,7 +94,7 @@ public class CQManager {
       DataSet response = configManager.getConsensusManager().read(new ShowCQPlan());
       return ((ShowCQResp) response).convertToRpcShowCQResp();
     } catch (ConsensusException e) {
-      LOGGER.warn("Unexpected error happened while showing cq: ", e);
+      LOGGER.warn(ManagerMessages.UNEXPECTED_ERROR_HAPPENED_WHILE_SHOWING_CQ, e);
       // consensus layer related errors
       TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());
@@ -123,7 +124,8 @@ public class CQManager {
       } catch (Exception t) {
         // just print the error log because we should make sure we can start a new cq schedule pool
         // successfully in the next steps
-        LOGGER.error("Error happened while shutting down previous cq schedule thread pool.", t);
+        LOGGER.error(
+            ManagerMessages.ERROR_HAPPENED_WHILE_SHUTTING_DOWN_PREVIOUS_CQ_SCHEDULE_THREAD_POOL, t);
       }
 
       // 2. start a new schedule thread pool
@@ -140,7 +142,7 @@ public class CQManager {
           allCQs = ((ShowCQResp) response).getCqList();
         } catch (ConsensusException e) {
           // consensus layer related errors
-          LOGGER.warn("Unexpected error happened while fetching cq list: ", e);
+          LOGGER.warn(ManagerMessages.UNEXPECTED_ERROR_HAPPENED_WHILE_FETCHING_CQ_LIST, e);
           try {
             Thread.sleep(500);
           } catch (InterruptedException ie) {

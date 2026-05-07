@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeMPPDataExchangeServiceClient;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeManager.SourceHandleListener;
 import org.apache.iotdb.db.queryengine.execution.memory.LocalMemoryManager;
@@ -219,7 +220,7 @@ public class SourceHandle implements ISourceHandle {
       checkState();
 
       if (!blocked.isDone()) {
-        throw new IllegalStateException("Source handle is blocked.");
+        throw new IllegalStateException(DataNodeQueryMessages.SOURCE_HANDLE_IS_BLOCKED);
       }
 
       ByteBuffer tsBlock = sequenceIdToTsBlock.remove(currSequenceId);
@@ -228,7 +229,7 @@ public class SourceHandle implements ISourceHandle {
       }
       Long retainedSize = sequenceIdToDataBlockSize.remove(currSequenceId);
       if (retainedSize == null) {
-        throw new IllegalStateException("Reserved data block size is null.");
+        throw new IllegalStateException(DataNodeQueryMessages.RESERVED_DATA_BLOCK_SIZE_IS_NULL);
       }
       if (LOGGER.isDebugEnabled()) {
         LOGGER.debug("[GetTsBlockFromBuffer] sequenceId:{}, size:{}", currSequenceId, retainedSize);
@@ -278,7 +279,7 @@ public class SourceHandle implements ISourceHandle {
     while (sequenceIdToDataBlockSize.containsKey(endSequenceId)) {
       Long bytesToReserve = sequenceIdToDataBlockSize.get(endSequenceId);
       if (bytesToReserve == null) {
-        throw new IllegalStateException("Data block size is null.");
+        throw new IllegalStateException(DataNodeQueryMessages.DATA_BLOCK_SIZE_IS_NULL);
       }
       MemoryReservationResult reserveResult =
           localMemoryManager
@@ -522,9 +523,9 @@ public class SourceHandle implements ISourceHandle {
           throw new IllegalStateException(e.getCause() == null ? e : e.getCause());
         }
       }
-      throw new IllegalStateException("Source handle is aborted.");
+      throw new IllegalStateException(DataNodeQueryMessages.SOURCE_HANDLE_IS_ABORTED);
     } else if (closed) {
-      throw new IllegalStateException("SourceHandle is closed.");
+      throw new IllegalStateException(DataNodeQueryMessages.SOURCEHANDLE_IS_CLOSED);
     }
   }
 

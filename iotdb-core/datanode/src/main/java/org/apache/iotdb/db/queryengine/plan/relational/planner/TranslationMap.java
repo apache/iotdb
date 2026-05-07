@@ -32,6 +32,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Parameter;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.QualifiedName;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Trim;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.ResolvedField;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Scope;
@@ -320,7 +321,8 @@ public class TranslationMap {
                       .orElseThrow(
                           () -> new IllegalStateException(format("No mapping for %s", node))));
             } else {
-              throw new IllegalStateException("Subscript is not supported in current version");
+              throw new IllegalStateException(
+                  DataNodeQueryMessages.SUBSCRIPT_IS_NOT_SUPPORTED_IN_CURRENT_VERSION);
             }
           }
 

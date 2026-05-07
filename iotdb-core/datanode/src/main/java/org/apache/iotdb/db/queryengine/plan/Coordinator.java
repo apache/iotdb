@@ -46,6 +46,7 @@ import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.QueryTimeoutRuntimeException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.PreparedStatementInfo;
 import org.apache.iotdb.db.queryengine.common.DataNodeEndPoints;
@@ -255,7 +256,7 @@ public class Coordinator {
         1_000L,
         1_000L,
         TimeUnit.MILLISECONDS);
-    LOGGER.info("Expired-Queries-Info-Clear thread is successfully started.");
+    LOGGER.info(DataNodeQueryMessages.EXPIRED_QUERIES_INFO_CLEAR_THREAD_IS_SUCCESSFULLY_STARTED);
   }
 
   static {
@@ -879,7 +880,8 @@ public class Coordinator {
     long costTime = executionTime.getAsLong();
     // print slow query
     if (costTime / 1_000_000 >= CONFIG.getSlowQueryThreshold()) {
-      SLOW_SQL_LOGGER.info("Cost: {} ms, {}", costTime / 1_000_000, contentOfQuerySupplier.get());
+      SLOW_SQL_LOGGER.info(
+          DataNodeQueryMessages.COST_MS, costTime / 1_000_000, contentOfQuerySupplier.get());
     }
 
     // always print the query when debug is true

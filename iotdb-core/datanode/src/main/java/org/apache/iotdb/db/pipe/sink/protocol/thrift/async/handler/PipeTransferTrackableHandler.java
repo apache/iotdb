@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.sink.protocol.thrift.async.handler;
 
 import org.apache.iotdb.commons.client.ThriftClient;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.sink.protocol.thrift.async.IoTDBDataRegionAsyncSink;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
@@ -101,8 +102,7 @@ public abstract class PipeTransferTrackableHandler
       client.returnSelf(
           (e) -> {
             if (e instanceof IllegalStateException) {
-              LOGGER.info(
-                  "Illegal state when return the client to object pool, maybe the pool is already cleared. Will ignore.");
+              LOGGER.info(DataNodePipeMessages.ILLEGAL_STATE_WHEN_RETURN_THE_CLIENT_TO);
               return true;
             }
             return false;
@@ -137,7 +137,7 @@ public abstract class PipeTransferTrackableHandler
       client.invalidateAll();
     } catch (final Exception e) {
       LOGGER.warn(
-          "Failed to close or invalidate client when connector is closed. Client: {}, Exception: {}",
+          DataNodePipeMessages.FAILED_TO_CLOSE_OR_INVALIDATE_CLIENT_WHEN,
           client,
           e.getMessage(),
           e);

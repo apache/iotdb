@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.commons.udf.utils;
 
+import org.apache.iotdb.commons.i18n.CommonMessages;
 import org.apache.iotdb.udf.api.access.Row;
 
 import java.io.IOException;
@@ -111,7 +112,7 @@ public class MasterRepairUtil {
         case BOOLEAN:
         case TEXT:
         default:
-          throw new Exception("The value of the input time series is not numeric.\n");
+          throw new Exception(CommonMessages.VALUE_NOT_NUMERIC);
       }
     } catch (IOException e) {
       throw new Exception("Fail to get data type in row " + row.getTime(), e);

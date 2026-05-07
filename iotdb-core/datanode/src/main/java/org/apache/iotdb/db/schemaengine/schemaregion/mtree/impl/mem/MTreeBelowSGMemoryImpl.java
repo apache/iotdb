@@ -45,6 +45,7 @@ import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.template.DifferentTemplateException;
 import org.apache.iotdb.db.exception.metadata.template.TemplateIsInUseException;
 import org.apache.iotdb.db.exception.quota.ExceedQuotaException;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.source.DeviceAttributeUpdater;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.source.DeviceBlackListConstructor;
@@ -480,7 +481,7 @@ public class MTreeBelowSGMemoryImpl {
       if (IoTDBDescriptor.getInstance().getConfig().isQuotaEnable()) {
         if (!DataNodeSpaceQuotaManager.getInstance().checkDeviceLimit(databaseMNode.getName())) {
           throw new ExceedQuotaException(
-              "The number of devices has reached the upper limit",
+              DataNodeSchemaMessages.DEVICE_NUM_UPPER_LIMIT,
               TSStatusCode.SPACE_QUOTA_EXCEEDED.getStatusCode());
         }
       }
@@ -563,7 +564,7 @@ public class MTreeBelowSGMemoryImpl {
           protected void updateMeasurement(final IMeasurementMNode<IMemMNode> node)
               throws MetadataException {
             if (node.isLogicalView()) {
-              throw new MetadataException("View table is not allowed.");
+              throw new MetadataException(DataNodeSchemaMessages.VIEW_TABLE_NOT_ALLOWED);
             }
             if (node.isPreDeleted()) {
               throw new MeasurementInBlackListException(
@@ -573,7 +574,7 @@ public class MTreeBelowSGMemoryImpl {
                 measurementPath.getMeasurementSchema().getType(), newDataType)) {
               throw new MetadataException(
                   String.format(
-                      "The timeseries %s used new type %s is not compatible with the existing one %s",
+                      DataNodeSchemaMessages.TIMESERIES_TYPE_NOT_COMPATIBLE,
                       measurementPath.getFullPath(),
                       newDataType,
                       measurementPath.getMeasurementSchema().getType()));
@@ -606,7 +607,7 @@ public class MTreeBelowSGMemoryImpl {
         final IMemMNode memMNode = store.getChild(device.getAsMNode(), alias);
         if (memMNode != null) {
           throw new MetadataException(
-              "The alias is duplicated with the name or alias of other measurement, alias: "
+              DataNodeSchemaMessages.ALIAS_DUPLICATED
                   + alias
                   + ", fullPath: "
                   + fullPath
@@ -1917,7 +1918,7 @@ public class MTreeBelowSGMemoryImpl {
         }
         entityMNode = cur.getAsDeviceMNode();
         if (!(entityMNode.getDeviceInfo() instanceof TableDeviceInfo)) {
-          throw new MetadataException("Table device shall not create under tree model");
+          throw new MetadataException(DataNodeSchemaMessages.TABLE_DEVICE_NOT_UNDER_TREE_MODEL);
         }
         final TableDeviceInfo<IMemMNode> deviceInfo =
             (TableDeviceInfo<IMemMNode>) entityMNode.getDeviceInfo();

@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeMPPDataExchangeServiceClient;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.exception.exchange.GetTsBlockFromClosedOrAbortedChannelException;
 import org.apache.iotdb.db.queryengine.execution.driver.DriverContext;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.DownStreamChannelIndex;
@@ -352,7 +353,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
 
     @Override
     public void onFailure(ISourceHandle sourceHandle, Throwable t) {
-      LOGGER.warn("Source handle failed due to: ", t);
+      LOGGER.warn(DataNodeQueryMessages.SOURCE_HANDLE_FAILED_DUE_TO, t);
       if (onFailureCallback != null) {
         onFailureCallback.call(t);
       }
@@ -388,7 +389,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
 
     @Override
     public void onFailure(ISourceHandle sourceHandle, Throwable t) {
-      LOGGER.warn("Source handle failed due to: ", t);
+      LOGGER.warn(DataNodeQueryMessages.SOURCE_HANDLE_FAILED_DUE_TO, t);
       if (onFailureCallback != null) {
         onFailureCallback.call(t);
       }
@@ -437,7 +438,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
     @Override
     public void onFailure(ISink sink, Throwable t) {
       // TODO: (xingtanzjr) should we remove the sink from MPPDataExchangeManager ?
-      LOGGER.warn("Sink failed due to", t);
+      LOGGER.warn(DataNodeQueryMessages.SINK_FAILED_DUE_TO, t);
       if (onFailureCallback != null) {
         onFailureCallback.call(t);
       }
@@ -492,7 +493,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
 
     @Override
     public void onFailure(ISink sink, Throwable t) {
-      LOGGER.warn("ISinkChannel failed due to", t);
+      LOGGER.warn(DataNodeQueryMessages.ISINKCHANNEL_FAILED_DUE_TO, t);
       decrementCnt();
       if (onFailureCallback != null) {
         onFailureCallback.call(t);
@@ -557,7 +558,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
 
     @Override
     public void onFailure(ISink sink, Throwable t) {
-      LOGGER.warn("Sink handle failed due to", t);
+      LOGGER.warn(DataNodeQueryMessages.SINK_HANDLE_FAILED_DUE_TO, t);
       if (onFailureCallback != null) {
         onFailureCallback.call(t);
       }

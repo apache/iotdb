@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.execution.schedule;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.utils.ErrorHandlingCommonUtils;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.execution.schedule.queue.IndexedBlockingQueue;
 import org.apache.iotdb.db.queryengine.execution.schedule.task.DriverTask;
 import org.apache.iotdb.db.utils.SetThreadName;
@@ -65,13 +66,14 @@ public abstract class AbstractDriverThread extends Thread implements Closeable {
         try {
           next = queue.poll();
         } catch (InterruptedException e) {
-          logger.warn("Executor {} failed to poll driver task from queue", this.getName());
+          logger.warn(
+              DataNodeQueryMessages.EXECUTOR_FAILED_TO_POLL_DRIVER_TASK_FROM_QUEUE, this.getName());
           Thread.currentThread().interrupt();
           break;
         }
 
         if (next == null) {
-          logger.error("DriverTask should never be null");
+          logger.error(DataNodeQueryMessages.DRIVERTASK_SHOULD_NEVER_BE_NULL);
           continue;
         }
 
@@ -92,7 +94,7 @@ public abstract class AbstractDriverThread extends Thread implements Closeable {
                   new IoTDBRuntimeException(
                       rootCause.getMessage(), DATE_OUT_OF_RANGE.getStatusCode(), true));
             } else {
-              logger.warn("[ExecuteFailed]", rootCause);
+              logger.warn(DataNodeQueryMessages.EXECUTEFAILED, rootCause);
               next.setAbortCause(
                   new DriverTaskAbortedException(
                       next.getDriverTaskId().getFullId(),
@@ -117,7 +119,7 @@ public abstract class AbstractDriverThread extends Thread implements Closeable {
             this.getName());
         producer.produce(getName(), getThreadGroup(), queue, producer);
       } else {
-        logger.info("Executor {} exits because it is closed.", this.getName());
+        logger.info(DataNodeQueryMessages.EXECUTOR_EXITS_BECAUSE_IT_IS_CLOSED, this.getName());
       }
     }
   }
