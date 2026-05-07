@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze.load;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.LoadRuntimeOutOfMemoryException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
@@ -38,7 +39,9 @@ import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.apache.tsfile.write.schema.Schema;
 import org.apache.tsfile.write.writer.TsFileIOWriter;
+import org.junit.After;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 
 import java.io.File;
@@ -53,13 +56,26 @@ import java.util.Set;
 
 public class LoadTsFileAnalyzerTest {
 
+  private int dataNodeId;
+
+  @Before
+  public void setUp() {
+    dataNodeId = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
+    IoTDBDescriptor.getInstance().getConfig().setDataNodeId(0);
+  }
+
+  @After
+  public void tearDown() {
+    IoTDBDescriptor.getInstance().getConfig().setDataNodeId(dataNodeId);
+  }
+
   @Test
   public void testTableWritePointCountFallbackToTimeChunkWhenAllFieldsNull() throws Exception {
     final File tsFile = new File("load-table-all-null.tsfile");
     writeTableTsFileWithAllNullFields(tsFile);
 
     try (final TsFileSequenceReader reader = new TsFileSequenceReader(tsFile.getAbsolutePath())) {
-      final IDeviceID deviceID = new StringArrayDeviceID(new String[] {"table1", "tagA"});
+      final IDeviceID deviceID = new StringArrayDeviceID("table1", "tagA");
       final List<AbstractAlignedChunkMetadata> alignedChunkMetadataList =
           reader.getAlignedChunkMetadata(deviceID, false);
       Assert.assertEquals(1, alignedChunkMetadataList.size());
