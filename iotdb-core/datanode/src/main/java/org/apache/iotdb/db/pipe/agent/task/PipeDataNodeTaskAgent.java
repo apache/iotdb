@@ -170,13 +170,11 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       final PipeParameters sourceParameters = pipeStaticMeta.getSourceParameters();
       final DataRegionId dataRegionId = new DataRegionId(consensusGroupId);
       final boolean needConstructDataRegionTask =
-          StorageEngine.getInstance().getAllDataRegionIds().contains(dataRegionId)
+          StorageEngine.getInstance().getDataRegion(dataRegionId) != null
               && DataRegionListeningFilter.shouldDataRegionBeListened(
                   sourceParameters, dataRegionId);
       final boolean needConstructSchemaRegionTask =
-          SchemaEngine.getInstance()
-                  .getAllSchemaRegionIds()
-                  .contains(new SchemaRegionId(consensusGroupId))
+          SchemaEngine.getInstance().getSchemaRegion(new SchemaRegionId(consensusGroupId)) != null
               && SchemaRegionListeningFilter.shouldSchemaRegionBeListened(
                   consensusGroupId, sourceParameters);
 

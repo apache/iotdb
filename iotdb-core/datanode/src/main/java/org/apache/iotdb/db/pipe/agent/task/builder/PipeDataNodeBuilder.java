@@ -36,7 +36,6 @@ import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 public class PipeDataNodeBuilder {
@@ -53,9 +52,6 @@ public class PipeDataNodeBuilder {
     final PipeStaticMeta pipeStaticMeta = pipeMeta.getStaticMeta();
     final PipeRuntimeMeta pipeRuntimeMeta = pipeMeta.getRuntimeMeta();
 
-    final List<DataRegionId> dataRegionIds = StorageEngine.getInstance().getAllDataRegionIds();
-    final List<SchemaRegionId> schemaRegionIds = SchemaEngine.getInstance().getAllSchemaRegionIds();
-
     final Map<Integer, PipeTask> consensusGroupIdToPipeTaskMap = new HashMap<>();
     for (Map.Entry<Integer, PipeTaskMeta> consensusGroupIdToPipeTaskMeta :
         pipeRuntimeMeta.getConsensusGroupId2TaskMetaMap().entrySet()) {
@@ -66,11 +62,11 @@ public class PipeDataNodeBuilder {
         final PipeParameters sourceParameters = pipeStaticMeta.getSourceParameters();
         final DataRegionId dataRegionId = new DataRegionId(consensusGroupId);
         final boolean needConstructDataRegionTask =
-            dataRegionIds.contains(dataRegionId)
+            StorageEngine.getInstance().getDataRegion(dataRegionId) != null
                 && DataRegionListeningFilter.shouldDataRegionBeListened(
                     sourceParameters, dataRegionId);
         final boolean needConstructSchemaRegionTask =
-            schemaRegionIds.contains(new SchemaRegionId(consensusGroupId))
+            SchemaEngine.getInstance().getSchemaRegion(new SchemaRegionId(consensusGroupId)) != null
                 && SchemaRegionListeningFilter.shouldSchemaRegionBeListened(
                     consensusGroupId, sourceParameters);
 

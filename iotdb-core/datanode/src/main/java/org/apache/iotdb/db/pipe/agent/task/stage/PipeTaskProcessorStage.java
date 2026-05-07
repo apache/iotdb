@@ -77,7 +77,7 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
             new PipeTaskProcessorRuntimeEnvironment(
                 pipeName, creationTime, regionId, pipeTaskMeta));
     final PipeProcessor pipeProcessor =
-        StorageEngine.getInstance().getAllDataRegionIds().contains(new DataRegionId(regionId))
+        StorageEngine.getInstance().getDataRegion(new DataRegionId(regionId)) != null
                 || PipeRuntimeMeta.isSourceExternal(regionId)
             ? PipeDataNodeAgent.plugin()
                 .dataRegion()
