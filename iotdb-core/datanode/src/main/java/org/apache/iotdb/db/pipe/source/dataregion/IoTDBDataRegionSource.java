@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePatternOperations;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.source.IoTDBSource;
+import org.apache.iotdb.commons.queryengine.common.SqlDialect;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
@@ -41,7 +42,6 @@ import org.apache.iotdb.db.pipe.source.dataregion.realtime.PipeRealtimeDataRegio
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.PipeRealtimeDataRegionLogSource;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.PipeRealtimeDataRegionSource;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.PipeRealtimeDataRegionTsFileSource;
-import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.InternalClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.storageengine.StorageEngine;
@@ -569,7 +569,7 @@ public class IoTDBDataRegionSource extends IoTDBSource {
                   ZoneId.systemDefault().toString(),
                   SessionManager.CURRENT_RPC_VERSION,
                   IoTDBConstant.ClientVersion.V_1_0,
-                  IClientSession.SqlDialect.TREE,
+                  SqlDialect.TREE,
                   regionId >= 0)
               .getCode()
           != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {

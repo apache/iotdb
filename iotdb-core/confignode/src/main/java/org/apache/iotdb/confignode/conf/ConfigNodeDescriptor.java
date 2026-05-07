@@ -271,6 +271,24 @@ public class ConfigNodeDescriptor {
                 "cn_max_client_count_for_each_node_in_client_manager",
                 String.valueOf(conf.getMaxClientNumForEachNode()))));
 
+    int cnMaxIdleClientNumForEachNode =
+        Integer.parseInt(
+            properties.getProperty(
+                "cn_max_idle_client_count_for_each_node_in_client_manager",
+                String.valueOf(conf.getMaxIdleClientNumForEachNode())));
+    if (cnMaxIdleClientNumForEachNode >= 0) {
+      conf.setMaxIdleClientNumForEachNode(cnMaxIdleClientNumForEachNode);
+    }
+
+    int cnSelectorNumOfClientManager =
+        Integer.parseInt(
+            properties.getProperty(
+                "cn_selector_thread_nums_of_client_manager",
+                String.valueOf(conf.getSelectorNumOfClientManager())));
+    if (cnSelectorNumOfClientManager > 0) {
+      conf.setSelectorNumOfClientManager(cnSelectorNumOfClientManager);
+    }
+
     conf.setSystemDir(properties.getProperty("cn_system_dir", conf.getSystemDir()));
 
     conf.setConsensusDir(properties.getProperty("cn_consensus_dir", conf.getConsensusDir()));
@@ -321,23 +339,6 @@ public class ConfigNodeDescriptor {
             properties.getProperty(
                 "failure_detector_phi_acceptable_pause_in_ms",
                 String.valueOf(conf.getFailureDetectorPhiAcceptablePauseInMs()))));
-
-    long partitionTableRecoverWaitAllDnUpTimeoutInMs =
-        Long.parseLong(
-            properties.getProperty(
-                "partition_table_recover_wait_all_dn_up_timeout_ms",
-                String.valueOf(conf.getPartitionTableRecoverWaitAllDnUpTimeoutInMs())));
-    if (partitionTableRecoverWaitAllDnUpTimeoutInMs <= 0) {
-      LOGGER.warn(
-          "partition_table_recover_wait_all_dn_up_timeout_ms should be greater than 0, "
-              + "but current value is {}, ignore that and use the default value {}",
-          partitionTableRecoverWaitAllDnUpTimeoutInMs,
-          conf.getPartitionTableRecoverWaitAllDnUpTimeoutInMs());
-      partitionTableRecoverWaitAllDnUpTimeoutInMs =
-          conf.getPartitionTableRecoverWaitAllDnUpTimeoutInMs();
-    }
-    conf.setPartitionTableRecoverWaitAllDnUpTimeoutInMs(
-        partitionTableRecoverWaitAllDnUpTimeoutInMs);
 
     String leaderDistributionPolicy =
         properties.getProperty("leader_distribution_policy", conf.getLeaderDistributionPolicy());

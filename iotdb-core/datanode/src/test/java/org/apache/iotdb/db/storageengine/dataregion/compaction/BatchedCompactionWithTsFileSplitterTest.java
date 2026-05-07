@@ -22,6 +22,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.load.LoadFileException;
@@ -30,10 +31,15 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CompactionTaskSummary;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionCheckerUtils;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionTestFileWriter;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
 import org.apache.iotdb.db.storageengine.load.splitter.AlignedChunkData;
+import org.apache.iotdb.db.storageengine.load.splitter.DeletionData;
 import org.apache.iotdb.db.storageengine.load.splitter.TsFileData;
 import org.apache.iotdb.db.storageengine.load.splitter.TsFileSplitter;
 
@@ -53,7 +59,9 @@ import org.junit.Test;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
+import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -230,6 +238,80 @@ public class BatchedCompactionWithTsFileSplitterTest extends AbstractCompactionT
 
     TsFileResource targetResource = performCompaction();
     consumeChunkDataAndValidate(targetResource);
+  }
+
+  @Test
+  public void testDeletionDataShouldOnlyBeGeneratedOnceAtEnd()
+      throws IOException, MetadataException, LoadFileException, IllegalPathException {
+    TsFileResource resource = createAlignedMultiDeviceFile();
+    try (ModificationFile modificationFile =
+        new ModificationFile(
+            ModificationFile.getExclusiveMods(resource.getTsFile()).getPath(), false)) {
+      modificationFile.write(
+          new TreeDeletionEntry(new MeasurementPath("root.testsg.d0.s0"), Long.MIN_VALUE, 100));
+      modificationFile.write(
+          new TreeDeletionEntry(new MeasurementPath("root.testsg.d0.s1"), 200, 300));
+      modificationFile.write(
+          new TreeDeletionEntry(new MeasurementPath("root.testsg.d1.s0"), Long.MIN_VALUE, 100));
+      modificationFile.write(
+          new TreeDeletionEntry(new MeasurementPath("root.testsg.d1.s1"), 200, 300));
+    }
+
+    List<ModEntry> expectedMods = ModificationFile.readAllModifications(resource.getTsFile(), true);
+    List<ModEntry> deletionMods = new ArrayList<>();
+    File actualModsFile = new File(resource.getTsFilePath() + ".mods");
+    try (ModificationFile actualModificationFile =
+        new ModificationFile(actualModsFile.getAbsolutePath(), false)) {
+      TsFileSplitter splitter =
+          new TsFileSplitter(
+              resource.getTsFile(),
+              tsFileData -> {
+                if (tsFileData instanceof DeletionData) {
+                  deletionMods.add(((DeletionData) tsFileData).getModEntry());
+                }
+                return true;
+              });
+      splitter.splitTsFileByDataPartition();
+    }
+
+    Assert.assertEquals(expectedMods, deletionMods);
+    Files.deleteIfExists(actualModsFile.toPath());
+  }
+
+  private TsFileResource createAlignedMultiDeviceFile() throws IOException {
+    TsFileResource resource = createEmptyFileAndResource(true);
+    try (CompactionTestFileWriter writer = new CompactionTestFileWriter(resource)) {
+      writer.startChunkGroup("d0");
+      writer.generateSimpleAlignedSeriesToCurrentDeviceWithNullValue(
+          Arrays.asList("s0", "s1"),
+          new TimeRange[][] {
+            new TimeRange[] {new TimeRange(1, 100), new TimeRange(200, 300)},
+            new TimeRange[] {
+              new TimeRange(604799900, 604800020), new TimeRange(604810020, 604820020)
+            }
+          },
+          TSEncoding.PLAIN,
+          CompressionType.LZ4,
+          Arrays.asList(false, false));
+      writer.endChunkGroup();
+
+      writer.startChunkGroup("d1");
+      writer.generateSimpleAlignedSeriesToCurrentDeviceWithNullValue(
+          Arrays.asList("s0", "s1"),
+          new TimeRange[][] {
+            new TimeRange[] {new TimeRange(1, 100), new TimeRange(200, 300)},
+            new TimeRange[] {
+              new TimeRange(604799900, 604800020), new TimeRange(604810020, 604820020)
+            }
+          },
+          TSEncoding.PLAIN,
+          CompressionType.LZ4,
+          Arrays.asList(false, false));
+      writer.endChunkGroup();
+
+      writer.endFile();
+    }
+    return resource;
   }
 
   private TsFileResource performCompaction()

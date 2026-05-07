@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.consensus.common.request;
 
+import org.apache.iotdb.commons.request.IConsensusRequest;
+
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;

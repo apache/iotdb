@@ -153,7 +153,6 @@ public class TsFileSplitter {
     long chunkOffset = reader.position();
     timeChunkIndexOfCurrentValueColumn = pageIndex2TimesList.size();
     consumeAllAlignedChunkData(chunkOffset, pageIndex2ChunkData);
-    handleModification(deletions);
 
     ChunkHeader header = reader.readChunkHeader(marker);
     String measurementId = header.getMeasurementID();

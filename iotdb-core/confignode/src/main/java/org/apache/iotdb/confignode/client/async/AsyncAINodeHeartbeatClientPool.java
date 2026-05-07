@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.async.AsyncAINodeInternalServiceClient;
 import org.apache.iotdb.confignode.client.async.handlers.heartbeat.AINodeHeartbeatHandler;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 
 /** Asynchronously send RPC requests to AINodes. */
 public class AsyncAINodeHeartbeatClientPool {
@@ -35,7 +36,8 @@ public class AsyncAINodeHeartbeatClientPool {
     clientManager =
         new IClientManager.Factory<TEndPoint, AsyncAINodeInternalServiceClient>()
             .createClientManager(
-                new ClientPoolFactory.AsyncAINodeHeartbeatServiceClientPoolFactory());
+                new ClientPoolFactory.AsyncAINodeHeartbeatServiceClientPoolFactory(
+                    ConfigNodeDescriptor.getInstance().getConf().getSelectorNumOfClientManager()));
   }
 
   /**

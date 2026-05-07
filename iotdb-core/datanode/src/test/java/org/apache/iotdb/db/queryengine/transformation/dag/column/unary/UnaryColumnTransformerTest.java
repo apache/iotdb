@@ -19,7 +19,14 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.column.unary;
 
-import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.IdentityColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.leaf.IdentityColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.unary.ArithmeticNegationColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.unary.InColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.unary.IsNullColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.unary.LikeColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.unary.LogicNotColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.unary.RegularColumnTransformer;
+import org.apache.iotdb.calc.transformation.dag.column.unary.UnaryColumnTransformer;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;

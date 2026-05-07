@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
 import org.apache.iotdb.commons.pipe.receiver.IoTDBReceiverAgent;
+import org.apache.iotdb.commons.pipe.receiver.PipeReceiverFilePathUtils;
 import org.apache.iotdb.commons.pipe.sink.payload.iotconsensusv2.request.IoTConsensusV2RequestType;
 import org.apache.iotdb.commons.pipe.sink.payload.iotconsensusv2.request.IoTConsensusV2RequestVersion;
 import org.apache.iotdb.commons.pipe.sink.payload.iotconsensusv2.request.IoTConsensusV2TransferFilePieceReq;
@@ -78,6 +79,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -517,16 +519,23 @@ public class IoTConsensusV2Receiver {
     long startPreCheckNanos = System.nanoTime();
     iotConsensusV2ReceiverMetrics.recordBorrowTsFileWriterTimer(
         startPreCheckNanos - startBorrowTsFileWriterNanos);
-    File writingFile = tsFileWriter.getWritingFile();
-    RandomAccessFile writingFileWriter = tsFileWriter.getWritingFileWriter();
+    final File writingFile = tsFileWriter.getWritingFile();
+    final RandomAccessFile writingFileWriter = tsFileWriter.getWritingFileWriter();
 
-    File currentWritingDirPath = tsFileWriter.getLocalWritingDir();
-
-    final List<File> files =
-        req.getFileNames().stream()
-            .map(fileName -> new File(currentWritingDirPath, fileName))
-            .collect(Collectors.toList());
+    final File currentWritingDirPath = tsFileWriter.getLocalWritingDir();
     try {
+      final List<File> files =
+          req.getFileNames().stream()
+              .map(
+                  fileName -> {
+                    try {
+                      return resolveWritingFilePath(tsFileWriter, fileName).toFile();
+                    } catch (final IOException e) {
+                      throw new IllegalArgumentException(e);
+                    }
+                  })
+              .collect(Collectors.toList());
+
       if (isWritingFileNonAvailable(tsFileWriter)) {
         final TSStatus status =
             RpcUtils.getStatus(
@@ -601,16 +610,20 @@ public class IoTConsensusV2Receiver {
       }
       return new TIoTConsensusV2TransferResp(status);
     } catch (Exception e) {
+      final Throwable rootCause = e instanceof IllegalArgumentException ? e.getCause() : e;
       LOGGER.warn(
           "IoTConsensusV2-PipeName-{}: Failed to seal file {} from req {}.",
           consensusPipeName,
-          files,
+          req.getFileNames(),
           req,
-          e);
+          rootCause);
       return new TIoTConsensusV2TransferResp(
           RpcUtils.getStatus(
               TSStatusCode.IOT_CONSENSUS_V2_TRANSFER_FILE_ERROR,
-              String.format("Failed to seal file %s because %s", writingFile, e.getMessage())));
+              String.format(
+                  "Failed to seal file %s because %s",
+                  req.getFileNames(),
+                  rootCause == null ? e.getMessage() : rootCause.getMessage())));
     } finally {
       // If the writing file is not sealed successfully, the writing file will be deleted.
       // All pieces of the writing file and its mod(if exists) should be retransmitted by the
@@ -809,7 +822,22 @@ public class IoTConsensusV2Receiver {
   private boolean isFileExistedAndNameCorrect(
       IoTConsensusV2TsFileWriter tsFileWriter, String fileName) {
     final File writingFile = tsFileWriter.getWritingFile();
-    return writingFile != null && writingFile.getName().equals(fileName);
+    try {
+      return writingFile != null
+          && writingFile.exists()
+          && writingFile
+              .toPath()
+              .toAbsolutePath()
+              .normalize()
+              .equals(resolveWritingFilePath(tsFileWriter, fileName));
+    } catch (final IOException e) {
+      LOGGER.warn(
+          "IoTConsensusV2-PipeName-{}: Illegal file name {} when checking writing file.",
+          consensusPipeName,
+          fileName,
+          e);
+      return false;
+    }
   }
 
   private boolean isWritingFileOffsetNonCorrect(
@@ -874,12 +902,26 @@ public class IoTConsensusV2Receiver {
     }
     // Every tsFileWriter has its own writing path.
     // 1 Thread --> 1 connection --> 1 tsFileWriter --> 1 path
-    tsFileWriter.setWritingFile(new File(tsFileWriter.getLocalWritingDir(), fileName));
+    tsFileWriter.setWritingFile(resolveWritingFilePath(tsFileWriter, fileName).toFile());
     tsFileWriter.setWritingFileWriter(new RandomAccessFile(tsFileWriter.getWritingFile(), "rw"));
     LOGGER.info(
         "IoTConsensusV2-PipeName-{}: Writing file {} was created. Ready to write file pieces.",
         consensusPipeName,
         tsFileWriter.getWritingFile().getPath());
+  }
+
+  private Path resolveWritingFilePath(
+      final IoTConsensusV2TsFileWriter tsFileWriter, final String fileName) throws IOException {
+    try {
+      return PipeReceiverFilePathUtils.resolveFilePath(
+          tsFileWriter.getLocalWritingDir().toPath(), fileName);
+    } catch (final IOException e) {
+      LOGGER.error(
+          "IoTConsensusV2-PipeName-{}: Path traversal attempt detected! Filename: {}",
+          consensusPipeName,
+          fileName);
+      throw e;
+    }
   }
 
   private void initiateTsFileBufferFolder(List<String> receiverBaseDirsName) throws IOException {

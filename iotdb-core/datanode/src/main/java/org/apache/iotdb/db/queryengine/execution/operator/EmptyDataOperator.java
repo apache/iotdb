@@ -19,7 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator;
 
-import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
+import org.apache.iotdb.calc.execution.operator.Operator;
+import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
 
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.utils.RamUsageEstimator;

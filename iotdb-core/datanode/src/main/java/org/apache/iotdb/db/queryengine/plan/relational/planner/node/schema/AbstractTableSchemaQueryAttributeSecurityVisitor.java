@@ -20,8 +20,8 @@
 package org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema;
 
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceSourceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.FilterNode;
@@ -30,7 +30,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkN
 import javax.annotation.Nonnull;
 
 public abstract class AbstractTableSchemaQueryAttributeSecurityVisitor<R>
-    extends PlanVisitor<R, ConsensusGroupId> {
+    implements PlanVisitor<R, ConsensusGroupId> {
 
   public R processFragment(
       final @Nonnull FragmentInstance instance, final @Nonnull ConsensusGroupId groupId) {

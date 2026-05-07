@@ -19,24 +19,24 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.assertions;
 
-import org.apache.iotdb.db.queryengine.common.SessionInfo;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.common.SessionInfo;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.iterative.GroupReference;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.GroupReference;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Lookup;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 
 import java.util.List;
 
 import static com.google.common.base.Preconditions.checkState;
 import static java.util.Objects.requireNonNull;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.Assignments.identity;
+import static org.apache.iotdb.commons.queryengine.plan.relational.planner.Assignments.identity;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.MatchResult.NO_MATCH;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.MatchResult.match;
 
-final class PlanMatchingVisitor extends PlanVisitor<MatchResult, PlanMatchPattern> {
+final class PlanMatchingVisitor implements PlanVisitor<MatchResult, PlanMatchPattern> {
 
   private final Metadata metadata;
   private final SessionInfo sessionInfo;
@@ -60,7 +60,7 @@ final class PlanMatchingVisitor extends PlanVisitor<MatchResult, PlanMatchPatter
 
   @Override
   public MatchResult visitProject(ProjectNode node, PlanMatchPattern pattern) {
-    MatchResult result = super.visitProject(node, pattern);
+    MatchResult result = PlanVisitor.super.visitProject(node, pattern);
 
     if (!result.isMatch()) {
       return result;

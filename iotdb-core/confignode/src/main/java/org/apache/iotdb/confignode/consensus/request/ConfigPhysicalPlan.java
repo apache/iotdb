@@ -20,7 +20,9 @@
 package org.apache.iotdb.confignode.consensus.request;
 
 import org.apache.iotdb.commons.exception.runtime.SerializationRunTimeException;
+import org.apache.iotdb.commons.request.IConsensusRequest;
 import org.apache.iotdb.confignode.consensus.request.read.ainode.GetAINodeConfigurationPlan;
+import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionGroupsByTimePlan;
 import org.apache.iotdb.confignode.consensus.request.read.subscription.ShowTopicPlan;
 import org.apache.iotdb.confignode.consensus.request.write.ainode.RegisterAINodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.ainode.RemoveAINodePlan;
@@ -78,6 +80,7 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipeP
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.OperateMultiplePipesPlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusPlanV2;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusWithStoppedByRuntimeExceptionPlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.DeleteProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.quota.SetSpaceQuotaPlan;
@@ -140,7 +143,6 @@ import org.apache.iotdb.confignode.consensus.request.write.trigger.DeleteTrigger
 import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggerLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggerStateInTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggersOnTransferNodesPlan;
-import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 
 import org.apache.tsfile.utils.PublicBAOS;
 
@@ -248,6 +250,9 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           break;
         case RemoveRegionLocation:
           plan = new RemoveRegionLocationPlan();
+          break;
+        case GetRegionGroupsByTime:
+          plan = new GetRegionGroupsByTimePlan();
           break;
         case OfferRegionMaintainTasks:
           plan = new OfferRegionMaintainTasksPlan();
@@ -500,6 +505,9 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           break;
         case SetPipeStatusV2:
           plan = new SetPipeStatusPlanV2();
+          break;
+        case SetPipeStatusWithStoppedByRuntimeExceptionV2:
+          plan = new SetPipeStatusWithStoppedByRuntimeExceptionPlanV2();
           break;
         case DropPipeV2:
           plan = new DropPipePlanV2();

@@ -27,6 +27,7 @@ import org.apache.iotdb.db.schemaengine.rescon.MemSchemaRegionStatistics;
 import org.apache.iotdb.db.schemaengine.schemaregion.attribute.update.UpdateDetailContainer;
 
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.Constants;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
@@ -137,12 +138,16 @@ public class DeviceAttributeStore implements IDeviceAttributeStore {
     long memUsage = MAP_SIZE + RamUsageEstimator.NUM_BYTES_OBJECT_REF;
     final Map<String, Binary> attributeMap = new HashMap<>();
     for (int i = 0; i < nameList.size(); i++) {
-      final Binary value = (Binary) valueList[i];
-      if (valueList[i] != null) {
-        attributeMap.put(nameList.get(i), value);
-        memUsage += MemUsageUtil.computeKVMemUsageInMap(nameList.get(i), value);
-        addTableAttributeMemory(tableName, value.ramBytesUsed());
+      if (valueList.length <= i) {
+        break;
       }
+      if (valueList[i] == null || valueList[i] == Constants.NONE) {
+        continue;
+      }
+      final Binary value = (Binary) valueList[i];
+      attributeMap.put(nameList.get(i), value);
+      memUsage += MemUsageUtil.computeKVMemUsageInMap(nameList.get(i), value);
+      addTableAttributeMemory(tableName, value.ramBytesUsed());
     }
     deviceAttributeList.add(attributeMap);
     requestMemory(memUsage);
@@ -163,6 +168,12 @@ public class DeviceAttributeStore implements IDeviceAttributeStore {
     final Map<String, Binary> attributeMap = deviceAttributeList.get(pointer);
     for (int i = 0; i < nameList.size(); i++) {
       final String key = nameList.get(i);
+      if (valueList.length <= i) {
+        break;
+      }
+      if (valueList[i] == Constants.NONE) {
+        continue;
+      }
       final Binary value = (Binary) valueList[i];
 
       originMemUsage =

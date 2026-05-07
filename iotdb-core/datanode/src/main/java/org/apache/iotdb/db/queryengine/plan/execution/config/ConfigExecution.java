@@ -22,8 +22,8 @@ package org.apache.iotdb.db.queryengine.plan.execution.config;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
+import org.apache.iotdb.commons.queryengine.common.SqlDialect;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.execution.QueryStateMachine;
@@ -369,7 +369,7 @@ public class ConfigExecution implements IQueryExecution {
   }
 
   @Override
-  public IClientSession.SqlDialect getSQLDialect() {
+  public SqlDialect getSQLDialect() {
     return context.getSession().getSqlDialect();
   }
 

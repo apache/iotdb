@@ -19,13 +19,14 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.window.function;
 
+import org.apache.iotdb.calc.execution.operator.process.window.function.WindowFunction;
+import org.apache.iotdb.calc.execution.operator.process.window.function.aggregate.AggregationWindowFunction;
+import org.apache.iotdb.calc.execution.operator.process.window.function.aggregate.WindowAggregator;
+import org.apache.iotdb.calc.execution.operator.process.window.partition.PartitionExecutor;
+import org.apache.iotdb.calc.execution.operator.process.window.partition.frame.FrameInfo;
+import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.AccumulatorFactory;
+import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.TableAccumulator;
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
-import org.apache.iotdb.db.queryengine.execution.operator.process.window.function.aggregate.AggregationWindowFunction;
-import org.apache.iotdb.db.queryengine.execution.operator.process.window.function.aggregate.WindowAggregator;
-import org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.PartitionExecutor;
-import org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.frame.FrameInfo;
-import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.AccumulatorFactory;
-import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.TableAccumulator;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;

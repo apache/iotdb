@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.load.converter;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.queryengine.common.SqlDialect;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.protocol.session.IClientSession;
@@ -108,7 +109,7 @@ public class LoadTsFileDataTypeConverter {
       session.setUsername(AuthorityChecker.SUPER_USER);
       session.setClientVersion(IoTDBConstant.ClientVersion.V_1_0);
       session.setZoneId(ZoneId.systemDefault());
-      session.setSqlDialect(IClientSession.SqlDialect.TABLE);
+      session.setSqlDialect(SqlDialect.TABLE);
 
       SESSION_MANAGER.registerSession(session);
     } else {
@@ -161,7 +162,7 @@ public class LoadTsFileDataTypeConverter {
       session.setUsername(AuthorityChecker.SUPER_USER);
       session.setClientVersion(IoTDBConstant.ClientVersion.V_1_0);
       session.setZoneId(ZoneId.systemDefault());
-      session.setSqlDialect(IClientSession.SqlDialect.TREE);
+      session.setSqlDialect(SqlDialect.TREE);
 
       SESSION_MANAGER.registerSession(session);
     } else {

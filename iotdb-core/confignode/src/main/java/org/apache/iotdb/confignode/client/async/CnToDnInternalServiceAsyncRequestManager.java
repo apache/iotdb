@@ -49,6 +49,7 @@ import org.apache.iotdb.confignode.client.async.handlers.rpc.subscription.CheckS
 import org.apache.iotdb.confignode.client.async.handlers.rpc.subscription.ConsumerGroupPushMetaRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.subscription.PullCommitProgressRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.subscription.TopicPushMetaRPCHandler;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.mpp.rpc.thrift.TActiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TAlterEncodingCompressorReq;
 import org.apache.iotdb.mpp.rpc.thrift.TAlterTimeSeriesReq;
@@ -122,6 +123,10 @@ public class CnToDnInternalServiceAsyncRequestManager
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(CnToDnInternalServiceAsyncRequestManager.class);
+
+  private CnToDnInternalServiceAsyncRequestManager() {
+    super(ConfigNodeDescriptor.getInstance().getConf().getSelectorNumOfClientManager());
+  }
 
   @SuppressWarnings("unchecked")
   @Override

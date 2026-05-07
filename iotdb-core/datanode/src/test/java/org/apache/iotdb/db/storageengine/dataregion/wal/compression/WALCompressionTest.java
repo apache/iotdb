@@ -18,9 +18,9 @@
  */
 package org.apache.iotdb.db.storageengine.dataregion.wal.compression;
 
+import org.apache.iotdb.calc.exception.QueryProcessException;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.WALTestUtils;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALBuffer;

@@ -93,6 +93,7 @@ public abstract class AbstractSubscriptionProvider {
 
   private final String username;
   private final String password;
+  private final String encryptedPassword;
   private final long heartbeatIntervalMs;
   private final int connectionTimeoutInMs;
 
@@ -108,6 +109,7 @@ public abstract class AbstractSubscriptionProvider {
       final TEndPoint endPoint,
       final String username,
       final String password,
+      final String encryptedPassword,
       final String consumerId,
       final String consumerGroupId,
       final int thriftMaxFrameSize,
@@ -127,6 +129,7 @@ public abstract class AbstractSubscriptionProvider {
     this.consumerGroupId = consumerGroupId;
     this.username = username;
     this.password = password;
+    this.encryptedPassword = encryptedPassword;
     this.heartbeatIntervalMs = heartbeatIntervalMs;
     this.connectionTimeoutInMs = connectionTimeoutInMs;
   }
@@ -178,6 +181,9 @@ public abstract class AbstractSubscriptionProvider {
     consumerAttributes.put(ConsumerConstant.CONSUMER_ID_KEY, consumerId);
     consumerAttributes.put(ConsumerConstant.USERNAME_KEY, username);
     consumerAttributes.put(ConsumerConstant.PASSWORD_KEY, password);
+    if (encryptedPassword != null) {
+      consumerAttributes.put(ConsumerConstant.ENCRYPTED_PASSWORD_KEY, encryptedPassword);
+    }
     consumerAttributes.put(ConsumerConstant.SQL_DIALECT_KEY, session.getSqlDialect());
     consumerAttributes.put(
         ConsumerConstant.HEARTBEAT_INTERVAL_MS_KEY, String.valueOf(heartbeatIntervalMs));

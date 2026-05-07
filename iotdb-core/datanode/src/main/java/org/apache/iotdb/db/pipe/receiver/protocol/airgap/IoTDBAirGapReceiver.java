@@ -178,6 +178,11 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
       if (System.currentTimeMillis() - startTime
           < PipeConfig.getInstance().getPipeAirGapRetryMaxMs()) {
         handleReq(req, startTime);
+      } else {
+        LOGGER.warn(
+            "Pipe air gap receiver {}: Temporary unavailable retry timed out, returning FAIL to sender.",
+            receiverId);
+        fail();
       }
     } else {
       LOGGER.warn(
