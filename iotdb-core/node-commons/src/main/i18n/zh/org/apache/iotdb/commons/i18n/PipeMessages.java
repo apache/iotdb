@@ -730,4 +730,140 @@ public final class PipeMessages {
   public static final String PATH_TRAVERSAL_DETECTED = "（检测到路径遍历）";
   public static final String EVENT_NOT_SUPPORT_BINDING_PROGRESS_INDEX = "该事件不支持绑定 progressIndex。";
   public static final String UNSUPPORTED_VERSION = "不支持的版本 %s";
+
+  // ===================== PipePluginAgent (additional) =====================
+
+  public static final String FAILED_TO_CLOSE_PROCESSOR_AFTER_INIT =
+      "初始化 processor 失败后关闭 processor 失败。忽略此异常。";
+
+  // ===================== PipePluginExecutableManager (additional) =====================
+
+  public static final String FAILED_TO_COMPUTE_MD5 =
+      "注册函数 %s 失败，因为计算函数 %s 的 jar 文件 MD5 时发生错误 ";
+
+  // ===================== PipeInclusionOptions (additional) =====================
+
+  public static final String ILLEGAL_OPTIONS_CHECKING_PRESENCE =
+      "检查是否存在至少一个选项时解析到非法选项（inclusion：{}，exclusion：{}）：{}";
+  public static final String ILLEGAL_OPTIONS_CHECKING_LEGAL =
+      "检查所有选项是否合法时解析到非法选项 {}：{}";
+
+  // ===================== PipeEventCommitMetrics (additional) =====================
+
+  public static final String FAILED_TO_DEREGISTER_COMMIT_METRICS =
+      "注销 pipe 事件提交指标失败，PipeEventCommitter({}) 不存在";
+
+  // ===================== IoTDBSyncClientManager (additional) =====================
+
+  public static final String FAILED_TO_CLOSE_CLIENT_WITH_TARGET =
+      "关闭与目标服务器的客户端失败（ip：{}，端口：{}），原因：{}。已忽略。";
+  public static final String HANDSHAKE_ERROR_WITH_TARGET_RETRY =
+      "与目标服务器握手出错（ip：{}，端口：{}），原因：{}。"
+          + "将使用 PipeTransferHandshakeV1Req 重试握手。";
+  public static final String HANDSHAKE_ERROR_WITH_TARGET_SERVER =
+      "与目标服务器握手出错（ip：{}，端口：{}），原因：{}。";
+  public static final String HANDSHAKE_SUCCESS_TARGET =
+      "握手成功。目标服务器 ip：{}，端口：{}";
+  public static final String ALL_CLIENTS_DEAD =
+      "所有客户端均不可用，请检查与接收器的连接。";
+  public static final String ALL_SOCKETS_DEAD =
+      "所有 socket 均不可用，请检查与接收器的连接。";
+  public static final String ALL_TARGET_SERVERS_NOT_AVAILABLE =
+      "所有目标服务器 %s 均不可用。";
+
+  // ===================== IoTDBAirGapSink (additional) =====================
+
+  public static final String BATCH_MODE_NOT_SUPPORTED =
+      "参数中启用了批量模式。IoTDBAirGapConnector 不支持批量模式。已禁用批量模式。";
+  public static final String FAILED_TO_RECONNECT =
+      "重新连接目标服务器失败，原因：{}。稍后将重试连接。";
+
+  // ===================== IoTDBReceiverAgent (additional) =====================
+
+  public static final String RECEIVER_VERSION_MISMATCH =
+      "接收器版本 {} 与发送器版本 {} 不同，接收器将被重置为发送器版本。";
+  public static final String UNSUPPORTED_PIPE_VERSION = "不支持的 pipe 版本 %d";
+
+  // ===================== PipeEventCommitManager (additional) =====================
+
+  public static final String FAILED_TO_MARK_COMMIT_RATE =
+      "标记 pipe 任务提交速率失败：{}，堆栈跟踪：{}";
+  public static final String STALE_PIPE_EVENT_COMMITTER =
+      "过期的 PipeEventCommitter({})，提交事件：{}，当前重启次数 {}";
+  public static final String MISSING_PIPE_EVENT_COMMITTER =
+      "缺失的 PipeEventCommitter({})，提交事件：{}，堆栈跟踪：{}";
+
+  // ===================== IoTDBSink (additional) =====================
+
+  public static final String PARSE_URL_ERROR =
+      "解析目标服务器节点 URL 时发生异常：{}";
+  public static final String PARSE_URL_ERROR_MESSAGE =
+      "解析目标服务器节点 URL 时发生错误，请检查指定的 'host':'port' 或 'node-urls'";
+  public static final String NETWORK_ERROR_TRANSFER_FILE =
+      "传输文件 %s 时网络错误，原因：%s。";
+  public static final String TRANSFER_FILE_ERROR = "传输文件 %s 出错。Socket：%s。";
+  public static final String TRANSFER_FILE_ERROR_STATUS =
+      "传输文件 %s 出错，结果状态 %s。";
+  public static final String SOCKET_CLOSED_WILL_HANDSHAKE =
+      "Socket %s 已关闭，将尝试握手";
+
+  // ===================== SubscriptionConfig (printAllConfigs) =====================
+
+  public static final String CONFIG_SUBSCRIPTION_CACHE_MEMORY_USAGE_PERCENTAGE =
+      "SubscriptionCacheMemoryUsagePercentage: {}";
+  public static final String CONFIG_SUBSCRIPTION_SUBTASK_EXECUTOR_MAX_THREAD_NUM =
+      "SubscriptionSubtaskExecutorMaxThreadNum: {}";
+  public static final String CONFIG_SUBSCRIPTION_PREFETCH_TABLET_BATCH_MAX_DELAY_IN_MS =
+      "SubscriptionPrefetchTabletBatchMaxDelayInMs: {}";
+  public static final String CONFIG_SUBSCRIPTION_PREFETCH_TABLET_BATCH_MAX_SIZE_IN_BYTES =
+      "SubscriptionPrefetchTabletBatchMaxSizeInBytes: {}";
+  public static final String CONFIG_SUBSCRIPTION_PREFETCH_TSFILE_BATCH_MAX_DELAY_IN_MS =
+      "SubscriptionPrefetchTsFileBatchMaxDelayInMs: {}";
+  public static final String CONFIG_SUBSCRIPTION_PREFETCH_TSFILE_BATCH_MAX_SIZE_IN_BYTES =
+      "SubscriptionPrefetchTsFileBatchMaxSizeInBytes: {}";
+  public static final String CONFIG_SUBSCRIPTION_POLL_MAX_BLOCKING_TIME_MS =
+      "SubscriptionPollMaxBlockingTimeMs: {}";
+  public static final String CONFIG_SUBSCRIPTION_DEFAULT_TIMEOUT_IN_MS =
+      "SubscriptionDefaultTimeoutInMs: {}";
+  public static final String CONFIG_SUBSCRIPTION_LAUNCH_RETRY_INTERVAL_MS =
+      "SubscriptionLaunchRetryIntervalMs: {}";
+  public static final String CONFIG_SUBSCRIPTION_RECYCLE_UNCOMMITTED_EVENT_INTERVAL_MS =
+      "SubscriptionRecycleUncommittedEventIntervalMs: {}";
+  public static final String CONFIG_SUBSCRIPTION_READ_FILE_BUFFER_SIZE =
+      "SubscriptionReadFileBufferSize: {}";
+  public static final String CONFIG_SUBSCRIPTION_READ_TABLET_BUFFER_SIZE =
+      "SubscriptionReadTabletBufferSize: {}";
+  public static final String CONFIG_SUBSCRIPTION_TSFILE_DEDUPLICATION_WINDOW_SECONDS =
+      "SubscriptionTsFileDeduplicationWindowSeconds: {}";
+  public static final String CONFIG_SUBSCRIPTION_CHECK_MEMORY_ENOUGH_INTERVAL_MS =
+      "SubscriptionCheckMemoryEnoughIntervalMs: {}";
+  public static final String CONFIG_SUBSCRIPTION_ESTIMATED_INSERT_NODE_TABLET_INSERTION_EVENT_SIZE =
+      "SubscriptionEstimatedInsertNodeTabletInsertionEventSize: {}";
+  public static final String CONFIG_SUBSCRIPTION_ESTIMATED_RAW_TABLET_INSERTION_EVENT_SIZE =
+      "SubscriptionEstimatedRawTabletInsertionEventSize: {}";
+  public static final String CONFIG_SUBSCRIPTION_MAX_ALLOWED_EVENT_COUNT_IN_TABLET_BATCH =
+      "SubscriptionMaxAllowedEventCountInTabletBatch: {}";
+  public static final String CONFIG_SUBSCRIPTION_LOG_MANAGER_WINDOW_SECONDS =
+      "SubscriptionLogManagerWindowSeconds: {}";
+  public static final String CONFIG_SUBSCRIPTION_LOG_MANAGER_BASE_INTERVAL_MS =
+      "SubscriptionLogManagerBaseIntervalMs: {}";
+  public static final String CONFIG_SUBSCRIPTION_PREFETCH_ENABLED =
+      "SubscriptionPrefetchEnabled: {}";
+  public static final String CONFIG_SUBSCRIPTION_PREFETCH_MEMORY_THRESHOLD =
+      "SubscriptionPrefetchMemoryThreshold: {}";
+  public static final String CONFIG_SUBSCRIPTION_PREFETCH_MISSING_RATE_THRESHOLD =
+      "SubscriptionPrefetchMissingRateThreshold: {}";
+  public static final String CONFIG_SUBSCRIPTION_PREFETCH_EVENT_LOCAL_COUNT_THRESHOLD =
+      "SubscriptionPrefetchEventLocalCountThreshold: {}";
+  public static final String CONFIG_SUBSCRIPTION_PREFETCH_EVENT_GLOBAL_COUNT_THRESHOLD =
+      "SubscriptionPrefetchEventGlobalCountThreshold: {}";
+  public static final String CONFIG_SUBSCRIPTION_META_SYNCER_INITIAL_SYNC_DELAY_MINUTES =
+      "SubscriptionMetaSyncerInitialSyncDelayMinutes: {}";
+  public static final String CONFIG_SUBSCRIPTION_META_SYNCER_SYNC_INTERVAL_MINUTES =
+      "SubscriptionMetaSyncerSyncIntervalMinutes: {}";
+
+  // ===================== PipeTransferSliceReqHandler (additional) =====================
+
+  public static final String INVALID_SLICE_INDEX =
+      "分片索引不匹配：期望 {}，实际 {}";
 }

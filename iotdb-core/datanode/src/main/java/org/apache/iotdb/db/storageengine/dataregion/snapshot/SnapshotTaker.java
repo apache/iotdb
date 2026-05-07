@@ -109,14 +109,14 @@ public class SnapshotTaker {
 
       if (!success) {
         LOGGER.warn(
-            "Failed to take snapshot for {}-{}, clean up",
+            StorageEngineMessages.FAILED_TO_TAKE_SNAPSHOT_CLEAN_UP,
             dataRegion.getDatabaseName(),
             dataRegion.getDataRegionIdString());
         cleanUpWhenFail(finalSnapshotId);
       } else {
         snapshotLogger.logEnd();
         LOGGER.info(
-            "Successfully take snapshot for {}-{}, snapshot directory is {}",
+            StorageEngineMessages.SUCCESSFULLY_TAKE_SNAPSHOT,
             dataRegion.getDatabaseName(),
             dataRegion.getDataRegionIdString(),
             snapshotDir.getParentFile().getAbsolutePath() + File.separator + finalSnapshotId);
@@ -125,7 +125,7 @@ public class SnapshotTaker {
       return success;
     } catch (Exception e) {
       LOGGER.error(
-          "Exception occurs when taking snapshot for {}-{}",
+          StorageEngineMessages.EXCEPTION_TAKING_SNAPSHOT,
           dataRegion.getDatabaseName(),
           dataRegion.getDataRegionIdString(),
           e);
@@ -151,12 +151,14 @@ public class SnapshotTaker {
           // write one byte so that it will not be skipped
           Files.write(snapshotFile.toPath(), new byte[1]);
           LOGGER.info(
-              "Snapshot compression ratio {} in {}.", compressionRatioFile.getName(), snapshotDir);
+              StorageEngineMessages.SNAPSHOT_COMPRESSION_RATIO_IN_DIR,
+              compressionRatioFile.getName(),
+              snapshotDir);
           return true;
         }
       } catch (IOException ignored) {
         LOGGER.warn(
-            "Cannot snapshot compression ratio {} in {}.",
+            StorageEngineMessages.CANNOT_SNAPSHOT_COMPRESSION_RATIO,
             compressionRatioFile.getName(),
             snapshotDir);
       }
@@ -186,10 +188,7 @@ public class SnapshotTaker {
         }
       } catch (IOException e) {
         allSuccess = false;
-        LOGGER.warn(
-            "Clear snapshot dir fail, you should manually delete this dir before do region migration again: {}",
-            pathBuilder,
-            e);
+        LOGGER.warn(StorageEngineMessages.CLEAR_SNAPSHOT_DIR_FAIL, pathBuilder, e);
       }
     }
     return allSuccess;
@@ -285,8 +284,7 @@ public class SnapshotTaker {
   private boolean checkHardLinkSourceFile(File source) {
     int retry = 10;
     while (!source.exists() && retry > 0) {
-      LOGGER.warn(
-          "Hard link source file {} doesn't exist, will retry for {} times...", source, retry);
+      LOGGER.warn(StorageEngineMessages.HARD_LINK_SOURCE_FILE_RETRY, source, retry);
       try {
         Thread.sleep(TimeUnit.SECONDS.toMillis(1));
       } catch (InterruptedException ignore) {
@@ -297,9 +295,9 @@ public class SnapshotTaker {
     if (!source.exists()) {
       File parent = source.getParentFile();
       LOGGER.error(StorageEngineMessages.HARD_LINK_SOURCE_FILE_NOT_EXIST, source);
-      String tryMsg = "Try to show all files in parent dir...";
+      String tryMsg = StorageEngineMessages.TRY_SHOW_FILES_IN_PARENT_DIR;
       if (parent == null) {
-        tryMsg += "Cannot show files because parent dir is null";
+        tryMsg += StorageEngineMessages.CANNOT_SHOW_FILES_PARENT_DIR_NULL;
       } else {
         tryMsg += Arrays.toString(parent.listFiles());
       }
@@ -382,7 +380,7 @@ public class SnapshotTaker {
           FileUtils.recursivelyDeleteFolder(dataDirForThisSnapshot.getAbsolutePath());
         } catch (IOException e) {
           LOGGER.error(
-              "Failed to delete folder {} when cleaning up",
+              StorageEngineMessages.FAILED_DELETE_FOLDER_CLEANING_UP,
               dataDirForThisSnapshot.getAbsolutePath());
         }
       }

@@ -545,7 +545,7 @@ public class MTreeBelowSGMemoryImpl {
           failingMeasurementMap.put(
               i,
               new ExceedQuotaException(
-                  "The number of timeseries has reached the upper limit",
+                  DataNodeSchemaMessages.TIMESERIES_NUM_UPPER_LIMIT,
                   TSStatusCode.SPACE_QUOTA_EXCEEDED.getStatusCode()));
         }
       }
@@ -609,9 +609,9 @@ public class MTreeBelowSGMemoryImpl {
           throw new MetadataException(
               DataNodeSchemaMessages.ALIAS_DUPLICATED
                   + alias
-                  + ", fullPath: "
+                  + DataNodeSchemaMessages.ALIAS_DUPLICATED_DETAIL
                   + fullPath
-                  + ", otherMeasurement: "
+                  + DataNodeSchemaMessages.ALIAS_DUPLICATED_OTHER_MEASUREMENT
                   + memMNode.getFullPath());
         }
         if (measurementMNode.getAlias() != null) {
@@ -1893,7 +1893,8 @@ public class MTreeBelowSGMemoryImpl {
       throws MetadataException {
     // todo implement storage for device of diverse data types
     if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("Start to create table device {}.{}", tableName, Arrays.toString(devicePath));
+      LOGGER.debug(
+          DataNodeSchemaMessages.START_CREATE_TABLE_DEVICE, tableName, Arrays.toString(devicePath));
     }
     IMemMNode cur = databaseMNode.getChild(tableName);
     if (cur == null) {
@@ -1914,7 +1915,10 @@ public class MTreeBelowSGMemoryImpl {
     synchronized (this) {
       if (cur.isDevice()) {
         if (LOGGER.isDebugEnabled()) {
-          LOGGER.debug("Table device {}.{} already exists", tableName, Arrays.toString(devicePath));
+          LOGGER.debug(
+              DataNodeSchemaMessages.TABLE_DEVICE_ALREADY_EXISTS,
+              tableName,
+              Arrays.toString(devicePath));
         }
         entityMNode = cur.getAsDeviceMNode();
         if (!(entityMNode.getDeviceInfo() instanceof TableDeviceInfo)) {
@@ -1930,7 +1934,8 @@ public class MTreeBelowSGMemoryImpl {
         entityMNode.getAsInternalMNode().setDeviceInfo(deviceInfo);
         regionStatistics.addTableDevice(tableName);
         if (LOGGER.isDebugEnabled()) {
-          LOGGER.debug("Table device {}.{} created", tableName, Arrays.toString(devicePath));
+          LOGGER.debug(
+              DataNodeSchemaMessages.TABLE_DEVICE_CREATED, tableName, Arrays.toString(devicePath));
         }
       }
     }

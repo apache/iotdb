@@ -52,6 +52,8 @@ public final class AuthMessages {
   public static final String GET_ALL_USERS_FAILED = "获取所有用户失败，用户不存在: {}";
   public static final String GET_ALL_ROLES_FAILED = "获取所有角色失败，角色不存在: {}";
 
+  public static final String ROLE_ALREADY_EXISTS_LOG = "角色 {} 已存在";
+
   // ======================== BasicRoleManager ========================
 
   public static final String NO_SUCH_ROLE_FMT = "角色 %s 不存在";

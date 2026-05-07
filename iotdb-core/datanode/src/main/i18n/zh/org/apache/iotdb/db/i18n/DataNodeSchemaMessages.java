@@ -519,5 +519,81 @@ public final class DataNodeSchemaMessages {
       "路径长度不超过默认 sg 层级：";
   public static final String PATH_DOES_NOT_START_WITH_ROOT = "路径不以 ";
 
+  // ======================== FakeCRC32Deserializer 相关消息 ========================
+
+  public static final String READ_LOG_LENGTH_NEGATIVE_LOG =
+      "读取的日志长度 {} 为负数。";
+
+  // ======================== SchemaLogReader 相关消息 ========================
+
+  public static final String FILE_CORRUPTED =
+      "文件 {} 已损坏，未损坏的大小为 {}。";
+  public static final String LOG_FILE_END_CORRUPTED_TRUNCATE =
+      "日志文件 {} 的末尾已损坏，开始截断。未损坏的大小为 {}，文件大小为 {}。";
+  public static final String FAIL_TO_TRUNCATE_LOG_FILE =
+      "截断日志文件到大小 {} 失败";
+
+  // ======================== SchemaRegionPlanDeserializer 相关消息 ========================
+
+  public static final String CANNOT_DESERIALIZE_SCHEMA_REGION_PLAN =
+      "无法从缓冲区反序列化 SchemaRegionPlan";
+
+  // ======================== MTreeBelowSGMemoryImpl 相关消息 ========================
+
+  public static final String TIMESERIES_NUM_UPPER_LIMIT =
+      "时间序列数量已达到上限";
+  public static final String ALIAS_DUPLICATED_DETAIL =
+      "，完整路径：";
+  public static final String ALIAS_DUPLICATED_OTHER_MEASUREMENT =
+      "，其他测量：";
+  public static final String START_CREATE_TABLE_DEVICE =
+      "开始创建表设备 {}.{}";
+  public static final String TABLE_DEVICE_ALREADY_EXISTS =
+      "表设备 {}.{} 已存在";
+  public static final String TABLE_DEVICE_CREATED =
+      "表设备 {}.{} 已创建";
+
+  // ======================== CachedMTreeStore / Scheduler 相关消息 ========================
+
+  public static final String MTREE_FLUSH_COST =
+      "在 SchemaRegion {} 中刷写 MTree 耗时 {}ms";
+
+  // ======================== DataNodeTableCache 相关消息 ========================
+
+  public static final String INIT_TABLE_CACHE_SUCCESS =
+      "DataNodeTableCache 初始化成功";
+  public static final String PRE_UPDATE_TABLE_SUCCESS =
+      "预更新表 {}.{} 成功";
+  public static final String PRE_RENAME_OLD_TABLE_SUCCESS =
+      "预重命名旧表 {}.{} 成功";
+  public static final String ROLLBACK_UPDATE_TABLE_SUCCESS =
+      "回滚更新表 {}.{} 成功";
+  public static final String ROLLBACK_RENAME_OLD_TABLE_SUCCESS =
+      "回滚重命名旧表 {}.{} 成功。";
+  public static final String COMMIT_UPDATE_TABLE_SUCCESS_WITH_DETAIL =
+      "提交更新表 {}.{} 成功，{}";
+  public static final String COMMIT_UPDATE_TABLE_SUCCESS =
+      "提交更新表 {}.{} 成功。";
+  public static final String RENAME_OLD_TABLE_SUCCESS =
+      "重命名旧表 {}.{} 成功。";
+  public static final String INTERRUPTED_ACQUIRE_SEMAPHORE_GET_TABLES =
+      "尝试获取信号量以从 ConfigNode 获取表时被中断，已忽略。";
+  public static final String UPDATE_TABLE_BY_FETCH_WITH_DETAIL =
+      "通过表拉取更新表 {}.{}，{}";
+  public static final String UPDATE_TABLE_BY_FETCH =
+      "通过表拉取更新表 {}.{}。";
+  public static final String COMPARE_TABLE_ADDED = "新增表：";
+  public static final String COMPARE_TABLE_REMOVED = "已移除表：";
+  public static final String COMPARE_TABLE_NAME = "表名：";
+  public static final String COMPARE_TABLE_REMOVED_PROPS = " 已移除属性：";
+  public static final String COMPARE_TABLE_ADDED_PROPS = " 新增属性：";
+  public static final String COMPARE_TABLE_REMOVED_COLUMNS = " 已移除列：";
+  public static final String COMPARE_TABLE_ADDED_COLUMNS = " 新增列：";
+  public static final String COMPARE_TABLE_NOT_MODIFIED = " 未修改";
+
+  // ======================== ClusterTemplateManager 相关消息 ========================
+
+  public static final String ILLEGAL_PATH_LOG = "非法路径 {}";
+
   private DataNodeSchemaMessages() {}
 }

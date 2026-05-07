@@ -82,6 +82,14 @@ public final class SubscriptionMessages {
 
   // --- AbstractSubscriptionConsumer ---
   public static final String UNEXPECTED_RESPONSE_TYPE_WARN = "unexpected response type: {}";
+  public static final String CONSUMER_CANCEL_HEARTBEAT_WORKER =
+      "SubscriptionConsumer {} cancel heartbeat worker";
+  public static final String CONSUMER_SUBMIT_HEARTBEAT_WORKER =
+      "SubscriptionConsumer {} submit heartbeat worker";
+  public static final String CONSUMER_CANCEL_ENDPOINTS_SYNCER =
+      "SubscriptionConsumer {} cancel endpoints syncer";
+  public static final String CONSUMER_SUBMIT_ENDPOINTS_SYNCER =
+      "SubscriptionConsumer {} submit endpoints syncer";
 
   private SubscriptionMessages() {}
 }

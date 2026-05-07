@@ -54,13 +54,6 @@ public class FileUtils {
 
   private static final int BUFFER_SIZE = 1024;
 
-  private static final String RENAME_FILE_MESSAGE =
-      "Renamed file {} to {} because it already exists in the target directory: {}";
-  private static final String COPY_FILE_MESSAGE =
-      "Copy file {} to {} because it already exists in the target directory: {}";
-  private static final String ILLEGAL_PATH_MESSAGE =
-      "The path cannot be '.', '..', './' or '.\\'. ";
-
   private FileUtils() {}
 
   public static List<File> listFilesRecursively(File dir, FileFilter fileFilter) {
@@ -553,7 +546,7 @@ public class FileUtils {
         sourceFile, targetFile, StandardCopyOption.REPLACE_EXISTING);
 
     LOGGER.info(
-        RENAME_FILE_MESSAGE,
+        UtilMessages.RENAMED_FILE_ALREADY_EXISTS,
         sourceFile.getName(),
         targetFile.getName(),
         targetFile.getParentFile().getAbsolutePath());
@@ -568,7 +561,7 @@ public class FileUtils {
         StandardCopyOption.COPY_ATTRIBUTES);
 
     LOGGER.info(
-        COPY_FILE_MESSAGE,
+        UtilMessages.COPIED_FILE_ALREADY_EXISTS,
         sourceFile.getName(),
         targetFile,
         targetFile.getParentFile().getAbsolutePath());
@@ -576,7 +569,7 @@ public class FileUtils {
 
   public static String getIllegalError4Directory(final String path) {
     if (path.equals(".") || path.equals("..") || path.contains("/") || path.contains("\\")) {
-      return ILLEGAL_PATH_MESSAGE;
+      return UtilMessages.ILLEGAL_PATH_DOTS_OR_SEPARATORS;
     }
     if (!WindowsOSUtils.isLegalPathSegment4Windows(path)) {
       return WindowsOSUtils.OS_SEGMENT_ERROR;

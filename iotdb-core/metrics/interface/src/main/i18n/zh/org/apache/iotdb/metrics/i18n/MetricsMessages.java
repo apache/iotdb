@@ -71,6 +71,36 @@ public final class MetricsMessages {
   public static final String CANNOT_FIND_PATH = "找不到 {}";
   public static final String READ_NET_STATUS_ERROR = "读取 {} 时发生异常";
   public static final String READ_NET_STATUS_FOR_NET_ERROR = "读取 {} 以获取网络状态时发生错误";
+  public static final String FAILED_TO_GET_SOCKET_NUM = "获取 socket 数量失败";
+  public static final String INTERRUPTED_WHILE_WAITING_SOCKET_NUM =
+      "等待获取 socket 数量命令时被中断";
+  public static final String FAILED_TO_PARSE_SOCKET_NUM =
+      "从命令输出解析 socket 数量失败：'{}'";
+
+  // --- LinuxDiskMetricsManager ---
+  public static final String FAILED_TO_GET_SECTOR_SIZE = "获取磁盘 {} 的扇区大小失败";
+  public static final String CANNOT_FIND_DISK_IO_STATUS_FILE =
+      "找不到磁盘 IO 状态文件 {}";
+  public static final String ERROR_UPDATING_DISK_IO_INFO = "更新磁盘 IO 信息时发生错误";
+  public static final String CANNOT_FIND_PROCESS_IO_STATUS_FILE =
+      "找不到进程 IO 状态文件 {}";
+  public static final String ERROR_UPDATING_PROCESS_IO_INFO = "更新进程 IO 信息时发生错误";
+
+  // --- WindowsDiskMetricsManager ---
+  public static final String UNEXPECTED_WINDOWS_PROCESS_IO_FORMAT =
+      "Windows 进程 IO 信息格式异常：{}";
+  public static final String UNEXPECTED_WINDOWS_DISK_IO_FORMAT =
+      "Windows 磁盘 IO 信息格式异常：{}";
+  public static final String FAILED_TO_PARSE_LONG_WINDOWS_DISK =
+      "从 Windows 磁盘指标解析 long 值失败：{}";
+  public static final String FAILED_TO_PARSE_DOUBLE_WINDOWS_DISK =
+      "从 Windows 磁盘指标解析 double 值失败：{}";
+  public static final String FAILED_TO_COLLECT_WINDOWS_DISK_METRICS =
+      "收集 Windows 磁盘指标失败，PowerShell 退出码：{}，命令 {}，输出 {}";
+  public static final String FAILED_TO_EXECUTE_POWERSHELL =
+      "执行 PowerShell 获取 Windows 磁盘指标失败";
+  public static final String INTERRUPTED_COLLECTING_WINDOWS_DISK =
+      "收集 Windows 磁盘指标时被中断";
 
   private MetricsMessages() {}
 }

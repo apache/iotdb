@@ -233,12 +233,12 @@ public class LinuxNetMetricManager implements INetMetricManager {
         process.waitFor();
         this.connectionNum = Integer.parseInt(result.toString().trim());
       } catch (IOException e) {
-        LOGGER.error("Failed to get socket num", e);
+        LOGGER.error(MetricsMessages.FAILED_TO_GET_SOCKET_NUM, e);
       } catch (InterruptedException e) {
-        LOGGER.error("Interrupted while waiting for socket num command", e);
+        LOGGER.error(MetricsMessages.INTERRUPTED_WHILE_WAITING_SOCKET_NUM, e);
         Thread.currentThread().interrupt();
       } catch (NumberFormatException e) {
-        LOGGER.error("Failed to parse socket num from command output: '{}'", e.getMessage());
+        LOGGER.error(MetricsMessages.FAILED_TO_PARSE_SOCKET_NUM, e.getMessage());
       } finally {
         if (process != null && process.isAlive()) {
           process.destroyForcibly();

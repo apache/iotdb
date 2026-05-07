@@ -39,7 +39,7 @@ public final class JdbcMessages {
   public static final String INVALID_STATISTICS_NAME = "无效的统计名称！";
 
   // IoTDBStatement
-  public static final String CANNOT_UNWRAP_TO = "无法转换为 %s";
+  public static final String CANNOT_UNWRAP_TO = "无法转换为 ";
   public static final String CANCEL_STATEMENT_ERROR = "取消语句时发生错误。";
   public static final String CLOSE_STATEMENT_ERROR = "关闭语句时发生错误。";
   public static final String NOT_SUPPORT_CLOSE_ON_COMPLETION = "不支持 closeOnCompletion";
@@ -66,18 +66,18 @@ public final class JdbcMessages {
       "连接已关闭后无法执行 %s！";
 
   // IoTDBTablePreparedStatement
-  public static final String FAILED_TO_PREPARE_STATEMENT = "预编译语句失败：%s";
+  public static final String FAILED_TO_PREPARE_STATEMENT = "预编译语句失败：";
   public static final String PARAMETER_UNSET = "参数 #%d 未设置";
   public static final String FAILED_TO_EXECUTE_PREPARED_STATEMENT =
-      "执行预编译语句失败：%s";
+      "执行预编译语句失败：";
   public static final String FAILED_TO_DEALLOCATE_PREPARED_STATEMENT =
       "释放预编译语句失败：{}";
   public static final String ERROR_DEALLOCATING_PREPARED_STATEMENT =
       "释放预编译语句时出错";
   public static final String FAILED_TO_GET_TIME_PRECISION =
-      "获取时间精度失败：%s";
+      "获取时间精度失败：";
   public static final String FAILED_TO_READ_BINARY_STREAM =
-      "读取二进制流失败：%s";
+      "读取二进制流失败：";
 
   // IoTDBPreparedStatement
   public static final String NO_TYPE_MATCHED = "没有匹配的类型";
@@ -179,14 +179,8 @@ public final class JdbcMessages {
   public static final String NOT_SUPPORT_SET_SAVEPOINT = "不支持 setSavepoint";
   public static final String USE_DATABASE_ERROR = "使用数据库错误：{}";
   public static final String RECONNECT_INTERRUPTED = "重新连接被中断。";
-  public static final String CANNOT_UNWRAP_TO = "无法解包为 ";
   public static final String PARAMETER_IS_UNSET_PREFIX = "参数 #";
   public static final String PARAMETER_IS_UNSET_SUFFIX = " 未设置";
-  public static final String FAILED_TO_PREPARE_STATEMENT = "预编译语句失败：";
-  public static final String FAILED_TO_EXECUTE_PREPARED_STATEMENT =
-      "执行预编译语句失败：";
-  public static final String FAILED_TO_GET_TIME_PRECISION = "获取时间精度失败：";
-  public static final String FAILED_TO_READ_BINARY_STREAM = "读取二进制流失败：";
 
   private JdbcMessages() {}
 }

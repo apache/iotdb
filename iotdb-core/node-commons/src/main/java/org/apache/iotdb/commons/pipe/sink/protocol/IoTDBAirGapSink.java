@@ -111,10 +111,7 @@ public abstract class IoTDBAirGapSink extends IoTDBSink {
     super.customize(parameters, configuration);
 
     if (isTabletBatchModeEnabled) {
-      LOGGER.warn(
-          "Batch mode is enabled by the given parameters. "
-              + "IoTDBAirGapConnector does not support batch mode. "
-              + "Disable batch mode.");
+      LOGGER.warn(PipeMessages.BATCH_MODE_NOT_SUPPORTED);
     }
 
     for (int i = 0; i < nodeUrls.size(); i++) {
@@ -152,7 +149,7 @@ public abstract class IoTDBAirGapSink extends IoTDBSink {
             Arrays.asList(
                 CONNECTOR_AIR_GAP_E_LANGUAGE_ENABLE_KEY, SINK_AIR_GAP_E_LANGUAGE_ENABLE_KEY),
             CONNECTOR_AIR_GAP_E_LANGUAGE_ENABLE_DEFAULT_VALUE);
-    LOGGER.info("IoTDBAirGapConnector is customized with eLanguageEnable: {}.", eLanguageEnable);
+    LOGGER.info(PipeMessages.AIR_GAP_CUSTOMIZED_E_LANGUAGE, eLanguageEnable);
   }
 
   @Override
@@ -194,7 +191,7 @@ public abstract class IoTDBAirGapSink extends IoTDBSink {
         socket.connect(new InetSocketAddress(ip, port), handshakeTimeoutMs);
         socket.setKeepAlive(true);
         sockets.set(i, socket);
-        LOGGER.info("Successfully connected to target server ip: {}, port: {}.", ip, port);
+        LOGGER.info(PipeMessages.CONNECTED_TO_TARGET_SERVER, ip, port);
         failLogTimes.remove(nodeUrls.get(i));
       } catch (final Exception e) {
         final TEndPoint endPoint = nodeUrls.get(i);
@@ -228,7 +225,7 @@ public abstract class IoTDBAirGapSink extends IoTDBSink {
       }
     }
     throw new PipeConnectionException(
-        String.format("All target servers %s are not available.", nodeUrls));
+        String.format(PipeMessages.ALL_TARGET_SERVERS_NOT_AVAILABLE, nodeUrls));
   }
 
   protected void sendHandshakeReq(final AirGapSocket socket) throws IOException {
@@ -244,7 +241,7 @@ public abstract class IoTDBAirGapSink extends IoTDBSink {
       supportModsIfIsDataNodeReceiver = true;
     }
     socket.setSoTimeout(PIPE_CONFIG.getPipeSinkTransferTimeoutMs());
-    LOGGER.info("Handshake success. Socket: {}", socket);
+    LOGGER.info(PipeMessages.HANDSHAKE_SUCCESS_SOCKET, socket);
   }
 
   protected abstract byte[] generateHandShakeV1Payload() throws IOException;
@@ -256,10 +253,7 @@ public abstract class IoTDBAirGapSink extends IoTDBSink {
     try {
       handshake();
     } catch (final Exception e) {
-      LOGGER.warn(
-          "Failed to reconnect to target server, because: {}. Try to reconnect later.",
-          e.getMessage(),
-          e);
+      LOGGER.warn(PipeMessages.FAILED_TO_RECONNECT, e.getMessage(), e);
     }
   }
 
@@ -379,7 +373,7 @@ public abstract class IoTDBAirGapSink extends IoTDBSink {
           sockets.set(i, null).close();
         }
       } catch (final Exception e) {
-        LOGGER.warn("Failed to close client {}.", i, e);
+        LOGGER.warn(PipeMessages.FAILED_TO_CLOSE_CLIENT, i, e);
       } finally {
         isSocketAlive.set(i, false);
       }
@@ -406,8 +400,7 @@ public abstract class IoTDBAirGapSink extends IoTDBSink {
         }
       }
 
-      throw new PipeConnectionException(
-          "All sockets are dead, please check the connection to the receiver.");
+      throw new PipeConnectionException(PipeMessages.ALL_SOCKETS_DEAD);
     }
   }
 
@@ -428,8 +421,7 @@ public abstract class IoTDBAirGapSink extends IoTDBSink {
         }
       }
 
-      throw new PipeConnectionException(
-          "All sockets are dead, please check the connection to the receiver.");
+      throw new PipeConnectionException(PipeMessages.ALL_SOCKETS_DEAD);
     }
   }
 
@@ -444,8 +436,7 @@ public abstract class IoTDBAirGapSink extends IoTDBSink {
         }
       }
 
-      throw new PipeConnectionException(
-          "All sockets are dead, please check the connection to the receiver.");
+      throw new PipeConnectionException(PipeMessages.ALL_SOCKETS_DEAD);
     }
   }
 }

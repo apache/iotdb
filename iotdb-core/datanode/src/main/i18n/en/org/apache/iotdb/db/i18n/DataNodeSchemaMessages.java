@@ -528,5 +528,81 @@ public final class DataNodeSchemaMessages {
       "it is no longer than default sg level: ";
   public static final String PATH_DOES_NOT_START_WITH_ROOT = "it does not start with ";
 
+  // ======================== FakeCRC32Deserializer ========================
+
+  public static final String READ_LOG_LENGTH_NEGATIVE_LOG =
+      "Read log length {} is negative.";
+
+  // ======================== SchemaLogReader ========================
+
+  public static final String FILE_CORRUPTED =
+      "File {} is corrupted. The uncorrupted size is {}.";
+  public static final String LOG_FILE_END_CORRUPTED_TRUNCATE =
+      "The end of log file {} is corrupted. Start truncate it. The unbroken size is {}. The file size is {}.";
+  public static final String FAIL_TO_TRUNCATE_LOG_FILE =
+      "Fail to truncate log file to size {}";
+
+  // ======================== SchemaRegionPlanDeserializer ========================
+
+  public static final String CANNOT_DESERIALIZE_SCHEMA_REGION_PLAN =
+      "Cannot deserialize SchemaRegionPlan from buffer";
+
+  // ======================== MTreeBelowSGMemoryImpl ========================
+
+  public static final String TIMESERIES_NUM_UPPER_LIMIT =
+      "The number of timeseries has reached the upper limit";
+  public static final String ALIAS_DUPLICATED_DETAIL =
+      ", fullPath: ";
+  public static final String ALIAS_DUPLICATED_OTHER_MEASUREMENT =
+      ", otherMeasurement: ";
+  public static final String START_CREATE_TABLE_DEVICE =
+      "Start to create table device {}.{}";
+  public static final String TABLE_DEVICE_ALREADY_EXISTS =
+      "Table device {}.{} already exists";
+  public static final String TABLE_DEVICE_CREATED =
+      "Table device {}.{} created";
+
+  // ======================== CachedMTreeStore / Scheduler ========================
+
+  public static final String MTREE_FLUSH_COST =
+      "It takes {}ms to flush MTree in SchemaRegion {}";
+
+  // ======================== DataNodeTableCache ========================
+
+  public static final String INIT_TABLE_CACHE_SUCCESS =
+      "Init DataNodeTableCache successfully";
+  public static final String PRE_UPDATE_TABLE_SUCCESS =
+      "Pre-update table {}.{} successfully";
+  public static final String PRE_RENAME_OLD_TABLE_SUCCESS =
+      "Pre-rename old table {}.{} successfully";
+  public static final String ROLLBACK_UPDATE_TABLE_SUCCESS =
+      "Rollback-update table {}.{} successfully";
+  public static final String ROLLBACK_RENAME_OLD_TABLE_SUCCESS =
+      "Rollback renaming old table {}.{} successfully.";
+  public static final String COMMIT_UPDATE_TABLE_SUCCESS_WITH_DETAIL =
+      "Commit-update table {}.{} successfully, {}";
+  public static final String COMMIT_UPDATE_TABLE_SUCCESS =
+      "Commit-update table {}.{} successfully.";
+  public static final String RENAME_OLD_TABLE_SUCCESS =
+      "Rename old table {}.{} successfully.";
+  public static final String INTERRUPTED_ACQUIRE_SEMAPHORE_GET_TABLES =
+      "Interrupted when trying to acquire semaphore when trying to get tables from configNode, ignore.";
+  public static final String UPDATE_TABLE_BY_FETCH_WITH_DETAIL =
+      "Update table {}.{} by table fetch, {}";
+  public static final String UPDATE_TABLE_BY_FETCH =
+      "Update table {}.{} by table fetch.";
+  public static final String COMPARE_TABLE_ADDED = "Added table: ";
+  public static final String COMPARE_TABLE_REMOVED = "Removed table: ";
+  public static final String COMPARE_TABLE_NAME = "Table name: ";
+  public static final String COMPARE_TABLE_REMOVED_PROPS = " Removed props: ";
+  public static final String COMPARE_TABLE_ADDED_PROPS = " Added props: ";
+  public static final String COMPARE_TABLE_REMOVED_COLUMNS = " Removed column(s): ";
+  public static final String COMPARE_TABLE_ADDED_COLUMNS = " Added column(s): ";
+  public static final String COMPARE_TABLE_NOT_MODIFIED = " Not modified";
+
+  // ======================== ClusterTemplateManager ========================
+
+  public static final String ILLEGAL_PATH_LOG = "illegal path {}";
+
   private DataNodeSchemaMessages() {}
 }

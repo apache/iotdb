@@ -89,6 +89,8 @@ public final class DataNodeQueryMessages {
       "SinkChannel 已中止或关闭。";
   public static final String THE_DATA_BLOCK_DOESN_T_EXIST_SEQUENCE_ID =
       "数据块不存在。序列 ID：";
+  public static final String THE_TSBLOCK_DOESNT_EXIST_SEQUENCE_ID_REMAINING =
+      "TsBlock 不存在。序列 ID 为 {}，剩余映射为 {}";
   public static final String SINKCHANNEL_IS_ABORTED =
       "SinkChannel 已中止。";
   public static final String FAILED_TO_SEND_NEW_DATA_BLOCK_EVENT_ATTEMPT =
@@ -1184,6 +1186,196 @@ public final class DataNodeQueryMessages {
   public static final String TRANSFORMUTILS_SHOULD_NOT_BE_INSTANTIATED =
       "TransformUtils 不应被实例化。";
 
+  // --- Execution / Exchange (additional) ---
+
+  public static final String ACK_TSBLOCK_FAILED =
+      "确认 TsBlock [{}, {}) 失败。";
+  public static final String CLOSE_CHANNEL_OF_SHUFFLESINKHANDLE_FAILED =
+      "关闭 ShuffleSinkHandle {} 的通道（索引 {}）失败。";
+  public static final String SHUFFLESINKHANDLE_ALREADY_IN_MAP =
+      "ShuffleSinkHandle ";
+  public static final String IS_IN_THE_MAP =
+      " 已存在于映射中。";
+  public static final String SOURCE_HANDLE_FOR_PLAN_NODE =
+      "计划节点 ";
+  public static final String OF =
+      " 的 ";
+  public static final String EXISTS =
+      " 的 Source handle 已存在。";
+  public static final String FAILED_TO_PULL_TSBLOCKS =
+      "{} 从 SinkHandle {} 的通道索引 {} 拉取 TsBlocks [{}] 到 [{}] 失败，";
+  public static final String FAILED_TO_GET_DATA_BLOCK =
+      "获取数据块 [{}, {}) 失败，尝试次数：{}";
+  public static final String FAILED_TO_SEND_ACK_DATA_BLOCK_EVENT =
+      "发送数据块确认事件 [{}, {}) 失败，尝试次数：{}";
+  public static final String SEND_CLOSE_SINK_CHANNEL_EVENT_FAILED =
+      "[发送关闭SinkChannel事件] 到 [ShuffleSinkHandle: {}, 索引: {}] 失败。";
+  public static final String LOCAL_SINK_CHANNEL_STATE_IS =
+      "LocalSinkChannel 状态为 .";
+  public static final String SCH_LISTENER_ON_FINISH =
+      "[ScH监听器完成]";
+  public static final String SCH_LISTENER_ALREADY_RELEASED =
+      "[ScH监听器已释放]";
+  public static final String SCH_LISTENER_ON_ABORT =
+      "[ScH监听器中止]";
+  public static final String SHUFFLE_SINK_HANDLE_LISTENER_ON_FINISH =
+      "[ShuffleSinkHandle监听器完成]";
+  public static final String SHUFFLE_SINK_HANDLE_LISTENER_ON_END_OF_TSBLOCKS =
+      "[ShuffleSinkHandle监听器TsBlock结束]";
+  public static final String SHUFFLE_SINK_HANDLE_LISTENER_ON_ABORT =
+      "[ShuffleSinkHandle监听器中止]";
+  public static final String SKH_LISTENER_ON_FINISH =
+      "[SkH监听器完成]";
+  public static final String SKH_LISTENER_ON_END_OF_TSBLOCKS =
+      "[SkH监听器TsBlock结束]";
+  public static final String SKH_LISTENER_ON_ABORT =
+      "[SkH监听器中止]";
+  public static final String CLOSE_SHUFFLE_SINK_HANDLE =
+      "关闭 ShuffleSinkHandle: {}";
+  public static final String GET_SHARED_TSBLOCK_QUEUE_FROM_LOCAL_SOURCE_HANDLE =
+      "从本地源句柄获取 SharedTsBlockQueue";
+  public static final String CREATE_SHARED_TSBLOCK_QUEUE =
+      "创建 SharedTsBlockQueue";
+  public static final String CREATE_LOCAL_SINK_HANDLE_FOR =
+      "为 {} 创建本地 Sink 句柄";
+  public static final String CREATE_LOCAL_SOURCE_HANDLE_FOR =
+      "为 {} 创建本地 Source 句柄";
+  public static final String GET_SHARED_TSBLOCK_QUEUE_FROM_LOCAL_SINK_HANDLE =
+      "从本地 Sink 句柄获取 SharedTsBlockQueue";
+  public static final String START_FORCE_RELEASE_FI_DATA_EXCHANGE_RESOURCE =
+      "[开始强制释放FI数据交换资源]";
+  public static final String CLOSE_SOURCE_HANDLE =
+      "[关闭SourceHandle] {}";
+  public static final String END_FORCE_RELEASE_FI_DATA_EXCHANGE_RESOURCE =
+      "[结束强制释放FI数据交换资源]";
+  public static final String CREATE_LOCAL_SINK_HANDLE_TO_PLAN_NODE =
+      "为计划节点 {} 的 {} 创建本地 Sink 句柄，目标 {}";
+  public static final String CREATE_SINK_HANDLE_TO_PLAN_NODE =
+      "为计划节点 {} 的 {} 创建 Sink 句柄，目标 {}";
+  public static final String CREATE_LOCAL_SOURCE_HANDLE_FROM =
+      "从 {} 为计划节点 {} 的 {} 创建本地 Source 句柄";
+  public static final String GET_SERIALIZED_TSBLOCK =
+      "[获取序列化TsBlock] TsBlock:{}";
+  public static final String START_ABORT_LOCAL_SOURCE_HANDLE =
+      "[开始中止LocalSourceHandle]";
+  public static final String END_ABORT_LOCAL_SOURCE_HANDLE =
+      "[结束中止LocalSourceHandle]";
+  public static final String START_CLOSE_LOCAL_SOURCE_HANDLE =
+      "[开始关闭LocalSourceHandle]";
+  public static final String END_CLOSE_LOCAL_SOURCE_HANDLE =
+      "[结束关闭LocalSourceHandle]";
+  public static final String START_SET_NO_MORE_TSBLOCKS =
+      "[开始设置无更多TsBlock]";
+  public static final String START_ABORT_SINK_CHANNEL =
+      "[开始中止SinkChannel]";
+  public static final String END_ABORT_SINK_CHANNEL =
+      "[结束中止SinkChannel]";
+  public static final String START_CLOSE_SINK_CHANNEL =
+      "[开始关闭SinkChannel]";
+  public static final String END_CLOSE_SINK_CHANNEL =
+      "[结束关闭SinkChannel]";
+  public static final String ACK_TSBLOCK =
+      "[确认TsBlock] {}.";
+  public static final String NOTIFY_NO_MORE_TSBLOCK =
+      "[通知无更多TsBlock]";
+  public static final String START_SEND_TSBLOCK_ON_LOCAL =
+      "[开始在本地发送TsBlock]";
+  public static final String START_SET_NO_MORE_TSBLOCKS_ON_LOCAL =
+      "[开始在本地设置无更多TsBlock]";
+  public static final String END_SET_NO_MORE_TSBLOCKS_ON_LOCAL =
+      "[结束在本地设置无更多TsBlock]";
+  public static final String START_ABORT_LOCAL_SINK_CHANNEL =
+      "[开始中止LocalSinkChannel]";
+  public static final String END_ABORT_LOCAL_SINK_CHANNEL =
+      "[结束中止LocalSinkChannel]";
+  public static final String START_CLOSE_LOCAL_SINK_CHANNEL =
+      "[开始关闭LocalSinkChannel]";
+  public static final String END_CLOSE_LOCAL_SINK_CHANNEL =
+      "[结束关闭LocalSinkChannel]";
+  public static final String GET_TSBLOCK_FROM_BUFFER =
+      "[从缓冲区获取TsBlock] sequenceId:{}, size:{}";
+  public static final String WAIT_FOR_MORE_TSBLOCK =
+      "[等待更多TsBlock]";
+  public static final String RECEIVE_NO_MORE_TSBLOCK_EVENT =
+      "[收到无更多TsBlock事件]";
+  public static final String END_PULL_TSBLOCKS_FROM_REMOTE =
+      "[结束从远端拉取TsBlock] 数量:{}";
+  public static final String PUT_TSBLOCKS_INTO_BUFFER =
+      "[将TsBlock放入缓冲区]";
+  public static final String SEND_ACK_TSBLOCK =
+      "[发送确认TsBlock] [{}, {}).";
+  public static final String START_ABORT_SHUFFLE_SINK_HANDLE =
+      "[开始中止ShuffleSinkHandle]";
+  public static final String END_ABORT_SHUFFLE_SINK_HANDLE =
+      "[结束中止ShuffleSinkHandle]";
+  public static final String START_CLOSE_SHUFFLE_SINK_HANDLE =
+      "[开始关闭ShuffleSinkHandle]";
+  public static final String END_CLOSE_SHUFFLE_SINK_HANDLE =
+      "[结束关闭ShuffleSinkHandle]";
+  public static final String SIGNAL_NO_MORE_TSBLOCK_ON_QUEUE =
+      "[队列信号无更多TsBlock]";
+  public static final String QUEUE_DESTROYED_WHEN_SET_NO_MORE_TSBLOCKS =
+      "调用 setNoMoreTsBlocks 时队列已被销毁。";
+  public static final String ADD_TSBLOCK =
+      "[添加TsBlock] TsBlock:{}";
+
+  // --- Plan (additional debug) ---
+
+  public static final String QUERY_START_SQL =
+      "[查询开始] sql: {}";
+  public static final String CLEAN_UP_QUERY =
+      "[清理查询]";
+  public static final String RELEASE_QUERY_RESOURCE_STATE =
+      "[释放查询资源] 状态为: {}";
+  public static final String SKIP_EXECUTE =
+      "[跳过执行]";
+  public static final String SKIP_EXECUTE_AFTER_LOGICAL_PLAN =
+      "[逻辑计划后跳过执行]";
+  public static final String RESULT_HANDLE_FINISHED =
+      "[结果句柄已完成]";
+
+  // --- Execution / Operator / Source (additional debug) ---
+
+  public static final String SERIES_SCAN_UTIL_PAGE_READER_IS_MODIFIED =
+      "[SeriesScanUtil] pageReader.isModified() 为 {}";
+  public static final String GET_ALL_SATISFIED_PAGE_DATA_TSBLOCK =
+      "[getAllSatisfiedPageData] TsBlock:{}";
+
+  // --- Plan / Relational / Metadata (additional debug) ---
+
+  public static final String DEVICES_ARE_MISSING =
+      "{} 个设备缺失";
+
+  // --- Execution / Fragment (additional debug) ---
+
+  public static final String STATE_CHANGED_TO =
+      "[状态变更] 变更为 {}";
+  public static final String ENTER_THE_STATE_CHANGE_LISTENER =
+      "进入状态变更监听器";
+
+  // --- Execution / Fragment (additional) ---
+
+  public static final String ERRORS_RELEASING_SINK =
+      "尝试释放 Sink 时发生错误，可能导致资源泄漏。";
+  public static final String ERRORS_DELETING_TMP_FILES =
+      "尝试删除临时文件时发生错误，可能导致资源泄漏。";
+  public static final String ERRORS_DEREGISTER_FI_FROM_MEMORY_POOL =
+      "尝试从内存池注销分片实例时发生错误，可能导致资源泄漏，状态为 {}。";
+  public static final String ERRORS_RELEASING_MEMORY =
+      "尝试释放内存时发生错误，可能导致资源泄漏。";
+  public static final String ERRORS_FINISHING_FI_PROCESS =
+      "尝试完成分片实例流程时发生错误，可能导致资源泄漏。";
+
+  // --- Plan (additional) ---
+
+  public static final String CLEANING_UP_STALE_QUERY =
+      "正在清理过期查询，ID: {}，已运行 {} 毫秒，超时时间：{} 毫秒";
+
+  // --- Plan / Tree Planner (additional) ---
+
+  public static final String ERROR_WHEN_READ_OBJECT_FILE =
+      "读取对象文件 {} 时出错。";
+
   // --- Additional Edge Cases ---
 
   public static final String JOIN_TYPE_IS_NOT_SUPPORTED =
@@ -1194,6 +1386,8 @@ public final class DataNodeQueryMessages {
       "%s 为 null";
   public static final String IS_TOO_LARGE_STACK_OVERFLOW_WHILE_PARSING =
       " 过大（解析时发生栈溢出）";
+
+  public static final String ENTER_STATE_CHANGE_LISTENER = "进入状态变更监听器";
 
   private DataNodeQueryMessages() {}
 }

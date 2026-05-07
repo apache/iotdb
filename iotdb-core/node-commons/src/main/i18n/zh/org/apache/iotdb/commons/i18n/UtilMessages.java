@@ -81,6 +81,12 @@ public final class UtilMessages {
       "已删除文件 {}，因为目标目录 {} 中已存在同名文件";
   public static final String FAILED_TO_CREATE_TARGET_DIRECTORY =
       "创建目标目录失败：{}";
+  public static final String RENAMED_FILE_ALREADY_EXISTS =
+      "已将文件 {} 重命名为 {}，因为目标目录 {} 中已存在同名文件";
+  public static final String COPIED_FILE_ALREADY_EXISTS =
+      "已将文件 {} 复制为 {}，因为目标目录 {} 中已存在同名文件";
+  public static final String ILLEGAL_PATH_DOTS_OR_SEPARATORS =
+      "路径不能为 '.'、'..'、'./' 或 '.\\\\'. ";
 
   // ======================== IOUtils ========================
 

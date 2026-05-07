@@ -101,9 +101,9 @@ public class Scheduler {
     } finally {
       long time = System.currentTimeMillis() - startTime;
       if (time > 10_000) {
-        LOGGER.info("It takes {}ms to flush MTree in SchemaRegion {}", time, regionId);
+        LOGGER.info(DataNodeSchemaMessages.MTREE_FLUSH_COST, time, regionId);
       } else {
-        LOGGER.debug("It takes {}ms to flush MTree in SchemaRegion {}", time, regionId);
+        LOGGER.debug(DataNodeSchemaMessages.MTREE_FLUSH_COST, time, regionId);
       }
       store.recordFlushMetrics(time, flushNodeNum.get(), flushMemSize.get());
       flushingRegionSet.remove(regionId);

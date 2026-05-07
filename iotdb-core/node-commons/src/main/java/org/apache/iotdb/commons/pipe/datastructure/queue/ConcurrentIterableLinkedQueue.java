@@ -299,7 +299,7 @@ public class ConcurrentIterableLinkedQueue<E> {
       try {
         while (!hasNext()) {
           if (isClosed) {
-            LOGGER.warn("Calling next() to a closed iterator, will return null.");
+            LOGGER.warn(PipeMessages.CALLING_NEXT_ON_CLOSED_ITERATOR);
             return null;
           }
           if (!hasNextCondition.await(waitTimeMillis, TimeUnit.MILLISECONDS)) {
@@ -309,7 +309,7 @@ public class ConcurrentIterableLinkedQueue<E> {
         return currentNode.next.data;
       } catch (final InterruptedException e) {
         Thread.currentThread().interrupt();
-        LOGGER.warn("Interrupted while waiting for next element.", e);
+        LOGGER.warn(PipeMessages.INTERRUPTED_WAITING_FOR_NEXT, e);
         return null;
       } finally {
         lock.writeLock().unlock();
@@ -329,7 +329,7 @@ public class ConcurrentIterableLinkedQueue<E> {
       try {
         while (!hasNext()) {
           if (isClosed) {
-            LOGGER.warn("Calling next() to a closed iterator, will return null.");
+            LOGGER.warn(PipeMessages.CALLING_NEXT_ON_CLOSED_ITERATOR);
             return null;
           }
           if (!hasNextCondition.await(waitTimeMillis, TimeUnit.MILLISECONDS)) {
@@ -343,7 +343,7 @@ public class ConcurrentIterableLinkedQueue<E> {
         return currentNode.data;
       } catch (final InterruptedException e) {
         Thread.currentThread().interrupt();
-        LOGGER.warn("Interrupted while waiting for next element.", e);
+        LOGGER.warn(PipeMessages.INTERRUPTED_WAITING_FOR_NEXT, e);
         return null;
       } finally {
         lock.writeLock().unlock();

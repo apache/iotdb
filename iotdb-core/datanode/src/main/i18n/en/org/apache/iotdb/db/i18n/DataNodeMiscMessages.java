@@ -471,6 +471,21 @@ public final class DataNodeMiscMessages {
       "No data directories provided. Please specify with --dirs <dir1> <dir2> ...";
   public static final String VALIDATION_REPAIR_COMPLETED =
       "Validation and repair completed. Statistics:";
+  public static final String SEPARATOR_LINE = "------------------------------------------------------";
+  public static final String IS_GENERATED_BY_PIPE_MARK = "isGeneratedByPipe mark: {}";
+  public static final String RESET_PROGRESS_INDEX = "resetProgressIndex: {}";
+  public static final String DATA_DIRECTORIES = "Data directories: ";
+  public static final String INDENT_PATH = "  {}";
+  public static final String ERROR_VALIDATING_REPAIRING_RESOURCE = "Error validating or repairing resource {}: {}";
+  public static final String ERROR_LOADING_RESOURCES_FROM_PARTITION = "Error loading resources from partition {}: {}";
+  public static final String TIME_PARTITION_PROCESS_COMPLETED = "TimePartition {} has {} total resources, {} to set isGeneratedByPipe resources, {} to reset progressIndex resources, {} changed resources. Process completed.";
+  public static final String SKIPPED_RESOURCE_FILE_NOT_EXIST = "{} is skipped because resource file is not exist.";
+  public static final String REPAIRING_TSFILE_RESOURCE = "Repairing TsFileResource: {}, isGeneratedByPipe mark: {}, actual mark: {}";
+  public static final String RESETTING_PROGRESS_INDEX_TO_MINIMUM = "Resetting TsFileResource:{} 's progressIndex to minimum, original progressIndex: {}";
+  public static final String MARKED_TSFILE_RESOURCE_AS = "Marked TsFileResource as {} in resource: {}";
+  public static final String RESET_PROGRESS_INDEX_TO_MINIMUM = "Reset TsFileResource:{} 's progressIndex to minimum.";
+  public static final String FAILED_TO_REPAIR_TSFILE_RESOURCE = "ERROR: Failed to repair TsFileResource: {}";
+  public static final String TOTAL_TIME_TAKEN = "Total time taken: {} ms, total TsFile resources: {}, set isGeneratedByPipe resources: {}, reset progressIndex resources: {}, changed resources: {}";
 
   // ---------------------------------------------------------------------------
   // tools – DelayAnalyzer

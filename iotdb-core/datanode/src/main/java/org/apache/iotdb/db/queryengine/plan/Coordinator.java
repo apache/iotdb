@@ -309,7 +309,7 @@ public class Coordinator {
     MPPQueryContext queryContext = null;
     try (SetThreadName queryName = new SetThreadName(globalQueryId.getId())) {
       if (LOGGER.isDebugEnabled() && sql != null && !sql.isEmpty()) {
-        LOGGER.debug("[QueryStart] sql: {}", sql);
+        LOGGER.debug(DataNodeQueryMessages.QUERY_START_SQL, sql);
       }
       queryContext =
           new MPPQueryContext(
@@ -823,7 +823,7 @@ public class Coordinator {
       Supplier<String> contentOfQuerySupplier,
       Throwable t) {
     try (SetThreadName threadName = new SetThreadName(queryExecution.getQueryId())) {
-      LOGGER.debug("[CleanUpQuery]]");
+      LOGGER.debug(DataNodeQueryMessages.CLEAN_UP_QUERY);
       queryExecution.stopAndCleanup(t);
       boolean isUserQuery = queryExecution.isQuery() && queryExecution.isUserQuery();
       if (isUserQuery) {
@@ -912,10 +912,7 @@ public class Coordinator {
           long executeTime = currentTime - queryStartTime;
           if (timeout > 0 && executeTime - 60_000L > timeout) {
             LOGGER.warn(
-                "Cleaning up stale query with id {}, which has been running for {} ms, timeout duration is: {}ms",
-                queryId,
-                executeTime,
-                timeout);
+                DataNodeQueryMessages.CLEANING_UP_STALE_QUERY, queryId, executeTime, timeout);
             cleanupQueryExecution(
                 queryId,
                 (org.apache.thrift.TBase<?, ?>) null,

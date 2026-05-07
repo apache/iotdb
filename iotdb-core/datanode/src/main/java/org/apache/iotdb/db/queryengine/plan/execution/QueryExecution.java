@@ -146,7 +146,7 @@ public class QueryExecution implements IQueryExecution {
                 || state == QueryState.ABORTED
                 || state == QueryState.CANCELED) {
               if (LOGGER.isDebugEnabled()) {
-                LOGGER.debug("[ReleaseQueryResource] state is: {}", state);
+                LOGGER.debug(DataNodeQueryMessages.RELEASE_QUERY_RESOURCE_STATE, state);
               }
               cause = stateMachine.getFailureException();
               releaseResource(cause);
@@ -169,7 +169,7 @@ public class QueryExecution implements IQueryExecution {
   public void start() {
     final long startTime = System.nanoTime();
     if (skipExecute()) {
-      LOGGER.debug("[SkipExecute]");
+      LOGGER.debug(DataNodeQueryMessages.SKIP_EXECUTE);
       if (analysis.isFailed()) {
         stateMachine.transitionToFailed(analysis.getFailStatus());
       } else {
@@ -185,7 +185,7 @@ public class QueryExecution implements IQueryExecution {
 
     if (skipExecute()) {
       // TODO move this judgement to analyze state?
-      LOGGER.debug("[SkipExecute After LogicalPlan]");
+      LOGGER.debug(DataNodeQueryMessages.SKIP_EXECUTE_AFTER_LOGICAL_PLAN);
       if (analysis.isFailed()) {
         stateMachine.transitionToFailed(analysis.getFailStatus());
       } else {
@@ -450,7 +450,7 @@ public class QueryExecution implements IQueryExecution {
                 TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
           }
         } else if (resultHandle.isFinished()) {
-          LOGGER.debug("[ResultHandleFinished]");
+          LOGGER.debug(DataNodeQueryMessages.RESULT_HANDLE_FINISHED);
           stateMachine.transitionToFinished();
           return Optional.empty();
         }

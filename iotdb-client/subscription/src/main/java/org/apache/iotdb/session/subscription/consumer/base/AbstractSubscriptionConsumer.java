@@ -1244,14 +1244,14 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
               if (isClosed()) {
                 if (Objects.nonNull(future[0])) {
                   future[0].cancel(false);
-                  LOGGER.info("SubscriptionConsumer {} cancel heartbeat worker", this);
+                  LOGGER.info(SubscriptionMessages.CONSUMER_CANCEL_HEARTBEAT_WORKER, this);
                 }
                 return;
               }
               providers.heartbeat(this);
             },
             heartbeatIntervalMs);
-    LOGGER.info("SubscriptionConsumer {} submit heartbeat worker", this);
+    LOGGER.info(SubscriptionMessages.CONSUMER_SUBMIT_HEARTBEAT_WORKER, this);
   }
 
   /////////////////////////////// sync endpoints ///////////////////////////////
@@ -1264,14 +1264,14 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
               if (isClosed()) {
                 if (Objects.nonNull(future[0])) {
                   future[0].cancel(false);
-                  LOGGER.info("SubscriptionConsumer {} cancel endpoints syncer", this);
+                  LOGGER.info(SubscriptionMessages.CONSUMER_CANCEL_ENDPOINTS_SYNCER, this);
                 }
                 return;
               }
               providers.sync(this);
             },
             endpointsSyncIntervalMs);
-    LOGGER.info("SubscriptionConsumer {} submit endpoints syncer", this);
+    LOGGER.info(SubscriptionMessages.CONSUMER_SUBMIT_ENDPOINTS_SYNCER, this);
   }
 
   /////////////////////////////// commit async ///////////////////////////////

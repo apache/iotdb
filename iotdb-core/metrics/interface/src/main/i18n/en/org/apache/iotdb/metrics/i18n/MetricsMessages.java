@@ -73,6 +73,38 @@ public final class MetricsMessages {
   public static final String READ_NET_STATUS_ERROR = "Meets exception when reading {}";
   public static final String READ_NET_STATUS_FOR_NET_ERROR =
       "Meets error when reading {} for net status";
+  public static final String FAILED_TO_GET_SOCKET_NUM = "Failed to get socket num";
+  public static final String INTERRUPTED_WHILE_WAITING_SOCKET_NUM =
+      "Interrupted while waiting for socket num command";
+  public static final String FAILED_TO_PARSE_SOCKET_NUM =
+      "Failed to parse socket num from command output: '{}'";
+
+  // --- LinuxDiskMetricsManager ---
+  public static final String FAILED_TO_GET_SECTOR_SIZE = "Failed to get the sector size of {}";
+  public static final String CANNOT_FIND_DISK_IO_STATUS_FILE =
+      "Cannot find disk io status file {}";
+  public static final String ERROR_UPDATING_DISK_IO_INFO =
+      "Meets error while updating disk io info";
+  public static final String CANNOT_FIND_PROCESS_IO_STATUS_FILE =
+      "Cannot find process io status file {}";
+  public static final String ERROR_UPDATING_PROCESS_IO_INFO =
+      "Meets error while updating process io info";
+
+  // --- WindowsDiskMetricsManager ---
+  public static final String UNEXPECTED_WINDOWS_PROCESS_IO_FORMAT =
+      "Unexpected windows process io info format: {}";
+  public static final String UNEXPECTED_WINDOWS_DISK_IO_FORMAT =
+      "Unexpected windows disk io info format: {}";
+  public static final String FAILED_TO_PARSE_LONG_WINDOWS_DISK =
+      "Failed to parse long value from windows disk metrics: {}";
+  public static final String FAILED_TO_PARSE_DOUBLE_WINDOWS_DISK =
+      "Failed to parse double value from windows disk metrics: {}";
+  public static final String FAILED_TO_COLLECT_WINDOWS_DISK_METRICS =
+      "Failed to collect windows disk metrics, powershell exit code: {}, command {}, output {}";
+  public static final String FAILED_TO_EXECUTE_POWERSHELL =
+      "Failed to execute powershell for windows disk metrics";
+  public static final String INTERRUPTED_COLLECTING_WINDOWS_DISK =
+      "Interrupted while collecting windows disk metrics";
 
   private MetricsMessages() {}
 }

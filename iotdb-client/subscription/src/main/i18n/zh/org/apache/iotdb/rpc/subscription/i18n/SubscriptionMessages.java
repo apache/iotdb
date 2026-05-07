@@ -82,6 +82,14 @@ public final class SubscriptionMessages {
 
   // --- AbstractSubscriptionConsumer ---
   public static final String UNEXPECTED_RESPONSE_TYPE_WARN = "意外的响应类型：{}";
+  public static final String CONSUMER_CANCEL_HEARTBEAT_WORKER =
+      "SubscriptionConsumer {} 取消心跳工作线程";
+  public static final String CONSUMER_SUBMIT_HEARTBEAT_WORKER =
+      "SubscriptionConsumer {} 提交心跳工作线程";
+  public static final String CONSUMER_CANCEL_ENDPOINTS_SYNCER =
+      "SubscriptionConsumer {} 取消端点同步器";
+  public static final String CONSUMER_SUBMIT_ENDPOINTS_SYNCER =
+      "SubscriptionConsumer {} 提交端点同步器";
 
   private SubscriptionMessages() {}
 }

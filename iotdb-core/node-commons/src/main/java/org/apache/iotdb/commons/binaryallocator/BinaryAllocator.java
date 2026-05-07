@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.binaryallocator.evictor.Evictor;
 import org.apache.iotdb.commons.binaryallocator.metric.BinaryAllocatorMetrics;
 import org.apache.iotdb.commons.binaryallocator.utils.SizeClasses;
 import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.i18n.CommonMessages;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.TestOnly;
 
@@ -248,7 +249,7 @@ public class BinaryAllocator {
       return;
     }
 
-    LOGGER.debug("Binary allocator running GC eviction");
+    LOGGER.debug(CommonMessages.BINARY_ALLOCATOR_RUNNING_GC_EVICTION);
     if (state.get() == BinaryAllocatorState.PENDING) {
       if (curGcTimePercent <= RESTART_GC_TIME_PERCENTAGE) {
         start();
@@ -258,9 +259,7 @@ public class BinaryAllocator {
 
     long evictedSize = 0;
     if (curGcTimePercent > SHUTDOWN_GC_TIME_PERCENTAGE) {
-      LOGGER.info(
-          "Binary allocator is shutting down because of high GC time percentage {}%.",
-          curGcTimePercent);
+      LOGGER.info(CommonMessages.BINARY_ALLOCATOR_SHUTTING_DOWN_HIGH_GC, curGcTimePercent);
       evictedSize = evict(1.0);
       close(false);
     } else if (curGcTimePercent > HALF_GC_TIME_PERCENTAGE) {
@@ -304,7 +303,7 @@ public class BinaryAllocator {
           ref.slabRegion.deallocate(ref.byteArray);
         }
       } catch (InterruptedException e) {
-        LOGGER.info("{} exits due to interruptedException.", name);
+        LOGGER.info(CommonMessages.AUTO_RELEASER_EXIT_INTERRUPTED, name);
         Thread.currentThread().interrupt();
       }
     }

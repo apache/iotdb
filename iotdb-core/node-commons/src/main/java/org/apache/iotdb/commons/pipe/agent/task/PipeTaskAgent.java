@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkCriticalException;
+import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMetaKeeper;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMeta;
@@ -125,7 +126,7 @@ public abstract class PipeTaskAgent {
       return pipeMetaKeeper.tryReadLock(timeOutInSeconds);
     } catch (final InterruptedException e) {
       Thread.currentThread().interrupt();
-      LOGGER.warn("Interruption during requiring pipeMetaKeeper read lock.", e);
+      LOGGER.warn(PipeMessages.INTERRUPTED_ACQUIRING_READ_LOCK, e);
       return false;
     }
   }
@@ -147,7 +148,7 @@ public abstract class PipeTaskAgent {
       return pipeMetaKeeper.tryWriteLock(timeOutInSeconds);
     } catch (final InterruptedException e) {
       Thread.currentThread().interrupt();
-      LOGGER.warn("Interruption during requiring pipeMetaKeeper write lock.", e);
+      LOGGER.warn(PipeMessages.INTERRUPTED_ACQUIRING_WRITE_LOCK, e);
       return false;
     }
   }
@@ -192,7 +193,7 @@ public abstract class PipeTaskAgent {
           String.format(
               "Failed to handle single pipe meta changes for %s, because %s",
               pipeName, e.getMessage());
-      LOGGER.warn("Failed to handle single pipe meta changes for {}", pipeName, e);
+      LOGGER.warn(PipeMessages.FAILED_TO_HANDLE_SINGLE_PIPE_META_CHANGES, pipeName, e);
       return new TPushPipeMetaRespExceptionMessage(
           pipeName, errorMessage, System.currentTimeMillis());
     }
@@ -372,7 +373,7 @@ public abstract class PipeTaskAgent {
     } catch (final Exception e) {
       final String errorMessage =
           String.format("Failed to drop pipe %s, because %s", pipeName, e.getMessage());
-      LOGGER.warn("Failed to drop pipe {}", pipeName, e);
+      LOGGER.warn(PipeMessages.FAILED_TO_DROP_PIPE, pipeName, e);
       return new TPushPipeMetaRespExceptionMessage(
           pipeName, errorMessage, System.currentTimeMillis());
     }
@@ -467,7 +468,7 @@ public abstract class PipeTaskAgent {
   public void dropAllPipeTasks() {
     if (!tryWriteLockWithTimeOut(
         TimeUnit.MILLISECONDS.toSeconds(PipeConfig.getInstance().getPipeMaxWaitFinishTime()))) {
-      LOGGER.info("Failed to acquire lock when dropping all pipe tasks, will skip dropping");
+      LOGGER.info(PipeMessages.FAILED_TO_ACQUIRE_LOCK_DROPPING_ALL);
       return;
     }
     try {
@@ -993,7 +994,7 @@ public abstract class PipeTaskAgent {
                 try {
                   pipeTaskMeta.trackExceptionMessage(pipeRuntimeException);
                   stopAllPipesWithCriticalExceptionInternal(currentNodeId);
-                  LOGGER.info("Stopped all pipes with critical exception.");
+                  LOGGER.info(PipeMessages.STOPPED_ALL_PIPES_WITH_CRITICAL_EXCEPTION);
                   return;
                 } finally {
                   releaseWriteLock();

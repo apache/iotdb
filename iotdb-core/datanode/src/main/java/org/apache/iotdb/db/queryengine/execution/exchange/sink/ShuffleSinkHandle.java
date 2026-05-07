@@ -196,7 +196,7 @@ public class ShuffleSinkHandle implements ISinkHandle {
       return false;
     }
     if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("[StartAbortShuffleSinkHandle]");
+      LOGGER.debug(DataNodeQueryMessages.START_ABORT_SHUFFLE_SINK_HANDLE);
     }
     boolean meetError = false;
     Exception firstException = null;
@@ -218,7 +218,7 @@ public class ShuffleSinkHandle implements ISinkHandle {
       sinkListener.onAborted(this);
       aborted = true;
       if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("[EndAbortShuffleSinkHandle]");
+        LOGGER.debug(DataNodeQueryMessages.END_ABORT_SHUFFLE_SINK_HANDLE);
       }
       return true;
     } else {
@@ -236,7 +236,7 @@ public class ShuffleSinkHandle implements ISinkHandle {
       return false;
     }
     if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("[StartCloseShuffleSinkHandle]");
+      LOGGER.debug(DataNodeQueryMessages.START_CLOSE_SHUFFLE_SINK_HANDLE);
     }
     boolean meetError = false;
     Exception firstException = null;
@@ -258,7 +258,7 @@ public class ShuffleSinkHandle implements ISinkHandle {
       sinkListener.onFinish(this);
       closed = true;
       if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("[EndCloseShuffleSinkHandle]");
+        LOGGER.debug(DataNodeQueryMessages.END_CLOSE_SHUFFLE_SINK_HANDLE);
       }
       return true;
     } else {

@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.audit.IAuditEntity;
 import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
@@ -329,7 +330,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
           status);
       return new TPipeTransferResp(status);
     } else {
-      LOGGER.info("Receiver id = {}: User {} login successfully.", receiverId.get(), username);
+      LOGGER.info(PipeMessages.RECEIVER_USER_LOGIN_SUCCESS, receiverId.get(), username);
     }
 
     final String shouldConvertDataTypeOnTypeMismatchString =
@@ -1011,7 +1012,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
     // Close the session
     closeSession();
 
-    LOGGER.info("Receiver id = {}: Handling exit: Receiver exited.", receiverId.get());
+    LOGGER.info(PipeMessages.RECEIVER_EXITED, receiverId.get());
 
     if (originalThreadName != null) {
       Thread.currentThread().setName(originalThreadName);

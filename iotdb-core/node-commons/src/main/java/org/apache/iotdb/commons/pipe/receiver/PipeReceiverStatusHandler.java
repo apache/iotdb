@@ -22,6 +22,7 @@ package org.apache.iotdb.commons.pipe.receiver;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.pipe.IoTConsensusV2RetryWithIncreasingIntervalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkNonReportTimeConfigurableException;
+import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.commons.utils.RetryUtils;
@@ -108,13 +109,13 @@ public class PipeReceiverStatusHandler {
       final boolean log4NoPrivileges) {
 
     if (RetryUtils.needRetryForWrite(status.getCode())) {
-      LOGGER.info("IoTConsensusV2: will retry with increasing interval. status: {}", status);
+      LOGGER.info(PipeMessages.IOT_CONSENSUS_RETRY_WITH_INTERVAL, status);
       throw new IoTConsensusV2RetryWithIncreasingIntervalException(
           exceptionMessage, Integer.MAX_VALUE);
     }
 
     if (RetryUtils.notNeedRetryForConsensus(status.getCode())) {
-      LOGGER.info("IoTConsensusV2: will not retry. status: {}", status);
+      LOGGER.info(PipeMessages.IOT_CONSENSUS_WILL_NOT_RETRY, status);
       return;
     }
 
@@ -127,7 +128,7 @@ public class PipeReceiverStatusHandler {
 
       case 1809: // PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION
         {
-          LOGGER.info("Idempotent conflict exception: will be ignored. status: {}", status);
+          LOGGER.info(PipeMessages.IDEMPOTENT_CONFLICT_IGNORED, status);
           return;
         }
 

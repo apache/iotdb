@@ -470,6 +470,21 @@ public final class DataNodeMiscMessages {
       "未提供数据目录，请使用 --dirs <dir1> <dir2> ... 指定。";
   public static final String VALIDATION_REPAIR_COMPLETED =
       "校验和修复已完成。统计信息：";
+  public static final String SEPARATOR_LINE = "------------------------------------------------------";
+  public static final String IS_GENERATED_BY_PIPE_MARK = "isGeneratedByPipe 标记: {}";
+  public static final String RESET_PROGRESS_INDEX = "resetProgressIndex: {}";
+  public static final String DATA_DIRECTORIES = "数据目录: ";
+  public static final String INDENT_PATH = "  {}";
+  public static final String ERROR_VALIDATING_REPAIRING_RESOURCE = "校验或修复资源 {} 时出错: {}";
+  public static final String ERROR_LOADING_RESOURCES_FROM_PARTITION = "从分区 {} 加载资源时出错: {}";
+  public static final String TIME_PARTITION_PROCESS_COMPLETED = "时间分区 {} 共有 {} 个资源，{} 个需要设置 isGeneratedByPipe，{} 个需要重置 progressIndex，{} 个已更改。处理完成。";
+  public static final String SKIPPED_RESOURCE_FILE_NOT_EXIST = "{} 已跳过，因为资源文件不存在。";
+  public static final String REPAIRING_TSFILE_RESOURCE = "正在修复 TsFileResource: {}，isGeneratedByPipe 标记: {}，实际标记: {}";
+  public static final String RESETTING_PROGRESS_INDEX_TO_MINIMUM = "正在将 TsFileResource:{} 的 progressIndex 重置为最小值，原始 progressIndex: {}";
+  public static final String MARKED_TSFILE_RESOURCE_AS = "已将 TsFileResource 标记为 {} ，资源: {}";
+  public static final String RESET_PROGRESS_INDEX_TO_MINIMUM = "已将 TsFileResource:{} 的 progressIndex 重置为最小值。";
+  public static final String FAILED_TO_REPAIR_TSFILE_RESOURCE = "错误: 修复 TsFileResource 失败: {}";
+  public static final String TOTAL_TIME_TAKEN = "总耗时: {} 毫秒，TsFile 资源总数: {}，设置 isGeneratedByPipe 的资源数: {}，重置 progressIndex 的资源数: {}，已更改的资源数: {}";
 
   // ---------------------------------------------------------------------------
   // tools – DelayAnalyzer

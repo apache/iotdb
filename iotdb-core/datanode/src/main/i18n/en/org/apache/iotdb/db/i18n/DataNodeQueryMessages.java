@@ -89,6 +89,8 @@ public final class DataNodeQueryMessages {
       "SinkChannel is aborted or closed. ";
   public static final String THE_DATA_BLOCK_DOESN_T_EXIST_SEQUENCE_ID =
       "The data block doesn't exist. Sequence ID: ";
+  public static final String THE_TSBLOCK_DOESNT_EXIST_SEQUENCE_ID_REMAINING =
+      "The TsBlock doesn't exist. Sequence ID is {}, remaining map is {}";
   public static final String SINKCHANNEL_IS_ABORTED =
       "SinkChannel is aborted.";
   public static final String FAILED_TO_SEND_NEW_DATA_BLOCK_EVENT_ATTEMPT =
@@ -1184,6 +1186,196 @@ public final class DataNodeQueryMessages {
   public static final String TRANSFORMUTILS_SHOULD_NOT_BE_INSTANTIATED =
       "TransformUtils should not be instantiated.";
 
+  // --- Execution / Exchange (additional) ---
+
+  public static final String ACK_TSBLOCK_FAILED =
+      "ack TsBlock [{}, {}) failed.";
+  public static final String CLOSE_CHANNEL_OF_SHUFFLESINKHANDLE_FAILED =
+      "Close channel of ShuffleSinkHandle {}, index {} failed.";
+  public static final String SHUFFLESINKHANDLE_ALREADY_IN_MAP =
+      "ShuffleSinkHandle for ";
+  public static final String IS_IN_THE_MAP =
+      " is in the map.";
+  public static final String SOURCE_HANDLE_FOR_PLAN_NODE =
+      "Source handle for plan node ";
+  public static final String OF =
+      " of ";
+  public static final String EXISTS =
+      " exists.";
+  public static final String FAILED_TO_PULL_TSBLOCKS =
+      "{} failed to pull TsBlocks [{}] to [{}] from SinkHandle {}, channel index {},";
+  public static final String FAILED_TO_GET_DATA_BLOCK =
+      "failed to get data block [{}, {}), attempt times: {}";
+  public static final String FAILED_TO_SEND_ACK_DATA_BLOCK_EVENT =
+      "failed to send ack data block event [{}, {}), attempt times: {}";
+  public static final String SEND_CLOSE_SINK_CHANNEL_EVENT_FAILED =
+      "[SendCloseSinkChannelEvent] to [ShuffleSinkHandle: {}, index: {}] failed.).";
+  public static final String LOCAL_SINK_CHANNEL_STATE_IS =
+      "LocalSinkChannel state is .";
+  public static final String SCH_LISTENER_ON_FINISH =
+      "[ScHListenerOnFinish]";
+  public static final String SCH_LISTENER_ALREADY_RELEASED =
+      "[ScHListenerAlreadyReleased]";
+  public static final String SCH_LISTENER_ON_ABORT =
+      "[ScHListenerOnAbort]";
+  public static final String SHUFFLE_SINK_HANDLE_LISTENER_ON_FINISH =
+      "[ShuffleSinkHandleListenerOnFinish]";
+  public static final String SHUFFLE_SINK_HANDLE_LISTENER_ON_END_OF_TSBLOCKS =
+      "[ShuffleSinkHandleListenerOnEndOfTsBlocks]";
+  public static final String SHUFFLE_SINK_HANDLE_LISTENER_ON_ABORT =
+      "[ShuffleSinkHandleListenerOnAbort]";
+  public static final String SKH_LISTENER_ON_FINISH =
+      "[SkHListenerOnFinish]";
+  public static final String SKH_LISTENER_ON_END_OF_TSBLOCKS =
+      "[SkHListenerOnEndOfTsBlocks]";
+  public static final String SKH_LISTENER_ON_ABORT =
+      "[SkHListenerOnAbort]";
+  public static final String CLOSE_SHUFFLE_SINK_HANDLE =
+      "Close ShuffleSinkHandle: {}";
+  public static final String GET_SHARED_TSBLOCK_QUEUE_FROM_LOCAL_SOURCE_HANDLE =
+      "Get SharedTsBlockQueue from local source handle";
+  public static final String CREATE_SHARED_TSBLOCK_QUEUE =
+      "Create SharedTsBlockQueue";
+  public static final String CREATE_LOCAL_SINK_HANDLE_FOR =
+      "Create local sink handle for {}";
+  public static final String CREATE_LOCAL_SOURCE_HANDLE_FOR =
+      "Create local source handle for {}";
+  public static final String GET_SHARED_TSBLOCK_QUEUE_FROM_LOCAL_SINK_HANDLE =
+      "Get SharedTsBlockQueue from local sink handle";
+  public static final String START_FORCE_RELEASE_FI_DATA_EXCHANGE_RESOURCE =
+      "[StartForceReleaseFIDataExchangeResource]";
+  public static final String CLOSE_SOURCE_HANDLE =
+      "[CloseSourceHandle] {}";
+  public static final String END_FORCE_RELEASE_FI_DATA_EXCHANGE_RESOURCE =
+      "[EndForceReleaseFIDataExchangeResource]";
+  public static final String CREATE_LOCAL_SINK_HANDLE_TO_PLAN_NODE =
+      "Create local sink handle to plan node {} of {} for {}";
+  public static final String CREATE_SINK_HANDLE_TO_PLAN_NODE =
+      "Create sink handle to plan node {} of {} for {}";
+  public static final String CREATE_LOCAL_SOURCE_HANDLE_FROM =
+      "Create local source handle from {} for plan node {} of {}";
+  public static final String GET_SERIALIZED_TSBLOCK =
+      "[GetSerializedTsBlock] TsBlock:{}";
+  public static final String START_ABORT_LOCAL_SOURCE_HANDLE =
+      "[StartAbortLocalSourceHandle]";
+  public static final String END_ABORT_LOCAL_SOURCE_HANDLE =
+      "[EndAbortLocalSourceHandle]";
+  public static final String START_CLOSE_LOCAL_SOURCE_HANDLE =
+      "[StartCloseLocalSourceHandle]";
+  public static final String END_CLOSE_LOCAL_SOURCE_HANDLE =
+      "[EndCloseLocalSourceHandle]";
+  public static final String START_SET_NO_MORE_TSBLOCKS =
+      "[StartSetNoMoreTsBlocks]";
+  public static final String START_ABORT_SINK_CHANNEL =
+      "[StartAbortSinkChannel]";
+  public static final String END_ABORT_SINK_CHANNEL =
+      "[EndAbortSinkChannel]";
+  public static final String START_CLOSE_SINK_CHANNEL =
+      "[StartCloseSinkChannel]";
+  public static final String END_CLOSE_SINK_CHANNEL =
+      "[EndCloseSinkChannel]";
+  public static final String ACK_TSBLOCK =
+      "[ACKTsBlock] {}.";
+  public static final String NOTIFY_NO_MORE_TSBLOCK =
+      "[NotifyNoMoreTsBlock]";
+  public static final String START_SEND_TSBLOCK_ON_LOCAL =
+      "[StartSendTsBlockOnLocal]";
+  public static final String START_SET_NO_MORE_TSBLOCKS_ON_LOCAL =
+      "[StartSetNoMoreTsBlocksOnLocal]";
+  public static final String END_SET_NO_MORE_TSBLOCKS_ON_LOCAL =
+      "[EndSetNoMoreTsBlocksOnLocal]";
+  public static final String START_ABORT_LOCAL_SINK_CHANNEL =
+      "[StartAbortLocalSinkChannel]";
+  public static final String END_ABORT_LOCAL_SINK_CHANNEL =
+      "[EndAbortLocalSinkChannel]";
+  public static final String START_CLOSE_LOCAL_SINK_CHANNEL =
+      "[StartCloseLocalSinkChannel]";
+  public static final String END_CLOSE_LOCAL_SINK_CHANNEL =
+      "[EndCloseLocalSinkChannel]";
+  public static final String GET_TSBLOCK_FROM_BUFFER =
+      "[GetTsBlockFromBuffer] sequenceId:{}, size:{}";
+  public static final String WAIT_FOR_MORE_TSBLOCK =
+      "[WaitForMoreTsBlock]";
+  public static final String RECEIVE_NO_MORE_TSBLOCK_EVENT =
+      "[ReceiveNoMoreTsBlockEvent]";
+  public static final String END_PULL_TSBLOCKS_FROM_REMOTE =
+      "[EndPullTsBlocksFromRemote] Count:{}";
+  public static final String PUT_TSBLOCKS_INTO_BUFFER =
+      "[PutTsBlocksIntoBuffer]";
+  public static final String SEND_ACK_TSBLOCK =
+      "[SendACKTsBlock] [{}, {}).";
+  public static final String START_ABORT_SHUFFLE_SINK_HANDLE =
+      "[StartAbortShuffleSinkHandle]";
+  public static final String END_ABORT_SHUFFLE_SINK_HANDLE =
+      "[EndAbortShuffleSinkHandle]";
+  public static final String START_CLOSE_SHUFFLE_SINK_HANDLE =
+      "[StartCloseShuffleSinkHandle]";
+  public static final String END_CLOSE_SHUFFLE_SINK_HANDLE =
+      "[EndCloseShuffleSinkHandle]";
+  public static final String SIGNAL_NO_MORE_TSBLOCK_ON_QUEUE =
+      "[SignalNoMoreTsBlockOnQueue]";
+  public static final String QUEUE_DESTROYED_WHEN_SET_NO_MORE_TSBLOCKS =
+      "The queue has been destroyed when calling setNoMoreTsBlocks.";
+  public static final String ADD_TSBLOCK =
+      "[addTsBlock] TsBlock:{}";
+
+  // --- Plan (additional debug) ---
+
+  public static final String QUERY_START_SQL =
+      "[QueryStart] sql: {}";
+  public static final String CLEAN_UP_QUERY =
+      "[CleanUpQuery]]";
+  public static final String RELEASE_QUERY_RESOURCE_STATE =
+      "[ReleaseQueryResource] state is: {}";
+  public static final String SKIP_EXECUTE =
+      "[SkipExecute]";
+  public static final String SKIP_EXECUTE_AFTER_LOGICAL_PLAN =
+      "[SkipExecute After LogicalPlan]";
+  public static final String RESULT_HANDLE_FINISHED =
+      "[ResultHandleFinished]";
+
+  // --- Execution / Operator / Source (additional debug) ---
+
+  public static final String SERIES_SCAN_UTIL_PAGE_READER_IS_MODIFIED =
+      "[SeriesScanUtil] pageReader.isModified() is {}";
+  public static final String GET_ALL_SATISFIED_PAGE_DATA_TSBLOCK =
+      "[getAllSatisfiedPageData] TsBlock:{}";
+
+  // --- Plan / Relational / Metadata (additional debug) ---
+
+  public static final String DEVICES_ARE_MISSING =
+      "{} devices are missing";
+
+  // --- Execution / Fragment (additional debug) ---
+
+  public static final String STATE_CHANGED_TO =
+      "[StateChanged] To {}";
+  public static final String ENTER_THE_STATE_CHANGE_LISTENER =
+      "Enter the stateChangeListener";
+
+  // --- Execution / Fragment (additional) ---
+
+  public static final String ERRORS_RELEASING_SINK =
+      "Errors occurred while attempting to release sink, potentially leading to resource leakage.";
+  public static final String ERRORS_DELETING_TMP_FILES =
+      "Errors occurred while attempting to delete tmp files, potentially leading to resource leakage.";
+  public static final String ERRORS_DEREGISTER_FI_FROM_MEMORY_POOL =
+      "Errors occurred while attempting to deRegister FI from Memory Pool, potentially leading to resource leakage, status is {}.";
+  public static final String ERRORS_RELEASING_MEMORY =
+      "Errors occurred while attempting to release memory, potentially leading to resource leakage.";
+  public static final String ERRORS_FINISHING_FI_PROCESS =
+      "Errors occurred while attempting to finish the FI process, potentially leading to resource leakage.";
+
+  // --- Plan (additional) ---
+
+  public static final String CLEANING_UP_STALE_QUERY =
+      "Cleaning up stale query with id {}, which has been running for {} ms, timeout duration is: {}ms";
+
+  // --- Plan / Tree Planner (additional) ---
+
+  public static final String ERROR_WHEN_READ_OBJECT_FILE =
+      "Error when read object file {}.";
+
   // --- Additional Edge Cases ---
 
   public static final String JOIN_TYPE_IS_NOT_SUPPORTED =
@@ -1194,6 +1386,8 @@ public final class DataNodeQueryMessages {
       "%s is null";
   public static final String IS_TOO_LARGE_STACK_OVERFLOW_WHILE_PARSING =
       " is too large (stack overflow while parsing)";
+
+  public static final String ENTER_STATE_CHANGE_LISTENER = "Enter the stateChangeListener";
 
   private DataNodeQueryMessages() {}
 }

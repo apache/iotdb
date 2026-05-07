@@ -102,6 +102,18 @@ public final class CommonMessages {
   public static final String ENCRYPT_PASSWORD_ERROR = "加密密码时出错。";
   public static final String CLASSLOADER_NOT_DETERMINED = "无法确定用于加载类的 ClassLoader。";
 
+  // --- binaryallocator ---
+  public static final String BINARY_ALLOCATOR_RUNNING_GC_EVICTION =
+      "二进制分配器正在执行 GC 驱逐";
+  public static final String BINARY_ALLOCATOR_SHUTTING_DOWN_HIGH_GC =
+      "由于 GC 时间百分比过高 ({}%)，二进制分配器正在关闭。";
+  public static final String AUTO_RELEASER_EXIT_INTERRUPTED =
+      "{} 因 InterruptedException 退出。";
+  public static final String STOPPING_COMPONENT = "正在停止 {}";
+  public static final String UNABLE_TO_STOP_AUTO_RELEASER =
+      "在 {} 毫秒后仍无法停止自动释放器";
+  public static final String UNABLE_TO_STOP_EVICTOR = "在 {} 毫秒后仍无法停止驱逐器";
+
   private CommonMessages() {}
 
   public static final String COLLECTION_MUST_NOT_BE_NULL = "集合不能为空。";

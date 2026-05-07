@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.pipe.agent.task.progress;
 
+import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.pipe.agent.task.PipeTaskAgent;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.metric.PipeEventCommitMetrics;
@@ -64,7 +65,7 @@ public class PipeEventCommitManager {
     eventCommitterMap.put(committerKey, eventCommitter);
 
     PipeEventCommitMetrics.getInstance().register(eventCommitter, committerKey.stringify());
-    LOGGER.info("Pipe committer registered for pipe on region: {}", committerKey);
+    LOGGER.info(PipeMessages.PIPE_COMMITTER_REGISTERED, committerKey);
   }
 
   public void deregister(final String pipeName, final long creationTime, final int regionId) {
@@ -75,7 +76,7 @@ public class PipeEventCommitManager {
         (k, v) -> Objects.nonNull(v) ? v + 1 : 0);
 
     PipeEventCommitMetrics.getInstance().deregister(committerKey.stringify());
-    LOGGER.info("Pipe committer deregistered for pipe on region: {}", committerKey);
+    LOGGER.info(PipeMessages.PIPE_COMMITTER_DEREGISTERED, committerKey);
   }
 
   /**
@@ -112,7 +113,7 @@ public class PipeEventCommitManager {
       } catch (final Exception e) {
         if (LOGGER.isDebugEnabled()) {
           LOGGER.debug(
-              "Failed to mark commit rate for pipe task: {}, stack trace: {}",
+              PipeMessages.FAILED_TO_MARK_COMMIT_RATE,
               committerKey,
               Thread.currentThread().getStackTrace());
         }
@@ -150,13 +151,13 @@ public class PipeEventCommitManager {
       if (LOGGER.isDebugEnabled()) {
         if (committerKey.getRestartTimes() < currentRestartTimes) {
           LOGGER.debug(
-              "stale PipeEventCommitter({}) when commit event: {}, current restart times {}",
+              PipeMessages.STALE_PIPE_EVENT_COMMITTER,
               committerKey,
               event.coreReportMessage(),
               currentRestartTimes);
         } else {
           LOGGER.debug(
-              "missing PipeEventCommitter({}) when commit event: {}, stack trace: {}",
+              PipeMessages.MISSING_PIPE_EVENT_COMMITTER,
               committerKey,
               event.coreReportMessage(),
               Thread.currentThread().getStackTrace());

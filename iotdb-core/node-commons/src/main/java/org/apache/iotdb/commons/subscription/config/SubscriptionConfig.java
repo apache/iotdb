@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.subscription.config;
 
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.i18n.PipeMessages;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -160,14 +161,24 @@ public class SubscriptionConfig {
     LOGGER.info(
         "SubscriptionPrefetchTsFileBatchMaxSizeInBytes: {}",
         getSubscriptionPrefetchTsFileBatchMaxSizeInBytes());
-    LOGGER.info("SubscriptionPollMaxBlockingTimeMs: {}", getSubscriptionPollMaxBlockingTimeMs());
-    LOGGER.info("SubscriptionDefaultTimeoutInMs: {}", getSubscriptionDefaultTimeoutInMs());
-    LOGGER.info("SubscriptionLaunchRetryIntervalMs: {}", getSubscriptionLaunchRetryIntervalMs());
+    LOGGER.info(
+        PipeMessages.CONFIG_SUBSCRIPTION_POLL_MAX_BLOCKING_TIME_MS,
+        getSubscriptionPollMaxBlockingTimeMs());
+    LOGGER.info(
+        PipeMessages.CONFIG_SUBSCRIPTION_DEFAULT_TIMEOUT_IN_MS,
+        getSubscriptionDefaultTimeoutInMs());
+    LOGGER.info(
+        PipeMessages.CONFIG_SUBSCRIPTION_LAUNCH_RETRY_INTERVAL_MS,
+        getSubscriptionLaunchRetryIntervalMs());
     LOGGER.info(
         "SubscriptionRecycleUncommittedEventIntervalMs: {}",
         getSubscriptionRecycleUncommittedEventIntervalMs());
-    LOGGER.info("SubscriptionReadFileBufferSize: {}", getSubscriptionReadFileBufferSize());
-    LOGGER.info("SubscriptionReadTabletBufferSize: {}", getSubscriptionReadTabletBufferSize());
+    LOGGER.info(
+        PipeMessages.CONFIG_SUBSCRIPTION_READ_FILE_BUFFER_SIZE,
+        getSubscriptionReadFileBufferSize());
+    LOGGER.info(
+        PipeMessages.CONFIG_SUBSCRIPTION_READ_TABLET_BUFFER_SIZE,
+        getSubscriptionReadTabletBufferSize());
     LOGGER.info(
         "SubscriptionTsFileDeduplicationWindowSeconds: {}",
         getSubscriptionTsFileDeduplicationWindowSeconds());
@@ -188,7 +199,8 @@ public class SubscriptionConfig {
     LOGGER.info(
         "SubscriptionLogManagerBaseIntervalMs: {}", getSubscriptionLogManagerBaseIntervalMs());
 
-    LOGGER.info("SubscriptionPrefetchEnabled: {}", getSubscriptionPrefetchEnabled());
+    LOGGER.info(
+        PipeMessages.CONFIG_SUBSCRIPTION_PREFETCH_ENABLED, getSubscriptionPrefetchEnabled());
     LOGGER.info(
         "SubscriptionPrefetchMemoryThreshold: {}", getSubscriptionPrefetchMemoryThreshold());
     LOGGER.info(

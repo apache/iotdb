@@ -106,6 +106,18 @@ public final class CommonMessages {
   public static final String CLASSLOADER_NOT_DETERMINED =
       "A ClassLoader to load the class could not be determined.";
 
+  // --- binaryallocator ---
+  public static final String BINARY_ALLOCATOR_RUNNING_GC_EVICTION =
+      "Binary allocator running GC eviction";
+  public static final String BINARY_ALLOCATOR_SHUTTING_DOWN_HIGH_GC =
+      "Binary allocator is shutting down because of high GC time percentage {}%.";
+  public static final String AUTO_RELEASER_EXIT_INTERRUPTED =
+      "{} exits due to interruptedException.";
+  public static final String STOPPING_COMPONENT = "Stopping {}";
+  public static final String UNABLE_TO_STOP_AUTO_RELEASER =
+      "unable to stop auto releaser after {} ms";
+  public static final String UNABLE_TO_STOP_EVICTOR = "unable to stop evictor after {} ms";
+
   private CommonMessages() {}
 
   public static final String COLLECTION_MUST_NOT_BE_NULL = "Collection must not be null.";

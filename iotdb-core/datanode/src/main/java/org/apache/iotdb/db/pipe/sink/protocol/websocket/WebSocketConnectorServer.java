@@ -178,8 +178,7 @@ public class WebSocketConnectorServer extends WebSocketServer {
   public void onClose(WebSocket webSocket, int code, String reason, boolean remote) {
     if (webSocket.getRemoteSocketAddress() != null) {
       LOGGER.info(
-          "The websocket connection from client {}:{} has been closed! "
-              + "The code is {}. The reason is {}. Is it closed by remote? {}",
+          DataNodePipeMessages.THE_WEBSOCKET_CONNECTION_FROM_CLIENT_HAS_BEEN_1,
           webSocket.getRemoteSocketAddress().getHostName(),
           webSocket.getRemoteSocketAddress().getPort(),
           code,
@@ -187,11 +186,7 @@ public class WebSocketConnectorServer extends WebSocketServer {
           remote);
     } else {
       LOGGER.warn(
-          "The websocket connection from client has been closed!"
-              + "The code is {}. The reason is {}. Is it closed by remote? {}",
-          code,
-          reason,
-          remote);
+          DataNodePipeMessages.THE_WEBSOCKET_CONNECTION_FROM_CLIENT_HAS_BEEN, code, reason, remote);
     }
     router.remove(router.getKey(webSocket));
   }
@@ -246,8 +241,7 @@ public class WebSocketConnectorServer extends WebSocketServer {
     final String pipeName = router.getKey(webSocket);
     if (pipeName == null) {
       LOGGER.warn(
-          "The websocket connection from {}:{} has been closed, "
-              + "but the ack message of commitId: {} is received.",
+          DataNodePipeMessages.THE_WEBSOCKET_CONNECTION_FROM_HAS_BEEN_CLOSED,
           webSocket.getRemoteSocketAddress().getHostName(),
           webSocket.getRemoteSocketAddress().getPort(),
           eventId);
@@ -276,8 +270,7 @@ public class WebSocketConnectorServer extends WebSocketServer {
     final String pipeName = router.getKey(webSocket);
     if (pipeName == null) {
       LOGGER.warn(
-          "The websocket connection from {}:{} has been closed, "
-              + "but the error message of commitId: {} is received.",
+          DataNodePipeMessages.THE_WEBSOCKET_CONNECTION_FROM_HAS_BEEN_CLOSED_1,
           webSocket.getRemoteSocketAddress().getHostName(),
           webSocket.getRemoteSocketAddress().getPort(),
           eventId);
@@ -310,13 +303,13 @@ public class WebSocketConnectorServer extends WebSocketServer {
   public void onError(WebSocket webSocket, Exception e) {
     if (webSocket.getRemoteSocketAddress() != null) {
       LOGGER.warn(
-          "Got an error \"{}\" from {}:{}.",
+          DataNodePipeMessages.GOT_AN_ERROR_FROM,
           e.getMessage(),
           webSocket.getLocalSocketAddress().getHostName(),
           webSocket.getLocalSocketAddress().getPort(),
           e);
     } else {
-      LOGGER.warn("Got an error \"{}\" from an unknown client.", e.getMessage(), e);
+      LOGGER.warn(DataNodePipeMessages.GOT_AN_ERROR_FROM_AN_UNKNOWN_CLIENT, e.getMessage(), e);
       // if the remote socket address is null, it means the connection is not established yet.
       // we should close the connection manually.
       router.remove(router.getKey(webSocket));
@@ -424,8 +417,8 @@ public class WebSocketConnectorServer extends WebSocketServer {
           tabletBuffer = ((PipeRawTabletInsertionEvent) event).convertToTablet().serialize();
         } else {
           throw new NotImplementedException(
-              "IoTDBCDCConnector only support "
-                  + "PipeInsertNodeTabletInsertionEvent and PipeRawTabletInsertionEvent.");
+              DataNodePipeMessages
+                  .IOTDBCDCCONNECTOR_ONLY_SUPPORT_PIPEINSERTNODETABLETINSERTIONEVENT_AND_PIPERAWTAB);
         }
 
         if (tabletBuffer == null) {

@@ -83,6 +83,12 @@ public final class UtilMessages {
       "Deleted the file {} because it already exists in the target directory: {}";
   public static final String FAILED_TO_CREATE_TARGET_DIRECTORY =
       "failed to create target directory: {}";
+  public static final String RENAMED_FILE_ALREADY_EXISTS =
+      "Renamed file {} to {} because it already exists in the target directory: {}";
+  public static final String COPIED_FILE_ALREADY_EXISTS =
+      "Copy file {} to {} because it already exists in the target directory: {}";
+  public static final String ILLEGAL_PATH_DOTS_OR_SEPARATORS =
+      "The path cannot be '.', '..', './' or '.\\'. ";
 
   // ======================== IOUtils ========================
 

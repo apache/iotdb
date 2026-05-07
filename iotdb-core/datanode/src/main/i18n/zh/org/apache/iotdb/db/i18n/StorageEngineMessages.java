@@ -378,6 +378,17 @@ public final class StorageEngineMessages {
   public static final String COPY_SOURCE_FILE_NOT_EXIST = "复制源文件 {} 不存在";
   public static final String CANNOT_CREATE_DIRECTORY = "无法创建目录: ";
   public static final String CLEANING_UP_SNAPSHOT_DIR = "正在清理 {} 的快照目录";
+  public static final String FAILED_TO_CREATE_DIR = "创建目录 %s 失败";
+  public static final String FAILED_TO_TAKE_SNAPSHOT_CLEAN_UP = "为 {}-{} 创建快照失败，正在清理";
+  public static final String SUCCESSFULLY_TAKE_SNAPSHOT = "已成功为 {}-{} 创建快照，快照目录为 {}";
+  public static final String EXCEPTION_TAKING_SNAPSHOT = "为 {}-{} 创建快照时发生异常";
+  public static final String SNAPSHOT_COMPRESSION_RATIO_IN_DIR = "快照压缩率文件 {} 已保存到 {}。";
+  public static final String CANNOT_SNAPSHOT_COMPRESSION_RATIO = "无法快照压缩率文件 {} 到 {}。";
+  public static final String CLEAR_SNAPSHOT_DIR_FAIL = "清理快照目录失败，请在再次执行 Region 迁移前手动删除此目录: {}";
+  public static final String HARD_LINK_SOURCE_FILE_RETRY = "硬链接源文件 {} 不存在，将重试 {} 次...";
+  public static final String TRY_SHOW_FILES_IN_PARENT_DIR = "尝试显示父目录中的所有文件...";
+  public static final String CANNOT_SHOW_FILES_PARENT_DIR_NULL = "无法显示文件，因为父目录为空";
+  public static final String FAILED_DELETE_FOLDER_CLEANING_UP = "清理时删除目录 {} 失败";
 
   // ======================== TsFile Resource ========================
 

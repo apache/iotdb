@@ -287,7 +287,8 @@ public class ObjectNode extends SearchNode implements WALEntryValue {
         }
       }
       if (!readSuccess && LOGGER.isDebugEnabled()) {
-        LOGGER.debug("Error when read object file {}.", filePath.toString(), ioException);
+        LOGGER.debug(
+            DataNodeQueryMessages.ERROR_WHEN_READ_OBJECT_FILE, filePath.toString(), ioException);
       }
       ReadWriteIOUtils.write(readSuccess && isEOF, stream);
       ReadWriteIOUtils.write(offset, stream);

@@ -379,6 +379,16 @@ public final class StorageEngineMessages {
   public static final String CANNOT_CREATE_DIRECTORY = "Cannot create directory ";
   public static final String CLEANING_UP_SNAPSHOT_DIR = "Cleaning up snapshot dir for {}";
   public static final String FAILED_TO_CREATE_DIR = "Failed to create directory %s";
+  public static final String FAILED_TO_TAKE_SNAPSHOT_CLEAN_UP = "Failed to take snapshot for {}-{}, clean up";
+  public static final String SUCCESSFULLY_TAKE_SNAPSHOT = "Successfully take snapshot for {}-{}, snapshot directory is {}";
+  public static final String EXCEPTION_TAKING_SNAPSHOT = "Exception occurs when taking snapshot for {}-{}";
+  public static final String SNAPSHOT_COMPRESSION_RATIO_IN_DIR = "Snapshot compression ratio {} in {}.";
+  public static final String CANNOT_SNAPSHOT_COMPRESSION_RATIO = "Cannot snapshot compression ratio {} in {}.";
+  public static final String CLEAR_SNAPSHOT_DIR_FAIL = "Clear snapshot dir fail, you should manually delete this dir before do region migration again: {}";
+  public static final String HARD_LINK_SOURCE_FILE_RETRY = "Hard link source file {} doesn't exist, will retry for {} times...";
+  public static final String TRY_SHOW_FILES_IN_PARENT_DIR = "Try to show all files in parent dir...";
+  public static final String CANNOT_SHOW_FILES_PARENT_DIR_NULL = "Cannot show files because parent dir is null";
+  public static final String FAILED_DELETE_FOLDER_CLEANING_UP = "Failed to delete folder {} when cleaning up";
 
   // ======================== TsFile Resource ========================
 

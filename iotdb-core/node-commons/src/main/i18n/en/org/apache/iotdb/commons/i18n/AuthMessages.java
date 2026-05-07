@@ -58,6 +58,8 @@ public final class AuthMessages {
   public static final String GET_ALL_USERS_FAILED = "get all users failed, No such user: {}";
   public static final String GET_ALL_ROLES_FAILED = "get all roles failed, No such role: {}";
 
+  public static final String ROLE_ALREADY_EXISTS_LOG = "Role {} already exists";
+
   // ======================== BasicRoleManager ========================
 
   public static final String NO_SUCH_ROLE_FMT = "No such role %s";

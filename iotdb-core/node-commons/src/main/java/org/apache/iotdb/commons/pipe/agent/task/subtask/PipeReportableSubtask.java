@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkNonReportTimeConfigurableException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkRetryTimesConfigurableException;
+import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 
@@ -46,7 +47,7 @@ public abstract class PipeReportableSubtask extends PipeSubtask {
   @Override
   public synchronized void onFailure(final Throwable throwable) {
     if (isClosed.get()) {
-      LOGGER.info("onFailure in pipe subtask, ignored because pipe is dropped.", throwable);
+      LOGGER.info(PipeMessages.ON_FAILURE_IGNORED_PIPE_DROPPED, throwable);
       clearReferenceCountAndReleaseLastEvent(null);
       return;
     }
@@ -196,7 +197,7 @@ public abstract class PipeReportableSubtask extends PipeSubtask {
         Thread.sleep(10);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
-        LOGGER.warn("Interrupted while waiting for the high priority lock task.", e);
+        LOGGER.warn(PipeMessages.INTERRUPTED_WAITING_HIGH_PRIORITY, e);
         break;
       }
     }

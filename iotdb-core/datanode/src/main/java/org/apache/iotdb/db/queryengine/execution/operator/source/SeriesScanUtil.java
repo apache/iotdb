@@ -712,7 +712,9 @@ public class SeriesScanUtil implements Accountable {
 
     if (LOGGER.isDebugEnabled()) {
       for (IPageReader pageReader : pageReaderList) {
-        LOGGER.debug("[SeriesScanUtil] pageReader.isModified() is {}", pageReader.isModified());
+        LOGGER.debug(
+            DataNodeQueryMessages.SERIES_SCAN_UTIL_PAGE_READER_IS_MODIFIED,
+            pageReader.isModified());
       }
     }
   }
@@ -2065,7 +2067,9 @@ public class SeriesScanUtil implements Accountable {
           tsBlock.reverse();
         }
         if (LOGGER.isDebugEnabled()) {
-          LOGGER.debug("[getAllSatisfiedPageData] TsBlock:{}", CommonUtils.toString(tsBlock));
+          LOGGER.debug(
+              DataNodeQueryMessages.GET_ALL_SATISFIED_PAGE_DATA_TSBLOCK,
+              CommonUtils.toString(tsBlock));
         }
         return tsBlock;
       } finally {

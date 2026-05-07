@@ -62,7 +62,7 @@ public class FakeCRC32Deserializer<T> implements IDeserializer<T> {
     dataInputStream.changeInputStream(inputStream);
     int logLength = dataInputStream.readInt();
     if (logLength <= 0) {
-      LOGGER.error("Read log length {} is negative.", logLength);
+      LOGGER.error(DataNodeSchemaMessages.READ_LOG_LENGTH_NEGATIVE_LOG, logLength);
       throw new IOException(
           new IllegalArgumentException(
               String.format(DataNodeSchemaMessages.READ_LOG_LENGTH_NEGATIVE, logLength)));
