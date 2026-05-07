@@ -28,6 +28,9 @@
     </parent>
     <artifactId>iotdb-ainode</artifactId>
     <name>IoTDB: Core: AINode</name>
+    <properties>
+        <ainode.cleanBuildCache>false</ainode.cleanBuildCache>
+    </properties>
     <dependencies>
         <!-- These dependencies are just added to ensure the other modules are built first -->
         <dependency>
@@ -189,6 +192,7 @@
                             <workingDirectory>${project.basedir}</workingDirectory>
                             <arguments>
                                 <argument>build_binary.py</argument>
+                                <argument>--clean-build-cache=${ainode.cleanBuildCache}</argument>
                             </arguments>
                         </configuration>
                     </execution>

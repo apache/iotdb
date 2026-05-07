@@ -21,7 +21,9 @@
 PyInstaller build script (Python version)
 """
 
+import argparse
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -48,7 +50,142 @@ def get_venv_base_dir():
     return base_dir
 
 
-def setup_venv():
+def parse_bool(value):
+    """Parse boolean values passed from Maven properties."""
+    return str(value).strip().lower() in ("1", "true", "yes", "y", "on")
+
+
+def parse_args():
+    """Parse command line arguments."""
+    parser = argparse.ArgumentParser(description="Build the IoTDB AINode binary.")
+    parser.add_argument(
+        "--clean-build-cache",
+        default="false",
+        help="Remove the cached AINode build virtual environment before building.",
+    )
+    return parser.parse_args()
+
+
+def clean_build_cache():
+    """Remove the platform-specific AINode build cache directory."""
+    cache_dir = get_venv_base_dir()
+    if cache_dir.exists():
+        print(f"Cleaning AINode build cache: {cache_dir}")
+        shutil.rmtree(cache_dir)
+        print("AINode build cache cleaned successfully")
+    else:
+        print(f"AINode build cache does not exist, skipping clean: {cache_dir}")
+
+
+def read_python_constraint(script_dir):
+    """Read the Python version constraint from pyproject.toml."""
+    pyproject = script_dir / "pyproject.toml"
+    try:
+        content = pyproject.read_text(encoding="utf-8")
+    except OSError as e:
+        print(f"ERROR: Failed to read Python constraint from {pyproject}: {e}")
+        sys.exit(1)
+
+    match = re.search(r'^\s*python\s*=\s*"([^"]+)"\s*$', content, re.MULTILINE)
+    if not match:
+        print(f"ERROR: Python version constraint is not found in {pyproject}")
+        sys.exit(1)
+    return match.group(1)
+
+
+def parse_version(version_text):
+    """Parse a Python version string into a comparable tuple."""
+    match = re.search(r"(\d+)\.(\d+)(?:\.(\d+))?", version_text)
+    if not match:
+        return None
+    return tuple(int(part or 0) for part in match.groups())
+
+
+def compare_versions(left, right):
+    """Compare two version tuples."""
+    max_len = max(len(left), len(right))
+    normalized_left = left + (0,) * (max_len - len(left))
+    normalized_right = right + (0,) * (max_len - len(right))
+    if normalized_left < normalized_right:
+        return -1
+    if normalized_left > normalized_right:
+        return 1
+    return 0
+
+
+def version_satisfies_constraint(version, constraint):
+    """Check whether the Python version satisfies a simple Poetry constraint."""
+    for part in constraint.split(","):
+        condition = part.strip()
+        if not condition:
+            continue
+
+        operator = None
+        for candidate in (">=", "<=", "==", ">", "<"):
+            if condition.startswith(candidate):
+                operator = candidate
+                expected_text = condition[len(candidate) :].strip()
+                break
+        if not operator:
+            print(f"ERROR: Unsupported Python version constraint: {constraint}")
+            sys.exit(1)
+
+        expected_version = parse_version(expected_text)
+        if expected_version is None:
+            print(f"ERROR: Unsupported Python version constraint: {constraint}")
+            sys.exit(1)
+
+        comparison = compare_versions(version, expected_version)
+        if operator == ">=" and comparison < 0:
+            return False
+        if operator == "<=" and comparison > 0:
+            return False
+        if operator == "==" and comparison != 0:
+            return False
+        if operator == ">" and comparison <= 0:
+            return False
+        if operator == "<" and comparison >= 0:
+            return False
+    return True
+
+
+def get_python_version(python_executable):
+    """Return the version tuple and display string for a Python executable."""
+    result = subprocess.run(
+        [str(python_executable), "--version"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if result.returncode != 0:
+        return None, None
+
+    version_text = (result.stdout or result.stderr).strip()
+    version = parse_version(version_text)
+    return version, version_text
+
+
+def validate_python_version(python_executable, python_constraint, source):
+    """Validate that a Python executable satisfies the project constraint."""
+    version, version_text = get_python_version(python_executable)
+    if version is None:
+        print(f"ERROR: Failed to get Python version from {source}: {python_executable}")
+        sys.exit(1)
+
+    if not version_satisfies_constraint(version, python_constraint):
+        print(
+            f"ERROR: {source} uses {version_text}, but AINode requires Python {python_constraint}."
+        )
+        print(
+            "Please use a compatible Python executable or clean the AINode build cache with "
+            "-Dainode.cleanBuildCache=true."
+        )
+        sys.exit(1)
+
+    print(f"{source} Python version is compatible: {version_text}")
+
+
+def setup_venv(python_constraint):
     """
     Create virtual environment outside the project directory.
 
@@ -67,8 +204,12 @@ def setup_venv():
 
     if venv_dir.exists():
         print(f"Virtual environment already exists at: {venv_dir}")
+        validate_python_version(
+            get_venv_python(venv_dir), python_constraint, "Cached virtual environment"
+        )
         return venv_dir
 
+    validate_python_version(sys.executable, python_constraint, "Current build")
     venv_base_dir.mkdir(parents=True, exist_ok=True)
     print(f"Creating virtual environment at: {venv_dir}")
     subprocess.run([sys.executable, "-m", "venv", str(venv_dir)], check=True)
@@ -554,9 +695,14 @@ def build():
     3. Install project dependencies (including PyInstaller from pyproject.toml)
     4. Build executable using PyInstaller
     """
+    args = parse_args()
     script_dir = Path(__file__).parent
+    python_constraint = read_python_constraint(script_dir)
 
-    venv_dir = setup_venv()
+    if parse_bool(args.clean_build_cache):
+        clean_build_cache()
+
+    venv_dir = setup_venv(python_constraint)
     venv_python = get_venv_python(venv_dir)
 
     update_pip(venv_python)
