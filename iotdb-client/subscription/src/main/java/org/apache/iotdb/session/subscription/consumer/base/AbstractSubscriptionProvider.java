@@ -102,6 +102,7 @@ public abstract class AbstractSubscriptionProvider {
       final int port,
       final String username,
       final String password,
+      final String encryptedPassword,
       final int thriftMaxFrameSize,
       final int connectionTimeoutInMs);
 
@@ -122,6 +123,7 @@ public abstract class AbstractSubscriptionProvider {
                 endPoint.port,
                 username,
                 password,
+                encryptedPassword,
                 thriftMaxFrameSize,
                 connectionTimeoutInMs));
     this.endPoint = endPoint;

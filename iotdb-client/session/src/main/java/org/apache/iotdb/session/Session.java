@@ -128,6 +128,7 @@ public class Session implements ISession {
   protected List<String> nodeUrls;
   protected String username;
   protected String password;
+  protected boolean useEncryptedPassword;
   protected int fetchSize;
   protected boolean useSSL;
   protected String trustStore;
@@ -466,6 +467,7 @@ public class Session implements ISession {
     this.enableRecordsAutoConvertTablet = builder.enableRecordsAutoConvertTablet;
     this.username = builder.username;
     this.password = builder.pw;
+    this.useEncryptedPassword = builder.useEncryptedPassword;
     this.fetchSize = builder.fetchSize;
     this.zoneId = builder.zoneId;
     this.thriftDefaultBufferSize = builder.thriftDefaultBufferSize;
