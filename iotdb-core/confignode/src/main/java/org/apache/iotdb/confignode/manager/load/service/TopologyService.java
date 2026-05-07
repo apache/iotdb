@@ -130,8 +130,10 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
 
   public synchronized void stopTopologyService() {
     shouldRun.set(false);
-    future.cancel(true);
-    future = null;
+    if (future != null) {
+      future.cancel(true);
+      future = null;
+    }
     heartbeats.clear();
     LOGGER.info("Topology Probing has stopped successfully");
   }
@@ -148,9 +150,7 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
   @Override
   public void run() {
     while (shouldRun.get() && mayWait()) {
-      if (CONF.isEnableTopologyProbing()) {
-        topologyProbing();
-      }
+      topologyProbing();
     }
   }
 
