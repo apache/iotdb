@@ -735,6 +735,21 @@ failure_detector_phi_threshold=30
 # Datatype: long
 failure_detector_phi_acceptable_pause_in_ms=10000
 
+# Whether to enable topology probing between DataNodes
+# effectiveMode: hot_reload
+# Datatype: Boolean
+# enable_topology_probing=false
+
+# Base interval in ms for topology probing between DataNodes
+# effectiveMode: restart
+# Datatype: long
+# topology_probing_base_interval_in_ms=5000
+
+# Ratio of probing timeout to probing interval (must be less than 1.0)
+# effectiveMode: restart
+# Datatype: double
+# topology_probing_timeout_ratio=0.5
+
 # Disk remaining threshold at which DataNode is set to ReadOnly status
 # effectiveMode: restart
 # Datatype: double(percentage)
