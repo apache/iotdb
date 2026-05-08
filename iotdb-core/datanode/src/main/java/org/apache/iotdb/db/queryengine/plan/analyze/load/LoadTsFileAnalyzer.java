@@ -761,15 +761,6 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
         : alignedChunkMetadata.getTimeChunkMetadata().getStatistics().getCount();
   }
 
-  private static long getTableWritePointCount(
-      final List<TimeseriesMetadata> timeseriesMetadataList) {
-    return timeseriesMetadataList.stream()
-        .filter(Objects::nonNull)
-        .filter(timeseriesMetadata -> Objects.nonNull(timeseriesMetadata.getStatistics()))
-        .mapToLong(timeseriesMetadata -> timeseriesMetadata.getStatistics().getCount())
-        .sum();
-  }
-
   private void addWritePointCount(long writePointCount) {
     if (isTableModelStatement) {
       loadTsFileTableStatement.addWritePointCount(writePointCount);
