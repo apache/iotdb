@@ -198,55 +198,55 @@ public class SpookyHashV2Utils {
     // last 15 bytes
     h3 += ((long) length) << 56;
     switch (remainder) {
-      case 0:
-        h2 += MAGIC_CONSTANT;
-        h3 += MAGIC_CONSTANT;
-        break;
-      case 1:
-        h2 += (data[current] & 0xFFL);
-        break;
-      case 2:
-        h2 += (data[current + 1] & 0xFFL) << 8;
-        break;
-      case 3:
-        h2 += (data[current + 2] & 0xFFL) << 16;
-        break;
-      case 4:
-        h2 += getUnsignedIntFromBytesWithLittleEndian(data, current);
-        break;
-      case 5:
-        h2 += (data[current + 4] & 0xFFL) << 32;
-        break;
-      case 6:
-        h2 += (data[current + 5] & 0xFFL) << 40;
-        break;
-      case 7:
-        h2 += (data[current + 6] & 0xFFL) << 48;
-        break;
-      case 8:
-        h2 += getLongFromBytesWithLittleEndian(data, current);
-        break;
-      case 9:
-        h3 += (data[current + 8] & 0xFFL);
-        break;
-      case 10:
-        h3 += (data[current + 9] & 0xFFL) << 8;
-        break;
-      case 11:
-        h3 += (data[current + 10] & 0xFFL) << 16;
-        break;
+      case 15:
+        h3 += (data[current + 14] & 0xFFL) << 48;
+      // fall through
+      case 14:
+        h3 += (data[current + 13] & 0xFFL) << 40;
+      // fall through
+      case 13:
+        h3 += (data[current + 12] & 0xFFL) << 32;
+      // fall through
       case 12:
         h3 += getUnsignedIntFromBytesWithLittleEndian(data, current + 8);
         h2 += getLongFromBytesWithLittleEndian(data, current);
         break;
-      case 13:
-        h3 += (data[current + 12] & 0xFFL) << 32;
+      case 11:
+        h3 += (data[current + 10] & 0xFFL) << 16;
+      // fall through
+      case 10:
+        h3 += (data[current + 9] & 0xFFL) << 8;
+      // fall through
+      case 9:
+        h3 += (data[current + 8] & 0xFFL);
+      // fall through
+      case 8:
+        h2 += getLongFromBytesWithLittleEndian(data, current);
         break;
-      case 14:
-        h3 += (data[current + 13] & 0xFFL) << 40;
+      case 7:
+        h2 += (data[current + 6] & 0xFFL) << 48;
+      // fall through
+      case 6:
+        h2 += (data[current + 5] & 0xFFL) << 40;
+      // fall through
+      case 5:
+        h2 += (data[current + 4] & 0xFFL) << 32;
+      // fall through
+      case 4:
+        h2 += getUnsignedIntFromBytesWithLittleEndian(data, current);
         break;
-      case 15:
-        h3 += (data[current + 14] & 0xFFL) << 48;
+      case 3:
+        h2 += (data[current + 2] & 0xFFL) << 16;
+      // fall through
+      case 2:
+        h2 += (data[current + 1] & 0xFFL) << 8;
+      // fall through
+      case 1:
+        h2 += (data[current] & 0xFFL);
+        break;
+      case 0:
+        h2 += MAGIC_CONSTANT;
+        h3 += MAGIC_CONSTANT;
         break;
       default:
         throw new AssertionError("Unexpected value for remainder: " + remainder);
@@ -398,40 +398,40 @@ public class SpookyHashV2Utils {
 
     // handle remaining whole 8-byte sequences
     switch (sequences) {
-      case 0:
-        break;
-      case 1:
-        h0 += getLongFromBytesWithLittleEndian(data, current);
-        break;
-      case 2:
-        h1 += getLongFromBytesWithLittleEndian(data, current + SIZE_OF_LONG);
-        break;
-      case 3:
-        h2 += getLongFromBytesWithLittleEndian(data, current + 2 * SIZE_OF_LONG);
-        break;
-      case 4:
-        h3 += getLongFromBytesWithLittleEndian(data, current + 3 * SIZE_OF_LONG);
-        break;
-      case 5:
-        h4 += getLongFromBytesWithLittleEndian(data, current + 4 * SIZE_OF_LONG);
-        break;
-      case 6:
-        h5 += getLongFromBytesWithLittleEndian(data, current + 5 * SIZE_OF_LONG);
-        break;
-      case 7:
-        h6 += getLongFromBytesWithLittleEndian(data, current + 6 * SIZE_OF_LONG);
-        break;
-      case 8:
-        h7 += getLongFromBytesWithLittleEndian(data, current + 7 * SIZE_OF_LONG);
-        break;
-      case 9:
-        h8 += getLongFromBytesWithLittleEndian(data, current + 8 * SIZE_OF_LONG);
-        break;
-      case 10:
-        h9 += getLongFromBytesWithLittleEndian(data, current + 9 * SIZE_OF_LONG);
-        break;
       case 11:
         h10 += getLongFromBytesWithLittleEndian(data, current + 10 * SIZE_OF_LONG);
+      // fall through
+      case 10:
+        h9 += getLongFromBytesWithLittleEndian(data, current + 9 * SIZE_OF_LONG);
+      // fall through
+      case 9:
+        h8 += getLongFromBytesWithLittleEndian(data, current + 8 * SIZE_OF_LONG);
+      // fall through
+      case 8:
+        h7 += getLongFromBytesWithLittleEndian(data, current + 7 * SIZE_OF_LONG);
+      // fall through
+      case 7:
+        h6 += getLongFromBytesWithLittleEndian(data, current + 6 * SIZE_OF_LONG);
+      // fall through
+      case 6:
+        h5 += getLongFromBytesWithLittleEndian(data, current + 5 * SIZE_OF_LONG);
+      // fall through
+      case 5:
+        h4 += getLongFromBytesWithLittleEndian(data, current + 4 * SIZE_OF_LONG);
+      // fall through
+      case 4:
+        h3 += getLongFromBytesWithLittleEndian(data, current + 3 * SIZE_OF_LONG);
+      // fall through
+      case 3:
+        h2 += getLongFromBytesWithLittleEndian(data, current + 2 * SIZE_OF_LONG);
+      // fall through
+      case 2:
+        h1 += getLongFromBytesWithLittleEndian(data, current + SIZE_OF_LONG);
+      // fall through
+      case 1:
+        h0 += getLongFromBytesWithLittleEndian(data, current);
+      // fall through
+      case 0:
         break;
       default:
         throw new AssertionError("Unexpected value for sequences: " + sequences);
@@ -442,28 +442,28 @@ public class SpookyHashV2Utils {
     // read the last sequence of 0-7 bytes
     long last = 0;
     switch (limit - current) {
-      case 0:
-        break;
-      case 1:
-        last |= (data[current] & 0xFFL);
-        break;
-      case 2:
-        last |= (data[current + 1] & 0xFFL) << 8;
-        break;
-      case 3:
-        last |= (data[current + 2] & 0xFFL) << 16;
-        break;
-      case 4:
-        last |= (data[current + 3] & 0xFFL) << 24;
-        break;
-      case 5:
-        last |= (data[current + 4] & 0xFFL) << 32;
-        break;
-      case 6:
-        last |= (data[current + 5] & 0xFFL) << 40;
-        break;
       case 7:
         last |= (data[current + 6] & 0xFFL) << 48;
+      // fall through
+      case 6:
+        last |= (data[current + 5] & 0xFFL) << 40;
+      // fall through
+      case 5:
+        last |= (data[current + 4] & 0xFFL) << 32;
+      // fall through
+      case 4:
+        last |= (data[current + 3] & 0xFFL) << 24;
+      // fall through
+      case 3:
+        last |= (data[current + 2] & 0xFFL) << 16;
+      // fall through
+      case 2:
+        last |= (data[current + 1] & 0xFFL) << 8;
+      // fall through
+      case 1:
+        last |= (data[current] & 0xFFL);
+      // fall through
+      case 0:
         break;
       default:
         throw new AssertionError("Unexpected size for last sequence: " + (limit - current));
