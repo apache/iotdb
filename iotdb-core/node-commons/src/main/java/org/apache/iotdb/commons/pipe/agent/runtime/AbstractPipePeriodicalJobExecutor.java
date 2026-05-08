@@ -73,7 +73,7 @@ public abstract class AbstractPipePeriodicalJobExecutor {
             },
             Math.max(intervalInSeconds / minIntervalSeconds, 1)));
     LOGGER.info(
-        "Pipe periodical job {} is registered successfully. Interval: {} seconds.",
+        PipeMessages.PERIODICAL_JOB_REGISTERED,
         id,
         Math.max(intervalInSeconds / minIntervalSeconds, 1) * minIntervalSeconds);
   }

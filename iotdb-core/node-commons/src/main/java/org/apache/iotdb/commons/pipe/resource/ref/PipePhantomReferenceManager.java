@@ -82,7 +82,7 @@ public abstract class PipePhantomReferenceManager {
 
     if (count != 0) {
       LOGGER.info(
-          "Clean {} pipe phantom reference(s) successfully within {} ms, remaining reference count: {}",
+          PipeMessages.CLEAN_PHANTOM_REFERENCES,
           count,
           System.currentTimeMillis() - startTime,
           getPhantomReferenceCount());

@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.commons.i18n.QueryMessages;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.commons.queryengine.plan.relational.type.InternalTypeManager;
@@ -698,7 +699,7 @@ public class TableHeaderSchemaValidator {
 
       if (tsTable.getColumnSchema(columnName) != null) {
         throw new SemanticException(
-            String.format("Columns in table shall not share the same name %s.", columnName));
+            String.format(QueryMessages.TABLE_COLUMN_NAME_DUPLICATED, columnName));
       }
       TSDataType dataType = measurementInfo.getType(i);
       if (dataType == null && (dataType = measurementInfo.getTypeForFirstValue(i)) == null) {
@@ -750,7 +751,7 @@ public class TableHeaderSchemaValidator {
       final String columnName = columnSchema.getName();
       if (tsTable.getColumnSchema(columnName) != null) {
         throw new SemanticException(
-            String.format("Columns in table shall not share the same name %s.", columnName));
+            String.format(QueryMessages.TABLE_COLUMN_NAME_DUPLICATED, columnName));
       }
       final TSDataType dataType = getTSDataType(columnSchema.getType());
       if (dataType == null) {

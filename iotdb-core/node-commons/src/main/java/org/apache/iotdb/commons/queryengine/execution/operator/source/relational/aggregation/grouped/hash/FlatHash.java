@@ -165,7 +165,7 @@ public final class FlatHash {
 
   private static void longToBytes(byte[] desc, int offset, long num) {
     if (desc.length - offset < 8) {
-      throw new IllegalArgumentException(QueryMessages.INVALID_INPUT_DESC_OFFSET_LT_4);
+      throw new IllegalArgumentException(QueryMessages.INVALID_INPUT_DESC_LENGTH_LT_8);
     }
     for (int ix = 0; ix < 8; ++ix) {
       int i = ix * 8;

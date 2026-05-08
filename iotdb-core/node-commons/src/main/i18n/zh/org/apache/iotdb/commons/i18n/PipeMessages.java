@@ -24,7 +24,6 @@ public final class PipeMessages {
   // ===================== Common / Shared =====================
 
   public static final String UTILITY_CLASS = "工具类";
-  public static final String INVALID_INPUT = "无效输入：%s";
 
   // ===================== PipeConfig (printAllConfigs) =====================
 
@@ -292,8 +291,6 @@ public final class PipeMessages {
   public static final String PIPE_ALREADY_DROPPED_RECREATING =
       "Pipe {}（创建时间 = {}）已被删除，但 pipe 任务元数据尚未清理。"
           + "当前状态 = {}。尝试删除并重新创建。";
-  public static final String PIPE_ALREADY_DROPPED_SKIP =
-      "Pipe {}（创建时间 = {}）已被删除或尚未创建。跳过删除。";
   public static final String PIPE_ALREADY_DROPPED_SKIP_NO_CREATION_TIME =
       "Pipe {} 已被删除或尚未创建。跳过删除。";
   public static final String PIPE_ALREADY_DROPPED_SKIP_STARTING =
@@ -432,10 +429,6 @@ public final class PipeMessages {
       "无效状态：orderId={}，originReqType={}，originBodySize={}，sliceCount={}，sliceBodies.size={}";
   public static final String ORDER_ID_MISMATCH =
       "Order ID 不匹配：期望 {}，实际 {}";
-  public static final String ORIGIN_REQUEST_TYPE_MISMATCH =
-      "原始请求类型不匹配：期望 {}，实际 {}";
-  public static final String ORIGIN_BODY_SIZE_MISMATCH =
-      "原始请求体大小不匹配：期望 {}，实际 {}";
   public static final String SLICE_COUNT_MISMATCH =
       "分片数量不匹配：期望 {}，实际 {}";
 
@@ -500,9 +493,6 @@ public final class PipeMessages {
 
   public static final String ILLEGAL_IOTDB_PIPE_PATTERN =
       "非法的 IoTDBPipePattern：%s";
-  public static final String ILLEGAL_DATABASE_OR_TABLE_PATTERN =
-      "非法的数据库或表模式。详情：%s";
-
   // ===================== ConcurrentIterableLinkedQueue =====================
 
   public static final String NULL_ELEMENT_NOT_ALLOWED = "不允许空元素。";
@@ -521,9 +511,6 @@ public final class PipeMessages {
       "未知的序列化器类型：%s";
 
   // ===================== EnrichedEvent =====================
-
-  public static final String BINDING_PROGRESS_INDEX_NOT_SUPPORTED =
-      "此事件不支持绑定 progressIndex。";
 
   // ===================== PipeEventCommitMetrics =====================
 
@@ -725,7 +712,6 @@ public final class PipeMessages {
   public static final String THROWING_EXCEPTION_IN_PROCESS_TSFILE = "在 process(TsFileInsertionEvent, EventCollector) 中抛出异常";
   public static final String THROWING_EXCEPTION_IN_PROCESS_EVENT = "在 process(Event, EventCollector) 中抛出异常";
   public static final String THROWING_EXCEPTION_IN_CLOSE = "在 close 中抛出异常";
-  public static final String PIPE_INVALID_INPUT = "无效输入：";
   public static final String ILLEGAL_DB_OR_TABLE_PATTERN = "非法的数据库或表模式。详情：";
   public static final String PATH_TRAVERSAL_DETECTED = "（检测到路径遍历）";
   public static final String EVENT_NOT_SUPPORT_BINDING_PROGRESS_INDEX = "该事件不支持绑定 progressIndex。";
@@ -799,14 +785,6 @@ public final class PipeMessages {
       "解析目标服务器节点 URL 时发生异常：{}";
   public static final String PARSE_URL_ERROR_MESSAGE =
       "解析目标服务器节点 URL 时发生错误，请检查指定的 'host':'port' 或 'node-urls'";
-  public static final String NETWORK_ERROR_TRANSFER_FILE =
-      "传输文件 %s 时网络错误，原因：%s。";
-  public static final String TRANSFER_FILE_ERROR = "传输文件 %s 出错。Socket：%s。";
-  public static final String TRANSFER_FILE_ERROR_STATUS =
-      "传输文件 %s 出错，结果状态 %s。";
-  public static final String SOCKET_CLOSED_WILL_HANDSHAKE =
-      "Socket %s 已关闭，将尝试握手";
-
   // ===================== SubscriptionConfig (printAllConfigs) =====================
 
   public static final String CONFIG_SUBSCRIPTION_CACHE_MEMORY_USAGE_PERCENTAGE =
@@ -862,8 +840,4 @@ public final class PipeMessages {
   public static final String CONFIG_SUBSCRIPTION_META_SYNCER_SYNC_INTERVAL_MINUTES =
       "SubscriptionMetaSyncerSyncIntervalMinutes: {}";
 
-  // ===================== PipeTransferSliceReqHandler (additional) =====================
-
-  public static final String INVALID_SLICE_INDEX =
-      "分片索引不匹配：期望 {}，实际 {}";
 }

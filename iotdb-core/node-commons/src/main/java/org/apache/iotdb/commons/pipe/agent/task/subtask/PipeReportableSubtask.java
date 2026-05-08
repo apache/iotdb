@@ -87,7 +87,7 @@ public abstract class PipeReportableSubtask extends PipeSubtask {
 
     if (retryCount.get() == 0) {
       LOGGER.warn(
-          "Failed to execute subtask {} (creation time: {}, simple class: {}), because of {}. Will retry for {} times.",
+          PipeMessages.FAILED_TO_EXECUTE_SUBTASK,
           taskID,
           creationTime,
           this.getClass().getSimpleName(),
@@ -101,7 +101,7 @@ public abstract class PipeReportableSubtask extends PipeSubtask {
       PipeLogger.log(
           LOGGER::warn,
           throwable,
-          "Retry executing subtask {} (creation time: {}, simple class: {}), retry count [{}/{}], last exception: {}",
+          PipeMessages.RETRY_EXECUTING_SUBTASK,
           taskID,
           creationTime,
           this.getClass().getSimpleName(),
@@ -112,7 +112,7 @@ public abstract class PipeReportableSubtask extends PipeSubtask {
         sleepIfNoHighPriorityTask(getSleepIntervalBasedOnThrowable(throwable));
       } catch (final InterruptedException e) {
         LOGGER.warn(
-            "Interrupted when retrying to execute subtask {} (creation time: {}, simple class: {})",
+            PipeMessages.INTERRUPTED_RETRYING_SUBTASK,
             taskID,
             creationTime,
             this.getClass().getSimpleName(),
@@ -124,8 +124,7 @@ public abstract class PipeReportableSubtask extends PipeSubtask {
     } else {
       final String errorMessage =
           String.format(
-              "Failed to execute subtask %s (creation time: %s, simple class: %s), "
-                  + "retry count exceeds the max retry times %d, last exception: %s, root cause: %s",
+              PipeMessages.SUBTASK_RETRY_EXCEEDED_FORMAT,
               taskID,
               creationTime,
               this.getClass().getSimpleName(),
@@ -139,10 +138,7 @@ public abstract class PipeReportableSubtask extends PipeSubtask {
               ? (PipeRuntimeException) throwable
               : new PipeRuntimeCriticalException(errorMessage));
       LOGGER.warn(
-          "The last event is an instance of EnrichedEvent, so the exception is reported. "
-              + "Stopping current pipe subtask {} (creation time: {}, simple class: {}) locally... "
-              + "Status shown when query the pipe will be 'STOPPED'. "
-              + "Please restart the task by executing 'START PIPE' manually if needed.",
+          PipeMessages.SUBTASK_EXCEPTION_REPORTED,
           taskID,
           creationTime,
           this.getClass().getSimpleName(),
@@ -157,8 +153,7 @@ public abstract class PipeReportableSubtask extends PipeSubtask {
   private void onNonReportEventFailure(final Throwable throwable) {
     if (retryCount.get() == 0) {
       LOGGER.warn(
-          "Failed to execute subtask {} (creation time: {}, simple class: {}), "
-              + "because of {}. Will retry forever.",
+          PipeMessages.FAILED_TO_EXECUTE_SUBTASK_RETRY_FOREVER,
           taskID,
           creationTime,
           this.getClass().getSimpleName(),
@@ -169,7 +164,7 @@ public abstract class PipeReportableSubtask extends PipeSubtask {
     retryCount.incrementAndGet();
     PipeLogger.log(
         LOGGER::warn,
-        "Retry executing subtask {} (creation time: {}, simple class: {}), retry count {}, last exception: {}",
+        PipeMessages.RETRY_EXECUTING_SUBTASK_FOREVER,
         taskID,
         creationTime,
         this.getClass().getSimpleName(),
@@ -180,7 +175,7 @@ public abstract class PipeReportableSubtask extends PipeSubtask {
       sleepIfNoHighPriorityTask(getSleepIntervalBasedOnThrowable(throwable));
     } catch (final InterruptedException e) {
       LOGGER.warn(
-          "Interrupted when retrying to execute subtask {} (creation time: {}, simple class: {})",
+          PipeMessages.INTERRUPTED_RETRYING_SUBTASK,
           taskID,
           creationTime,
           this.getClass().getSimpleName());

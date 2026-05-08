@@ -24,7 +24,6 @@ public final class PipeMessages {
   // ===================== Common / Shared =====================
 
   public static final String UTILITY_CLASS = "Utility class";
-  public static final String INVALID_INPUT = "Invalid input: %s";
 
   // ===================== PipeConfig (printAllConfigs) =====================
   // All use SLF4J {} placeholder pattern: "ConfigName: {}"
@@ -294,9 +293,6 @@ public final class PipeMessages {
       "Pipe {} (creation time = {}) has already been dropped, "
           + "but the pipe task meta has not been cleaned up. "
           + "Current status = {}. Try dropping the pipe and recreating it.";
-  public static final String PIPE_ALREADY_DROPPED_SKIP =
-      "Pipe {} (creation time = {}) has already been dropped or has not been created. "
-          + "Skip dropping.";
   public static final String PIPE_ALREADY_DROPPED_SKIP_NO_CREATION_TIME =
       "Pipe {} has already been dropped or has not been created. Skip dropping.";
   public static final String PIPE_ALREADY_DROPPED_SKIP_STARTING =
@@ -450,10 +446,6 @@ public final class PipeMessages {
       "Invalid state: orderId={}, originReqType={}, originBodySize={}, sliceCount={}, sliceBodies.size={}";
   public static final String ORDER_ID_MISMATCH =
       "Order ID mismatch: expected {}, actual {}";
-  public static final String ORIGIN_REQUEST_TYPE_MISMATCH =
-      "Origin request type mismatch: expected {}, actual {}";
-  public static final String ORIGIN_BODY_SIZE_MISMATCH =
-      "Origin body size mismatch: expected {}, actual {}";
   public static final String SLICE_COUNT_MISMATCH =
       "Slice count mismatch: expected {}, actual {}";
 
@@ -518,9 +510,6 @@ public final class PipeMessages {
 
   public static final String ILLEGAL_IOTDB_PIPE_PATTERN =
       "Illegal IoTDBPipePattern: %s";
-  public static final String ILLEGAL_DATABASE_OR_TABLE_PATTERN =
-      "Illegal database or table pattern. Detail: %s";
-
   // ===================== ConcurrentIterableLinkedQueue =====================
 
   public static final String NULL_ELEMENT_NOT_ALLOWED = "Null element is not allowed.";
@@ -539,9 +528,6 @@ public final class PipeMessages {
       "Unknown serializer type: %s";
 
   // ===================== EnrichedEvent =====================
-
-  public static final String BINDING_PROGRESS_INDEX_NOT_SUPPORTED =
-      "This event does not support binding progressIndex.";
 
   // ===================== PipeEventCommitMetrics =====================
 
@@ -745,7 +731,6 @@ public final class PipeMessages {
   public static final String THROWING_EXCEPTION_IN_PROCESS_TSFILE = "Throwing exception in process(TsFileInsertionEvent, EventCollector)";
   public static final String THROWING_EXCEPTION_IN_PROCESS_EVENT = "Throwing exception in process(Event, EventCollector)";
   public static final String THROWING_EXCEPTION_IN_CLOSE = "Throwing exception in close";
-  public static final String PIPE_INVALID_INPUT = "Invalid input: ";
   public static final String ILLEGAL_DB_OR_TABLE_PATTERN = "Illegal database or table pattern. Detail: ";
   public static final String EVENT_NOT_SUPPORT_BINDING_PROGRESS_INDEX = "This event does not support binding progressIndex.";
   public static final String UNSUPPORTED_VERSION = "Unsupported version %s";
@@ -823,14 +808,6 @@ public final class PipeMessages {
       "Exception occurred while parsing node urls from target servers: {}";
   public static final String PARSE_URL_ERROR_MESSAGE =
       "Error occurred while parsing node urls from target servers, please check the specified 'host':'port' or 'node-urls'";
-  public static final String NETWORK_ERROR_TRANSFER_FILE =
-      "Network error when transfer file %s, because %s.";
-  public static final String TRANSFER_FILE_ERROR = "Transfer file %s error. Socket %s.";
-  public static final String TRANSFER_FILE_ERROR_STATUS =
-      "Transfer file %s error, result status %s.";
-  public static final String SOCKET_CLOSED_WILL_HANDSHAKE =
-      "Socket %s is closed, will try to handshake";
-
   // ===================== SubscriptionConfig (printAllConfigs) =====================
 
   public static final String CONFIG_SUBSCRIPTION_CACHE_MEMORY_USAGE_PERCENTAGE =
@@ -886,8 +863,4 @@ public final class PipeMessages {
   public static final String CONFIG_SUBSCRIPTION_META_SYNCER_SYNC_INTERVAL_MINUTES =
       "SubscriptionMetaSyncerSyncIntervalMinutes: {}";
 
-  // ===================== PipeTransferSliceReqHandler (additional) =====================
-
-  public static final String INVALID_SLICE_INDEX =
-      "Invalid slice index: expected {}, actual {}";
 }

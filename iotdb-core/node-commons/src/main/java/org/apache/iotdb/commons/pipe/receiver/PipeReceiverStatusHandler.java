@@ -135,10 +135,7 @@ public class PipeReceiverStatusHandler {
       case 1808: // PIPE_RECEIVER_TEMPORARY_UNAVAILABLE_EXCEPTION
         {
           PipeLogger.log(
-              LOGGER::info,
-              "Temporary unavailable exception: will retry forever. status: %s, message: %s",
-              status,
-              exceptionMessage);
+              LOGGER::info, PipeMessages.TEMPORARY_UNAVAILABLE_RETRY, status, exceptionMessage);
           throw new PipeRuntimeSinkNonReportTimeConfigurableException(
               exceptionMessage, Long.MAX_VALUE);
         }
@@ -147,7 +144,7 @@ public class PipeReceiverStatusHandler {
       case 1815: // PIPE_RECEIVER_PARALLEL_OR_USER_CONFLICT_EXCEPTION
         if (!isRetryAllowedWhenConflictOccurs) {
           LOGGER.warn(
-              "User conflict exception: will be ignored because retry is not allowed. event: {}. status: {}",
+              PipeMessages.USER_CONFLICT_NOT_ALLOWED,
               shouldRecordIgnoredDataWhenConflictOccurs ? recordMessage : "not recorded",
               status);
           return;
@@ -160,7 +157,7 @@ public class PipeReceiverStatusHandler {
               && System.currentTimeMillis() - exceptionFirstEncounteredTime.get()
                   > retryMaxMillisWhenConflictOccurs) {
             LOGGER.warn(
-                "User conflict exception: retry timeout. will be ignored. event: {}. status: {}",
+                PipeMessages.USER_CONFLICT_RETRY_TIMEOUT,
                 shouldRecordIgnoredDataWhenConflictOccurs ? recordMessage : "not recorded",
                 status);
             resetExceptionStatus();
@@ -168,7 +165,7 @@ public class PipeReceiverStatusHandler {
           }
 
           LOGGER.warn(
-              "User conflict exception: will retry {}. status: {}",
+              PipeMessages.USER_CONFLICT_WILL_RETRY,
               retryMaxMillisWhenConflictOccurs == Long.MAX_VALUE
                   ? "forever"
                   : "for at least "
@@ -191,7 +188,7 @@ public class PipeReceiverStatusHandler {
         if (skipIfNoPrivileges) {
           if (log4NoPrivileges && LOGGER.isWarnEnabled()) {
             LOGGER.warn(
-                "{}: Skip if no privileges. will be ignored. event: {}. status: {}",
+                PipeMessages.USER_CONFLICT_IGNORED,
                 getNoPermission(true),
                 shouldRecordIgnoredDataWhenOtherExceptionsOccur ? recordMessage : "not recorded",
                 status);
@@ -206,7 +203,7 @@ public class PipeReceiverStatusHandler {
           if (skipIfNoPrivileges) {
             if (log4NoPrivileges && LOGGER.isWarnEnabled()) {
               LOGGER.warn(
-                  "{}: Skip if no privileges. will be ignored. event: {}. status: {}",
+                  PipeMessages.USER_CONFLICT_IGNORED,
                   getNoPermission(true),
                   shouldRecordIgnoredDataWhenOtherExceptionsOccur ? recordMessage : "not recorded",
                   status);
@@ -233,7 +230,7 @@ public class PipeReceiverStatusHandler {
         && System.currentTimeMillis() - exceptionFirstEncounteredTime.get()
             > retryMaxMillisWhenOtherExceptionsOccur) {
       LOGGER.warn(
-          "{}: retry timeout. will be ignored. event: {}. status: {}",
+          PipeMessages.OTHER_EXCEPTION_RETRY_TIMEOUT,
           getNoPermission(noPermission),
           shouldRecordIgnoredDataWhenOtherExceptionsOccur ? recordMessage : "not recorded",
           status);
@@ -245,13 +242,13 @@ public class PipeReceiverStatusHandler {
     if (retryMaxMillisWhenOtherExceptionsOccur == Long.MAX_VALUE) {
       PipeLogger.log(
           LOGGER::warn,
-          "%s: will retry forever. status: %s, message: %s",
+          PipeMessages.OTHER_EXCEPTION_RETRY_FOREVER,
           getNoPermission(noPermission),
           status,
           exceptionMessage);
     } else {
       LOGGER.warn(
-          "{}: will retry for at least {} seconds. status: {}",
+          PipeMessages.OTHER_EXCEPTION_RETRY_SECONDS,
           getNoPermission(noPermission),
           (retryMaxMillisWhenOtherExceptionsOccur
                   + exceptionFirstEncounteredTime.get()

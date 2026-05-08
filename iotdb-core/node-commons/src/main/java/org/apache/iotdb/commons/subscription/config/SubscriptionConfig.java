@@ -144,22 +144,23 @@ public class SubscriptionConfig {
 
   public void printAllConfigs() {
     LOGGER.info(
-        "SubscriptionCacheMemoryUsagePercentage: {}", getSubscriptionCacheMemoryUsagePercentage());
+        PipeMessages.CONFIG_SUBSCRIPTION_CACHE_MEMORY_USAGE_PERCENTAGE,
+        getSubscriptionCacheMemoryUsagePercentage());
     LOGGER.info(
-        "SubscriptionSubtaskExecutorMaxThreadNum: {}",
+        PipeMessages.CONFIG_SUBSCRIPTION_SUBTASK_EXECUTOR_MAX_THREAD_NUM,
         getSubscriptionSubtaskExecutorMaxThreadNum());
 
     LOGGER.info(
-        "SubscriptionPrefetchTabletBatchMaxDelayInMs: {}",
+        PipeMessages.CONFIG_SUBSCRIPTION_PREFETCH_TABLET_BATCH_MAX_DELAY_IN_MS,
         getSubscriptionPrefetchTabletBatchMaxDelayInMs());
     LOGGER.info(
-        "SubscriptionPrefetchTabletBatchMaxSizeInBytes: {}",
+        PipeMessages.CONFIG_SUBSCRIPTION_PREFETCH_TABLET_BATCH_MAX_SIZE_IN_BYTES,
         getSubscriptionPrefetchTabletBatchMaxSizeInBytes());
     LOGGER.info(
-        "SubscriptionPrefetchTsFileBatchMaxDelayInMs: {}",
+        PipeMessages.CONFIG_SUBSCRIPTION_PREFETCH_TSFILE_BATCH_MAX_DELAY_IN_MS,
         getSubscriptionPrefetchTsFileBatchMaxDelayInMs());
     LOGGER.info(
-        "SubscriptionPrefetchTsFileBatchMaxSizeInBytes: {}",
+        PipeMessages.CONFIG_SUBSCRIPTION_PREFETCH_TSFILE_BATCH_MAX_SIZE_IN_BYTES,
         getSubscriptionPrefetchTsFileBatchMaxSizeInBytes());
     LOGGER.info(
         PipeMessages.CONFIG_SUBSCRIPTION_POLL_MAX_BLOCKING_TIME_MS,
@@ -171,7 +172,7 @@ public class SubscriptionConfig {
         PipeMessages.CONFIG_SUBSCRIPTION_LAUNCH_RETRY_INTERVAL_MS,
         getSubscriptionLaunchRetryIntervalMs());
     LOGGER.info(
-        "SubscriptionRecycleUncommittedEventIntervalMs: {}",
+        PipeMessages.CONFIG_SUBSCRIPTION_RECYCLE_UNCOMMITTED_EVENT_INTERVAL_MS,
         getSubscriptionRecycleUncommittedEventIntervalMs());
     LOGGER.info(
         PipeMessages.CONFIG_SUBSCRIPTION_READ_FILE_BUFFER_SIZE,
@@ -180,44 +181,47 @@ public class SubscriptionConfig {
         PipeMessages.CONFIG_SUBSCRIPTION_READ_TABLET_BUFFER_SIZE,
         getSubscriptionReadTabletBufferSize());
     LOGGER.info(
-        "SubscriptionTsFileDeduplicationWindowSeconds: {}",
+        PipeMessages.CONFIG_SUBSCRIPTION_TSFILE_DEDUPLICATION_WINDOW_SECONDS,
         getSubscriptionTsFileDeduplicationWindowSeconds());
     LOGGER.info(
-        "SubscriptionCheckMemoryEnoughIntervalMs: {}",
+        PipeMessages.CONFIG_SUBSCRIPTION_CHECK_MEMORY_ENOUGH_INTERVAL_MS,
         getSubscriptionCheckMemoryEnoughIntervalMs());
     LOGGER.info(
-        "SubscriptionEstimatedInsertNodeTabletInsertionEventSize: {}",
+        PipeMessages.CONFIG_SUBSCRIPTION_ESTIMATED_INSERT_NODE_TABLET_INSERTION_EVENT_SIZE,
         getSubscriptionEstimatedInsertNodeTabletInsertionEventSize());
     LOGGER.info(
-        "SubscriptionEstimatedRawTabletInsertionEventSize: {}",
+        PipeMessages.CONFIG_SUBSCRIPTION_ESTIMATED_RAW_TABLET_INSERTION_EVENT_SIZE,
         getSubscriptionEstimatedRawTabletInsertionEventSize());
     LOGGER.info(
-        "SubscriptionMaxAllowedEventCountInTabletBatch: {}",
+        PipeMessages.CONFIG_SUBSCRIPTION_MAX_ALLOWED_EVENT_COUNT_IN_TABLET_BATCH,
         getSubscriptionMaxAllowedEventCountInTabletBatch());
     LOGGER.info(
-        "SubscriptionLogManagerWindowSeconds: {}", getSubscriptionLogManagerWindowSeconds());
+        PipeMessages.CONFIG_SUBSCRIPTION_LOG_MANAGER_WINDOW_SECONDS,
+        getSubscriptionLogManagerWindowSeconds());
     LOGGER.info(
-        "SubscriptionLogManagerBaseIntervalMs: {}", getSubscriptionLogManagerBaseIntervalMs());
+        PipeMessages.CONFIG_SUBSCRIPTION_LOG_MANAGER_BASE_INTERVAL_MS,
+        getSubscriptionLogManagerBaseIntervalMs());
 
     LOGGER.info(
         PipeMessages.CONFIG_SUBSCRIPTION_PREFETCH_ENABLED, getSubscriptionPrefetchEnabled());
     LOGGER.info(
-        "SubscriptionPrefetchMemoryThreshold: {}", getSubscriptionPrefetchMemoryThreshold());
+        PipeMessages.CONFIG_SUBSCRIPTION_PREFETCH_MEMORY_THRESHOLD,
+        getSubscriptionPrefetchMemoryThreshold());
     LOGGER.info(
-        "SubscriptionPrefetchMissingRateThreshold: {}",
+        PipeMessages.CONFIG_SUBSCRIPTION_PREFETCH_MISSING_RATE_THRESHOLD,
         getSubscriptionPrefetchMissingRateThreshold());
     LOGGER.info(
-        "SubscriptionPrefetchEventLocalCountThreshold: {}",
+        PipeMessages.CONFIG_SUBSCRIPTION_PREFETCH_EVENT_LOCAL_COUNT_THRESHOLD,
         getSubscriptionPrefetchEventLocalCountThreshold());
     LOGGER.info(
-        "SubscriptionPrefetchEventGlobalCountThreshold: {}",
+        PipeMessages.CONFIG_SUBSCRIPTION_PREFETCH_EVENT_GLOBAL_COUNT_THRESHOLD,
         getSubscriptionPrefetchEventGlobalCountThreshold());
 
     LOGGER.info(
-        "SubscriptionMetaSyncerInitialSyncDelayMinutes: {}",
+        PipeMessages.CONFIG_SUBSCRIPTION_META_SYNCER_INITIAL_SYNC_DELAY_MINUTES,
         getSubscriptionMetaSyncerInitialSyncDelayMinutes());
     LOGGER.info(
-        "SubscriptionMetaSyncerSyncIntervalMinutes: {}",
+        PipeMessages.CONFIG_SUBSCRIPTION_META_SYNCER_SYNC_INTERVAL_MINUTES,
         getSubscriptionMetaSyncerSyncIntervalMinutes());
   }
 

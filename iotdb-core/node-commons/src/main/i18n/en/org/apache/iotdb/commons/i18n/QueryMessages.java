@@ -95,8 +95,6 @@ public final class QueryMessages {
   public static final String UNEXPECTED_SKIP_TO = "unexpected skipTo: %s";
   public static final String UNKNOWN_SIGN = "Unknown sign: %s";
   public static final String UNSUPPORTED_FRAME_TYPE = "Unsupported frame type: %s";
-  public static final String INVALID_ROW_PATTERN_INPUT = "Invalid input: %s";
-
   // ======================== Join ========================
 
   public static final String INVALID_OPERATOR_TYPE = "Invalid operator type: %s";
@@ -198,9 +196,6 @@ public final class QueryMessages {
       "Failed to reflect UDF %s(%s) instance, because %s";
   public static final String AI_NODE_SERVICE_NOT_AVAILABLE =
       "Table function AINode service is not available in current node";
-  public static final String MULTIPLE_AI_NODE_SERVICE_PROVIDER =
-      "Multiple ITableFunctionAINodeServiceProvider found";
-
   // ======================== UDTF Forecast ========================
 
   public static final String INPUT_DATA_TYPE_NOT_SUPPORTED =
@@ -236,8 +231,6 @@ public final class QueryMessages {
       "Failed to convert %s to millisecond, zone offset is %s, please input like 2011-12-03T10:15:30 or 2011-12-03T10:15:30+01:00";
   public static final String DATETIME_TIME_REGION_NOT_SUPPORTED =
       "%s with [time-region] at end is not supported now, please input like 2011-12-03T10:15:30 or 2011-12-03T10:15:30+01:00";
-  public static final String TIME_PRECISION_INVALID =
-      "time precision must be one of: h,m,s,ms,u,n";
   public static final String UNSUPPORTED_TIME_PRECISION =
       "not supported time_precision: %s";
   public static final String TIMESTAMP_UNEXPECTEDLY_LARGE =
@@ -254,19 +247,6 @@ public final class QueryMessages {
 
   public static final String MEMORY_FOR_FLAT_HASH_NOT_ENOUGH =
       "Memory for flatHash is not enough";
-  public static final String HASH_TABLE_SIZE_EXCEEDED =
-      "Size of hash table cannot exceed 1 billion entries";
-  public static final String INVALID_INPUT_BYTES_LENGTH_LT_8 =
-      "Invalid input: bytes.length - offset < 8";
-  public static final String INVALID_INPUT_BYTES_LENGTH_LT_4 =
-      "Invalid input: bytes.length - offset < 4";
-  public static final String INVALID_INPUT_DESC_LENGTH_LT_4 =
-      "Invalid input: desc.length - offset < 4";
-  public static final String NO_CHANNEL_GROUP_BY_HASH_APPEND_VALUES_TO =
-      "NoChannelGroupByHash does not support appendValuesTo";
-  public static final String NO_CHANNEL_GROUP_BY_HASH_GET_RAW_HASH =
-      "NoChannelGroupByHash does not support getRawHash";
-  public static final String MIN_GREATER_THAN_MAX = "%s > %s";
   public static final String LONG_OVERFLOW = "long overflow";
   public static final String INTEGER_OVERFLOW = "integer overflow";
   public static final String INVALID_INPUT_DESC_LENGTH_LT_8 =
@@ -275,7 +255,6 @@ public final class QueryMessages {
   private QueryMessages() {}
 
   public static final String TIME_PRECISION_MUST_BE_ONE_OF = "time precision must be one of: h,m,s,ms,u,n";
-  public static final String QUERY_INVALID_INPUT = "Invalid input: ";
   public static final String INVALID_INPUT_BYTES_OFFSET_LT_4 = "Invalid input: bytes.length - offset < 4";
   public static final String INVALID_INPUT_BYTES_OFFSET_LT_8 = "Invalid input: bytes.length - offset < 8";
   public static final String INVALID_INPUT_DESC_OFFSET_LT_4 = "Invalid input: desc.length - offset < 4";

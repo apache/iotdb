@@ -36,8 +36,7 @@ public class TableUDFUtils {
 
   private static final ITableFunctionAINodeService EMPTY_AI_NODE_SERVICE =
       req -> {
-        throw new UnsupportedOperationException(
-            "Table function AINode service is not available in current node");
+        throw new UnsupportedOperationException(QueryMessages.AI_NODE_SERVICE_NOT_AVAILABLE);
       };
   private static final ITableFunctionAINodeService AI_NODE_SERVICE = loadAINodeService();
 

@@ -95,8 +95,6 @@ public final class QueryMessages {
   public static final String UNEXPECTED_SKIP_TO = "意外的 skipTo：%s";
   public static final String UNKNOWN_SIGN = "未知的符号：%s";
   public static final String UNSUPPORTED_FRAME_TYPE = "不支持的帧类型：%s";
-  public static final String INVALID_ROW_PATTERN_INPUT = "无效的输入：%s";
-
   // ======================== Join ========================
 
   public static final String INVALID_OPERATOR_TYPE = "无效的运算符类型：%s";
@@ -198,9 +196,6 @@ public final class QueryMessages {
       "反射 UDF %s(%s) 实例失败，原因：%s";
   public static final String AI_NODE_SERVICE_NOT_AVAILABLE =
       "当前节点不支持表函数 AINode 服务";
-  public static final String MULTIPLE_AI_NODE_SERVICE_PROVIDER =
-      "发现多个 ITableFunctionAINodeServiceProvider";
-
   // ======================== UDTF Forecast ========================
 
   public static final String INPUT_DATA_TYPE_NOT_SUPPORTED =
@@ -236,8 +231,6 @@ public final class QueryMessages {
       "将 %s 转换为毫秒失败，时区偏移为 %s，请输入类似 2011-12-03T10:15:30 或 2011-12-03T10:15:30+01:00 的格式";
   public static final String DATETIME_TIME_REGION_NOT_SUPPORTED =
       "暂不支持 %s 末尾的 [time-region] 格式，请输入类似 2011-12-03T10:15:30 或 2011-12-03T10:15:30+01:00 的格式";
-  public static final String TIME_PRECISION_INVALID =
-      "时间精度必须为以下之一：h,m,s,ms,u,n";
   public static final String UNSUPPORTED_TIME_PRECISION =
       "不支持的 time_precision：%s";
   public static final String TIMESTAMP_UNEXPECTEDLY_LARGE =
@@ -254,19 +247,6 @@ public final class QueryMessages {
 
   public static final String MEMORY_FOR_FLAT_HASH_NOT_ENOUGH =
       "flatHash 的内存不足";
-  public static final String HASH_TABLE_SIZE_EXCEEDED =
-      "哈希表大小不能超过 10 亿条记录";
-  public static final String INVALID_INPUT_BYTES_LENGTH_LT_8 =
-      "无效输入：bytes.length - offset < 8";
-  public static final String INVALID_INPUT_BYTES_LENGTH_LT_4 =
-      "无效输入：bytes.length - offset < 4";
-  public static final String INVALID_INPUT_DESC_LENGTH_LT_4 =
-      "无效输入：desc.length - offset < 4";
-  public static final String NO_CHANNEL_GROUP_BY_HASH_APPEND_VALUES_TO =
-      "NoChannelGroupByHash 不支持 appendValuesTo 操作";
-  public static final String NO_CHANNEL_GROUP_BY_HASH_GET_RAW_HASH =
-      "NoChannelGroupByHash 不支持 getRawHash 操作";
-  public static final String MIN_GREATER_THAN_MAX = "%s > %s";
   public static final String LONG_OVERFLOW = "long 溢出";
   public static final String INTEGER_OVERFLOW = "integer 溢出";
   public static final String INVALID_INPUT_DESC_LENGTH_LT_8 =
@@ -275,7 +255,6 @@ public final class QueryMessages {
   private QueryMessages() {}
 
   public static final String TIME_PRECISION_MUST_BE_ONE_OF = "时间精度必须是以下之一：h,m,s,ms,u,n";
-  public static final String QUERY_INVALID_INPUT = "无效输入：";
   public static final String INVALID_INPUT_BYTES_OFFSET_LT_4 = "无效输入：bytes.length - offset < 4";
   public static final String INVALID_INPUT_BYTES_OFFSET_LT_8 = "无效输入：bytes.length - offset < 8";
   public static final String INVALID_INPUT_DESC_OFFSET_LT_4 = "无效输入：desc.length - offset < 4";

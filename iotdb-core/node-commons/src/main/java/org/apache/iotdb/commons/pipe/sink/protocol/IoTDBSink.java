@@ -566,11 +566,11 @@ public abstract class IoTDBSink implements PipeConnector, PipeConnectorWithEvent
   private void checkNodeUrls(final Set<TEndPoint> nodeUrls) throws PipeParameterNotValidException {
     for (final TEndPoint nodeUrl : nodeUrls) {
       if (Objects.isNull(nodeUrl.ip) || nodeUrl.ip.isEmpty()) {
-        LOGGER.warn(PARSE_URL_ERROR_FORMATTER, "host cannot be empty");
+        LOGGER.warn(PARSE_URL_ERROR_FORMATTER, PipeMessages.HOST_CANNOT_BE_EMPTY);
         throw new PipeParameterNotValidException(PARSE_URL_ERROR_MESSAGE);
       }
       if (nodeUrl.port == 0) {
-        LOGGER.warn(PARSE_URL_ERROR_FORMATTER, "port cannot be empty");
+        LOGGER.warn(PARSE_URL_ERROR_FORMATTER, PipeMessages.PORT_CANNOT_BE_EMPTY);
         throw new PipeParameterNotValidException(PARSE_URL_ERROR_MESSAGE);
       }
     }

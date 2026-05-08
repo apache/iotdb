@@ -61,7 +61,7 @@ public class PipeTransferSliceReqHandler {
         sliceCount = req.getSliceCount();
       } else {
         LOGGER.warn(
-            "Invalid state: orderId={}, originReqType={}, originBodySize={}, sliceCount={}, sliceBodies.size={}",
+            PipeMessages.INVALID_STATE_SLICE,
             orderId,
             originReqType,
             originBodySize,

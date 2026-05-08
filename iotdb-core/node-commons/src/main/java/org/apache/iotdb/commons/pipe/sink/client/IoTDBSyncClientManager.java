@@ -212,7 +212,7 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
       PipeLogger.log(
           LOGGER::warn,
           e,
-          "Failed to initialize client with target server ip: %s, port: %s, because %s",
+          PipeMessages.FAILED_TO_INIT_CLIENT,
           endPoint.getIp(),
           endPoint.getPort(),
           e.getMessage());
@@ -316,7 +316,7 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
         LOGGER.info(PipeMessages.CLIENT_CLOSED, endPoint.getIp(), endPoint.getPort());
       } catch (Exception e) {
         LOGGER.warn(
-            "Failed to close client {}:{}, because: {}.",
+            PipeMessages.FAILED_TO_CLOSE_CLIENT_ENDPOINT,
             endPoint.getIp(),
             endPoint.getPort(),
             e.getMessage(),

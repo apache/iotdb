@@ -20,6 +20,7 @@
 package org.apache.iotdb.calc.execution.operator.process.rowpattern.matcher;
 
 import org.apache.iotdb.calc.i18n.CalcMessages;
+import org.apache.iotdb.commons.i18n.QueryMessages;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.rowpattern.IrAlternation;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.rowpattern.IrAnchor;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.rowpattern.IrConcatenation;
@@ -64,7 +65,7 @@ public class IrRowPatternToProgramRewriter {
     @Override
     protected Void visitIrRowPattern(IrRowPattern node, Void context) {
       throw new UnsupportedOperationException(
-          "unsupported node type: " + node.getClass().getName());
+          String.format(QueryMessages.UNSUPPORTED_IR_NODE_TYPE, node.getClass().getName()));
     }
 
     @Override

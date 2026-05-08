@@ -141,8 +141,7 @@ public abstract class IoTDBAirGapSink extends IoTDBSink {
             Arrays.asList(
                 CONNECTOR_AIR_GAP_HANDSHAKE_TIMEOUT_MS_KEY, SINK_AIR_GAP_HANDSHAKE_TIMEOUT_MS_KEY),
             CONNECTOR_AIR_GAP_HANDSHAKE_TIMEOUT_MS_DEFAULT_VALUE);
-    LOGGER.info(
-        "IoTDBAirGapConnector is customized with handshakeTimeoutMs: {}.", handshakeTimeoutMs);
+    LOGGER.info(PipeMessages.AIR_GAP_CUSTOMIZED_HANDSHAKE_TIMEOUT, handshakeTimeoutMs);
 
     eLanguageEnable =
         parameters.getBooleanOrDefault(
@@ -177,11 +176,7 @@ public abstract class IoTDBAirGapSink extends IoTDBSink {
         try {
           sockets.set(i, null).close();
         } catch (final Exception e) {
-          LOGGER.warn(
-              "Failed to close socket with target server ip: {}, port: {}, because: {}. Ignore it.",
-              ip,
-              port,
-              e.getMessage());
+          LOGGER.warn(PipeMessages.FAILED_TO_CLOSE_SOCKET, ip, port, e.getMessage());
         }
       }
 
@@ -199,11 +194,7 @@ public abstract class IoTDBAirGapSink extends IoTDBSink {
         final Long lastFailLogTime = failLogTimes.get(endPoint);
         if (lastFailLogTime == null || currentTimeMillis - lastFailLogTime > 60000) {
           failLogTimes.put(endPoint, currentTimeMillis);
-          LOGGER.warn(
-              "Failed to connect to target server ip: {}, port: {}, because: {}. Ignore it.",
-              ip,
-              port,
-              e.getMessage());
+          LOGGER.warn(PipeMessages.FAILED_TO_CONNECT_TO_TARGET, ip, port, e.getMessage());
         }
         continue;
       }
@@ -212,9 +203,7 @@ public abstract class IoTDBAirGapSink extends IoTDBSink {
         sendHandshakeReq(socket);
         isSocketAlive.set(i, true);
       } catch (Exception e) {
-        LOGGER.warn(
-            "Handshake error occurs. It may be caused by an error on the receiving end. Ignore it.",
-            e);
+        LOGGER.warn(PipeMessages.HANDSHAKE_ERROR_RECEIVING_END, e);
       }
     }
 

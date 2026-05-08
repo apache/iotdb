@@ -56,9 +56,7 @@ public class PipeEventCommitManager {
 
     final CommitterKey committerKey = generateCommitterKey(pipeName, creationTime, regionId);
     if (eventCommitterMap.containsKey(committerKey)) {
-      LOGGER.warn(
-          "Pipe with same name is already registered on this region, overwriting: {}",
-          committerKey);
+      LOGGER.warn(PipeMessages.PIPE_COMMITTER_OVERWRITING, committerKey);
     }
 
     final PipeEventCommitter eventCommitter = new PipeEventCommitter(committerKey);

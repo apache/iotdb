@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MetaProgressIndex;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
+import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.agent.task.PipeTask;
 import org.apache.iotdb.commons.pipe.agent.task.PipeTaskAgent;
@@ -701,7 +702,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       final String message =
           String.format(
               "%s Need memory: %d bytes, free memory: %d bytes, reserved memory: %d bytes, total memory: %d bytes",
-              MESSAGE_PIPE_NOT_ENOUGH_MEMORY,
+              PipeMessages.NOT_ENOUGH_MEMORY_FOR_PIPE,
               needMemory,
               freeMemorySizeInBytes,
               reservedMemorySizeInBytes,
@@ -750,7 +751,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       final String message =
           String.format(
               "%s Need Floating memory: %d  bytes, free Floating memory: %d bytes",
-              MESSAGE_PIPE_NOT_ENOUGH_MEMORY,
+              PipeMessages.NOT_ENOUGH_MEMORY_FOR_PIPE,
               PipeConfig.getInstance().getPipeInsertNodeQueueMemory(),
               remainingMemory);
       LOGGER.warn(message);

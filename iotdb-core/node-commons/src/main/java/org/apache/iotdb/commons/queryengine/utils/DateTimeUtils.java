@@ -71,9 +71,7 @@ public class DateTimeUtils {
       }
     } catch (ArithmeticException e) {
       throw new IoTDBRuntimeException(
-          String.format(
-              "Timestamp overflow, Millisecond: %s , Timestamp precision: %s",
-              millis, timestampPrecision),
+          String.format(QueryMessages.TIMESTAMP_OVERFLOW, millis, timestampPrecision),
           NUMERIC_VALUE_OUT_OF_RANGE.getStatusCode(),
           true);
     }
@@ -587,10 +585,7 @@ public class DateTimeUtils {
       String str, ZoneOffset offset, int depth, String timestampPrecision) {
     if (depth >= 2) {
       throw new DateTimeException(
-          String.format(
-              "Failed to convert %s to millisecond, zone offset is %s, "
-                  + "please input like 2011-12-03T10:15:30 or 2011-12-03T10:15:30+01:00",
-              str, offset));
+          String.format(QueryMessages.DATETIME_CONVERT_FAILED, str, offset));
     }
     if (str.contains("Z")) {
       return convertDatetimeStrToLong(
@@ -602,10 +597,7 @@ public class DateTimeUtils {
       return convertDatetimeStrToLong(str + offset, offset, depth + 1, timestampPrecision);
     } else if (str.contains("[") || str.contains("]")) {
       throw new DateTimeException(
-          String.format(
-              "%s with [time-region] at end is not supported now, "
-                  + "please input like 2011-12-03T10:15:30 or 2011-12-03T10:15:30+01:00",
-              str));
+          String.format(QueryMessages.DATETIME_TIME_REGION_NOT_SUPPORTED, str));
     }
     return getInstantWithPrecision(str, timestampPrecision);
   }

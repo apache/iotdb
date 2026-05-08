@@ -45,6 +45,7 @@ import org.apache.iotdb.calc.execution.operator.process.fill.previous.IntPreviou
 import org.apache.iotdb.calc.execution.operator.process.fill.previous.LongPreviousFill;
 import org.apache.iotdb.calc.execution.operator.process.fill.previous.LongPreviousFillWithTimeDuration;
 import org.apache.iotdb.calc.i18n.CalcMessages;
+import org.apache.iotdb.commons.i18n.QueryMessages;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.column.LongColumn;
@@ -135,7 +136,7 @@ public class CommonOperatorUtils {
         default:
           // this case will never reach
           throw new UnsupportedOperationException(
-              "not supported time_precision: " + TIMESTAMP_PRECISION);
+              String.format(QueryMessages.UNSUPPORTED_TIME_PRECISION, TIMESTAMP_PRECISION));
       }
     }
 
