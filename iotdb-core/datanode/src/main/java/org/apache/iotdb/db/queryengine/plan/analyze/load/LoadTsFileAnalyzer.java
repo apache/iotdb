@@ -675,36 +675,6 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
           }
         }
 
-        if (!hasChunk) {
-          if (Objects.isNull(allTimeseriesMetadataByDevice)) {
-            allTimeseriesMetadataByDevice = reader.getAllTimeseriesMetadata(true);
-          }
-
-          final List<TimeseriesMetadata> timeseriesMetadataList =
-              getTimeseriesMetadata(allTimeseriesMetadataByDevice, deviceId);
-          if (Objects.nonNull(timeseriesMetadataList)) {
-            for (final TimeseriesMetadata timeseriesMetadata : timeseriesMetadataList) {
-              if (Objects.isNull(timeseriesMetadata)
-                  || Objects.isNull(timeseriesMetadata.getStatistics())) {
-                continue;
-              }
-
-              hasChunk = true;
-              tsFileResource.updateStartTime(
-                  deviceId, timeseriesMetadata.getStatistics().getStartTime());
-              tsFileResource.updateEndTime(
-                  deviceId, timeseriesMetadata.getStatistics().getEndTime());
-            }
-
-            if (hasChunk) {
-              writePointCount += getTableWritePointCount(timeseriesMetadataList);
-              if (Objects.nonNull(lastValueCollector)) {
-                lastValueCollector.update(deviceId, timeseriesMetadataList);
-              }
-            }
-          }
-        }
-
         if (hasChunk) {
           getOrCreateTableSchemaCache().setCurrentTimeIndex(tsFileResource.getTimeIndex());
           if (!getOrCreateTableSchemaCache().isDeviceDeletedByMods(deviceId)) {
