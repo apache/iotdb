@@ -606,8 +606,12 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
           IoTDBDescriptor.getInstance().getConfig().isCacheLastValuesForLoad());
       getOrCreateTableSchemaCache().setCurrentTimeIndex(tsFileResource.getTimeIndex());
 
-      for (final IDeviceID deviceId : device2TimeseriesMetadata.keySet()) {
-        devicesHandledByTimeseriesMetadataIterator.add(getDeviceKey(deviceId));
+      for (final Map.Entry<IDeviceID, List<TimeseriesMetadata>> entry :
+          device2TimeseriesMetadata.entrySet()) {
+        final IDeviceID deviceId = entry.getKey();
+        if (canUpdateTsFileResource(entry.getValue())) {
+          devicesHandledByTimeseriesMetadataIterator.add(getDeviceKey(deviceId));
+        }
         if (!getOrCreateTableSchemaCache().isDeviceDeletedByMods(deviceId)) {
           getOrCreateTableSchemaCache().autoCreateAndVerify(deviceId);
         }
@@ -694,6 +698,17 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     return Arrays.asList(deviceId.getSegments());
   }
 
+  private static boolean canUpdateTsFileResource(
+      final List<TimeseriesMetadata> timeseriesMetadata) {
+    return Objects.nonNull(timeseriesMetadata)
+        && timeseriesMetadata.stream()
+            .anyMatch(
+                metadata ->
+                    Objects.nonNull(metadata)
+                        && Objects.nonNull(metadata.getStatistics())
+                        && metadata.getStatistics().getCount() > 0);
+  }
+
   private TsFileResource constructTsFileResource(
       final TsFileSequenceReader reader, final File tsFile) throws IOException {
     final TsFileResource tsFileResource = new TsFileResource(tsFile);
@@ -754,7 +769,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
         writePointCount += valueChunkMetadata.getStatistics().getCount();
       }
     }
-    return hasValueChunkMetadata
+    return hasValueChunkMetadata && writePointCount > 0
             || Objects.isNull(alignedChunkMetadata.getTimeChunkMetadata())
             || Objects.isNull(alignedChunkMetadata.getTimeChunkMetadata().getStatistics())
         ? writePointCount

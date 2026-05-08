@@ -127,6 +127,7 @@ public class TsFileSplitter {
             processValueChunk(reader, marker);
             break;
           case MetaMarker.CHUNK_GROUP_HEADER:
+            consumeAllPendingAlignedChunkData(reader.position());
             ChunkGroupHeader chunkGroupHeader = reader.readChunkGroupHeader();
             curDevice = chunkGroupHeader.getDeviceID();
             pageIndex2ChunkDataList = new ArrayList<>();
@@ -143,7 +144,7 @@ public class TsFileSplitter {
         }
       }
 
-      consumeAllAlignedChunkData(reader.position(), pageIndex2ChunkData);
+      consumeAllPendingAlignedChunkData(reader.position());
       handleModification(deletions);
     }
   }
@@ -464,7 +465,24 @@ public class TsFileSplitter {
                 offset, chunkData));
       }
     }
-    this.pageIndex2ChunkData = new HashMap<>();
+    pageIndex2ChunkData.clear();
+    if (this.pageIndex2ChunkData == pageIndex2ChunkData) {
+      this.pageIndex2ChunkData = new HashMap<>();
+    }
+  }
+
+  private void consumeAllPendingAlignedChunkData(final long offset) throws LoadFileException {
+    consumeAllAlignedChunkData(offset, pageIndex2ChunkData);
+    for (final Map<Integer, List<AlignedChunkData>> pendingPageIndex2ChunkData :
+        pageIndex2ChunkDataList) {
+      consumeAllAlignedChunkData(offset, pendingPageIndex2ChunkData);
+    }
+    pageIndex2ChunkDataList.clear();
+    if (pageIndex2TimesList != null) {
+      pageIndex2TimesList.clear();
+    }
+    isTimeChunkNeedDecodeList.clear();
+    valueColumn2TimeChunkIndex.clear();
   }
 
   private void consumeChunkData(String measurement, long offset, ChunkData chunkData)

@@ -1029,11 +1029,11 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
         "time,region,device_id,model_id,maintenance,temperature,humidity,plant_id,",
         new HashSet<>(
             Arrays.asList(
-                "2025-11-26T13:38:00.000+08:00,north,d101,red,null,null,91.0,null,",
-                "2025-11-26T13:39:00.000+08:00,null,null,null,maint-a,null,36.2,1003,",
-                "2025-11-26T13:40:00.000+08:00,null,null,green,maint-b,88.8,34.9,null,",
-                "2025-11-26T13:41:00.000+08:00,south,d105,null,null,87.5,null,1005,",
-                "2025-11-26T13:42:00.000+08:00,west,d106,blue,maint-c,null,36.8,1006,")),
+                "2025-11-26T13:38:00.000Z,north,d101,red,null,91.0,null,null,",
+                "2025-11-26T13:39:00.000Z,null,null,null,maint-a,null,36.2,1003,",
+                "2025-11-26T13:40:00.000Z,null,null,green,maint-b,88.8,34.9,null,",
+                "2025-11-26T13:41:00.000Z,south,d105,null,null,87.5,null,1005,",
+                "2025-11-26T13:42:00.000Z,west,d106,blue,maint-c,null,36.8,1006,")),
         (String) null);
   }
 }
