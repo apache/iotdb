@@ -32,7 +32,6 @@ class ModelInfo:
         repo_id: str = "",
         auto_map: Optional[Dict] = None,
         hub_mixin_cls: Optional[str] = None,
-        transformers_registered: bool = False,
         base_model_id: Optional[str] = None,
     ):
         self.model_id = model_id
@@ -43,7 +42,6 @@ class ModelInfo:
         self.repo_id = repo_id
         self.auto_map = auto_map
         self.hub_mixin_cls = hub_mixin_cls
-        self.transformers_registered = transformers_registered
         self.base_model_id = base_model_id
 
     def copy(
@@ -62,12 +60,10 @@ class ModelInfo:
             repo_id=self.repo_id,
             auto_map=self.auto_map.copy() if self.auto_map else None,
             hub_mixin_cls=self.hub_mixin_cls,
-            transformers_registered=self.transformers_registered,
             base_model_id=(
                 base_model_id if base_model_id is not None else self.base_model_id
             ),
         )
-        self.origin_id = None
 
     def __repr__(self):
         return (
@@ -144,7 +140,6 @@ BUILTIN_HF_TRANSFORMERS_MODEL_MAP = {
             "AutoConfig": "configuration_timer.TimerConfig",
             "AutoModelForCausalLM": "modeling_timer.TimerForPrediction",
         },
-        transformers_registered=True,
     ),
     "sundial": ModelInfo(
         model_id="sundial",
@@ -157,7 +152,6 @@ BUILTIN_HF_TRANSFORMERS_MODEL_MAP = {
             "AutoConfig": "configuration_sundial.SundialConfig",
             "AutoModelForCausalLM": "modeling_sundial.SundialForPrediction",
         },
-        transformers_registered=True,
     ),
     "chronos2": ModelInfo(
         model_id="chronos2",
@@ -170,7 +164,6 @@ BUILTIN_HF_TRANSFORMERS_MODEL_MAP = {
             "AutoConfig": "config.Chronos2CoreConfig",
             "AutoModelForCausalLM": "model.Chronos2Model",
         },
-        transformers_registered=True,
     ),
     "moirai2": ModelInfo(
         model_id="moirai2",
@@ -183,7 +176,6 @@ BUILTIN_HF_TRANSFORMERS_MODEL_MAP = {
             "AutoConfig": "configuration_moirai2.Moirai2Config",
             "AutoModelForCausalLM": "modeling_moirai2.Moirai2ForPrediction",
         },
-        transformers_registered=True,
     ),
     "toto": ModelInfo(
         model_id="toto",
@@ -196,7 +188,6 @@ BUILTIN_HF_TRANSFORMERS_MODEL_MAP = {
             "AutoConfig": "configuration_toto.TotoConfig",
             "AutoModelForCausalLM": "modeling_toto.TotoForPrediction",
         },
-        transformers_registered=True,
     ),
     "moment": ModelInfo(
         model_id="moment",
@@ -209,6 +200,5 @@ BUILTIN_HF_TRANSFORMERS_MODEL_MAP = {
             "AutoConfig": "configuration_moment.MomentConfig",
             "AutoModelForCausalLM": "modeling_moment.MomentForPrediction",
         },
-        transformers_registered=True,
     ),
 }
