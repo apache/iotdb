@@ -22,8 +22,7 @@ package org.apache.iotdb.db.pipe.event;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
-import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
-import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 
@@ -35,7 +34,7 @@ public class PipeRealtimeEventTest {
   @Test
   public void testSkipReportOnCommitIsDelegatedToInnerEvent() {
     final TestEnrichedEvent innerEvent = new TestEnrichedEvent();
-    final PipeRealtimeEvent realtimeEvent = new PipeRealtimeEvent(innerEvent, null, null);
+    final PipeRealtimeEvent realtimeEvent = new PipeRealtimeEvent(innerEvent, null, null, null);
 
     Assert.assertTrue(innerEvent.isShouldReportOnCommit());
     Assert.assertTrue(realtimeEvent.isShouldReportOnCommit());
@@ -49,7 +48,7 @@ public class PipeRealtimeEventTest {
   private static class TestEnrichedEvent extends EnrichedEvent {
 
     private TestEnrichedEvent() {
-      super(null, 0, null, null, null, null, null, null, false, Long.MIN_VALUE, Long.MAX_VALUE);
+      super(null, 0, null, null, Long.MIN_VALUE, Long.MAX_VALUE);
     }
 
     @Override
@@ -72,12 +71,7 @@ public class PipeRealtimeEventTest {
         final String pipeName,
         final long creationTime,
         final PipeTaskMeta pipeTaskMeta,
-        final TreePattern treePattern,
-        final TablePattern tablePattern,
-        final String userId,
-        final String userName,
-        final String cliHostname,
-        final boolean skipIfNoPrivileges,
+        final PipePattern pattern,
         final long startTime,
         final long endTime) {
       return this;
