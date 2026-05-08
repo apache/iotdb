@@ -125,6 +125,24 @@ public class IoTDBConfig {
   /** Max mqtt message size. Unit: byte */
   private int mqttMaxMessageSize = 1048576;
 
+  /** Whether to enable the metric scrape service. */
+  private boolean enableMetricScrapeService = false;
+
+  /** The comma separated metric scrape target URLs. */
+  private String metricScrapeTargets = "";
+
+  /** The metric scrape interval in seconds. */
+  private int metricScrapeIntervalSeconds = 15;
+
+  /** The table model database used by metric scrape service. */
+  private String metricScrapeDatabase = "metrics";
+
+  /** The table used by metric scrape service. */
+  private String metricScrapeTable = "iotdb_metrics";
+
+  /** The HTTP timeout used by metric scrape service. Unit: millisecond */
+  private int metricScrapeHttpTimeoutMs = 10000;
+
   /** Rpc binding address. */
   private String rpcAddress = "127.0.0.1";
 
@@ -2606,6 +2624,54 @@ public class IoTDBConfig {
 
   public void setMqttMaxMessageSize(int mqttMaxMessageSize) {
     this.mqttMaxMessageSize = mqttMaxMessageSize;
+  }
+
+  public boolean isEnableMetricScrapeService() {
+    return enableMetricScrapeService;
+  }
+
+  public void setEnableMetricScrapeService(boolean enableMetricScrapeService) {
+    this.enableMetricScrapeService = enableMetricScrapeService;
+  }
+
+  public String getMetricScrapeTargets() {
+    return metricScrapeTargets;
+  }
+
+  public void setMetricScrapeTargets(String metricScrapeTargets) {
+    this.metricScrapeTargets = metricScrapeTargets;
+  }
+
+  public int getMetricScrapeIntervalSeconds() {
+    return metricScrapeIntervalSeconds;
+  }
+
+  public void setMetricScrapeIntervalSeconds(int metricScrapeIntervalSeconds) {
+    this.metricScrapeIntervalSeconds = metricScrapeIntervalSeconds;
+  }
+
+  public String getMetricScrapeDatabase() {
+    return metricScrapeDatabase;
+  }
+
+  public void setMetricScrapeDatabase(String metricScrapeDatabase) {
+    this.metricScrapeDatabase = metricScrapeDatabase;
+  }
+
+  public String getMetricScrapeTable() {
+    return metricScrapeTable;
+  }
+
+  public void setMetricScrapeTable(String metricScrapeTable) {
+    this.metricScrapeTable = metricScrapeTable;
+  }
+
+  public int getMetricScrapeHttpTimeoutMs() {
+    return metricScrapeHttpTimeoutMs;
+  }
+
+  public void setMetricScrapeHttpTimeoutMs(int metricScrapeHttpTimeoutMs) {
+    this.metricScrapeHttpTimeoutMs = metricScrapeHttpTimeoutMs;
   }
 
   public int getTagAttributeFlushInterval() {

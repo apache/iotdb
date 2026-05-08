@@ -290,6 +290,14 @@ public class IoTDBConstant {
   public static final String MQTT_DATA_PATH = "mqtt_data_path";
   public static final String MQTT_MAX_MESSAGE_SIZE = "mqtt_max_message_size";
 
+  // metric scrape
+  public static final String ENABLE_METRIC_SCRAPE = "enable_metric_scrape_service";
+  public static final String METRIC_SCRAPE_TARGETS = "metric_scrape_targets";
+  public static final String METRIC_SCRAPE_INTERVAL_SECONDS = "metric_scrape_interval_seconds";
+  public static final String METRIC_SCRAPE_DATABASE = "metric_scrape_database";
+  public static final String METRIC_SCRAPE_TABLE = "metric_scrape_table";
+  public static final String METRIC_SCRAPE_HTTP_TIMEOUT_MS = "metric_scrape_http_timeout_ms";
+
   // thrift
   public static final int DEFAULT_FETCH_SIZE = 5000;
   public static final int DEFAULT_CONNECTION_TIMEOUT_MS = 0;

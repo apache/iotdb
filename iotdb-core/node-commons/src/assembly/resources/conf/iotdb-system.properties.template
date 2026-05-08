@@ -2142,6 +2142,40 @@ mqtt_payload_formatter=json
 mqtt_max_message_size=1048576
 
 ####################
+### Metric Scrape Configuration
+####################
+
+# whether to enable the metric scrape service.
+# effectiveMode: restart
+# Datatype: boolean
+enable_metric_scrape_service=false
+
+# the comma separated Prometheus text exposition target URLs to scrape.
+# effectiveMode: restart
+# Datatype: String
+metric_scrape_targets=
+
+# the interval between two scrapes of the same target in seconds.
+# effectiveMode: restart
+# Datatype: int
+metric_scrape_interval_seconds=15
+
+# the table model database used by the metric scrape service.
+# effectiveMode: restart
+# Datatype: String
+metric_scrape_database=metrics
+
+# the table used by the metric scrape service.
+# effectiveMode: restart
+# Datatype: String
+metric_scrape_table=iotdb_metrics
+
+# the HTTP connect and read timeout used by the metric scrape service in milliseconds.
+# effectiveMode: restart
+# Datatype: int
+metric_scrape_http_timeout_ms=10000
+
+####################
 ### IoTDB-AI Configuration
 ####################
 

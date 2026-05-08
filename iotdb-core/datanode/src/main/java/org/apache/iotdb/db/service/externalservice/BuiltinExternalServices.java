@@ -32,7 +32,11 @@ public enum BuiltinExternalServices {
   REST(
       "REST",
       "org.apache.iotdb.rest.RestService",
-      IoTDBRestServiceDescriptor.getInstance().getConfig()::isEnableRestService);
+      IoTDBRestServiceDescriptor.getInstance().getConfig()::isEnableRestService),
+  METRIC_SCRAPE(
+      "METRIC_SCRAPE",
+      "org.apache.iotdb.metricscrape.MetricScrapeService",
+      IoTDBDescriptor.getInstance().getConfig()::isEnableMetricScrapeService);
 
   private final String serviceName;
   private final String className;

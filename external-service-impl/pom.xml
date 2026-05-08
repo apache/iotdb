@@ -31,6 +31,7 @@
     <packaging>pom</packaging>
     <modules>
         <module>mqtt</module>
+        <module>metric-scrape</module>
         <module>rest</module>
         <module>rest-openapi</module>
     </modules>

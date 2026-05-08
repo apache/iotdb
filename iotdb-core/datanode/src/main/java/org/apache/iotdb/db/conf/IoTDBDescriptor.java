@@ -882,6 +882,9 @@ public class IoTDBDescriptor {
     // mqtt
     loadMqttProps(properties);
 
+    // metric scrape
+    loadMetricScrapeProps(properties);
+
     conf.setIntoOperationBufferSizeInByte(
         Long.parseLong(
             properties.getProperty(
@@ -2025,6 +2028,40 @@ public class IoTDBDescriptor {
     if (properties.getProperty(IoTDBConstant.MQTT_MAX_MESSAGE_SIZE) != null) {
       conf.setMqttMaxMessageSize(
           Integer.parseInt(properties.getProperty(IoTDBConstant.MQTT_MAX_MESSAGE_SIZE).trim()));
+    }
+  }
+
+  // metric scrape related
+  private void loadMetricScrapeProps(TrimProperties properties) {
+    if (properties.getProperty(IoTDBConstant.ENABLE_METRIC_SCRAPE) != null) {
+      conf.setEnableMetricScrapeService(
+          Boolean.parseBoolean(properties.getProperty(IoTDBConstant.ENABLE_METRIC_SCRAPE).trim()));
+    }
+
+    if (properties.getProperty(IoTDBConstant.METRIC_SCRAPE_TARGETS) != null) {
+      conf.setMetricScrapeTargets(
+          properties.getProperty(IoTDBConstant.METRIC_SCRAPE_TARGETS).trim());
+    }
+
+    if (properties.getProperty(IoTDBConstant.METRIC_SCRAPE_INTERVAL_SECONDS) != null) {
+      conf.setMetricScrapeIntervalSeconds(
+          Integer.parseInt(
+              properties.getProperty(IoTDBConstant.METRIC_SCRAPE_INTERVAL_SECONDS).trim()));
+    }
+
+    if (properties.getProperty(IoTDBConstant.METRIC_SCRAPE_DATABASE) != null) {
+      conf.setMetricScrapeDatabase(
+          properties.getProperty(IoTDBConstant.METRIC_SCRAPE_DATABASE).trim());
+    }
+
+    if (properties.getProperty(IoTDBConstant.METRIC_SCRAPE_TABLE) != null) {
+      conf.setMetricScrapeTable(properties.getProperty(IoTDBConstant.METRIC_SCRAPE_TABLE).trim());
+    }
+
+    if (properties.getProperty(IoTDBConstant.METRIC_SCRAPE_HTTP_TIMEOUT_MS) != null) {
+      conf.setMetricScrapeHttpTimeoutMs(
+          Integer.parseInt(
+              properties.getProperty(IoTDBConstant.METRIC_SCRAPE_HTTP_TIMEOUT_MS).trim()));
     }
   }
 

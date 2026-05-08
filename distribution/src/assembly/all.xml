@@ -97,6 +97,10 @@
             <outputDirectory>lib</outputDirectory>
         </file>
         <file>
+            <source>${maven.multiModuleProjectDirectory}/external-service-impl/metric-scrape/target/metric-scrape-${project.version}-jar-with-dependencies.jar</source>
+            <outputDirectory>lib</outputDirectory>
+        </file>
+        <file>
             <source>${maven.multiModuleProjectDirectory}/external-service-impl/rest/target/rest-${project.version}-jar-with-dependencies.jar</source>
             <outputDirectory>lib</outputDirectory>
         </file>
