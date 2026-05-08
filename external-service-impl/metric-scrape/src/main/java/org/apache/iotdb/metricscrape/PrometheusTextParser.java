@@ -23,8 +23,10 @@ import org.apache.iotdb.commons.queryengine.utils.TimestampPrecisionUtils;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 public class PrometheusTextParser {
@@ -35,17 +37,19 @@ public class PrometheusTextParser {
     }
     List<PrometheusSample> samples = new ArrayList<>();
     String[] lines = text.split("\\r\\n|\\n|\\r");
+    Set<String> helpMetricNames = collectHelpMetricNames(lines);
     for (int i = 0; i < lines.length; i++) {
       String line = lines[i].trim();
       if (line.isEmpty() || line.startsWith("#")) {
         continue;
       }
-      samples.add(parseSample(line, i + 1, defaultTimestamp));
+      samples.add(parseSample(line, i + 1, defaultTimestamp, helpMetricNames));
     }
     return samples;
   }
 
-  private PrometheusSample parseSample(String line, int lineNumber, long defaultTimestamp) {
+  private PrometheusSample parseSample(
+      String line, int lineNumber, long defaultTimestamp, Set<String> helpMetricNames) {
     Parser parser = new Parser(line, lineNumber);
     String metricName = parser.parseMetricName();
     Map<String, String> labels = parser.parseLabels();
@@ -55,7 +59,45 @@ public class PrometheusTextParser {
     long timestamp = parser.parseOptionalTimestamp(defaultTimestamp);
     parser.skipWhitespace();
     parser.expectEnd();
-    return new PrometheusSample(metricName, labels, value, timestamp);
+    return new PrometheusSample(
+        resolveMetricFamilyName(metricName, helpMetricNames), metricName, labels, value, timestamp);
+  }
+
+  private static Set<String> collectHelpMetricNames(String[] lines) {
+    Set<String> helpMetricNames = new LinkedHashSet<>();
+    for (String rawLine : lines) {
+      String line = rawLine.trim();
+      if (!line.startsWith("# HELP")) {
+        continue;
+      }
+      int position = "# HELP".length();
+      while (position < line.length() && Character.isWhitespace(line.charAt(position))) {
+        position++;
+      }
+      int start = position;
+      while (position < line.length() && !Character.isWhitespace(line.charAt(position))) {
+        position++;
+      }
+      if (start < position) {
+        helpMetricNames.add(line.substring(start, position));
+      }
+    }
+    return helpMetricNames;
+  }
+
+  private static String resolveMetricFamilyName(String metricName, Set<String> helpMetricNames) {
+    if (helpMetricNames.contains(metricName)) {
+      return metricName;
+    }
+
+    String result = null;
+    for (String helpMetricName : helpMetricNames) {
+      if (metricName.startsWith(helpMetricName + "_")
+          && (result == null || helpMetricName.length() > result.length())) {
+        result = helpMetricName;
+      }
+    }
+    return result == null ? metricName : result;
   }
 
   private static double parsePrometheusDouble(String token, int lineNumber) {

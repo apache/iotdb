@@ -50,13 +50,14 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 
 public class MetricTableWriter {
 
-  public static final String METRIC_NAME_COLUMN = "metric_name";
-  public static final String VALUE_COLUMN = "value";
   private static final String TIME_COLUMN = "time";
 
   private static final Logger LOGGER = LoggerFactory.getLogger(MetricTableWriter.class);
@@ -65,17 +66,12 @@ public class MetricTableWriter {
   private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
   private static final IoTDBConfig IOTDB_CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
-  private final String database;
-  private final String table;
   private final IClientSession session;
   private final SqlParser sqlParser = new SqlParser();
   private final Metadata metadata = LocalExecutionPlanner.getInstance().metadata;
 
-  public MetricTableWriter(String database, String table) {
-    this.database = database;
-    this.table = table;
+  public MetricTableWriter() {
     this.session = new InternalClientSession("METRIC_SCRAPE");
-    this.session.setDatabaseName(database);
     this.session.setSqlDialect(SqlDialect.TABLE);
     SESSION_MANAGER.supplySession(
         session,
@@ -85,32 +81,31 @@ public class MetricTableWriter {
         ClientVersion.V_1_0);
   }
 
-  public synchronized void initializeSchema() {
-    executeStatement("CREATE DATABASE IF NOT EXISTS " + quoteIdentifier(database));
-    session.setDatabaseName(database);
-    executeStatement(
-        "CREATE TABLE IF NOT EXISTS "
-            + quoteIdentifier(table)
-            + " ("
-            + METRIC_NAME_COLUMN
-            + " STRING TAG, "
-            + VALUE_COLUMN
-            + " DOUBLE FIELD)");
+  public synchronized void initializeDatabases(List<MetricScrapeTarget> targets) {
+    Set<String> databases = new LinkedHashSet<>();
+    for (MetricScrapeTarget target : targets) {
+      databases.add(target.getDatabase());
+    }
+    for (String database : databases) {
+      executeStatement("CREATE DATABASE IF NOT EXISTS " + quoteIdentifier(database));
+    }
   }
 
-  public synchronized void write(List<PrometheusSample> samples) {
+  public synchronized void write(String database, List<PrometheusSample> samples) {
     if (samples.isEmpty()) {
       return;
     }
-    Map<List<String>, TabletBuilder> builders = new LinkedHashMap<>();
+    Map<TabletKey, TabletBuilder> builders = new LinkedHashMap<>();
     for (PrometheusSample sample : samples) {
       List<String> labelKeys = new ArrayList<>(sample.getLabels().keySet());
       Collections.sort(labelKeys);
-      validateLabelKeys(labelKeys);
-      TabletBuilder builder = builders.get(labelKeys);
+      validateColumns(sample, labelKeys);
+      TabletKey key =
+          new TabletKey(sample.getMetricFamilyName(), sample.getMetricName(), labelKeys);
+      TabletBuilder builder = builders.get(key);
       if (builder == null) {
-        builder = new TabletBuilder(labelKeys);
-        builders.put(labelKeys, builder);
+        builder = new TabletBuilder(database, key);
+        builders.put(key, builder);
       }
       builder.add(sample);
     }
@@ -124,11 +119,16 @@ public class MetricTableWriter {
     SESSION_MANAGER.closeSession(session, COORDINATOR::cleanupQueryExecution, false);
   }
 
-  private void validateLabelKeys(List<String> labelKeys) {
+  private void validateColumns(PrometheusSample sample, List<String> labelKeys) {
+    if (sample.getMetricFamilyName() == null || sample.getMetricFamilyName().trim().isEmpty()) {
+      throw new IllegalArgumentException("Prometheus metric family name should not be empty");
+    }
+    if (sample.getMetricName() == null || sample.getMetricName().trim().isEmpty()) {
+      throw new IllegalArgumentException("Prometheus metric name should not be empty");
+    }
     for (String labelKey : labelKeys) {
-      if (METRIC_NAME_COLUMN.equalsIgnoreCase(labelKey)
-          || VALUE_COLUMN.equalsIgnoreCase(labelKey)
-          || TIME_COLUMN.equalsIgnoreCase(labelKey)) {
+      if (TIME_COLUMN.equalsIgnoreCase(labelKey)
+          || sample.getMetricName().equalsIgnoreCase(labelKey)) {
         throw new IllegalArgumentException(
             "Prometheus label conflicts with reserved IoTDB table column name: " + labelKey);
       }
@@ -193,12 +193,49 @@ public class MetricTableWriter {
     return "\"" + identifier.replace("\"", "\"\"") + "\"";
   }
 
+  private static class TabletKey {
+    private final String table;
+    private final String field;
+    private final List<String> labelKeys;
+
+    private TabletKey(String table, String field, List<String> labelKeys) {
+      this.table = table;
+      this.field = field;
+      this.labelKeys = new ArrayList<>(labelKeys);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) {
+        return true;
+      }
+      if (!(o instanceof TabletKey)) {
+        return false;
+      }
+      TabletKey tabletKey = (TabletKey) o;
+      return Objects.equals(table, tabletKey.table)
+          && Objects.equals(field, tabletKey.field)
+          && Objects.equals(labelKeys, tabletKey.labelKeys);
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(table, field, labelKeys);
+    }
+  }
+
   private class TabletBuilder {
+    private final String database;
+    private final String table;
+    private final String field;
     private final List<String> labelKeys;
     private final List<PrometheusSample> samples = new ArrayList<>();
 
-    private TabletBuilder(List<String> labelKeys) {
-      this.labelKeys = new ArrayList<>(labelKeys);
+    private TabletBuilder(String database, TabletKey key) {
+      this.database = database;
+      this.table = key.table;
+      this.field = key.field;
+      this.labelKeys = new ArrayList<>(key.labelKeys);
     }
 
     private void add(PrometheusSample sample) {
@@ -213,10 +250,9 @@ public class MetricTableWriter {
       statement.setDatabaseName(database);
       statement.setRowCount(samples.size());
 
-      List<String> measurements = new ArrayList<>(labelKeys.size() + 2);
-      measurements.add(METRIC_NAME_COLUMN);
+      List<String> measurements = new ArrayList<>(labelKeys.size() + 1);
       measurements.addAll(labelKeys);
-      measurements.add(VALUE_COLUMN);
+      measurements.add(field);
       statement.setMeasurements(measurements.toArray(new String[0]));
       statement.setTimes(buildTimes());
       statement.setDataTypes(buildDataTypes(measurements.size()));
@@ -253,10 +289,9 @@ public class MetricTableWriter {
     }
 
     private Object[] buildColumns() {
-      Object[] columns = new Object[labelKeys.size() + 2];
-      columns[0] = buildStringColumn(METRIC_NAME_COLUMN);
+      Object[] columns = new Object[labelKeys.size() + 1];
       for (int i = 0; i < labelKeys.size(); i++) {
-        columns[i + 1] = buildStringColumn(labelKeys.get(i));
+        columns[i] = buildStringColumn(labelKeys.get(i));
       }
       double[] values = new double[samples.size()];
       for (int i = 0; i < samples.size(); i++) {
@@ -269,10 +304,7 @@ public class MetricTableWriter {
     private Binary[] buildStringColumn(String columnName) {
       Binary[] values = new Binary[samples.size()];
       for (int i = 0; i < samples.size(); i++) {
-        String value =
-            METRIC_NAME_COLUMN.equals(columnName)
-                ? samples.get(i).getMetricName()
-                : samples.get(i).getLabels().get(columnName);
+        String value = samples.get(i).getLabels().get(columnName);
         values[i] = new Binary(value.getBytes(StandardCharsets.UTF_8));
       }
       return values;

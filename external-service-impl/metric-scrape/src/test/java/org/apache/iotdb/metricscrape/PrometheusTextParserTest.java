@@ -40,6 +40,7 @@ public class PrometheusTextParserTest {
 
     assertEquals(2, samples.size());
     PrometheusSample first = samples.get(0);
+    assertEquals("up", first.getMetricFamilyName());
     assertEquals("up", first.getMetricName());
     assertEquals("iotdb", first.getLabels().get("job"));
     assertEquals("127.0.0.1:6667", first.getLabels().get("instance"));
@@ -47,6 +48,7 @@ public class PrometheusTextParserTest {
     assertEquals(1635232143960L, first.getTimestamp());
 
     PrometheusSample second = samples.get(1);
+    assertEquals("rpc:latency_seconds", second.getMetricFamilyName());
     assertEquals("rpc:latency_seconds", second.getMetricName());
     assertEquals("query", second.getLabels().get("method"));
     assertEquals("a\\b\"c", second.getLabels().get("escaped"));
@@ -65,6 +67,7 @@ public class PrometheusTextParserTest {
 
     assertEquals(1, samples.size());
     PrometheusSample sample = samples.get(0);
+    assertEquals("file_count", sample.getMetricFamilyName());
     assertEquals("file_count", sample.getMetricName());
     assertEquals("defaultCluster", sample.getLabels().get("cluster"));
     assertEquals("DataNode", sample.getLabels().get("nodeType"));
@@ -80,8 +83,26 @@ public class PrometheusTextParserTest {
     List<PrometheusSample> samples = new PrometheusTextParser().parse(text, 100);
 
     assertEquals(1, samples.size());
+    assertEquals("metric[name]", samples.get(0).getMetricFamilyName());
     assertEquals("metric[name]", samples.get(0).getMetricName());
     assertEquals("value", samples.get(0).getLabels().get("tag-key"));
+  }
+
+  @Test
+  public void testParseMetricFamilyNameFromHelp() {
+    String text =
+        "# HELP request_duration_seconds Request duration.\n"
+            + "# TYPE request_duration_seconds summary\n"
+            + "request_duration_seconds_sum{method=\"query\"} 10\n"
+            + "request_duration_seconds_count{method=\"query\"} 2\n";
+
+    List<PrometheusSample> samples = new PrometheusTextParser().parse(text, 100);
+
+    assertEquals(2, samples.size());
+    assertEquals("request_duration_seconds", samples.get(0).getMetricFamilyName());
+    assertEquals("request_duration_seconds_sum", samples.get(0).getMetricName());
+    assertEquals("request_duration_seconds", samples.get(1).getMetricFamilyName());
+    assertEquals("request_duration_seconds_count", samples.get(1).getMetricName());
   }
 
   @Test(expected = IllegalArgumentException.class)

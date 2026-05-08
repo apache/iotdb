@@ -134,10 +134,12 @@ public class IoTDBConfig {
   /** The metric scrape interval in seconds. */
   private int metricScrapeIntervalSeconds = 15;
 
-  /** The table model database used by metric scrape service. */
+  /** The comma separated table model databases used by metric scrape service. */
   private String metricScrapeDatabase = "metrics";
 
-  /** The table used by metric scrape service. */
+  /**
+   * The table used by metric scrape service. Deprecated: table names are parsed from HELP lines.
+   */
   private String metricScrapeTable = "iotdb_metrics";
 
   /** The HTTP timeout used by metric scrape service. Unit: millisecond */

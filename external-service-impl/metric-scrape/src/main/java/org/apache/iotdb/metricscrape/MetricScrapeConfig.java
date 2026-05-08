@@ -31,20 +31,12 @@ public class MetricScrapeConfig {
 
   private final List<MetricScrapeTarget> targets;
   private final int intervalSeconds;
-  private final String database;
-  private final String table;
   private final int httpTimeoutMs;
 
   private MetricScrapeConfig(
-      List<MetricScrapeTarget> targets,
-      int intervalSeconds,
-      String database,
-      String table,
-      int httpTimeoutMs) {
+      List<MetricScrapeTarget> targets, int intervalSeconds, int httpTimeoutMs) {
     this.targets = targets;
     this.intervalSeconds = intervalSeconds;
-    this.database = database;
-    this.table = table;
     this.httpTimeoutMs = httpTimeoutMs;
   }
 
@@ -59,22 +51,23 @@ public class MetricScrapeConfig {
         || config.getMetricScrapeDatabase().trim().isEmpty()) {
       throw new IllegalArgumentException("metric_scrape_database should not be empty");
     }
-    if (config.getMetricScrapeTable() == null || config.getMetricScrapeTable().trim().isEmpty()) {
-      throw new IllegalArgumentException("metric_scrape_table should not be empty");
+    List<String> targetUrls = parseTargetUrls(config.getMetricScrapeTargets());
+    List<String> databases = parseDatabases(config.getMetricScrapeDatabase());
+    if (!targetUrls.isEmpty() && databases.size() != targetUrls.size()) {
+      throw new IllegalArgumentException(
+          "metric_scrape_database count should be equal to metric_scrape_targets count");
     }
     return new MetricScrapeConfig(
-        parseTargets(config.getMetricScrapeTargets()),
+        buildTargets(targetUrls, databases),
         config.getMetricScrapeIntervalSeconds(),
-        config.getMetricScrapeDatabase().trim(),
-        config.getMetricScrapeTable().trim(),
         config.getMetricScrapeHttpTimeoutMs());
   }
 
-  private static List<MetricScrapeTarget> parseTargets(String rawTargets) {
+  private static List<String> parseTargetUrls(String rawTargets) {
     if (rawTargets == null || rawTargets.trim().isEmpty()) {
       return Collections.emptyList();
     }
-    List<MetricScrapeTarget> targets = new ArrayList<>();
+    List<String> targets = new ArrayList<>();
     String[] targetItems = rawTargets.split(",");
     for (String targetItem : targetItems) {
       String target = targetItem.trim();
@@ -82,7 +75,32 @@ public class MetricScrapeConfig {
         continue;
       }
       validateTarget(target);
-      targets.add(new MetricScrapeTarget(target));
+      targets.add(target);
+    }
+    return Collections.unmodifiableList(targets);
+  }
+
+  private static List<String> parseDatabases(String rawDatabases) {
+    if (rawDatabases == null || rawDatabases.trim().isEmpty()) {
+      return Collections.emptyList();
+    }
+    List<String> databases = new ArrayList<>();
+    String[] databaseItems = rawDatabases.split(",");
+    for (String databaseItem : databaseItems) {
+      String database = databaseItem.trim();
+      if (database.isEmpty()) {
+        continue;
+      }
+      databases.add(database);
+    }
+    return Collections.unmodifiableList(databases);
+  }
+
+  private static List<MetricScrapeTarget> buildTargets(
+      List<String> targetUrls, List<String> databases) {
+    List<MetricScrapeTarget> targets = new ArrayList<>(targetUrls.size());
+    for (int i = 0; i < targetUrls.size(); i++) {
+      targets.add(new MetricScrapeTarget(targetUrls.get(i), databases.get(i)));
     }
     return Collections.unmodifiableList(targets);
   }
@@ -106,14 +124,6 @@ public class MetricScrapeConfig {
 
   public int getIntervalSeconds() {
     return intervalSeconds;
-  }
-
-  public String getDatabase() {
-    return database;
-  }
-
-  public String getTable() {
-    return table;
   }
 
   public int getHttpTimeoutMs() {

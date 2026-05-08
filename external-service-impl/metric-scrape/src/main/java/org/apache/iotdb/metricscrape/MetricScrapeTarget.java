@@ -22,17 +22,23 @@ package org.apache.iotdb.metricscrape;
 public class MetricScrapeTarget {
 
   private final String url;
+  private final String database;
 
-  public MetricScrapeTarget(String url) {
+  public MetricScrapeTarget(String url, String database) {
     this.url = url;
+    this.database = database;
   }
 
   public String getUrl() {
     return url;
   }
 
+  public String getDatabase() {
+    return database;
+  }
+
   @Override
   public String toString() {
-    return url;
+    return url + " -> " + database;
   }
 }

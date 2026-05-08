@@ -56,8 +56,8 @@ public class MetricScrapeService implements IExternalService {
       return;
     }
 
-    writer = new MetricTableWriter(config.getDatabase(), config.getTable());
-    writer.initializeSchema();
+    writer = new MetricTableWriter();
+    writer.initializeDatabases(config.getTargets());
 
     executorService =
         Executors.newScheduledThreadPool(
@@ -72,11 +72,9 @@ public class MetricScrapeService implements IExternalService {
     }
 
     LOGGER.info(
-        "Start MetricScrapeService successfully, targets={}, interval={}s, table={}.{}",
+        "Start MetricScrapeService successfully, targets={}, interval={}s",
         config.getTargets(),
-        config.getIntervalSeconds(),
-        config.getDatabase(),
-        config.getTable());
+        config.getIntervalSeconds());
   }
 
   @Override
@@ -105,7 +103,7 @@ public class MetricScrapeService implements IExternalService {
         LOGGER.debug("Metric scrape target {} returns no samples.", target);
         return;
       }
-      currentWriter.write(samples);
+      currentWriter.write(target.getDatabase(), samples);
       LOGGER.debug("Metric scrape target {} writes {} samples.", target, samples.size());
     } catch (Exception e) {
       LOGGER.warn("Failed to scrape metric target {}.", target, e);

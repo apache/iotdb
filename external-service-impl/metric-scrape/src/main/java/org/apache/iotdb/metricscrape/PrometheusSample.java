@@ -25,6 +25,7 @@ import java.util.Map;
 
 public class PrometheusSample {
 
+  private final String metricFamilyName;
   private final String metricName;
   private final Map<String, String> labels;
   private final double value;
@@ -32,10 +33,24 @@ public class PrometheusSample {
 
   public PrometheusSample(
       String metricName, Map<String, String> labels, double value, long timestamp) {
+    this(metricName, metricName, labels, value, timestamp);
+  }
+
+  public PrometheusSample(
+      String metricFamilyName,
+      String metricName,
+      Map<String, String> labels,
+      double value,
+      long timestamp) {
+    this.metricFamilyName = metricFamilyName;
     this.metricName = metricName;
     this.labels = Collections.unmodifiableMap(new LinkedHashMap<>(labels));
     this.value = value;
     this.timestamp = timestamp;
+  }
+
+  public String getMetricFamilyName() {
+    return metricFamilyName;
   }
 
   public String getMetricName() {

@@ -2160,15 +2160,11 @@ metric_scrape_targets=
 # Datatype: int
 metric_scrape_interval_seconds=15
 
-# the table model database used by the metric scrape service.
+# the comma separated table model databases used by the metric scrape service.
+# The count and order must match metric_scrape_targets.
 # effectiveMode: restart
 # Datatype: String
 metric_scrape_database=metrics
-
-# the table used by the metric scrape service.
-# effectiveMode: restart
-# Datatype: String
-metric_scrape_table=iotdb_metrics
 
 # the HTTP connect and read timeout used by the metric scrape service in milliseconds.
 # effectiveMode: restart
