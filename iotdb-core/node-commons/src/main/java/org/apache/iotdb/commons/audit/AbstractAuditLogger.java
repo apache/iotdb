@@ -138,22 +138,6 @@ public abstract class AbstractAuditLogger {
     }
   }
 
-  public static Boolean isLoginEvent(AuditEventType type) {
-    switch (type) {
-      case LOGIN:
-      case LOGIN_FINAL:
-      case MODIFY_PASSWD:
-      case LOGIN_EXCEED_LIMIT:
-      case LOGIN_FAILED_TRIES:
-      case LOGIN_REJECT_IP:
-      case LOGIN_FAIL_MAX_TIMES:
-      case LOGIN_RESOURCE_RESTRICT:
-        return true;
-      default:
-        return false;
-    }
-  }
-
   public void recordObjectAuthenticationAuditLog(
       final IAuditEntity auditEntity, final Supplier<String> auditObject) {
     log(

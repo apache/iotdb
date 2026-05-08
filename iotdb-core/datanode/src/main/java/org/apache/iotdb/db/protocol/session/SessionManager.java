@@ -173,6 +173,18 @@ public class SessionManager implements SessionManagerMBean {
           .sessionId(-1)
           .setMessage("Account is blocked due to consecutive failed logins.")
           .setCode(TSStatusCode.USER_LOGIN_LOCKED.getStatusCode());
+      AUDIT_LOGGER.log(
+          new AuditLogFields(
+              userId,
+              username,
+              session.getClientAddress(),
+              AuditEventType.LOGIN_EXCEED_LIMIT,
+              AuditLogOperation.CONTROL,
+              false),
+          () ->
+              String.format(
+                  "User %s (ID=%d) login rejected: account is locked (code: %d)",
+                  username, userId, TSStatusCode.USER_LOGIN_LOCKED.getStatusCode()));
       return openSessionResp;
     }
 
@@ -301,7 +313,7 @@ public class SessionManager implements SessionManagerMBean {
     } else {
       openSessionResp.sessionId(-1).setMessage(loginStatus.message).setCode(loginStatus.code);
       if (enableLoginLock) {
-        loginLockManager.recordFailure(userId, session.getClientAddress());
+        loginLockManager.recordFailure(userId, username, session.getClientAddress());
       }
 
       AUDIT_LOGGER.log(

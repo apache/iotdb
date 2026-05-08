@@ -701,6 +701,13 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setAuditableControlEventType(String auditableControlEventType) {
+    dnConfig.setAuditableControlEventType(auditableControlEventType);
+    cnConfig.setAuditableControlEventType(auditableControlEventType);
+    return this;
+  }
+
+  @Override
   public CommonConfig setEnableEncryptConfigFile(boolean enableEncryptConfigFile) {
     dnConfig.setEnableEncryptConfigFile(enableEncryptConfigFile);
     cnConfig.setEnableEncryptConfigFile(enableEncryptConfigFile);

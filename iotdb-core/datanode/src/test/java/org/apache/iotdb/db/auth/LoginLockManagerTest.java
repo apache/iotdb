@@ -45,6 +45,7 @@ public class LoginLockManagerTest {
 
   private LoginLockManager lockManager;
   private static final long TEST_USER_ID = 1001L;
+  private static final String TEST_USERNAME = "testuser";
   private static final long OTHER_USER_ID = 2002L;
   private static final String TEST_IP = "192.168.1.1";
   private static final String ANOTHER_IP = "10.0.0.1";
@@ -127,14 +128,14 @@ public class LoginLockManagerTest {
 
   @Test
   public void testSingleFailureNotLocked() {
-    lockManager.recordFailure(TEST_USER_ID, TEST_IP);
+    lockManager.recordFailure(TEST_USER_ID, TEST_USERNAME, TEST_IP);
     assertFalse("Single failure should not lock", lockManager.checkLock(TEST_USER_ID, TEST_IP));
   }
 
   @Test
   public void testIpLockAfterMaxAttempts() {
     for (int i = 0; i < failedLoginAttempts; i++) {
-      lockManager.recordFailure(TEST_USER_ID, TEST_IP);
+      lockManager.recordFailure(TEST_USER_ID, TEST_USERNAME, TEST_IP);
     }
     assertTrue(
         "User@IP should be locked after max attempts",
@@ -144,7 +145,7 @@ public class LoginLockManagerTest {
   @Test
   public void testGlobalUserLockAfterMaxAttempts() {
     for (int i = 0; i < failedLoginAttemptsPerUser; i++) {
-      lockManager.recordFailure(TEST_USER_ID, "ip" + i);
+      lockManager.recordFailure(TEST_USER_ID, TEST_USERNAME, "ip" + i);
     }
     assertTrue(
         "User should be locked globally after max attempts",
@@ -157,7 +158,7 @@ public class LoginLockManagerTest {
     String localIp = InetAddress.getLoopbackAddress().getHostAddress();
 
     for (int i = 0; i < 20; i++) {
-      lockManager.recordFailure(EXEMPT_USER_ID, localIp);
+      lockManager.recordFailure(EXEMPT_USER_ID, "root", localIp);
     }
     assertFalse(
         "Exempt user with local IP should never be locked",
@@ -167,7 +168,7 @@ public class LoginLockManagerTest {
   @Test
   public void testExemptUsersRemoteIpCanBeLocked() {
     for (int i = 0; i < failedLoginAttempts; i++) {
-      lockManager.recordFailure(EXEMPT_USER_ID, TEST_IP);
+      lockManager.recordFailure(EXEMPT_USER_ID, "root", TEST_IP);
     }
     assertTrue(
         "Exempt user with non-local IP should still be locked",
@@ -180,7 +181,8 @@ public class LoginLockManagerTest {
     LoginLockManager userOnlyManager = new LoginLockManager(-1, 10, 1);
 
     for (int i = 0; i < 10; i++) {
-      userOnlyManager.recordFailure(TEST_USER_ID, "ip" + i); // Different IPs each time
+      userOnlyManager.recordFailure(
+          TEST_USER_ID, TEST_USERNAME, "ip" + i); // Different IPs each time
     }
     // Should be locked
     assertTrue(userOnlyManager.checkLock(TEST_USER_ID, null));
@@ -194,11 +196,11 @@ public class LoginLockManagerTest {
   @Test
   public void testManualUnlock() {
     for (int i = 0; i < failedLoginAttempts; i++) {
-      lockManager.recordFailure(TEST_USER_ID, TEST_IP);
+      lockManager.recordFailure(TEST_USER_ID, TEST_USERNAME, TEST_IP);
     }
     assertTrue(lockManager.checkLock(TEST_USER_ID, TEST_IP));
 
-    lockManager.unlock(TEST_USER_ID, TEST_IP);
+    lockManager.unlock(TEST_USER_ID, TEST_USERNAME, TEST_IP);
     assertFalse(
         "User should be unlocked after manual unlock",
         lockManager.checkLock(TEST_USER_ID, TEST_IP));
@@ -207,11 +209,11 @@ public class LoginLockManagerTest {
   @Test
   public void testGlobalManualUnlock() {
     for (int i = 0; i < failedLoginAttemptsPerUser; i++) {
-      lockManager.recordFailure(TEST_USER_ID, "ip" + i);
+      lockManager.recordFailure(TEST_USER_ID, TEST_USERNAME, "ip" + i);
     }
     assertTrue(lockManager.checkLock(TEST_USER_ID, TEST_IP));
 
-    lockManager.unlock(TEST_USER_ID, null);
+    lockManager.unlock(TEST_USER_ID, TEST_USERNAME, null);
     assertFalse(
         "User should be unlocked after manual global unlock",
         lockManager.checkLock(TEST_USER_ID, TEST_IP));
@@ -219,13 +221,13 @@ public class LoginLockManagerTest {
 
   @Test
   public void testClearFailureResetsCounters() {
-    lockManager.recordFailure(TEST_USER_ID, TEST_IP);
-    lockManager.recordFailure(TEST_USER_ID, TEST_IP);
+    lockManager.recordFailure(TEST_USER_ID, TEST_USERNAME, TEST_IP);
+    lockManager.recordFailure(TEST_USER_ID, TEST_USERNAME, TEST_IP);
 
     lockManager.clearFailure(TEST_USER_ID, TEST_IP);
 
     for (int i = 0; i < failedLoginAttempts - 1; i++) {
-      lockManager.recordFailure(TEST_USER_ID, TEST_IP);
+      lockManager.recordFailure(TEST_USER_ID, TEST_USERNAME, TEST_IP);
     }
     assertFalse(
         "Counters should be reset after clear", lockManager.checkLock(TEST_USER_ID, TEST_IP));
@@ -233,7 +235,7 @@ public class LoginLockManagerTest {
 
   @Test
   public void testEmptyIpInUnlock() {
-    lockManager.unlock(TEST_USER_ID, "");
+    lockManager.unlock(TEST_USER_ID, TEST_USERNAME, "");
     // no exception expected
   }
 
@@ -242,7 +244,7 @@ public class LoginLockManagerTest {
   @Test
   public void testDifferentUsersAreIndependent() {
     for (int i = 0; i < failedLoginAttempts; i++) {
-      lockManager.recordFailure(TEST_USER_ID, TEST_IP);
+      lockManager.recordFailure(TEST_USER_ID, TEST_USERNAME, TEST_IP);
     }
     assertTrue(lockManager.checkLock(TEST_USER_ID, TEST_IP));
     assertFalse("Other user should not be locked", lockManager.checkLock(OTHER_USER_ID, TEST_IP));
@@ -251,10 +253,10 @@ public class LoginLockManagerTest {
   @Test
   public void testDifferentIpsCountSeparately() {
     for (int i = 0; i < failedLoginAttempts - 1; i++) {
-      lockManager.recordFailure(TEST_USER_ID, TEST_IP);
+      lockManager.recordFailure(TEST_USER_ID, TEST_USERNAME, TEST_IP);
     }
     for (int i = 0; i < failedLoginAttempts - 1; i++) {
-      lockManager.recordFailure(TEST_USER_ID, ANOTHER_IP);
+      lockManager.recordFailure(TEST_USER_ID, TEST_USERNAME, ANOTHER_IP);
     }
     assertFalse(
         "Neither IP should lock user individually", lockManager.checkLock(TEST_USER_ID, TEST_IP));
@@ -265,7 +267,7 @@ public class LoginLockManagerTest {
   @Test
   public void testCleanExpiredLocks() {
     for (int i = 0; i < failedLoginAttempts; i++) {
-      lockManager.recordFailure(TEST_USER_ID, TEST_IP);
+      lockManager.recordFailure(TEST_USER_ID, TEST_USERNAME, TEST_IP);
     }
     assertTrue(lockManager.checkLock(TEST_USER_ID, TEST_IP));
 
@@ -298,7 +300,7 @@ public class LoginLockManagerTest {
 
   @Test
   public void testNotCleanIfRecentFailureExists() {
-    lockManager.recordFailure(TEST_USER_ID, TEST_IP);
+    lockManager.recordFailure(TEST_USER_ID, TEST_USERNAME, TEST_IP);
     lockManager.cleanExpiredLocks();
     assertFalse(
         "Should still keep recent failure record", lockManager.checkLock(TEST_USER_ID, TEST_IP));
@@ -309,7 +311,7 @@ public class LoginLockManagerTest {
   @Test
   public void testLockWithinTimeWindow() throws InterruptedException {
     for (int i = 0; i < failedLoginAttempts; i++) {
-      lockManager.recordFailure(TEST_USER_ID, TEST_IP);
+      lockManager.recordFailure(TEST_USER_ID, TEST_USERNAME, TEST_IP);
       Thread.sleep(200); // small delay but still within window
     }
     assertTrue(
@@ -318,7 +320,7 @@ public class LoginLockManagerTest {
 
   @Test
   public void testFailuresOutsideWindowNotCounted() throws Exception {
-    lockManager.recordFailure(TEST_USER_ID, TEST_IP);
+    lockManager.recordFailure(TEST_USER_ID, TEST_USERNAME, TEST_IP);
 
     // hack timestamps to simulate old failure
     try {
@@ -343,7 +345,7 @@ public class LoginLockManagerTest {
       fail("Reflection modification failed: " + e.getMessage());
     }
 
-    lockManager.recordFailure(TEST_USER_ID, TEST_IP);
+    lockManager.recordFailure(TEST_USER_ID, TEST_USERNAME, TEST_IP);
     assertFalse(
         "Old failures should not count toward new lock",
         lockManager.checkLock(TEST_USER_ID, TEST_IP));
@@ -352,7 +354,7 @@ public class LoginLockManagerTest {
   // ---------------- Configuration and Invalid Input ----------------
   @Test
   public void testNullIpHandling() {
-    lockManager.recordFailure(TEST_USER_ID, null);
+    lockManager.recordFailure(TEST_USER_ID, TEST_USERNAME, null);
     assertFalse("Null IP should not cause exception", lockManager.checkLock(TEST_USER_ID, null));
   }
 
@@ -360,7 +362,7 @@ public class LoginLockManagerTest {
   public void testNegativeUserId() {
     long negativeUserId = -123L;
     for (int i = 0; i < failedLoginAttempts; i++) {
-      lockManager.recordFailure(negativeUserId, TEST_IP);
+      lockManager.recordFailure(negativeUserId, "neguser", TEST_IP);
     }
     assertTrue(
         "Negative user ID should still lock", lockManager.checkLock(negativeUserId, TEST_IP));
@@ -379,7 +381,7 @@ public class LoginLockManagerTest {
     Runnable recordTask =
         () -> {
           for (int i = 0; i < attemptsPerThread; i++) {
-            lockManager.recordFailure(TEST_USER_ID, TEST_IP);
+            lockManager.recordFailure(TEST_USER_ID, TEST_USERNAME, TEST_IP);
           }
         };
 
@@ -412,7 +414,7 @@ public class LoginLockManagerTest {
         () -> {
           for (int u = 0; u < userCount; u++) {
             for (int i = 0; i < attemptsPerUser; i++) {
-              lockManager.recordFailure(TEST_USER_ID + u, TEST_IP);
+              lockManager.recordFailure(TEST_USER_ID + u, "user" + u, TEST_IP);
             }
           }
         };
@@ -437,7 +439,7 @@ public class LoginLockManagerTest {
   public void testConcurrentClearAndFailure() throws InterruptedException {
     // Setup: create locked state first
     for (int i = 0; i < failedLoginAttempts; i++) {
-      lockManager.recordFailure(TEST_USER_ID, TEST_IP);
+      lockManager.recordFailure(TEST_USER_ID, TEST_USERNAME, TEST_IP);
     }
     assertTrue(
         "Precondition: user should be locked before concurrency test",
@@ -458,7 +460,7 @@ public class LoginLockManagerTest {
     // Failure task: records additional failures
     Runnable failTask =
         () -> {
-          lockManager.recordFailure(TEST_USER_ID, TEST_IP);
+          lockManager.recordFailure(TEST_USER_ID, TEST_USERNAME, TEST_IP);
           try {
             Thread.sleep(10);
           } catch (InterruptedException e) {
@@ -508,7 +510,7 @@ public class LoginLockManagerTest {
     Runnable recordTask =
         () -> {
           for (int i = 0; i < failedLoginAttempts * 2; i++) {
-            lockManager.recordFailure(TEST_USER_ID, TEST_IP);
+            lockManager.recordFailure(TEST_USER_ID, TEST_USERNAME, TEST_IP);
           }
         };
 

@@ -19,7 +19,11 @@
 
 package org.apache.iotdb.db.auth;
 
+import org.apache.iotdb.commons.audit.AuditEventType;
+import org.apache.iotdb.commons.audit.AuditLogFields;
+import org.apache.iotdb.commons.audit.AuditLogOperation;
 import org.apache.iotdb.commons.auth.entity.User;
+import org.apache.iotdb.db.audit.DNAuditLogger;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
 import org.slf4j.Logger;
@@ -47,6 +51,7 @@ public class LoginLockManager {
   // Lock records storage (in-memory only)
   private final ConcurrentMap<Long, UserLockInfo> userLocks = new ConcurrentHashMap<>();
   private final ConcurrentMap<String, UserLockInfo> userIpLocks = new ConcurrentHashMap<>();
+  private final ConcurrentMap<Long, String> userIdToUsername = new ConcurrentHashMap<>();
 
   // Exempt users who should never be locked (only valid if request is from local host)
   private static final Set<Long> EXEMPT_USERS;
@@ -186,69 +191,65 @@ public class LoginLockManager {
    * Record a failed login attempt
    *
    * @param userId user ID
+   * @param username username
    * @param ip IP address
    */
-  public void recordFailure(long userId, String ip) {
-    // Exempt users from localhost don't get locked
+  public void recordFailure(long userId, String username, String ip) {
     if (EXEMPT_USERS.contains(userId) && isFromLocalhost(ip)) {
       return;
     }
 
+    userIdToUsername.put(userId, username);
+
     long now = System.currentTimeMillis();
     long cutoffTime = now - (passwordLockTimeMinutes * 60 * 1000L);
 
-    // Handle user@ip failures in sliding window
     if (failedLoginAttempts != -1) {
       String userIpKey = buildUserIpKey(userId, ip);
       userIpLocks.compute(
           userIpKey,
-          (key, existing) -> {
-            if (existing == null) {
-              existing =
-                  new UserLockInfo(Math.max(failedLoginAttempts, failedLoginAttemptsPerUser));
-            }
-            // Remove failures outside of sliding window
-            existing.removeOldFailures(cutoffTime);
-            // Record this failure
-            existing.addFailureTime(now);
-            // Check if threshold reached (log only when it just reaches)
-            int failCountIp = existing.getFailureCount();
-            if (failCountIp >= failedLoginAttempts) {
-              LOGGER.info("IP '{}' locked for user ID '{}'", ip, userId);
-            }
-            return existing;
-          });
+          (key, existing) ->
+              recordAndCheck(existing, cutoffTime, now, failedLoginAttempts, userId, username, ip));
     }
 
-    // Handle global user failures in sliding window
     if (failedLoginAttemptsPerUser != -1) {
       userLocks.compute(
           userId,
-          (key, existing) -> {
-            if (existing == null) {
-              existing =
-                  new UserLockInfo(Math.max(failedLoginAttempts, failedLoginAttemptsPerUser));
-            }
-            // Remove failures outside of sliding window
-            existing.removeOldFailures(cutoffTime);
-            // Record this failure
-            existing.addFailureTime(now);
-            // Check if threshold reached (log only when it just reaches)
-            int failCountUser = existing.getFailureCount();
-            if (failCountUser >= failedLoginAttemptsPerUser) {
-              LOGGER.info(
-                  "User ID '{}' locked due to {} failed attempts",
-                  userId,
-                  failedLoginAttemptsPerUser);
-            }
-            return existing;
-          });
+          (key, existing) ->
+              recordAndCheck(
+                  existing, cutoffTime, now, failedLoginAttemptsPerUser, userId, username, null));
     }
 
-    // Check for potential attacks
     if (failedLoginAttempts != -1 || failedLoginAttemptsPerUser != -1) {
       checkForPotentialAttacks(userId, ip);
     }
+  }
+
+  private UserLockInfo recordAndCheck(
+      UserLockInfo existing,
+      long cutoffTime,
+      long now,
+      int threshold,
+      long userId,
+      String username,
+      String ip) {
+    if (existing == null) {
+      existing = new UserLockInfo(Math.max(failedLoginAttempts, failedLoginAttemptsPerUser));
+    }
+    existing.removeOldFailures(cutoffTime);
+    existing.addFailureTime(now);
+    int failCount = existing.getFailureCount();
+    if (failCount >= threshold) {
+      if (ip != null) {
+        LOGGER.info("IP '{}' locked for user ID '{}'", ip, userId);
+      } else {
+        LOGGER.info("User ID '{}' locked due to {} failed attempts", userId, threshold);
+      }
+      if (failCount == threshold) {
+        logLockAuditEvent(userId, username, ip);
+      }
+    }
+    return existing;
   }
 
   /**
@@ -261,26 +262,31 @@ public class LoginLockManager {
     String userIpKey = buildUserIpKey(userId, ip);
     userIpLocks.remove(userIpKey);
     userLocks.remove(userId);
+    userIdToUsername.remove(userId);
   }
 
   /**
    * Unlock user or user@ip
    *
    * @param userId user ID (required)
+   * @param username username
    * @param ip IP address (optional)
    */
-  public void unlock(long userId, String ip) {
+  public void unlock(long userId, String username, String ip) {
     if (ip == null || ip.isEmpty()) {
       // Unlock global user lock
       userLocks.remove(userId);
       // Also remove all IP locks for this user
       userIpLocks.keySet().removeIf(key -> key.startsWith(userId + "@"));
+      userIdToUsername.remove(userId);
       LOGGER.info("User ID '{}' unlocked (manual)", userId);
+      logUnlockAuditEvent(userId, username, null, "manual");
     } else {
       // Unlock specific user@ip lock
       String userIpKey = buildUserIpKey(userId, ip);
       userIpLocks.remove(userIpKey);
       LOGGER.info("IP '{}' for user ID '{}' unlocked (manual)", ip, userId);
+      logUnlockAuditEvent(userId, username, ip, "manual");
     }
   }
 
@@ -298,7 +304,10 @@ public class LoginLockManager {
               // Remove outdated failures
               info.removeOldFailures(cutoffTime);
               if (info.getFailureCount() == 0) {
-                LOGGER.info("User ID '{}' unlocked (expired)", entry.getKey());
+                long uid = entry.getKey();
+                LOGGER.info("User ID '{}' unlocked (expired)", uid);
+                String uname = userIdToUsername.getOrDefault(uid, String.valueOf(uid));
+                logUnlockAuditEvent(uid, uname, null, "expired");
                 return true;
               }
               return false;
@@ -315,15 +324,74 @@ public class LoginLockManager {
               if (info.getFailureCount() == 0) {
                 String[] parts = entry.getKey().split("@");
                 LOGGER.info("IP '{}' for user ID '{}' unlocked (expired)", parts[1], parts[0]);
+                long uid = Long.parseLong(parts[0]);
+                String uname = userIdToUsername.getOrDefault(uid, parts[0]);
+                logUnlockAuditEvent(uid, uname, parts[1], "expired");
                 return true;
               }
               return false;
             });
+
+    // Clean up userIdToUsername entries for users with no remaining lock records
+    userIdToUsername
+        .keySet()
+        .removeIf(
+            uid ->
+                !userLocks.containsKey(uid)
+                    && userIpLocks.keySet().stream().noneMatch(key -> key.startsWith(uid + "@")));
   }
 
   // Helper methods
   private String buildUserIpKey(long userId, String ip) {
     return userId + "@" + ip;
+  }
+
+  private void logLockAuditEvent(long userId, String username, String ip) {
+    try {
+      String detail =
+          ip != null
+              ? String.format(
+                  "User %s (ID=%d) account locked from IP %s after %d failed login attempts",
+                  username, userId, ip, failedLoginAttempts)
+              : String.format(
+                  "User %s (ID=%d) account locked globally after %d failed login attempts",
+                  username, userId, failedLoginAttemptsPerUser);
+      DNAuditLogger.getInstance()
+          .log(
+              new AuditLogFields(
+                  userId,
+                  username,
+                  ip,
+                  AuditEventType.LOGIN_FAIL_MAX_TIMES,
+                  AuditLogOperation.CONTROL,
+                  true),
+              () -> detail);
+    } catch (Exception e) {
+      LOGGER.warn("Failed to log lock audit event for user {}", username, e);
+    }
+  }
+
+  private void logUnlockAuditEvent(long userId, String username, String ip, String reason) {
+    try {
+      String detail =
+          ip != null
+              ? String.format(
+                  "User %s (ID=%d) account unlocked from IP %s (%s)", username, userId, ip, reason)
+              : String.format(
+                  "User %s (ID=%d) account unlocked globally (%s)", username, userId, reason);
+      DNAuditLogger.getInstance()
+          .log(
+              new AuditLogFields(
+                  userId,
+                  username,
+                  ip,
+                  AuditEventType.ACCOUNT_UNLOCKED,
+                  AuditLogOperation.CONTROL,
+                  true),
+              () -> detail);
+    } catch (Exception e) {
+      LOGGER.warn("Failed to log unlock audit event for user {}", username, e);
+    }
   }
 
   private void checkForPotentialAttacks(long userId, String ip) {

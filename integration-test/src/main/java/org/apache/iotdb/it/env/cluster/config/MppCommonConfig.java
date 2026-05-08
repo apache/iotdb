@@ -666,6 +666,12 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setAuditableControlEventType(String auditableControlEventType) {
+    setProperty("auditable_control_event_type", auditableControlEventType);
+    return this;
+  }
+
+  @Override
   public CommonConfig setEnableEncryptConfigFile(boolean enableEncryptConfigFile) {
     setProperty("enable_encrypt_config_file", String.valueOf(enableEncryptConfigFile));
     return this;

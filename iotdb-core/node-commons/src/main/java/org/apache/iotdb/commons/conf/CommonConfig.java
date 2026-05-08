@@ -508,7 +508,10 @@ public class CommonConfig {
           AuditEventType.DESTROY_KEY,
           AuditEventType.AUDIT_STORAGE_FULL,
           AuditEventType.GENERATE_KEY,
-          AuditEventType.LOGIN_REJECT_IP);
+          AuditEventType.LOGIN_REJECT_IP,
+          AuditEventType.LOGIN_FAIL_MAX_TIMES,
+          AuditEventType.LOGIN_EXCEED_LIMIT,
+          AuditEventType.ACCOUNT_UNLOCKED);
 
   /** The level of privilege required to record audit logs * */
   private PrivilegeLevel auditableOperationLevel = PrivilegeLevel.GLOBAL;

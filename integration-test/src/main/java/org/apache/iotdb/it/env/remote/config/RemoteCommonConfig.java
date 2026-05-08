@@ -489,6 +489,11 @@ public class RemoteCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setAuditableControlEventType(String auditableControlEventType) {
+    return this;
+  }
+
+  @Override
   public CommonConfig setEnableEncryptConfigFile(boolean enableEncryptConfigFile) {
     return this;
   }

@@ -461,7 +461,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
               ? ((RelationalAuthorStatement) authorStatement).getLoginAddr()
               : ((AuthorStatement) authorStatement).getLoginAddr();
 
-      LoginLockManager.getInstance().unlock(user.getUserId(), loginAddr);
+      LoginLockManager.getInstance().unlock(user.getUserId(), username, loginAddr);
       successCallback.run();
       future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       return future;

@@ -216,6 +216,8 @@ public interface CommonConfig {
 
   CommonConfig setAuditableOperationResult(String auditableOperationResult);
 
+  CommonConfig setAuditableControlEventType(String auditableControlEventType);
+
   CommonConfig setEnableEncryptConfigFile(boolean enableEncryptConfigFile);
 
   CommonConfig setEnableEncryptPermissionFile(boolean enableEncryptPermissionFile);
