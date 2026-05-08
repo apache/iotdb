@@ -76,6 +76,8 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
+        .setDataReplicationFactor(1)
+        .setSchemaReplicationFactor(1)
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS)
@@ -87,8 +89,8 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
-        .setDataReplicationFactor(2)
-        .setSchemaReplicationFactor(3)
+        .setDataReplicationFactor(1)
+        .setSchemaReplicationFactor(1)
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS)
@@ -96,8 +98,8 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
         .setPipeMemoryManagementEnabled(false)
         .setIsPipeEnableMemoryCheck(false);
 
-    senderEnv.initClusterEnvironment(3, 3, 180);
-    receiverEnv.initClusterEnvironment(3, 3, 180);
+    senderEnv.initClusterEnvironment(1, 1, 180);
+    receiverEnv.initClusterEnvironment(1, 1, 180);
   }
 
   @Test
@@ -1013,7 +1015,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
             "CREATE DATABASE iot_table_stream_attr",
             "USE iot_table_stream_attr",
             "CREATE TABLE table1 (region STRING TAG, device_id STRING TAG, model_id STRING ATTRIBUTE, maintenance STRING ATTRIBUTE COMMENT 'maintenance', temperature FLOAT FIELD COMMENT 'temperature', humidity STRING ATTRIBUTE COMMENT 'humidity', plant_id STRING TAG) COMMENT 'table1'",
-            "create pipe test with source ('inclusion'='all') with sink('node-urls'='127.0.0.1:6668')",
+                String.format("create pipe test with source ('inclusion'='all') with sink('node-urls'='%s')", receiverEnv.getDataNodeWrapper(0).getIpAndPortString()),
             "select * from table1 order by time",
             "INSERT INTO table1(region, plant_id, device_id, model_id, maintenance, time, temperature, humidity) VALUES ('north', null, 'd101', 'red', null, '2025-11-26 13:38:00', 91.0, null), (null, '1003', null, null, 'maint-a', '2025-11-26 13:39:00', null, '36.2'), (null, null, null, 'green', 'maint-b', '2025-11-26 13:40:00', 88.8, '34.9')",
             "INSERT INTO table1(region, plant_id, device_id, model_id, maintenance, time, temperature, humidity) VALUES ('south', '1005', 'd105', null, null, '2025-11-26 13:41:00', 87.5, null)",
