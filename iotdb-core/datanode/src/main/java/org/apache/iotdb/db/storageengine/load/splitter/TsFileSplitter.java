@@ -332,7 +332,17 @@ public class TsFileSplitter {
     }
 
     if (!isTimeChunkNeedDecode) {
-      AlignedChunkData alignedChunkData = pageIndex2ChunkData.get(1).get(0);
+      List<AlignedChunkData> alignedChunkDataList = pageIndex2ChunkData.get(1);
+      if (alignedChunkDataList == null || alignedChunkDataList.isEmpty()) {
+        throw new TsFileRuntimeException(
+            String.format(
+                "Missing non-decoded aligned time chunk context for value chunk %s at offset %d, time chunk offset: %s, context page keys: %s.",
+                header.getMeasurementID(),
+                chunkMetadata.getOffsetOfChunkHeader(),
+                valueChunkOffset2TimeChunkOffset.get(chunkMetadata.getOffsetOfChunkHeader()),
+                pageIndex2ChunkData.keySet()));
+      }
+      AlignedChunkData alignedChunkData = alignedChunkDataList.get(0);
       alignedChunkData.addValueChunk(header);
       alignedChunkData.writeEntireChunk(reader.readChunk(-1, header.getDataSize()), chunkMetadata);
       consumeValueChunkAndAlignedChunkDataIfComplete(reader.position(), chunkMetadata);
@@ -349,6 +359,17 @@ public class TsFileSplitter {
           reader.readPageHeader(
               header.getDataType(), (header.getChunkType() & 0x3F) == MetaMarker.CHUNK_HEADER);
       List<AlignedChunkData> alignedChunkDataList = pageIndex2ChunkData.get(pageIndex);
+      if (alignedChunkDataList == null) {
+        throw new TsFileRuntimeException(
+            String.format(
+                "Missing decoded aligned time page context for value chunk %s at offset %d, page index: %d, time chunk offset: %s, context page keys: %s, time page keys: %s.",
+                header.getMeasurementID(),
+                chunkMetadata.getOffsetOfChunkHeader(),
+                pageIndex,
+                valueChunkOffset2TimeChunkOffset.get(chunkMetadata.getOffsetOfChunkHeader()),
+                pageIndex2ChunkData.keySet(),
+                pageIndex2Times.keySet()));
+      }
       for (AlignedChunkData alignedChunkData : alignedChunkDataList) {
         if (!allChunkData.contains(alignedChunkData)) {
           alignedChunkData.addValueChunk(header);
