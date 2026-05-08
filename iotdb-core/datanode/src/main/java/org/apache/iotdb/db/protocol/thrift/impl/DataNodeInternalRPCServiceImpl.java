@@ -2087,22 +2087,27 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TTestConnectionResp submitInternalTestConnectionTask(TNodeLocations nodeLocations)
       throws TException {
+    Future<TTestConnectionResp> future =
+        TOPOLOGY_PROBING_EXECUTOR.submit(
+            () ->
+                new TTestConnectionResp(
+                    new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
+                    testAllDataNodeConnectionInHeartbeatChannel(
+                        nodeLocations.getDataNodeLocations())));
     try {
-      Future<TTestConnectionResp> future =
-          TOPOLOGY_PROBING_EXECUTOR.submit(
-              () ->
-                  new TTestConnectionResp(
-                      new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
-                      testAllDataNodeConnectionInHeartbeatChannel(
-                          nodeLocations.getDataNodeLocations())));
       return future.get(TEST_CONNECTION_TIMEOUT_MS, TimeUnit.MILLISECONDS);
     } catch (TimeoutException e) {
       return new TTestConnectionResp(
           new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
               .setMessage("Topology probing timed out after " + TEST_CONNECTION_TIMEOUT_MS + "ms"),
           Collections.emptyList());
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new TException(e);
     } catch (Exception e) {
       throw new TException(e);
+    } finally {
+      future.cancel(true);
     }
   }
 

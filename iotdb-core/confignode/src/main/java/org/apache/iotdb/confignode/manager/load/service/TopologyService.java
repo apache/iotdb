@@ -95,6 +95,9 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
   /** Last topology pushed to each DataNode, updated only on successful push. */
   private final Map<Integer, Set<Integer>> lastPushedTopology = new ConcurrentHashMap<>();
 
+  /** Latest computed topology, updated each probing round. */
+  private final Map<Integer, Set<Integer>> latestTopology = new ConcurrentHashMap<>();
+
   public TopologyService(
       IManager configManager, Consumer<Map<Integer, Set<Integer>>> topologyChangeListener) {
     this.configManager = configManager;
@@ -135,6 +138,7 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
       future = null;
     }
     heartbeats.clear();
+    latestTopology.clear();
     LOGGER.info("Topology Probing has stopped successfully");
   }
 
@@ -248,20 +252,32 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
       }
     }
 
-    // 8. run failure detector only on pairs from current probers (not all pairs)
-    final Map<Integer, Set<Integer>> latestTopology =
-        dataNodeLocations.stream()
-            .collect(Collectors.toMap(TDataNodeLocation::getDataNodeId, k -> new HashSet<>()));
+    // 8. build topology: for non-probers carry forward previous results (default all-connected),
+    //    for probers run failure detector
+    final Map<Integer, Set<Integer>> computedTopology = new HashMap<>();
+    for (int nodeId : dataNodeIds) {
+      if (proberIds.contains(nodeId)) {
+        computedTopology.put(nodeId, new HashSet<>());
+      } else {
+        Set<Integer> prev = latestTopology.get(nodeId);
+        if (prev != null) {
+          Set<Integer> carried = new HashSet<>(prev);
+          carried.retainAll(dataNodeIds);
+          computedTopology.put(nodeId, carried);
+        } else {
+          computedTopology.put(nodeId, new HashSet<>(dataNodeIds));
+        }
+      }
+    }
+
     for (final Map.Entry<Pair<Integer, Integer>, List<AbstractHeartbeatSample>> entry :
         heartbeats.entrySet()) {
       final int fromId = entry.getKey().getLeft();
       final int toId = entry.getKey().getRight();
 
-      if (!proberIds.contains(fromId)) {
-        // Not in this batch — carry forward as reachable if history is non-empty and last known OK
-        if (!entry.getValue().isEmpty()) {
-          Optional.ofNullable(latestTopology.get(fromId)).ifPresent(s -> s.add(toId));
-        }
+      if (!proberIds.contains(fromId)
+          || !dataNodeIds.contains(fromId)
+          || !dataNodeIds.contains(toId)) {
         continue;
       }
 
@@ -269,19 +285,38 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
           && !failureDetector.isAvailable(entry.getKey(), entry.getValue())) {
         LOGGER.debug("Connection from DataNode {} to DataNode {} is broken", fromId, toId);
       } else {
-        Optional.ofNullable(latestTopology.get(fromId)).ifPresent(s -> s.add(toId));
+        computedTopology.get(fromId).add(toId);
       }
     }
 
-    logAsymmetricPartition(latestTopology);
+    // For prober nodes: pairs with no heartbeat history default to connected
+    for (int fromId : proberIds) {
+      if (!dataNodeIds.contains(fromId)) {
+        continue;
+      }
+      Set<Integer> reachableSet = computedTopology.get(fromId);
+      for (int toId : dataNodeIds) {
+        if (!heartbeats.containsKey(new Pair<>(fromId, toId))) {
+          reachableSet.add(toId);
+        }
+      }
+    }
+
+    // Save computed topology for next round
+    latestTopology.clear();
+    for (Map.Entry<Integer, Set<Integer>> entry : computedTopology.entrySet()) {
+      latestTopology.put(entry.getKey(), new HashSet<>(entry.getValue()));
+    }
+
+    logAsymmetricPartition(computedTopology);
 
     // 9. notify the listeners on topology change
     if (shouldRun.get()) {
-      topologyChangeListener.accept(latestTopology);
+      topologyChangeListener.accept(computedTopology);
     }
 
     // 10. push topology changes to DataNodes
-    pushTopologyToDataNodes(latestTopology, dataNodeLocations);
+    pushTopologyToDataNodes(computedTopology, dataNodeLocations);
   }
 
   /**
@@ -289,7 +324,7 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
    * own reachable set. lastPushedTopology is updated only on successful push.
    */
   private void pushTopologyToDataNodes(
-      Map<Integer, Set<Integer>> latestTopology, List<TDataNodeLocation> dataNodeLocations) {
+      Map<Integer, Set<Integer>> computedTopology, List<TDataNodeLocation> dataNodeLocations) {
     final Map<Integer, TDataNodeLocation> dataNodesMap =
         dataNodeLocations.stream()
             .collect(Collectors.toMap(TDataNodeLocation::getDataNodeId, loc -> loc));
@@ -297,7 +332,8 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
     final Map<Integer, TDataNodeLocation> targetMap = new HashMap<>();
     for (final TDataNodeLocation location : dataNodeLocations) {
       final int nodeId = location.getDataNodeId();
-      final Set<Integer> reachableSet = latestTopology.getOrDefault(nodeId, Collections.emptySet());
+      final Set<Integer> reachableSet =
+          computedTopology.getOrDefault(nodeId, Collections.emptySet());
       final Set<Integer> lastPushed = lastPushedTopology.get(nodeId);
       if (lastPushed != null && lastPushed.equals(reachableSet)) {
         continue;
@@ -313,7 +349,8 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
         new DataNodeAsyncRequestContext<>(CnToDnAsyncRequestType.PUSH_TOPOLOGY, targetMap);
     for (final Map.Entry<Integer, TDataNodeLocation> entry : targetMap.entrySet()) {
       final int nodeId = entry.getKey();
-      final Set<Integer> reachableSet = latestTopology.getOrDefault(nodeId, Collections.emptySet());
+      final Set<Integer> reachableSet =
+          computedTopology.getOrDefault(nodeId, Collections.emptySet());
       final Map<Integer, Set<Integer>> perNodeTopology = new HashMap<>();
       perNodeTopology.put(nodeId, new HashSet<>(reachableSet));
       final TUpdateClusterTopologyReq req =
@@ -329,7 +366,7 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
         .forEach(
             (nodeId, resp) -> {
               Set<Integer> reachableSet =
-                  latestTopology.getOrDefault(nodeId, Collections.emptySet());
+                  computedTopology.getOrDefault(nodeId, Collections.emptySet());
               lastPushedTopology.put(nodeId, new HashSet<>(reachableSet));
             });
   }
@@ -373,6 +410,7 @@ public class TopologyService implements Runnable, IClusterStatusSubscriber {
                     Objects.equals(pair.getLeft(), nodeId)
                         || Objects.equals(pair.getRight(), nodeId));
         lastPushedTopology.remove(nodeId);
+        latestTopology.remove(nodeId);
       }
     }
   }
