@@ -208,8 +208,9 @@ public class MetricTableWriter {
     private InsertTabletStatement build() {
       InsertTabletStatement statement = new InsertTabletStatement();
       statement.setDevicePath(new PartialPath(table, false));
-      statement.setWriteToTable(true);
       statement.setAligned(false);
+      statement.setWriteToTable(true);
+      statement.setDatabaseName(database);
       statement.setRowCount(samples.size());
 
       List<String> measurements = new ArrayList<>(labelKeys.size() + 2);
