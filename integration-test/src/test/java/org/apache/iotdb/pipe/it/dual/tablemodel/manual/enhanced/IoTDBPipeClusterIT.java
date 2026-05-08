@@ -76,8 +76,6 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
-        .setDataReplicationFactor(1)
-        .setSchemaReplicationFactor(1)
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS)
@@ -89,8 +87,8 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
-        .setDataReplicationFactor(1)
-        .setSchemaReplicationFactor(1)
+        .setDataReplicationFactor(2)
+        .setSchemaReplicationFactor(3)
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS)
@@ -98,8 +96,8 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
         .setPipeMemoryManagementEnabled(false)
         .setIsPipeEnableMemoryCheck(false);
 
-    senderEnv.initClusterEnvironment(1, 1, 180);
-    receiverEnv.initClusterEnvironment(1, 1, 180);
+    senderEnv.initClusterEnvironment(3, 3, 180);
+    receiverEnv.initClusterEnvironment(3, 3, 180);
   }
 
   @Test
