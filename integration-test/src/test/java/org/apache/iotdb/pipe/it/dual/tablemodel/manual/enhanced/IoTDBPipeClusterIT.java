@@ -1015,7 +1015,9 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
             "CREATE DATABASE iot_table_stream_attr",
             "USE iot_table_stream_attr",
             "CREATE TABLE table1 (region STRING TAG, device_id STRING TAG, model_id STRING ATTRIBUTE, maintenance STRING ATTRIBUTE COMMENT 'maintenance', temperature FLOAT FIELD COMMENT 'temperature', humidity STRING ATTRIBUTE COMMENT 'humidity', plant_id STRING TAG) COMMENT 'table1'",
-                String.format("create pipe test with source ('inclusion'='all') with sink('node-urls'='%s')", receiverEnv.getDataNodeWrapper(0).getIpAndPortString()),
+            String.format(
+                "create pipe test with source ('inclusion'='all') with sink('node-urls'='%s')",
+                receiverEnv.getDataNodeWrapper(0).getIpAndPortString()),
             "select * from table1 order by time",
             "INSERT INTO table1(region, plant_id, device_id, model_id, maintenance, time, temperature, humidity) VALUES ('north', null, 'd101', 'red', null, '2025-11-26 13:38:00', 91.0, null), (null, '1003', null, null, 'maint-a', '2025-11-26 13:39:00', null, '36.2'), (null, null, null, 'green', 'maint-b', '2025-11-26 13:40:00', 88.8, '34.9')",
             "INSERT INTO table1(region, plant_id, device_id, model_id, maintenance, time, temperature, humidity) VALUES ('south', '1005', 'd105', null, null, '2025-11-26 13:41:00', 87.5, null)",
