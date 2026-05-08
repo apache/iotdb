@@ -690,23 +690,6 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     return writePointCount;
   }
 
-  private static List<TimeseriesMetadata> getTimeseriesMetadata(
-      final Map<IDeviceID, List<TimeseriesMetadata>> device2TimeseriesMetadata,
-      final IDeviceID deviceId) {
-    final List<TimeseriesMetadata> timeseriesMetadataList = device2TimeseriesMetadata.get(deviceId);
-    if (Objects.nonNull(timeseriesMetadataList)) {
-      return timeseriesMetadataList;
-    }
-
-    for (final Map.Entry<IDeviceID, List<TimeseriesMetadata>> entry :
-        device2TimeseriesMetadata.entrySet()) {
-      if (Arrays.equals(entry.getKey().getSegments(), deviceId.getSegments())) {
-        return entry.getValue();
-      }
-    }
-    return null;
-  }
-
   private static List<Object> getDeviceKey(final IDeviceID deviceId) {
     return Arrays.asList(deviceId.getSegments());
   }
