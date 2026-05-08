@@ -162,6 +162,7 @@ public class DriverScheduler implements IDriverScheduler, IService {
         t -> {
           try {
             t.close();
+            t.interrupt();
           } catch (IOException e) {
             // Only a field is set, there's no chance to throw an IOException
           }
