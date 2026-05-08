@@ -747,7 +747,6 @@ public final class PipeMessages {
   public static final String THROWING_EXCEPTION_IN_CLOSE = "Throwing exception in close";
   public static final String PIPE_INVALID_INPUT = "Invalid input: ";
   public static final String ILLEGAL_DB_OR_TABLE_PATTERN = "Illegal database or table pattern. Detail: ";
-  public static final String PATH_TRAVERSAL_DETECTED = " (Path traversal detected)";
   public static final String EVENT_NOT_SUPPORT_BINDING_PROGRESS_INDEX = "This event does not support binding progressIndex.";
   public static final String UNSUPPORTED_VERSION = "Unsupported version %s";
 

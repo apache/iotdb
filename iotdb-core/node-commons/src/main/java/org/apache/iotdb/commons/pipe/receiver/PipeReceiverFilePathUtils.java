@@ -36,10 +36,7 @@ public final class PipeReceiverFilePathUtils {
         normalizedBaseDir.resolve(fileName).toAbsolutePath().normalize();
 
     if (!normalizedTargetPath.startsWith(normalizedBaseDir)) {
-      throw new IOException(
-          PipeMessages.ILLEGAL_FILENAME_PATH_TRAVERSAL
-              + fileName
-              + PipeMessages.PATH_TRAVERSAL_DETECTED);
+      throw new IOException(String.format(PipeMessages.ILLEGAL_FILENAME_PATH_TRAVERSAL, fileName));
     }
 
     return normalizedTargetPath;
