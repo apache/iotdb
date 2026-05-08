@@ -458,12 +458,14 @@ public class TsFileSplitter {
         }
       }
     }
+    Set<IDeviceID> alignedDevices = new HashSet<>();
     TsFileDeviceIterator deviceIterator = reader.getAllDevicesIteratorWithIsAligned();
     while (deviceIterator.hasNext()) {
       Pair<IDeviceID, Boolean> deviceInfo = deviceIterator.next();
       if (!Boolean.TRUE.equals(deviceInfo.getRight())) {
         continue;
       }
+      alignedDevices.add(deviceInfo.getLeft());
       for (AbstractAlignedChunkMetadata alignedChunkMetadata :
           reader.getAlignedChunkMetadata(deviceInfo.getLeft(), false)) {
         if (alignedChunkMetadata == null || alignedChunkMetadata.getTimeChunkMetadata() == null) {
@@ -487,6 +489,65 @@ public class TsFileSplitter {
             timeChunkOffset, valueChunkCount, Integer::sum);
       }
     }
+    mapUnmatchedValueChunksToTimeChunks(device2Metadata, alignedDevices);
+  }
+
+  private void mapUnmatchedValueChunksToTimeChunks(
+      Map<IDeviceID, List<TimeseriesMetadata>> device2Metadata, Set<IDeviceID> alignedDevices) {
+    for (Map.Entry<IDeviceID, List<TimeseriesMetadata>> entry : device2Metadata.entrySet()) {
+      if (!alignedDevices.contains(entry.getKey())) {
+        continue;
+      }
+      List<IChunkMetadata> timeChunkMetadataList = new ArrayList<>();
+      List<IChunkMetadata> valueChunkMetadataList = new ArrayList<>();
+      for (TimeseriesMetadata timeseriesMetadata : entry.getValue()) {
+        for (IChunkMetadata chunkMetadata : timeseriesMetadata.getChunkMetadataList()) {
+          if (chunkMetadata.getMeasurementUid().isEmpty()) {
+            timeChunkMetadataList.add(chunkMetadata);
+          } else {
+            valueChunkMetadataList.add(chunkMetadata);
+          }
+        }
+      }
+      for (IChunkMetadata timeChunkMetadata : timeChunkMetadataList) {
+        timeChunkOffset2RemainingValueChunkCount.putIfAbsent(
+            timeChunkMetadata.getOffsetOfChunkHeader(), 0);
+      }
+      for (IChunkMetadata valueChunkMetadata : valueChunkMetadataList) {
+        if (valueChunkOffset2TimeChunkOffset.containsKey(
+            valueChunkMetadata.getOffsetOfChunkHeader())) {
+          continue;
+        }
+        IChunkMetadata timeChunkMetadata =
+            findCorrespondingTimeChunk(timeChunkMetadataList, valueChunkMetadata);
+        if (timeChunkMetadata == null) {
+          continue;
+        }
+        long timeChunkOffset = timeChunkMetadata.getOffsetOfChunkHeader();
+        valueChunkOffset2TimeChunkOffset.put(
+            valueChunkMetadata.getOffsetOfChunkHeader(), timeChunkOffset);
+        timeChunkOffset2RemainingValueChunkCount.merge(timeChunkOffset, 1, Integer::sum);
+      }
+    }
+  }
+
+  private IChunkMetadata findCorrespondingTimeChunk(
+      List<IChunkMetadata> timeChunkMetadataList, IChunkMetadata valueChunkMetadata) {
+    IChunkMetadata matchedTimeChunkMetadata = null;
+    for (IChunkMetadata timeChunkMetadata : timeChunkMetadataList) {
+      if (timeChunkMetadata.getStartTime() != valueChunkMetadata.getStartTime()
+          || timeChunkMetadata.getEndTime() != valueChunkMetadata.getEndTime()) {
+        continue;
+      }
+      if (matchedTimeChunkMetadata == null
+          || (timeChunkMetadata.getOffsetOfChunkHeader()
+                  < valueChunkMetadata.getOffsetOfChunkHeader()
+              && timeChunkMetadata.getOffsetOfChunkHeader()
+                  > matchedTimeChunkMetadata.getOffsetOfChunkHeader())) {
+        matchedTimeChunkMetadata = timeChunkMetadata;
+      }
+    }
+    return matchedTimeChunkMetadata;
   }
 
   private void handleModification(List<ModEntry> deletions) throws LoadFileException {
