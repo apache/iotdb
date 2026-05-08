@@ -468,7 +468,7 @@ public class ClientPoolFactory {
                   manager,
                   new ThriftClientProperty.Builder()
                       // TODO: consider timeout and evict strategy.
-                      .setConnectionTimeoutMs(conf.getCnConnectionTimeoutInMS())
+                      .setConnectionTimeoutMs(DefaultProperty.CONNECTION_NEVER_TIMEOUT_MS)
                       .setRpcThriftCompressionEnabled(config.isRpcThriftCompressionEnabled())
                       .setSelectorNumOfAsyncClientManager(config.getSelectorNumOfClientManager())
                       .setPrintLogWhenEncounterException(
