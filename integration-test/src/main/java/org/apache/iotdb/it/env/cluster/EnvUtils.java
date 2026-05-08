@@ -117,7 +117,7 @@ public class EnvUtils {
   }
 
   private static String getUnixSearchPortCmd(final List<Integer> ports) {
-    return "lsof -iTCP -sTCP:LISTEN -P -n | awk '{print $9}' | grep -E "
+    return "lsof -iTCP -sTCP:LISTEN,TIME_WAIT -P -n | awk '{print $9}' | grep -E "
         + ports.stream().map(String::valueOf).collect(Collectors.joining("|"))
         + "\"";
   }

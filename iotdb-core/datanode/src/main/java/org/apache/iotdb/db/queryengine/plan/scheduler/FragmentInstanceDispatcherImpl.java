@@ -65,7 +65,6 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -81,8 +80,6 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
 
   private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
 
-  private final ExecutorService executor;
-  private final ExecutorService writeOperationExecutor;
   private final QueryType type;
   private final MPPQueryContext queryContext;
   private final String localhostIpAddr;
@@ -104,15 +101,11 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
   public FragmentInstanceDispatcherImpl(
       QueryType type,
       MPPQueryContext queryContext,
-      ExecutorService executor,
-      ExecutorService writeOperationExecutor,
       IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> syncInternalServiceClientManager,
       IClientManager<TEndPoint, AsyncDataNodeInternalServiceClient>
           asyncInternalServiceClientManager) {
     this.type = type;
     this.queryContext = queryContext;
-    this.executor = executor;
-    this.writeOperationExecutor = writeOperationExecutor;
     this.syncInternalServiceClientManager = syncInternalServiceClientManager;
     this.asyncInternalServiceClientManager = asyncInternalServiceClientManager;
     this.localhostIpAddr = IoTDBDescriptor.getInstance().getConfig().getInternalAddress();

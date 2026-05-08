@@ -53,15 +53,15 @@ public abstract class AsyncRequestManager<RequestType, NodeLocation, Client> {
 
   private static final int MAX_RETRY_NUM = 6;
 
-  protected AsyncRequestManager() {
-    initClientManager();
+  protected AsyncRequestManager(int selectorNumOfAsyncClientManager) {
+    initClientManager(selectorNumOfAsyncClientManager);
     actionMapBuilder = ImmutableMap.builder();
     initActionMapBuilder();
     this.actionMap = this.actionMapBuilder.build();
     checkActionMapCompleteness();
   }
 
-  protected abstract void initClientManager();
+  protected abstract void initClientManager(int selectorNumOfAsyncClientManager);
 
   protected abstract void initActionMapBuilder();
 
