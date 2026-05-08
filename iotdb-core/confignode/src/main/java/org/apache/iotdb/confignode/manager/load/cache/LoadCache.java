@@ -839,7 +839,7 @@ public class LoadCache {
       for (int fromId : latestTopology.keySet()) {
         for (int toId : latestTopology.keySet()) {
           boolean originReachable =
-              latestTopology.getOrDefault(fromId, Collections.emptySet()).contains(toId);
+              topologyGraph.getOrDefault(fromId, Collections.emptySet()).contains(toId);
           boolean newReachable =
               latestTopology.getOrDefault(fromId, Collections.emptySet()).contains(toId);
           if (originReachable != newReachable) {

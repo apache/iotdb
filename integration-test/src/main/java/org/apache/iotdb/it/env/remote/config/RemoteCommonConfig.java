@@ -517,4 +517,9 @@ public class RemoteCommonConfig implements CommonConfig {
   public CommonConfig setMaxRowsInCteBuffer(int maxRows) {
     return this;
   }
+
+  @Override
+  public CommonConfig setEnableTopologyProbing(boolean enableTopologyProbing) {
+    return this;
+  }
 }

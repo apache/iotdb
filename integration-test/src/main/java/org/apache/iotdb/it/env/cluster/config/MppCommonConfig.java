@@ -701,6 +701,12 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
     return this;
   }
 
+  @Override
+  public CommonConfig setEnableTopologyProbing(boolean enableTopologyProbing) {
+    setProperty("enable_topology_probing", String.valueOf(enableTopologyProbing));
+    return this;
+  }
+
   // For part of the log directory
   public String getClusterConfigStr() {
     return fromConsensusFullNameToAbbr(properties.getProperty(CONFIG_NODE_CONSENSUS_PROTOCOL_CLASS))

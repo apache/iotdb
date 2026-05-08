@@ -50,7 +50,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.Future;
@@ -167,13 +166,6 @@ public class HeartbeatService {
       heartbeatReq.setSchemaRegionIds(configManager.getClusterQuotaManager().getSchemaRegionIds());
       heartbeatReq.setDataRegionIds(configManager.getClusterQuotaManager().getDataRegionIds());
       heartbeatReq.setSpaceQuotaUsage(configManager.getClusterQuotaManager().getSpaceQuotaUsage());
-    }
-
-    final Map<Integer, Set<Integer>> topologyMap =
-        configManager.getLoadManager().getLoadCache().getTopology();
-    if (topologyMap != null) {
-      heartbeatReq.setTopology(topologyMap);
-      heartbeatReq.setDataNodes(configManager.getNodeManager().getRegisteredDataNodeLocations());
     }
 
     setActivationRelatedInfoForDataNodeReq(heartbeatReq);

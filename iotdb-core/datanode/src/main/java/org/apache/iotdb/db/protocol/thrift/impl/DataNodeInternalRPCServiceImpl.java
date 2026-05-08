@@ -53,6 +53,7 @@ import org.apache.iotdb.commons.client.request.AsyncRequestContext;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.concurrent.Await;
 import org.apache.iotdb.commons.concurrent.AwaitTimeoutException;
+import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.IoTThreadFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.WrappedThreadPoolExecutor;
@@ -357,6 +358,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TTableDeviceDeletionWithPatternOrModReq;
 import org.apache.iotdb.mpp.rpc.thrift.TTableDeviceInvalidateCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TTimeSeriesInfo;
 import org.apache.iotdb.mpp.rpc.thrift.TTsFilePieceReq;
+import org.apache.iotdb.mpp.rpc.thrift.TUpdateClusterTopologyReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdatePhysicalAliasRefReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTableReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTemplateReq;
@@ -414,6 +416,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -462,6 +465,14 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       DataNodeThrottleQuotaManager.getInstance();
 
   private final ClusterTopology clusterTopology = ClusterTopology.getInstance();
+
+  private static final long TEST_CONNECTION_TIMEOUT_MS =
+      CommonDescriptor.getInstance().getConfig().getDnConnectionTimeoutInMS();
+
+  private static final ExecutorService TOPOLOGY_PROBING_EXECUTOR =
+      IoTDBThreadPoolFactory.newFixedThreadPool(
+          Math.max(1, Runtime.getRuntime().availableProcessors() / 4),
+          ThreadName.DATANODE_TOPOLOGY_PROBING.getName());
 
   private final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
 
@@ -3072,9 +3083,28 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TTestConnectionResp submitInternalTestConnectionTask(TNodeLocations nodeLocations)
       throws TException {
-    return new TTestConnectionResp(
-        new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
-        testAllDataNodeConnectionInHeartbeatChannel(nodeLocations.getDataNodeLocations()));
+    Future<TTestConnectionResp> future =
+        TOPOLOGY_PROBING_EXECUTOR.submit(
+            () ->
+                new TTestConnectionResp(
+                    new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
+                    testAllDataNodeConnectionInHeartbeatChannel(
+                        nodeLocations.getDataNodeLocations())));
+    try {
+      return future.get(TEST_CONNECTION_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+    } catch (TimeoutException e) {
+      return new TTestConnectionResp(
+          new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+              .setMessage("Topology probing timed out after " + TEST_CONNECTION_TIMEOUT_MS + "ms"),
+          Collections.emptyList());
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new TException(e);
+    } catch (Exception e) {
+      throw new TException(e);
+    } finally {
+      future.cancel(true);
+    }
   }
 
   private static <Location, RequestType> List<TTestConnectionResult> testConnections(
@@ -3101,7 +3131,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         TServiceType.ConfigNodeInternalService,
         DnToCnRequestType.TEST_CONNECTION,
         (AsyncRequestContext<Object, TSStatus, DnToCnRequestType, TConfigNodeLocation> handler) ->
-            DnToCnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequest(handler));
+            DnToCnInternalServiceAsyncRequestManager.getInstance()
+                .sendAsyncRequestWithTimeoutInMs(handler, TEST_CONNECTION_TIMEOUT_MS));
   }
 
   private List<TTestConnectionResult> testAllDataNodeConnectionInHeartbeatChannel(
@@ -3113,7 +3144,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         TServiceType.DataNodeInternalService,
         DnToDnRequestType.TEST_CONNECTION,
         (AsyncRequestContext<Object, TSStatus, DnToDnRequestType, TDataNodeLocation> handler) ->
-            DataNodeIntraHeartbeatManager.getInstance().sendAsyncRequest(handler, 1, null, true));
+            DataNodeIntraHeartbeatManager.getInstance()
+                .sendAsyncRequest(handler, 1, TEST_CONNECTION_TIMEOUT_MS, true));
   }
 
   private List<TTestConnectionResult> testAllDataNodeInternalServiceConnection(
@@ -3125,7 +3157,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         TServiceType.DataNodeInternalService,
         DnToDnRequestType.TEST_CONNECTION,
         (AsyncRequestContext<Object, TSStatus, DnToDnRequestType, TDataNodeLocation> handler) ->
-            DnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequest(handler));
+            DnToDnInternalServiceAsyncRequestManager.getInstance()
+                .sendAsyncRequestWithTimeoutInMs(handler, TEST_CONNECTION_TIMEOUT_MS));
   }
 
   private List<TTestConnectionResult> testAllDataNodeMPPServiceConnection(
@@ -3137,7 +3170,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         TServiceType.DataNodeMPPService,
         DnToDnRequestType.TEST_CONNECTION,
         (AsyncRequestContext<Object, TSStatus, DnToDnRequestType, TDataNodeLocation> handler) ->
-            DataNodeMPPServiceAsyncRequestManager.getInstance().sendAsyncRequest(handler));
+            DataNodeMPPServiceAsyncRequestManager.getInstance()
+                .sendAsyncRequestWithTimeoutInMs(handler, TEST_CONNECTION_TIMEOUT_MS));
   }
 
   private List<TTestConnectionResult> testAllDataNodeExternalServiceConnection(
@@ -3149,11 +3183,18 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         TServiceType.DataNodeExternalService,
         DnToDnRequestType.TEST_CONNECTION,
         (AsyncRequestContext<Object, TSStatus, DnToDnRequestType, TDataNodeLocation> handler) ->
-            DataNodeExternalServiceAsyncRequestManager.getInstance().sendAsyncRequest(handler));
+            DataNodeExternalServiceAsyncRequestManager.getInstance()
+                .sendAsyncRequestWithTimeoutInMs(handler, TEST_CONNECTION_TIMEOUT_MS));
   }
 
   @Override
   public TSStatus testConnectionEmptyRPC() throws TException {
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  }
+
+  @Override
+  public TSStatus updateClusterTopology(TUpdateClusterTopologyReq req) throws TException {
+    clusterTopology.updateTopology(req.getDataNodes(), req.getTopology());
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
@@ -3261,10 +3302,6 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
           .updateConfigNodeList(new ArrayList<>(req.getConfigNodeEndPoints()))) {
         resp.setConfirmedConfigNodeEndPoints(req.getConfigNodeEndPoints());
       }
-    }
-
-    if (req.isSetTopology() && req.isSetDataNodes()) {
-      clusterTopology.updateTopology(req.getDataNodes(), req.getTopology());
     }
 
     if (req.isSetCurrentRegionOperations()) {

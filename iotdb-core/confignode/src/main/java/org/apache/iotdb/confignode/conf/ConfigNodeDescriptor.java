@@ -412,6 +412,35 @@ public class ConfigNodeDescriptor {
                 "failure_detector_phi_acceptable_pause_in_ms",
                 String.valueOf(conf.getFailureDetectorPhiAcceptablePauseInMs()))));
 
+    conf.setEnableTopologyProbing(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_topology_probing", String.valueOf(conf.isEnableTopologyProbing()))));
+
+    long topologyProbingBaseIntervalInMs =
+        Long.parseLong(
+            properties.getProperty(
+                "topology_probing_base_interval_in_ms",
+                String.valueOf(conf.getTopologyProbingBaseIntervalInMs())));
+    if (topologyProbingBaseIntervalInMs <= 0) {
+      throw new IOException(
+          "topology_probing_base_interval_in_ms must be positive, but got: "
+              + topologyProbingBaseIntervalInMs);
+    }
+    conf.setTopologyProbingBaseIntervalInMs(topologyProbingBaseIntervalInMs);
+
+    double topologyProbingTimeoutRatio =
+        Double.parseDouble(
+            properties.getProperty(
+                "topology_probing_timeout_ratio",
+                String.valueOf(conf.getTopologyProbingTimeoutRatio())));
+    if (topologyProbingTimeoutRatio <= 0 || topologyProbingTimeoutRatio >= 1.0) {
+      throw new IOException(
+          "topology_probing_timeout_ratio must be in (0, 1), but got: "
+              + topologyProbingTimeoutRatio);
+    }
+    conf.setTopologyProbingTimeoutRatio(topologyProbingTimeoutRatio);
+
     String leaderDistributionPolicy =
         properties.getProperty("leader_distribution_policy", conf.getLeaderDistributionPolicy());
     if (AbstractLeaderBalancer.GREEDY_POLICY.equals(leaderDistributionPolicy)
@@ -973,6 +1002,9 @@ public class ConfigNodeDescriptor {
             properties.getProperty(
                 "region_migration_concurrency_limit",
                 String.valueOf(conf.getRegionMigrationConcurrencyLimit()))));
+
+    Optional.ofNullable(properties.getProperty("enable_topology_probing"))
+        .ifPresent(v -> conf.setEnableTopologyProbing(Boolean.parseBoolean(v)));
   }
 
   public static ConfigNodeDescriptor getInstance() {

@@ -741,4 +741,11 @@ public class MppSharedCommonConfig implements CommonConfig {
     cnConfig.setMaxRowsInCteBuffer(maxRows);
     return this;
   }
+
+  @Override
+  public CommonConfig setEnableTopologyProbing(boolean enableTopologyProbing) {
+    dnConfig.setEnableTopologyProbing(enableTopologyProbing);
+    cnConfig.setEnableTopologyProbing(enableTopologyProbing);
+    return this;
+  }
 }
