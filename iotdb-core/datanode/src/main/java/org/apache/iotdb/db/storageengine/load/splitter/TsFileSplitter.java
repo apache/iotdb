@@ -37,10 +37,12 @@ import org.apache.tsfile.file.MetaMarker;
 import org.apache.tsfile.file.header.ChunkGroupHeader;
 import org.apache.tsfile.file.header.ChunkHeader;
 import org.apache.tsfile.file.header.PageHeader;
+import org.apache.tsfile.file.metadata.AbstractAlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.read.TsFileDeviceIterator;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.common.BatchData;
 import org.apache.tsfile.read.reader.page.PageReader;
@@ -69,6 +71,8 @@ public class TsFileSplitter {
   private final File tsFile;
   private final TsFileDataConsumer consumer;
   private Map<Long, IChunkMetadata> offset2ChunkMetadata = new HashMap<>();
+  private Map<Long, Long> valueChunkOffset2TimeChunkOffset = new HashMap<>();
+  private Map<Long, Integer> timeChunkOffset2RemainingValueChunkCount = new HashMap<>();
   private List<ModEntry> deletions = new ArrayList<>();
   private Map<Integer, List<AlignedChunkData>> pageIndex2ChunkData = new HashMap<>();
   private Map<Integer, long[]> pageIndex2Times = new HashMap<>();
@@ -86,6 +90,8 @@ public class TsFileSplitter {
   private List<Map<Integer, List<AlignedChunkData>>> pageIndex2ChunkDataList = new ArrayList<>();
   private List<Map<Integer, long[]>> pageIndex2TimesList = null;
   private List<Boolean> isTimeChunkNeedDecodeList = new ArrayList<>();
+  private Map<Long, Integer> timeChunkOffset2ContextIndex = new HashMap<>();
+  private Long currentTimeChunkOffset = null;
 
   public TsFileSplitter(File tsFile, TsFileDataConsumer consumer) {
     this.tsFile = tsFile;
@@ -119,7 +125,9 @@ public class TsFileSplitter {
           case MetaMarker.ONLY_ONE_PAGE_TIME_CHUNK_HEADER:
             processTimeChunkOrNonAlignedChunk(reader, marker);
             if (isAligned) {
+              final Long timeChunkOffset = currentTimeChunkOffset;
               storeTimeChunkContext();
+              consumeAlignedChunkDataIfComplete(reader.position(), timeChunkOffset);
             }
             break;
           case MetaMarker.VALUE_CHUNK_HEADER:
@@ -135,6 +143,8 @@ public class TsFileSplitter {
             isTimeChunkNeedDecodeList = new ArrayList<>();
             valueColumn2TimeChunkIndex = new HashMap<>();
             timeChunkIndexOfCurrentValueColumn = 0;
+            timeChunkOffset2ContextIndex = new HashMap<>();
+            currentTimeChunkOffset = null;
             break;
           case MetaMarker.OPERATION_INDEX_RANGE:
             reader.readPlanIndex();
@@ -152,8 +162,8 @@ public class TsFileSplitter {
   private void processTimeChunkOrNonAlignedChunk(TsFileSequenceReader reader, byte marker)
       throws IOException, LoadFileException {
     long chunkOffset = reader.position();
+    currentTimeChunkOffset = null;
     timeChunkIndexOfCurrentValueColumn = pageIndex2TimesList.size();
-    consumeAllAlignedChunkData(chunkOffset, pageIndex2ChunkData);
 
     ChunkHeader header = reader.readChunkHeader(marker);
     String measurementId = header.getMeasurementID();
@@ -173,6 +183,10 @@ public class TsFileSplitter {
     if (chunkMetadata == null) {
       reader.readChunk(-1, header.getDataSize());
       return;
+    }
+    if (isAligned) {
+      currentTimeChunkOffset = chunkMetadata.getOffsetOfChunkHeader();
+      timeChunkOffset2ContextIndex.put(currentTimeChunkOffset, pageIndex2TimesList.size());
     }
     TTimePartitionSlot timePartitionSlot =
         TimePartitionUtils.getTimePartitionSlot(chunkMetadata.getStartTime());
@@ -309,9 +323,11 @@ public class TsFileSplitter {
       reader.readChunk(-1, header.getDataSize());
       return;
     }
-    switchToTimeChunkContextOfCurrentMeasurement(reader, header.getMeasurementID());
+    switchToTimeChunkContextOfCurrentValueChunk(
+        reader, header.getMeasurementID(), chunkMetadata.getOffsetOfChunkHeader());
     if (header.getDataSize() == 0) {
       handleEmptyValueChunk(header, pageIndex2ChunkData, chunkMetadata, isTimeChunkNeedDecode);
+      consumeValueChunkAndAlignedChunkDataIfComplete(reader.position(), chunkMetadata);
       return;
     }
 
@@ -319,6 +335,7 @@ public class TsFileSplitter {
       AlignedChunkData alignedChunkData = pageIndex2ChunkData.get(1).get(0);
       alignedChunkData.addValueChunk(header);
       alignedChunkData.writeEntireChunk(reader.readChunk(-1, header.getDataSize()), chunkMetadata);
+      consumeValueChunkAndAlignedChunkDataIfComplete(reader.position(), chunkMetadata);
       return;
     }
 
@@ -354,6 +371,7 @@ public class TsFileSplitter {
       pageIndex += 1;
       dataSize -= pageDataSize;
     }
+    consumeValueChunkAndAlignedChunkDataIfComplete(reader.position(), chunkMetadata);
   }
 
   private void storeTimeChunkContext() {
@@ -365,14 +383,30 @@ public class TsFileSplitter {
     isTimeChunkNeedDecode = true;
   }
 
-  private void switchToTimeChunkContextOfCurrentMeasurement(
-      TsFileSequenceReader reader, String measurement) throws IOException, LoadFileException {
-    int index = valueColumn2TimeChunkIndex.getOrDefault(measurement, 0);
-    if (index != timeChunkIndexOfCurrentValueColumn) {
-      consumeAllAlignedChunkData(reader.position(), pageIndex2ChunkData);
+  private void switchToTimeChunkContextOfCurrentValueChunk(
+      TsFileSequenceReader reader, String measurement, long valueChunkOffset) throws IOException {
+    final Long timeChunkOffset = valueChunkOffset2TimeChunkOffset.get(valueChunkOffset);
+    int index;
+    if (timeChunkOffset == null) {
+      index = valueColumn2TimeChunkIndex.getOrDefault(measurement, 0);
+      valueColumn2TimeChunkIndex.put(measurement, index + 1);
+    } else {
+      final Integer contextIndex = timeChunkOffset2ContextIndex.get(timeChunkOffset);
+      if (contextIndex == null) {
+        throw new TsFileRuntimeException(
+            String.format(
+                "Cannot find aligned time chunk context for value chunk %s at offset %d in TsFile %s, reader position: %d.",
+                measurement, valueChunkOffset, tsFile.getPath(), reader.position()));
+      }
+      index = contextIndex;
     }
     timeChunkIndexOfCurrentValueColumn = index;
-    valueColumn2TimeChunkIndex.put(measurement, index + 1);
+    if (index < 0 || index >= pageIndex2ChunkDataList.size()) {
+      throw new TsFileRuntimeException(
+          String.format(
+              "Aligned time chunk context index %d is out of range for value chunk %s at offset %d in TsFile %s, reader position: %d.",
+              index, measurement, valueChunkOffset, tsFile.getPath(), reader.position()));
+    }
     pageIndex2Times = pageIndex2TimesList.get(index);
     pageIndex2ChunkData = pageIndex2ChunkDataList.get(index);
 
@@ -422,6 +456,35 @@ public class TsFileSplitter {
         for (IChunkMetadata chunkMetadata : timeseriesMetadata.getChunkMetadataList()) {
           offset2ChunkMetadata.put(chunkMetadata.getOffsetOfChunkHeader(), chunkMetadata);
         }
+      }
+    }
+    TsFileDeviceIterator deviceIterator = reader.getAllDevicesIteratorWithIsAligned();
+    while (deviceIterator.hasNext()) {
+      Pair<IDeviceID, Boolean> deviceInfo = deviceIterator.next();
+      if (!Boolean.TRUE.equals(deviceInfo.getRight())) {
+        continue;
+      }
+      for (AbstractAlignedChunkMetadata alignedChunkMetadata :
+          reader.getAlignedChunkMetadata(deviceInfo.getLeft(), false)) {
+        if (alignedChunkMetadata == null || alignedChunkMetadata.getTimeChunkMetadata() == null) {
+          continue;
+        }
+        IChunkMetadata timeChunkMetadata = alignedChunkMetadata.getTimeChunkMetadata();
+        long timeChunkOffset = timeChunkMetadata.getOffsetOfChunkHeader();
+        offset2ChunkMetadata.put(timeChunkOffset, timeChunkMetadata);
+
+        int valueChunkCount = 0;
+        for (IChunkMetadata valueChunkMetadata : alignedChunkMetadata.getValueChunkMetadataList()) {
+          if (valueChunkMetadata == null) {
+            continue;
+          }
+          long valueChunkOffset = valueChunkMetadata.getOffsetOfChunkHeader();
+          offset2ChunkMetadata.put(valueChunkOffset, valueChunkMetadata);
+          valueChunkOffset2TimeChunkOffset.put(valueChunkOffset, timeChunkOffset);
+          valueChunkCount += 1;
+        }
+        timeChunkOffset2RemainingValueChunkCount.merge(
+            timeChunkOffset, valueChunkCount, Integer::sum);
       }
     }
   }
@@ -483,6 +546,41 @@ public class TsFileSplitter {
     }
     isTimeChunkNeedDecodeList.clear();
     valueColumn2TimeChunkIndex.clear();
+    timeChunkOffset2ContextIndex.clear();
+    currentTimeChunkOffset = null;
+  }
+
+  private void consumeValueChunkAndAlignedChunkDataIfComplete(
+      final long offset, final IChunkMetadata valueChunkMetadata) throws LoadFileException {
+    final Long timeChunkOffset =
+        valueChunkOffset2TimeChunkOffset.get(valueChunkMetadata.getOffsetOfChunkHeader());
+    if (timeChunkOffset == null) {
+      return;
+    }
+    final Integer remainingValueChunkCount =
+        timeChunkOffset2RemainingValueChunkCount.get(timeChunkOffset);
+    if (remainingValueChunkCount == null) {
+      return;
+    }
+    if (remainingValueChunkCount > 0) {
+      timeChunkOffset2RemainingValueChunkCount.put(timeChunkOffset, remainingValueChunkCount - 1);
+    }
+    consumeAlignedChunkDataIfComplete(offset, timeChunkOffset);
+  }
+
+  private void consumeAlignedChunkDataIfComplete(final long offset, final Long timeChunkOffset)
+      throws LoadFileException {
+    if (timeChunkOffset == null
+        || timeChunkOffset2RemainingValueChunkCount.getOrDefault(timeChunkOffset, 0) > 0) {
+      return;
+    }
+    final Integer contextIndex = timeChunkOffset2ContextIndex.remove(timeChunkOffset);
+    if (contextIndex == null
+        || contextIndex < 0
+        || contextIndex >= pageIndex2ChunkDataList.size()) {
+      return;
+    }
+    consumeAllAlignedChunkData(offset, pageIndex2ChunkDataList.get(contextIndex));
   }
 
   private void consumeChunkData(String measurement, long offset, ChunkData chunkData)
