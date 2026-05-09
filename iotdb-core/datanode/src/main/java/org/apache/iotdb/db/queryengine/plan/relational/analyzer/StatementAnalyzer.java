@@ -833,7 +833,7 @@ public class StatementAnalyzer {
       queryContext.setQueryType(QueryType.OTHER);
       accessControl.checkMissingPrivileges(
           sessionContext.getUserName(),
-          Collections.singletonList(PrivilegeType.LOAD_TSFILE),
+          Collections.singletonList(PrivilegeType.MAINTAIN),
           queryContext);
 
       try (final LoadTsFileAnalyzer loadTsFileAnalyzer =

@@ -87,11 +87,11 @@ public class TreeAccessTest {
   }
 
   @Test
-  public void testLoadTsFileRequiresLoadTsFilePrivilege() throws Exception {
+  public void testLoadTsFileRequiresMaintainPrivilege() throws Exception {
     final User mockUser = Mockito.mock(User.class);
     Mockito.when(mockUser.getName()).thenReturn("loadUser");
     Mockito.when(mockUser.getUserId()).thenReturn(10002L);
-    Mockito.when(mockUser.checkSysPrivilege(PrivilegeType.LOAD_TSFILE)).thenReturn(false);
+    Mockito.when(mockUser.checkSysPrivilege(PrivilegeType.MAINTAIN)).thenReturn(false);
     Mockito.when(mockUser.checkSysPrivilege(PrivilegeType.SYSTEM)).thenReturn(false);
     AuthorityChecker.getAuthorityFetcher()
         .getAuthorCache()
@@ -108,7 +108,7 @@ public class TreeAccessTest {
               .visitLoadFile(statement, new TreeAccessCheckContext(10002L, "loadUser", ""))
               .getCode());
 
-      Mockito.when(mockUser.checkSysPrivilege(PrivilegeType.LOAD_TSFILE)).thenReturn(true);
+      Mockito.when(mockUser.checkSysPrivilege(PrivilegeType.MAINTAIN)).thenReturn(true);
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(),
           treeAccessCheckVisitor

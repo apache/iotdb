@@ -1152,7 +1152,7 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   public TSStatus visitLoadFile(LoadTsFileStatement statement, TreeAccessCheckContext context) {
     return checkGlobalAuth(
         context.setAuditLogOperation(AuditLogOperation.DML),
-        PrivilegeType.LOAD_TSFILE,
+        PrivilegeType.MAINTAIN,
         () ->
             statement.getTsFiles().stream()
                 .map(File::getPath)
