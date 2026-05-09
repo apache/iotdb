@@ -405,6 +405,7 @@ class ModelStorage:
             else:
                 model_info.state = ModelStates.INACTIVE
                 logger.warning(f"Fine-tuned model {model_id} marked as INACTIVE")
+
     # ==================== Show and Delete Models ====================
 
     def show_models(self, req: TShowModelsReq) -> TShowModelsResp:
