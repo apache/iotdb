@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
 import org.apache.iotdb.calc.plan.relational.metadata.CommonMetadataUtils;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.queryengine.common.SessionInfo;
@@ -830,6 +831,10 @@ public class StatementAnalyzer {
     @Override
     public Scope visitLoadTsFile(final LoadTsFile node, final Optional<Scope> scope) {
       queryContext.setQueryType(QueryType.OTHER);
+      accessControl.checkMissingPrivileges(
+          sessionContext.getUserName(),
+          Collections.singletonList(PrivilegeType.LOAD_TSFILE),
+          queryContext);
 
       try (final LoadTsFileAnalyzer loadTsFileAnalyzer =
           new LoadTsFileAnalyzer(node, node.isGeneratedByPipe(), queryContext)) {

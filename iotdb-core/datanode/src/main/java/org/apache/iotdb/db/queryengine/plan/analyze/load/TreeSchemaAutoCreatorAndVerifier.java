@@ -149,21 +149,7 @@ public class TreeSchemaAutoCreatorAndVerifier {
 
           // not a timeseries, skip
         } else {
-          // check WRITE_DATA permission of timeseries
-          long startTime = System.nanoTime();
-          try {
-            UserEntity userEntity = loadTsFileAnalyzer.context.getSession().getUserEntity();
-            TSStatus status =
-                AuthorityChecker.getAccessControl()
-                    .checkFullPathWriteDataPermission(
-                        userEntity, device, timeseriesMetadata.getMeasurementId());
-            if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-              throw new AuthException(
-                  TSStatusCode.representOf(status.getCode()), status.getMessage());
-            }
-          } finally {
-            PerformanceOverviewMetrics.getInstance().recordAuthCost(System.nanoTime() - startTime);
-          }
+          checkWriteDataPermission(loadTsFileAnalyzer, device, timeseriesMetadata);
           final Pair<CompressionType, TSEncoding> compressionEncodingPair =
               reader.readTimeseriesCompressionTypeAndEncoding(timeseriesMetadata);
           schemaCache.addTimeSeries(
@@ -184,6 +170,26 @@ public class TreeSchemaAutoCreatorAndVerifier {
           flush();
         }
       }
+    }
+  }
+
+  static void checkWriteDataPermission(
+      final LoadTsFileAnalyzer loadTsFileAnalyzer,
+      final IDeviceID device,
+      final TimeseriesMetadata timeseriesMetadata)
+      throws AuthException {
+    final long startTime = System.nanoTime();
+    try {
+      final UserEntity userEntity = loadTsFileAnalyzer.context.getSession().getUserEntity();
+      final TSStatus status =
+          AuthorityChecker.getAccessControl()
+              .checkFullPathWriteDataPermission(
+                  userEntity, device, timeseriesMetadata.getMeasurementId());
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        throw new AuthException(TSStatusCode.representOf(status.getCode()), status.getMessage());
+      }
+    } finally {
+      PerformanceOverviewMetrics.getInstance().recordAuthCost(System.nanoTime() - startTime);
     }
   }
 

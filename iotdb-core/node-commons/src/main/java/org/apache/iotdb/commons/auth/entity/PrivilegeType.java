@@ -54,7 +54,8 @@ public enum PrivilegeType {
 
   SYSTEM(PrivilegeModelType.SYSTEM),
   SECURITY(PrivilegeModelType.SYSTEM),
-  AUDIT(PrivilegeModelType.SYSTEM);
+  AUDIT(PrivilegeModelType.SYSTEM),
+  LOAD_TSFILE(PrivilegeModelType.SYSTEM);
 
   private final PrivilegeModelType modelType;
 
@@ -134,6 +135,7 @@ public enum PrivilegeType {
     switch (this) {
       case MANAGE_USER:
       case MANAGE_ROLE:
+      case LOAD_TSFILE:
       case SYSTEM:
       case SECURITY:
       case AUDIT:
@@ -160,6 +162,7 @@ public enum PrivilegeType {
       case USE_PIPE:
       case MANAGE_DATABASE:
       case EXTEND_TEMPLATE:
+      case LOAD_TSFILE:
         return Arrays.asList(this, PrivilegeType.SYSTEM);
       default:
         return Collections.singletonList(this);
@@ -208,6 +211,7 @@ public enum PrivilegeType {
       case WRITE_SCHEMA:
       case INSERT:
       case DELETE:
+      case LOAD_TSFILE:
         return AuditLogOperation.DML;
       case MANAGE_USER:
       case MANAGE_ROLE:

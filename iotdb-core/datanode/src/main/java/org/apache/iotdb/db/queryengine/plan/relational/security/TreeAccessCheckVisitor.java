@@ -169,6 +169,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.collect.ImmutableList;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -1149,8 +1150,14 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
 
   @Override
   public TSStatus visitLoadFile(LoadTsFileStatement statement, TreeAccessCheckContext context) {
-    // no need to check here, it will be checked in process phase
-    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    return checkGlobalAuth(
+        context.setAuditLogOperation(AuditLogOperation.DML),
+        PrivilegeType.LOAD_TSFILE,
+        () ->
+            statement.getTsFiles().stream()
+                .map(File::getPath)
+                .collect(Collectors.toList())
+                .toString());
   }
 
   @Override

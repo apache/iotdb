@@ -568,6 +568,8 @@ public class AuthUtils {
         return PrivilegeType.SECURITY;
       case 12:
         return PrivilegeType.AUDIT;
+      case 13:
+        return PrivilegeType.LOAD_TSFILE;
       default:
         // Not reach here.
         LOGGER.warn("Not support position");
@@ -603,6 +605,8 @@ public class AuthUtils {
         return 11;
       case AUDIT:
         return 12;
+      case LOAD_TSFILE:
+        return 13;
       default:
         return -1;
     }
@@ -621,6 +625,7 @@ public class AuthUtils {
       case USE_PIPE:
       case MANAGE_DATABASE:
       case EXTEND_TEMPLATE:
+      case LOAD_TSFILE:
         return Arrays.asList(priv, PrivilegeType.SYSTEM);
       default:
         return Collections.singletonList(priv);

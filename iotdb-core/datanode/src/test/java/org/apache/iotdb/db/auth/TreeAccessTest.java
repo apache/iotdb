@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.db.queryengine.plan.relational.security.TreeAccessCheckContext;
 import org.apache.iotdb.db.queryengine.plan.relational.security.TreeAccessCheckVisitor;
 import org.apache.iotdb.db.queryengine.plan.statement.AuthorType;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -32,6 +33,9 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
+
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 public class TreeAccessTest {
 
@@ -80,5 +84,38 @@ public class TreeAccessTest {
         treeAccessCheckVisitor
             .visitAuthor(authorStatement, new TreeAccessCheckContext(10000L, "user1", ""))
             .getCode());
+  }
+
+  @Test
+  public void testLoadTsFileRequiresLoadTsFilePrivilege() throws Exception {
+    final User mockUser = Mockito.mock(User.class);
+    Mockito.when(mockUser.getName()).thenReturn("loadUser");
+    Mockito.when(mockUser.getUserId()).thenReturn(10002L);
+    Mockito.when(mockUser.checkSysPrivilege(PrivilegeType.LOAD_TSFILE)).thenReturn(false);
+    Mockito.when(mockUser.checkSysPrivilege(PrivilegeType.SYSTEM)).thenReturn(false);
+    AuthorityChecker.getAuthorityFetcher()
+        .getAuthorCache()
+        .putUserCache(mockUser.getName(), mockUser);
+
+    final Path tsFile = Files.createTempFile("load-auth", ".tsfile");
+    try {
+      final LoadTsFileStatement statement = LoadTsFileStatement.createUnchecked(tsFile.toString());
+      final TreeAccessCheckVisitor treeAccessCheckVisitor = new TreeAccessCheckVisitor();
+
+      Assert.assertEquals(
+          TSStatusCode.NO_PERMISSION.getStatusCode(),
+          treeAccessCheckVisitor
+              .visitLoadFile(statement, new TreeAccessCheckContext(10002L, "loadUser", ""))
+              .getCode());
+
+      Mockito.when(mockUser.checkSysPrivilege(PrivilegeType.LOAD_TSFILE)).thenReturn(true);
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+          treeAccessCheckVisitor
+              .visitLoadFile(statement, new TreeAccessCheckContext(10002L, "loadUser", ""))
+              .getCode());
+    } finally {
+      Files.deleteIfExists(tsFile);
+    }
   }
 }

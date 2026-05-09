@@ -32,6 +32,7 @@ public enum TableModelPrivilege {
   SYSTEM,
   SECURITY,
   AUDIT,
+  LOAD_TSFILE,
 
   // scope privilege
   CREATE,
@@ -65,6 +66,8 @@ public enum TableModelPrivilege {
         return PrivilegeType.SECURITY;
       case AUDIT:
         return PrivilegeType.AUDIT;
+      case LOAD_TSFILE:
+        return PrivilegeType.LOAD_TSFILE;
       default:
         throw new IllegalStateException("Unexpected value:" + this);
     }
@@ -94,6 +97,8 @@ public enum TableModelPrivilege {
         return TableModelPrivilege.SECURITY;
       case AUDIT:
         return TableModelPrivilege.AUDIT;
+      case LOAD_TSFILE:
+        return TableModelPrivilege.LOAD_TSFILE;
       default:
         throw new IllegalStateException("Unexpected value:" + privilegeType);
     }
@@ -109,6 +114,7 @@ public enum TableModelPrivilege {
         return AuditLogOperation.QUERY;
       case INSERT:
       case DELETE:
+      case LOAD_TSFILE:
         return AuditLogOperation.DML;
       case MANAGE_ROLE:
       case MANAGE_USER:

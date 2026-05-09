@@ -298,6 +298,8 @@ public class IoTDBConfig {
     tierDataDirs[0][0] + File.separator + IoTDBConstant.LOAD_TSFILE_FOLDER_NAME
   };
 
+  private String[] loadTsFileAllowedDirs = new String[0];
+
   /** Strategy of multiple directories. */
   private String multiDirStrategyClassName = null;
 
@@ -1355,6 +1357,9 @@ public class IoTDBConfig {
     for (int i = 0; i < loadActiveListeningDirs.length; i++) {
       loadActiveListeningDirs[i] = addDataHomeDir(loadActiveListeningDirs[i]);
     }
+    for (int i = 0; i < loadTsFileAllowedDirs.length; i++) {
+      loadTsFileAllowedDirs[i] = addDataHomeDir(loadTsFileAllowedDirs[i]);
+    }
     loadActiveListeningPipeDir = addDataHomeDir(loadActiveListeningPipeDir);
     loadActiveListeningFailDir = addDataHomeDir(loadActiveListeningFailDir);
     udfDir = addDataHomeDir(udfDir);
@@ -1558,6 +1563,19 @@ public class IoTDBConfig {
 
   public String[] getLoadTsFileDirs() {
     return this.loadTsFileDirs;
+  }
+
+  public String[] getLoadTsFileAllowedDirs() {
+    return this.loadTsFileAllowedDirs.length == 0
+        ? getLoadTsFileDirs()
+        : this.loadTsFileAllowedDirs;
+  }
+
+  public void setLoadTsFileAllowedDirs(String[] loadTsFileAllowedDirs) {
+    for (int i = 0; i < loadTsFileAllowedDirs.length; i++) {
+      loadTsFileAllowedDirs[i] = addDataHomeDir(loadTsFileAllowedDirs[i]);
+    }
+    this.loadTsFileAllowedDirs = loadTsFileAllowedDirs;
   }
 
   public void formulateLoadTsFileDirs(String[][] tierDataDirs) {

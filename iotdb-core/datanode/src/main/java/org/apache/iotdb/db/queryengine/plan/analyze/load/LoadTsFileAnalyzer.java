@@ -53,6 +53,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.encrypt.EncryptParameter;
 import org.apache.tsfile.encrypt.EncryptUtils;
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.TableSchema;
@@ -443,14 +444,15 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
           isTableModelTsFile.get(i)
               ? loadTsFileDataTypeConverter
                   .convertForTableModel(
-                      new LoadTsFile(null, tsFiles.get(i).getPath(), Collections.emptyMap())
+                      LoadTsFile.createUnchecked(
+                              null, tsFiles.get(i).getPath(), Collections.emptyMap())
                           .setDatabase(databaseForTableData)
                           .setDeleteAfterLoad(isDeleteAfterLoad)
                           .setConvertOnTypeMismatch(isConvertOnTypeMismatch))
                   .orElse(null)
               : loadTsFileDataTypeConverter
                   .convertForTreeModel(
-                      new LoadTsFileStatement(tsFiles.get(i).getPath())
+                      LoadTsFileStatement.createUnchecked(tsFiles.get(i).getPath())
                           .setDeleteAfterLoad(isDeleteAfterLoad)
                           .setConvertOnTypeMismatch(isConvertOnTypeMismatch))
                   .orElse(null);
@@ -505,6 +507,8 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
       if (isAutoCreateSchemaOrVerifySchemaEnabled) {
         getOrCreateTreeSchemaVerifier().autoCreateAndVerify(reader, device2TimeseriesMetadata);
+      } else {
+        checkTreeWritePermission(device2TimeseriesMetadata);
       }
 
       // TODO: how to get the correct write point count when
@@ -520,6 +524,22 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
     addTsFileResource(tsFileResource);
     addWritePointCount(writePointCount);
+  }
+
+  private void checkTreeWritePermission(
+      final Map<IDeviceID, List<TimeseriesMetadata>> device2TimeseriesMetadataList)
+      throws AuthException {
+    for (final Map.Entry<IDeviceID, List<TimeseriesMetadata>> entry :
+        device2TimeseriesMetadataList.entrySet()) {
+      final IDeviceID device = entry.getKey();
+      for (final TimeseriesMetadata timeseriesMetadata : entry.getValue()) {
+        if (!TSDataType.VECTOR.equals(timeseriesMetadata.getTsDataType())
+            && !timeseriesMetadata.getMeasurementId().isEmpty()) {
+          TreeSchemaAutoCreatorAndVerifier.checkWriteDataPermission(
+              this, device, timeseriesMetadata);
+        }
+      }
+    }
   }
 
   private void doAnalyzeSingleTableFile(
@@ -711,14 +731,15 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
             isTableModelTsFile.get(i)
                 ? loadTsFileDataTypeConverter
                     .convertForTableModel(
-                        new LoadTsFile(null, tsFiles.get(i).getPath(), Collections.emptyMap())
+                        LoadTsFile.createUnchecked(
+                                null, tsFiles.get(i).getPath(), Collections.emptyMap())
                             .setDatabase(databaseForTableData)
                             .setDeleteAfterLoad(isDeleteAfterLoad)
                             .setConvertOnTypeMismatch(isConvertOnTypeMismatch))
                     .orElse(null)
                 : loadTsFileDataTypeConverter
                     .convertForTreeModel(
-                        new LoadTsFileStatement(tsFiles.get(i).getPath())
+                        LoadTsFileStatement.createUnchecked(tsFiles.get(i).getPath())
                             .setDeleteAfterLoad(isDeleteAfterLoad)
                             .setConvertOnTypeMismatch(isConvertOnTypeMismatch))
                     .orElse(null);

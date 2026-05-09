@@ -239,6 +239,8 @@ public class AuthorStatementTest {
     checkGrantPrivileges(
         true, Arrays.asList(PrivilegeType.SYSTEM, PrivilegeType.SECURITY), "", true, false);
     checkGrantPrivileges(
+        true, Collections.singletonList(PrivilegeType.LOAD_TSFILE), "", true, false);
+    checkGrantPrivileges(
         true, Collections.singletonList(PrivilegeType.SECURITY), "ANY", true, true);
 
     // Illegal privilege
@@ -301,6 +303,8 @@ public class AuthorStatementTest {
         true, Arrays.asList(PrivilegeType.SYSTEM, PrivilegeType.SECURITY), "", false, false);
     checkRevokePrivileges(
         true, Arrays.asList(PrivilegeType.SYSTEM, PrivilegeType.SECURITY), "", true, false);
+    checkRevokePrivileges(
+        true, Collections.singletonList(PrivilegeType.LOAD_TSFILE), "", false, false);
 
     // Illegal privileges combination
     checkRevokePrivileges(
