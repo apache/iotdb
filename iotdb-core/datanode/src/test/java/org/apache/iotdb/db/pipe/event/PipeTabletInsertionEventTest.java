@@ -496,7 +496,8 @@ public class PipeTabletInsertionEventTest {
             "localhost",
             false,
             Long.MIN_VALUE,
-            Long.MAX_VALUE);
+            Long.MAX_VALUE,
+            null);
     final AccessControl oldControl = AuthorityChecker.getAccessControl();
     final NullMeasurementRejectingAccessControl accessControl =
         new NullMeasurementRejectingAccessControl();

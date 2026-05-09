@@ -152,6 +152,7 @@ public class TsFileInsertionEventParserTest {
               Long.MAX_VALUE,
               null,
               null,
+              false,
               false)) {
         Assert.assertTrue(getAllocatedChunkMemory(parser).getMemoryUsageInBytes() > 0);
       }
