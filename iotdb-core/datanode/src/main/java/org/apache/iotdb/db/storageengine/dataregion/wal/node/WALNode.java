@@ -761,8 +761,6 @@ public class WALNode implements IWALNode {
         notFirstFile.set(true);
       }
 
-      tryToCollectInsertNodeAndBumpIndex.run();
-
       // update file index and version id
       if (currentFileIndex >= filesToSearch.length - 1) {
         needUpdatingFilesToSearch = true;

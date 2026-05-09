@@ -25,6 +25,7 @@ import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.iot.log.ConsensusReqReader;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.ContinuousSameSearchIndexSeparatorNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
@@ -193,6 +194,8 @@ public class WALNodeWaitForRollFileTest {
         memTable.getMemTableId(),
         insertTabletNode,
         Collections.singletonList(new int[] {0, insertTabletNode.getRowCount()}));
+    walNode.log(
+        memTable.getMemTableId(), new ContinuousSameSearchIndexSeparatorNode(new PlanNodeId("")));
 
     Awaitility.await().atMost(10, TimeUnit.SECONDS).until(() -> walNode.isAllWALEntriesConsumed());
 
@@ -319,6 +322,8 @@ public class WALNodeWaitForRollFileTest {
         memTable.getMemTableId(),
         insertTabletNode,
         Collections.singletonList(new int[] {0, insertTabletNode.getRowCount()}));
+    walNode.log(
+        memTable.getMemTableId(), new ContinuousSameSearchIndexSeparatorNode(new PlanNodeId("")));
 
     Awaitility.await().atMost(10, TimeUnit.SECONDS).until(() -> walNode.isAllWALEntriesConsumed());
 
