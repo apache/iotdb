@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.execution.driver;
 
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.queryengine.execution.operator.Operator;
+import org.apache.iotdb.calc.exception.QueryProcessException;
+import org.apache.iotdb.calc.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.DataSourceOperator;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.storageengine.dataregion.read.IQueryDataSource;
@@ -31,7 +31,8 @@ import javax.annotation.concurrent.NotThreadSafe;
 
 import java.util.List;
 
-import static org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet.QUERY_RESOURCE_INIT;
+import static com.google.common.base.Throwables.throwIfUnchecked;
+import static org.apache.iotdb.calc.metric.QueryExecutionMetricSet.QUERY_RESOURCE_INIT;
 import static org.apache.iotdb.db.storageengine.dataregion.VirtualDataRegion.UNFINISHED_QUERY_DATA_SOURCE;
 
 /**
@@ -68,7 +69,9 @@ public class DataDriver extends Driver {
             "Failed to do the initialization for driver {} ", driverContext.getDriverTaskID(), t);
         driverContext.failed(t);
         blockedFuture.setException(t);
-        return false;
+        throwIfUnchecked(t);
+        // should never happen
+        throw new AssertionError(t);
       }
     }
     return true;

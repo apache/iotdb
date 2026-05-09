@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
@@ -387,15 +388,20 @@ public class SchemaEngine {
         .filter(
             entry ->
                 schemaIds.contains(entry.getKey().getId())
-                    && SchemaRegionConsensusImpl.getInstance().isLeader(entry.getKey()))
+                    && SchemaRegionConsensusImpl.getInstance().isLeader(entry.getKey())
+                    && !entry
+                        .getValue()
+                        .getDatabaseFullPath()
+                        .equals(SystemConstant.AUDIT_DATABASE))
         .forEach(
             entry ->
-                timeSeriesNum.put(entry.getKey().getId(), getTimeSeriesNumber(entry.getValue())));
+                timeSeriesNum.put(
+                    entry.getKey().getId(), getTimeSeriesNumber4Quota(entry.getValue())));
     return timeSeriesNum;
   }
 
   // not including view number
-  private long getTimeSeriesNumber(ISchemaRegion schemaRegion) {
+  private long getTimeSeriesNumber4Quota(final ISchemaRegion schemaRegion) {
     return schemaRegion.getSchemaRegionStatistics().getSeriesNumber(false)
         + schemaRegion.getSchemaRegionStatistics().getTable2DevicesNumMap().entrySet().stream()
             .map(
@@ -459,13 +465,20 @@ public class SchemaEngine {
       SchemaRegionConsensusImpl.getInstance().getAllConsensusGroupIds().stream()
           .filter(
               consensusGroupId ->
-                  SchemaRegionConsensusImpl.getInstance().isLeader(consensusGroupId))
+                  SchemaRegionConsensusImpl.getInstance().isLeader(consensusGroupId)
+                      && Optional.ofNullable(schemaRegionMap.get((SchemaRegionId) consensusGroupId))
+                          .map(
+                              schemaRegion ->
+                                  !schemaRegion
+                                      .getDatabaseFullPath()
+                                      .equals(SystemConstant.AUDIT_DATABASE))
+                          .orElse(false))
           .forEach(
               consensusGroupId ->
                   tmp.put(
                       consensusGroupId.getId(),
                       Optional.ofNullable(schemaRegionMap.get(consensusGroupId))
-                          .map(this::getTimeSeriesNumber)
+                          .map(this::getTimeSeriesNumber4Quota)
                           .orElse(0L)));
     }
   }

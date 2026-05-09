@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.confignode.consensus.request.read.ttl;
 
+import org.apache.iotdb.calc.utils.constant.SqlConstant;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.read.ConfigPhysicalReadPlan;
-import org.apache.iotdb.db.utils.constant.SqlConstant;
 
 public class ShowTTLPlan extends ConfigPhysicalReadPlan {
   private final String[] pathPattern;

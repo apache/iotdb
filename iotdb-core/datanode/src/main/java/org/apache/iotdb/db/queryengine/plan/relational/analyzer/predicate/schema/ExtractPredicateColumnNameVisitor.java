@@ -19,22 +19,22 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.schema;
 
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.BetweenPredicate;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ComparisonExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IfExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.InPredicate;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IsNotNullPredicate;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IsNullPredicate;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LikePredicate;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Literal;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LogicalExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NotExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NullIfExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SearchedCaseExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicateVisitor;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BetweenPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IfExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IsNotNullPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IsNullPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LikePredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NotExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullIfExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SearchedCaseExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 
 public class ExtractPredicateColumnNameVisitor extends PredicateVisitor<String, Void> {
 
@@ -46,44 +46,44 @@ public class ExtractPredicateColumnNameVisitor extends PredicateVisitor<String, 
   }
 
   @Override
-  protected String visitInPredicate(final InPredicate node, final Void context) {
+  public String visitInPredicate(final InPredicate node, final Void context) {
     return node.getValue().accept(this, context);
   }
 
   @Override
-  protected String visitIsNullPredicate(final IsNullPredicate node, final Void context) {
+  public String visitIsNullPredicate(final IsNullPredicate node, final Void context) {
     return node.getValue().accept(this, context);
   }
 
   @Override
-  protected String visitIsNotNullPredicate(final IsNotNullPredicate node, final Void context) {
+  public String visitIsNotNullPredicate(final IsNotNullPredicate node, final Void context) {
     return node.getValue().accept(this, context);
   }
 
   @Override
-  protected String visitLikePredicate(final LikePredicate node, final Void context) {
+  public String visitLikePredicate(final LikePredicate node, final Void context) {
     return node.getValue().accept(this, context);
   }
 
   @Override
-  protected String visitLogicalExpression(final LogicalExpression node, final Void context) {
+  public String visitLogicalExpression(final LogicalExpression node, final Void context) {
     throw new UnsupportedOperationException("The logical expression has no bounded column");
   }
 
   @Override
-  protected String visitNotExpression(final NotExpression node, final Void context) {
+  public String visitNotExpression(final NotExpression node, final Void context) {
     throw new UnsupportedOperationException("The not expression has no bounded column");
   }
 
   @Override
-  protected String visitComparisonExpression(final ComparisonExpression node, final Void context) {
+  public String visitComparisonExpression(final ComparisonExpression node, final Void context) {
     return node.getLeft() instanceof Literal
         ? node.getRight().accept(this, context)
         : node.getLeft().accept(this, context);
   }
 
   @Override
-  protected String visitBetweenPredicate(final BetweenPredicate node, final Void context) {
+  public String visitBetweenPredicate(final BetweenPredicate node, final Void context) {
     if (node.getValue() instanceof SymbolReference) {
       return node.getValue().accept(this, context);
     }
@@ -97,28 +97,27 @@ public class ExtractPredicateColumnNameVisitor extends PredicateVisitor<String, 
   }
 
   @Override
-  protected String visitSymbolReference(final SymbolReference node, final Void context) {
+  public String visitSymbolReference(final SymbolReference node, final Void context) {
     return node.getName();
   }
 
   @Override
-  protected String visitSimpleCaseExpression(final SimpleCaseExpression node, final Void context) {
+  public String visitSimpleCaseExpression(final SimpleCaseExpression node, final Void context) {
     return null;
   }
 
   @Override
-  protected String visitSearchedCaseExpression(
-      final SearchedCaseExpression node, final Void context) {
+  public String visitSearchedCaseExpression(final SearchedCaseExpression node, final Void context) {
     return null;
   }
 
   @Override
-  protected String visitIfExpression(final IfExpression node, final Void context) {
+  public String visitIfExpression(final IfExpression node, final Void context) {
     return null;
   }
 
   @Override
-  protected String visitNullIfExpression(final NullIfExpression node, final Void context) {
+  public String visitNullIfExpression(final NullIfExpression node, final Void context) {
     return null;
   }
 

@@ -92,12 +92,13 @@ public class PipeSinkSubtaskLifeCycle implements AutoCloseable {
    *     {@link PipeSinkSubtask} should never be used again
    * @throws IllegalStateException if {@link PipeSinkSubtaskLifeCycle#registeredTaskCount} <= 0
    */
-  public synchronized boolean deregister(final String pipeNameToDeregister, int regionId) {
+  public synchronized boolean deregister(
+      final String pipeNameToDeregister, final long creationTimeToDeregister, final int regionId) {
     if (registeredTaskCount <= 0) {
       throw new IllegalStateException("registeredTaskCount <= 0");
     }
 
-    subtask.discardEventsOfPipe(pipeNameToDeregister, regionId);
+    subtask.discardEventsOfPipe(pipeNameToDeregister, creationTimeToDeregister, regionId);
 
     try {
       if (registeredTaskCount > 1) {

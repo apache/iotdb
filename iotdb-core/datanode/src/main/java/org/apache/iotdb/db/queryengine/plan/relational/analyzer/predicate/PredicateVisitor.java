@@ -19,20 +19,20 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate;
 
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.BetweenPredicate;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ComparisonExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IfExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.InPredicate;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IsNotNullPredicate;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IsNullPredicate;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LikePredicate;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LogicalExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NotExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NullIfExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SearchedCaseExpression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BetweenPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IfExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IsNotNullPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IsNullPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LikePredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NotExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullIfExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SearchedCaseExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
 
 /**
  * This class provides a visitor of {@link Expression}, which can be extended to create a visitor
@@ -41,7 +41,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleCaseExpress
  * @param <R> The return type of the visit operation.
  * @param <C> The context information during visiting.
  */
-public abstract class PredicateVisitor<R, C> extends AstVisitor<R, C> {
+public abstract class PredicateVisitor<R, C> implements AstVisitor<R, C> {
 
   @Override
   public R visitExpression(Expression expression, C context) {
@@ -50,38 +50,38 @@ public abstract class PredicateVisitor<R, C> extends AstVisitor<R, C> {
   }
 
   @Override
-  protected abstract R visitInPredicate(InPredicate node, C context);
+  public abstract R visitInPredicate(InPredicate node, C context);
 
   @Override
-  protected abstract R visitIsNullPredicate(IsNullPredicate node, C context);
+  public abstract R visitIsNullPredicate(IsNullPredicate node, C context);
 
   @Override
-  protected abstract R visitIsNotNullPredicate(IsNotNullPredicate node, C context);
+  public abstract R visitIsNotNullPredicate(IsNotNullPredicate node, C context);
 
   @Override
-  protected abstract R visitLikePredicate(LikePredicate node, C context);
+  public abstract R visitLikePredicate(LikePredicate node, C context);
 
   @Override
-  protected abstract R visitLogicalExpression(LogicalExpression node, C context);
+  public abstract R visitLogicalExpression(LogicalExpression node, C context);
 
   @Override
-  protected abstract R visitNotExpression(NotExpression node, C context);
+  public abstract R visitNotExpression(NotExpression node, C context);
 
   @Override
-  protected abstract R visitComparisonExpression(ComparisonExpression node, C context);
+  public abstract R visitComparisonExpression(ComparisonExpression node, C context);
 
   @Override
-  protected abstract R visitSimpleCaseExpression(SimpleCaseExpression node, C context);
+  public abstract R visitSimpleCaseExpression(SimpleCaseExpression node, C context);
 
   @Override
-  protected abstract R visitSearchedCaseExpression(SearchedCaseExpression node, C context);
+  public abstract R visitSearchedCaseExpression(SearchedCaseExpression node, C context);
 
   @Override
-  protected abstract R visitIfExpression(IfExpression node, C context);
+  public abstract R visitIfExpression(IfExpression node, C context);
 
   @Override
-  protected abstract R visitNullIfExpression(NullIfExpression node, C context);
+  public abstract R visitNullIfExpression(NullIfExpression node, C context);
 
   @Override
-  protected abstract R visitBetweenPredicate(BetweenPredicate node, C context);
+  public abstract R visitBetweenPredicate(BetweenPredicate node, C context);
 }

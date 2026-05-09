@@ -19,8 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.plan.expression.visitor;
 
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.queryengine.common.NodeRef;
+import org.apache.iotdb.calc.exception.QueryProcessException;
+import org.apache.iotdb.calc.transformation.dag.udf.UDTFExecutor;
+import org.apache.iotdb.commons.queryengine.common.NodeRef;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.ExpressionType;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.BinaryExpression;
@@ -72,7 +73,6 @@ import org.apache.iotdb.db.queryengine.transformation.dag.transformer.unary.Logi
 import org.apache.iotdb.db.queryengine.transformation.dag.transformer.unary.RegularTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.transformer.unary.TransparentTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.udf.UDTFContext;
-import org.apache.iotdb.db.queryengine.transformation.dag.udf.UDTFExecutor;
 import org.apache.iotdb.udf.api.customizer.strategy.AccessStrategy;
 
 import org.apache.tsfile.common.regexp.LikePattern;

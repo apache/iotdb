@@ -19,20 +19,20 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule;
 
+import org.apache.iotdb.calc.plan.relational.utils.matching.Capture;
+import org.apache.iotdb.calc.plan.relational.utils.matching.Captures;
+import org.apache.iotdb.calc.plan.relational.utils.matching.Pattern;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.LimitNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.OffsetNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Rule;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OffsetNode;
-import org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Capture;
-import org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Captures;
-import org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Pattern;
 
 import com.google.common.collect.ImmutableList;
 
 import static java.lang.Math.addExact;
+import static org.apache.iotdb.calc.plan.relational.utils.matching.Capture.newCapture;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.limit;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.offset;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.source;
-import static org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Capture.newCapture;
 
 /**
  * Transforms:

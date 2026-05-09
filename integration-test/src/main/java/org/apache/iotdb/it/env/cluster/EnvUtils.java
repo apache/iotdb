@@ -31,11 +31,11 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import static org.apache.iotdb.commons.queryengine.utils.DateTimeUtils.convertLongToDate;
 import static org.apache.iotdb.consensus.ConsensusFactory.IOT_CONSENSUS;
 import static org.apache.iotdb.consensus.ConsensusFactory.IOT_CONSENSUS_V2;
 import static org.apache.iotdb.consensus.ConsensusFactory.RATIS_CONSENSUS;
 import static org.apache.iotdb.consensus.ConsensusFactory.SIMPLE_CONSENSUS;
-import static org.apache.iotdb.db.utils.DateTimeUtils.convertLongToDate;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.CLUSTER_CONFIGURATIONS;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DEFAULT_CONFIG_NODE_NUM;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DEFAULT_DATA_NODE_NUM;
@@ -163,22 +163,7 @@ public class EnvUtils {
    */
   public static Map<Integer, Long> listPortOccupationUnix(final List<Integer> ports)
       throws IOException {
-    return listPortOccupation(ports, "lsof -iTCP -sTCP:LISTEN -P -n", 10, 9, 1);
-  }
-
-  private static String getSearchAvailablePortCmd(final List<Integer> ports) {
-    return SystemUtils.IS_OS_WINDOWS ? getWindowsSearchPortCmd(ports) : getUnixSearchPortCmd(ports);
-  }
-
-  private static String getWindowsSearchPortCmd(final List<Integer> ports) {
-    return "netstat -aon -p tcp | findStr "
-        + ports.stream().map(v -> "/C:\"127.0.0.1:" + v + "\"").collect(Collectors.joining(" "));
-  }
-
-  private static String getUnixSearchPortCmd(final List<Integer> ports) {
-    return "lsof -iTCP -sTCP:LISTEN -P -n | awk '{print $9}' | grep -E "
-        + ports.stream().map(String::valueOf).collect(Collectors.joining("|"))
-        + "\"";
+    return listPortOccupation(ports, "lsof -iTCP -sTCP:LISTEN,TIME_WAIT -P -n", 10, 9, 1);
   }
 
   private static Pair<Integer, Integer> getClusterNodesNum(final int index) {

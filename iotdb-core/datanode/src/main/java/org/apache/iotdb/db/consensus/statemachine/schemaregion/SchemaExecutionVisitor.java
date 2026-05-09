@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.utils.MetadataUtils;
@@ -33,7 +34,6 @@ import org.apache.iotdb.db.exception.metadata.MeasurementAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.template.TemplateIsInUseException;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.source.schemaregion.SchemaRegionListeningQueue;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.ActivateTemplateNode;
@@ -96,7 +96,7 @@ import java.util.Map;
 import java.util.Objects;
 
 /** Schema write {@link PlanNode} visitor */
-public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion> {
+public class SchemaExecutionVisitor implements PlanVisitor<TSStatus, ISchemaRegion> {
   private static Logger logger = LoggerFactory.getLogger(SchemaExecutionVisitor.class);
 
   @Override

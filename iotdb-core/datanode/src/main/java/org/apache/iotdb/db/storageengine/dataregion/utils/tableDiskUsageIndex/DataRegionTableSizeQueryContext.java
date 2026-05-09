@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageIndex;
 
+import org.apache.iotdb.calc.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
-import org.apache.iotdb.db.queryengine.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 

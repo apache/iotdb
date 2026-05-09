@@ -299,21 +299,42 @@ public class RegionMaintainHandler {
     TMaintainPeerReq maintainPeerReq =
         new TMaintainPeerReq(regionId, originalDataNode, procedureId);
 
-    // Always use full retries regardless of node status, because after a cluster crash the
-    // target DataNode may be Unknown but still in the process of restarting.
+    final NodeStatus nodeStatus = getDataNodeStatus(originalDataNode.getDataNodeId());
+    final boolean useFullRetry = !NodeStatus.Unknown.equals(nodeStatus);
+    if (!useFullRetry) {
+      LOGGER.info(
+          "{}, DataNode {} is {}, submit DELETE_OLD_REGION_PEER with a single RPC attempt and let RemoveRegionPeerProcedure handle retries.",
+          REGION_MIGRATE_PROCESS,
+          simplifiedLocation(originalDataNode),
+          nodeStatus);
+    }
+
     status =
-        (TSStatus)
-            SyncDataNodeClientPool.getInstance()
-                .sendSyncRequestToDataNodeWithRetry(
-                    originalDataNode.getInternalEndPoint(),
-                    maintainPeerReq,
-                    CnToDnSyncRequestType.DELETE_OLD_REGION_PEER);
+        submitDataNodeSyncRequest(
+            originalDataNode.getInternalEndPoint(),
+            maintainPeerReq,
+            CnToDnSyncRequestType.DELETE_OLD_REGION_PEER,
+            useFullRetry);
     LOGGER.info(
         "{}, Send action deleteOldRegionPeer finished, regionId: {}, dataNodeId: {}",
         REGION_MIGRATE_PROCESS,
         regionId,
         originalDataNode.getInternalEndPoint());
     return status;
+  }
+
+  protected NodeStatus getDataNodeStatus(int dataNodeId) {
+    return configManager.getLoadManager().getNodeStatus(dataNodeId);
+  }
+
+  protected TSStatus submitDataNodeSyncRequest(
+      TEndPoint endPoint, Object request, CnToDnSyncRequestType requestType, boolean useFullRetry) {
+    return (TSStatus)
+        (useFullRetry
+            ? SyncDataNodeClientPool.getInstance()
+                .sendSyncRequestToDataNodeWithRetry(endPoint, request, requestType)
+            : SyncDataNodeClientPool.getInstance()
+                .sendSyncRequestToDataNodeWithGivenRetry(endPoint, request, requestType, 1));
   }
 
   public Map<Integer, TSStatus> resetPeerList(

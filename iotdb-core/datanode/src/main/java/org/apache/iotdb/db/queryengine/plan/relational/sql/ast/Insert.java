@@ -19,6 +19,14 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.AstMemoryEstimationHelper;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.IAstVisitor;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Identifier;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Node;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.QualifiedName;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Query;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Table;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 
 import com.google.common.collect.ImmutableList;
@@ -78,8 +86,8 @@ public final class Insert extends Statement {
   }
 
   @Override
-  public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
-    return visitor.visitInsert(this, context);
+  public <R, C> R accept(IAstVisitor<R, C> visitor, C context) {
+    return ((AstVisitor<R, C>) visitor).visitInsert(this, context);
   }
 
   @Override

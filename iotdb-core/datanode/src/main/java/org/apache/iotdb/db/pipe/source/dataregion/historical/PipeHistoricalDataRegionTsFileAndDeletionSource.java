@@ -37,6 +37,7 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.datastructure.resource.PersistentResource;
 import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
+import org.apache.iotdb.commons.queryengine.utils.DateTimeUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.consensus.pipe.IoTConsensusV2;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -56,7 +57,6 @@ import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeRuntimeEnvironment;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
@@ -303,10 +303,6 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
       throws IllegalPathException {
     shouldExtractInsertion = listeningOptionPair.getLeft();
     shouldExtractDeletion = listeningOptionPair.getRight();
-    // Do nothing if extract deletion
-    if (!shouldExtractInsertion) {
-      return;
-    }
 
     final PipeRuntimeEnvironment environment = configuration.getRuntimeEnvironment();
 
@@ -478,7 +474,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
 
   @Override
   public synchronized void start() {
-    if (!shouldExtractInsertion) {
+    if (!shouldExtractInsertion && !shouldExtractDeletion) {
       hasBeenStarted = true;
       return;
     }

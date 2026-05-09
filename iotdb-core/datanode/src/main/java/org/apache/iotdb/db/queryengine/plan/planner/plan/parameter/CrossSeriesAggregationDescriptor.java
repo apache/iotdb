@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner.plan.parameter;
 
+import org.apache.iotdb.calc.utils.constant.SqlConstant;
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
-import org.apache.iotdb.db.utils.constant.SqlConstant;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 

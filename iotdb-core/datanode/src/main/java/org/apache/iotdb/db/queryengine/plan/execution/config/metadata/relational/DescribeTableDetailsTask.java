@@ -27,6 +27,7 @@ import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeaderFactory;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
+import org.apache.iotdb.db.schemaengine.table.TableColumnMetadataUtil;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.util.concurrent.ListenableFuture;
@@ -65,14 +66,12 @@ public class DescribeTableDetailsTask extends AbstractTableTask {
     final TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
     for (final TsTableColumnSchema columnSchema : table.getColumnList()) {
       builder.getTimeColumnBuilder().writeLong(0L);
-      String columnStatus = "USING";
-      String dataTypeName = columnSchema.getDataType().name();
-      if (preDeletedColumns.contains(columnSchema.getColumnName())) {
-        columnStatus = "PRE_DELETE";
-      }
-      builder
-          .getColumnBuilder(0)
-          .writeBinary(new Binary(columnSchema.getColumnName(), TSFileConfig.STRING_CHARSET));
+      final String columnName = columnSchema.getColumnName();
+      final String columnStatus =
+          TableColumnMetadataUtil.getColumnStatus(columnName, preDeletedColumns, preAlteredColumns);
+      final String dataTypeName =
+          TableColumnMetadataUtil.getColumnDataTypeName(columnSchema, preAlteredColumns);
+      builder.getColumnBuilder(0).writeBinary(new Binary(columnName, TSFileConfig.STRING_CHARSET));
       builder
           .getColumnBuilder(1)
           .writeBinary(new Binary(dataTypeName, TSFileConfig.STRING_CHARSET));

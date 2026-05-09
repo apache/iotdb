@@ -132,6 +132,15 @@ public class DataPartitionTableIntegrityCheckProcedure
   }
 
   @Override
+  protected void updateMetricsOnFinish(
+      final ConfigNodeProcedureEnv env, final long runtime, final boolean success) {
+    super.updateMetricsOnFinish(env, runtime, success);
+    env.getConfigManager()
+        .getPartitionManager()
+        .markDataPartitionTableIntegrityCheckProcedureFinished();
+  }
+
+  @Override
   protected Flow executeFromState(
       final ConfigNodeProcedureEnv env, final DataPartitionTableIntegrityCheckProcedureState state)
       throws InterruptedException {

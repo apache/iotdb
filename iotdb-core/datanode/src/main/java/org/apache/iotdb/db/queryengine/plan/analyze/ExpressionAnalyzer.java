@@ -19,12 +19,15 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze;
 
+import org.apache.iotdb.calc.utils.constant.SqlConstant;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.queryengine.plan.udf.BuiltinScalarFunction;
+import org.apache.iotdb.commons.queryengine.plan.udf.BuiltinTimeSeriesGeneratingFunction;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
-import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
@@ -54,9 +57,6 @@ import org.apache.iotdb.db.queryengine.plan.expression.visitor.cartesian.ConcatD
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.cartesian.ConcatDeviceAndBindSchemaForPredicateVisitor;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.cartesian.ConcatExpressionWithSuffixPathsVisitor;
 import org.apache.iotdb.db.queryengine.plan.statement.component.ResultColumn;
-import org.apache.iotdb.db.queryengine.plan.udf.BuiltinScalarFunction;
-import org.apache.iotdb.db.queryengine.plan.udf.BuiltinTimeSeriesGeneratingFunction;
-import org.apache.iotdb.db.utils.constant.SqlConstant;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.file.metadata.IDeviceID;

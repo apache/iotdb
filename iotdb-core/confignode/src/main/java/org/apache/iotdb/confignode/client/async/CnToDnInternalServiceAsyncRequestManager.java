@@ -48,6 +48,7 @@ import org.apache.iotdb.confignode.client.async.handlers.rpc.TreeDeviceViewField
 import org.apache.iotdb.confignode.client.async.handlers.rpc.subscription.CheckSchemaRegionUsingTemplateRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.subscription.ConsumerGroupPushMetaRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.subscription.TopicPushMetaRPCHandler;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.mpp.rpc.thrift.TActiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TAlterEncodingCompressorReq;
 import org.apache.iotdb.mpp.rpc.thrift.TAlterTimeSeriesReq;
@@ -100,6 +101,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TRollbackViewSchemaBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TTableDeviceDeletionWithPatternAndFilterReq;
 import org.apache.iotdb.mpp.rpc.thrift.TTableDeviceDeletionWithPatternOrModReq;
 import org.apache.iotdb.mpp.rpc.thrift.TTableDeviceInvalidateCacheReq;
+import org.apache.iotdb.mpp.rpc.thrift.TUpdateClusterTopologyReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTableReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTriggerLocationReq;
@@ -119,6 +121,10 @@ public class CnToDnInternalServiceAsyncRequestManager
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(CnToDnInternalServiceAsyncRequestManager.class);
+
+  private CnToDnInternalServiceAsyncRequestManager() {
+    super(ConfigNodeDescriptor.getInstance().getConf().getSelectorNumOfClientManager());
+  }
 
   @SuppressWarnings("unchecked")
   @Override
@@ -407,6 +413,11 @@ public class CnToDnInternalServiceAsyncRequestManager
         CnToDnAsyncRequestType.TEST_CONNECTION,
         (req, client, handler) ->
             client.testConnectionEmptyRPC((DataNodeTSStatusRPCHandler) handler));
+    actionMapBuilder.put(
+        CnToDnAsyncRequestType.PUSH_TOPOLOGY,
+        (req, client, handler) ->
+            client.updateClusterTopology(
+                (TUpdateClusterTopologyReq) req, (DataNodeTSStatusRPCHandler) handler));
     actionMapBuilder.put(
         CnToDnAsyncRequestType.INSERT_RECORD,
         (req, client, handler) ->

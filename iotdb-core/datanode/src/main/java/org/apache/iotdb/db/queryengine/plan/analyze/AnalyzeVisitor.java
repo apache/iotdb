@@ -19,12 +19,14 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze;
 
+import org.apache.iotdb.calc.utils.constant.SqlConstant;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaNodeManagementPartition;
@@ -44,7 +46,6 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.ainode.GetModelInfoException;
 import org.apache.iotdb.db.exception.metadata.template.TemplateIncompatibleException;
 import org.apache.iotdb.db.exception.metadata.view.UnsupportedViewException;
-import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.queryengine.common.DeviceContext;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -140,7 +141,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.ExplainStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowDiskUsageStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowVersionStatement;
-import org.apache.iotdb.db.utils.constant.SqlConstant;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -173,6 +173,8 @@ import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkState;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.COUNT_TIME_HEADER;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.TREE_MODEL_DATABASE_PREFIX;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.ALLOWED_SCHEMA_PROPS;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.DEADBAND;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.LOSS;
@@ -202,8 +204,6 @@ import static org.apache.iotdb.db.queryengine.plan.optimization.LimitOffsetPushD
 import static org.apache.iotdb.db.queryengine.plan.parser.ASTVisitor.parseNodeString;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.DataNodeLocationSupplierFactory.getReadableDataNodeLocations;
 import static org.apache.iotdb.db.schemaengine.schemaregion.view.visitor.GetSourcePathsVisitor.getSourcePaths;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.COUNT_TIME_HEADER;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.TREE_MODEL_DATABASE_PREFIX;
 
 /** This visitor is used to analyze each type of Statement and returns the {@link Analysis}. */
 public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> {

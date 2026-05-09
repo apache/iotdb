@@ -71,6 +71,11 @@
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
+            <artifactId>calc-commons</artifactId>
+            <version>2.0.7-SNAPSHOT</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
             <artifactId>isession</artifactId>
             <version>2.0.7-SNAPSHOT</version>
         </dependency>
@@ -240,10 +245,6 @@
             </exclusions>
         </dependency>
         <dependency>
-            <groupId>com.google.code.gson</groupId>
-            <artifactId>gson</artifactId>
-        </dependency>
-        <dependency>
             <groupId>com.github.ben-manes.caffeine</groupId>
             <artifactId>caffeine</artifactId>
             <exclusions>
@@ -403,6 +404,13 @@
                             <outputDirectory>${project.build.directory}/codegen</outputDirectory>
                             <resources>
                                 <resource>
+                                    <directory>${maven.multiModuleProjectDirectory}/iotdb-core/calc-commons/src/main/codegen</directory>
+                                    <filtering>false</filtering>
+                                    <excludes>
+                                        <exclude>templates/**</exclude>
+                                    </excludes>
+                                </resource>
+                                <resource>
                                     <directory>src/main/codegen</directory>
                                     <filtering>false</filtering>
                                 </resource>
@@ -470,6 +478,7 @@
                     <ignoredDependencies>
                         <!-- For some reason this plugin missed it being used for a constant import -->
                         <ignoredDependency>org.apache.iotdb:isession</ignoredDependency>
+                        <ignoredDependency>at.yawk.lz4:lz4-java</ignoredDependency>
                     </ignoredDependencies>
                 </configuration>
             </plugin>

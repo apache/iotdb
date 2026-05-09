@@ -48,6 +48,7 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipeP
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.OperateMultiplePipesPlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusPlanV2;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusWithStoppedByRuntimeExceptionPlanV2;
 import org.apache.iotdb.confignode.consensus.response.pipe.task.PipeTableResp;
 import org.apache.iotdb.confignode.manager.pipe.resource.PipeConfigNodeResourceManager;
 import org.apache.iotdb.confignode.procedure.impl.pipe.runtime.PipeHandleMetaChangeProcedure;
@@ -523,6 +524,25 @@ public class PipeTaskInfo implements SnapshotProcessor {
     }
   }
 
+  public TSStatus setPipeStatusWithStoppedByRuntimeException(
+      final SetPipeStatusWithStoppedByRuntimeExceptionPlanV2 plan) {
+    acquireWriteLock();
+    try {
+      pipeMetaKeeper
+          .getPipeMeta(plan.getPipeName())
+          .getRuntimeMeta()
+          .getStatus()
+          .set(plan.getPipeStatus());
+      pipeMetaKeeper
+          .getPipeMeta(plan.getPipeName())
+          .getRuntimeMeta()
+          .setIsStoppedByRuntimeException(plan.isStoppedByRuntimeException());
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } finally {
+      releaseWriteLock();
+    }
+  }
+
   public TSStatus dropPipe(final DropPipePlanV2 plan) {
     acquireWriteLock();
     try {
@@ -822,6 +842,14 @@ public class PipeTaskInfo implements SnapshotProcessor {
                 message -> {
                   final PipeRuntimeMeta runtimeMeta =
                       pipeMetaKeeper.getPipeMeta(message.getPipeName()).getRuntimeMeta();
+
+                  // Keep user-stopped pipes out of the auto-restart flow. Otherwise, a failed
+                  // STOPPED meta sync can turn a manually stopped pipe into a runtime-stopped one
+                  // and the next PipeMetaSyncer round will restart it automatically.
+                  if (PipeStatus.STOPPED.equals(runtimeMeta.getStatus().get())
+                      && !runtimeMeta.getIsStoppedByRuntimeException()) {
+                    return;
+                  }
 
                   // Mark the status of the pipe with exception as stopped
                   runtimeMeta.getStatus().set(PipeStatus.STOPPED);

@@ -199,6 +199,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetLocationForTriggerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipePluginTableResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetRegionGroupsByTimeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetRegionGroupsByTimeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListReq;
@@ -1155,6 +1157,16 @@ public class ConfigManager implements IManager {
     return resp;
   }
 
+  @Override
+  public TSStatus dataPartitionTableIntegrityCheck() {
+    TSStatus status = confirmLeader();
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return status;
+    }
+
+    return partitionManager.dataPartitionTableIntegrityCheck();
+  }
+
   private void printNewCreatedDataPartition(
       GetOrCreateDataPartitionPlan getOrCreateDataPartitionPlan, TDataPartitionTableResp resp) {
     final String lineSeparator = System.lineSeparator();
@@ -1732,6 +1744,7 @@ public class ConfigManager implements IManager {
       TrimProperties properties = new TrimProperties();
       properties.putAll(req.getConfigs());
 
+      boolean wasTopologyProbingEnabled = CONF.isEnableTopologyProbing();
       if (configurationFileFound) {
         File file = new File(url.getFile());
         try {
@@ -1755,6 +1768,7 @@ public class ConfigManager implements IManager {
         }
         LOGGER.warn(msg);
       }
+      handleTopologyProbingHotReload(wasTopologyProbingEnabled);
       if (currentNodeId == req.getNodeId()) {
         return tsStatus;
       }
@@ -1764,6 +1778,18 @@ public class ConfigManager implements IManager {
     statusList.add(tsStatus);
     statusList.addAll(statusListOfOtherNodes);
     return RpcUtils.squashResponseStatusList(statusList);
+  }
+
+  private void handleTopologyProbingHotReload(boolean wasEnabled) {
+    boolean isEnabled = CONF.isEnableTopologyProbing();
+    if (wasEnabled == isEnabled) {
+      return;
+    }
+    if (isEnabled && getConsensusManager().isLeader()) {
+      getLoadManager().startTopologyService();
+    } else if (!isEnabled) {
+      getLoadManager().stopTopologyService();
+    }
   }
 
   @Override
@@ -2567,6 +2593,14 @@ public class ConfigManager implements IManager {
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? partitionManager.getSeriesSlotList(req).convertToRpcGetSeriesSlotListResp()
         : new TGetSeriesSlotListResp(status);
+  }
+
+  @Override
+  public TGetRegionGroupsByTimeResp getRegionGroupsByTime(TGetRegionGroupsByTimeReq req) {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? partitionManager.getRegionGroupsByTime(req).convertToRpcResp()
+        : new TGetRegionGroupsByTimeResp(status);
   }
 
   @Override

@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.execution.config.session;
 
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.memory.IMemoryBlock;
-import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.PreparedStatementInfo;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;

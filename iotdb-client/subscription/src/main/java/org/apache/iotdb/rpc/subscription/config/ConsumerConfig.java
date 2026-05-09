@@ -76,6 +76,10 @@ public class ConsumerConfig extends PipeParameters {
     return getString(ConsumerConstant.PASSWORD_KEY);
   }
 
+  public String getEncryptedPassword() {
+    return getString(ConsumerConstant.ENCRYPTED_PASSWORD_KEY);
+  }
+
   public String getSqlDialect() {
     return getString(ConsumerConstant.SQL_DIALECT_KEY);
   }
