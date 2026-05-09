@@ -1243,6 +1243,7 @@ max_tsblock_line_number=1000
 # Time cost(ms) threshold for slow query
 # effectiveMode: hot_reload
 # Datatype: long
+# Privilege: AUDIT
 slow_query_threshold=3000
 
 # Time window threshold(min) for record of history queries.
