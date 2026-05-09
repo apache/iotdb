@@ -263,14 +263,14 @@ void Tablet::setAligned(bool isAligned) {
 }
 
 std::shared_ptr<storage::IDeviceID> Tablet::getDeviceID(int row) {
-  std::vector<std::string> id_array(idColumnIndexes.size() + 1);
-  size_t idArrayIdx = 0;
-  id_array[idArrayIdx++] = this->deviceId;
-  for (auto idColumnIndex : idColumnIndexes) {
-    void* strPtr = getValue(idColumnIndex, row, TSDataType::TEXT);
-    id_array[idArrayIdx++] = *static_cast<std::string*>(strPtr);
+  std::vector<std::string> deviceIdSegments(tagColumnIndexes.size() + 1);
+  size_t deviceIdSegmentIndex = 0;
+  deviceIdSegments[deviceIdSegmentIndex++] = this->deviceId;
+  for (auto tagColumnIndex : tagColumnIndexes) {
+    void* strPtr = getValue(tagColumnIndex, row, TSDataType::TEXT);
+    deviceIdSegments[deviceIdSegmentIndex++] = *static_cast<std::string*>(strPtr);
   }
-  return std::make_shared<storage::StringArrayDeviceID>(id_array);
+  return std::make_shared<storage::StringArrayDeviceID>(deviceIdSegments);
 }
 
 string SessionUtils::getTime(const Tablet& tablet) {
