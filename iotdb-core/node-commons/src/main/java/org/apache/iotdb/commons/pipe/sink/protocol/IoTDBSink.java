@@ -139,7 +139,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SIN
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_RATE_LIMIT_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_SKIP_IF_KEY;
 
-public abstract class IoTDBSink implements PipeConnector {
+public abstract class IoTDBSink implements PipeConnector, PipeConnectorWithEventDiscard {
 
   private static final String PARSE_URL_ERROR_FORMATTER =
       "Exception occurred while parsing node urls from target servers: {}";
@@ -621,7 +621,8 @@ public abstract class IoTDBSink implements PipeConnector {
    * When a pipe is dropped, the connector maybe reused and will not be closed. We need to discard
    * its batched or queued events in the output pipe connector.
    */
-  public synchronized void discardEventsOfPipe(final String pipeName, final int regionId) {
+  public synchronized void discardEventsOfPipe(
+      final String pipeName, final long creationTime, final int regionId) {
     // Do nothing by default
   }
 

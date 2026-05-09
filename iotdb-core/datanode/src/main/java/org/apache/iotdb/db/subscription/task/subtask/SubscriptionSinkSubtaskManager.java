@@ -167,7 +167,7 @@ public class SubscriptionSinkSubtaskManager {
 
     final PipeSinkSubtaskLifeCycle lifeCycle =
         attributeSortedString2SubtaskLifeCycleMap.get(attributeSortedString);
-    if (lifeCycle.deregister(pipeName, regionId)) {
+    if (lifeCycle.deregister(pipeName, creationTime, regionId)) {
       attributeSortedString2SubtaskLifeCycleMap.remove(attributeSortedString);
     }
 

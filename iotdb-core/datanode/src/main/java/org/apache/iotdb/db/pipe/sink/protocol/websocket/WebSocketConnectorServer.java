@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.sink.protocol.websocket;
 
+import org.apache.iotdb.commons.pipe.datastructure.Triple;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -39,6 +40,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -56,6 +58,10 @@ public class WebSocketConnectorServer extends WebSocketServer {
   // Map<pipeName, Map<eventId, Tuple<connector, event>>>
   private final ConcurrentHashMap<String, ConcurrentHashMap<Long, EventWaitingForAck>>
       eventsWaitingForAck = new ConcurrentHashMap<>();
+
+  // Pipe name, creation time, region id
+  private final Set<Triple<String, Long, Integer>> droppedPipeTaskKeys =
+      ConcurrentHashMap.newKeySet();
 
   private final BidiMap<String, WebSocket> router =
       new DualTreeBidiMap<String, WebSocket>(null, Comparator.comparing(Object::hashCode)) {};
@@ -97,13 +103,8 @@ public class WebSocketConnectorServer extends WebSocketServer {
           eventWrappers = new ArrayList<>(eventTransferQueue);
           eventTransferQueue.clear();
         }
-        eventWrappers.forEach(
-            (eventWrapper) -> {
-              if (eventWrapper.event instanceof EnrichedEvent) {
-                ((EnrichedEvent) eventWrapper.event)
-                    .decreaseReferenceCount(WebSocketConnectorServer.class.getName(), false);
-              }
-            });
+        eventWrappers.forEach(eventWrapper -> discardEvent(eventWrapper.event));
+        eventWrappers.clear();
         synchronized (eventTransferQueue) {
           eventTransferQueue.notifyAll();
         }
@@ -113,13 +114,36 @@ public class WebSocketConnectorServer extends WebSocketServer {
     if (eventsWaitingForAck.containsKey(pipeName)) {
       eventsWaitingForAck
           .remove(pipeName)
-          .forEach(
-              (eventId, eventWrapper) -> {
-                if (eventWrapper.event instanceof EnrichedEvent) {
-                  ((EnrichedEvent) eventWrapper.event)
-                      .decreaseReferenceCount(WebSocketConnectorServer.class.getName(), false);
-                }
-              });
+          .forEach((eventId, eventWrapper) -> discardEvent(eventWrapper.event));
+    }
+
+    droppedPipeTaskKeys.removeIf(key -> key.getFirst().equals(pipeName));
+  }
+
+  public synchronized void discardEventsOfPipe(
+      final String pipeNameToDrop, final long creationTimeToDrop, final int regionId) {
+    droppedPipeTaskKeys.add(new Triple<>(pipeNameToDrop, creationTimeToDrop, regionId));
+
+    final PriorityBlockingQueue<EventWaitingForTransfer> eventTransferQueue =
+        eventsWaitingForTransfer.get(pipeNameToDrop);
+    if (eventTransferQueue != null) {
+      eventTransferQueue.removeIf(
+          eventWrapper ->
+              discardIfMatches(eventWrapper.event, pipeNameToDrop, creationTimeToDrop, regionId));
+      synchronized (eventTransferQueue) {
+        eventTransferQueue.notifyAll();
+      }
+    }
+
+    final ConcurrentHashMap<Long, EventWaitingForAck> eventId2EventMap =
+        eventsWaitingForAck.get(pipeNameToDrop);
+    if (eventId2EventMap != null) {
+      eventId2EventMap
+          .entrySet()
+          .removeIf(
+              entry ->
+                  discardIfMatches(
+                      entry.getValue().event, pipeNameToDrop, creationTimeToDrop, regionId));
     }
   }
 
@@ -300,21 +324,24 @@ public class WebSocketConnectorServer extends WebSocketServer {
   }
 
   public void addEvent(Event event, WebSocketSink connector) {
+    if (isDroppedPipe(event)) {
+      discardEvent(event);
+      return;
+    }
+
+    final String pipeName = connector.getPipeName();
     final PriorityBlockingQueue<EventWaitingForTransfer> queue =
-        eventsWaitingForTransfer.get(connector.getPipeName());
+        eventsWaitingForTransfer.get(pipeName);
 
     if (queue == null) {
       LOGGER.warn("The pipe {} was dropped so the event {} will be dropped.", connector, event);
-      if (event instanceof EnrichedEvent) {
-        ((EnrichedEvent) event)
-            .decreaseReferenceCount(WebSocketConnectorServer.class.getName(), false);
-      }
+      discardEvent(event);
       return;
     }
 
     if (queue.size() >= 5) {
       synchronized (queue) {
-        while (queue.size() >= 5) {
+        while (queue.size() >= 5 && isQueueAvailable(pipeName, queue) && !isDroppedPipe(event)) {
           try {
             queue.wait();
           } catch (InterruptedException e) {
@@ -323,10 +350,20 @@ public class WebSocketConnectorServer extends WebSocketServer {
           }
         }
 
+        if (!isQueueAvailable(pipeName, queue) || isDroppedPipe(event)) {
+          discardEvent(event);
+          return;
+        }
+
         queue.put(
             new EventWaitingForTransfer(eventIdGenerator.incrementAndGet(), connector, event));
         return;
       }
+    }
+
+    if (!isQueueAvailable(pipeName, queue) || isDroppedPipe(event)) {
+      discardEvent(event);
+      return;
     }
 
     synchronized (queue) {
@@ -377,6 +414,11 @@ public class WebSocketConnectorServer extends WebSocketServer {
       final WebSocketSink connector = element.connector;
 
       try {
+        if (isDroppedPipe(event)) {
+          discardEvent(event);
+          return;
+        }
+
         ByteBuffer tabletBuffer;
         if (event instanceof PipeRawTabletInsertionEvent) {
           tabletBuffer = ((PipeRawTabletInsertionEvent) event).convertToTablet().serialize();
@@ -387,7 +429,11 @@ public class WebSocketConnectorServer extends WebSocketServer {
         }
 
         if (tabletBuffer == null) {
-          connector.commit((EnrichedEvent) event);
+          if (isDroppedPipe(event)) {
+            discardEvent(event);
+          } else {
+            connector.commit((EnrichedEvent) event);
+          }
           return;
         }
 
@@ -398,11 +444,17 @@ public class WebSocketConnectorServer extends WebSocketServer {
 
         server.broadcast(payload, Collections.singletonList(router.get(pipeName)));
 
+        if (isDroppedPipe(event)) {
+          discardEvent(event);
+          return;
+        }
+
         final ConcurrentHashMap<Long, EventWaitingForAck> eventId2EventMap =
             eventsWaitingForAck.get(pipeName);
         if (eventId2EventMap == null) {
           LOGGER.warn(
               "The pipe {} was dropped so the event ack {} will be ignored.", pipeName, eventId);
+          discardEvent(event);
           return;
         }
         eventId2EventMap.put(eventId, new EventWaitingForAck(connector, event));
@@ -410,13 +462,10 @@ public class WebSocketConnectorServer extends WebSocketServer {
         synchronized (server) {
           final PriorityBlockingQueue<EventWaitingForTransfer> queue =
               eventsWaitingForTransfer.get(pipeName);
-          if (queue == null) {
+          if (queue == null || isDroppedPipe(event)) {
             LOGGER.warn(
                 "The pipe {} was dropped so the event {} will be dropped.", pipeName, eventId);
-            if (event instanceof EnrichedEvent) {
-              ((EnrichedEvent) event)
-                  .decreaseReferenceCount(WebSocketConnectorServer.class.getName(), false);
-            }
+            discardEvent(event);
             return;
           }
 
@@ -463,6 +512,46 @@ public class WebSocketConnectorServer extends WebSocketServer {
     public EventWaitingForAck(WebSocketSink connector, Event event) {
       this.connector = connector;
       this.event = event;
+    }
+  }
+
+  private boolean discardIfMatches(
+      final Event event,
+      final String pipeNameToDrop,
+      final long creationTimeToDrop,
+      final int regionId) {
+    if (!(event instanceof EnrichedEvent)) {
+      return false;
+    }
+
+    final EnrichedEvent enrichedEvent = (EnrichedEvent) event;
+    if (!pipeNameToDrop.equals(enrichedEvent.getPipeName())
+        || creationTimeToDrop != enrichedEvent.getCreationTime()
+        || regionId != enrichedEvent.getRegionId()) {
+      return false;
+    }
+
+    discardEvent(enrichedEvent);
+    return true;
+  }
+
+  private boolean isDroppedPipe(final Event event) {
+    return event instanceof EnrichedEvent
+        && droppedPipeTaskKeys.contains(
+            new Triple<>(
+                ((EnrichedEvent) event).getPipeName(),
+                ((EnrichedEvent) event).getCreationTime(),
+                ((EnrichedEvent) event).getRegionId()));
+  }
+
+  private boolean isQueueAvailable(
+      final String pipeName, final PriorityBlockingQueue<EventWaitingForTransfer> queue) {
+    return eventsWaitingForTransfer.get(pipeName) == queue;
+  }
+
+  private void discardEvent(final Event event) {
+    if (event instanceof EnrichedEvent) {
+      ((EnrichedEvent) event).clearReferenceCount(WebSocketSink.class.getName());
     }
   }
 }
