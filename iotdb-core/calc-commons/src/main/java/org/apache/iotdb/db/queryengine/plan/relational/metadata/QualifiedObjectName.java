@@ -21,13 +21,13 @@ package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 
 import com.google.errorprone.annotations.Immutable;
 
+import java.util.Locale;
 import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
-import static org.apache.iotdb.db.queryengine.plan.relational.metadata.MetadataUtil.checkObjectName;
 
 @Immutable
 public class QualifiedObjectName {
@@ -50,7 +50,8 @@ public class QualifiedObjectName {
   private final String objectName;
 
   public QualifiedObjectName(String dbName, String objectName) {
-    checkObjectName(dbName, objectName);
+    checkLowerCase(dbName, "dbName");
+    checkLowerCase(objectName, "objectName");
     this.dbName = dbName;
     this.objectName = objectName;
   }
@@ -61,10 +62,6 @@ public class QualifiedObjectName {
 
   public String getObjectName() {
     return objectName;
-  }
-
-  public QualifiedTablePrefix asQualifiedTablePrefix() {
-    return new QualifiedTablePrefix(dbName, objectName);
   }
 
   @Override
@@ -102,5 +99,14 @@ public class QualifiedObjectName {
       return name;
     }
     return "\"" + name.replace("\"", "\"\"") + "\"";
+  }
+
+  private static String checkLowerCase(String value, String name) {
+    if (value == null) {
+      throw new NullPointerException(String.format("%s is null", name));
+    }
+    checkArgument(
+        value.equals(value.toLowerCase(Locale.ENGLISH)), "%s is not lowercase: %s", name, value);
+    return value;
   }
 }
