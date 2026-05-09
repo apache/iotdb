@@ -292,6 +292,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.Expressio
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.Scope.BasisType.TABLE;
 import static org.apache.iotdb.db.queryengine.plan.relational.metadata.MetadataUtil.createQualifiedObjectName;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.IrExpressionInterpreter.evaluateConstantExpression;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PushPredicateIntoTableScan.containsDiffFunction;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.util.AstUtil.preOrder;
 import static org.apache.iotdb.db.queryengine.plan.relational.utils.NodeUtils.getSortItemsFromOrderBy;
 import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
@@ -303,6 +304,7 @@ public class StatementAnalyzer {
   private final Analysis analysis;
 
   private boolean hasFillInParentScope = false;
+  private boolean hasDiffFunctionInParentScope = false;
   private final MPPQueryContext queryContext;
 
   private final AccessControl accessControl;
@@ -873,6 +875,8 @@ public class StatementAnalyzer {
       analysis.setQuery(true);
       Scope withScope = analyzeWith(node, context);
       hasFillInParentScope = node.getFill().isPresent() || hasFillInParentScope;
+      hasDiffFunctionInParentScope =
+          containsDiffFunctionInQuery(node) || hasDiffFunctionInParentScope;
       Scope queryBodyScope = process(node.getQueryBody(), withScope);
 
       if (node.getFill().isPresent()) {
@@ -887,7 +891,8 @@ public class StatementAnalyzer {
         if ((queryBodyScope.getOuterQueryParent().isPresent() || !isTopLevel)
             && !node.getLimit().isPresent()
             && !node.getOffset().isPresent()
-            && !hasFillInParentScope) {
+            && !hasFillInParentScope
+            && !hasDiffFunctionInParentScope) {
           // not the root scope and ORDER BY is ineffective
           analysis.markRedundantOrderBy(node.getOrderBy().get());
           warningCollector.add(
@@ -1144,6 +1149,7 @@ public class StatementAnalyzer {
           statementAnalyzerFactory.createStatementAnalyzer(
               analysis, queryContext, sessionContext, warningCollector, CorrelationSupport.ALLOWED);
       analyzer.hasFillInParentScope = hasFillInParentScope;
+      analyzer.hasDiffFunctionInParentScope = hasDiffFunctionInParentScope;
       Scope queryScope =
           analyzer.analyze(
               node.getQuery(),
@@ -1156,6 +1162,8 @@ public class StatementAnalyzer {
       // TODO: extract candidate names from SELECT, WHERE, HAVING, GROUP BY and ORDER BY expressions
       // to pass down to analyzeFrom
       hasFillInParentScope = node.getFill().isPresent() || hasFillInParentScope;
+      hasDiffFunctionInParentScope =
+          containsDiffFunctionInQuerySpecification(node) || hasDiffFunctionInParentScope;
 
       Scope sourceScope = analyzeFrom(node, scope);
       analyzeWindowDefinitions(node, sourceScope);
@@ -1188,7 +1196,8 @@ public class StatementAnalyzer {
         if ((sourceScope.getOuterQueryParent().isPresent() || !isTopLevel)
             && !node.getLimit().isPresent()
             && !node.getOffset().isPresent()
-            && !hasFillInParentScope) {
+            && !hasFillInParentScope
+            && !hasDiffFunctionInParentScope) {
           // not the root scope and ORDER BY is ineffective
           analysis.markRedundantOrderBy(orderBy);
           warningCollector.add(
@@ -1299,6 +1308,37 @@ public class StatementAnalyzer {
       }
 
       return windowFunctions;
+    }
+
+    // cover case: (query1) UNION (query2) order by ...
+    private boolean containsDiffFunctionInQuery(Query node) {
+      return getSortItemsFromOrderBy(node.getOrderBy()).stream()
+          .map(SortItem::getSortKey)
+          .anyMatch(expression -> containsDiffFunction(expression));
+    }
+
+    private boolean containsDiffFunctionInQuerySpecification(QuerySpecification node) {
+      for (SelectItem selectItem : node.getSelect().getSelectItems()) {
+        if (selectItem instanceof AllColumns) {
+          Optional<Expression> target = ((AllColumns) selectItem).getTarget();
+          if (target.isPresent() && containsDiffFunction(target.get())) {
+            return true;
+          }
+        } else if (selectItem instanceof SingleColumn
+            && containsDiffFunction(((SingleColumn) selectItem).getExpression())) {
+          return true;
+        }
+      }
+
+      if (node.getWhere().isPresent() && containsDiffFunction(node.getWhere().get())) {
+        return true;
+      }
+      if (node.getHaving().isPresent() && containsDiffFunction(node.getHaving().get())) {
+        return true;
+      }
+      return getSortItemsFromOrderBy(node.getOrderBy()).stream()
+          .map(SortItem::getSortKey)
+          .anyMatch(expression -> containsDiffFunction(expression));
     }
 
     private void resolveFunctionCallAndMeasureWindows(QuerySpecification querySpecification) {
