@@ -132,6 +132,7 @@ public class TsFileInsertionDataContainerTest {
     schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
 
     final Tablet tablet = new Tablet("root.sg.d", schemaList, 2);
+    tablet.rowSize = 2;
     tablet.addTimestamp(0, 1);
     tablet.addValue("s1", 0, 1L);
     tablet.addTimestamp(1, 2);
