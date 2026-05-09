@@ -872,6 +872,8 @@ public class StatementAnalyzer {
 
     @Override
     public Scope visitQuery(Query node, Optional<Scope> context) {
+      boolean originalHasFillInParentScope = hasFillInParentScope;
+      boolean originalHasDiffFunctionInParentScope = hasDiffFunctionInParentScope;
       analysis.setQuery(true);
       Scope withScope = analyzeWith(node, context);
       hasFillInParentScope = node.getFill().isPresent() || hasFillInParentScope;
@@ -927,6 +929,8 @@ public class StatementAnalyzer {
               .build();
 
       analysis.setScope(node, queryScope);
+      hasFillInParentScope = originalHasFillInParentScope;
+      hasDiffFunctionInParentScope = originalHasDiffFunctionInParentScope;
       return queryScope;
     }
 
@@ -1159,6 +1163,8 @@ public class StatementAnalyzer {
 
     @Override
     public Scope visitQuerySpecification(QuerySpecification node, Optional<Scope> scope) {
+      boolean originalHasFillInParentScope = hasFillInParentScope;
+      boolean originalHasDiffFunctionInParentScope = hasDiffFunctionInParentScope;
       // TODO: extract candidate names from SELECT, WHERE, HAVING, GROUP BY and ORDER BY expressions
       // to pass down to analyzeFrom
       hasFillInParentScope = node.getFill().isPresent() || hasFillInParentScope;
@@ -1258,6 +1264,8 @@ public class StatementAnalyzer {
             orderByScope.orElseThrow(() -> new NoSuchElementException("No value present")));
       }
 
+      hasFillInParentScope = originalHasFillInParentScope;
+      hasDiffFunctionInParentScope = originalHasDiffFunctionInParentScope;
       return outputScope;
     }
 
