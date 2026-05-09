@@ -27,7 +27,6 @@ import org.apache.iotdb.pipe.api.event.Event;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.write.record.Tablet;
-import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.Assert;
 import org.junit.Test;
@@ -53,7 +52,7 @@ public class PipeEventCollectorTest {
     pendingQueue.discardEventsOfPipe("pipe", 1L, 1);
 
     final PipeEventCollector droppedPipeCollector =
-        new PipeEventCollector(pendingQueue, 1L, 1, false, false, false);
+        new PipeEventCollector(pendingQueue, 1L, 1, false, false);
     final PipeRawTabletInsertionEvent droppedPipeEvent =
         createPipeRawTabletInsertionEvent("pipe", 1L);
     droppedPipeCollector.collect(droppedPipeEvent);
@@ -62,7 +61,7 @@ public class PipeEventCollectorTest {
     Assert.assertEquals(0, pendingQueue.size());
 
     final PipeEventCollector recreatedPipeCollector =
-        new PipeEventCollector(pendingQueue, 2L, 1, false, false, false);
+        new PipeEventCollector(pendingQueue, 2L, 1, false, false);
     final PipeRawTabletInsertionEvent recreatedPipeEvent =
         createPipeRawTabletInsertionEvent("pipe", 2L);
     recreatedPipeCollector.collect(recreatedPipeEvent);
@@ -76,22 +75,12 @@ public class PipeEventCollectorTest {
 
   private PipeRawTabletInsertionEvent createPipeRawTabletInsertionEvent(
       final String pipeName, final long creationTime) {
-    final List<IMeasurementSchema> schemaList =
+    final List<MeasurementSchema> schemaList =
         Arrays.asList(new MeasurementSchema("s1", TSDataType.INT64));
     final Tablet tablet = new Tablet("root.db.d1", schemaList, 1);
     tablet.addTimestamp(0, 1L);
     tablet.addValue("s1", 0, 1L);
     return new PipeRawTabletInsertionEvent(
-        false,
-        "root.db",
-        "db",
-        "root.db",
-        tablet,
-        false,
-        pipeName,
-        creationTime,
-        null,
-        null,
-        false);
+        tablet, false, pipeName, creationTime, null, null, false);
   }
 }
