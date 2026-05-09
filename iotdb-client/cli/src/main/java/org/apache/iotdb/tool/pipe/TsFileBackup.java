@@ -87,7 +87,7 @@ public final class TsFileBackup {
 
     static final String SOURCE_CAPTURE_TREE = "source.capture.tree";
     static final String SOURCE_CAPTURE_TABLE = "source.capture.table";
-    static final String SOURCE_PATTERN = "source.pattern";
+    static final String SOURCE_PATTERN = "source.path";
     static final String SOURCE_DB_NAME = "source.database-name";
     static final String SOURCE_TABLE_NAME = "source.table-name";
 

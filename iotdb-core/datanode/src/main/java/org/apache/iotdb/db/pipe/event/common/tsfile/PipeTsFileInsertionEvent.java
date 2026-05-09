@@ -373,11 +373,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     final List<ModEntry> linkedObjectColumnModEntries = new ArrayList<>();
     try {
       if (Objects.nonNull(pipeName)) {
-        // In the real tsfile transfer path, the tsfile event is expected to observe a sealed
-        // resource here. The UNCLOSED case is mainly introduced by unit tests that manually mock
-        // an unsealed resource to verify realtime behavior before close.
-        final boolean shouldLinkObjectFiles =
-            !Objects.equals(hasObjectData, Boolean.FALSE) && resource.isClosed();
+        final boolean shouldLinkObjectFiles = !Objects.equals(hasObjectData, Boolean.FALSE);
         final Iterator<String> pathIterator =
             shouldLinkObjectFiles
                 ? new TsFileObjectPathIterator(this, linkedObjectColumnModEntries)
@@ -391,10 +387,9 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
           hasObjectData = false;
         }
 
-        if (resource.isClosed()) {
-          PipeDataNodeResourceManager.object().setTsFileClosed(resource, pipeName);
-        }
+        PipeDataNodeResourceManager.object().setTsFileClosed(resource, pipeName);
       }
+      final File firstName = tsFile;
       tsFile = PipeDataNodeResourceManager.tsfile().increaseFileReference(tsFile, true, pipeName);
       if (isWithMod) {
         if (modFile != null) {
@@ -405,7 +400,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         if (pipeName != null && !linkedObjectColumnModEntries.isEmpty()) {
           modFile =
               PipeDataNodeResourceManager.tsfile()
-                  .writeModEntriesForPipeTsFile(linkedObjectColumnModEntries, tsFile, pipeName);
+                  .writeModEntriesForPipeTsFile(linkedObjectColumnModEntries, firstName, pipeName);
           isWithMod = true;
         }
       }
