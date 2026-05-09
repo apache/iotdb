@@ -268,22 +268,12 @@ public class PipeSinkTest {
 
   private PipeRawTabletInsertionEvent createPipeRawTabletInsertionEvent(
       final String pipeName, final long creationTime, final int regionId) {
-    final List<IMeasurementSchema> schemaList =
+    final List<MeasurementSchema> schemaList =
         Arrays.asList(new MeasurementSchema("s1", TSDataType.INT64));
     final Tablet tablet = new Tablet("root.db.d" + regionId, schemaList, 1);
     tablet.addTimestamp(0, 1L);
     tablet.addValue("s1", 0, 1L);
     return new PipeRawTabletInsertionEvent(
-        false,
-        "root.db",
-        "db",
-        "root.db",
-        tablet,
-        false,
-        pipeName,
-        creationTime,
-        null,
-        null,
-        false);
+        tablet, false, pipeName, creationTime, null, null, false);
   }
 }
