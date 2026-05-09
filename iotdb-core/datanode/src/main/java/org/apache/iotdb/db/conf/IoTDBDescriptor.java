@@ -2457,11 +2457,7 @@ public class IoTDBDescriptor {
                 String.valueOf(conf.getLoadWriteThroughputBytesPerSecond()))));
 
     conf.setLoadTsFileAllowedDirs(
-        Arrays.stream(
-                properties
-                    .getProperty("load_tsfile_allowed_dirs", "")
-                    .trim()
-                    .split(","))
+        Arrays.stream(properties.getProperty("load_tsfile_allowed_dirs", "").trim().split(","))
             .filter(dir -> !dir.isEmpty())
             .toArray(String[]::new));
 
