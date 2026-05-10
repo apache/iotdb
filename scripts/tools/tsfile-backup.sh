@@ -31,7 +31,8 @@ fi
 
 TOOL_ROOT="$(cd "$(dirname "$0")/.."; pwd)"
 PLUGIN_JAR=""
-if [ -d "$TOOL_ROOT/ext/pipe" ]; then
+
+if [ -z "$PLUGIN_JAR" ] && [ -d "$TOOL_ROOT/ext/pipe" ]; then
   for f in "$TOOL_ROOT/ext/pipe"/tsfile-remote-sink-*-jar-with-dependencies.jar; do
     if [ -f "$f" ]; then
       PLUGIN_JAR="$f"
@@ -42,12 +43,6 @@ fi
 
 if [ -z "${IOTDB_HOME}" ]; then
   echo "[ERROR] IOTDB_HOME is not set. Set it to your IoTDB installation root (directory that contains lib/)." >&2
-  exit 1
-fi
-
-if [ -z "$PLUGIN_JAR" ] || [ ! -f "$PLUGIN_JAR" ]; then
-  echo "[ERROR] tsfile-remote-sink plugin JAR not found under $TOOL_ROOT/ext/pipe/." >&2
-  echo "        Use this script from the tsfile-backup distribution, or set TSFILE_REMOTE_SINK_JAR / --plugin_jar." >&2
   exit 1
 fi
 
@@ -67,7 +62,10 @@ if [ -z "$JAVA" ] ; then
     exit 1
 fi
 
-JVM_OPTS="-Dsun.jnu.encoding=UTF-8 -Dfile.encoding=UTF-8 -Dtsfile.backup.plugin.jar=${PLUGIN_JAR}"
+JVM_OPTS="-Dsun.jnu.encoding=UTF-8 -Dfile.encoding=UTF-8"
+if [ -n "$PLUGIN_JAR" ] && [ -f "$PLUGIN_JAR" ]; then
+  JVM_OPTS="${JVM_OPTS} -Dtsfile.backup.plugin.jar=${PLUGIN_JAR}"
+fi
 
 CLASSPATH=""
 for f in "${IOTDB_HOME}"/lib/*.jar; do

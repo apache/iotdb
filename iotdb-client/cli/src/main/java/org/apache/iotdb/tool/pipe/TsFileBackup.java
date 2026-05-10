@@ -101,6 +101,11 @@ public final class TsFileBackup {
     static final String SINK_SCP_PASSWORD = "sink.scp.password";
     static final String SINK_SCP_REMOTE_PATH = "sink.scp.remote-path";
     static final String SINK_RATE_LIMIT = "sink.rate-limit-bytes-per-second";
+    static final String SINK_SCP_OBJECT_BATCH_SIZE_BYTES = "sink.scp.object-batch-size-bytes";
+    static final String SINK_SCP_OBJECT_PARALLELISM = "sink.scp.object-parallelism";
+    static final String SINK_SCP_OBJECT_WAITING_QUEUE_SIZE = "sink.scp.object-waiting-queue-size";
+    static final String SINK_SCP_OBJECT_THREAD_KEEP_ALIVE_SECONDS =
+        "sink.scp.object-thread-keep-alive-seconds";
   }
 
   /** CLI option names and descriptions. */
@@ -189,6 +194,28 @@ public final class TsFileBackup {
     static final String RATE_LIMIT_ARG = "bytes/s";
     static final String RATE_LIMIT_DESC = "Sink rate limit in bytes/s; omit for unlimited.";
 
+    static final String OBJECT_BATCH_SIZE_LONG = "object_batch_size";
+    static final String OBJECT_BATCH_SIZE_ARG = "bytes";
+    static final String OBJECT_BATCH_SIZE_DESC =
+        "Maximum bytes per SCP object upload batch; omit to use plugin default.";
+
+    static final String OBJECT_PARALLELISM_LONG = "object_parallelism";
+    static final String OBJECT_PARALLELISM_ARG = "object_parallelism";
+    static final String OBJECT_PARALLELISM_DESC =
+        "Maximum parallel SCP uploads for object-file batches; "
+            + "worker threads are created on demand.";
+
+    static final String OBJECT_WAITING_QUEUE_SIZE_LONG = "object_waiting_queue_size";
+    static final String OBJECT_WAITING_QUEUE_SIZE_ARG = "object_waiting_queue_size";
+    static final String OBJECT_WAITING_QUEUE_SIZE_DESC =
+        "Maximum queued async SCP object-upload tasks; "
+            + "submission waits when the queue limit is reached.";
+
+    static final String OBJECT_THREAD_KEEP_ALIVE_SECONDS_LONG = "object_thread_keep_alive_seconds";
+    static final String OBJECT_THREAD_KEEP_ALIVE_SECONDS_ARG = "object_thread_keep_alive_seconds";
+    static final String OBJECT_THREAD_KEEP_ALIVE_SECONDS_DESC =
+        "Idle timeout in seconds before async SCP object-upload worker threads are reclaimed.";
+
     static final String PLUGIN_JAR_LONG = "plugin_jar";
     static final String PLUGIN_JAR_ARG = "path";
     static final String PLUGIN_JAR_DESC = "Override path to plugin jar.";
@@ -235,6 +262,10 @@ public final class TsFileBackup {
     final String scpUser;
     final String scpPassword;
     final Double rateLimitBytesPerSecond;
+    final Long objectBatchSizeBytes;
+    final Integer objectParallelism;
+    final Integer objectWaitingQueueSize;
+    final Long objectThreadKeepAliveSeconds;
     final File pluginJar;
 
     public BackupConfig(CommandLine line) throws ParseException {
@@ -270,6 +301,43 @@ public final class TsFileBackup {
       this.rateLimitBytesPerSecond =
           StringUtils.isNotBlank(rateStr) ? Double.parseDouble(rateStr.trim()) : null;
 
+      String objectBatchSizeStr = line.getOptionValue(CliOptions.OBJECT_BATCH_SIZE_LONG);
+      this.objectBatchSizeBytes =
+          StringUtils.isNotBlank(objectBatchSizeStr)
+              ? Long.parseLong(objectBatchSizeStr.trim())
+              : null;
+      if (this.objectBatchSizeBytes != null && this.objectBatchSizeBytes <= 0) {
+        throw new IllegalArgumentException("object_batch_size must be a positive integer.");
+      }
+      String objectParallelismStr = line.getOptionValue(CliOptions.OBJECT_PARALLELISM_LONG);
+      this.objectParallelism =
+          StringUtils.isNotBlank(objectParallelismStr)
+              ? Integer.parseInt(objectParallelismStr.trim())
+              : null;
+      if (this.objectParallelism != null && this.objectParallelism <= 0) {
+        throw new IllegalArgumentException("object_parallelism must be a positive integer.");
+      }
+      String objectWaitingQueueSizeStr =
+          line.getOptionValue(CliOptions.OBJECT_WAITING_QUEUE_SIZE_LONG);
+      this.objectWaitingQueueSize =
+          StringUtils.isNotBlank(objectWaitingQueueSizeStr)
+              ? Integer.parseInt(objectWaitingQueueSizeStr.trim())
+              : null;
+      if (this.objectWaitingQueueSize != null && this.objectWaitingQueueSize < 0) {
+        throw new IllegalArgumentException(
+            "object_waiting_queue_size must be a non-negative integer.");
+      }
+      String objectThreadKeepAliveSecondsStr =
+          line.getOptionValue(CliOptions.OBJECT_THREAD_KEEP_ALIVE_SECONDS_LONG);
+      this.objectThreadKeepAliveSeconds =
+          StringUtils.isNotBlank(objectThreadKeepAliveSecondsStr)
+              ? Long.parseLong(objectThreadKeepAliveSecondsStr.trim())
+              : null;
+      if (this.objectThreadKeepAliveSeconds != null && this.objectThreadKeepAliveSeconds <= 0) {
+        throw new IllegalArgumentException(
+            "object_thread_keep_alive_seconds must be a positive integer.");
+      }
+
       String jarPath = resolvePluginJarPath(line.getOptionValue(CliOptions.PLUGIN_JAR_LONG));
       this.pluginJar = new File(jarPath);
       if (!this.pluginJar.isFile()) {
@@ -278,7 +346,9 @@ public final class TsFileBackup {
                 + jarPath
                 + ". Set -D"
                 + PLUGIN_JAR_PROPERTY
-                + " or --plugin_jar.");
+                + ", --plugin_jar, or "
+                + ENV_PLUGIN_JAR
+                + ".");
       }
     }
 
@@ -471,6 +541,34 @@ public final class TsFileBackup {
               .build());
       o.addOption(
           Option.builder()
+              .longOpt(CliOptions.OBJECT_BATCH_SIZE_LONG)
+              .hasArg()
+              .argName(CliOptions.OBJECT_BATCH_SIZE_ARG)
+              .desc(CliOptions.OBJECT_BATCH_SIZE_DESC)
+              .build());
+      o.addOption(
+          Option.builder()
+              .longOpt(CliOptions.OBJECT_PARALLELISM_LONG)
+              .hasArg()
+              .argName(CliOptions.OBJECT_PARALLELISM_ARG)
+              .desc(CliOptions.OBJECT_PARALLELISM_DESC)
+              .build());
+      o.addOption(
+          Option.builder()
+              .longOpt(CliOptions.OBJECT_WAITING_QUEUE_SIZE_LONG)
+              .hasArg()
+              .argName(CliOptions.OBJECT_WAITING_QUEUE_SIZE_ARG)
+              .desc(CliOptions.OBJECT_WAITING_QUEUE_SIZE_DESC)
+              .build());
+      o.addOption(
+          Option.builder()
+              .longOpt(CliOptions.OBJECT_THREAD_KEEP_ALIVE_SECONDS_LONG)
+              .hasArg()
+              .argName(CliOptions.OBJECT_THREAD_KEEP_ALIVE_SECONDS_ARG)
+              .desc(CliOptions.OBJECT_THREAD_KEEP_ALIVE_SECONDS_DESC)
+              .build());
+      o.addOption(
+          Option.builder()
               .longOpt(CliOptions.PLUGIN_JAR_LONG)
               .hasArg()
               .argName(CliOptions.PLUGIN_JAR_ARG)
@@ -609,6 +707,29 @@ public final class TsFileBackup {
         sink.add(
             formatKv(PipeKeys.SINK_RATE_LIMIT, String.valueOf(config.rateLimitBytesPerSecond)));
       }
+      if (config.objectBatchSizeBytes != null) {
+        sink.add(
+            formatKv(
+                PipeKeys.SINK_SCP_OBJECT_BATCH_SIZE_BYTES,
+                String.valueOf(config.objectBatchSizeBytes)));
+      }
+      if (config.objectParallelism != null) {
+        sink.add(
+            formatKv(
+                PipeKeys.SINK_SCP_OBJECT_PARALLELISM, String.valueOf(config.objectParallelism)));
+      }
+      if (config.objectWaitingQueueSize != null) {
+        sink.add(
+            formatKv(
+                PipeKeys.SINK_SCP_OBJECT_WAITING_QUEUE_SIZE,
+                String.valueOf(config.objectWaitingQueueSize)));
+      }
+      if (config.objectThreadKeepAliveSeconds != null) {
+        sink.add(
+            formatKv(
+                PipeKeys.SINK_SCP_OBJECT_THREAD_KEEP_ALIVE_SECONDS,
+                String.valueOf(config.objectThreadKeepAliveSeconds)));
+      }
 
       return String.format(
           "CREATE PIPE IF NOT EXISTS %s WITH SOURCE (%s) WITH SINK (%s)",
@@ -643,12 +764,12 @@ public final class TsFileBackup {
   }
 
   private static String resolvePluginJarPath(String cliOverride) {
-    if (StringUtils.isNotBlank(cliOverride)) {
-      return cliOverride.trim();
-    }
     String prop = System.getProperty(PLUGIN_JAR_PROPERTY);
     if (StringUtils.isNotBlank(prop)) {
       return prop.trim();
+    }
+    if (StringUtils.isNotBlank(cliOverride)) {
+      return cliOverride.trim();
     }
     String env = System.getenv(ENV_PLUGIN_JAR);
     return StringUtils.isNotBlank(env) ? env.trim() : "";

@@ -254,14 +254,7 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
         final int linked =
             PipeDataNodeResourceManager.object()
                 .linkObjectFiles(tsFileResource, pathIterator, pipeName);
-        if (linked > 0) {
-          if (hasObjectData == null) {
-            hasObjectData = true;
-          }
-          PipeDataNodeResourceManager.object().increaseReference(tsFileResource, pipeName);
-        } else {
-          hasObjectData = false;
-        }
+        hasObjectData = linked > 0;
         PipeDataNodeSinglePipeMetrics.getInstance()
             .increaseInsertNodeEventCount(pipeName, creationTime);
         PipeDataNodeAgent.task()

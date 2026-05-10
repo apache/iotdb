@@ -125,6 +125,9 @@ public class PipeObjectResourceManager {
           linkedCount++;
         }
       }
+      if (linkedCount != 0) {
+        resource.increaseReferenceCount();
+      }
       return linkedCount;
     } finally {
       segmentLock.unlock(tsFile);

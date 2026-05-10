@@ -380,12 +380,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
                 : Collections.emptyIterator();
         final int linked =
             PipeDataNodeResourceManager.object().linkObjectFiles(resource, pathIterator, pipeName);
-        if (linked > 0) {
-          hasObjectData = true;
-          PipeDataNodeResourceManager.object().increaseReference(resource, pipeName);
-        } else if (shouldLinkObjectFiles) {
-          hasObjectData = false;
-        }
+        hasObjectData = linked != 0;
 
         PipeDataNodeResourceManager.object().setTsFileClosed(resource, pipeName);
       }

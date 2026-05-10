@@ -238,10 +238,6 @@ public class PipeObjectResource implements AutoCloseable {
           "Cannot link object files: Object resource is closed for TSFile "
               + tsFileResource.getTsFile().getPath());
     }
-    if (isTsFileClosed.get()) {
-      throw new IOException(
-          "Cannot link object files for closed TSFile: " + tsFileResource.getTsFile().getPath());
-    }
 
     // Attempt to locate the original physical file across different storage tiers
     final String dataRegionId = tsFileResource.getDataRegionId();

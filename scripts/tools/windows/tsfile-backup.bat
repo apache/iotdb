@@ -36,16 +36,10 @@ popd >nul
 @REM -----------------------------------------------------------------------------
 if NOT DEFINED JAVA_HOME goto :err_java
 
-@REM Automatically scan and locate the plugin JAR (no delayed expansion required)
 set "PLUGIN_JAR="
-for %%f in ("%TOOL_ROOT%\ext\pipe\tsfile-remote-sink-*-jar-with-dependencies.jar") do (
-    set "PLUGIN_JAR=%%f"
-)
 
-if "%PLUGIN_JAR%"=="" (
-    echo [ERROR] tsfile-remote-sink plugin JAR not found under %TOOL_ROOT%\ext\pipe\
-    set ret_code=1
-    goto finally
+if NOT DEFINED PLUGIN_JAR for %%f in ("%TOOL_ROOT%\ext\pipe\tsfile-remote-sink-*-jar-with-dependencies.jar") do (
+    if EXIST "%%~f" set "PLUGIN_JAR=%%~f"
 )
 
 @REM -----------------------------------------------------------------------------
@@ -54,7 +48,8 @@ if "%PLUGIN_JAR%"=="" (
 if NOT DEFINED MAIN_CLASS set MAIN_CLASS=org.apache.iotdb.tool.pipe.TsFileBackup
 
 @REM Centralized system properties and encoding settings
-set "JAVA_OPTS=-ea -Dsun.jnu.encoding=UTF-8 -Dfile.encoding=UTF-8 -DIOTDB_HOME="%IOTDB_HOME%" -Dtsfile.backup.plugin.jar="%PLUGIN_JAR%""
+set "JAVA_OPTS=-ea -Dsun.jnu.encoding=UTF-8 -Dfile.encoding=UTF-8 -DIOTDB_HOME="%IOTDB_HOME%""
+if DEFINED PLUGIN_JAR if EXIST "%PLUGIN_JAR%" set "JAVA_OPTS=%JAVA_OPTS% -Dtsfile.backup.plugin.jar="%PLUGIN_JAR%""
 
 @REM Elegant dependency loading using wildcards (*) to avoid string concatenation hell
 set "CLASSPATH=%TOOL_ROOT%\lib\*;%IOTDB_HOME%\lib\*"
