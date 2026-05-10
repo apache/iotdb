@@ -275,6 +275,10 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   public void connect(TEndPoint endpoint, int timeoutMs) throws TException {
+    // Close existing transport before reassigning to prevent connection leaks.
+    if (transport != null) {
+      transport.close();
+    }
     transport =
         commonConfig.isEnableInternalSSL()
             ? DeepCopyRpcTransportFactory.INSTANCE.getTransport(
@@ -335,10 +339,6 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         Thread.currentThread().interrupt();
         logger.warn("Unexpected interruption when waiting to try to connect to ConfigNode");
       }
-    }
-
-    if (transport != null) {
-      transport.close();
     }
 
     for (int tryHostNum = 0; tryHostNum < configNodes.size(); tryHostNum++) {
