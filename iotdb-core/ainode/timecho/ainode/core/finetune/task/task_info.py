@@ -171,7 +171,6 @@ class FinetuneTask:
                 "pipeline_cls": self.base_model_info.pipeline_cls,
                 "repo_id": self.base_model_info.repo_id,
                 "auto_map": self.base_model_info.auto_map,
-                "transformers_registered": self.base_model_info.transformers_registered,
             }
         return {
             "task_id": self.task_id,
@@ -221,9 +220,6 @@ class FinetuneTask:
                 pipeline_cls=base_model_info_data.get("pipeline_cls", ""),
                 repo_id=base_model_info_data.get("repo_id", ""),
                 auto_map=base_model_info_data.get("auto_map"),
-                transformers_registered=base_model_info_data.get(
-                    "transformers_registered", False
-                ),
             )
 
         model_args_data = data.get("model_args", {})
