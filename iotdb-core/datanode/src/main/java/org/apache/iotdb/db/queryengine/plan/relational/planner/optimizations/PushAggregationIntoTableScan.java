@@ -193,8 +193,8 @@ public class PushAggregationIntoTableScan implements PlanOptimizer {
         return PushDownLevel.NOOP;
       } else if (singleDeviceEntry
           || ImmutableSet.copyOf(groupingKeys)
-              .containsAll(getIdColumnsInTableStore(tableScanNode, metadata, session))) {
-        // If all ID columns appear in groupingKeys and no Measurement column appears, we can push
+              .containsAll(getTagColumnsInTableStore(tableScanNode, metadata, session))) {
+        // If all tag columns appear in groupingKeys and no Measurement column appears, we can push
         // down completely.
         return PushDownLevel.COMPLETE;
       } else {
@@ -202,7 +202,7 @@ public class PushAggregationIntoTableScan implements PlanOptimizer {
       }
     }
 
-    private List<Symbol> getIdColumnsInTableStore(
+    private List<Symbol> getTagColumnsInTableStore(
         DeviceTableScanNode tableScanNode, Metadata metadata, SessionInfo session) {
       return Objects.requireNonNull(
               metadata.getTableSchema(session, tableScanNode.getQualifiedObjectName()).orElse(null))
