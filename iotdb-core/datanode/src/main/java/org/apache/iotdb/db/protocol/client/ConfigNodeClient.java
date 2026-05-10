@@ -265,6 +265,13 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   public void connect(TEndPoint endpoint, int timeoutMs) throws TException {
+    // Close old transport to avoid leaking TCP connections on the server side.
+    // Without this, redirect scenarios (Follower -> Leader) overwrite the transport
+    // field and leave the old connection open, causing server-side RPC threads to
+    // block indefinitely on the abandoned socket.
+    if (transport != null) {
+      transport.close();
+    }
     transport =
         commonConfig.isEnableInternalSSL()
             ? DeepCopyRpcTransportFactory.INSTANCE.getTransport(
