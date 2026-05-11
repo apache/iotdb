@@ -1398,7 +1398,14 @@ public class ConfigNodeConfig {
         new LocalFileUserManager(CommonDescriptor.getInstance().getConfig().getUserFolder());
     LocalFileRoleManager roleManager =
         new LocalFileRoleManager(CommonDescriptor.getInstance().getConfig().getRoleFolder());
-    if ((configFileUrl != null && (new File(configFileUrl.getPath()).exists()))
+    if ((configFileUrl != null
+            && configFileUrl
+                .getPath()
+                .endsWith(
+                    SecretKey.CN_FILE_ENCRYPTED_PREFIX
+                        + CommonConfig.SYSTEM_CONFIG_NAME
+                        + SecretKey.FILE_ENCRYPTED_SUFFIX)
+            && (new File(configFileUrl.getPath()).exists()))
         && !CommonDescriptor.getInstance().getConfig().isEnableEncryptConfigFile()) {
       throw new IOException(
           "Config file is encrypted. The parameter enable_encrypt_config_file must be set to true");

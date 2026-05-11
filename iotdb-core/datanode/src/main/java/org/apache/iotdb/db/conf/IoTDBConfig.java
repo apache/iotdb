@@ -4708,7 +4708,14 @@ public class IoTDBConfig {
             SecretKey.DN_FILE_ENCRYPTED_PREFIX
                 + CommonConfig.SYSTEM_CONFIG_NAME
                 + SecretKey.FILE_ENCRYPTED_SUFFIX);
-    if ((configFileUrl != null && (new File(configFileUrl.getPath()).exists()))
+    if ((configFileUrl != null
+            && configFileUrl
+                .getPath()
+                .endsWith(
+                    SecretKey.DN_FILE_ENCRYPTED_PREFIX
+                        + CommonConfig.SYSTEM_CONFIG_NAME
+                        + SecretKey.FILE_ENCRYPTED_SUFFIX)
+            && (new File(configFileUrl.getPath()).exists()))
         && !CommonDescriptor.getInstance().getConfig().isEnableEncryptConfigFile()) {
       throw new IOException(
           "Config file is encrypted. The parameter enable_encrypt_config_file must be set to true");
