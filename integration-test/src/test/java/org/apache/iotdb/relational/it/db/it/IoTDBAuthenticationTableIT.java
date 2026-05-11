@@ -101,7 +101,9 @@ public class IoTDBAuthenticationTableIT {
         sessionRoot.executeNonQueryStatement("CREATE DATABASE IF NOT EXISTS __audit");
         fail("Should have thrown an exception");
       } catch (StatementExecutionException e) {
-        assertEquals("803: Access Denied: The database '__audit' is read-only.", e.getMessage());
+        assertEquals(
+            "803: Access Denied: The database name \"__audit\" is reserved, please use another valid database name.",
+            e.getMessage());
       }
 
       sessionRoot.executeNonQueryStatement("CREATE DATABASE IF NOT EXISTS \"汉化\"");
