@@ -56,7 +56,6 @@ import static org.apache.iotdb.it.env.cluster.ClusterConstant.DN_SYSTEM_DIR;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DN_TRACING_DIR;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DN_WAL_DIRS;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.IOTDB_SYSTEM_PROPERTIES_FILE;
-import static org.apache.iotdb.it.env.cluster.ClusterConstant.LOAD_TSFILE_SOURCE_PATH_CHECK_ENABLE;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.MAIN_CLASS_NAME;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.MAX_TSBLOCK_SIZE_IN_BYTES;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.MQTT_DATA_PATH;
@@ -245,7 +244,6 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
     mutableNodeProperties.setProperty(SCHEMA_REGION_RATIS_LOG_APPENDER_BUFFER_SIZE_MAX, "8388608");
     mutableNodeProperties.setProperty(DATA_REGION_RATIS_LOG_APPENDER_BUFFER_SIZE_MAX, "8388608");
     mutableNodeProperties.setProperty(DATA_REGION_PER_DATA_NODE, String.valueOf(regionPerDataNode));
-    mutableNodeProperties.setProperty(LOAD_TSFILE_SOURCE_PATH_CHECK_ENABLE, "false");
   }
 
   @Override

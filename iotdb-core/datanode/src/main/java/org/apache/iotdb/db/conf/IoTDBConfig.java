@@ -300,7 +300,7 @@ public class IoTDBConfig {
 
   private String[] loadTsFileAllowedDirs = new String[0];
 
-  private boolean loadTsFileSourcePathCheckEnabled = true;
+  private boolean loadTsFileSourcePathCheckEnabled = false;
 
   /** Strategy of multiple directories. */
   private String multiDirStrategyClassName = null;
