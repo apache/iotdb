@@ -20,11 +20,11 @@ package org.apache.iotdb.db.storageengine.dataregion.wal.node;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.iot.log.ConsensusReqReader;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.ContinuousSameSearchIndexSeparatorNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.storageengine.StorageEngine;
@@ -46,7 +46,6 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.File;
-import java.util.Collections;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -124,10 +123,7 @@ public class WALNodeWaitForRollFileTest {
     // write a small amount of data (not enough to trigger roll)
     InsertTabletNode insertTabletNode = getInsertTabletNode(devicePath, new long[] {1});
     insertTabletNode.setSearchIndex(1);
-    walNode.log(
-        memTable.getMemTableId(),
-        insertTabletNode,
-        Collections.singletonList(new int[] {0, insertTabletNode.getRowCount()}));
+    walNode.log(memTable.getMemTableId(), insertTabletNode, 0, insertTabletNode.getRowCount());
 
     Awaitility.await().atMost(10, TimeUnit.SECONDS).until(() -> walNode.isAllWALEntriesConsumed());
 
@@ -160,10 +156,7 @@ public class WALNodeWaitForRollFileTest {
     for (int i = 1; i <= 5; i++) {
       InsertTabletNode insertTabletNode = getInsertTabletNode(devicePath, new long[] {i});
       insertTabletNode.setSearchIndex(i);
-      walNode.log(
-          memTable.getMemTableId(),
-          insertTabletNode,
-          Collections.singletonList(new int[] {0, insertTabletNode.getRowCount()}));
+      walNode.log(memTable.getMemTableId(), insertTabletNode, 0, insertTabletNode.getRowCount());
     }
 
     Awaitility.await().atMost(10, TimeUnit.SECONDS).until(() -> walNode.isAllWALEntriesConsumed());
@@ -190,10 +183,7 @@ public class WALNodeWaitForRollFileTest {
     // write data with search index
     InsertTabletNode insertTabletNode = getInsertTabletNode(devicePath, new long[] {1});
     insertTabletNode.setSearchIndex(1);
-    walNode.log(
-        memTable.getMemTableId(),
-        insertTabletNode,
-        Collections.singletonList(new int[] {0, insertTabletNode.getRowCount()}));
+    walNode.log(memTable.getMemTableId(), insertTabletNode, 0, insertTabletNode.getRowCount());
     walNode.log(
         memTable.getMemTableId(), new ContinuousSameSearchIndexSeparatorNode(new PlanNodeId("")));
 
@@ -252,10 +242,7 @@ public class WALNodeWaitForRollFileTest {
       // write initial data with search index
       InsertTabletNode first = getInsertTabletNode(devicePath, new long[] {1});
       first.setSearchIndex(1);
-      walNode.log(
-          memTable.getMemTableId(),
-          first,
-          Collections.singletonList(new int[] {0, first.getRowCount()}));
+      walNode.log(memTable.getMemTableId(), first, 0, first.getRowCount());
 
       Awaitility.await()
           .atMost(10, TimeUnit.SECONDS)
@@ -286,10 +273,7 @@ public class WALNodeWaitForRollFileTest {
       for (int i = 2; i <= 50; i++) {
         InsertTabletNode node = getInsertTabletNode(devicePath, new long[] {i});
         node.setSearchIndex(i);
-        walNode.log(
-            memTable.getMemTableId(),
-            node,
-            Collections.singletonList(new int[] {0, node.getRowCount()}));
+        walNode.log(memTable.getMemTableId(), node, 0, node.getRowCount());
       }
 
       waitFuture.get(40, TimeUnit.SECONDS);
@@ -318,10 +302,7 @@ public class WALNodeWaitForRollFileTest {
     // write data with search index — stays in the current (active) WAL file
     InsertTabletNode insertTabletNode = getInsertTabletNode(devicePath, new long[] {1});
     insertTabletNode.setSearchIndex(1);
-    walNode.log(
-        memTable.getMemTableId(),
-        insertTabletNode,
-        Collections.singletonList(new int[] {0, insertTabletNode.getRowCount()}));
+    walNode.log(memTable.getMemTableId(), insertTabletNode, 0, insertTabletNode.getRowCount());
     walNode.log(
         memTable.getMemTableId(), new ContinuousSameSearchIndexSeparatorNode(new PlanNodeId("")));
 
