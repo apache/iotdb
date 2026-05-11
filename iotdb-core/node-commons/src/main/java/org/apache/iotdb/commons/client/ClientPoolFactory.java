@@ -323,7 +323,7 @@ public class ClientPoolFactory {
                       .setRpcThriftCompressionEnabled(conf.isPipeSinkRPCThriftCompressionEnabled())
                       .setSelectorNumOfAsyncClientManager(conf.getPipeAsyncSinkSelectorNumber())
                       .build(),
-                  ThreadName.PIPE_ASYNC_CONNECTOR_CLIENT_POOL.getName()),
+                  ThreadName.PIPE_ASYNC_SINK_CLIENT_POOL.getName()),
               new ClientPoolProperty.Builder<AsyncPipeDataTransferServiceClient>()
                   .setMaxClientNumForEachNode(conf.getPipeAsyncSinkMaxClientNumber())
                   .build()
@@ -349,7 +349,7 @@ public class ClientPoolFactory {
                       .setSelectorNumOfAsyncClientManager(conf.getPipeAsyncSinkSelectorNumber())
                       .setPrintLogWhenEncounterException(conf.isPrintLogWhenEncounterException())
                       .build(),
-                  ThreadName.PIPE_ASYNC_CONNECTOR_CLIENT_POOL.getName()),
+                  ThreadName.PIPE_ASYNC_SINK_CLIENT_POOL.getName()),
               new ClientPoolProperty.Builder<AsyncPipeDataTransferServiceClient>()
                   .setMaxClientNumForEachNode(conf.getPipeAsyncSinkMaxTsFileClientNumber())
                   .build()

@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.write;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -37,6 +38,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferVie
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.NotImplementedException;
@@ -1076,68 +1078,105 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     return visitor.visitInsertTablet(this, context);
   }
 
-  public TimeValuePair composeLastTimeValuePair(int measurementIndex) {
+  public TimeValuePair composeLastTimeValuePair(
+      int measurementIndex, int startOffset, int endOffset) {
     if (measurementIndex >= columns.length || Objects.isNull(dataTypes[measurementIndex])) {
       return null;
     }
 
     // get non-null value
-    int lastIdx = rowCount - 1;
+    int lastIdx = Math.min(endOffset - 1, rowCount - 1);
     if (bitMaps != null && bitMaps[measurementIndex] != null) {
       BitMap bitMap = bitMaps[measurementIndex];
-      while (lastIdx >= 0) {
+      while (lastIdx >= startOffset) {
         if (!bitMap.isMarked(lastIdx)) {
           break;
         }
         lastIdx--;
       }
     }
-    if (lastIdx < 0) {
+    if (lastIdx < startOffset) {
+      return null;
+    }
+    return composeTimeValuePair(measurementIndex, lastIdx);
+  }
+
+  protected TimeValuePair composeLastTimeValuePair(
+      final int measurementIndex,
+      final TSStatus[] results,
+      final int startOffset,
+      final int endOffset) {
+    if (results == null) {
+      return composeLastTimeValuePair(measurementIndex, startOffset, endOffset);
+    }
+    if (measurementIndex >= columns.length || Objects.isNull(dataTypes[measurementIndex])) {
       return null;
     }
 
+    final BitMap bitMap = bitMaps == null ? null : bitMaps[measurementIndex];
+    int lastIdx = Math.min(endOffset - 1, rowCount - 1);
+    while (lastIdx >= startOffset) {
+      if (results[lastIdx] != null
+          && results[lastIdx].getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        lastIdx--;
+        continue;
+      }
+      if (bitMap != null && bitMap.isMarked(lastIdx)) {
+        lastIdx--;
+        continue;
+      }
+      break;
+    }
+    return lastIdx < startOffset ? null : composeTimeValuePair(measurementIndex, lastIdx);
+  }
+
+  private TimeValuePair composeTimeValuePair(final int measurementIndex, final int rowIndex) {
     TsPrimitiveType value;
     switch (dataTypes[measurementIndex]) {
       case INT32:
       case DATE:
         int[] intValues = (int[]) columns[measurementIndex];
-        value = new TsPrimitiveType.TsInt(intValues[lastIdx]);
+        value = new TsPrimitiveType.TsInt(intValues[rowIndex]);
         break;
       case INT64:
       case TIMESTAMP:
         long[] longValues = (long[]) columns[measurementIndex];
-        value = new TsPrimitiveType.TsLong(longValues[lastIdx]);
+        value = new TsPrimitiveType.TsLong(longValues[rowIndex]);
         break;
       case FLOAT:
         float[] floatValues = (float[]) columns[measurementIndex];
-        value = new TsPrimitiveType.TsFloat(floatValues[lastIdx]);
+        value = new TsPrimitiveType.TsFloat(floatValues[rowIndex]);
         break;
       case DOUBLE:
         double[] doubleValues = (double[]) columns[measurementIndex];
-        value = new TsPrimitiveType.TsDouble(doubleValues[lastIdx]);
+        value = new TsPrimitiveType.TsDouble(doubleValues[rowIndex]);
         break;
       case BOOLEAN:
         boolean[] boolValues = (boolean[]) columns[measurementIndex];
-        value = new TsPrimitiveType.TsBoolean(boolValues[lastIdx]);
+        value = new TsPrimitiveType.TsBoolean(boolValues[rowIndex]);
         break;
       case TEXT:
       case BLOB:
       case STRING:
         Binary[] binaryValues = (Binary[]) columns[measurementIndex];
-        value = new TsPrimitiveType.TsBinary(binaryValues[lastIdx]);
+        value = new TsPrimitiveType.TsBinary(binaryValues[rowIndex]);
         break;
       default:
         throw new UnSupportedDataTypeException(
             String.format(DATATYPE_UNSUPPORTED, dataTypes[measurementIndex]));
     }
-    return new TimeValuePair(times[lastIdx], value);
+    return new TimeValuePair(times[rowIndex], value);
   }
 
   public void updateLastCache(final String databaseName) {
+    updateLastCache(databaseName, null);
+  }
+
+  public void updateLastCache(final String databaseName, final TSStatus[] results) {
     final String[] rawMeasurements = getRawMeasurements();
     final TimeValuePair[] timeValuePairs = new TimeValuePair[rawMeasurements.length];
     for (int i = 0; i < rawMeasurements.length; i++) {
-      timeValuePairs[i] = composeLastTimeValuePair(i);
+      timeValuePairs[i] = composeLastTimeValuePair(i, results, 0, rowCount);
     }
     DataNodeSchemaCache.getInstance()
         .updateLastCacheIfExists(

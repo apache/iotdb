@@ -54,7 +54,7 @@ public abstract class PipeTransferTabletInsertionEventHandler extends PipeTransf
 
   public void transfer(final AsyncPipeDataTransferServiceClient client) throws TException {
     if (event instanceof EnrichedEvent) {
-      connector.rateLimitIfNeeded(
+      sink.rateLimitIfNeeded(
           ((EnrichedEvent) event).getPipeName(),
           ((EnrichedEvent) event).getCreationTime(),
           client.getEndPoint(),
@@ -77,8 +77,7 @@ public abstract class PipeTransferTabletInsertionEventHandler extends PipeTransf
       // Only handle the failed statuses to avoid string format performance overhead
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
           && status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
-        connector
-            .statusHandler()
+        sink.statusHandler()
             .handle(response.getStatus(), response.getStatus().getMessage(), event.toString());
       }
       if (event instanceof EnrichedEvent) {
@@ -109,7 +108,7 @@ public abstract class PipeTransferTabletInsertionEventHandler extends PipeTransf
           event instanceof EnrichedEvent ? ((EnrichedEvent) event).getCommitterKey() : null,
           event instanceof EnrichedEvent ? ((EnrichedEvent) event).getCommitIds() : null);
     } finally {
-      connector.addFailureEventToRetryQueue(event, exception);
+      sink.addFailureEventToRetryQueue(event, exception);
     }
   }
 
