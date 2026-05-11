@@ -164,6 +164,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowRepairDataPartitionTableProgressResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTTLResp;
@@ -245,6 +246,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.session.ShowCurrent
 import org.apache.iotdb.db.queryengine.plan.execution.config.session.ShowCurrentUserTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.session.ShowVersionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.ShowConfigurationTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.sys.ShowRepairDataPartitionTableProgressTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.TestConnectionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe.ShowPipeTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.quota.ShowSpaceQuotaTask;
@@ -1468,6 +1470,26 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     } else {
       future.setException(new IoTDBException(tsStatus));
     }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> showRepairDataPartitionTableProgress() {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+
+    try (ConfigNodeClient client =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      TShowRepairDataPartitionTableProgressResp resp =
+          client.showRepairDataPartitionTableProgress();
+      if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        ShowRepairDataPartitionTableProgressTask.buildTsBlock(resp, future);
+      } else {
+        future.setException(new IoTDBException(resp.getStatus()));
+      }
+    } catch (ClientManagerException | TException e) {
+      future.setException(e);
+    }
+
     return future;
   }
 

@@ -209,6 +209,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowRepairDataPartitionTableProgressResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTTLResp;
@@ -629,6 +630,11 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TSStatus dataPartitionTableIntegrityCheck() {
     return configManager.dataPartitionTableIntegrityCheck();
+  }
+
+  @Override
+  public TShowRepairDataPartitionTableProgressResp showRepairDataPartitionTableProgress() {
+    return configManager.showRepairDataPartitionTableProgress();
   }
 
   @Override

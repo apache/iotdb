@@ -69,6 +69,7 @@ import org.apache.iotdb.confignode.procedure.impl.node.AddConfigNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveAINodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveConfigNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveDataNodesProcedure;
+import org.apache.iotdb.confignode.procedure.impl.partition.DataPartitionTableIntegrityCheckProcedure;
 import org.apache.iotdb.confignode.procedure.impl.pipe.plugin.CreatePipePluginProcedure;
 import org.apache.iotdb.confignode.procedure.impl.pipe.plugin.DropPipePluginProcedure;
 import org.apache.iotdb.confignode.procedure.impl.pipe.runtime.PipeHandleLeaderChangeProcedure;
@@ -2338,6 +2339,18 @@ public class ProcedureManager {
     }
 
     return false;
+  }
+
+  public Optional<DataPartitionTableIntegrityCheckProcedure>
+      getUnfinishedDataPartitionTableIntegrityCheckProcedure() {
+    for (Procedure<ConfigNodeProcedureEnv> procedure : getExecutor().getProcedures().values()) {
+      if (!procedure.isFinished()
+          && procedure instanceof DataPartitionTableIntegrityCheckProcedure) {
+        return Optional.of((DataPartitionTableIntegrityCheckProcedure) procedure);
+      }
+    }
+
+    return Optional.empty();
   }
 
   // ======================================================

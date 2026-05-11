@@ -41,11 +41,14 @@ import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.state.DataPartitionTableIntegrityCheckProcedureState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
+import org.apache.iotdb.confignode.rpc.thrift.TShowRepairDataPartitionTableProgressResp;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.mpp.rpc.thrift.TGenerateDataPartitionTableHeartbeatResp;
 import org.apache.iotdb.mpp.rpc.thrift.TGenerateDataPartitionTableReq;
 import org.apache.iotdb.mpp.rpc.thrift.TGenerateDataPartitionTableResp;
+import org.apache.iotdb.mpp.rpc.thrift.TGetDataPartitionTableGeneratorProgressResp;
 import org.apache.iotdb.mpp.rpc.thrift.TGetEarliestTimeslotsResp;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
@@ -1097,5 +1100,87 @@ public class DataPartitionTableIntegrityCheckProcedure
 
   public void setFailedDataNodes(Set<TDataNodeConfiguration> failedDataNodes) {
     this.failedDataNodes = failedDataNodes;
+  }
+
+  public TShowRepairDataPartitionTableProgressResp getProgress(final ConfigNodeProcedureEnv env) {
+    final DataPartitionTableIntegrityCheckProcedureState currentState = getCurrentState();
+    final String state = currentState == null ? "UNKNOWN" : currentState.name();
+    final double progress =
+        currentState == null ? 0.0 : calculateProgressByState(env, currentState) * 100;
+
+    return new TShowRepairDataPartitionTableProgressResp(
+            RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS), state, progress)
+        .setMessage(String.format("DataPartitionTable integrity check progress: %.1f%%", progress));
+  }
+
+  private double calculateProgressByState(
+      final ConfigNodeProcedureEnv env,
+      final DataPartitionTableIntegrityCheckProcedureState currentState) {
+    switch (currentState) {
+      case COLLECT_EARLIEST_TIMESLOTS:
+        return 0.0;
+      case ANALYZE_MISSING_PARTITIONS:
+        return 0.05;
+      case REQUEST_PARTITION_TABLES:
+        return 0.1;
+      case REQUEST_PARTITION_TABLES_HEART_BEAT:
+        return 0.1 + 0.8 * calculateDataNodeGeneratorProgress(env);
+      case MERGE_PARTITION_TABLES:
+        return 0.95;
+      case WRITE_PARTITION_TABLE_TO_CONSENSUS:
+        return 0.99;
+      default:
+        return 0.0;
+    }
+  }
+
+  private double calculateDataNodeGeneratorProgress(final ConfigNodeProcedureEnv env) {
+    final LoadManager currentLoadManager =
+        loadManager == null ? env.getConfigManager().getLoadManager() : loadManager;
+
+    final Set<TDataNodeConfiguration> targetDataNodes = new HashSet<>(allDataNodes);
+    targetDataNodes.removeAll(skipDataNodes);
+    if (targetDataNodes.isEmpty()) {
+      return dataPartitionTables.isEmpty() ? 0.0 : 1.0;
+    }
+
+    double progressSum = 0.0;
+    for (TDataNodeConfiguration dataNode : targetDataNodes) {
+      final int dataNodeId = dataNode.getLocation().getDataNodeId();
+      if (dataPartitionTables.containsKey(dataNodeId)
+          || failedDataNodes.contains(dataNode)
+          || !NodeStatus.Running.equals(currentLoadManager.getNodeStatus(dataNodeId))) {
+        progressSum += 1.0;
+        continue;
+      }
+
+      try {
+        Object response =
+            SyncDataNodeClientPool.getInstance()
+                .sendSyncRequestToDataNodeWithGivenRetry(
+                    dataNode.getLocation().getInternalEndPoint(),
+                    null,
+                    CnToDnSyncRequestType.GET_DATA_PARTITION_TABLE_GENERATOR_PROGRESS,
+                    MAX_RETRY_COUNT);
+        if (response instanceof TGetDataPartitionTableGeneratorProgressResp) {
+          TGetDataPartitionTableGeneratorProgressResp resp =
+              (TGetDataPartitionTableGeneratorProgressResp) response;
+          DataPartitionTableGeneratorState state =
+              DataPartitionTableGeneratorState.getStateByCode(resp.getErrorCode());
+          if (state == DataPartitionTableGeneratorState.SUCCESS) {
+            progressSum += 1.0;
+          } else if (state == DataPartitionTableGeneratorState.IN_PROGRESS) {
+            progressSum += Math.max(0.0, Math.min(1.0, resp.getProgress()));
+          }
+        }
+      } catch (Exception e) {
+        LOG.warn(
+            "[DataPartitionIntegrity] Failed to get DataPartitionTable generation progress from DataNode[id={}]: {}",
+            dataNodeId,
+            e.getMessage());
+      }
+    }
+
+    return progressSum / targetDataNodes.size();
   }
 }

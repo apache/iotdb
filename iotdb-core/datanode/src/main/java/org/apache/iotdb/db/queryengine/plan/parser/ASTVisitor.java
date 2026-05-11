@@ -249,6 +249,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowCurrentSqlDialectS
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowCurrentUserStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowDiskUsageStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowRepairDataPartitionTableProgressStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowVersionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StartRepairDataStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StopRepairDataStatement;
@@ -3763,6 +3764,12 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   public Statement visitRepairDataPartitionTable(
       IoTDBSqlParser.RepairDataPartitionTableContext ctx) {
     return new RepairDataPartitionTable();
+  }
+
+  @Override
+  public Statement visitShowRepairDataPartitionTableProgress(
+      IoTDBSqlParser.ShowRepairDataPartitionTableProgressContext ctx) {
+    return new ShowRepairDataPartitionTableProgressStatement();
   }
 
   // Stop Repair Data

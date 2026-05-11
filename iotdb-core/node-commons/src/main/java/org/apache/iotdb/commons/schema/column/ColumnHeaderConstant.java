@@ -197,6 +197,11 @@ public class ColumnHeaderConstant {
   public static final String REMAINING_EVENT_COUNT = "RemainingEventCount";
   public static final String ESTIMATED_REMAINING_SECONDS = "EstimatedRemainingSeconds";
 
+  // column names for show repair data partition table progress
+  public static final String REPAIR_DATA_PARTITION_TABLE_STATUS = "Status";
+  public static final String REPAIR_DATA_PARTITION_TABLE_PROGRESS = "Progress(%)";
+  public static final String REPAIR_DATA_PARTITION_TABLE_MESSAGE = "Message";
+
   // column names for select into
   public static final String SOURCE_DEVICE = "SourceDevice";
   public static final String SOURCE_COLUMN = "SourceColumn";
@@ -605,6 +610,12 @@ public class ColumnHeaderConstant {
           new ColumnHeader(EXCEPTION_MESSAGE, TSDataType.TEXT),
           new ColumnHeader(REMAINING_EVENT_COUNT, TSDataType.TEXT),
           new ColumnHeader(ESTIMATED_REMAINING_SECONDS, TSDataType.TEXT));
+
+  public static final List<ColumnHeader> showRepairDataPartitionTableProgressColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(REPAIR_DATA_PARTITION_TABLE_STATUS, TSDataType.TEXT),
+          new ColumnHeader(REPAIR_DATA_PARTITION_TABLE_PROGRESS, TSDataType.DOUBLE),
+          new ColumnHeader(REPAIR_DATA_PARTITION_TABLE_MESSAGE, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showTopicColumnHeaders =
       ImmutableList.of(
