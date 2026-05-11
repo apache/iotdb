@@ -190,7 +190,9 @@ import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.schema.table.Audit.TREE_MODEL_AUDIT_DATABASE;
 import static org.apache.iotdb.commons.schema.table.Audit.TREE_MODEL_AUDIT_DATABASE_PATH;
+import static org.apache.iotdb.commons.schema.table.Audit.getReservedDatabaseNameErrorMsg;
 import static org.apache.iotdb.commons.schema.table.Audit.includeByAuditTreeDB;
+import static org.apache.iotdb.commons.schema.table.Audit.isAuditTreeDatabase;
 import static org.apache.iotdb.db.auth.AuthorityChecker.SUCCEED;
 import static org.apache.iotdb.db.auth.AuthorityChecker.getAuthorizedPathTree;
 import static org.apache.iotdb.db.queryengine.plan.relational.security.AccessControlImpl.READ_ONLY_DB_ERROR_MSG;
@@ -1008,6 +1010,17 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   @Override
   public TSStatus visitSetDatabase(
       DatabaseSchemaStatement statement, TreeAccessCheckContext context) {
+    if (!AuthorityChecker.INTERNAL_AUDIT_USER.equals(context.getUsername())
+        && isAuditTreeDatabase(statement.getDatabasePath())) {
+      context
+          .setDatabase(statement.getDatabasePath().getFullPath())
+          .setPrivilegeType(PrivilegeType.MANAGE_DATABASE)
+          .setAuditLogOperation(AuditLogOperation.DDL);
+      AUDIT_LOGGER.recordObjectAuthenticationAuditLog(
+          context.setResult(false), statement.getDatabasePath()::getFullPath);
+      return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
+          .setMessage(getReservedDatabaseNameErrorMsg(TREE_MODEL_AUDIT_DATABASE));
+    }
     return checkCreateOrAlterDatabasePermission(
         context.setAuditLogOperation(AuditLogOperation.DDL), statement.getDatabasePath());
   }

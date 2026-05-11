@@ -49,6 +49,7 @@ import java.util.function.Supplier;
 
 import static org.apache.iotdb.commons.schema.table.Audit.TABLE_MODEL_AUDIT_DATABASE;
 import static org.apache.iotdb.commons.schema.table.Audit.TREE_MODEL_AUDIT_DATABASE;
+import static org.apache.iotdb.commons.schema.table.Audit.getReservedDatabaseNameErrorMsg;
 import static org.apache.iotdb.commons.schema.table.Audit.includeByAuditTreeDB;
 import static org.apache.iotdb.db.auth.AuthorityChecker.ONLY_ADMIN_ALLOWED;
 import static org.apache.iotdb.db.auth.AuthorityChecker.SUCCEED;
@@ -78,6 +79,18 @@ public class AccessControlImpl implements AccessControl {
   @Override
   public void checkCanCreateDatabase(
       String userName, String databaseName, IAuditEntity auditEntity) {
+    if (!AuthorityChecker.INTERNAL_AUDIT_USER.equals(userName)
+        && TABLE_MODEL_AUDIT_DATABASE.equalsIgnoreCase(databaseName)) {
+      DNAuditLogger.getInstance()
+          .recordObjectAuthenticationAuditLog(
+              auditEntity
+                  .setAuditLogOperation(AuditLogOperation.DDL)
+                  .setDatabase(databaseName)
+                  .setPrivilegeType(PrivilegeType.CREATE)
+                  .setResult(false),
+              () -> databaseName);
+      throw new AccessDeniedException(getReservedDatabaseNameErrorMsg(TABLE_MODEL_AUDIT_DATABASE));
+    }
     InformationSchemaUtils.checkDBNameInWrite(databaseName);
     authChecker.checkDatabasePrivilege(
         userName, databaseName, TableModelPrivilege.CREATE, auditEntity.setDatabase(databaseName));
