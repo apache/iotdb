@@ -63,10 +63,6 @@ public class QualifiedObjectName {
     return objectName;
   }
 
-  public QualifiedTablePrefix asQualifiedTablePrefix() {
-    return new QualifiedTablePrefix(dbName, objectName);
-  }
-
   @Override
   public boolean equals(Object obj) {
     if (obj == this) {

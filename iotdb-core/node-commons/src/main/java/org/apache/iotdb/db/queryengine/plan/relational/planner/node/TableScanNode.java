@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.planner.node;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
-import org.apache.iotdb.commons.queryengine.common.SessionInfo;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.ICoreQueryPlanVisitor;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.IPlanVisitor;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -28,9 +28,6 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.source.Source
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 
 import com.google.common.collect.ImmutableList;
@@ -107,8 +104,9 @@ public abstract class TableScanNode extends SourceNode {
   protected TableScanNode() {}
 
   @Override
+  @SuppressWarnings("unchecked")
   public <R, C> R accept(IPlanVisitor<R, C> visitor, C context) {
-    return ((PlanVisitor<R, C>) visitor).visitTableScan(this, context);
+    return ((ICoreQueryPlanVisitor<R, C>) visitor).visitTableScan(this, context);
   }
 
   @Override
@@ -127,16 +125,6 @@ public abstract class TableScanNode extends SourceNode {
   @Override
   public List<String> getOutputColumnNames() {
     return outputSymbols.stream().map(Symbol::getName).collect(Collectors.toList());
-  }
-
-  public List<Symbol> getTagColumnsInTableStore(Metadata metadata, SessionInfo session) {
-    return Objects.requireNonNull(
-            metadata.getTableSchema(session, qualifiedObjectName).orElse(null))
-        .getColumns()
-        .stream()
-        .filter(columnSchema -> columnSchema.getColumnCategory() == TsTableColumnCategory.TAG)
-        .map(columnSchema -> Symbol.of(columnSchema.getName()))
-        .collect(Collectors.toList());
   }
 
   public boolean isMeasurementOrTimeColumn(Symbol symbol) {
