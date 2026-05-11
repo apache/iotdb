@@ -137,15 +137,8 @@ public class LoadTsFileTableSchemaCache {
   }
 
   public void autoCreateAndVerify(final IDeviceID device) throws LoadAnalyzeException {
-    try {
-      if (ModificationUtils.isDeviceDeletedByMods(currentModifications, currentTimeIndex, device)) {
-        return;
-      }
-    } catch (final IllegalPathException e) {
-      LOGGER.warn(
-          "Failed to check if device {} is deleted by mods. Will see it as not deleted.",
-          device,
-          e);
+    if (isDeviceDeletedByMods(device)) {
+      return;
     }
 
     try {
@@ -164,6 +157,19 @@ public class LoadTsFileTableSchemaCache {
     addDevice(device);
     if (shouldFlushDevices()) {
       flush();
+    }
+  }
+
+  public boolean isDeviceDeletedByMods(final IDeviceID device) {
+    try {
+      return ModificationUtils.isDeviceDeletedByMods(
+          currentModifications, currentTimeIndex, device);
+    } catch (final IllegalPathException e) {
+      LOGGER.warn(
+          "Failed to check if device {} is deleted by mods. Will see it as not deleted.",
+          device,
+          e);
+      return false;
     }
   }
 
