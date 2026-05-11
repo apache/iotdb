@@ -106,7 +106,7 @@ public abstract class TableScanNode extends SourceNode {
   @Override
   @SuppressWarnings("unchecked")
   public <R, C> R accept(IPlanVisitor<R, C> visitor, C context) {
-    return ((ICoreQueryPlanVisitor<R, C>) visitor).visitSourceNode(this, context);
+    return ((ICoreQueryPlanVisitor<R, C>) visitor).visitTableScan(this, context);
   }
 
   @Override
