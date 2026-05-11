@@ -40,6 +40,8 @@ public abstract class MppBaseConfig {
   /** Create an empty MppPersistentConfig. */
   protected MppBaseConfig() {
     this.properties = new Properties();
+    this.properties.setProperty("cn_selector_thread_nums_of_client_manager", "1");
+    this.properties.setProperty("dn_selector_thread_nums_of_client_manager", "1");
   }
 
   /**

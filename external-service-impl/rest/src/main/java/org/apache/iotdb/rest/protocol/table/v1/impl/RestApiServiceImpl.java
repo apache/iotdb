@@ -18,6 +18,8 @@
 package org.apache.iotdb.rest.protocol.table.v1.impl;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.queryengine.common.SqlDialect;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.rest.IoTDBRestServiceDescriptor;
@@ -31,7 +33,6 @@ import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Insert;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.utils.CommonUtils;
@@ -155,7 +156,7 @@ public class RestApiServiceImpl extends RestApiService {
           StatementConstructionHandler.constructInsertTabletStatement(insertTabletRequest);
       IClientSession clientSession = SESSION_MANAGER.getCurrSession();
       clientSession.setDatabaseName(insertTabletRequest.getDatabase());
-      clientSession.setSqlDialect(IClientSession.SqlDialect.TABLE);
+      clientSession.setSqlDialect(SqlDialect.TABLE);
       queryId = SESSION_MANAGER.requestQueryId();
       Metadata metadata = LocalExecutionPlanner.getInstance().metadata;
 
@@ -285,7 +286,7 @@ public class RestApiServiceImpl extends RestApiService {
       clientSession.setDatabaseName(sql.getDatabase());
     }
 
-    clientSession.setSqlDialect(IClientSession.SqlDialect.TABLE);
+    clientSession.setSqlDialect(SqlDialect.TABLE);
     return relationSqlParser.createStatement(
         sql.getSql(), clientSession.getZoneId(), clientSession);
   }

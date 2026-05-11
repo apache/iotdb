@@ -341,6 +341,7 @@ public class LoadTsFileStatement extends Statement {
 
       final LoadTsFileStatement statement = new LoadTsFileStatement();
       statement.databaseLevel = this.databaseLevel;
+      statement.database = this.database;
       statement.verifySchema = this.verifySchema;
       statement.deleteAfterLoad = this.deleteAfterLoad;
       statement.convertOnTypeMismatch = this.convertOnTypeMismatch;
@@ -370,8 +371,8 @@ public class LoadTsFileStatement extends Statement {
 
   @TableModel
   @Override
-  public org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement toRelationalStatement(
-      MPPQueryContext context) {
+  public org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement
+      toRelationalStatement(MPPQueryContext context) {
     final Map<String, String> loadAttributes = new HashMap<>();
 
     loadAttributes.put(DATABASE_LEVEL_KEY, String.valueOf(databaseLevel));

@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node;
 
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.IPartitionRelatedNode;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 
 import java.util.List;

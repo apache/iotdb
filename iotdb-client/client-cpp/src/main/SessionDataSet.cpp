@@ -22,267 +22,268 @@
 #include <boost/date_time/gregorian/gregorian.hpp>
 
 RowRecord::RowRecord(int64_t timestamp) {
-    this->timestamp = timestamp;
+  this->timestamp = timestamp;
 }
 
 RowRecord::RowRecord(int64_t timestamp, const std::vector<Field>& fields)
-    : timestamp(timestamp), fields(fields) {
-}
+    : timestamp(timestamp), fields(fields) {}
 
-RowRecord::RowRecord(const std::vector<Field>& fields)
-    : timestamp(-1), fields(fields) {
-}
+RowRecord::RowRecord(const std::vector<Field>& fields) : timestamp(-1), fields(fields) {}
 
 RowRecord::RowRecord() {
-    this->timestamp = -1;
+  this->timestamp = -1;
 }
 
 void RowRecord::addField(const Field& f) {
-    this->fields.push_back(f);
+  this->fields.push_back(f);
 }
 
 std::string RowRecord::toString() {
-    std::string ret;
-    if (this->timestamp != -1) {
-        ret.append(std::to_string(timestamp));
-        ret.append("\t");
+  std::string ret;
+  if (this->timestamp != -1) {
+    ret.append(std::to_string(timestamp));
+    ret.append("\t");
+  }
+  for (size_t i = 0; i < fields.size(); i++) {
+    if (i != 0) {
+      ret.append("\t");
     }
-    for (size_t i = 0; i < fields.size(); i++) {
-        if (i != 0) {
-            ret.append("\t");
-        }
-        const Field& f = fields[i];
-        switch (f.dataType) {
-        case TSDataType::BOOLEAN:
-            if (f.isNull()) {
-                ret.append("null");
-            } else {
-                ret.append(f.boolV.value() ? "true" : "false");
-            }
-            break;
-        case TSDataType::INT32:
-            if (f.isNull()) {
-                ret.append("null");
-            } else {
-                ret.append(std::to_string(f.intV.value()));
-            }
-            break;
-        case TSDataType::DATE:
-            if (f.isNull()) {
-                ret.append("null");
-            } else {
-                ret.append(boost::gregorian::to_iso_extended_string(f.dateV.value()));
-            }
-            break;
-        case TSDataType::TIMESTAMP:
-        case TSDataType::INT64:
-            if (f.isNull()) {
-                ret.append("null");
-            } else {
-                ret.append(std::to_string(f.longV.value()));
-            }
-            break;
-        case TSDataType::FLOAT:
-            if (f.isNull()) {
-                ret.append("null");
-            } else {
-                ret.append(std::to_string(f.floatV.value()));
-            }
-            break;
-        case TSDataType::DOUBLE:
-            if (f.isNull()) {
-                ret.append("null");
-            } else {
-                ret.append(std::to_string(f.doubleV.value()));
-            }
-            break;
-        case TSDataType::BLOB:
-        case TSDataType::STRING:
-        case TSDataType::TEXT:
-            if (f.isNull()) {
-                ret.append("null");
-            } else {
-                ret.append(f.stringV.value());
-            }
-            break;
-        case TSDataType::OBJECT:
-            if (!f.stringV.is_initialized()) {
-                ret.append("null");
-            } else {
-                ret.append(f.stringV.value());
-            }
-            break;
-        default:
-            break;
-        }
+    const Field& f = fields[i];
+    switch (f.dataType) {
+    case TSDataType::BOOLEAN:
+      if (f.isNull()) {
+        ret.append("null");
+      } else {
+        ret.append(f.boolV.value() ? "true" : "false");
+      }
+      break;
+    case TSDataType::INT32:
+      if (f.isNull()) {
+        ret.append("null");
+      } else {
+        ret.append(std::to_string(f.intV.value()));
+      }
+      break;
+    case TSDataType::DATE:
+      if (f.isNull()) {
+        ret.append("null");
+      } else {
+        ret.append(boost::gregorian::to_iso_extended_string(f.dateV.value()));
+      }
+      break;
+    case TSDataType::TIMESTAMP:
+    case TSDataType::INT64:
+      if (f.isNull()) {
+        ret.append("null");
+      } else {
+        ret.append(std::to_string(f.longV.value()));
+      }
+      break;
+    case TSDataType::FLOAT:
+      if (f.isNull()) {
+        ret.append("null");
+      } else {
+        ret.append(std::to_string(f.floatV.value()));
+      }
+      break;
+    case TSDataType::DOUBLE:
+      if (f.isNull()) {
+        ret.append("null");
+      } else {
+        ret.append(std::to_string(f.doubleV.value()));
+      }
+      break;
+    case TSDataType::BLOB:
+    case TSDataType::STRING:
+    case TSDataType::TEXT:
+      if (f.isNull()) {
+        ret.append("null");
+      } else {
+        ret.append(f.stringV.value());
+      }
+      break;
+    case TSDataType::OBJECT:
+      if (!f.stringV.is_initialized()) {
+        ret.append("null");
+      } else {
+        ret.append(f.stringV.value());
+      }
+      break;
+    default:
+      break;
     }
-    ret.append("\n");
-    return ret;
+  }
+  ret.append("\n");
+  return ret;
 }
 
 bool SessionDataSet::hasNext() {
-    if (iotdbRpcDataSet_->hasCachedRecord()) {
-        return true;
-    }
-    return iotdbRpcDataSet_->next();
+  if (iotdbRpcDataSet_->hasCachedRecord()) {
+    return true;
+  }
+  return iotdbRpcDataSet_->next();
 }
 
 shared_ptr<RowRecord> SessionDataSet::next() {
-    if (!iotdbRpcDataSet_->hasCachedRecord() && !hasNext()) {
-        return nullptr;
-    }
-    iotdbRpcDataSet_->setHasCachedRecord(false);
+  if (!iotdbRpcDataSet_->hasCachedRecord() && !hasNext()) {
+    return nullptr;
+  }
+  iotdbRpcDataSet_->setHasCachedRecord(false);
 
-    return constructRowRecordFromValueArray();
+  return constructRowRecordFromValueArray();
 }
 
 int SessionDataSet::getFetchSize() {
-    return iotdbRpcDataSet_->getFetchSize();
+  return iotdbRpcDataSet_->getFetchSize();
 }
 
 void SessionDataSet::setFetchSize(int fetchSize) {
-    return iotdbRpcDataSet_->setFetchSize(fetchSize);
+  return iotdbRpcDataSet_->setFetchSize(fetchSize);
 }
 
 const std::vector<std::string>& SessionDataSet::getColumnNames() const {
-    return iotdbRpcDataSet_->getColumnNameList();
+  return iotdbRpcDataSet_->getColumnNameList();
 }
 
 const std::vector<std::string>& SessionDataSet::getColumnTypeList() const {
-    return iotdbRpcDataSet_->getColumnTypeList();
+  return iotdbRpcDataSet_->getColumnTypeList();
 }
 
 void SessionDataSet::closeOperationHandle(bool forceClose) {
-    iotdbRpcDataSet_->close(forceClose);
+  iotdbRpcDataSet_->close(forceClose);
 }
 
 bool SessionDataSet::DataIterator::next() {
-    return iotdbRpcDataSet_->next();
+  return iotdbRpcDataSet_->next();
 }
 
 bool SessionDataSet::DataIterator::isNull(const std::string& columnName) {
-    return iotdbRpcDataSet_->isNullByColumnName(columnName);
+  return iotdbRpcDataSet_->isNullByColumnName(columnName);
 }
 
 bool SessionDataSet::DataIterator::isNullByIndex(int32_t columnIndex) {
-    return iotdbRpcDataSet_->isNullByIndex(columnIndex);
+  return iotdbRpcDataSet_->isNullByIndex(columnIndex);
 }
 
 boost::optional<bool> SessionDataSet::DataIterator::getBooleanByIndex(int32_t columnIndex) {
-    return iotdbRpcDataSet_->getBooleanByIndex(columnIndex);
+  return iotdbRpcDataSet_->getBooleanByIndex(columnIndex);
 }
 
 boost::optional<bool> SessionDataSet::DataIterator::getBoolean(const std::string& columnName) {
-    return iotdbRpcDataSet_->getBoolean(columnName);
+  return iotdbRpcDataSet_->getBoolean(columnName);
 }
 
 boost::optional<double> SessionDataSet::DataIterator::getDoubleByIndex(int32_t columnIndex) {
-    return iotdbRpcDataSet_->getDoubleByIndex(columnIndex);
+  return iotdbRpcDataSet_->getDoubleByIndex(columnIndex);
 }
 
 boost::optional<double> SessionDataSet::DataIterator::getDouble(const std::string& columnName) {
-    return iotdbRpcDataSet_->getDouble(columnName);
+  return iotdbRpcDataSet_->getDouble(columnName);
 }
 
 boost::optional<float> SessionDataSet::DataIterator::getFloatByIndex(int32_t columnIndex) {
-    return iotdbRpcDataSet_->getFloatByIndex(columnIndex);
+  return iotdbRpcDataSet_->getFloatByIndex(columnIndex);
 }
 
 boost::optional<float> SessionDataSet::DataIterator::getFloat(const std::string& columnName) {
-    return iotdbRpcDataSet_->getFloat(columnName);
+  return iotdbRpcDataSet_->getFloat(columnName);
 }
 
 boost::optional<int32_t> SessionDataSet::DataIterator::getIntByIndex(int32_t columnIndex) {
-    return iotdbRpcDataSet_->getIntByIndex(columnIndex);
+  return iotdbRpcDataSet_->getIntByIndex(columnIndex);
 }
 
 boost::optional<int32_t> SessionDataSet::DataIterator::getInt(const std::string& columnName) {
-    return iotdbRpcDataSet_->getInt(columnName);
+  return iotdbRpcDataSet_->getInt(columnName);
 }
 
 boost::optional<int64_t> SessionDataSet::DataIterator::getLongByIndex(int32_t columnIndex) {
-    return iotdbRpcDataSet_->getLongByIndex(columnIndex);
+  return iotdbRpcDataSet_->getLongByIndex(columnIndex);
 }
 
 boost::optional<int64_t> SessionDataSet::DataIterator::getLong(const std::string& columnName) {
-    return iotdbRpcDataSet_->getLong(columnName);
+  return iotdbRpcDataSet_->getLong(columnName);
 }
 
 boost::optional<std::string> SessionDataSet::DataIterator::getStringByIndex(int32_t columnIndex) {
-    return iotdbRpcDataSet_->getStringByIndex(columnIndex);
+  return iotdbRpcDataSet_->getStringByIndex(columnIndex);
 }
 
-boost::optional<std::string> SessionDataSet::DataIterator::getString(const std::string& columnName) {
-    return iotdbRpcDataSet_->getString(columnName);
+boost::optional<std::string>
+SessionDataSet::DataIterator::getString(const std::string& columnName) {
+  return iotdbRpcDataSet_->getString(columnName);
 }
 
 boost::optional<int64_t> SessionDataSet::DataIterator::getTimestampByIndex(int32_t columnIndex) {
-    return iotdbRpcDataSet_->getTimestampByIndex(columnIndex);
+  return iotdbRpcDataSet_->getTimestampByIndex(columnIndex);
 }
 
 boost::optional<int64_t> SessionDataSet::DataIterator::getTimestamp(const std::string& columnName) {
-    return iotdbRpcDataSet_->getTimestamp(columnName);
+  return iotdbRpcDataSet_->getTimestamp(columnName);
 }
 
-boost::optional<boost::gregorian::date> SessionDataSet::DataIterator::getDateByIndex(int32_t columnIndex) {
-    return iotdbRpcDataSet_->getDateByIndex(columnIndex);
+boost::optional<boost::gregorian::date>
+SessionDataSet::DataIterator::getDateByIndex(int32_t columnIndex) {
+  return iotdbRpcDataSet_->getDateByIndex(columnIndex);
 }
 
-boost::optional<boost::gregorian::date> SessionDataSet::DataIterator::getDate(const std::string& columnName) {
-    return iotdbRpcDataSet_->getDate(columnName);
+boost::optional<boost::gregorian::date>
+SessionDataSet::DataIterator::getDate(const std::string& columnName) {
+  return iotdbRpcDataSet_->getDate(columnName);
 }
 
 int32_t SessionDataSet::DataIterator::findColumn(const std::string& columnName) {
-    return iotdbRpcDataSet_->findColumn(columnName);
+  return iotdbRpcDataSet_->findColumn(columnName);
 }
 
 const std::vector<std::string>& SessionDataSet::DataIterator::getColumnNames() const {
-    return iotdbRpcDataSet_->getColumnNameList();
+  return iotdbRpcDataSet_->getColumnNameList();
 }
 
 const std::vector<std::string>& SessionDataSet::DataIterator::getColumnTypeList() const {
-    return iotdbRpcDataSet_->getColumnTypeList();
+  return iotdbRpcDataSet_->getColumnTypeList();
 }
 
 shared_ptr<RowRecord> SessionDataSet::constructRowRecordFromValueArray() {
-    std::vector<Field> outFields;
-    for (int i = iotdbRpcDataSet_->getValueColumnStartIndex(); i < iotdbRpcDataSet_->getColumnSize(); i++) {
-        Field field;
-        std::string columnName = iotdbRpcDataSet_->getColumnNameList().at(i);
-        if (!iotdbRpcDataSet_->isNullByColumnName(columnName)) {
-            TSDataType::TSDataType dataType = iotdbRpcDataSet_->getDataType(columnName);
-            field.dataType = dataType;
-            switch (dataType) {
-            case TSDataType::BOOLEAN:
-                field.boolV = iotdbRpcDataSet_->getBoolean(columnName);
-                break;
-            case TSDataType::INT32:
-                field.intV = iotdbRpcDataSet_->getInt(columnName);
-                break;
-            case TSDataType::DATE:
-                field.dateV = iotdbRpcDataSet_->getDate(columnName);
-                break;
-            case TSDataType::INT64:
-            case TSDataType::TIMESTAMP:
-                field.longV = iotdbRpcDataSet_->getLong(columnName);
-                break;
-            case TSDataType::FLOAT:
-                field.floatV = iotdbRpcDataSet_->getFloat(columnName);
-                break;
-            case TSDataType::DOUBLE:
-                field.doubleV = iotdbRpcDataSet_->getDouble(columnName);
-                break;
-            case TSDataType::TEXT:
-            case TSDataType::BLOB:
-            case TSDataType::STRING:
-            case TSDataType::OBJECT:
-                field.stringV = iotdbRpcDataSet_->getBinary(columnName)->getStringValue();
-                break;
-            default:
-                throw UnSupportedDataTypeException("Data type %s is not supported." + dataType);
-            }
-        }
-        outFields.emplace_back(field);
+  std::vector<Field> outFields;
+  for (int i = iotdbRpcDataSet_->getValueColumnStartIndex(); i < iotdbRpcDataSet_->getColumnSize();
+       i++) {
+    Field field;
+    std::string columnName = iotdbRpcDataSet_->getColumnNameList().at(i);
+    if (!iotdbRpcDataSet_->isNullByColumnName(columnName)) {
+      TSDataType::TSDataType dataType = iotdbRpcDataSet_->getDataType(columnName);
+      field.dataType = dataType;
+      switch (dataType) {
+      case TSDataType::BOOLEAN:
+        field.boolV = iotdbRpcDataSet_->getBoolean(columnName);
+        break;
+      case TSDataType::INT32:
+        field.intV = iotdbRpcDataSet_->getInt(columnName);
+        break;
+      case TSDataType::DATE:
+        field.dateV = iotdbRpcDataSet_->getDate(columnName);
+        break;
+      case TSDataType::INT64:
+      case TSDataType::TIMESTAMP:
+        field.longV = iotdbRpcDataSet_->getLong(columnName);
+        break;
+      case TSDataType::FLOAT:
+        field.floatV = iotdbRpcDataSet_->getFloat(columnName);
+        break;
+      case TSDataType::DOUBLE:
+        field.doubleV = iotdbRpcDataSet_->getDouble(columnName);
+        break;
+      case TSDataType::TEXT:
+      case TSDataType::BLOB:
+      case TSDataType::STRING:
+      case TSDataType::OBJECT:
+        field.stringV = iotdbRpcDataSet_->getBinary(columnName)->getStringValue();
+        break;
+      default:
+        throw UnSupportedDataTypeException("Data type %s is not supported." + dataType);
+      }
     }
-    return std::make_shared<RowRecord>(iotdbRpcDataSet_->getCurrentRowTime(), outFields);
+    outFields.emplace_back(field);
+  }
+  return std::make_shared<RowRecord>(iotdbRpcDataSet_->getCurrentRowTime(), outFields);
 }

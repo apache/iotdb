@@ -25,31 +25,28 @@
 std::shared_ptr<TableSession> session;
 
 struct SessionListener : Catch::TestEventListenerBase {
-    using TestEventListenerBase::TestEventListenerBase;
+  using TestEventListenerBase::TestEventListenerBase;
 
-    void testCaseStarting(Catch::TestCaseInfo const& testInfo) override {
-        if (!session) {
-            TableSessionBuilder builder;
-            session = builder.host("127.0.0.1")
-                            ->rpcPort(6667)
-                            ->username("root")
-                            ->password("root")
-                            ->build();
-        } else {
-            session->open();
-        }
+  void testCaseStarting(Catch::TestCaseInfo const& testInfo) override {
+    if (!session) {
+      TableSessionBuilder builder;
+      session =
+          builder.host("127.0.0.1")->rpcPort(6667)->username("root")->password("root")->build();
+    } else {
+      session->open();
     }
+  }
 
-    void testCaseEnded(Catch::TestCaseStats const& testCaseStats) override {
-        if (session) {
-            session->close();
-        }
+  void testCaseEnded(Catch::TestCaseStats const& testCaseStats) override {
+    if (session) {
+      session->close();
     }
+  }
 
-    void testRunEnded(Catch::TestRunStats const& testRunStats) override {
-        // Release session before static/global teardown on Windows.
-        session.reset();
-    }
+  void testRunEnded(Catch::TestRunStats const& testRunStats) override {
+    // Release session before static/global teardown on Windows.
+    session.reset();
+  }
 };
 
 CATCH_REGISTER_LISTENER(SessionListener)

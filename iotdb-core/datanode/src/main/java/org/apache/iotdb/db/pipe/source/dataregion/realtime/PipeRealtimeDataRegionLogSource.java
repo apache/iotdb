@@ -123,6 +123,7 @@ public class PipeRealtimeDataRegionLogSource extends PipeRealtimeDataRegionSourc
       realtimeEvent.decreaseReferenceCount(PipeRealtimeDataRegionLogSource.class.getName(), false);
 
       if (suppliedEvent != null) {
+        suppliedEvent = assignReplicateIndexIfNeeded(realtimeEvent, suppliedEvent);
         return suppliedEvent;
       }
 

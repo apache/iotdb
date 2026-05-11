@@ -27,7 +27,8 @@ import java.nio.ByteBuffer;
  * received by the followers, the responsibility of deserialization can generally be transferred to
  * the state machine layer
  */
-public class ByteBufferConsensusRequest implements IConsensusRequest {
+public class ByteBufferConsensusRequest
+    implements org.apache.iotdb.commons.request.IConsensusRequest {
 
   private final ByteBuffer byteBuffer;
 

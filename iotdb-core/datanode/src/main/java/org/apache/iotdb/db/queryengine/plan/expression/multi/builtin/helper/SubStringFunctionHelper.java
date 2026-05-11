@@ -19,11 +19,11 @@
 
 package org.apache.iotdb.db.queryengine.plan.expression.multi.builtin.helper;
 
-import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.calc.transformation.dag.column.ColumnTransformer;
+import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.builtin.BuiltInScalarFunctionHelper;
 import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.transformer.Transformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.transformer.unary.scalar.SubStringFunctionColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.transformer.unary.scalar.SubStringFunctionTransformer;
@@ -34,11 +34,11 @@ import org.apache.tsfile.read.common.type.TypeFactory;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-import static org.apache.iotdb.db.utils.constant.SqlConstant.SUBSTRING_FOR;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.SUBSTRING_FROM;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.SUBSTRING_IS_STANDARD;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.SUBSTRING_LENGTH;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.SUBSTRING_START;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.SUBSTRING_FOR;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.SUBSTRING_FROM;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.SUBSTRING_IS_STANDARD;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.SUBSTRING_LENGTH;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.SUBSTRING_START;
 
 public class SubStringFunctionHelper implements BuiltInScalarFunctionHelper {
   public static final String BLANK_STRING = " ";

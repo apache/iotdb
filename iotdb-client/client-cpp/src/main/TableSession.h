@@ -26,20 +26,21 @@
 
 class TableSession {
 private:
-    std::shared_ptr<Session> session_;
-    string getDatabase();
-public:
-    TableSession(std::shared_ptr<Session> session) {
-        this->session_ = session;
-    }
-    ~TableSession() {}
+  std::shared_ptr<Session> session_;
+  string getDatabase();
 
-    void insert(Tablet& tablet, bool sorted = false);
-    void executeNonQueryStatement(const std::string& sql);
-    unique_ptr<SessionDataSet> executeQueryStatement(const std::string& sql);
-    unique_ptr<SessionDataSet> executeQueryStatement(const std::string& sql, int64_t timeoutInMs);
-    void open(bool enableRPCCompression = false);
-    void close();
+public:
+  TableSession(std::shared_ptr<Session> session) {
+    this->session_ = session;
+  }
+  ~TableSession() {}
+
+  void insert(Tablet& tablet, bool sorted = false);
+  void executeNonQueryStatement(const std::string& sql);
+  unique_ptr<SessionDataSet> executeQueryStatement(const std::string& sql);
+  unique_ptr<SessionDataSet> executeQueryStatement(const std::string& sql, int64_t timeoutInMs);
+  void open(bool enableRPCCompression = false);
+  void close();
 };
 
 #endif // IOTDB_TABLESESSION_H

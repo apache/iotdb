@@ -19,19 +19,19 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner.distribution;
 
+import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.AccumulatorFactory;
+import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.FirstAccumulator;
+import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.FirstByAccumulator;
+import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.FirstByDescAccumulator;
+import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.FirstDescAccumulator;
+import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.LastAccumulator;
+import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.LastByAccumulator;
+import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.LastByDescAccumulator;
+import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.LastDescAccumulator;
+import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.TableAccumulator;
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
-import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.AccumulatorFactory;
-import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.FirstAccumulator;
-import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.FirstByAccumulator;
-import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.FirstByDescAccumulator;
-import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.FirstDescAccumulator;
-import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.LastAccumulator;
-import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.LastByAccumulator;
-import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.LastByDescAccumulator;
-import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.LastDescAccumulator;
-import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.TableAccumulator;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolReference;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.junit.Test;

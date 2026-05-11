@@ -19,13 +19,13 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
+import org.apache.iotdb.calc.execution.operator.Operator;
+import org.apache.iotdb.calc.execution.operator.process.join.merge.comparator.JoinKeyComparatorFactory;
+import org.apache.iotdb.calc.execution.operator.source.relational.AsofMergeSortInnerJoinOperator;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.execution.driver.DriverContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
-import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
-import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.comparator.JoinKeyComparatorFactory;
-import org.apache.iotdb.db.queryengine.execution.operator.source.relational.AsofMergeSortInnerJoinOperator;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.ThreadSafeMemoryReservationManager;
 
 import com.google.common.util.concurrent.ListenableFuture;
@@ -43,7 +43,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.concurrent.TimeUnit;
 
-import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.AbstractTableScanOperator.TIME_COLUMN_TEMPLATE;
+import static org.apache.iotdb.calc.plan.planner.CommonOperatorUtils.TIME_COLUMN_TEMPLATE;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
@@ -327,14 +327,18 @@ public class AsofInnerJoinOperatorTest {
       int[] column2Array,
       boolean[][] columnsIsNull) {
     FragmentInstanceContext fragmentInstanceContext = Mockito.mock(FragmentInstanceContext.class);
+    ThreadSafeMemoryReservationManager memoryReservationManager =
+        new ThreadSafeMemoryReservationManager(new QueryId("1"), "test");
     Mockito.when(fragmentInstanceContext.getMemoryReservationContext())
-        .thenReturn(new ThreadSafeMemoryReservationManager(new QueryId("1"), "test"));
+        .thenReturn(memoryReservationManager);
     DriverContext driverContext = Mockito.mock(DriverContext.class);
     Mockito.when(driverContext.getFragmentInstanceContext()).thenReturn(fragmentInstanceContext);
     OperatorContext operatorContext = Mockito.mock(OperatorContext.class);
     Mockito.when(operatorContext.getMaxRunTimeForTest())
         .thenReturn(new Duration(1, TimeUnit.SECONDS));
     Mockito.when(operatorContext.getDriverContext()).thenReturn(driverContext);
+    Mockito.when(operatorContext.getMemoryReservationContext())
+        .thenReturn(memoryReservationManager);
 
     Operator leftChild =
         new Operator() {

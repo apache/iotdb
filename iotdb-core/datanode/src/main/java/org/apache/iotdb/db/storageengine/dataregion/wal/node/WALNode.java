@@ -21,13 +21,13 @@ package org.apache.iotdb.db.storageengine.dataregion.wal.node;
 
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.commons.request.IConsensusRequest;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IoTConsensusRequest;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.ContinuousSameSearchIndexSeparatorNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
@@ -96,7 +96,7 @@ public class WALNode implements IWALNode {
   // no iot consensus, all insert nodes can be safely deleted
   public static final long DEFAULT_SAFELY_DELETED_SEARCH_INDEX = Long.MAX_VALUE;
   // timeout threshold when waiting for next wal entry
-  private static final long WAIT_FOR_NEXT_WAL_ENTRY_TIMEOUT_IN_SEC = 30;
+  public static final long WAIT_FOR_NEXT_WAL_ENTRY_TIMEOUT_IN_SEC = 30;
   private static final WritingMetrics WRITING_METRICS = WritingMetrics.getInstance();
 
   // unique identifier of this WALNode
@@ -792,7 +792,7 @@ public class WALNode implements IWALNode {
       while (!hasNext()) {
         if (!walFileRolled) {
           boolean timeout =
-              !buffer.waitForFlush(WAIT_FOR_NEXT_WAL_ENTRY_TIMEOUT_IN_SEC, TimeUnit.SECONDS);
+              !buffer.waitForRollFile(WAIT_FOR_NEXT_WAL_ENTRY_TIMEOUT_IN_SEC, TimeUnit.SECONDS);
           if (timeout) {
             bufferLastSearchIndex = buffer.getCurrentSearchIndex();
             logger.info(
@@ -805,7 +805,7 @@ public class WALNode implements IWALNode {
         } else {
           // only wait when the search index of the buffer remains the same as the previous check
           long finalBufferLastSearchIndex = bufferLastSearchIndex;
-          buffer.waitForFlush(buf -> buf.getCurrentSearchIndex() == finalBufferLastSearchIndex);
+          buffer.waitForRollFile(buf -> buf.getCurrentSearchIndex() == finalBufferLastSearchIndex);
         }
       }
     }
@@ -814,8 +814,8 @@ public class WALNode implements IWALNode {
     public void waitForNextReady(long time, TimeUnit unit)
         throws InterruptedException, TimeoutException {
       if (!hasNext()) {
-        boolean timeout = !buffer.waitForFlush(time, unit);
-        if (timeout || !hasNext()) {
+        boolean timeout = !buffer.waitForRollFile(time, unit);
+        if (timeout && !hasNext()) {
           throw new TimeoutException();
         }
       }

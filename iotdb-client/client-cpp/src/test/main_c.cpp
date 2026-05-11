@@ -26,26 +26,27 @@
 CSession* g_session = nullptr;
 
 struct CSessionListener : Catch::TestEventListenerBase {
-    using TestEventListenerBase::TestEventListenerBase;
+  using TestEventListenerBase::TestEventListenerBase;
 
-    void testCaseStarting(Catch::TestCaseInfo const& testInfo) override {
-        g_session = ts_session_new("127.0.0.1", 6667, "root", "root");
-        REQUIRE(g_session != nullptr);
-        TsStatus st = ts_session_open(g_session);
-        if (st != TS_OK) {
-            ts_session_destroy(g_session);
-            g_session = nullptr;
-            FAIL("ts_session_open failed; ensure distribution is built and IoTDB listens on 127.0.0.1:6667");
-        }
+  void testCaseStarting(Catch::TestCaseInfo const& testInfo) override {
+    g_session = ts_session_new("127.0.0.1", 6667, "root", "root");
+    REQUIRE(g_session != nullptr);
+    TsStatus st = ts_session_open(g_session);
+    if (st != TS_OK) {
+      ts_session_destroy(g_session);
+      g_session = nullptr;
+      FAIL("ts_session_open failed; ensure distribution is built and IoTDB listens on "
+           "127.0.0.1:6667");
     }
+  }
 
-    void testCaseEnded(Catch::TestCaseStats const& testCaseStats) override {
-        if (g_session) {
-            ts_session_close(g_session);
-            ts_session_destroy(g_session);
-            g_session = nullptr;
-        }
+  void testCaseEnded(Catch::TestCaseStats const& testCaseStats) override {
+    if (g_session) {
+      ts_session_close(g_session);
+      ts_session_destroy(g_session);
+      g_session = nullptr;
     }
+  }
 };
 
 CATCH_REGISTER_LISTENER(CSessionListener)

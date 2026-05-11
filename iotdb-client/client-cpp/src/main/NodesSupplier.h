@@ -35,118 +35,105 @@ class TEndPoint;
 
 class RoundRobinPolicy {
 public:
-    static TEndPoint select(const std::vector<TEndPoint>& nodes);
+  static TEndPoint select(const std::vector<TEndPoint>& nodes);
 };
 
 class INodesSupplier {
 public:
-    virtual ~INodesSupplier() = default;
-    virtual boost::optional<TEndPoint> getQueryEndPoint() = 0;
-    virtual std::vector<TEndPoint> getEndPointList() = 0;
-    using NodeSelectionPolicy = std::function<TEndPoint(const std::vector<TEndPoint>&)>;
+  virtual ~INodesSupplier() = default;
+  virtual boost::optional<TEndPoint> getQueryEndPoint() = 0;
+  virtual std::vector<TEndPoint> getEndPointList() = 0;
+  using NodeSelectionPolicy = std::function<TEndPoint(const std::vector<TEndPoint>&)>;
 };
 
 class StaticNodesSupplier : public INodesSupplier {
 public:
-    explicit StaticNodesSupplier(const std::vector<TEndPoint>& nodes, 
-                                NodeSelectionPolicy policy = RoundRobinPolicy::select);
+  explicit StaticNodesSupplier(const std::vector<TEndPoint>& nodes,
+                               NodeSelectionPolicy policy = RoundRobinPolicy::select);
 
-    boost::optional<TEndPoint> getQueryEndPoint() override;
+  boost::optional<TEndPoint> getQueryEndPoint() override;
 
-    std::vector<TEndPoint> getEndPointList() override;
+  std::vector<TEndPoint> getEndPointList() override;
 
-    ~StaticNodesSupplier() override;
+  ~StaticNodesSupplier() override;
 
 private:
-    const std::vector<TEndPoint> availableNodes_;
-    NodeSelectionPolicy policy_;
+  const std::vector<TEndPoint> availableNodes_;
+  NodeSelectionPolicy policy_;
 };
 
 class NodesSupplier : public INodesSupplier {
 public:
-    static const std::string SHOW_AVAILABLE_URLS_COMMAND;
-    static const std::string RUNNING_STATUS;
-    static const std::string STATUS_COLUMN_NAME;
-    static const std::string IP_COLUMN_NAME;
-    static const std::string PORT_COLUMN_NAME;
-    static const std::string REMOVING_STATUS;
+  static const std::string SHOW_AVAILABLE_URLS_COMMAND;
+  static const std::string RUNNING_STATUS;
+  static const std::string STATUS_COLUMN_NAME;
+  static const std::string IP_COLUMN_NAME;
+  static const std::string PORT_COLUMN_NAME;
+  static const std::string REMOVING_STATUS;
 
-    static const int64_t TIMEOUT_IN_MS;
-    static const int FETCH_SIZE;
-    static const int THRIFT_DEFAULT_BUFFER_SIZE;
-    static const int THRIFT_MAX_FRAME_SIZE;
-    static const int CONNECTION_TIMEOUT_IN_MS;
+  static const int64_t TIMEOUT_IN_MS;
+  static const int FETCH_SIZE;
+  static const int THRIFT_DEFAULT_BUFFER_SIZE;
+  static const int THRIFT_MAX_FRAME_SIZE;
+  static const int CONNECTION_TIMEOUT_IN_MS;
 
-    static std::shared_ptr<NodesSupplier> create(
-        const std::vector<TEndPoint>& endpoints,
-        const std::string& userName,
-        const std::string& password,
-        bool useSSL = false,
-        const std::string& trustCertFilePath = "",
-        const std::string& zoneId = "",
-        int32_t thriftDefaultBufferSize = ThriftConnection::THRIFT_DEFAULT_BUFFER_SIZE,
-        int32_t thriftMaxFrameSize = ThriftConnection::THRIFT_MAX_FRAME_SIZE,
-        int32_t connectionTimeoutInMs = ThriftConnection::CONNECTION_TIMEOUT_IN_MS,
-        bool enableRPCCompression = false,
-        const std::string& version = "V_1_0",
-        std::chrono::milliseconds refreshInterval = std::chrono::milliseconds(TIMEOUT_IN_MS),
-        NodeSelectionPolicy policy = RoundRobinPolicy::select
-    );
+  static std::shared_ptr<NodesSupplier>
+  create(const std::vector<TEndPoint>& endpoints, const std::string& userName,
+         const std::string& password, bool useSSL = false,
+         const std::string& trustCertFilePath = "", const std::string& zoneId = "",
+         int32_t thriftDefaultBufferSize = ThriftConnection::THRIFT_DEFAULT_BUFFER_SIZE,
+         int32_t thriftMaxFrameSize = ThriftConnection::THRIFT_MAX_FRAME_SIZE,
+         int32_t connectionTimeoutInMs = ThriftConnection::CONNECTION_TIMEOUT_IN_MS,
+         bool enableRPCCompression = false, const std::string& version = "V_1_0",
+         std::chrono::milliseconds refreshInterval = std::chrono::milliseconds(TIMEOUT_IN_MS),
+         NodeSelectionPolicy policy = RoundRobinPolicy::select);
 
-    NodesSupplier(
-        const std::string& userName,
-        const std::string& password,
-        bool useSSL,
-        const std::string& trustCertFilePath,
-        const std::string& zoneId,
-        int32_t thriftDefaultBufferSize,
-        int32_t thriftMaxFrameSize,
-        int32_t connectionTimeoutInMs,
-        bool enableRPCCompression,
-        const std::string& version,
-        const std::vector<TEndPoint>& endpoints,
-        NodeSelectionPolicy policy
-    );
+  NodesSupplier(const std::string& userName, const std::string& password, bool useSSL,
+                const std::string& trustCertFilePath, const std::string& zoneId,
+                int32_t thriftDefaultBufferSize, int32_t thriftMaxFrameSize,
+                int32_t connectionTimeoutInMs, bool enableRPCCompression,
+                const std::string& version, const std::vector<TEndPoint>& endpoints,
+                NodeSelectionPolicy policy);
 
-    std::vector<TEndPoint> getEndPointList() override;
+  std::vector<TEndPoint> getEndPointList() override;
 
-    boost::optional<TEndPoint> getQueryEndPoint() override;
+  boost::optional<TEndPoint> getQueryEndPoint() override;
 
-    ~NodesSupplier() override;
+  ~NodesSupplier() override;
 
 private:
-    std::string userName_;
-    std::string password_;
-    int32_t thriftDefaultBufferSize_;
-    int32_t thriftMaxFrameSize_;
-    int32_t connectionTimeoutInMs_;
-    bool useSSL_;
-    std::string trustCertFilePath_;
-    bool enableRPCCompression_;
-    std::string version_;
-    std::string zoneId_;
+  std::string userName_;
+  std::string password_;
+  int32_t thriftDefaultBufferSize_;
+  int32_t thriftMaxFrameSize_;
+  int32_t connectionTimeoutInMs_;
+  bool useSSL_;
+  std::string trustCertFilePath_;
+  bool enableRPCCompression_;
+  std::string version_;
+  std::string zoneId_;
 
-    std::mutex mutex_;
-    std::vector<TEndPoint> endpoints_;
-    NodeSelectionPolicy selectionPolicy_;
+  std::mutex mutex_;
+  std::vector<TEndPoint> endpoints_;
+  NodeSelectionPolicy selectionPolicy_;
 
-    std::atomic<bool> isRunning_{false};
-    std::thread refreshThread_;
-    std::condition_variable refreshCondition_;
+  std::atomic<bool> isRunning_{false};
+  std::thread refreshThread_;
+  std::condition_variable refreshCondition_;
 
-    std::shared_ptr<ThriftConnection> client_;
+  std::shared_ptr<ThriftConnection> client_;
 
-    void deduplicateEndpoints();
+  void deduplicateEndpoints();
 
-    void startBackgroundRefresh(std::chrono::milliseconds interval);
+  void startBackgroundRefresh(std::chrono::milliseconds interval);
 
-    std::vector<TEndPoint> fetchLatestEndpoints();
+  std::vector<TEndPoint> fetchLatestEndpoints();
 
-    void refreshEndpointList();
+  void refreshEndpointList();
 
-    TEndPoint selectQueryEndpoint();
+  TEndPoint selectQueryEndpoint();
 
-    void stopBackgroundRefresh() noexcept;
+  void stopBackgroundRefresh() noexcept;
 };
 
 #endif

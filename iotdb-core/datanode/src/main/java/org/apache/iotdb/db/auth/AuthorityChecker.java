@@ -85,7 +85,7 @@ public class AuthorityChecker {
   public static final TSStatus SUCCEED = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
 
   public static final int INTERNAL_AUDIT_USER_ID = 4;
-  public static final String INTERNAL_AUDIT_USER = "__internal_auditor";
+  public static final String INTERNAL_AUDIT_USER = User.BUILTIN_INTERNAL_AUDIT_LOG_USERNAME;
 
   public static String ANY_SCOPE = "any";
 

@@ -153,7 +153,7 @@ public abstract class BasicUserManager extends BasicRoleManager {
       String username, String password, boolean validCheck, boolean enableEncrypt)
       throws AuthException {
     if (validCheck) {
-      validCheck(username, password, enableEncrypt);
+      validCheckForNewUser(username, password, enableEncrypt);
     }
 
     User user = this.getEntity(username);
@@ -183,7 +183,7 @@ public abstract class BasicUserManager extends BasicRoleManager {
       String username, String password, long userId, boolean validCheck, boolean enableEncrypt)
       throws AuthException {
     if (validCheck) {
-      validCheck(username, password, enableEncrypt);
+      validCheckForBuiltinUser(username, password, enableEncrypt, userId);
     }
     User user = this.getEntity(username);
     if (user != null) {
@@ -201,7 +201,7 @@ public abstract class BasicUserManager extends BasicRoleManager {
     }
   }
 
-  private void validCheck(String username, String password, boolean enableEncrypt)
+  private void validCheckForNewUser(String username, String password, boolean enableEncrypt)
       throws AuthException {
     if (!CommonDescriptor.getInstance().getConfig().getDefaultAdminName().equals(username)) {
       if (username.equals(password)
@@ -209,7 +209,22 @@ public abstract class BasicUserManager extends BasicRoleManager {
         throw new AuthException(
             TSStatusCode.ILLEGAL_PASSWORD, "Password cannot be the same as user name");
       }
-      AuthUtils.validateUsername(username);
+      AuthUtils.validateNewUserUsername(username);
+      if (enableEncrypt) {
+        AuthUtils.validatePassword(password);
+      }
+    }
+  }
+
+  private void validCheckForBuiltinUser(
+      String username, String password, boolean enableEncrypt, long userId) throws AuthException {
+    if (!CommonDescriptor.getInstance().getConfig().getDefaultAdminName().equals(username)) {
+      if (username.equals(password)
+          && CommonDescriptor.getInstance().getConfig().isEnforceStrongPassword()) {
+        throw new AuthException(
+            TSStatusCode.ILLEGAL_PASSWORD, "Password cannot be the same as user name");
+      }
+      AuthUtils.validateInternalBuiltinUsername(username, userId);
       if (enableEncrypt) {
         AuthUtils.validatePassword(password);
       }
@@ -242,7 +257,7 @@ public abstract class BasicUserManager extends BasicRoleManager {
   }
 
   public void renameUser(String username, String newUsername) throws AuthException {
-    AuthUtils.validateName(newUsername);
+    AuthUtils.validateNewUserUsername(newUsername);
     User user = this.getEntity(username);
     if (user == null) {
       throw new AuthException(

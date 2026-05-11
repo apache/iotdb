@@ -27,32 +27,32 @@ std::shared_ptr<Session> session;
 
 struct SessionListener : Catch::TestEventListenerBase {
 
-    using TestEventListenerBase::TestEventListenerBase;
+  using TestEventListenerBase::TestEventListenerBase;
 
-    void testCaseStarting(Catch::TestCaseInfo const &testInfo) override {
-        if (!session) {
-            SessionBuilder builder;
-            session = builder.host("127.0.0.1")
-                          ->rpcPort(6667)
-                          ->username("root")
-                          ->password("root")
-                          ->useSSL(false)
-                          ->build();
-        } else {
-            session->open(false);
-        }
+  void testCaseStarting(Catch::TestCaseInfo const& testInfo) override {
+    if (!session) {
+      SessionBuilder builder;
+      session = builder.host("127.0.0.1")
+                    ->rpcPort(6667)
+                    ->username("root")
+                    ->password("root")
+                    ->useSSL(false)
+                    ->build();
+    } else {
+      session->open(false);
     }
+  }
 
-    void testCaseEnded(Catch::TestCaseStats const &testCaseStats) override {
-        if (session) {
-            session->close();
-        }
+  void testCaseEnded(Catch::TestCaseStats const& testCaseStats) override {
+    if (session) {
+      session->close();
     }
+  }
 
-    void testRunEnded(Catch::TestRunStats const &testRunStats) override {
-        // Release session before static/global teardown on Windows.
-        session.reset();
-    }
+  void testRunEnded(Catch::TestRunStats const& testRunStats) override {
+    // Release session before static/global teardown on Windows.
+    session.reset();
+  }
 };
 
-CATCH_REGISTER_LISTENER( SessionListener )
+CATCH_REGISTER_LISTENER(SessionListener)

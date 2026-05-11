@@ -252,7 +252,7 @@ public class IoTDBDataRegionSyncSink extends IoTDBDataNodeSyncSink {
           String.format(
               "Transfer deletion %s error, result status %s.",
               pipeDeleteDataNodeEvent.getDeleteDataNode().getType(), status),
-          pipeDeleteDataNodeEvent.getDeletionResource().toString(),
+          pipeDeleteDataNodeEvent.getDeleteDataNode().toString(),
           true);
     }
 
@@ -599,9 +599,10 @@ public class IoTDBDataRegionSyncSink extends IoTDBDataNodeSyncSink {
   }
 
   @Override
-  public synchronized void discardEventsOfPipe(final String pipeNameToDrop, final int regionId) {
+  public synchronized void discardEventsOfPipe(
+      final String pipeNameToDrop, final long creationTimeToDrop, final int regionId) {
     if (Objects.nonNull(tabletBatchBuilder)) {
-      tabletBatchBuilder.discardEventsOfPipe(pipeNameToDrop, regionId);
+      tabletBatchBuilder.discardEventsOfPipe(pipeNameToDrop, creationTimeToDrop, regionId);
     }
   }
 

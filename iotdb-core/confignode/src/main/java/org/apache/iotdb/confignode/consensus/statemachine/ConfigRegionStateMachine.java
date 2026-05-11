@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.commons.request.IConsensusRequest;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
@@ -44,7 +45,6 @@ import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
-import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.db.utils.writelog.LogWriter;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -256,6 +256,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
     configManager.getPipeManager().getPipeRuntimeCoordinator().stopPipeMetaSync();
     configManager.getPipeManager().getPipeRuntimeCoordinator().stopPipeHeartbeat();
     configManager.getSubscriptionManager().getSubscriptionCoordinator().stopSubscriptionMetaSync();
+    configManager.getLoadManager().stopTopologyService();
     configManager.getLoadManager().stopLoadServices();
     configManager.getProcedureManager().stopExecutor();
     configManager.getRetryFailedTasksThread().stopRetryFailedTasksService();
@@ -287,6 +288,10 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
 
     // Always start load services first
     configManager.getLoadManager().startLoadServices();
+
+    if (CONF.isEnableTopologyProbing()) {
+      configManager.getLoadManager().startTopologyService();
+    }
 
     // Start leader scheduling services
     configManager.getProcedureManager().startExecutor();

@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.statement.sys;
 
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.protocol.session.IClientSession;
+import org.apache.iotdb.commons.queryengine.common.SqlDialect;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
@@ -31,13 +31,13 @@ import java.util.List;
 import java.util.Objects;
 
 public class SetSqlDialectStatement extends Statement implements IConfigStatement {
-  private final IClientSession.SqlDialect sqlDialect;
+  private final SqlDialect sqlDialect;
 
-  public SetSqlDialectStatement(IClientSession.SqlDialect sqlDialect) {
+  public SetSqlDialectStatement(SqlDialect sqlDialect) {
     this.sqlDialect = sqlDialect;
   }
 
-  public IClientSession.SqlDialect getSqlDialect() {
+  public SqlDialect getSqlDialect() {
     return sqlDialect;
   }
 

@@ -271,6 +271,24 @@ public class ConfigNodeDescriptor {
                 "cn_max_client_count_for_each_node_in_client_manager",
                 String.valueOf(conf.getMaxClientNumForEachNode()))));
 
+    int cnMaxIdleClientNumForEachNode =
+        Integer.parseInt(
+            properties.getProperty(
+                "cn_max_idle_client_count_for_each_node_in_client_manager",
+                String.valueOf(conf.getMaxIdleClientNumForEachNode())));
+    if (cnMaxIdleClientNumForEachNode >= 0) {
+      conf.setMaxIdleClientNumForEachNode(cnMaxIdleClientNumForEachNode);
+    }
+
+    int cnSelectorNumOfClientManager =
+        Integer.parseInt(
+            properties.getProperty(
+                "cn_selector_thread_nums_of_client_manager",
+                String.valueOf(conf.getSelectorNumOfClientManager())));
+    if (cnSelectorNumOfClientManager > 0) {
+      conf.setSelectorNumOfClientManager(cnSelectorNumOfClientManager);
+    }
+
     conf.setSystemDir(properties.getProperty("cn_system_dir", conf.getSystemDir()));
 
     conf.setConsensusDir(properties.getProperty("cn_consensus_dir", conf.getConsensusDir()));
@@ -322,22 +340,34 @@ public class ConfigNodeDescriptor {
                 "failure_detector_phi_acceptable_pause_in_ms",
                 String.valueOf(conf.getFailureDetectorPhiAcceptablePauseInMs()))));
 
-    long partitionTableRecoverWaitAllDnUpTimeoutInMs =
+    conf.setEnableTopologyProbing(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_topology_probing", String.valueOf(conf.isEnableTopologyProbing()))));
+
+    long topologyProbingBaseIntervalInMs =
         Long.parseLong(
             properties.getProperty(
-                "partition_table_recover_wait_all_dn_up_timeout_ms",
-                String.valueOf(conf.getPartitionTableRecoverWaitAllDnUpTimeoutInMs())));
-    if (partitionTableRecoverWaitAllDnUpTimeoutInMs <= 0) {
-      LOGGER.warn(
-          "partition_table_recover_wait_all_dn_up_timeout_ms should be greater than 0, "
-              + "but current value is {}, ignore that and use the default value {}",
-          partitionTableRecoverWaitAllDnUpTimeoutInMs,
-          conf.getPartitionTableRecoverWaitAllDnUpTimeoutInMs());
-      partitionTableRecoverWaitAllDnUpTimeoutInMs =
-          conf.getPartitionTableRecoverWaitAllDnUpTimeoutInMs();
+                "topology_probing_base_interval_in_ms",
+                String.valueOf(conf.getTopologyProbingBaseIntervalInMs())));
+    if (topologyProbingBaseIntervalInMs <= 0) {
+      throw new IOException(
+          "topology_probing_base_interval_in_ms must be positive, but got: "
+              + topologyProbingBaseIntervalInMs);
     }
-    conf.setPartitionTableRecoverWaitAllDnUpTimeoutInMs(
-        partitionTableRecoverWaitAllDnUpTimeoutInMs);
+    conf.setTopologyProbingBaseIntervalInMs(topologyProbingBaseIntervalInMs);
+
+    double topologyProbingTimeoutRatio =
+        Double.parseDouble(
+            properties.getProperty(
+                "topology_probing_timeout_ratio",
+                String.valueOf(conf.getTopologyProbingTimeoutRatio())));
+    if (topologyProbingTimeoutRatio <= 0 || topologyProbingTimeoutRatio >= 1.0) {
+      throw new IOException(
+          "topology_probing_timeout_ratio must be in (0, 1), but got: "
+              + topologyProbingTimeoutRatio);
+    }
+    conf.setTopologyProbingTimeoutRatio(topologyProbingTimeoutRatio);
 
     String leaderDistributionPolicy =
         properties.getProperty("leader_distribution_policy", conf.getLeaderDistributionPolicy());
@@ -790,6 +820,8 @@ public class ConfigNodeDescriptor {
     ConfigurationFileUtils.updateAppliedProperties(properties, true);
     Optional.ofNullable(properties.getProperty(IoTDBConstant.CLUSTER_NAME))
         .ifPresent(conf::setClusterName);
+    Optional.ofNullable(properties.getProperty("enable_topology_probing"))
+        .ifPresent(v -> conf.setEnableTopologyProbing(Boolean.parseBoolean(v)));
   }
 
   public static ConfigNodeDescriptor getInstance() {

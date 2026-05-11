@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.property.ClientPoolProperty.DefaultProperty;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.confignode.manager.load.balancer.RegionBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.router.leader.AbstractLeaderBalancer;
@@ -144,6 +145,17 @@ public class ConfigNodeConfig {
    */
   private int maxClientNumForEachNode = DefaultProperty.MAX_CLIENT_NUM_FOR_EACH_NODE;
 
+  private int maxIdleClientNumForEachNode = DefaultProperty.MAX_IDLE_CLIENT_NUM_FOR_EACH_NODE;
+
+  /**
+   * ClientManager will have so many selector threads (TAsyncClientManager) to distribute to its
+   * clients.
+   */
+  private int selectorNumOfClientManager =
+      Runtime.getRuntime().availableProcessors() / 4 > 0
+          ? Runtime.getRuntime().availableProcessors() / 4
+          : 1;
+
   /** System directory, including version file for each database and metadata. */
   private String systemDir =
       IoTDBConstant.CN_DEFAULT_DATA_DIR + File.separator + IoTDBConstant.SYSTEM_FOLDER_NAME;
@@ -202,6 +214,15 @@ public class ConfigNodeConfig {
 
   /** Acceptable pause duration for Phi accrual failure detector */
   private long failureDetectorPhiAcceptablePauseInMs = 10000;
+
+  /** Whether to enable topology probing between DataNodes. Supports hot-reload. */
+  private volatile boolean enableTopologyProbing = false;
+
+  /** Base interval in ms for topology probing. */
+  private long topologyProbingBaseIntervalInMs = 5000;
+
+  /** Ratio of probing timeout to probing interval (must be less than 1.0). */
+  private double topologyProbingTimeoutRatio = 0.5;
 
   /** The policy of cluster RegionGroups' leader distribution. */
   private String leaderDistributionPolicy = AbstractLeaderBalancer.CFD_POLICY;
@@ -319,8 +340,6 @@ public class ConfigNodeConfig {
 
   private long forceWalPeriodForConfigNodeSimpleInMs = 100;
 
-  private long partitionTableRecoverWaitAllDnUpTimeoutInMs = 60000;
-
   public ConfigNodeConfig() {
     // empty constructor
   }
@@ -377,6 +396,7 @@ public class ConfigNodeConfig {
 
   public void setConfigNodeId(int configNodeId) {
     this.configNodeId = configNodeId;
+    CommonDescriptor.getInstance().getConfig().setNodeId(configNodeId);
   }
 
   public String getInternalAddress() {
@@ -458,6 +478,23 @@ public class ConfigNodeConfig {
   public ConfigNodeConfig setMaxClientNumForEachNode(int maxClientNumForEachNode) {
     this.maxClientNumForEachNode = maxClientNumForEachNode;
     return this;
+  }
+
+  public int getMaxIdleClientNumForEachNode() {
+    return maxIdleClientNumForEachNode;
+  }
+
+  public ConfigNodeConfig setMaxIdleClientNumForEachNode(int maxIdleClientNumForEachNode) {
+    this.maxIdleClientNumForEachNode = maxIdleClientNumForEachNode;
+    return this;
+  }
+
+  public int getSelectorNumOfClientManager() {
+    return selectorNumOfClientManager;
+  }
+
+  public void setSelectorNumOfClientManager(int selectorNumOfClientManager) {
+    this.selectorNumOfClientManager = selectorNumOfClientManager;
   }
 
   public String getConsensusDir() {
@@ -1289,12 +1326,27 @@ public class ConfigNodeConfig {
     this.failureDetectorPhiAcceptablePauseInMs = failureDetectorPhiAcceptablePauseInMs;
   }
 
-  public long getPartitionTableRecoverWaitAllDnUpTimeoutInMs() {
-    return partitionTableRecoverWaitAllDnUpTimeoutInMs;
+  public boolean isEnableTopologyProbing() {
+    return enableTopologyProbing;
   }
 
-  public void setPartitionTableRecoverWaitAllDnUpTimeoutInMs(
-      long partitionTableRecoverWaitAllDnUpTimeoutInMs) {
-    this.partitionTableRecoverWaitAllDnUpTimeoutInMs = partitionTableRecoverWaitAllDnUpTimeoutInMs;
+  public void setEnableTopologyProbing(boolean enableTopologyProbing) {
+    this.enableTopologyProbing = enableTopologyProbing;
+  }
+
+  public long getTopologyProbingBaseIntervalInMs() {
+    return topologyProbingBaseIntervalInMs;
+  }
+
+  public void setTopologyProbingBaseIntervalInMs(long topologyProbingBaseIntervalInMs) {
+    this.topologyProbingBaseIntervalInMs = topologyProbingBaseIntervalInMs;
+  }
+
+  public double getTopologyProbingTimeoutRatio() {
+    return topologyProbingTimeoutRatio;
+  }
+
+  public void setTopologyProbingTimeoutRatio(double topologyProbingTimeoutRatio) {
+    this.topologyProbingTimeoutRatio = topologyProbingTimeoutRatio;
   }
 }

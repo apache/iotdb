@@ -18,13 +18,14 @@
  */
 package org.apache.iotdb.db.queryengine.plan.relational.sql;
 
-import org.apache.iotdb.db.exception.sql.SemanticException;
-import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
+import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.commons.queryengine.plan.relational.analyzer.NodeRef;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Literal;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.NodeLocation;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Parameter;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DefaultTraversalVisitor;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Parameter;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 
 import com.google.common.collect.ImmutableMap;
 
@@ -67,12 +68,8 @@ public final class ParameterExtractor {
                         .getLocation()
                         .orElseThrow(
                             () -> new SemanticException("Parameter node must have a location")),
-                Comparator.comparing(
-                        org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NodeLocation
-                            ::getLineNumber)
-                    .thenComparing(
-                        org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NodeLocation
-                            ::getColumnNumber)))
+                Comparator.comparing(NodeLocation::getLineNumber)
+                    .thenComparing(NodeLocation::getColumnNumber)))
         .collect(toImmutableList());
   }
 
@@ -113,7 +110,7 @@ public final class ParameterExtractor {
     }
 
     @Override
-    protected Void visitParameter(Parameter node, Void context) {
+    public Void visitParameter(Parameter node, Void context) {
       parameters.add(node);
       return null;
     }

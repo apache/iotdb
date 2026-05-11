@@ -87,6 +87,9 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionAndP
       throws SubscriptionException {
     LOGGER.info("CreateSubscriptionProcedure: executeFromValidate");
 
+    alterConsumerGroupProcedure = null;
+    createPipeProcedures = new ArrayList<>();
+
     subscriptionInfo.get().validateBeforeSubscribe(subscribeReq);
 
     final String consumerId = subscribeReq.getConsumerId();
@@ -117,7 +120,8 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionAndP
                 new TCreatePipeReq()
                     .setPipeName(pipeName)
                     .setExtractorAttributes(
-                        topicMeta.generateExtractorAttributes(consumerMeta.getUsername()))
+                        topicMeta.generateExtractorAttributes(
+                            consumerMeta.getUsername(), consumerMeta.getSubscriptionAuthPassword()))
                     .setProcessorAttributes(topicMeta.generateProcessorAttributes())
                     .setConnectorAttributes(topicMeta.generateConnectorAttributes(consumerGroupId)),
                 pipeTaskInfo));
@@ -160,8 +164,7 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionAndP
       response = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       response.setMessage(e.getMessage());
     }
-    if (response.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        && response.getSubStatusSize() > 0) {
+    if (response.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new SubscriptionException(
           String.format(
               "Failed to create subscription with request %s on config nodes, because %s",

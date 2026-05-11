@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.ir;
 
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.FunctionCall;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -35,7 +35,7 @@ public final class DeterminismEvaluator {
 
   private static class Visitor extends DefaultTraversalVisitor<AtomicBoolean> {
     @Override
-    protected Void visitFunctionCall(FunctionCall node, AtomicBoolean deterministic) {
+    public Void visitFunctionCall(FunctionCall node, AtomicBoolean deterministic) {
       //            if (!node.getFunction().isDeterministic()) {
       //                deterministic.set(false);
       //                return null;
