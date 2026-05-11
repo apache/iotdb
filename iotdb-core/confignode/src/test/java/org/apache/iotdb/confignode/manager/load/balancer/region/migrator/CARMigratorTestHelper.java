@@ -39,11 +39,11 @@ import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 /** Shared utilities for GCR Migrator tests. */
-class GCRMigratorTestHelper {
+class CARMigratorTestHelper {
 
   /**
    * Scale factor for disk variance computation: bytes → MB. Must match {@link
-   * GreedyCopySetRegionGroupMigrator#DISK_SCALE_FACTOR}.
+   * CostAwareRegionGroupMigrator#DISK_SCALE_FACTOR}.
    */
   static final long DISK_SCALE_FACTOR = 1_000_000L;
 
@@ -320,7 +320,7 @@ class GCRMigratorTestHelper {
     return sb.toString();
   }
 
-  private GCRMigratorTestHelper() {
+  private CARMigratorTestHelper() {
     // utility class
   }
 }

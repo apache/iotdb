@@ -39,9 +39,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-public class GreedyCopySetRegionGroupMigrator implements IRegionGroupMigrator {
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(GreedyCopySetRegionGroupMigrator.class);
+public class CostAwareRegionGroupMigrator implements IRegionGroupMigrator {
+  private static final Logger LOGGER = LoggerFactory.getLogger(CostAwareRegionGroupMigrator.class);
 
   /** Disk deviation threshold δ for Phase 2 bidirectional migration (default 20%). */
   private static final double DISK_DEVIATION_THRESHOLD = 0.2;
@@ -65,6 +64,8 @@ public class GreedyCopySetRegionGroupMigrator implements IRegionGroupMigrator {
   private Map<TConsensusGroupId, RegionGroupStatistics> regionGroupStatisticsMap;
   // dfs batch size
   private static final int BATCH_SIZE = 8;
+  // Beam width for DFS search (dynamically set based on batch count)
+  private int maxBeam = BATCH_SIZE;
   // A list of regions that need to be migrated.
   private List<TConsensusGroupId> dfsRegionKeys;
   // Buffer holding best assignment arrays.
@@ -80,6 +81,12 @@ public class GreedyCopySetRegionGroupMigrator implements IRegionGroupMigrator {
 
   // All available DataNode IDs (used for variance computation)
   private Set<Integer> allAvailableNodeIds;
+
+  // ===== Incremental variance state for DFS =====
+  private long incrRegionSum;
+  private long incrRegionSumSq;
+  private long incrDiskSum;
+  private long incrDiskSumSq;
 
   private static class MigrateOption {
     protected final boolean isMigration;
@@ -958,6 +965,16 @@ public class GreedyCopySetRegionGroupMigrator implements IRegionGroupMigrator {
       List<TConsensusGroupId> regionKeys) {
     Map<TConsensusGroupId, MigrateOption> result = new HashMap<>();
 
+    // Determine beam width based on total batch count
+    int batches = (regionKeys.size() + BATCH_SIZE - 1) / BATCH_SIZE;
+    if (batches <= 5) {
+      maxBeam = 8;
+    } else if (batches <= 30) {
+      maxBeam = 6;
+    } else {
+      maxBeam = 5;
+    }
+
     for (int start = 0; start < regionKeys.size(); start += BATCH_SIZE) {
       List<TConsensusGroupId> batchRegions =
           regionKeys.subList(start, Math.min(start + BATCH_SIZE, regionKeys.size()));
@@ -1020,6 +1037,22 @@ public class GreedyCopySetRegionGroupMigrator implements IRegionGroupMigrator {
 
     bestMetrics = new long[] {Long.MAX_VALUE, Long.MAX_VALUE, Long.MAX_VALUE, Long.MIN_VALUE};
 
+    // Initialize incremental variance state from current counters
+    incrRegionSum = 0;
+    incrRegionSumSq = 0;
+    incrDiskSum = 0;
+    incrDiskSumSq = 0;
+    for (int nodeId : allAvailableNodeIds) {
+      long r = (nodeId < regionCounter.length) ? regionCounter[nodeId] : 0;
+      incrRegionSum += r;
+      incrRegionSumSq += r * r;
+      long d =
+          ((nodeId < diskCounter.length) ? diskCounter[nodeId] : 0L)
+              / MigratorLogHelper.DISK_SCALE_FACTOR;
+      incrDiskSum += d;
+      incrDiskSumSq += d * d;
+    }
+
     dfsOptimalDistribution(0, 0, currentAssignment, 0);
 
     // Collect results
@@ -1070,7 +1103,11 @@ public class GreedyCopySetRegionGroupMigrator implements IRegionGroupMigrator {
       int index, int currentScatter, MigrateOption[] currentAssignment, long migrateCost) {
 
     if (index == dfsRegionKeys.size()) {
-      long[] currentMetrics = evaluateCurrentAssignment(currentScatter, migrateCost);
+      int n = allAvailableNodeIds.size();
+      long diskVariance = n * incrDiskSumSq - incrDiskSum * incrDiskSum;
+      long regionVariance = n * incrRegionSumSq - incrRegionSum * incrRegionSum;
+      long[] currentMetrics =
+          new long[] {diskVariance, regionVariance, migrateCost, currentScatter};
 
       if (compareMetrics(currentMetrics, bestMetrics) < 0) {
         System.arraycopy(currentAssignment, 0, bestAssignment, 0, currentAssignment.length);
@@ -1100,46 +1137,70 @@ public class GreedyCopySetRegionGroupMigrator implements IRegionGroupMigrator {
           long r2 = o2.isMigration ? regionCounter[o2.toNodeId] : Integer.MAX_VALUE;
           return Long.compare(r1, r2);
         });
-    int beamLimit = Math.min(BATCH_SIZE, orderedIndices.length);
+    int beamLimit = Math.min(maxBeam, orderedIndices.length);
     for (int k = 0; k < beamLimit; k++) {
       int optionIndex = orderedIndices[k];
       MigrateOption option = options.get(optionIndex);
       currentAssignment[index] = option;
       long regionDisk =
           option.isMigration ? regionGroupStatisticsMap.get(regionId).getDiskUsage() : 0;
-      // Update counters
+
+      // Incremental update counters and variance state
+      long oldFromRegion = 0, oldToRegion = 0;
+      long oldFromDiskMB = 0, oldToDiskMB = 0;
+      long newFromDiskMB = 0, newToDiskMB = 0;
       if (option.isMigration) {
+        oldFromRegion = regionCounter[option.fromNodeId];
+        oldToRegion = regionCounter[option.toNodeId];
         regionCounter[option.fromNodeId]--;
         regionCounter[option.toNodeId]++;
         databaseRegionCounter[option.fromNodeId]--;
         databaseRegionCounter[option.toNodeId]++;
+        // Region variance incremental: from node loses 1, to node gains 1
+        incrRegionSum += 0; // net change is 0 (one -1 and one +1)
+        incrRegionSumSq += -2L * oldFromRegion + 1 + 2L * oldToRegion + 1;
+        // = (oldFrom-1)² - oldFrom² + (oldTo+1)² - oldTo²
+
+        oldFromDiskMB = diskCounter[option.fromNodeId] / MigratorLogHelper.DISK_SCALE_FACTOR;
+        oldToDiskMB = diskCounter[option.toNodeId] / MigratorLogHelper.DISK_SCALE_FACTOR;
         diskCounter[option.fromNodeId] -= regionDisk;
         diskCounter[option.toNodeId] += regionDisk;
+        newFromDiskMB = diskCounter[option.fromNodeId] / MigratorLogHelper.DISK_SCALE_FACTOR;
+        newToDiskMB = diskCounter[option.toNodeId] / MigratorLogHelper.DISK_SCALE_FACTOR;
+        incrDiskSum += (newFromDiskMB - oldFromDiskMB) + (newToDiskMB - oldToDiskMB);
+        incrDiskSumSq +=
+            newFromDiskMB * newFromDiskMB
+                - oldFromDiskMB * oldFromDiskMB
+                + newToDiskMB * newToDiskMB
+                - oldToDiskMB * oldToDiskMB;
       }
+
       // Update scatter
       int newScatter = currentScatter + scatterDelta[index][optionIndex];
       long nextMigrateCost = migrateCost + regionDisk;
       // Recurse
       dfsOptimalDistribution(index + 1, newScatter, currentAssignment, nextMigrateCost);
-      // Backtrack: restore counters
+
+      // Backtrack: restore counters and variance state
       if (option.isMigration) {
+        diskCounter[option.fromNodeId] += regionDisk;
+        diskCounter[option.toNodeId] -= regionDisk;
         regionCounter[option.fromNodeId]++;
         regionCounter[option.toNodeId]--;
         databaseRegionCounter[option.fromNodeId]++;
         databaseRegionCounter[option.toNodeId]--;
-        diskCounter[option.fromNodeId] += regionDisk;
-        diskCounter[option.toNodeId] -= regionDisk;
+        incrRegionSumSq -= -2L * oldFromRegion + 1 + 2L * oldToRegion + 1;
+        incrDiskSum -= (newFromDiskMB - oldFromDiskMB) + (newToDiskMB - oldToDiskMB);
+        incrDiskSumSq -=
+            newFromDiskMB * newFromDiskMB
+                - oldFromDiskMB * oldFromDiskMB
+                + newToDiskMB * newToDiskMB
+                - oldToDiskMB * oldToDiskMB;
       }
     }
   }
 
   // ==================== Evaluation ====================
-
-  private long[] evaluateCurrentAssignment(int currentScatter, long migrateCost) {
-    long diskVariance = computeDiskVariance();
-    long regionVariance = computeRegionVariance();
-    return new long[] {diskVariance, regionVariance, migrateCost, currentScatter};
-  }
 
   /**
    * Relative tolerance for Var(disk) comparison: if two solutions' Var(disk) differ by less than

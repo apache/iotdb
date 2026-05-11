@@ -42,7 +42,7 @@ import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 /**
- * Tests for {@link CARRegionGroupAllocator#removeNodeReplicaSelect}.
+ * Tests for {@link CostAwareRegionGroupAllocator#removeNodeReplicaSelect}.
  *
  * <p>Verifies correctness (no duplicate replicas, all regions assigned), region balance
  * (var(region) minimized), and disk-aware balancing (var(disk) optimized).
@@ -54,10 +54,10 @@ public class CARRemoveNodeReplicaSelectTest {
 
   private static final long DISK_SCALE_FACTOR = 1_000_000L;
 
-  private static final IRegionGroupAllocator CAR_ALLOCATOR = new CARRegionGroupAllocator();
+  private static final IRegionGroupAllocator CAR_ALLOCATOR = new CostAwareRegionGroupAllocator();
 
   // Use GCR allocator for initial allocation (CAR only supports removeNodeReplicaSelect)
-  private static final IRegionGroupAllocator PGR_ALLOCATOR =
+  private static final IRegionGroupAllocator PGP_ALLOCATOR =
       new PartiteGraphPlacementRegionGroupAllocator();
 
   private static final TDataNodeLocation REMOVE_DATANODE_LOCATION =
@@ -96,7 +96,7 @@ public class CARRemoveNodeReplicaSelectTest {
     List<TRegionReplicaSet> databaseAllocateResult = new ArrayList<>();
     for (int index = 0; index < dataRegionGroupNum; index++) {
       TRegionReplicaSet replicaSet =
-          PGR_ALLOCATOR.generateOptimalRegionReplicasDistribution(
+          PGP_ALLOCATOR.generateOptimalRegionReplicasDistribution(
               AVAILABLE_DATA_NODE_MAP,
               FREE_SPACE_MAP,
               allocateResult,
@@ -215,7 +215,7 @@ public class CARRemoveNodeReplicaSelectTest {
 
       for (int i = 0; i < rgToCreate; i++) {
         TRegionReplicaSet rs =
-            PGR_ALLOCATOR.generateOptimalRegionReplicasDistribution(
+            PGP_ALLOCATOR.generateOptimalRegionReplicasDistribution(
                 AVAILABLE_DATA_NODE_MAP,
                 FREE_SPACE_MAP,
                 globalAllocatedList,
@@ -334,7 +334,7 @@ public class CARRemoveNodeReplicaSelectTest {
     List<TRegionReplicaSet> allocatedRGs = new ArrayList<>();
     for (int idx = 0; idx < RG_NUM; idx++) {
       TRegionReplicaSet rs =
-          PGR_ALLOCATOR.generateOptimalRegionReplicasDistribution(
+          PGP_ALLOCATOR.generateOptimalRegionReplicasDistribution(
               nodeMap,
               freeSpace,
               allocatedRGs,

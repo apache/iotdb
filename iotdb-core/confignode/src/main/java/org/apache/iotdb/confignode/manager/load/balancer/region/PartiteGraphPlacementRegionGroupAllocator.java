@@ -159,10 +159,17 @@ public class PartiteGraphPlacementRegionGroupAllocator implements IRegionGroupAl
     for (TRegionReplicaSet regionReplicaSet : allocatedRegionGroups) {
       List<TDataNodeLocation> dataNodeLocations = regionReplicaSet.getDataNodeLocations();
       for (int i = 0; i < dataNodeLocations.size(); i++) {
-        int fakeIId = realToFakeIdMap.get(dataNodeLocations.get(i).getDataNodeId());
+        Integer fakeIId = realToFakeIdMap.get(dataNodeLocations.get(i).getDataNodeId());
+        if (fakeIId == null) {
+          // Skip replicas on unavailable DataNodes
+          continue;
+        }
         regionCounter[fakeIId]++;
         for (int j = i + 1; j < dataNodeLocations.size(); j++) {
-          int fakeJId = realToFakeIdMap.get(dataNodeLocations.get(j).getDataNodeId());
+          Integer fakeJId = realToFakeIdMap.get(dataNodeLocations.get(j).getDataNodeId());
+          if (fakeJId == null) {
+            continue;
+          }
           combinationCounter[fakeIId][fakeJId] = 1;
           combinationCounter[fakeJId][fakeIId] = 1;
         }

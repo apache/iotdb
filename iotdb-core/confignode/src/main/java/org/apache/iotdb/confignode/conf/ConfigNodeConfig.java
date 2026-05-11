@@ -136,15 +136,15 @@ public class ConfigNodeConfig {
 
   /** RegionGroup allocate policy. */
   private RegionBalancer.RegionGroupAllocatePolicy regionGroupAllocatePolicy =
-      RegionBalancer.RegionGroupAllocatePolicy.GCR;
+      RegionBalancer.RegionGroupAllocatePolicy.PGP;
 
   /** RegionGroup migrate policy. */
   private RegionBalancer.RegionGroupMigratePolicy regionGroupMigratePolicy =
-      RegionBalancer.RegionGroupMigratePolicy.GCR;
+      RegionBalancer.RegionGroupMigratePolicy.CAR;
 
   /** RegionGroup scale-in policy. */
   private RegionBalancer.RegionGroupScaleInPolicy regionGroupScaleInPolicy =
-      RegionBalancer.RegionGroupScaleInPolicy.GCR;
+      RegionBalancer.RegionGroupScaleInPolicy.CAR;
 
   /** Max concurrent client number. */
   private int rpcMaxConcurrentClientNum = 3000;

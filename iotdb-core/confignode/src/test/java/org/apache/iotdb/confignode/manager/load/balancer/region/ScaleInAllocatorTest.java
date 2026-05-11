@@ -62,10 +62,10 @@ public class ScaleInAllocatorTest {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ScaleInAllocatorTest.class);
 
-  private static final IRegionGroupAllocator CAR_ALLOCATOR = new CARRegionGroupAllocator();
+  private static final IRegionGroupAllocator CAR_ALLOCATOR = new CostAwareRegionGroupAllocator();
   private static final IRegionGroupAllocator GREEDY_ALLOCATOR = new GreedyRegionGroupAllocator();
   private static final IRegionGroupAllocator RANDOM_ALLOCATOR = new RandomRegionGroupAllocator();
-  private static final PartiteGraphPlacementRegionGroupAllocator PGR_ALLOCATOR =
+  private static final PartiteGraphPlacementRegionGroupAllocator PGP_ALLOCATOR =
       new PartiteGraphPlacementRegionGroupAllocator();
 
   private final String allocatorName;
@@ -90,6 +90,7 @@ public class ScaleInAllocatorTest {
           {6, 12, 3, 1}, // 6->5 triple replica: 36 replicas / 6 nodes = 6 each
           {8, 20, 2, 1}, // 8->7: 40 replicas / 8 nodes = 5 each
           {10, 30, 2, 1}, // 10->9: 60 replicas / 10 nodes = 6 each
+          {100, 1000, 2, 1}, // 100->99: 2000 replicas / 100 nodes = 20 each
           // --- Multi-database scenarios ---
           {6, 15, 2, 3}, // 6->5, 3 databases: 30 replicas / 6 = 5 each, 5 RG/DB
           {8, 24, 2, 3}, // 8->7, 3 databases: 48 replicas / 8 = 6 each, 8 RG/DB
@@ -182,7 +183,7 @@ public class ScaleInAllocatorTest {
       String db = dbNames[i % databaseCount];
       List<TRegionReplicaSet> dbList = dbAllocatedMap.get(db);
       TRegionReplicaSet rs =
-          PGR_ALLOCATOR.generateOptimalRegionReplicasDistribution(
+          PGP_ALLOCATOR.generateOptimalRegionReplicasDistribution(
               allNodeMap,
               freeSpaceMap,
               allAllocated,

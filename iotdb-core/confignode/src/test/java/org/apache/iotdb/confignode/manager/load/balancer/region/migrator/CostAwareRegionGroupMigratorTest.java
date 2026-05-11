@@ -45,15 +45,14 @@ import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 @RunWith(Parameterized.class)
-public class GreedyCopySetRegionGroupMigratorTest {
+public class CostAwareRegionGroupMigratorTest {
 
   private static final Logger LOGGER =
-      LoggerFactory.getLogger(GreedyCopySetRegionGroupMigratorTest.class);
+      LoggerFactory.getLogger(CostAwareRegionGroupMigratorTest.class);
 
   private static final PartiteGraphPlacementRegionGroupAllocator ALLOCATOR =
       new PartiteGraphPlacementRegionGroupAllocator();
-  private static final GreedyCopySetRegionGroupMigrator MIGRATOR =
-      new GreedyCopySetRegionGroupMigrator();
+  private static final CostAwareRegionGroupMigrator MIGRATOR = new CostAwareRegionGroupMigrator();
 
   // Test parameters
   private final int nodeCount; // n - number of nodes
@@ -81,7 +80,7 @@ public class GreedyCopySetRegionGroupMigratorTest {
         });
   }
 
-  public GreedyCopySetRegionGroupMigratorTest(int nodeCount, int regionCount, int replicaCount) {
+  public CostAwareRegionGroupMigratorTest(int nodeCount, int regionCount, int replicaCount) {
     this.nodeCount = nodeCount;
     this.regionCount = regionCount;
     this.replicaCount = replicaCount;

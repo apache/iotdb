@@ -56,12 +56,15 @@ import java.util.stream.Collectors;
  * <p>This allocator is only intended for {@code removeNodeReplicaSelect}. The {@code
  * generateOptimalRegionReplicasDistribution} method throws {@link UnsupportedOperationException}.
  */
-public class CARRegionGroupAllocator implements IRegionGroupAllocator {
+public class CostAwareRegionGroupAllocator implements IRegionGroupAllocator {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(CARRegionGroupAllocator.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(CostAwareRegionGroupAllocator.class);
 
   /** Batch size for DFS search. */
   private static final int BATCH_SIZE = 12;
+
+  /** Maximum number of candidate nodes to consider per region in DFS. */
+  private static final int MAX_CANDIDATES = 4;
 
   /** Relative tolerance for Var(disk) comparison (1%). */
   private static final double DISK_VARIANCE_EPSILON = 0.01;
@@ -103,7 +106,21 @@ public class CARRegionGroupAllocator implements IRegionGroupAllocator {
   /** regionDiskUsageMap from the caller (bytes per RegionGroup). */
   private Map<TConsensusGroupId, Long> regionDiskUsageMap;
 
-  public CARRegionGroupAllocator() {
+  // ===== Incremental variance state =====
+
+  /** Running sum of regionCounter[nodeId] + additionalRegionLoad[nodeId] for available nodes. */
+  private long incrRegionSum;
+
+  /** Running sum of squares for region counts. */
+  private long incrRegionSumSq;
+
+  /** Running sum of (diskCounter[nodeId] + additionalDiskLoad[nodeId]) / DISK_SCALE_FACTOR. */
+  private long incrDiskSum;
+
+  /** Running sum of squares for disk usage (in MB). */
+  private long incrDiskSumSq;
+
+  public CostAwareRegionGroupAllocator() {
     // Empty constructor
   }
 
@@ -184,12 +201,39 @@ public class CARRegionGroupAllocator implements IRegionGroupAllocator {
         dfsRegionKeys = regionKeys.subList(start, Math.min(start + BATCH_SIZE, regionKeys.size()));
         int batchSize = dfsRegionKeys.size();
 
+        // Re-sort and truncate candidates based on current counters
+        for (TConsensusGroupId regionId : dfsRegionKeys) {
+          List<Integer> candidates = allowedCandidatesMap.get(regionId);
+          candidates.sort(
+              (a, b) -> {
+                int cmp = Integer.compare(regionCounter[a], regionCounter[b]);
+                return (cmp != 0) ? cmp : Long.compare(diskCounter[a], diskCounter[b]);
+              });
+          if (candidates.size() > MAX_CANDIDATES) {
+            allowedCandidatesMap.put(regionId, candidates.subList(0, MAX_CANDIDATES));
+          }
+        }
+
         // Initialize buffers
         bestAssignment = new int[batchSize];
         bestMetrics = new long[] {Long.MAX_VALUE, Long.MAX_VALUE, Long.MIN_VALUE};
         int[] currentAssignment = new int[batchSize];
         int[] additionalRegionLoad = new int[regionCounter.length];
         long[] additionalDiskLoad = new long[diskCounter.length];
+
+        // Initialize incremental variance state from current counters
+        incrRegionSum = 0;
+        incrRegionSumSq = 0;
+        incrDiskSum = 0;
+        incrDiskSumSq = 0;
+        for (int nodeId : availableNodeIds) {
+          long r = regionCounter[nodeId];
+          incrRegionSum += r;
+          incrRegionSumSq += r * r;
+          long d = diskCounter[nodeId] / MigratorLogHelper.DISK_SCALE_FACTOR;
+          incrDiskSum += d;
+          incrDiskSumSq += d * d;
+        }
 
         // Pre-compute scatter deltas
         scatterDelta = new int[batchSize][regionCounter.length];
@@ -267,8 +311,10 @@ public class CARRegionGroupAllocator implements IRegionGroupAllocator {
       long[] additionalDiskLoad,
       Map<TConsensusGroupId, TRegionReplicaSet> remainReplicasMap) {
     if (index == dfsRegionKeys.size()) {
-      long[] currentMetrics = computeCurrentMetrics(additionalRegionLoad, additionalDiskLoad);
-      currentMetrics[2] = currentScatter;
+      int n = availableNodeIds.size();
+      long regionVariance = n * incrRegionSumSq - incrRegionSum * incrRegionSum;
+      long diskVariance = n * incrDiskSumSq - incrDiskSum * incrDiskSum;
+      long[] currentMetrics = new long[] {regionVariance, diskVariance, currentScatter};
 
       int cmp = compareMetrics(currentMetrics, bestMetrics);
       if (cmp < 0) {
@@ -280,12 +326,30 @@ public class CARRegionGroupAllocator implements IRegionGroupAllocator {
 
     TConsensusGroupId regionId = dfsRegionKeys.get(index);
     long regionDisk = regionDiskUsageMap.getOrDefault(regionId, 0L);
+    long regionDiskMB = regionDisk / MigratorLogHelper.DISK_SCALE_FACTOR;
     List<Integer> candidates = allowedCandidatesMap.get(regionId);
 
     for (int candidate : candidates) {
       currentAssignment[index] = candidate;
+
+      // Incremental update for region variance
+      long oldRegion = regionCounter[candidate] + additionalRegionLoad[candidate];
       additionalRegionLoad[candidate]++;
+      incrRegionSum += 1;
+      incrRegionSumSq += 2L * oldRegion + 1; // (old+1)² - old² = 2*old + 1
+
+      // Incremental update for disk variance
+      long oldDiskMB =
+          (diskCounter[candidate] + additionalDiskLoad[candidate])
+              / MigratorLogHelper.DISK_SCALE_FACTOR;
       additionalDiskLoad[candidate] += regionDisk;
+      long newDiskMB =
+          (diskCounter[candidate] + additionalDiskLoad[candidate])
+              / MigratorLogHelper.DISK_SCALE_FACTOR;
+      long diskMBDelta = newDiskMB - oldDiskMB;
+      incrDiskSum += diskMBDelta;
+      incrDiskSumSq += newDiskMB * newDiskMB - oldDiskMB * oldDiskMB;
+
       int newScatter = currentScatter + scatterDelta[index][candidate];
 
       dfsRemoveNodeReplica(
@@ -297,40 +361,13 @@ public class CARRegionGroupAllocator implements IRegionGroupAllocator {
           remainReplicasMap);
 
       // Backtrack
-      additionalRegionLoad[candidate]--;
       additionalDiskLoad[candidate] -= regionDisk;
+      additionalRegionLoad[candidate]--;
+      incrRegionSum -= 1;
+      incrRegionSumSq -= 2L * oldRegion + 1;
+      incrDiskSum -= diskMBDelta;
+      incrDiskSumSq -= newDiskMB * newDiskMB - oldDiskMB * oldDiskMB;
     }
-  }
-
-  /**
-   * Compute current metrics: [regionVariance, diskVariance, 0 (placeholder for scatter)].
-   *
-   * <p>Variance formula: n * Σ(x_i²) - (Σx_i)². Disk values are scaled from bytes to MB before
-   * computation to prevent long overflow.
-   */
-  private long[] computeCurrentMetrics(int[] additionalRegionLoad, long[] additionalDiskLoad) {
-    long regionSum = 0;
-    long regionSumSq = 0;
-    long diskSum = 0;
-    long diskSumSq = 0;
-    int n = availableNodeIds.size();
-
-    for (int nodeId : availableNodeIds) {
-      long r = regionCounter[nodeId] + additionalRegionLoad[nodeId];
-      regionSum += r;
-      regionSumSq += r * r;
-
-      long d =
-          (diskCounter[nodeId] + additionalDiskLoad[nodeId]) / MigratorLogHelper.DISK_SCALE_FACTOR;
-      diskSum += d;
-      diskSumSq += d * d;
-    }
-
-    long regionVariance = n * regionSumSq - regionSum * regionSum;
-    long diskVariance = n * diskSumSq - diskSum * diskSum;
-
-    // scatter will be filled by caller
-    return new long[] {regionVariance, diskVariance, 0};
   }
 
   /**

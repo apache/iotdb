@@ -38,7 +38,7 @@ import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeToStatusResp;
 import org.apache.iotdb.confignode.manager.ConfigManager;
-import org.apache.iotdb.confignode.manager.load.balancer.region.CARRegionGroupAllocator;
+import org.apache.iotdb.confignode.manager.load.balancer.region.CostAwareRegionGroupAllocator;
 import org.apache.iotdb.confignode.manager.load.balancer.region.GreedyCopySetRegionGroupAllocator;
 import org.apache.iotdb.confignode.manager.load.balancer.region.GreedyRegionGroupAllocator;
 import org.apache.iotdb.confignode.manager.load.balancer.region.IRegionGroupAllocator;
@@ -92,7 +92,7 @@ public class RemoveDataNodeHandler {
         this.regionGroupAllocator = new RandomRegionGroupAllocator();
         break;
       case CAR:
-        this.regionGroupAllocator = new CARRegionGroupAllocator();
+        this.regionGroupAllocator = new CostAwareRegionGroupAllocator();
         break;
       case GCR:
       default:

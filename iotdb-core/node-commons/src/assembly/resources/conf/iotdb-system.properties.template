@@ -814,6 +814,24 @@ default_data_region_group_num_per_database=2
 # Datatype: Integer
 data_region_per_data_node=0
 
+# The policy of RegionGroup allocate for each Database.
+# Available values: GREEDY, GCR, PGP
+# effectiveMode: restart
+# Datatype: String
+# region_group_allocate_policy=PGP
+
+# The policy of RegionGroup migrate for load balance.
+# Available values: GREEDY, CAR, PGP
+# effectiveMode: restart
+# Datatype: String
+# region_group_migrate_policy=CAR
+
+# The policy of RegionGroup scale-in for node removal.
+# Available values: GREEDY, GCR, CAR, RANDOM
+# effectiveMode: restart
+# Datatype: String
+# region_group_scalein_policy=CAR
+
 # Whether to enable auto leader balance for Ratis consensus protocol.
 # The ConfigNode-leader will balance the leader of Ratis-RegionGroups by leader_distribution_policy if set true.
 # Notice: Default is false because the Ratis is unstable for this function.

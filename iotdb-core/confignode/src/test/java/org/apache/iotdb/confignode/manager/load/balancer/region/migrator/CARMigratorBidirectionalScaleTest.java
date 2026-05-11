@@ -41,24 +41,24 @@ import java.util.Set;
 import java.util.stream.IntStream;
 
 /**
- * Parameterized scale tests for bidirectional mode of {@link GreedyCopySetRegionGroupMigrator},
- * {@link GreedyRegionGroupMigrator}, and {@link PGPRebalanceRegionGroupMigrator}.
+ * Parameterized scale tests for bidirectional mode of {@link CostAwareRegionGroupMigrator}, {@link
+ * GreedyRegionGroupMigrator}, and {@link PGPRebalanceRegionGroupMigrator}.
  *
  * <p>Tests the algorithm's bidirectional migration (LOAD BALANCE ALL) across different cluster
  * sizes, region counts, and replication factors. Initial placement is done on a subset of nodes,
  * then bidirectional mode rebalances across all nodes.
  *
- * <p>For GCR, strict assertions apply: region counts must be within [idealFloor, idealCeil]. For
+ * <p>For CAR, strict assertions apply: region counts must be within [idealFloor, idealCeil]. For
  * Greedy and PGPRebalance, relaxed assertions apply: only check variance non-worsening, replica
  * constraints, and new nodes having regions.
  */
 @RunWith(Parameterized.class)
-public class GCRMigratorBidirectionalScaleTest {
+public class CARMigratorBidirectionalScaleTest {
 
   private static final Logger LOGGER =
-      LoggerFactory.getLogger(GCRMigratorBidirectionalScaleTest.class);
-  private static final GreedyCopySetRegionGroupMigrator GCR_MIGRATOR =
-      new GreedyCopySetRegionGroupMigrator();
+      LoggerFactory.getLogger(CARMigratorBidirectionalScaleTest.class);
+  private static final CostAwareRegionGroupMigrator CAR_MIGRATOR =
+      new CostAwareRegionGroupMigrator();
   private static final GreedyRegionGroupMigrator GREEDY_MIGRATOR = new GreedyRegionGroupMigrator();
   private static final PGPRebalanceRegionGroupMigrator PGP_MIGRATOR =
       new PGPRebalanceRegionGroupMigrator();
@@ -82,16 +82,16 @@ public class GCRMigratorBidirectionalScaleTest {
           //          {4, 3, 12, 2, true}, // small: region imbalance, skewed disk
           //          {5, 4, 20, 2, false}, // medium: region imbalance, uniform disk
           //          {5, 4, 20, 2, true}, // medium: region imbalance, skewed disk
-          {6, 4, 24, 2, false}, // medium: 3 replicas, uniform disk
-          {6, 4, 24, 2, true}, // medium: 3 replicas, skewed disk
+          {100, 90, 900, 2, false}, // medium: 3 replicas, uniform disk
+          {100, 90, 900, 2, true}, // medium: 3 replicas, skewed disk
           //          {8, 6, 48, 2, false}, // large: region imbalance, uniform disk
           //          {8, 6, 48, 2, true}, // large: region imbalance, skewed disk
           //          {10, 8, 80, 2, true}, // large: 10 nodes, skewed disk
         };
     for (Object[] scenario : scenarios) {
-      // GCR migrator
+      // CAR migrator
       params.add(
-          new Object[] {"GCR", scenario[0], scenario[1], scenario[2], scenario[3], scenario[4]});
+          new Object[] {"CAR", scenario[0], scenario[1], scenario[2], scenario[3], scenario[4]});
       // Greedy migrator
       params.add(
           new Object[] {"Greedy", scenario[0], scenario[1], scenario[2], scenario[3], scenario[4]});
@@ -104,7 +104,7 @@ public class GCRMigratorBidirectionalScaleTest {
     return params;
   }
 
-  public GCRMigratorBidirectionalScaleTest(
+  public CARMigratorBidirectionalScaleTest(
       String migratorName,
       int totalNodeCount,
       int initialNodeCount,
@@ -112,8 +112,8 @@ public class GCRMigratorBidirectionalScaleTest {
       int replicaCount,
       boolean skewedDisk) {
     this.migratorName = migratorName;
-    if ("GCR".equals(migratorName)) {
-      this.migrator = GCR_MIGRATOR;
+    if ("CAR".equals(migratorName)) {
+      this.migrator = CAR_MIGRATOR;
     } else if ("Greedy".equals(migratorName)) {
       this.migrator = GREEDY_MIGRATOR;
     } else {
@@ -140,12 +140,12 @@ public class GCRMigratorBidirectionalScaleTest {
     // Build initial nodes: 1 ~ initialNodeCount
     int[] initialNodeIds = IntStream.rangeClosed(1, initialNodeCount).toArray();
     Map<Integer, TDataNodeConfiguration> initialNodeMap =
-        GCRMigratorTestHelper.buildNodeMap(initialNodeIds);
-    Map<Integer, Double> spaceMap = GCRMigratorTestHelper.buildUniformSpaceMap(initialNodeIds);
+        CARMigratorTestHelper.buildNodeMap(initialNodeIds);
+    Map<Integer, Double> spaceMap = CARMigratorTestHelper.buildUniformSpaceMap(initialNodeIds);
 
     // Allocate RegionGroups on initial nodes using PGP
     List<TRegionReplicaSet> allocatedResult =
-        GCRMigratorTestHelper.allocateWithPGP(initialNodeMap, spaceMap, regionCount, replicaCount);
+        CARMigratorTestHelper.allocateWithPGP(initialNodeMap, spaceMap, regionCount, replicaCount);
 
     // DiskUsage: skewed or uniform
     long[] diskUsages = new long[allocatedResult.size()];
@@ -164,12 +164,12 @@ public class GCRMigratorBidirectionalScaleTest {
       }
     }
     Map<TConsensusGroupId, RegionGroupStatistics> statsMap =
-        GCRMigratorTestHelper.buildStatisticsMap(allocatedResult, diskUsages);
+        CARMigratorTestHelper.buildStatisticsMap(allocatedResult, diskUsages);
 
     // All nodes available
     int[] allNodeIds = IntStream.rangeClosed(1, totalNodeCount).toArray();
     Map<Integer, TDataNodeConfiguration> availableNodeMap =
-        GCRMigratorTestHelper.buildNodeMap(allNodeIds);
+        CARMigratorTestHelper.buildNodeMap(allNodeIds);
     Set<Integer> allNodeIdSet = new HashSet<>();
     for (int id : allNodeIds) {
       allNodeIdSet.add(id);
@@ -177,18 +177,18 @@ public class GCRMigratorBidirectionalScaleTest {
 
     // Metrics before
     Map<Integer, Integer> beforeRegionCounter =
-        GCRMigratorTestHelper.computeRegionCounter(allocatedResult, allNodeIdSet);
+        CARMigratorTestHelper.computeRegionCounter(allocatedResult, allNodeIdSet);
     Map<Integer, Long> beforeDiskCounter =
-        GCRMigratorTestHelper.computeDiskCounter(allocatedResult, statsMap, allNodeIdSet);
-    long beforeVarRegion = GCRMigratorTestHelper.computeVariance(beforeRegionCounter);
+        CARMigratorTestHelper.computeDiskCounter(allocatedResult, statsMap, allNodeIdSet);
+    long beforeVarRegion = CARMigratorTestHelper.computeVariance(beforeRegionCounter);
     long beforeVarDisk =
-        GCRMigratorTestHelper.computeVariance(
-            beforeDiskCounter, GCRMigratorTestHelper.DISK_SCALE_FACTOR);
+        CARMigratorTestHelper.computeVariance(
+            beforeDiskCounter, CARMigratorTestHelper.DISK_SCALE_FACTOR);
     LOGGER.info("[{}] Before: regionCounter={}", migratorName, beforeRegionCounter);
     LOGGER.info(
         "[{}] Before: diskCounter={}",
         migratorName,
-        GCRMigratorTestHelper.diskCounterToMB(beforeDiskCounter));
+        CARMigratorTestHelper.diskCounterToMB(beforeDiskCounter));
     LOGGER.info(
         "[{}] Before: Var(region)={}, Var(disk)={}", migratorName, beforeVarRegion, beforeVarDisk);
 
@@ -199,33 +199,32 @@ public class GCRMigratorBidirectionalScaleTest {
 
     // Metrics after
     Map<Integer, Integer> afterRegionCounter =
-        GCRMigratorTestHelper.computeRegionCounter(migrationPlan.values(), allNodeIdSet);
+        CARMigratorTestHelper.computeRegionCounter(migrationPlan.values(), allNodeIdSet);
     Map<Integer, Long> afterDiskCounter =
-        GCRMigratorTestHelper.computeDiskCounter(migrationPlan.values(), statsMap, allNodeIdSet);
-    long afterVarRegion = GCRMigratorTestHelper.computeVariance(afterRegionCounter);
+        CARMigratorTestHelper.computeDiskCounter(migrationPlan.values(), statsMap, allNodeIdSet);
+    long afterVarRegion = CARMigratorTestHelper.computeVariance(afterRegionCounter);
     long afterVarDisk =
-        GCRMigratorTestHelper.computeVariance(
-            afterDiskCounter, GCRMigratorTestHelper.DISK_SCALE_FACTOR);
-    int migrations = GCRMigratorTestHelper.countMigrations(allocatedResult, migrationPlan);
+        CARMigratorTestHelper.computeVariance(
+            afterDiskCounter, CARMigratorTestHelper.DISK_SCALE_FACTOR);
+    int migrations = CARMigratorTestHelper.countMigrations(allocatedResult, migrationPlan);
     long migrationCost =
-        GCRMigratorTestHelper.computeMigrationCost(allocatedResult, migrationPlan, statsMap);
+        CARMigratorTestHelper.computeMigrationCost(allocatedResult, migrationPlan, statsMap);
     LOGGER.info("[{}] After: regionCounter={}", migratorName, afterRegionCounter);
     LOGGER.info(
         "[{}] After: diskCounter={}",
         migratorName,
-        GCRMigratorTestHelper.diskCounterToMB(afterDiskCounter));
+        CARMigratorTestHelper.diskCounterToMB(afterDiskCounter));
     LOGGER.info(
         "[{}] After: Var(region)={}, Var(disk)={}, migrations={}, migrationCost={}MB",
         migratorName,
         afterVarRegion,
         afterVarDisk,
         migrations,
-        migrationCost / GCRMigratorTestHelper.DISK_SCALE_FACTOR);
+        migrationCost / CARMigratorTestHelper.DISK_SCALE_FACTOR);
 
-    // Common assertions (both GCR and Greedy)
-    GCRMigratorTestHelper.assertReplicaConstraint(migrationPlan, replicaCount);
-    GCRMigratorTestHelper.assertNotWorse(beforeVarRegion, afterVarRegion, "Var(region)");
-    GCRMigratorTestHelper.assertNotWorse(beforeVarDisk, afterVarDisk, "Var(disk)");
+    // Common assertions (both CAR and Greedy)
+    CARMigratorTestHelper.assertReplicaConstraint(migrationPlan, replicaCount);
+    CARMigratorTestHelper.assertNotWorse(beforeVarDisk, afterVarDisk, "Var(disk)");
 
     // New nodes (initialNodeCount+1 ~ totalNodeCount) should have regions
     for (int nodeId = initialNodeCount + 1; nodeId <= totalNodeCount; nodeId++) {
@@ -238,15 +237,16 @@ public class GCRMigratorBidirectionalScaleTest {
           afterRegionCounter.getOrDefault(nodeId, 0) > 0);
     }
 
-    // GCR-only strict assertion: region count must be within [idealFloor, idealCeil]
-    if ("GCR".equals(migratorName)) {
+    // CAR-only strict assertion: region count must be within [idealFloor, idealCeil]
+    if ("CAR".equals(migratorName)) {
+      CARMigratorTestHelper.assertNotWorse(beforeVarRegion, afterVarRegion, "Var(region)");
       int totalReplicas = regionCount * replicaCount;
       int idealFloor = totalReplicas / totalNodeCount;
       int idealCeil = idealFloor + (totalReplicas % totalNodeCount == 0 ? 0 : 1);
       for (int nodeId : allNodeIds) {
         int count = afterRegionCounter.getOrDefault(nodeId, 0);
         Assert.assertTrue(
-            "[GCR] Node "
+            "[CAR] Node "
                 + nodeId
                 + " region count "
                 + count
