@@ -2460,6 +2460,11 @@ public class IoTDBDescriptor {
         Arrays.stream(properties.getProperty("load_tsfile_allowed_dirs", "").trim().split(","))
             .filter(dir -> !dir.isEmpty())
             .toArray(String[]::new));
+    conf.setLoadTsFileSourcePathCheckEnabled(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "load_tsfile_source_path_check_enable",
+                Boolean.toString(conf.isLoadTsFileSourcePathCheckEnabled()))));
 
     conf.setLoadTabletConversionThresholdBytes(
         Long.parseLong(
@@ -2589,6 +2594,11 @@ public class IoTDBDescriptor {
                     .split(","))
             .filter(dir -> !dir.isEmpty())
             .toArray(String[]::new));
+    conf.setLoadTsFileSourcePathCheckEnabled(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "load_tsfile_source_path_check_enable",
+                Boolean.toString(conf.isLoadTsFileSourcePathCheckEnabled()))));
 
     conf.setLoadActiveListeningEnable(
         Boolean.parseBoolean(

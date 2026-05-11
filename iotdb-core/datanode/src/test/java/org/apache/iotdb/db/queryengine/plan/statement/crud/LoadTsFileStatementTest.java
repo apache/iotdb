@@ -66,10 +66,12 @@ public class LoadTsFileStatementTest {
   public void testLoadSourcePathMustBeInAllowedDirs() throws Exception {
     final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
     final String[] originalAllowedDirs = config.getLoadTsFileAllowedDirs().clone();
+    final boolean originalCheckEnabled = config.isLoadTsFileSourcePathCheckEnabled();
     final Path allowedDir = Files.createTempDirectory("load-tsfile-allowed");
     final Path deniedDir = Files.createTempDirectory("load-tsfile-denied");
 
     try {
+      config.setLoadTsFileSourcePathCheckEnabled(true);
       config.setLoadTsFileAllowedDirs(new String[] {allowedDir.toString()});
       final Path deniedTsFile = Files.createFile(deniedDir.resolve("denied.tsfile"));
       final Path traversalTsFile =
@@ -79,6 +81,29 @@ public class LoadTsFileStatementTest {
       assertLoadSourcePathRejected(traversalTsFile);
     } finally {
       config.setLoadTsFileAllowedDirs(originalAllowedDirs);
+      config.setLoadTsFileSourcePathCheckEnabled(originalCheckEnabled);
+      deleteRecursively(allowedDir);
+      deleteRecursively(deniedDir);
+    }
+  }
+
+  @Test
+  public void testLoadSourcePathCheckCanBeDisabled() throws Exception {
+    final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+    final String[] originalAllowedDirs = config.getLoadTsFileAllowedDirs().clone();
+    final boolean originalCheckEnabled = config.isLoadTsFileSourcePathCheckEnabled();
+    final Path allowedDir = Files.createTempDirectory("load-tsfile-allowed");
+    final Path deniedDir = Files.createTempDirectory("load-tsfile-denied");
+
+    try {
+      config.setLoadTsFileSourcePathCheckEnabled(false);
+      config.setLoadTsFileAllowedDirs(new String[] {allowedDir.toString()});
+      final Path deniedTsFile = Files.createFile(deniedDir.resolve("denied.tsfile"));
+
+      new LoadTsFileStatement(deniedTsFile.toString());
+    } finally {
+      config.setLoadTsFileAllowedDirs(originalAllowedDirs);
+      config.setLoadTsFileSourcePathCheckEnabled(originalCheckEnabled);
       deleteRecursively(allowedDir);
       deleteRecursively(deniedDir);
     }

@@ -166,6 +166,10 @@ public class LoadTsFileStatement extends Statement {
   }
 
   private static void validateLoadSourcePath(final File file) throws FileNotFoundException {
+    if (!IoTDBDescriptor.getInstance().getConfig().isLoadTsFileSourcePathCheckEnabled()) {
+      return;
+    }
+
     final Path sourcePath = canonicalPath(file);
     final String[] allowedDirs =
         IoTDBDescriptor.getInstance().getConfig().getLoadTsFileAllowedDirs();

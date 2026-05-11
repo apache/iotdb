@@ -205,6 +205,8 @@ public class ClusterConstant {
   public static final String DATA_REGION_RATIS_LOG_APPENDER_BUFFER_SIZE_MAX =
       "data_region_ratis_log_appender_buffer_size_max";
   public static final String DATA_REGION_PER_DATA_NODE = "data_region_per_data_node";
+  public static final String LOAD_TSFILE_SOURCE_PATH_CHECK_ENABLE =
+      "load_tsfile_source_path_check_enable";
 
   // Paths
   public static final String USER_DIR = "user.dir";

@@ -300,6 +300,8 @@ public class IoTDBConfig {
 
   private String[] loadTsFileAllowedDirs = new String[0];
 
+  private boolean loadTsFileSourcePathCheckEnabled = true;
+
   /** Strategy of multiple directories. */
   private String multiDirStrategyClassName = null;
 
@@ -1569,6 +1571,14 @@ public class IoTDBConfig {
     return this.loadTsFileAllowedDirs.length == 0
         ? getLoadTsFileDirs()
         : this.loadTsFileAllowedDirs;
+  }
+
+  public boolean isLoadTsFileSourcePathCheckEnabled() {
+    return loadTsFileSourcePathCheckEnabled;
+  }
+
+  public void setLoadTsFileSourcePathCheckEnabled(boolean loadTsFileSourcePathCheckEnabled) {
+    this.loadTsFileSourcePathCheckEnabled = loadTsFileSourcePathCheckEnabled;
   }
 
   public void setLoadTsFileAllowedDirs(String[] loadTsFileAllowedDirs) {
