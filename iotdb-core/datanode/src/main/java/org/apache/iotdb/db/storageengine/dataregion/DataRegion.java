@@ -3999,16 +3999,11 @@ public class DataRegion implements IDataRegionForQuery {
     TsFileLastReader lastReader = null;
     LastCacheLoadStrategy lastCacheLoadStrategy = config.getLastCacheLoadStrategy();
     if (!isFromConsensus
-        && (lastCacheLoadStrategy == LastCacheLoadStrategy.UPDATE
-            || lastCacheLoadStrategy == LastCacheLoadStrategy.UPDATE_NO_BLOB)
+        && lastCacheLoadStrategy == LastCacheLoadStrategy.UPDATE
         && newTsFileResource.getLastValues() == null) {
       try {
         // init reader outside of lock to boost performance
-        lastReader =
-            new TsFileLastReader(
-                newTsFileResource.getTsFilePath(),
-                true,
-                lastCacheLoadStrategy == LastCacheLoadStrategy.UPDATE_NO_BLOB);
+        lastReader = new TsFileLastReader(newTsFileResource.getTsFilePath(), true, false);
       } catch (IOException e) {
         throw new LoadFileException(e);
       }
@@ -4109,7 +4104,6 @@ public class DataRegion implements IDataRegionForQuery {
     if (CommonDescriptor.getInstance().getConfig().isLastCacheEnable() && !isFromConsensus) {
       switch (config.getLastCacheLoadStrategy()) {
         case UPDATE:
-        case UPDATE_NO_BLOB:
           updateLastCache(newTsFileResource, lastReader);
           break;
         case CLEAN_ALL:

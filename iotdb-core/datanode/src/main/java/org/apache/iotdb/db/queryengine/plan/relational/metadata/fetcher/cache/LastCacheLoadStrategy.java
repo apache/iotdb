@@ -21,8 +21,6 @@ package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache;
 public enum LastCacheLoadStrategy {
   // when a TsFile is loaded, read its data to update LastCache
   UPDATE,
-  // similar to UPDATE, but will invalidate cache of Blob series instead of updating them
-  UPDATE_NO_BLOB,
   // when a TsFile is loaded, clean its included device in LastCache
   CLEAN_DEVICE,
   // when a TsFile is loaded, clean all LastCache

@@ -36,6 +36,7 @@ import org.apache.iotdb.it.env.cluster.env.AbstractEnv;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2DualTableManualEnhanced;
+import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.pipe.it.dual.tablemodel.TableModelUtils;
 import org.apache.iotdb.pipe.it.dual.tablemodel.manual.AbstractPipeTableModelDualManualIT;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -49,7 +50,9 @@ import org.junit.runner.RunWith;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -1000,5 +1003,35 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
 
       TableModelUtils.assertData("test", "test", -200, 100, receiverEnv, handleFailure);
     }
+  }
+
+  @Test
+  public void testHistoryDataWithEmptyField() {
+    TestUtils.executeNonQueries(
+        senderEnv,
+        Arrays.asList(
+            "CREATE DATABASE iot_table_stream_attr",
+            "USE iot_table_stream_attr",
+            "CREATE TABLE table1 (region STRING TAG, device_id STRING TAG, model_id STRING ATTRIBUTE, maintenance STRING ATTRIBUTE COMMENT 'maintenance', temperature FLOAT FIELD COMMENT 'temperature', humidity STRING ATTRIBUTE COMMENT 'humidity', plant_id STRING TAG) COMMENT 'table1'",
+            String.format(
+                "create pipe test with source ('inclusion'='all') with sink('node-urls'='%s')",
+                receiverEnv.getDataNodeWrapper(0).getIpAndPortString()),
+            "select * from table1 order by time",
+            "INSERT INTO table1(region, plant_id, device_id, model_id, maintenance, time, temperature, humidity) VALUES ('north', null, 'd101', 'red', null, '2025-11-26 13:38:00', 91.0, null), (null, '1003', null, null, 'maint-a', '2025-11-26 13:39:00', null, '36.2'), (null, null, null, 'green', 'maint-b', '2025-11-26 13:40:00', 88.8, '34.9')",
+            "INSERT INTO table1(region, plant_id, device_id, model_id, maintenance, time, temperature, humidity) VALUES ('south', '1005', 'd105', null, null, '2025-11-26 13:41:00', 87.5, null)",
+            "INSERT INTO table1(region, plant_id, device_id, model_id, maintenance, time, temperature, humidity) VALUES ('west', '1006', 'd106', 'blue', 'maint-c', '2025-11-26 13:42:00', null, '36.8')"),
+        BaseEnv.TABLE_SQL_DIALECT);
+    TestUtils.assertDataEventuallyOnEnv(
+        receiverEnv,
+        "select * from iot_table_stream_attr.table1 order by time",
+        "time,region,device_id,model_id,maintenance,temperature,humidity,plant_id,",
+        new HashSet<>(
+            Arrays.asList(
+                "2025-11-26T13:38:00.000Z,north,d101,red,null,91.0,null,null,",
+                "2025-11-26T13:39:00.000Z,null,null,null,maint-a,null,36.2,1003,",
+                "2025-11-26T13:40:00.000Z,null,null,green,maint-b,88.8,34.9,null,",
+                "2025-11-26T13:41:00.000Z,south,d105,null,null,87.5,null,1005,",
+                "2025-11-26T13:42:00.000Z,west,d106,blue,maint-c,null,36.8,1006,")),
+        (String) null);
   }
 }

@@ -49,6 +49,7 @@ import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFil
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
+import org.apache.iotdb.db.storageengine.dataregion.utils.TableDeviceLastValueCollector;
 import org.apache.iotdb.db.storageengine.load.active.ActiveLoadAgent;
 import org.apache.iotdb.db.storageengine.load.splitter.ChunkData;
 import org.apache.iotdb.db.storageengine.load.splitter.DeletionData;
@@ -60,15 +61,10 @@ import org.apache.iotdb.metrics.utils.MetricLevel;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import org.apache.tsfile.common.constant.TsFileConstant;
-import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.PageException;
 import org.apache.tsfile.file.metadata.ChunkGroupMetadata;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.read.TimeValuePair;
-import org.apache.tsfile.utils.Pair;
-import org.apache.tsfile.utils.RamUsageEstimator;
-import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.writer.TsFileIOWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -81,16 +77,13 @@ import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.PriorityBlockingQueue;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
@@ -625,81 +618,23 @@ public class LoadTsFileManager {
         TsFileIOWriter writer, TsFileResource tsFileResource, ProgressIndex progressIndex)
         throws IOException {
       // Update time index by chunk groups still in memory
-      Map<IDeviceID, Map<String, TimeValuePair>> deviceLastValues = null;
-      if (IoTDBDescriptor.getInstance().getConfig().isCacheLastValuesForLoad()) {
-        deviceLastValues = new HashMap<>();
-      }
-      AtomicLong lastValuesMemCost = new AtomicLong(0);
+      final TableDeviceLastValueCollector lastValueCollector =
+          CONFIG.isCacheLastValuesForLoad()
+              ? TableDeviceLastValueCollector.create(CONFIG.getCacheLastValuesMemoryBudgetInByte())
+              : null;
 
       for (final ChunkGroupMetadata chunkGroupMetadata : writer.getChunkGroupMetadataList()) {
         final IDeviceID device = chunkGroupMetadata.getDevice();
         for (final ChunkMetadata chunkMetadata : chunkGroupMetadata.getChunkMetadataList()) {
           tsFileResource.updateStartTime(device, chunkMetadata.getStartTime());
           tsFileResource.updateEndTime(device, chunkMetadata.getEndTime());
-          if (deviceLastValues != null) {
-            Map<String, TimeValuePair> deviceMap =
-                deviceLastValues.computeIfAbsent(
-                    device,
-                    d -> {
-                      Map<String, TimeValuePair> map = new HashMap<>();
-                      lastValuesMemCost.addAndGet(RamUsageEstimator.shallowSizeOf(map));
-                      lastValuesMemCost.addAndGet(device.ramBytesUsed());
-                      return map;
-                    });
-            int prevSize = deviceMap.size();
-            deviceMap.compute(
-                chunkMetadata.getMeasurementUid(),
-                (m, oldPair) -> {
-                  if (oldPair != null && oldPair.getTimestamp() > chunkMetadata.getEndTime()) {
-                    return oldPair;
-                  }
-                  TsPrimitiveType lastValue =
-                      chunkMetadata.getStatistics() != null
-                              && chunkMetadata.getDataType() != TSDataType.BLOB
-                          ? TsPrimitiveType.getByType(
-                              chunkMetadata.getDataType() == TSDataType.VECTOR
-                                  ? TSDataType.INT64
-                                  : chunkMetadata.getDataType(),
-                              chunkMetadata.getStatistics().getLastValue())
-                          : null;
-                  TimeValuePair timeValuePair =
-                      lastValue != null
-                          ? new TimeValuePair(chunkMetadata.getEndTime(), lastValue)
-                          : null;
-                  if (oldPair != null) {
-                    lastValuesMemCost.addAndGet(-oldPair.getSize());
-                  }
-                  if (timeValuePair != null) {
-                    lastValuesMemCost.addAndGet(timeValuePair.getSize());
-                  }
-                  return timeValuePair;
-                });
-            int afterSize = deviceMap.size();
-            lastValuesMemCost.addAndGet(
-                (afterSize - prevSize) * RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY);
-            if (lastValuesMemCost.get()
-                > IoTDBDescriptor.getInstance()
-                    .getConfig()
-                    .getCacheLastValuesMemoryBudgetInByte()) {
-              deviceLastValues = null;
-            }
+          if (Objects.nonNull(lastValueCollector)) {
+            lastValueCollector.update(device, chunkMetadata);
           }
         }
       }
-      if (deviceLastValues != null) {
-        Map<IDeviceID, List<Pair<String, TimeValuePair>>> finalDeviceLastValues;
-        finalDeviceLastValues = new HashMap<>(deviceLastValues.size());
-        for (final Map.Entry<IDeviceID, Map<String, TimeValuePair>> entry :
-            deviceLastValues.entrySet()) {
-          final IDeviceID device = entry.getKey();
-          Map<String, TimeValuePair> lastValues = entry.getValue();
-          List<Pair<String, TimeValuePair>> pairList =
-              lastValues.entrySet().stream()
-                  .map(e -> new Pair<>(e.getKey(), e.getValue()))
-                  .collect(Collectors.toList());
-          finalDeviceLastValues.put(device, pairList);
-        }
-        tsFileResource.setLastValues(finalDeviceLastValues);
+      if (Objects.nonNull(lastValueCollector)) {
+        tsFileResource.setLastValues(lastValueCollector.toTsFileResourceLastValues());
       }
       tsFileResource.setStatus(TsFileResourceStatus.NORMAL);
       tsFileResource.setProgressIndex(progressIndex);
