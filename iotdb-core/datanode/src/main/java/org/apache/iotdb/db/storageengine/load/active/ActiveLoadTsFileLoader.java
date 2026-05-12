@@ -218,7 +218,8 @@ public class ActiveLoadTsFileLoader {
       final ActiveLoadPendingQueue.ActiveLoadEntry entry, final IClientSession session)
       throws FileNotFoundException {
     final File tsFile = new File(entry.getFile());
-    final LoadTsFileStatement statement = new LoadTsFileStatement(entry.getFile());
+    final LoadTsFileStatement statement =
+        LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath());
 
     statement.setDeleteAfterLoad(true);
     statement.setAutoCreateDatabase(
