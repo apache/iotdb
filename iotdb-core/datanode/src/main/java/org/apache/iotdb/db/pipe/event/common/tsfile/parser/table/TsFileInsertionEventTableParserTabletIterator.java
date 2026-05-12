@@ -537,9 +537,7 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
         Objects.nonNull(data.getVector()) ? data.getVector() : new TsPrimitiveType[0];
     boolean needFillTime = false;
     boolean hasNonDeletedField = dataTypeList.size() == deviceIdSize;
-    for (int i = objectPathsOnly ? 0 : deviceIdSize,
-            size = dataTypeList.size(),
-            columnIndex = 0;
+    for (int i = objectPathsOnly ? 0 : deviceIdSize, size = dataTypeList.size(), columnIndex = 0;
         i < size;
         i++, columnIndex++) {
       final TSDataType columnType = tablet.getSchemas().get(i).getType();
