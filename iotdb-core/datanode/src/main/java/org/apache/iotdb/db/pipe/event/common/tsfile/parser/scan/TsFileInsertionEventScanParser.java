@@ -598,7 +598,21 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
                   final long chunkSize = timeChunkSize + valueChunkSize;
                   final long pageMemorySize = timeChunkPageMemorySize + valueChunkPageMemorySize;
                   if (chunkSize + chunkHeader.getDataSize()
-                      > allocatedMemoryBlockForChunk.getMemoryUsageInBytes()) {
+                          > allocatedMemoryBlockForChunk.getMemoryUsageInBytes()
+                      || timeChunkPageMemorySize > 0
+                          && chunkPageMemorySize > 0
+                          && pageMemorySize + chunkPageMemorySize
+                              > getPageDataMemoryLimitInBytes()) {
+                    if (valueChunkList.size() == 1) {
+                      final long currentPageMemorySize =
+                          timeChunkPageMemorySize > 0 && valueChunkPageMemorySize > 0
+                              ? pageMemorySize
+                              : 0;
+                      if (currentPageMemorySize > getPageDataMemoryLimitInBytes()) {
+                        PipeDataNodeResourceManager.memory()
+                            .forceResize(allocatedMemoryBlockForBatchData, currentPageMemorySize);
+                      }
+                    }
                     needReturn = recordAlignedChunk(valueChunkList, marker);
                   }
                 }
