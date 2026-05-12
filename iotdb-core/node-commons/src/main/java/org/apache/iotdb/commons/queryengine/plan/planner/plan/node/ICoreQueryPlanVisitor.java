@@ -58,6 +58,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.UnionNo
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ValueFillNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ValuesNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.WindowNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 
 public interface ICoreQueryPlanVisitor<R, C> extends IPlanVisitor<R, C> {
 
@@ -90,6 +91,10 @@ public interface ICoreQueryPlanVisitor<R, C> extends IPlanVisitor<R, C> {
   }
 
   // =============================== Used for Table Model ====================================
+  default R visitTableScan(TableScanNode node, C context) {
+    return visitPlan(node, context);
+  }
+
   default R visitFilter(FilterNode node, C context) {
     return visitSingleChildProcess(node, context);
   }

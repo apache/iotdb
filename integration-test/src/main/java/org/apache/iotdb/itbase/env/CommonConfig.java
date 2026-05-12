@@ -215,4 +215,6 @@ public interface CommonConfig {
   CommonConfig setCteBufferSize(long cteBufferSize);
 
   CommonConfig setMaxRowsInCteBuffer(int maxRows);
+
+  CommonConfig setEnableTopologyProbing(boolean enableTopologyProbing);
 }

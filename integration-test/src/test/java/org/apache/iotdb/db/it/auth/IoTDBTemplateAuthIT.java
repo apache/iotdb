@@ -83,7 +83,7 @@ public class IoTDBTemplateAuthIT {
       assertNonQueryTestFail(
           adminStmt,
           "create database root.__audit",
-          "803: The database 'root.__audit' is read-only");
+          "803: The database name \"root.__audit\" is reserved, please use another valid database name.");
 
       assertNonQueryTestFail(
           adminStmt,

@@ -49,7 +49,7 @@ public class DeviceTableScanNode extends TableScanNode {
 
   protected List<DeviceEntry> deviceEntries;
 
-  // Indicates the respective index order of ID and Attribute columns in DeviceEntry.
+  // Indicates the respective index order of tag and attribute columns in DeviceEntry.
   // For example, for DeviceEntry `table1.tag1.tag2.attribute1.attribute2.s1.s2`, the content of
   // `tagAndAttributeIndexMap` will
   // be `tag1: 0, tag2: 1, attribute1: 0, attribute2: 1`.

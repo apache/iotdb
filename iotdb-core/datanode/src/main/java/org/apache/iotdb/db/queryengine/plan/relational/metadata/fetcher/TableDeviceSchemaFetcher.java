@@ -250,19 +250,19 @@ public class TableDeviceSchemaFetcher {
     final List<Expression> tagFuzzyPredicateList = separatedExpression.right; // and-concat
 
     final Expression compactedTagFuzzyPredicate =
-        SchemaPredicateUtil.compactDeviceIdFuzzyPredicate(tagFuzzyPredicateList);
+        SchemaPredicateUtil.compactTagFuzzyPredicate(tagFuzzyPredicateList);
 
     // Each element represents one batch of possible devices
     // expressions inner each element are and-concat representing conditions of different column
     final List<Map<Integer, List<SchemaFilter>>> index2FilterMapList =
-        SchemaPredicateUtil.convertDeviceIdPredicateToOrConcatList(
+        SchemaPredicateUtil.convertTagPredicateToOrConcatList(
             tagDeterminedPredicateList, tableInstance, mayContainDuplicateDevice);
-    // If List<Expression> in idPredicateList contains all id columns comparison which can use
-    // SchemaCache, we store its index.
+    // If a predicate branch contains comparisons for all tag columns and can use SchemaCache, we
+    // store its index.
     final List<Integer> tagSingleMatchIndexList =
         SchemaPredicateUtil.extractTagSingleMatchExpressionCases(
             index2FilterMapList, tableInstance);
-    // Store missing cache index in idSingleMatchIndexList
+    // Store branches that miss the cache in tagSingleMatchPredicateNotInCache
     final List<Integer> tagSingleMatchPredicateNotInCache = new ArrayList<>();
 
     final boolean isExactDeviceQuery = tagSingleMatchIndexList.size() == index2FilterMapList.size();

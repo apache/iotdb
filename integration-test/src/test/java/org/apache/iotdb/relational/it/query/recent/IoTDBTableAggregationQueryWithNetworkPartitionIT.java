@@ -76,7 +76,8 @@ public class IoTDBTableAggregationQueryWithNetworkPartitionIT {
         .setSchemaReplicationFactor(testReplicationFactor)
         .setDataReplicationFactor(testReplicationFactor)
         .setTimePartitionInterval(testTimePartitionInterval)
-        .setDefaultDataRegionGroupNumPerDatabase(testDataRegionGroupPerDatabase);
+        .setDefaultDataRegionGroupNumPerDatabase(testDataRegionGroupPerDatabase)
+        .setEnableTopologyProbing(true);
     EnvFactory.getEnv().initClusterEnvironment(1, 3);
     prepareTableData(createSqls);
   }
