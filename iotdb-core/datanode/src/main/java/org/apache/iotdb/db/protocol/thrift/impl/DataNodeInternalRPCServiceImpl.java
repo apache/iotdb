@@ -4277,7 +4277,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
             req.getCliHostname(),
             AuditEventType.valueOf(req.getAuditEventType()),
             AuditLogOperation.valueOf(req.getOperationType()),
-            PrivilegeType.valueOf(req.getPrivilegeType()),
+            parsePrivilegeTypes(req.getPrivilegeType()),
             req.isResult(),
             req.getDatabase(),
             req.getSqlString());
@@ -4287,6 +4287,14 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       return onIoTDBException(e, OperationType.WRITE_AUDIT_LOG, e.getErrorCode());
     }
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  }
+
+  private List<PrivilegeType> parsePrivilegeTypes(String privilegeTypes) {
+    return Arrays.stream(privilegeTypes.replace("[", "").replace("]", "").split(","))
+        .map(String::trim)
+        .filter(privilegeType -> !privilegeType.isEmpty())
+        .map(PrivilegeType::valueOf)
+        .collect(Collectors.toList());
   }
 
   @Override

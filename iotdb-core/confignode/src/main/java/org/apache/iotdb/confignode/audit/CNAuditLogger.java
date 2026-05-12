@@ -52,44 +52,57 @@ public class CNAuditLogger extends AbstractAuditLogger {
 
   @Override
   public void log(IAuditEntity auditLogFields, Supplier<String> log) {
-    if (!CommonDescriptor.getInstance().getConfig().isEnableAuditLog()) {
-      return;
+    try {
+      if (!CommonDescriptor.getInstance().getConfig().isEnableAuditLog()) {
+        return;
+      }
+      if (noNeedInsertAuditLog(auditLogFields)) {
+        return;
+      }
+      // find database "__audit"'s data_region
+      List<TRegionReplicaSet> auditReplicaSets =
+          configManager
+              .getPartitionManager()
+              .getAllReplicaSets("root.__audit", TConsensusGroupType.DataRegion);
+      if (auditReplicaSets.isEmpty()) {
+        logger.warn("Database {} does not exist.", "root.__audit");
+        return;
+      }
+      TConsensusGroupId regionId = auditReplicaSets.get(0).getRegionId();
+      // use ConfigManager.getLoadManager().getLoadCache().getRegionLeaderMap() to get
+      // regionLeaderId
+      TDataNodeLocation regionLeader = configManager.getRegionLeaderLocation(regionId);
+      if (regionLeader == null || regionLeader.getInternalEndPoint() == null) {
+        logger.warn("Audit region leader for {} is not ready yet.", regionId);
+        return;
+      }
+      TAuditLogReq req =
+          new TAuditLogReq(
+              nullToString(auditLogFields.getUsername()),
+              auditLogFields.getUserId(),
+              nullToString(auditLogFields.getCliHostname()),
+              auditLogFields.getAuditEventType().toString(),
+              auditLogFields.getAuditLogOperation().toString(),
+              nullToString(auditLogFields.getPrivilegeTypeString()),
+              auditLogFields.getResult(),
+              nullToString(auditLogFields.getDatabase()),
+              nullToString(auditLogFields.getSqlString()),
+              nullToString(log.get()),
+              CONF.getConfigNodeId());
+      // refer the implementation of HeartbeatService.pingRegisteredDataNode(). By appending a new
+      // writeAuditLog() interface in AsyncDataNodeHeartbeatClientPool, the main thread is not
+      // required to wait until the write audit log request to be complete.
+      AsyncDataNodeHeartbeatClientPool.getInstance()
+          .writeAuditLog(
+              regionLeader.getInternalEndPoint(),
+              req,
+              new DataNodeWriteAuditLogHandler(regionLeader.getDataNodeId()));
+    } catch (Exception e) {
+      logger.warn("Failed to write ConfigNode audit log because", e);
     }
-    if (noNeedInsertAuditLog(auditLogFields)) {
-      return;
-    }
-    // find database "__audit"'s data_region
-    List<TRegionReplicaSet> auditReplicaSets =
-        configManager
-            .getPartitionManager()
-            .getAllReplicaSets("root.__audit", TConsensusGroupType.DataRegion);
-    if (auditReplicaSets.isEmpty()) {
-      logger.warn("Database {} does not exist.", "root.__audit");
-      return;
-    }
-    TConsensusGroupId regionId = auditReplicaSets.get(0).getRegionId();
-    // use ConfigManager.getLoadManager().getLoadCache().getRegionLeaderMap() to get regionLeaderId
-    TDataNodeLocation regionLeader = configManager.getRegionLeaderLocation(regionId);
-    TAuditLogReq req =
-        new TAuditLogReq(
-            auditLogFields.getUsername(),
-            auditLogFields.getUserId(),
-            auditLogFields.getCliHostname(),
-            auditLogFields.getAuditEventType().toString(),
-            auditLogFields.getAuditLogOperation().toString(),
-            auditLogFields.getPrivilegeTypeString(),
-            auditLogFields.getResult(),
-            auditLogFields.getDatabase(),
-            auditLogFields.getSqlString(),
-            log.get(),
-            CONF.getConfigNodeId());
-    // refer the implementation of HeartbeatService.pingRegisteredDataNode(). By appending a new
-    // writeAuditLog() interface in AsyncDataNodeHeartbeatClientPool, the main thread is not
-    // required to wait until the write audit log request to be complete.
-    AsyncDataNodeHeartbeatClientPool.getInstance()
-        .writeAuditLog(
-            regionLeader.getInternalEndPoint(),
-            req,
-            new DataNodeWriteAuditLogHandler(regionLeader.getDataNodeId()));
+  }
+
+  private static String nullToString(String value) {
+    return value == null ? "null" : value;
   }
 }

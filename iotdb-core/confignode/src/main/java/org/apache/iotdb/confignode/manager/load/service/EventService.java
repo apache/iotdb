@@ -20,6 +20,11 @@
 package org.apache.iotdb.confignode.manager.load.service;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.commons.audit.AbstractAuditLogger;
+import org.apache.iotdb.commons.audit.AuditEventType;
+import org.apache.iotdb.commons.audit.AuditLogFields;
+import org.apache.iotdb.commons.audit.AuditLogOperation;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
@@ -33,6 +38,7 @@ import org.apache.iotdb.confignode.manager.load.subscriber.ConsensusGroupStatist
 import org.apache.iotdb.confignode.manager.load.subscriber.IClusterStatusSubscriber;
 import org.apache.iotdb.confignode.manager.load.subscriber.NodeStatisticsChangeEvent;
 import org.apache.iotdb.confignode.manager.load.subscriber.RegionGroupStatisticsChangeEvent;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 
 import com.google.common.eventbus.AsyncEventBus;
 import com.google.common.eventbus.EventBus;
@@ -55,6 +61,17 @@ import java.util.concurrent.TimeUnit;
 public class EventService {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(EventService.class);
+  private static final AuditLogFields ENTITY_STATUS_CHANGED_AUDIT_LOG_FIELDS =
+      new AuditLogFields(
+          AuthorityChecker.INTERNAL_AUDIT_USER_ID,
+          AuthorityChecker.INTERNAL_AUDIT_USER,
+          null,
+          AuditEventType.ENTITY_STATUS_CHANGED,
+          AuditLogOperation.CONTROL,
+          PrivilegeType.AUDIT,
+          true,
+          null,
+          null);
 
   private static final long HEARTBEAT_INTERVAL =
       ConfigNodeDescriptor.getInstance().getConf().getHeartbeatIntervalInMs();
@@ -73,9 +90,11 @@ public class EventService {
   private final Map<TConsensusGroupId, ConsensusGroupStatistics>
       previousConsensusGroupStatisticsMap;
   private final EventBus eventPublisher;
+  private final AbstractAuditLogger auditLogger;
 
-  public EventService(LoadCache loadCache) {
+  public EventService(LoadCache loadCache, AbstractAuditLogger auditLogger) {
     this.loadCache = loadCache;
+    this.auditLogger = Objects.requireNonNull(auditLogger, "auditLogger can not be null");
     this.previousNodeStatisticsMap = new TreeMap<>();
     this.previousRegionGroupStatisticsMap = new TreeMap<>();
     this.previousConsensusGroupStatisticsMap = new TreeMap<>();
@@ -161,12 +180,19 @@ public class EventService {
     LOGGER.info("[NodeStatistics] NodeStatisticsMap: ");
     for (Map.Entry<Integer, Pair<NodeStatistics, NodeStatistics>> nodeCacheEntry :
         differentNodeStatisticsMap.entrySet()) {
-      LOGGER.info(
-          "[NodeStatistics]\t {}: {} -> {}",
-          "nodeId{" + nodeCacheEntry.getKey() + "}",
+      recordNodeStatistics(
+          nodeCacheEntry.getKey(),
           nodeCacheEntry.getValue().getLeft(),
           nodeCacheEntry.getValue().getRight());
     }
+  }
+
+  private void recordNodeStatistics(
+      int nodeId, NodeStatistics previousStatistics, NodeStatistics currentStatistics) {
+    recordStatisticsAndAuditLog(
+        String.format(
+            "[NodeStatistics]\t nodeId{%d}: %s -> %s",
+            nodeId, previousStatistics, currentStatistics));
   }
 
   public synchronized void checkAndBroadcastRegionGroupStatisticsChangeEventIfNecessary() {
@@ -208,39 +234,51 @@ public class EventService {
     LOGGER.info("[RegionGroupStatistics] RegionGroupStatisticsMap: ");
     for (Map.Entry<TConsensusGroupId, Pair<RegionGroupStatistics, RegionGroupStatistics>>
         regionGroupStatisticsEntry : differentRegionGroupStatisticsMap.entrySet()) {
-      RegionGroupStatistics previousStatistics = regionGroupStatisticsEntry.getValue().getLeft();
-      RegionGroupStatistics currentStatistics = regionGroupStatisticsEntry.getValue().getRight();
-      LOGGER.info(
-          "[RegionGroupStatistics]\t RegionGroup {}: {} -> {}",
+      recordRegionGroupStatistics(
           regionGroupStatisticsEntry.getKey(),
-          previousStatistics == null ? null : previousStatistics.getRegionGroupStatus(),
-          currentStatistics == null ? null : currentStatistics.getRegionGroupStatus());
+          regionGroupStatisticsEntry.getValue().getLeft(),
+          regionGroupStatisticsEntry.getValue().getRight());
+    }
+  }
 
-      List<Integer> leftIds =
-          previousStatistics == null ? Collections.emptyList() : previousStatistics.getRegionIds();
-      List<Integer> rightIds =
-          currentStatistics == null ? Collections.emptyList() : currentStatistics.getRegionIds();
-      for (Integer leftId : leftIds) {
-        if (rightIds.contains(leftId)) {
-          LOGGER.info(
-              "[RegionGroupStatistics]\t Region in DataNode {}: {} -> {}",
-              leftId,
-              previousStatistics.getRegionStatus(leftId),
-              currentStatistics.getRegionStatus(leftId));
-        } else {
-          LOGGER.info(
-              "[RegionGroupStatistics]\t Region in DataNode {}: {} -> null",
-              leftId,
-              previousStatistics.getRegionStatus(leftId));
-        }
+  private void recordRegionGroupStatistics(
+      TConsensusGroupId regionGroupId,
+      RegionGroupStatistics previousStatistics,
+      RegionGroupStatistics currentStatistics) {
+    recordStatisticsAndAuditLog(
+        String.format(
+            "[RegionGroupStatistics]\t RegionGroup %s: %s -> %s",
+            regionGroupId,
+            previousStatistics == null ? null : previousStatistics.getRegionGroupStatus(),
+            currentStatistics == null ? null : currentStatistics.getRegionGroupStatus()));
+
+    List<Integer> leftIds =
+        previousStatistics == null ? Collections.emptyList() : previousStatistics.getRegionIds();
+    List<Integer> rightIds =
+        currentStatistics == null ? Collections.emptyList() : currentStatistics.getRegionIds();
+    for (Integer leftId : leftIds) {
+      if (rightIds.contains(leftId)) {
+        recordStatisticsAndAuditLog(
+            String.format(
+                "[RegionGroupStatistics]\t RegionGroup %s, Region in DataNode %d: %s -> %s",
+                regionGroupId,
+                leftId,
+                previousStatistics.getRegionStatus(leftId),
+                currentStatistics.getRegionStatus(leftId)));
+      } else {
+        recordStatisticsAndAuditLog(
+            String.format(
+                "[RegionGroupStatistics]\t RegionGroup %s, Region in DataNode %d: %s -> null",
+                regionGroupId, leftId, previousStatistics.getRegionStatus(leftId)));
       }
-      for (Integer rightId : rightIds) {
-        if (!leftIds.contains(rightId)) {
-          LOGGER.info(
-              "[RegionGroupStatistics]\t Region in DataNode {}: null -> {}",
-              rightId,
-              currentStatistics.getRegionStatus(rightId));
-        }
+    }
+
+    for (Integer rightId : rightIds) {
+      if (!leftIds.contains(rightId)) {
+        recordStatisticsAndAuditLog(
+            String.format(
+                "[RegionGroupStatistics]\t RegionGroup %s, Region in DataNode %d: null -> %s",
+                regionGroupId, rightId, currentStatistics.getRegionStatus(rightId)));
       }
     }
   }
@@ -290,13 +328,29 @@ public class EventService {
       if (!Objects.equals(
           consensusGroupStatisticsEntry.getValue().getRight(),
           consensusGroupStatisticsEntry.getValue().getLeft())) {
-        LOGGER.info(
-            "[ConsensusGroupStatistics]\t {}: {} -> {}",
-            consensusGroupStatisticsEntry.getKey(),
-            consensusGroupStatisticsEntry.getValue().getLeft(),
-            consensusGroupStatisticsEntry.getValue().getRight());
+        ConsensusGroupStatistics previousStatistics =
+            consensusGroupStatisticsEntry.getValue().getLeft();
+        ConsensusGroupStatistics currentStatistics =
+            consensusGroupStatisticsEntry.getValue().getRight();
+        recordConsensusGroupStatistics(
+            consensusGroupStatisticsEntry.getKey(), previousStatistics, currentStatistics);
       }
     }
+  }
+
+  private void recordConsensusGroupStatistics(
+      TConsensusGroupId consensusGroupId,
+      ConsensusGroupStatistics previousStatistics,
+      ConsensusGroupStatistics currentStatistics) {
+    recordStatisticsAndAuditLog(
+        String.format(
+            "[ConsensusGroupStatistics]\t %s: %s -> %s",
+            consensusGroupId, previousStatistics, currentStatistics));
+  }
+
+  private void recordStatisticsAndAuditLog(String log) {
+    LOGGER.info(log);
+    auditLogger.log(ENTITY_STATUS_CHANGED_AUDIT_LOG_FIELDS, () -> log);
   }
 
   @TestOnly

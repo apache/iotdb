@@ -88,7 +88,7 @@ public class LoadManager {
     setHeartbeatService(configManager, loadCache);
     this.statisticsService = new StatisticsService(loadCache);
     this.topologyService = new TopologyService(configManager, loadCache::updateTopology);
-    this.eventService = new EventService(loadCache);
+    this.eventService = new EventService(loadCache, configManager.getAuditLogger());
     this.eventService.register(configManager.getPipeManager().getPipeRuntimeCoordinator());
     this.eventService.register(routeBalancer);
     this.eventService.register(topologyService);

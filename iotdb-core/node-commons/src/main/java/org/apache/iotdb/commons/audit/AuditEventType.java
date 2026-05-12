@@ -50,7 +50,8 @@ public enum AuditEventType {
   SLOW_OPERATION,
 
   DN_SHUTDOWN,
-  ACCOUNT_UNLOCKED;
+  ACCOUNT_UNLOCKED,
+  ENTITY_STATUS_CHANGED;
 
   @Override
   public String toString() {

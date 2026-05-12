@@ -99,7 +99,6 @@ public class DNAuditLogger extends AbstractAuditLogger {
 
   private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
   private static final String AUDIT_LOG_DEVICE = "root.__audit.log.node_%s.u_%s";
-  private static final String AUDIT_CN_LOG_DEVICE = "root.__audit.log.node_%s.u_all";
 
   private static final String AUDIT_LOG_DEVICE_PATH = "root.__audit.log.**";
   private static final String AUDIT_LOG_PREFIX = "AUDIT";
@@ -716,11 +715,16 @@ public class DNAuditLogger extends AbstractAuditLogger {
       if (noNeedInsertAuditLog(auditLogFields)) {
         return;
       }
+      long userId = auditLogFields.getUserId();
+      String user = String.valueOf(userId);
+      if (userId == -1) {
+        user = "none";
+      }
       InsertRowStatement statement =
           generateInsertStatement(
               auditLogFields,
               log,
-              DEVICE_PATH_CACHE.getPartialPath(String.format(AUDIT_CN_LOG_DEVICE, nodeId)));
+              DEVICE_PATH_CACHE.getPartialPath(String.format(AUDIT_LOG_DEVICE, nodeId, user)));
       asyncBatchUtils.push(statement);
     } catch (Exception e) {
       logger.warn("[{}}] Failed to log audit events because", AUDIT_LOG_PREFIX, e);

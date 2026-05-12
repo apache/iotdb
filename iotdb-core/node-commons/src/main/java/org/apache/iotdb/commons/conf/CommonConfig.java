@@ -516,7 +516,8 @@ public class CommonConfig {
           AuditEventType.LOGIN_REJECT_IP,
           AuditEventType.LOGIN_FAIL_MAX_TIMES,
           AuditEventType.LOGIN_EXCEED_LIMIT,
-          AuditEventType.ACCOUNT_UNLOCKED);
+          AuditEventType.ACCOUNT_UNLOCKED,
+          AuditEventType.ENTITY_STATUS_CHANGED);
 
   /** The level of privilege required to record audit logs * */
   private PrivilegeLevel auditableOperationLevel = PrivilegeLevel.GLOBAL;
