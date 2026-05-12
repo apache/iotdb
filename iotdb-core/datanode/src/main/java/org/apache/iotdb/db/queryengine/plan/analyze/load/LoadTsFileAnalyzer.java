@@ -676,6 +676,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       Map<IDeviceID, List<TimeseriesMetadata>> device2TimeseriesMetadata) {
     return device2TimeseriesMetadata.values().stream()
         .flatMap(List::stream)
+        .filter(timeseriesMetadata -> !timeseriesMetadata.getMeasurementId().isEmpty())
         .mapToLong(t -> t.getStatistics().getCount())
         .sum();
   }

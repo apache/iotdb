@@ -110,6 +110,7 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
   private List<String> measurementList;
   private List<TSDataType> dataTypeList;
   private List<String> objectMeasurementList;
+  private List<IMeasurementSchema> fieldSchemaList;
   private int deviceIdSize;
 
   private List<ModsOperationUtil.ModsInfo> modsInfoList;
@@ -210,7 +211,7 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
 
               long size = 0;
               List<AbstractAlignedChunkMetadata> iChunkMetadataList =
-                  reader.getAlignedChunkMetadata(pair.left, true);
+                  reader.getAlignedChunkMetadata(pair.left, false);
 
               Iterator<AbstractAlignedChunkMetadata> chunkMetadataIterator =
                   iChunkMetadataList.iterator();
@@ -229,6 +230,11 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
                   continue;
                 }
 
+                if (areAllFieldsDeletedByMods(pair.getLeft(), alignedChunkMetadata)) {
+                  chunkMetadataIterator.remove();
+                  continue;
+                }
+
                 Iterator<IChunkMetadata> iChunkMetadataIterator =
                     alignedChunkMetadata.getValueChunkMetadataList().iterator();
                 while (iChunkMetadataIterator.hasNext()) {
@@ -239,17 +245,6 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
                   }
 
                   if (objectPathsOnly && iChunkMetadata.getDataType() != TSDataType.OBJECT) {
-                    iChunkMetadataIterator.remove();
-                    continue;
-                  }
-
-                  if (!modifications.isEmpty()
-                      && ModsOperationUtil.isAllDeletedByMods(
-                          pair.getLeft(),
-                          iChunkMetadata.getMeasurementUid(),
-                          alignedChunkMetadata.getStartTime(),
-                          alignedChunkMetadata.getEndTime(),
-                          modifications)) {
                     iChunkMetadataIterator.remove();
                   }
                 }
@@ -288,6 +283,7 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
               dataTypeList = new ArrayList<>();
               columnTypes = new ArrayList<>();
               measurementList = new ArrayList<>();
+              fieldSchemaList = new ArrayList<>();
               objectMeasurementList = new ArrayList<>();
 
               for (int i = 0; i < columnSchemaSize; i++) {
@@ -303,6 +299,9 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
                     dataTypeList.add(schema.getType());
                   } else if (schema.getType() == TSDataType.OBJECT) {
                     objectMeasurementList.add(measurementName);
+                  }
+                  if (ColumnCategory.FIELD.equals(columnCategory)) {
+                    fieldSchemaList.add(schema);
                   }
                 }
               }
@@ -367,9 +366,9 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
             tablet =
                 new Tablet(
                     tableName,
-                    measurementList,
-                    dataTypeList,
-                    columnTypes,
+                    new ArrayList<>(measurementList),
+                    new ArrayList<>(dataTypeList),
+                    new ArrayList<>(columnTypes),
                     rowCountAndMemorySize.getLeft());
           }
           tablet.initBitMaps();
@@ -420,6 +419,20 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
     long size = timeChunkSize;
 
     final List<Chunk> valueChunkList = new ArrayList<>();
+    final Map<String, IChunkMetadata> valueChunkMetadataMap =
+        alignedChunkMetadata.getValueChunkMetadataList().stream()
+            .filter(Objects::nonNull)
+            .filter(
+                metadata ->
+                    !isFieldDeletedByMods(
+                        metadata.getMeasurementUid(),
+                        alignedChunkMetadata.getStartTime(),
+                        alignedChunkMetadata.getEndTime()))
+            .collect(
+                Collectors.toMap(
+                    IChunkMetadata::getMeasurementUid,
+                    metadata -> metadata,
+                    (left, right) -> left));
 
     // To ensure that the Tablet has the same alignedChunk column as the current one,
     // you need to create a new Tablet to fill in the data.
@@ -436,34 +449,50 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
     measurementList.subList(deviceIdSize, measurementList.size()).clear();
     dataTypeList.subList(deviceIdSize, dataTypeList.size()).clear();
 
-    for (; offset < alignedChunkMetadata.getValueChunkMetadataList().size(); ++offset) {
-      final IChunkMetadata metadata = alignedChunkMetadata.getValueChunkMetadataList().get(offset);
-      if (metadata != null) {
-        final Chunk chunk = reader.readMemChunk((ChunkMetadata) metadata);
-        size += PipeMemoryWeightUtil.calculateChunkRamBytesUsed(chunk);
-        if (size > allocatedMemoryBlockForChunk.getMemoryUsageInBytes()) {
-          if (valueChunkList.isEmpty()) {
-            // If the first chunk exceeds the memory limit, we need to allocate more memory
-            PipeDataNodeResourceManager.memory().forceResize(allocatedMemoryBlockForChunk, size);
-            columnTypes.add(ColumnCategory.FIELD);
-            measurementList.add(metadata.getMeasurementUid());
-            dataTypeList.add(metadata.getDataType());
-            valueChunkList.add(chunk);
-            ++offset;
-          }
-          break;
-        } else {
-          // Record the column information corresponding to Meta to fill in Tablet
-          columnTypes.add(ColumnCategory.FIELD);
-          measurementList.add(metadata.getMeasurementUid());
-          dataTypeList.add(metadata.getDataType());
-          valueChunkList.add(chunk);
-        }
+    boolean hasSelectedField = fieldSchemaList.isEmpty();
+    boolean hasSelectedNonNullChunk = false;
+    for (; offset < fieldSchemaList.size(); ++offset) {
+      final IMeasurementSchema schema = fieldSchemaList.get(offset);
+      if (isFieldDeletedByMods(
+          schema.getMeasurementName(),
+          alignedChunkMetadata.getStartTime(),
+          alignedChunkMetadata.getEndTime())) {
+        continue;
       }
+
+      final IChunkMetadata metadata = valueChunkMetadataMap.get(schema.getMeasurementName());
+      Chunk chunk = null;
+      if (metadata != null) {
+        chunk = reader.readMemChunk((ChunkMetadata) metadata);
+        final long newSize = size + PipeMemoryWeightUtil.calculateChunkRamBytesUsed(chunk);
+        if (newSize > allocatedMemoryBlockForChunk.getMemoryUsageInBytes()) {
+          if (!hasSelectedNonNullChunk) {
+            // If the first chunk exceeds the memory limit, we need to allocate more memory
+            size = newSize;
+            PipeDataNodeResourceManager.memory().forceResize(allocatedMemoryBlockForChunk, size);
+          } else {
+            break;
+          }
+        } else {
+          size = newSize;
+        }
+        hasSelectedNonNullChunk = true;
+      }
+      columnTypes.add(ColumnCategory.FIELD);
+      measurementList.add(schema.getMeasurementName());
+      dataTypeList.add(schema.getType());
+      valueChunkList.add(chunk);
+      hasSelectedField = true;
     }
 
-    if (offset >= alignedChunkMetadata.getValueChunkMetadataList().size()) {
+    if (offset >= fieldSchemaList.size()) {
       currentChunkMetadata = null;
+    }
+
+    if (!hasSelectedField) {
+      this.chunkReader = null;
+      this.batchData = null;
+      return;
     }
 
     this.chunkReader = new TableChunkReader(timeChunk, valueChunkList, null);
@@ -476,20 +505,52 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
             modifications);
   }
 
+  private boolean areAllFieldsDeletedByMods(
+      final IDeviceID currentDeviceID, final AbstractAlignedChunkMetadata alignedChunkMetadata) {
+    if (modifications.isEmpty() || fieldSchemaList.isEmpty()) {
+      return false;
+    }
+
+    for (final IMeasurementSchema schema : fieldSchemaList) {
+      if (!ModsOperationUtil.isAllDeletedByMods(
+          currentDeviceID,
+          schema.getMeasurementName(),
+          alignedChunkMetadata.getStartTime(),
+          alignedChunkMetadata.getEndTime(),
+          modifications)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private boolean isFieldDeletedByMods(
+      final String measurementID, final long startTime, final long endTime) {
+    return !modifications.isEmpty()
+        && ModsOperationUtil.isAllDeletedByMods(
+            deviceID, measurementID, startTime, endTime, modifications);
+  }
+
   private boolean fillMeasurementValueColumns(
       final BatchData data, final Tablet tablet, final int rowIndex) {
-    final TsPrimitiveType[] primitiveTypes = data.getVector();
+    final TsPrimitiveType[] primitiveTypes =
+        Objects.nonNull(data.getVector()) ? data.getVector() : new TsPrimitiveType[0];
     boolean needFillTime = false;
+    boolean hasNonDeletedField = dataTypeList.size() == deviceIdSize;
     for (int i = objectPathsOnly ? 0 : deviceIdSize,
-            size = tablet.getSchemas().size(),
+            size = dataTypeList.size(),
             columnIndex = 0;
         i < size;
         i++, columnIndex++) {
       final TSDataType columnType = tablet.getSchemas().get(i).getType();
-      final TsPrimitiveType primitiveType = primitiveTypes[columnIndex];
-      if (primitiveType == null
-          || ModsOperationUtil.isDelete(data.currentTime(), modsInfoList.get(i))) {
-        switch (columnType) {
+      final TsPrimitiveType primitiveType =
+          i - deviceIdSize < primitiveTypes.length ? primitiveTypes[i - deviceIdSize] : null;
+      final boolean isDeleted = ModsOperationUtil.isDelete(data.currentTime(), modsInfoList.get(i));
+      if (!isDeleted) {
+        hasNonDeletedField = true;
+      }
+      if (primitiveType == null || isDeleted) {
+        switch (dataTypeList.get(i)) {
           case TEXT:
           case BLOB:
           case STRING:
@@ -552,7 +613,7 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
           throw new UnSupportedDataTypeException("UnSupported" + primitiveType.getDataType());
       }
     }
-    return needFillTime;
+    return needFillTime || hasNonDeletedField;
   }
 
   private void fillDeviceIdColumns(
