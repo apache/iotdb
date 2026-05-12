@@ -70,6 +70,10 @@ public class MappableUDFColumnTransformer extends ColumnTransformer {
 
   @Override
   public void close() {
+    super.close();
+    for (ColumnTransformer inputColumnTransformer : inputColumnTransformers) {
+      inputColumnTransformer.close();
+    }
     // finalize executor
     executor.beforeDestroy();
   }
