@@ -449,10 +449,15 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
     measurementList.subList(deviceIdSize, measurementList.size()).clear();
     dataTypeList.subList(deviceIdSize, dataTypeList.size()).clear();
 
-    boolean hasSelectedField = fieldSchemaList.isEmpty();
+    boolean hasSelectedField = false;
     boolean hasSelectedNonNullChunk = false;
     for (; offset < fieldSchemaList.size(); ++offset) {
       final IMeasurementSchema schema = fieldSchemaList.get(offset);
+
+      if (objectPathsOnly && schema.getType() != TSDataType.OBJECT) {
+        continue;
+      }
+
       if (isFieldDeletedByMods(
           schema.getMeasurementName(),
           alignedChunkMetadata.getStartTime(),
@@ -489,7 +494,7 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
       currentChunkMetadata = null;
     }
 
-    if (!hasSelectedField) {
+    if (!hasSelectedField && !fieldSchemaList.isEmpty()) {
       this.chunkReader = null;
       this.batchData = null;
       return;
@@ -533,22 +538,39 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
 
   private boolean fillMeasurementValueColumns(
       final BatchData data, final Tablet tablet, final int rowIndex) {
+
     final TsPrimitiveType[] primitiveTypes =
         Objects.nonNull(data.getVector()) ? data.getVector() : new TsPrimitiveType[0];
+
     boolean needFillTime = false;
     boolean hasNonDeletedField = dataTypeList.size() == deviceIdSize;
-    for (int i = objectPathsOnly ? 0 : deviceIdSize, size = dataTypeList.size(), columnIndex = 0;
-        i < size;
-        i++, columnIndex++) {
-      final TSDataType columnType = tablet.getSchemas().get(i).getType();
+    final int schemaSize = tablet.getSchemas().size();
+
+    for (int i = 0; i < schemaSize; i++) {
+      final boolean isDeviceIDColumn = !objectPathsOnly && i < deviceIdSize;
+
+      if (isDeviceIDColumn) {
+        if (!ModsOperationUtil.isDelete(data.currentTime(), modsInfoList.get(i))) {
+          hasNonDeletedField = true;
+        }
+        continue;
+      }
+
+      final int primitiveIndex = objectPathsOnly ? i : (i - deviceIdSize);
       final TsPrimitiveType primitiveType =
-          i - deviceIdSize < primitiveTypes.length ? primitiveTypes[i - deviceIdSize] : null;
+          (primitiveIndex >= 0 && primitiveIndex < primitiveTypes.length)
+              ? primitiveTypes[primitiveIndex]
+              : null;
+
       final boolean isDeleted = ModsOperationUtil.isDelete(data.currentTime(), modsInfoList.get(i));
       if (!isDeleted) {
         hasNonDeletedField = true;
       }
+
+      final TSDataType columnType = tablet.getSchemas().get(i).getType();
+
       if (primitiveType == null || isDeleted) {
-        switch (dataTypeList.get(i)) {
+        switch (columnType) {
           case TEXT:
           case BLOB:
           case STRING:
@@ -564,6 +586,7 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
         tablet.getBitMaps()[i].mark(rowIndex);
         continue;
       }
+
       needFillTime = true;
 
       switch (columnType) {
@@ -611,6 +634,7 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
           throw new UnSupportedDataTypeException("UnSupported" + primitiveType.getDataType());
       }
     }
+
     return needFillTime || hasNonDeletedField;
   }
 
