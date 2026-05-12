@@ -227,7 +227,9 @@ public class TsFileInsertionEventParserTest {
             ++alignedTabletCount;
           }
           tabletRowCountSum += tablet.getRowSize();
-          pointCount += getNonNullSize(tablet);
+          // The generated performance file is dense and mod-free. Avoid scanning every cell here,
+          // otherwise parseTime also includes the test-side validation cost.
+          pointCount += (long) tablet.getRowSize() * tablet.getSchemas().size();
           minMeasurementCountInTablet =
               Math.min(minMeasurementCountInTablet, tablet.getSchemas().size());
           maxMeasurementCountInTablet =
