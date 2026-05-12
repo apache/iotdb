@@ -265,7 +265,7 @@ public class FragmentInstanceExecutionTest {
       IWritableMemChunk memChunk = memChunkGroup.getMemChunkMap().values().iterator().next();
       TVList tvList = memChunk.getWorkingTVList();
       assertFalse(tvList.isSorted());
-      assertEquals(6424, tvList.calculateRamSize());
+      assertEquals(6424, tvList.calculateRamSize().getRamSize());
       assertEquals(100, tvList.rowCount());
 
       // FragmentInstance Context
@@ -297,7 +297,7 @@ public class FragmentInstanceExecutionTest {
           memTable.query(context2, fullPath2, Long.MIN_VALUE, null, null);
 
       // Only cloned sensor_2 and sensor_0 exist
-      assertEquals(3352, tvList.calculateRamSize());
+      assertEquals(3352, tvList.calculateRamSize().getRamSize());
       assertEquals(100, tvList.rowCount());
 
     } catch (Exception e) {
