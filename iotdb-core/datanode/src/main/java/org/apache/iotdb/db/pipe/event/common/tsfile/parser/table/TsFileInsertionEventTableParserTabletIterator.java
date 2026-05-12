@@ -162,8 +162,10 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
       while (true) {
         switch (state) {
           case CHECK_DATA:
-            if (batchData != null && batchData.hasCurrent()) {
-              return true;
+            {
+              if (batchData != null && batchData.hasCurrent()) {
+                return true;
+              }
             }
           case INIT_DATA:
             {
@@ -259,43 +261,40 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
               }
             }
           case INIT_DEVICE_META:
-            {
-              if (filteredTableSchemaIterator != null && filteredTableSchemaIterator.hasNext()) {
-                final Map.Entry<String, TableSchema> entry = filteredTableSchemaIterator.next();
-                tableName = entry.getKey();
-                final TableSchema tableSchema = entry.getValue();
-                // The table name has changed, set to false
-                isSameTableName = false;
+            if (filteredTableSchemaIterator != null && filteredTableSchemaIterator.hasNext()) {
+              final Map.Entry<String, TableSchema> entry = filteredTableSchemaIterator.next();
+              tableName = entry.getKey();
+              final TableSchema tableSchema = entry.getValue();
+              // The table name has changed, set to false
+              isSameTableName = false;
 
-                final MetadataIndexNode tableRoot =
-                    fileMetadata.getTableMetadataIndexNode(tableName);
-                deviceMetaIterator = metadataQuerier.deviceIterator(tableRoot, null);
+              final MetadataIndexNode tableRoot = fileMetadata.getTableMetadataIndexNode(tableName);
+              deviceMetaIterator = metadataQuerier.deviceIterator(tableRoot, null);
 
-                final int columnSchemaSize = tableSchema.getColumnSchemas().size();
-                dataTypeList = new ArrayList<>();
-                columnTypes = new ArrayList<>();
-                measurementList = new ArrayList<>();
+              final int columnSchemaSize = tableSchema.getColumnSchemas().size();
+              dataTypeList = new ArrayList<>();
+              columnTypes = new ArrayList<>();
+              measurementList = new ArrayList<>();
 
-                for (int i = 0; i < columnSchemaSize; i++) {
-                  final IMeasurementSchema schema = tableSchema.getColumnSchemas().get(i);
-                  final ColumnCategory columnCategory = tableSchema.getColumnTypes().get(i);
-                  if (schema != null
-                      && schema.getMeasurementName() != null
-                      && !schema.getMeasurementName().isEmpty()) {
-                    final String measurementName = schema.getMeasurementName();
-                    if (ColumnCategory.TAG.equals(columnCategory)) {
-                      columnTypes.add(ColumnCategory.TAG);
-                      measurementList.add(measurementName);
-                      dataTypeList.add(schema.getType());
-                    }
+              for (int i = 0; i < columnSchemaSize; i++) {
+                final IMeasurementSchema schema = tableSchema.getColumnSchemas().get(i);
+                final ColumnCategory columnCategory = tableSchema.getColumnTypes().get(i);
+                if (schema != null
+                    && schema.getMeasurementName() != null
+                    && !schema.getMeasurementName().isEmpty()) {
+                  final String measurementName = schema.getMeasurementName();
+                  if (ColumnCategory.TAG.equals(columnCategory)) {
+                    columnTypes.add(ColumnCategory.TAG);
+                    measurementList.add(measurementName);
+                    dataTypeList.add(schema.getType());
                   }
                 }
-                deviceIdSize = dataTypeList.size();
-                state = State.INIT_CHUNK_METADATA;
-                break;
               }
-              return false;
+              deviceIdSize = dataTypeList.size();
+              state = State.INIT_CHUNK_METADATA;
+              break;
             }
+            return false;
         }
       }
     } catch (Exception e) {

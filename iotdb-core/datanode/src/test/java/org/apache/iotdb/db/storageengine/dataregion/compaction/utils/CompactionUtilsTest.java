@@ -20,10 +20,15 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.utils;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.service.metrics.FileMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.AbstractCompactionTest;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionPathUtils;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
 
 import org.apache.tsfile.exception.write.WriteProcessException;
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -32,6 +37,7 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.util.ArrayList;
 
 public class CompactionUtilsTest extends AbstractCompactionTest {
   @Override
@@ -53,5 +59,35 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
     } catch (Exception e) {
       Assert.fail();
     }
+  }
+
+  @Test
+  public void testDeleteSourceTsFileUpdatesModMetrics() throws Exception {
+    int modFileNumBefore = FileMetrics.getInstance().getModFileNum();
+    long modFileSizeBefore = FileMetrics.getInstance().getModFileSize();
+
+    createFiles(2, 1, 1, 10, 0, 0, 10, 10, false, true);
+
+    long totalModFileSize = 0;
+    for (int i = 0; i < seqResources.size(); i++) {
+      try (ModificationFile modificationFile = seqResources.get(i).getModFileForWrite()) {
+        modificationFile.write(
+            new TreeDeletionEntry(
+                new MeasurementPath(new String[] {COMPACTION_TEST_SG, "d0", "s0"}),
+                Long.MIN_VALUE,
+                i + 10));
+        totalModFileSize += modificationFile.getFileLength();
+      }
+    }
+
+    Assert.assertEquals(
+        modFileNumBefore + seqResources.size(), FileMetrics.getInstance().getModFileNum());
+    Assert.assertEquals(
+        modFileSizeBefore + totalModFileSize, FileMetrics.getInstance().getModFileSize());
+
+    CompactionUtils.deleteSourceTsFileAndUpdateFileMetrics(new ArrayList<>(seqResources), true);
+
+    Assert.assertEquals(modFileNumBefore, FileMetrics.getInstance().getModFileNum());
+    Assert.assertEquals(modFileSizeBefore, FileMetrics.getInstance().getModFileSize());
   }
 }

@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.client.async.AsyncDataNodeMPPDataExchangeService
 import org.apache.iotdb.commons.client.request.AsyncRequestContext;
 import org.apache.iotdb.commons.client.request.AsyncRequestManager;
 import org.apache.iotdb.commons.client.request.AsyncRequestRPCHandler;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,14 +38,17 @@ public class DataNodeMPPServiceAsyncRequestManager
   private static final Logger LOGGER =
       LoggerFactory.getLogger(DataNodeMPPServiceAsyncRequestManager.class);
 
-  public DataNodeMPPServiceAsyncRequestManager() {}
+  public DataNodeMPPServiceAsyncRequestManager() {
+    super(IoTDBDescriptor.getInstance().getConfig().getSelectorNumOfClientManager());
+  }
 
   @Override
-  protected void initClientManager() {
+  protected void initClientManager(int selectorNumOfAsyncClientManager) {
     clientManager =
         new IClientManager.Factory<TEndPoint, AsyncDataNodeMPPDataExchangeServiceClient>()
             .createClientManager(
-                new ClientPoolFactory.AsyncDataNodeMPPDataExchangeServiceClientPoolFactory());
+                new ClientPoolFactory.AsyncDataNodeMPPDataExchangeServiceClientPoolFactory(
+                    selectorNumOfAsyncClientManager));
   }
 
   @Override
