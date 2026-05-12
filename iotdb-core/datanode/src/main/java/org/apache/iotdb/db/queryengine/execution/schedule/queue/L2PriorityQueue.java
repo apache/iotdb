@@ -70,7 +70,7 @@ public class L2PriorityQueue<
   }
 
   @Override
-  protected boolean isEmpty() {
+  public boolean isEmpty() {
     return workingKeyedElements.isEmpty() && idleKeyedElements.isEmpty();
   }
 

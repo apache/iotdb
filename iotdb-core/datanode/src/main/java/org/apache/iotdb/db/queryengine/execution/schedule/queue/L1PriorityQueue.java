@@ -62,7 +62,7 @@ public class L1PriorityQueue<E extends IDIndexedAccessible> extends IndexedBlock
   }
 
   @Override
-  protected boolean isEmpty() {
+  public boolean isEmpty() {
     return keyedElements.isEmpty();
   }
 

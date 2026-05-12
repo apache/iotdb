@@ -166,7 +166,7 @@ public abstract class IndexedBlockingQueue<E extends IDIndexedAccessible> {
    *
    * @return true if the queue is empty, otherwise false.
    */
-  protected abstract boolean isEmpty();
+  public abstract boolean isEmpty();
 
   /**
    * Get and remove the first element.

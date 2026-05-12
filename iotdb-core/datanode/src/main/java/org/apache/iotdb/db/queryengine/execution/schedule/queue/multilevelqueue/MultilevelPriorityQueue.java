@@ -158,7 +158,7 @@ public class MultilevelPriorityQueue extends IndexedBlockingReserveQueue<DriverT
   }
 
   @Override
-  protected boolean isEmpty() {
+  public boolean isEmpty() {
     if (!highestPriorityLevelQueue.isEmpty()) {
       return false;
     }
