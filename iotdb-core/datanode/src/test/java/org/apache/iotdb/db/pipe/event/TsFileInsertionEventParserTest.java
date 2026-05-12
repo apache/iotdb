@@ -213,7 +213,13 @@ public class TsFileInsertionEventParserTest {
   public void testScanParserResizesChunkMemoryForFirstAlignedValueChunk() throws Exception {
     final long originalPipeMaxReaderChunkSize =
         PipeConfig.getInstance().getPipeMaxReaderChunkSize();
+    final int originalPipeDataStructureTabletSizeInBytes =
+        PipeConfig.getInstance().getPipeDataStructureTabletSizeInBytes();
+    final int configuredBatchMemorySize = 1024 * 1024;
     CommonDescriptor.getInstance().getConfig().setPipeMaxReaderChunkSize(0);
+    CommonDescriptor.getInstance()
+        .getConfig()
+        .setPipeDataStructureTabletSizeInBytes(configuredBatchMemorySize);
 
     alignedTsFile = new File("single-aligned-value-chunk.tsfile");
     final List<IMeasurementSchema> schemaList = new ArrayList<>();
@@ -241,11 +247,18 @@ public class TsFileInsertionEventParserTest {
               null,
               false)) {
         Assert.assertTrue(getAllocatedChunkMemory(parser).getMemoryUsageInBytes() > 0);
+        Assert.assertTrue(getAllocatedBatchDataMemory(parser).getMemoryUsageInBytes() > 0);
+        Assert.assertTrue(
+            getAllocatedBatchDataMemory(parser).getMemoryUsageInBytes()
+                < configuredBatchMemorySize);
       }
     } finally {
       CommonDescriptor.getInstance()
           .getConfig()
           .setPipeMaxReaderChunkSize(originalPipeMaxReaderChunkSize);
+      CommonDescriptor.getInstance()
+          .getConfig()
+          .setPipeDataStructureTabletSizeInBytes(originalPipeDataStructureTabletSizeInBytes);
     }
   }
 
@@ -800,6 +813,14 @@ public class TsFileInsertionEventParserTest {
       throws NoSuchFieldException, IllegalAccessException {
     final Field field =
         TsFileInsertionEventScanParser.class.getDeclaredField("allocatedMemoryBlockForChunk");
+    field.setAccessible(true);
+    return (PipeMemoryBlock) field.get(parser);
+  }
+
+  private PipeMemoryBlock getAllocatedBatchDataMemory(final TsFileInsertionEventScanParser parser)
+      throws NoSuchFieldException, IllegalAccessException {
+    final Field field =
+        TsFileInsertionEventScanParser.class.getDeclaredField("allocatedMemoryBlockForBatchData");
     field.setAccessible(true);
     return (PipeMemoryBlock) field.get(parser);
   }
