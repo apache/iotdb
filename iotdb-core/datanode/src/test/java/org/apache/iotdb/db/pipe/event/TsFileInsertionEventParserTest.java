@@ -766,7 +766,7 @@ public class TsFileInsertionEventParserTest {
       final Chunk timeChunk =
           reader.readMemChunk((ChunkMetadata) alignedChunkMetadata.getTimeChunkMetadata());
       Assert.assertEquals(
-          MetaMarker.ONLY_ONE_PAGE_TIME_CHUNK_HEADER, timeChunk.getHeader().getChunkType() & 0x3F);
+          MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER, timeChunk.getHeader().getChunkType() & 0x3F);
 
       final List<Chunk> valueChunkList = new ArrayList<>();
       long chunkSizeLimit = PipeMemoryWeightUtil.calculateChunkRamBytesUsed(timeChunk);
@@ -774,8 +774,7 @@ public class TsFileInsertionEventParserTest {
           alignedChunkMetadata.getValueChunkMetadataList()) {
         final Chunk valueChunk = reader.readMemChunk((ChunkMetadata) valueChunkMetadata);
         Assert.assertEquals(
-            MetaMarker.ONLY_ONE_PAGE_VALUE_CHUNK_HEADER,
-            valueChunk.getHeader().getChunkType() & 0x3F);
+            MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER, valueChunk.getHeader().getChunkType() & 0x3F);
         valueChunkList.add(valueChunk);
         chunkSizeLimit += valueChunk.getHeader().getDataSize();
       }

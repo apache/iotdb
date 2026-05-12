@@ -373,7 +373,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
       }
 
       do {
-        resizeBatchDataMemoryForCurrentPageIfNeeded();
+        resizePageDataMemoryForCurrentPageIfNeeded();
         data = chunkReader.nextPageData();
         long size = PipeMemoryWeightUtil.calculateBatchDataRamBytesUsed(data);
         if (allocatedMemoryBlockForBatchData.getMemoryUsageInBytes() < size) {
@@ -383,13 +383,17 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
     } while (!data.hasCurrent());
   }
 
-  private void resizeBatchDataMemoryForCurrentPageIfNeeded() {
+  private void resizePageDataMemoryForCurrentPageIfNeeded() {
     if (!(chunkReader instanceof EstimatedMemoryChunkReader)) {
       return;
     }
 
     final long estimatedMemoryUsageInBytes =
         ((EstimatedMemoryChunkReader) chunkReader).getCurrentPageEstimatedMemoryUsageInBytes();
+    resizePageDataMemoryIfNeeded(estimatedMemoryUsageInBytes);
+  }
+
+  private void resizePageDataMemoryIfNeeded(final long estimatedMemoryUsageInBytes) {
     if (allocatedMemoryBlockForBatchData.getMemoryUsageInBytes() < estimatedMemoryUsageInBytes) {
       PipeDataNodeResourceManager.memory()
           .forceResize(allocatedMemoryBlockForBatchData, estimatedMemoryUsageInBytes);
@@ -529,15 +533,6 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
             Chunk chunk =
                 new Chunk(
                     chunkHeader, tsFileSequenceReader.readChunk(-1, chunkHeader.getDataSize()));
-            if (!currentIsMultiPage) {
-              final long pageEstimatedMemoryUsageInBytes =
-                  SinglePageWholeChunkReader.calculatePageEstimatedMemoryUsageInBytes(chunk);
-              if (pageEstimatedMemoryUsageInBytes
-                  > allocatedMemoryBlockForChunk.getMemoryUsageInBytes()) {
-                PipeDataNodeResourceManager.memory()
-                    .forceResize(allocatedMemoryBlockForChunk, pageEstimatedMemoryUsageInBytes);
-              }
-            }
 
             chunkReader =
                 currentIsMultiPage
@@ -607,22 +602,20 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
                       || timeChunkPageMemorySize > 0
                           && chunkPageMemorySize > 0
                           && pageMemorySize + chunkPageMemorySize
-                              > allocatedMemoryBlockForChunk.getMemoryUsageInBytes()) {
-                    if (valueChunkList.size() == 1
-                        && Math.max(
-                                chunkSize,
-                                timeChunkPageMemorySize > 0 && chunkPageMemorySize > 0
-                                    ? pageMemorySize
-                                    : 0)
-                            > allocatedMemoryBlockForChunk.getMemoryUsageInBytes()) {
-                      PipeDataNodeResourceManager.memory()
-                          .forceResize(
-                              allocatedMemoryBlockForChunk,
-                              Math.max(
-                                  chunkSize,
-                                  timeChunkPageMemorySize > 0 && chunkPageMemorySize > 0
-                                      ? pageMemorySize
-                                      : 0));
+                              > getPageDataMemoryLimitInBytes()) {
+                    if (valueChunkList.size() == 1) {
+                      if (chunkSize > allocatedMemoryBlockForChunk.getMemoryUsageInBytes()) {
+                        PipeDataNodeResourceManager.memory()
+                            .forceResize(allocatedMemoryBlockForChunk, chunkSize);
+                      }
+                      final long currentPageMemorySize =
+                          timeChunkPageMemorySize > 0 && valueChunkPageMemorySize > 0
+                              ? pageMemorySize
+                              : 0;
+                      if (currentPageMemorySize > getPageDataMemoryLimitInBytes()) {
+                        PipeDataNodeResourceManager.memory()
+                            .forceResize(allocatedMemoryBlockForBatchData, currentPageMemorySize);
+                      }
                     }
                     needReturn = recordAlignedChunk(valueChunkList, marker);
                   }
@@ -688,6 +681,10 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
     if (!recordAlignedChunk(valueChunkList, marker)) {
       chunkReader = null;
     }
+  }
+
+  private long getPageDataMemoryLimitInBytes() {
+    return PipeConfig.getInstance().getPipeMaxReaderChunkSize();
   }
 
   private boolean filterChunk(
@@ -773,6 +770,11 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
       final Chunk timeChunk = timeChunkList.get(lastIndex);
       timeChunk.getData().rewind();
       currentIsMultiPage = isMultiPageList.get(lastIndex);
+      if (!currentIsMultiPage) {
+        resizePageDataMemoryIfNeeded(
+            AlignedSinglePageWholeChunkReader.calculatePageEstimatedMemoryUsageInBytes(
+                timeChunk, valueChunkList));
+      }
       chunkReader =
           currentIsMultiPage
               ? new AlignedChunkReader(timeChunk, valueChunkList, filter)
@@ -785,7 +787,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
   }
 
   private boolean isSinglePageValueChunk(final ChunkHeader chunkHeader) {
-    return (chunkHeader.getChunkType() & 0x3F) == MetaMarker.ONLY_ONE_PAGE_VALUE_CHUNK_HEADER;
+    return (chunkHeader.getChunkType() & 0x3F) == MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER;
   }
 
   private byte toValueChunkMarker(final ChunkHeader chunkHeader) {
