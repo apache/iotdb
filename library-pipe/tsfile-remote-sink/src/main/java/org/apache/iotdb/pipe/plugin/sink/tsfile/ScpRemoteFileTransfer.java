@@ -217,8 +217,8 @@ class ScpRemoteFileTransfer implements RemoteFileTransfer {
   }
 
   @Override
-  public synchronized void transferFile(
-      File tsFile, File modFile, File objectSourceDir, String targetName) throws IOException {
+  public void transferFile(File tsFile, File modFile, File objectSourceDir, String targetName)
+      throws IOException {
     try {
       syncObjectDirectory(objectSourceDir, targetName);
       final String finalTsName = computeFinalTsName(targetName);
@@ -538,11 +538,15 @@ class ScpRemoteFileTransfer implements RemoteFileTransfer {
     }
   }
 
-  private synchronized SshClient getOrCreateClient() {
+  private SshClient getOrCreateClient() {
     if (client == null || !client.isStarted()) {
-      System.setProperty("org.apache.sshd.security.provider.BC.enabled", "false");
-      client = SshClient.setUpDefaultClient();
-      client.start();
+      synchronized (this) {
+        if (client == null || !client.isStarted()) {
+          System.setProperty("org.apache.sshd.security.provider.BC.enabled", "false");
+          client = SshClient.setUpDefaultClient();
+          client.start();
+        }
+      }
     }
     return client;
   }
@@ -557,7 +561,11 @@ class ScpRemoteFileTransfer implements RemoteFileTransfer {
 
   private synchronized ClientSession getSession() throws IOException {
     if (session == null || !session.isOpen()) {
-      session = createAuthenticatedSession();
+      synchronized (this) {
+        if (session == null || !session.isOpen()) {
+          session = createAuthenticatedSession();
+        }
+      }
     }
     return session;
   }
@@ -640,7 +648,7 @@ class ScpRemoteFileTransfer implements RemoteFileTransfer {
   }
 
   @Override
-  public synchronized void handshake() throws IOException {
+  public void handshake() throws IOException {
     try {
       ensureRemoteDirExists(getSession(), remoteBaseDir);
       LOGGER.info("SCP handshake OK, remote base: {}", remoteBaseDir);
