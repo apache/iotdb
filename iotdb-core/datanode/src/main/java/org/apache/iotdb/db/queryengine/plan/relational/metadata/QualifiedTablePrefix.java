@@ -19,13 +19,15 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
+
 import com.google.errorprone.annotations.Immutable;
 
 import java.util.Objects;
 import java.util.Optional;
 
-import static org.apache.iotdb.db.queryengine.plan.relational.metadata.MetadataUtil.checkDatabaseName;
-import static org.apache.iotdb.db.queryengine.plan.relational.metadata.MetadataUtil.checkTableName;
+import static org.apache.iotdb.commons.queryengine.plan.relational.metadata.MetadataUtil.checkDatabaseName;
+import static org.apache.iotdb.commons.queryengine.plan.relational.metadata.MetadataUtil.checkTableName;
 
 @Immutable
 public class QualifiedTablePrefix {
