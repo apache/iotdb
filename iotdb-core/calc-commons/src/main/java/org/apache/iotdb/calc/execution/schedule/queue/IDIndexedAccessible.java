@@ -17,7 +17,9 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.execution.schedule.queue;
+package org.apache.iotdb.calc.execution.schedule.queue;
+
+import org.apache.iotdb.db.queryengine.execution.schedule.queue.IndexedBlockingQueue;
 
 /**
  * A simple interface for id getter and setter.

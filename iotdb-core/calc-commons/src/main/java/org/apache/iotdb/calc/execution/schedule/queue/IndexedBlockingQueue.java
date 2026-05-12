@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.execution.schedule.queue;
+package org.apache.iotdb.calc.execution.schedule.queue;
 
 import com.google.common.base.Preconditions;
 

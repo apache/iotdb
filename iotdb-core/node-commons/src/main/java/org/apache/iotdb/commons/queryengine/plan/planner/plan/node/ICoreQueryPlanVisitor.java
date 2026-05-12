@@ -58,7 +58,6 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.UnionNo
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ValueFillNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ValuesNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.WindowNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 
 public interface ICoreQueryPlanVisitor<R, C> extends IPlanVisitor<R, C> {
 

@@ -95,4 +95,11 @@ public abstract class BinaryColumnTransformer extends ColumnTransformer {
     this.leftTransformer.clearCache();
     this.rightTransformer.clearCache();
   }
+
+  @Override
+  public void close() {
+    super.close();
+    this.leftTransformer.close();
+    this.rightTransformer.close();
+  }
 }

@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.execution.schedule.queue.multilevelqueue;
 
+import org.apache.iotdb.calc.execution.schedule.queue.IndexedBlockingReserveQueue;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.queryengine.execution.schedule.queue.IndexedBlockingReserveQueue;
 import org.apache.iotdb.db.queryengine.execution.schedule.task.DriverTask;
 
 import java.util.PriorityQueue;
