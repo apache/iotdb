@@ -65,9 +65,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.net.URL;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -319,6 +321,14 @@ public class IoTDBConfig {
   private String[] loadTsFileDirs = {
     tierDataDirs[0][0] + File.separator + IoTDBConstant.LOAD_TSFILE_FOLDER_NAME
   };
+
+  private String[] loadTsFileAllowedDirs = new String[0];
+
+  private CanonicalPaths loadTsFileDirCanonicalPaths = canonicalPaths(loadTsFileDirs);
+
+  private CanonicalPaths loadTsFileAllowedDirCanonicalPaths = canonicalPaths(loadTsFileAllowedDirs);
+
+  private boolean loadTsFileSourcePathCheckEnabled = false;
 
   /** Strategy of multiple directories. */
   private String multiDirStrategyClassName = null;
@@ -1426,6 +1436,10 @@ public class IoTDBConfig {
     for (int i = 0; i < loadActiveListeningDirs.length; i++) {
       loadActiveListeningDirs[i] = addDataHomeDir(loadActiveListeningDirs[i]);
     }
+    for (int i = 0; i < loadTsFileAllowedDirs.length; i++) {
+      loadTsFileAllowedDirs[i] = addDataHomeDir(loadTsFileAllowedDirs[i]);
+    }
+    loadTsFileAllowedDirCanonicalPaths = canonicalPaths(loadTsFileAllowedDirs);
     loadActiveListeningPipeDir = addDataHomeDir(loadActiveListeningPipeDir);
     loadActiveListeningFailDir = addDataHomeDir(loadActiveListeningFailDir);
     udfDir = addDataHomeDir(udfDir);
@@ -1622,6 +1636,36 @@ public class IoTDBConfig {
     return this.loadTsFileDirs;
   }
 
+  public String[] getLoadTsFileAllowedDirs() {
+    return this.loadTsFileAllowedDirs.length == 0
+        ? getLoadTsFileDirs()
+        : this.loadTsFileAllowedDirs;
+  }
+
+  public Path[] getLoadTsFileAllowedDirCanonicalPaths() throws FileNotFoundException {
+    return (this.loadTsFileAllowedDirs.length == 0
+            ? this.loadTsFileDirCanonicalPaths
+            : this.loadTsFileAllowedDirCanonicalPaths)
+        .getPaths();
+  }
+
+  public boolean isLoadTsFileSourcePathCheckEnabled() {
+    return loadTsFileSourcePathCheckEnabled;
+  }
+
+  public void setLoadTsFileSourcePathCheckEnabled(boolean loadTsFileSourcePathCheckEnabled) {
+    this.loadTsFileSourcePathCheckEnabled = loadTsFileSourcePathCheckEnabled;
+  }
+
+  public void setLoadTsFileAllowedDirs(String[] loadTsFileAllowedDirs) {
+    final String[] newLoadTsFileAllowedDirs = new String[loadTsFileAllowedDirs.length];
+    for (int i = 0; i < loadTsFileAllowedDirs.length; i++) {
+      newLoadTsFileAllowedDirs[i] = addDataHomeDir(loadTsFileAllowedDirs[i]);
+    }
+    this.loadTsFileAllowedDirs = newLoadTsFileAllowedDirs;
+    this.loadTsFileAllowedDirCanonicalPaths = canonicalPaths(newLoadTsFileAllowedDirs);
+  }
+
   public void formulateLoadTsFileDirs(String[][] tierDataDirs) {
     if (tierDataDirs.length < 1) {
       logger.warn("No data directory is set. loadTsFileDirs is kept as the default value.");
@@ -1639,6 +1683,45 @@ public class IoTDBConfig {
     // or the newLoadTsFileDirs will be used in the middle of the process
     // and cause the undefined behavior.
     this.loadTsFileDirs = newLoadTsFileDirs;
+    this.loadTsFileDirCanonicalPaths = canonicalPaths(newLoadTsFileDirs);
+  }
+
+  private static CanonicalPaths canonicalPaths(final String[] dirs) {
+    final Path[] paths = new Path[dirs.length];
+    for (int i = 0; i < dirs.length; i++) {
+      try {
+        paths[i] = new File(dirs[i]).getCanonicalFile().toPath();
+      } catch (final IOException e) {
+        return new CanonicalPaths(
+            String.format(
+                "Failed to resolve canonical path for Load TsFile allowed directory %s: %s",
+                dirs[i], e.getMessage()));
+      }
+    }
+    return new CanonicalPaths(paths);
+  }
+
+  private static class CanonicalPaths {
+
+    private final Path[] paths;
+    private final String errorMessage;
+
+    private CanonicalPaths(final Path[] paths) {
+      this.paths = paths;
+      this.errorMessage = null;
+    }
+
+    private CanonicalPaths(final String errorMessage) {
+      this.paths = new Path[0];
+      this.errorMessage = errorMessage;
+    }
+
+    private Path[] getPaths() throws FileNotFoundException {
+      if (errorMessage != null) {
+        throw new FileNotFoundException(errorMessage);
+      }
+      return paths;
+    }
   }
 
   public String getSchemaDir() {
