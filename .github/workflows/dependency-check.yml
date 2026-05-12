@@ -32,6 +32,9 @@ env:
   MAVEN_ARGS: --batch-mode --no-transfer-progress
   DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
 
+permissions:
+  contents: read
+
 jobs:
   dependency-check:
     strategy:
