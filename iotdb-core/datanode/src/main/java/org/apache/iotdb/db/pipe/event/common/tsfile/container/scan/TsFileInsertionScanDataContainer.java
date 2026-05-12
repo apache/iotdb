@@ -498,10 +498,17 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
 
             if ((chunkHeader.getChunkType() & TsFileConstant.TIME_COLUMN_MASK)
                 == TsFileConstant.TIME_COLUMN_MASK) {
-              timeChunkList.add(
+              final Chunk timeChunk =
                   new Chunk(
-                      chunkHeader, tsFileSequenceReader.readChunk(-1, chunkHeader.getDataSize())));
-              isMultiPageList.add(marker == MetaMarker.TIME_CHUNK_HEADER);
+                      chunkHeader, tsFileSequenceReader.readChunk(-1, chunkHeader.getDataSize()));
+              final boolean isMultiPage = marker == MetaMarker.TIME_CHUNK_HEADER;
+              timeChunkList.add(timeChunk);
+              isMultiPageList.add(isMultiPage);
+              timeChunkPageMemorySizeList.add(
+                  isMultiPage
+                      ? 0
+                      : SinglePageWholeChunkReader.calculatePageEstimatedMemoryUsageInBytes(
+                          timeChunk));
               break;
             }
 

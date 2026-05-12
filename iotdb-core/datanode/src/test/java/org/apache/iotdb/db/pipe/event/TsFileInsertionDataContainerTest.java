@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.pipe.event;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBPipePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
@@ -165,7 +164,7 @@ public class TsFileInsertionDataContainerTest {
       }
 
       try (final TsFileWriter writer = new TsFileWriter(alignedTsFile)) {
-        writer.registerAlignedTimeseries(new PartialPath("root.sg.d"), schemaList);
+        writer.registerAlignedTimeseries(new Path("root.sg.d"), schemaList);
         writer.writeAligned(tablet);
       }
 
