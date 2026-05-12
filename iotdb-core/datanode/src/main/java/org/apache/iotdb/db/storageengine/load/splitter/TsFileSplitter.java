@@ -166,6 +166,12 @@ public class TsFileSplitter {
     isAligned =
         ((header.getChunkType() & TsFileConstant.TIME_COLUMN_MASK)
             == TsFileConstant.TIME_COLUMN_MASK);
+    if (isAligned) {
+      pageIndex2Times = new HashMap<>();
+      pageIndex2ChunkData = new HashMap<>();
+      isTimeChunkNeedDecode = true;
+    }
+
     IChunkMetadata chunkMetadata = offset2ChunkMetadata.get(chunkOffset - Byte.BYTES);
     // When loading TsFile with Chunk in data zone but no matched ChunkMetadata
     // at the end of file, this Chunk needs to be skipped.
@@ -359,9 +365,6 @@ public class TsFileSplitter {
     pageIndex2TimesList.add(pageIndex2Times);
     pageIndex2ChunkDataList.add(pageIndex2ChunkData);
     isTimeChunkNeedDecodeList.add(isTimeChunkNeedDecode);
-    pageIndex2Times = new HashMap<>();
-    pageIndex2ChunkData = new HashMap<>();
-    isTimeChunkNeedDecode = true;
   }
 
   private void switchToTimeChunkContextOfCurrentMeasurement(
