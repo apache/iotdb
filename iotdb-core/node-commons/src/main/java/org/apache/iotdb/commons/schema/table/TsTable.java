@@ -39,8 +39,10 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -61,7 +63,10 @@ public class TsTable {
   public static final String TIME_COLUMN_NAME = "time";
   public static final String COMMENT_KEY = "__comment";
   public static final String TTL_PROPERTY = "ttl";
-  public static final Set<String> TABLE_ALLOWED_PROPERTIES = Collections.singleton(TTL_PROPERTY);
+  public static final String NEED_LAST_CACHE_PROPERTY = "need_last_cache";
+  public static final Set<String> TABLE_ALLOWED_PROPERTIES =
+      Collections.unmodifiableSet(
+          new HashSet<>(Arrays.asList(TTL_PROPERTY, NEED_LAST_CACHE_PROPERTY)));
   private static final String OBJECT_STRING_ERROR =
       "When there are object fields, the %s %s shall not be '.', '..' or contain './', '.\\'.";
   protected String tableName;
@@ -88,6 +93,7 @@ public class TsTable {
 
   // Cache, avoid string parsing
   private transient long ttlValue = Long.MIN_VALUE;
+  private transient Boolean needLastCache = null;
   private transient int tagNums = 0;
   private transient int fieldNum = 0;
 
@@ -326,6 +332,14 @@ public class TsTable {
             Long.parseLong(ttl.get()),
             CommonDescriptor.getInstance().getConfig().getTimestampPrecision())
         : Long.MAX_VALUE;
+  }
+
+  public boolean getCachedNeedLastCache() {
+    if (needLastCache == null) {
+      needLastCache =
+          getPropValue(NEED_LAST_CACHE_PROPERTY).map(Boolean::parseBoolean).orElse(true);
+    }
+    return needLastCache;
   }
 
   public Map<String, String> getProps() {

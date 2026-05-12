@@ -155,6 +155,7 @@ keyWords
     | MODELS
     | MODIFY
     | NAN
+    | NEED_LAST_CACHE
     | NODEID
     | NODES
     | NONE

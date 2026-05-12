@@ -152,6 +152,10 @@ public class ClusterSchemaManager {
   private static final String CONSENSUS_WRITE_ERROR =
       "Failed in the write API executing the consensus layer due to: ";
 
+  public static boolean isNeedLastCacheEnabled(final TDatabaseSchema databaseSchema) {
+    return !databaseSchema.isSetNeedLastCache() || databaseSchema.isNeedLastCache();
+  }
+
   public ClusterSchemaManager(
       final IManager configManager,
       final ClusterSchemaInfo clusterSchemaInfo,
@@ -386,6 +390,7 @@ public class ClusterSchemaManager {
       databaseInfo.setDataReplicationFactor(databaseSchema.getDataReplicationFactor());
       databaseInfo.setTimePartitionOrigin(databaseSchema.getTimePartitionOrigin());
       databaseInfo.setTimePartitionInterval(databaseSchema.getTimePartitionInterval());
+      databaseInfo.setNeedLastCache(isNeedLastCacheEnabled(databaseSchema));
       databaseInfo.setMinSchemaRegionNum(
           getMinRegionGroupNum(database, TConsensusGroupType.SchemaRegion));
       databaseInfo.setMaxSchemaRegionNum(
@@ -881,6 +886,10 @@ public class ClusterSchemaManager {
           new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
               .setMessage(
                   "Failed to create database. The timePartitionInterval should be positive.");
+    }
+
+    if (!databaseSchema.isSetNeedLastCache()) {
+      databaseSchema.setNeedLastCache(true);
     }
 
     if (isSystemDatabase || isAuditDatabase) {

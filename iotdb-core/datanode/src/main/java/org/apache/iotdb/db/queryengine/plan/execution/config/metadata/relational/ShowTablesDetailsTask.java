@@ -104,6 +104,9 @@ public class ShowTablesDetailsTask implements IConfigTask {
                               ? TableType.values()[tableInfo.getType()].getName()
                               : TableType.BASE_TABLE.getName(),
                           TSFileConfig.STRING_CHARSET));
+              builder
+                  .getColumnBuilder(5)
+                  .writeBoolean(!tableInfo.isSetNeedLastCache() || tableInfo.isNeedLastCache());
 
               builder.declarePosition();
             });

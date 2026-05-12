@@ -100,6 +100,10 @@ public class CreateTableViewProcedure extends CreateTableProcedure {
             && schema.getTTL() != Long.MAX_VALUE) {
           table.addProp(TsTable.TTL_PROPERTY, String.valueOf(schema.getTTL()));
         }
+        if (!table.getPropValue(TsTable.NEED_LAST_CACHE_PROPERTY).isPresent()
+            && schema.isSetNeedLastCache()) {
+          table.addProp(TsTable.NEED_LAST_CACHE_PROPERTY, String.valueOf(schema.isNeedLastCache()));
+        }
         setNextState(CreateTableState.PRE_CREATE);
       } catch (final MetadataException | DatabaseNotExistsException e) {
         setFailure(new ProcedureException(e));
