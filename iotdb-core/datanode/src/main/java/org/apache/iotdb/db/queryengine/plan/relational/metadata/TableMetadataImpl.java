@@ -33,6 +33,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.function.arithmetic.
 import org.apache.iotdb.commons.queryengine.plan.relational.function.arithmetic.MultiplicationResolver;
 import org.apache.iotdb.commons.queryengine.plan.relational.function.arithmetic.SubtractionResolver;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.commons.queryengine.plan.relational.type.InternalTypeManager;

@@ -246,6 +246,7 @@ public class CompactionScheduleTaskManager implements IService {
   }
 
   public void unregisterDataRegion(DataRegion dataRegion) {
+    dataRegion.setAllowCompaction(false);
     dataRegionList.remove(dataRegion);
   }
 

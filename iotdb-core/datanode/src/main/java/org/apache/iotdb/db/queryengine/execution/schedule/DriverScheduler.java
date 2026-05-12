@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.queryengine.execution.schedule;
 
 import org.apache.iotdb.calc.exception.MemoryNotEnoughException;
+import org.apache.iotdb.calc.execution.schedule.queue.IndexedBlockingQueue;
+import org.apache.iotdb.calc.execution.schedule.queue.IndexedBlockingReserveQueue;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.StartupException;
@@ -37,8 +39,6 @@ import org.apache.iotdb.db.queryengine.execution.driver.DataDriver;
 import org.apache.iotdb.db.queryengine.execution.driver.IDriver;
 import org.apache.iotdb.db.queryengine.execution.exchange.IMPPDataExchangeManager;
 import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeService;
-import org.apache.iotdb.db.queryengine.execution.schedule.queue.IndexedBlockingQueue;
-import org.apache.iotdb.db.queryengine.execution.schedule.queue.IndexedBlockingReserveQueue;
 import org.apache.iotdb.db.queryengine.execution.schedule.queue.L1PriorityQueue;
 import org.apache.iotdb.db.queryengine.execution.schedule.queue.multilevelqueue.DriverTaskHandle;
 import org.apache.iotdb.db.queryengine.execution.schedule.queue.multilevelqueue.MultilevelPriorityQueue;
