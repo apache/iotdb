@@ -203,8 +203,8 @@ public abstract class ResourceByPathUtils {
           tvListQueryMap.put(workingListForFlushSort, workingListForFlushSort.rowCount());
         }
       } else {
-        // columnIndexList is only provided for AlignedTVList to track column-level access.
-        // For TVList (primitive timeseries), it remains null and column tracking is not needed.
+        // columnIndexList is to track column-level access for AlignedTVList.
+        // For TVList (primitive time series), it remains null and column tracking is not needed.
         if (columnIndexList != null && context instanceof FragmentInstanceContext) {
           ((FragmentInstanceContext) context).putAccessedColumns(list, columnIndexList);
         }
@@ -241,10 +241,12 @@ public abstract class ResourceByPathUtils {
           list.setOwnerQuery(firstQuery);
 
           // clone TVList
-          cloneList =
-              columnIndexList == null
-                  ? list.clone()
-                  : ((AlignedTVList) list).clone(this.getAccessedColumnsForQuery(list));
+          Set<Integer> columnsToClone = getAccessedColumnsForQuery(list);
+          if (columnsToClone == null) {
+            cloneList = list.clone();
+          } else {
+            cloneList = ((AlignedTVList) list).clone(columnsToClone);
+          }
 
           cloneList.getQueryContextSet().add(context);
           tvListQueryMap.put(cloneList, cloneList.rowCount());
@@ -436,6 +438,13 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
         context, columnIndexList, getMeasurementSchema(), alignedTvListQueryMap, deletionList);
   }
 
+  /**
+   * This method is called from prepareTvListMapForQuery with tvList.lockQueryList() held, ensuring
+   * thread-safe access to queryContextSet.
+   *
+   * @param tvList the TVList to get accessed columns for
+   * @return set of accessed column indices, or empty set if no columns are tracked
+   */
   @Override
   protected Set<Integer> getAccessedColumnsForQuery(TVList tvList) {
     Set<Integer> accessedColumns = new HashSet<>();

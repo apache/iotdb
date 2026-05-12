@@ -68,6 +68,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -209,16 +210,36 @@ public class FragmentInstanceContext extends QueryContext {
     this.queryDataSourceType = queryDataSourceType;
   }
 
+  /**
+   * Record columns of the AlignedTVList accessed by the query. This method is called from
+   * prepareTvListMapForQuery with tvList.lockQueryList() held. Even though the HashSet inside
+   * alignedTVListColumnAccessMap is not thread-safe, the calling pattern guarantees thread safety
+   * without requiring additional synchronization.
+   *
+   * @param tvList the TVList being accessed
+   * @param columnIndexList list of column indices being accessed
+   */
   public void putAccessedColumns(TVList tvList, List<Integer> columnIndexList) {
     Set<Integer> accessedColumns =
         alignedTVListColumnAccessMap.computeIfAbsent(tvList, ignored -> new HashSet<>());
-    for (Integer columnIndex : columnIndexList) {
-      if (columnIndex != null && columnIndex >= 0) {
-        accessedColumns.add(columnIndex);
-      }
-    }
+    columnIndexList.stream()
+        .filter(Objects::nonNull)
+        .forEach(
+            index -> {
+              if (index >= 0) {
+                accessedColumns.add(index);
+              }
+            });
   }
 
+  /**
+   * Get columns of the AlignedTVList accessed by the query. This method is called from
+   * prepareTvListMapForQuery with tvList.lockQueryList() held, ensuring that no other thread can
+   * change accessed columns for the same TVList concurrently.
+   *
+   * @param tvList the TVList being accessed
+   * @return set of column indices being accessed
+   */
   public Set<Integer> getAccessedAlignedColumns(TVList tvList) {
     Set<Integer> accessedColumns = alignedTVListColumnAccessMap.get(tvList);
     return accessedColumns == null
