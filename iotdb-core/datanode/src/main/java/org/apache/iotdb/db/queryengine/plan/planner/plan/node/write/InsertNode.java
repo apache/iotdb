@@ -337,6 +337,10 @@ public abstract class InsertNode extends SearchNode {
     return failedMeasurementNumber;
   }
 
+  public boolean isMeasurementFailed(int index) {
+    return measurements[index] == null;
+  }
+
   public boolean allMeasurementFailed() {
     if (measurements != null) {
       return failedMeasurementNumber
