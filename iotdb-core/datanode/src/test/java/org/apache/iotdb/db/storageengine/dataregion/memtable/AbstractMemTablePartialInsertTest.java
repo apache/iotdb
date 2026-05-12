@@ -22,6 +22,7 @@ package org.apache.iotdb.db.storageengine.dataregion.memtable;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
@@ -29,6 +30,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTablet
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.write.schema.MeasurementSchema;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -52,10 +54,21 @@ import static org.junit.Assert.assertEquals;
 public class AbstractMemTablePartialInsertTest {
 
   private PrimitiveMemTable memTable;
+  private static boolean prevEnableNullValueInWriteThroughputMetric;
 
   @Before
   public void setUp() {
     memTable = new PrimitiveMemTable("root.sg", "0");
+    prevEnableNullValueInWriteThroughputMetric =
+        IoTDBDescriptor.getInstance().getConfig().isIncludeNullValueInWriteThroughputMetric();
+    IoTDBDescriptor.getInstance().getConfig().setIncludeNullValueInWriteThroughputMetric(false);
+  }
+
+  @After
+  public void tearDown() {
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setIncludeNullValueInWriteThroughputMetric(prevEnableNullValueInWriteThroughputMetric);
   }
 
   // =========================================================================
@@ -70,7 +83,7 @@ public class AbstractMemTablePartialInsertTest {
     // formula: getMeasurementColumnCnt(3) - failedNum(0) - nullPoints(0) = 3
     InsertRowNode node =
         buildAlignedInsertRowNode(
-            new String[] {"s0", "s1", "s2"}, new Object[] {1, 2L, 3.0f}, -1 /* no failure */);
+            new String[] {"s0", "s1", "s2"}, new Object[] {1, 2, 3}, -1 /* no failure */);
 
     int points = memTable.insertAlignedRow(node);
 
@@ -91,7 +104,7 @@ public class AbstractMemTablePartialInsertTest {
     // 2 measurements, first one fails
     InsertRowNode node =
         buildAlignedInsertRowNode(
-            new String[] {"s0", "s1"}, new Object[] {1, 2L}, 0 /* mark index 0 as failed */);
+            new String[] {"s0", "s1"}, new Object[] {1, 2}, 0 /* mark index 0 as failed */);
 
     int points = memTable.insertAlignedRow(node);
 
@@ -111,6 +124,7 @@ public class AbstractMemTablePartialInsertTest {
     // mark both as failed
     node.markFailedMeasurement(0);
     node.markFailedMeasurement(1);
+    node.setFailedMeasurementNumber(2);
 
     int points = memTable.insertAlignedRow(node);
 
@@ -173,6 +187,7 @@ public class AbstractMemTablePartialInsertTest {
     InsertTabletNode node = buildInsertTabletNode(new String[] {"s0", "s1"}, rowCount, null, -1);
     node.markFailedMeasurement(0);
     node.markFailedMeasurement(1);
+    node.setFailedMeasurementNumber(2);
 
     int points = memTable.insertTablet(node, 0, rowCount);
 
@@ -236,6 +251,7 @@ public class AbstractMemTablePartialInsertTest {
             false);
     if (failedIndex >= 0) {
       node.markFailedMeasurement(failedIndex);
+      node.setFailedMeasurementNumber(1);
     }
     return node;
   }
@@ -274,6 +290,7 @@ public class AbstractMemTablePartialInsertTest {
             rowCount);
     if (failedIndex >= 0) {
       node.markFailedMeasurement(failedIndex);
+      node.setFailedMeasurementNumber(1);
     }
     return node;
   }
