@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.statement.crud;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
@@ -166,16 +167,17 @@ public class LoadTsFileStatement extends Statement {
   }
 
   private static void validateLoadSourcePath(final File file) throws FileNotFoundException {
-    if (!IoTDBDescriptor.getInstance().getConfig().isLoadTsFileSourcePathCheckEnabled()) {
+    final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+    if (!config.isLoadTsFileSourcePathCheckEnabled()) {
       return;
     }
 
     final Path sourcePath = canonicalPath(file);
-    final String[] allowedDirs =
-        IoTDBDescriptor.getInstance().getConfig().getLoadTsFileAllowedDirs();
+    final String[] allowedDirs = config.getLoadTsFileAllowedDirs();
+    final Path[] allowedDirCanonicalPaths = config.getLoadTsFileAllowedDirCanonicalPaths();
 
-    for (final String allowedDir : allowedDirs) {
-      if (sourcePath.startsWith(canonicalPath(new File(allowedDir)))) {
+    for (final Path allowedDirCanonicalPath : allowedDirCanonicalPaths) {
+      if (sourcePath.startsWith(allowedDirCanonicalPath)) {
         return;
       }
     }
