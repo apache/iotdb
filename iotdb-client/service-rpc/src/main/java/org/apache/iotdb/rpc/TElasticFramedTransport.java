@@ -99,6 +99,7 @@ public class TElasticFramedTransport extends TTransport {
   protected AutoScalingBufferWriteTransport writeBuffer;
   protected final byte[] i32buf = new byte[4];
   private final boolean copyBinary;
+  private static final String FROM = " from ";
 
   @Override
   public boolean isOpen() {
@@ -164,7 +165,7 @@ public class TElasticFramedTransport extends TTransport {
                 "You may be sending non-SSL requests"
                     + "%s to the SSL-enabled Thrift-RPC port, please confirm that you are "
                     + "using the right configuration",
-                remoteAddress == null ? "" : " from " + remoteAddress));
+                remoteAddress == null ? "" : FROM + remoteAddress));
       }
       throw e;
     }
@@ -209,7 +210,7 @@ public class TElasticFramedTransport extends TTransport {
     if (underlying instanceof TSocket) {
       remoteAddress = ((TSocket) underlying).getSocket().getRemoteSocketAddress();
     }
-    String remoteInfo = (remoteAddress == null) ? "" : " from " + remoteAddress;
+    String remoteInfo = (remoteAddress == null) ? "" : FROM + remoteAddress;
     close();
 
     error.throwException(size, remoteInfo, thriftMaxFrameSize);
@@ -289,7 +290,7 @@ public class TElasticFramedTransport extends TTransport {
       if (underlying instanceof TSocket) {
         remoteAddress = ((TSocket) underlying).getSocket().getRemoteSocketAddress();
       }
-      String remoteInfo = (remoteAddress == null) ? "" : " from " + remoteAddress;
+      String remoteInfo = (remoteAddress == null) ? "" : FROM + remoteAddress;
       close();
       FrameError.STRING_LENGTH_EXCEEDED.throwException(numBytes, remoteInfo, thriftMaxFrameSize);
     }
