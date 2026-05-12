@@ -128,4 +128,14 @@ public class CaseWhenThenColumnTransformer extends ColumnTransformer {
   protected void checkType() {
     // do nothing
   }
+
+  @Override
+  public void close() {
+    super.close();
+    for (Pair<ColumnTransformer, ColumnTransformer> whenThenTransformer : whenThenTransformers) {
+      whenThenTransformer.left.close();
+      whenThenTransformer.right.close();
+    }
+    elseTransformer.close();
+  }
 }
