@@ -548,6 +548,8 @@ public abstract class TVList implements WALEntryValue {
 
   protected abstract void expandValues();
 
+  public abstract TVList cloneForFlushSort();
+
   @Override
   public abstract TVList clone();
 
