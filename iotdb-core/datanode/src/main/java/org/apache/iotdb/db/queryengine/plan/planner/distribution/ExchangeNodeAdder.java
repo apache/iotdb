@@ -243,7 +243,7 @@ public class ExchangeNodeAdder implements PlanVisitor<PlanNode, NodeGroupContext
   public PlanNode visitMergeSort(MergeSortNode node, NodeGroupContext context) {
     // Force Exchange if any child subtree contains InnerTimeJoin.
     if (hasInnerTimeJoinInSubtree(node.getChildren())) {
-      return processMergeSortWithForcedExchange(node, context);
+      return processMultiChildNodeWithForcedExchange(node, context);
     }
     return processMultiChildNode(node, context);
   }
@@ -603,11 +603,6 @@ public class ExchangeNodeAdder implements PlanVisitor<PlanNode, NodeGroupContext
       return true;
     }
     return node.getChildren().stream().anyMatch(this::containsInnerTimeJoin);
-  }
-
-  private PlanNode processMergeSortWithForcedExchange(
-      MergeSortNode node, NodeGroupContext context) {
-    return processMultiChildNodeWithForcedExchange(node, context);
   }
 
   @Override
