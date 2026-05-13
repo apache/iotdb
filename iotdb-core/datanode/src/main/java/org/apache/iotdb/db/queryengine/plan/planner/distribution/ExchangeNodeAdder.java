@@ -216,6 +216,11 @@ public class ExchangeNodeAdder implements PlanVisitor<PlanNode, NodeGroupContext
 
   @Override
   public PlanNode visitDeviceView(DeviceViewNode node, NodeGroupContext context) {
+    // May contain multiple child branches with different InnerTimeJoin timePartitions.
+    // Force Exchange for each branch to isolate them into different fragments/FIs.
+    if (hasDirectInnerTimeJoinChild(node.getChildren())) {
+      return processMultiChildNodeWithForcedExchange(node, context);
+    }
     return processMultiChildNode(node, context);
   }
 
@@ -237,6 +242,11 @@ public class ExchangeNodeAdder implements PlanVisitor<PlanNode, NodeGroupContext
 
   @Override
   public PlanNode visitMergeSort(MergeSortNode node, NodeGroupContext context) {
+    // May contain multiple child branches with different InnerTimeJoin timePartitions.
+    // Force Exchange for each branch to isolate them into different fragments/FIs.
+    if (hasDirectInnerTimeJoinChild(node.getChildren())) {
+      return processMergeSortWithForcedExchange(node, context);
+    }
     return processMultiChildNode(node, context);
   }
 
@@ -561,6 +571,32 @@ public class ExchangeNodeAdder implements PlanVisitor<PlanNode, NodeGroupContext
     exchangeNode.setOutputColumnNames(child.getOutputColumnNames());
     context.hasExchangeNode = true;
     return exchangeNode;
+  }
+
+  private PlanNode processMultiChildNodeWithForcedExchange(
+      MultiChildProcessNode node, NodeGroupContext context) {
+    MultiChildProcessNode newNode = (MultiChildProcessNode) node.clone();
+    List<PlanNode> visitedChildren =
+        node.getChildren().stream()
+            .map(child -> visit(child, context))
+            .collect(Collectors.toList());
+    for (PlanNode child : visitedChildren) {
+      newNode.addChild(genExchangeNode(context, child));
+    }
+    context.putNodeDistribution(
+        newNode.getPlanNodeId(),
+        new NodeDistribution(
+            NodeDistributionType.SAME_WITH_SOME_CHILD, context.getMostlyUsedDataRegion()));
+    return newNode;
+  }
+
+  private boolean hasDirectInnerTimeJoinChild(List<PlanNode> children) {
+    return children.stream().anyMatch(child -> child instanceof InnerTimeJoinNode);
+  }
+
+  private PlanNode processMergeSortWithForcedExchange(
+      MergeSortNode node, NodeGroupContext context) {
+    return processMultiChildNodeWithForcedExchange(node, context);
   }
 
   @Override
