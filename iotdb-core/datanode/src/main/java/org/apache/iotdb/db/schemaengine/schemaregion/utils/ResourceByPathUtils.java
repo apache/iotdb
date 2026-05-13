@@ -153,7 +153,12 @@ public abstract class ResourceByPathUtils {
     // mutable tvlist
     TVList list = memChunk.getWorkingTVList();
     TVList cloneList = null;
-    TVList.RamInfo listRamInfo = list.calculateRamSize();
+    Set<Integer> columnsToClone = getAccessedColumnsForQuery(list);
+    TVList.RamInfo listRamInfo =
+        (columnsToClone == null)
+            ? list.calculateRamSize()
+            : ((AlignedTVList) list).calculateRamSize(columnsToClone);
+
     list.lockQueryList();
     try {
       if (copyTimeFilter != null
@@ -241,12 +246,10 @@ public abstract class ResourceByPathUtils {
           list.setOwnerQuery(firstQuery);
 
           // clone TVList
-          Set<Integer> columnsToClone = getAccessedColumnsForQuery(list);
-          if (columnsToClone == null) {
-            cloneList = list.clone();
-          } else {
-            cloneList = ((AlignedTVList) list).clone(columnsToClone);
-          }
+          cloneList =
+              (columnsToClone == null)
+                  ? list.clone()
+                  : ((AlignedTVList) list).clone(columnsToClone);
 
           cloneList.getQueryContextSet().add(context);
           tvListQueryMap.put(cloneList, cloneList.rowCount());
@@ -439,20 +442,22 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
   }
 
   /**
-   * This method is called from prepareTvListMapForQuery with tvList.lockQueryList() held, ensuring
-   * thread-safe access to queryContextSet.
-   *
    * @param tvList the TVList to get accessed columns for
    * @return set of accessed column indices, or empty set if no columns are tracked
    */
   @Override
   protected Set<Integer> getAccessedColumnsForQuery(TVList tvList) {
     Set<Integer> accessedColumns = new HashSet<>();
-    for (QueryContext queryContext : tvList.getQueryContextSet()) {
-      if (queryContext instanceof FragmentInstanceContext) {
-        accessedColumns.addAll(
-            ((FragmentInstanceContext) queryContext).getAccessedAlignedColumns(tvList));
+    tvList.lockQueryList();
+    try {
+      for (QueryContext queryContext : tvList.getQueryContextSet()) {
+        if (queryContext instanceof FragmentInstanceContext) {
+          accessedColumns.addAll(
+              ((FragmentInstanceContext) queryContext).getAccessedAlignedColumns(tvList));
+        }
       }
+    } finally {
+      tvList.unlockQueryList();
     }
     return accessedColumns;
   }
