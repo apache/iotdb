@@ -216,9 +216,8 @@ public class ExchangeNodeAdder implements PlanVisitor<PlanNode, NodeGroupContext
 
   @Override
   public PlanNode visitDeviceView(DeviceViewNode node, NodeGroupContext context) {
-    // May contain multiple child branches with different InnerTimeJoin timePartitions.
-    // Force Exchange for each branch to isolate them into different fragments/FIs.
-    if (hasDirectInnerTimeJoinChild(node.getChildren())) {
+    // Force Exchange for multi-child DeviceView if any child subtree contains InnerTimeJoin.
+    if (node.getChildren().size() > 1 && hasInnerTimeJoinInSubtree(node.getChildren())) {
       return processMultiChildNodeWithForcedExchange(node, context);
     }
     return processMultiChildNode(node, context);
@@ -242,9 +241,8 @@ public class ExchangeNodeAdder implements PlanVisitor<PlanNode, NodeGroupContext
 
   @Override
   public PlanNode visitMergeSort(MergeSortNode node, NodeGroupContext context) {
-    // May contain multiple child branches with different InnerTimeJoin timePartitions.
-    // Force Exchange for each branch to isolate them into different fragments/FIs.
-    if (hasDirectInnerTimeJoinChild(node.getChildren())) {
+    // Force Exchange if any child subtree contains InnerTimeJoin.
+    if (hasInnerTimeJoinInSubtree(node.getChildren())) {
       return processMergeSortWithForcedExchange(node, context);
     }
     return processMultiChildNode(node, context);
@@ -566,9 +564,15 @@ public class ExchangeNodeAdder implements PlanVisitor<PlanNode, NodeGroupContext
   }
 
   private ExchangeNode genExchangeNode(NodeGroupContext context, PlanNode child) {
+    return genExchangeNode(context, child, false);
+  }
+
+  private ExchangeNode genExchangeNode(
+      NodeGroupContext context, PlanNode child, boolean forcedExchange) {
     ExchangeNode exchangeNode = new ExchangeNode(context.queryContext.getQueryId().genPlanNodeId());
     exchangeNode.setChild(child);
     exchangeNode.setOutputColumnNames(child.getOutputColumnNames());
+    exchangeNode.setForcedExchange(forcedExchange);
     context.hasExchangeNode = true;
     return exchangeNode;
   }
@@ -581,7 +585,7 @@ public class ExchangeNodeAdder implements PlanVisitor<PlanNode, NodeGroupContext
             .map(child -> visit(child, context))
             .collect(Collectors.toList());
     for (PlanNode child : visitedChildren) {
-      newNode.addChild(genExchangeNode(context, child));
+      newNode.addChild(genExchangeNode(context, child, true));
     }
     context.putNodeDistribution(
         newNode.getPlanNodeId(),
@@ -590,8 +594,15 @@ public class ExchangeNodeAdder implements PlanVisitor<PlanNode, NodeGroupContext
     return newNode;
   }
 
-  private boolean hasDirectInnerTimeJoinChild(List<PlanNode> children) {
-    return children.stream().anyMatch(child -> child instanceof InnerTimeJoinNode);
+  private boolean hasInnerTimeJoinInSubtree(List<PlanNode> children) {
+    return children.stream().anyMatch(this::containsInnerTimeJoin);
+  }
+
+  private boolean containsInnerTimeJoin(PlanNode node) {
+    if (node instanceof InnerTimeJoinNode) {
+      return true;
+    }
+    return node.getChildren().stream().anyMatch(this::containsInnerTimeJoin);
   }
 
   private PlanNode processMergeSortWithForcedExchange(
