@@ -86,6 +86,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.DataOutputStream;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -637,7 +638,8 @@ public class LoadTsFileScheduler implements IScheduler {
   }
 
   private LoadTsFileStatement buildRetryTreeLoadStatement(
-      final String filePath, final boolean deleteAfterLoad, final String database) {
+      final String filePath, final boolean deleteAfterLoad, final String database)
+      throws FileNotFoundException {
     final LoadTsFileStatement statement =
         LoadTsFileStatement.createUnchecked(filePath)
             .setDeleteAfterLoad(deleteAfterLoad)
