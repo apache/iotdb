@@ -106,7 +106,6 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.Compacti
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.recover.CompactionRecoverManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.AbstractCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.RepairUnsortedFileCompactionTask;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleContext;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduler;
@@ -3787,24 +3786,6 @@ public class DataRegion implements IDataRegionForQuery {
     return trySubmitCount;
   }
 
-  public void executeTTLCheckForObjectFiles() throws InterruptedException {
-    long startTime = System.currentTimeMillis();
-    List<String> allObjectDirs = TierManager.getInstance().getAllObjectFileFolders();
-    for (String objectDir : allObjectDirs) {
-      File regionObjectDir = new File(objectDir, dataRegionIdString);
-      if (!regionObjectDir.isDirectory()) {
-        continue;
-      }
-      try {
-        CompactionUtils.executeTTLCheckObjectFilesForTableModel(regionObjectDir, databaseName);
-      } catch (Exception e) {
-        logger.error("Failed to execute object ttl check", e);
-      }
-    }
-    CompactionMetrics.getInstance()
-        .updateTTLCheckForObjectFileCost(System.currentTimeMillis() - startTime);
-  }
-
   private boolean skipCurrentTTLAndModificationCheck() {
     if (this.databaseName.equals(InformationSchema.INFORMATION_DATABASE)) {
       return true;
@@ -4502,7 +4483,6 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   public void abortCompaction() {
-    tsFileManager.setAllowCompaction(false);
     CompactionScheduleTaskManager.getInstance().unregisterDataRegion(this);
     List<AbstractCompactionTask> runningTasks =
         CompactionTaskManager.getInstance()

@@ -17,17 +17,6 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.execution.schedule;
+package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception;
 
-import org.apache.iotdb.calc.execution.schedule.queue.IndexedBlockingQueue;
-import org.apache.iotdb.db.queryengine.execution.schedule.task.DriverTask;
-
-@FunctionalInterface
-public interface ThreadProducer {
-
-  void produce(
-      String threadName,
-      ThreadGroup workerGroups,
-      IndexedBlockingQueue<DriverTask> queue,
-      ThreadProducer producer);
-}
+public class StopTTLCheckException extends RuntimeException {}
