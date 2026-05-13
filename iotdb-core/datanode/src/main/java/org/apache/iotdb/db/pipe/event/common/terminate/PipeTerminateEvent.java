@@ -48,17 +48,28 @@ public class PipeTerminateEvent extends EnrichedEvent {
 
   private final boolean shouldMark;
 
+  private static final int TERMINATE_EXECUTOR_THREAD_COUNT =
+      IoTDBDescriptor.getInstance().getConfig().getPipeTaskThreadCount();
+
+  private static final int TERMINATE_EXECUTOR_QUEUE_SIZE =
+      Math.max(1024, TERMINATE_EXECUTOR_THREAD_COUNT * 64);
+
   // Do not use call run policy to avoid deadlock
-  private static final ExecutorService terminateExecutor =
-      new WrappedThreadPoolExecutor(
-          0,
-          IoTDBDescriptor.getInstance().getConfig().getPipeTaskThreadCount(),
-          0L,
-          TimeUnit.SECONDS,
-          new ArrayBlockingQueue<>(
-              IoTDBDescriptor.getInstance().getConfig().getPipeTaskThreadCount()),
-          new IoTThreadFactory(ThreadName.PIPE_TERMINATE_EXECUTION_POOL.getName()),
-          ThreadName.PIPE_TERMINATE_EXECUTION_POOL.getName());
+  private static final ExecutorService terminateExecutor = createTerminateExecutor();
+
+  private static ExecutorService createTerminateExecutor() {
+    final WrappedThreadPoolExecutor executor =
+        new WrappedThreadPoolExecutor(
+            TERMINATE_EXECUTOR_THREAD_COUNT,
+            TERMINATE_EXECUTOR_THREAD_COUNT,
+            60L,
+            TimeUnit.SECONDS,
+            new ArrayBlockingQueue<>(TERMINATE_EXECUTOR_QUEUE_SIZE),
+            new IoTThreadFactory(ThreadName.PIPE_TERMINATE_EXECUTION_POOL.getName()),
+            ThreadName.PIPE_TERMINATE_EXECUTION_POOL.getName());
+    executor.allowCoreThreadTimeOut(true);
+    return executor;
+  }
 
   public PipeTerminateEvent(
       final String pipeName,
