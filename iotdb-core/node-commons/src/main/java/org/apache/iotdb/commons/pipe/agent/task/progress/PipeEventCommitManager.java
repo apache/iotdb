@@ -78,6 +78,13 @@ public class PipeEventCommitManager {
     LOGGER.info("Pipe committer deregistered for pipe on region: {}", committerKey);
   }
 
+  public void clear(final String pipeName, final long creationTime) {
+    eventCommitterMap.keySet().removeIf(key -> clearIfMatches(key, pipeName, creationTime, true));
+    eventCommitterRestartTimesMap
+        .keySet()
+        .removeIf(key -> clearIfMatches(key, pipeName, creationTime, false));
+  }
+
   /**
    * Assign a commit id and a key for commit. Make sure {@code EnrichedEvent.pipeName} is set before
    * calling this.
@@ -195,6 +202,20 @@ public class PipeEventCommitManager {
 
   public void setCommitRateMarker(final BiConsumer<String, Boolean> commitRateMarker) {
     this.commitRateMarker = commitRateMarker;
+  }
+
+  private boolean clearIfMatches(
+      final CommitterKey key,
+      final String pipeName,
+      final long creationTime,
+      final boolean shouldClearMetrics) {
+    if (!Objects.equals(key.getPipeName(), pipeName) || key.getCreationTime() != creationTime) {
+      return false;
+    }
+    if (shouldClearMetrics) {
+      PipeEventCommitMetrics.getInstance().deregister(key.stringify());
+    }
+    return true;
   }
 
   //////////////////////////// singleton ////////////////////////////
