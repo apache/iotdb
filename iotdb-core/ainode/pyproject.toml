@@ -97,6 +97,13 @@ sktime = "0.40.1"
 pmdarima = "2.1.1"
 hmmlearn = "0.3.3"
 accelerate = "^1.10.1"
+lightgbm = ">=4.6.0"
+xgboost = ">=3.2.0"
+tqdm = ">=4.67.1"
+holidays = ">=0.88"
+gluonts = ">=0.14"
+chinese-calendar = ">=1.11.0"
+arch = ">=8.0.0"
 
 # ---- Optimizers / utils ----
 optuna = "^4.4.0"
