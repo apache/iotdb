@@ -468,7 +468,8 @@ public class InsertNodeMemoryEstimator {
     size += sizeOfTEndPoint(tDataNodeLocation.getClientRpcEndPoint(), deduplicatedObjects);
     size += sizeOfTEndPoint(tDataNodeLocation.getInternalEndPoint(), deduplicatedObjects);
     size += sizeOfTEndPoint(tDataNodeLocation.getMPPDataExchangeEndPoint(), deduplicatedObjects);
-    size += sizeOfTEndPoint(tDataNodeLocation.getDataRegionConsensusEndPoint(), deduplicatedObjects);
+    size +=
+        sizeOfTEndPoint(tDataNodeLocation.getDataRegionConsensusEndPoint(), deduplicatedObjects);
     size +=
         sizeOfTEndPoint(tDataNodeLocation.getSchemaRegionConsensusEndPoint(), deduplicatedObjects);
 
@@ -760,7 +761,6 @@ public class InsertNodeMemoryEstimator {
 
   private static boolean shouldCountObject(
       final Object object, final Set<Object> deduplicatedObjects) {
-    return object != null
-        && (deduplicatedObjects == null || deduplicatedObjects.add(object));
+    return object != null && (deduplicatedObjects == null || deduplicatedObjects.add(object));
   }
 }

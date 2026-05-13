@@ -46,11 +46,9 @@ public class InsertNodeMemoryEstimatorTest {
   @Test
   public void testInsertRowsNodeLaterRowSizeIsEstimated() throws IllegalPathException {
     InsertRowNode firstRow =
-        createTextInsertRowNode(
-            "child-1", "root.sg.d1", new String[] {"s1"}, new String[] {"v1"});
+        createTextInsertRowNode("child-1", "root.sg.d1", new String[] {"s1"}, new String[] {"v1"});
     InsertRowNode smallSecondRow =
-        createTextInsertRowNode(
-            "child-2", "root.sg.d2", new String[] {"s1"}, new String[] {"v2"});
+        createTextInsertRowNode("child-2", "root.sg.d2", new String[] {"s1"}, new String[] {"v2"});
     InsertRowNode largeSecondRow =
         createTextInsertRowNode(
             "child-3",
@@ -58,7 +56,8 @@ public class InsertNodeMemoryEstimatorTest {
             new String[] {"s1", "measurement_with_a_longer_name", "s3"},
             new String[] {"v2", repeatedString("payload", 32), repeatedString("payload", 48)});
 
-    long baselineSize = InsertNodeMemoryEstimator.sizeOf(createInsertRowsNode("parent", firstRow, smallSecondRow));
+    long baselineSize =
+        InsertNodeMemoryEstimator.sizeOf(createInsertRowsNode("parent", firstRow, smallSecondRow));
     long largerNodeSize =
         InsertNodeMemoryEstimator.sizeOf(createInsertRowsNode("parent", firstRow, largeSecondRow));
 
@@ -70,8 +69,10 @@ public class InsertNodeMemoryEstimatorTest {
     InsertRowsNode node =
         createInsertRowsNode(
             "parent",
-            createTextInsertRowNode("child-1", "root.sg.d1", new String[] {"s1"}, new String[] {"v1"}),
-            createTextInsertRowNode("child-2", "root.sg.d2", new String[] {"s1"}, new String[] {"v2"}));
+            createTextInsertRowNode(
+                "child-1", "root.sg.d1", new String[] {"s1"}, new String[] {"v1"}),
+            createTextInsertRowNode(
+                "child-2", "root.sg.d2", new String[] {"s1"}, new String[] {"v2"}));
 
     long sizeWithoutResults = InsertNodeMemoryEstimator.sizeOf(node);
 
