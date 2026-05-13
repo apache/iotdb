@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.pipe.event;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBPipePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
@@ -163,9 +162,10 @@ public class TsFileInsertionDataContainerTest {
           tablet.addValue("s" + measurementIndex, row, value);
         }
       }
+      tablet.rowSize = rowCount;
 
       try (final TsFileWriter writer = new TsFileWriter(alignedTsFile)) {
-        writer.registerAlignedTimeseries(new PartialPath("root.sg.d"), schemaList);
+        writer.registerAlignedTimeseries(new Path("root.sg.d"), schemaList);
         writer.writeAligned(tablet);
       }
 
@@ -809,7 +809,9 @@ public class TsFileInsertionDataContainerTest {
   private long calculatePipeMaxReaderChunkSizeForSinglePageAlignedChunk(final File tsFile)
       throws Exception {
     try (final TsFileSequenceReader reader = new TsFileSequenceReader(tsFile.getAbsolutePath())) {
-      final IDeviceID deviceID = reader.getDeviceMeasurementsMap().keySet().iterator().next();
+      final List<IDeviceID> deviceIDList = reader.getAllDevices();
+      Assert.assertEquals(1, deviceIDList.size());
+      final IDeviceID deviceID = deviceIDList.get(0);
       final List<AlignedChunkMetadata> alignedChunkMetadataList =
           reader.getAlignedChunkMetadata(deviceID);
       Assert.assertEquals(1, alignedChunkMetadataList.size());
