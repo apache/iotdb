@@ -604,7 +604,7 @@ public abstract class AlignedTVList extends TVList {
   }
 
   private void cloneColumnDataTo(AlignedTVList cloneList, Set<Integer> columnsToClone) {
-    boolean cloneAllColumns = columnsToClone == null || columnsToClone.isEmpty();
+    boolean cloneAllColumns = columnsToClone == null;
     System.arraycopy(
         memoryBinaryChunkSize, 0, cloneList.memoryBinaryChunkSize, 0, dataTypes.size());
     for (int i = 0; i < values.size(); i++) {
@@ -882,6 +882,14 @@ public abstract class AlignedTVList extends TVList {
         timestamps.size(), alignedTvListArrayMemCost(), rowCount, new ArrayList<>(dataTypes));
   }
 
+  public synchronized RamInfo calculateRamSize(Set<Integer> columnsToClone) {
+    return new RamInfo(
+        timestamps.size(),
+        alignedTvListArrayMemCost(columnsToClone),
+        rowCount,
+        new ArrayList<>(dataTypes));
+  }
+
   /**
    * Get the single alignedTVList array mem cost by give types.
    *
@@ -916,10 +924,13 @@ public abstract class AlignedTVList extends TVList {
    *
    * @return AlignedTvListArrayMemSize
    */
-  public long alignedTvListArrayMemCost() {
+  public long alignedTvListArrayMemCost(Set<Integer> columnsToClone) {
     long size = 0;
     // value & bitmap array mem size
     for (int column = 0; column < dataTypes.size(); column++) {
+      if (columnsToClone != null && !columnsToClone.contains(column)) {
+        continue;
+      }
       TSDataType type = dataTypes.get(column);
       if (type != null && values.get(column) != null) {
         size += (long) PrimitiveArrayManager.ARRAY_SIZE * (long) type.getDataTypeSize();
@@ -941,6 +952,10 @@ public abstract class AlignedTVList extends TVList {
     // Object references size in ArrayList
     size += (long) NUM_BYTES_OBJECT_REF * (2 + dataTypes.size());
     return size;
+  }
+
+  public long alignedTvListArrayMemCost() {
+    return alignedTvListArrayMemCost((Set<Integer>) null);
   }
 
   /**
