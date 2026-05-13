@@ -185,6 +185,7 @@ public class TsFileInsertionEventParserTest {
               Long.MAX_VALUE,
               null,
               null,
+              false,
               false)) {
         for (final Pair<Tablet, Boolean> tabletWithIsAligned : parser.toTabletWithIsAligneds()) {
           Assert.assertTrue(tabletWithIsAligned.getRight());
