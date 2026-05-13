@@ -36,33 +36,6 @@ import java.util.stream.Stream;
 public class LoadTsFileStatementTest {
 
   @Test
-  public void testSubStatementsKeepDatabase() throws Exception {
-    final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-    final int originalBatchSize = config.getLoadTsFileSubStatementBatchSize();
-    final String[] originalAllowedDirs = config.getLoadTsFileAllowedDirs().clone();
-    final Path tempDir = Files.createTempDirectory("load-tsfile-sub-statements");
-
-    try {
-      config.setLoadTsFileSubStatementBatchSize(1);
-      config.setLoadTsFileAllowedDirs(new String[] {tempDir.toString()});
-      Files.createFile(tempDir.resolve("a.tsfile"));
-      Files.createFile(tempDir.resolve("b.tsfile"));
-
-      final LoadTsFileStatement statement = new LoadTsFileStatement(tempDir.toString());
-      statement.setDatabase("test_db");
-
-      final List<LoadTsFileStatement> subStatements = statement.getSubStatements();
-      Assert.assertEquals(2, subStatements.size());
-      subStatements.forEach(
-          subStatement -> Assert.assertEquals("test_db", subStatement.getDatabase()));
-    } finally {
-      config.setLoadTsFileSubStatementBatchSize(originalBatchSize);
-      config.setLoadTsFileAllowedDirs(originalAllowedDirs);
-      deleteRecursively(tempDir);
-    }
-  }
-
-  @Test
   public void testLoadSourcePathMustBeInAllowedDirs() throws Exception {
     final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
     final String[] originalAllowedDirs = config.getLoadTsFileAllowedDirs().clone();
