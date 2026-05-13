@@ -2576,8 +2576,10 @@ public class IoTDBDescriptor {
                 properties
                     .getProperty(
                         "load_tsfile_allowed_dirs",
-                        ConfigurationFileUtils.getConfigurationDefaultValue(
-                            "load_tsfile_allowed_dirs"))
+                        Optional.ofNullable(
+                                ConfigurationFileUtils.getConfigurationDefaultValue(
+                                    "load_tsfile_allowed_dirs"))
+                            .orElse(""))
                     .trim()
                     .split(","))
             .filter(dir -> !dir.isEmpty())
