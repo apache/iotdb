@@ -106,6 +106,7 @@ public abstract class AbstractEnv implements BaseEnv {
   protected int index = 0;
   protected long startTime;
   protected int retryCount = 30;
+  protected boolean clusterRunning = false;
   private IClientManager<TEndPoint, SyncConfigNodeIServiceClient> clientManager;
   private List<String> configNodeKillPoints = new ArrayList<>();
   private List<String> dataNodeKillPoints = new ArrayList<>();
@@ -177,6 +178,14 @@ public abstract class AbstractEnv implements BaseEnv {
       final int dataNodesNum,
       final int retryCount,
       final boolean addAINode) {
+    if (clusterRunning) {
+      logger.info(
+          "Reuse running cluster for test class {} and method {}",
+          getTestClassName(),
+          testMethodName);
+      return;
+    }
+
     this.retryCount = retryCount;
     this.configNodeWrapperList = new ArrayList<>();
     this.dataNodeWrapperList = new ArrayList<>();
@@ -264,6 +273,7 @@ public abstract class AbstractEnv implements BaseEnv {
     }
 
     checkClusterStatusWithoutUnknown();
+    clusterRunning = true;
   }
 
   private ConfigNodeWrapper newConfigNode() {
@@ -609,9 +619,16 @@ public abstract class AbstractEnv implements BaseEnv {
     }
     if (clientManager != null) {
       clientManager.close();
+      clientManager = null;
     }
+    configNodeWrapperList = Collections.emptyList();
+    dataNodeWrapperList = Collections.emptyList();
+    aiNodeWrapperList = Collections.emptyList();
+    configNodeKillPoints = new ArrayList<>();
+    dataNodeKillPoints = new ArrayList<>();
     testMethodName = null;
     clusterConfig = new MppClusterConfig();
+    clusterRunning = false;
   }
 
   @Override

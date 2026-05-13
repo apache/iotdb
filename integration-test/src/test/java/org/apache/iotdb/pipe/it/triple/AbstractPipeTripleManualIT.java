@@ -22,6 +22,7 @@ package org.apache.iotdb.pipe.it.triple;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.it.env.MultiEnvFactory;
 import org.apache.iotdb.itbase.env.BaseEnv;
+import org.apache.iotdb.pipe.it.PipeEnvReuseManager;
 
 import org.junit.After;
 import org.junit.Before;
@@ -81,8 +82,6 @@ abstract class AbstractPipeTripleManualIT {
 
   @After
   public final void tearDown() {
-    env1.cleanClusterEnvironment();
-    env2.cleanClusterEnvironment();
-    env3.cleanClusterEnvironment();
+    PipeEnvReuseManager.prepareForNextTest(env1, env2, env3);
   }
 }
