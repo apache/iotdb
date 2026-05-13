@@ -372,7 +372,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       final TSStatus status =
           loadTsFileDataTypeConverter
               .convertForTreeModel(
-                  new LoadTsFileStatement(tsFiles.get(i).getPath())
+                  LoadTsFileStatement.createUnchecked(tsFiles.get(i).getPath())
                       .setDeleteAfterLoad(isDeleteAfterLoad)
                       .setConvertOnTypeMismatch(isConvertOnTypeMismatch))
               .orElse(null);

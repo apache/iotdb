@@ -2449,6 +2449,17 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "load_write_throughput_bytes_per_second",
                 String.valueOf(conf.getLoadWriteThroughputBytesPerSecond()))));
+
+    conf.setLoadTsFileAllowedDirs(
+        Arrays.stream(properties.getProperty("load_tsfile_allowed_dirs", "").trim().split(","))
+            .filter(dir -> !dir.isEmpty())
+            .toArray(String[]::new));
+    conf.setLoadTsFileSourcePathCheckEnabled(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "load_tsfile_source_path_check_enable",
+                Boolean.toString(conf.isLoadTsFileSourcePathCheckEnabled()))));
+
     conf.setLoadTabletConversionThresholdBytes(
         Long.parseLong(
             properties.getProperty(
@@ -2559,6 +2570,25 @@ public class IoTDBDescriptor {
                 "load_write_throughput_bytes_per_second",
                 ConfigurationFileUtils.getConfigurationDefaultValue(
                     "load_write_throughput_bytes_per_second"))));
+
+    conf.setLoadTsFileAllowedDirs(
+        Arrays.stream(
+                properties
+                    .getProperty(
+                        "load_tsfile_allowed_dirs",
+                        Optional.ofNullable(
+                                ConfigurationFileUtils.getConfigurationDefaultValue(
+                                    "load_tsfile_allowed_dirs"))
+                            .orElse(""))
+                    .trim()
+                    .split(","))
+            .filter(dir -> !dir.isEmpty())
+            .toArray(String[]::new));
+    conf.setLoadTsFileSourcePathCheckEnabled(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "load_tsfile_source_path_check_enable",
+                Boolean.toString(conf.isLoadTsFileSourcePathCheckEnabled()))));
 
     conf.setLoadActiveListeningEnable(
         Boolean.parseBoolean(
