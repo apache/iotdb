@@ -26,22 +26,25 @@ import org.apache.tsfile.file.header.PageHeader;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.common.Chunk;
 import org.apache.tsfile.read.reader.chunk.AbstractChunkReader;
+import org.apache.tsfile.read.reader.page.LazyLoadPageData;
 import org.apache.tsfile.read.reader.page.PageReader;
 
 import java.io.IOException;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
 
-public class SinglePageWholeChunkReader extends AbstractChunkReader {
+public class SinglePageWholeChunkReader extends AbstractChunkReader
+    implements EstimatedMemoryChunkReader {
   private final ChunkHeader chunkHeader;
   private final ByteBuffer chunkDataBuffer;
+  private final long pageEstimatedMemoryUsageInBytes;
 
   public SinglePageWholeChunkReader(Chunk chunk) throws IOException {
     super(Long.MIN_VALUE, null);
 
     this.chunkHeader = chunk.getHeader();
     this.chunkDataBuffer = chunk.getData();
-
+    this.pageEstimatedMemoryUsageInBytes = calculatePageEstimatedMemoryUsageInBytes(chunk);
     initAllPageReaders();
   }
 
@@ -56,13 +59,31 @@ public class SinglePageWholeChunkReader extends AbstractChunkReader {
   }
 
   private PageReader constructPageReader(PageHeader pageHeader) throws IOException {
+    final int currentPagePosition = chunkDataBuffer.position();
+    chunkDataBuffer.position(currentPagePosition + pageHeader.getCompressedSize());
     return new PageReader(
         pageHeader,
-        deserializePageData(pageHeader, chunkDataBuffer, chunkHeader),
+        new LazyLoadPageData(
+            chunkDataBuffer.array(),
+            currentPagePosition,
+            IUnCompressor.getUnCompressor(chunkHeader.getCompressionType())),
         chunkHeader.getDataType(),
         Decoder.getDecoderByType(chunkHeader.getEncodingType(), chunkHeader.getDataType()),
         defaultTimeDecoder,
         null);
+  }
+
+  @Override
+  public long getCurrentPageEstimatedMemoryUsageInBytes() {
+    return pageEstimatedMemoryUsageInBytes;
+  }
+
+  public static long calculatePageEstimatedMemoryUsageInBytes(final Chunk chunk)
+      throws IOException {
+    final ByteBuffer chunkDataBuffer = chunk.getData().duplicate();
+    final PageHeader pageHeader =
+        PageHeader.deserializeFrom(chunkDataBuffer, (Statistics<? extends Serializable>) null);
+    return pageHeader.getUncompressedSize();
   }
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
