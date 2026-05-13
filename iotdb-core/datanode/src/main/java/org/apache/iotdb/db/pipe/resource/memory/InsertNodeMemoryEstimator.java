@@ -26,6 +26,7 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertMultiTabletsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
@@ -50,9 +51,12 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 public class InsertNodeMemoryEstimator {
 
@@ -183,210 +187,125 @@ public class InsertNodeMemoryEstimator {
   // =============================InsertNode==================================
 
   private static long calculateFullInsertNodeSize(final InsertNode node) {
-    long size = 0;
-    // PartialPath
-    size += sizeOfPartialPath(node.getTargetPath());
-    // MeasurementSchemas
-    size += sizeOfMeasurementSchemas(node.getMeasurementSchemas());
-    // Measurement
-    size += RamUsageEstimator.sizeOf(node.getMeasurements());
-    // dataTypes
-    size += RamUsageEstimator.shallowSizeOf(node.getDataTypes());
-    // columnCategories
-    size += RamUsageEstimator.shallowSizeOf(node.getColumnCategories());
-    // idColumnIndices
-    size += sizeOfColumnIndices(node.getColumnCategories());
-    // deviceID
-    if (node.isDeviceIDExists()) {
-      size += sizeOfIDeviceID(node.getDeviceID());
-    }
-    // dataRegionReplicaSet
-    size += sizeOfTRegionReplicaSet(node.getRegionReplicaSet());
-    // progressIndex
-    size += sizeOfProgressIndex(node.getProgressIndex());
-    return size;
+    return calculateFullInsertNodeSize(node, null);
   }
 
-  private static long calculateInsertNodeSizeExcludingSchemas(final InsertNode node) {
+  private static long calculateFullInsertNodeSize(
+      final InsertNode node, final Set<Object> deduplicatedObjects) {
+    long size = 0;
+    // PlanNodeId
+    size += sizeOfPlanNodeId(node.getPlanNodeId(), deduplicatedObjects);
+    // PartialPath
+    size += sizeOfPartialPath(node.getTargetPath(), deduplicatedObjects);
+    // MeasurementSchemas
+    size += sizeOfMeasurementSchemas(node.getMeasurementSchemas(), deduplicatedObjects);
     // Measurement
-    long size = 2 * RamUsageEstimator.shallowSizeOf(node.getMeasurementSchemas());
+    size += sizeOfStringArray(node.getMeasurements(), deduplicatedObjects);
     // dataTypes
-    size += RamUsageEstimator.shallowSizeOf(node.getDataTypes());
+    size += sizeOfShallowObject(node.getDataTypes(), deduplicatedObjects);
     // columnCategories
-    size += RamUsageEstimator.shallowSizeOf(node.getColumnCategories());
+    size += sizeOfShallowObject(node.getColumnCategories(), deduplicatedObjects);
     // idColumnIndices
     size += sizeOfColumnIndices(node.getColumnCategories());
     // deviceID
     if (node.isDeviceIDExists()) {
-      size += sizeOfIDeviceID(node.getDeviceID());
+      size += sizeOfIDeviceID(node.getDeviceID(), deduplicatedObjects);
     }
     // dataRegionReplicaSet
-    size += sizeOfTRegionReplicaSet(node.getRegionReplicaSet());
+    size += sizeOfTRegionReplicaSet(node.getRegionReplicaSet(), deduplicatedObjects);
     // progressIndex
-    size += sizeOfProgressIndex(node.getProgressIndex());
+    size += sizeOfProgressIndex(node.getProgressIndex(), deduplicatedObjects);
     return size;
   }
 
   private static long sizeOfInsertTabletNode(final InsertTabletNode node) {
-    long size = INSERT_TABLET_NODE_SIZE;
-    size += calculateFullInsertNodeSize(node);
-    size += RamUsageEstimator.sizeOf(node.getTimes());
-    size += RamUsageEstimator.sizeOf(node.getBitMaps());
-    size += sizeOfColumns(node.getColumns(), node.getMeasurementSchemas());
-    final List<Integer> range = node.getRange();
-    if (range != null) {
-      size += NUM_BYTES_OBJECT_HEADER + SIZE_OF_INT * range.size();
-    }
-    return size;
+    return sizeOfInsertTabletNode(node, newDeduplicatedObjectSet());
   }
 
-  private static long calculateInsertTabletNodeSizeExcludingSchemas(final InsertTabletNode node) {
+  private static long sizeOfInsertTabletNode(
+      final InsertTabletNode node, final Set<Object> deduplicatedObjects) {
     long size = INSERT_TABLET_NODE_SIZE;
-
-    size += calculateInsertNodeSizeExcludingSchemas(node);
-
+    size += calculateFullInsertNodeSize(node, deduplicatedObjects);
     size += RamUsageEstimator.sizeOf(node.getTimes());
-
     size += RamUsageEstimator.sizeOf(node.getBitMaps());
-
     size += sizeOfColumns(node.getColumns(), node.getMeasurementSchemas());
-
-    final List<Integer> range = node.getRange();
-    if (range != null) {
-      size += NUM_BYTES_OBJECT_HEADER + SIZE_OF_INT * range.size();
-    }
+    size += sizeOfIntegerList(node.getRange());
     return size;
   }
 
   private static long sizeOfInsertRowNode(final InsertRowNode node) {
-    long size = INSERT_ROW_NODE_SIZE;
-    size += calculateFullInsertNodeSize(node);
-    size += sizeOfValues(node.getValues(), node.getMeasurementSchemas());
-    return size;
+    return sizeOfInsertRowNode(node, newDeduplicatedObjectSet());
   }
 
-  private static long calculateInsertRowNodeExcludingSchemas(final InsertRowNode node) {
+  private static long sizeOfInsertRowNode(
+      final InsertRowNode node, final Set<Object> deduplicatedObjects) {
     long size = INSERT_ROW_NODE_SIZE;
-    size += calculateInsertNodeSizeExcludingSchemas(node);
+    size += calculateFullInsertNodeSize(node, deduplicatedObjects);
     size += sizeOfValues(node.getValues(), node.getMeasurementSchemas());
     return size;
   }
 
   private static long sizeOfInsertRowsNode(final InsertRowsNode node) {
+    final Set<Object> deduplicatedObjects = newDeduplicatedObjectSet();
     long size = INSERT_ROWS_NODE_SIZE;
-    size += calculateFullInsertNodeSize(node);
-    final List<InsertRowNode> rows = node.getInsertRowNodeList();
-    final List<Integer> indexList = node.getInsertRowNodeIndexList();
-    if (rows != null && !rows.isEmpty()) {
-      // InsertRowNodeList
-      size += NUM_BYTES_OBJECT_HEADER;
-      size +=
-          (calculateInsertRowNodeExcludingSchemas(rows.get(0)) + NUM_BYTES_OBJECT_REF)
-              * rows.size();
-      size += sizeOfPartialPath(rows.get(0).getTargetPath());
-      size += sizeOfMeasurementSchemas(rows.get(0).getMeasurementSchemas());
-      // InsertRowNodeIndexList
-      size += NUM_BYTES_OBJECT_HEADER;
-      size += (long) indexList.size() * (SIZE_OF_INT + NUM_BYTES_OBJECT_REF);
-    }
+    size += calculateFullInsertNodeSize(node, deduplicatedObjects);
+    size += sizeOfInsertRowNodeList(node.getInsertRowNodeList(), deduplicatedObjects);
+    size += sizeOfIntegerList(node.getInsertRowNodeIndexList());
+    size += sizeOfResults(node.getResults());
     return size;
   }
 
   private static long sizeOfInsertRowsOfOneDeviceNode(final InsertRowsOfOneDeviceNode node) {
+    final Set<Object> deduplicatedObjects = newDeduplicatedObjectSet();
     long size = INSERT_ROWS_OF_ONE_DEVICE_NODE_SIZE;
-    size += calculateFullInsertNodeSize(node);
-    final List<InsertRowNode> rows = node.getInsertRowNodeList();
-    final List<Integer> indexList = node.getInsertRowNodeIndexList();
-    if (rows != null && !rows.isEmpty()) {
-      // InsertRowNodeList
-      size += NUM_BYTES_OBJECT_HEADER;
-      size +=
-          (calculateInsertRowNodeExcludingSchemas(rows.get(0)) + NUM_BYTES_OBJECT_REF)
-              * rows.size();
-      size += sizeOfPartialPath(rows.get(0).getTargetPath());
-      size += sizeOfMeasurementSchemas(rows.get(0).getMeasurementSchemas());
-      // InsertRowNodeIndexList
-      size += NUM_BYTES_OBJECT_HEADER;
-      size += (long) indexList.size() * (SIZE_OF_INT + NUM_BYTES_OBJECT_REF);
-    }
-    // results
-    size += NUM_BYTES_OBJECT_HEADER;
-    for (Map.Entry<Integer, TSStatus> entry : node.getResults().entrySet()) {
-      size +=
-          Integer.BYTES
-              + sizeOfTSStatus(entry.getValue())
-              + RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY;
-    }
+    size += calculateFullInsertNodeSize(node, deduplicatedObjects);
+    size += sizeOfInsertRowNodeList(node.getInsertRowNodeList(), deduplicatedObjects);
+    size += sizeOfIntegerList(node.getInsertRowNodeIndexList());
+    size += sizeOfResults(node.getResults());
     return size;
   }
 
   private static long sizeOfInsertMultiTabletsNode(final InsertMultiTabletsNode node) {
+    final Set<Object> deduplicatedObjects = newDeduplicatedObjectSet();
     long size = INSERT_MULTI_TABLETS_NODE_SIZE;
-    size += calculateFullInsertNodeSize(node);
-    // dataTypes
-    size += RamUsageEstimator.shallowSizeOf(node.getDataTypes());
-    // columnCategories
-    size += RamUsageEstimator.shallowSizeOf(node.getColumnCategories());
-
-    final List<InsertTabletNode> rows = node.getInsertTabletNodeList();
-    final List<Integer> indexList = node.getParentInsertTabletNodeIndexList();
-    if (rows != null && !rows.isEmpty()) {
-      // InsertTabletNodeList
-      size += NUM_BYTES_OBJECT_HEADER;
-      size +=
-          (calculateInsertTabletNodeSizeExcludingSchemas(rows.get(0)) + NUM_BYTES_OBJECT_REF)
-              * rows.size();
-      size += sizeOfPartialPath(rows.get(0).getTargetPath());
-      size += sizeOfMeasurementSchemas(rows.get(0).getMeasurementSchemas());
-      // ParentInsertTabletNodeIndexList
-      size += NUM_BYTES_OBJECT_HEADER;
-      size += (long) indexList.size() * (SIZE_OF_INT + NUM_BYTES_OBJECT_REF);
-    }
-    // results
-    if (node.getResults() != null) {
-      size += NUM_BYTES_OBJECT_HEADER;
-      for (Map.Entry<Integer, TSStatus> entry : node.getResults().entrySet()) {
-        size +=
-            Integer.BYTES
-                + sizeOfTSStatus(entry.getValue())
-                + RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY;
-      }
-    }
+    size += calculateFullInsertNodeSize(node, deduplicatedObjects);
+    size += sizeOfInsertTabletNodeList(node.getInsertTabletNodeList(), deduplicatedObjects);
+    size += sizeOfIntegerList(node.getParentInsertTabletNodeIndexList());
+    size += sizeOfResults(node.getResults());
     return size;
   }
 
   private static long sizeOfRelationalInsertRowsNode(final RelationalInsertRowsNode node) {
+    final Set<Object> deduplicatedObjects = newDeduplicatedObjectSet();
     long size = RELATIONAL_INSERT_ROWS_NODE_SIZE;
-    size += calculateFullInsertNodeSize(node);
-    final List<InsertRowNode> rows = node.getInsertRowNodeList();
-    final List<Integer> indexList = node.getInsertRowNodeIndexList();
-    if (rows != null && !rows.isEmpty()) {
-      // InsertRowNodeList
-      size += NUM_BYTES_OBJECT_HEADER;
-      size +=
-          (calculateInsertRowNodeExcludingSchemas(rows.get(0)) + NUM_BYTES_OBJECT_REF)
-              * rows.size();
-      size += sizeOfPartialPath(rows.get(0).getTargetPath());
-      size += sizeOfMeasurementSchemas(rows.get(0).getMeasurementSchemas());
-      // InsertRowNodeIndexList
-      size += NUM_BYTES_OBJECT_HEADER;
-      size += (long) indexList.size() * (SIZE_OF_INT + NUM_BYTES_OBJECT_REF);
-    }
+    size += calculateFullInsertNodeSize(node, deduplicatedObjects);
+    size += sizeOfInsertRowNodeList(node.getInsertRowNodeList(), deduplicatedObjects);
+    size += sizeOfIntegerList(node.getInsertRowNodeIndexList());
     // ignore deviceIDs
     return size;
   }
 
   private static long sizeOfRelationalInsertRowNode(final RelationalInsertRowNode node) {
+    return sizeOfRelationalInsertRowNode(node, newDeduplicatedObjectSet());
+  }
+
+  private static long sizeOfRelationalInsertRowNode(
+      final RelationalInsertRowNode node, final Set<Object> deduplicatedObjects) {
     long size = RELATIONAL_INSERT_ROW_NODE_SIZE;
-    size += calculateFullInsertNodeSize(node);
+    size += calculateFullInsertNodeSize(node, deduplicatedObjects);
     size += sizeOfValues(node.getValues(), node.getMeasurementSchemas());
     return size;
   }
 
   private static long sizeOfRelationalInsertTabletNode(final RelationalInsertTabletNode node) {
+    return sizeOfRelationalInsertTabletNode(node, newDeduplicatedObjectSet());
+  }
+
+  private static long sizeOfRelationalInsertTabletNode(
+      final RelationalInsertTabletNode node, final Set<Object> deduplicatedObjects) {
     long size = RELATIONAL_INSERT_TABLET_NODE_SIZE;
 
-    size += calculateFullInsertNodeSize(node);
+    size += calculateFullInsertNodeSize(node, deduplicatedObjects);
 
     size += RamUsageEstimator.sizeOf(node.getTimes());
 
@@ -394,10 +313,7 @@ public class InsertNodeMemoryEstimator {
 
     size += sizeOfColumns(node.getColumns(), node.getMeasurementSchemas());
 
-    final List<Integer> range = node.getRange();
-    if (range != null) {
-      size += NUM_BYTES_OBJECT_HEADER + (NUM_BYTES_OBJECT_REF + Integer.BYTES) * range.size();
-    }
+    size += sizeOfIntegerList(node.getRange());
     // ignore deviceIDs
     return size;
   }
@@ -405,7 +321,15 @@ public class InsertNodeMemoryEstimator {
   // ============================Device And Measurement===================================
 
   public static long sizeOfPartialPath(final PartialPath partialPath) {
+    return sizeOfPartialPath(partialPath, null);
+  }
+
+  private static long sizeOfPartialPath(
+      final PartialPath partialPath, final Set<Object> deduplicatedObjects) {
     if (partialPath == null) {
+      return 0L;
+    }
+    if (!shouldCountObject(partialPath, deduplicatedObjects)) {
       return 0L;
     }
     long size = PARTIAL_PATH_SIZE;
@@ -420,20 +344,36 @@ public class InsertNodeMemoryEstimator {
   }
 
   public static long sizeOfMeasurementSchemas(final MeasurementSchema[] measurementSchemas) {
+    return sizeOfMeasurementSchemas(measurementSchemas, null);
+  }
+
+  private static long sizeOfMeasurementSchemas(
+      final MeasurementSchema[] measurementSchemas, final Set<Object> deduplicatedObjects) {
     if (measurementSchemas == null) {
+      return 0L;
+    }
+    if (!shouldCountObject(measurementSchemas, deduplicatedObjects)) {
       return 0L;
     }
     long size =
         RamUsageEstimator.alignObjectSize(
             NUM_BYTES_ARRAY_HEADER + NUM_BYTES_OBJECT_REF * measurementSchemas.length);
     for (MeasurementSchema measurementSchema : measurementSchemas) {
-      size += sizeOfMeasurementSchema(measurementSchema);
+      size += sizeOfMeasurementSchema(measurementSchema, deduplicatedObjects);
     }
     return size;
   }
 
   public static long sizeOfMeasurementSchema(final MeasurementSchema measurementSchema) {
+    return sizeOfMeasurementSchema(measurementSchema, null);
+  }
+
+  private static long sizeOfMeasurementSchema(
+      final MeasurementSchema measurementSchema, final Set<Object> deduplicatedObjects) {
     if (measurementSchema == null) {
+      return 0L;
+    }
+    if (!shouldCountObject(measurementSchema, deduplicatedObjects)) {
       return 0L;
     }
     // Header + primitive + reference
@@ -443,7 +383,7 @@ public class InsertNodeMemoryEstimator {
     // props
     final Map<String, String> props = measurementSchema.getProps();
     if (props != null) {
-      size += NUM_BYTES_OBJECT_HEADER;
+      size += RamUsageEstimator.shallowSizeOf(props);
       for (Map.Entry<String, String> entry : props.entrySet()) {
         size +=
             RamUsageEstimator.sizeOf(entry.getKey())
@@ -471,13 +411,28 @@ public class InsertNodeMemoryEstimator {
   }
 
   public static long sizeOfIDeviceID(final IDeviceID deviceID) {
-    return Objects.nonNull(deviceID) ? deviceID.ramBytesUsed() : 0L;
+    return sizeOfIDeviceID(deviceID, null);
+  }
+
+  private static long sizeOfIDeviceID(
+      final IDeviceID deviceID, final Set<Object> deduplicatedObjects) {
+    return Objects.nonNull(deviceID) && shouldCountObject(deviceID, deduplicatedObjects)
+        ? deviceID.ramBytesUsed()
+        : 0L;
   }
 
   // =============================Thrift==================================
 
   private static long sizeOfTRegionReplicaSet(final TRegionReplicaSet tRegionReplicaSet) {
+    return sizeOfTRegionReplicaSet(tRegionReplicaSet, null);
+  }
+
+  private static long sizeOfTRegionReplicaSet(
+      final TRegionReplicaSet tRegionReplicaSet, final Set<Object> deduplicatedObjects) {
     if (tRegionReplicaSet == null) {
+      return 0L;
+    }
+    if (!shouldCountObject(tRegionReplicaSet, deduplicatedObjects)) {
       return 0L;
     }
     // Memory alignment of basic types and reference types in structures
@@ -487,9 +442,9 @@ public class InsertNodeMemoryEstimator {
       size += sizeOfTConsensusGroupId();
     }
     if (tRegionReplicaSet.isSetDataNodeLocations()) {
-      size += NUM_BYTES_OBJECT_HEADER;
+      size += sizeOfObjectList(tRegionReplicaSet.getDataNodeLocations());
       for (TDataNodeLocation tDataNodeLocation : tRegionReplicaSet.getDataNodeLocations()) {
-        size += sizeOfTDataNodeLocation(tDataNodeLocation);
+        size += sizeOfTDataNodeLocation(tDataNodeLocation, deduplicatedObjects);
       }
     }
     return size;
@@ -500,23 +455,36 @@ public class InsertNodeMemoryEstimator {
     return T_CONSENSUS_GROUP_ID_SIZE;
   }
 
-  private static long sizeOfTDataNodeLocation(final TDataNodeLocation tDataNodeLocation) {
+  private static long sizeOfTDataNodeLocation(
+      final TDataNodeLocation tDataNodeLocation, final Set<Object> deduplicatedObjects) {
     if (tDataNodeLocation == null) {
+      return 0L;
+    }
+    if (!shouldCountObject(tDataNodeLocation, deduplicatedObjects)) {
       return 0L;
     }
     long size = T_DATA_NODE_LOCATION_SIZE;
 
-    size += sizeOfTEndPoint(tDataNodeLocation.getClientRpcEndPoint());
-    size += sizeOfTEndPoint(tDataNodeLocation.getInternalEndPoint());
-    size += sizeOfTEndPoint(tDataNodeLocation.getMPPDataExchangeEndPoint());
-    size += sizeOfTEndPoint(tDataNodeLocation.getDataRegionConsensusEndPoint());
-    size += sizeOfTEndPoint(tDataNodeLocation.getSchemaRegionConsensusEndPoint());
+    size += sizeOfTEndPoint(tDataNodeLocation.getClientRpcEndPoint(), deduplicatedObjects);
+    size += sizeOfTEndPoint(tDataNodeLocation.getInternalEndPoint(), deduplicatedObjects);
+    size += sizeOfTEndPoint(tDataNodeLocation.getMPPDataExchangeEndPoint(), deduplicatedObjects);
+    size += sizeOfTEndPoint(tDataNodeLocation.getDataRegionConsensusEndPoint(), deduplicatedObjects);
+    size +=
+        sizeOfTEndPoint(tDataNodeLocation.getSchemaRegionConsensusEndPoint(), deduplicatedObjects);
 
     return size;
   }
 
   private static long sizeOfTEndPoint(final TEndPoint tEndPoint) {
+    return sizeOfTEndPoint(tEndPoint, null);
+  }
+
+  private static long sizeOfTEndPoint(
+      final TEndPoint tEndPoint, final Set<Object> deduplicatedObjects) {
     if (tEndPoint == null) {
+      return 0L;
+    }
+    if (!shouldCountObject(tEndPoint, deduplicatedObjects)) {
       return 0L;
     }
     // objectHeader + ip + port
@@ -527,7 +495,15 @@ public class InsertNodeMemoryEstimator {
   }
 
   private static long sizeOfTSStatus(final TSStatus tSStatus) {
+    return sizeOfTSStatus(tSStatus, null);
+  }
+
+  private static long sizeOfTSStatus(
+      final TSStatus tSStatus, final Set<Object> deduplicatedObjects) {
     if (tSStatus == null) {
+      return 0L;
+    }
+    if (!shouldCountObject(tSStatus, deduplicatedObjects)) {
       return 0L;
     }
     long size = TS_STATUS_SIZE;
@@ -535,10 +511,16 @@ public class InsertNodeMemoryEstimator {
     if (tSStatus.isSetMessage()) {
       size += RamUsageEstimator.sizeOf(tSStatus.message);
     }
-    // ignore subStatus
+    // subStatus
+    if (tSStatus.getSubStatus() != null) {
+      size += sizeOfObjectList(tSStatus.getSubStatus());
+      for (TSStatus subStatus : tSStatus.getSubStatus()) {
+        size += sizeOfTSStatus(subStatus, deduplicatedObjects);
+      }
+    }
     // redirectNode
     if (tSStatus.isSetRedirectNode()) {
-      size += sizeOfTEndPoint(tSStatus.redirectNode);
+      size += sizeOfTEndPoint(tSStatus.redirectNode, deduplicatedObjects);
     }
     return size;
   }
@@ -546,7 +528,14 @@ public class InsertNodeMemoryEstimator {
   // =============================ProgressIndex==================================
 
   private static long sizeOfProgressIndex(final ProgressIndex progressIndex) {
-    return Objects.nonNull(progressIndex) ? progressIndex.ramBytesUsed() : 0L;
+    return sizeOfProgressIndex(progressIndex, null);
+  }
+
+  private static long sizeOfProgressIndex(
+      final ProgressIndex progressIndex, final Set<Object> deduplicatedObjects) {
+    return Objects.nonNull(progressIndex) && shouldCountObject(progressIndex, deduplicatedObjects)
+        ? progressIndex.ramBytesUsed()
+        : 0L;
   }
 
   // =============================Write==================================
@@ -673,5 +662,105 @@ public class InsertNodeMemoryEstimator {
       }
     }
     return size;
+  }
+
+  private static long sizeOfPlanNodeId(
+      final PlanNodeId planNodeId, final Set<Object> deduplicatedObjects) {
+    return planNodeId != null && shouldCountObject(planNodeId, deduplicatedObjects)
+        ? planNodeId.ramBytesUsed()
+        : 0L;
+  }
+
+  private static long sizeOfStringArray(
+      final String[] strings, final Set<Object> deduplicatedObjects) {
+    return strings != null && shouldCountObject(strings, deduplicatedObjects)
+        ? RamUsageEstimator.sizeOf(strings)
+        : 0L;
+  }
+
+  private static long sizeOfShallowObject(
+      final Object object, final Set<Object> deduplicatedObjects) {
+    return object != null && shouldCountObject(object, deduplicatedObjects)
+        ? RamUsageEstimator.shallowSizeOf(object)
+        : 0L;
+  }
+
+  private static long sizeOfInsertRowNodeList(
+      final List<InsertRowNode> rows, final Set<Object> deduplicatedObjects) {
+    if (rows == null) {
+      return 0L;
+    }
+    long size = sizeOfObjectList(rows);
+    for (InsertRowNode row : rows) {
+      size += sizeOfContainedInsertRowNode(row, deduplicatedObjects);
+    }
+    return size;
+  }
+
+  private static long sizeOfInsertTabletNodeList(
+      final List<InsertTabletNode> tablets, final Set<Object> deduplicatedObjects) {
+    if (tablets == null) {
+      return 0L;
+    }
+    long size = sizeOfObjectList(tablets);
+    for (InsertTabletNode tablet : tablets) {
+      size += sizeOfInsertTabletNode(tablet, deduplicatedObjects);
+    }
+    return size;
+  }
+
+  private static long sizeOfContainedInsertRowNode(
+      final InsertRowNode node, final Set<Object> deduplicatedObjects) {
+    return node instanceof RelationalInsertRowNode
+        ? sizeOfRelationalInsertRowNode((RelationalInsertRowNode) node, deduplicatedObjects)
+        : sizeOfInsertRowNode(node, deduplicatedObjects);
+  }
+
+  private static long sizeOfObjectList(final List<?> list) {
+    if (list == null) {
+      return 0L;
+    }
+    long size = RamUsageEstimator.shallowSizeOf(list);
+    if (list instanceof ArrayList) {
+      size +=
+          RamUsageEstimator.alignObjectSize(
+              NUM_BYTES_ARRAY_HEADER + NUM_BYTES_OBJECT_REF * list.size());
+    }
+    return size;
+  }
+
+  private static long sizeOfIntegerList(final List<Integer> integers) {
+    if (integers == null) {
+      return 0L;
+    }
+    long size = sizeOfObjectList(integers);
+    for (Integer ignored : integers) {
+      size += SIZE_OF_INT;
+    }
+    return size;
+  }
+
+  private static long sizeOfResults(final Map<Integer, TSStatus> results) {
+    if (results == null) {
+      return 0L;
+    }
+    long size = RamUsageEstimator.shallowSizeOf(results);
+    for (Map.Entry<Integer, TSStatus> entry : results.entrySet()) {
+      size +=
+          SIZE_OF_INT
+              + sizeOfTSStatus(entry.getValue())
+              + RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY;
+    }
+    return size;
+  }
+
+  private static Set<Object> newDeduplicatedObjectSet() {
+    return Collections.newSetFromMap(new IdentityHashMap<>());
+  }
+
+  private static boolean shouldCountObject(
+      final Object object, final Set<Object> deduplicatedObjects) {
+    return object != null
+        && (deduplicatedObjects == null || deduplicatedObjects.add(object));
   }
 }
