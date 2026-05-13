@@ -639,11 +639,13 @@ public class TsFileResource implements Cloneable {
    * file physically.
    */
   public boolean remove() {
-    forceMarkDeleted();
     // To release the memory occupied by pipe if held by it
     // Note that pipe can safely handle the case that the time index does not exist
     isEmpty();
-    degradeTimeIndex();
+    if (getStatus() != TsFileResourceStatus.UNCLOSED) {
+      degradeTimeIndex();
+    }
+    forceMarkDeleted();
     try {
       fsFactory.deleteIfExists(file);
       fsFactory.deleteIfExists(
