@@ -119,6 +119,7 @@ import org.apache.iotdb.commons.queryengine.utils.cte.CteDataStore;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
+import org.apache.iotdb.commons.udf.builtin.relational.tvf.M4TableFunction;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext.ExplainType;
@@ -5022,7 +5023,67 @@ public class StatementAnalyzer {
               analyzeDefault(parameterSpecification, errorLocation));
         }
       }
+      tryAppendM4ModeArgument(functionName, arguments, parameterSpecifications, passedArguments);
       return new ArgumentsAnalysis(passedArguments.buildOrThrow(), tableArgumentAnalyses.build());
+    }
+
+    private void tryAppendM4ModeArgument(
+        String functionName,
+        List<TableFunctionArgument> arguments,
+        List<ParameterSpecification> parameterSpecifications,
+        ImmutableMap.Builder<String, Argument> passedArguments) {
+      if (!TableBuiltinTableFunction.M4.getFunctionName().equalsIgnoreCase(functionName)) {
+        return;
+      }
+
+      TableFunctionArgument sizeArgument =
+          findTableFunctionArgument(
+              arguments, parameterSpecifications, M4TableFunction.SIZE_PARAMETER_NAME);
+      if (!(sizeArgument.getValue() instanceof Expression)) {
+        throw new SemanticException(
+            String.format(
+                "Invalid argument %s. Expected scalar argument, got table",
+                M4TableFunction.SIZE_PARAMETER_NAME));
+      }
+
+      boolean isTimeWindow = sizeArgument.getValue() instanceof TimeDurationLiteral;
+      passedArguments.put(
+          M4TableFunction.WINDOW_MODE_PARAMETER_NAME,
+          new ScalarArgument(org.apache.iotdb.udf.api.type.Type.BOOLEAN, isTimeWindow));
+    }
+
+    private TableFunctionArgument findTableFunctionArgument(
+        List<TableFunctionArgument> arguments,
+        List<ParameterSpecification> parameterSpecifications,
+        String argumentName) {
+      if (arguments.isEmpty()) {
+        throw new IllegalStateException("Arguments should never be empty when resolving M4 mode");
+      }
+
+      boolean argumentsPassedByName =
+          arguments.stream().allMatch(argument -> argument.getName().isPresent());
+      if (argumentsPassedByName) {
+        return arguments.stream()
+            .filter(
+                argument ->
+                    argumentName.equalsIgnoreCase(argument.getName().get().getCanonicalValue()))
+            .findFirst()
+            .orElseThrow(
+                () ->
+                    new IllegalStateException(
+                        String.format("Missing required argument: %s", argumentName)));
+      }
+
+      for (int i = 0, size = parameterSpecifications.size(); i < size; i++) {
+        if (argumentName.equalsIgnoreCase(parameterSpecifications.get(i).getName())) {
+          if (i >= arguments.size()) {
+            throw new IllegalStateException(
+                String.format("Missing required argument: %s", argumentName));
+          }
+          return arguments.get(i);
+        }
+      }
+      throw new IllegalStateException(String.format("Unknown argument: %s", argumentName));
     }
 
     // append order by time asc for built-in forecast tvf if user doesn't specify order by clause
