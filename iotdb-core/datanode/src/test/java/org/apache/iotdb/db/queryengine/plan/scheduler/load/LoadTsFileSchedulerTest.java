@@ -75,8 +75,7 @@ public class LoadTsFileSchedulerTest {
     when(node.isTableModel()).thenReturn(false);
     when(node.getDatabase()).thenReturn("root.test.sg");
 
-    Assert.assertEquals(
-        "root.test.sg", LoadTsFileScheduler.getPartitionQueryDatabase(node, true));
+    Assert.assertEquals("root.test.sg", LoadTsFileScheduler.getPartitionQueryDatabase(node, true));
     Assert.assertNull(LoadTsFileScheduler.getPartitionQueryDatabase(node, false));
   }
 
