@@ -97,7 +97,8 @@ public class PipeTransferTrackableHandlerTest {
     final PipeTransferSliceReq thirdSlice =
         PipeTransferSliceReq.fromTPipeTransferReq(transferredRequests.get(2));
 
-    Assert.assertEquals(PipeRequestType.TRANSFER_SLICE.getType(), transferredRequests.get(0).getType());
+    Assert.assertEquals(
+        PipeRequestType.TRANSFER_SLICE.getType(), transferredRequests.get(0).getType());
     Assert.assertEquals(firstSlice.getOrderId(), secondSlice.getOrderId());
     Assert.assertEquals(firstSlice.getOrderId(), thirdSlice.getOrderId());
     Assert.assertEquals(originalReq.getType(), firstSlice.getOriginReqType());
@@ -144,7 +145,8 @@ public class PipeTransferTrackableHandlerTest {
     handler.transfer(client, originalReq);
 
     Assert.assertEquals(2, transferredRequests.size());
-    Assert.assertEquals(PipeRequestType.TRANSFER_SLICE.getType(), transferredRequests.get(0).getType());
+    Assert.assertEquals(
+        PipeRequestType.TRANSFER_SLICE.getType(), transferredRequests.get(0).getType());
     Assert.assertEquals(originalReq.getType(), transferredRequests.get(1).getType());
     Assert.assertEquals(originalReq.getVersion(), transferredRequests.get(1).getVersion());
     Assert.assertArrayEquals(originalReq.getBody(), transferredRequests.get(1).getBody());
@@ -187,7 +189,8 @@ public class PipeTransferTrackableHandlerTest {
       super(sink);
     }
 
-    private void transfer(final AsyncPipeDataTransferServiceClient client, final TPipeTransferReq req)
+    private void transfer(
+        final AsyncPipeDataTransferServiceClient client, final TPipeTransferReq req)
         throws TException {
       tryTransfer(client, req);
     }

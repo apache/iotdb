@@ -21,9 +21,7 @@ package org.apache.iotdb.db.pipe.sink.protocol.thrift.async.handler;
 
 import org.apache.iotdb.commons.client.ThriftClient;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
-import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.IoTDBSinkRequestVersion;
-import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferSliceReq;
+import org.apache.iotdb.commons.pipe.sink.payload.thrift.common.PipeTransferSliceReqBuilder;
 import org.apache.iotdb.db.pipe.sink.protocol.thrift.async.IoTDBDataRegionAsyncSink;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
@@ -37,12 +35,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Objects;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public abstract class PipeTransferTrackableHandler
     implements AsyncMethodCallback<TPipeTransferResp>, AutoCloseable {
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTransferTsFileHandler.class);
-  private static final AtomicInteger SLICE_ORDER_ID_GENERATOR = new AtomicInteger(0);
 
   protected final IoTDBDataRegionAsyncSink sink;
   protected volatile AsyncPipeDataTransferServiceClient client;
@@ -137,9 +133,8 @@ public abstract class PipeTransferTrackableHandler
   protected final void transferWithOptionalRequestSlicing(
       final AsyncPipeDataTransferServiceClient client, final TPipeTransferReq req)
       throws TException {
-    final int bodySizeLimit = PipeConfig.getInstance().getPipeSinkRequestSliceThresholdBytes();
-    if (req.getVersion() != IoTDBSinkRequestVersion.VERSION_1.getVersion()
-        || req.body.limit() < bodySizeLimit) {
+    final int bodySizeLimit = PipeTransferSliceReqBuilder.getBodySizeLimit();
+    if (!PipeTransferSliceReqBuilder.shouldSlice(req, bodySizeLimit)) {
       client.pipeTransfer(req, this);
       return;
     }
@@ -152,15 +147,14 @@ public abstract class PipeTransferTrackableHandler
         req.body.limit(),
         bodySizeLimit);
 
-    final int sliceCount =
-        req.body.limit() / bodySizeLimit + (req.body.limit() % bodySizeLimit == 0 ? 0 : 1);
+    final int sliceCount = PipeTransferSliceReqBuilder.getSliceCount(req, bodySizeLimit);
     final boolean shouldReturnSelf = client.shouldReturnSelf();
     try {
       transferSlicedRequest(
           client,
           req,
           shouldReturnSelf,
-          SLICE_ORDER_ID_GENERATOR.getAndIncrement(),
+          PipeTransferSliceReqBuilder.nextSliceOrderId(),
           0,
           sliceCount,
           bodySizeLimit);
@@ -180,18 +174,10 @@ public abstract class PipeTransferTrackableHandler
       final int sliceCount,
       final int bodySizeLimit)
       throws Exception {
-    final int startIndexInBody = sliceIndex * bodySizeLimit;
-    final int endIndexInBody = Math.min((sliceIndex + 1) * bodySizeLimit, originalReq.body.limit());
     client.setShouldReturnSelf(shouldReturnSelf && sliceIndex == sliceCount - 1);
     client.pipeTransfer(
-        PipeTransferSliceReq.toTPipeTransferReq(
-            sliceOrderId,
-            originalReq.getType(),
-            sliceIndex,
-            sliceCount,
-            originalReq.body.duplicate(),
-            startIndexInBody,
-            endIndexInBody),
+        PipeTransferSliceReqBuilder.buildSliceReq(
+            originalReq, sliceOrderId, sliceIndex, sliceCount, bodySizeLimit),
         new AsyncMethodCallback<TPipeTransferResp>() {
           @Override
           public void onComplete(final TPipeTransferResp response) {
