@@ -87,7 +87,7 @@ public class TumblingTimeSamplingProcessor extends DownSamplingProcessor {
   }
 
   @Override
-  protected PartialPathLastObjectCache<?> initPathLastObjectCache(long memoryLimitInBytes) {
+  protected void initPathLastObjectCache(final long memoryLimitInBytes) {
     pathLastObjectCache =
         new PartialPathLastObjectCache<Long>(memoryLimitInBytes) {
           @Override
@@ -95,7 +95,6 @@ public class TumblingTimeSamplingProcessor extends DownSamplingProcessor {
             return Long.BYTES;
           }
         };
-    return pathLastObjectCache;
   }
 
   @Override
@@ -132,6 +131,13 @@ public class TumblingTimeSamplingProcessor extends DownSamplingProcessor {
           exception.set(e);
         }
       }
+    }
+  }
+
+  @Override
+  public void close() throws Exception {
+    if (pathLastObjectCache != null) {
+      pathLastObjectCache.close();
     }
   }
 }
