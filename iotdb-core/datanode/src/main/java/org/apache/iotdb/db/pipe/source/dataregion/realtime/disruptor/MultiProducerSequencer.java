@@ -23,6 +23,7 @@ import java.util.Objects;
 import java.util.concurrent.atomic.AtomicIntegerArray;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.LockSupport;
+import java.util.function.BooleanSupplier;
 
 /**
  * Multi-producer sequencer for coordinating concurrent publishers
@@ -110,14 +111,31 @@ public final class MultiProducerSequencer {
    * @return highest claimed sequence number
    */
   public long next(int n) {
+    return next(n, () -> false);
+  }
+
+  /**
+   * Claim next n sequences for publishing, or abort if the caller is closing.
+   *
+   * @param n number of sequences to claim
+   * @param abortCondition returns {@code true} if the claim should be abandoned
+   * @return highest claimed sequence number, or {@link Sequence#INITIAL_VALUE} if aborted
+   */
+  public long next(final int n, final BooleanSupplier abortCondition) {
     if (n < 1) {
       throw new IllegalArgumentException("n must be > 0");
     }
 
+    final BooleanSupplier effectiveAbortCondition =
+        abortCondition != null ? abortCondition : () -> false;
     long current;
     long next;
 
     do {
+      if (effectiveAbortCondition.getAsBoolean()) {
+        return Sequence.INITIAL_VALUE;
+      }
+
       current = cursor.get();
       next = current + n;
 
@@ -128,6 +146,9 @@ public final class MultiProducerSequencer {
         long gatingSequence = Sequence.getMinimumSequence(gatingSequences.get(), current);
 
         if (wrapPoint > gatingSequence) {
+          if (effectiveAbortCondition.getAsBoolean()) {
+            return Sequence.INITIAL_VALUE;
+          }
           LockSupport.parkNanos(1);
           continue;
         }
