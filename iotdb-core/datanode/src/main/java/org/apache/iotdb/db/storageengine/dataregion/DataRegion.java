@@ -1194,6 +1194,7 @@ public class DataRegion implements IDataRegionForQuery {
       // init map
       long timePartitionId = TimePartitionUtils.getTimePartitionId(insertRowNode.getTime());
       initFlushTimeMap(timePartitionId);
+      insertRowNode.setLastFragment(true);
 
       boolean isSequence =
           config.isEnableSeparateData()
@@ -1322,14 +1323,29 @@ public class DataRegion implements IDataRegionForQuery {
       InsertTabletNode insertTabletNode,
       Map<Long, List<int[]>[]> splitMap,
       TSStatus[] results,
-      long[] infoForMetrics)
+      long[] infoForMetrics,
+      boolean markLastFragmentOnFinalWrite)
       throws DataTypeInconsistentException {
     boolean noFailure = true;
+    int remainingFragmentCount = 0;
+    if (markLastFragmentOnFinalWrite) {
+      for (Entry<Long, List<int[]>[]> entry : splitMap.entrySet()) {
+        List<int[]>[] rangeLists = entry.getValue();
+        if (rangeLists[1] != null) {
+          remainingFragmentCount++;
+        }
+        if (rangeLists[0] != null) {
+          remainingFragmentCount++;
+        }
+      }
+    }
     for (Entry<Long, List<int[]>[]> entry : splitMap.entrySet()) {
       long timePartitionId = entry.getKey();
       List<int[]>[] rangeLists = entry.getValue();
       List<int[]> sequenceRangeList = rangeLists[1];
       if (sequenceRangeList != null) {
+        insertTabletNode.setLastFragment(
+            markLastFragmentOnFinalWrite && remainingFragmentCount == 1);
         noFailure =
             insertTabletToTsFileProcessor(
                     insertTabletNode,
@@ -1340,9 +1356,12 @@ public class DataRegion implements IDataRegionForQuery {
                     noFailure,
                     infoForMetrics)
                 && noFailure;
+        remainingFragmentCount--;
       }
       List<int[]> unSequenceRangeList = rangeLists[0];
       if (unSequenceRangeList != null) {
+        insertTabletNode.setLastFragment(
+            markLastFragmentOnFinalWrite && remainingFragmentCount == 1);
         noFailure =
             insertTabletToTsFileProcessor(
                     insertTabletNode,
@@ -1353,6 +1372,7 @@ public class DataRegion implements IDataRegionForQuery {
                     noFailure,
                     infoForMetrics)
                 && noFailure;
+        remainingFragmentCount--;
       }
     }
     return noFailure;
@@ -1391,7 +1411,7 @@ public class DataRegion implements IDataRegionForQuery {
       // infoForMetrics[2]: ScheduleWalTimeCost
       // infoForMetrics[3]: ScheduleMemTableTimeCost
       // infoForMetrics[4]: InsertedPointsNumber
-      boolean noFailure = executeInsertTablet(insertTabletNode, results, infoForMetrics);
+      boolean noFailure = executeInsertTablet(insertTabletNode, results, infoForMetrics, true);
       updateTsFileProcessorMetric(insertTabletNode, infoForMetrics);
 
       if (!noFailure) {
@@ -1407,7 +1427,8 @@ public class DataRegion implements IDataRegionForQuery {
       InsertTabletNode insertTabletNode,
       TSStatus[] results,
       long[] infoForMetrics,
-      List<Pair<IDeviceID, Integer>> deviceEndOffsetPairs) {
+      List<Pair<IDeviceID, Integer>> deviceEndOffsetPairs,
+      boolean markLastFragmentOnFinalWrite) {
     final int initialStart = start;
     try {
       Map<Long, List<int[]>[]> splitInfo = new HashMap<>();
@@ -1416,7 +1437,8 @@ public class DataRegion implements IDataRegionForQuery {
         split(insertTabletNode, start, end, splitInfo);
         start = end;
       }
-      return doInsert(insertTabletNode, splitInfo, results, infoForMetrics);
+      return doInsert(
+          insertTabletNode, splitInfo, results, infoForMetrics, markLastFragmentOnFinalWrite);
     } catch (DataTypeInconsistentException e) {
       // the exception will trigger a flush, which requires the flush time to be recalculated
       start = initialStart;
@@ -1427,7 +1449,8 @@ public class DataRegion implements IDataRegionForQuery {
         start = end;
       }
       try {
-        return doInsert(insertTabletNode, splitInfo, results, infoForMetrics);
+        return doInsert(
+            insertTabletNode, splitInfo, results, infoForMetrics, markLastFragmentOnFinalWrite);
       } catch (DataTypeInconsistentException ex) {
         logger.error("Data inconsistent exception is not supposed to be triggered twice", ex);
         return false;
@@ -1436,7 +1459,10 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   private boolean executeInsertTablet(
-      InsertTabletNode insertTabletNode, TSStatus[] results, long[] infoForMetrics)
+      InsertTabletNode insertTabletNode,
+      TSStatus[] results,
+      long[] infoForMetrics,
+      boolean markLastFragmentOnFinalWrite)
       throws OutOfTTLException {
     boolean noFailure;
     int loc =
@@ -1447,7 +1473,13 @@ public class DataRegion implements IDataRegionForQuery {
     List<Pair<IDeviceID, Integer>> deviceEndOffsetPairs =
         insertTabletNode.splitByDevice(loc, insertTabletNode.getRowCount());
     noFailure =
-        splitAndInsert(loc, insertTabletNode, results, infoForMetrics, deviceEndOffsetPairs)
+        splitAndInsert(
+                loc,
+                insertTabletNode,
+                results,
+                infoForMetrics,
+                deviceEndOffsetPairs,
+                markLastFragmentOnFinalWrite)
             && noFailure;
 
     if (CommonDescriptor.getInstance().getConfig().isLastCacheEnable()
@@ -1458,6 +1490,25 @@ public class DataRegion implements IDataRegionForQuery {
       PERFORMANCE_OVERVIEW_METRICS.recordScheduleUpdateLastCacheCost(System.nanoTime() - startTime);
     }
     return noFailure;
+  }
+
+  private int findLastInsertTabletIndexToMark(final InsertMultiTabletsNode insertMultiTabletsNode) {
+    for (int i = insertMultiTabletsNode.getInsertTabletNodeList().size() - 1; i >= 0; i--) {
+      final InsertTabletNode insertTabletNode =
+          insertMultiTabletsNode.getInsertTabletNodeList().get(i);
+      if (insertTabletNode.getRowCount() <= 0 || insertTabletNode.allMeasurementFailed()) {
+        continue;
+      }
+      if (!insertTabletNode.shouldCheckTTL()) {
+        return i;
+      }
+      final long[] times = insertTabletNode.getTimes();
+      if (times.length > 0
+          && CommonUtils.isAlive(times[times.length - 1], getTTL(insertTabletNode))) {
+        return i;
+      }
+    }
+    return -1;
   }
 
   private void initFlushTimeMap(long timePartitionId) {
@@ -1741,7 +1792,10 @@ public class DataRegion implements IDataRegionForQuery {
     }
 
     List<InsertRowNode> executedInsertRowNodeList = new ArrayList<>();
-    for (Map.Entry<TsFileProcessor, InsertRowsNode> entry : tsFileProcessorMap.entrySet()) {
+    final List<Map.Entry<TsFileProcessor, InsertRowsNode>> groupedEntries =
+        new ArrayList<>(tsFileProcessorMap.entrySet());
+    markOnlyLastInsertFragment(groupedEntries, Map.Entry::getValue);
+    for (Map.Entry<TsFileProcessor, InsertRowsNode> entry : groupedEntries) {
       InsertRowsNode subInsertRowsNode = entry.getValue();
       try {
         List<TsFileProcessor> insertedProcessors =
@@ -1758,6 +1812,13 @@ public class DataRegion implements IDataRegionForQuery {
       }
     }
     return executedInsertRowNodeList;
+  }
+
+  private <T> void markOnlyLastInsertFragment(
+      final List<T> fragments, final java.util.function.Function<T, InsertNode> fragmentExtractor) {
+    for (int i = 0; i < fragments.size(); i++) {
+      fragmentExtractor.apply(fragments.get(i)).setLastFragment(i == fragments.size() - 1);
+    }
   }
 
   private List<TsFileProcessor> insertRowsWithTypeConsistencyCheck(
@@ -1853,8 +1914,17 @@ public class DataRegion implements IDataRegionForQuery {
           });
     }
 
+    final List<Entry<TsFileProcessor, InsertRowsNode>> retriedEntries =
+        new ArrayList<>(retriedProcessorMap.entrySet());
+    for (int i = 0; i < retriedEntries.size(); i++) {
+      retriedEntries
+          .get(i)
+          .getValue()
+          .setLastFragment(subInsertRowsNode.isLastFragment() && i == retriedEntries.size() - 1);
+    }
+
     final List<TsFileProcessor> insertedProcessors = new ArrayList<>(retriedProcessorMap.size());
-    for (Entry<TsFileProcessor, InsertRowsNode> retriedEntry : retriedProcessorMap.entrySet()) {
+    for (Entry<TsFileProcessor, InsertRowsNode> retriedEntry : retriedEntries) {
       final TsFileProcessor retriedProcessor = retriedEntry.getKey();
       registerToTsFile(retriedEntry.getValue(), retriedProcessor);
       retriedProcessor.insertRows(retriedEntry.getValue(), infoForMetrics);
@@ -4587,7 +4657,10 @@ public class DataRegion implements IDataRegionForQuery {
       // infoForMetrics[2]: ScheduleWalTimeCost
       // infoForMetrics[3]: ScheduleMemTableTimeCost
       // infoForMetrics[4]: InsertedPointsNumber
-      for (Map.Entry<TsFileProcessor, InsertRowsNode> entry : tsFileProcessorMap.entrySet()) {
+      final List<Map.Entry<TsFileProcessor, InsertRowsNode>> groupedEntries =
+          new ArrayList<>(tsFileProcessorMap.entrySet());
+      markOnlyLastInsertFragment(groupedEntries, Map.Entry::getValue);
+      for (Map.Entry<TsFileProcessor, InsertRowsNode> entry : groupedEntries) {
         InsertRowsNode subInsertRowsNode = entry.getValue();
         try {
           List<TsFileProcessor> insertedProcessors =
@@ -4728,6 +4801,7 @@ public class DataRegion implements IDataRegionForQuery {
       // infoForMetrics[2]: ScheduleWalTimeCost
       // infoForMetrics[3]: ScheduleMemTableTimeCost
       // infoForMetrics[4]: InsertedPointsNumbe
+      final int lastTabletIndexToMark = findLastInsertTabletIndexToMark(insertMultiTabletsNode);
       for (int i = 0; i < insertMultiTabletsNode.getInsertTabletNodeList().size(); i++) {
         InsertTabletNode insertTabletNode = insertMultiTabletsNode.getInsertTabletNodeList().get(i);
         long[] times = insertTabletNode.getTimes();
@@ -4741,7 +4815,9 @@ public class DataRegion implements IDataRegionForQuery {
         Arrays.fill(results, RpcUtils.SUCCESS_STATUS);
         boolean noFailure = false;
         try {
-          noFailure = executeInsertTablet(insertTabletNode, results, infoForMetrics);
+          noFailure =
+              executeInsertTablet(
+                  insertTabletNode, results, infoForMetrics, i == lastTabletIndexToMark);
         } catch (WriteProcessException e) {
           insertMultiTabletsNode
               .getResults()

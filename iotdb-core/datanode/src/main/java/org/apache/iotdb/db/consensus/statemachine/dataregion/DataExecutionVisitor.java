@@ -75,7 +75,6 @@ public class DataExecutionVisitor implements PlanVisitor<TSStatus, DataRegion> {
   public TSStatus visitInsertRow(InsertRowNode node, DataRegion dataRegion) {
     try {
       dataRegion.insert(node);
-      dataRegion.insertSeparatorToWAL();
       return StatusUtils.OK;
     } catch (OutOfTTLException e) {
       LOGGER.warn("Error in executing plan node: {}, caused by {}", node, e.getMessage());
@@ -99,7 +98,6 @@ public class DataExecutionVisitor implements PlanVisitor<TSStatus, DataRegion> {
   public TSStatus visitInsertTablet(final InsertTabletNode node, final DataRegion dataRegion) {
     try {
       dataRegion.insertTablet(node);
-      dataRegion.insertSeparatorToWAL();
       return StatusUtils.OK;
     } catch (final OutOfTTLException e) {
       LOGGER.debug("Error in executing plan node: {}, caused by {}", node, e.getMessage());
@@ -136,7 +134,6 @@ public class DataExecutionVisitor implements PlanVisitor<TSStatus, DataRegion> {
   public TSStatus visitInsertRows(InsertRowsNode node, DataRegion dataRegion) {
     try {
       dataRegion.insert(node);
-      dataRegion.insertSeparatorToWAL();
       return StatusUtils.OK;
     } catch (WriteProcessRejectException e) {
       LOGGER.warn("Reject in executing plan node: {}, caused by {}", node, e.getMessage());
@@ -173,7 +170,6 @@ public class DataExecutionVisitor implements PlanVisitor<TSStatus, DataRegion> {
   public TSStatus visitInsertMultiTablets(InsertMultiTabletsNode node, DataRegion dataRegion) {
     try {
       dataRegion.insertTablets(node);
-      dataRegion.insertSeparatorToWAL();
       return StatusUtils.OK;
     } catch (WriteProcessRejectException e) {
       LOGGER.warn("Reject in executing plan node: {}, caused by {}", node, e.getMessage());
@@ -208,7 +204,6 @@ public class DataExecutionVisitor implements PlanVisitor<TSStatus, DataRegion> {
       InsertRowsOfOneDeviceNode node, DataRegion dataRegion) {
     try {
       dataRegion.insert(node);
-      dataRegion.insertSeparatorToWAL();
       return StatusUtils.OK;
     } catch (WriteProcessRejectException e) {
       LOGGER.warn("Reject in executing plan node: {}, caused by {}", node, e.getMessage());
