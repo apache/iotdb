@@ -93,6 +93,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
   private IDeviceID currentDevice;
   private boolean currentIsAligned;
   private final List<IMeasurementSchema> currentMeasurements = new ArrayList<>();
+  private Exception deferredException;
   private final List<ModsOperationUtil.ModsInfo> modsInfos = new ArrayList<>();
   // Cached time chunk
   private final List<Chunk> timeChunkList = new ArrayList<>();
@@ -199,6 +200,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
 
                 @Override
                 public boolean hasNext() {
+                  throwIfDeferredException();
                   final boolean hasNext = Objects.nonNull(chunkReader);
                   if (hasNext && !parseStartTimeRecorded) {
                     // Record start time on first hasNext() that returns true
@@ -227,7 +229,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
                   final Tablet tablet = getNextTablet();
                   // Record tablet metrics
                   recordTabletMetrics(tablet);
-                  final boolean hasNext = hasNext();
+                  final boolean isLast = isLastTabletWithoutDeferredException();
                   try {
                     return sourceEvent == null
                         ? new PipeRawTabletInsertionEvent(
@@ -241,7 +243,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
                             0,
                             pipeTaskMeta,
                             sourceEvent,
-                            !hasNext)
+                            isLast)
                         : new PipeRawTabletInsertionEvent(
                             sourceEvent.getRawIsTableModelEvent(),
                             sourceEvent.getSourceDatabaseNameFromDataRegion(),
@@ -253,9 +255,10 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
                             sourceEvent.getCreationTime(),
                             pipeTaskMeta,
                             sourceEvent,
-                            !hasNext);
+                            isLast);
                   } finally {
-                    if (!hasNext) {
+                    if (isLast) {
+                      recordParseEndTimeIfNecessary();
                       close();
                     }
                   }
@@ -270,6 +273,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
         new Iterator<Pair<Tablet, Boolean>>() {
           @Override
           public boolean hasNext() {
+            throwIfDeferredException();
             return Objects.nonNull(chunkReader);
           }
 
@@ -286,16 +290,31 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
             // information.
             final boolean isAligned = currentIsAligned;
             final Tablet tablet = getNextTablet();
-            final boolean hasNext = hasNext();
             try {
               return new Pair<>(tablet, isAligned);
             } finally {
-              if (!hasNext) {
+              if (isLastTabletWithoutDeferredException()) {
                 close();
               }
             }
           }
         };
+  }
+
+  public IDeviceID getCurrentDevice() {
+    return currentDevice;
+  }
+
+  public boolean isCurrentAligned() {
+    return currentIsAligned;
+  }
+
+  public List<String> getCurrentMeasurements() {
+    final List<String> measurementIds = new ArrayList<>(currentMeasurements.size());
+    for (final IMeasurementSchema schema : currentMeasurements) {
+      measurementIds.add(schema.getMeasurementName());
+    }
+    return measurementIds;
   }
 
   private Tablet getNextTablet() {
@@ -352,12 +371,36 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
 
       // Switch chunk reader iff current chunk is all consumed
       if (!data.hasCurrent()) {
-        prepareData();
+        try {
+          prepareData();
+        } catch (final Exception e) {
+          deferredException = e;
+        }
       }
       return tablet;
     } catch (final Exception e) {
       close();
       throw new PipeException("Failed to get next tablet insertion event.", e);
+    }
+  }
+
+  private void throwIfDeferredException() {
+    if (Objects.isNull(deferredException)) {
+      return;
+    }
+
+    final Exception exception = deferredException;
+    deferredException = null;
+    throw new PipeException("Failed to prepare next tablet insertion event.", exception);
+  }
+
+  private boolean isLastTabletWithoutDeferredException() {
+    return Objects.isNull(deferredException) && Objects.isNull(chunkReader);
+  }
+
+  private void recordParseEndTimeIfNecessary() {
+    if (parseStartTimeRecorded && !parseEndTimeRecorded) {
+      recordParseEndTime();
     }
   }
 
