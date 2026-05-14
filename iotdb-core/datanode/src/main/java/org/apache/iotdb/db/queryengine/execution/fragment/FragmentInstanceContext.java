@@ -913,12 +913,12 @@ public class FragmentInstanceContext extends QueryContext {
    */
   private void releaseTVListOwnedByQuery() {
     for (TVList tvList : tvListSet) {
-      long tvListRamSize = tvList.calculateRamSize().getRamSize();
       tvList.lockQueryList();
       Set<QueryContext> queryContextSet = tvList.getQueryContextSet();
       try {
         queryContextSet.remove(this);
         if (tvList.getOwnerQuery() == this) {
+          long tvListRamSize = tvList.calculateRamSize().getRamSize();
           if (tvList.getReservedMemoryBytes() != tvListRamSize) {
             LOGGER.warn(
                 "Release TVList owned by query: allocate size {}, release size {}",

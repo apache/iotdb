@@ -152,12 +152,7 @@ public abstract class ResourceByPathUtils {
 
     // mutable tvlist
     TVList list = memChunk.getWorkingTVList();
-    TVList cloneList = null;
-    Set<Integer> columnsToClone = getAccessedColumnsForQuery(list);
-    TVList.RamInfo listRamInfo =
-        (columnsToClone == null)
-            ? list.calculateRamSize()
-            : ((AlignedTVList) list).calculateRamSize(columnsToClone);
+    TVList.RamInfo listRamInfo = null;
 
     list.lockQueryList();
     try {
@@ -236,39 +231,51 @@ public abstract class ResourceByPathUtils {
           LOGGER.debug(
               "Working MemTable - clone mutable TVList and replace old TVList in working MemTable");
           QueryContext firstQuery = list.getQueryContextSet().iterator().next();
-          // reserve query memory
-          if (firstQuery instanceof FragmentInstanceContext) {
-            MemoryReservationManager memoryReservationManager =
-                ((FragmentInstanceContext) firstQuery).getMemoryReservationContext();
-            memoryReservationManager.reserveMemoryCumulatively(listRamInfo.getRamSize());
-            list.setReservedMemoryBytes(listRamInfo.getRamSize());
+
+          synchronized (memChunk) {
+            // Get working tvlist inside synchronized to ensure we have the latest reference
+            TVList workingTVList = memChunk.getWorkingTVList();
+            Set<Integer> columnsToClone = getAccessedColumnsForQuery(workingTVList);
+            listRamInfo =
+                (columnsToClone == null)
+                    ? workingTVList.calculateRamSize()
+                    : ((AlignedTVList) workingTVList).calculateRamSize(columnsToClone);
+
+            // reserve query memory
+            if (firstQuery instanceof FragmentInstanceContext) {
+              MemoryReservationManager memoryReservationManager =
+                  ((FragmentInstanceContext) firstQuery).getMemoryReservationContext();
+              memoryReservationManager.reserveMemoryCumulatively(listRamInfo.getRamSize());
+              workingTVList.setReservedMemoryBytes(listRamInfo.getRamSize());
+            }
+            workingTVList.setOwnerQuery(firstQuery);
+
+            // clone TVList
+            TVList cloneList =
+                (columnsToClone == null)
+                    ? workingTVList.clone()
+                    : ((AlignedTVList) workingTVList).clone(columnsToClone);
+
+            cloneList.getQueryContextSet().add(context);
+            tvListQueryMap.put(cloneList, cloneList.rowCount());
+
+            memChunk.setWorkingTVList(cloneList);
           }
-          list.setOwnerQuery(firstQuery);
-
-          // clone TVList
-          cloneList =
-              (columnsToClone == null)
-                  ? list.clone()
-                  : ((AlignedTVList) list).clone(columnsToClone);
-
-          cloneList.getQueryContextSet().add(context);
-          tvListQueryMap.put(cloneList, cloneList.rowCount());
         }
       }
     } catch (MemoryNotEnoughException ex) {
-      LOGGER.warn(
-          "Failed to reserve memory for TVList: ramSize {}, timestampsSize {}, arrayMemCost {}, rowCount {}, dataTypes {}",
-          listRamInfo.getRamSize(),
-          listRamInfo.getTimestampsSize(),
-          listRamInfo.getArrayMemCost(),
-          listRamInfo.getRowCount(),
-          listRamInfo.getDataTypes());
+      if (listRamInfo != null) {
+        LOGGER.warn(
+            "Failed to reserve memory for TVList: ramSize {}, timestampsSize {}, arrayMemCost {}, rowCount {}, dataTypes {}",
+            listRamInfo.getRamSize(),
+            listRamInfo.getTimestampsSize(),
+            listRamInfo.getArrayMemCost(),
+            listRamInfo.getRowCount(),
+            listRamInfo.getDataTypes());
+      }
       throw ex;
     } finally {
       list.unlockQueryList();
-    }
-    if (cloneList != null) {
-      memChunk.setWorkingTVList(cloneList);
     }
     return tvListQueryMap;
   }
@@ -448,16 +455,11 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
   @Override
   protected Set<Integer> getAccessedColumnsForQuery(TVList tvList) {
     Set<Integer> accessedColumns = new HashSet<>();
-    tvList.lockQueryList();
-    try {
-      for (QueryContext queryContext : tvList.getQueryContextSet()) {
-        if (queryContext instanceof FragmentInstanceContext) {
-          accessedColumns.addAll(
-              ((FragmentInstanceContext) queryContext).getAccessedAlignedColumns(tvList));
-        }
+    for (QueryContext queryContext : tvList.getQueryContextSet()) {
+      if (queryContext instanceof FragmentInstanceContext) {
+        accessedColumns.addAll(
+            ((FragmentInstanceContext) queryContext).getAccessedAlignedColumns(tvList));
       }
-    } finally {
-      tvList.unlockQueryList();
     }
     return accessedColumns;
   }
