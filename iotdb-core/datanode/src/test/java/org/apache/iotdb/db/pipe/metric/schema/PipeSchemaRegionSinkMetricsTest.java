@@ -80,7 +80,7 @@ public class PipeSchemaRegionSinkMetricsTest {
       verify(metricService)
           .remove(
               MetricType.HISTOGRAM,
-              Metric.PIPE_INSERT_NODE_BATCH_SIZE.toString(),
+              Metric.PIPE_SCHEMA_BATCH_SIZE.toString(),
               Tag.NAME.toString(),
               "schema_test",
               Tag.CREATION_TIME.toString(),
@@ -88,7 +88,7 @@ public class PipeSchemaRegionSinkMetricsTest {
       verify(metricService)
           .remove(
               MetricType.HISTOGRAM,
-              Metric.PIPE_INSERT_NODE_BATCH_TIME_COST.toString(),
+              Metric.PIPE_SCHEMA_BATCH_TIME_COST.toString(),
               Tag.NAME.toString(),
               "schema_test",
               Tag.CREATION_TIME.toString(),

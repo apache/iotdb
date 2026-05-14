@@ -79,7 +79,7 @@ public class PipeSchemaRegionSinkMetrics implements IMetricSet {
 
     final Histogram schemaBatchSizeHistogram =
         metricService.getOrCreateHistogram(
-            Metric.PIPE_INSERT_NODE_BATCH_SIZE.toString(),
+            Metric.PIPE_SCHEMA_BATCH_SIZE.toString(),
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
             connector.getAttributeSortedString(),
@@ -89,7 +89,7 @@ public class PipeSchemaRegionSinkMetrics implements IMetricSet {
 
     final Histogram schemaBatchTimeIntervalHistogram =
         metricService.getOrCreateHistogram(
-            Metric.PIPE_INSERT_NODE_BATCH_TIME_COST.toString(),
+            Metric.PIPE_SCHEMA_BATCH_TIME_COST.toString(),
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
             connector.getAttributeSortedString(),
@@ -137,14 +137,14 @@ public class PipeSchemaRegionSinkMetrics implements IMetricSet {
     final PipeSinkSubtask connector = connectorMap.get(taskID);
     metricService.remove(
         MetricType.HISTOGRAM,
-        Metric.PIPE_INSERT_NODE_BATCH_SIZE.toString(),
+        Metric.PIPE_SCHEMA_BATCH_SIZE.toString(),
         Tag.NAME.toString(),
         connector.getAttributeSortedString(),
         Tag.CREATION_TIME.toString(),
         String.valueOf(connector.getCreationTime()));
     metricService.remove(
         MetricType.HISTOGRAM,
-        Metric.PIPE_INSERT_NODE_BATCH_TIME_COST.toString(),
+        Metric.PIPE_SCHEMA_BATCH_TIME_COST.toString(),
         Tag.NAME.toString(),
         connector.getAttributeSortedString(),
         Tag.CREATION_TIME.toString(),
