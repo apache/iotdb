@@ -34,6 +34,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.PlanFragment;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.SubPlan;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadSingleTsFileNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
 import org.apache.iotdb.db.queryengine.plan.scheduler.FragInstanceDispatchResult;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -104,6 +105,25 @@ public class LoadTsFileSchedulerTest {
     t.start();
     Assert.assertNull(t.getTotalCpuTime());
     Assert.assertNull(t.getFragmentInfo());
+  }
+
+  @Test
+  public void testGetPartitionQueryDatabaseForPipeGeneratedTreeModelLoad() {
+    final LoadSingleTsFileNode node = mock(LoadSingleTsFileNode.class);
+    when(node.isTableModel()).thenReturn(false);
+    when(node.getDatabase()).thenReturn("root.test.sg");
+
+    Assert.assertEquals("root.test.sg", LoadTsFileScheduler.getPartitionQueryDatabase(node, true));
+    Assert.assertNull(LoadTsFileScheduler.getPartitionQueryDatabase(node, false));
+  }
+
+  @Test
+  public void testGetPartitionQueryDatabaseForTableModelLoad() {
+    final LoadSingleTsFileNode node = mock(LoadSingleTsFileNode.class);
+    when(node.isTableModel()).thenReturn(true);
+    when(node.getDatabase()).thenReturn("test");
+
+    Assert.assertEquals("test", LoadTsFileScheduler.getPartitionQueryDatabase(node, false));
   }
 
   @Test
