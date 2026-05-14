@@ -850,7 +850,8 @@ public class SchemaExecutionVisitor implements PlanVisitor<TSStatus, ISchemaRegi
         queue.open();
       }
     } else {
-      final SchemaRegionListeningQueue queue = PipeDataNodeAgent.runtime().schemaListenerIfPresent(id);
+      final SchemaRegionListeningQueue queue =
+          PipeDataNodeAgent.runtime().schemaListenerIfPresent(id);
       if (queue != null && queue.isOpened()) {
         logger.info("Closed pipe listening queue on schema region {}", id);
         queue.close();

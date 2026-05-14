@@ -271,7 +271,8 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     schemaRegionId2ListeningQueueNewFirstIndex.forEach(
         (schemaRegionId, listeningQueueNewFirstIndex) -> {
           final SchemaRegionListeningQueue listeningQueue =
-              PipeDataNodeAgent.runtime().schemaListenerIfPresent(new SchemaRegionId(schemaRegionId));
+              PipeDataNodeAgent.runtime()
+                  .schemaListenerIfPresent(new SchemaRegionId(schemaRegionId));
           if (listeningQueue != null) {
             listeningQueue.removeBefore(listeningQueueNewFirstIndex);
           }

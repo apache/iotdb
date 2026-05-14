@@ -851,7 +851,8 @@ public class AggregateProcessor implements PipeProcessor {
     }
     if (isLastReference) {
       final ConcurrentMap<String, AtomicReference<TimeSeriesRuntimeState>>
-          timeSeries2RuntimeStateMap = pipeName2timeSeries2TimeSeriesRuntimeStateMap.remove(pipeName);
+          timeSeries2RuntimeStateMap =
+              pipeName2timeSeries2TimeSeriesRuntimeStateMap.remove(pipeName);
       if (timeSeries2RuntimeStateMap != null) {
         timeSeries2RuntimeStateMap.clear();
       }
