@@ -350,14 +350,6 @@ public class PipeDescriptor {
                         String.valueOf(
                             config.getPipeSourceAssignerDisruptorRingBufferEntrySizeInBytes())))));
 
-    config.setPipeSourceMatcherCacheSize(
-        Integer.parseInt(
-            Optional.ofNullable(properties.getProperty("pipe_source_matcher_cache_size"))
-                .orElse(
-                    properties.getProperty(
-                        "pipe_extractor_matcher_cache_size",
-                        String.valueOf(config.getPipeSourceMatcherCacheSize())))));
-
     config.setPipeSinkHandshakeTimeoutMs(
         Long.parseLong(
             Optional.ofNullable(properties.getProperty("pipe_sink_handshake_timeout_ms"))
