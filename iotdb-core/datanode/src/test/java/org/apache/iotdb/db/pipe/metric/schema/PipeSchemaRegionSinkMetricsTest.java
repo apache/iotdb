@@ -32,9 +32,9 @@ import org.junit.Test;
 import org.mockito.Mockito;
 
 import java.lang.reflect.Field;
+import java.util.Map;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -54,17 +54,55 @@ public class PipeSchemaRegionSinkMetricsTest {
     when(subtask.getTaskID()).thenReturn(taskId);
     when(subtask.getAttributeSortedString()).thenReturn("schema_test");
     when(subtask.getCreationTime()).thenReturn(1L);
-    when(metricService.getOrCreateRate(anyString(), any(MetricLevel.class), any(String[].class)))
+    when(
+            metricService.getOrCreateRate(
+                eq(Metric.PIPE_CONNECTOR_SCHEMA_TRANSFER.toString()),
+                eq(MetricLevel.IMPORTANT),
+                eq(Tag.NAME.toString()),
+                eq("schema_test"),
+                eq(Tag.CREATION_TIME.toString()),
+                eq("1")))
         .thenReturn(rate);
-    when(metricService.getOrCreateHistogram(
-            anyString(), any(MetricLevel.class), any(String[].class)))
-        .thenReturn(batchSizeHistogram, batchTimeHistogram, eventSizeHistogram);
+    when(
+            metricService.getOrCreateHistogram(
+                eq(Metric.PIPE_SCHEMA_BATCH_SIZE.toString()),
+                eq(MetricLevel.IMPORTANT),
+                eq(Tag.NAME.toString()),
+                eq("schema_test"),
+                eq(Tag.CREATION_TIME.toString()),
+                eq("1")))
+        .thenReturn(batchSizeHistogram);
+    when(
+            metricService.getOrCreateHistogram(
+                eq(Metric.PIPE_SCHEMA_BATCH_TIME_COST.toString()),
+                eq(MetricLevel.IMPORTANT),
+                eq(Tag.NAME.toString()),
+                eq("schema_test"),
+                eq(Tag.CREATION_TIME.toString()),
+                eq("1")))
+        .thenReturn(batchTimeHistogram);
+    when(
+            metricService.getOrCreateHistogram(
+                eq(Metric.PIPE_CONNECTOR_BATCH_SIZE.toString()),
+                eq(MetricLevel.IMPORTANT),
+                eq(Tag.NAME.toString()),
+                eq("schema_test")))
+        .thenReturn(eventSizeHistogram);
 
     final PipeSchemaRegionSinkMetrics metrics = PipeSchemaRegionSinkMetrics.getInstance();
 
     final Field metricServiceField =
         PipeSchemaRegionSinkMetrics.class.getDeclaredField("metricService");
     metricServiceField.setAccessible(true);
+    final Field connectorMapField =
+        PipeSchemaRegionSinkMetrics.class.getDeclaredField("connectorMap");
+    connectorMapField.setAccessible(true);
+    final Field schemaRateMapField =
+        PipeSchemaRegionSinkMetrics.class.getDeclaredField("schemaRateMap");
+    schemaRateMapField.setAccessible(true);
+
+    ((Map<?, ?>) connectorMapField.get(metrics)).clear();
+    ((Map<?, ?>) schemaRateMapField.get(metrics)).clear();
     metricServiceField.set(metrics, null);
 
     try {
@@ -112,6 +150,8 @@ public class PipeSchemaRegionSinkMetricsTest {
       if (!deregistered) {
         metrics.deregister(taskId);
       }
+      ((Map<?, ?>) connectorMapField.get(metrics)).clear();
+      ((Map<?, ?>) schemaRateMapField.get(metrics)).clear();
       metricServiceField.set(metrics, null);
     }
   }
