@@ -1088,12 +1088,12 @@ public class StorageEngine implements IService {
       Map<Integer, Long> dataRegionDisk, List<Integer> dataRegionIds) {
     final java.util.Collection<Integer> targetDataRegionIds =
         dataRegionIds.size() > 1 ? new java.util.HashSet<>(dataRegionIds) : dataRegionIds;
-    dataRegionMap.forEach(
-        (dataRegionId, dataRegion) -> {
-          if (targetDataRegionIds.contains(dataRegionId.getId())) {
-            dataRegionDisk.put(dataRegionId.getId(), dataRegion.countRegionDiskSize());
-          }
-        });
+    for (Integer dataRegionId : targetDataRegionIds) {
+      final DataRegion dataRegion = dataRegionMap.get(new DataRegionId(dataRegionId));
+      if (dataRegion != null) {
+        dataRegionDisk.put(dataRegionId, dataRegion.countRegionDiskSize());
+      }
+    }
   }
 
   public static File getDataRegionSystemDir(String dataBaseName, String dataRegionId) {
