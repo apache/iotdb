@@ -19,10 +19,8 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.wal.utils;
 
-import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
-import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryType;
-import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALInfoEntry;
-import org.apache.iotdb.db.storageengine.dataregion.wal.io.ProgressWALReader;
+import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALFileVersion;
+import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALMetaData;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,10 +28,11 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -47,8 +46,6 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.WAL_VERSION_ID;
 public class WALFileUtils {
 
   private static final Logger logger = LoggerFactory.getLogger(WALFileUtils.class);
-  private static final int SEARCH_INDEX_OFFSET =
-      WALInfoEntry.FIXED_SERIALIZED_SIZE + PlanNodeType.BYTES;
 
   /**
    * versionId is a self-incremented id number, helping to maintain the order of wal files.
@@ -328,65 +325,29 @@ public class WALFileUtils {
     }
 
     for (final File walFile : walFiles) {
-      try (final ProgressWALReader reader = new ProgressWALReader(walFile)) {
-        long pendingSearchIndex = Long.MIN_VALUE;
-        long pendingPhysicalTime = 0L;
-        int pendingNodeId = -1;
-        long pendingLocalSeq = Long.MIN_VALUE;
-        boolean hasPending = false;
+      try (final FileChannel channel = FileChannel.open(walFile.toPath())) {
+        if (WALFileVersion.getVersion(channel) != WALFileVersion.V3) {
+          continue;
+        }
+        final WALMetaData metadata = WALMetaData.readFromWALFile(walFile, channel);
+        final List<Long> physicalTimes = metadata.getPhysicalTimes();
+        final List<Short> nodeIds = metadata.getNodeIds();
+        final List<Long> localSeqs = metadata.getLocalSeqs();
+        final int size = Math.min(Math.min(physicalTimes.size(), nodeIds.size()), localSeqs.size());
 
-        while (reader.hasNext()) {
-          final ByteBuffer buffer = reader.next();
-          final WALEntryType type = WALEntryType.valueOf(buffer.get());
-          buffer.clear();
-          if (!type.needSearch()) {
+        for (int i = 0; i < size; i++) {
+          final long currentPhysicalTime = physicalTimes.get(i);
+          final int currentNodeId = nodeIds.get(i);
+          final long currentLocalSeq = localSeqs.get(i);
+          if (currentPhysicalTime <= 0L || currentNodeId < 0 || currentLocalSeq < 0L) {
             continue;
           }
 
-          final long currentLocalSeq = reader.getCurrentEntryLocalSeq();
-          final long currentPhysicalTime = reader.getCurrentEntryPhysicalTime();
-          final int currentNodeId = reader.getCurrentEntryNodeId();
-
-          buffer.position(SEARCH_INDEX_OFFSET);
-          final long bodySearchIndex = buffer.getLong();
-          buffer.clear();
-          final long currentSearchIndex = bodySearchIndex >= 0 ? bodySearchIndex : currentLocalSeq;
-
-          if (hasPending
-              && pendingPhysicalTime == currentPhysicalTime
-              && pendingNodeId == currentNodeId
-              && pendingLocalSeq == currentLocalSeq) {
-            if (pendingSearchIndex < 0 && currentSearchIndex >= 0) {
-              pendingSearchIndex = currentSearchIndex;
-            }
-            continue;
-          }
-
-          if (hasPending
-              && !visitor.onRequest(
-                  new SearchableRequestMeta(
-                      pendingSearchIndex >= 0 ? pendingSearchIndex : pendingLocalSeq,
-                      pendingPhysicalTime,
-                      pendingNodeId,
-                      pendingLocalSeq))) {
+          if (!visitor.onRequest(
+              new SearchableRequestMeta(
+                  currentLocalSeq, currentPhysicalTime, currentNodeId, currentLocalSeq))) {
             return;
           }
-
-          hasPending = true;
-          pendingSearchIndex = currentSearchIndex;
-          pendingPhysicalTime = currentPhysicalTime;
-          pendingNodeId = currentNodeId;
-          pendingLocalSeq = currentLocalSeq;
-        }
-
-        if (hasPending
-            && !visitor.onRequest(
-                new SearchableRequestMeta(
-                    pendingSearchIndex >= 0 ? pendingSearchIndex : pendingLocalSeq,
-                    pendingPhysicalTime,
-                    pendingNodeId,
-                    pendingLocalSeq))) {
-          return;
         }
       } catch (final IOException e) {
         logger.warn("Failed to scan WAL file {} for searchable request metadata", walFile, e);

@@ -25,7 +25,6 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.ContinuousSameSearchIndexSeparatorNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.ObjectNode;
@@ -333,13 +332,7 @@ public class WALBuffer extends AbstractWALBuffer {
       long syncIndex = DEFAULT_SEARCH_INDEX;
       long physicalTime = 0;
       int nodeId = -1;
-      if (walEntry.getType() == WALEntryType.CONTINUOUS_SAME_SEARCH_INDEX_SEPARATOR_NODE) {
-        final ContinuousSameSearchIndexSeparatorNode separatorNode =
-            (ContinuousSameSearchIndexSeparatorNode) walEntry.getValue();
-        syncIndex = separatorNode.getSyncIndex();
-        physicalTime = separatorNode.getPhysicalTime();
-        nodeId = separatorNode.getNodeId();
-      } else if (walEntry.getType().needSearch()) {
+      if (walEntry.getType().needSearch()) {
         if (walEntry.getType() == WALEntryType.DELETE_DATA_NODE) {
           searchIndex = ((DeleteDataNode) walEntry.getValue()).getSearchIndex();
           syncIndex = ((DeleteDataNode) walEntry.getValue()).getSyncIndex();
@@ -368,7 +361,6 @@ public class WALBuffer extends AbstractWALBuffer {
       }
       // For Leader writes: syncIndex stays -1, use searchIndex as the ordering key
       // For Follower writes: searchIndex is -1, syncIndex carries source's searchIndex
-      long effectiveSyncIndex = (syncIndex >= 0) ? syncIndex : searchIndex;
       long effectiveLocalSeq = (syncIndex >= 0) ? syncIndex : searchIndex;
       // update related info
       totalSize += size;
