@@ -967,8 +967,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
       }
       if (shouldUnpinResource) {
         try {
-          PipeDataNodeResourceManager.tsfile()
-              .unpinTsFileResource(resource, shouldTransferModFile, pipeName);
+          PipeDataNodeResourceManager.tsfile().unpinTsFileResource(resource, pipeName);
         } catch (final IOException e) {
           LOGGER.warn(
               "Pipe {}@{}: failed to unpin TsFileResource after creating event, original path: {}",
