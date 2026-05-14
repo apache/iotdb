@@ -176,7 +176,8 @@ public class UnclosedFileScanHandleImpl implements IFileScanHandle {
     return deletionRanges;
   }
 
-  private List<TimeRange> collectTimeSeriesDeletionRanges(IDeviceID deviceID, String timeSeriesName) {
+  private List<TimeRange> collectTimeSeriesDeletionRanges(
+      IDeviceID deviceID, String timeSeriesName) {
     Map<String, List<IChunkMetadata>> chunkMetadataMap = deviceToChunkMetadataMap.get(deviceID);
     if (chunkMetadataMap == null) {
       return Collections.emptyList();
