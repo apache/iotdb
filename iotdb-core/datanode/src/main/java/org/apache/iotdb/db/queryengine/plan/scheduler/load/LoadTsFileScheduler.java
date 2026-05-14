@@ -92,6 +92,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.DataOutputStream;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -187,11 +188,7 @@ public class LoadTsFileScheduler implements IScheduler {
         final LoadSingleTsFileNode node = tsFileNodeList.get(i);
         final String filePath = node.getTsFileResource().getTsFilePath();
 
-        if (node.isTableModel()) {
-          partitionFetcher.setDatabase(node.getDatabase());
-        } else {
-          partitionFetcher.setDatabase(null);
-        }
+        partitionFetcher.setDatabase(getPartitionQueryDatabase(node, isGeneratedByPipe));
 
         boolean isLoadSingleTsFileSuccess = true;
         boolean shouldRemoveFileFromLoadingSet = false;
@@ -707,9 +704,10 @@ public class LoadTsFileScheduler implements IScheduler {
                     .orElse(null)
                 : loadTsFileDataTypeConverter
                     .convertForTreeModel(
-                        LoadTsFileStatement.createUnchecked(filePath)
-                            .setDeleteAfterLoad(failedNode.isDeleteAfterLoad())
-                            .setConvertOnTypeMismatch(true))
+                        buildRetryTreeLoadStatement(
+                            filePath,
+                            failedNode.isDeleteAfterLoad(),
+                            getPartitionQueryDatabase(failedNode, isGeneratedByPipe)))
                     .orElse(null);
 
         if (loadTsFileDataTypeConverter.isSuccessful(status)) {
@@ -768,6 +766,27 @@ public class LoadTsFileScheduler implements IScheduler {
       LOGGER.warn(errorMsg);
       stateMachine.transitionToFailed(new LoadFileException(errorMsg));
     }
+  }
+
+  static String getPartitionQueryDatabase(
+      final LoadSingleTsFileNode node, final boolean isGeneratedByPipe) {
+    return node.isTableModel() || isGeneratedByPipe ? node.getDatabase() : null;
+  }
+
+  private LoadTsFileStatement buildRetryTreeLoadStatement(
+      final String filePath, final boolean deleteAfterLoad, final String database)
+      throws FileNotFoundException {
+    final LoadTsFileStatement statement =
+        LoadTsFileStatement.createUnchecked(filePath)
+            .setDeleteAfterLoad(deleteAfterLoad)
+            .setConvertOnTypeMismatch(true);
+    if (database != null) {
+      statement.setDatabase(database);
+    }
+    if (isGeneratedByPipe) {
+      statement.markIsGeneratedByPipe();
+    }
+    return statement;
   }
 
   @Override
@@ -1011,7 +1030,8 @@ public class LoadTsFileScheduler implements IScheduler {
             subSlotList.stream()
                 .map(
                     pair ->
-                        // (database != null) means this file will be loaded into table-model
+                        // database is an explicit database hint for table-model loads and
+                        // pipe-generated tree-model loads.
                         database != null
                             ? dataPartition.getDataRegionReplicaSetForWriting(
                                 pair.left, pair.right, database)
@@ -1034,7 +1054,8 @@ public class LoadTsFileScheduler implements IScheduler {
               entry -> {
                 DataPartitionQueryParam queryParam =
                     new DataPartitionQueryParam(entry.getKey(), new ArrayList<>(entry.getValue()));
-                // (database != null) means this file will be loaded into table-model
+                // database is an explicit database hint for table-model loads and
+                // pipe-generated tree-model loads.
                 if (database != null) {
                   queryParam.setDatabaseName(database);
                 }
