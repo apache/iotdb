@@ -90,20 +90,19 @@ public class DataNodeObjectFileService implements IObjectFileService {
     File tmpFile = new File(file.getPath() + ".tmp");
     File bakFile = new File(file.getPath() + ".back");
     for (int i = 0; i < 2; i++) {
-      boolean fileExistsBeforeDelete = file.exists();
       long length = file.length();
       try {
-        deleteObjectFile(file);
+        if (deleteObjectFile(file)) {
+          FileMetrics.getInstance().decreaseObjectFileNum(database, String.valueOf(regionId), 1);
+          FileMetrics.getInstance()
+              .decreaseObjectFileSize(database, String.valueOf(regionId), length);
+          TableDiskUsageIndex.getInstance()
+              .writeObjectDelta(database, regionId, timePartition, table, -length, -1);
+        }
         deleteObjectFile(tmpFile);
         deleteObjectFile(bakFile);
       } catch (IOException e) {
         objectDeletionLogger.error("Failed to remove object file {}", file.getAbsolutePath(), e);
-      }
-      if (fileExistsBeforeDelete && !file.exists()) {
-        FileMetrics.getInstance().decreaseObjectFileNum(1);
-        FileMetrics.getInstance().decreaseObjectFileSize(length);
-        TableDiskUsageIndex.getInstance()
-            .writeObjectDelta(database, regionId, timePartition, table, -length, -1);
       }
     }
     deleteEmptyParentDir(file);
@@ -196,11 +195,13 @@ public class DataNodeObjectFileService implements IObjectFileService {
     }
   }
 
-  private static void deleteObjectFile(File file) throws IOException {
-    if (file.exists()) {
+  private static boolean deleteObjectFile(File file) throws IOException {
+    long length = file.length();
+    if (Files.deleteIfExists(file.toPath())) {
       objectDeletionLogger.info(
-          "Remove object file {}, size is {}(byte)", file.getAbsolutePath(), file.length());
+          "Remove object file {}, size is {}(byte)", file.getAbsolutePath(), length);
+      return true;
     }
-    Files.deleteIfExists(file.toPath());
+    return false;
   }
 }

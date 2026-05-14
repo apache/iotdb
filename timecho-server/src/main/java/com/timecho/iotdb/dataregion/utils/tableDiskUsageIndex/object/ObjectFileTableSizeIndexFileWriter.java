@@ -35,14 +35,16 @@ import java.nio.file.StandardOpenOption;
 import java.util.Map;
 
 public class ObjectFileTableSizeIndexFileWriter {
+  private final String database;
   private final int regionId;
   private final File file;
   private long snapshotSize;
   private BufferedOutputStream bufferedOutputStream;
   private FileOutputStream fileOutputStream;
 
-  public ObjectFileTableSizeIndexFileWriter(int regionId, File file, boolean needSelfCheck)
-      throws IOException {
+  public ObjectFileTableSizeIndexFileWriter(
+      String database, int regionId, File file, boolean needSelfCheck) throws IOException {
+    this.database = database;
     this.regionId = regionId;
     this.file = file;
     file.createNewFile();
@@ -68,8 +70,10 @@ public class ObjectFileTableSizeIndexFileWriter {
         fileChannel.truncate(truncateSize);
       }
     }
-    FileMetrics.getInstance().increaseObjectFileNum(context.getObjectFileNum());
-    FileMetrics.getInstance().increaseObjectFileSize(context.getObjectFileSize());
+    FileMetrics.getInstance()
+        .increaseObjectFileNum(database, String.valueOf(regionId), context.getObjectFileNum());
+    FileMetrics.getInstance()
+        .increaseObjectFileSize(database, String.valueOf(regionId), context.getObjectFileSize());
   }
 
   public void writeResultFromQuery(DataRegionTableSizeQueryContext queryContext)

@@ -706,8 +706,10 @@ public class CompactionUtils {
         return;
       }
       Files.delete(file.toPath());
-      FileMetrics.getInstance().decreaseObjectFileNum(1);
-      FileMetrics.getInstance().decreaseObjectFileSize(attributes.size());
+      FileMetrics.getInstance()
+          .decreaseObjectFileNum(database, dataRegion.getDataRegionIdString(), 1);
+      FileMetrics.getInstance()
+          .decreaseObjectFileSize(database, dataRegion.getDataRegionIdString(), attributes.size());
       TableDiskUsageIndex.getInstance()
           .writeObjectDelta(
               database,

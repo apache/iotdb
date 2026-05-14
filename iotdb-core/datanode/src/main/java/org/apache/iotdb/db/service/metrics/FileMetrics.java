@@ -74,6 +74,7 @@ public class FileMetrics implements IMetricSet {
 
   public void deleteRegion(String database, String regionId) {
     TS_FILE_METRICS.deleteRegion(database, regionId);
+    OBJECT_FILE_METRICS.deleteRegion(database, regionId);
   }
 
   // endregion
@@ -108,20 +109,20 @@ public class FileMetrics implements IMetricSet {
 
   // endregion
 
-  public void increaseObjectFileNum(int num) {
-    OBJECT_FILE_METRICS.increaseObjectFileNum(num);
+  public void increaseObjectFileNum(String database, String regionId, int num) {
+    OBJECT_FILE_METRICS.increaseObjectFileNum(database, regionId, num);
   }
 
-  public void decreaseObjectFileNum(int num) {
-    OBJECT_FILE_METRICS.decreaseObjectFileNum(num);
+  public void decreaseObjectFileNum(String database, String regionId, int num) {
+    OBJECT_FILE_METRICS.decreaseObjectFileNum(database, regionId, num);
   }
 
-  public void increaseObjectFileSize(long size) {
-    OBJECT_FILE_METRICS.increaseObjectFileSize(size);
+  public void increaseObjectFileSize(String database, String regionId, long size) {
+    OBJECT_FILE_METRICS.increaseObjectFileSize(database, regionId, size);
   }
 
-  public void decreaseObjectFileSize(long size) {
-    OBJECT_FILE_METRICS.decreaseObjectFileSize(size);
+  public void decreaseObjectFileSize(String database, String regionId, long size) {
+    OBJECT_FILE_METRICS.decreaseObjectFileSize(database, regionId, size);
   }
 
   public Map<Integer, Long> getRegionSizeMap() {

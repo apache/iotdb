@@ -19,68 +19,210 @@
 
 package org.apache.iotdb.db.service.metrics.file;
 
-import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
+import org.apache.iotdb.metrics.type.Gauge;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
+import org.apache.tsfile.utils.Pair;
+
+import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class ObjectFileMetrics implements IMetricSet {
   private static final String OBJECT = "object";
-  private final AtomicInteger objFileNum = new AtomicInteger(0);
-  private final AtomicLong objFileSize = new AtomicLong(0);
+  private static final String FILE_GLOBAL_COUNT = "object_file_global_count";
+  private static final String FILE_GLOBAL_SIZE = "object_file_global_size";
+
+  private final AtomicReference<AbstractMetricService> metricService = new AtomicReference<>();
+  private final AtomicBoolean hasRemainData = new AtomicBoolean(false);
+  // database -> regionId -> object file num
+  private final Map<String, Map<String, Pair<Integer, Gauge>>> dataRegionObjectFileNumMap =
+      new ConcurrentHashMap<>();
+  // database -> regionId -> object file size
+  private final Map<String, Map<String, Pair<Long, Gauge>>> dataRegionObjectFileSizeMap =
+      new ConcurrentHashMap<>();
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
-    metricService.createAutoGauge(
-        Metric.FILE_SIZE.toString(),
-        MetricLevel.CORE,
-        this,
-        ObjectFileMetrics::getObjectFileSize,
-        Tag.NAME.toString(),
-        OBJECT);
-    metricService.createAutoGauge(
-        Metric.FILE_COUNT.toString(),
-        MetricLevel.CORE,
-        this,
-        ObjectFileMetrics::getObjectFileNum,
-        Tag.NAME.toString(),
-        OBJECT);
+    this.metricService.set(metricService);
+    checkIfThereRemainingData();
   }
 
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
-    metricService.remove(
-        MetricType.AUTO_GAUGE, Metric.FILE_SIZE.toString(), Tag.NAME.toString(), OBJECT);
-    metricService.remove(
-        MetricType.AUTO_GAUGE, Metric.FILE_COUNT.toString(), Tag.NAME.toString(), OBJECT);
+    // do nothing here
   }
 
-  public int getObjectFileNum() {
-    return objFileNum.get();
+  public void increaseObjectFileNum(String database, String regionId, int num) {
+    updateObjectFileNumMap(database, regionId, num);
   }
 
-  public long getObjectFileSize() {
-    return objFileSize.get();
+  public void decreaseObjectFileNum(String database, String regionId, int num) {
+    updateObjectFileNumMap(database, regionId, -num);
   }
 
-  public void increaseObjectFileNum(int num) {
-    objFileNum.addAndGet(num);
+  public void increaseObjectFileSize(String database, String regionId, long size) {
+    updateObjectFileSizeMap(database, regionId, size);
   }
 
-  public void decreaseObjectFileNum(int num) {
-    objFileNum.addAndGet(-num);
+  public void decreaseObjectFileSize(String database, String regionId, long size) {
+    updateObjectFileSizeMap(database, regionId, -size);
   }
 
-  public void increaseObjectFileSize(long size) {
-    objFileSize.addAndGet(size);
+  public void deleteRegion(String database, String regionId) {
+    deleteRegionFromMap(dataRegionObjectFileNumMap, database, regionId);
+    deleteRegionFromMap(dataRegionObjectFileSizeMap, database, regionId);
+    deleteObjectFileNumGauge(database, regionId);
+    deleteObjectFileSizeGauge(database, regionId);
   }
 
-  public void decreaseObjectFileSize(long size) {
-    objFileSize.addAndGet(-size);
+  private <T> void deleteRegionFromMap(
+      Map<String, Map<String, T>> map, String database, String regionId) {
+    map.computeIfPresent(
+        database,
+        (k, v) -> {
+          v.remove(regionId);
+          return v.isEmpty() ? null : v;
+        });
+  }
+
+  private void updateObjectFileNumMap(String database, String regionId, int value) {
+    Map<String, Pair<Integer, Gauge>> innerMap =
+        dataRegionObjectFileNumMap.computeIfAbsent(database, k -> new ConcurrentHashMap<>());
+    innerMap.compute(
+        regionId,
+        (k, v) -> {
+          if (v == null) {
+            v = new Pair<>(value, null);
+          } else {
+            v.setLeft(v.getLeft() + value);
+          }
+          if (v.getRight() == null) {
+            if (metricService.get() != null) {
+              v.setRight(getOrCreateObjectFileNumGauge(database, regionId));
+            } else {
+              hasRemainData.set(true);
+            }
+          }
+          if (v.getRight() != null) {
+            v.getRight().set(v.getLeft());
+          }
+          return v;
+        });
+  }
+
+  private void updateObjectFileSizeMap(String database, String regionId, long value) {
+    Map<String, Pair<Long, Gauge>> innerMap =
+        dataRegionObjectFileSizeMap.computeIfAbsent(database, k -> new ConcurrentHashMap<>());
+    innerMap.compute(
+        regionId,
+        (k, v) -> {
+          if (v == null) {
+            v = new Pair<>(value, null);
+          } else {
+            v.setLeft(v.getLeft() + value);
+          }
+          if (v.getRight() == null) {
+            if (metricService.get() != null) {
+              v.setRight(getOrCreateObjectFileSizeGauge(database, regionId));
+            } else {
+              hasRemainData.set(true);
+            }
+          }
+          if (v.getRight() != null) {
+            v.getRight().set(v.getLeft());
+          }
+          return v;
+        });
+  }
+
+  public Gauge getOrCreateObjectFileNumGauge(String database, String regionId) {
+    return metricService
+        .get()
+        .getOrCreateGauge(
+            FILE_GLOBAL_COUNT,
+            MetricLevel.CORE,
+            Tag.NAME.toString(),
+            OBJECT,
+            Tag.DATABASE.toString(),
+            database,
+            Tag.REGION.toString(),
+            regionId);
+  }
+
+  public void deleteObjectFileNumGauge(String database, String regionId) {
+    Optional.ofNullable(this.metricService.get())
+        .ifPresent(
+            service ->
+                service.remove(
+                    MetricType.GAUGE,
+                    FILE_GLOBAL_COUNT,
+                    Tag.NAME.toString(),
+                    OBJECT,
+                    Tag.DATABASE.toString(),
+                    database,
+                    Tag.REGION.toString(),
+                    regionId));
+  }
+
+  public Gauge getOrCreateObjectFileSizeGauge(String database, String regionId) {
+    return metricService
+        .get()
+        .getOrCreateGauge(
+            FILE_GLOBAL_SIZE,
+            MetricLevel.CORE,
+            Tag.NAME.toString(),
+            OBJECT,
+            Tag.DATABASE.toString(),
+            database,
+            Tag.REGION.toString(),
+            regionId);
+  }
+
+  public void deleteObjectFileSizeGauge(String database, String regionId) {
+    Optional.ofNullable(this.metricService.get())
+        .ifPresent(
+            service ->
+                service.remove(
+                    MetricType.GAUGE,
+                    FILE_GLOBAL_SIZE,
+                    Tag.NAME.toString(),
+                    OBJECT,
+                    Tag.DATABASE.toString(),
+                    database,
+                    Tag.REGION.toString(),
+                    regionId));
+  }
+
+  private void checkIfThereRemainingData() {
+    if (hasRemainData.get()) {
+      synchronized (this) {
+        if (hasRemainData.get()) {
+          hasRemainData.set(false);
+          updateRemainData();
+        }
+      }
+    }
+  }
+
+  private synchronized void updateRemainData() {
+    for (Map.Entry<String, Map<String, Pair<Integer, Gauge>>> entry :
+        dataRegionObjectFileNumMap.entrySet()) {
+      for (Map.Entry<String, Pair<Integer, Gauge>> innerEntry : entry.getValue().entrySet()) {
+        updateObjectFileNumMap(entry.getKey(), innerEntry.getKey(), 0);
+      }
+    }
+    for (Map.Entry<String, Map<String, Pair<Long, Gauge>>> entry :
+        dataRegionObjectFileSizeMap.entrySet()) {
+      for (Map.Entry<String, Pair<Long, Gauge>> innerEntry : entry.getValue().entrySet()) {
+        updateObjectFileSizeMap(entry.getKey(), innerEntry.getKey(), 0);
+      }
+    }
   }
 }

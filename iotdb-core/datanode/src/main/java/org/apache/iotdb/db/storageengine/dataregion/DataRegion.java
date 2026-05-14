@@ -175,6 +175,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import com.google.common.io.BaseEncoding;
 import com.timecho.iotdb.calc.storageengine.dataregion.Base32ObjectPath;
 import com.timecho.iotdb.calc.storageengine.dataregion.PlainObjectPath;
 import org.apache.thrift.TException;
@@ -198,6 +199,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -2319,28 +2321,6 @@ public class DataRegion implements IDataRegionForQuery {
   private void deleteAllObjectFiles(List<String> folders) {
     for (String objectFolder : folders) {
       File dataRegionObjectFolder = fsFactory.getFile(objectFolder, dataRegionIdString);
-      AtomicLong totalSize = new AtomicLong(0);
-      AtomicInteger count = new AtomicInteger(0);
-      try (Stream<Path> paths = Files.walk(dataRegionObjectFolder.toPath())) {
-        paths
-            .filter(Files::isRegularFile)
-            .filter(
-                path -> {
-                  String name = path.getFileName().toString();
-                  return name.endsWith(ObjectTypeUtils.OBJECT_FILE_SUFFIX);
-                })
-            .forEach(
-                path -> {
-                  count.incrementAndGet();
-                  totalSize.addAndGet(path.toFile().length());
-                  // we don't need to update table disk usage cache because the cache file of this
-                  // region will be deleted later
-                });
-      } catch (IOException e) {
-        logger.error("Failed to check Object Files: {}", e.getMessage());
-      }
-      FileMetrics.getInstance().decreaseObjectFileNum(count.get());
-      FileMetrics.getInstance().decreaseObjectFileSize(totalSize.get());
       if (FSUtils.getFSType(dataRegionObjectFolder) != FSType.LOCAL) {
         try {
           fsFactory.deleteDirectory(dataRegionObjectFolder.getPath());
@@ -3146,8 +3126,10 @@ public class DataRegion implements IDataRegionForQuery {
               }
               FileUtils.deleteQuietly(objectTableDir);
             }
-            FileMetrics.getInstance().decreaseObjectFileNum(count.get());
-            FileMetrics.getInstance().decreaseObjectFileSize(totalSize.get());
+            FileMetrics.getInstance()
+                .decreaseObjectFileNum(databaseName, dataRegionIdString, count.get());
+            FileMetrics.getInstance()
+                .decreaseObjectFileSize(databaseName, dataRegionIdString, totalSize.get());
           }
         }
         if (!droppingTable) {
@@ -4123,8 +4105,9 @@ public class DataRegion implements IDataRegionForQuery {
           Files.move(
               objectTmpFile.toPath(), objectFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
           long objectBackFileLength = objectBackFile.length();
-          FileMetrics.getInstance().decreaseObjectFileNum(1);
-          FileMetrics.getInstance().decreaseObjectFileSize(objectBackFileLength);
+          FileMetrics.getInstance().decreaseObjectFileNum(databaseName, dataRegionIdString, 1);
+          FileMetrics.getInstance()
+              .decreaseObjectFileSize(databaseName, dataRegionIdString, objectBackFileLength);
           TableDiskUsageIndex.getInstance()
               .writeObjectDelta(
                   databaseName,
@@ -4141,8 +4124,9 @@ public class DataRegion implements IDataRegionForQuery {
         RelationalInsertRowNode valueNode = objectNode.genValueInsertRowNode();
         insert(valueNode);
         long fileLength = objectFile.length();
-        FileMetrics.getInstance().increaseObjectFileNum(1);
-        FileMetrics.getInstance().increaseObjectFileSize(fileLength);
+        FileMetrics.getInstance().increaseObjectFileNum(databaseName, dataRegionIdString, 1);
+        FileMetrics.getInstance()
+            .increaseObjectFileSize(databaseName, dataRegionIdString, fileLength);
         TableDiskUsageIndex.getInstance()
             .writeObjectDelta(
                 databaseName,
@@ -4259,7 +4243,7 @@ public class DataRegion implements IDataRegionForQuery {
       }
       if (objectFileDir != null && objectFileDir.exists() && objectFileDir.isDirectory()) {
         try {
-          installPendingObjectFilesIntoTier(objectFileDir, getDataRegionIdString());
+          installPendingObjectFilesIntoTier(objectFileDir, databaseName, getDataRegionIdString());
         } catch (IOException e) {
           throw new LoadFileException(
               "Failed to install staged object files into tiered storage from directory: "
@@ -4350,71 +4334,145 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   private static void installPendingObjectFilesIntoTier(
-      final File stagingDir, final String dataRegionId) throws IOException {
+      final File stagingDir, final String databaseName, final String dataRegionId)
+      throws IOException {
     if (stagingDir == null || !stagingDir.exists() || !stagingDir.isDirectory()) {
       return;
     }
 
+    boolean restrictObjectLimit =
+        CommonDescriptor.getInstance().getConfig().isRestrictObjectLimit();
     final Path stagingRoot = stagingDir.toPath();
-    try (Stream<Path> pathStream = Files.walk(stagingRoot)) {
-      pathStream
-          .filter(Files::isRegularFile)
-          .filter(
-              path -> path.getFileName().toString().endsWith(ObjectTypeUtils.OBJECT_FILE_SUFFIX))
-          .forEach(
-              stagedFilePath -> {
-                try {
-                  final Path relativePathObj = stagingRoot.relativize(stagedFilePath);
-                  final String targetTierDir =
-                      TierManager.getInstance().getNextFolderForObjectFile();
-
-                  if (relativePathObj.getNameCount() < 2) {
-                    throw new IllegalArgumentException(
-                        "Invalid staged object file path structure: " + relativePathObj);
-                  }
-
-                  final Path subPathWithoutRegion =
-                      relativePathObj.subpath(1, relativePathObj.getNameCount());
-
-                  final String newRelativePathStr =
-                      Paths.get(dataRegionId).resolve(subPathWithoutRegion).toString();
-                  final File targetFile =
-                      FSFactoryProducer.getFSFactory().getFile(targetTierDir, newRelativePathStr);
-                  final File targetParent = targetFile.getParentFile();
-
-                  if (!targetParent.exists()) {
-                    Files.createDirectories(targetParent.toPath());
-                  }
-
-                  if (targetFile.exists()) {
-                    final File objectBackFile =
-                        new File(
-                            targetFile.getAbsolutePath() + ObjectTypeUtils.OBJECT_BACK_FILE_SUFFIX);
-                    Files.move(
-                        targetFile.toPath(),
-                        objectBackFile.toPath(),
-                        StandardCopyOption.REPLACE_EXISTING);
-                    Files.move(
-                        stagedFilePath, targetFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
-                    FileMetrics.getInstance().decreaseObjectFileSize(objectBackFile.length());
-                    FileMetrics.getInstance().increaseObjectFileSize(targetFile.length());
-                    Files.delete(objectBackFile.toPath());
-                  } else {
-                    Files.move(
-                        stagedFilePath, targetFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
-                    FileMetrics.getInstance().increaseObjectFileNum(1);
-                    FileMetrics.getInstance().increaseObjectFileSize(targetFile.length());
-                  }
-                } catch (Exception e) {
-                  throw new RuntimeException(
-                      "Failed to install staged object file: " + stagedFilePath, e);
-                }
-              });
-    } catch (RuntimeException e) {
-      if (e.getCause() instanceof IOException) {
-        throw (IOException) e.getCause();
+    File[] stagedRegionDirs = stagingDir.listFiles();
+    if (stagedRegionDirs == null) {
+      return;
+    }
+    for (File stagedRegionDir : stagedRegionDirs) {
+      if (!stagedRegionDir.isDirectory()) {
+        continue;
       }
-      throw new IOException(e);
+      File[] tableDirs = stagedRegionDir.listFiles();
+      if (tableDirs == null) {
+        continue;
+      }
+      for (File tableDir : tableDirs) {
+        if (!tableDir.isDirectory()) {
+          continue;
+        }
+        final String tableName;
+        if (restrictObjectLimit) {
+          tableName = tableDir.getName();
+        } else {
+          try {
+            tableName =
+                new String(
+                    BaseEncoding.base32().omitPadding().decode(tableDir.getName()),
+                    StandardCharsets.UTF_8);
+          } catch (IllegalArgumentException ignored) {
+            continue;
+          }
+        }
+        try (Stream<Path> pathStream = Files.walk(tableDir.toPath())) {
+          pathStream
+              .filter(Files::isRegularFile)
+              .filter(
+                  path ->
+                      path.getFileName().toString().endsWith(ObjectTypeUtils.OBJECT_FILE_SUFFIX))
+              .forEach(
+                  stagedFilePath -> {
+                    try {
+                      final Path relativePathObj = stagingRoot.relativize(stagedFilePath);
+                      final String targetTierDir =
+                          TierManager.getInstance().getNextFolderForObjectFile();
+
+                      if (relativePathObj.getNameCount() < 2) {
+                        throw new IllegalArgumentException(
+                            "Invalid staged object file path structure: " + relativePathObj);
+                      }
+
+                      final Path subPathWithoutRegion =
+                          relativePathObj.subpath(1, relativePathObj.getNameCount());
+                      final String fileName = subPathWithoutRegion.getFileName().toString();
+                      final long timePartition =
+                          TimePartitionUtils.getTimePartitionId(
+                              Long.parseLong(
+                                  fileName.substring(
+                                      0,
+                                      fileName.length()
+                                          - ObjectTypeUtils.OBJECT_FILE_SUFFIX.length())));
+
+                      final Path newRelativePath =
+                          Paths.get(dataRegionId).resolve(subPathWithoutRegion);
+                      final File targetFile =
+                          FSFactoryProducer.getFSFactory()
+                              .getFile(targetTierDir, newRelativePath.toString());
+                      final File targetParent = targetFile.getParentFile();
+
+                      if (!targetParent.exists()) {
+                        Files.createDirectories(targetParent.toPath());
+                      }
+
+                      if (targetFile.exists()) {
+                        final File objectBackFile =
+                            new File(
+                                targetFile.getAbsolutePath()
+                                    + ObjectTypeUtils.OBJECT_BACK_FILE_SUFFIX);
+                        Files.move(
+                            targetFile.toPath(),
+                            objectBackFile.toPath(),
+                            StandardCopyOption.REPLACE_EXISTING);
+                        Files.move(
+                            stagedFilePath,
+                            targetFile.toPath(),
+                            StandardCopyOption.REPLACE_EXISTING);
+                        long oldObjectFileLength = objectBackFile.length();
+                        long newObjectFileLength = targetFile.length();
+                        FileMetrics.getInstance()
+                            .decreaseObjectFileSize(
+                                databaseName, dataRegionId, oldObjectFileLength);
+                        FileMetrics.getInstance()
+                            .increaseObjectFileSize(
+                                databaseName, dataRegionId, newObjectFileLength);
+                        TableDiskUsageIndex.getInstance()
+                            .writeObjectDelta(
+                                databaseName,
+                                Integer.parseInt(dataRegionId),
+                                timePartition,
+                                tableName,
+                                newObjectFileLength - oldObjectFileLength,
+                                0);
+                        Files.delete(objectBackFile.toPath());
+                      } else {
+                        Files.move(
+                            stagedFilePath,
+                            targetFile.toPath(),
+                            StandardCopyOption.REPLACE_EXISTING);
+                        long objectFileLength = targetFile.length();
+                        FileMetrics.getInstance()
+                            .increaseObjectFileNum(databaseName, dataRegionId, 1);
+                        FileMetrics.getInstance()
+                            .increaseObjectFileSize(databaseName, dataRegionId, objectFileLength);
+                        TableDiskUsageIndex.getInstance()
+                            .writeObjectDelta(
+                                databaseName,
+                                Integer.parseInt(dataRegionId),
+                                timePartition,
+                                tableName,
+                                objectFileLength,
+                                1);
+                      }
+                    } catch (Exception e) {
+                      throw new RuntimeException(
+                          "Failed to install staged object file: " + stagedFilePath, e);
+                    }
+                  });
+        } catch (RuntimeException e) {
+          if (e.getCause() instanceof IOException) {
+            throw (IOException) e.getCause();
+          }
+          throw new IOException(e);
+        }
+      }
     }
   }
 

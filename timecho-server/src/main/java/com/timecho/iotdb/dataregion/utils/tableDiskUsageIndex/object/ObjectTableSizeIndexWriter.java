@@ -53,6 +53,7 @@ public class ObjectTableSizeIndexWriter extends AbstractTableSizeIndexWriter {
   public static final byte OBJECT_FILE_SIZE_DELTA_TYPE = 2;
   public static final byte OBJECT_FILE_SNAPSHOT_END_TYPE = 3;
 
+  private final String database;
   private int currentFileVersion = 0;
   private ObjectFileTableSizeIndexFileWriter writer;
 
@@ -64,6 +65,7 @@ public class ObjectTableSizeIndexWriter extends AbstractTableSizeIndexWriter {
 
   public ObjectTableSizeIndexWriter(String database, int regionId) {
     super(database, regionId);
+    this.database = database;
     recoverFromDir(true);
 
     pendingObjectSizeDeltasByTimePartition = new HashMap<>();
@@ -111,7 +113,8 @@ public class ObjectTableSizeIndexWriter extends AbstractTableSizeIndexWriter {
       }
     }
     try {
-      this.writer = new ObjectFileTableSizeIndexFileWriter(regionId, previousFile, needSelfCheck);
+      this.writer =
+          new ObjectFileTableSizeIndexFileWriter(database, regionId, previousFile, needSelfCheck);
     } catch (IOException e) {
       failedToRecover(e);
     }
@@ -121,7 +124,8 @@ public class ObjectTableSizeIndexWriter extends AbstractTableSizeIndexWriter {
     ObjectFileTableSizeIndexFileWriter tempWriter = null;
     DataRegionTableSizeQueryContext context = scanAllObjectFiles();
     try {
-      tempWriter = new ObjectFileTableSizeIndexFileWriter(regionId, generateFile(0, true), false);
+      tempWriter =
+          new ObjectFileTableSizeIndexFileWriter(database, regionId, generateFile(0, true), false);
       tempWriter.writeResultFromQuery(context);
     } finally {
       if (tempWriter != null) {
@@ -266,7 +270,7 @@ public class ObjectTableSizeIndexWriter extends AbstractTableSizeIndexWriter {
     try {
       targetFileWriter =
           new ObjectFileTableSizeIndexFileWriter(
-              regionId, generateFile(currentFileVersion + 1, true), false);
+              database, regionId, generateFile(currentFileVersion + 1, true), false);
       targetFileWriter.writeResultFromQuery(context);
       targetFileWriter.close();
 
