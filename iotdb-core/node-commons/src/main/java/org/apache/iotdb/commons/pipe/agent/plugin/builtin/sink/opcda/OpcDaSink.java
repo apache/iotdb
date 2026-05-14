@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.pipe.agent.plugin.builtin.sink.opcda;
 
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.sink.PlaceholderSink;
+import org.apache.iotdb.pipe.api.annotation.TableModel;
 import org.apache.iotdb.pipe.api.annotation.TreeModel;
 
 /**
@@ -29,4 +30,5 @@ import org.apache.iotdb.pipe.api.annotation.TreeModel;
  * OPC DA connector.
  */
 @TreeModel
+@TableModel
 public class OpcDaSink extends PlaceholderSink {}

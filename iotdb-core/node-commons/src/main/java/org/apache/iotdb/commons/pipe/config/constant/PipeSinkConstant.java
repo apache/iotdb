@@ -351,6 +351,28 @@ public class PipeSinkConstant {
   public static final String CONNECTOR_OPC_DA_PROGID_KEY = "connector.opcda.progid";
   public static final String SINK_OPC_DA_PROGID_KEY = "sink.opcda.progid";
 
+  public static final String CONNECTOR_OPC_DA_NULL_TAG_SENTINEL_KEY =
+      "connector.opcda.null-tag-sentinel";
+  public static final String SINK_OPC_DA_NULL_TAG_SENTINEL_KEY = "sink.opcda.null-tag-sentinel";
+  public static final String CONNECTOR_OPC_DA_NULL_TAG_SENTINEL_DEFAULT_VALUE = "__NULL__";
+
+  public static final String CONNECTOR_OPC_DA_SEGMENT_ESCAPE_KEY =
+      "connector.opcda.segment-escape";
+  public static final String SINK_OPC_DA_SEGMENT_ESCAPE_KEY = "sink.opcda.segment-escape";
+  public static final String CONNECTOR_OPC_DA_SEGMENT_ESCAPE_DEFAULT_VALUE = "__ESC__";
+
+  public static final String CONNECTOR_OPC_DA_ESCAPED_SEGMENT_ESCAPE_KEY =
+      "connector.opcda.escaped-segment-escape";
+  public static final String SINK_OPC_DA_ESCAPED_SEGMENT_ESCAPE_KEY =
+      "sink.opcda.escaped-segment-escape";
+  public static final String CONNECTOR_OPC_DA_ESCAPED_SEGMENT_ESCAPE_DEFAULT_VALUE = "ESC";
+
+  public static final String CONNECTOR_OPC_DA_ESCAPED_PATH_SEPARATOR_KEY =
+      "connector.opcda.escaped-path-separator";
+  public static final String SINK_OPC_DA_ESCAPED_PATH_SEPARATOR_KEY =
+      "sink.opcda.escaped-path-separator";
+  public static final String CONNECTOR_OPC_DA_ESCAPED_PATH_SEPARATOR_DEFAULT_VALUE = "DOT";
+
   public static final String CONNECTOR_USE_EVENT_USER_NAME_KEY = "connector.use-event-user-name";
   public static final String SINK_USE_EVENT_USER_NAME_KEY = "sink.use-event-user-name";
   public static final boolean CONNECTOR_USE_EVENT_USER_NAME_DEFAULT_VALUE = false;
