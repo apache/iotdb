@@ -26,6 +26,7 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.ObjectFileNotExist;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
@@ -56,6 +57,8 @@ import java.util.Optional;
 public class DataNodeObjectFileService implements IObjectFileService {
 
   private static final Logger logger = LoggerFactory.getLogger(DataNodeObjectFileService.class);
+  private static final Logger objectDeletionLogger =
+      LoggerFactory.getLogger(IoTDBConstant.OBJECT_DELETION_LOGGER_NAME);
   private static final TierManager TIER_MANAGER = TierManager.getInstance();
   public static final DataNodeObjectFileService INSTANCE = new DataNodeObjectFileService();
 
@@ -94,7 +97,7 @@ public class DataNodeObjectFileService implements IObjectFileService {
         deleteObjectFile(tmpFile);
         deleteObjectFile(bakFile);
       } catch (IOException e) {
-        logger.error("Failed to remove object file {}", file.getAbsolutePath(), e);
+        objectDeletionLogger.error("Failed to remove object file {}", file.getAbsolutePath(), e);
       }
       if (fileExistsBeforeDelete && !file.exists()) {
         FileMetrics.getInstance().decreaseObjectFileNum(1);
@@ -187,14 +190,16 @@ public class DataNodeObjectFileService implements IObjectFileService {
         Files.deleteIfExists(dir.toPath());
         deleteEmptyParentDir(dir);
       } catch (IOException e) {
-        logger.error("Failed to remove empty object dir {}", dir.getAbsolutePath(), e);
+        objectDeletionLogger.error(
+            "Failed to remove empty object dir {}", dir.getAbsolutePath(), e);
       }
     }
   }
 
   private static void deleteObjectFile(File file) throws IOException {
     if (file.exists()) {
-      logger.info("Remove object file {}, size is {}(byte)", file.getAbsolutePath(), file.length());
+      objectDeletionLogger.info(
+          "Remove object file {}, size is {}(byte)", file.getAbsolutePath(), file.length());
     }
     Files.deleteIfExists(file.toPath());
   }

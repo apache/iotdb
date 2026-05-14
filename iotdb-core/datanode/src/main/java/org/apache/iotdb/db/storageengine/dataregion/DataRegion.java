@@ -106,6 +106,7 @@ import org.apache.iotdb.db.storageengine.buffer.BloomFilterCache;
 import org.apache.iotdb.db.storageengine.buffer.ChunkCache;
 import org.apache.iotdb.db.storageengine.buffer.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.StopTTLCheckException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.recover.CompactionRecoverManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.AbstractCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.RepairUnsortedFileCompactionTask;
@@ -273,6 +274,8 @@ public class DataRegion implements IDataRegionForQuery {
   private static final int MERGE_MOD_START_VERSION_NUM = 1;
 
   private static final Logger logger = LoggerFactory.getLogger(DataRegion.class);
+  private static final Logger objectDeletionLogger =
+      LoggerFactory.getLogger(IoTDBConstant.OBJECT_DELETION_LOGGER_NAME);
 
   /**
    * A read write lock for guaranteeing concurrent safety when accessing all fields in this class
@@ -3903,14 +3906,19 @@ public class DataRegion implements IDataRegionForQuery {
       if (!regionObjectDir.isDirectory()) {
         continue;
       }
+      if (!tsFileManager.isAllowCompaction()) {
+        return;
+      }
       try {
         CompactionUtils.executeTTLCheckObjectFilesForTableModel(
             regionObjectDir,
             databaseName,
-            dataRegionId.getId(),
+            this,
             isFirstCheckObjectFileDirsAfterRestart.compareAndSet(true, false));
+      } catch (StopTTLCheckException e) {
+        throw e;
       } catch (Exception e) {
-        logger.error("Failed to execute object ttl check", e);
+        objectDeletionLogger.error("Failed to execute object ttl check", e);
       }
     }
     CompactionMetrics.getInstance()

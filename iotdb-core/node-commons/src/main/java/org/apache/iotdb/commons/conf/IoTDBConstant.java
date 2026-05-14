@@ -130,6 +130,7 @@ public class IoTDBConstant {
   public static final String SAMPLED_QUERIES_LOGGER_NAME = "SAMPLED_QUERIES";
 
   public static final String COMPACTION_LOGGER_NAME = "COMPACTION";
+  public static final String OBJECT_DELETION_LOGGER_NAME = "OBJECT_DELETION";
   public static final String EXPLAIN_ANALYZE_LOGGER_NAME = "EXPLAIN_ANALYZE";
 
   public static final String IOTDB_JMX_LOCAL = "iotdb.jmx.local";

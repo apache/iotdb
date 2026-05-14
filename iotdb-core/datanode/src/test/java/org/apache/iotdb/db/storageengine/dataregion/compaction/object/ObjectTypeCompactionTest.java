@@ -40,6 +40,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.Cros
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.SettleCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
@@ -66,6 +67,7 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.Mockito;
 
 import java.io.File;
 import java.io.IOException;
@@ -155,7 +157,7 @@ public class ObjectTypeCompactionTest extends AbstractCompactionTest {
     Assert.assertTrue(pair1.getRight().exists());
     Assert.assertTrue(pair2.getRight().exists());
     CompactionUtils.executeTTLCheckObjectFilesForTableModel(
-        regionDir, COMPACTION_TEST_SG, 0, false);
+        regionDir, COMPACTION_TEST_SG, mockDataRegion(0), false);
     Assert.assertFalse(pair1.getRight().exists());
     Assert.assertTrue(pair2.getRight().exists());
   }
@@ -181,7 +183,7 @@ public class ObjectTypeCompactionTest extends AbstractCompactionTest {
     Assert.assertTrue(pair1.getRight().exists());
     Assert.assertTrue(pair2.getRight().exists());
     CompactionUtils.executeTTLCheckObjectFilesForTableModel(
-        regionDir, COMPACTION_TEST_SG, 0, false);
+        regionDir, COMPACTION_TEST_SG, mockDataRegion(0), false);
     Assert.assertFalse(pair2.getRight().exists());
     Assert.assertTrue(pair1.getRight().exists());
   }
@@ -206,7 +208,7 @@ public class ObjectTypeCompactionTest extends AbstractCompactionTest {
     Assert.assertTrue(pair1.getRight().exists());
     Assert.assertTrue(pair2.getRight().exists());
     CompactionUtils.executeTTLCheckObjectFilesForTableModel(
-        regionDir, COMPACTION_TEST_SG, 0, false);
+        regionDir, COMPACTION_TEST_SG, mockDataRegion(0), false);
     Assert.assertTrue(pair1.getRight().exists());
     Assert.assertFalse(pair2.getRight().exists());
   }
@@ -233,7 +235,7 @@ public class ObjectTypeCompactionTest extends AbstractCompactionTest {
     Assert.assertTrue(pair1.getRight().exists());
     Assert.assertTrue(pair2.getRight().exists());
     CompactionUtils.executeTTLCheckObjectFilesForTableModel(
-        regionDir, COMPACTION_TEST_SG, 0, false);
+        regionDir, COMPACTION_TEST_SG, mockDataRegion(0), false);
     Assert.assertFalse(pair2.getRight().exists());
     Assert.assertTrue(pair1.getRight().exists());
   }
@@ -260,7 +262,7 @@ public class ObjectTypeCompactionTest extends AbstractCompactionTest {
     Assert.assertTrue(pair1.getRight().exists());
     Assert.assertTrue(pair2.getRight().exists());
     CompactionUtils.executeTTLCheckObjectFilesForTableModel(
-        regionDir, COMPACTION_TEST_SG, 0, false);
+        regionDir, COMPACTION_TEST_SG, mockDataRegion(0), false);
     Assert.assertFalse(pair1.getRight().exists());
     Assert.assertTrue(pair2.getRight().exists());
   }
@@ -282,7 +284,7 @@ public class ObjectTypeCompactionTest extends AbstractCompactionTest {
       Assert.assertTrue(file3.exists());
       Assert.assertTrue(file4.exists());
       CompactionUtils.executeTTLCheckObjectFilesForTableModel(
-          regionDir, COMPACTION_TEST_SG, 0, false);
+          regionDir, COMPACTION_TEST_SG, mockDataRegion(0), false);
       Assert.assertTrue(file1.exists());
       Assert.assertTrue(file2.exists());
       Assert.assertFalse(file3.exists());
@@ -461,5 +463,12 @@ public class ObjectTypeCompactionTest extends AbstractCompactionTest {
 
   private String toBase32Str(String str) {
     return BaseEncoding.base32().omitPadding().encode(str.getBytes(StandardCharsets.UTF_8));
+  }
+
+  private DataRegion mockDataRegion(int regionId) {
+    DataRegion mock = Mockito.mock(DataRegion.class);
+    Mockito.when(mock.getDataRegionId()).thenReturn(regionId);
+    Mockito.when(mock.getTsFileManager()).thenReturn(new TsFileManager("", "", ""));
+    return mock;
   }
 }

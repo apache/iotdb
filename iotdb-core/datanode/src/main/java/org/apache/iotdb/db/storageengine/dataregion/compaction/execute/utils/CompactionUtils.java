@@ -40,7 +40,9 @@ import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
+import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.StopTTLCheckException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate;
 import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate.FullExactMatch;
@@ -95,6 +97,8 @@ import java.util.stream.Collectors;
 public class CompactionUtils {
   private static final Logger logger =
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
+  private static final Logger objectDeletionLogger =
+      LoggerFactory.getLogger(IoTDBConstant.OBJECT_DELETION_LOGGER_NAME);
   private static final String SYSTEM = "system";
 
   private static ISchemaFetcher schemaFetcherForTest = null;
@@ -533,7 +537,10 @@ public class CompactionUtils {
   }
 
   public static void executeTTLCheckObjectFilesForTableModel(
-      File regionObjectDir, String databaseName, int regionId, boolean isFirstCheckAfterRestart) {
+      File regionObjectDir,
+      String databaseName,
+      DataRegion dataRegion,
+      boolean isFirstCheckAfterRestart) {
     File[] tableDirs = regionObjectDir.listFiles();
     if (tableDirs == null) {
       return;
@@ -567,7 +574,7 @@ public class CompactionUtils {
       try {
         recursiveTTLCheckForTableDir(
             databaseName,
-            regionId,
+            dataRegion,
             tableName,
             tableDir,
             0,
@@ -575,8 +582,10 @@ public class CompactionUtils {
             !restrictObjectLimit,
             timeLowerBoundInMS,
             isFirstCheckAfterRestart);
+      } catch (StopTTLCheckException e) {
+        throw e;
       } catch (Exception e) {
-        logger.warn(
+        objectDeletionLogger.warn(
             "Meet exception when checking for object files for table {}.{} in region {}",
             databaseName,
             tableName,
@@ -590,7 +599,7 @@ public class CompactionUtils {
   // Files.readAttributes when the file may be expired
   private static void recursiveTTLCheckForTableDir(
       String database,
-      int regionId,
+      DataRegion dataRegion,
       String table,
       File currentFile,
       int depth,
@@ -604,7 +613,7 @@ public class CompactionUtils {
     if (maybeObjectFile) {
       if (canDistinguishDirectoryByFileName) {
         checkTTLAndDeleteExpiredObjectFile(
-            database, regionId, table, currentFile, null, lowerBoundInMS);
+            database, dataRegion, table, currentFile, null, lowerBoundInMS);
         return;
       }
       try {
@@ -612,13 +621,13 @@ public class CompactionUtils {
             Files.readAttributes(currentFile.toPath(), BasicFileAttributes.class);
         if (!basicFileAttributes.isDirectory()) {
           checkTTLAndDeleteExpiredObjectFile(
-              database, regionId, table, currentFile, basicFileAttributes, lowerBoundInMS);
+              database, dataRegion, table, currentFile, basicFileAttributes, lowerBoundInMS);
           return;
         }
       } catch (FileNotFoundException | NoSuchFileException ignored) {
         // may be deleted by other thread
       } catch (IOException e) {
-        logger.warn("Failed to read file attributes: {}", currentFile, e);
+        objectDeletionLogger.warn("Failed to read file attributes: {}", currentFile, e);
       }
     }
     if (isFirstCheckAfterRestart) {
@@ -635,7 +644,7 @@ public class CompactionUtils {
             return;
           }
         } catch (IOException e) {
-          logger.error("Failed to remove object file {}", currentFile.getPath(), e);
+          objectDeletionLogger.error("Failed to remove object file {}", currentFile.getPath(), e);
         }
       }
     }
@@ -650,7 +659,7 @@ public class CompactionUtils {
       try {
         recursiveTTLCheckForTableDir(
             database,
-            regionId,
+            dataRegion,
             table,
             child,
             depth + 1,
@@ -658,19 +667,24 @@ public class CompactionUtils {
             canDistinguishDirectoryByFileName,
             lowerBoundInMS,
             isFirstCheckAfterRestart);
+      } catch (StopTTLCheckException e) {
+        throw e;
       } catch (Exception e) {
-        logger.warn("Failed to check table dir: {}", child, e);
+        objectDeletionLogger.warn("Failed to check table dir: {}", child, e);
       }
     }
   }
 
   private static void checkTTLAndDeleteExpiredObjectFile(
       String database,
-      int regionId,
+      DataRegion dataRegion,
       String table,
       File file,
       @Nullable BasicFileAttributes attributes,
       long timeLowerBoundInMS) {
+    if (!dataRegion.getTsFileManager().isAllowCompaction()) {
+      throw new StopTTLCheckException();
+    }
     String fileName = file.getName();
     long fileTimestampInMS;
     try {
@@ -697,16 +711,17 @@ public class CompactionUtils {
       TableDiskUsageIndex.getInstance()
           .writeObjectDelta(
               database,
-              regionId,
+              dataRegion.getDataRegionId(),
               TimePartitionUtils.getTimePartitionId(fileTimestampInMS),
               table,
               -attributes.size(),
               -1);
-      logger.info("Remove object file {}, size is {}(byte)", file.getPath(), attributes.size());
+      objectDeletionLogger.info(
+          "Remove object file {}, size is {}(byte)", file.getPath(), attributes.size());
     } catch (FileNotFoundException | NoSuchFileException ignored) {
       // may be deleted by other thread
     } catch (Exception e) {
-      logger.warn("Failed to delete expired object file: {}", file, e);
+      objectDeletionLogger.warn("Failed to delete expired object file: {}", file, e);
     }
   }
 

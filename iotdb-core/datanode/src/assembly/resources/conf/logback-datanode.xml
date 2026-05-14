@@ -207,6 +207,21 @@
             <level>INFO</level>
         </filter>
     </appender>
+    <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="OBJECT_DELETION">
+        <file>${IOTDB_HOME}/logs/log_datanode_object_deletion.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${IOTDB_HOME}/logs/log-datanode-object-deletion-%d{yyyyMMdd}.log.gz</fileNamePattern>
+            <maxHistory>30</maxHistory>
+        </rollingPolicy>
+        <append>true</append>
+        <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+            <pattern>%d [%t] %-5p %C{25}:%L - %m %n</pattern>
+            <charset>utf-8</charset>
+        </encoder>
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>INFO</level>
+        </filter>
+    </appender>
     <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="EXPLAIN_ANALYZE">
         <file>${IOTDB_HOME}/logs/log_explain_analyze.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
@@ -254,6 +269,9 @@
     <logger level="info" name="DETAILED_FAILURE_QUERY_TRACE"/>
     <logger level="info" name="COMPACTION">
         <appender-ref ref="COMPACTION"/>
+    </logger>
+    <logger level="info" name="OBJECT_DELETION" additivity="false">
+        <appender-ref ref="OBJECT_DELETION"/>
     </logger>
     <logger level="info" name="org.apache.iotdb.pipe.api">
         <appender-ref ref="PIPE"/>
