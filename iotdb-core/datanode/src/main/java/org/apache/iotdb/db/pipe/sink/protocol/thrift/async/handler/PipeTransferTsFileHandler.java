@@ -441,7 +441,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
       return;
     }
 
-    client.pipeTransfer(req, this);
+    transferWithOptionalRequestSlicing(client, req);
   }
 
   @Override
