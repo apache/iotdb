@@ -78,6 +78,10 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
   protected final boolean isGeneratedByPipeConsensus;
   protected final boolean isGeneratedByHistoricalExtractor;
 
+  // Realtime TsFile events are created after TsFileProcessor#endFile(), so the file is already
+  // immutable even if TsFileResource status is still UNCLOSED.
+  private final boolean isTsFileSealed;
+
   protected final AtomicBoolean isClosed;
   protected final AtomicReference<TsFileInsertionDataContainer> dataContainer;
 
@@ -91,7 +95,18 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
   public PipeTsFileInsertionEvent(final TsFileResource resource, final boolean isLoaded) {
     // The modFile must be copied before the event is assigned to the listening pipes
     this(
-        resource, null, true, isLoaded, false, null, 0, null, null, Long.MIN_VALUE, Long.MAX_VALUE);
+        resource,
+        null,
+        true,
+        isLoaded,
+        false,
+        null,
+        0,
+        null,
+        null,
+        Long.MIN_VALUE,
+        Long.MAX_VALUE,
+        true);
   }
 
   public PipeTsFileInsertionEvent(
@@ -106,7 +121,36 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
       final PipePattern pattern,
       final long startTime,
       final long endTime) {
-    super(pipeName, creationTime, pipeTaskMeta, pattern, startTime, endTime);
+    this(
+        resource,
+        tsFile,
+        isWithMod,
+        isLoaded,
+        isGeneratedByHistoricalExtractor,
+        pipeName,
+        creationTime,
+        pipeTaskMeta,
+        pattern,
+        startTime,
+        endTime,
+        false);
+  }
+
+  private PipeTsFileInsertionEvent(
+      final TsFileResource resource,
+      final File tsFile,
+      final boolean isWithMod,
+      final boolean isLoaded,
+      final boolean isGeneratedByHistoricalExtractor,
+      final String pipeName,
+      final long creationTime,
+      final PipeTaskMeta pipeTaskMeta,
+      final PipePattern pipePattern,
+      final long startTime,
+      final long endTime,
+      final boolean isTsFileSealed) {
+    super(pipeName, creationTime, pipeTaskMeta, pipePattern, startTime, endTime);
+
     this.resource = resource;
 
     // For events created at assigner or historical extractor, the tsFile is get from the resource
@@ -123,6 +167,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
     this.isGeneratedByPipe = resource.isGeneratedByPipe();
     this.isGeneratedByPipeConsensus = resource.isGeneratedByPipeConsensus();
     this.isGeneratedByHistoricalExtractor = isGeneratedByHistoricalExtractor;
+    this.isTsFileSealed = isTsFileSealed;
     this.tableNames = tableNames;
 
     this.dataContainer = new AtomicReference<>(null);
@@ -178,6 +223,10 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
   public boolean waitForTsFileClose() throws InterruptedException {
     if (Objects.isNull(resource)) {
       return true;
+    }
+
+    if (isTsFileSealed) {
+      return !resource.isEmpty();
     }
 
     if (!isClosed.get()) {
@@ -359,7 +408,8 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
         pipeTaskMeta,
         pattern,
         startTime,
-        endTime);
+        endTime,
+        isTsFileSealed);
   }
 
   @Override
