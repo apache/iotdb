@@ -818,19 +818,19 @@ data_region_per_data_node=0
 # Available values: GREEDY, GCR, PGP
 # effectiveMode: restart
 # Datatype: String
-# region_group_allocate_policy=PGP
+region_group_allocate_policy=PGP
 
 # The policy of RegionGroup migrate for load balance.
 # Available values: GREEDY, CAR, PGP
 # effectiveMode: restart
 # Datatype: String
-# region_group_migrate_policy=CAR
+region_group_migrate_policy=CAR
 
 # The policy of RegionGroup scale-in for node removal.
 # Available values: GREEDY, GCR, CAR, RANDOM
 # effectiveMode: restart
 # Datatype: String
-# region_group_scalein_policy=CAR
+region_group_scalein_policy=CAR
 
 # Whether to enable auto leader balance for Ratis consensus protocol.
 # The ConfigNode-leader will balance the leader of Ratis-RegionGroups by leader_distribution_policy if set true.
@@ -845,6 +845,19 @@ enable_auto_leader_balance_for_ratis_consensus=true
 # effectiveMode: restart
 # Datatype: Boolean
 enable_auto_leader_balance_for_iot_consensus=true
+
+# The maximum transit size in byte per second for migration tasks in each DataNode.
+# Takes effect only for IoTConsensus protocol.
+# Values less than or equal to 0 means no limit.
+# effectiveMode: hot_reload
+# Datatype: long
+region_migration_speed_limit_bytes_per_second = 50331648
+
+# Max number of region migration procedures that can run concurrently
+# 0 or negative means no limit
+# effectiveMode: hot_reload
+# Datatype: int
+region_migration_concurrency_limit=0
 
 ####################
 ### Cluster management
@@ -1846,18 +1859,6 @@ data_region_iot_max_pending_batches_num = 5
 # effectiveMode: hot_reload
 # Datatype: double
 data_region_iot_max_memory_ratio_for_queue = 0.6
-
-# The maximum transit size in byte per second for region migration
-# values less than or equal to 0 means no limit
-# effectiveMode: hot_reload
-# Datatype: long
-region_migration_speed_limit_bytes_per_second = 50331648
-
-# Max number of region migration procedures that can run concurrently
-# 0 or negative means no limit
-# effectiveMode: hot_reload
-# Datatype: int
-# region_migration_concurrency_limit=0
 
 ####################
 ### Blob Allocator Configuration
