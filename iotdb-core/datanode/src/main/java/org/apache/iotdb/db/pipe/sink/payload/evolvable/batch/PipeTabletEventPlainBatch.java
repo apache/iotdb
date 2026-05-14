@@ -291,6 +291,7 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
         return copiedDoubleValues;
       case TEXT:
       case BLOB:
+      case OBJECT:
       case STRING:
         final Binary[] binaryValues = (Binary[]) valueList;
         final Binary[] copiedBinaryValues = new Binary[rowSize];

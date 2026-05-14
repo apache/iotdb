@@ -21,11 +21,15 @@ package org.apache.iotdb.db.pipe.sink;
 
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.batch.PipeTabletEventPlainBatch;
 
+import org.apache.tsfile.enums.ColumnCategory;
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.write.record.Tablet;
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 
@@ -140,6 +144,37 @@ public class PipeTabletEventPlainBatchTest {
           Assert.assertNull(tablet.getValue(j, i));
           continue;
         }
+        Assert.assertEquals(tablet.getValue(j, i), copyTablet.getValue(j, i));
+      }
+    }
+  }
+
+  @Test
+  public void constructTabletBatchWithAllNullObjectColumn() {
+    final Tablet tablet =
+        new Tablet(
+            "object_test",
+            Arrays.asList("id", "reading", "file"),
+            Arrays.asList(TSDataType.STRING, TSDataType.FLOAT, TSDataType.OBJECT),
+            Arrays.asList(ColumnCategory.TAG, ColumnCategory.FIELD, ColumnCategory.FIELD),
+            8);
+
+    for (long timestamp = 1; timestamp <= 5; ++timestamp) {
+      final int rowIndex = tablet.getRowSize();
+      tablet.addTimestamp(rowIndex, timestamp);
+      tablet.addValue(rowIndex, 0, "device1");
+      tablet.addValue(rowIndex, 1, (float) timestamp);
+    }
+
+    final Tablet copyTablet = PipeTabletEventPlainBatch.copyTablet(tablet);
+
+    Assert.assertNotSame(tablet, copyTablet);
+    Assert.assertEquals(tablet.getRowSize(), copyTablet.getRowSize());
+    Assert.assertTrue(copyTablet.getValues()[2] instanceof Binary[]);
+    Assert.assertNotSame(tablet.getValues()[2], copyTablet.getValues()[2]);
+
+    for (int i = 0; i < tablet.getSchemas().size(); i++) {
+      for (int j = 0; j < tablet.getRowSize(); j++) {
         Assert.assertEquals(tablet.getValue(j, i), copyTablet.getValue(j, i));
       }
     }
