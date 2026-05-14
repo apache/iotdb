@@ -105,24 +105,37 @@ public class IoTDBSchemaRegionSink extends IoTDBDataNodeSyncSink {
 
   private void doTransferWithBatch(final PipeSchemaRegionWritePlanEvent event)
       throws PipeException {
-    if (schemaRegionWritePlanEventBatch.onEvent(event)) {
-      if (schemaRegionWritePlanEventBatch.shouldEmit()) {
-        flushBatchedEventsIfNecessary();
-      }
+    if (tryTransferInBatch(event)) {
       return;
     }
 
-    if (!schemaRegionWritePlanEventBatch.isEmpty()) {
-      flushBatchedEventsIfNecessary();
-      if (schemaRegionWritePlanEventBatch.onEvent(event)) {
-        if (schemaRegionWritePlanEventBatch.shouldEmit()) {
-          flushBatchedEventsIfNecessary();
-        }
-        return;
-      }
+    doTransferWrapper(event);
+  }
+
+  private boolean tryTransferInBatch(final PipeSchemaRegionWritePlanEvent event)
+      throws PipeException {
+    if (tryAppendToBatchAndFlushIfNecessary(event)) {
+      return true;
     }
 
-    doTransferWrapper(event);
+    if (schemaRegionWritePlanEventBatch.isEmpty()) {
+      return false;
+    }
+
+    flushBatchedEventsIfNecessary();
+    return tryAppendToBatchAndFlushIfNecessary(event);
+  }
+
+  private boolean tryAppendToBatchAndFlushIfNecessary(final PipeSchemaRegionWritePlanEvent event)
+      throws PipeException {
+    if (!schemaRegionWritePlanEventBatch.onEvent(event)) {
+      return false;
+    }
+
+    if (schemaRegionWritePlanEventBatch.shouldEmit()) {
+      flushBatchedEventsIfNecessary();
+    }
+    return true;
   }
 
   private void flushBatchedEventsIfNecessary() throws PipeException {

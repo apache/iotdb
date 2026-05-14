@@ -119,6 +119,45 @@ public class PipeSchemaRegionSinkTest {
   }
 
   @Test
+  public void testSyncSinkRetriesBatchingAfterFlushingIncompatibleBatch() throws Exception {
+    final TestIoTDBSchemaRegionSyncSink sink = new TestIoTDBSchemaRegionSyncSink();
+    try {
+      final IoTDBDataNodeSyncClientManager clientManager =
+          Mockito.mock(IoTDBDataNodeSyncClientManager.class);
+      final org.apache.iotdb.commons.pipe.sink.client.IoTDBSyncClient client =
+          Mockito.mock(org.apache.iotdb.commons.pipe.sink.client.IoTDBSyncClient.class);
+      when(clientManager.getClient()).thenAnswer(invocation -> new Pair<>(client, true));
+      when(client.getEndPoint()).thenReturn(new TEndPoint("127.0.0.1", 6667));
+      when(client.pipeTransfer(any(TPipeTransferReq.class))).thenReturn(createSuccessResp());
+
+      setField(sink, "clientManager", clientManager);
+      enableBatching(sink);
+
+      final PipeSchemaRegionWritePlanEvent firstEvent =
+          createBatchableEvent("root.db.d1.s1", "pipeA", 1L);
+      final PipeSchemaRegionWritePlanEvent secondEvent =
+          createBatchableEvent("root.db.d2.s1", "pipeB", 1L);
+
+      sink.transfer(firstEvent);
+      sink.transfer(secondEvent);
+
+      verify(client, times(1)).pipeTransfer(any(TPipeTransferReq.class));
+      Assert.assertTrue(firstEvent.isReleased());
+      Assert.assertFalse(secondEvent.isReleased());
+      Assert.assertEquals(1, getBatch(sink).size());
+      Assert.assertEquals("pipeB", getBatch(sink).getPipeName());
+
+      sink.transfer(new PipeHeartbeatEvent(-1, false));
+
+      verify(client, times(2)).pipeTransfer(any(TPipeTransferReq.class));
+      Assert.assertTrue(secondEvent.isReleased());
+      Assert.assertTrue(getBatch(sink).isEmpty());
+    } finally {
+      sink.close();
+    }
+  }
+
+  @Test
   public void testAirGapSinkFlushesBatchedEventsOnHeartbeat() throws Exception {
     final TestIoTDBSchemaRegionAirGapSink sink = new TestIoTDBSchemaRegionAirGapSink();
     try {
@@ -135,6 +174,36 @@ public class PipeSchemaRegionSinkTest {
 
       Assert.assertEquals(1, sink.getSendCount());
       Assert.assertTrue(event.isReleased());
+      Assert.assertTrue(getBatch(sink).isEmpty());
+    } finally {
+      sink.close();
+    }
+  }
+
+  @Test
+  public void testAirGapSinkRetriesBatchingAfterFlushingIncompatibleBatch() throws Exception {
+    final TestIoTDBSchemaRegionAirGapSink sink = new TestIoTDBSchemaRegionAirGapSink();
+    try {
+      enableBatching(sink);
+
+      final PipeSchemaRegionWritePlanEvent firstEvent =
+          createBatchableEvent("root.db.d1.s1", "pipeA", 1L);
+      final PipeSchemaRegionWritePlanEvent secondEvent =
+          createBatchableEvent("root.db.d2.s1", "pipeB", 1L);
+
+      sink.transfer(firstEvent);
+      sink.transfer(secondEvent);
+
+      Assert.assertEquals(1, sink.getSendCount());
+      Assert.assertTrue(firstEvent.isReleased());
+      Assert.assertFalse(secondEvent.isReleased());
+      Assert.assertEquals(1, getBatch(sink).size());
+      Assert.assertEquals("pipeB", getBatch(sink).getPipeName());
+
+      sink.transfer(new PipeHeartbeatEvent(-1, false));
+
+      Assert.assertEquals(2, sink.getSendCount());
+      Assert.assertTrue(secondEvent.isReleased());
       Assert.assertTrue(getBatch(sink).isEmpty());
     } finally {
       sink.close();

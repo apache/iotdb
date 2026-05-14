@@ -115,24 +115,39 @@ public class IoTDBSchemaRegionAirGapSink extends IoTDBDataNodeAirGapSink {
   private void doTransferWithBatch(
       final AirGapSocket socket, final PipeSchemaRegionWritePlanEvent event)
       throws PipeException, IOException {
-    if (schemaRegionWritePlanEventBatch.onEvent(event)) {
-      if (schemaRegionWritePlanEventBatch.shouldEmit()) {
-        flushBatchedEventsIfNecessary(socket);
-      }
+    if (tryTransferInBatch(socket, event)) {
       return;
     }
 
-    if (!schemaRegionWritePlanEventBatch.isEmpty()) {
-      flushBatchedEventsIfNecessary(socket);
-      if (schemaRegionWritePlanEventBatch.onEvent(event)) {
-        if (schemaRegionWritePlanEventBatch.shouldEmit()) {
-          flushBatchedEventsIfNecessary(socket);
-        }
-        return;
-      }
+    doTransferWrapper(socket, event);
+  }
+
+  private boolean tryTransferInBatch(
+      final AirGapSocket socket, final PipeSchemaRegionWritePlanEvent event)
+      throws PipeException, IOException {
+    if (tryAppendToBatchAndFlushIfNecessary(socket, event)) {
+      return true;
     }
 
-    doTransferWrapper(socket, event);
+    if (schemaRegionWritePlanEventBatch.isEmpty()) {
+      return false;
+    }
+
+    flushBatchedEventsIfNecessary(socket);
+    return tryAppendToBatchAndFlushIfNecessary(socket, event);
+  }
+
+  private boolean tryAppendToBatchAndFlushIfNecessary(
+      final AirGapSocket socket, final PipeSchemaRegionWritePlanEvent event)
+      throws PipeException, IOException {
+    if (!schemaRegionWritePlanEventBatch.onEvent(event)) {
+      return false;
+    }
+
+    if (schemaRegionWritePlanEventBatch.shouldEmit()) {
+      flushBatchedEventsIfNecessary(socket);
+    }
+    return true;
   }
 
   private void flushBatchedEventsIfNecessary(final AirGapSocket socket)
