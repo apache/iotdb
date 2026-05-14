@@ -70,17 +70,17 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.RegionScanN
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesScanNode;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import static com.google.common.collect.ImmutableList.toImmutableList;
-
 public class ExchangeNodeAdder implements PlanVisitor<PlanNode, NodeGroupContext> {
 
   private final Analysis analysis;
+  private boolean containsInnerTimeJoinInCurrentSubtree = false;
 
   public ExchangeNodeAdder(Analysis analysis) {
     this.analysis = analysis;
@@ -93,10 +93,7 @@ public class ExchangeNodeAdder implements PlanVisitor<PlanNode, NodeGroupContext
       return node;
     }
     // Visit all the children of current node
-    List<PlanNode> children =
-        node.getChildren().stream()
-            .map(child -> child.accept(this, context))
-            .collect(toImmutableList());
+    List<PlanNode> children = visitChildrenAndRecordInnerTimeJoin(node.getChildren(), context);
 
     // Calculate the node distribution info according to its children
 
@@ -216,11 +213,13 @@ public class ExchangeNodeAdder implements PlanVisitor<PlanNode, NodeGroupContext
 
   @Override
   public PlanNode visitDeviceView(DeviceViewNode node, NodeGroupContext context) {
+    List<PlanNode> visitedChildren =
+        visitChildrenAndRecordInnerTimeJoin(node.getChildren(), context);
     // Force Exchange for multi-child DeviceView if any child subtree contains InnerTimeJoin.
-    if (node.getChildren().size() > 1 && hasInnerTimeJoinInSubtree(node.getChildren())) {
-      return processMultiChildNodeWithForcedExchange(node, context);
+    if (node.getChildren().size() > 1 && containsInnerTimeJoinInCurrentSubtree) {
+      return processMultiChildNodeWithForcedExchange(node, context, visitedChildren);
     }
-    return processMultiChildNode(node, context);
+    return processMultiChildNode(node, context, visitedChildren);
   }
 
   @Override
@@ -241,11 +240,13 @@ public class ExchangeNodeAdder implements PlanVisitor<PlanNode, NodeGroupContext
 
   @Override
   public PlanNode visitMergeSort(MergeSortNode node, NodeGroupContext context) {
+    List<PlanNode> visitedChildren =
+        visitChildrenAndRecordInnerTimeJoin(node.getChildren(), context);
     // Force Exchange if any child subtree contains InnerTimeJoin.
-    if (hasInnerTimeJoinInSubtree(node.getChildren())) {
-      return processMultiChildNodeWithForcedExchange(node, context);
+    if (containsInnerTimeJoinInCurrentSubtree) {
+      return processMultiChildNodeWithForcedExchange(node, context, visitedChildren);
     }
-    return processMultiChildNode(node, context);
+    return processMultiChildNode(node, context, visitedChildren);
   }
 
   @Override
@@ -446,11 +447,14 @@ public class ExchangeNodeAdder implements PlanVisitor<PlanNode, NodeGroupContext
       return processMultiChildNodeByLocation(node, context);
     }
 
-    MultiChildProcessNode newNode = (MultiChildProcessNode) node.clone();
     List<PlanNode> visitedChildren =
-        node.getChildren().stream()
-            .map(child -> visit(child, context))
-            .collect(Collectors.toList());
+        visitChildrenAndRecordInnerTimeJoin(node.getChildren(), context);
+    return processMultiChildNode(node, context, visitedChildren);
+  }
+
+  private PlanNode processMultiChildNode(
+      MultiChildProcessNode node, NodeGroupContext context, List<PlanNode> visitedChildren) {
+    MultiChildProcessNode newNode = (MultiChildProcessNode) node.clone();
 
     // DataRegion in which node locates
     TRegionReplicaSet dataRegion;
@@ -578,12 +582,8 @@ public class ExchangeNodeAdder implements PlanVisitor<PlanNode, NodeGroupContext
   }
 
   private PlanNode processMultiChildNodeWithForcedExchange(
-      MultiChildProcessNode node, NodeGroupContext context) {
+      MultiChildProcessNode node, NodeGroupContext context, List<PlanNode> visitedChildren) {
     MultiChildProcessNode newNode = (MultiChildProcessNode) node.clone();
-    List<PlanNode> visitedChildren =
-        node.getChildren().stream()
-            .map(child -> visit(child, context))
-            .collect(Collectors.toList());
     for (PlanNode child : visitedChildren) {
       newNode.addChild(genExchangeNode(context, child, true));
     }
@@ -594,15 +594,19 @@ public class ExchangeNodeAdder implements PlanVisitor<PlanNode, NodeGroupContext
     return newNode;
   }
 
-  private boolean hasInnerTimeJoinInSubtree(List<PlanNode> children) {
-    return children.stream().anyMatch(this::containsInnerTimeJoin);
-  }
-
-  private boolean containsInnerTimeJoin(PlanNode node) {
-    if (node instanceof InnerTimeJoinNode) {
-      return true;
+  private List<PlanNode> visitChildrenAndRecordInnerTimeJoin(
+      List<PlanNode> children, NodeGroupContext context) {
+    List<PlanNode> result = new ArrayList<>(children.size());
+    boolean originalTimeJoin = containsInnerTimeJoinInCurrentSubtree;
+    boolean hasInnerTimeJoinInChildren = false;
+    for (PlanNode child : children) {
+      containsInnerTimeJoinInCurrentSubtree = false;
+      PlanNode visitedChild = visit(child, context);
+      hasInnerTimeJoinInChildren |= containsInnerTimeJoinInCurrentSubtree;
+      result.add(visitedChild);
     }
-    return node.getChildren().stream().anyMatch(this::containsInnerTimeJoin);
+    containsInnerTimeJoinInCurrentSubtree = originalTimeJoin || hasInnerTimeJoinInChildren;
+    return result;
   }
 
   @Override
@@ -698,6 +702,13 @@ public class ExchangeNodeAdder implements PlanVisitor<PlanNode, NodeGroupContext
   }
 
   public PlanNode visit(PlanNode node, NodeGroupContext context) {
-    return node.accept(this, context);
+    boolean originalTimeJoin = containsInnerTimeJoinInCurrentSubtree;
+    containsInnerTimeJoinInCurrentSubtree = false;
+    PlanNode visitedNode = node.accept(this, context);
+    containsInnerTimeJoinInCurrentSubtree =
+        originalTimeJoin
+            || containsInnerTimeJoinInCurrentSubtree
+            || node instanceof InnerTimeJoinNode;
+    return visitedNode;
   }
 }
