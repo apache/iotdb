@@ -63,14 +63,12 @@ public class ClosedFileScanHandleImpl implements IFileScanHandle {
   private final TsFileResource tsFileResource;
   private final QueryContext queryContext;
   private PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> curFileModEntries = null;
-  private final Map<IDeviceID, List<TimeRange>> deviceToDeletionRanges;
   // Used to cache the modifications of each timeseries
   private final Map<IDeviceID, Map<String, List<TimeRange>>> deviceToModifications;
 
   public ClosedFileScanHandleImpl(TsFileResource tsFileResource, QueryContext context) {
     this.tsFileResource = tsFileResource;
     this.queryContext = context;
-    this.deviceToDeletionRanges = new HashMap<>();
     this.deviceToModifications = new HashMap<>();
   }
 
@@ -89,12 +87,8 @@ public class ClosedFileScanHandleImpl implements IFileScanHandle {
         curFileModEntries != null
             ? curFileModEntries
             : queryContext.loadAllModificationsFromDisk(tsFileResource);
-    List<TimeRange> timeRangeList = deviceToDeletionRanges.get(deviceID);
-    if (timeRangeList == null) {
-      timeRangeList =
-          getMergedTimeRanges(queryContext.getPathModifications(curFileModEntries, deviceID));
-      deviceToDeletionRanges.put(deviceID, timeRangeList);
-    }
+    List<TimeRange> timeRangeList =
+        getMergedTimeRanges(queryContext.getPathModifications(curFileModEntries, deviceID));
     return ModificationUtils.isPointDeleted(timestamp, timeRangeList);
   }
 
