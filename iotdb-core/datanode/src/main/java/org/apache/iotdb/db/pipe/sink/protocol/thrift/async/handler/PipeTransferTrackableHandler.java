@@ -21,7 +21,13 @@ package org.apache.iotdb.db.pipe.sink.protocol.thrift.async.handler;
 
 import org.apache.iotdb.commons.client.ThriftClient;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.IoTDBSinkRequestVersion;
+import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferSliceReq;
 import org.apache.iotdb.db.pipe.sink.protocol.thrift.async.IoTDBDataRegionAsyncSink;
+import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
+import org.apache.iotdb.pipe.api.exception.PipeException;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
@@ -31,10 +37,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public abstract class PipeTransferTrackableHandler
     implements AsyncMethodCallback<TPipeTransferResp>, AutoCloseable {
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTransferTsFileHandler.class);
+  private static final AtomicInteger SLICE_ORDER_ID_GENERATOR = new AtomicInteger(0);
 
   protected final IoTDBDataRegionAsyncSink sink;
   protected volatile AsyncPipeDataTransferServiceClient client;
@@ -126,7 +134,140 @@ public abstract class PipeTransferTrackableHandler
       final AsyncPipeDataTransferServiceClient client, final TPipeTransferReq req)
       throws TException;
 
+  protected final void transferWithOptionalRequestSlicing(
+      final AsyncPipeDataTransferServiceClient client, final TPipeTransferReq req)
+      throws TException {
+    final int bodySizeLimit = PipeConfig.getInstance().getPipeSinkRequestSliceThresholdBytes();
+    if (req.getVersion() != IoTDBSinkRequestVersion.VERSION_1.getVersion()
+        || req.body.limit() < bodySizeLimit) {
+      client.pipeTransfer(req, this);
+      return;
+    }
+
+    LOGGER.warn(
+        "The body size of the request is too large. The request will be sliced. Origin req: {}-{}. "
+            + "Request body size: {}, threshold: {}",
+        req.getVersion(),
+        req.getType(),
+        req.body.limit(),
+        bodySizeLimit);
+
+    final int sliceCount =
+        req.body.limit() / bodySizeLimit + (req.body.limit() % bodySizeLimit == 0 ? 0 : 1);
+    final boolean shouldReturnSelf = client.shouldReturnSelf();
+    try {
+      transferSlicedRequest(
+          client,
+          req,
+          shouldReturnSelf,
+          SLICE_ORDER_ID_GENERATOR.getAndIncrement(),
+          0,
+          sliceCount,
+          bodySizeLimit);
+    } catch (final Exception e) {
+      fallbackToWholeRequest(client, req, shouldReturnSelf, e);
+    }
+  }
+
   public abstract void clearEventsReferenceCount();
+
+  private void transferSlicedRequest(
+      final AsyncPipeDataTransferServiceClient client,
+      final TPipeTransferReq originalReq,
+      final boolean shouldReturnSelf,
+      final int sliceOrderId,
+      final int sliceIndex,
+      final int sliceCount,
+      final int bodySizeLimit)
+      throws Exception {
+    final int startIndexInBody = sliceIndex * bodySizeLimit;
+    final int endIndexInBody = Math.min((sliceIndex + 1) * bodySizeLimit, originalReq.body.limit());
+    client.setShouldReturnSelf(shouldReturnSelf && sliceIndex == sliceCount - 1);
+    client.pipeTransfer(
+        PipeTransferSliceReq.toTPipeTransferReq(
+            sliceOrderId,
+            originalReq.getType(),
+            sliceIndex,
+            sliceCount,
+            originalReq.body.duplicate(),
+            startIndexInBody,
+            endIndexInBody),
+        new AsyncMethodCallback<TPipeTransferResp>() {
+          @Override
+          public void onComplete(final TPipeTransferResp response) {
+            if (sink.isClosed() || sliceIndex == sliceCount - 1) {
+              PipeTransferTrackableHandler.this.onComplete(response);
+              return;
+            }
+
+            if (response == null) {
+              fallbackToWholeRequest(
+                  client,
+                  originalReq,
+                  shouldReturnSelf,
+                  new PipeException("TPipeTransferResp is null when transferring slice."));
+              return;
+            }
+
+            if (response.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+              fallbackToWholeRequest(
+                  client,
+                  originalReq,
+                  shouldReturnSelf,
+                  new PipeConnectionException(
+                      String.format(
+                          "Failed to transfer slice. Origin req: %s-%s, slice index: %d, slice count: %d. Reason: %s",
+                          originalReq.getVersion(),
+                          originalReq.getType(),
+                          sliceIndex,
+                          sliceCount,
+                          response.getStatus())));
+              return;
+            }
+
+            try {
+              transferSlicedRequest(
+                  client,
+                  originalReq,
+                  shouldReturnSelf,
+                  sliceOrderId,
+                  sliceIndex + 1,
+                  sliceCount,
+                  bodySizeLimit);
+            } catch (final Exception e) {
+              fallbackToWholeRequest(client, originalReq, shouldReturnSelf, e);
+            }
+          }
+
+          @Override
+          public void onError(final Exception exception) {
+            if (sink.isClosed() || sliceIndex == sliceCount - 1) {
+              PipeTransferTrackableHandler.this.onError(exception);
+              return;
+            }
+            fallbackToWholeRequest(client, originalReq, shouldReturnSelf, exception);
+          }
+        });
+  }
+
+  private void fallbackToWholeRequest(
+      final AsyncPipeDataTransferServiceClient client,
+      final TPipeTransferReq originalReq,
+      final boolean shouldReturnSelf,
+      final Exception exception) {
+    LOGGER.warn(
+        "Failed to transfer slice. Origin req: {}-{}. Retry the whole transfer.",
+        originalReq.getVersion(),
+        originalReq.getType(),
+        exception);
+
+    try {
+      client.setShouldReturnSelf(shouldReturnSelf);
+      client.pipeTransfer(originalReq, this);
+    } catch (final Exception e) {
+      PipeTransferTrackableHandler.this.onError(e);
+    }
+  }
 
   public void closeClient() {
     if (Objects.isNull(client)) {
