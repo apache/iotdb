@@ -1792,11 +1792,10 @@ public class DataRegion implements IDataRegionForQuery {
     }
 
     List<InsertRowNode> executedInsertRowNodeList = new ArrayList<>();
-    final List<Map.Entry<TsFileProcessor, InsertRowsNode>> groupedEntries =
-        new ArrayList<>(tsFileProcessorMap.entrySet());
-    markOnlyLastInsertFragment(groupedEntries, Map.Entry::getValue);
-    for (Map.Entry<TsFileProcessor, InsertRowsNode> entry : groupedEntries) {
+    int remainingFragments = tsFileProcessorMap.size();
+    for (Map.Entry<TsFileProcessor, InsertRowsNode> entry : tsFileProcessorMap.entrySet()) {
       InsertRowsNode subInsertRowsNode = entry.getValue();
+      subInsertRowsNode.setLastFragment(--remainingFragments == 0);
       try {
         List<TsFileProcessor> insertedProcessors =
             insertRowsWithTypeConsistencyCheck(entry.getKey(), subInsertRowsNode, infoForMetrics);
@@ -1812,13 +1811,6 @@ public class DataRegion implements IDataRegionForQuery {
       }
     }
     return executedInsertRowNodeList;
-  }
-
-  private <T> void markOnlyLastInsertFragment(
-      final List<T> fragments, final java.util.function.Function<T, InsertNode> fragmentExtractor) {
-    for (int i = 0; i < fragments.size(); i++) {
-      fragmentExtractor.apply(fragments.get(i)).setLastFragment(i == fragments.size() - 1);
-    }
   }
 
   private List<TsFileProcessor> insertRowsWithTypeConsistencyCheck(
@@ -1914,20 +1906,15 @@ public class DataRegion implements IDataRegionForQuery {
           });
     }
 
-    final List<Entry<TsFileProcessor, InsertRowsNode>> retriedEntries =
-        new ArrayList<>(retriedProcessorMap.entrySet());
-    for (int i = 0; i < retriedEntries.size(); i++) {
-      retriedEntries
-          .get(i)
-          .getValue()
-          .setLastFragment(subInsertRowsNode.isLastFragment() && i == retriedEntries.size() - 1);
-    }
-
     final List<TsFileProcessor> insertedProcessors = new ArrayList<>(retriedProcessorMap.size());
-    for (Entry<TsFileProcessor, InsertRowsNode> retriedEntry : retriedEntries) {
+    int remainingRetriedFragments = retriedProcessorMap.size();
+    for (Entry<TsFileProcessor, InsertRowsNode> retriedEntry : retriedProcessorMap.entrySet()) {
       final TsFileProcessor retriedProcessor = retriedEntry.getKey();
-      registerToTsFile(retriedEntry.getValue(), retriedProcessor);
-      retriedProcessor.insertRows(retriedEntry.getValue(), infoForMetrics);
+      final InsertRowsNode retriedInsertRowsNode = retriedEntry.getValue();
+      retriedInsertRowsNode.setLastFragment(
+          subInsertRowsNode.isLastFragment() && --remainingRetriedFragments == 0);
+      registerToTsFile(retriedInsertRowsNode, retriedProcessor);
+      retriedProcessor.insertRows(retriedInsertRowsNode, infoForMetrics);
       insertedProcessors.add(retriedProcessor);
     }
     return insertedProcessors;
@@ -4657,11 +4644,10 @@ public class DataRegion implements IDataRegionForQuery {
       // infoForMetrics[2]: ScheduleWalTimeCost
       // infoForMetrics[3]: ScheduleMemTableTimeCost
       // infoForMetrics[4]: InsertedPointsNumber
-      final List<Map.Entry<TsFileProcessor, InsertRowsNode>> groupedEntries =
-          new ArrayList<>(tsFileProcessorMap.entrySet());
-      markOnlyLastInsertFragment(groupedEntries, Map.Entry::getValue);
-      for (Map.Entry<TsFileProcessor, InsertRowsNode> entry : groupedEntries) {
+      int remainingFragments = tsFileProcessorMap.size();
+      for (Map.Entry<TsFileProcessor, InsertRowsNode> entry : tsFileProcessorMap.entrySet()) {
         InsertRowsNode subInsertRowsNode = entry.getValue();
+        subInsertRowsNode.setLastFragment(--remainingFragments == 0);
         try {
           List<TsFileProcessor> insertedProcessors =
               insertRowsWithTypeConsistencyCheck(entry.getKey(), subInsertRowsNode, infoForMetrics);
