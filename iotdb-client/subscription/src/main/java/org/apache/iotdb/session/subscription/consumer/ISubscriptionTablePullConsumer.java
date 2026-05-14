@@ -129,6 +129,17 @@ public interface ISubscriptionTablePullConsumer extends AutoCloseable {
   List<SubscriptionMessage> poll(final Set<String> topicNames, final long timeoutMs);
 
   /**
+   * Drains messages currently buffered inside client-side processors.
+   *
+   * <p>Manual-commit consumers should call this before closing when processors may still hold
+   * messages, then commit the returned messages explicitly after they have been processed.
+   *
+   * @return drained user-visible messages, or an empty list if no processor has buffered output
+   * @throws SubscriptionException if draining fails
+   */
+  List<SubscriptionMessage> drainBufferedMessages() throws SubscriptionException;
+
+  /**
    * Commits a single message synchronously, indicating that it has been successfully processed.
    *
    * @param message the message to commit

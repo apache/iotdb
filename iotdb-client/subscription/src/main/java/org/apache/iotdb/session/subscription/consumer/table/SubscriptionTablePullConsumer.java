@@ -102,6 +102,11 @@ public class SubscriptionTablePullConsumer extends AbstractSubscriptionPullConsu
   }
 
   @Override
+  public List<SubscriptionMessage> drainBufferedMessages() throws SubscriptionException {
+    return super.drainBufferedMessages();
+  }
+
+  @Override
   public void subscribe(final String topicName) throws SubscriptionException {
     super.subscribe(topicName);
   }

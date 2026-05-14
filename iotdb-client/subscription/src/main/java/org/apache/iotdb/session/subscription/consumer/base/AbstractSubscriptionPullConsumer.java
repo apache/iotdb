@@ -41,10 +41,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Properties;
+import java.util.Queue;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.ScheduledFuture;
@@ -75,6 +77,8 @@ public abstract class AbstractSubscriptionPullConsumer extends AbstractSubscript
 
   private final Set<SubscriptionCommitContext> processorBufferedCommitContexts =
       ConcurrentHashMap.newKeySet();
+
+  private final Queue<SubscriptionMessage> pendingDrainedMessages = new ConcurrentLinkedQueue<>();
 
   private SortedMap<Long, Set<SubscriptionCommitContext>> uncommittedCommitContexts;
 
@@ -146,23 +150,38 @@ public abstract class AbstractSubscriptionPullConsumer extends AbstractSubscript
       return;
     }
 
-    // flush all processors and commit any remaining buffered messages
     if (!processors.isEmpty()) {
-      final List<SubscriptionMessage> flushed = new ArrayList<>();
-      for (final SubscriptionMessageProcessor processor : processors) {
-        final List<SubscriptionMessage> out = processor.flush();
-        if (out != null) {
-          flushed.addAll(out);
+      if (autoCommit) {
+        final List<SubscriptionMessage> drainedMessages = drainProcessorPipeline();
+        if (!drainedMessages.isEmpty()) {
+          try {
+            commitSync(drainedMessages);
+          } catch (final SubscriptionException e) {
+            LOGGER.warn("Failed to commit drained processor messages on close", e);
+          }
         }
+      } else {
+        final List<SubscriptionMessage> drainedMessages = drainProcessorPipeline();
+        if (!drainedMessages.isEmpty()) {
+          pendingDrainedMessages.addAll(drainedMessages);
+        }
+        ensureNoManualBufferedMessagesOnClose();
       }
-      refreshProcessorBufferedCommitContexts();
-      if (!flushed.isEmpty() && autoCommit) {
+    }
+
+    if (autoCommit && !pendingDrainedMessages.isEmpty()) {
+      final List<SubscriptionMessage> drainedMessages = drainPendingDrainedMessages();
+      if (!drainedMessages.isEmpty()) {
         try {
-          commitSync(flushed);
+          commitSync(drainedMessages);
         } catch (final SubscriptionException e) {
-          LOGGER.warn("Failed to commit flushed processor messages on close", e);
+          LOGGER.warn("Failed to commit pending drained processor messages on close", e);
         }
       }
+    }
+
+    if (!autoCommit) {
+      ensureNoManualBufferedMessagesOnClose();
     }
 
     if (autoCommit) {
@@ -234,43 +253,40 @@ public abstract class AbstractSubscriptionPullConsumer extends AbstractSubscript
       refreshProcessorBufferedCommitContexts();
     }
 
-    // Update watermark timestamp before stripping watermark events
-    for (final SubscriptionMessage m : processed) {
-      if (m.getMessageType() == SubscriptionMessageType.WATERMARK.getType()) {
-        final long ts = m.getWatermarkTimestamp();
-        if (ts > latestWatermarkTimestamp) {
-          latestWatermarkTimestamp = ts;
-        }
-      }
-    }
-
-    // Strip system messages — they are only for processors, not for users
-    processed.removeIf(
-        m -> {
-          final short type = m.getMessageType();
-          return type == SubscriptionMessageType.WATERMARK.getType();
-        });
+    processed = filterUserVisibleMessages(processed);
 
     if (processed.isEmpty()) {
       return processed;
     }
 
-    // add to uncommitted messages
-    if (autoCommit) {
-      final long currentTimestamp = System.currentTimeMillis();
-      long index = currentTimestamp / autoCommitIntervalMs;
-      if (currentTimestamp % autoCommitIntervalMs == 0) {
-        index -= 1;
-      }
-      uncommittedCommitContexts
-          .computeIfAbsent(index, o -> new ConcurrentSkipListSet<>())
-          .addAll(
-              processed.stream()
-                  .map(SubscriptionMessage::getCommitContext)
-                  .collect(Collectors.toList()));
-    }
+    trackAutoCommitMessages(processed);
 
     return processed;
+  }
+
+  protected List<SubscriptionMessage> drainBufferedMessages() throws SubscriptionException {
+    if (isClosed()) {
+      final String errorMessage =
+          String.format(
+              "%s is not yet open, please open the subscription consumer before draining buffered messages.",
+              this);
+      LOGGER.error(errorMessage);
+      throw new SubscriptionException(errorMessage);
+    }
+
+    final List<SubscriptionMessage> drainedMessages = drainPendingDrainedMessages();
+    if (!drainedMessages.isEmpty()) {
+      trackAutoCommitMessages(drainedMessages);
+      return drainedMessages;
+    }
+
+    if (processors.isEmpty()) {
+      return Collections.emptyList();
+    }
+
+    drainedMessages.addAll(drainProcessorPipeline());
+    trackAutoCommitMessages(drainedMessages);
+    return drainedMessages;
   }
 
   /////////////////////////////// processor ///////////////////////////////
@@ -315,6 +331,66 @@ public abstract class AbstractSubscriptionPullConsumer extends AbstractSubscript
         }
       }
     }
+  }
+
+  private List<SubscriptionMessage> drainProcessorPipeline() {
+    List<SubscriptionMessage> drainedMessages = Collections.emptyList();
+    for (final SubscriptionMessageProcessor processor : processors) {
+      if (!drainedMessages.isEmpty()) {
+        drainedMessages = processor.process(drainedMessages);
+        if (Objects.isNull(drainedMessages)) {
+          drainedMessages = Collections.emptyList();
+        }
+      }
+
+      final List<SubscriptionMessage> flushedMessages = processor.flush();
+      if (Objects.nonNull(flushedMessages) && !flushedMessages.isEmpty()) {
+        if (drainedMessages.isEmpty()) {
+          drainedMessages = new ArrayList<>(flushedMessages);
+        } else {
+          drainedMessages = new ArrayList<>(drainedMessages);
+          drainedMessages.addAll(flushedMessages);
+        }
+      }
+    }
+
+    refreshProcessorBufferedCommitContexts();
+    return filterUserVisibleMessages(drainedMessages);
+  }
+
+  private List<SubscriptionMessage> drainPendingDrainedMessages() {
+    final List<SubscriptionMessage> drainedMessages = new ArrayList<>();
+    SubscriptionMessage message;
+    while (Objects.nonNull(message = pendingDrainedMessages.poll())) {
+      drainedMessages.add(message);
+    }
+    return drainedMessages;
+  }
+
+  private boolean hasProcessorBufferedMessages() {
+    if (!processorBufferedCommitContexts.isEmpty()) {
+      return true;
+    }
+
+    for (final SubscriptionMessageProcessor processor : processors) {
+      if (processor.getBufferedCount() > 0) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private void ensureNoManualBufferedMessagesOnClose() throws SubscriptionException {
+    if (pendingDrainedMessages.isEmpty() && !hasProcessorBufferedMessages()) {
+      return;
+    }
+
+    final String errorMessage =
+        String.format(
+            "SubscriptionPullConsumer %s still has processor-buffered or drained messages when closing in manual-commit mode. Call drainBufferedMessages() and commit the returned messages before close.",
+            this);
+    LOGGER.warn(errorMessage);
+    throw new SubscriptionException(errorMessage);
   }
 
   private void ensureTopicScopedProcessorResetSupported(final String topicName)
@@ -417,6 +493,44 @@ public abstract class AbstractSubscriptionPullConsumer extends AbstractSubscript
   protected void commitAsync(
       final Iterable<SubscriptionMessage> messages, final AsyncCommitCallback callback) {
     super.commitAsync(messages, callback);
+  }
+
+  private List<SubscriptionMessage> filterUserVisibleMessages(
+      final List<SubscriptionMessage> messages) {
+    if (messages.isEmpty()) {
+      return messages;
+    }
+
+    final List<SubscriptionMessage> result = new ArrayList<>(messages.size());
+    for (final SubscriptionMessage message : messages) {
+      if (message.getMessageType() == SubscriptionMessageType.WATERMARK.getType()) {
+        final long timestamp = message.getWatermarkTimestamp();
+        if (timestamp > latestWatermarkTimestamp) {
+          latestWatermarkTimestamp = timestamp;
+        }
+        continue;
+      }
+      result.add(message);
+    }
+    return result;
+  }
+
+  private void trackAutoCommitMessages(final List<SubscriptionMessage> messages) {
+    if (!autoCommit || messages.isEmpty()) {
+      return;
+    }
+
+    final long currentTimestamp = System.currentTimeMillis();
+    long index = currentTimestamp / autoCommitIntervalMs;
+    if (currentTimestamp % autoCommitIntervalMs == 0) {
+      index -= 1;
+    }
+    uncommittedCommitContexts
+        .computeIfAbsent(index, o -> new ConcurrentSkipListSet<>())
+        .addAll(
+            messages.stream()
+                .map(SubscriptionMessage::getCommitContext)
+                .collect(Collectors.toList()));
   }
 
   /////////////////////////////// seek ///////////////////////////////

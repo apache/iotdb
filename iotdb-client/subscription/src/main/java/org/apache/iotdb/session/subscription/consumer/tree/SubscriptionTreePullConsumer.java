@@ -179,6 +179,11 @@ public class SubscriptionTreePullConsumer extends AbstractSubscriptionPullConsum
   }
 
   @Override
+  public List<SubscriptionMessage> drainBufferedMessages() throws SubscriptionException {
+    return super.drainBufferedMessages();
+  }
+
+  @Override
   public void commitSync(final SubscriptionMessage message) throws SubscriptionException {
     super.commitSync(message);
   }
