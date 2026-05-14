@@ -55,4 +55,14 @@ public class DatabaseMNode extends AbstractDatabaseMNode<IMemMNode, BasicInterna
   public void setSubtreeMeasurementCount(long subtreeMeasurementCount) {
     basicMNode.setSubtreeMeasurementCount(subtreeMeasurementCount);
   }
+
+  @Override
+  public boolean hasDeviceDescendant() {
+    return basicMNode.hasDeviceDescendant();
+  }
+
+  @Override
+  public void setHasDeviceDescendant(final boolean hasDeviceDescendant) {
+    basicMNode.setHasDeviceDescendant(hasDeviceDescendant);
+  }
 }
