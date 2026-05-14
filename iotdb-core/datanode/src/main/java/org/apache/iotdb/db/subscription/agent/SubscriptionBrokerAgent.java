@@ -51,6 +51,8 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -236,6 +238,78 @@ public class SubscriptionBrokerAgent {
     }
 
     return allSuccessful;
+  }
+
+  public Map<String, TopicProgress> getConsensusCommittedProgressByTopic(
+      final ConsumerConfig consumerConfig,
+      final List<SubscriptionCommitContext> acceptedCommitContexts,
+      final boolean nack) {
+    if (nack || acceptedCommitContexts.isEmpty()) {
+      return Collections.emptyMap();
+    }
+
+    final Map<String, Set<String>> regionIdsByTopic = new LinkedHashMap<>();
+    for (final SubscriptionCommitContext commitContext : acceptedCommitContexts) {
+      if (Objects.isNull(commitContext) || Objects.isNull(commitContext.getTopicName())) {
+        continue;
+      }
+      final String topicName = commitContext.getTopicName();
+      if (!ConsensusSubscriptionSetupHandler.isConsensusBasedTopic(topicName)) {
+        continue;
+      }
+      final String regionId = commitContext.getRegionId();
+      if (Objects.isNull(regionId) || regionId.isEmpty()) {
+        continue;
+      }
+      regionIdsByTopic.computeIfAbsent(topicName, ignored -> new LinkedHashSet<>()).add(regionId);
+    }
+
+    final String consumerGroupId = consumerConfig.getConsumerGroupId();
+    final Map<String, TopicProgress> result = new LinkedHashMap<>();
+    for (final Map.Entry<String, Set<String>> entry : regionIdsByTopic.entrySet()) {
+      final String topicName = entry.getKey();
+      final Map<String, RegionProgress> regionProgressById = new LinkedHashMap<>();
+      for (final String regionId : entry.getValue()) {
+        putRegionProgress(
+            regionProgressById,
+            regionId,
+            getConsensusCommittedRegionProgress(consumerGroupId, topicName, regionId));
+      }
+      if (!regionProgressById.isEmpty()) {
+        result.put(topicName, new TopicProgress(regionProgressById));
+      }
+    }
+    return result;
+  }
+
+  private RegionProgress getConsensusCommittedRegionProgress(
+      final String consumerGroupId, final String topicName, final String regionId) {
+    try {
+      return ConsensusSubscriptionCommitManager.getInstance()
+          .getCommittedRegionProgress(
+              consumerGroupId, topicName, ConsensusGroupId.Factory.createFromString(regionId));
+    } catch (final IllegalArgumentException e) {
+      LOGGER.warn(
+          "Subscription: failed to parse consensus region id {} for committed progress, topic={}, consumerGroup={}",
+          regionId,
+          topicName,
+          consumerGroupId,
+          e);
+      return null;
+    }
+  }
+
+  private void putRegionProgress(
+      final Map<String, RegionProgress> regionProgressById,
+      final String regionId,
+      final RegionProgress regionProgress) {
+    if (Objects.isNull(regionId)
+        || regionId.isEmpty()
+        || Objects.isNull(regionProgress)
+        || regionProgress.getWriterPositions().isEmpty()) {
+      return;
+    }
+    regionProgressById.put(regionId, regionProgress);
   }
 
   public void seek(

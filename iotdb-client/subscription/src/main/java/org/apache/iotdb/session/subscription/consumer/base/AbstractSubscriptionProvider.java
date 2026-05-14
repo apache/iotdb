@@ -46,6 +46,7 @@ import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribePollReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeSeekReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeSubscribeReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeUnsubscribeReq;
+import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeCommitResp;
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeHandshakeResp;
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeHeartbeatResp;
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribePollResp;
@@ -499,7 +500,8 @@ public abstract class AbstractSubscriptionProvider {
     return pollResp.getResponses();
   }
 
-  void commit(final List<SubscriptionCommitContext> subscriptionCommitContexts, final boolean nack)
+  CommitResult commit(
+      final List<SubscriptionCommitContext> subscriptionCommitContexts, final boolean nack)
       throws SubscriptionException {
     final PipeSubscribeCommitReq req;
     try {
@@ -526,6 +528,37 @@ public abstract class AbstractSubscriptionProvider {
       throw new SubscriptionConnectionException(e.getMessage(), e);
     }
     verifyPipeSubscribeSuccess(resp.status);
+    final PipeSubscribeCommitResp commitResp = PipeSubscribeCommitResp.fromTPipeSubscribeResp(resp);
+    return new CommitResult(
+        commitResp.getAcceptedCommitContexts(), commitResp.getCommittedProgressByTopic());
+  }
+
+  static final class CommitResult {
+
+    private final List<SubscriptionCommitContext> acceptedCommitContexts;
+
+    private final Map<String, TopicProgress> committedProgressByTopic;
+
+    private CommitResult(
+        final List<SubscriptionCommitContext> acceptedCommitContexts,
+        final Map<String, TopicProgress> committedProgressByTopic) {
+      this.acceptedCommitContexts =
+          acceptedCommitContexts == null ? Collections.emptyList() : acceptedCommitContexts;
+      this.committedProgressByTopic =
+          committedProgressByTopic == null ? Collections.emptyMap() : committedProgressByTopic;
+    }
+
+    static CommitResult empty() {
+      return new CommitResult(Collections.emptyList(), Collections.emptyMap());
+    }
+
+    List<SubscriptionCommitContext> getAcceptedCommitContexts() {
+      return acceptedCommitContexts;
+    }
+
+    Map<String, TopicProgress> getCommittedProgressByTopic() {
+      return committedProgressByTopic;
+    }
   }
 
   private static void verifyPipeSubscribeSuccess(final TSStatus status)

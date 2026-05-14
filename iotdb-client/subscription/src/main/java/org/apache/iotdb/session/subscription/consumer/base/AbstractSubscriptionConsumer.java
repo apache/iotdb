@@ -1341,12 +1341,35 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
           .computeIfAbsent(commitContext.getDataNodeId(), (id) -> new ArrayList<>())
           .add(commitContext);
     }
+    int requestedCount = 0;
+    int acceptedCount = 0;
+    final List<SubscriptionCommitContext> failedCommitContexts = new ArrayList<>();
     for (final Entry<Integer, List<SubscriptionCommitContext>> entry :
         dataNodeIdToSubscriptionCommitContexts.entrySet()) {
-      commitInternal(entry.getKey(), entry.getValue(), nack);
+      final List<SubscriptionCommitContext> groupedCommitContexts = entry.getValue();
+      requestedCount += groupedCommitContexts.size();
+      final AbstractSubscriptionProvider.CommitResult commitResp =
+          commitInternal(entry.getKey(), groupedCommitContexts, nack);
+      final List<SubscriptionCommitContext> acceptedCommitContexts =
+          commitResp.getAcceptedCommitContexts();
+      acceptedCount += acceptedCommitContexts.size();
       if (!nack) {
-        advanceCommittedPositions(entry.getValue());
+        overlayCommittedPositions(commitResp.getCommittedProgressByTopic());
       }
+      if (acceptedCommitContexts.size() != groupedCommitContexts.size()) {
+        final List<SubscriptionCommitContext> failedInGroup =
+            new ArrayList<>(groupedCommitContexts);
+        acceptedCommitContexts.forEach(failedInGroup::remove);
+        failedCommitContexts.addAll(failedInGroup);
+      }
+    }
+    if (!failedCommitContexts.isEmpty()) {
+      final String errorMessage =
+          String.format(
+              "%s commit (nack: %s) partially accepted, requested=%d, accepted=%d, failed=%d",
+              this, nack, requestedCount, acceptedCount, failedCommitContexts.size());
+      LOGGER.warn("{} failed commit contexts: {}", errorMessage, failedCommitContexts);
+      throw new SubscriptionRuntimeNonCriticalException(errorMessage);
     }
   }
 
@@ -1385,9 +1408,10 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
         dataNodeIdToCommitContexts.entrySet()) {
       final List<SubscriptionCommitContext> groupedCommitContexts = entry.getValue();
       try {
-        commitInternal(entry.getKey(), groupedCommitContexts, false);
-        advanceCommittedPositions(groupedCommitContexts);
-        removableCommitContexts.addAll(groupedCommitContexts);
+        final AbstractSubscriptionProvider.CommitResult commitResp =
+            commitInternal(entry.getKey(), groupedCommitContexts, false);
+        overlayCommittedPositions(commitResp.getCommittedProgressByTopic());
+        removableCommitContexts.addAll(commitResp.getAcceptedCommitContexts());
       } catch (final SubscriptionConnectionException e) {
         int stagedCount = 0;
         int retainedCount = 0;
@@ -1447,7 +1471,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
     commit(commitContexts, true);
   }
 
-  private void commitInternal(
+  private AbstractSubscriptionProvider.CommitResult commitInternal(
       final int dataNodeId,
       final List<SubscriptionCommitContext> subscriptionCommitContexts,
       final boolean nack)
@@ -1457,14 +1481,14 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
       final AbstractSubscriptionProvider provider = providers.getProvider(dataNodeId);
       if (Objects.isNull(provider) || !provider.isAvailable()) {
         if (isClosed()) {
-          return;
+          return AbstractSubscriptionProvider.CommitResult.empty();
         }
         throw new SubscriptionConnectionException(
             String.format(
                 "something unexpected happened when %s commit (nack: %s) messages to subscription provider with data node id %s, the subscription provider may be unavailable or not existed",
                 this, nack, dataNodeId));
       }
-      provider.commit(subscriptionCommitContexts, nack);
+      return provider.commit(subscriptionCommitContexts, nack);
     } finally {
       providers.releaseReadLock();
     }
@@ -1780,20 +1804,6 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
     }
   }
 
-  private void advanceCommittedPositions(
-      final List<SubscriptionCommitContext> subscriptionCommitContexts) {
-    for (final SubscriptionCommitContext commitContext : subscriptionCommitContexts) {
-      if (Objects.isNull(commitContext) || Objects.isNull(commitContext.getTopicName())) {
-        continue;
-      }
-      mergeTopicProgress(
-          committedPositionsByTopic,
-          commitContext.getTopicName(),
-          extractWriterId(commitContext),
-          extractWriterProgress(commitContext));
-    }
-  }
-
   private boolean isConsensusCommitContext(final SubscriptionCommitContext commitContext) {
     return Objects.nonNull(commitContext)
         && Objects.nonNull(commitContext.getWriterId())
@@ -1833,9 +1843,10 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
 
       final List<SubscriptionCommitContext> contextsToRedirect = new ArrayList<>(pendingContexts);
       try {
-        commitInternal(entry.getValue(), contextsToRedirect, false);
-        advanceCommittedPositions(contextsToRedirect);
-        contextsToRedirect.forEach(pendingContexts::remove);
+        final AbstractSubscriptionProvider.CommitResult commitResp =
+            commitInternal(entry.getValue(), contextsToRedirect, false);
+        overlayCommittedPositions(commitResp.getCommittedProgressByTopic());
+        commitResp.getAcceptedCommitContexts().forEach(pendingContexts::remove);
         if (pendingContexts.isEmpty()) {
           pendingRedirectAcksByTopicRegion.remove(entry.getKey(), pendingContexts);
         }
@@ -1896,6 +1907,13 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
   private void overlayCommittedPositions(
       final String topicName, final TopicProgress topicProgress) {
     overlayTopicProgress(committedPositionsByTopic, topicName, topicProgress);
+  }
+
+  private void overlayCommittedPositions(final Map<String, TopicProgress> progressByTopic) {
+    if (Objects.isNull(progressByTopic) || progressByTopic.isEmpty()) {
+      return;
+    }
+    progressByTopic.forEach(this::overlayCommittedPositions);
   }
 
   private void overlayTopicProgress(

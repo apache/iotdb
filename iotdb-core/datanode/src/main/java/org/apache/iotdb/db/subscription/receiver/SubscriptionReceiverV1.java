@@ -683,7 +683,8 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     }
   }
 
-  private TPipeSubscribeResp handlePipeSubscribeCommitInternal(final PipeSubscribeCommitReq req) {
+  private TPipeSubscribeResp handlePipeSubscribeCommitInternal(final PipeSubscribeCommitReq req)
+      throws IOException {
     // check consumer config thread local
     final ConsumerConfig consumerConfig = consumerConfigThreadLocal.get();
     if (Objects.isNull(consumerConfig)) {
@@ -695,12 +696,12 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     // commit (ack or nack)
     final List<SubscriptionCommitContext> commitContexts = req.getCommitContexts();
     final boolean nack = req.isNack();
-    final List<SubscriptionCommitContext> successfulCommitContexts =
+    final List<SubscriptionCommitContext> acceptedCommitContexts =
         SubscriptionAgent.broker().commit(consumerConfig, commitContexts, nack);
 
-    if (Objects.equals(successfulCommitContexts.size(), commitContexts.size())) {
+    if (Objects.equals(acceptedCommitContexts.size(), commitContexts.size())) {
       LOGGER.info(
-          "Subscription: consumer {} commit (nack: {}) successfully, summary: {}",
+          "Subscription: consumer {} commit (nack: {}) accepted successfully, summary: {}",
           consumerConfig,
           nack,
           summarizeCommitContexts(commitContexts));
@@ -713,22 +714,26 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
       }
     } else {
       LOGGER.warn(
-          "Subscription: consumer {} commit (nack: {}) partially successful, requested summary: {}, successful summary: {}",
+          "Subscription: consumer {} commit (nack: {}) partially accepted, requested summary: {}, accepted summary: {}",
           consumerConfig,
           nack,
           summarizeCommitContexts(commitContexts),
-          summarizeCommitContexts(successfulCommitContexts));
+          summarizeCommitContexts(acceptedCommitContexts));
       if (LOGGER.isDebugEnabled()) {
         LOGGER.debug(
-            "Subscription: consumer {} commit (nack: {}) full requested commit contexts: {}, full successful commit contexts: {}",
+            "Subscription: consumer {} commit (nack: {}) full requested commit contexts: {}, full accepted commit contexts: {}",
             consumerConfig,
             nack,
             commitContexts,
-            successfulCommitContexts);
+            acceptedCommitContexts);
       }
     }
 
-    return PipeSubscribeCommitResp.toTPipeSubscribeResp(RpcUtils.SUCCESS_STATUS);
+    return PipeSubscribeCommitResp.toTPipeSubscribeResp(
+        RpcUtils.SUCCESS_STATUS,
+        acceptedCommitContexts,
+        SubscriptionAgent.broker()
+            .getConsensusCommittedProgressByTopic(consumerConfig, acceptedCommitContexts, nack));
   }
 
   private static String summarizeCommitContexts(
