@@ -1624,6 +1624,10 @@ public class DataNodeTableOperatorGenerator
           for (int j = 0; j < lastByResult.get().getRight().length; j++) {
             TsPrimitiveType tsPrimitiveType = lastByResult.get().getRight()[j];
             if (tsPrimitiveType == null
+                // For last-row optimization, EMPTY means the local cache only knows the latest row
+                // time, but cannot prove whether the field is truly null at that row or simply
+                // stale under a newer cached row time. Fall back to scan to guarantee correctness.
+                || tsPrimitiveType == EMPTY_PRIMITIVE_TYPE
                 || (updateTimeFilter != null
                     && !LastQueryUtil.satisfyFilter(
                         updateTimeFilter,
