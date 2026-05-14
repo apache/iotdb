@@ -55,7 +55,11 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2DualTableManualBasic.class})
@@ -67,10 +71,12 @@ public class IoTDBPipeTsFileSinkObjectIT extends AbstractPipeTableModelDualManua
   private static final String OBJECT_TABLE_NAME = "factory_metrics";
 
   private static final int OBJECT_MULTI_WEEK_DEVICE_COUNT = 5;
+  private static final int OBJECT_INCREMENTAL_TSFILE_COUNT = 100;
 
   private static final long HOUR_MS = 3600 * 1000L;
   private static final long DAY_MS = 24L * HOUR_MS;
   private static final long WEEK_MS = 7L * DAY_MS;
+  private static final long EXPORT_SCAN_SLEEP_MS = 500L;
 
   /** Base time aligned so each device sits in a distinct week bucket. */
   private static final long OBJECT_BASE_TIME = 1600000000000L;
@@ -225,10 +231,229 @@ public class IoTDBPipeTsFileSinkObjectIT extends AbstractPipeTableModelDualManua
     }
   }
 
+  @Test
+  public void testPipeTsFileLocalSinkObjectHundredGeneratedTsFilesLoadToReceiverWithoutMods()
+      throws Exception {
+    executeIncrementalExportLoadRoundTrip(false);
+  }
+
+  @Test
+  public void testPipeTsFileLocalSinkObjectHundredGeneratedTsFilesLoadToReceiverWithMods()
+      throws Exception {
+    executeIncrementalExportLoadRoundTrip(true);
+  }
+
+  private void executeIncrementalExportLoadRoundTrip(final boolean withMods) throws Exception {
+    final String database = "db1";
+    final String pipeName =
+        withMods
+            ? "p_incremental_generated_obj_with_mods"
+            : "p_incremental_generated_obj_without_mods";
+    final Map<String, List<Long>> expectedTimesByDevice = new LinkedHashMap<>();
+    final List<File> sourceTsFiles = new ArrayList<>();
+
+    for (int i = 0; i < OBJECT_INCREMENTAL_TSFILE_COUNT; i++) {
+      final String deviceId = String.format("device_%03d", i + 1);
+      final File tsFile =
+          new File(
+              sourceTsDir,
+              withMods
+                  ? String.format("incremental_object_with_mods_%03d.tsfile", i + 1)
+                  : String.format("incremental_object_without_mods_%03d.tsfile", i + 1));
+      final long startTime = OBJECT_BASE_TIME + (long) i * DAY_MS;
+      final long endTime = startTime + HOUR_MS;
+
+      try (StandardObjectTableModelTsFileGenerator generator =
+          new StandardObjectTableModelTsFileGenerator(tsFile)) {
+        generator.writeDeviceData(OBJECT_TABLE_NAME, deviceId, startTime, endTime, HOUR_MS);
+        if (withMods) {
+          generator.generateDeletion(OBJECT_TABLE_NAME, deviceId, endTime, endTime);
+          expectedTimesByDevice.put(
+              deviceId, generateExpectedTimes(startTime, endTime, HOUR_MS, endTime, endTime));
+        } else {
+          expectedTimesByDevice.put(deviceId, generateExpectedTimes(startTime, endTime, HOUR_MS));
+        }
+      }
+      sourceTsFiles.add(tsFile);
+    }
+
+    try (ITableSession sender = senderEnv.getTableSessionConnection()) {
+      sender.executeNonQueryStatement(String.format("CREATE DATABASE IF NOT EXISTS %s", database));
+      sender.executeNonQueryStatement(String.format("USE \"%s\"", database));
+      for (File tsFile : sourceTsFiles) {
+        sender.executeNonQueryStatement(String.format("LOAD '%s'", tsFile.getAbsolutePath()));
+      }
+      TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+
+      sender.executeNonQueryStatement(
+          String.format(
+              "CREATE PIPE %s "
+                  + "WITH SOURCE ("
+                  + "'source.capture.table'='true', "
+                  + "'source.database-name'='%s', "
+                  + "'source.table-name'='%s', "
+                  + "'source.inclusion'='data.insert', "
+                  + "'source.mods.enable'='%s', "
+                  + "'source.history.enable'='true', "
+                  + "'source.realtime.enable'='false' "
+                  + ") "
+                  + "WITH SINK ("
+                  + "'sink'='tsfile-local-sink', "
+                  + "'sink.local.target-path'='%s', "
+                  + "'sink.batch.max-delay-seconds'='1', "
+                  + "'sink.batch.size-bytes'='1048576'"
+                  + ")",
+              pipeName, database, OBJECT_TABLE_NAME, withMods, targetDir));
+    }
+
+    try {
+      try (ITableSession receiver = receiverEnv.getTableSessionConnection()) {
+        receiver.executeNonQueryStatement(
+            String.format("CREATE DATABASE IF NOT EXISTS %s", database));
+        receiver.executeNonQueryStatement(String.format("USE \"%s\"", database));
+        loadExportedTsFilesIncrementallyUntilExpectedOnReceiver(
+            receiver, new File(targetDir), database, expectedTimesByDevice, 180_000L);
+      }
+    } finally {
+      try (ITableSession sender = senderEnv.getTableSessionConnection()) {
+        sender.executeNonQueryStatement("DROP PIPE " + pipeName);
+      }
+    }
+
+    if (!withMods) {
+      final List<File> modsFiles = new ArrayList<>();
+      findFilesBySuffix(new File(targetDir), ModificationFile.FILE_SUFFIX, modsFiles);
+      Assert.assertTrue(
+          "No companion mods file should be exported for the pure object TsFiles.",
+          modsFiles.isEmpty());
+    }
+  }
+
+  private void loadExportedTsFilesIncrementallyUntilExpectedOnReceiver(
+      final ITableSession receiver,
+      final File exportRoot,
+      final String database,
+      final Map<String, List<Long>> expectedTimesByDevice,
+      final long timeoutMs)
+      throws Exception {
+    final long expectedTotalRows = calculateExpectedRowCount(expectedTimesByDevice);
+    final long deadline = System.currentTimeMillis() + timeoutMs;
+    final Set<String> loadedTsFilePaths = new HashSet<>();
+
+    long previousDiscoveredTsFileCount = -1;
+    Throwable lastValidationFailure = null;
+
+    while (System.currentTimeMillis() < deadline) {
+      final List<File> exportedTsFiles = new ArrayList<>();
+      findTsFiles(exportRoot, exportedTsFiles);
+      exportedTsFiles.sort(Comparator.comparing(File::getAbsolutePath));
+
+      boolean loadedAnyThisRound = false;
+      for (File tsFile : exportedTsFiles) {
+        final String tsFilePath = tsFile.getAbsolutePath();
+        if (loadedTsFilePaths.contains(tsFilePath)) {
+          continue;
+        }
+
+        try {
+          receiver.executeNonQueryStatement(
+              String.format("LOAD '%s' WITH ('database-name'='%s')", tsFilePath, database));
+          loadedTsFilePaths.add(tsFilePath);
+          loadedAnyThisRound = true;
+        } catch (Exception e) {
+          LOGGER.info("Receiver LOAD will retry later for exported TsFile {}", tsFilePath, e);
+        }
+      }
+
+      if (loadedAnyThisRound) {
+        TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
+      }
+
+      final long actualRowCount = queryRowCountOrNegative(receiver, OBJECT_TABLE_NAME);
+      if (actualRowCount == expectedTotalRows) {
+        try {
+          for (Map.Entry<String, List<Long>> entry : expectedTimesByDevice.entrySet()) {
+            assertDeviceObjectBytesMatchGenerator(
+                receiver, OBJECT_TABLE_NAME, entry.getKey(), entry.getValue());
+          }
+          return;
+        } catch (Throwable t) {
+          lastValidationFailure = t;
+        }
+      }
+
+      final long discoveredTsFileCount = exportedTsFiles.size();
+      if (!loadedAnyThisRound && discoveredTsFileCount == previousDiscoveredTsFileCount) {
+        Thread.sleep(EXPORT_SCAN_SLEEP_MS);
+      }
+      previousDiscoveredTsFileCount = discoveredTsFileCount;
+    }
+
+    final List<File> exportedTsFiles = new ArrayList<>();
+    findTsFiles(exportRoot, exportedTsFiles);
+    exportedTsFiles.sort(Comparator.comparing(File::getAbsolutePath));
+
+    final List<String> pendingTsFiles = new ArrayList<>();
+    for (File tsFile : exportedTsFiles) {
+      final String tsFilePath = tsFile.getAbsolutePath();
+      if (!loadedTsFilePaths.contains(tsFilePath)) {
+        pendingTsFiles.add(tsFilePath);
+      }
+    }
+
+    final long actualRowCount = queryRowCountOrNegative(receiver, OBJECT_TABLE_NAME);
+    final String baseMessage =
+        String.format(
+            "Timeout waiting receiver data to match expected rows. expected=%d, actual=%d, "
+                + "loadedTsFiles=%d, discoveredTsFiles=%d, pendingTsFiles=%s",
+            expectedTotalRows,
+            actualRowCount,
+            loadedTsFilePaths.size(),
+            exportedTsFiles.size(),
+            pendingTsFiles);
+    if (lastValidationFailure != null) {
+      throw new AssertionError(baseMessage, lastValidationFailure);
+    }
+    Assert.fail(baseMessage);
+  }
+
+  private static long calculateExpectedRowCount(
+      final Map<String, List<Long>> expectedTimesByDevice) {
+    long totalRowCount = 0;
+    for (List<Long> expectedTimes : expectedTimesByDevice.values()) {
+      totalRowCount += expectedTimes.size();
+    }
+    return totalRowCount;
+  }
+
+  private static long queryRowCountOrNegative(final ITableSession session, final String table) {
+    try {
+      return queryRowCount(session, table);
+    } catch (Exception e) {
+      return -1;
+    }
+  }
+
   private static List<Long> generateExpectedTimes(
       final long startTime, final long endTime, final long interval) {
     final List<Long> times = new ArrayList<>();
     for (long t = startTime; t <= endTime; t += interval) {
+      times.add(t);
+    }
+    return times;
+  }
+
+  private static List<Long> generateExpectedTimes(
+      final long startTime,
+      final long endTime,
+      final long interval,
+      final long deleteStartTime,
+      final long deleteEndTime) {
+    final List<Long> times = new ArrayList<>();
+    for (long t = startTime; t <= endTime; t += interval) {
+      if (t >= deleteStartTime && t <= deleteEndTime) {
+        continue;
+      }
       times.add(t);
     }
     return times;
@@ -427,14 +652,15 @@ public class IoTDBPipeTsFileSinkObjectIT extends AbstractPipeTableModelDualManua
             + root.getAbsolutePath());
   }
 
-  private static void loadAllTsFilesUnderDir(final ITableSession session, final File root)
-      throws Exception {
+  private static void loadAllTsFilesUnderDir(
+      final ITableSession session, final File root, final String database) throws Exception {
     final List<File> tsfiles = new ArrayList<>();
     findTsFiles(root, tsfiles);
     Assert.assertFalse(tsfiles.isEmpty());
     tsfiles.sort(Comparator.comparing(File::getAbsolutePath));
     for (File f : tsfiles) {
-      session.executeNonQueryStatement(String.format("LOAD '%s'", f.getAbsolutePath()));
+      session.executeNonQueryStatement(
+          String.format("LOAD '%s' WITH ('database-name'='%s')", f.getAbsolutePath(), database));
     }
   }
 
@@ -457,6 +683,20 @@ public class IoTDBPipeTsFileSinkObjectIT extends AbstractPipeTableModelDualManua
         findTsFiles(f, tsfiles);
       } else if (f.getName().endsWith(".tsfile")) {
         tsfiles.add(f);
+      }
+    }
+  }
+
+  private static void findFilesBySuffix(File dir, String suffix, List<File> matchedFiles) {
+    File[] files = dir.listFiles();
+    if (files == null) {
+      return;
+    }
+    for (File f : files) {
+      if (f.isDirectory()) {
+        findFilesBySuffix(f, suffix, matchedFiles);
+      } else if (f.getName().endsWith(suffix)) {
+        matchedFiles.add(f);
       }
     }
   }

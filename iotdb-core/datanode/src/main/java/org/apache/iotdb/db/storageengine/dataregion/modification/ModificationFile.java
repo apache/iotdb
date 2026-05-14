@@ -163,6 +163,43 @@ public class ModificationFile implements AutoCloseable {
     updateModFileMetric(updateFileNum, size);
   }
 
+  public void clear() throws IOException {
+    lock.writeLock().lock();
+    try {
+      if (!fileExists) {
+        return;
+      }
+      long sizeBeforeClear = getFileLength();
+      if (fileOutputStream != null) {
+        fileOutputStream.close();
+        fileOutputStream = null;
+      }
+      if (channel != null) {
+        channel.truncate(0);
+        channel.close();
+        channel = null;
+      } else {
+        try (FileChannel tempChannel = FileChannel.open(file.toPath(), APPEND)) {
+          tempChannel.truncate(0);
+        }
+      }
+
+      if (cascadeFiles != null) {
+        for (ModificationFile cascadeFile : cascadeFiles) {
+          cascadeFile.clear();
+        }
+      }
+
+      if (updateMetrics && !removed) {
+        FileMetrics.getInstance().increaseModFileSize(-sizeBeforeClear);
+      }
+
+      fileExists = false;
+    } finally {
+      lock.writeLock().unlock();
+    }
+  }
+
   private void updateModFileMetric(int num, long size) {
     if (!removed && updateMetrics) {
       FileMetrics.getInstance().increaseModFileNum(num);

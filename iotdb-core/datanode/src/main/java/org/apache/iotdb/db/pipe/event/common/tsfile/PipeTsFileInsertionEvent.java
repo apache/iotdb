@@ -371,7 +371,11 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   public boolean internallyIncreaseResourceReferenceCount(final String holderMessage) {
     extractTime = System.nanoTime();
     final List<ModEntry> linkedObjectColumnModEntries = new ArrayList<>();
+    final File firstName = tsFile;
     try {
+      if (isGeneratedByHistoricalExtractor) {
+        tsFile = PipeTsFileResourceManager.getHardlinkOrCopiedFileInPipeDir(tsFile, pipeName);
+      }
       if (Objects.nonNull(pipeName)) {
         final boolean shouldLinkObjectFiles = !Objects.equals(hasObjectData, Boolean.FALSE);
         final Iterator<String> pathIterator =
@@ -384,8 +388,9 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
 
         PipeDataNodeResourceManager.object().setTsFileClosed(resource, pipeName);
       }
-      final File firstName = tsFile;
-      tsFile = PipeDataNodeResourceManager.tsfile().increaseFileReference(tsFile, true, pipeName);
+
+      tsFile =
+          PipeDataNodeResourceManager.tsfile().increaseFileReference(firstName, true, pipeName);
       if (isWithMod) {
         if (modFile != null) {
           modFile =

@@ -116,7 +116,6 @@ class ScpRemoteFileTransfer implements RemoteFileTransfer {
   private final ExecutorService objectUploadExecutor;
   private final BlockingQueue<PooledWorkerSession> idleWorkerSessions;
 
-  private SshClient client;
   private ClientSession session;
 
   ScpRemoteFileTransfer(PipeParameters params) {
@@ -516,22 +515,13 @@ class ScpRemoteFileTransfer implements RemoteFileTransfer {
     }
   }
 
-  private SshClient getOrCreateClient() {
-    if (client == null || !client.isStarted()) {
-      synchronized (this) {
-        if (client == null || !client.isStarted()) {
-          System.setProperty("org.apache.sshd.security.provider.BC.enabled", "false");
-          client = SshClient.setUpDefaultClient();
-          client.start();
-        }
-      }
-    }
-    return client;
+  private SshClient getSharedClient() throws IOException {
+    return ScpSshClientManager.getClient();
   }
 
   private ClientSession createAuthenticatedSession() throws IOException {
     final ClientSession createdSession =
-        getOrCreateClient().connect(user, host, port).verify(CONNECT_TIMEOUT_MS).getSession();
+        getSharedClient().connect(user, host, port).verify(CONNECT_TIMEOUT_MS).getSession();
     createdSession.addPasswordIdentity(password != null ? password : "");
     createdSession.auth().verify(CONNECT_TIMEOUT_MS, TimeUnit.MILLISECONDS);
     return createdSession;
@@ -606,10 +596,6 @@ class ScpRemoteFileTransfer implements RemoteFileTransfer {
   private synchronized void invalidateSession() {
     invalidateMainSession();
     invalidateIdleWorkerSessions();
-    if (client != null && client.isStarted()) {
-      client.stop();
-      client = null;
-    }
   }
 
   private void invalidateIdleWorkerSessions() {
@@ -636,7 +622,7 @@ class ScpRemoteFileTransfer implements RemoteFileTransfer {
   }
 
   @Override
-  public synchronized void close() {
+  public synchronized void close() throws IOException {
     objectUploadExecutor.shutdown();
     try {
       if (!objectUploadExecutor.awaitTermination(

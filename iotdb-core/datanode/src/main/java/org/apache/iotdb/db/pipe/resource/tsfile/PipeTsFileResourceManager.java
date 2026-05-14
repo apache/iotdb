@@ -163,6 +163,7 @@ public class PipeTsFileResourceManager {
 
     try (ModificationFile modificationFile =
         new ModificationFile(ModificationFile.getExclusiveMods(pipeTsFile), false)) {
+      modificationFile.clear();
       modificationFile.write(toWrite);
       modsFile = modificationFile.getFile();
     }
@@ -172,12 +173,20 @@ public class PipeTsFileResourceManager {
       if (Objects.nonNull(pipeName)) {
         hardlinkOrCopiedFileToPipeTsFileResourceMap
             .computeIfAbsent(pipeName, k -> new ConcurrentHashMap<>())
-            .put(modsFile.getPath(), new PipeTsFileResource(modsFile));
+            .compute(
+                modsFile.getPath(),
+                (path, existingResource) -> {
+                  if (existingResource == null) {
+                    return new PipeTsFileResource(modsFile);
+                  } else {
+                    existingResource.increaseReferenceCount();
+                    return existingResource;
+                  }
+                });
       }
     } finally {
       segmentLock.unlock(modsFile);
     }
-    increasePublicReference(modsFile, pipeName, false);
     return modsFile;
   }
 
@@ -393,24 +402,21 @@ public class PipeTsFileResourceManager {
         : hardlinkOrCopiedFileToTsFilePublicResourceMap;
   }
 
-  public void pinTsFileResource(
-      final TsFileResource resource, final boolean withMods, final @Nullable String pipeName)
+  public void pinTsFileResource(final TsFileResource resource, final @Nullable String pipeName)
       throws IOException {
     increaseFileReference(resource.getTsFile(), true, pipeName);
-    if (withMods && resource.getExclusiveModFile().exists()) {
+    // Create hard links as long as the mods exist, ensuring that the Object can be used normally.
+    if (resource.getExclusiveModFile().exists()) {
       increaseFileReference(resource.getExclusiveModFile().getFile(), false, pipeName);
     }
   }
 
-  public void unpinTsFileResource(
-      final TsFileResource resource,
-      final boolean shouldTransferModFile,
-      final @Nullable String pipeName)
+  public void unpinTsFileResource(final TsFileResource resource, final @Nullable String pipeName)
       throws IOException {
     decreaseFileReference(
         getHardlinkOrCopiedFileInPipeDir(resource.getTsFile(), pipeName), pipeName);
 
-    if (shouldTransferModFile && resource.exclusiveModFileExists()) {
+    if (resource.exclusiveModFileExists()) {
       decreaseFileReference(
           getHardlinkOrCopiedFileInPipeDir(resource.getExclusiveModFile().getFile(), pipeName),
           pipeName);

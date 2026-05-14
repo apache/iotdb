@@ -636,8 +636,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
                 // Pin the resource, in case the file is removed by compaction or anything.
                 // Will unpin it after the PipeTsFileInsertionEvent is created and pinned.
                 try {
-                  PipeDataNodeResourceManager.tsfile()
-                      .pinTsFileResource(resource, shouldTransferModFile, pipeName);
+                  PipeDataNodeResourceManager.tsfile().pinTsFileResource(resource, pipeName);
                   return false;
                 } catch (final IOException e) {
                   LOGGER.warn("Pipe: failed to pin TsFileResource {}", resource.getTsFilePath(), e);
@@ -862,8 +861,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
       return true;
     } finally {
       try {
-        PipeDataNodeResourceManager.tsfile()
-            .unpinTsFileResource(resource, shouldTransferModFile, pipeName);
+        PipeDataNodeResourceManager.tsfile().unpinTsFileResource(resource, pipeName);
       } catch (final IOException e) {
         LOGGER.warn(
             "Pipe {}@{}: failed to unpin skipped historical TsFileResource, original path: {}",
@@ -951,8 +949,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
       return isReferenceCountIncreased ? event : null;
     } finally {
       try {
-        PipeDataNodeResourceManager.tsfile()
-            .unpinTsFileResource(resource, shouldTransferModFile, pipeName);
+        PipeDataNodeResourceManager.tsfile().unpinTsFileResource(resource, pipeName);
       } catch (final IOException e) {
         LOGGER.warn(
             "Pipe {}@{}: failed to unpin TsFileResource after creating event, original path: {}",
@@ -1044,8 +1041,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
             if (resource instanceof TsFileResource) {
               try {
                 PipeDataNodeResourceManager.tsfile()
-                    .unpinTsFileResource(
-                        (TsFileResource) resource, shouldTransferModFile, pipeName);
+                    .unpinTsFileResource((TsFileResource) resource, pipeName);
               } catch (final IOException e) {
                 LOGGER.warn(
                     "Pipe {}@{}: failed to unpin TsFileResource after dropping pipe, original path: {}",
