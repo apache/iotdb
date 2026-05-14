@@ -642,9 +642,9 @@ public class ExchangeNodeAdder implements PlanVisitor<PlanNode, NodeGroupContext
                       if (region == null
                           && context.getNodeDistribution(child.getPlanNodeId()).getType()
                               == NodeDistributionType.SAME_WITH_ALL_CHILDREN) {
-                        return calculateSchemaRegionByChildren(child.getChildren(), context);
+                        region = calculateSchemaRegionByChildren(child.getChildren(), context);
                       }
-                      return region;
+                      return region == null ? DataPartition.NOT_ASSIGNED : region;
                     },
                     Collectors.counting()));
 
