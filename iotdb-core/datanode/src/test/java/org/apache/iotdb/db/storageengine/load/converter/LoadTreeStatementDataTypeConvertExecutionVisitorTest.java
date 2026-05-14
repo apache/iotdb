@@ -109,6 +109,67 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitorTest {
   }
 
   @Test
+  public void testFallbackToQueryWhenFirstNonAlignedDeviceIsCorrupted() throws Exception {
+    tsFile = new File("load-tree-query-fallback-corrupted-first-non-aligned-device.tsfile");
+    writeTsFile(tsFile);
+    corruptMeasurementChunk(tsFile, DEVICE_0, "s0");
+
+    Assert.assertTrue("Expected scan parser to fail after corruption.", scanParserFails(tsFile));
+
+    final Map<String, Integer> pointCountByTimeseries = new HashMap<>();
+    final LoadTreeStatementDataTypeConvertExecutionVisitor visitor =
+        new LoadTreeStatementDataTypeConvertExecutionVisitor(
+            statement -> {
+              collectLoadedPointsByTimeseries(statement, pointCountByTimeseries);
+              return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+            });
+
+    final Optional<TSStatus> status =
+        visitor.visitLoadFile(LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath()), null);
+
+    Assert.assertTrue(status.isPresent());
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.get().getCode());
+
+    Assert.assertTrue(
+        pointCountByTimeseries.getOrDefault(DEVICE_0 + ".s0", 0) < ROW_COUNT_PER_DEVICE);
+    assertMeasurementLoadedCompletely(pointCountByTimeseries, DEVICE_0, 1);
+    assertMeasurementLoadedCompletely(pointCountByTimeseries, DEVICE_1, 0);
+    assertMeasurementLoadedCompletely(pointCountByTimeseries, DEVICE_1, 1);
+    assertMeasurementLoadedCompletely(pointCountByTimeseries, DEVICE_2, 0);
+    assertMeasurementLoadedCompletely(pointCountByTimeseries, DEVICE_2, 1);
+  }
+
+  @Test
+  public void testFallbackDoesNotReloadCompletedMeasurementsOfCurrentNonAlignedDevice()
+      throws Exception {
+    tsFile = new File("load-tree-query-fallback-corrupted-current-non-aligned-device.tsfile");
+    writeTsFile(tsFile);
+    corruptMeasurementChunk(tsFile, DEVICE_1, "s1");
+
+    Assert.assertTrue("Expected scan parser to fail after corruption.", scanParserFails(tsFile));
+
+    final Map<String, Integer> pointCountByTimeseries = new HashMap<>();
+    final LoadTreeStatementDataTypeConvertExecutionVisitor visitor =
+        new LoadTreeStatementDataTypeConvertExecutionVisitor(
+            statement -> {
+              collectLoadedPointsByTimeseries(statement, pointCountByTimeseries);
+              return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+            });
+
+    final Optional<TSStatus> status =
+        visitor.visitLoadFile(LoadTsFileStatement.createUnchecked(tsFile.getAbsolutePath()), null);
+
+    Assert.assertTrue(status.isPresent());
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.get().getCode());
+
+    assertMeasurementLoadedCompletely(pointCountByTimeseries, DEVICE_1, 0);
+    Assert.assertTrue(
+        pointCountByTimeseries.getOrDefault(DEVICE_1 + ".s1", 0) < ROW_COUNT_PER_DEVICE);
+    assertMeasurementLoadedCompletely(pointCountByTimeseries, DEVICE_2, 0);
+    assertMeasurementLoadedCompletely(pointCountByTimeseries, DEVICE_2, 1);
+  }
+
+  @Test
   public void testFallbackToQueryForRemainingMeasurementsOfCurrentAlignedDevice() throws Exception {
     CommonDescriptor.getInstance().getConfig().setPipeMaxReaderChunkSize(0);
 
