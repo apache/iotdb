@@ -107,6 +107,12 @@ remote/
 # activation
 activation/
 .env
+.env.*
+!.env.example
+!.env.sample
+.history/
+system_info
+**/out/
 
 # gitpod
 .theia/
