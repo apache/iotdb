@@ -100,14 +100,15 @@ public class IoTDBDataRegionAirGapSinkTest {
       Assert.assertTrue(
           requestTypes.contains(PipeRequestType.TRANSFER_TS_FILE_SEAL_WITH_MOD.getType()));
       Assert.assertFalse(requestTypes.contains(PipeRequestType.TRANSFER_TABLET_RAW_V2.getType()));
-      Assert.assertFalse(
-          requestTypes.contains(PipeRequestType.TRANSFER_TABLET_BATCH_V2.getType()));
+      Assert.assertFalse(requestTypes.contains(PipeRequestType.TRANSFER_TABLET_BATCH_V2.getType()));
     }
   }
 
   private PipeParameters buildParameters(final boolean useTsFileBatch) {
     final Map<String, String> attributes = new HashMap<>();
-    attributes.put(PipeSinkConstant.CONNECTOR_KEY, BuiltinPipePlugin.IOTDB_AIR_GAP_CONNECTOR.getPipePluginName());
+    attributes.put(
+        PipeSinkConstant.CONNECTOR_KEY,
+        BuiltinPipePlugin.IOTDB_AIR_GAP_CONNECTOR.getPipePluginName());
     attributes.put(PipeSinkConstant.CONNECTOR_IOTDB_NODE_URLS_KEY, "127.0.0.1:6668");
     attributes.put(PipeSinkConstant.CONNECTOR_IOTDB_BATCH_DELAY_MS_KEY, "200");
     attributes.put(PipeSinkConstant.CONNECTOR_IOTDB_BATCH_SIZE_KEY, "1048576");

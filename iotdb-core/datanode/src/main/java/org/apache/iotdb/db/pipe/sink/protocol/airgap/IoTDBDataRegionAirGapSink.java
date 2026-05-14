@@ -244,7 +244,8 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
     }
   }
 
-  private void doTransfer(final AirGapSocket socket, final PipeTabletEventPlainBatch batchToTransfer)
+  private void doTransfer(
+      final AirGapSocket socket, final PipeTabletEventPlainBatch batchToTransfer)
       throws IOException {
     if (!sendBatch(
         socket,
@@ -260,11 +261,11 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
     }
   }
 
-  private void doTransfer(final AirGapSocket socket, final PipeTabletEventTsFileBatch batchToTransfer)
+  private void doTransfer(
+      final AirGapSocket socket, final PipeTabletEventTsFileBatch batchToTransfer)
       throws IOException, WriteProcessException {
     final List<Pair<String, File>> dbTsFilePairs = batchToTransfer.sealTsFiles();
-    final Map<Pair<String, Long>, Double> pipe2WeightMap =
-        batchToTransfer.deepCopyPipe2WeightMap();
+    final Map<Pair<String, Long>, Double> pipe2WeightMap = batchToTransfer.deepCopyPipe2WeightMap();
 
     for (final Pair<String, File> dbTsFile : dbTsFilePairs) {
       doTransfer(
@@ -548,9 +549,7 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
   }
 
   private boolean sendWeighted(
-      final AirGapSocket socket,
-      byte[] bytes,
-      final Map<Pair<String, Long>, Double> pipe2WeightMap)
+      final AirGapSocket socket, byte[] bytes, final Map<Pair<String, Long>, Double> pipe2WeightMap)
       throws IOException {
     bytes = compressIfNeeded(bytes);
 
