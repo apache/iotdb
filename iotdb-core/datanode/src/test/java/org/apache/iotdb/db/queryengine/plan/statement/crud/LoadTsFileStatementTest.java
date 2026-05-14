@@ -21,6 +21,8 @@ package org.apache.iotdb.db.queryengine.plan.statement.crud;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
+import org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -30,7 +32,9 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Stream;
 
 public class LoadTsFileStatementTest {
@@ -106,6 +110,82 @@ public class LoadTsFileStatementTest {
       config.setLoadTsFileSourcePathCheckEnabled(originalCheckEnabled);
       deleteRecursively(allowedDir);
       deleteRecursively(deniedDir);
+    }
+  }
+
+  @Test
+  public void testSubStatementsKeepPipeGeneratedAndObjectFileSearchRoot() throws Exception {
+    final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+    final int originalBatchSize = config.getLoadTsFileSubStatementBatchSize();
+    final String[] originalAllowedDirs = config.getLoadTsFileAllowedDirs().clone();
+    final Path tempDir = Files.createTempDirectory("load-tsfile-object-sub-statements");
+    final Path objectDir = Files.createDirectories(tempDir.resolve("objects"));
+
+    try {
+      config.setLoadTsFileSubStatementBatchSize(1);
+      config.setLoadTsFileAllowedDirs(new String[] {tempDir.toString()});
+      Files.createFile(tempDir.resolve("a.tsfile"));
+      Files.createFile(tempDir.resolve("b.tsfile"));
+
+      final LoadTsFileStatement statement = new LoadTsFileStatement(tempDir.toString());
+      final Map<String, String> loadAttributes = new HashMap<>();
+      loadAttributes.put(LoadTsFileConfigurator.PIPE_GENERATED_KEY, Boolean.TRUE.toString());
+      loadAttributes.put(LoadTsFileConfigurator.OBJECT_FILE_PATHS_KEY, objectDir.toString());
+      statement.setLoadAttributes(loadAttributes);
+
+      final List<LoadTsFileStatement> subStatements = statement.getSubStatements();
+      Assert.assertEquals(2, subStatements.size());
+      subStatements.forEach(
+          subStatement -> {
+            Assert.assertTrue(subStatement.isGeneratedByPipe());
+            Assert.assertEquals(
+                objectDir.toFile().getAbsoluteFile(), subStatement.getObjectFileSearchRoot());
+          });
+    } finally {
+      config.setLoadTsFileSubStatementBatchSize(originalBatchSize);
+      config.setLoadTsFileAllowedDirs(originalAllowedDirs);
+      deleteRecursively(tempDir);
+    }
+  }
+
+  @Test
+  public void testToRelationalStatementKeepsPipeGeneratedAndObjectFileSearchRoot()
+      throws Exception {
+    final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+    final int originalBatchSize = config.getLoadTsFileSubStatementBatchSize();
+    final String[] originalAllowedDirs = config.getLoadTsFileAllowedDirs().clone();
+    final Path tempDir = Files.createTempDirectory("load-tsfile-relational-object");
+    final Path objectDir = Files.createDirectories(tempDir.resolve("objects"));
+
+    try {
+      config.setLoadTsFileSubStatementBatchSize(1);
+      config.setLoadTsFileAllowedDirs(new String[] {tempDir.toString()});
+      Files.createFile(tempDir.resolve("a.tsfile"));
+      Files.createFile(tempDir.resolve("b.tsfile"));
+
+      final LoadTsFileStatement statement = new LoadTsFileStatement(tempDir.toString());
+      final Map<String, String> loadAttributes = new HashMap<>();
+      loadAttributes.put(LoadTsFileConfigurator.PIPE_GENERATED_KEY, Boolean.TRUE.toString());
+      loadAttributes.put(LoadTsFileConfigurator.OBJECT_FILE_PATHS_KEY, objectDir.toString());
+      statement.setLoadAttributes(loadAttributes);
+
+      final LoadTsFile relationalStatement = (LoadTsFile) statement.toRelationalStatement(null);
+      Assert.assertTrue(relationalStatement.isGeneratedByPipe());
+      Assert.assertEquals(
+          objectDir.toFile().getAbsoluteFile(), relationalStatement.getObjectFileSearchRoot());
+
+      final List<LoadTsFile> subStatements = relationalStatement.getSubStatements();
+      Assert.assertEquals(2, subStatements.size());
+      subStatements.forEach(
+          subStatement -> {
+            Assert.assertTrue(subStatement.isGeneratedByPipe());
+            Assert.assertEquals(
+                objectDir.toFile().getAbsoluteFile(), subStatement.getObjectFileSearchRoot());
+          });
+    } finally {
+      config.setLoadTsFileSubStatementBatchSize(originalBatchSize);
+      config.setLoadTsFileAllowedDirs(originalAllowedDirs);
+      deleteRecursively(tempDir);
     }
   }
 

@@ -226,6 +226,7 @@ public class LoadTsFile extends Statement {
         LoadTsFileConfigurator.parseOrGetDefaultTabletConversionThresholdBytes(loadAttributes);
     this.verify = LoadTsFileConfigurator.parseOrGetDefaultVerify(loadAttributes);
     this.isAsyncLoad = LoadTsFileConfigurator.parseOrGetDefaultAsyncLoad(loadAttributes);
+    this.isGeneratedByPipe = LoadTsFileConfigurator.parseOrGetDefaultPipeGenerated(loadAttributes);
     this.objectFileSearchRoot = LoadTsFileConfigurator.parseObjectFileSearchRoot(loadAttributes);
   }
 
@@ -329,6 +330,7 @@ public class LoadTsFile extends Statement {
       subStatement.autoCreateDatabase = this.autoCreateDatabase;
       subStatement.isAsyncLoad = this.isAsyncLoad;
       subStatement.isGeneratedByPipe = this.isGeneratedByPipe;
+      subStatement.objectFileSearchRoot = this.objectFileSearchRoot;
 
       // Set all files in the batch
       subStatement.tsFiles = new ArrayList<>(batchFiles);

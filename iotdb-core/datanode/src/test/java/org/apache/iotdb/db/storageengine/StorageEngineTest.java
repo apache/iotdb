@@ -18,9 +18,17 @@
  */
 package org.apache.iotdb.db.storageengine;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileObjectPieceNode;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
+import org.apache.iotdb.db.storageengine.load.LoadTsFileManager;
+import org.apache.iotdb.db.storageengine.load.splitter.LoadTsFileObjectFileBatch;
+import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.collect.Lists;
 import org.junit.After;
@@ -32,8 +40,12 @@ import org.powermock.api.mockito.PowerMockito;
 import org.powermock.core.classloader.annotations.PowerMockIgnore;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
+import org.powermock.reflect.Whitebox;
 
+import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 @PowerMockIgnore({"com.sun.org.apache.xerces.*", "javax.xml.*", "org.xml.*", "javax.management.*"})
 @RunWith(PowerMockRunner.class)
@@ -41,14 +53,25 @@ import java.util.List;
 public class StorageEngineTest {
 
   private StorageEngine storageEngine;
+  private LoadTsFileManager originalLoadTsFileManager;
+  private Map<DataRegionId, DataRegion> dataRegionMap;
 
+  @SuppressWarnings("unchecked")
   @Before
   public void setUp() {
     storageEngine = StorageEngine.getInstance();
+    originalLoadTsFileManager = Whitebox.getInternalState(storageEngine, "loadTsFileManager");
+    dataRegionMap = Whitebox.getInternalState(storageEngine, "dataRegionMap");
   }
 
   @After
   public void after() {
+    if (dataRegionMap != null) {
+      dataRegionMap.clear();
+    }
+    if (storageEngine != null && originalLoadTsFileManager != null) {
+      Whitebox.setInternalState(storageEngine, "loadTsFileManager", originalLoadTsFileManager);
+    }
     storageEngine = null;
   }
 
@@ -83,5 +106,61 @@ public class StorageEngineTest {
     Assert.assertEquals(0, TimePartitionUtils.getTimePartitionId(timePartitionInterval / 2));
     Assert.assertEquals(1, TimePartitionUtils.getTimePartitionId(timePartitionInterval * 2 - 1));
     Assert.assertEquals(2, TimePartitionUtils.getTimePartitionId(timePartitionInterval * 2 + 1));
+  }
+
+  @Test
+  public void testWriteLoadTsFileObjectPieceNodeReturnsSuccessWhenDataRegionMissing() {
+    TSStatus status =
+        storageEngine.writeLoadTsFileObjectPieceNode(
+            new DataRegionId(1), createObjectPieceNode(), "missing-region");
+
+    Assert.assertEquals(RpcUtils.SUCCESS_STATUS, status);
+  }
+
+  @Test
+  public void testWriteLoadTsFileObjectPieceNodeIOException() throws Exception {
+    final DataRegionId dataRegionId = new DataRegionId(1);
+    final DataRegion dataRegion = PowerMockito.mock(DataRegion.class);
+    final LoadTsFileManager loadTsFileManager = PowerMockito.mock(LoadTsFileManager.class);
+    final LoadTsFileObjectPieceNode objectPieceNode = createObjectPieceNode();
+
+    dataRegionMap.put(dataRegionId, dataRegion);
+    Whitebox.setInternalState(storageEngine, "loadTsFileManager", loadTsFileManager);
+    PowerMockito.doThrow(new IOException("write object payload failed"))
+        .when(loadTsFileManager)
+        .writeObjectPayloadToDataRegion(dataRegion, objectPieceNode, "uuid");
+
+    final TSStatus status =
+        storageEngine.writeLoadTsFileObjectPieceNode(dataRegionId, objectPieceNode, "uuid");
+
+    Assert.assertEquals(TSStatusCode.LOAD_FILE_ERROR.getStatusCode(), status.getCode());
+    Assert.assertEquals("write object payload failed", status.getMessage());
+  }
+
+  @Test
+  public void testWriteLoadTsFileObjectPieceNodeUnexpectedException() throws Exception {
+    final DataRegionId dataRegionId = new DataRegionId(1);
+    final DataRegion dataRegion = PowerMockito.mock(DataRegion.class);
+    final LoadTsFileManager loadTsFileManager = PowerMockito.mock(LoadTsFileManager.class);
+    final LoadTsFileObjectPieceNode objectPieceNode = createObjectPieceNode();
+
+    dataRegionMap.put(dataRegionId, dataRegion);
+    Whitebox.setInternalState(storageEngine, "loadTsFileManager", loadTsFileManager);
+    PowerMockito.doThrow(new RuntimeException("unexpected object payload failure"))
+        .when(loadTsFileManager)
+        .writeObjectPayloadToDataRegion(dataRegion, objectPieceNode, "uuid");
+
+    final TSStatus status =
+        storageEngine.writeLoadTsFileObjectPieceNode(dataRegionId, objectPieceNode, "uuid");
+
+    Assert.assertEquals(TSStatusCode.LOAD_FILE_ERROR.getStatusCode(), status.getCode());
+    Assert.assertEquals("unexpected object payload failure", status.getMessage());
+  }
+
+  private static LoadTsFileObjectPieceNode createObjectPieceNode() {
+    return new LoadTsFileObjectPieceNode(
+        new PlanNodeId("object-piece"),
+        new LoadTsFileObjectFileBatch(
+            Collections.emptyList(), new TTimePartitionSlot().setStartTime(1L)));
   }
 }

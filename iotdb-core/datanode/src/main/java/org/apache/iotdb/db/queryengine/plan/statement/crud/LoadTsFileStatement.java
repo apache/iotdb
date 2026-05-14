@@ -48,6 +48,7 @@ import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurat
 import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.CONVERT_ON_TYPE_MISMATCH_KEY;
 import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.DATABASE_LEVEL_KEY;
 import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.DATABASE_NAME_KEY;
+import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.OBJECT_FILE_PATHS_KEY;
 import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.ON_SUCCESS_DELETE_VALUE;
 import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.ON_SUCCESS_KEY;
 import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.ON_SUCCESS_NONE_VALUE;
@@ -427,6 +428,7 @@ public class LoadTsFileStatement extends Statement {
       statement.autoCreateDatabase = this.autoCreateDatabase;
       statement.isAsyncLoad = this.isAsyncLoad;
       statement.isGeneratedByPipe = this.isGeneratedByPipe;
+      statement.objectFileSearchRoot = this.objectFileSearchRoot;
 
       statement.tsFiles = new ArrayList<>(batchFiles);
       statement.resources = new ArrayList<>(batchFiles.size());
@@ -465,6 +467,9 @@ public class LoadTsFileStatement extends Statement {
     loadAttributes.put(ASYNC_LOAD_KEY, String.valueOf(isAsyncLoad));
     if (isGeneratedByPipe) {
       loadAttributes.put(PIPE_GENERATED_KEY, String.valueOf(true));
+    }
+    if (objectFileSearchRoot != null) {
+      loadAttributes.put(OBJECT_FILE_PATHS_KEY, objectFileSearchRoot.getAbsolutePath());
     }
 
     return LoadTsFile.createUnchecked(null, file.getAbsolutePath(), loadAttributes);

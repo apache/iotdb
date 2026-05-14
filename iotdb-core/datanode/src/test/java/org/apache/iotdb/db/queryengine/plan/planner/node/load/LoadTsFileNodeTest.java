@@ -19,17 +19,24 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner.node.load;
 
+import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadSingleTsFileNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileObjectPieceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.load.splitter.LoadTsFileObjectFileBatch;
+import org.apache.iotdb.db.storageengine.load.splitter.LoadTsFileObjectFileBatch.ObjectFileChunk;
 
 import org.apache.tsfile.exception.NotImplementedException;
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.File;
+import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -89,5 +96,69 @@ public class LoadTsFileNodeTest {
     node.serialize(buffer);
     LoadTsFilePieceNode node1 = (LoadTsFilePieceNode) LoadTsFilePieceNode.deserialize(buffer);
     Assert.assertEquals(node.getTsFile(), node1.getTsFile());
+  }
+
+  @Test
+  public void testLoadTsFileObjectPieceNode() {
+    final LoadTsFileObjectFileBatch objectBatch =
+        new LoadTsFileObjectFileBatch(
+            Collections.singletonList(
+                new ObjectFileChunk("0/object/a.bin", 0, 3, true, new byte[] {1, 2, 3})),
+            new TTimePartitionSlot(123L));
+    final LoadTsFileObjectPieceNode node =
+        new LoadTsFileObjectPieceNode(new PlanNodeId("object"), objectBatch);
+
+    Assert.assertEquals(0, node.getDataSize());
+    Assert.assertEquals(objectBatch, node.getObjectBatch());
+    Assert.assertNull(node.getRegionReplicaSet());
+    Assert.assertEquals(Collections.emptyList(), node.getChildren());
+    Assert.assertEquals(Collections.emptyList(), node.getOutputColumnNames());
+    try {
+      node.clone();
+      Assert.fail();
+    } catch (NotImplementedException ignored) {
+    }
+    try {
+      node.splitByPartition(new Analysis());
+      Assert.fail();
+    } catch (NotImplementedException ignored) {
+    }
+    Assert.assertEquals(0, node.allowedChildCount());
+    Assert.assertEquals("LoadTsFileObjectPieceNode{dataSize=0}", node.toString());
+
+    final LoadTsFileObjectPieceNode deserialized =
+        (LoadTsFileObjectPieceNode) PlanNodeType.deserialize(node.serializeToByteBuffer());
+    Assert.assertNotNull(deserialized);
+    Assert.assertEquals(
+        TimePartitionUtils.getTimePartitionSlot(
+            node.getObjectBatch().getLastTimePartitionSlot().getStartTime()),
+        deserialized.getObjectBatch().getLastTimePartitionSlot());
+    Assert.assertEquals(1, deserialized.getObjectBatch().getObjectFileChunks().size());
+    final ObjectFileChunk chunk = deserialized.getObjectBatch().getObjectFileChunks().get(0);
+    Assert.assertEquals("0/object/a.bin", chunk.getObjectRelativePath());
+    Assert.assertEquals(0, chunk.getFileOffset());
+    Assert.assertEquals(3, chunk.getTotalFileLength());
+    Assert.assertTrue(chunk.isIncludeLastByte());
+    Assert.assertArrayEquals(new byte[] {1, 2, 3}, chunk.getBytes());
+  }
+
+  @Test
+  public void testLoadTsFileObjectPieceNodeDeserializeInvalidBuffer() {
+    final LoadTsFileObjectFileBatch objectBatch =
+        new LoadTsFileObjectFileBatch(
+            Collections.singletonList(
+                new ObjectFileChunk("0/object/a.bin", 0, 3, true, new byte[] {1, 2, 3})),
+            new TTimePartitionSlot(123L));
+    final ByteBuffer buffer =
+        new LoadTsFileObjectPieceNode(new PlanNodeId("object"), objectBatch)
+            .serializeToByteBuffer();
+    buffer.getShort();
+    buffer.limit(buffer.position() + 2);
+
+    try {
+      Assert.assertNull(LoadTsFileObjectPieceNode.deserialize(buffer.slice()));
+    } catch (final BufferUnderflowException e) {
+      Assert.fail("Deserialize should fail gracefully for truncated object piece buffer.");
+    }
   }
 }
