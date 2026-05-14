@@ -29,18 +29,6 @@ if [ -z "${IOTDB_HOME}" ]; then
     export IOTDB_HOME="$(cd "`dirname "$0"`"/..; pwd)"
 fi
 
-TOOL_ROOT="$(cd "$(dirname "$0")/.."; pwd)"
-PLUGIN_JAR=""
-
-if [ -z "$PLUGIN_JAR" ] && [ -d "$TOOL_ROOT/ext/pipe" ]; then
-  for f in "$TOOL_ROOT/ext/pipe"/tsfile-remote-sink-*-jar-with-dependencies.jar; do
-    if [ -f "$f" ]; then
-      PLUGIN_JAR="$f"
-      break
-    fi
-  done
-fi
-
 if [ -z "${IOTDB_HOME}" ]; then
   echo "[ERROR] IOTDB_HOME is not set. Set it to your IoTDB installation root (directory that contains lib/)." >&2
   exit 1
@@ -63,11 +51,8 @@ if [ -z "$JAVA" ] ; then
 fi
 
 JVM_OPTS="-Dsun.jnu.encoding=UTF-8 -Dfile.encoding=UTF-8"
-if [ -n "$PLUGIN_JAR" ] && [ -f "$PLUGIN_JAR" ]; then
-  JVM_OPTS="${JVM_OPTS} -Dtsfile.backup.plugin.jar=${PLUGIN_JAR}"
-fi
 
-CLASSPATH=""
+CLASSPATH="${CLASSPATH:-}"
 for f in "${IOTDB_HOME}"/lib/*.jar; do
     CLASSPATH="${CLASSPATH}:${f}"
 done

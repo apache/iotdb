@@ -113,8 +113,6 @@
             <excludes>
                 <exclude>*ainode.*</exclude>
                 <exclude>**/*ainode.*</exclude>
-                <exclude>tsfile-backup.sh</exclude>
-                <exclude>windows/tsfile-backup.bat</exclude>
             </excludes>
             <fileMode>0755</fileMode>
         </fileSet>

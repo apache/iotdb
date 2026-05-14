@@ -203,6 +203,24 @@ external-service-impl-it-1c3d:
       - integration-test/target/cluster-logs
     expire_in: 7 day
 
+tsfile-backup-it-scp:
+  stage: test
+  tags:
+    - timechodb
+  script:
+    - 'mvn verify -P with-integration-tests -DskipUTs -DintegrationTest.forkCount=1 -DConfigNodeMaxHeapSize=1024 -DDataNodeMaxHeapSize=1024 -pl integration-test -am -PTsFileBackupIT -s $MAVEN_SETTINGS_XML'
+  interruptible: true
+  rules:
+    - if: $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == $CI_DEFAULT_BRANCH || $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^rel/ || $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^rc/
+
+  artifacts:
+    when: on_failure
+    name: tsfile-backup-it-log
+    paths:
+      - integration-test/target/cluster-logs
+      - integration-test/target/tsfile-backup-it
+    expire_in: 7 day
+
 ainode-test-1c1d1a:
   stage: test
   image: timechodb:AICluster

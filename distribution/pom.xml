@@ -501,20 +501,7 @@
                         <configuration>
                             <descriptors>
                                 <descriptor>src/assembly/all.xml</descriptor>
-                                <descriptor>src/assembly/external-service-impl.xml</descriptor>
-                            </descriptors>
-                            <finalName>timechodb-${project.version}</finalName>
-                        </configuration>
-                    </execution>
-                    <execution>
-                        <id>extension</id>
-                        <goals>
-                            <goal>single</goal>
-                        </goals>
-                        <phase>package</phase>
-                        <configuration>
-                            <descriptors>
-                                <descriptor>src/assembly/extension.xml</descriptor>
+                                <descriptor>src/assembly/library-pipe.xml</descriptor>
                             </descriptors>
                             <finalName>timechodb-${project.version}</finalName>
                         </configuration>
@@ -557,8 +544,7 @@
                                     <directory>${project.build.directory}</directory>
                                     <includes>
                                         <include>timechodb-${project.version}-bin.zip</include>
-                                        <include>apache-iotdb-${project.version}-external-service-impl-bin.zip</include>
-                                        <include>timechodb-${project.version}-extension.zip</include>
+                                        <include>timechodb-${project.version}-library-pipe-bin.zip</include>
                                     </includes>
                                 </fileSet>
                                 <!--security-file-->

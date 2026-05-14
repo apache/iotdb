@@ -44,6 +44,8 @@ import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.Enumeration;
 import java.util.List;
 
@@ -54,14 +56,16 @@ import java.util.List;
 public final class TsFileBackup {
 
   // ==============================================================================================
-  // Constants dictionary: plugin names, keys, defaults, env vars, and CLI options
+  // Constants dictionary: plugin names, keys, defaults, and CLI options
   // ==============================================================================================
   public static final String SINK_PLUGIN_NAME = "TSFILE_REMOTE_SINK";
   public static final String SINK_PLUGIN_CLASS =
       "org.apache.iotdb.pipe.plugin.sink.tsfile.PipeTsFileRemoteSink";
 
-  private static final String PLUGIN_JAR_PROPERTY = "tsfile.backup.plugin.jar";
-  private static final String ENV_PLUGIN_JAR = "TSFILE_REMOTE_SINK_JAR";
+  private static final String IOTDB_HOME_PROPERTY = "IOTDB_HOME";
+  private static final String DEFAULT_PLUGIN_DIR = "ext/pipe";
+  private static final String DEFAULT_PLUGIN_JAR_PREFIX = "tsfile-remote-sink-";
+  private static final String DEFAULT_PLUGIN_JAR_SUFFIX = "-jar-with-dependencies.jar";
 
   private static final IoTPrinter OUT = new IoTPrinter(System.out);
 
@@ -338,18 +342,10 @@ public final class TsFileBackup {
             "object_thread_keep_alive_seconds must be a positive integer.");
       }
 
-      String jarPath = resolvePluginJarPath(line.getOptionValue(CliOptions.PLUGIN_JAR_LONG));
-      this.pluginJar = new File(jarPath);
-      if (!this.pluginJar.isFile()) {
-        throw new IllegalArgumentException(
-            "Plugin JAR not found: "
-                + jarPath
-                + ". Set -D"
-                + PLUGIN_JAR_PROPERTY
-                + ", --plugin_jar, or "
-                + ENV_PLUGIN_JAR
-                + ".");
-      }
+      this.pluginJar =
+          resolvePluginJar(
+              line.getOptionValue(CliOptions.PLUGIN_JAR_LONG),
+              System.getProperty(IOTDB_HOME_PROPERTY));
     }
 
     private String resolvePassword(CommandLine line, String opt, String prompt, String defaultPw) {
@@ -763,16 +759,80 @@ public final class TsFileBackup {
     }
   }
 
-  private static String resolvePluginJarPath(String cliOverride) {
-    String prop = System.getProperty(PLUGIN_JAR_PROPERTY);
-    if (StringUtils.isNotBlank(prop)) {
-      return prop.trim();
+  static File resolvePluginJar(String cliOverride, String iotdbHome) {
+    String configuredJarPath = normalizePathSetting(cliOverride);
+    if (StringUtils.isNotBlank(configuredJarPath)) {
+      File configuredPluginJar = new File(configuredJarPath);
+      if (configuredPluginJar.isFile()) {
+        return configuredPluginJar;
+      }
+      throw new IllegalArgumentException("Specified plugin JAR not found: " + configuredJarPath);
     }
-    if (StringUtils.isNotBlank(cliOverride)) {
-      return cliOverride.trim();
+
+    File defaultPluginDir = resolveDefaultPluginDir(iotdbHome);
+    File defaultPluginJar = findPluginJarInDirectory(defaultPluginDir);
+    if (defaultPluginJar != null) {
+      return defaultPluginJar;
     }
-    String env = System.getenv(ENV_PLUGIN_JAR);
-    return StringUtils.isNotBlank(env) ? env.trim() : "";
+
+    throw new IllegalArgumentException(buildMissingPluginJarMessage(defaultPluginDir));
+  }
+
+  private static File resolveDefaultPluginDir(String iotdbHome) {
+    iotdbHome = normalizePathSetting(iotdbHome);
+    if (StringUtils.isBlank(iotdbHome)) {
+      return null;
+    }
+    return new File(iotdbHome, DEFAULT_PLUGIN_DIR);
+  }
+
+  private static File findPluginJarInDirectory(File pluginDir) {
+    if (pluginDir == null || !pluginDir.isDirectory()) {
+      return null;
+    }
+
+    File[] pluginJars =
+        pluginDir.listFiles(
+            (dir, name) ->
+                name.startsWith(DEFAULT_PLUGIN_JAR_PREFIX)
+                    && name.endsWith(DEFAULT_PLUGIN_JAR_SUFFIX));
+    if (pluginJars == null || pluginJars.length == 0) {
+      return null;
+    }
+
+    Arrays.sort(pluginJars, Comparator.comparing(File::getName));
+    return pluginJars[0];
+  }
+
+  private static String buildMissingPluginJarMessage(File defaultPluginDir) {
+    String expectedJarName = DEFAULT_PLUGIN_JAR_PREFIX + "*" + DEFAULT_PLUGIN_JAR_SUFFIX;
+    if (defaultPluginDir == null) {
+      return "Pipe plugin JAR does not exist: --plugin_jar is not configured, and the default directory "
+          + DEFAULT_PLUGIN_DIR
+          + " cannot be resolved because "
+          + IOTDB_HOME_PROPERTY
+          + " is not set. Expected jar pattern: "
+          + expectedJarName
+          + ".";
+    }
+    return "Pipe plugin JAR does not exist: --plugin_jar is not configured, and the default directory "
+        + defaultPluginDir.getAbsolutePath()
+        + " does not contain "
+        + expectedJarName
+        + ".";
+  }
+
+  private static String normalizePathSetting(String path) {
+    if (StringUtils.isBlank(path)) {
+      return "";
+    }
+
+    String normalized = path.trim();
+    if ((normalized.startsWith("\"") && normalized.endsWith("\""))
+        || (normalized.startsWith("'") && normalized.endsWith("'"))) {
+      normalized = normalized.substring(1, normalized.length() - 1).trim();
+    }
+    return normalized;
   }
 
   private static String getLocalIpv4() {
