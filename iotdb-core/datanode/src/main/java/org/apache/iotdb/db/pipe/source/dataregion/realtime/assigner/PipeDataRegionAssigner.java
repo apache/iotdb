@@ -239,6 +239,7 @@ public class PipeDataRegionAssigner implements Closeable {
     if (source.isNeedListenToInsertNode()) {
       listenToInsertNodeSourceCount++;
     }
+    logSourceAssignmentChange("registered", source);
   }
 
   public synchronized void stopAssignTo(final PipeRealtimeDataRegionSource source) {
@@ -249,6 +250,7 @@ public class PipeDataRegionAssigner implements Closeable {
     if (source.isNeedListenToInsertNode()) {
       listenToInsertNodeSourceCount--;
     }
+    logSourceAssignmentChange("deregistered", source);
   }
 
   public synchronized boolean shouldListenToTsFile() {
@@ -296,6 +298,21 @@ public class PipeDataRegionAssigner implements Closeable {
 
   public int getPipeHeartbeatEventCount() {
     return eventCounter.getPipeHeartbeatEventCount();
+  }
+
+  private void logSourceAssignmentChange(
+      final String action, final PipeRealtimeDataRegionSource source) {
+    LOGGER.info(
+        "Pipe {}@{} {} realtime source on data region {} (listenToTsFile={}, listenToInsertNode={}, registeredSourceCount={}, tsFileSourceCount={}, insertNodeSourceCount={}).",
+        source.getPipeName(),
+        source.getCreationTime(),
+        action,
+        dataRegionId,
+        source.isNeedListenToTsFile(),
+        source.isNeedListenToInsertNode(),
+        matcher.getRegisterCount(),
+        listenToTsFileSourceCount,
+        listenToInsertNodeSourceCount);
   }
 
   public Boolean isTableModel() {
