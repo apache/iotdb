@@ -220,9 +220,7 @@ public final class RingBuffer<E> extends RingBufferFields<E> {
    * @return {@code true} if the event is published, {@code false} if the publish is aborted
    */
   public <A> boolean publishEvent(
-      final EventTranslator<E, A> translator,
-      final A arg0,
-      final BooleanSupplier abortCondition) {
+      final EventTranslator<E, A> translator, final A arg0, final BooleanSupplier abortCondition) {
     final long sequence = sequencer.next(1, abortCondition);
     if (sequence == Sequence.INITIAL_VALUE) {
       return false;

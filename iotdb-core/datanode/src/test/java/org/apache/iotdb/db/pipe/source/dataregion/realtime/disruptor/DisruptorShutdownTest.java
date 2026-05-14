@@ -119,8 +119,7 @@ public class DisruptorShutdownTest {
     final AtomicReference<Thread> processorThreadReference = new AtomicReference<>();
     final ThreadFactory threadFactory =
         runnable -> {
-          final Thread thread =
-              new Thread(runnable, "pipe-disruptor-unexpected-interrupt-test");
+          final Thread thread = new Thread(runnable, "pipe-disruptor-unexpected-interrupt-test");
           processorThreadReference.set(thread);
           return thread;
         };
