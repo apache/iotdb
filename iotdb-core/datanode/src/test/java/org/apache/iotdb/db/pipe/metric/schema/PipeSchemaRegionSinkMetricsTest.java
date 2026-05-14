@@ -54,39 +54,35 @@ public class PipeSchemaRegionSinkMetricsTest {
     when(subtask.getTaskID()).thenReturn(taskId);
     when(subtask.getAttributeSortedString()).thenReturn("schema_test");
     when(subtask.getCreationTime()).thenReturn(1L);
-    when(
-            metricService.getOrCreateRate(
-                eq(Metric.PIPE_CONNECTOR_SCHEMA_TRANSFER.toString()),
-                eq(MetricLevel.IMPORTANT),
-                eq(Tag.NAME.toString()),
-                eq("schema_test"),
-                eq(Tag.CREATION_TIME.toString()),
-                eq("1")))
+    when(metricService.getOrCreateRate(
+            eq(Metric.PIPE_CONNECTOR_SCHEMA_TRANSFER.toString()),
+            eq(MetricLevel.IMPORTANT),
+            eq(Tag.NAME.toString()),
+            eq("schema_test"),
+            eq(Tag.CREATION_TIME.toString()),
+            eq("1")))
         .thenReturn(rate);
-    when(
-            metricService.getOrCreateHistogram(
-                eq(Metric.PIPE_SCHEMA_BATCH_SIZE.toString()),
-                eq(MetricLevel.IMPORTANT),
-                eq(Tag.NAME.toString()),
-                eq("schema_test"),
-                eq(Tag.CREATION_TIME.toString()),
-                eq("1")))
+    when(metricService.getOrCreateHistogram(
+            eq(Metric.PIPE_SCHEMA_BATCH_SIZE.toString()),
+            eq(MetricLevel.IMPORTANT),
+            eq(Tag.NAME.toString()),
+            eq("schema_test"),
+            eq(Tag.CREATION_TIME.toString()),
+            eq("1")))
         .thenReturn(batchSizeHistogram);
-    when(
-            metricService.getOrCreateHistogram(
-                eq(Metric.PIPE_SCHEMA_BATCH_TIME_COST.toString()),
-                eq(MetricLevel.IMPORTANT),
-                eq(Tag.NAME.toString()),
-                eq("schema_test"),
-                eq(Tag.CREATION_TIME.toString()),
-                eq("1")))
+    when(metricService.getOrCreateHistogram(
+            eq(Metric.PIPE_SCHEMA_BATCH_TIME_COST.toString()),
+            eq(MetricLevel.IMPORTANT),
+            eq(Tag.NAME.toString()),
+            eq("schema_test"),
+            eq(Tag.CREATION_TIME.toString()),
+            eq("1")))
         .thenReturn(batchTimeHistogram);
-    when(
-            metricService.getOrCreateHistogram(
-                eq(Metric.PIPE_CONNECTOR_BATCH_SIZE.toString()),
-                eq(MetricLevel.IMPORTANT),
-                eq(Tag.NAME.toString()),
-                eq("schema_test")))
+    when(metricService.getOrCreateHistogram(
+            eq(Metric.PIPE_CONNECTOR_BATCH_SIZE.toString()),
+            eq(MetricLevel.IMPORTANT),
+            eq(Tag.NAME.toString()),
+            eq("schema_test")))
         .thenReturn(eventSizeHistogram);
 
     final PipeSchemaRegionSinkMetrics metrics = PipeSchemaRegionSinkMetrics.getInstance();
