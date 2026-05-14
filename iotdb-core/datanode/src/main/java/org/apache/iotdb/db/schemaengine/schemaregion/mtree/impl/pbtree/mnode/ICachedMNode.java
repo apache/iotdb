@@ -24,6 +24,14 @@ import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.lock.Lock
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memory.cache.CacheEntry;
 
 public interface ICachedMNode extends IMNode<ICachedMNode> {
+  boolean hasDeviceDescendant();
+
+  void setHasDeviceDescendant(boolean hasDeviceDescendant);
+
+  boolean isDeviceDescendantComputed();
+
+  void setDeviceDescendantComputed(boolean deviceDescendantComputed);
+
   CacheEntry getCacheEntry();
 
   void setCacheEntry(CacheEntry cacheEntry);

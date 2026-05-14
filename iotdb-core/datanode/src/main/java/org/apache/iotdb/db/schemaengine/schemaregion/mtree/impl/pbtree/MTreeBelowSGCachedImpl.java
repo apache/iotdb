@@ -137,6 +137,71 @@ public class MTreeBelowSGCachedImpl {
   private final int levelOfDB;
   private final CachedSchemaRegionStatistics regionStatistics;
 
+  private IDeviceMNode<ICachedMNode> setToEntityAndUpdateFlags(final ICachedMNode node)
+      throws MetadataException {
+    final boolean wasDevice = node.isDevice();
+    if (!node.isDeviceDescendantComputed()) {
+      node.setHasDeviceDescendant(hasDeviceDescendantInChildren(node));
+      node.setDeviceDescendantComputed(true);
+    }
+    final IDeviceMNode<ICachedMNode> deviceMNode = store.setToEntity(node);
+    if (!wasDevice) {
+      markAncestorsHavingDeviceDescendant(node);
+    }
+    return deviceMNode;
+  }
+
+  private void markAncestorsHavingDeviceDescendant(final ICachedMNode deviceNode) {
+    ICachedMNode current = deviceNode.getParent();
+    while (current != null && !current.hasDeviceDescendant()) {
+      current.setHasDeviceDescendant(true);
+      current.setDeviceDescendantComputed(true);
+      current = current.getParent();
+    }
+  }
+
+  private boolean hasDeviceDescendantInChildren(final ICachedMNode node) throws MetadataException {
+    final IMNodeIterator<ICachedMNode> iterator = store.getChildrenIterator(node);
+    try {
+      while (iterator.hasNext()) {
+        final ICachedMNode child = iterator.next();
+        try {
+          if (child.isDevice() || hasDeviceDescendant(child)) {
+            return true;
+          }
+        } finally {
+          unPinMNode(child);
+        }
+      }
+      return false;
+    } finally {
+      iterator.close();
+    }
+  }
+
+  private boolean hasDeviceDescendant(final ICachedMNode node) throws MetadataException {
+    if (node.isMeasurement()) {
+      node.setHasDeviceDescendant(false);
+      node.setDeviceDescendantComputed(true);
+      return false;
+    }
+    if (!node.isDeviceDescendantComputed()) {
+      node.setHasDeviceDescendant(hasDeviceDescendantInChildren(node));
+      node.setDeviceDescendantComputed(true);
+    }
+    return node.hasDeviceDescendant();
+  }
+
+  private void refreshAncestorsHavingDeviceDescendant(ICachedMNode startNode)
+      throws MetadataException {
+    ICachedMNode current = startNode;
+    while (current != null) {
+      current.setHasDeviceDescendant(hasDeviceDescendantInChildren(current));
+      current.setDeviceDescendantComputed(true);
+      current = current.getParent();
+    }
+  }
+
   // region MTree initialization, clear and serialization
   public MTreeBelowSGCachedImpl(
       PartialPath storageGroupPath,
@@ -353,7 +418,7 @@ public class MTreeBelowSGCachedImpl {
           if (device.isDevice()) {
             entityMNode = device.getAsDeviceMNode();
           } else {
-            entityMNode = store.setToEntity(device);
+            entityMNode = setToEntityAndUpdateFlags(device);
             device = entityMNode.getAsMNode();
           }
 
@@ -458,7 +523,7 @@ public class MTreeBelowSGCachedImpl {
           if (device.isDevice()) {
             entityMNode = device.getAsDeviceMNode();
           } else {
-            entityMNode = store.setToEntity(device);
+            entityMNode = setToEntityAndUpdateFlags(device);
             entityMNode.setAligned(true);
             device = entityMNode.getAsMNode();
           }
@@ -703,6 +768,7 @@ public class MTreeBelowSGCachedImpl {
 
         if (!hasMeasurement) {
           curNode = store.setToInternal(entityMNode);
+          refreshAncestorsHavingDeviceDescendant(curNode.getParent());
         } else if (!hasNonViewMeasurement) {
           // has some measurement but they are all logical view
           store.updateMNode(entityMNode.getAsMNode(), o -> o.getAsDeviceMNode().setAligned(null));
@@ -1075,7 +1141,7 @@ public class MTreeBelowSGCachedImpl {
           if (device.isDevice()) {
             entityMNode = device.getAsDeviceMNode();
           } else {
-            entityMNode = store.setToEntity(device);
+            entityMNode = setToEntityAndUpdateFlags(device);
             // this parent has no measurement before. The leafName is his first child who is a
             // logical
             // view.
@@ -1197,7 +1263,7 @@ public class MTreeBelowSGCachedImpl {
         if (cur.isDevice()) {
           entityMNode = cur.getAsDeviceMNode();
         } else {
-          entityMNode = store.setToEntity(cur);
+          entityMNode = setToEntityAndUpdateFlags(cur);
         }
 
         if (entityMNode.isUseTemplate()) {
@@ -1243,7 +1309,7 @@ public class MTreeBelowSGCachedImpl {
       if (cur.isDevice()) {
         entityMNode = cur.getAsDeviceMNode();
       } else {
-        entityMNode = store.setToEntity(cur);
+        entityMNode = setToEntityAndUpdateFlags(cur);
       }
 
       store.updateMNode(

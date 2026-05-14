@@ -33,11 +33,11 @@ import org.apache.iotdb.commons.schema.node.utils.IMNodeIterator;
 import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.commons.schema.tree.AbstractTreeVisitor;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.IMTreeStore;
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.MemMTreeStore;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.IMemMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.iterator.MNodeIterator;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.ReentrantReadOnlyCachedMTreeStore;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memory.ReleaseFlushMonitor;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.MNodeUtils;
 
 import org.slf4j.Logger;
@@ -252,7 +252,10 @@ public abstract class Traverser<R, N extends IMNode<N>> extends AbstractTreeVisi
     if (parent.isAboveDatabase()) {
       return new MNodeIterator<>(parent.getChildren().values().iterator());
     } else {
-      final Iterator<N> optimizedIterator = getOptimizedChildrenIterator(parent);
+      final Iterator<N> optimizedIterator =
+          shouldUseLeafDeviceMeasurementOptimization()
+              ? getOptimizedChildrenIterator(parent)
+              : null;
       if (optimizedIterator != null) {
         return optimizedIterator;
       }
@@ -260,14 +263,25 @@ public abstract class Traverser<R, N extends IMNode<N>> extends AbstractTreeVisi
     }
   }
 
+  protected boolean shouldUseLeafDeviceMeasurementOptimization() {
+    return false;
+  }
+
   @SuppressWarnings("unchecked")
   private Iterator<N> getOptimizedChildrenIterator(final N parent) throws MetadataException {
-    if (!(store instanceof MemMTreeStore) || !parent.isDevice()) {
+    if (!parent.isDevice()) {
       return null;
     }
 
-    final IMemMNode memNode = (IMemMNode) parent;
-    if (memNode.hasDeviceDescendant()) {
+    if (parent instanceof IMemMNode) {
+      if (((IMemMNode) parent).hasDeviceDescendant()) {
+        return null;
+      }
+    } else if (parent instanceof ICachedMNode) {
+      if (hasDeviceDescendant((ICachedMNode) parent)) {
+        return null;
+      }
+    } else {
       return null;
     }
 
@@ -304,6 +318,41 @@ public abstract class Traverser<R, N extends IMNode<N>> extends AbstractTreeVisi
       throw e;
     } catch (final Exception e) {
       throw new MetadataException(e.getMessage(), e);
+    }
+  }
+
+  @SuppressWarnings("unchecked")
+  private boolean hasDeviceDescendant(final ICachedMNode node) throws MetadataException {
+    if (node.isMeasurement()) {
+      node.setHasDeviceDescendant(false);
+      node.setDeviceDescendantComputed(true);
+      return false;
+    }
+    if (!node.isDeviceDescendantComputed()) {
+      node.setHasDeviceDescendant(hasDeviceDescendantInChildren(node));
+      node.setDeviceDescendantComputed(true);
+    }
+    return node.hasDeviceDescendant();
+  }
+
+  @SuppressWarnings("unchecked")
+  private boolean hasDeviceDescendantInChildren(final ICachedMNode node) throws MetadataException {
+    final IMTreeStore<ICachedMNode> cachedStore = (IMTreeStore<ICachedMNode>) store;
+    final IMNodeIterator<ICachedMNode> iterator = cachedStore.getChildrenIterator(node);
+    try {
+      while (iterator.hasNext()) {
+        final ICachedMNode child = iterator.next();
+        try {
+          if (child.isDevice() || hasDeviceDescendant(child)) {
+            return true;
+          }
+        } finally {
+          cachedStore.unPin(child);
+        }
+      }
+      return false;
+    } finally {
+      iterator.close();
     }
   }
 
