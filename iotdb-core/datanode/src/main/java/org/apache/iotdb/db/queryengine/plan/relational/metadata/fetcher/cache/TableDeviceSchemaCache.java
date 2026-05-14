@@ -482,7 +482,7 @@ public class TableDeviceSchemaCache {
           },
           cachedDeviceID -> {
             try {
-              return new PartialPath(cachedDeviceID).matchFullPath(devicePath);
+              return devicePath.matchFullPath(cachedDeviceID);
             } catch (final IllegalPathException e) {
               logger.warn(
                   "Illegal deviceID {} found in cache when invalidating by path {}, invalidate it anyway",
@@ -521,8 +521,8 @@ public class TableDeviceSchemaCache {
           cachedDeviceID -> {
             try {
               return isMultiLevelWildcardMeasurement
-                  ? devicePath.matchPrefixPath(new PartialPath(cachedDeviceID))
-                  : devicePath.matchFullPath(new PartialPath(cachedDeviceID));
+                  ? devicePath.matchPrefixPath(cachedDeviceID)
+                  : devicePath.matchFullPath(cachedDeviceID);
             } catch (final IllegalPathException e) {
               logger.warn(
                   "Illegal deviceID {} found in cache when invalidating by path {}, invalidate it anyway",

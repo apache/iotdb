@@ -368,11 +368,13 @@ public class SchemaEngine {
 
   public Map<Integer, Long> countDeviceNumBySchemaRegion(final List<Integer> schemaIds) {
     final Map<Integer, Long> deviceNum = new HashMap<>();
+    final java.util.Collection<Integer> targetSchemaIds =
+        schemaIds.size() > 1 ? new java.util.HashSet<>(schemaIds) : schemaIds;
 
     schemaRegionMap.entrySet().stream()
         .filter(
             entry ->
-                schemaIds.contains(entry.getKey().getId())
+                targetSchemaIds.contains(entry.getKey().getId())
                     && SchemaRegionConsensusImpl.getInstance().isLeader(entry.getKey()))
         .forEach(
             entry ->
@@ -384,10 +386,12 @@ public class SchemaEngine {
 
   public Map<Integer, Long> countTimeSeriesNumBySchemaRegion(final List<Integer> schemaIds) {
     final Map<Integer, Long> timeSeriesNum = new HashMap<>();
+    final java.util.Collection<Integer> targetSchemaIds =
+        schemaIds.size() > 1 ? new java.util.HashSet<>(schemaIds) : schemaIds;
     schemaRegionMap.entrySet().stream()
         .filter(
             entry ->
-                schemaIds.contains(entry.getKey().getId())
+                targetSchemaIds.contains(entry.getKey().getId())
                     && SchemaRegionConsensusImpl.getInstance().isLeader(entry.getKey())
                     && !entry
                         .getValue()

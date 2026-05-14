@@ -34,6 +34,8 @@ import java.util.List;
 /** Serializer for PreparedStatement parameters. */
 public class PreparedParameterSerde {
 
+  private static final char[] HEX_DIGITS = "0123456789ABCDEF".toCharArray();
+
   public static class DeserializedParam {
     public final TSDataType type;
     public final Object value;
@@ -166,10 +168,13 @@ public class PreparedParameterSerde {
 
   /** Convert byte array to hexadecimal string representation. */
   public static String bytesToHex(byte[] bytes) {
-    StringBuilder sb = new StringBuilder(bytes.length * 2);
-    for (byte b : bytes) {
-      sb.append(String.format("%02X", b));
+    char[] chars = new char[bytes.length * 2];
+    for (int i = 0; i < bytes.length; i++) {
+      int value = bytes[i] & 0xFF;
+      int index = i * 2;
+      chars[index] = HEX_DIGITS[value >>> 4];
+      chars[index + 1] = HEX_DIGITS[value & 0x0F];
     }
-    return sb.toString();
+    return new String(chars);
   }
 }
