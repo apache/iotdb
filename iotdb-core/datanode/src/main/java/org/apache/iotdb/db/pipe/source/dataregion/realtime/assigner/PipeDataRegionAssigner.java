@@ -66,6 +66,9 @@ public class PipeDataRegionAssigner implements Closeable {
 
   private Boolean isTableModel;
 
+  private int listenToTsFileSourceCount = 0;
+  private int listenToInsertNodeSourceCount = 0;
+
   private final PipeEventCounter eventCounter = new PipeDataRegionEventCounter();
 
   public int getDataRegionId() {
@@ -228,12 +231,32 @@ public class PipeDataRegionAssigner implements Closeable {
             });
   }
 
-  public void startAssignTo(final PipeRealtimeDataRegionSource source) {
+  public synchronized void startAssignTo(final PipeRealtimeDataRegionSource source) {
     matcher.register(source);
+    if (source.isNeedListenToTsFile()) {
+      listenToTsFileSourceCount++;
+    }
+    if (source.isNeedListenToInsertNode()) {
+      listenToInsertNodeSourceCount++;
+    }
   }
 
-  public void stopAssignTo(final PipeRealtimeDataRegionSource source) {
+  public synchronized void stopAssignTo(final PipeRealtimeDataRegionSource source) {
     matcher.deregister(source);
+    if (source.isNeedListenToTsFile()) {
+      listenToTsFileSourceCount--;
+    }
+    if (source.isNeedListenToInsertNode()) {
+      listenToInsertNodeSourceCount--;
+    }
+  }
+
+  public synchronized boolean shouldListenToTsFile() {
+    return listenToTsFileSourceCount > 0;
+  }
+
+  public synchronized boolean shouldListenToInsertNode() {
+    return listenToInsertNodeSourceCount > 0;
   }
 
   public void invalidateCache() {
