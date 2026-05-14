@@ -331,7 +331,8 @@ public class TsFileInsertionEventParserTest {
               Long.MAX_VALUE,
               null,
               null,
-              false, false)) {
+              false,
+              false)) {
         for (final Pair<Tablet, Boolean> tabletWithIsAligned : parser.toTabletWithIsAligneds()) {
           final Tablet tablet = tabletWithIsAligned.getLeft();
           ++tabletCount;
@@ -493,7 +494,8 @@ public class TsFileInsertionEventParserTest {
               null,
               null,
               null,
-              false, false)) {
+              false,
+              false)) {
         stats =
             collectTabletInsertionEventParserPerformanceStats(
                 parser.toTabletInsertionEvents(), true);
