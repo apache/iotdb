@@ -19,8 +19,10 @@
 
 package org.apache.iotdb.session.subscription.consumer.base;
 
+import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
 
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -51,5 +53,27 @@ public interface SubscriptionMessageProcessor {
   /** Returns the number of messages currently buffered by this processor. */
   default int getBufferedCount() {
     return 0;
+  }
+
+  /** Returns commit contexts for committable messages currently buffered by this processor. */
+  default List<SubscriptionCommitContext> getBufferedCommitContexts() {
+    return Collections.emptyList();
+  }
+
+  /** Clears all state that should not survive a seek operation. */
+  default void reset() {
+    flush();
+  }
+
+  /**
+   * Whether this processor can clear state for one topic without touching state for other topics.
+   */
+  default boolean supportsTopicScopedReset() {
+    return false;
+  }
+
+  /** Clears state for the specified topic after a topic-scoped seek operation. */
+  default void reset(final String topicName) {
+    reset();
   }
 }

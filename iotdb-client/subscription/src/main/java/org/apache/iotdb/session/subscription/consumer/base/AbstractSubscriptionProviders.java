@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionConnectionException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
+import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeHeartbeatResp;
 
 import org.slf4j.Logger;
@@ -245,7 +246,9 @@ final class AbstractSubscriptionProviders {
   private void heartbeatInternal(final AbstractSubscriptionConsumer consumer) {
     for (final AbstractSubscriptionProvider provider : getAllProviders()) {
       try {
-        final PipeSubscribeHeartbeatResp resp = provider.heartbeat();
+        final List<SubscriptionCommitContext> processorBufferedCommitContexts =
+            consumer.getProcessorBufferedCommitContexts(provider.getDataNodeId());
+        final PipeSubscribeHeartbeatResp resp = provider.heartbeat(processorBufferedCommitContexts);
         // update subscribed topics
         consumer.subscribedTopics = resp.getTopics();
         // unsubscribe completed topics

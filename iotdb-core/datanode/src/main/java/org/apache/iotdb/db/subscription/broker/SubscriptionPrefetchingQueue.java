@@ -733,6 +733,41 @@ public abstract class SubscriptionPrefetchingQueue {
   /////////////////////////////// commit ///////////////////////////////
 
   /**
+   * Refreshes the in-flight lease for an event held by a client-side processor.
+   *
+   * @return {@code true} if the lease was refreshed
+   */
+  public boolean refreshInFlightEventLease(
+      final String consumerId, final SubscriptionCommitContext commitContext) {
+    acquireReadLock();
+    try {
+      return !isClosed() && refreshInFlightEventLeaseInternal(consumerId, commitContext);
+    } finally {
+      releaseReadLock();
+    }
+  }
+
+  private boolean refreshInFlightEventLeaseInternal(
+      final String consumerId, final SubscriptionCommitContext commitContext) {
+    final AtomicBoolean refreshed = new AtomicBoolean(false);
+    inFlightEvents.compute(
+        new Pair<>(consumerId, commitContext),
+        (key, ev) -> {
+          if (Objects.isNull(ev)) {
+            return null;
+          }
+          if (ev.isCommitted()) {
+            ev.cleanUp(false);
+            return null;
+          }
+          ev.recordLastPolledTimestamp();
+          refreshed.set(true);
+          return ev;
+        });
+    return refreshed.get();
+  }
+
+  /**
    * @return {@code true} if ack successfully
    */
   public boolean ack(final String consumerId, final SubscriptionCommitContext commitContext) {

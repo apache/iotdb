@@ -19,14 +19,18 @@
 
 package org.apache.iotdb.session.subscription.consumer.base;
 
+import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessageType;
 
 import org.apache.tsfile.write.record.Tablet;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.PriorityQueue;
 
 /**
@@ -64,10 +68,10 @@ public class WatermarkProcessor implements SubscriptionMessageProcessor {
   private final PriorityQueue<TimestampedMessage> buffer =
       new PriorityQueue<>((a, b) -> Long.compare(a.maxTimestamp, b.maxTimestamp));
 
-  // Track latest timestamp per source (deviceId/tableName)
-  private final java.util.Map<String, Long> latestPerSource = new java.util.HashMap<>();
-  // Track wall-clock time when each source's timestamp last increased
-  private final java.util.Map<String, Long> lastAdvancedTimeMs = new java.util.HashMap<>();
+  // topicName -> sourceKey -> latest timestamp
+  private final Map<String, Map<String, Long>> latestPerSourceByTopic = new HashMap<>();
+  // topicName -> sourceKey -> wall-clock time when the source timestamp last increased
+  private final Map<String, Map<String, Long>> lastAdvancedTimeMsByTopic = new HashMap<>();
   private long lastEmitTimeMs = System.currentTimeMillis();
   private long bufferedBytes = 0;
 
@@ -115,12 +119,12 @@ public class WatermarkProcessor implements SubscriptionMessageProcessor {
       // They serve as heartbeats and advance per-source tracking only when the timestamp
       // actually increases.
       if (message.getMessageType() == SubscriptionMessageType.WATERMARK.getType()) {
-        final String regionKey =
-            "region-"
-                + message.getCommitContext().getDataNodeId()
-                + "-"
-                + message.getCommitContext().getRegionId();
-        advanceSourceTimestamp(regionKey, message.getWatermarkTimestamp(), now);
+        final SubscriptionCommitContext commitContext = message.getCommitContext();
+        advanceSourceTimestamp(
+            commitContext.getTopicName(),
+            getSourceKey(commitContext),
+            message.getWatermarkTimestamp(),
+            now);
         continue; // Do not buffer system events
       }
 
@@ -133,19 +137,7 @@ public class WatermarkProcessor implements SubscriptionMessageProcessor {
 
     // Compute watermark = min(latest per active source) - maxOutOfOrderness
     // Sources whose timestamp has not increased for staleSourceTimeoutMs are excluded.
-    if (!latestPerSource.isEmpty()) {
-      long minLatest = Long.MAX_VALUE;
-      for (final java.util.Map.Entry<String, Long> entry : latestPerSource.entrySet()) {
-        final Long lastAdv = lastAdvancedTimeMs.get(entry.getKey());
-        if (lastAdv != null && (now - lastAdv) <= staleSourceTimeoutMs) {
-          minLatest = Math.min(minLatest, entry.getValue());
-        }
-      }
-      if (minLatest != Long.MAX_VALUE) {
-        watermark = minLatest - maxOutOfOrdernessMs;
-      }
-      // If all sources are stale, watermark stays unchanged and timeout will handle it.
-    }
+    updateWatermarkIfAnyActiveSource(now);
 
     // Emit messages whose maxTimestamp <= watermark
     final List<SubscriptionMessage> emitted = emit(watermark);
@@ -175,6 +167,50 @@ public class WatermarkProcessor implements SubscriptionMessageProcessor {
   @Override
   public int getBufferedCount() {
     return buffer.size();
+  }
+
+  @Override
+  public List<SubscriptionCommitContext> getBufferedCommitContexts() {
+    final List<SubscriptionCommitContext> result = new ArrayList<>(buffer.size());
+    for (final TimestampedMessage timestampedMessage : buffer) {
+      final SubscriptionCommitContext commitContext = timestampedMessage.message.getCommitContext();
+      if (commitContext != null && commitContext.isCommittable()) {
+        result.add(commitContext);
+      }
+    }
+    return result;
+  }
+
+  @Override
+  public void reset() {
+    buffer.clear();
+    latestPerSourceByTopic.clear();
+    lastAdvancedTimeMsByTopic.clear();
+    lastEmitTimeMs = System.currentTimeMillis();
+    bufferedBytes = 0;
+    watermark = Long.MIN_VALUE;
+  }
+
+  @Override
+  public boolean supportsTopicScopedReset() {
+    return true;
+  }
+
+  @Override
+  public void reset(final String topicName) {
+    final Iterator<TimestampedMessage> iterator = buffer.iterator();
+    while (iterator.hasNext()) {
+      final TimestampedMessage timestampedMessage = iterator.next();
+      final SubscriptionCommitContext commitContext = timestampedMessage.message.getCommitContext();
+      if (Objects.nonNull(commitContext)
+          && Objects.equals(topicName, commitContext.getTopicName())) {
+        bufferedBytes -= timestampedMessage.estimatedSize;
+        iterator.remove();
+      }
+    }
+    latestPerSourceByTopic.remove(topicName);
+    lastAdvancedTimeMsByTopic.remove(topicName);
+    recomputeWatermark(System.currentTimeMillis());
   }
 
   /** Returns the current watermark value. */
@@ -225,10 +261,8 @@ public class WatermarkProcessor implements SubscriptionMessageProcessor {
   private void updateSourceTimestamp(
       final SubscriptionMessage message, final long maxTs, final long nowMs) {
     // Use region-based key so data events and WATERMARK events share the same key namespace.
-    final String regionId = message.getCommitContext().getRegionId();
-    final int dataNodeId = message.getCommitContext().getDataNodeId();
-    final String key = "region-" + dataNodeId + "-" + regionId;
-    advanceSourceTimestamp(key, maxTs, nowMs);
+    final SubscriptionCommitContext commitContext = message.getCommitContext();
+    advanceSourceTimestamp(commitContext.getTopicName(), getSourceKey(commitContext), maxTs, nowMs);
   }
 
   /**
@@ -236,12 +270,53 @@ public class WatermarkProcessor implements SubscriptionMessageProcessor {
    * when the timestamp actually increases, so that stale sources (whose timestamps don't advance)
    * are eventually excluded from watermark calculation.
    */
-  private void advanceSourceTimestamp(final String key, final long newTs, final long nowMs) {
+  private void advanceSourceTimestamp(
+      final String topicName, final String key, final long newTs, final long nowMs) {
+    final Map<String, Long> latestPerSource =
+        latestPerSourceByTopic.computeIfAbsent(topicName, ignored -> new HashMap<>());
+    final Map<String, Long> lastAdvancedTimeMs =
+        lastAdvancedTimeMsByTopic.computeIfAbsent(topicName, ignored -> new HashMap<>());
     final Long oldTs = latestPerSource.get(key);
     if (oldTs == null || newTs > oldTs) {
       latestPerSource.put(key, newTs);
       lastAdvancedTimeMs.put(key, nowMs);
     }
+  }
+
+  private void updateWatermarkIfAnyActiveSource(final long nowMs) {
+    final long minLatest = getMinLatestActiveSourceTimestamp(nowMs);
+    if (minLatest != Long.MAX_VALUE) {
+      watermark = minLatest - maxOutOfOrdernessMs;
+    }
+    // If all sources are stale, watermark stays unchanged and timeout will handle it.
+  }
+
+  private void recomputeWatermark(final long nowMs) {
+    watermark = Long.MIN_VALUE;
+    updateWatermarkIfAnyActiveSource(nowMs);
+  }
+
+  private long getMinLatestActiveSourceTimestamp(final long nowMs) {
+    long minLatest = Long.MAX_VALUE;
+    for (final Map.Entry<String, Map<String, Long>> topicEntry :
+        latestPerSourceByTopic.entrySet()) {
+      final Map<String, Long> lastAdvancedTimeMs =
+          lastAdvancedTimeMsByTopic.get(topicEntry.getKey());
+      if (Objects.isNull(lastAdvancedTimeMs)) {
+        continue;
+      }
+      for (final Map.Entry<String, Long> sourceEntry : topicEntry.getValue().entrySet()) {
+        final Long lastAdv = lastAdvancedTimeMs.get(sourceEntry.getKey());
+        if (lastAdv != null && (nowMs - lastAdv) <= staleSourceTimeoutMs) {
+          minLatest = Math.min(minLatest, sourceEntry.getValue());
+        }
+      }
+    }
+    return minLatest;
+  }
+
+  private static String getSourceKey(final SubscriptionCommitContext commitContext) {
+    return "region-" + commitContext.getDataNodeId() + "-" + commitContext.getRegionId();
   }
 
   private static final class TimestampedMessage {

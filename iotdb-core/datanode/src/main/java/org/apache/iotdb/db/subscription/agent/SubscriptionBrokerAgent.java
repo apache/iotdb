@@ -240,6 +240,44 @@ public class SubscriptionBrokerAgent {
     return allSuccessful;
   }
 
+  public int refreshInFlightEventLeases(
+      final ConsumerConfig consumerConfig,
+      final List<SubscriptionCommitContext> processorBufferedCommitContexts) {
+    if (Objects.isNull(processorBufferedCommitContexts)
+        || processorBufferedCommitContexts.isEmpty()) {
+      return 0;
+    }
+
+    final String consumerGroupId = consumerConfig.getConsumerGroupId();
+    final String consumerId = consumerConfig.getConsumerId();
+    final SubscriptionBroker pipeBroker = consumerGroupIdToPipeBroker.get(consumerGroupId);
+    final ConsensusSubscriptionBroker consensusBroker =
+        consumerGroupIdToConsensusBroker.get(consumerGroupId);
+
+    final List<SubscriptionCommitContext> pipeContexts = new ArrayList<>();
+    final List<SubscriptionCommitContext> consensusContexts = new ArrayList<>();
+    for (final SubscriptionCommitContext ctx : processorBufferedCommitContexts) {
+      if (Objects.isNull(ctx) || Objects.isNull(ctx.getTopicName())) {
+        continue;
+      }
+      if (Objects.nonNull(consensusBroker)
+          && ConsensusSubscriptionSetupHandler.isConsensusBasedTopic(ctx.getTopicName())) {
+        consensusContexts.add(ctx);
+      } else {
+        pipeContexts.add(ctx);
+      }
+    }
+
+    int refreshedCount = 0;
+    if (Objects.nonNull(pipeBroker) && !pipeContexts.isEmpty()) {
+      refreshedCount += pipeBroker.refreshInFlightEventLeases(consumerId, pipeContexts);
+    }
+    if (Objects.nonNull(consensusBroker) && !consensusContexts.isEmpty()) {
+      refreshedCount += consensusBroker.refreshInFlightEventLeases(consumerId, consensusContexts);
+    }
+    return refreshedCount;
+  }
+
   public Map<String, TopicProgress> getConsensusCommittedProgressByTopic(
       final ConsumerConfig consumerConfig,
       final List<SubscriptionCommitContext> acceptedCommitContexts,

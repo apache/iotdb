@@ -266,6 +266,29 @@ public class ConsensusSubscriptionBroker implements ISubscriptionBroker {
   }
 
   @Override
+  public int refreshInFlightEventLeases(
+      final String consumerId, final List<SubscriptionCommitContext> commitContexts) {
+    int refreshedCount = 0;
+    for (final SubscriptionCommitContext commitContext : commitContexts) {
+      final String topicName = commitContext.getTopicName();
+      final List<ConsensusPrefetchingQueue> queues =
+          topicNameToConsensusPrefetchingQueues.get(topicName);
+      if (Objects.isNull(queues) || queues.isEmpty()) {
+        continue;
+      }
+
+      final ConsensusPrefetchingQueue assignedQueue =
+          getAssignedQueueForConsumer(
+              queues, topicName, consumerId, commitContext.getRegionId(), "refresh lease");
+      if (Objects.nonNull(assignedQueue)
+          && assignedQueue.refreshInFlightEventLease(consumerId, commitContext)) {
+        refreshedCount++;
+      }
+    }
+    return refreshedCount;
+  }
+
+  @Override
   public boolean isCommitContextOutdated(final SubscriptionCommitContext commitContext) {
     final String topicName = commitContext.getTopicName();
     final List<ConsensusPrefetchingQueue> queues =

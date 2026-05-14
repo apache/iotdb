@@ -21,6 +21,7 @@ package org.apache.iotdb.session.subscription.consumer.base;
 
 import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
+import org.apache.iotdb.rpc.subscription.exception.SubscriptionParameterNotValidException;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 import org.apache.iotdb.rpc.subscription.payload.poll.TopicProgress;
 import org.apache.iotdb.session.subscription.consumer.AsyncCommitCallback;
@@ -43,6 +44,7 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.ScheduledFuture;
@@ -70,6 +72,9 @@ public abstract class AbstractSubscriptionPullConsumer extends AbstractSubscript
   private final long autoCommitIntervalMs;
 
   private final List<SubscriptionMessageProcessor> processors = new ArrayList<>();
+
+  private final Set<SubscriptionCommitContext> processorBufferedCommitContexts =
+      ConcurrentHashMap.newKeySet();
 
   private SortedMap<Long, Set<SubscriptionCommitContext>> uncommittedCommitContexts;
 
@@ -150,6 +155,7 @@ public abstract class AbstractSubscriptionPullConsumer extends AbstractSubscript
           flushed.addAll(out);
         }
       }
+      refreshProcessorBufferedCommitContexts();
       if (!flushed.isEmpty() && autoCommit) {
         try {
           commitSync(flushed);
@@ -225,6 +231,7 @@ public abstract class AbstractSubscriptionPullConsumer extends AbstractSubscript
       for (final SubscriptionMessageProcessor processor : processors) {
         processed = processor.process(processed);
       }
+      refreshProcessorBufferedCommitContexts();
     }
 
     // Update watermark timestamp before stripping watermark events
@@ -277,6 +284,79 @@ public abstract class AbstractSubscriptionPullConsumer extends AbstractSubscript
       final SubscriptionMessageProcessor processor) {
     processors.add(processor);
     return this;
+  }
+
+  @Override
+  List<SubscriptionCommitContext> getProcessorBufferedCommitContexts(final int dataNodeId) {
+    if (processorBufferedCommitContexts.isEmpty()) {
+      return Collections.emptyList();
+    }
+
+    final List<SubscriptionCommitContext> result = new ArrayList<>();
+    for (final SubscriptionCommitContext commitContext : processorBufferedCommitContexts) {
+      if (Objects.nonNull(commitContext) && commitContext.getDataNodeId() == dataNodeId) {
+        result.add(commitContext);
+      }
+    }
+    return result;
+  }
+
+  private void refreshProcessorBufferedCommitContexts() {
+    processorBufferedCommitContexts.clear();
+    for (final SubscriptionMessageProcessor processor : processors) {
+      final List<SubscriptionCommitContext> bufferedCommitContexts =
+          processor.getBufferedCommitContexts();
+      if (Objects.isNull(bufferedCommitContexts)) {
+        continue;
+      }
+      for (final SubscriptionCommitContext commitContext : bufferedCommitContexts) {
+        if (Objects.nonNull(commitContext) && commitContext.isCommittable()) {
+          processorBufferedCommitContexts.add(commitContext);
+        }
+      }
+    }
+  }
+
+  private void ensureTopicScopedProcessorResetSupported(final String topicName)
+      throws SubscriptionException {
+    if (processors.isEmpty() || subscribedTopics.size() <= 1) {
+      return;
+    }
+
+    for (final SubscriptionMessageProcessor processor : processors) {
+      if (!processor.supportsTopicScopedReset()) {
+        throw new SubscriptionParameterNotValidException(
+            String.format(
+                "SubscriptionPullConsumer %s cannot seek topic %s while subscribed to multiple topics because processor %s does not support topic-scoped reset",
+                this, topicName, processor.getClass().getName()));
+      }
+    }
+  }
+
+  private void resetProcessors(final String topicName) {
+    for (final SubscriptionMessageProcessor processor : processors) {
+      if (processor.supportsTopicScopedReset()) {
+        processor.reset(topicName);
+      } else {
+        processor.reset();
+      }
+    }
+    refreshProcessorBufferedCommitContexts();
+  }
+
+  private void clearUncommittedCommitContexts(final String topicName) {
+    for (final Map.Entry<Long, Set<SubscriptionCommitContext>> entry :
+        uncommittedCommitContexts.entrySet()) {
+      entry
+          .getValue()
+          .removeIf(
+              commitContext ->
+                  Objects.nonNull(commitContext)
+                      && Objects.equals(topicName, commitContext.getTopicName()));
+      if (entry.getValue().isEmpty()) {
+        uncommittedCommitContexts.remove(entry.getKey());
+      }
+    }
   }
 
   /**
@@ -347,35 +427,47 @@ public abstract class AbstractSubscriptionPullConsumer extends AbstractSubscript
    */
   @Override
   public void seekToBeginning(final String topicName) throws SubscriptionException {
-    super.seekToBeginning(topicName);
+    final String parsedTopicName = IdentifierUtils.checkAndParseIdentifier(topicName);
+    ensureTopicScopedProcessorResetSupported(parsedTopicName);
+    super.seekToBeginning(parsedTopicName);
+    resetProcessors(parsedTopicName);
     if (autoCommit) {
-      uncommittedCommitContexts.clear();
+      clearUncommittedCommitContexts(parsedTopicName);
     }
   }
 
   @Override
   public void seekToEnd(final String topicName) throws SubscriptionException {
-    super.seekToEnd(topicName);
+    final String parsedTopicName = IdentifierUtils.checkAndParseIdentifier(topicName);
+    ensureTopicScopedProcessorResetSupported(parsedTopicName);
+    super.seekToEnd(parsedTopicName);
+    resetProcessors(parsedTopicName);
     if (autoCommit) {
-      uncommittedCommitContexts.clear();
+      clearUncommittedCommitContexts(parsedTopicName);
     }
   }
 
   @Override
   public void seek(final String topicName, final TopicProgress topicProgress)
       throws SubscriptionException {
-    super.seek(topicName, topicProgress);
+    final String parsedTopicName = IdentifierUtils.checkAndParseIdentifier(topicName);
+    ensureTopicScopedProcessorResetSupported(parsedTopicName);
+    super.seek(parsedTopicName, topicProgress);
+    resetProcessors(parsedTopicName);
     if (autoCommit) {
-      uncommittedCommitContexts.clear();
+      clearUncommittedCommitContexts(parsedTopicName);
     }
   }
 
   @Override
   public void seekAfter(final String topicName, final TopicProgress topicProgress)
       throws SubscriptionException {
-    super.seekAfter(topicName, topicProgress);
+    final String parsedTopicName = IdentifierUtils.checkAndParseIdentifier(topicName);
+    ensureTopicScopedProcessorResetSupported(parsedTopicName);
+    super.seekAfter(parsedTopicName, topicProgress);
+    resetProcessors(parsedTopicName);
     if (autoCommit) {
-      uncommittedCommitContexts.clear();
+      clearUncommittedCommitContexts(parsedTopicName);
     }
   }
 

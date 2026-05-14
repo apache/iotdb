@@ -266,9 +266,27 @@ public abstract class AbstractSubscriptionProvider {
   /////////////////////////////// subscription APIs ///////////////////////////////
 
   PipeSubscribeHeartbeatResp heartbeat() throws SubscriptionException {
+    return heartbeat(Collections.emptyList());
+  }
+
+  PipeSubscribeHeartbeatResp heartbeat(
+      final List<SubscriptionCommitContext> processorBufferedCommitContexts)
+      throws SubscriptionException {
+    final PipeSubscribeHeartbeatReq req;
+    try {
+      req = PipeSubscribeHeartbeatReq.toTPipeSubscribeReq(processorBufferedCommitContexts);
+    } catch (final IOException e) {
+      LOGGER.warn(
+          "IOException occurred when SubscriptionProvider {} serialize heartbeat request {}",
+          this,
+          processorBufferedCommitContexts,
+          e);
+      throw new SubscriptionRuntimeNonCriticalException(e.getMessage(), e);
+    }
+
     final TPipeSubscribeResp resp;
     try {
-      resp = getSessionConnection().pipeSubscribe(PipeSubscribeHeartbeatReq.toTPipeSubscribeReq());
+      resp = getSessionConnection().pipeSubscribe(req);
     } catch (final TException | IoTDBConnectionException e) {
       // Assume provider unavailable
       LOGGER.warn(

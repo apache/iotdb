@@ -36,13 +36,13 @@ import java.util.Map;
  * value for the same device/table. This is useful for CDC scenarios where a write only updates a
  * subset of columns, leaving others null; the processor fills them with the most recent value.
  *
- * <p>State is maintained per device (identified by {@code Tablet.getDeviceId()} for tree-model or
- * {@code Tablet.getTableName()} for table-model).
+ * <p>State is maintained per topic and per device (identified by {@code Tablet.getDeviceId()} for
+ * tree-model or {@code Tablet.getTableName()} for table-model).
  */
 public class ColumnAlignProcessor implements SubscriptionMessageProcessor {
 
-  // deviceKey -> (columnName -> lastValue)
-  private final Map<String, Map<String, Object>> lastValues = new HashMap<>();
+  // topicName -> deviceKey -> columnName -> lastValue
+  private final Map<String, Map<String, Map<String, Object>>> lastValues = new HashMap<>();
 
   @Override
   public List<SubscriptionMessage> process(final List<SubscriptionMessage> messages) {
@@ -50,9 +50,10 @@ public class ColumnAlignProcessor implements SubscriptionMessageProcessor {
       if (message.getMessageType() != SubscriptionMessageType.RECORD_HANDLER.getType()) {
         continue;
       }
+      final String topicName = message.getCommitContext().getTopicName();
       final Iterator<Tablet> tablets = message.getRecordTabletIterator();
       while (tablets.hasNext()) {
-        fillTablet(tablets.next());
+        fillTablet(topicName, tablets.next());
       }
     }
     return messages;
@@ -63,9 +64,27 @@ public class ColumnAlignProcessor implements SubscriptionMessageProcessor {
     return Collections.emptyList();
   }
 
-  private void fillTablet(final Tablet tablet) {
+  @Override
+  public void reset() {
+    lastValues.clear();
+  }
+
+  @Override
+  public boolean supportsTopicScopedReset() {
+    return true;
+  }
+
+  @Override
+  public void reset(final String topicName) {
+    lastValues.remove(topicName);
+  }
+
+  private void fillTablet(final String topicName, final Tablet tablet) {
     final String deviceKey = getDeviceKey(tablet);
-    final Map<String, Object> cache = lastValues.computeIfAbsent(deviceKey, k -> new HashMap<>());
+    final Map<String, Object> cache =
+        lastValues
+            .computeIfAbsent(topicName, ignored -> new HashMap<>())
+            .computeIfAbsent(deviceKey, ignored -> new HashMap<>());
 
     final Object[] values = tablet.getValues();
     final BitMap[] bitMaps = tablet.getBitMaps();

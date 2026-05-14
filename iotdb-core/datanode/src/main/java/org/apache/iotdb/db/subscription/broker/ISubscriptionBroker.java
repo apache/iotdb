@@ -35,6 +35,8 @@ public interface ISubscriptionBroker {
   List<SubscriptionCommitContext> commit(
       String consumerId, List<SubscriptionCommitContext> commitContexts, boolean nack);
 
+  int refreshInFlightEventLeases(String consumerId, List<SubscriptionCommitContext> commitContexts);
+
   boolean isCommitContextOutdated(SubscriptionCommitContext commitContext);
 
   boolean executePrefetch(String topicName);

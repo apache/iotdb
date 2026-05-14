@@ -1496,6 +1496,10 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
 
   /////////////////////////////// heartbeat ///////////////////////////////
 
+  List<SubscriptionCommitContext> getProcessorBufferedCommitContexts(final int dataNodeId) {
+    return Collections.emptyList();
+  }
+
   private void submitHeartbeatWorker() {
     final ScheduledFuture<?>[] future = new ScheduledFuture<?>[1];
     future[0] =

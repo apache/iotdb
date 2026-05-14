@@ -333,7 +333,19 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
       return SUBSCRIPTION_MISSING_CONSUMER_RESP;
     }
 
-    // TODO: do something
+    final List<SubscriptionCommitContext> processorBufferedCommitContexts =
+        req.getProcessorBufferedCommitContexts();
+    final int refreshedCount =
+        SubscriptionAgent.broker()
+            .refreshInFlightEventLeases(consumerConfig, processorBufferedCommitContexts);
+    if (Objects.nonNull(processorBufferedCommitContexts)
+        && !processorBufferedCommitContexts.isEmpty()) {
+      LOGGER.debug(
+          "Subscription: consumer {} refreshed {} of {} processor-buffered commit context lease(s)",
+          consumerConfig,
+          refreshedCount,
+          processorBufferedCommitContexts.size());
+    }
 
     LOGGER.info("Subscription: consumer {} heartbeat successfully", consumerConfig);
 

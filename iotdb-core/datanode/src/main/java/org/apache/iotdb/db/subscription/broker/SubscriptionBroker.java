@@ -362,6 +362,24 @@ public class SubscriptionBroker implements ISubscriptionBroker {
   }
 
   @Override
+  public int refreshInFlightEventLeases(
+      final String consumerId, final List<SubscriptionCommitContext> commitContexts) {
+    int refreshedCount = 0;
+    for (final SubscriptionCommitContext commitContext : commitContexts) {
+      final String topicName = commitContext.getTopicName();
+      final SubscriptionPrefetchingQueue prefetchingQueue =
+          topicNameToPrefetchingQueue.get(topicName);
+      if (Objects.isNull(prefetchingQueue) || prefetchingQueue.isClosed()) {
+        continue;
+      }
+      if (prefetchingQueue.refreshInFlightEventLease(consumerId, commitContext)) {
+        refreshedCount++;
+      }
+    }
+    return refreshedCount;
+  }
+
+  @Override
   public boolean isCommitContextOutdated(final SubscriptionCommitContext commitContext) {
     final String topicName = commitContext.getTopicName();
     final SubscriptionPrefetchingQueue prefetchingQueue =
