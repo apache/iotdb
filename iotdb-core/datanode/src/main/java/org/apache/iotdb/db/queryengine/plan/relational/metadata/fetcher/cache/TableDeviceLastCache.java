@@ -46,11 +46,12 @@ public class TableDeviceLastCache {
   static final int INSTANCE_SIZE =
       (int) RamUsageEstimator.shallowSizeOfInstance(TableDeviceLastCache.class)
           + (int) RamUsageEstimator.shallowSizeOfInstance(ConcurrentHashMap.class);
+  private static final int LONG_INSTANCE_SIZE =
+      (int) RamUsageEstimator.shallowSizeOfInstance(Long.class);
 
   /**
    * Cache hit and the measurement is known to be null at the aligned last-row time. For stored
-   * entries, it may also be used as the value part of the time column's cached {@link
-   * TimeValuePair}.
+   * entries, it is only used as the value part of the time column's cached {@link TimeValuePair}.
    */
   public static final TsPrimitiveType EMPTY_PRIMITIVE_TYPE =
       new TsPrimitiveType() {
@@ -135,6 +136,8 @@ public class TableDeviceLastCache {
 
   // Time is seen as "" as a measurement
   private final Map<String, TimeValuePair> measurement2CachedLastMap = new ConcurrentHashMap<>();
+  private final Map<String, Long> measurement2CachedLastKnownNullTimeMap =
+      new ConcurrentHashMap<>();
   private final boolean isTableModel;
 
   TableDeviceLastCache(final boolean isTableModel) {
@@ -158,6 +161,9 @@ public class TableDeviceLastCache {
       // Removing table measurement, do not put cache
       if (Objects.isNull(finalMeasurement)) {
         continue;
+      }
+      if (isInvalidate && measurement2CachedLastKnownNullTimeMap.remove(finalMeasurement) != null) {
+        diff.addAndGet(-getKnownNullTimeEntrySize());
       }
       final TimeValuePair newPair = isInvalidate ? null : PLACEHOLDER_TIME_VALUE_PAIR;
 
@@ -197,10 +203,20 @@ public class TableDeviceLastCache {
     for (int i = 0; i < measurements.length; ++i) {
       if (Objects.isNull(timeValuePairs[i])) {
         if (invalidateNull) {
+          diff.addAndGet(removeKnownNullTime(measurements[i]));
           diff.addAndGet(
               -((int) RamUsageEstimator.sizeOf(measurements[i])
                   + getTvPairEntrySize(measurement2CachedLastMap.remove(measurements[i]))));
         }
+        continue;
+      }
+
+      if (isKnownNullAtAlignedTime(measurements[i], timeValuePairs[i])) {
+        if (lastTime < timeValuePairs[i].getTimestamp()) {
+          lastTime = timeValuePairs[i].getTimestamp();
+        }
+        diff.addAndGet(
+            tryUpdateKnownNullTime(measurements[i], timeValuePairs[i].getTimestamp()));
         continue;
       }
 
@@ -212,7 +228,10 @@ public class TableDeviceLastCache {
           measurements[i],
           (measurement, tvPair) -> {
             if (tvPair.getTimestamp() <= timeValuePairs[finalI].getTimestamp()) {
-              diff.addAndGet(getDiffSize(tvPair, timeValuePairs[finalI]));
+              diff.addAndGet(
+                  getDiffSize(tvPair, timeValuePairs[finalI])
+                      + clearKnownNullTimeIfCovered(
+                          measurement, timeValuePairs[finalI].getTimestamp()));
               return timeValuePairs[finalI];
             }
             return tvPair;
@@ -232,6 +251,7 @@ public class TableDeviceLastCache {
   int invalidate(final String measurement) {
     final AtomicInteger diff = new AtomicInteger();
     final AtomicLong time = new AtomicLong();
+    final AtomicLong knownNullTime = new AtomicLong(Long.MIN_VALUE);
     measurement2CachedLastMap.computeIfPresent(
         measurement,
         (s, timeValuePair) -> {
@@ -241,13 +261,18 @@ public class TableDeviceLastCache {
           time.set(timeValuePair.getTimestamp());
           return null;
         });
+    final Long removedKnownNullTime = measurement2CachedLastKnownNullTimeMap.remove(measurement);
+    if (removedKnownNullTime != null) {
+      diff.addAndGet(-getKnownNullTimeEntrySize());
+      knownNullTime.set(removedKnownNullTime);
+    }
     if (diff.get() == 0) {
       return 0;
     }
     measurement2CachedLastMap.computeIfPresent(
         "",
         (s, timeValuePair) -> {
-          if (timeValuePair.getTimestamp() <= time.get()) {
+          if (timeValuePair.getTimestamp() <= Math.max(time.get(), knownNullTime.get())) {
             diff.addAndGet((int) RamUsageEstimator.sizeOf(s) + getTvPairEntrySize(timeValuePair));
             return null;
           }
@@ -269,6 +294,13 @@ public class TableDeviceLastCache {
     return Objects.isNull(tvPair)
         || tvPair == PLACEHOLDER_TIME_VALUE_PAIR
         || tvPair == EMPTY_TIME_VALUE_PAIR;
+  }
+
+  private static boolean isKnownNullAtAlignedTime(
+      final @Nonnull String measurement, final @Nonnull TimeValuePair timeValuePair) {
+    return !measurement.isEmpty()
+        && timeValuePair != EMPTY_TIME_VALUE_PAIR
+        && timeValuePair.getValue() == EMPTY_PRIMITIVE_TYPE;
   }
 
   @Nullable
@@ -298,7 +330,9 @@ public class TableDeviceLastCache {
                     targetMeasurement -> {
                       if (!targetMeasurement.isEmpty()) {
                         return getLastRowTargetValue(
-                            alignTime, measurement2CachedLastMap.get(targetMeasurement));
+                            alignTime,
+                            measurement2CachedLastMap.get(targetMeasurement),
+                            measurement2CachedLastKnownNullTimeMap.get(targetMeasurement));
                       } else {
                         return new TsPrimitiveType.TsLong(alignTime);
                       }
@@ -308,7 +342,12 @@ public class TableDeviceLastCache {
 
   @Nullable
   private static TsPrimitiveType getLastRowTargetValue(
-      final long alignTime, final @Nullable TimeValuePair tvPair) {
+      final long alignTime,
+      final @Nullable TimeValuePair tvPair,
+      final @Nullable Long knownNullTime) {
+    if (knownNullTime != null && knownNullTime == alignTime) {
+      return EMPTY_PRIMITIVE_TYPE;
+    }
     if (Objects.isNull(tvPair) || tvPair == PLACEHOLDER_TIME_VALUE_PAIR) {
       return null;
     }
@@ -321,12 +360,58 @@ public class TableDeviceLastCache {
   int estimateSize() {
     return INSTANCE_SIZE
         + (int) RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY * measurement2CachedLastMap.size()
+        + (int)
+            RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY
+                * measurement2CachedLastKnownNullTimeMap.size()
         + measurement2CachedLastMap.entrySet().stream()
             .mapToInt(
                 entry ->
                     (isTableModel ? 0 : (int) RamUsageEstimator.sizeOf(entry.getKey()))
                         + TableDeviceLastCache.getTvPairSize(entry.getValue()))
-            .reduce(0, Integer::sum);
+            .reduce(0, Integer::sum)
+        + measurement2CachedLastKnownNullTimeMap.size() * LONG_INSTANCE_SIZE;
+  }
+
+  private int tryUpdateKnownNullTime(final @Nonnull String measurement, final long knownNullTime) {
+    final AtomicInteger diff = new AtomicInteger(0);
+    measurement2CachedLastMap.computeIfPresent(
+        measurement,
+        (measurementName, tvPair) -> {
+          measurement2CachedLastKnownNullTimeMap.compute(
+              measurementName,
+              (ignored, oldTime) -> {
+                if (oldTime == null) {
+                  diff.addAndGet(getKnownNullTimeEntrySize());
+                  return knownNullTime;
+                }
+                return oldTime < knownNullTime ? knownNullTime : oldTime;
+              });
+          return tvPair;
+        });
+    return diff.get();
+  }
+
+  private int clearKnownNullTimeIfCovered(
+      final @Nonnull String measurement, final long coveredTime) {
+    if (measurement.isEmpty()) {
+      return 0;
+    }
+    final Long knownNullTime = measurement2CachedLastKnownNullTimeMap.get(measurement);
+    if (knownNullTime != null && knownNullTime <= coveredTime) {
+      measurement2CachedLastKnownNullTimeMap.remove(measurement);
+      return -getKnownNullTimeEntrySize();
+    }
+    return 0;
+  }
+
+  private int removeKnownNullTime(final @Nonnull String measurement) {
+    return measurement2CachedLastKnownNullTimeMap.remove(measurement) == null
+        ? 0
+        : -getKnownNullTimeEntrySize();
+  }
+
+  private static int getKnownNullTimeEntrySize() {
+    return (int) RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY + LONG_INSTANCE_SIZE;
   }
 
   private static int getDiffSize(

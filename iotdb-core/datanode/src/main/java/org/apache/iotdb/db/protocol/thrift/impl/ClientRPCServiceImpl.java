@@ -1227,8 +1227,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           for (final Map.Entry<String, Pair<TSDataType, TimeValuePair>> measurementLastEntry :
               device2MeasurementLastEntry.getValue().entrySet()) {
             final TimeValuePair tvPair = measurementLastEntry.getValue().getRight();
-            if (tvPair != TableDeviceLastCache.EMPTY_TIME_VALUE_PAIR
-                && tvPair.getValue() != TableDeviceLastCache.EMPTY_PRIMITIVE_TYPE) {
+            if (tvPair != TableDeviceLastCache.EMPTY_TIME_VALUE_PAIR) {
               LastQueryUtil.appendLastValueRespectBlob(
                   builder,
                   tvPair.getTimestamp(),

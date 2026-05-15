@@ -307,9 +307,7 @@ public class TableDeviceSchemaCache {
    * @param deviceId {@link IDeviceID}
    * @param measurement the measurement to get
    * @return {@code null} iff cache miss, {@link TableDeviceLastCache#EMPTY_TIME_VALUE_PAIR} iff
-   *     cache hit but the measurement has no values at all, {@code (time,
-   *     TableDeviceLastCache#EMPTY_PRIMITIVE_TYPE)} iff cache hit and the measurement is known to
-   *     be {@code null} at {@code time}, and the result value otherwise.
+   *     cache hit but the measurement has no values at all, and the result value otherwise.
    */
   public TimeValuePair getLastEntry(
       final @Nullable String database, final IDeviceID deviceId, final String measurement) {
@@ -326,9 +324,7 @@ public class TableDeviceSchemaCache {
    * @param deviceId {@link IDeviceID}
    * @param measurements the measurements to get
    * @return {@code null} iff cache miss, {@link TableDeviceLastCache#EMPTY_TIME_VALUE_PAIR} iff
-   *     cache hit but the measurement has no values at all, {@code (time,
-   *     TableDeviceLastCache#EMPTY_PRIMITIVE_TYPE)} iff cache hit and the measurement is known to
-   *     be {@code null} at {@code time}, and the result value otherwise.
+   *     cache hit but the measurement has no values at all, and the result value otherwise.
    */
   public TimeValuePair[] getLastEntries(
       final @Nullable String database, final IDeviceID deviceId, final String[] measurements) {

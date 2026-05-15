@@ -364,20 +364,17 @@ public class TableDeviceSchemaCacheTest {
         cache,
         database1,
         convertTagValuesToDeviceID(table1, device0),
-        new String[] {"s3"},
+        new String[] {"s1"},
         new TimeValuePair[] {
           new TimeValuePair(2L, TableDeviceLastCache.EMPTY_PRIMITIVE_TYPE),
         });
 
-    final TimeValuePair knownNullPair =
-        cache.getLastEntry(database1, convertTagValuesToDeviceID(table1, device0), "s3");
-    Assert.assertNotNull(knownNullPair);
-    Assert.assertEquals(2L, knownNullPair.getTimestamp());
-    Assert.assertSame(TableDeviceLastCache.EMPTY_PRIMITIVE_TYPE, knownNullPair.getValue());
+    Assert.assertEquals(
+        tv3, cache.getLastEntry(database1, convertTagValuesToDeviceID(table1, device0), "s1"));
 
     result =
         cache.getLastRow(
-            database1, convertTagValuesToDeviceID(table1, device0), "", Arrays.asList("s2", "s3"));
+            database1, convertTagValuesToDeviceID(table1, device0), "", Arrays.asList("s2", "s1"));
     Assert.assertTrue(result.isPresent());
     Assert.assertTrue(result.get().getLeft().isPresent());
     Assert.assertEquals(OptionalLong.of(2L), result.get().getLeft());
@@ -395,7 +392,7 @@ public class TableDeviceSchemaCacheTest {
             database1,
             convertTagValuesToDeviceID(table1, device0),
             "s2",
-            Arrays.asList("s0", "s3", "s4", "s5"));
+            Arrays.asList("s0", "s1", "s4", "s5"));
     Assert.assertTrue(result.isPresent());
     Assert.assertTrue(result.get().getLeft().isPresent());
     Assert.assertEquals(OptionalLong.of(2L), result.get().getLeft());
