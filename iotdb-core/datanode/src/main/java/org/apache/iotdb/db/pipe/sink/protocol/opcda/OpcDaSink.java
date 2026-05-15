@@ -62,6 +62,11 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SIN
 /**
  * Send data in IoTDB based on Opc Da protocol, using JNA. All data are converted into tablets, and
  * then push the newest value to the <b>local COM</b> server in another process.
+ *
+ * <p>For table-model events, the OPC DA item id is generated as
+ * {@code <databaseName>.<deviceId segments>.<field measurement>}. For example, if
+ * {@code tableModelDatabaseName=factory}, {@code deviceId=status.d1} and the field is {@code s1},
+ * the sink writes to OPC DA item id {@code factory.status.d1.s1}.
  */
 @TreeModel
 @TableModel

@@ -282,6 +282,7 @@ public class OpcDaServerHandle implements Closeable {
     final List<IMeasurementSchema> schemas = tablet.getSchemas();
     final Map<String, ItemValuePosition> itemIdToValuePosition = new LinkedHashMap<>();
 
+    // Iterate backward so the first value captured for an item id is the latest non-null one.
     for (int rowIndex = tablet.getRowSize() - 1; rowIndex >= 0; --rowIndex) {
       for (int columnIndex = 0; columnIndex < schemas.size(); ++columnIndex) {
         if (!tablet.getColumnTypes().get(columnIndex).equals(ColumnCategory.FIELD)
@@ -322,6 +323,19 @@ public class OpcDaServerHandle implements Closeable {
       final int rowIndex,
       final String measurementName,
       final TableModelItemIdEncodingConfig tableModelItemIdEncodingConfig) {
+    // In table model, tablet.getDeviceID(rowIndex) already contains the table name as the first
+    // segment, followed by tag columns in declaration order. We prefix it with the database name
+    // and append the field measurement to build the OPC DA item id.
+    //
+    // Examples:
+    // 1. database=factory, deviceId=status.d1, measurement=s1 -> factory.status.d1.s1
+    // 2. database=factory, logical device-id segments are [status, "a.b", "c"],
+    //    measurement=s1 -> factory.status.a__ESC__DOT__ESC__b.c.s1
+    //    This case exists because '.' is also the OPC DA item-id path separator. If the raw tag
+    //    value "a.b" were written directly, it would be indistinguishable from two segments "a"
+    //    and "b", so it must be escaped first.
+    // 3. database=factory, deviceId=status.__NULL__, measurement=s1
+    //    where the tag column is null -> factory.status.__NULL__.s1
     final StringBuilder builder =
         new StringBuilder(tableModelItemIdEncodingConfig.encodeSegment(tableModelDatabaseName));
     for (final Object segment : tablet.getDeviceID(rowIndex).getSegments()) {
@@ -413,6 +427,10 @@ public class OpcDaServerHandle implements Closeable {
         return nullTagSentinel;
       }
 
+      // Escape reserved markers inside one device-id segment so the final item id can still be
+      // split by '.' unambiguously. For example, with the default config:
+      // - "a.b" becomes "a__ESC__DOT__ESC__b"
+      // - "__NULL__" becomes "__ESC____NULL____ESC__"
       return segment
           .toString()
           .replace(segmentEscape, escapedMarker(escapedSegmentEscape))
