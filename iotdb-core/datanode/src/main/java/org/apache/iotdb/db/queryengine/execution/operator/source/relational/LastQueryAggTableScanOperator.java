@@ -577,7 +577,7 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
           LastByDescAccumulator lastByAccumulator =
               (LastByDescAccumulator) tableAggregator.getAccumulator();
           updateMeasurementList.add(schema.getName());
-          if (lastByAccumulator.hasInitResult() && !lastByAccumulator.isXNull()) {
+          if (lastByAccumulator.hasInitResult()) {
             long lastByTime = lastByAccumulator.getLastTimeOfY();
 
             if (!hasSetLastTime) {
@@ -588,8 +588,10 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
             }
 
             updateTimeValuePairList.add(
-                new TimeValuePair(
-                    lastByTime, cloneTsPrimitiveType(lastByAccumulator.getXResult())));
+                lastByAccumulator.isXNull()
+                    ? new TimeValuePair(lastByTime, EMPTY_PRIMITIVE_TYPE)
+                    : new TimeValuePair(
+                        lastByTime, cloneTsPrimitiveType(lastByAccumulator.getXResult())));
           } else {
             updateTimeValuePairList.add(EMPTY_TIME_VALUE_PAIR);
           }

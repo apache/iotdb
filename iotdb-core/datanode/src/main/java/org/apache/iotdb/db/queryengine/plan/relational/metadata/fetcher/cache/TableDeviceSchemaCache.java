@@ -211,9 +211,11 @@ public class TableDeviceSchemaCache {
    *
    * <p>- Second time put the calculated {@link TimeValuePair}s, and use {@link
    * #updateLastCacheIfExists(String, IDeviceID, String[], TimeValuePair[])}. The input {@link
-   * TimeValuePair}s shall never be or contain {@code null}, if a measurement is with all {@code
-   * null}s, its {@link TimeValuePair} shall be {@link TableDeviceLastCache#EMPTY_TIME_VALUE_PAIR}.
-   * For time column, the input measurement shall be "", and the value shall be {@link
+   * TimeValuePair}s shall never be or contain {@code null}. If a measurement is with all {@code
+   * null}s, its {@link TimeValuePair} shall be {@link TableDeviceLastCache#EMPTY_TIME_VALUE_PAIR};
+   * if it is known to be {@code null} at a concrete last-row time, preserve that time and use
+   * {@link TableDeviceLastCache#EMPTY_PRIMITIVE_TYPE} as the value. For time column, the input
+   * measurement shall be "", and the value shall be {@link
    * TableDeviceLastCache#EMPTY_PRIMITIVE_TYPE}. If the time column is not explicitly specified, the
    * device's last time won't be updated because we cannot guarantee the completeness of the
    * existing measurements in cache.
@@ -305,7 +307,9 @@ public class TableDeviceSchemaCache {
    * @param deviceId {@link IDeviceID}
    * @param measurement the measurement to get
    * @return {@code null} iff cache miss, {@link TableDeviceLastCache#EMPTY_TIME_VALUE_PAIR} iff
-   *     cache hit but result is {@code null}, and the result value otherwise.
+   *     cache hit but the measurement has no values at all, {@code (time,
+   *     TableDeviceLastCache#EMPTY_PRIMITIVE_TYPE)} iff cache hit and the measurement is known to
+   *     be {@code null} at {@code time}, and the result value otherwise.
    */
   public TimeValuePair getLastEntry(
       final @Nullable String database, final IDeviceID deviceId, final String measurement) {
@@ -322,7 +326,9 @@ public class TableDeviceSchemaCache {
    * @param deviceId {@link IDeviceID}
    * @param measurements the measurements to get
    * @return {@code null} iff cache miss, {@link TableDeviceLastCache#EMPTY_TIME_VALUE_PAIR} iff
-   *     cache hit but result is {@code null}, and the result value otherwise.
+   *     cache hit but the measurement has no values at all, {@code (time,
+   *     TableDeviceLastCache#EMPTY_PRIMITIVE_TYPE)} iff cache hit and the measurement is known to
+   *     be {@code null} at {@code time}, and the result value otherwise.
    */
   public TimeValuePair[] getLastEntries(
       final @Nullable String database, final IDeviceID deviceId, final String[] measurements) {
@@ -345,8 +351,10 @@ public class TableDeviceSchemaCache {
    *     the {@link Pair#left} will be the source measurement's last time, (OptionalLong.empty() iff
    *     the source measurement is all {@code null}); {@link Pair#right} will be an {@link
    *     TsPrimitiveType} array, whose element will be {@code null} if cache miss, {@link
-   *     TableDeviceLastCache#EMPTY_PRIMITIVE_TYPE} iff cache hit and the measurement is without any
-   *     values when last by the source measurement's time, and the result value otherwise.
+   *     TableDeviceLastCache#EMPTY_PRIMITIVE_TYPE} iff cache hit and the measurement is known to be
+   *     {@code null} when last by the source measurement's time, {@link
+   *     TableDeviceLastCache#STALE_PRIMITIVE_TYPE} iff cache hit but the target measurement is
+   *     stale under a newer source time, and the result value otherwise.
    */
   public Optional<Pair<OptionalLong, TsPrimitiveType[]>> getLastRow(
       final String database,

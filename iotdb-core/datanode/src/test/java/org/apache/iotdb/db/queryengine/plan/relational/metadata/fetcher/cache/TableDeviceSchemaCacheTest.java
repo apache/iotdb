@@ -360,17 +360,53 @@ public class TableDeviceSchemaCacheTest {
         new String[] {""},
         new TimeValuePair[] {new TimeValuePair(2L, TableDeviceLastCache.EMPTY_PRIMITIVE_TYPE)});
 
+    updateLastCache4Query(
+        cache,
+        database1,
+        convertTagValuesToDeviceID(table1, device0),
+        new String[] {"s3"},
+        new TimeValuePair[] {
+          new TimeValuePair(2L, TableDeviceLastCache.EMPTY_PRIMITIVE_TYPE),
+        });
+
+    final TimeValuePair knownNullPair =
+        cache.getLastEntry(database1, convertTagValuesToDeviceID(table1, device0), "s3");
+    Assert.assertNotNull(knownNullPair);
+    Assert.assertEquals(2L, knownNullPair.getTimestamp());
+    Assert.assertSame(TableDeviceLastCache.EMPTY_PRIMITIVE_TYPE, knownNullPair.getValue());
+
     result =
         cache.getLastRow(
-            database1,
-            convertTagValuesToDeviceID(table1, device0),
-            "",
-            Collections.singletonList("s2"));
+            database1, convertTagValuesToDeviceID(table1, device0), "", Arrays.asList("s2", "s3"));
     Assert.assertTrue(result.isPresent());
     Assert.assertTrue(result.get().getLeft().isPresent());
     Assert.assertEquals(OptionalLong.of(2L), result.get().getLeft());
     Assert.assertArrayEquals(
-        new TsPrimitiveType[] {new TsPrimitiveType.TsInt(2)}, result.get().getRight());
+        new TsPrimitiveType[] {
+          new TsPrimitiveType.TsInt(2), TableDeviceLastCache.EMPTY_PRIMITIVE_TYPE,
+        },
+        result.get().getRight());
+
+    cache.initOrInvalidateLastCache(
+        database1, convertTagValuesToDeviceID(table1, device0), new String[] {"s5"}, false);
+
+    result =
+        cache.getLastRow(
+            database1,
+            convertTagValuesToDeviceID(table1, device0),
+            "s2",
+            Arrays.asList("s0", "s3", "s4", "s5"));
+    Assert.assertTrue(result.isPresent());
+    Assert.assertTrue(result.get().getLeft().isPresent());
+    Assert.assertEquals(OptionalLong.of(2L), result.get().getLeft());
+    Assert.assertArrayEquals(
+        new TsPrimitiveType[] {
+          TableDeviceLastCache.STALE_PRIMITIVE_TYPE,
+          TableDeviceLastCache.EMPTY_PRIMITIVE_TYPE,
+          TableDeviceLastCache.EMPTY_PRIMITIVE_TYPE,
+          null
+        },
+        result.get().getRight());
 
     result =
         cache.getLastRow(

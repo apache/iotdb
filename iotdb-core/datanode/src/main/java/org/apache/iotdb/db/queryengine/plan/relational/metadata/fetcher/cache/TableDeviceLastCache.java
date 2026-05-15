@@ -47,7 +47,49 @@ public class TableDeviceLastCache {
       (int) RamUsageEstimator.shallowSizeOfInstance(TableDeviceLastCache.class)
           + (int) RamUsageEstimator.shallowSizeOfInstance(ConcurrentHashMap.class);
 
+  /**
+   * Cache hit and the measurement is known to be null at the aligned last-row time. For stored
+   * entries, it may also be used as the value part of the time column's cached {@link
+   * TimeValuePair}.
+   */
   public static final TsPrimitiveType EMPTY_PRIMITIVE_TYPE =
+      new TsPrimitiveType() {
+        @Override
+        public void setObject(Object o) {
+          // Do nothing
+        }
+
+        @Override
+        public void reset() {
+          // Do nothing
+        }
+
+        @Override
+        public int getSize() {
+          return 0;
+        }
+
+        @Override
+        public Object getValue() {
+          return null;
+        }
+
+        @Override
+        public String getStringValue() {
+          return null;
+        }
+
+        @Override
+        public TSDataType getDataType() {
+          return null;
+        }
+      };
+
+  /**
+   * Cache hit but the target measurement is stale under a newer aligned last-row time. This
+   * sentinel is only returned by {@link #getLastRow(String, List)} and is never stored in cache.
+   */
+  public static final TsPrimitiveType STALE_PRIMITIVE_TYPE =
       new TsPrimitiveType() {
         @Override
         public void setObject(Object o) {
@@ -83,7 +125,7 @@ public class TableDeviceLastCache {
   private static final Optional<Pair<OptionalLong, TsPrimitiveType[]>> HIT_AND_ALL_NULL =
       Optional.of(new Pair<>(OptionalLong.empty(), null));
 
-  /** This means that the tv pair has been put, and the value is null */
+  /** This means the measurement has been cached and is known to have no values at all. */
   public static final TimeValuePair EMPTY_TIME_VALUE_PAIR =
       new TimeValuePair(Long.MIN_VALUE, EMPTY_PRIMITIVE_TYPE);
 
@@ -255,19 +297,25 @@ public class TableDeviceLastCache {
                 .map(
                     targetMeasurement -> {
                       if (!targetMeasurement.isEmpty()) {
-                        final TimeValuePair tvPair =
-                            measurement2CachedLastMap.get(targetMeasurement);
-                        if (Objects.isNull(tvPair)) {
-                          return null;
-                        }
-                        return tvPair.getTimestamp() == alignTime
-                            ? tvPair.getValue()
-                            : EMPTY_PRIMITIVE_TYPE;
+                        return getLastRowTargetValue(
+                            alignTime, measurement2CachedLastMap.get(targetMeasurement));
                       } else {
                         return new TsPrimitiveType.TsLong(alignTime);
                       }
                     })
                 .toArray(TsPrimitiveType[]::new)));
+  }
+
+  @Nullable
+  private static TsPrimitiveType getLastRowTargetValue(
+      final long alignTime, final @Nullable TimeValuePair tvPair) {
+    if (Objects.isNull(tvPair) || tvPair == PLACEHOLDER_TIME_VALUE_PAIR) {
+      return null;
+    }
+    if (tvPair == EMPTY_TIME_VALUE_PAIR) {
+      return EMPTY_PRIMITIVE_TYPE;
+    }
+    return tvPair.getTimestamp() == alignTime ? tvPair.getValue() : STALE_PRIMITIVE_TYPE;
   }
 
   int estimateSize() {
