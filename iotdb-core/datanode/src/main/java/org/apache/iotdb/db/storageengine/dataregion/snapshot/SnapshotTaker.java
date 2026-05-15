@@ -37,15 +37,18 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /**
  * SnapshotTaker takes data snapshot for a DataRegion in one time. It does so by creating hard link
@@ -319,17 +322,39 @@ public class SnapshotTaker {
             .resolve(tempSnapshotId)
             .resolve(IoTDBConstant.OBJECT_FOLDER_NAME);
 
-    try (Stream<Path> paths = Files.walk(regionRoot)) {
-      for (Path file :
-          paths
-              .filter(Files::isRegularFile)
-              .filter(path -> ObjectTypeUtils.isObjectCandidate(path.getFileName().toString()))
-              .collect(Collectors.toList())) {
-        Path relPath = objectRoot.relativize(file);
-        Path targetPath = snapshotBaseDir.resolve(relPath);
-        createObjectHardLink(targetPath.toFile(), file.toFile(), relPath);
-      }
-    }
+    Files.walkFileTree(
+        regionRoot,
+        new SimpleFileVisitor<Path>() {
+          @Override
+          public FileVisitResult visitFile(Path file, BasicFileAttributes attrs)
+              throws IOException {
+            if (attrs.isRegularFile()
+                && ObjectTypeUtils.isObjectCandidate(file.getFileName().toString())) {
+              Path relPath = objectRoot.relativize(file);
+              Path targetPath = snapshotBaseDir.resolve(relPath);
+              createObjectHardLink(targetPath.toFile(), file.toFile(), relPath);
+            }
+            return FileVisitResult.CONTINUE;
+          }
+
+          @Override
+          public FileVisitResult visitFileFailed(Path file, IOException exc) throws IOException {
+            if (exc instanceof NoSuchFileException || exc instanceof FileNotFoundException) {
+              return FileVisitResult.CONTINUE;
+            }
+            throw exc;
+          }
+
+          @Override
+          public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
+            if (exc == null
+                || exc instanceof NoSuchFileException
+                || exc instanceof FileNotFoundException) {
+              return FileVisitResult.CONTINUE;
+            }
+            throw exc;
+          }
+        });
     return true;
   }
 
@@ -341,12 +366,13 @@ public class SnapshotTaker {
       throw new IOException("Failed to create directory " + parentDir);
     }
 
-    if (!checkHardLinkSourceFile(source, 1)) {
+    Files.deleteIfExists(target.toPath());
+    try {
+      Files.createLink(target.toPath(), source.toPath());
+    } catch (FileNotFoundException | NoSuchFileException ignored) {
+      // deleted by ttl
       return;
     }
-
-    Files.deleteIfExists(target.toPath());
-    Files.createLink(target.toPath(), source.toPath());
 
     snapshotLogger.logObjectRelativePath(relativePathForLog);
   }
