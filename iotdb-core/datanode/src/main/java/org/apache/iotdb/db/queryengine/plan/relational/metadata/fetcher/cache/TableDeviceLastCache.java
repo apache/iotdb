@@ -215,8 +215,7 @@ public class TableDeviceLastCache {
         if (lastTime < timeValuePairs[i].getTimestamp()) {
           lastTime = timeValuePairs[i].getTimestamp();
         }
-        diff.addAndGet(
-            tryUpdateKnownNullTime(measurements[i], timeValuePairs[i].getTimestamp()));
+        diff.addAndGet(tryUpdateKnownNullTime(measurements[i], timeValuePairs[i].getTimestamp()));
         continue;
       }
 
@@ -360,9 +359,8 @@ public class TableDeviceLastCache {
   int estimateSize() {
     return INSTANCE_SIZE
         + (int) RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY * measurement2CachedLastMap.size()
-        + (int)
-            RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY
-                * measurement2CachedLastKnownNullTimeMap.size()
+        + (int) RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY
+            * measurement2CachedLastKnownNullTimeMap.size()
         + measurement2CachedLastMap.entrySet().stream()
             .mapToInt(
                 entry ->
