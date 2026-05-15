@@ -245,6 +245,7 @@ public class InsertNodeMemoryEstimator {
     size += sizeOfResults(node.getResults());
     return size;
   }
+
   // ============================Device And Measurement===================================
 
   public static long sizeOfPartialPath(final PartialPath partialPath) {
