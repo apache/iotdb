@@ -21,7 +21,6 @@ package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache;
 
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 
-import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -53,86 +52,24 @@ public class TableDeviceLastCache {
    * Cache hit and the measurement is known to be null at the aligned last-row time. For stored
    * entries, it is only used as the value part of the time column's cached {@link TimeValuePair}.
    */
-  public static final TsPrimitiveType EMPTY_PRIMITIVE_TYPE =
-      new TsPrimitiveType() {
-        @Override
-        public void setObject(Object o) {
-          // Do nothing
-        }
-
-        @Override
-        public void reset() {
-          // Do nothing
-        }
-
-        @Override
-        public int getSize() {
-          return 0;
-        }
-
-        @Override
-        public Object getValue() {
-          return null;
-        }
-
-        @Override
-        public String getStringValue() {
-          return null;
-        }
-
-        @Override
-        public TSDataType getDataType() {
-          return null;
-        }
-      };
+  public static final TsPrimitiveType PLACEHOLDER_NO_VALUE = new TsPrimitiveType.TsInt();
 
   /**
    * Cache hit but the target measurement is stale under a newer aligned last-row time. This
    * sentinel is only returned by {@link #getLastRow(String, List)} and is never stored in cache.
    */
-  public static final TsPrimitiveType STALE_PRIMITIVE_TYPE =
-      new TsPrimitiveType() {
-        @Override
-        public void setObject(Object o) {
-          // Do nothing
-        }
-
-        @Override
-        public void reset() {
-          // Do nothing
-        }
-
-        @Override
-        public int getSize() {
-          return 0;
-        }
-
-        @Override
-        public Object getValue() {
-          return null;
-        }
-
-        @Override
-        public String getStringValue() {
-          return null;
-        }
-
-        @Override
-        public TSDataType getDataType() {
-          return null;
-        }
-      };
+  public static final TsPrimitiveType PLACEHOLDER_STALE_VALUE = new TsPrimitiveType.TsInt();
 
   private static final Optional<Pair<OptionalLong, TsPrimitiveType[]>> HIT_AND_ALL_NULL =
       Optional.of(new Pair<>(OptionalLong.empty(), null));
 
   /** This means the measurement has been cached and is known to have no values at all. */
-  public static final TimeValuePair EMPTY_TIME_VALUE_PAIR =
-      new TimeValuePair(Long.MIN_VALUE, EMPTY_PRIMITIVE_TYPE);
+  public static final TimeValuePair PLACEHOLDER_EMPTY_COLUMN =
+      new TimeValuePair(Long.MIN_VALUE, PLACEHOLDER_NO_VALUE);
 
   /** This means that the tv pair has been declared, and is ready for the next put. */
-  private static final TimeValuePair PLACEHOLDER_TIME_VALUE_PAIR =
-      new TimeValuePair(Long.MIN_VALUE, EMPTY_PRIMITIVE_TYPE);
+  private static final TimeValuePair PLACEHOLDER_NO_CACHE =
+      new TimeValuePair(Long.MIN_VALUE, PLACEHOLDER_NO_VALUE);
 
   // Time is seen as "" as a measurement
   private final Map<String, TimeValuePair> measurement2CachedLastMap = new ConcurrentHashMap<>();
@@ -165,7 +102,7 @@ public class TableDeviceLastCache {
       if (isInvalidate && measurement2CachedLastKnownNullTimeMap.remove(finalMeasurement) != null) {
         diff.addAndGet(-getKnownNullTimeEntrySize());
       }
-      final TimeValuePair newPair = isInvalidate ? null : PLACEHOLDER_TIME_VALUE_PAIR;
+      final TimeValuePair newPair = isInvalidate ? null : PLACEHOLDER_NO_CACHE;
 
       measurement2CachedLastMap.compute(
           finalMeasurement,
@@ -241,7 +178,7 @@ public class TableDeviceLastCache {
         "",
         (time, tvPair) ->
             tvPair.getTimestamp() < finalLastTime
-                ? new TimeValuePair(finalLastTime, EMPTY_PRIMITIVE_TYPE)
+                ? new TimeValuePair(finalLastTime, PLACEHOLDER_NO_VALUE)
                 : tvPair);
     return diff.get();
   }
@@ -291,32 +228,32 @@ public class TableDeviceLastCache {
 
   private static boolean isEmptyTvPair(final TimeValuePair tvPair) {
     return Objects.isNull(tvPair)
-        || tvPair == PLACEHOLDER_TIME_VALUE_PAIR
-        || tvPair == EMPTY_TIME_VALUE_PAIR;
+        || tvPair == PLACEHOLDER_NO_CACHE
+        || tvPair == PLACEHOLDER_EMPTY_COLUMN;
   }
 
   private static boolean isKnownNullAtAlignedTime(
       final @Nonnull String measurement, final @Nonnull TimeValuePair timeValuePair) {
     return !measurement.isEmpty()
-        && timeValuePair != EMPTY_TIME_VALUE_PAIR
-        && timeValuePair.getValue() == EMPTY_PRIMITIVE_TYPE;
+        && timeValuePair != PLACEHOLDER_EMPTY_COLUMN
+        && timeValuePair.getValue() == PLACEHOLDER_NO_VALUE;
   }
 
   @Nullable
   TimeValuePair getTimeValuePair(final @Nonnull String measurement) {
     final TimeValuePair result = measurement2CachedLastMap.get(measurement);
-    return result != PLACEHOLDER_TIME_VALUE_PAIR ? result : null;
+    return result != PLACEHOLDER_NO_CACHE ? result : null;
   }
 
   // Shall pass in "" if last by time
   Optional<Pair<OptionalLong, TsPrimitiveType[]>> getLastRow(
       final @Nonnull String sourceMeasurement, final List<String> targetMeasurements) {
     final TimeValuePair pair = measurement2CachedLastMap.get(sourceMeasurement);
-    if (Objects.isNull(pair) || pair == PLACEHOLDER_TIME_VALUE_PAIR) {
+    if (Objects.isNull(pair) || pair == PLACEHOLDER_NO_CACHE) {
       return Optional.empty();
     }
 
-    if (pair == EMPTY_TIME_VALUE_PAIR) {
+    if (pair == PLACEHOLDER_EMPTY_COLUMN) {
       return HIT_AND_ALL_NULL;
     }
     final long alignTime = pair.getTimestamp();
@@ -345,15 +282,15 @@ public class TableDeviceLastCache {
       final @Nullable TimeValuePair tvPair,
       final @Nullable Long knownNullTime) {
     if (knownNullTime != null && knownNullTime == alignTime) {
-      return EMPTY_PRIMITIVE_TYPE;
+      return PLACEHOLDER_NO_VALUE;
     }
-    if (Objects.isNull(tvPair) || tvPair == PLACEHOLDER_TIME_VALUE_PAIR) {
+    if (Objects.isNull(tvPair) || tvPair == PLACEHOLDER_NO_CACHE) {
       return null;
     }
-    if (tvPair == EMPTY_TIME_VALUE_PAIR) {
-      return EMPTY_PRIMITIVE_TYPE;
+    if (tvPair == PLACEHOLDER_EMPTY_COLUMN) {
+      return PLACEHOLDER_NO_VALUE;
     }
-    return tvPair.getTimestamp() == alignTime ? tvPair.getValue() : STALE_PRIMITIVE_TYPE;
+    return tvPair.getTimestamp() == alignTime ? tvPair.getValue() : PLACEHOLDER_STALE_VALUE;
   }
 
   int estimateSize() {

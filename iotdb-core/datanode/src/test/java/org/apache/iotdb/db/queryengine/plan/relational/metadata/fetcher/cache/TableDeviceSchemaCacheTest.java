@@ -334,10 +334,10 @@ public class TableDeviceSchemaCacheTest {
         database1,
         convertTagValuesToDeviceID(table1, device0),
         new String[] {"s4"},
-        new TimeValuePair[] {TableDeviceLastCache.EMPTY_TIME_VALUE_PAIR});
+        new TimeValuePair[] {TableDeviceLastCache.PLACEHOLDER_EMPTY_COLUMN});
 
     Assert.assertSame(
-        TableDeviceLastCache.EMPTY_TIME_VALUE_PAIR,
+        TableDeviceLastCache.PLACEHOLDER_EMPTY_COLUMN,
         cache.getLastEntry(database1, convertTagValuesToDeviceID(table1, device0), "s4"));
 
     // Test null miss measurements
@@ -358,7 +358,7 @@ public class TableDeviceSchemaCacheTest {
         database1,
         convertTagValuesToDeviceID(table1, device0),
         new String[] {""},
-        new TimeValuePair[] {new TimeValuePair(2L, TableDeviceLastCache.EMPTY_PRIMITIVE_TYPE)});
+        new TimeValuePair[] {new TimeValuePair(2L, TableDeviceLastCache.PLACEHOLDER_NO_VALUE)});
 
     updateLastCache4Query(
         cache,
@@ -366,7 +366,7 @@ public class TableDeviceSchemaCacheTest {
         convertTagValuesToDeviceID(table1, device0),
         new String[] {"s1"},
         new TimeValuePair[] {
-          new TimeValuePair(2L, TableDeviceLastCache.EMPTY_PRIMITIVE_TYPE),
+          new TimeValuePair(2L, TableDeviceLastCache.PLACEHOLDER_NO_VALUE),
         });
 
     Assert.assertEquals(
@@ -380,7 +380,7 @@ public class TableDeviceSchemaCacheTest {
     Assert.assertEquals(OptionalLong.of(2L), result.get().getLeft());
     Assert.assertArrayEquals(
         new TsPrimitiveType[] {
-          new TsPrimitiveType.TsInt(2), TableDeviceLastCache.EMPTY_PRIMITIVE_TYPE,
+          new TsPrimitiveType.TsInt(2), TableDeviceLastCache.PLACEHOLDER_NO_VALUE,
         },
         result.get().getRight());
 
@@ -398,9 +398,9 @@ public class TableDeviceSchemaCacheTest {
     Assert.assertEquals(OptionalLong.of(2L), result.get().getLeft());
     Assert.assertArrayEquals(
         new TsPrimitiveType[] {
-          TableDeviceLastCache.STALE_PRIMITIVE_TYPE,
-          TableDeviceLastCache.EMPTY_PRIMITIVE_TYPE,
-          TableDeviceLastCache.EMPTY_PRIMITIVE_TYPE,
+          TableDeviceLastCache.PLACEHOLDER_STALE_VALUE,
+          TableDeviceLastCache.PLACEHOLDER_NO_VALUE,
+          TableDeviceLastCache.PLACEHOLDER_NO_VALUE,
           null
         },
         result.get().getRight());
@@ -419,7 +419,7 @@ public class TableDeviceSchemaCacheTest {
           new TsPrimitiveType.TsInt(3),
           new TsPrimitiveType.TsLong(1),
           new TsPrimitiveType.TsInt(3),
-          TableDeviceLastCache.EMPTY_PRIMITIVE_TYPE,
+          TableDeviceLastCache.PLACEHOLDER_NO_VALUE,
           null
         },
         result.get().getRight());
@@ -493,8 +493,8 @@ public class TableDeviceSchemaCacheTest {
         convertTagValuesToDeviceID(table2, device0),
         new String[] {"", "s2"},
         new TimeValuePair[] {
-          new TimeValuePair(Long.MIN_VALUE, TableDeviceLastCache.EMPTY_PRIMITIVE_TYPE),
-          TableDeviceLastCache.EMPTY_TIME_VALUE_PAIR
+          new TimeValuePair(Long.MIN_VALUE, TableDeviceLastCache.PLACEHOLDER_NO_VALUE),
+          TableDeviceLastCache.PLACEHOLDER_EMPTY_COLUMN
         });
 
     result =
@@ -504,7 +504,7 @@ public class TableDeviceSchemaCacheTest {
     Assert.assertTrue(result.get().getLeft().isPresent());
     Assert.assertEquals(OptionalLong.of(Long.MIN_VALUE), result.get().getLeft());
     Assert.assertArrayEquals(
-        new TsPrimitiveType[] {TableDeviceLastCache.EMPTY_PRIMITIVE_TYPE, null},
+        new TsPrimitiveType[] {TableDeviceLastCache.PLACEHOLDER_NO_VALUE, null},
         result.get().getRight());
 
     updateLastCache4Query(
@@ -525,7 +525,7 @@ public class TableDeviceSchemaCacheTest {
     Assert.assertEquals(OptionalLong.of(Long.MIN_VALUE), result.get().getLeft());
     Assert.assertArrayEquals(
         new TsPrimitiveType[] {
-          TableDeviceLastCache.EMPTY_PRIMITIVE_TYPE, new TsPrimitiveType.TsInt(3),
+          TableDeviceLastCache.PLACEHOLDER_NO_VALUE, new TsPrimitiveType.TsInt(3),
         },
         result.get().getRight());
 
@@ -537,7 +537,7 @@ public class TableDeviceSchemaCacheTest {
     Assert.assertEquals(OptionalLong.of(Long.MIN_VALUE), result.get().getLeft());
     Assert.assertArrayEquals(
         new TsPrimitiveType[] {
-          TableDeviceLastCache.EMPTY_PRIMITIVE_TYPE, new TsPrimitiveType.TsInt(3),
+          TableDeviceLastCache.PLACEHOLDER_NO_VALUE, new TsPrimitiveType.TsInt(3),
         },
         result.get().getRight());
 

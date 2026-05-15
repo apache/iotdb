@@ -41,11 +41,11 @@ public class TableDeviceLastCacheTest {
     cache.tryUpdate(
         new String[] {"", "s1"},
         new TimeValuePair[] {
-          new TimeValuePair(1L, TableDeviceLastCache.EMPTY_PRIMITIVE_TYPE), historicalValue
+          new TimeValuePair(1L, TableDeviceLastCache.PLACEHOLDER_NO_VALUE), historicalValue
         });
     cache.tryUpdate(
         new String[] {"s1"},
-        new TimeValuePair[] {new TimeValuePair(2L, TableDeviceLastCache.EMPTY_PRIMITIVE_TYPE)});
+        new TimeValuePair[] {new TimeValuePair(2L, TableDeviceLastCache.PLACEHOLDER_NO_VALUE)});
 
     Assert.assertEquals(historicalValue, cache.getTimeValuePair("s1"));
     Optional<Pair<OptionalLong, TsPrimitiveType[]>> result =
@@ -53,7 +53,7 @@ public class TableDeviceLastCacheTest {
     Assert.assertTrue(result.isPresent());
     Assert.assertEquals(OptionalLong.of(2L), result.get().getLeft());
     Assert.assertArrayEquals(
-        new TsPrimitiveType[] {TableDeviceLastCache.EMPTY_PRIMITIVE_TYPE}, result.get().getRight());
+        new TsPrimitiveType[] {TableDeviceLastCache.PLACEHOLDER_NO_VALUE}, result.get().getRight());
 
     final TimeValuePair newerValue = new TimeValuePair(3L, new TsPrimitiveType.TsInt(3));
     cache.tryUpdate(new String[] {"s1"}, new TimeValuePair[] {newerValue});
@@ -74,8 +74,8 @@ public class TableDeviceLastCacheTest {
     cache.tryUpdate(
         new String[] {"", "s1"},
         new TimeValuePair[] {
-          new TimeValuePair(2L, TableDeviceLastCache.EMPTY_PRIMITIVE_TYPE),
-          new TimeValuePair(2L, TableDeviceLastCache.EMPTY_PRIMITIVE_TYPE)
+          new TimeValuePair(2L, TableDeviceLastCache.PLACEHOLDER_NO_VALUE),
+          new TimeValuePair(2L, TableDeviceLastCache.PLACEHOLDER_NO_VALUE)
         });
 
     Assert.assertTrue(cache.getLastRow("", Collections.singletonList("s1")).isPresent());
