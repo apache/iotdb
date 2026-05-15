@@ -60,14 +60,14 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
-import static org.apache.iotdb.db.pipe.sink.protocol.opcda.OpcDaHeader.IID_IOPCItemMgt;
-import static org.apache.iotdb.db.pipe.sink.protocol.opcda.OpcDaHeader.IID_IOPCServer;
-import static org.apache.iotdb.db.pipe.sink.protocol.opcda.OpcDaHeader.IID_IOPCSyncIO;
-import static org.apache.iotdb.db.pipe.sink.protocol.opcda.OpcDaHeader.IID_IUNKNOWN;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_OPC_DA_ESCAPED_PATH_SEPARATOR_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_OPC_DA_ESCAPED_SEGMENT_ESCAPE_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_OPC_DA_NULL_TAG_SENTINEL_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_OPC_DA_SEGMENT_ESCAPE_DEFAULT_VALUE;
+import static org.apache.iotdb.db.pipe.sink.protocol.opcda.OpcDaHeader.IID_IOPCItemMgt;
+import static org.apache.iotdb.db.pipe.sink.protocol.opcda.OpcDaHeader.IID_IOPCServer;
+import static org.apache.iotdb.db.pipe.sink.protocol.opcda.OpcDaHeader.IID_IOPCSyncIO;
+import static org.apache.iotdb.db.pipe.sink.protocol.opcda.OpcDaHeader.IID_IUNKNOWN;
 
 public class OpcDaServerHandle implements Closeable {
 
@@ -386,8 +386,7 @@ public class OpcDaServerHandle implements Closeable {
         final String segmentEscape,
         final String escapedSegmentEscape,
         final String escapedPathSeparator) {
-      validate(
-          nullTagSentinel, segmentEscape, escapedSegmentEscape, escapedPathSeparator);
+      validate(nullTagSentinel, segmentEscape, escapedSegmentEscape, escapedPathSeparator);
       this.nullTagSentinel = nullTagSentinel;
       this.segmentEscape = segmentEscape;
       this.escapedSegmentEscape = escapedSegmentEscape;
@@ -401,10 +400,10 @@ public class OpcDaServerHandle implements Closeable {
         final String escapedPathSeparator) {
       final String pathSeparator = String.valueOf(TsFileConstant.PATH_SEPARATOR);
       final List<String> tokens =
-          Arrays.asList(
-              nullTagSentinel, segmentEscape, escapedSegmentEscape, escapedPathSeparator);
+          Arrays.asList(nullTagSentinel, segmentEscape, escapedSegmentEscape, escapedPathSeparator);
       if (tokens.stream().anyMatch(token -> Objects.isNull(token) || token.isEmpty())) {
-        throw new PipeException("The OPC DA table model item id encoding tokens must be non-empty.");
+        throw new PipeException(
+            "The OPC DA table model item id encoding tokens must be non-empty.");
       }
       if (tokens.stream().anyMatch(token -> token.contains(pathSeparator))) {
         throw new PipeException(

@@ -356,8 +356,7 @@ public class PipeSinkConstant {
   public static final String SINK_OPC_DA_NULL_TAG_SENTINEL_KEY = "sink.opcda.null-tag-sentinel";
   public static final String CONNECTOR_OPC_DA_NULL_TAG_SENTINEL_DEFAULT_VALUE = "__NULL__";
 
-  public static final String CONNECTOR_OPC_DA_SEGMENT_ESCAPE_KEY =
-      "connector.opcda.segment-escape";
+  public static final String CONNECTOR_OPC_DA_SEGMENT_ESCAPE_KEY = "connector.opcda.segment-escape";
   public static final String SINK_OPC_DA_SEGMENT_ESCAPE_KEY = "sink.opcda.segment-escape";
   public static final String CONNECTOR_OPC_DA_SEGMENT_ESCAPE_DEFAULT_VALUE = "__ESC__";
 

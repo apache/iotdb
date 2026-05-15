@@ -36,11 +36,11 @@ import org.apache.tsfile.write.record.Tablet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Arrays;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.Arrays;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_OPC_DA_CLSID_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_OPC_DA_ESCAPED_PATH_SEPARATOR_DEFAULT_VALUE;
@@ -63,10 +63,10 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SIN
  * Send data in IoTDB based on Opc Da protocol, using JNA. All data are converted into tablets, and
  * then push the newest value to the <b>local COM</b> server in another process.
  *
- * <p>For table-model events, the OPC DA item id is generated as
- * {@code <databaseName>.<deviceId segments>.<field measurement>}. For example, if
- * {@code tableModelDatabaseName=factory}, {@code deviceId=status.d1} and the field is {@code s1},
- * the sink writes to OPC DA item id {@code factory.status.d1.s1}.
+ * <p>For table-model events, the OPC DA item id is generated as {@code <databaseName>.<deviceId
+ * segments>.<field measurement>}. For example, if {@code tableModelDatabaseName=factory}, {@code
+ * deviceId=status.d1} and the field is {@code s1}, the sink writes to OPC DA item id {@code
+ * factory.status.d1.s1}.
  */
 @TreeModel
 @TableModel
@@ -120,8 +120,7 @@ public class OpcDaSink implements PipeConnector {
                   key ->
                       new Pair<>(
                           new AtomicInteger(0),
-                          new OpcDaServerHandle(
-                              key.clsID, key.tableModelItemIdEncodingConfig)))
+                          new OpcDaServerHandle(key.clsID, key.tableModelItemIdEncodingConfig)))
               .getRight();
       CLS_ID_TO_REFERENCE_COUNT_AND_HANDLE_MAP.get(serverHandleKey).getLeft().incrementAndGet();
     }

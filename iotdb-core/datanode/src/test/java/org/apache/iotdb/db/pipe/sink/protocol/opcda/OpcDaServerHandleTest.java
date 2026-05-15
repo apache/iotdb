@@ -72,8 +72,7 @@ public class OpcDaServerHandleTest {
         OpcDaServerHandle.collectLatestTableModelItemPositions(
             tablet,
             "factory",
-            new OpcDaServerHandle.TableModelItemIdEncodingConfig(
-                "[NULL]", "[ESC]", "ESC", "DOT"));
+            new OpcDaServerHandle.TableModelItemIdEncodingConfig("[NULL]", "[ESC]", "ESC", "DOT"));
 
     Assert.assertEquals(3, itemPositions.size());
     assertItem(itemPositions, tablet, "factory.status.[NULL].c.s1", 33L, 1L);
@@ -155,9 +154,7 @@ public class OpcDaServerHandleTest {
       final Boolean s2) {
     tablet.addTimestamp(rowIndex, timestamp);
     tablet.addValue(
-        "site",
-        rowIndex,
-        site == null ? null : new Binary(site.getBytes(StandardCharsets.UTF_8)));
+        "site", rowIndex, site == null ? null : new Binary(site.getBytes(StandardCharsets.UTF_8)));
     tablet.addValue("s1", rowIndex, s1);
     tablet.addValue("s2", rowIndex, s2);
     tablet.setRowSize(rowIndex + 1);
