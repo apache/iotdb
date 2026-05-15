@@ -871,9 +871,11 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     // Judge which model the statement belongs to
     final boolean isTableModelStatement;
     final String databaseName;
-    if (statement instanceof LoadTsFileStatement
-        && ((LoadTsFileStatement) statement).getDatabase() != null) {
-      isTableModelStatement = true;
+    if (statement instanceof LoadTsFileStatement) {
+      // Pipe receiver always constructs a tree-model LoadTsFileStatement. Its database field is
+      // only an explicit database hint for table data or pipe-generated tree-model loads, so it
+      // must not be used to route execution into the table-model pipeline.
+      isTableModelStatement = false;
       databaseName = ((LoadTsFileStatement) statement).getDatabase();
     } else if (statement instanceof InsertBaseStatement
         && ((InsertBaseStatement) statement).isWriteToTable()) {
@@ -925,18 +927,36 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
 
     // Try to convert data type if the statement is a tree model statement
     // and the status code is not success
-    return shouldConvertDataTypeOnTypeMismatch
-            && ((statement instanceof InsertBaseStatement
-                    && ((InsertBaseStatement) statement).hasFailedMeasurements())
-                || (status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()
-                    && status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()))
-        ? (isTableModelStatement
-            ? statement
-                .accept(
-                    tableStatementDataTypeConvertExecutionVisitor, new Pair<>(status, databaseName))
-                .orElse(status)
-            : statement.accept(treeStatementDataTypeConvertExecutionVisitor, status).orElse(status))
-        : status;
+    if (!shouldConvertDataTypeOnTypeMismatch
+        || !((statement instanceof InsertBaseStatement
+                && ((InsertBaseStatement) statement).hasFailedMeasurements())
+            || (status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()
+                && status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()))) {
+      return status;
+    }
+
+    if (statement instanceof LoadTsFileStatement
+        && shouldUseTableModelVisitorForLoadStatement((LoadTsFileStatement) statement)) {
+      return statement
+          .accept(
+              tableStatementDataTypeConvertExecutionVisitor, new Pair<>(status, databaseName))
+          .orElse(status);
+    }
+
+    return isTableModelStatement
+        ? statement
+            .accept(
+                tableStatementDataTypeConvertExecutionVisitor, new Pair<>(status, databaseName))
+            .orElse(status)
+        : statement.accept(treeStatementDataTypeConvertExecutionVisitor, status).orElse(status);
+  }
+
+  private boolean shouldUseTableModelVisitorForLoadStatement(
+      final LoadTsFileStatement loadTsFileStatement) {
+    final List<Boolean> isTableModel = loadTsFileStatement.getIsTableModel();
+    return Objects.nonNull(isTableModel)
+        && !isTableModel.isEmpty()
+        && isTableModel.stream().allMatch(Boolean.TRUE::equals);
   }
 
   @Override
