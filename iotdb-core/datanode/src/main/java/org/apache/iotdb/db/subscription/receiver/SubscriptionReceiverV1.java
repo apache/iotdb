@@ -88,6 +88,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -708,8 +709,31 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     // commit (ack or nack)
     final List<SubscriptionCommitContext> commitContexts = req.getCommitContexts();
     final boolean nack = req.isNack();
+    final Set<String> subscribedTopicNames =
+        SubscriptionAgent.consumer()
+            .getTopicNamesSubscribedByConsumer(
+                consumerConfig.getConsumerGroupId(), consumerConfig.getConsumerId());
+    final List<SubscriptionCommitContext> activeCommitContexts = new ArrayList<>();
+    final List<SubscriptionCommitContext> staleUnsubscribedCommitContexts = new ArrayList<>();
+    for (final SubscriptionCommitContext commitContext : commitContexts) {
+      if (Objects.nonNull(commitContext)
+          && Objects.nonNull(commitContext.getTopicName())
+          && !subscribedTopicNames.contains(commitContext.getTopicName())) {
+        staleUnsubscribedCommitContexts.add(commitContext);
+      } else {
+        activeCommitContexts.add(commitContext);
+      }
+    }
+
+    final List<SubscriptionCommitContext> brokerAcceptedCommitContexts =
+        activeCommitContexts.isEmpty()
+            ? Collections.emptyList()
+            : SubscriptionAgent.broker().commit(consumerConfig, activeCommitContexts, nack);
     final List<SubscriptionCommitContext> acceptedCommitContexts =
-        SubscriptionAgent.broker().commit(consumerConfig, commitContexts, nack);
+        new ArrayList<>(
+            brokerAcceptedCommitContexts.size() + staleUnsubscribedCommitContexts.size());
+    acceptedCommitContexts.addAll(brokerAcceptedCommitContexts);
+    acceptedCommitContexts.addAll(staleUnsubscribedCommitContexts);
 
     if (Objects.equals(acceptedCommitContexts.size(), commitContexts.size())) {
       LOGGER.info(
@@ -726,18 +750,20 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
       }
     } else {
       LOGGER.warn(
-          "Subscription: consumer {} commit (nack: {}) partially accepted, requested summary: {}, accepted summary: {}",
+          "Subscription: consumer {} commit (nack: {}) partially accepted, requested summary: {}, accepted summary: {}, stale unsubscribed summary: {}",
           consumerConfig,
           nack,
           summarizeCommitContexts(commitContexts),
-          summarizeCommitContexts(acceptedCommitContexts));
+          summarizeCommitContexts(acceptedCommitContexts),
+          summarizeCommitContexts(staleUnsubscribedCommitContexts));
       if (LOGGER.isDebugEnabled()) {
         LOGGER.debug(
-            "Subscription: consumer {} commit (nack: {}) full requested commit contexts: {}, full accepted commit contexts: {}",
+            "Subscription: consumer {} commit (nack: {}) full requested commit contexts: {}, full accepted commit contexts: {}, full stale unsubscribed commit contexts: {}",
             consumerConfig,
             nack,
             commitContexts,
-            acceptedCommitContexts);
+            acceptedCommitContexts,
+            staleUnsubscribedCommitContexts);
       }
     }
 
@@ -745,7 +771,8 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
         RpcUtils.SUCCESS_STATUS,
         acceptedCommitContexts,
         SubscriptionAgent.broker()
-            .getConsensusCommittedProgressByTopic(consumerConfig, acceptedCommitContexts, nack));
+            .getConsensusCommittedProgressByTopic(
+                consumerConfig, brokerAcceptedCommitContexts, nack));
   }
 
   private static String summarizeCommitContexts(
