@@ -423,7 +423,7 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
                   && clientManager.supportModsIfIsDataNodeReceiver(),
               pipeTsFileInsertionEvent.isTableModelEvent()
                   ? pipeTsFileInsertionEvent.getTableModelDatabaseName()
-                  : null);
+                  : pipeTsFileInsertionEvent.getTreeModelDatabaseName());
 
       transfer(pipeTransferTsFileHandler);
       return true;
