@@ -354,38 +354,22 @@ public class SubscriptionBrokerAgent {
       final ConsumerConfig consumerConfig, final String topicName, final short seekType) {
     final String consumerGroupId = consumerConfig.getConsumerGroupId();
 
-    final ConsensusSubscriptionBroker consensusBroker =
-        consumerGroupIdToConsensusBroker.get(consumerGroupId);
-    if (Objects.nonNull(consensusBroker) && consensusBroker.hasQueue(topicName)) {
-      ensureConsensusSeekRuntimeAvailable(consumerGroupId, topicName, "seek");
-      if (seekType != PipeSubscribeSeekReq.SEEK_TO_BEGINNING
-          && seekType != PipeSubscribeSeekReq.SEEK_TO_END) {
-        final String errorMessage =
-            String.format(
-                "Subscription: consensus seek only supports beginning/end or topic progress, "
-                    + "consumerGroup=%s, topic=%s, seekType=%s",
-                consumerGroupId, topicName, seekType);
-        LOGGER.warn(errorMessage);
-        throw new SubscriptionException(errorMessage);
-      }
-      consensusBroker.seek(topicName, seekType);
-      return;
-    }
-
-    if (isConsensusRuntimeUnsupported(topicName)) {
+    if (seekType != PipeSubscribeSeekReq.SEEK_TO_BEGINNING
+        && seekType != PipeSubscribeSeekReq.SEEK_TO_END) {
       final String errorMessage =
-          buildUnsupportedConsensusRuntimeMessage(consumerGroupId, topicName, "seek");
+          String.format(
+              "Subscription: consensus seek only supports beginning/end or topic progress, "
+                  + "consumerGroup=%s, topic=%s, seekType=%s",
+              consumerGroupId, topicName, seekType);
       LOGGER.warn(errorMessage);
       throw new SubscriptionException(errorMessage);
     }
 
-    final String errorMessage =
-        String.format(
-            "Subscription: seek is only supported for consensus-based subscriptions, "
-                + "consumerGroup=%s, topic=%s",
-            consumerGroupId, topicName);
-    LOGGER.warn(errorMessage);
-    throw new SubscriptionException(errorMessage);
+    final ConsensusSubscriptionBroker consensusBroker =
+        getConsensusBrokerForSeekOrNoOp(consumerGroupId, topicName, "seek");
+    if (Objects.nonNull(consensusBroker)) {
+      consensusBroker.seek(topicName, seekType);
+    }
   }
 
   public void seekToTopicProgress(
@@ -395,28 +379,10 @@ public class SubscriptionBrokerAgent {
     final String consumerGroupId = consumerConfig.getConsumerGroupId();
 
     final ConsensusSubscriptionBroker consensusBroker =
-        consumerGroupIdToConsensusBroker.get(consumerGroupId);
-    if (Objects.nonNull(consensusBroker) && consensusBroker.hasQueue(topicName)) {
-      ensureConsensusSeekRuntimeAvailable(consumerGroupId, topicName, "seek(topicProgress)");
+        getConsensusBrokerForSeekOrNoOp(consumerGroupId, topicName, "seek(topicProgress)");
+    if (Objects.nonNull(consensusBroker)) {
       consensusBroker.seek(topicName, topicProgress);
-      return;
     }
-
-    if (isConsensusRuntimeUnsupported(topicName)) {
-      final String errorMessage =
-          buildUnsupportedConsensusRuntimeMessage(
-              consumerGroupId, topicName, "seek(topicProgress)");
-      LOGGER.warn(errorMessage);
-      throw new SubscriptionException(errorMessage);
-    }
-
-    final String errorMessage =
-        String.format(
-            "Subscription: seek(topicProgress) is only supported for consensus-based subscriptions, "
-                + "consumerGroup=%s, topic=%s",
-            consumerGroupId, topicName);
-    LOGGER.warn(errorMessage);
-    throw new SubscriptionException(errorMessage);
   }
 
   public void seekAfterTopicProgress(
@@ -426,28 +392,46 @@ public class SubscriptionBrokerAgent {
     final String consumerGroupId = consumerConfig.getConsumerGroupId();
 
     final ConsensusSubscriptionBroker consensusBroker =
-        consumerGroupIdToConsensusBroker.get(consumerGroupId);
-    if (Objects.nonNull(consensusBroker) && consensusBroker.hasQueue(topicName)) {
-      ensureConsensusSeekRuntimeAvailable(consumerGroupId, topicName, "seekAfter(topicProgress)");
+        getConsensusBrokerForSeekOrNoOp(consumerGroupId, topicName, "seekAfter(topicProgress)");
+    if (Objects.nonNull(consensusBroker)) {
       consensusBroker.seekAfter(topicName, topicProgress);
-      return;
     }
+  }
 
-    if (isConsensusRuntimeUnsupported(topicName)) {
+  private ConsensusSubscriptionBroker getConsensusBrokerForSeekOrNoOp(
+      final String consumerGroupId, final String topicName, final String operation) {
+    if (!ConsensusSubscriptionSetupHandler.isConsensusBasedTopic(topicName)) {
       final String errorMessage =
-          buildUnsupportedConsensusRuntimeMessage(
-              consumerGroupId, topicName, "seekAfter(topicProgress)");
+          String.format(
+              "Subscription: %s is only supported for consensus-based subscriptions, "
+                  + "consumerGroup=%s, topic=%s",
+              operation, consumerGroupId, topicName);
       LOGGER.warn(errorMessage);
       throw new SubscriptionException(errorMessage);
     }
 
-    final String errorMessage =
-        String.format(
-            "Subscription: seekAfter(topicProgress) is only supported for consensus-based subscriptions, "
-                + "consumerGroup=%s, topic=%s",
-            consumerGroupId, topicName);
-    LOGGER.warn(errorMessage);
-    throw new SubscriptionException(errorMessage);
+    if (!(DataRegionConsensusImpl.getInstance() instanceof IoTConsensus)) {
+      final String errorMessage =
+          buildUnsupportedConsensusRuntimeMessage(consumerGroupId, topicName, operation);
+      LOGGER.warn(errorMessage);
+      throw new SubscriptionException(errorMessage);
+    }
+
+    ensureConsensusSeekRuntimeAvailable(consumerGroupId, topicName, operation);
+
+    final ConsensusSubscriptionBroker consensusBroker =
+        consumerGroupIdToConsensusBroker.get(consumerGroupId);
+    if (Objects.nonNull(consensusBroker) && consensusBroker.hasQueue(topicName)) {
+      return consensusBroker;
+    }
+
+    LOGGER.info(
+        "Subscription: consensus {} is a no-op on this DataNode because no local queue exists, "
+            + "consumerGroup={}, topic={}",
+        operation,
+        consumerGroupId,
+        topicName);
+    return null;
   }
 
   private void ensureConsensusSeekRuntimeAvailable(
@@ -462,11 +446,6 @@ public class SubscriptionBrokerAgent {
       LOGGER.warn(errorMessage);
       throw new SubscriptionException(errorMessage);
     }
-  }
-
-  private boolean isConsensusRuntimeUnsupported(final String topicName) {
-    return !(DataRegionConsensusImpl.getInstance() instanceof IoTConsensus)
-        && ConsensusSubscriptionSetupHandler.isConsensusBasedTopic(topicName);
   }
 
   private List<String> getUnsupportedConsensusTopics(final Set<String> topicNames) {
