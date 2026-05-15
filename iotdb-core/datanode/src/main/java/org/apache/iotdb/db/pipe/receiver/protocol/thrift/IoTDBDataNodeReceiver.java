@@ -938,15 +938,13 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     if (statement instanceof LoadTsFileStatement
         && shouldUseTableModelVisitorForLoadStatement((LoadTsFileStatement) statement)) {
       return statement
-          .accept(
-              tableStatementDataTypeConvertExecutionVisitor, new Pair<>(status, databaseName))
+          .accept(tableStatementDataTypeConvertExecutionVisitor, new Pair<>(status, databaseName))
           .orElse(status);
     }
 
     return isTableModelStatement
         ? statement
-            .accept(
-                tableStatementDataTypeConvertExecutionVisitor, new Pair<>(status, databaseName))
+            .accept(tableStatementDataTypeConvertExecutionVisitor, new Pair<>(status, databaseName))
             .orElse(status)
         : statement.accept(treeStatementDataTypeConvertExecutionVisitor, status).orElse(status);
   }
