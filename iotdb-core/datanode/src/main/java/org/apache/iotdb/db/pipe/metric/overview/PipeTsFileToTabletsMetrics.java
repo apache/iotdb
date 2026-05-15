@@ -110,39 +110,47 @@ public class PipeTsFileToTabletsMetrics implements IMetricSet {
   }
 
   private void removeMetrics(final String pipeID) {
+    pipeTimerMap.remove(pipeID);
     metricService.remove(
         MetricType.TIMER,
         Metric.PIPE_TSFILE_TO_TABLETS_TIME.toString(),
         Tag.NAME.toString(),
         pipeID);
-    pipeTimerMap.remove(pipeID);
 
+    pipeRateMap.remove(pipeID);
     metricService.remove(
         MetricType.RATE,
         Metric.PIPE_TSFILE_TO_TABLETS_RATE.toString(),
         Tag.NAME.toString(),
         pipeID);
-    pipeRateMap.remove(pipeID);
 
+    pipeTabletCountMap.remove(pipeID);
     metricService.remove(
         MetricType.COUNTER,
         Metric.PIPE_TSFILE_TO_TABLETS_COUNT.toString(),
         Tag.NAME.toString(),
         pipeID);
-    pipeTabletCountMap.remove(pipeID);
 
+    pipeTabletMemoryMap.remove(pipeID);
     metricService.remove(
         MetricType.COUNTER,
         Metric.PIPE_TSFILE_TO_TABLETS_TOTAL_MEMORY.toString(),
         Tag.NAME.toString(),
         pipeID);
-    pipeTabletMemoryMap.remove(pipeID);
 
+    pipeParseFileCountMap.remove(pipeID);
     metricService.remove(
         MetricType.COUNTER,
         Metric.PIPE_TSFILE_PARSE_FILE_COUNT.toString(),
         Tag.NAME.toString(),
         pipeID);
+  }
+
+  private void removePipeStats(final String pipeID) {
+    pipeTimerMap.remove(pipeID);
+    pipeRateMap.remove(pipeID);
+    pipeTabletCountMap.remove(pipeID);
+    pipeTabletMemoryMap.remove(pipeID);
     pipeParseFileCountMap.remove(pipeID);
   }
 
@@ -165,6 +173,8 @@ public class PipeTsFileToTabletsMetrics implements IMetricSet {
     try {
       if (Objects.nonNull(metricService)) {
         removeMetrics(pipeID);
+      } else {
+        removePipeStats(pipeID);
       }
     } finally {
       pipe.remove(pipeID);

@@ -842,12 +842,20 @@ public class AggregateProcessor implements PipeProcessor {
 
   @Override
   public void close() throws Exception {
-    if (Objects.nonNull(pipeName)
-        && pipeName2referenceCountMap.compute(
-                pipeName, (name, count) -> Objects.nonNull(count) ? count - 1 : 0)
-            == 0) {
-      pipeName2timeSeries2TimeSeriesRuntimeStateMap.get(pipeName).clear();
-      pipeName2timeSeries2TimeSeriesRuntimeStateMap.remove(pipeName);
+    boolean isLastReference = false;
+    if (Objects.nonNull(pipeName)) {
+      isLastReference =
+          pipeName2referenceCountMap.computeIfPresent(
+                  pipeName, (name, count) -> count > 1 ? count - 1 : null)
+              == null;
+    }
+    if (isLastReference) {
+      final ConcurrentMap<String, AtomicReference<TimeSeriesRuntimeState>>
+          timeSeries2RuntimeStateMap =
+              pipeName2timeSeries2TimeSeriesRuntimeStateMap.remove(pipeName);
+      if (timeSeries2RuntimeStateMap != null) {
+        timeSeries2RuntimeStateMap.clear();
+      }
       pipeName2LastValueReceiveTimeMap.remove(pipeName);
     }
     if (Objects.nonNull(windowingProcessor)) {
