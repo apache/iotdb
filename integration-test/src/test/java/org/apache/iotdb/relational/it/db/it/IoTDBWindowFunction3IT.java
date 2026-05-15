@@ -117,6 +117,25 @@ public class IoTDBWindowFunction3IT {
   }
 
   @Test
+  public void testSameWindowFunctionWithDifferentOrdering() {
+    String[] expectedHeader = new String[] {"time", "device", "value", "rank_time", "rank_value"};
+    String[] retArray =
+        new String[] {
+          "2021-01-01T09:05:00.000Z,d1,3.0,1,2,",
+          "2021-01-01T09:07:00.000Z,d1,5.0,2,4,",
+          "2021-01-01T09:09:00.000Z,d1,3.0,3,2,",
+          "2021-01-01T09:10:00.000Z,d1,1.0,4,1,",
+          "2021-01-01T09:08:00.000Z,d2,2.0,1,1,",
+          "2021-01-01T09:15:00.000Z,d2,4.0,2,2,",
+        };
+    tableResultSetEqualTest(
+        "SELECT *, rank() OVER (PARTITION BY device ORDER BY \"time\") AS rank_time, rank() OVER (PARTITION BY device ORDER BY value) AS rank_value FROM demo ORDER BY device, \"time\"",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
   public void testPushDownFilterIntoWindow() {
     String[] expectedHeader = new String[] {"time", "device", "value", "rn"};
     String[] retArray =
