@@ -45,7 +45,7 @@
         </file>
         <file>
             <source>${maven.multiModuleProjectDirectory}/library-pipe/tsfile-remote-sink/target/tsfile-remote-sink-${project.version}-jar-with-dependencies.jar</source>
-            <outputDirectory>/</outputDirectory>
+            <outputDirectory>ext/pipe</outputDirectory>
         </file>
     </files>
 </assembly>
