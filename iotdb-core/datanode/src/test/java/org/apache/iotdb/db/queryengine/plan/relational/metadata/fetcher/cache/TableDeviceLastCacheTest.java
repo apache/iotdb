@@ -1,0 +1,90 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache;
+
+import org.apache.tsfile.read.TimeValuePair;
+import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.utils.TsPrimitiveType;
+import org.junit.Assert;
+import org.junit.Test;
+
+import java.util.Collections;
+import java.util.Optional;
+import java.util.OptionalLong;
+
+public class TableDeviceLastCacheTest {
+
+  @Test
+  public void testKnownNullTimePreservesHistoricalValueAndClearsOnNewerValue() {
+    final TableDeviceLastCache cache = new TableDeviceLastCache(false);
+
+    cache.initOrInvalidate(null, null, new String[] {"", "s1"}, false);
+
+    final TimeValuePair historicalValue = new TimeValuePair(1L, new TsPrimitiveType.TsInt(1));
+    cache.tryUpdate(
+        new String[] {"", "s1"},
+        new TimeValuePair[] {
+          new TimeValuePair(1L, TableDeviceLastCache.EMPTY_PRIMITIVE_TYPE), historicalValue
+        });
+    cache.tryUpdate(
+        new String[] {"s1"},
+        new TimeValuePair[] {new TimeValuePair(2L, TableDeviceLastCache.EMPTY_PRIMITIVE_TYPE)});
+
+    Assert.assertEquals(historicalValue, cache.getTimeValuePair("s1"));
+    Optional<Pair<OptionalLong, TsPrimitiveType[]>> result =
+        cache.getLastRow("", Collections.singletonList("s1"));
+    Assert.assertTrue(result.isPresent());
+    Assert.assertEquals(OptionalLong.of(2L), result.get().getLeft());
+    Assert.assertArrayEquals(
+        new TsPrimitiveType[] {TableDeviceLastCache.EMPTY_PRIMITIVE_TYPE}, result.get().getRight());
+
+    final TimeValuePair newerValue = new TimeValuePair(3L, new TsPrimitiveType.TsInt(3));
+    cache.tryUpdate(new String[] {"s1"}, new TimeValuePair[] {newerValue});
+
+    Assert.assertEquals(newerValue, cache.getTimeValuePair("s1"));
+    result = cache.getLastRow("", Collections.singletonList("s1"));
+    Assert.assertTrue(result.isPresent());
+    Assert.assertEquals(OptionalLong.of(3L), result.get().getLeft());
+    Assert.assertArrayEquals(
+        new TsPrimitiveType[] {new TsPrimitiveType.TsInt(3)}, result.get().getRight());
+  }
+
+  @Test
+  public void testInvalidateMeasurementClearsKnownNullTimeAndAlignedTime() {
+    final TableDeviceLastCache cache = new TableDeviceLastCache(false);
+
+    cache.initOrInvalidate(null, null, new String[] {"", "s1"}, false);
+    cache.tryUpdate(
+        new String[] {"", "s1"},
+        new TimeValuePair[] {
+          new TimeValuePair(2L, TableDeviceLastCache.EMPTY_PRIMITIVE_TYPE),
+          new TimeValuePair(2L, TableDeviceLastCache.EMPTY_PRIMITIVE_TYPE)
+        });
+
+    Assert.assertTrue(cache.getLastRow("", Collections.singletonList("s1")).isPresent());
+    Assert.assertNotNull(cache.getTimeValuePair(""));
+
+    cache.invalidate("s1");
+
+    Assert.assertFalse(cache.getLastRow("", Collections.singletonList("s1")).isPresent());
+    Assert.assertNull(cache.getTimeValuePair(""));
+    Assert.assertNull(cache.getTimeValuePair("s1"));
+  }
+}
