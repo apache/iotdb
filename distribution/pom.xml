@@ -501,6 +501,7 @@
                         <configuration>
                             <descriptors>
                                 <descriptor>src/assembly/all.xml</descriptor>
+                                <descriptor>src/assembly/external-service-impl.xml</descriptor>
                                 <descriptor>src/assembly/library-pipe.xml</descriptor>
                             </descriptors>
                             <finalName>timechodb-${project.version}</finalName>
@@ -544,6 +545,7 @@
                                     <directory>${project.build.directory}</directory>
                                     <includes>
                                         <include>timechodb-${project.version}-bin.zip</include>
+                                        <include>timechodb-${project.version}-external-service-impl-bin.zip</include>
                                         <include>timechodb-${project.version}-library-pipe-bin.zip</include>
                                     </includes>
                                 </fileSet>
