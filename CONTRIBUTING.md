@@ -55,7 +55,7 @@ You can choose issue types: bug, improvement, new feature, etc.  New issues will
 
 ## Email discussion content (English)
 
-* Joining the mailing list for the first time can introduce youself briefly.  (Hi, I'm xxx ...)
+* Joining the mailing list for the first time can introduce yourself briefly.  (Hi, I'm xxx ...)
 
 * Before developing a new feature, you can send an e-mail to declare the task you want to do.（Hi，I'm working on issue IOTDB-XXX，My plan is ...）
 
@@ -184,4 +184,3 @@ org.apache.maven.wagon.TransferFailedException: Transfer failed for https://gith
  * Put the file to thrift/target/tools/
 
  * Re-run maven command like `mvn compile`
-

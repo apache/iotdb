@@ -17,7 +17,9 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.execution.schedule.queue;
+package org.apache.iotdb.db.pipe.event.common.tsfile.parser.scan;
 
-/** A simple interface to indicate the id type. */
-public interface ID {}
+interface EstimatedMemoryChunkReader {
+
+  long getCurrentPageEstimatedMemoryUsageInBytes();
+}

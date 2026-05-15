@@ -271,7 +271,6 @@ public class CommonConfig {
 
   private int pipeSourceAssignerDisruptorRingBufferSize = 128;
   private long pipeSourceAssignerDisruptorRingBufferEntrySizeInBytes = 72 * KB;
-  private long pipeSourceMatcherCacheSize = 1024;
 
   private int pipeSinkHandshakeTimeoutMs = 10 * 1000; // 10 seconds
   private int pipeAirGapSinkTabletTimeoutMs = 60 * 1000; // 1 min
@@ -1095,18 +1094,6 @@ public class CommonConfig {
     logger.info(
         "pipeSourceAssignerDisruptorRingBufferEntrySize is set to {}.",
         pipeSourceAssignerDisruptorRingBufferEntrySize);
-  }
-
-  public long getPipeSourceMatcherCacheSize() {
-    return pipeSourceMatcherCacheSize;
-  }
-
-  public void setPipeSourceMatcherCacheSize(long pipeSourceMatcherCacheSize) {
-    if (this.pipeSourceMatcherCacheSize == pipeSourceMatcherCacheSize) {
-      return;
-    }
-    this.pipeSourceMatcherCacheSize = pipeSourceMatcherCacheSize;
-    logger.info("pipeSourceMatcherCacheSize is set to {}.", pipeSourceMatcherCacheSize);
   }
 
   public int getPipeSinkHandshakeTimeoutMs() {

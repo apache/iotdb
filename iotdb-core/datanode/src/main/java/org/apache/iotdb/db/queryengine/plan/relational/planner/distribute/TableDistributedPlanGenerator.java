@@ -33,6 +33,7 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.process.Singl
 import org.apache.iotdb.commons.queryengine.plan.relational.function.BoundSignature;
 import org.apache.iotdb.commons.queryengine.plan.relational.function.FunctionId;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ResolvedFunction;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Assignments;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.OrderingScheme;
@@ -87,7 +88,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.AlignedDeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTreeDeviceViewScanNode;
@@ -107,7 +107,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.Table
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceQueryCountNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceQueryScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.DataNodeLocationSupplierFactory;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PushPredicateIntoTableScan;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Insert;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
@@ -321,7 +320,22 @@ public class TableDistributedPlanGenerator
 
   @Override
   public List<PlanNode> visitProject(ProjectNode node, PlanContext context) {
+    boolean containsDiff =
+        node.getAssignments().getMap().values().stream()
+            .anyMatch(expression -> containsDiffFunction(expression));
+    OrderingScheme originalExpectedOrdering = context.expectedOrderingScheme;
+    boolean originalHasSortProperty = context.hasSortProperty;
+    if (containsDiff) {
+      context.clearExpectedOrderingScheme();
+    }
     List<PlanNode> childrenNodes = node.getChild().accept(this, context);
+    if (containsDiff) {
+      if (originalHasSortProperty) {
+        context.setExpectedOrderingScheme(originalExpectedOrdering);
+      } else {
+        context.clearExpectedOrderingScheme();
+      }
+    }
     OrderingScheme childOrdering = nodeOrderingMap.get(childrenNodes.get(0).getPlanNodeId());
     boolean containAllSortItem = false;
     if (childOrdering != null) {
@@ -378,9 +392,6 @@ public class TableDistributedPlanGenerator
       return Collections.singletonList(node);
     }
 
-    boolean containsDiff =
-        node.getAssignments().getMap().values().stream()
-            .anyMatch(PushPredicateIntoTableScan::containsDiffFunction);
     if (containsDiff) {
       if (containAllSortItem) {
         nodeOrderingMap.put(node.getPlanNodeId(), childOrdering);
@@ -583,7 +594,20 @@ public class TableDistributedPlanGenerator
 
   @Override
   public List<PlanNode> visitFilter(FilterNode node, PlanContext context) {
+    boolean containsDiff = containsDiffFunction(node.getPredicate());
+    OrderingScheme originalExpectedOrdering = context.expectedOrderingScheme;
+    boolean originalHasSortProperty = context.hasSortProperty;
+    if (containsDiff) {
+      context.clearExpectedOrderingScheme();
+    }
     List<PlanNode> childrenNodes = node.getChild().accept(this, context);
+    if (containsDiff) {
+      if (originalHasSortProperty) {
+        context.setExpectedOrderingScheme(originalExpectedOrdering);
+      } else {
+        context.clearExpectedOrderingScheme();
+      }
+    }
     OrderingScheme childOrdering = nodeOrderingMap.get(childrenNodes.get(0).getPlanNodeId());
     if (childOrdering != null) {
       nodeOrderingMap.put(node.getPlanNodeId(), childOrdering);
@@ -594,7 +618,7 @@ public class TableDistributedPlanGenerator
       return Collections.singletonList(node);
     }
 
-    if (containsDiffFunction(node.getPredicate())) {
+    if (containsDiff) {
       node.setChild(mergeChildrenViaCollectOrMergeSort(childOrdering, childrenNodes));
       return Collections.singletonList(node);
     }

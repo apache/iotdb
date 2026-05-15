@@ -36,6 +36,7 @@ import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskSourceRuntimeEnvi
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.datastructure.resource.PersistentResource;
+import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
 import org.apache.iotdb.commons.queryengine.utils.DateTimeUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
@@ -163,6 +164,8 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
 
   private Queue<PersistentResource> pendingQueue;
   private final Map<TsFileResource, Set<String>> filteredTsFileResources2TableNames =
+      new HashMap<>();
+  private final Map<PersistentResource, Long> pendingResource2ReplicateIndexForIoTV2 =
       new HashMap<>();
 
   @Override
@@ -810,18 +813,27 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
       return null;
     }
 
-    final PersistentResource resource = pendingQueue.poll();
+    final PersistentResource resource = pendingQueue.peek();
     if (resource == null) {
       return supplyTerminateEvent();
     }
 
     if (resource instanceof TsFileResource) {
       final TsFileResource tsFileResource = (TsFileResource) resource;
-      return consumeSkippedHistoricalTsFileEventIfNecessary(tsFileResource)
-          ? supplyProgressReportEvent(tsFileResource.getMaxProgressIndex())
-          : supplyTsFileEvent(tsFileResource);
+      if (consumeSkippedHistoricalTsFileEventIfNecessary(tsFileResource)) {
+        clearReplicateIndexForResource(tsFileResource);
+        pendingQueue.poll();
+        return supplyProgressReportEvent(tsFileResource.getMaxProgressIndex());
+      }
+
+      final Event event = supplyTsFileEvent(tsFileResource);
+      pendingQueue.poll();
+      return event;
     }
-    return supplyDeletionEvent((DeletionResource) resource);
+
+    final Event event = supplyDeletionEvent((DeletionResource) resource);
+    pendingQueue.poll();
+    return event;
   }
 
   private Event supplyTerminateEvent() {
@@ -891,50 +903,52 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
 
   protected Event supplyTsFileEvent(final TsFileResource resource) {
     if (!filteredTsFileResources2TableNames.containsKey(resource)) {
+      clearReplicateIndexForResource(resource);
       return supplyProgressReportEvent(resource.getMaxProgressIndex());
     }
 
-    final PipeTsFileInsertionEvent event =
-        new PipeTsFileInsertionEvent(
-            isModelDetected ? isTableModel : null,
-            resource.getDatabaseName(),
-            resource,
-            null,
-            shouldTransferModFile,
-            false,
-            true,
-            filteredTsFileResources2TableNames.get(resource),
-            pipeName,
-            creationTime,
-            pipeTaskMeta,
-            treePattern,
-            tablePattern,
-            userId,
-            userName,
-            cliHostname,
-            skipIfNoPrivileges,
-            historicalDataExtractionStartTime,
-            historicalDataExtractionEndTime);
-
-    filteredTsFileResources2TableNames.remove(resource);
-
-    // if using IoTV2, assign a replicateIndex for this event
-    if (DataRegionConsensusImpl.getInstance() instanceof IoTConsensusV2
-        && IoTConsensusV2Processor.isShouldReplicate(event)) {
-      event.setReplicateIndexForIoTV2(
-          ReplicateProgressDataNodeManager.assignReplicateIndexForIoTV2(pipeName));
-      LOGGER.debug(
-          "[{}]Set {} for historical event {}", pipeName, event.getReplicateIndexForIoTV2(), event);
-    }
-
-    if (sloppyPattern || isDbNameCoveredByPattern) {
-      event.skipParsingPattern();
-    }
-    if (sloppyTimeRange || isTsFileResourceCoveredByTimeRange(resource)) {
-      event.skipParsingTime();
-    }
-
+    boolean shouldUnpinResource = false;
+    boolean shouldClearReplicateIndex = false;
     try {
+      final PipeTsFileInsertionEvent event =
+          new PipeTsFileInsertionEvent(
+              isModelDetected ? isTableModel : null,
+              resource.getDatabaseName(),
+              resource,
+              null,
+              shouldTransferModFile,
+              false,
+              true,
+              filteredTsFileResources2TableNames.get(resource),
+              pipeName,
+              creationTime,
+              pipeTaskMeta,
+              treePattern,
+              tablePattern,
+              userId,
+              userName,
+              cliHostname,
+              skipIfNoPrivileges,
+              historicalDataExtractionStartTime,
+              historicalDataExtractionEndTime);
+
+      // if using IoTV2, assign a replicateIndex for this event
+      if (shouldAssignReplicateIndexForIoTV2(event)) {
+        event.setReplicateIndexForIoTV2(assignReplicateIndexForResource(resource));
+        LOGGER.debug(
+            "[{}]Set {} for historical event {}",
+            pipeName,
+            event.getReplicateIndexForIoTV2(),
+            event);
+      }
+
+      if (sloppyPattern || isDbNameCoveredByPattern) {
+        event.skipParsingPattern();
+      }
+      if (sloppyTimeRange || isTsFileResourceCoveredByTimeRange(resource)) {
+        event.skipParsingTime();
+      }
+
       final boolean isReferenceCountIncreased =
           event.increaseReferenceCount(
               PipeHistoricalDataRegionTsFileAndDeletionSource.class.getName());
@@ -945,17 +959,25 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
             dataRegionId,
             event);
       }
+      filteredTsFileResources2TableNames.remove(resource);
+      shouldUnpinResource = true;
+      shouldClearReplicateIndex = true;
       return isReferenceCountIncreased ? event : null;
     } finally {
-      try {
-        PipeDataNodeResourceManager.tsfile()
-            .unpinTsFileResource(resource, shouldTransferModFile, pipeName);
-      } catch (final IOException e) {
-        LOGGER.warn(
-            "Pipe {}@{}: failed to unpin TsFileResource after creating event, original path: {}",
-            pipeName,
-            dataRegionId,
-            resource.getTsFilePath());
+      if (shouldClearReplicateIndex) {
+        clearReplicateIndexForResource(resource);
+      }
+      if (shouldUnpinResource) {
+        try {
+          PipeDataNodeResourceManager.tsfile()
+              .unpinTsFileResource(resource, shouldTransferModFile, pipeName);
+        } catch (final IOException e) {
+          LOGGER.warn(
+              "Pipe {}@{}: failed to unpin TsFileResource after creating event, original path: {}",
+              pipeName,
+              dataRegionId,
+              resource.getTsFilePath());
+        }
       }
     }
   }
@@ -983,10 +1005,8 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
             false);
 
     // if using IoTV2, assign a replicateIndex for this historical deletion event
-    if (DataRegionConsensusImpl.getInstance() instanceof IoTConsensusV2
-        && IoTConsensusV2Processor.isShouldReplicate(event)) {
-      event.setReplicateIndexForIoTV2(
-          ReplicateProgressDataNodeManager.assignReplicateIndexForIoTV2(pipeName));
+    if (shouldAssignReplicateIndexForIoTV2(event)) {
+      event.setReplicateIndexForIoTV2(assignReplicateIndexForResource(deletionResource));
       LOGGER.debug(
           "[{}]Set {} for historical deletion event {}",
           pipeName,
@@ -1017,7 +1037,23 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
                   event.setDeletionResource(
                       manager.getDeletionResource(event.getDeleteDataNode())));
     }
+    clearReplicateIndexForResource(deletionResource);
     return isReferenceCountIncreased ? event : null;
+  }
+
+  protected boolean shouldAssignReplicateIndexForIoTV2(final EnrichedEvent event) {
+    return DataRegionConsensusImpl.getInstance() instanceof IoTConsensusV2
+        && IoTConsensusV2Processor.isShouldReplicate(event);
+  }
+
+  protected long assignReplicateIndexForResource(final PersistentResource resource) {
+    return pendingResource2ReplicateIndexForIoTV2.computeIfAbsent(
+        resource,
+        ignored -> ReplicateProgressDataNodeManager.assignReplicateIndexForIoTV2(pipeName));
+  }
+
+  protected void clearReplicateIndexForResource(final PersistentResource resource) {
+    pendingResource2ReplicateIndexForIoTV2.remove(resource);
   }
 
   @Override
@@ -1055,5 +1091,6 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
       pendingQueue.clear();
       pendingQueue = null;
     }
+    pendingResource2ReplicateIndexForIoTV2.clear();
   }
 }

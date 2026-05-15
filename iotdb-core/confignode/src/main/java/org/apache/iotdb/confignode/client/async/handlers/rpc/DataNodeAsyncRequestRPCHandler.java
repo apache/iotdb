@@ -212,6 +212,7 @@ public abstract class DataNodeAsyncRequestRPCHandler<Response>
             dataNodeLocationMap,
             (Map<Integer, TExternalServiceListResp>) responseMap,
             countDownLatch);
+      case PUSH_TOPOLOGY:
       case SET_TTL:
       case CREATE_DATA_REGION:
       case CREATE_SCHEMA_REGION:

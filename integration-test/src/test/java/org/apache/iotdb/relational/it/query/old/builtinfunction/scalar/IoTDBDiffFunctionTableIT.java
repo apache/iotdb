@@ -146,4 +146,84 @@ public class IoTDBDiffFunctionTableIT {
         retArray,
         DATABASE_NAME);
   }
+
+  @Test
+  public void testDiffWithOrderBySubquery() {
+    String[] expectedHeader = new String[] {"time", "device_id", "s1", "_col3"};
+    String[] retArray =
+        new String[] {
+          "1970-02-27T20:53:20.001Z,d1,8,3.0,",
+          "1970-02-27T20:53:20.000Z,d1,null,null,",
+          "1970-01-01T00:00:00.006Z,d1,null,null,",
+          "1970-01-01T00:00:00.005Z,d1,5,1.0,",
+          "1970-01-01T00:00:00.004Z,d1,4,2.0,",
+          "1970-01-01T00:00:00.003Z,d1,null,null,",
+          "1970-01-01T00:00:00.002Z,d1,2,1.0,",
+          "1970-01-01T00:00:00.001Z,d1,1,null,"
+        };
+    tableResultSetEqualTest(
+        "SELECT time, device_id, s1, diff(s1) FROM ("
+            + "select * "
+            + "from table1 where device_id='d1' ORDER by time"
+            + ") "
+            + "ORDER by time DESC",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testDiffInOuterWhereHavingOrderBy() {
+    String[] expectedHeader = new String[] {"time", "device_id", "s1"};
+    String[] expectedRowsFilteredByDiff =
+        new String[] {
+          "1970-02-27T20:53:20.001Z,d1,8,",
+          "1970-01-01T00:00:00.005Z,d1,5,",
+          "1970-01-01T00:00:00.004Z,d1,4,",
+          "1970-01-01T00:00:00.002Z,d1,2,"
+        };
+    tableResultSetEqualTest(
+        "SELECT time, device_id, s1 FROM ("
+            + "select * "
+            + "from table1 where device_id='d1' ORDER by time"
+            + ") "
+            + "WHERE diff(s1) IS NOT NULL "
+            + "ORDER by time DESC",
+        expectedHeader,
+        expectedRowsFilteredByDiff,
+        DATABASE_NAME);
+
+    tableResultSetEqualTest(
+        "SELECT time, device_id, s1 FROM ("
+            + "select * "
+            + "from table1 where device_id='d1' ORDER by time"
+            + ") "
+            + "GROUP BY time, device_id, s1 "
+            + "HAVING diff(s1) IS NOT NULL "
+            + "ORDER by time DESC",
+        expectedHeader,
+        expectedRowsFilteredByDiff,
+        DATABASE_NAME);
+
+    String[] expectedRowsOrderedByDiff =
+        new String[] {
+          "1970-02-27T20:53:20.001Z,d1,8,",
+          "1970-01-01T00:00:00.004Z,d1,4,",
+          "1970-01-01T00:00:00.005Z,d1,5,",
+          "1970-01-01T00:00:00.002Z,d1,2,",
+          "1970-02-27T20:53:20.000Z,d1,null,",
+          "1970-01-01T00:00:00.006Z,d1,null,",
+          "1970-01-01T00:00:00.003Z,d1,null,",
+          "1970-01-01T00:00:00.001Z,d1,1,"
+        };
+    tableResultSetEqualTest(
+        "SELECT time, device_id, s1 FROM ("
+            + "select * "
+            + "from table1 where device_id='d1' ORDER by time"
+            + ") "
+            + "ORDER BY coalesce(diff(s1), -1000.0) DESC, time DESC",
+        expectedHeader,
+        expectedRowsOrderedByDiff,
+        DATABASE_NAME);
+  }
 }

@@ -256,6 +256,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
     configManager.getPipeManager().getPipeRuntimeCoordinator().stopPipeMetaSync();
     configManager.getPipeManager().getPipeRuntimeCoordinator().stopPipeHeartbeat();
     configManager.getSubscriptionManager().getSubscriptionCoordinator().stopSubscriptionMetaSync();
+    configManager.getLoadManager().stopTopologyService();
     configManager.getLoadManager().stopLoadServices();
     configManager.getProcedureManager().stopExecutor();
     configManager.getRetryFailedTasksThread().stopRetryFailedTasksService();
@@ -287,6 +288,10 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
 
     // Always start load services first
     configManager.getLoadManager().startLoadServices();
+
+    if (CONF.isEnableTopologyProbing()) {
+      configManager.getLoadManager().startTopologyService();
+    }
 
     // Start leader scheduling services
     configManager.getProcedureManager().startExecutor();

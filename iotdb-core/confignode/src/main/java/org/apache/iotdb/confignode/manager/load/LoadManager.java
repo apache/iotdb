@@ -154,7 +154,6 @@ public class LoadManager {
     statisticsService.startLoadStatisticsService();
     eventService.startEventService();
     partitionBalancer.setupPartitionBalancer();
-    topologyService.startTopologyService();
   }
 
   public void stopLoadServices() {
@@ -164,6 +163,13 @@ public class LoadManager {
     loadCache.clearHeartbeatCache();
     partitionBalancer.clearPartitionBalancer();
     routeBalancer.clearRegionPriority();
+  }
+
+  public void startTopologyService() {
+    topologyService.startTopologyService();
+  }
+
+  public void stopTopologyService() {
     topologyService.stopTopologyService();
   }
 

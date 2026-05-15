@@ -91,6 +91,7 @@ public class WALBuffer extends AbstractWALBuffer {
   private final Lock buffersLock = new ReentrantLock();
   // condition to guarantee correctness of switching buffers
   private final Condition idleBufferReadyCondition = buffersLock.newCondition();
+  private final Condition rollLogWriterCondition = buffersLock.newCondition();
   // last writer position when fsync is called, help record each entry's position
   private long lastFsyncPosition;
 
@@ -171,6 +172,13 @@ public class WALBuffer extends AbstractWALBuffer {
   protected File rollLogWriter(long searchIndex, WALFileStatus fileStatus) throws IOException {
     File file = super.rollLogWriter(searchIndex, fileStatus);
     currentWALFileWriter.setCompressedByteBuffer(compressedByteBuffer);
+    buffersLock.lock();
+    try {
+      // notify WALReader that new file is generated, and it can read new file
+      rollLogWriterCondition.signalAll();
+    } finally {
+      buffersLock.unlock();
+    }
     return file;
   }
 
@@ -676,7 +684,7 @@ public class WALBuffer extends AbstractWALBuffer {
   }
 
   @Override
-  public void waitForFlush() throws InterruptedException {
+  public void waitForRollFile() throws InterruptedException {
     buffersLock.lock();
     try {
       idleBufferReadyCondition.await();
@@ -686,11 +694,11 @@ public class WALBuffer extends AbstractWALBuffer {
   }
 
   @Override
-  public void waitForFlush(Predicate<WALBuffer> waitPredicate) throws InterruptedException {
+  public void waitForRollFile(Predicate<WALBuffer> waitPredicate) throws InterruptedException {
     buffersLock.lock();
     try {
       if (waitPredicate.test(this)) {
-        idleBufferReadyCondition.await();
+        rollLogWriterCondition.await();
       }
     } finally {
       buffersLock.unlock();
@@ -698,10 +706,10 @@ public class WALBuffer extends AbstractWALBuffer {
   }
 
   @Override
-  public boolean waitForFlush(long time, TimeUnit unit) throws InterruptedException {
+  public boolean waitForRollFile(long time, TimeUnit unit) throws InterruptedException {
     buffersLock.lock();
     try {
-      return idleBufferReadyCondition.await(time, unit);
+      return rollLogWriterCondition.await(time, unit);
     } finally {
       buffersLock.unlock();
     }

@@ -40,6 +40,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.channels.FileChannel;
 import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -334,10 +335,11 @@ public class ModificationFile implements AutoCloseable {
   public void remove() throws IOException {
     lock.writeLock().lock();
     try {
+      long sizeBeforeRemove = fileExists ? getFileLength() : 0;
       close();
       FileUtils.deleteFileOrDirectory(file);
       if (fileExists) {
-        updateModFileMetric(-1, -getFileLength());
+        updateModFileMetric(-1, -sizeBeforeRemove);
       }
       fileExists = false;
       removed = true;
@@ -394,12 +396,12 @@ public class ModificationFile implements AutoCloseable {
   public void compact() throws IOException {
     long originFileSize = getFileLength();
     if (originFileSize > COMPACT_THRESHOLD && !hasCompacted) {
+      File compactedFile = new File(getFile().getPath() + COMPACT_SUFFIX);
       try {
         Map<PartialPath, List<ModEntry>> pathModificationMap =
             getAllMods().stream().collect(Collectors.groupingBy(ModEntry::keyOfPatternTree));
-        String newModsFileName = getFile().getPath() + COMPACT_SUFFIX;
         try (ModificationFile compactedModificationFile =
-            new ModificationFile(newModsFileName, false)) {
+            new ModificationFile(compactedFile, false)) {
           Set<Entry<PartialPath, List<ModEntry>>> modificationsEntrySet =
               pathModificationMap.entrySet();
           for (Map.Entry<PartialPath, List<ModEntry>> modificationEntry : modificationsEntrySet) {
@@ -408,12 +410,15 @@ public class ModificationFile implements AutoCloseable {
           }
         } catch (IOException e) {
           LOGGER.error("compact mods file exception of {}", file, e);
+          throw e;
         }
-        // remove origin mods file
-        this.remove();
-        fileExists = true;
-        // rename new mods file to origin name
-        Files.move(new File(newModsFileName).toPath(), file.toPath());
+        long compactedFileSize = compactedFile.length();
+        close();
+        Files.move(compactedFile.toPath(), file.toPath(), StandardCopyOption.REPLACE_EXISTING);
+        if (updateMetrics) {
+          FileMetrics.getInstance().increaseModFileSize(compactedFileSize - originFileSize);
+        }
+        fileExists = compactedFileSize > 0;
         LOGGER.info("{} settle successful", file);
 
         if (getFileLength() > COMPACT_THRESHOLD) {
@@ -424,6 +429,7 @@ public class ModificationFile implements AutoCloseable {
         }
       } catch (IOException e) {
         LOGGER.error("remove origin file or rename new mods file error.", e);
+        throw e;
       }
       hasCompacted = true;
     }
