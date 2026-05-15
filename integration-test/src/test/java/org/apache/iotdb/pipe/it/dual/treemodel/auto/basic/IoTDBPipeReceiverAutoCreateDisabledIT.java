@@ -57,7 +57,17 @@ public class IoTDBPipeReceiverAutoCreateDisabledIT extends AbstractPipeDualTreeM
   @Override
   protected void setupConfig() {
     super.setupConfig();
-    receiverEnv.getConfig().getCommonConfig().setAutoCreateSchemaEnabled(false);
+    senderEnv
+        .getConfig()
+        .getCommonConfig()
+        .setDataReplicationFactor(1)
+        .setSchemaReplicationFactor(1);
+    receiverEnv
+        .getConfig()
+        .getCommonConfig()
+        .setAutoCreateSchemaEnabled(false)
+        .setDataReplicationFactor(1)
+        .setSchemaReplicationFactor(1);
   }
 
   @Test
