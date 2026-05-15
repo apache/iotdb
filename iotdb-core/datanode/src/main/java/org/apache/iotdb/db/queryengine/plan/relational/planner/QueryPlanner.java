@@ -334,7 +334,9 @@ public class QueryPlanner {
 
     Map<Analysis.ResolvedWindow, List<FunctionCall>> functions =
         scopeAwareDistinct(subPlan, windowFunctions).stream()
-            .collect(Collectors.groupingBy(analysis::getWindow));
+            .collect(
+                Collectors.groupingBy(
+                    analysis::getWindow, LinkedHashMap::new, Collectors.toList()));
 
     for (Map.Entry<Analysis.ResolvedWindow, List<FunctionCall>> entry : functions.entrySet()) {
       Analysis.ResolvedWindow window = entry.getKey();
