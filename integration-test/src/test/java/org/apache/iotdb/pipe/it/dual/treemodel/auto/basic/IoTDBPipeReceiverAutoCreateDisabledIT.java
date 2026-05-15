@@ -83,6 +83,8 @@ public class IoTDBPipeReceiverAutoCreateDisabledIT extends AbstractPipeDualTreeM
                 + "with sink ('sink'='iotdb-thrift-sink', 'sink.node-urls'='%s');",
             receiverEnv.getDataNodeWrapper(0).getIpAndPortString());
     final String createDatabaseSql = "create database root.test.sg;";
+    final String createSecondDatabaseSql =
+        "create database root.test.ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz1;";
     final String createFirstTimeSeriesSql =
         "create timeseries root.test.sg.`1~!@#$%^&*()_+=:'\"/|[]{}`.`~!@#$%^&*()_+=:'\"/|[]{}` float;";
     final String insertFirstSql =
@@ -105,6 +107,7 @@ public class IoTDBPipeReceiverAutoCreateDisabledIT extends AbstractPipeDualTreeM
       statement.execute(createFirstTimeSeriesSql);
       statement.execute(insertFirstSql);
       final QueryResult firstQueryResult = queryForResult(statement, firstSelectSql);
+      statement.execute(createSecondDatabaseSql);
       statement.execute(createSecondTimeSeriesSql);
       statement.execute(insertSecondSql);
       final QueryResult secondQueryResult = queryForResult(statement, secondSelectSql);
