@@ -264,25 +264,25 @@ public class WALFileUtilsTest {
 
     try {
       try (final WALWriter writer = new WALWriter(wal0, WALFileVersion.V3)) {
-        writer.write(entryBuffer(10L), singleEntryMeta(19, 10L, 1L, 10000L, 1, 110L));
-        writer.write(entryBuffer(11L), singleEntryMeta(19, 11L, 1L, 10010L, 1, 111L));
+        writer.write(entryBuffer(10L), singleEntryMeta(19, 10L, 1L, 10000L, 1, 10L));
+        writer.write(entryBuffer(11L), singleEntryMeta(19, 11L, 1L, 10010L, 1, 11L));
       }
       try (final WALWriter writer = new WALWriter(wal1, WALFileVersion.V3)) {
-        writer.write(entryBuffer(13L), singleEntryMeta(19, 13L, 1L, 10020L, 1, 113L));
+        writer.write(entryBuffer(13L), singleEntryMeta(19, 13L, 1L, 10020L, 1, 13L));
       }
       // Leave wal2 as the active file placeholder; helper methods only scan sealed files.
       try (final WALWriter writer = new WALWriter(wal2, WALFileVersion.V3)) {
-        writer.write(entryBuffer(20L), singleEntryMeta(19, 20L, 1L, 20000L, 4, 120L));
+        writer.write(entryBuffer(20L), singleEntryMeta(19, 20L, 1L, 20000L, 4, 20L));
       }
 
       Assert.assertArrayEquals(
-          new long[] {11L, 1L}, WALFileUtils.locateByWriterProgress(dir.toFile(), 1, 10010L, 111L));
+          new long[] {11L, 1L}, WALFileUtils.locateByWriterProgress(dir.toFile(), 1, 10010L, 11L));
       Assert.assertArrayEquals(
-          new long[] {10L, 0L}, WALFileUtils.locateByWriterProgress(dir.toFile(), 1, 9999L, 109L));
+          new long[] {10L, 0L}, WALFileUtils.locateByWriterProgress(dir.toFile(), 1, 9999L, 9L));
       Assert.assertEquals(
-          13L, WALFileUtils.findSearchIndexAfterWriterProgress(dir.toFile(), 1, 10010L, 111L));
+          13L, WALFileUtils.findSearchIndexAfterWriterProgress(dir.toFile(), 1, 10010L, 11L));
       Assert.assertEquals(
-          -1L, WALFileUtils.findSearchIndexAfterWriterProgress(dir.toFile(), 4, 20000L, 120L));
+          -1L, WALFileUtils.findSearchIndexAfterWriterProgress(dir.toFile(), 4, 20000L, 20L));
     } finally {
       Files.deleteIfExists(wal0.toPath());
       Files.deleteIfExists(wal1.toPath());
