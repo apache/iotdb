@@ -79,7 +79,7 @@ public class IoTDBPipeReceiverAutoCreateDisabledIT extends AbstractPipeDualTreeM
 
     final String createPipeSql =
         String.format(
-            "create pipe test with source ('inclusion'='all','source.realtime.mode'='batch','source.realtime.enable'='true') "
+            "create pipe test with source ('inclusion'='all') "
                 + "with sink ('sink'='iotdb-thrift-sink', 'sink.node-urls'='%s');",
             receiverEnv.getDataNodeWrapper(0).getIpAndPortString());
     final String createDatabaseSql = "create database root.test.sg;";
