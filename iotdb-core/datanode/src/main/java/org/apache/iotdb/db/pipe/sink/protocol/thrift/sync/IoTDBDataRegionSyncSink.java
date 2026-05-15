@@ -500,7 +500,7 @@ public class IoTDBDataRegionSyncSink extends IoTDBDataNodeSyncSink {
           pipeTsFileInsertionEvent.isWithMod() ? pipeTsFileInsertionEvent.getModFile() : null,
           pipeTsFileInsertionEvent.isTableModelEvent()
               ? pipeTsFileInsertionEvent.getTableModelDatabaseName()
-              : null);
+              : pipeTsFileInsertionEvent.getTreeModelDatabaseName());
     } finally {
       pipeTsFileInsertionEvent.decreaseReferenceCount(
           IoTDBDataRegionSyncSink.class.getName(), false);
