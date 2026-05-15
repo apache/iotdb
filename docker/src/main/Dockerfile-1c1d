@@ -23,6 +23,7 @@ FROM eclipse-temurin:17-jre-focal
 
 ADD distribution/target/apache-iotdb-*-all-bin.zip /
 ADD docker/src/main/DockerCompose/start-1c1d.sh /
+ADD docker/src/main/DockerCompose/iotdb-docker-env.sh /
 
 RUN apt update \
   && apt install lsof dos2unix procps unzip -y \
@@ -30,6 +31,7 @@ RUN apt update \
   && rm /apache-iotdb-*-bin.zip \
   && mv /apache-iotdb-* /iotdb \
   && mv /start-1c1d.sh /iotdb/sbin \
+  && mv /iotdb-docker-env.sh /iotdb/sbin \
   && sed -i 's/dn_internal_address=127.0.0.1/dn_internal_address=0.0.0.0/g' /iotdb/conf/iotdb-system.properties \
   && sed -i 's/cn_internal_address=127.0.0.1/cn_internal_address=0.0.0.0/g' /iotdb/conf/iotdb-system.properties \
   && sed -i 's/cn_seed_config_node=127.0.0.1:10710/cn_seed_config_node=0.0.0.0:10710/g' /iotdb/conf/iotdb-system.properties \
@@ -40,6 +42,7 @@ RUN apt update \
   && apt purge --auto-remove -y \
   && apt clean -y \
 RUN dos2unix /iotdb/sbin/start-1c1d.sh
+RUN dos2unix /iotdb/sbin/iotdb-docker-env.sh
 RUN dos2unix /iotdb/sbin/../conf/iotdb-common.sh
 RUN dos2unix /iotdb/sbin/start-confignode.sh
 RUN dos2unix /iotdb/sbin/../conf/confignode-env.sh
