@@ -138,6 +138,11 @@ public class SyncConfigNodeClientPool {
     while (status.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
       TimeUnit.MILLISECONDS.sleep(2000);
       updateConfigNodeLeader(status);
+      if (configNodeLeader == null) {
+        LOGGER.warn(
+            "Redirection recommended for removeConfigNode but no leader endpoint provided, abort retry.");
+        break;
+      }
       try (SyncConfigNodeIServiceClient clientLeader =
           clientManager.borrowClient(configNodeLeader)) {
         status = clientLeader.removeConfigNode(configNodeLocation);
