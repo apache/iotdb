@@ -105,6 +105,28 @@ public class PrometheusTextParserTest {
     assertEquals("request_duration_seconds_count", samples.get(1).getMetricName());
   }
 
+  @Test
+  public void testParseQueryLabelValueWithUnescapedQuote() {
+    String text =
+        "# HELP performance_overview_seconds\n"
+            + "# TYPE performance_overview_seconds summary\n"
+            + "performance_overview_seconds{interface=\"executeQueryStatement\","
+            + "type=\"Query{selectItems=[\"s1\", \"s2\"], from=Optional[Table{d1}]}\","
+            + "quantile=\"0.5\",} 1\n";
+
+    List<PrometheusSample> samples = new PrometheusTextParser().parse(text, 100);
+
+    assertEquals(1, samples.size());
+    assertEquals("performance_overview_seconds", samples.get(0).getMetricFamilyName());
+    assertEquals("performance_overview_seconds", samples.get(0).getMetricName());
+    assertEquals("executeQueryStatement", samples.get(0).getLabels().get("interface"));
+    assertEquals(
+        "Query{selectItems=[\"s1\", \"s2\"], from=Optional[Table{d1}]}",
+        samples.get(0).getLabels().get("type"));
+    assertEquals("0.5", samples.get(0).getLabels().get("quantile"));
+    assertEquals(1.0, samples.get(0).getValue(), 0.0);
+  }
+
   @Test(expected = IllegalArgumentException.class)
   public void testRejectDuplicateLabel() {
     new PrometheusTextParser().parse("up{job=\"a\",job=\"b\"} 1", 100);

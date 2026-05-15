@@ -217,7 +217,11 @@ public class PrometheusTextParser {
       while (position < line.length()) {
         char c = line.charAt(position++);
         if (c == '"') {
-          return builder.toString();
+          if (isLabelValueTerminator()) {
+            return builder.toString();
+          }
+          builder.append(c);
+          continue;
         }
         if (c == '\\') {
           if (position >= line.length()) {
@@ -242,6 +246,45 @@ public class PrometheusTextParser {
         }
       }
       throw new IllegalArgumentException("Unclosed Prometheus label value at line " + lineNumber);
+    }
+
+    private boolean isLabelValueTerminator() {
+      int next = skipWhitespace(position);
+      if (next >= line.length()) {
+        return true;
+      }
+      if (line.charAt(next) == '}') {
+        return next + 1 >= line.length() || Character.isWhitespace(line.charAt(next + 1));
+      }
+      if (line.charAt(next) != ',') {
+        return false;
+      }
+      int afterComma = skipWhitespace(next + 1);
+      return afterComma >= line.length()
+          || line.charAt(afterComma) == '}'
+          || isLabelAssignmentStart(afterComma);
+    }
+
+    private boolean isLabelAssignmentStart(int start) {
+      if (start >= line.length() || line.charAt(start) == '"') {
+        return false;
+      }
+      int position = start;
+      while (position < line.length()) {
+        char c = line.charAt(position);
+        if (c == '=') {
+          String labelName = line.substring(start, position).trim();
+          int valueStart = skipWhitespace(position + 1);
+          return !labelName.isEmpty()
+              && valueStart < line.length()
+              && line.charAt(valueStart) == '"';
+        }
+        if (c == ',' || c == '}') {
+          return false;
+        }
+        position++;
+      }
+      return false;
     }
 
     private double parseValue() {
@@ -277,6 +320,13 @@ public class PrometheusTextParser {
       while (position < line.length() && Character.isWhitespace(line.charAt(position))) {
         position++;
       }
+    }
+
+    private int skipWhitespace(int position) {
+      while (position < line.length() && Character.isWhitespace(line.charAt(position))) {
+        position++;
+      }
+      return position;
     }
 
     private void expect(char expected) {
