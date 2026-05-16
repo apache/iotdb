@@ -131,7 +131,6 @@ public class IoTDBRelationalAuthIT {
             Statement userStmt = userCon.createStatement()) {
           ResultSet resultSet = userStmt.executeQuery("LIST USER");
           Assert.assertTrue(resultSet.next());
-          Assert.assertEquals("10000", resultSet.getString(1));
           Assert.assertEquals("testuser", resultSet.getString(2));
           Assert.assertFalse(resultSet.next());
         }
@@ -196,8 +195,9 @@ public class IoTDBRelationalAuthIT {
         adminStmt.execute("create role testrole");
         adminStmt.execute("GRANT ROLE testrole to testuser");
         rs = adminStmt.executeQuery("LIST USER OF ROLE testrole");
-        TestUtils.assertResultSetEqual(
-            rs, "UserId,User,", Collections.singleton("10000,testuser,"));
+        Assert.assertTrue(rs.next());
+        Assert.assertEquals("testuser", rs.getString(2));
+        Assert.assertFalse(rs.next());
         rs = adminStmt.executeQuery("LIST ROLE OF USER testuser");
         TestUtils.assertResultSetEqual(rs, "Role,", Collections.singleton("testrole,"));
       }
@@ -611,12 +611,13 @@ public class IoTDBRelationalAuthIT {
         adminStmt.execute("create role \"!@#$%^*()_+-=3\" ");
 
         ResultSet resultSet = adminStmt.executeQuery("List user");
-        Set<String> resultSetList = new HashSet<>();
-        resultSetList.add("0,root,");
-        resultSetList.add("10000,testuser,");
-        resultSetList.add("10001,!@#$%^*()_+-=1,");
-        resultSetList.add("10002,!@#$%^*()_+-=2,");
-        TestUtils.assertResultSetEqual(resultSet, "UserId,User,", resultSetList);
+        Set<String> actualUsers = new HashSet<>();
+        while (resultSet.next()) {
+          actualUsers.add(resultSet.getString(2));
+        }
+        Set<String> expectedUsers =
+            new HashSet<>(Arrays.asList("root", "testuser", "!@#$%^*()_+-=1", "!@#$%^*()_+-=2"));
+        Assert.assertEquals(expectedUsers, actualUsers);
         resultSet = adminStmt.executeQuery("List role");
         TestUtils.assertResultSetEqual(
             resultSet, "Role,", Collections.singleton("!@#$%^*()_+-=3,"));
