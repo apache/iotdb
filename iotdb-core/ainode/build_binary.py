@@ -327,6 +327,9 @@ def compute_source_hash(script_dir):
     """
     hasher = hashlib.sha256()
 
+    # Include Python version so cache invalidates on interpreter upgrades
+    hasher.update(sys.version.encode())
+
     hash_targets = []
 
     excluded_dirs = {"build", "dist", "__pycache__"}
