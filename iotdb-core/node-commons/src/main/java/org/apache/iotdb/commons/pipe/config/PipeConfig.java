@@ -170,10 +170,6 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeSourceAssignerDisruptorRingBufferEntrySizeInBytes();
   }
 
-  public long getPipeSourceMatcherCacheSize() {
-    return COMMON_CONFIG.getPipeSourceMatcherCacheSize();
-  }
-
   /////////////////////////////// Sink ///////////////////////////////
 
   public int getPipeSinkHandshakeTimeoutMs() {
@@ -553,8 +549,6 @@ public class PipeConfig {
     LOGGER.info(
         PipeMessages.CONFIG_PIPE_SOURCE_ASSIGNER_DISRUPTOR_RING_BUFFER_ENTRY_SIZE_IN_BYTES,
         getPipeSourceAssignerDisruptorRingBufferEntrySizeInBytes());
-    LOGGER.info(
-        PipeMessages.CONFIG_PIPE_SOURCE_MATCHER_CACHE_SIZE, getPipeSourceMatcherCacheSize());
 
     LOGGER.info(
         PipeMessages.CONFIG_PIPE_SINK_HANDSHAKE_TIMEOUT_MS, getPipeSinkHandshakeTimeoutMs());

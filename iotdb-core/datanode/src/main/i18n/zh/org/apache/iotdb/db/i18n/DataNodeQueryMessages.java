@@ -222,8 +222,6 @@ public final class DataNodeQueryMessages {
       "执行器 {} 因已关闭而退出。";
   public static final String CLEAR_DRIVERTASK_FAILED =
       "清除 DriverTask 失败";
-  public static final String PUSHED_ELEMENT_IS_NULL =
-      "推入的元素为 null";
 
   // --- Execution / Warnings ---
 
@@ -749,9 +747,6 @@ public final class DataNodeQueryMessages {
       "NOT 表达式没有绑定的列";
 
   // --- Plan / Relational / Metadata ---
-
-  public static final String TOO_MANY_DOTS_IN_TABLE_NAME =
-      "表名中含有过多的点号：%s";
   public static final String OBJECT_TYPE_IS_NOT_SUPPORTED_AS_RETURN_TYPE =
       "不支持 OBJECT 类型作为返回值类型";
   public static final String INVALID_FUNCTION_PARAMETERS =
@@ -1382,8 +1377,6 @@ public final class DataNodeQueryMessages {
       " Join 类型不受支持";
   public static final String COLON_S_VS_S =
       "：%s 与 %s";
-  public static final String S_IS_NULL =
-      "%s 为 null";
   public static final String IS_TOO_LARGE_STACK_OVERFLOW_WHILE_PARSING =
       " 过大（解析时发生栈溢出）";
 

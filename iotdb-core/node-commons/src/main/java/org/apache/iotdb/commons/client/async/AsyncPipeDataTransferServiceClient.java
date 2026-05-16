@@ -136,6 +136,10 @@ public class AsyncPipeDataTransferServiceClient extends IClientRPCService.AsyncC
     this.shouldReturnSelf.set(shouldReturnSelf);
   }
 
+  public boolean shouldReturnSelf() {
+    return shouldReturnSelf.get();
+  }
+
   public void setTimeoutDynamically(final int timeout) {
     try {
       ((TNonblockingSocket) ___transport).setTimeout(timeout);

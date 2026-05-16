@@ -101,6 +101,7 @@ public class TElasticFramedTransport extends TTransport {
   protected AutoScalingBufferWriteTransport writeBuffer;
   protected final byte[] i32buf = new byte[4];
   private final boolean copyBinary;
+  private static final String FROM = " from ";
 
   @Override
   public boolean isOpen() {
@@ -164,7 +165,7 @@ public class TElasticFramedTransport extends TTransport {
             TTransportException.CORRUPTED_DATA,
             String.format(
                 RpcMessages.NON_SSL_TO_SSL_PORT,
-                remoteAddress == null ? "" : " from " + remoteAddress));
+                remoteAddress == null ? "" : FROM + remoteAddress));
       }
       throw e;
     }
@@ -209,7 +210,7 @@ public class TElasticFramedTransport extends TTransport {
     if (underlying instanceof TSocket) {
       remoteAddress = ((TSocket) underlying).getSocket().getRemoteSocketAddress();
     }
-    String remoteInfo = (remoteAddress == null) ? "" : " from " + remoteAddress;
+    String remoteInfo = (remoteAddress == null) ? "" : FROM + remoteAddress;
     close();
 
     error.throwException(size, remoteInfo, thriftMaxFrameSize);
@@ -284,7 +285,7 @@ public class TElasticFramedTransport extends TTransport {
       if (underlying instanceof TSocket) {
         remoteAddress = ((TSocket) underlying).getSocket().getRemoteSocketAddress();
       }
-      String remoteInfo = (remoteAddress == null) ? "" : " from " + remoteAddress;
+      String remoteInfo = (remoteAddress == null) ? "" : FROM + remoteAddress;
       close();
       FrameError.STRING_LENGTH_EXCEEDED.throwException(numBytes, remoteInfo, thriftMaxFrameSize);
     }

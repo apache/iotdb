@@ -77,6 +77,8 @@ public abstract class AbstractWALBuffer implements IWALBuffer {
                 logDirectory,
                 WALFileUtils.getLogFileName(
                     startFileVersion, currentSearchIndex, WALFileStatus.CONTAINS_SEARCH_INDEX)));
+    // count the newly created WAL file into file number statistics
+    addFileNum(1);
     currentWALFileVersion = startFileVersion;
   }
 

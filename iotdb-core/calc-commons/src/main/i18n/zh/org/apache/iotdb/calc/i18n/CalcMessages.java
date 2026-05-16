@@ -141,4 +141,6 @@ public final class CalcMessages {
   public static final String UNSUPPORTED_TYPE_IN_GENERIC_LITERAL =
       "GenericLiteral 中不支持的类型：";
   public static final String WEIGHT_MUST_BE_GE_1 = "权重必须 >= 1，实际为 ";
+  public static final String PUSHED_ELEMENT_IS_NULL =
+      "推入的元素为 null";
 }

@@ -42,7 +42,7 @@ public class ExtractPredicateColumnNameVisitor extends PredicateVisitor<String, 
   @Override
   public String visitExpression(final Expression expression, final Void context) {
     // TODO: implement schema function filter and parse some function call and arithmetic filters
-    // into id determined filter
+    // into a tag-determined filter
     return null;
   }
 

@@ -17,18 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.relational.metadata;
+package org.apache.iotdb.commons.queryengine.plan.relational.metadata;
 
 import org.apache.iotdb.commons.exception.SemanticException;
+import org.apache.iotdb.commons.i18n.SchemaMessages;
 import org.apache.iotdb.commons.queryengine.common.SessionInfo;
-import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnMetadata;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.QualifiedName;
-import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
-import org.apache.tsfile.read.common.type.Type;
 
 import java.util.List;
 import java.util.Optional;
@@ -61,7 +57,7 @@ public class MetadataUtil {
 
   public static String checkLowerCase(String value, String name) {
     if (value == null) {
-      throw new NullPointerException(format(DataNodeQueryMessages.S_IS_NULL, name));
+      throw new NullPointerException(format(SchemaMessages.S_IS_NULL, name));
     }
     checkArgument(value.equals(value.toLowerCase(ENGLISH)), "%s is not lowercase: %s", name, value);
     return value;
@@ -72,8 +68,7 @@ public class MetadataUtil {
     requireNonNull(session, "session is null");
     requireNonNull(name, "name is null");
     if (name.getParts().size() > 2) {
-      throw new SemanticException(
-          String.format(DataNodeQueryMessages.TOO_MANY_DOTS_IN_TABLE_NAME, name));
+      throw new SemanticException(String.format(SchemaMessages.TOO_MANY_DOTS_IN_TABLE_NAME, name));
     }
 
     final List<String> parts = Lists.reverse(name.getParts());
@@ -89,53 +84,5 @@ public class MetadataUtil {
                             "Database must be specified when session database is not set"));
 
     return new QualifiedObjectName(databaseName, objectName);
-  }
-
-  public static boolean tableExists(Metadata metadata, SessionInfo session, String table) {
-    if (!session.getDatabaseName().isPresent()) {
-      return false;
-    }
-    QualifiedObjectName name = new QualifiedObjectName(session.getDatabaseName().get(), table);
-    return metadata.tableExists(name);
-  }
-
-  public static class TableMetadataBuilder {
-    public static TableMetadataBuilder tableMetadataBuilder(String tableName) {
-      return new TableMetadataBuilder(tableName);
-    }
-
-    private final String tableName;
-    private final ImmutableList.Builder<ColumnMetadata> columns = ImmutableList.builder();
-    private final ImmutableMap.Builder<String, Object> properties = ImmutableMap.builder();
-    private final Optional<String> comment;
-
-    private TableMetadataBuilder(String tableName) {
-      this(tableName, Optional.empty());
-    }
-
-    private TableMetadataBuilder(String tableName, Optional<String> comment) {
-      this.tableName = tableName;
-      this.comment = comment;
-    }
-
-    public TableMetadataBuilder column(String columnName, Type type) {
-      columns.add(new ColumnMetadata(columnName, type));
-      return this;
-    }
-
-    public TableMetadataBuilder hiddenColumn(String columnName, Type type) {
-      columns.add(
-          ColumnMetadata.builder().setName(columnName).setType(type).setHidden(true).build());
-      return this;
-    }
-
-    public TableMetadataBuilder property(String name, Object value) {
-      properties.put(name, value);
-      return this;
-    }
-
-    public TableMetadata build() {
-      return new TableMetadata(tableName, columns.build(), properties.buildOrThrow(), comment);
-    }
   }
 }

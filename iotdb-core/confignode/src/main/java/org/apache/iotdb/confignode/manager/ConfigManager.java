@@ -1749,6 +1749,7 @@ public class ConfigManager implements IManager {
       TrimProperties properties = new TrimProperties();
       properties.putAll(req.getConfigs());
 
+      boolean wasTopologyProbingEnabled = CONF.isEnableTopologyProbing();
       if (configurationFileFound) {
         File file = new File(url.getFile());
         try {
@@ -1772,6 +1773,7 @@ public class ConfigManager implements IManager {
         }
         LOGGER.warn(msg);
       }
+      handleTopologyProbingHotReload(wasTopologyProbingEnabled);
       if (currentNodeId == req.getNodeId()) {
         return tsStatus;
       }
@@ -1781,6 +1783,18 @@ public class ConfigManager implements IManager {
     statusList.add(tsStatus);
     statusList.addAll(statusListOfOtherNodes);
     return RpcUtils.squashResponseStatusList(statusList);
+  }
+
+  private void handleTopologyProbingHotReload(boolean wasEnabled) {
+    boolean isEnabled = CONF.isEnableTopologyProbing();
+    if (wasEnabled == isEnabled) {
+      return;
+    }
+    if (isEnabled && getConsensusManager().isLeader()) {
+      getLoadManager().startTopologyService();
+    } else if (!isEnabled) {
+      getLoadManager().stopTopologyService();
+    }
   }
 
   @Override

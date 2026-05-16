@@ -446,14 +446,15 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
           isTableModelTsFile.get(i)
               ? loadTsFileDataTypeConverter
                   .convertForTableModel(
-                      new LoadTsFile(null, tsFiles.get(i).getPath(), Collections.emptyMap())
+                      LoadTsFile.createUnchecked(
+                              null, tsFiles.get(i).getPath(), Collections.emptyMap())
                           .setDatabase(databaseForTableData)
                           .setDeleteAfterLoad(isDeleteAfterLoad)
                           .setConvertOnTypeMismatch(isConvertOnTypeMismatch))
                   .orElse(null)
               : loadTsFileDataTypeConverter
                   .convertForTreeModel(
-                      new LoadTsFileStatement(tsFiles.get(i).getPath())
+                      LoadTsFileStatement.createUnchecked(tsFiles.get(i).getPath())
                           .setDeleteAfterLoad(isDeleteAfterLoad)
                           .setConvertOnTypeMismatch(isConvertOnTypeMismatch))
                   .orElse(null);
@@ -635,6 +636,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       Map<IDeviceID, List<TimeseriesMetadata>> device2TimeseriesMetadata) {
     return device2TimeseriesMetadata.values().stream()
         .flatMap(List::stream)
+        .filter(timeseriesMetadata -> !timeseriesMetadata.getMeasurementId().isEmpty())
         .mapToLong(t -> t.getStatistics().getCount())
         .sum();
   }
@@ -714,14 +716,15 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
             isTableModelTsFile.get(i)
                 ? loadTsFileDataTypeConverter
                     .convertForTableModel(
-                        new LoadTsFile(null, tsFiles.get(i).getPath(), Collections.emptyMap())
+                        LoadTsFile.createUnchecked(
+                                null, tsFiles.get(i).getPath(), Collections.emptyMap())
                             .setDatabase(databaseForTableData)
                             .setDeleteAfterLoad(isDeleteAfterLoad)
                             .setConvertOnTypeMismatch(isConvertOnTypeMismatch))
                     .orElse(null)
                 : loadTsFileDataTypeConverter
                     .convertForTreeModel(
-                        new LoadTsFileStatement(tsFiles.get(i).getPath())
+                        LoadTsFileStatement.createUnchecked(tsFiles.get(i).getPath())
                             .setDeleteAfterLoad(isDeleteAfterLoad)
                             .setConvertOnTypeMismatch(isConvertOnTypeMismatch))
                     .orElse(null);

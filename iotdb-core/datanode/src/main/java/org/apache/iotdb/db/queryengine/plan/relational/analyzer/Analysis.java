@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.queryengine.plan.relational.analyzer.NodeRef;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ResolvedFunction;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
@@ -69,7 +70,6 @@ import org.apache.iotdb.db.queryengine.plan.execution.memory.TableModelStatement
 import org.apache.iotdb.db.queryengine.plan.planner.plan.TimePredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.PatternRecognitionAnalysis.PatternFunctionAnalysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.tablefunction.TableFunctionInvocationAnalysis;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 

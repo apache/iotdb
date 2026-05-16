@@ -25,6 +25,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -38,10 +39,12 @@ public class LoadTsFileStatementTest {
   public void testSubStatementsKeepDatabase() throws Exception {
     final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
     final int originalBatchSize = config.getLoadTsFileSubStatementBatchSize();
+    final String[] originalAllowedDirs = config.getLoadTsFileAllowedDirs().clone();
     final Path tempDir = Files.createTempDirectory("load-tsfile-sub-statements");
 
     try {
       config.setLoadTsFileSubStatementBatchSize(1);
+      config.setLoadTsFileAllowedDirs(new String[] {tempDir.toString()});
       Files.createFile(tempDir.resolve("a.tsfile"));
       Files.createFile(tempDir.resolve("b.tsfile"));
 
@@ -54,7 +57,64 @@ public class LoadTsFileStatementTest {
           subStatement -> Assert.assertEquals("test_db", subStatement.getDatabase()));
     } finally {
       config.setLoadTsFileSubStatementBatchSize(originalBatchSize);
+      config.setLoadTsFileAllowedDirs(originalAllowedDirs);
       deleteRecursively(tempDir);
+    }
+  }
+
+  @Test
+  public void testLoadSourcePathMustBeInAllowedDirs() throws Exception {
+    final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+    final String[] originalAllowedDirs = config.getLoadTsFileAllowedDirs().clone();
+    final boolean originalCheckEnabled = config.isLoadTsFileSourcePathCheckEnabled();
+    final Path allowedDir = Files.createTempDirectory("load-tsfile-allowed");
+    final Path deniedDir = Files.createTempDirectory("load-tsfile-denied");
+
+    try {
+      config.setLoadTsFileSourcePathCheckEnabled(true);
+      config.setLoadTsFileAllowedDirs(new String[] {allowedDir.toString()});
+      final Path deniedTsFile = Files.createFile(deniedDir.resolve("denied.tsfile"));
+      final Path traversalTsFile =
+          allowedDir.resolve("..").resolve(deniedDir.getFileName()).resolve("denied.tsfile");
+
+      assertLoadSourcePathRejected(deniedTsFile);
+      assertLoadSourcePathRejected(traversalTsFile);
+    } finally {
+      config.setLoadTsFileAllowedDirs(originalAllowedDirs);
+      config.setLoadTsFileSourcePathCheckEnabled(originalCheckEnabled);
+      deleteRecursively(allowedDir);
+      deleteRecursively(deniedDir);
+    }
+  }
+
+  @Test
+  public void testLoadSourcePathCheckCanBeDisabled() throws Exception {
+    final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+    final String[] originalAllowedDirs = config.getLoadTsFileAllowedDirs().clone();
+    final boolean originalCheckEnabled = config.isLoadTsFileSourcePathCheckEnabled();
+    final Path allowedDir = Files.createTempDirectory("load-tsfile-allowed");
+    final Path deniedDir = Files.createTempDirectory("load-tsfile-denied");
+
+    try {
+      config.setLoadTsFileSourcePathCheckEnabled(false);
+      config.setLoadTsFileAllowedDirs(new String[] {allowedDir.toString()});
+      final Path deniedTsFile = Files.createFile(deniedDir.resolve("denied.tsfile"));
+
+      new LoadTsFileStatement(deniedTsFile.toString());
+    } finally {
+      config.setLoadTsFileAllowedDirs(originalAllowedDirs);
+      config.setLoadTsFileSourcePathCheckEnabled(originalCheckEnabled);
+      deleteRecursively(allowedDir);
+      deleteRecursively(deniedDir);
+    }
+  }
+
+  private static void assertLoadSourcePathRejected(final Path sourcePath) {
+    try {
+      new LoadTsFileStatement(sourcePath.toString());
+      Assert.fail("Expected disallowed LOAD TSFILE source path to be rejected.");
+    } catch (final FileNotFoundException e) {
+      Assert.assertTrue(e.getMessage().contains("outside allowed directories"));
     }
   }
 

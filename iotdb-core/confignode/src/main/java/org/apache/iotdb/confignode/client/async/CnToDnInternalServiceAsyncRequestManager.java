@@ -102,6 +102,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TRollbackViewSchemaBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TTableDeviceDeletionWithPatternAndFilterReq;
 import org.apache.iotdb.mpp.rpc.thrift.TTableDeviceDeletionWithPatternOrModReq;
 import org.apache.iotdb.mpp.rpc.thrift.TTableDeviceInvalidateCacheReq;
+import org.apache.iotdb.mpp.rpc.thrift.TUpdateClusterTopologyReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTableReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTriggerLocationReq;
@@ -413,6 +414,11 @@ public class CnToDnInternalServiceAsyncRequestManager
         CnToDnAsyncRequestType.TEST_CONNECTION,
         (req, client, handler) ->
             client.testConnectionEmptyRPC((DataNodeTSStatusRPCHandler) handler));
+    actionMapBuilder.put(
+        CnToDnAsyncRequestType.PUSH_TOPOLOGY,
+        (req, client, handler) ->
+            client.updateClusterTopology(
+                (TUpdateClusterTopologyReq) req, (DataNodeTSStatusRPCHandler) handler));
     actionMapBuilder.put(
         CnToDnAsyncRequestType.INSERT_RECORD,
         (req, client, handler) ->

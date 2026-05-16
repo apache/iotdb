@@ -22,8 +22,10 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.TableScanNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.analyzer.NodeRef;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Assignments;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.DataOrganizationSpecification;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.OrderingScheme;
@@ -112,7 +114,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.RelationType;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Scope;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.tablefunction.TableArgumentAnalysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.tablefunction.TableFunctionInvocationAnalysis;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TreeDeviceViewSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils;
@@ -120,7 +121,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.PredicateWithU
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CteScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.rowpattern.RowPatternToIrRewriter;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AsofJoinOn;
@@ -357,7 +357,7 @@ public class RelationPlanner implements AstVisitor<RelationPlan, Void> {
     // on the basis of that the order of fields is same with the column category order of segments
     // in DeviceEntry
     final Map<Symbol, Integer> tagAndAttributeIndexMap = new HashMap<>();
-    int idIndex = 0;
+    int tagIndex = 0;
     for (final Field field : fields) {
       final TsTableColumnCategory category = field.getColumnCategory();
       final Symbol symbol = symbolAllocator.newSymbol(field);
@@ -367,7 +367,7 @@ public class RelationPlanner implements AstVisitor<RelationPlan, Void> {
           new ColumnSchema(
               field.getName().orElse(null), field.getType(), field.isHidden(), category));
       if (category == TsTableColumnCategory.TAG) {
-        tagAndAttributeIndexMap.put(symbol, idIndex++);
+        tagAndAttributeIndexMap.put(symbol, tagIndex++);
       }
     }
 

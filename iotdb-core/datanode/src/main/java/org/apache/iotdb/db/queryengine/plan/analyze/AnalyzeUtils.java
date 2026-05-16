@@ -440,24 +440,24 @@ public class AnalyzeUtils {
     Queue<Expression> expressionQueue = new LinkedList<>();
     expressionQueue.add(expression);
     DeletionPredicate predicate = new DeletionPredicate(table.getTableName());
-    IDPredicate idPredicate = null;
+    IDPredicate tagPredicate = null;
     TimeRange timeRange = new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE, true);
     while (!expressionQueue.isEmpty()) {
       Expression currExp = expressionQueue.remove();
       if (currExp instanceof LogicalExpression) {
         parseAndPredicate(((LogicalExpression) currExp), expressionQueue);
       } else if (currExp instanceof ComparisonExpression) {
-        idPredicate =
-            parseComparison(((ComparisonExpression) currExp), timeRange, idPredicate, table);
+        tagPredicate =
+            parseComparison(((ComparisonExpression) currExp), timeRange, tagPredicate, table);
       } else if (currExp instanceof IsNullPredicate) {
-        idPredicate = parseIsNull((IsNullPredicate) currExp, idPredicate, table);
+        tagPredicate = parseIsNull((IsNullPredicate) currExp, tagPredicate, table);
       } else {
         throw new SemanticException(
             DataNodeQueryMessages.UNSUPPORTED_EXPRESSION + currExp + " in " + expression);
       }
     }
-    if (idPredicate != null) {
-      predicate.setIdPredicate(idPredicate);
+    if (tagPredicate != null) {
+      predicate.setIdPredicate(tagPredicate);
     }
     if (timeRange.getStartTime() > timeRange.getEndTime()) {
       throw new SemanticException(
@@ -485,14 +485,14 @@ public class AnalyzeUtils {
           DataNodeQueryMessages.LEFT_HAND_EXPRESSION_IS_NOT_AN_IDENTIFIER + leftHandExp);
     }
     String columnName = ((Identifier) leftHandExp).getValue();
-    int idColumnOrdinal = table.getTagColumnOrdinal(columnName);
-    if (idColumnOrdinal == -1) {
+    int tagColumnOrdinal = table.getTagColumnOrdinal(columnName);
+    if (tagColumnOrdinal == -1) {
       throw new SemanticException(
           "The column '" + columnName + "' does not exist or is not a tag column");
     }
 
     // the first segment is the table name, so + 1
-    IDPredicate newPredicate = new SegmentExactMatch(null, idColumnOrdinal + 1);
+    IDPredicate newPredicate = new SegmentExactMatch(null, tagColumnOrdinal + 1);
     return combinePredicates(oldPredicate, newPredicate);
   }
 
@@ -555,20 +555,20 @@ public class AnalyzeUtils {
 
       return oldPredicate;
     }
-    // id predicate
+    // tag predicate
     String columnName = identifier.getValue();
-    int idColumnOrdinal = table.getTagColumnOrdinal(columnName);
-    if (idColumnOrdinal == -1) {
+    int tagColumnOrdinal = table.getTagColumnOrdinal(columnName);
+    if (tagColumnOrdinal == -1) {
       throw new SemanticException(
           "The column '" + columnName + "' does not exist or is not a tag column");
     }
 
-    IDPredicate newPredicate = getIdPredicate(comparisonExpression, right, idColumnOrdinal);
+    IDPredicate newPredicate = getTagPredicate(comparisonExpression, right, tagColumnOrdinal);
     return combinePredicates(oldPredicate, newPredicate);
   }
 
-  private static IDPredicate getIdPredicate(
-      ComparisonExpression comparisonExpression, Expression right, int idColumnOrdinal) {
+  private static IDPredicate getTagPredicate(
+      ComparisonExpression comparisonExpression, Expression right, int tagColumnOrdinal) {
     if (comparisonExpression.getOperator() != ComparisonExpression.Operator.EQUAL) {
       throw new SemanticException(
           DataNodeQueryMessages.THE_OPERATOR_OF_TAG_PREDICATE_MUST_BE_FOR + right);
@@ -585,7 +585,7 @@ public class AnalyzeUtils {
           "The right hand value of tag predicate must be a string: " + right);
     }
     // the first segment is the table name, so + 1
-    return new SegmentExactMatch(rightHandValue, idColumnOrdinal + 1);
+    return new SegmentExactMatch(rightHandValue, tagColumnOrdinal + 1);
   }
 
   public interface DataPartitionQueryFunc {

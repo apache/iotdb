@@ -344,7 +344,7 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
               tsFile.length(),
               pipeTsFileInsertionEvent.isTableModelEvent()
                   ? pipeTsFileInsertionEvent.getTableModelDatabaseName()
-                  : null))) {
+                  : pipeTsFileInsertionEvent.getTreeModelDatabaseName()))) {
         receiverStatusHandler.handle(
             new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
                 .setMessage(errorMessage),
@@ -365,7 +365,7 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
               tsFile.length(),
               pipeTsFileInsertionEvent.isTableModelEvent()
                   ? pipeTsFileInsertionEvent.getTableModelDatabaseName()
-                  : null))) {
+                  : pipeTsFileInsertionEvent.getTreeModelDatabaseName()))) {
         receiverStatusHandler.handle(
             new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
                 .setMessage(errorMessage),

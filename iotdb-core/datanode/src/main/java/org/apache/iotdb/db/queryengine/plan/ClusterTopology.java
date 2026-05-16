@@ -40,32 +40,43 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
+/**
+ * Tracks this DataNode's view of cluster network topology for partition-aware query planning. Only
+ * stores the set of DataNodes reachable from this node, pushed by ConfigNode's TopologyService.
+ */
 public class ClusterTopology {
   private static final Logger LOGGER = LoggerFactory.getLogger(ClusterTopology.class);
   private final Integer myself;
   private final AtomicReference<Map<Integer, TDataNodeLocation>> dataNodes;
-  private final AtomicReference<Map<Integer, Set<Integer>>> topologyMap;
+
+  /** DataNode IDs reachable from this node. Empty means not yet probed by TopologyService. */
+  private final AtomicReference<Set<Integer>> myReachableNodes;
+
   private final AtomicBoolean isPartitioned = new AtomicBoolean();
 
   public static ClusterTopology getInstance() {
     return ClusterTopologyHolder.INSTANCE;
   }
 
+  /** Filters a replica set to only include DataNodes reachable from this node. */
   public TRegionReplicaSet getValidatedReplicaSet(TRegionReplicaSet origin) {
     if (!isPartitioned.get() || origin == null) {
       return origin;
     }
-    final Set<Integer> reachableToMyself =
-        Collections.unmodifiableSet(topologyMap.get().get(myself));
+    final Set<Integer> reachable = myReachableNodes.get();
+    if (reachable.isEmpty()) {
+      return origin;
+    }
     final List<TDataNodeLocation> locations = new ArrayList<>();
     for (final TDataNodeLocation location : origin.getDataNodeLocations()) {
-      if (reachableToMyself.contains(location.getDataNodeId())) {
+      if (reachable.contains(location.getDataNodeId())) {
         locations.add(location);
       }
     }
     return new TRegionReplicaSet(origin.getRegionId(), locations);
   }
 
+  /** Filters region-to-scan mappings, keeping only replicas reachable from this node. */
   public <T> Set<Map.Entry<TRegionReplicaSet, T>> filterReachableCandidates(
       Set<Map.Entry<TRegionReplicaSet, T>> input) {
     if (!isPartitioned.get()) {
@@ -88,6 +99,9 @@ public class ClusterTopology {
       final TRegionReplicaSet replicaSet = newMap.get(gid);
       if (replicaSet != null) {
         candidateMap.put(replicaSet, entry.getValue());
+      } else {
+        // Topology not yet available for this region — return original to avoid silent data loss
+        candidateMap.put(entry.getKey(), entry.getValue());
       }
     }
     return candidateMap.entrySet();
@@ -98,82 +112,61 @@ public class ClusterTopology {
       return all;
     }
     for (TRegionReplicaSet replicaSet : all) {
-      // some TRegionReplicaSet is unreachable since all DataNodes are down
       if (replicaSet.getDataNodeLocationsSize() == 0) {
         throw new ReplicaSetUnreachableException(replicaSet);
       }
     }
-    final Map<Integer, Set<Integer>> topologyMapCurrent =
-        Collections.unmodifiableMap(this.topologyMap.get());
 
-    // brute-force search to select DataNode candidates that can communicate to all
-    // TRegionReplicaSets
-    final List<Integer> dataNodeCandidates = new ArrayList<>();
-    for (final Integer datanode : topologyMapCurrent.keySet()) {
-      boolean reachableToAllSets = true;
-      final Set<Integer> datanodeReachableToThis = topologyMapCurrent.get(datanode);
-      for (final TRegionReplicaSet replicaSet : all) {
-        final List<Integer> replicaNodeLocations =
-            replicaSet.getDataNodeLocations().stream()
-                .map(TDataNodeLocation::getDataNodeId)
-                .collect(Collectors.toList());
-        replicaNodeLocations.retainAll(datanodeReachableToThis);
-        reachableToAllSets = !replicaNodeLocations.isEmpty();
-      }
-      if (reachableToAllSets) {
-        dataNodeCandidates.add(datanode);
-      }
+    final Set<Integer> reachable = this.myReachableNodes.get();
+    if (reachable.isEmpty()) {
+      return all;
     }
+    final Map<Integer, TDataNodeLocation> dataNodesCurrent = this.dataNodes.get();
 
-    // select TRegionReplicaSet candidates whose DataNode Locations contain at least one
-    // allReachableDataNodes
     final List<TRegionReplicaSet> reachableSetCandidates = new ArrayList<>();
     for (final TRegionReplicaSet replicaSet : all) {
-      final List<Integer> commonLocations =
+      final List<TDataNodeLocation> validLocations =
           replicaSet.getDataNodeLocations().stream()
-              .map(TDataNodeLocation::getDataNodeId)
+              .filter(loc -> reachable.contains(loc.getDataNodeId()))
+              .map(loc -> dataNodesCurrent.getOrDefault(loc.getDataNodeId(), loc))
               .collect(Collectors.toList());
-      commonLocations.retainAll(dataNodeCandidates);
-      if (!commonLocations.isEmpty()) {
-        final List<TDataNodeLocation> validLocations =
-            commonLocations.stream().map(dataNodes.get()::get).collect(Collectors.toList());
-        final TRegionReplicaSet validCandidate =
-            new TRegionReplicaSet(replicaSet.getRegionId(), validLocations);
-        reachableSetCandidates.add(validCandidate);
+      if (!validLocations.isEmpty()) {
+        reachableSetCandidates.add(new TRegionReplicaSet(replicaSet.getRegionId(), validLocations));
+      } else {
+        // No reachable replica — return full set so upper layer can handle or report the error
+        reachableSetCandidates.add(replicaSet);
       }
     }
-
     return reachableSetCandidates;
   }
 
+  /** Called by ConfigNode's TopologyService push. Updates this node's reachable set. */
   public void updateTopology(
       final Map<Integer, TDataNodeLocation> dataNodes, Map<Integer, Set<Integer>> latestTopology) {
-    if (!latestTopology.equals(topologyMap.get())) {
-      LOGGER.info(DataNodeQueryMessages.TOPOLOGY_LATEST_VIEW_FROM_CONFIG_NODE, latestTopology);
-      for (int fromId : dataNodes.keySet()) {
-        for (int toId : dataNodes.keySet()) {
-          boolean originReachable =
-              latestTopology.getOrDefault(fromId, Collections.emptySet()).contains(toId);
-          boolean newReachable =
-              latestTopology.getOrDefault(fromId, Collections.emptySet()).contains(toId);
-          if (originReachable != newReachable) {
-            LOGGER.info(
-                "[Topology] Topology of DataNode {} is now {} to DataNode {}",
-                fromId,
-                newReachable ? "reachable" : "unreachable",
-                toId);
-          }
+    final Set<Integer> newReachable = latestTopology.getOrDefault(myself, Collections.emptySet());
+    final Set<Integer> oldReachable = this.myReachableNodes.get();
+
+    if (!newReachable.equals(oldReachable)) {
+      LOGGER.info(
+          DataNodeQueryMessages.TOPOLOGY_LATEST_VIEW_FROM_CONFIG_NODE, myself, newReachable);
+      for (int toId : dataNodes.keySet()) {
+        boolean wasReachable = oldReachable.contains(toId);
+        boolean nowReachable = newReachable.contains(toId);
+        if (wasReachable != nowReachable) {
+          LOGGER.info(
+              "[Topology] DataNode {} is now {} to myself({})",
+              toId,
+              nowReachable ? "reachable" : "unreachable",
+              myself);
         }
       }
-      this.topologyMap.set(latestTopology);
+      this.myReachableNodes.set(newReachable);
     }
     this.dataNodes.set(dataNodes);
-    if (latestTopology.get(myself) == null || latestTopology.get(myself).isEmpty()) {
-      // latest topology doesn't include this node information.
-      // This mostly happens when this node just starts and haven't report connection details.
+    if (newReachable.isEmpty()) {
       this.isPartitioned.set(false);
     } else {
-      this.isPartitioned.set(latestTopology.get(myself).size() != latestTopology.size());
+      this.isPartitioned.set(newReachable.size() != dataNodes.size());
     }
   }
 
@@ -181,7 +174,7 @@ public class ClusterTopology {
     this.myself =
         IoTDBDescriptor.getInstance().getConfig().generateLocalDataNodeLocation().getDataNodeId();
     this.isPartitioned.set(false);
-    this.topologyMap = new AtomicReference<>(Collections.emptyMap());
+    this.myReachableNodes = new AtomicReference<>(Collections.emptySet());
     this.dataNodes = new AtomicReference<>(Collections.emptyMap());
   }
 

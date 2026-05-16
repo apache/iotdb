@@ -222,8 +222,7 @@ public final class DataNodeQueryMessages {
       "Executor {} exits because it is closed.";
   public static final String CLEAR_DRIVERTASK_FAILED =
       "Clear DriverTask failed";
-  public static final String PUSHED_ELEMENT_IS_NULL =
-      "pushed element is null";
+
 
   // --- Execution / Warnings ---
 
@@ -240,7 +239,7 @@ public final class DataNodeQueryMessages {
   // --- Plan ---
 
   public static final String TOPOLOGY_LATEST_VIEW_FROM_CONFIG_NODE =
-      "[Topology] latest view from config-node: {}";
+      "[Topology] latest view from config-node for myself({}): {}";
   public static final String EXPIRED_QUERIES_INFO_CLEAR_THREAD_IS_SUCCESSFULLY_STARTED =
       "Expired-Queries-Info-Clear thread is successfully started.";
   public static final String COST_MS =
@@ -749,9 +748,6 @@ public final class DataNodeQueryMessages {
       "The not expression has no bounded column";
 
   // --- Plan / Relational / Metadata ---
-
-  public static final String TOO_MANY_DOTS_IN_TABLE_NAME =
-      "Too many dots in table name: %s";
   public static final String OBJECT_TYPE_IS_NOT_SUPPORTED_AS_RETURN_TYPE =
       "OBJECT type is not supported as return type";
   public static final String INVALID_FUNCTION_PARAMETERS =
@@ -1382,8 +1378,6 @@ public final class DataNodeQueryMessages {
       " Join type is not supported";
   public static final String COLON_S_VS_S =
       ": %s vs %s";
-  public static final String S_IS_NULL =
-      "%s is null";
   public static final String IS_TOO_LARGE_STACK_OVERFLOW_WHILE_PARSING =
       " is too large (stack overflow while parsing)";
 

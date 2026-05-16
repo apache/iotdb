@@ -124,21 +124,25 @@ public class DataRegionStateMachine extends BaseStateMachine {
 
   @Override
   public void loadSnapshot(File latestSnapshotRootDir) {
-    DataRegion newRegion =
-        new SnapshotLoader(
-                latestSnapshotRootDir.getAbsolutePath(),
-                region.getDatabaseName(),
-                region.getDataRegionIdString())
-            .loadSnapshotForStateMachine();
-    if (newRegion == null) {
-      logger.error(DataNodeMiscMessages.FAIL_LOAD_SNAPSHOT, latestSnapshotRootDir);
-      return;
-    }
-    this.region = newRegion;
+    String databaseName = region.getDatabaseName();
+    String dataRegionIdString = region.getDataRegionIdString();
+    DataRegionId regionId = new DataRegionId(Integer.parseInt(dataRegionIdString));
     try {
-      StorageEngine.getInstance()
-          .setDataRegion(
-              new DataRegionId(Integer.parseInt(region.getDataRegionIdString())), region);
+      DataRegion newRegion =
+          StorageEngine.getInstance()
+              .setDataRegionForSnapshotLoad(
+                  regionId,
+                  () ->
+                      new SnapshotLoader(
+                              latestSnapshotRootDir.getAbsolutePath(),
+                              databaseName,
+                              dataRegionIdString)
+                          .loadSnapshotForStateMachine());
+      if (newRegion == null) {
+        logger.error(DataNodeMiscMessages.FAIL_LOAD_SNAPSHOT, latestSnapshotRootDir);
+        return;
+      }
+      this.region = newRegion;
       ChunkCache.getInstance().clear();
       TimeSeriesMetadataCache.getInstance().clear();
       BloomFilterCache.getInstance().clear();

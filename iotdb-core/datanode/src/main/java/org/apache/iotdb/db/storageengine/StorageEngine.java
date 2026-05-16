@@ -73,7 +73,6 @@ import org.apache.iotdb.db.storageengine.dataregion.flush.CompressionRatio;
 import org.apache.iotdb.db.storageengine.dataregion.flush.FlushListener;
 import org.apache.iotdb.db.storageengine.dataregion.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.storageengine.dataregion.flush.TsFileFlushPolicy.DirectFlushPolicy;
-import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageIndex.TableDiskUsageIndex;
 import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALException;
 import org.apache.iotdb.db.storageengine.dataregion.wal.recover.WALRecoverManager;
@@ -117,6 +116,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -422,7 +422,6 @@ public class StorageEngine implements IService {
     if (cachedThreadPool != null) {
       cachedThreadPool.shutdownNow();
     }
-    TableDiskUsageIndex.getInstance().close();
     dataRegionMap.clear();
   }
 
@@ -926,6 +925,33 @@ public class StorageEngine implements IService {
   }
 
   /** This method is not thread-safe */
+  public DataRegion setDataRegionForSnapshotLoad(
+      DataRegionId regionId, Supplier<DataRegion> newRegionSupplier) {
+    if (dataRegionMap.containsKey(regionId)) {
+      DataRegion oldRegion = dataRegionMap.get(regionId);
+      oldRegion.markDeleted();
+      oldRegion.abortCompaction();
+      oldRegion.syncCloseAllWorkingTsFileProcessors();
+      oldRegion.deleteFolder(systemDir);
+      WRITING_METRICS.removeDataRegionMemoryCostMetrics(regionId);
+      WRITING_METRICS.removeFlushingMemTableStatusMetrics(regionId);
+      WRITING_METRICS.removeActiveMemtableCounterMetrics(regionId);
+      FileMetrics.getInstance()
+          .deleteRegion(oldRegion.getDatabaseName(), oldRegion.getDataRegionIdString());
+    }
+
+    DataRegion newRegion = newRegionSupplier.get();
+    if (newRegion != null) {
+      WRITING_METRICS.createFlushingMemTableStatusMetrics(regionId);
+      WRITING_METRICS.createDataRegionMemoryCostMetrics(newRegion);
+      WRITING_METRICS.createActiveMemtableCounterMetrics(regionId);
+      dataRegionMap.put(regionId, newRegion);
+    }
+    return newRegion;
+  }
+
+  /** This method is not thread-safe */
+  @TestOnly
   public void setDataRegion(DataRegionId regionId, DataRegion newRegion) {
     if (dataRegionMap.containsKey(regionId)) {
       DataRegion oldRegion = dataRegionMap.get(regionId);

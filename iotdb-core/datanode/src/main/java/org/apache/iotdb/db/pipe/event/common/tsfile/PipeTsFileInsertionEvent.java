@@ -35,6 +35,7 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.commons.pipe.resource.ref.PipePhantomReferenceManager.PipeEventResource;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.ReferenceTrackableEvent;
@@ -48,7 +49,6 @@ import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager;
 import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.assigner.PipeTsFileEpochProgressIndexKeeper;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
@@ -92,6 +92,9 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   protected final boolean isGeneratedByPipe;
   protected final boolean isGeneratedByIoTConsensusV2;
   protected final boolean isGeneratedByHistoricalExtractor;
+  // Realtime TsFile events are created after TsFileProcessor#endFile(), so the file is already
+  // immutable even if TsFileResource status is still UNCLOSED.
+  private final boolean isTsFileSealed;
   private final AtomicBoolean isClosed;
   private final AtomicReference<TsFileInsertionEventParser> eventParser;
 
@@ -131,7 +134,8 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         null,
         true,
         Long.MIN_VALUE,
-        Long.MAX_VALUE);
+        Long.MAX_VALUE,
+        true);
   }
 
   public PipeTsFileInsertionEvent(
@@ -154,6 +158,50 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
       final boolean skipIfNoPrivileges,
       final long startTime,
       final long endTime) {
+    this(
+        isTableModelEvent,
+        databaseNameFromDataRegion,
+        resource,
+        tsFile,
+        isWithMod,
+        isLoaded,
+        isGeneratedByHistoricalExtractor,
+        tableNames,
+        pipeName,
+        creationTime,
+        pipeTaskMeta,
+        treePattern,
+        tablePattern,
+        userId,
+        userName,
+        cliHostname,
+        skipIfNoPrivileges,
+        startTime,
+        endTime,
+        false);
+  }
+
+  private PipeTsFileInsertionEvent(
+      final Boolean isTableModelEvent,
+      final String databaseNameFromDataRegion,
+      final TsFileResource resource,
+      final File tsFile,
+      final boolean isWithMod,
+      final boolean isLoaded,
+      final boolean isGeneratedByHistoricalExtractor,
+      final Set<String> tableNames,
+      final String pipeName,
+      final long creationTime,
+      final PipeTaskMeta pipeTaskMeta,
+      final TreePattern treePattern,
+      final TablePattern tablePattern,
+      final String userId,
+      final String userName,
+      final String cliHostname,
+      final boolean skipIfNoPrivileges,
+      final long startTime,
+      final long endTime,
+      final boolean isTsFileSealed) {
     super(
         pipeName,
         creationTime,
@@ -187,6 +235,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     this.isGeneratedByPipe = resource.isGeneratedByPipe();
     this.isGeneratedByIoTConsensusV2 = resource.isGeneratedByIoTConsensusV2();
     this.isGeneratedByHistoricalExtractor = isGeneratedByHistoricalExtractor;
+    this.isTsFileSealed = isTsFileSealed;
     this.tableNames = tableNames;
 
     isClosed = new AtomicBoolean(resource.isClosed());
@@ -241,6 +290,10 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   public boolean waitForTsFileClose() throws InterruptedException {
     if (Objects.isNull(resource)) {
       return true;
+    }
+
+    if (isTsFileSealed) {
+      return !resource.isEmpty();
     }
 
     if (!isClosed.get()) {
@@ -453,7 +506,8 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
             cliHostname,
             skipIfNoPrivileges,
             startTime,
-            endTime)
+            endTime,
+            isTsFileSealed)
         .bindTsFileDedupScopeID(tsFileDedupScopeID);
   }
 

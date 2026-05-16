@@ -130,7 +130,7 @@ public class PipeTransferTabletBatchEventHandler extends PipeTransferTrackableHa
   protected void doTransfer(
       final AsyncPipeDataTransferServiceClient client, final TPipeTransferReq req)
       throws TException {
-    client.pipeTransfer(req, this);
+    transferWithOptionalRequestSlicing(client, req);
   }
 
   @Override

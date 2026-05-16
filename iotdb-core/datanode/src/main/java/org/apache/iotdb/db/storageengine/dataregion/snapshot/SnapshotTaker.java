@@ -272,7 +272,7 @@ public class SnapshotTaker {
     if (!target.getParentFile().exists()) {
       LOGGER.error(StorageEngineMessages.HARD_LINK_TARGET_DIR_NOT_EXIST, target.getParentFile());
     }
-    if (!checkHardLinkSourceFile(source)) {
+    if (!checkHardLinkSourceFile(source, 10)) {
       return;
     }
     Files.deleteIfExists(target.toPath());
@@ -281,8 +281,7 @@ public class SnapshotTaker {
   }
 
   /** For "source file not exists" problem (jira787) debugging */
-  private boolean checkHardLinkSourceFile(File source) {
-    int retry = 10;
+  private boolean checkHardLinkSourceFile(File source, int retry) {
     while (!source.exists() && retry > 0) {
       LOGGER.warn(StorageEngineMessages.HARD_LINK_SOURCE_FILE_RETRY, source, retry);
       try {

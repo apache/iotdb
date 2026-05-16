@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.relational.metadata;
+package org.apache.iotdb.commons.queryengine.plan.relational.metadata;
 
 import com.google.errorprone.annotations.Immutable;
 
@@ -27,7 +27,7 @@ import java.util.regex.Pattern;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
-import static org.apache.iotdb.db.queryengine.plan.relational.metadata.MetadataUtil.checkObjectName;
+import static org.apache.iotdb.commons.queryengine.plan.relational.metadata.MetadataUtil.checkObjectName;
 
 @Immutable
 public class QualifiedObjectName {
@@ -61,10 +61,6 @@ public class QualifiedObjectName {
 
   public String getObjectName() {
     return objectName;
-  }
-
-  public QualifiedTablePrefix asQualifiedTablePrefix() {
-    return new QualifiedTablePrefix(dbName, objectName);
   }
 
   @Override

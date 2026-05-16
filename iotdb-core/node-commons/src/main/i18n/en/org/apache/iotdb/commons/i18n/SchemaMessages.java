@@ -70,4 +70,10 @@ public final class SchemaMessages {
   public static final String PATH_DUPLICATED = "Path duplicated: ";
   public static final String UNKNOWN_TABLE_UPDATE_OP_TYPE = "Unknown table update operation type";
   public static final String SCHEMA_INVALID_INPUT = "Invalid input: ";
+
+  public static final String TOO_MANY_DOTS_IN_TABLE_NAME =
+      "Too many dots in table name: %s";
+
+  public static final String S_IS_NULL =
+      "%s is null";
 }

@@ -25,13 +25,13 @@ import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.La
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.TableAggregator;
 import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.execution.fragment.DataNodeQueryContext;
 import org.apache.iotdb.db.queryengine.execution.operator.process.last.LastQueryUtil;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanGraphPrinter;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
 
 import org.apache.tsfile.block.column.ColumnBuilder;

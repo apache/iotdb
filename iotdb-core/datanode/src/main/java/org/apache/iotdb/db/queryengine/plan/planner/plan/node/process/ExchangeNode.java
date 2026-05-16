@@ -51,6 +51,9 @@ public class ExchangeNode extends SingleChildProcessNode {
   /** Exchange needs to know which child of IdentitySinkNode/ShuffleSinkNode it matches */
   private int indexOfUpstreamSinkHandle = 0;
 
+  /** Planner-only flag: this exchange is forced and should keep independent upstream sink. */
+  private transient boolean forcedExchange = false;
+
   public ExchangeNode(PlanNodeId id) {
     super(id);
   }
@@ -75,6 +78,7 @@ public class ExchangeNode extends SingleChildProcessNode {
     ExchangeNode node = new ExchangeNode(getPlanNodeId());
     node.setOutputColumnNames(outputColumnNames);
     node.setIndexOfUpstreamSinkHandle(indexOfUpstreamSinkHandle);
+    node.setForcedExchange(forcedExchange);
     return node;
   }
 
@@ -171,6 +175,14 @@ public class ExchangeNode extends SingleChildProcessNode {
     this.indexOfUpstreamSinkHandle = indexOfUpstreamSinkHandle;
   }
 
+  public boolean isForcedExchange() {
+    return forcedExchange;
+  }
+
+  public void setForcedExchange(boolean forcedExchange) {
+    this.forcedExchange = forcedExchange;
+  }
+
   public TEndPoint getUpstreamEndpoint() {
     return upstreamEndpoint;
   }
@@ -197,11 +209,13 @@ public class ExchangeNode extends SingleChildProcessNode {
     ExchangeNode that = (ExchangeNode) o;
     return Objects.equals(upstreamEndpoint, that.upstreamEndpoint)
         && Objects.equals(upstreamInstanceId, that.upstreamInstanceId)
-        && Objects.equals(upstreamPlanNodeId, that.upstreamPlanNodeId);
+        && Objects.equals(upstreamPlanNodeId, that.upstreamPlanNodeId)
+        && forcedExchange == that.forcedExchange;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), upstreamEndpoint, upstreamInstanceId, upstreamPlanNodeId);
+    return Objects.hash(
+        super.hashCode(), upstreamEndpoint, upstreamInstanceId, upstreamPlanNodeId, forcedExchange);
   }
 }

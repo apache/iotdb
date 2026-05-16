@@ -111,6 +111,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.Compacti
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.flush.FlushManager;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
+import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageIndex.TableDiskUsageIndex;
 import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
 import org.apache.iotdb.db.storageengine.load.active.ActiveLoadAgent;
@@ -1337,6 +1338,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
   public void stop() {
     stopTriggerRelatedServices();
     registerManager.deregisterAll();
+    TableDiskUsageIndex.getInstance().close();
     ExternalServiceManagementService.getInstance().stopRunningServices();
     JMXService.deregisterMBean(mbeanName);
     MetricService.getInstance().stop();

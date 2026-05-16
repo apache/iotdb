@@ -70,4 +70,10 @@ public final class SchemaMessages {
   public static final String PATH_DUPLICATED = "路径重复：";
   public static final String UNKNOWN_TABLE_UPDATE_OP_TYPE = "未知的表更新操作类型";
   public static final String SCHEMA_INVALID_INPUT = "无效输入：";
+
+  public static final String TOO_MANY_DOTS_IN_TABLE_NAME =
+      "表名中含有过多的点号：%s";
+
+  public static final String S_IS_NULL =
+      "%s 为 null";
 }

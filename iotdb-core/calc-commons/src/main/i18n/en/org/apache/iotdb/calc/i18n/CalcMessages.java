@@ -148,4 +148,7 @@ public final class CalcMessages {
   public static final String UNSUPPORTED_TYPE_IN_GENERIC_LITERAL =
       "Unsupported type in GenericLiteral: ";
   public static final String WEIGHT_MUST_BE_GE_1 = "weight must be >= 1, was ";
+
+  public static final String PUSHED_ELEMENT_IS_NULL =
+      "pushed element is null";
 }

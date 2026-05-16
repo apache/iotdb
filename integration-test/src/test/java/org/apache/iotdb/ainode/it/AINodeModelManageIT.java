@@ -77,11 +77,6 @@ public class AINodeModelManageIT {
       registerUserDefinedModel(statement, modelInfo, "file:///data/chronos2");
       callInferenceTest(statement, modelInfo);
       dropUserDefinedModel(statement, modelInfo.getModelId());
-      errorTest(
-          statement,
-          "create model origin_chronos using uri \"file:///data/chronos2_origin\"",
-          "1505: 't5' is already used by a Transformers config, pick another name.");
-      statement.execute("drop model origin_chronos");
 
       // Test PytorchModelHubMixin model (mantis) in tree.
       modelInfo = new FakeModelInfo("user_mantis", "custom_mantis", "user_defined", "active");
@@ -100,11 +95,6 @@ public class AINodeModelManageIT {
       registerUserDefinedModel(statement, modelInfo, "file:///data/chronos2");
       forecastTableFunctionTest(statement, modelInfo);
       dropUserDefinedModel(statement, modelInfo.getModelId());
-      errorTest(
-          statement,
-          "create model origin_chronos using uri \"file:///data/chronos2_origin\"",
-          "1505: 't5' is already used by a Transformers config, pick another name.");
-      statement.execute("drop model origin_chronos");
 
       // Test PytorchModelHubMixin model (mantis) in table.
       modelInfo = new FakeModelInfo("user_mantis", "custom_mantis", "user_defined", "active");

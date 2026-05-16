@@ -21,10 +21,10 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.schedule;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.StopTTLCheckException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -67,18 +67,7 @@ public class TTLScheduleTask implements Callable<Void> {
             dataRegionListSnapshot.get(i).executeTTLCheck();
           }
         }
-        // check for object files
-        for (int i = 0; i < dataRegionListSnapshot.size(); i++) {
-          if (Thread.interrupted()) {
-            throw new InterruptedException();
-          }
-          DataRegion region = dataRegionListSnapshot.get(i);
-          if (i % workerNum == workerId
-              && PathUtils.isTableModelDatabase(region.getDatabaseName())) {
-            dataRegionListSnapshot.get(i).executeTTLCheckForObjectFiles();
-          }
-        }
-      } catch (InterruptedException ignored) {
+      } catch (StopTTLCheckException | InterruptedException ignored) {
         boolean isStoppedByUser =
             CompactionScheduleTaskManager.getInstance().isStoppingAllScheduleTask();
         logger.info(

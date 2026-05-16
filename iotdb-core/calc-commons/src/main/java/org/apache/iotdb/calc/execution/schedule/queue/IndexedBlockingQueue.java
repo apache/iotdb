@@ -17,9 +17,9 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.execution.schedule.queue;
+package org.apache.iotdb.calc.execution.schedule.queue;
 
-import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+import org.apache.iotdb.calc.i18n.CalcMessages;
 
 import com.google.common.base.Preconditions;
 
@@ -90,7 +90,7 @@ public abstract class IndexedBlockingQueue<E extends IDIndexedAccessible> {
    */
   public synchronized void push(E element) {
     if (element == null) {
-      throw new NullPointerException(DataNodeQueryMessages.PUSHED_ELEMENT_IS_NULL);
+      throw new NullPointerException(CalcMessages.PUSHED_ELEMENT_IS_NULL);
     }
     Preconditions.checkState(size < capacity, TOO_MANY_CONCURRENT_QUERIES_ERROR_MSG);
     pushToQueue(element);
@@ -168,7 +168,7 @@ public abstract class IndexedBlockingQueue<E extends IDIndexedAccessible> {
    *
    * @return true if the queue is empty, otherwise false.
    */
-  protected abstract boolean isEmpty();
+  public abstract boolean isEmpty();
 
   /**
    * Get and remove the first element.
