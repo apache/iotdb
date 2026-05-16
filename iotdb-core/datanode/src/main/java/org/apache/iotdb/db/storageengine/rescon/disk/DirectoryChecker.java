@@ -119,16 +119,32 @@ public class DirectoryChecker {
   }
 
   public void deregisterAll() {
-    try {
-      for (RandomAccessFile randomAccessFile : randomAccessFileList) {
+    IOException first = null;
+    for (RandomAccessFile randomAccessFile : randomAccessFileList) {
+      try {
         randomAccessFile.close();
         // it will release lock automatically after close
+      } catch (IOException e) {
+        if (first == null) {
+          first = e;
+        } else {
+          first.addSuppressed(e);
+        }
       }
-      for (File file : fileList) {
+    }
+    for (File file : fileList) {
+      try {
         FileUtils.delete(file);
+      } catch (IOException e) {
+        if (first == null) {
+          first = e;
+        } else {
+          first.addSuppressed(e);
+        }
       }
-    } catch (IOException e) {
-      logger.warn("Failed to deregister file lock because {}", e.getMessage(), e);
+    }
+    if (first != null) {
+      logger.warn("Failed to deregister one or more file locks: {}", e.getMessage(), e);
     }
   }
 
