@@ -329,8 +329,14 @@ def compute_source_hash(script_dir):
 
     hash_targets = []
 
+    excluded_dirs = {"build", "dist", "__pycache__"}
+
     for pattern in ("**/*.py", "**/*.spec"):
-        hash_targets.extend(script_dir.glob(pattern))
+        for f in script_dir.glob(pattern):
+            if not any(
+                part in excluded_dirs for part in f.relative_to(script_dir).parts
+            ):
+                hash_targets.append(f)
 
     for name in ("pyproject.toml", "poetry.lock"):
         f = script_dir / name
