@@ -21,7 +21,9 @@
 PyInstaller build script (Python version)
 """
 
+import hashlib
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -317,6 +319,97 @@ def poetry_install_with_accel(poetry_exe, script_dir, venv_env, accelerator):
     )
 
 
+def compute_source_hash(script_dir):
+    """
+    Compute a SHA256 hash over all files that affect the PyInstaller output.
+
+    Includes Python source files, the spec file, pyproject.toml, and poetry.lock.
+    """
+    hasher = hashlib.sha256()
+
+    hash_targets = []
+
+    for pattern in ("**/*.py", "**/*.spec"):
+        hash_targets.extend(script_dir.glob(pattern))
+
+    for name in ("pyproject.toml", "poetry.lock"):
+        f = script_dir / name
+        if f.exists():
+            hash_targets.append(f)
+
+    # Also include the thrift/client-py sources that get copied in
+    client_py_dir = script_dir.parent.parent / "iotdb-client" / "client-py" / "iotdb"
+    if client_py_dir.is_dir():
+        hash_targets.extend(client_py_dir.rglob("*.py"))
+
+    hash_targets.sort(key=lambda p: str(p))
+
+    for f in hash_targets:
+        try:
+            rel = f.relative_to(script_dir)
+        except ValueError:
+            rel = f
+        hasher.update(str(rel).encode())
+        hasher.update(f.read_bytes())
+
+    return hasher.hexdigest()
+
+
+def get_dist_cache_dir():
+    """Get the directory used to cache PyInstaller dist output."""
+    return get_venv_base_dir() / "dist-cache"
+
+
+def try_restore_dist_cache(script_dir):
+    """
+    Try to restore the dist/ directory from cache.
+
+    Returns True if cache hit, False otherwise.
+    """
+    source_hash = compute_source_hash(script_dir)
+    cache_dir = get_dist_cache_dir()
+    hash_file = cache_dir / "source_hash"
+    cached_dist = cache_dir / "ainode"
+    dist_dir = script_dir / "dist" / "ainode"
+
+    print(f"Source hash: {source_hash}")
+
+    if hash_file.exists() and cached_dist.is_dir():
+        cached_hash = hash_file.read_text().strip()
+        if cached_hash == source_hash:
+            print("Cache hit — restoring dist/ from cache, skipping PyInstaller build")
+            dist_dir.parent.mkdir(parents=True, exist_ok=True)
+            if dist_dir.exists():
+                shutil.rmtree(dist_dir)
+            shutil.copytree(cached_dist, dist_dir, symlinks=True)
+            return True
+        else:
+            print("Cache miss — source hash changed, will rebuild")
+    else:
+        print("No dist cache found, will build from scratch")
+
+    return False
+
+
+def save_dist_cache(script_dir):
+    """Save the dist/ directory to cache after a successful build."""
+    source_hash = compute_source_hash(script_dir)
+    cache_dir = get_dist_cache_dir()
+    cached_dist = cache_dir / "ainode"
+    dist_dir = script_dir / "dist" / "ainode"
+
+    if not dist_dir.is_dir():
+        print("Warning: dist/ainode not found, skipping cache save")
+        return
+
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    if cached_dist.exists():
+        shutil.rmtree(cached_dist)
+    shutil.copytree(dist_dir, cached_dist, symlinks=True)
+    (cache_dir / "source_hash").write_text(source_hash)
+    print(f"Saved dist cache (hash: {source_hash})")
+
+
 def build():
     """
     Execute the complete build process.
@@ -325,7 +418,9 @@ def build():
     1. Setup virtual environment (outside project directory)
     2. Update pip and install 2.2.1 poetry
     3. Install project dependencies (including PyInstaller from pyproject.toml)
-    4. Build executable using PyInstaller
+    4. Check dist cache — skip PyInstaller if source hasn't changed
+    5. Build executable using PyInstaller (if cache miss)
+    6. Save dist to cache
     """
     script_dir = Path(__file__).parent
 
@@ -343,6 +438,13 @@ def build():
     print("IoTDB AINode PyInstaller Build Script")
     print("=" * 50)
     print()
+
+    if try_restore_dist_cache(script_dir):
+        print()
+        print("=" * 50)
+        print("Build completed (from cache)!")
+        print("=" * 50)
+        return
 
     print("Starting build...")
     print()
@@ -382,6 +484,8 @@ def build():
     except subprocess.CalledProcessError as e:
         print(f"\nError: Build failed: {e}")
         sys.exit(1)
+
+    save_dist_cache(script_dir)
 
     print()
     print("=" * 50)
