@@ -57,7 +57,17 @@ public class IoTDBPipeReceiverAutoCreateDisabledIT extends AbstractPipeDualTreeM
   @Override
   protected void setupConfig() {
     super.setupConfig();
+    senderEnv
+        .getConfig()
+        .getCommonConfig()
+        .setSchemaReplicationFactor(1)
+        .setDataReplicationFactor(1);
     receiverEnv.getConfig().getCommonConfig().setAutoCreateSchemaEnabled(false);
+    receiverEnv
+        .getConfig()
+        .getCommonConfig()
+        .setSchemaReplicationFactor(1)
+        .setDataReplicationFactor(1);
   }
 
   @Test
@@ -72,7 +82,7 @@ public class IoTDBPipeReceiverAutoCreateDisabledIT extends AbstractPipeDualTreeM
             "create pipe test with source ('inclusion'='all','source.realtime.mode'='stream','source.realtime.enable'='true') "
                 + "with sink ('sink'='iotdb-thrift-sink', 'sink.node-urls'='%s');",
             receiverEnv.getDataNodeWrapper(0).getIpAndPortString());
-    final String createDatabaseSql = "create database root.test.sg;";
+    final String createDatabaseSql = "create database root.test;";
     final String createFirstTimeSeriesSql =
         "create timeseries root.test.sg.`1~!@#$%^&*()_+=:'\"/|[]{}`.`~!@#$%^&*()_+=:'\"/|[]{}` float;";
     final String insertFirstSql =

@@ -113,7 +113,8 @@ public class ConvertSchemaPredicateToFilterVisitor
       final LikePredicate node, final Context context) {
     // TODO: Support stringLiteral like tag/attr?
     if (!(node.getValue() instanceof SymbolReference)
-        || !(node.getPattern() instanceof StringLiteral)) {
+        || !(node.getPattern() instanceof StringLiteral)
+        || (node.getEscape().isPresent() && !(node.getEscape().get() instanceof StringLiteral))) {
       return null;
     }
     return wrapTagOrAttributeFilter(

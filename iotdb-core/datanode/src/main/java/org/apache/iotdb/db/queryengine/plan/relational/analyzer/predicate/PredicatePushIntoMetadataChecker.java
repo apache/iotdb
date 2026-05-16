@@ -195,7 +195,10 @@ public class PredicatePushIntoMetadataChecker implements AstVisitor<Boolean, Voi
 
   @Override
   public Boolean visitLikePredicate(final LikePredicate node, final Void context) {
-    return node.getValue().accept(this, context);
+    return node.getValue() instanceof SymbolReference
+        && node.getValue().accept(this, context)
+        && node.getPattern() instanceof StringLiteral
+        && (!node.getEscape().isPresent() || node.getEscape().get() instanceof StringLiteral);
   }
 
   @Override
