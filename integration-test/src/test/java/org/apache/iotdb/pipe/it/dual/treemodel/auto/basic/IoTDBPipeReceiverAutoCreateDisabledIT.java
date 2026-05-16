@@ -60,14 +60,14 @@ public class IoTDBPipeReceiverAutoCreateDisabledIT extends AbstractPipeDualTreeM
     senderEnv
         .getConfig()
         .getCommonConfig()
-        .setSchemaReplicationFactor(1)
-        .setDataReplicationFactor(1);
-    receiverEnv.getConfig().getCommonConfig().setAutoCreateSchemaEnabled(false);
+        .setDataReplicationFactor(1)
+        .setSchemaReplicationFactor(1);
     receiverEnv
         .getConfig()
         .getCommonConfig()
-        .setSchemaReplicationFactor(1)
-        .setDataReplicationFactor(1);
+        .setAutoCreateSchemaEnabled(false)
+        .setDataReplicationFactor(1)
+        .setSchemaReplicationFactor(1);
   }
 
   @Test
@@ -79,10 +79,12 @@ public class IoTDBPipeReceiverAutoCreateDisabledIT extends AbstractPipeDualTreeM
 
     final String createPipeSql =
         String.format(
-            "create pipe test with source ('inclusion'='all','source.realtime.mode'='stream','source.realtime.enable'='true') "
+            "create pipe test with source ('inclusion'='all') "
                 + "with sink ('sink'='iotdb-thrift-sink', 'sink.node-urls'='%s');",
             receiverEnv.getDataNodeWrapper(0).getIpAndPortString());
-    final String createDatabaseSql = "create database root.test;";
+    final String createDatabaseSql = "create database root.test.sg;";
+    final String createSecondDatabaseSql =
+        "create database root.test.ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz1;";
     final String createFirstTimeSeriesSql =
         "create timeseries root.test.sg.`1~!@#$%^&*()_+=:'\"/|[]{}`.`~!@#$%^&*()_+=:'\"/|[]{}` float;";
     final String insertFirstSql =
@@ -105,6 +107,7 @@ public class IoTDBPipeReceiverAutoCreateDisabledIT extends AbstractPipeDualTreeM
       statement.execute(createFirstTimeSeriesSql);
       statement.execute(insertFirstSql);
       final QueryResult firstQueryResult = queryForResult(statement, firstSelectSql);
+      statement.execute(createSecondDatabaseSql);
       statement.execute(createSecondTimeSeriesSql);
       statement.execute(insertSecondSql);
       final QueryResult secondQueryResult = queryForResult(statement, secondSelectSql);
