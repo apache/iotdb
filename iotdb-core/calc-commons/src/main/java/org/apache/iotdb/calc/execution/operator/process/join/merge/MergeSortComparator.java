@@ -104,7 +104,7 @@ public class MergeSortComparator {
         break;
       default:
         throw new IllegalArgumentException(
-            CalcMessages.DATA_TYPE_CANNOT_BE_ORDERED + dataType + CalcMessages.CANNOT_BE_ORDERED);
+            String.format(CalcMessages.DATA_TYPE_CANNOT_BE_ORDERED, dataType));
     }
     if (!asc) {
       comparator = comparator.reversed();

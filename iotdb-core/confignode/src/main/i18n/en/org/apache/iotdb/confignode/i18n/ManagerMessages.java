@@ -203,7 +203,7 @@ public final class ManagerMessages {
       "GetDataPartition interface receive PartitionSlotsMap: {}, return: {}";
   public static final String GETNODEPATHSPARTITION_RECEIVED_PARTIALPATH_LEVEL_PATHPATTERNTREE_RESP =
       "[GetNodePathsPartition]:{}Received PartialPath: {}, Level: {}, PathPatternTree: {}, Resp: {}";
-  public static final String GETORCREATEDATAPARTITION_RECEIVE_PARTITIONSLOTSMAP_RETURN_TDATAPARTITIONTABLERESP =
+  public static final String GET_OR_CREATE_DATA_PARTITION_RESP_LOG =
       "[GetOrCreateDataPartition]:{}Receive PartitionSlotsMap: {}, Return TDataPartitionTableResp: {}";
   public static final String GETORCREATESCHEMAPARTITION_RECEIVE_DATABASENAMESLOTMAP_RETURN_TSCHEMAPARTITIONTABLERESP =
       "[GetOrCreateSchemaPartition]:{}Receive databaseNameSlotMap: {}, Return TSchemaPartitionTableResp: {}";

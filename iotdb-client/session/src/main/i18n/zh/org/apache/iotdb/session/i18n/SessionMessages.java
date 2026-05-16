@@ -23,8 +23,10 @@ public final class SessionMessages {
 
   // Session
   public static final String NODE_URLS_EMPTY = "nodeUrls 不能为空。";
-  public static final String REDIRECT_TWICE = "{} 重定向了两次";
-  public static final String REDIRECT_TWICE_EXCEPTION = "%s 重定向了两次，请重试。";
+  public static final String REDIRECT_TWICE_LOG = "重定向了两次";
+  public static final String REDIRECT_TWICE_LOG_WITH_SQL = "{} 重定向了两次";
+  public static final String REDIRECT_TWICE_MSG = "重定向了两次，请重试。";
+  public static final String REDIRECT_TWICE_MSG_WITH_SQL = "%s 重定向了两次，请重试。";
   public static final String FAILED_TO_EXECUTE_FOR_ENDPOINT = "在 {} 上执行 '{}' 失败";
   public static final String ALL_VALUES_NULL =
       "{} 的所有值均为 null，null 值为 {}";
@@ -254,7 +256,6 @@ public final class SessionMessages {
       "dropSchemaTemplate 发生意外错误";
   public static final String UNEXPECTED_ERROR_IN_CREATE_TIMESERIES_USING_SCHEMA_TEMPLATE =
       "createTimeseriesUsingSchemaTemplate 发生意外错误";
-  public static final String REDIRECT_TWICE_SUFFIX = " 重定向两次，请重试。";
 
   private SessionMessages() {}
 }

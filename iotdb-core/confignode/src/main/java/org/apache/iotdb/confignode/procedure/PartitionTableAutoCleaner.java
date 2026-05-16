@@ -79,10 +79,7 @@ public class PartitionTableAutoCleaner<Env> extends InternalProcedure<Env> {
       }
       databaseTTLMap.put(database, databaseTTL);
     }
-    LOGGER.info(
-        ProcedureMessages
-            .PARTITIONTABLECLEANER_PERIODICALLY_ACTIVATE_PARTITIONTABLEAUTOCLEANER_DATABASETTL,
-        databaseTTLMap);
+    LOGGER.info(ProcedureMessages.PARTITION_TABLE_CLEANER_ACTIVATE_TTL_LOG, databaseTTLMap);
     for (String database : databases) {
       long databaseTTL = databaseTTLMap.get(database);
       if (!configManager.getPartitionManager().isDatabaseExist(database)

@@ -2205,7 +2205,7 @@ public class ExpressionAnalyzer {
 
       if (!firstType.equals(secondType)) {
         throw new SemanticException(
-            String.format(DataNodeQueryMessages.VS, message, firstType, secondType));
+            String.format(DataNodeQueryMessages.TYPE_MISMATCH_FMT, message, firstType, secondType));
       }
 
       return firstType;

@@ -55,7 +55,7 @@ public class LongBigArrayFIFOQueue {
   public LongBigArrayFIFOQueue(final long capacity) {
     if (capacity < 0) {
       throw new IllegalArgumentException(
-          CalcMessages.INITIAL_CAPACITY_IS_NEGATIVE + capacity + CalcMessages.IS_NEGATIVE);
+          String.format(CalcMessages.INITIAL_CAPACITY_IS_NEGATIVE, capacity));
     }
     array = new LongBigArray();
     length =

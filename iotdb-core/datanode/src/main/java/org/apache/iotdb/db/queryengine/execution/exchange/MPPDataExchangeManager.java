@@ -845,11 +845,10 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
     if (sourceHandles.containsKey(localFragmentInstanceId)
         && sourceHandles.get(localFragmentInstanceId).containsKey(localPlanNodeId)) {
       throw new IllegalStateException(
-          DataNodeQueryMessages.SOURCE_HANDLE_FOR_PLAN_NODE
-              + localPlanNodeId
-              + DataNodeQueryMessages.OF
-              + localFragmentInstanceId
-              + DataNodeQueryMessages.EXISTS);
+          String.format(
+              DataNodeQueryMessages.SOURCE_HANDLE_FOR_PLAN_NODE_EXISTS_FMT,
+              localPlanNodeId,
+              localFragmentInstanceId));
     }
 
     if (LOGGER.isDebugEnabled()) {
@@ -921,11 +920,10 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
     Map<String, ISourceHandle> sourceHandleMap = sourceHandles.get(localFragmentInstanceId);
     if (sourceHandleMap != null && sourceHandleMap.containsKey(localPlanNodeId)) {
       throw new IllegalStateException(
-          DataNodeQueryMessages.SOURCE_HANDLE_FOR_PLAN_NODE
-              + localPlanNodeId
-              + DataNodeQueryMessages.OF
-              + localFragmentInstanceId
-              + DataNodeQueryMessages.EXISTS);
+          String.format(
+              DataNodeQueryMessages.SOURCE_HANDLE_FOR_PLAN_NODE_EXISTS_FMT,
+              localPlanNodeId,
+              localFragmentInstanceId));
     }
 
     if (LOGGER.isDebugEnabled()) {

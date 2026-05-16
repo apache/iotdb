@@ -202,10 +202,6 @@ public class Session implements ISession {
   // may be null
   protected volatile String database;
 
-  private static final String REDIRECT_TWICE = "redirect twice";
-
-  private static final String REDIRECT_TWICE_RETRY = "redirect twice, please try again.";
-
   private static final String VALUES_SIZE_SHOULD_BE_EQUAL =
       "times, measurementsList and valuesList's size should be equal";
 
@@ -1023,8 +1019,9 @@ public class Session implements ISession {
         try {
           return getDefaultSessionConnection().executeQueryStatement(sql, queryTimeoutInMs);
         } catch (RedirectException redirectException) {
-          logger.error(SessionMessages.REDIRECT_TWICE, sql, redirectException);
-          throw new StatementExecutionException(sql + SessionMessages.REDIRECT_TWICE_SUFFIX);
+          logger.error(SessionMessages.REDIRECT_TWICE_LOG_WITH_SQL, sql, redirectException);
+          throw new StatementExecutionException(
+              String.format(SessionMessages.REDIRECT_TWICE_MSG_WITH_SQL, sql));
         }
       } else {
         throw new StatementExecutionException(MSG_DONOT_ENABLE_REDIRECT);
@@ -1106,8 +1103,8 @@ public class Session implements ISession {
           return getDefaultSessionConnection()
               .executeRawDataQuery(paths, startTime, endTime, timeOut);
         } catch (RedirectException redirectException) {
-          logger.error(REDIRECT_TWICE, redirectException);
-          throw new StatementExecutionException(REDIRECT_TWICE_RETRY);
+          logger.error(SessionMessages.REDIRECT_TWICE_LOG, redirectException);
+          throw new StatementExecutionException(SessionMessages.REDIRECT_TWICE_MSG);
         }
       } else {
         throw new StatementExecutionException(MSG_DONOT_ENABLE_REDIRECT);
@@ -1146,8 +1143,8 @@ public class Session implements ISession {
         try {
           return getDefaultSessionConnection().executeLastDataQuery(paths, lastTime, timeOut);
         } catch (RedirectException redirectException) {
-          logger.error(REDIRECT_TWICE, redirectException);
-          throw new StatementExecutionException(REDIRECT_TWICE_RETRY);
+          logger.error(SessionMessages.REDIRECT_TWICE_LOG, redirectException);
+          throw new StatementExecutionException(SessionMessages.REDIRECT_TWICE_MSG);
         }
       } else {
         throw new StatementExecutionException(MSG_DONOT_ENABLE_REDIRECT);
@@ -1218,8 +1215,8 @@ public class Session implements ISession {
         try {
           return getDefaultSessionConnection().executeAggregationQuery(paths, aggregations);
         } catch (RedirectException redirectException) {
-          logger.error(REDIRECT_TWICE, redirectException);
-          throw new StatementExecutionException(REDIRECT_TWICE_RETRY);
+          logger.error(SessionMessages.REDIRECT_TWICE_LOG, redirectException);
+          throw new StatementExecutionException(SessionMessages.REDIRECT_TWICE_MSG);
         }
       } else {
         throw new StatementExecutionException(MSG_DONOT_ENABLE_REDIRECT);
@@ -1242,8 +1239,8 @@ public class Session implements ISession {
           return getDefaultSessionConnection()
               .executeAggregationQuery(paths, aggregations, startTime, endTime);
         } catch (RedirectException redirectException) {
-          logger.error(REDIRECT_TWICE, redirectException);
-          throw new StatementExecutionException(REDIRECT_TWICE_RETRY);
+          logger.error(SessionMessages.REDIRECT_TWICE_LOG, redirectException);
+          throw new StatementExecutionException(SessionMessages.REDIRECT_TWICE_MSG);
         }
       } else {
         throw new StatementExecutionException(MSG_DONOT_ENABLE_REDIRECT);
@@ -1270,8 +1267,8 @@ public class Session implements ISession {
           return getDefaultSessionConnection()
               .executeAggregationQuery(paths, aggregations, startTime, endTime, interval);
         } catch (RedirectException redirectException) {
-          logger.error(REDIRECT_TWICE, redirectException);
-          throw new StatementExecutionException(REDIRECT_TWICE_RETRY);
+          logger.error(SessionMessages.REDIRECT_TWICE_LOG, redirectException);
+          throw new StatementExecutionException(SessionMessages.REDIRECT_TWICE_MSG);
         }
       } else {
         throw new StatementExecutionException(MSG_DONOT_ENABLE_REDIRECT);
@@ -1300,8 +1297,8 @@ public class Session implements ISession {
               .executeAggregationQuery(
                   paths, aggregations, startTime, endTime, interval, slidingStep);
         } catch (RedirectException redirectException) {
-          logger.error(REDIRECT_TWICE, redirectException);
-          throw new StatementExecutionException(REDIRECT_TWICE_RETRY);
+          logger.error(SessionMessages.REDIRECT_TWICE_LOG, redirectException);
+          throw new StatementExecutionException(SessionMessages.REDIRECT_TWICE_MSG);
         }
       } else {
         throw new StatementExecutionException(MSG_DONOT_ENABLE_REDIRECT);

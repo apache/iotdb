@@ -179,8 +179,6 @@ public final class JdbcMessages {
   public static final String NOT_SUPPORT_SET_SAVEPOINT = "Does not support setSavepoint";
   public static final String USE_DATABASE_ERROR = "Use database error: {}";
   public static final String RECONNECT_INTERRUPTED = "reconnect is interrupted.";
-  public static final String PARAMETER_IS_UNSET_PREFIX = "Parameter #";
-  public static final String PARAMETER_IS_UNSET_SUFFIX = " is unset";
 
   private JdbcMessages() {}
 }

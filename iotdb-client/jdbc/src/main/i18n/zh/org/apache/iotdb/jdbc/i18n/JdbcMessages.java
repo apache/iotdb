@@ -179,8 +179,6 @@ public final class JdbcMessages {
   public static final String NOT_SUPPORT_SET_SAVEPOINT = "不支持 setSavepoint";
   public static final String USE_DATABASE_ERROR = "使用数据库错误：{}";
   public static final String RECONNECT_INTERRUPTED = "重新连接被中断。";
-  public static final String PARAMETER_IS_UNSET_PREFIX = "参数 #";
-  public static final String PARAMETER_IS_UNSET_SUFFIX = " 未设置";
 
   private JdbcMessages() {}
 }

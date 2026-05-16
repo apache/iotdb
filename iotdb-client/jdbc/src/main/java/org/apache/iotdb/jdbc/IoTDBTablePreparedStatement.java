@@ -189,10 +189,7 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
       if (parameterTypes[i] == Types.NULL
           && parameterValues[i] == null
           && !parameters.containsKey(i + 1)) {
-        throw new SQLException(
-            JdbcMessages.PARAMETER_IS_UNSET_PREFIX
-                + (i + 1)
-                + JdbcMessages.PARAMETER_IS_UNSET_SUFFIX);
+        throw new SQLException(String.format(JdbcMessages.PARAMETER_UNSET, i + 1));
       }
     }
 
@@ -693,8 +690,7 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
     StringBuilder newSql = new StringBuilder(parts.get(0));
     for (int i = 1; i < parts.size(); i++) {
       if (!parameters.containsKey(i)) {
-        throw new SQLException(
-            JdbcMessages.PARAMETER_IS_UNSET_PREFIX + i + JdbcMessages.PARAMETER_IS_UNSET_SUFFIX);
+        throw new SQLException(String.format(JdbcMessages.PARAMETER_UNSET, i));
       }
       newSql.append(parameters.get(i));
       newSql.append(parts.get(i));

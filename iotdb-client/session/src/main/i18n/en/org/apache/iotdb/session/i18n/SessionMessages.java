@@ -23,8 +23,11 @@ public final class SessionMessages {
 
   // Session
   public static final String NODE_URLS_EMPTY = "nodeUrls shouldn't be empty.";
-  public static final String REDIRECT_TWICE = "{} redirect twice";
-  public static final String REDIRECT_TWICE_EXCEPTION = "%s redirect twice, please try again.";
+  public static final String REDIRECT_TWICE_LOG = "redirect twice";
+  public static final String REDIRECT_TWICE_LOG_WITH_SQL = "{} redirect twice";
+  public static final String REDIRECT_TWICE_MSG = "redirect twice, please try again.";
+  public static final String REDIRECT_TWICE_MSG_WITH_SQL =
+      "%s redirect twice, please try again.";
   public static final String FAILED_TO_EXECUTE_FOR_ENDPOINT = "failed to execute '{}' for {}";
   public static final String ALL_VALUES_NULL =
       "All values of the {} are null,null values are {}";
@@ -254,7 +257,6 @@ public final class SessionMessages {
       "unexpected error in dropSchemaTemplate";
   public static final String UNEXPECTED_ERROR_IN_CREATE_TIMESERIES_USING_SCHEMA_TEMPLATE =
       "unexpected error in createTimeseriesUsingSchemaTemplate";
-  public static final String REDIRECT_TWICE_SUFFIX = " redirect twice, please try again.";
 
   private SessionMessages() {}
 }

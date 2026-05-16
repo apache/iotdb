@@ -617,7 +617,7 @@ public final class DataNodeQueryMessages {
       "不支持的帧类型：";
   public static final String COLUMNS_ONLY_SUPPORT_TO_BE_USED_IN_SELECT =
       "Columns 仅支持在 SELECT 和 WHERE 子句中使用";
-  public static final String VS =
+  public static final String TYPE_MISMATCH_FMT =
       "%s：%s 与 %s";
   public static final String UNKNOWN_PATTERN_RECOGNITION_FUNCTION =
       "未知的模式识别函数：";
@@ -1191,12 +1191,8 @@ public final class DataNodeQueryMessages {
       "ShuffleSinkHandle ";
   public static final String IS_IN_THE_MAP =
       " 已存在于映射中。";
-  public static final String SOURCE_HANDLE_FOR_PLAN_NODE =
-      "计划节点 ";
-  public static final String OF =
-      " 的 ";
-  public static final String EXISTS =
-      " 的 Source handle 已存在。";
+  public static final String SOURCE_HANDLE_FOR_PLAN_NODE_EXISTS_FMT =
+      "计划节点 %s 的 %s 的 Source handle 已存在。";
   public static final String FAILED_TO_PULL_TSBLOCKS =
       "{} 从 SinkHandle {} 的通道索引 {} 拉取 TsBlocks [{}] 到 [{}] 失败，";
   public static final String FAILED_TO_GET_DATA_BLOCK =

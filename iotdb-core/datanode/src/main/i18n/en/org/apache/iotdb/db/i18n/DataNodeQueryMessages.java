@@ -618,7 +618,7 @@ public final class DataNodeQueryMessages {
       "Unsupported frame type: ";
   public static final String COLUMNS_ONLY_SUPPORT_TO_BE_USED_IN_SELECT =
       "Columns only support to be used in SELECT and WHERE clause";
-  public static final String VS =
+  public static final String TYPE_MISMATCH_FMT =
       "%s: %s vs %s";
   public static final String UNKNOWN_PATTERN_RECOGNITION_FUNCTION =
       "Unknown pattern recognition function: ";
@@ -1192,12 +1192,8 @@ public final class DataNodeQueryMessages {
       "ShuffleSinkHandle for ";
   public static final String IS_IN_THE_MAP =
       " is in the map.";
-  public static final String SOURCE_HANDLE_FOR_PLAN_NODE =
-      "Source handle for plan node ";
-  public static final String OF =
-      " of ";
-  public static final String EXISTS =
-      " exists.";
+  public static final String SOURCE_HANDLE_FOR_PLAN_NODE_EXISTS_FMT =
+      "Source handle for plan node %s of %s exists.";
   public static final String FAILED_TO_PULL_TSBLOCKS =
       "{} failed to pull TsBlocks [{}] to [{}] from SinkHandle {}, channel index {},";
   public static final String FAILED_TO_GET_DATA_BLOCK =

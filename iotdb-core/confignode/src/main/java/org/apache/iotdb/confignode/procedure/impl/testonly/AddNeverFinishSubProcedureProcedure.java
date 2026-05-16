@@ -50,9 +50,7 @@ public class AddNeverFinishSubProcedureProcedure
     }
     if (state == 1) {
       // test fail
-      LOGGER.error(
-          ProcedureMessages
-              .ADDNEVERFINISHSUBPROCEDUREPROCEDURE_RUN_AGAIN_WHICH_SHOULD_NEVER_HAPPEN);
+      LOGGER.error(ProcedureMessages.NEVER_FINISH_PROCEDURE_RAN_AGAIN);
       ProcedureTestUtils.createDatabase(env.getConfigManager(), FAIL_DATABASE_NAME);
     }
     return Flow.NO_MORE_STATE;

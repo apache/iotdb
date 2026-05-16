@@ -21,7 +21,7 @@ package org.apache.iotdb.confignode.i18n;
 
 public final class ProcedureMessages {
 
-  public static final String ADDNEVERFINISHSUBPROCEDUREPROCEDURE_RUN_AGAIN_WHICH_SHOULD_NEVER_HAPPEN =
+  public static final String NEVER_FINISH_PROCEDURE_RAN_AGAIN =
       "AddNeverFinishSubProcedureProcedure run again, which should never happen";
   public static final String ADDREGIONLOCATION_FINISHED_ADD_REGION_TO_RESULT_IS =
       "AddRegionLocation finished, add region {} to {}, result is {}";
@@ -585,7 +585,7 @@ public final class ProcedureMessages {
   public static final String NO_ENOUGH_DATA_NODE_TO_MIGRATE_REGION =
       "No enough Data node to migrate region: {}";
   public static final String OPERATION_TIMED_OUT_AFTER = "Operation timed out after ";
-  public static final String PARTITIONTABLECLEANER_PERIODICALLY_ACTIVATE_PARTITIONTABLEAUTOCLEANER_DATABASETTL =
+  public static final String PARTITION_TABLE_CLEANER_ACTIVATE_TTL_LOG =
       "[PartitionTableCleaner] Periodically activate PartitionTableAutoCleaner, databaseTTL: {}";
   public static final String PARTITIONTABLECLEANER_PERIODICALLY_ACTIVATE_PARTITIONTABLEAUTOCLEANER_FOR =
       "[PartitionTableCleaner] Periodically activate PartitionTableAutoCleaner for: {}";

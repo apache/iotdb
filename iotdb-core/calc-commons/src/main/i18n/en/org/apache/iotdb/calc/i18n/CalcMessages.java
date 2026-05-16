@@ -27,7 +27,6 @@ public final class CalcMessages {
       "AND operator only accepts Boolean operands";
   public static final String ARRAYS_NOT_SAME_LENGTH = "Arrays not same length";
   public static final String CANNOT_ADD_NAN_TO_T_DIGEST = "Cannot add NaN to t-digest";
-  public static final String CANNOT_BE_ORDERED = " cannot be ordered";
   public static final String CANNOT_CAST_TO_BOOLEAN = "\"%s\" cannot be cast to [BOOLEAN]";
   public static final String CANNOT_PARSE_STRING_TO_DOUBLE = "Cannot parse String to double: ";
   public static final String CANT_HAPPEN_LOOP_FELL_THROUGH =
@@ -39,7 +38,7 @@ public final class CalcMessages {
   public static final String CURRENT_COLUMN_IS_NOT_OBJECT_COLUMN =
       "current column is not object column";
   public static final String CURRENT_TS_BLOCK_SIZE_IS = "Current tsBlock size is : {}";
-  public static final String DATA_TYPE_CANNOT_BE_ORDERED = "Data type: ";
+  public static final String DATA_TYPE_CANNOT_BE_ORDERED = "Data type: %s cannot be ordered";
   public static final String DECODE_BASE32_ERROR = "decode base32 error";
   public static final String DECODE_BASE64_ERROR = "decode base64 error";
   public static final String DECODE_BASE64URL_ERROR = "decode base64url error";
@@ -56,15 +55,14 @@ public final class CalcMessages {
   public static final String ILLEGAL_STATE_IN_VISIT_LOGICAL_EXPRESSION =
       "Illegal state in visitLogicalExpression";
   public static final String INDEX_OUT_OF_PARTITION_BOUNDS = "Index out of Partition's bounds!";
-  public static final String INITIAL_CAPACITY_IS_NEGATIVE = "Initial capacity (";
-  public static final String CAPACITY_EXCEEDS = ") exceeds ";
+  public static final String INITIAL_CAPACITY_IS_NEGATIVE = "Initial capacity (%d) is negative";
+  public static final String INITIAL_CAPACITY_EXCEEDS_LIMIT = "Initial capacity (%d) exceeds %d";
   public static final String INPUT_ROW_UTILS_SHOULD_NOT_BE_INSTANTIATED =
       "InputRowUtils should not be instantiated.";
   public static final String INVALID_AGGREGATION_FUNCTION = "Invalid Aggregation function: ";
   public static final String INVALID_TEXT_INPUT_FOR_BOOLEAN =
       "Invalid text input for boolean type: %s";
   public static final String INVALID_VALUE = "Invalid value: %f";
-  public static final String IS_NEGATIVE = ") is negative";
   public static final String LEFT_CHILD_OF_JOIN_NODE_DOESNT_CONTAIN_LEFT_JOIN_KEY =
       "Left child of JoinNode doesn't contain left join key.";
   public static final String MAX_TUPLE_SIZE_OF_TS_BLOCK_IS = "maxTupleSizeOfTsBlock is：{}";

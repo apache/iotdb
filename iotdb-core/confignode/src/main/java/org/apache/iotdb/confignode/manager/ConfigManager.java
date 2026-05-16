@@ -1228,8 +1228,7 @@ public class ConfigManager implements IManager {
     dataPartitionRespString.append(lineSeparator).append("}");
 
     LOGGER.info(
-        ManagerMessages
-            .GETORCREATEDATAPARTITION_RECEIVE_PARTITIONSLOTSMAP_RETURN_TDATAPARTITIONTABLERESP,
+        ManagerMessages.GET_OR_CREATE_DATA_PARTITION_RESP_LOG,
         lineSeparator,
         partitionSlotsMapString,
         dataPartitionRespString);

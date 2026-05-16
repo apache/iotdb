@@ -1022,8 +1022,7 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
         logger.debug(JdbcMessages.PARAMETERS_DEBUG, parameters.size());
       }
       if (!parameters.containsKey(i)) {
-        throw new SQLException(
-            JdbcMessages.PARAMETER_IS_UNSET_PREFIX + i + JdbcMessages.PARAMETER_IS_UNSET_SUFFIX);
+        throw new SQLException(String.format(JdbcMessages.PARAMETER_UNSET, i));
       }
       newSql.append(parameters.get(i));
       newSql.append(parts.get(i));

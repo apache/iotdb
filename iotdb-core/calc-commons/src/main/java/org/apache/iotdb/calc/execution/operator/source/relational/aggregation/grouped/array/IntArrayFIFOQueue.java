@@ -38,13 +38,10 @@ public class IntArrayFIFOQueue implements Serializable {
   public IntArrayFIFOQueue(int capacity) {
     if (capacity > 2147483638) {
       throw new IllegalArgumentException(
-          CalcMessages.INITIAL_CAPACITY_IS_NEGATIVE
-              + capacity
-              + CalcMessages.CAPACITY_EXCEEDS
-              + 2147483638);
+          String.format(CalcMessages.INITIAL_CAPACITY_EXCEEDS_LIMIT, capacity, 2147483638));
     } else if (capacity < 0) {
       throw new IllegalArgumentException(
-          CalcMessages.INITIAL_CAPACITY_IS_NEGATIVE + capacity + CalcMessages.IS_NEGATIVE);
+          String.format(CalcMessages.INITIAL_CAPACITY_IS_NEGATIVE, capacity));
     } else {
       this.array = new int[Math.max(1, capacity + 1)];
       this.length = this.array.length;

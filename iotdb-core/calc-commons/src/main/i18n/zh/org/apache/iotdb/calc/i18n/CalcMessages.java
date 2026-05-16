@@ -27,7 +27,6 @@ public final class CalcMessages {
       "AND 运算符只接受布尔操作数";
   public static final String ARRAYS_NOT_SAME_LENGTH = "数组长度不一致";
   public static final String CANNOT_ADD_NAN_TO_T_DIGEST = "不能将 NaN 添加到 t-digest";
-  public static final String CANNOT_BE_ORDERED = " 不能排序";
   public static final String CANNOT_CAST_TO_BOOLEAN = "\"%s\" 无法转换为 [BOOLEAN]";
   public static final String CANNOT_PARSE_STRING_TO_DOUBLE = "无法将字符串解析为 double：";
   public static final String CANT_HAPPEN_LOOP_FELL_THROUGH = "不应发生……循环穿透";
@@ -37,7 +36,7 @@ public final class CalcMessages {
       "CountIfAccumulator 不支持统计信息";
   public static final String CURRENT_COLUMN_IS_NOT_OBJECT_COLUMN = "当前列不是对象列";
   public static final String CURRENT_TS_BLOCK_SIZE_IS = "当前 tsBlock 大小为：{}";
-  public static final String DATA_TYPE_CANNOT_BE_ORDERED = "数据类型：";
+  public static final String DATA_TYPE_CANNOT_BE_ORDERED = "数据类型：%s 不能排序";
   public static final String DECODE_BASE32_ERROR = "base32 解码错误";
   public static final String DECODE_BASE64_ERROR = "base64 解码错误";
   public static final String DECODE_BASE64URL_ERROR = "base64url 解码错误";
@@ -54,15 +53,14 @@ public final class CalcMessages {
   public static final String ILLEGAL_STATE_IN_VISIT_LOGICAL_EXPRESSION =
       "visitLogicalExpression 中状态非法";
   public static final String INDEX_OUT_OF_PARTITION_BOUNDS = "索引超出分区边界！";
-  public static final String INITIAL_CAPACITY_IS_NEGATIVE = "初始容量 (";
-  public static final String CAPACITY_EXCEEDS = ") 超过 ";
+  public static final String INITIAL_CAPACITY_IS_NEGATIVE = "初始容量 (%d) 为负数";
+  public static final String INITIAL_CAPACITY_EXCEEDS_LIMIT = "初始容量 (%d) 超过 %d";
   public static final String INPUT_ROW_UTILS_SHOULD_NOT_BE_INSTANTIATED =
       "InputRowUtils 不应被实例化。";
   public static final String INVALID_AGGREGATION_FUNCTION = "无效的聚合函数：";
   public static final String INVALID_TEXT_INPUT_FOR_BOOLEAN =
       "布尔类型的文本输入无效：%s";
   public static final String INVALID_VALUE = "无效的值：%f";
-  public static final String IS_NEGATIVE = ") 为负数";
   public static final String LEFT_CHILD_OF_JOIN_NODE_DOESNT_CONTAIN_LEFT_JOIN_KEY =
       "JoinNode 的左子节点不包含左连接键。";
   public static final String MAX_TUPLE_SIZE_OF_TS_BLOCK_IS = "maxTupleSizeOfTsBlock 为：{}";
