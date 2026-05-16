@@ -1319,5 +1319,11 @@ public final class DataNodePipeMessages {
   // ---------------------------------------------------------------------------
   public static final String PLUGIN_NOT_REGISTERED_FMT = "插件 %s 未注册。";
 
+  // ---------------------------------------------------------------------------
+  // pipe – PipeTransferTrackableHandler
+  // ---------------------------------------------------------------------------
+  public static final String TPIPE_TRANSFER_RESP_IS_NULL_WHEN_TRANSFERRING_SLICE =
+      "传输分片时 TPipeTransferResp 为空。";
+
   private DataNodePipeMessages() {}
 }

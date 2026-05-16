@@ -36,6 +36,7 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.LoadFileException;
 import org.apache.iotdb.db.exception.mpp.FragmentInstanceDispatchException;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
@@ -289,7 +290,8 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
     } else {
       final TSStatus status = new TSStatus();
       status.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
-      status.setMessage("Load command requires time partition to progress index map");
+      status.setMessage(
+          DataNodeMiscMessages.LOAD_COMMAND_REQUIRES_TIME_PARTITION_TO_PROGRESS_INDEX_MAP);
       throw new FragmentInstanceDispatchException(status);
     }
 

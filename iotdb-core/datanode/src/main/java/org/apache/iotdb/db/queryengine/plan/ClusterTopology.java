@@ -154,7 +154,7 @@ public class ClusterTopology {
         boolean nowReachable = newReachable.contains(toId);
         if (wasReachable != nowReachable) {
           LOGGER.info(
-              "[Topology] DataNode {} is now {} to myself({})",
+              DataNodeQueryMessages.TOPOLOGY_DATANODE_REACHABILITY_CHANGED,
               toId,
               nowReachable ? "reachable" : "unreachable",
               myself);

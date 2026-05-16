@@ -143,4 +143,6 @@ public final class CalcMessages {
   public static final String WEIGHT_MUST_BE_GE_1 = "权重必须 >= 1，实际为 ";
   public static final String PUSHED_ELEMENT_IS_NULL =
       "推入的元素为 null";
+
+  public static final String FAILED_TO_DELETE_TEMP_DIR = "删除临时目录 {} 失败。";
 }

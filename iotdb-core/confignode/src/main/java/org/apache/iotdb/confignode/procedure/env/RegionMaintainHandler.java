@@ -134,7 +134,7 @@ public class RegionMaintainHandler {
     if (regionReplicaNodes.isEmpty()) {
       LOGGER.warn(ProcedureMessages.CANNOT_FIND_REGION_REPLICA_NODES_REGION, regionId);
       status = new TSStatus(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
-      status.setMessage("Cannot find region replica nodes, region: " + regionId);
+      status.setMessage(ProcedureMessages.CANNOT_FIND_REGION_REPLICA_NODES_REGION + regionId);
       return null;
     }
 
@@ -166,7 +166,8 @@ public class RegionMaintainHandler {
           REGION_MIGRATE_PROCESS,
           regionId);
       status = new TSStatus(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
-      status.setMessage("Not find region replica nodes in createPeer, regionId: " + regionId);
+      status.setMessage(
+          ProcedureMessages.NOT_FIND_REGION_REPLICA_NODES_IN_CREATEPEER_REGIONID + regionId);
       return status;
     }
 

@@ -151,4 +151,6 @@ public final class CalcMessages {
 
   public static final String PUSHED_ELEMENT_IS_NULL =
       "pushed element is null";
+
+  public static final String FAILED_TO_DELETE_TEMP_DIR = "Failed to delete temp dir {}.";
 }

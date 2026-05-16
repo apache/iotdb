@@ -1382,5 +1382,48 @@ public final class DataNodeQueryMessages {
 
   public static final String ENTER_STATE_CHANGE_LISTENER = "进入状态变更监听器";
 
+  // --- Analyzer / Planner ---
+  public static final String NO_VALUE_PRESENT = "值不存在";
+  public static final String THE_INPUT_FIELD_DOES_NOT_EXIST = "输入字段不存在";
+  public static final String THE_FIELD_IN_TABLE_DOES_NOT_HAVE_A_NAME =
+      "表中的字段没有名称";
+  public static final String SHOULD_HAVE_TWO_NUMERIC_OPERANDS =
+      "应有两个数值类型操作数。";
+  public static final String SHOULD_HAVE_ONE_NUMERIC_OPERANDS =
+      "应有一个数值类型操作数。";
+  public static final String SHOULD_HAVE_TWO_COMPARABLE_OPERANDS =
+      "应有两个可比较类型操作数。";
+  public static final String JOIN_USING_CRITERIA_IS_EMPTY = "JoinUsing 条件为空";
+  public static final String S_IS_NOT_A_TABLE_REFERENCE = "%s 不是表引用";
+
+    public static final String TOPOLOGY_DATANODE_REACHABILITY_CHANGED =
+      "[Topology] DataNode {} 现在对 myself({}) 为 {}";
+  public static final String NO_MAPPING_FOR_S =
+      "找不到 %s 的映射";
+  public static final String CANCEL_STATE_TRACKING_TASK_FAILED =
+      "取消状态跟踪任务失败。{}";
+  public static final String TRACK_TASK_NOT_STARTED =
+      "trackTask 未启动";
+  public static final String PRINT_FI_STATE =
+      "[PrintFIState] 状态为 {}";
+  public static final String START_FETCH_SCHEMA =
+      "[StartFetchSchema]";
+  public static final String END_FETCH_SCHEMA =
+      "[EndFetchSchema]";
+  public static final String CACHE_HIT =
+      "[{} Cache] 命中";
+  public static final String PARTITION_CACHE_INVALID =
+      "[Partition Cache] 无效";
+  public static final String PARTITION_CACHE_IS_INVALID =
+      "[Partition Cache] 无效：{}";
+  public static final String CANCEL_FI =
+      "[CancelFI]";
+  public static final String RENAME_VIEW_NOT_SUPPORT_WILDCARD =
+      "重命名视图不支持带通配符的路径模式。";
+  public static final String REMOVE_CONFIG_NODE_FAILED =
+      "移除 ConfigNode 失败：";
+
+  public static final String CANT_CONNECT_TO_NODE_PREFIX = "无法连接到节点 ";
+  public static final String REMOVE_AINODE_FAILED = "移除 AINode 失败：";
   private DataNodeQueryMessages() {}
 }

@@ -144,7 +144,7 @@ public class SessionManager implements SessionManagerMBean {
       // Generic authentication error
       openSessionResp
           .sessionId(-1)
-          .setMessage("Account is blocked due to consecutive failed logins.")
+          .setMessage(DataNodeMiscMessages.ACCOUNT_BLOCKED_DUE_TO_CONSECUTIVE_FAILED_LOGINS)
           .setCode(TSStatusCode.USER_LOGIN_LOCKED.getStatusCode());
       return openSessionResp;
     }
@@ -157,7 +157,9 @@ public class SessionManager implements SessionManagerMBean {
         openSessionResp
             .sessionId(-1)
             .setCode(TSStatusCode.INCOMPATIBLE_VERSION.getStatusCode())
-            .setMessage("The version is incompatible, please upgrade to " + IoTDBConstant.VERSION);
+            .setMessage(
+                DataNodeMiscMessages.VERSION_INCOMPATIBLE_PLEASE_UPGRADE_TO
+                    + IoTDBConstant.VERSION);
       } else {
         session.setSqlDialect(sqlDialect);
         supplySession(session, userId, username, ZoneId.of(zoneId), clientVersion);

@@ -239,7 +239,7 @@ public class PipeConfigNodeTaskAgent extends PipeTaskAgent {
                     remainingEventCount,
                     estimatedRemainingTime));
       }
-      logger.ifPresent(l -> l.info("Reported {} pipe metas.", pipeMetaBinaryList.size()));
+      logger.ifPresent(l -> l.info(ManagerMessages.REPORTED_PIPE_METAS, pipeMetaBinaryList.size()));
     } catch (final IOException e) {
       throw new TException(e);
     }

@@ -329,7 +329,7 @@ public class RemoveDataNodesProcedure extends AbstractNodeProcedure<RemoveDataNo
         nodeStatusMap.put(dataNodeId, nodeStatus);
       }
     } catch (ThriftSerDeException e) {
-      LOG.error("Error in deserialize RemoveConfigNodeProcedure", e);
+      LOG.error(ProcedureMessages.ERROR_IN_DESERIALIZE_REMOVECONFIGNODEPROCEDURE, e);
     }
   }
 

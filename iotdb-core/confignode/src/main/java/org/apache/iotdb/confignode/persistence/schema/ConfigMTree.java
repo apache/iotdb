@@ -1225,7 +1225,7 @@ public class ConfigMTree {
           name = tableNode.getName();
           break;
         default:
-          logger.error("Unrecognized node type {} when recovering the mTree.", type);
+          logger.error(ConfigNodeMessages.UNRECOGNIZED_NODE_TYPE_WHEN_RECOVERING_THE_MTREE, type);
           return;
       }
     }

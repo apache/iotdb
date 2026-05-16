@@ -93,7 +93,8 @@ public class OperatorNotFoundException extends IoTDBException {
         return format(
             DataNodeQueryMessages.CANNOT_CAST_TO,
             argumentTypes.get(0),
-            returnType.orElseThrow(() -> new NoSuchElementException("No value present")));
+            returnType.orElseThrow(
+                () -> new NoSuchElementException(DataNodeQueryMessages.NO_VALUE_PRESENT)));
       case SUBSCRIPT:
         return format(
             "Cannot use %s for subscript of %s", argumentTypes.get(1), argumentTypes.get(0));

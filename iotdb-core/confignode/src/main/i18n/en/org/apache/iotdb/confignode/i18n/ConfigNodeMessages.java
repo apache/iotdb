@@ -492,5 +492,34 @@ public final class ConfigNodeMessages {
       "You should manually delete the procedure wal dir before ConfigNode restart. {}";
   public static final String NOT_SUPPORT = "not support";
 
+    public static final String THE_TTL_SHOULD_BE_POSITIVE = "The TTL should be positive.";
+  public static final String CONFIGPROCEDURESTORE_START_FAILED = "ConfigProcedureStore start failed ";
+  public static final String MAKE_PROCEDURE_WAL_DIR = "Make procedure wal dir: {}";
+  public static final String FAIL_TO_GET_LOCATION_TRIGGER = "Fail to get Location trigger[%s]";
+  public static final String GET_TRIGGERJAR_FAILED_BECAUSE = "Get TriggerJar failed, because ";
+  public static final String GET_UDF_JAR_FAILED_BECAUSE = "Get UDF_Jar failed, because ";
+  public static final String FAILED_TO_CREATE_PIPE_BECAUSE = "Failed to create pipe, because ";
+  public static final String FAILED_TO_SET_PIPE_STATUS_BECAUSE = "Failed to set pipe status, because ";
+  public static final String FAILED_TO_DROP_PIPE_BECAUSE = "Failed to drop pipe, because ";
+  public static final String FAILED_TO_ALTER_PIPE_BECAUSE = "Failed to alter pipe, because ";
+  public static final String FAILED_TO_CREATE_MULTIPLE_PIPES_BECAUSE = "Failed to create multiple pipes, because ";
+  public static final String FAILED_TO_HANDLE_LEADER_CHANGE_BECAUSE = "Failed to handle leader change, because ";
+  public static final String FAILED_TO_HANDLE_META_CHANGES_BECAUSE = "Failed to handle meta changes, because ";
+  public static final String GET_PIPEPLUGIN_JAR_FAILED_BECAUSE = "Get PipePlugin_Jar failed, because ";
+  public static final String RECORDING_PIPE_META = "Recording pipe meta: {}";
+  public static final String UNRECOGNIZED_NODE_TYPE_WHEN_RECOVERING_THE_MTREE = "Unrecognized node type {} when recovering the mTree.";
+  public static final String IOTDB_CLUSTER_COULD_PROVIDE_DATA_SERVICE_NOW_ENJOY_YOURSELF = "IoTDB-Cluster could provide data service, now enjoy yourself!";
+  public static final String FAILED_TO_ALTER_DATABASE_DOESN_T_SUPPORT_ALTER_TTL_YET = "Failed to alter database. Doesn't support ALTER TTL yet.";
+  public static final String NO_REGISTERED_AINODE_FOUND = "No registered AINode found";
+  public static final String AINODE_LOCATION_RESOLVED = "AINode location resolved";
+  public static final String GETAINODELOCATION_FAILED = "getAINodeLocation failed: ";
+  public static final String REMOVE_CONSENSUSGROUP_SUCCESS = "remove ConsensusGroup success.";
+  public static final String STOP_AND_CLEAR_CONFIGNODE_SUCCESS = "Stop And Clear ConfigNode Success.";
+  public static final String CANNOT_CLOSE_LOG_FILE = "Cannot close log file {}";
+  public static final String OPEN_WAL_FILE_SIZE_IS = "open WAL file: {} size is {}";
+  public static final String FAIL_TO_TRUNCATE_LOG_FILE_TO_SIZE = "Fail to truncate log file to size {}";
+  public static final String ALL_RETRY_FAILED_DUE_TO = "All retry failed due to: ";
+
+  public static final String AUTHENTICATION_FAILED = "Authentication failed.";
   private ConfigNodeMessages() {}
 }

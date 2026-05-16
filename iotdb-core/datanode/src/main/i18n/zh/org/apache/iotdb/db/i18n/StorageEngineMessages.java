@@ -21,6 +21,9 @@ package org.apache.iotdb.db.i18n;
 
 public final class StorageEngineMessages {
 
+    public static final String IS_NOT_SUPPORTED =
+      " 不受支持";
+
   private StorageEngineMessages() {}
 
   // ======================== StorageEngine ========================
@@ -506,4 +509,6 @@ public final class StorageEngineMessages {
   public static final String FAILED_COUNT_FILES_IN_FAIL_DIR = "统计失败目录中的失败文件数量失败。";
 
   public static final String STRING_NOT_LEGAL_REPAIR_LOG = "字符串 '%s' 不是合法的修复日志";
+
+  public static final String WRONG_LOAD_COMMAND_S = "错误的 load 命令 %s。";
 }

@@ -360,7 +360,8 @@ public class RegionMigrateService implements IService {
           destEndpoint,
           regionId);
       status.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-      status.setMessage("addPeer " + destEndpoint + " for region " + regionId + " succeed");
+      status.setMessage(
+          String.format(DataNodeMiscMessages.ADD_PEER_FOR_REGION_SUCCEED, destEndpoint, regionId));
       return status;
     }
 
@@ -462,7 +463,9 @@ public class RegionMigrateService implements IService {
           destEndPoint,
           regionId);
       status.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-      status.setMessage("removePeer " + destEndPoint + " for region " + regionId + " succeed");
+      status.setMessage(
+          String.format(
+              DataNodeMiscMessages.REMOVE_PEER_FOR_REGION_SUCCEED, destEndPoint, regionId));
       return status;
     }
 
@@ -551,7 +554,8 @@ public class RegionMigrateService implements IService {
       }
       taskLogger.info(
           "{}, Succeed to deletePeer {} from consensus group", REGION_MIGRATE_PROCESS, regionId);
-      status.setMessage("deletePeer from consensus group " + regionId + "succeed");
+      status.setMessage(
+          String.format(DataNodeMiscMessages.DELETE_PEER_FROM_CONSENSUS_GROUP_SUCCEED, regionId));
       return status;
     }
 
@@ -572,10 +576,11 @@ public class RegionMigrateService implements IService {
       } catch (Exception e) {
         taskLogger.error("{}, deleteRegion {} error", REGION_MIGRATE_PROCESS, regionId, e);
         status.setCode(TSStatusCode.DELETE_REGION_ERROR.getStatusCode());
-        status.setMessage("deleteRegion " + regionId + " error, " + e.getMessage());
+        status.setMessage(
+            String.format(DataNodeMiscMessages.DELETE_REGION_ERROR, regionId, e.getMessage()));
         return status;
       }
-      status.setMessage("deleteRegion " + regionId + " succeed");
+      status.setMessage(String.format(DataNodeMiscMessages.DELETE_REGION_SUCCEED, regionId));
       taskLogger.info("{}, Succeed to deleteRegion {}", REGION_MIGRATE_PROCESS, regionId);
       return status;
     }

@@ -1368,5 +1368,11 @@ public final class DataNodePipeMessages {
   // ---------------------------------------------------------------------------
   public static final String PLUGIN_NOT_REGISTERED_FMT = "plugin %s is not registered.";
 
+  // ---------------------------------------------------------------------------
+  // pipe – PipeTransferTrackableHandler
+  // ---------------------------------------------------------------------------
+  public static final String TPIPE_TRANSFER_RESP_IS_NULL_WHEN_TRANSFERRING_SLICE =
+      "TPipeTransferResp is null when transferring slice.";
+
   private DataNodePipeMessages() {}
 }

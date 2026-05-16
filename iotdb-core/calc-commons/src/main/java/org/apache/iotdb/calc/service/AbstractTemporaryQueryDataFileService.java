@@ -141,7 +141,7 @@ public abstract class AbstractTemporaryQueryDataFileService implements IService 
     try {
       FileUtils.deleteDirectory(SystemFileFactory.INSTANCE.getFile(getTemporaryFileDir()));
     } catch (IOException e) {
-      logger.warn("Failed to delete temp dir {}.", getTemporaryFileDir(), e);
+      logger.warn(CalcMessages.FAILED_TO_DELETE_TEMP_DIR, getTemporaryFileDir(), e);
     }
   }
 

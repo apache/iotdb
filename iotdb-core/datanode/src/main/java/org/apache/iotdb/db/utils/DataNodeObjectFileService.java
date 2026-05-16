@@ -111,7 +111,8 @@ public class DataNodeObjectFileService implements IObjectFileService {
 
   private static ByteBuffer readObjectContentFromRemoteFile(
       final String relativePath, final long offset, final int readSize) {
-    throw new UnsupportedOperationException("readObjectContentFromRemoteFile");
+    throw new UnsupportedOperationException(
+        DataNodeMiscMessages.READ_OBJECT_CONTENT_FROM_REMOTE_FILE);
   }
 
   private static void deleteEmptyParentDir(File file) {

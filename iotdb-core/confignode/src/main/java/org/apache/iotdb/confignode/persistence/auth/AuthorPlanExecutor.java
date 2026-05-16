@@ -92,7 +92,8 @@ public class AuthorPlanExecutor implements IAuthorPlanExecutor {
     } catch (AuthException e) {
       loginMessage = e.getMessage();
       tsStatus.setCode(e.getCode().getStatusCode());
-      tsStatus.setMessage(loginMessage != null ? loginMessage : "Authentication failed.");
+      tsStatus.setMessage(
+          loginMessage != null ? loginMessage : ConfigNodeMessages.AUTHENTICATION_FAILED);
       result.setStatus(tsStatus);
     }
     return result;

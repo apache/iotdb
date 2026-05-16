@@ -319,7 +319,9 @@ public class TranslationMap {
                   getSymbolForColumn(node)
                       .map(Symbol::toSymbolReference)
                       .orElseThrow(
-                          () -> new IllegalStateException(format("No mapping for %s", node))));
+                          () ->
+                              new IllegalStateException(
+                                  format(DataNodeQueryMessages.NO_MAPPING_FOR_S, node))));
             } else {
               throw new IllegalStateException(
                   DataNodeQueryMessages.SUBSCRIPT_IS_NOT_SUPPORTED_IN_CURRENT_VERSION);

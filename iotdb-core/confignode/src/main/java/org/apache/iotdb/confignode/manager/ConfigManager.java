@@ -1238,7 +1238,7 @@ public class ConfigManager implements IManager {
   protected TSStatus confirmLeader() {
     if (NodeStatus.Removing == CommonDescriptor.getInstance().getConfig().getNodeStatus()) {
       TSStatus status = new TSStatus(TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode());
-      status.setMessage("ConfigNode is Removing");
+      status.setMessage(ManagerMessages.CONFIGNODE_IS_REMOVING);
       return status;
     }
     // Make sure the consensus layer has been initialized
@@ -2908,7 +2908,8 @@ public class ConfigManager implements IManager {
               .size()
           > 1) {
         return new TSStatus(TSStatusCode.SEMANTIC_ERROR.getStatusCode())
-            .setMessage("Cannot specify view pattern to match more than one tree database.");
+            .setMessage(
+                ManagerMessages.CANNOT_SPECIFY_VIEW_PATTERN_TO_MATCH_MORE_THAN_ONE_TREE_DATABASE);
       }
       return procedureManager.createTableView(pair.left, pair.right, req.isReplace());
     } else {

@@ -843,7 +843,8 @@ public class ClusterSchemaManager {
     if (databaseSchema.getTTL() < 0) {
       errorResp =
           new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
-              .setMessage("Failed to create database. The TTL should be non-negative.");
+              .setMessage(
+                  ProcedureMessages.FAILED_TO_CREATE_DATABASE_THE_TTL_SHOULD_BE_NON_NEGATIVE);
     }
 
     if (!databaseSchema.isSetSchemaReplicationFactor()) {
@@ -906,7 +907,9 @@ public class ClusterSchemaManager {
     } else if (databaseSchema.getMinDataRegionGroupNum() <= 0) {
       errorResp =
           new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
-              .setMessage("Failed to create database. The dataRegionGroupNum should be positive.");
+              .setMessage(
+                  ProcedureMessages
+                      .FAILED_TO_CREATE_DATABASE_THE_DATAREGIONGROUPNUM_SHOULD_BE_POSITIVE);
     }
 
     if (errorResp != null) {

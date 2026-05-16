@@ -191,10 +191,12 @@ public class DataNodeRegionManager {
     } catch (final Exception e) {
       LOGGER.error(DataNodeMiscMessages.CREATE_NEW_REGION_ERROR, regionId, e);
       status.setCode(TSStatusCode.CREATE_REGION_ERROR.getStatusCode());
-      status.setMessage("create new region " + regionId + "error,  exception:" + e.getMessage());
+      status.setMessage(
+          String.format(
+              DataNodeMiscMessages.CREATE_NEW_REGION_ERROR_FMT, regionId, e.getMessage()));
       return status;
     }
-    status.setMessage("create new region " + regionId + " succeed");
+    status.setMessage(String.format(DataNodeMiscMessages.CREATE_NEW_REGION_SUCCEED_FMT, regionId));
     LOGGER.info(DataNodeMiscMessages.SUCCEED_CREATE_NEW_REGION, regionId);
     return status;
   }

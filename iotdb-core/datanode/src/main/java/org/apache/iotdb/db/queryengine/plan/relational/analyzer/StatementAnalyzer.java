@@ -1172,7 +1172,8 @@ public class StatementAnalyzer {
       Scope queryScope =
           analyzer.analyze(
               node.getQuery(),
-              scope.orElseThrow(() -> new NoSuchElementException("No value present")));
+              scope.orElseThrow(
+                  () -> new NoSuchElementException(DataNodeQueryMessages.NO_VALUE_PRESENT)));
       return createAndAssignScope(node, scope, queryScope.getRelationType());
     }
 
@@ -1277,7 +1278,8 @@ public class StatementAnalyzer {
             orderByExpressions,
             outputExpressions,
             sourceScope,
-            orderByScope.orElseThrow(() -> new NoSuchElementException("No value present")));
+            orderByScope.orElseThrow(
+                () -> new NoSuchElementException(DataNodeQueryMessages.NO_VALUE_PRESENT)));
       }
 
       hasFillInParentScope = originalHasFillInParentScope;
@@ -2435,7 +2437,8 @@ public class StatementAnalyzer {
             RelationType relationType =
                 identifierChainBasis
                     .getRelationType()
-                    .orElseThrow(() -> new NoSuchElementException("No value present"));
+                    .orElseThrow(
+                        () -> new NoSuchElementException(DataNodeQueryMessages.NO_VALUE_PRESENT));
             List<Field> requestedFields =
                 relationType.resolveVisibleFieldsWithRelationPrefix(Optional.of(prefix));
             List<Field> fields = filterInaccessibleFields(requestedFields);
@@ -2451,7 +2454,10 @@ public class StatementAnalyzer {
                 scope.isLocalScope(
                     identifierChainBasis
                         .getScope()
-                        .orElseThrow(() -> new NoSuchElementException("No value present")));
+                        .orElseThrow(
+                            () ->
+                                new NoSuchElementException(
+                                    DataNodeQueryMessages.NO_VALUE_PRESENT)));
             analyzeAllColumnsFromTable(
                 fields,
                 allColumns,
@@ -2969,7 +2975,9 @@ public class StatementAnalyzer {
                         new Analysis.SourceColumn(
                             originTable.get(),
                             originColumn.orElseThrow(
-                                () -> new NoSuchElementException("No value present")))));
+                                () ->
+                                    new NoSuchElementException(
+                                        DataNodeQueryMessages.NO_VALUE_PRESENT)))));
               } else {
                 analysis.addSourceColumns(
                     newField, analysis.getExpressionSourceColumns(expression));
@@ -3027,7 +3035,9 @@ public class StatementAnalyzer {
                     new Analysis.SourceColumn(
                         originTable.get(),
                         originColumn.orElseThrow(
-                            () -> new NoSuchElementException("No value present")))));
+                            () ->
+                                new NoSuchElementException(
+                                    DataNodeQueryMessages.NO_VALUE_PRESENT)))));
           } else {
             analysis.addSourceColumns(newField, analysis.getExpressionSourceColumns(expression));
           }
@@ -4279,7 +4289,8 @@ public class StatementAnalyzer {
           verifyOrderByAggregations(
               distinctGroupingColumns,
               sourceScope,
-              orderByScope.orElseThrow(() -> new NoSuchElementException("No value present")),
+              orderByScope.orElseThrow(
+                  () -> new NoSuchElementException(DataNodeQueryMessages.NO_VALUE_PRESENT)),
               orderByExpressions,
               analysis);
         }
@@ -4494,7 +4505,10 @@ public class StatementAnalyzer {
                 canonicalizationAwareKey(
                     dereferenceExpression
                         .getField()
-                        .orElseThrow(() -> new NoSuchElementException("No value present"))));
+                        .orElseThrow(
+                            () ->
+                                new NoSuchElementException(
+                                    DataNodeQueryMessages.NO_VALUE_PRESENT))));
           }
         } else if (item instanceof AllColumns) {
           AllColumns allColumns = (AllColumns) item;

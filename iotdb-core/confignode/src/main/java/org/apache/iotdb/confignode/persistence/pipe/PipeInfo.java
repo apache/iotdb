@@ -107,7 +107,7 @@ public class PipeInfo implements SnapshotProcessor {
     } catch (final Exception e) {
       LOGGER.error(ConfigNodeMessages.FAILED_TO_CREATE_PIPE, e);
       return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode())
-          .setMessage("Failed to create pipe, because " + e.getMessage());
+          .setMessage(ConfigNodeMessages.FAILED_TO_CREATE_PIPE_BECAUSE + e.getMessage());
     }
   }
 
@@ -123,7 +123,7 @@ public class PipeInfo implements SnapshotProcessor {
     } catch (final Exception e) {
       LOGGER.error(ConfigNodeMessages.FAILED_TO_SET_PIPE_STATUS, e);
       return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode())
-          .setMessage("Failed to set pipe status, because " + e.getMessage());
+          .setMessage(ConfigNodeMessages.FAILED_TO_SET_PIPE_STATUS_BECAUSE + e.getMessage());
     }
   }
 
@@ -177,7 +177,7 @@ public class PipeInfo implements SnapshotProcessor {
     } catch (final Exception e) {
       LOGGER.error(ConfigNodeMessages.FAILED_TO_DROP_PIPE, e);
       return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode())
-          .setMessage("Failed to drop pipe, because " + e.getMessage());
+          .setMessage(ConfigNodeMessages.FAILED_TO_DROP_PIPE_BECAUSE + e.getMessage());
     }
   }
 
@@ -216,7 +216,7 @@ public class PipeInfo implements SnapshotProcessor {
     } catch (final Exception e) {
       LOGGER.error(ConfigNodeMessages.FAILED_TO_ALTER_PIPE, e);
       return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode())
-          .setMessage("Failed to alter pipe, because " + e.getMessage());
+          .setMessage(ConfigNodeMessages.FAILED_TO_ALTER_PIPE_BECAUSE + e.getMessage());
     }
   }
 
@@ -237,7 +237,7 @@ public class PipeInfo implements SnapshotProcessor {
     } catch (final Exception e) {
       LOGGER.error(ConfigNodeMessages.FAILED_TO_CREATE_MULTIPLE_PIPES, e);
       return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode())
-          .setMessage("Failed to create multiple pipes, because " + e.getMessage());
+          .setMessage(ConfigNodeMessages.FAILED_TO_CREATE_MULTIPLE_PIPES_BECAUSE + e.getMessage());
     }
   }
 
@@ -256,7 +256,7 @@ public class PipeInfo implements SnapshotProcessor {
     } catch (final Exception e) {
       LOGGER.error(ConfigNodeMessages.FAILED_TO_HANDLE_LEADER_CHANGE, e);
       return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode())
-          .setMessage("Failed to handle leader change, because " + e.getMessage());
+          .setMessage(ConfigNodeMessages.FAILED_TO_HANDLE_LEADER_CHANGE_BECAUSE + e.getMessage());
     }
   }
 
@@ -276,7 +276,7 @@ public class PipeInfo implements SnapshotProcessor {
     } catch (final Exception e) {
       LOGGER.error(ConfigNodeMessages.FAILED_TO_HANDLE_META_CHANGES, e);
       return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode())
-          .setMessage("Failed to handle meta changes, because " + e.getMessage());
+          .setMessage(ConfigNodeMessages.FAILED_TO_HANDLE_META_CHANGES_BECAUSE + e.getMessage());
     }
   }
 

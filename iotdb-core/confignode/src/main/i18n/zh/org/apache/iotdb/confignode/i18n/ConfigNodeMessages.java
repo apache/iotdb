@@ -488,5 +488,34 @@ public final class ConfigNodeMessages {
       "You should manually delete the procedure wal dir before ConfigNode restart. {}";
   public static final String NOT_SUPPORT = "不支持";
 
+    public static final String THE_TTL_SHOULD_BE_POSITIVE = "TTL 应为正数。";
+  public static final String CONFIGPROCEDURESTORE_START_FAILED = "ConfigProcedureStore 启动失败 ";
+  public static final String MAKE_PROCEDURE_WAL_DIR = "创建 procedure WAL 目录：{}";
+  public static final String FAIL_TO_GET_LOCATION_TRIGGER = "Fail to get Location trigger[%s]";
+  public static final String GET_TRIGGERJAR_FAILED_BECAUSE = "获取 TriggerJar 失败，原因：";
+  public static final String GET_UDF_JAR_FAILED_BECAUSE = "获取 UDF Jar 失败，原因：";
+  public static final String FAILED_TO_CREATE_PIPE_BECAUSE = "创建 pipe 失败，原因：";
+  public static final String FAILED_TO_SET_PIPE_STATUS_BECAUSE = "设置 pipe 状态失败，原因：";
+  public static final String FAILED_TO_DROP_PIPE_BECAUSE = "删除 pipe 失败，原因：";
+  public static final String FAILED_TO_ALTER_PIPE_BECAUSE = "修改 pipe 失败，原因：";
+  public static final String FAILED_TO_CREATE_MULTIPLE_PIPES_BECAUSE = "批量创建 pipe 失败，原因：";
+  public static final String FAILED_TO_HANDLE_LEADER_CHANGE_BECAUSE = "处理 leader 变更失败，原因：";
+  public static final String FAILED_TO_HANDLE_META_CHANGES_BECAUSE = "处理元数据变更失败，原因：";
+  public static final String GET_PIPEPLUGIN_JAR_FAILED_BECAUSE = "获取 PipePlugin Jar 失败，原因：";
+  public static final String RECORDING_PIPE_META = "记录 pipe 元数据：{}";
+  public static final String UNRECOGNIZED_NODE_TYPE_WHEN_RECOVERING_THE_MTREE = "恢复 mTree 时遇到无法识别的节点类型 {}。";
+  public static final String IOTDB_CLUSTER_COULD_PROVIDE_DATA_SERVICE_NOW_ENJOY_YOURSELF = "IoTDB 集群已可提供数据服务，尽情使用吧！";
+  public static final String FAILED_TO_ALTER_DATABASE_DOESN_T_SUPPORT_ALTER_TTL_YET = "修改数据库失败。暂不支持 ALTER TTL。";
+  public static final String NO_REGISTERED_AINODE_FOUND = "未找到已注册的 AINode";
+  public static final String AINODE_LOCATION_RESOLVED = "AINode 位置已解析";
+  public static final String GETAINODELOCATION_FAILED = "getAINodeLocation 失败：";
+  public static final String REMOVE_CONSENSUSGROUP_SUCCESS = "移除 ConsensusGroup 成功。";
+  public static final String STOP_AND_CLEAR_CONFIGNODE_SUCCESS = "停止并清理 ConfigNode 成功。";
+  public static final String CANNOT_CLOSE_LOG_FILE = "无法关闭日志文件 {}";
+  public static final String OPEN_WAL_FILE_SIZE_IS = "打开 WAL 文件：{} 大小为 {}";
+  public static final String FAIL_TO_TRUNCATE_LOG_FILE_TO_SIZE = "截断日志文件到大小 {} 失败";
+  public static final String ALL_RETRY_FAILED_DUE_TO = "所有重试均失败，原因：";
+
+  public static final String AUTHENTICATION_FAILED = "认证失败。";
   private ConfigNodeMessages() {}
 }

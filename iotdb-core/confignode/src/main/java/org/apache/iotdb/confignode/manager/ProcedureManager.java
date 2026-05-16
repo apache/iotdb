@@ -1092,7 +1092,7 @@ public class ProcedureManager {
       } else {
         LOGGER.error(ManagerMessages.GET_REGION_GROUP_ID_FAIL);
         return new TSStatus(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode())
-            .setMessage("get region group id fail");
+            .setMessage(ManagerMessages.GET_REGION_GROUP_ID_FAIL);
       }
 
       // find original dn and dest dn
@@ -1256,7 +1256,7 @@ public class ProcedureManager {
       } else {
         LOGGER.error(ManagerMessages.GET_REGION_GROUP_ID_FAIL);
         return new TSStatus(TSStatusCode.EXTEND_REGION_ERROR.getStatusCode())
-            .setMessage("get region group id fail");
+            .setMessage(ManagerMessages.GET_REGION_GROUP_ID_FAIL);
       }
 
       // find target dn
@@ -1301,7 +1301,7 @@ public class ProcedureManager {
       } else {
         LOGGER.error(ManagerMessages.GET_REGION_GROUP_ID_FAIL);
         return new TSStatus(TSStatusCode.REMOVE_REGION_PEER_ERROR.getStatusCode())
-            .setMessage("get region group id fail");
+            .setMessage(ManagerMessages.GET_REGION_GROUP_ID_FAIL);
       }
 
       // find target dn

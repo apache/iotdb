@@ -44,7 +44,7 @@ public class RegisterManager {
   public void register(IService service) throws StartupException {
     for (IService s : iServices) {
       if (s.getID() == service.getID()) {
-        logger.debug("{} has already been registered. skip", service.getID().getName());
+        logger.debug(ServiceMessages.SERVICE_ALREADY_REGISTERED, service.getID().getName());
         return;
       }
     }

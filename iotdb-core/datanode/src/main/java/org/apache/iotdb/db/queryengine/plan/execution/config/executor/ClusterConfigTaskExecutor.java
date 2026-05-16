@@ -3086,7 +3086,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     final PartialPath oldName = renameLogicalViewStatement.getOldName();
     if (oldName.hasWildcard()) {
       future.setException(
-          new MetadataException("Rename view doesn't support path pattern with wildcard."));
+          new MetadataException(DataNodeQueryMessages.RENAME_VIEW_NOT_SUPPORT_WILDCARD));
       return future;
     }
 
@@ -3614,7 +3614,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       TSStatus status = configNodeClient.removeConfigNode(configNodeLocation);
 
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        future.setException(new IOException("Remove ConfigNode failed: " + status.getMessage()));
+        future.setException(
+            new IOException(DataNodeQueryMessages.REMOVE_CONFIG_NODE_FAILED + status.getMessage()));
         return future;
       } else {
         LOGGER.info(DataNodeQueryMessages.CONFIGNODE_IS_REMOVED, removeConfigNodeId);
@@ -3646,7 +3647,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                         DataNodeQueryMessages.REMOVE_AINODE_FAILED_BECAUSE_THERE_IS_NO_AINODE)));
         return future;
       } else if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        future.setException(new IOException("Remove AINode failed: " + status.getMessage()));
+        future.setException(
+            new IOException(DataNodeQueryMessages.REMOVE_AINODE_FAILED + status.getMessage()));
         return future;
       } else {
         LOGGER.info(DataNodeQueryMessages.AINODE_IN_THE_CLUSTER_IS_REMOVED);

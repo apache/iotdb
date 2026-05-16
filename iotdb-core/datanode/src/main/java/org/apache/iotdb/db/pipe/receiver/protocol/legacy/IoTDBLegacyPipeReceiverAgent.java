@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.sink.payload.legacy.PipeData;
 import org.apache.iotdb.db.pipe.sink.payload.legacy.TsFilePipeData;
@@ -108,7 +109,7 @@ public class IoTDBLegacyPipeReceiverAgent {
       final ISchemaFetcher schemaFetcher) {
     if (!validatePipeName(syncIdentityInfo)) {
       return new TSStatus(TSStatusCode.ILLEGAL_PARAMETER.getStatusCode())
-          .setMessage("Invalid pipeName");
+          .setMessage(DataNodeMiscMessages.INVALID_PIPE_NAME);
     }
 
     final SyncIdentityInfo identityInfo = new SyncIdentityInfo(syncIdentityInfo, remoteAddress);

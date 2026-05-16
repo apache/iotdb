@@ -153,7 +153,8 @@ public class NodeInfo implements SnapshotProcessor {
                 "To enable IoTDB-Cluster's data service, please register %d more IoTDB-DataNode",
                 MINIMUM_DATANODE - nextNodeId.get()));
       } else if (nextNodeId.get() == MINIMUM_DATANODE) {
-        result.setMessage("IoTDB-Cluster could provide data service, now enjoy yourself!");
+        result.setMessage(
+            ConfigNodeMessages.IOTDB_CLUSTER_COULD_PROVIDE_DATA_SERVICE_NOW_ENJOY_YOURSELF);
       }
     } finally {
       dataNodeInfoReadWriteLock.writeLock().unlock();

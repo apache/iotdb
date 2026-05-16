@@ -732,7 +732,7 @@ public class PartitionCache {
         }
       }
       if (logger.isDebugEnabled()) {
-        logger.debug("[{} Cache] hit", CacheMetrics.SCHEMA_PARTITION_CACHE_NAME);
+        logger.debug(DataNodeQueryMessages.CACHE_HIT, CacheMetrics.SCHEMA_PARTITION_CACHE_NAME);
       }
       // cache hit
       cacheMetrics.record(true, CacheMetrics.SCHEMA_PARTITION_CACHE_NAME);
@@ -780,7 +780,7 @@ public class PartitionCache {
       }
 
       if (logger.isDebugEnabled()) {
-        logger.debug("[{} Cache] hit", CacheMetrics.SCHEMA_PARTITION_CACHE_NAME);
+        logger.debug(DataNodeQueryMessages.CACHE_HIT, CacheMetrics.SCHEMA_PARTITION_CACHE_NAME);
       }
       // cache hit
       cacheMetrics.record(true, CacheMetrics.SCHEMA_PARTITION_CACHE_NAME);
@@ -950,7 +950,7 @@ public class PartitionCache {
       }
 
       if (logger.isDebugEnabled()) {
-        logger.debug("[{} Cache] hit", CacheMetrics.DATA_PARTITION_CACHE_NAME);
+        logger.debug(DataNodeQueryMessages.CACHE_HIT, CacheMetrics.DATA_PARTITION_CACHE_NAME);
       }
       cacheMetrics.record(true, CacheMetrics.DATA_PARTITION_CACHE_NAME);
       return new DataPartition(dataPartitionMap, seriesSlotExecutorName, seriesPartitionSlotNum);
@@ -1061,14 +1061,14 @@ public class PartitionCache {
 
   public void invalidAllCache() {
     if (logger.isDebugEnabled()) {
-      logger.debug("[Partition Cache] invalid");
+      logger.debug(DataNodeQueryMessages.PARTITION_CACHE_INVALID);
     }
     removeFromDatabaseCache();
     invalidAllDataPartitionCache();
     invalidAllSchemaPartitionCache();
     invalidReplicaSetCache();
     if (logger.isDebugEnabled()) {
-      logger.debug("[Partition Cache] is invalid:{}", this);
+      logger.debug(DataNodeQueryMessages.PARTITION_CACHE_IS_INVALID, this);
     }
   }
 

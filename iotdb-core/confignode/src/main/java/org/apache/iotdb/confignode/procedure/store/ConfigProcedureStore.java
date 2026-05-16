@@ -55,7 +55,7 @@ public class ConfigProcedureStore implements IProcedureStore<ConfigNodeProcedure
     try {
       checkProcWalDir(procedureWalDir);
     } catch (IOException e) {
-      LOG.error("ConfigProcedureStore start failed ", e);
+      LOG.error(ConfigNodeMessages.CONFIGPROCEDURESTORE_START_FAILED, e);
     }
   }
 
@@ -170,7 +170,7 @@ public class ConfigProcedureStore implements IProcedureStore<ConfigNodeProcedure
     File dir = new File(CommonDescriptor.getInstance().getConfig().getProcedureWalFolder());
     if (!dir.exists()) {
       if (dir.mkdirs()) {
-        LOG.info("Make procedure wal dir: {}", dir);
+        LOG.info(ConfigNodeMessages.MAKE_PROCEDURE_WAL_DIR, dir);
       } else {
         throw new IOException(
             String.format(

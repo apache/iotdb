@@ -453,7 +453,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     long startTime = System.nanoTime();
     ISchemaTree schemaTree;
     try {
-      logger.debug("[StartFetchSchema]");
+      logger.debug(DataNodeQueryMessages.START_FETCH_SCHEMA);
       PathPatternTree authorizedPatternTree = queryStatement.getAuthorityScope();
       // If the authority scope of query statement contains full path, we should fetch schema
       // without template. Otherwise, the result ISchemaTree may contain template series that is
@@ -473,7 +473,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       // make sure paths in logical view is fetched
       updateSchemaTreeByViews(analysis, schemaTree, context, canSeeAuditDB);
     } finally {
-      logger.debug("[EndFetchSchema]");
+      logger.debug(DataNodeQueryMessages.END_FETCH_SCHEMA);
       long schemaFetchCost = System.nanoTime() - startTime;
       context.setFetchSchemaCost(schemaFetchCost);
       QueryPlanCostMetricSet.getInstance().recordTreePlanCost(SCHEMA_FETCHER, schemaFetchCost);
@@ -3043,13 +3043,13 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     if (showTimeSeriesStatement.isOrderByHeat()) {
       patternTree.constructTree();
       // request schema fetch API
-      logger.debug("[StartFetchSchema]");
+      logger.debug(DataNodeQueryMessages.START_FETCH_SCHEMA);
       ISchemaTree schemaTree =
           schemaFetcher.fetchSchema(
               patternTree, true, context, showTimeSeriesStatement.isCanSeeAuditDB());
       updateSchemaTreeByViews(
           analysis, schemaTree, context, showTimeSeriesStatement.isCanSeeAuditDB());
-      logger.debug("[EndFetchSchema]]");
+      logger.debug(DataNodeQueryMessages.END_FETCH_SCHEMA);
 
       analyzeLastSourceAndDataPartition(
           analysis,

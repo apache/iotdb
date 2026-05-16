@@ -1051,15 +1051,16 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
       throw new StartupException(e);
     }
     long endTime = System.currentTimeMillis();
-    logger.debug("successfully registered all the UDFs, which takes {} ms.", (endTime - startTime));
+    logger.debug(
+        DataNodeMiscMessages.SUCCESSFULLY_REGISTERED_ALL_UDFS_TAKES_MS, (endTime - startTime));
     if (logger.isDebugEnabled()) {
       for (UDFInformation udfInformation :
           UDFManagementService.getInstance().getUDFInformation(Model.TREE)) {
-        logger.debug("get tree udf: {}", udfInformation.getFunctionName());
+        logger.debug(DataNodeMiscMessages.GET_TREE_UDF, udfInformation.getFunctionName());
       }
       for (UDFInformation udfInformation :
           UDFManagementService.getInstance().getUDFInformation(Model.TABLE)) {
-        logger.debug("get table udf: {}", udfInformation.getFunctionName());
+        logger.debug(DataNodeMiscMessages.GET_TABLE_UDF, udfInformation.getFunctionName());
       }
     }
   }
@@ -1163,7 +1164,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     if (logger.isDebugEnabled()) {
       for (TriggerInformation triggerInformation :
           TriggerManagementService.getInstance().getAllTriggerInformationInTriggerTable()) {
-        logger.debug("get trigger: {}", triggerInformation.getTriggerName());
+        logger.debug(DataNodeMiscMessages.GET_TRIGGER, triggerInformation.getTriggerName());
       }
       for (TriggerExecutor triggerExecutor :
           TriggerManagementService.getInstance().getAllTriggerExecutors()) {

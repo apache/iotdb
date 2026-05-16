@@ -97,7 +97,7 @@ public class SyncAINodeClientPool {
     }
     LOGGER.error(ConfigNodeMessages.FAILED_ON_AINODE, requestType, endPoint, lastException);
     return new TSStatus(TSStatusCode.INTERNAL_REQUEST_RETRY_ERROR.getStatusCode())
-        .setMessage("All retry failed due to: " + lastException.getMessage());
+        .setMessage(ConfigNodeMessages.ALL_RETRY_FAILED_DUE_TO + lastException.getMessage());
   }
 
   public Object sendSyncRequestToAINodeWithGivenRetry(
@@ -117,7 +117,7 @@ public class SyncAINodeClientPool {
     }
     LOGGER.error(ConfigNodeMessages.FAILED_ON_AINODE, requestType, endPoint, lastException);
     return new TSStatus(TSStatusCode.INTERNAL_REQUEST_RETRY_ERROR.getStatusCode())
-        .setMessage("All retry failed due to: " + lastException.getMessage());
+        .setMessage(ConfigNodeMessages.ALL_RETRY_FAILED_DUE_TO + lastException.getMessage());
   }
 
   private Object executeSyncRequest(

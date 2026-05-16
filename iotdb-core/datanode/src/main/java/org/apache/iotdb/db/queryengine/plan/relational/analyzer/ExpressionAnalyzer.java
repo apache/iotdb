@@ -654,7 +654,9 @@ public class ExpressionAnalyzer {
       RowType rowType = (RowType) baseType;
 
       Identifier field =
-          node.getField().orElseThrow(() -> new NoSuchElementException("No value present"));
+          node.getField()
+              .orElseThrow(
+                  () -> new NoSuchElementException(DataNodeQueryMessages.NO_VALUE_PRESENT));
       String fieldName = field.getValue();
 
       boolean foundFieldName = false;
@@ -1198,14 +1200,20 @@ public class ExpressionAnalyzer {
           (argument instanceof DereferenceExpression)
               ? ((DereferenceExpression) argument)
                   .getField()
-                  .orElseThrow(() -> new SemanticException("the input field does not exist"))
+                  .orElseThrow(
+                      () ->
+                          new SemanticException(
+                              DataNodeQueryMessages.THE_INPUT_FIELD_DOES_NOT_EXIST))
                   .toString()
               : argument.toString();
 
       for (Field field : visibleFields) {
         if (field
             .getName()
-            .orElseThrow(() -> new SemanticException("the field in table does not have a name"))
+            .orElseThrow(
+                () ->
+                    new SemanticException(
+                        DataNodeQueryMessages.THE_FIELD_IN_TABLE_DOES_NOT_HAVE_A_NAME))
             .equalsIgnoreCase(argumentName)) {
           return field.getType() == TIMESTAMP;
         }

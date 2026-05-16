@@ -78,7 +78,7 @@ public class CreateTriggerProcedure extends AbstractNodeProcedure<CreateTriggerS
     try {
       switch (state) {
         case INIT:
-          LOG.info("Start to create trigger [{}]", triggerInformation.getTriggerName());
+          LOG.info(ProcedureMessages.START_TO_CREATE_TRIGGER, triggerInformation.getTriggerName());
 
           TriggerInfo triggerInfo = env.getConfigManager().getTriggerManager().getTriggerInfo();
           triggerInfo.acquireTriggerTableLock();
@@ -170,7 +170,7 @@ public class CreateTriggerProcedure extends AbstractNodeProcedure<CreateTriggerS
       }
     } catch (Exception e) {
       if (isRollbackSupported(state)) {
-        LOG.warn("Create trigger {} failed.", triggerInformation.getTriggerName(), e);
+        LOG.warn(ProcedureMessages.CREATE_TRIGGER_FAILED, triggerInformation.getTriggerName(), e);
         setFailure(new ProcedureException(e));
       } else {
         LOG.error(
@@ -196,13 +196,16 @@ public class CreateTriggerProcedure extends AbstractNodeProcedure<CreateTriggerS
       throws IOException, InterruptedException, ProcedureException {
     switch (state) {
       case INIT:
-        LOG.info("Start [INIT] rollback of trigger [{}]", triggerInformation.getTriggerName());
+        LOG.info(
+            ProcedureMessages.START_INIT_ROLLBACK_OF_TRIGGER, triggerInformation.getTriggerName());
 
         env.getConfigManager().getTriggerManager().getTriggerInfo().releaseTriggerTableLock();
         break;
 
       case VALIDATED:
-        LOG.info("Start [VALIDATED] rollback of trigger [{}]", triggerInformation.getTriggerName());
+        LOG.info(
+            ProcedureMessages.START_VALIDATED_ROLLBACK_OF_TRIGGER,
+            triggerInformation.getTriggerName());
 
         try {
           env.getConfigManager()
@@ -213,7 +216,7 @@ public class CreateTriggerProcedure extends AbstractNodeProcedure<CreateTriggerS
                           new DeleteTriggerInTablePlan(triggerInformation.getTriggerName()))
                       : new DeleteTriggerInTablePlan(triggerInformation.getTriggerName()));
         } catch (ConsensusException e) {
-          LOG.warn("Failed in the write API executing the consensus layer due to: ", e);
+          LOG.warn(ProcedureMessages.FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
         }
         break;
 

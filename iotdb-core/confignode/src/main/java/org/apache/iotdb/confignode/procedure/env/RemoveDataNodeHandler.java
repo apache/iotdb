@@ -542,7 +542,8 @@ public class RemoveDataNodeHandler {
     if (CONF.getDataRegionConsensusProtocolClass().equals(SIMPLE_CONSENSUS)
         || CONF.getSchemaRegionConsensusProtocolClass().equals(SIMPLE_CONSENSUS)) {
       status.setCode(TSStatusCode.REMOVE_DATANODE_ERROR.getStatusCode());
-      status.setMessage("SimpleConsensus protocol is not supported to remove data node");
+      status.setMessage(
+          ProcedureMessages.SIMPLECONSENSUS_PROTOCOL_IS_NOT_SUPPORTED_TO_REMOVE_DATA_NODE);
     }
     return status;
   }
@@ -576,7 +577,7 @@ public class RemoveDataNodeHandler {
         }
         if (removedDataNodes.isEmpty()) {
           status.setCode(TSStatusCode.NO_ENOUGH_DATANODE.getStatusCode());
-          status.setMessage("Failed to remove all requested data nodes");
+          status.setMessage(ProcedureMessages.FAILED_TO_REMOVE_ALL_REQUESTED_DATA_NODES);
           return status;
         }
       }
@@ -622,7 +623,7 @@ public class RemoveDataNodeHandler {
             .anyMatch(loc -> !allDataNodes.contains(loc));
     if (hasNotExistNode) {
       status.setCode(TSStatusCode.DATANODE_NOT_EXIST.getStatusCode());
-      status.setMessage("there exist Data Node in request but not in cluster");
+      status.setMessage(ProcedureMessages.THERE_EXIST_DATA_NODE_IN_REQUEST_BUT_NOT_IN_CLUSTER);
     }
     return status;
   }

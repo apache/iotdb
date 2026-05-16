@@ -390,7 +390,7 @@ public class PipePluginInfo implements SnapshotProcessor {
       LOGGER.error(ConfigNodeMessages.GET_PIPEPLUGIN_JAR_FAILED, e);
       return new JarResp(
           new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
-              .setMessage("Get PipePlugin_Jar failed, because " + e.getMessage()),
+              .setMessage(ConfigNodeMessages.GET_PIPEPLUGIN_JAR_FAILED_BECAUSE + e.getMessage()),
           Collections.emptyList());
     }
   }

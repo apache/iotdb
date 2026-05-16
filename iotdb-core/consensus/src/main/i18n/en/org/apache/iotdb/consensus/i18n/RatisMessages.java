@@ -70,6 +70,8 @@ public final class RatisMessages {
 
   public static final String STATEMACHINE_RUNTIME_EXCEPTION =
       "application statemachine throws a runtime exception: ";
+  public static final String INTERNAL_ERROR_STATEMACHINE_RUNTIME_EXCEPTION =
+      "internal error. statemachine throws a runtime exception: ";
   public static final String INTERRUPTED_WAITING_SYSTEM_READY =
       "{}: interrupted when waiting until system ready: ";
   public static final String REQUEST_MESSAGE_REQUIRED =

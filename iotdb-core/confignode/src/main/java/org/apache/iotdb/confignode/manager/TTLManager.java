@@ -62,7 +62,7 @@ public class TTLManager {
     long ttl = databaseSchemaPlan.getSchema().getTTL();
     if (ttl < 0) {
       TSStatus errorStatus = new TSStatus(TSStatusCode.TTL_CONFIG_ERROR.getStatusCode());
-      errorStatus.setMessage("The TTL should be positive.");
+      errorStatus.setMessage(ConfigNodeMessages.THE_TTL_SHOULD_BE_POSITIVE);
       return errorStatus;
     }
     SetTTLPlan setTTLPlan =
@@ -84,7 +84,7 @@ public class TTLManager {
     }
     if (setTTLPlan.getTTL() < 0) {
       TSStatus errorStatus = new TSStatus(TSStatusCode.TTL_CONFIG_ERROR.getStatusCode());
-      errorStatus.setMessage("The TTL should be positive.");
+      errorStatus.setMessage(ConfigNodeMessages.THE_TTL_SHOULD_BE_POSITIVE);
       return errorStatus;
     }
 

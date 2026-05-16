@@ -171,7 +171,8 @@ public class DataPartitionTableIntegrityCheckProcedure
           throw new ProcedureException(ProcedureMessages.UNKNOWN_STATE + state);
       }
     } catch (Exception e) {
-      LOG.error("[DataPartitionIntegrity] Error executing state {}: {}", state, e.getMessage(), e);
+      LOG.error(
+          ProcedureMessages.DATAPARTITIONINTEGRITY_ERROR_EXECUTING_STATE, state, e.getMessage(), e);
       setFailure("DataPartitionTableIntegrityCheckProcedure", e);
       return Flow.NO_MORE_STATE;
     }
@@ -238,7 +239,7 @@ public class DataPartitionTableIntegrityCheckProcedure
    */
   private Flow collectEarliestTimeslots() {
     if (LOG.isDebugEnabled()) {
-      LOG.debug("Collecting earliest timeslots from all DataNodes...");
+      LOG.debug(ProcedureMessages.COLLECTING_EARLIEST_TIMESLOTS_FROM_ALL_DATANODES);
     }
 
     if (allDataNodes.isEmpty()) {
@@ -334,7 +335,7 @@ public class DataPartitionTableIntegrityCheckProcedure
    */
   private Flow analyzeMissingPartitions(final ConfigNodeProcedureEnv env) {
     if (LOG.isDebugEnabled()) {
-      LOG.debug("Analyzing missing data partitions...");
+      LOG.debug(ProcedureMessages.ANALYZING_MISSING_DATA_PARTITIONS);
     }
 
     if (earliestTimeslots.isEmpty()) {
@@ -516,7 +517,7 @@ public class DataPartitionTableIntegrityCheckProcedure
 
   private Flow requestPartitionTablesHeartBeat() {
     if (LOG.isDebugEnabled()) {
-      LOG.debug("Checking DataPartitionTable generation completion status...");
+      LOG.debug(ProcedureMessages.CHECKING_DATAPARTITIONTABLE_GENERATION_COMPLETION_STATUS);
     }
 
     int completeCount = 0;
@@ -633,7 +634,8 @@ public class DataPartitionTableIntegrityCheckProcedure
   /** Merge DataPartitionTables from all DataNodes into a final table. */
   private Flow mergePartitionTables(final ConfigNodeProcedureEnv env) {
     if (LOG.isDebugEnabled()) {
-      LOG.debug("Merging DataPartitionTables from {} DataNodes...", dataPartitionTables.size());
+      LOG.debug(
+          ProcedureMessages.MERGING_DATAPARTITIONTABLES_FROM_DATANODES, dataPartitionTables.size());
     }
 
     if (dataPartitionTables.isEmpty()) {
@@ -692,7 +694,8 @@ public class DataPartitionTableIntegrityCheckProcedure
                   }));
     }
 
-    LOG.info("[DataPartitionIntegrity] DataPartitionTables merge completed successfully");
+    LOG.info(
+        ProcedureMessages.DATAPARTITIONINTEGRITY_DATAPARTITIONTABLES_MERGE_COMPLETED_SUCCESSFULLY);
     setNextState(DataPartitionTableIntegrityCheckProcedureState.WRITE_PARTITION_TABLE_TO_CONSENSUS);
     return Flow.HAS_MORE_STATE;
   }
@@ -700,11 +703,11 @@ public class DataPartitionTableIntegrityCheckProcedure
   /** Write the final DataPartitionTable to consensus log. */
   private Flow writePartitionTableToConsensus(final ConfigNodeProcedureEnv env) {
     if (LOG.isDebugEnabled()) {
-      LOG.debug("Writing DataPartitionTable to consensus log...");
+      LOG.debug(ProcedureMessages.WRITING_DATAPARTITIONTABLE_TO_CONSENSUS_LOG);
     }
 
     if (databasesWithLostDataPartition.isEmpty()) {
-      LOG.error("[DataPartitionIntegrity] No database lost data partition table");
+      LOG.error(ProcedureMessages.DATAPARTITIONINTEGRITY_NO_DATABASE_LOST_DATA_PARTITION_TABLE);
       setFailure(
           "DataPartitionTableIntegrityCheckProcedure",
           new ProcedureException(
@@ -713,7 +716,7 @@ public class DataPartitionTableIntegrityCheckProcedure
     }
 
     if (finalDataPartitionTables.isEmpty()) {
-      LOG.error("[DataPartitionIntegrity] DataPartitionTable to write to consensus");
+      LOG.error(ProcedureMessages.DATAPARTITIONINTEGRITY_DATAPARTITIONTABLE_TO_WRITE_TO_CONSENSUS);
       setFailure(
           "DataPartitionTableIntegrityCheckProcedure",
           new ProcedureException(
@@ -738,14 +741,19 @@ public class DataPartitionTableIntegrityCheckProcedure
               "[DataPartitionIntegrity] DataPartitionTable successfully written to consensus log");
           break;
         } else {
-          LOG.error("[DataPartitionIntegrity] Failed to write DataPartitionTable to consensus log");
+          LOG.error(
+              ProcedureMessages
+                  .DATAPARTITIONINTEGRITY_FAILED_TO_WRITE_DATAPARTITIONTABLE_TO_CONSENSUS_LOG);
           setFailure(
               "DataPartitionTableIntegrityCheckProcedure",
               new ProcedureException(
                   ProcedureMessages.FAILED_TO_WRITE_DATAPARTITIONTABLE_TO_CONSENSUS_LOG));
         }
       } catch (Exception e) {
-        LOG.error("[DataPartitionIntegrity] Error writing DataPartitionTable to consensus log", e);
+        LOG.error(
+            ProcedureMessages
+                .DATAPARTITIONINTEGRITY_ERROR_WRITING_DATAPARTITIONTABLE_TO_CONSENSUS_LOG,
+            e);
         setFailure("DataPartitionTableIntegrityCheckProcedure", e);
       }
       failedCnt++;
@@ -875,7 +883,7 @@ public class DataPartitionTableIntegrityCheckProcedure
         ReadWriteIOUtils.write(size, stream);
         stream.write(buf, 0, size);
       } catch (TException e) {
-        LOG.error("[DataPartitionIntegrity] Failed to serialize skipDataNode", e);
+        LOG.error(ProcedureMessages.DATAPARTITIONINTEGRITY_FAILED_TO_SERIALIZE_SKIPDATANODE, e);
         throw new IOException(ProcedureMessages.FAILED_TO_SERIALIZE_SKIPDATANODE, e);
       }
     }
@@ -893,7 +901,7 @@ public class DataPartitionTableIntegrityCheckProcedure
         ReadWriteIOUtils.write(size, stream);
         stream.write(buf, 0, size);
       } catch (TException e) {
-        LOG.error("[DataPartitionIntegrity] Failed to serialize failedDataNode", e);
+        LOG.error(ProcedureMessages.DATAPARTITIONINTEGRITY_FAILED_TO_SERIALIZE_FAILEDDATANODE, e);
         throw new IOException(ProcedureMessages.FAILED_TO_SERIALIZE_FAILEDDATANODE, e);
       }
     }
@@ -1003,7 +1011,7 @@ public class DataPartitionTableIntegrityCheckProcedure
         dataNode.read(protocol);
         skipDataNodes.add(dataNode);
       } catch (TException | IOException e) {
-        LOG.error("[DataPartitionIntegrity] Failed to deserialize skipDataNode", e);
+        LOG.error(ProcedureMessages.DATAPARTITIONINTEGRITY_FAILED_TO_DESERIALIZE_SKIPDATANODE, e);
         throw new RuntimeException(e);
       }
     }
@@ -1023,7 +1031,7 @@ public class DataPartitionTableIntegrityCheckProcedure
         dataNode.read(protocol);
         failedDataNodes.add(dataNode);
       } catch (TException | IOException e) {
-        LOG.error("[DataPartitionIntegrity] Failed to deserialize failedDataNode", e);
+        LOG.error(ProcedureMessages.DATAPARTITIONINTEGRITY_FAILED_TO_DESERIALIZE_FAILEDDATANODE, e);
         throw new RuntimeException(e);
       }
     }
@@ -1039,7 +1047,9 @@ public class DataPartitionTableIntegrityCheckProcedure
 
     for (ByteBuffer data : dataList) {
       if (data == null || data.remaining() == 0) {
-        LOG.warn("[DataPartitionIntegrity] Skipping empty ByteBuffer during deserialization");
+        LOG.warn(
+            ProcedureMessages
+                .DATAPARTITIONINTEGRITY_SKIPPING_EMPTY_BYTEBUFFER_DURING_DESERIALIZATION);
         continue;
       }
 

@@ -718,7 +718,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
         .forEach(
             pipeMeta -> {
               pipeMetaKeeper.addPipeMeta(pipeMeta);
-              logger.ifPresent(l -> l.debug("Recording pipe meta: {}", pipeMeta));
+              logger.ifPresent(l -> l.debug(ConfigNodeMessages.RECORDING_PIPE_META, pipeMeta));
             });
 
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());

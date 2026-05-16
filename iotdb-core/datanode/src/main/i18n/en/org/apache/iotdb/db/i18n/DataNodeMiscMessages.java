@@ -22,6 +22,33 @@ package org.apache.iotdb.db.i18n;
 /** Compile-time i18n constants for DataNode misc subsystems (English). */
 public final class DataNodeMiscMessages {
 
+    public static final String INVALID_PIPE_NAME =
+      "Invalid pipeName";
+  public static final String READ_OBJECT_CONTENT_FROM_REMOTE_FILE =
+      "readObjectContentFromRemoteFile";
+  public static final String ERROR_EXCEPTION =
+      "error,  exception:";
+  public static final String ACCOUNT_BLOCKED_DUE_TO_CONSECUTIVE_FAILED_LOGINS =
+      "Account is blocked due to consecutive failed logins.";
+  public static final String VERSION_INCOMPATIBLE_PLEASE_UPGRADE_TO =
+      "The version is incompatible, please upgrade to ";
+  public static final String ADD_PEER_FOR_REGION_SUCCEED =
+      "addPeer %s for region %s succeed";
+  public static final String REMOVE_PEER_FOR_REGION_SUCCEED =
+      "removePeer %s for region %s succeed";
+  public static final String DELETE_PEER_FROM_CONSENSUS_GROUP_SUCCEED =
+      "deletePeer from consensus group %ssucceed";
+  public static final String DELETE_REGION_ERROR =
+      "deleteRegion %s error, %s";
+  public static final String DELETE_REGION_SUCCEED =
+      "deleteRegion %s succeed";
+  public static final String ERROR_PROCESSING_DATA_REGION =
+      "Error processing data region: {}";
+  public static final String FAILED_TO_PROCESS_TSFILE =
+      "Failed to process tsfile {}, {}";
+
+  public static final String CREATE_NEW_REGION_ERROR_FMT = "create new region %s error,  exception:%s";
+  public static final String CREATE_NEW_REGION_SUCCEED_FMT = "create new region %s succeed";
   private DataNodeMiscMessages() {}
 
   // ---------------------------------------------------------------------------
@@ -912,4 +939,32 @@ public final class DataNodeMiscMessages {
   public static final String REGISTERED_TASK_COUNT_LE_ZERO = "registeredTaskCount <= 0";
   public static final String REQUEST_TYPE_NOT_SUPPORTED = "request type is not supported: ";
   public static final String UNEXPECTED_REQUEST_TYPE = "unexpected request type: %s";
+
+  // --- DataNodeInternalRPCServiceImpl ---
+  public static final String LOAD_COMMAND_REQUIRES_TIME_PARTITION_TO_PROGRESS_INDEX_MAP =
+      "Load command requires time partition to progress index map";
+  public static final String TOPOLOGY_PROBING_TIMED_OUT_AFTER_S_MS =
+      "Topology probing timed out after %sms";
+  public static final String NO_SUCH_QUERY = "No such query";
+  public static final String CHANGE_REGION_LEADER_ERROR_REGION_TYPE =
+      "[ChangeRegionLeader] Error Region type: ";
+  public static final String SUBMIT_ADD_REGION_PEER_TASK_FAILED_REGION =
+      "Submit addRegionPeer task failed, region: ";
+  public static final String SUBMIT_REMOVE_REGION_PEER_TASK_FAILED_REGION =
+      "Submit removeRegionPeer task failed, region: ";
+  public static final String SUBMIT_DELETE_OLD_REGION_PEER_TASK_FAILED_REGION =
+      "Submit deleteOldRegionPeer task failed, region: ";
+  public static final String CREATE_NEW_REGION_PEER_SUCCEED_REGION_ID =
+      "createNewRegionPeer succeed, regionId: ";
+  public static final String DISABLE_DATANODE_SUCCEED = "disable datanode succeed";
+  public static final String STOP_AND_CLEAR_DATA_NODE_SUCCEED = "Stop And Clear Data Node succeed";
+  public static final String NO_DATA_PARTITION_TABLE_GENERATION_TASK_FOUND =
+      "No DataPartitionTable generation task found";
+
+  // --- DataNode ---
+  public static final String SUCCESSFULLY_REGISTERED_ALL_UDFS_TAKES_MS =
+      "successfully registered all the UDFs, which takes {} ms.";
+  public static final String GET_TREE_UDF = "get tree udf: {}";
+  public static final String GET_TABLE_UDF = "get table udf: {}";
+  public static final String GET_TRIGGER = "get trigger: {}";
 }

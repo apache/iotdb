@@ -22,6 +22,7 @@ package org.apache.iotdb.db.utils.datastructure;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
@@ -469,7 +470,8 @@ public abstract class AlignedTVList extends TVList {
       case OBJECT:
         return ((Binary[]) columnValues.get(arrayIndex))[elementIndex];
       default:
-        throw new IllegalArgumentException(dataTypes.get(columnIndex) + " is not supported");
+        throw new IllegalArgumentException(
+            dataTypes.get(columnIndex) + StorageEngineMessages.IS_NOT_SUPPORTED);
     }
   }
 

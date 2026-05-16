@@ -131,7 +131,7 @@ public class SingleFileLogReader implements ILogReader {
       try {
         logStream.close();
       } catch (IOException e) {
-        logger.error("Cannot close log file {}", filepath, e);
+        logger.error(ConfigNodeMessages.CANNOT_CLOSE_LOG_FILE, filepath, e);
       }
     }
   }
@@ -139,7 +139,7 @@ public class SingleFileLogReader implements ILogReader {
   public void open(File logFile) throws FileNotFoundException {
     close();
     logStream = new DataInputStream(new BufferedInputStream(new FileInputStream(logFile)));
-    logger.info("open WAL file: {} size is {}", logFile.getName(), logFile.length());
+    logger.info(ConfigNodeMessages.OPEN_WAL_FILE_SIZE_IS, logFile.getName(), logFile.length());
     this.filepath = logFile.getPath();
     idx = 0;
   }
@@ -153,7 +153,7 @@ public class SingleFileLogReader implements ILogReader {
         FileChannel channel = outputStream.getChannel()) {
       channel.truncate(unbrokenLogsSize);
     } catch (IOException e) {
-      logger.error("Fail to truncate log file to size {}", unbrokenLogsSize, e);
+      logger.error(ConfigNodeMessages.FAIL_TO_TRUNCATE_LOG_FILE_TO_SIZE, unbrokenLogsSize, e);
     }
   }
 }

@@ -492,7 +492,10 @@ public class RelationPlanner implements AstVisitor<RelationPlan, Void> {
     List<Identifier> joinColumns =
         ((JoinUsing)
                 node.getCriteria()
-                    .orElseThrow(() -> new IllegalStateException("JoinUsing criteria is empty")))
+                    .orElseThrow(
+                        () ->
+                            new IllegalStateException(
+                                DataNodeQueryMessages.JOIN_USING_CRITERIA_IS_EMPTY)))
             .getColumns();
 
     Analysis.JoinUsingAnalysis joinAnalysis = analysis.getJoinUsing(node);

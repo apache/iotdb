@@ -353,7 +353,7 @@ public class FragmentInstanceManager {
 
   /** Cancels a FragmentInstance. */
   public FragmentInstanceInfo cancelTask(FragmentInstanceId instanceId, boolean hasThrowable) {
-    logger.debug("[CancelFI]");
+    logger.debug(DataNodeQueryMessages.CANCEL_FI);
     requireNonNull(instanceId, "taskId is null");
 
     FragmentInstanceContext context = instanceContext.remove(instanceId);

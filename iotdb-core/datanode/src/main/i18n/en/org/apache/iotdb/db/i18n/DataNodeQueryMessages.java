@@ -1383,5 +1383,48 @@ public final class DataNodeQueryMessages {
 
   public static final String ENTER_STATE_CHANGE_LISTENER = "Enter the stateChangeListener";
 
+  // --- Analyzer / Planner ---
+  public static final String NO_VALUE_PRESENT = "No value present";
+  public static final String THE_INPUT_FIELD_DOES_NOT_EXIST = "the input field does not exist";
+  public static final String THE_FIELD_IN_TABLE_DOES_NOT_HAVE_A_NAME =
+      "the field in table does not have a name";
+  public static final String SHOULD_HAVE_TWO_NUMERIC_OPERANDS =
+      "Should have two numeric operands.";
+  public static final String SHOULD_HAVE_ONE_NUMERIC_OPERANDS =
+      "Should have one numeric operands.";
+  public static final String SHOULD_HAVE_TWO_COMPARABLE_OPERANDS =
+      "Should have two comparable operands.";
+  public static final String JOIN_USING_CRITERIA_IS_EMPTY = "JoinUsing criteria is empty";
+  public static final String S_IS_NOT_A_TABLE_REFERENCE = "%s is not a table reference";
+
+    public static final String TOPOLOGY_DATANODE_REACHABILITY_CHANGED =
+      "[Topology] DataNode {} is now {} to myself({})";
+  public static final String NO_MAPPING_FOR_S =
+      "No mapping for %s";
+  public static final String CANCEL_STATE_TRACKING_TASK_FAILED =
+      "cancel state tracking task failed. {}";
+  public static final String TRACK_TASK_NOT_STARTED =
+      "trackTask not started";
+  public static final String PRINT_FI_STATE =
+      "[PrintFIState] state is {}";
+  public static final String START_FETCH_SCHEMA =
+      "[StartFetchSchema]";
+  public static final String END_FETCH_SCHEMA =
+      "[EndFetchSchema]";
+  public static final String CACHE_HIT =
+      "[{} Cache] hit";
+  public static final String PARTITION_CACHE_INVALID =
+      "[Partition Cache] invalid";
+  public static final String PARTITION_CACHE_IS_INVALID =
+      "[Partition Cache] is invalid:{}";
+  public static final String CANCEL_FI =
+      "[CancelFI]";
+  public static final String RENAME_VIEW_NOT_SUPPORT_WILDCARD =
+      "Rename view doesn't support path pattern with wildcard.";
+  public static final String REMOVE_CONFIG_NODE_FAILED =
+      "Remove ConfigNode failed: ";
+
+  public static final String CANT_CONNECT_TO_NODE_PREFIX = "can't connect to node ";
+  public static final String REMOVE_AINODE_FAILED = "Remove AINode failed: ";
   private DataNodeQueryMessages() {}
 }

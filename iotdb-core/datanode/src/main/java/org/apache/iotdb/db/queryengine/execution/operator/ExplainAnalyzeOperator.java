@@ -277,10 +277,11 @@ public class ExplainAnalyzeOperator implements ProcessOperator {
     if (logRecordTask != null) {
       boolean cancelResult = logRecordTask.cancel(true);
       if (!cancelResult) {
-        logger.debug("cancel state tracking task failed. {}", logRecordTask.isCancelled());
+        logger.debug(
+            DataNodeQueryMessages.CANCEL_STATE_TRACKING_TASK_FAILED, logRecordTask.isCancelled());
       }
     } else {
-      logger.debug("trackTask not started");
+      logger.debug(DataNodeQueryMessages.TRACK_TASK_NOT_STARTED);
     }
   }
 

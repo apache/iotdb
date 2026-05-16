@@ -177,7 +177,7 @@ public class UDFInfo implements SnapshotProcessor {
       LOGGER.error(ConfigNodeMessages.GET_UDF_JAR_FAILED, e);
       return new JarResp(
           new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
-              .setMessage("Get UDF_Jar failed, because " + e.getMessage()),
+              .setMessage(ConfigNodeMessages.GET_UDF_JAR_FAILED_BECAUSE + e.getMessage()),
           Collections.emptyList());
     }
     return new JarResp(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()), jarList);

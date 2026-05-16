@@ -69,6 +69,8 @@ public final class RatisMessages {
 
   public static final String STATEMACHINE_RUNTIME_EXCEPTION =
       "应用状态机抛出运行时异常：";
+  public static final String INTERNAL_ERROR_STATEMACHINE_RUNTIME_EXCEPTION =
+      "内部错误。状态机抛出运行时异常：";
   public static final String INTERRUPTED_WAITING_SYSTEM_READY =
       "{}：等待系统就绪时被中断：";
   public static final String REQUEST_MESSAGE_REQUIRED =

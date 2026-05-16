@@ -159,7 +159,7 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
         ret =
             new ResponseMessage(
                 new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode())
-                    .setMessage("internal error. statemachine throws a runtime exception: " + rte));
+                    .setMessage(RatisMessages.INTERNAL_ERROR_STATEMACHINE_RUNTIME_EXCEPTION + rte));
         if (Utils.stallApply(consensusGroupType)) {
           waitUntilSystemAllowApply();
         } else {

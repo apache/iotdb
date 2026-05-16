@@ -191,7 +191,8 @@ public abstract class PipeTransferTrackableHandler
                   client,
                   originalReq,
                   shouldReturnSelf,
-                  new PipeException("TPipeTransferResp is null when transferring slice."));
+                  new PipeException(
+                      DataNodePipeMessages.TPIPE_TRANSFER_RESP_IS_NULL_WHEN_TRANSFERRING_SLICE));
               return;
             }
 

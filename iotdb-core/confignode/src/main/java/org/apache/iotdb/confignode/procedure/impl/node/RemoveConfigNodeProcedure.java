@@ -62,16 +62,16 @@ public class RemoveConfigNodeProcedure extends AbstractNodeProcedure<RemoveConfi
         case REMOVE_PEER:
           env.removeConfigNodePeer(removedConfigNode);
           setNextState(RemoveConfigNodeState.DELETE_PEER);
-          LOG.info("Remove peer for ConfigNode: {}", removedConfigNode);
+          LOG.info(ProcedureMessages.REMOVE_PEER_FOR_CONFIGNODE, removedConfigNode);
           break;
         case DELETE_PEER:
           env.deleteConfigNodePeer(removedConfigNode);
           setNextState(RemoveConfigNodeState.STOP_AND_CLEAR_CONFIG_NODE);
-          LOG.info("Delete peer for ConfigNode: {}", removedConfigNode);
+          LOG.info(ProcedureMessages.DELETE_PEER_FOR_CONFIGNODE, removedConfigNode);
           break;
         case STOP_AND_CLEAR_CONFIG_NODE:
           env.stopAndClearConfigNode(removedConfigNode);
-          LOG.info("Stop and clear ConfigNode: {}", removedConfigNode);
+          LOG.info(ProcedureMessages.STOP_AND_CLEAR_CONFIGNODE, removedConfigNode);
           return Flow.NO_MORE_STATE;
       }
     } catch (Exception e) {
@@ -130,7 +130,7 @@ public class RemoveConfigNodeProcedure extends AbstractNodeProcedure<RemoveConfi
     try {
       removedConfigNode = ThriftConfigNodeSerDeUtils.deserializeTConfigNodeLocation(byteBuffer);
     } catch (ThriftSerDeException e) {
-      LOG.error("Error in deserialize RemoveConfigNodeProcedure", e);
+      LOG.error(ProcedureMessages.ERROR_IN_DESERIALIZE_REMOVECONFIGNODEPROCEDURE, e);
     }
   }
 

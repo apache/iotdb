@@ -503,5 +503,21 @@ public final class ManagerMessages {
   public static final String WRITE_PARTITION_ALLOCATION_RESULT_FAILED_BECAUSE =
       "Write partition allocation result failed because: {}";
 
+  public static final String CANNOT_SPECIFY_VIEW_PATTERN_TO_MATCH_MORE_THAN_ONE_TREE_DATABASE =
+      "不能指定匹配多个树模型数据库的视图模式。";
+
+    public static final String CONFIGNODE_IS_REMOVING = "ConfigNode 正在移除中";
+  public static final String REPORTED_PIPE_METAS = "已上报 {} 个 pipe 元数据。";
+  public static final String CLUSTERID_HAS_NOT_GENERATED = "clusterId 尚未生成";
+  public static final String MIGRATE_THE_SERVICE_ON_THE_REMOVED_DATANODES_FAILED = "在已移除的 DataNode 上迁移服务失败";
+  public static final String SERVER_ACCEPTED_THE_REQUEST = "服务器已接受请求";
+  public static final String SERVER_REJECTED_THE_REQUEST_MAYBE_REQUESTS_ARE_TOO_MANY = "服务器拒绝了请求，可能请求过多";
+  public static final String THERE_IS_ALREADY_ONE_AINODE_IN_THE_CLUSTER = "集群中已存在一个 AINode。";
+  public static final String REMOVE_AINODE_FAILED_BECAUSE_THERE_IS_NO_AINODE_IN_THE = "移除 AINode 失败，集群中没有 AINode。";
+  public static final String REMOVE_CONFIGNODE_FAILED_DUE_TO_THREAD_INTERRUPTION = "移除 ConfigNode 失败，线程被中断。";
+  public static final String REMOVE_CONFIGNODE_FAILED_BECAUSE_THE_CONFIGNODE_NOT_IN_CURRENT_CLUSTER = "移除 ConfigNode 失败，该 ConfigNode 不在当前集群中。";
+  public static final String SUCCESSFULLY_REMOVE_CONFIGNODE = "成功移除 ConfigNode。";
+  public static final String REMOVE_CONFIGNODE_FAILED_BECAUSE_TRANSFER_CONFIGNODE_LEADER_FAILED = "移除 ConfigNode 失败，转移 ConfigNode leader 失败。";
+
   private ManagerMessages() {}
 }

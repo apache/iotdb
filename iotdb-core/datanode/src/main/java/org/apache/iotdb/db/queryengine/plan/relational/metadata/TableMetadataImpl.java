@@ -141,7 +141,7 @@ public class TableMetadataImpl implements Metadata {
           throw new OperatorNotFoundException(
               operatorType,
               argumentTypes,
-              new IllegalArgumentException("Should have two numeric operands."));
+              new IllegalArgumentException(DataNodeQueryMessages.SHOULD_HAVE_TWO_NUMERIC_OPERANDS));
         }
         return AdditionResolver.checkConditions(argumentTypes).get();
       case SUBTRACT:
@@ -150,7 +150,7 @@ public class TableMetadataImpl implements Metadata {
           throw new OperatorNotFoundException(
               operatorType,
               argumentTypes,
-              new IllegalArgumentException("Should have two numeric operands."));
+              new IllegalArgumentException(DataNodeQueryMessages.SHOULD_HAVE_TWO_NUMERIC_OPERANDS));
         }
         return SubtractionResolver.checkConditions(argumentTypes).get();
       case MULTIPLY:
@@ -159,7 +159,7 @@ public class TableMetadataImpl implements Metadata {
           throw new OperatorNotFoundException(
               operatorType,
               argumentTypes,
-              new IllegalArgumentException("Should have two numeric operands."));
+              new IllegalArgumentException(DataNodeQueryMessages.SHOULD_HAVE_TWO_NUMERIC_OPERANDS));
         }
         return MultiplicationResolver.checkConditions(argumentTypes).get();
       case DIVIDE:
@@ -168,7 +168,7 @@ public class TableMetadataImpl implements Metadata {
           throw new OperatorNotFoundException(
               operatorType,
               argumentTypes,
-              new IllegalArgumentException("Should have two numeric operands."));
+              new IllegalArgumentException(DataNodeQueryMessages.SHOULD_HAVE_TWO_NUMERIC_OPERANDS));
         }
         return DivisionResolver.checkConditions(argumentTypes).get();
       case MODULUS:
@@ -177,7 +177,7 @@ public class TableMetadataImpl implements Metadata {
           throw new OperatorNotFoundException(
               operatorType,
               argumentTypes,
-              new IllegalArgumentException("Should have two numeric operands."));
+              new IllegalArgumentException(DataNodeQueryMessages.SHOULD_HAVE_TWO_NUMERIC_OPERANDS));
         }
         return ModulusResolver.checkConditions(argumentTypes).get();
       case NEGATION:
@@ -186,7 +186,7 @@ public class TableMetadataImpl implements Metadata {
           throw new OperatorNotFoundException(
               operatorType,
               argumentTypes,
-              new IllegalArgumentException("Should have one numeric operands."));
+              new IllegalArgumentException(DataNodeQueryMessages.SHOULD_HAVE_ONE_NUMERIC_OPERANDS));
         }
         return argumentTypes.get(0);
       case EQUAL:
@@ -196,7 +196,8 @@ public class TableMetadataImpl implements Metadata {
           throw new OperatorNotFoundException(
               operatorType,
               argumentTypes,
-              new IllegalArgumentException("Should have two comparable operands."));
+              new IllegalArgumentException(
+                  DataNodeQueryMessages.SHOULD_HAVE_TWO_COMPARABLE_OPERANDS));
         }
         return BOOLEAN;
       default:

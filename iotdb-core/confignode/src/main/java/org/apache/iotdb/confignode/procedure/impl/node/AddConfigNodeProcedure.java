@@ -69,22 +69,24 @@ public class AddConfigNodeProcedure extends AbstractNodeProcedure<AddConfigNodeS
           setNextState(AddConfigNodeState.CREATE_PEER);
           break;
         case CREATE_PEER:
-          LOG.info("Executing CREATE_PEER on {}...", tConfigNodeLocation);
+          LOG.info(ProcedureMessages.EXECUTING_CREATE_PEER_ON, tConfigNodeLocation);
           env.addConsensusGroup(tConfigNodeLocation);
           setNextState(AddConfigNodeState.ADD_PEER);
-          LOG.info("Successfully CREATE_PEER on {}", tConfigNodeLocation);
+          LOG.info(ProcedureMessages.SUCCESSFULLY_CREATE_PEER_ON, tConfigNodeLocation);
           break;
         case ADD_PEER:
-          LOG.info("Executing ADD_PEER {}...", tConfigNodeLocation);
+          LOG.info(ProcedureMessages.EXECUTING_ADD_PEER, tConfigNodeLocation);
           env.addConfigNodePeer(tConfigNodeLocation);
           setNextState(AddConfigNodeState.REGISTER_SUCCESS);
-          LOG.info("Successfully ADD_PEER {}", tConfigNodeLocation);
+          LOG.info(ProcedureMessages.SUCCESSFULLY_ADD_PEER, tConfigNodeLocation);
           break;
         case REGISTER_SUCCESS:
           env.notifyRegisterSuccess(tConfigNodeLocation);
           env.createConfigNodeHeartbeatCache(tConfigNodeLocation.getConfigNodeId());
           env.applyConfigNode(tConfigNodeLocation, versionInfo);
-          LOG.info("The ConfigNode: {} is successfully added to the cluster", tConfigNodeLocation);
+          LOG.info(
+              ProcedureMessages.THE_CONFIGNODE_IS_SUCCESSFULLY_ADDED_TO_THE_CLUSTER,
+              tConfigNodeLocation);
           return Flow.NO_MORE_STATE;
       }
     } catch (Exception e) {
@@ -110,11 +112,11 @@ public class AddConfigNodeProcedure extends AbstractNodeProcedure<AddConfigNodeS
     switch (state) {
       case CREATE_PEER:
         env.deleteConfigNodePeer(tConfigNodeLocation);
-        LOG.info("Rollback CREATE_PEER for: {}", tConfigNodeLocation);
+        LOG.info(ProcedureMessages.ROLLBACK_CREATE_PEER_FOR, tConfigNodeLocation);
         break;
       case ADD_PEER:
         env.removeConfigNodePeer(tConfigNodeLocation);
-        LOG.info("Rollback ADD_PEER for: {}", tConfigNodeLocation);
+        LOG.info(ProcedureMessages.ROLLBACK_ADD_PEER_FOR, tConfigNodeLocation);
         break;
       default:
         break;
@@ -171,7 +173,7 @@ public class AddConfigNodeProcedure extends AbstractNodeProcedure<AddConfigNodeS
         versionInfo = new TNodeVersionInfo("Unknown", "Unknown");
       }
     } catch (ThriftSerDeException e) {
-      LOG.error("Error in deserialize AddConfigNodeProcedure", e);
+      LOG.error(ProcedureMessages.ERROR_IN_DESERIALIZE_ADDCONFIGNODEPROCEDURE, e);
     }
   }
 

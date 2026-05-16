@@ -508,5 +508,21 @@ public final class ManagerMessages {
   public static final String WRITE_PARTITION_ALLOCATION_RESULT_FAILED_BECAUSE =
       "Write partition allocation result failed because: {}";
 
+  public static final String CANNOT_SPECIFY_VIEW_PATTERN_TO_MATCH_MORE_THAN_ONE_TREE_DATABASE =
+      "Cannot specify view pattern to match more than one tree database.";
+
+    public static final String CONFIGNODE_IS_REMOVING = "ConfigNode is Removing";
+  public static final String REPORTED_PIPE_METAS = "Reported {} pipe metas.";
+  public static final String CLUSTERID_HAS_NOT_GENERATED = "clusterId has not generated";
+  public static final String MIGRATE_THE_SERVICE_ON_THE_REMOVED_DATANODES_FAILED = "Migrate the service on the removed DataNodes failed";
+  public static final String SERVER_ACCEPTED_THE_REQUEST = "Server accepted the request";
+  public static final String SERVER_REJECTED_THE_REQUEST_MAYBE_REQUESTS_ARE_TOO_MANY = "Server rejected the request, maybe requests are too many";
+  public static final String THERE_IS_ALREADY_ONE_AINODE_IN_THE_CLUSTER = "There is already one AINode in the cluster.";
+  public static final String REMOVE_AINODE_FAILED_BECAUSE_THERE_IS_NO_AINODE_IN_THE = "Remove AINode failed because there is no AINode in the cluster.";
+  public static final String REMOVE_CONFIGNODE_FAILED_DUE_TO_THREAD_INTERRUPTION = "Remove ConfigNode failed due to thread interruption.";
+  public static final String REMOVE_CONFIGNODE_FAILED_BECAUSE_THE_CONFIGNODE_NOT_IN_CURRENT_CLUSTER = "Remove ConfigNode failed because the ConfigNode not in current Cluster.";
+  public static final String SUCCESSFULLY_REMOVE_CONFIGNODE = "Successfully remove confignode.";
+  public static final String REMOVE_CONFIGNODE_FAILED_BECAUSE_TRANSFER_CONFIGNODE_LEADER_FAILED = "Remove ConfigNode failed because transfer ConfigNode leader failed.";
+
   private ManagerMessages() {}
 }

@@ -165,7 +165,7 @@ public class DataPartitionTableGenerator {
                         unseqTsFileList, seriesPartitionExecutor, dataPartitionMap);
 
                     if (dataPartitionMap.isEmpty()) {
-                      LOG.error("Failed to generate DataPartitionTable, dataPartitionMap is empty");
+                      LOG.error(DataNodeMiscMessages.FAILED_GENERATE_DATA_PARTITION_TABLE);
                       status = TaskStatus.FAILED;
                       errorMessage = "DataPartitionMap is empty after processing resource file";
                       return;
@@ -184,7 +184,10 @@ public class DataPartitionTableGenerator {
                           return v;
                         });
                   } catch (Exception e) {
-                    LOG.error("Error processing data region: {}", dataRegion.getDatabaseName(), e);
+                    LOG.error(
+                        DataNodeMiscMessages.ERROR_PROCESSING_DATA_REGION,
+                        dataRegion.getDatabaseName(),
+                        e);
                     failedTimePartitions.incrementAndGet();
                     errorMessage = "Failed to process data region: " + e.getMessage();
                   }
@@ -243,7 +246,10 @@ public class DataPartitionTableGenerator {
           timeSlotIds.add(timeSlotId);
           failedTimePartitions.incrementAndGet();
         }
-        LOG.error("Failed to process tsfile {}, {}", tsFileResource.getTsFileID(), e.getMessage());
+        LOG.error(
+            DataNodeMiscMessages.FAILED_TO_PROCESS_TSFILE,
+            tsFileResource.getTsFileID(),
+            e.getMessage());
       }
     }
 

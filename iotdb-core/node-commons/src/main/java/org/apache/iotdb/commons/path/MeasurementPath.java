@@ -317,7 +317,8 @@ public class MeasurementPath extends PartialPath {
         measurementPath.measurementSchema = LogicalViewSchema.deserializeFrom(byteBuffer);
       } else {
         throw new RuntimeException(
-            new UnexpectedException("Type (" + type + ") of measurementSchema is unknown."));
+            new UnexpectedException(
+                String.format(PathMessages.UNKNOWN_MEASUREMENT_SCHEMA_TYPE, type)));
       }
     }
     isNull = ReadWriteIOUtils.readByte(byteBuffer);
@@ -348,7 +349,8 @@ public class MeasurementPath extends PartialPath {
         measurementPath.measurementSchema = LogicalViewSchema.deserializeFrom(byteBuffer);
       } else {
         throw new RuntimeException(
-            new UnexpectedException("Type (" + type + ") of measurementSchema is unknown."));
+            new UnexpectedException(
+                String.format(PathMessages.UNKNOWN_MEASUREMENT_SCHEMA_TYPE, type)));
       }
     }
     isNull = ReadWriteIOUtils.readByte(byteBuffer);

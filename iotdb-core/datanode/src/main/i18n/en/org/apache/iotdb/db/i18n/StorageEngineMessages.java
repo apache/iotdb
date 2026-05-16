@@ -21,6 +21,9 @@ package org.apache.iotdb.db.i18n;
 
 public final class StorageEngineMessages {
 
+    public static final String IS_NOT_SUPPORTED =
+      " is not supported";
+
   private StorageEngineMessages() {}
 
   // ======================== StorageEngine ========================
@@ -506,4 +509,6 @@ public final class StorageEngineMessages {
   public static final String FAILED_COUNT_FILES_IN_FAIL_DIR = "Failed to count failed files in fail directory.";
 
   public static final String STRING_NOT_LEGAL_REPAIR_LOG = "String '%s' is not a legal repair log";
+
+  public static final String WRONG_LOAD_COMMAND_S = "Wrong load command %s.";
 }

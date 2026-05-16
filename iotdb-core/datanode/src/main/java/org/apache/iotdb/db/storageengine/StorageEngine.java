@@ -1074,7 +1074,7 @@ public class StorageEngine implements IService {
           break;
         default:
           status.setCode(TSStatusCode.ILLEGAL_PARAMETER.getStatusCode());
-          status.setMessage(String.format("Wrong load command %s.", loadCommand));
+          status.setMessage(String.format(StorageEngineMessages.WRONG_LOAD_COMMAND_S, loadCommand));
       }
     } catch (Exception e) {
       LOGGER.error(StorageEngineMessages.EXECUTE_LOAD_COMMAND_ERROR, loadCommand, e);

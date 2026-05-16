@@ -82,7 +82,7 @@ public class JMXService implements IService {
   public void start() {
     String jmxPort = System.getProperty(IoTDBConstant.IOTDB_JMX_PORT);
     if (jmxPort == null) {
-      logger.debug("{} JMX port is undefined", this.getID().getName());
+      logger.debug(ServiceMessages.JMX_PORT_IS_UNDEFINED, this.getID().getName());
     }
   }
 

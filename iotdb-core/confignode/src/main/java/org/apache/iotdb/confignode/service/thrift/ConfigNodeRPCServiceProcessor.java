@@ -436,7 +436,8 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     if (databaseSchema.isSetTTL() && !databaseSchema.isIsTableModel()) {
       errorResp =
           new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
-              .setMessage("Failed to alter database. Doesn't support ALTER TTL yet.");
+              .setMessage(
+                  ConfigNodeMessages.FAILED_TO_ALTER_DATABASE_DOESN_T_SUPPORT_ALTER_TTL_YET);
     }
     if (databaseSchema.isSetSchemaReplicationFactor()) {
       errorResp =
@@ -662,7 +663,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
       if (registeredAINodes == null || registeredAINodes.isEmpty()) {
         status.setCode(TSStatusCode.NO_REGISTERED_AI_NODE_ERROR.getStatusCode());
-        status.setMessage("No registered AINode found");
+        status.setMessage(ConfigNodeMessages.NO_REGISTERED_AINODE_FOUND);
         resp.setStatus(status);
         return resp;
       }
@@ -670,11 +671,11 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
       final TAINodeLocation loc = registeredAINodes.get(0).getLocation();
       resp.setAiNodeLocation(loc);
       status.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-      status.setMessage("AINode location resolved");
+      status.setMessage(ConfigNodeMessages.AINODE_LOCATION_RESOLVED);
 
     } catch (Exception e) {
       status.setCode(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
-      status.setMessage("getAINodeLocation failed: " + e.getMessage());
+      status.setMessage(ConfigNodeMessages.GETAINODELOCATION_FAILED + e.getMessage());
     }
     resp.setStatus(status);
     return resp;
@@ -874,7 +875,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     }
 
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())
-        .setMessage("remove ConsensusGroup success.");
+        .setMessage(ConfigNodeMessages.REMOVE_CONSENSUSGROUP_SUCCESS);
   }
 
   @Override
@@ -905,7 +906,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
             })
         .start();
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())
-        .setMessage("Stop And Clear ConfigNode Success.");
+        .setMessage(ConfigNodeMessages.STOP_AND_CLEAR_CONFIGNODE_SUCCESS);
   }
 
   @Override

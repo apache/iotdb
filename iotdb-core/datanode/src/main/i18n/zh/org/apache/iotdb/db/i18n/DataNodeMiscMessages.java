@@ -22,6 +22,33 @@ package org.apache.iotdb.db.i18n;
 /** 编译时国际化常量 - DataNode 杂项子系统（中文）。 */
 public final class DataNodeMiscMessages {
 
+    public static final String INVALID_PIPE_NAME =
+      "无效的 pipeName";
+  public static final String READ_OBJECT_CONTENT_FROM_REMOTE_FILE =
+      "readObjectContentFromRemoteFile";
+  public static final String ERROR_EXCEPTION =
+      "错误，异常：";
+  public static final String ACCOUNT_BLOCKED_DUE_TO_CONSECUTIVE_FAILED_LOGINS =
+      "账户因连续登录失败已被锁定。";
+  public static final String VERSION_INCOMPATIBLE_PLEASE_UPGRADE_TO =
+      "版本不兼容，请升级至 ";
+  public static final String ADD_PEER_FOR_REGION_SUCCEED =
+      "addPeer %s for region %s 成功";
+  public static final String REMOVE_PEER_FOR_REGION_SUCCEED =
+      "removePeer %s for region %s 成功";
+  public static final String DELETE_PEER_FROM_CONSENSUS_GROUP_SUCCEED =
+      "deletePeer 从共识组 %s成功";
+  public static final String DELETE_REGION_ERROR =
+      "deleteRegion %s 错误，%s";
+  public static final String DELETE_REGION_SUCCEED =
+      "deleteRegion %s 成功";
+  public static final String ERROR_PROCESSING_DATA_REGION =
+      "处理数据 region 出错：{}";
+  public static final String FAILED_TO_PROCESS_TSFILE =
+      "处理 TsFile {} 失败，{}";
+
+  public static final String CREATE_NEW_REGION_ERROR_FMT = "创建新 region %s 错误，异常：%s";
+  public static final String CREATE_NEW_REGION_SUCCEED_FMT = "创建新 region %s 成功";
   private DataNodeMiscMessages() {}
 
   // ---------------------------------------------------------------------------
@@ -911,4 +938,32 @@ public final class DataNodeMiscMessages {
   public static final String REGISTERED_TASK_COUNT_LE_ZERO = "registeredTaskCount <= 0";
   public static final String REQUEST_TYPE_NOT_SUPPORTED = "不支持的请求类型：";
   public static final String UNEXPECTED_REQUEST_TYPE = "意外的请求类型：%s";
+
+  // --- DataNodeInternalRPCServiceImpl ---
+  public static final String LOAD_COMMAND_REQUIRES_TIME_PARTITION_TO_PROGRESS_INDEX_MAP =
+      "Load 命令需要时间分区到进度索引的映射";
+  public static final String TOPOLOGY_PROBING_TIMED_OUT_AFTER_S_MS =
+      "拓扑探测在 %s 毫秒后超时";
+  public static final String NO_SUCH_QUERY = "查询不存在";
+  public static final String CHANGE_REGION_LEADER_ERROR_REGION_TYPE =
+      "[ChangeRegionLeader] 错误的 Region 类型: ";
+  public static final String SUBMIT_ADD_REGION_PEER_TASK_FAILED_REGION =
+      "提交 addRegionPeer 任务失败，region: ";
+  public static final String SUBMIT_REMOVE_REGION_PEER_TASK_FAILED_REGION =
+      "提交 removeRegionPeer 任务失败，region: ";
+  public static final String SUBMIT_DELETE_OLD_REGION_PEER_TASK_FAILED_REGION =
+      "提交 deleteOldRegionPeer 任务失败，region: ";
+  public static final String CREATE_NEW_REGION_PEER_SUCCEED_REGION_ID =
+      "createNewRegionPeer 成功，regionId: ";
+  public static final String DISABLE_DATANODE_SUCCEED = "禁用 DataNode 成功";
+  public static final String STOP_AND_CLEAR_DATA_NODE_SUCCEED = "停止并清理 DataNode 成功";
+  public static final String NO_DATA_PARTITION_TABLE_GENERATION_TASK_FOUND =
+      "未找到 DataPartitionTable 生成任务";
+
+  // --- DataNode ---
+  public static final String SUCCESSFULLY_REGISTERED_ALL_UDFS_TAKES_MS =
+      "成功注册所有 UDF，耗时 {} 毫秒。";
+  public static final String GET_TREE_UDF = "获取树模型 UDF: {}";
+  public static final String GET_TABLE_UDF = "获取表模型 UDF: {}";
+  public static final String GET_TRIGGER = "获取触发器: {}";
 }

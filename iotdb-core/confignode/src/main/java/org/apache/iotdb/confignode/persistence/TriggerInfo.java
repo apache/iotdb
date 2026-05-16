@@ -192,7 +192,9 @@ public class TriggerInfo implements SnapshotProcessor {
     } else {
       return new TriggerLocationResp(
           new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
-              .setMessage(String.format("Fail to get Location trigger[%s]", req.getTriggerName())),
+              .setMessage(
+                  String.format(
+                      ConfigNodeMessages.FAIL_TO_GET_LOCATION_TRIGGER, req.getTriggerName())),
           null);
     }
   }
@@ -209,7 +211,7 @@ public class TriggerInfo implements SnapshotProcessor {
       LOGGER.error(ConfigNodeMessages.GET_TRIGGERJAR_FAILED, e);
       return new JarResp(
           new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
-              .setMessage("Get TriggerJar failed, because " + e.getMessage()),
+              .setMessage(ConfigNodeMessages.GET_TRIGGERJAR_FAILED_BECAUSE + e.getMessage()),
           Collections.emptyList());
     }
     return new JarResp(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()), jarList);

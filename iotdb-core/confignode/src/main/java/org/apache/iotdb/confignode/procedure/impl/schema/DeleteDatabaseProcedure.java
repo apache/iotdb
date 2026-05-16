@@ -306,7 +306,7 @@ public class DeleteDatabaseProcedure
     try {
       deleteDatabaseSchema = ThriftConfigNodeSerDeUtils.deserializeTDatabaseSchema(byteBuffer);
     } catch (final ThriftSerDeException e) {
-      LOG.error("Error in deserialize DeleteDatabaseProcedure", e);
+      LOG.error(ProcedureMessages.ERROR_IN_DESERIALIZE_DELETEDATABASEPROCEDURE, e);
     }
   }
 

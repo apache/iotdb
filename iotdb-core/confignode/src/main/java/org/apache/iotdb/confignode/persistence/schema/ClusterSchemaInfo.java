@@ -311,7 +311,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       LOGGER.warn(ConfigNodeMessages.DATABASE_NOT_EXIST, e);
       result
           .setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode())
-          .setMessage("Database not exist: " + e.getMessage());
+          .setMessage(ConfigNodeMessages.DATABASE_NOT_EXIST + e.getMessage());
     } finally {
       databaseReadWriteLock.writeLock().unlock();
     }

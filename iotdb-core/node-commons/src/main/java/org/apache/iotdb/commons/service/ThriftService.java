@@ -105,7 +105,8 @@ public abstract class ThriftService implements IService {
           this.getID().getName());
       return;
     }
-    logger.info("{}: start {}...", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
+    logger.info(
+        ServiceMessages.START_SERVICE, IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
     try {
       reset();
       initTProcessor();
@@ -147,10 +148,14 @@ public abstract class ThriftService implements IService {
 
   public void stopService() {
     if (STATUS_DOWN.equals(getRPCServiceStatus())) {
-      logger.info("{}: {} isn't running now", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
+      logger.info(
+          ServiceMessages.SERVICE_NOT_RUNNING,
+          IoTDBConstant.GLOBAL_DB_NAME,
+          this.getID().getName());
       return;
     }
-    logger.info("{}: closing {}...", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
+    logger.info(
+        ServiceMessages.CLOSING_SERVICE, IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
     if (thriftServiceThread != null) {
       thriftServiceThread.close();
     }
