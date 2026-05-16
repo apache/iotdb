@@ -645,6 +645,7 @@ public abstract class GroupedMaxMinByBaseAccumulator implements GroupedAccumulat
           break;
         case BOOLEAN:
           xBooleanValues.set(groupId, xColumn.getBoolean(xIndex));
+          break;
         default:
           throw new UnSupportedDataTypeException(
               String.format("Unsupported data type in MAX_BY/MIN_BY Aggregation: %s", xDataType));

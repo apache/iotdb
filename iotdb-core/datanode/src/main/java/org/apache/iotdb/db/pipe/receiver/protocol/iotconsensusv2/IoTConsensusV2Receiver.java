@@ -280,6 +280,7 @@ public class IoTConsensusV2Receiver {
                 IoTConsensusV2TsFileSealWithModReq.fromTIoTConsensusV2TransferReq(req));
           case TRANSFER_TABLET_BATCH:
             LOGGER.info("IoTConsensusV2 transfer batch hasn't been implemented yet.");
+            break;
           default:
             break;
         }

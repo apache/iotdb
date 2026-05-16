@@ -1379,6 +1379,7 @@ public class SeriesScanUtil implements Accountable {
           break;
         case OBJECT:
           newValueColumns[i] = valueColumns[i];
+          break;
         case VECTOR:
         case UNKNOWN:
         default:
