@@ -119,6 +119,8 @@ jobs:
           name: cluster-log-single-java${{ matrix.java }}-${{ runner.os }}-${{ matrix.cluster1 }}-${{ matrix.cluster2 }}
           path: integration-test/target/cluster-logs
           retention-days: 30
+  # 12 IT classes split across 3 parallel shards to cut the historical ~42 min
+  # wall clock to ~14 min. See cluster-it-1c1d.yml for the shard pattern.
   dual-tree-auto-basic:
     strategy:
       fail-fast: false
@@ -128,6 +130,7 @@ jobs:
         # StrongConsistencyClusterMode is ignored now because RatisConsensus has not been supported yet.
         cluster: [HighPerformanceMode]
         os: [ubuntu-latest]
+        shard: [0, 1, 2]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v5
@@ -147,6 +150,21 @@ jobs:
       - name: Sleep for a random duration between 0 and 10000 milliseconds
         run: |
           sleep  $(( $(( RANDOM % 10000 + 1 )) / 1000))
+      - name: Build IT shard list
+        shell: bash
+        # See cluster-it-1c1d.yml for the shard-list pattern. Write under
+        # $RUNNER_TEMP (outside the repo) so Apache RAT doesn't flag the file.
+        run: |
+          set -euo pipefail
+          SHARD=${{ matrix.shard }}
+          TOTAL=3
+          grep -rlE --include='*IT.java' '\bMultiClusterIT2DualTreeAutoBasic\b' integration-test/src/test/java \
+            | awk -F'/' '{print $NF}' | sed 's/\.java$//' \
+            | sort \
+            | awk -v s=$SHARD -v t=$TOTAL 'NR%t==s' \
+            > "$RUNNER_TEMP/it-shard.txt"
+          echo "Shard $SHARD/$TOTAL contains $(wc -l < "$RUNNER_TEMP/it-shard.txt") test classes"
+          head -5 "$RUNNER_TEMP/it-shard.txt"
       - name: IT Test
         shell: bash
         # we do not compile client-cpp for saving time, it is tested in client.yml
@@ -164,6 +182,9 @@ jobs:
               -DskipUTs \
               -DintegrationTest.forkCount=1 -DConfigNodeMaxHeapSize=256 -DDataNodeMaxHeapSize=1024 -DDataNodeMaxDirectMemorySize=768 \
               -DClusterConfigurations=${{ matrix.cluster }},${{ matrix.cluster }} \
+              -Dfailsafe.includesFile="$RUNNER_TEMP/it-shard.txt" \
+              -DfailIfNoTests=false \
+              -Dfailsafe.failIfNoSpecifiedTests=false \
               -pl integration-test \
               -am -PMultiClusterIT2DualTreeAutoBasic \
               -ntp >> ~/run-tests-$attempt.log && return 0
@@ -201,9 +222,11 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v6
         with:
-          name: cluster-log-dual-tree-auto-basic-java${{ matrix.java }}-${{ runner.os }}-${{ matrix.cluster }}-${{ matrix.cluster }}
+          name: cluster-log-dual-tree-auto-basic-shard${{ matrix.shard }}-java${{ matrix.java }}-${{ runner.os }}-${{ matrix.cluster }}-${{ matrix.cluster }}
           path: integration-test/target/cluster-logs
           retention-days: 30
+  # 9 IT classes split across 3 parallel shards to cut the historical ~51 min
+  # wall clock to ~17 min. See cluster-it-1c1d.yml for the shard pattern.
   dual-tree-auto-enhanced:
     strategy:
       fail-fast: false
@@ -214,6 +237,7 @@ jobs:
         cluster1: [HighPerformanceMode]
         cluster2: [HighPerformanceMode]
         os: [ubuntu-latest]
+        shard: [0, 1, 2]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v5
@@ -233,6 +257,21 @@ jobs:
       - name: Sleep for a random duration between 0 and 10000 milliseconds
         run: |
           sleep  $(( $(( RANDOM % 10000 + 1 )) / 1000))
+      - name: Build IT shard list
+        shell: bash
+        # See cluster-it-1c1d.yml for the shard-list pattern. Write under
+        # $RUNNER_TEMP (outside the repo) so Apache RAT doesn't flag the file.
+        run: |
+          set -euo pipefail
+          SHARD=${{ matrix.shard }}
+          TOTAL=3
+          grep -rlE --include='*IT.java' '\bMultiClusterIT2DualTreeAutoEnhanced\b' integration-test/src/test/java \
+            | awk -F'/' '{print $NF}' | sed 's/\.java$//' \
+            | sort \
+            | awk -v s=$SHARD -v t=$TOTAL 'NR%t==s' \
+            > "$RUNNER_TEMP/it-shard.txt"
+          echo "Shard $SHARD/$TOTAL contains $(wc -l < "$RUNNER_TEMP/it-shard.txt") test classes"
+          head -5 "$RUNNER_TEMP/it-shard.txt"
       - name: IT Test
         shell: bash
         # we do not compile client-cpp for saving time, it is tested in client.yml
@@ -250,6 +289,9 @@ jobs:
               -DskipUTs \
               -DintegrationTest.forkCount=1 -DConfigNodeMaxHeapSize=256 -DDataNodeMaxHeapSize=1024 -DDataNodeMaxDirectMemorySize=768 \
               -DClusterConfigurations=${{ matrix.cluster1 }},${{ matrix.cluster2 }} \
+              -Dfailsafe.includesFile="$RUNNER_TEMP/it-shard.txt" \
+              -DfailIfNoTests=false \
+              -Dfailsafe.failIfNoSpecifiedTests=false \
               -pl integration-test \
               -am -PMultiClusterIT2DualTreeAutoEnhanced \
               -ntp >> ~/run-tests-$attempt.log && return 0
@@ -287,9 +329,11 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v6
         with:
-          name: cluster-log-dual-tree-auto-enhanced-java${{ matrix.java }}-${{ runner.os }}-${{ matrix.cluster1 }}-${{ matrix.cluster2 }}
+          name: cluster-log-dual-tree-auto-enhanced-shard${{ matrix.shard }}-java${{ matrix.java }}-${{ runner.os }}-${{ matrix.cluster1 }}-${{ matrix.cluster2 }}
           path: integration-test/target/cluster-logs
           retention-days: 30
+  # 11 IT classes split across 3 parallel shards to cut the historical ~27 min
+  # wall clock to ~9 min. See cluster-it-1c1d.yml for the shard pattern.
   dual-tree-manual:
     strategy:
       fail-fast: false
@@ -300,6 +344,7 @@ jobs:
         cluster1: [HighPerformanceMode]
         cluster2: [HighPerformanceMode]
         os: [ubuntu-latest]
+        shard: [0, 1, 2]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v5
@@ -319,6 +364,21 @@ jobs:
       - name: Sleep for a random duration between 0 and 10000 milliseconds
         run: |
           sleep  $(( $(( RANDOM % 10000 + 1 )) / 1000))
+      - name: Build IT shard list
+        shell: bash
+        # See cluster-it-1c1d.yml for the shard-list pattern. Write under
+        # $RUNNER_TEMP (outside the repo) so Apache RAT doesn't flag the file.
+        run: |
+          set -euo pipefail
+          SHARD=${{ matrix.shard }}
+          TOTAL=3
+          grep -rlE --include='*IT.java' '\bMultiClusterIT2DualTreeManual\b' integration-test/src/test/java \
+            | awk -F'/' '{print $NF}' | sed 's/\.java$//' \
+            | sort \
+            | awk -v s=$SHARD -v t=$TOTAL 'NR%t==s' \
+            > "$RUNNER_TEMP/it-shard.txt"
+          echo "Shard $SHARD/$TOTAL contains $(wc -l < "$RUNNER_TEMP/it-shard.txt") test classes"
+          head -5 "$RUNNER_TEMP/it-shard.txt"
       - name: IT Test
         shell: bash
         # we do not compile client-cpp for saving time, it is tested in client.yml
@@ -336,6 +396,9 @@ jobs:
               -DskipUTs \
               -DintegrationTest.forkCount=1 -DConfigNodeMaxHeapSize=256 -DDataNodeMaxHeapSize=1024 -DDataNodeMaxDirectMemorySize=768 \
               -DClusterConfigurations=${{ matrix.cluster1 }},${{ matrix.cluster2 }} \
+              -Dfailsafe.includesFile="$RUNNER_TEMP/it-shard.txt" \
+              -DfailIfNoTests=false \
+              -Dfailsafe.failIfNoSpecifiedTests=false \
               -pl integration-test \
               -am -PMultiClusterIT2DualTreeManual \
               -ntp >> ~/run-tests-$attempt.log && return 0
@@ -373,7 +436,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v6
         with:
-          name: cluster-log-dual-tree-manual-java${{ matrix.java }}-${{ runner.os }}-${{ matrix.cluster1 }}-${{ matrix.cluster2 }}
+          name: cluster-log-dual-tree-manual-shard${{ matrix.shard }}-java${{ matrix.java }}-${{ runner.os }}-${{ matrix.cluster1 }}-${{ matrix.cluster2 }}
           path: integration-test/target/cluster-logs
           retention-days: 30
   subscription-tree-arch-verification:
@@ -720,6 +783,8 @@ jobs:
           name: cluster-log-subscription-tree-regression-misc-java${{ matrix.java }}-${{ runner.os }}-${{ matrix.cluster1 }}-${{ matrix.cluster2 }}
           path: integration-test/target/cluster-logs
           retention-days: 30
+  # 13 IT classes split across 3 parallel shards to cut the historical ~63 min
+  # wall clock to ~22 min. See cluster-it-1c1d.yml for the shard pattern.
   dual-table-manual-basic:
     strategy:
       fail-fast: false
@@ -729,6 +794,7 @@ jobs:
         # StrongConsistencyClusterMode is ignored now because RatisConsensus has not been supported yet.
         cluster: [HighPerformanceMode]
         os: [ubuntu-latest]
+        shard: [0, 1, 2]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v5
@@ -748,6 +814,21 @@ jobs:
       - name: Sleep for a random duration between 0 and 10000 milliseconds
         run: |
           sleep  $(( $(( RANDOM % 10000 + 1 )) / 1000))
+      - name: Build IT shard list
+        shell: bash
+        # See cluster-it-1c1d.yml for the shard-list pattern. Write under
+        # $RUNNER_TEMP (outside the repo) so Apache RAT doesn't flag the file.
+        run: |
+          set -euo pipefail
+          SHARD=${{ matrix.shard }}
+          TOTAL=3
+          grep -rlE --include='*IT.java' '\bMultiClusterIT2DualTableManualBasic\b' integration-test/src/test/java \
+            | awk -F'/' '{print $NF}' | sed 's/\.java$//' \
+            | sort \
+            | awk -v s=$SHARD -v t=$TOTAL 'NR%t==s' \
+            > "$RUNNER_TEMP/it-shard.txt"
+          echo "Shard $SHARD/$TOTAL contains $(wc -l < "$RUNNER_TEMP/it-shard.txt") test classes"
+          head -5 "$RUNNER_TEMP/it-shard.txt"
       - name: IT Test
         shell: bash
         # we do not compile client-cpp for saving time, it is tested in client.yml
@@ -765,6 +846,9 @@ jobs:
               -DskipUTs \
               -DintegrationTest.forkCount=1 -DConfigNodeMaxHeapSize=256 -DDataNodeMaxHeapSize=1024 -DDataNodeMaxDirectMemorySize=768 \
               -DClusterConfigurations=${{ matrix.cluster }},${{ matrix.cluster }} \
+              -Dfailsafe.includesFile="$RUNNER_TEMP/it-shard.txt" \
+              -DfailIfNoTests=false \
+              -Dfailsafe.failIfNoSpecifiedTests=false \
               -pl integration-test \
               -am -PMultiClusterIT2DualTableManualBasic \
               -ntp >> ~/run-tests-$attempt.log && return 0
@@ -802,9 +886,11 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v6
         with:
-          name: cluster-log-dual-table-manual-basic-java${{ matrix.java }}-${{ runner.os }}-${{ matrix.cluster }}-${{ matrix.cluster }}
+          name: cluster-log-dual-table-manual-basic-shard${{ matrix.shard }}-java${{ matrix.java }}-${{ runner.os }}-${{ matrix.cluster }}-${{ matrix.cluster }}
           path: integration-test/target/cluster-logs
           retention-days: 30
+  # 11 IT classes split across 3 parallel shards to cut the historical ~62 min
+  # wall clock to ~22 min. See cluster-it-1c1d.yml for the shard pattern.
   dual-table-manual-enhanced:
     strategy:
       fail-fast: false
@@ -814,6 +900,7 @@ jobs:
         # StrongConsistencyClusterMode is ignored now because RatisConsensus has not been supported yet.
         cluster: [HighPerformanceMode]
         os: [ubuntu-latest]
+        shard: [0, 1, 2]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v5
@@ -833,6 +920,21 @@ jobs:
       - name: Sleep for a random duration between 0 and 10000 milliseconds
         run: |
           sleep  $(( $(( RANDOM % 10000 + 1 )) / 1000))
+      - name: Build IT shard list
+        shell: bash
+        # See cluster-it-1c1d.yml for the shard-list pattern. Write under
+        # $RUNNER_TEMP (outside the repo) so Apache RAT doesn't flag the file.
+        run: |
+          set -euo pipefail
+          SHARD=${{ matrix.shard }}
+          TOTAL=3
+          grep -rlE --include='*IT.java' '\bMultiClusterIT2DualTableManualEnhanced\b' integration-test/src/test/java \
+            | awk -F'/' '{print $NF}' | sed 's/\.java$//' \
+            | sort \
+            | awk -v s=$SHARD -v t=$TOTAL 'NR%t==s' \
+            > "$RUNNER_TEMP/it-shard.txt"
+          echo "Shard $SHARD/$TOTAL contains $(wc -l < "$RUNNER_TEMP/it-shard.txt") test classes"
+          head -5 "$RUNNER_TEMP/it-shard.txt"
       - name: IT Test
         shell: bash
         # we do not compile client-cpp for saving time, it is tested in client.yml
@@ -850,6 +952,9 @@ jobs:
               -DskipUTs \
               -DintegrationTest.forkCount=1 -DConfigNodeMaxHeapSize=256 -DDataNodeMaxHeapSize=1024 -DDataNodeMaxDirectMemorySize=768 \
               -DClusterConfigurations=${{ matrix.cluster }},${{ matrix.cluster }} \
+              -Dfailsafe.includesFile="$RUNNER_TEMP/it-shard.txt" \
+              -DfailIfNoTests=false \
+              -Dfailsafe.failIfNoSpecifiedTests=false \
               -pl integration-test \
               -am -PMultiClusterIT2DualTableManualEnhanced \
               -ntp >> ~/run-tests-$attempt.log && return 0
@@ -887,7 +992,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v6
         with:
-          name: cluster-log-dual-table-manual-enhanced-java${{ matrix.java }}-${{ runner.os }}-${{ matrix.cluster }}-${{ matrix.cluster }}
+          name: cluster-log-dual-table-manual-enhanced-shard${{ matrix.shard }}-java${{ matrix.java }}-${{ runner.os }}-${{ matrix.cluster }}-${{ matrix.cluster }}
           path: integration-test/target/cluster-logs
           retention-days: 30
   triple:
