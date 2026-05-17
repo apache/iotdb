@@ -108,17 +108,17 @@ jobs:
           set -euo pipefail
           SHARD=${{ matrix.shard }}
           TOTAL=3
-          mkdir -p integration-test
-          # Use a single grep -rl call instead of `find | xargs grep`: on Windows Git Bash,
+          # Write outside the repo so Apache RAT (license check) doesn't flag the file.
+          # Using a single grep -rl call instead of `find | xargs grep`: on Windows Git Bash,
           # ARG_MAX is small so xargs batches the file list, and any batch with no matches
           # makes grep exit 1, which makes xargs exit 123 and trips `set -o pipefail`.
           grep -rl --include='*IT.java' 'TableLocalStandaloneIT' integration-test/src/test/java \
             | awk -F'/' '{print $NF}' | sed 's/\.java$//' \
             | sort \
             | awk -v s=$SHARD -v t=$TOTAL 'NR%t==s' \
-            > integration-test/it-shard.txt
-          echo "Shard $SHARD/$TOTAL contains $(wc -l < integration-test/it-shard.txt) test classes"
-          head -5 integration-test/it-shard.txt
+            > "$RUNNER_TEMP/it-shard.txt"
+          echo "Shard $SHARD/$TOTAL contains $(wc -l < "$RUNNER_TEMP/it-shard.txt") test classes"
+          head -5 "$RUNNER_TEMP/it-shard.txt"
       - name: IT/UT Test
         shell: bash
         run: |
@@ -126,7 +126,7 @@ jobs:
           -P with-integration-tests \
           -DskipUTs \
           -DintegrationTest.forkCount=2 -DDataNodeMaxHeapSize=1024 \
-          -Dfailsafe.includesFile="$(pwd)/integration-test/it-shard.txt" \
+          -Dfailsafe.includesFile="$RUNNER_TEMP/it-shard.txt" \
           -DfailIfNoTests=false \
           -Dfailsafe.failIfNoSpecifiedTests=false \
           -pl integration-test \
