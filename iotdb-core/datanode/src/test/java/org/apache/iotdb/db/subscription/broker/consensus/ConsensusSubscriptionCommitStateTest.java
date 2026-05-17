@@ -19,14 +19,21 @@
 
 package org.apache.iotdb.db.subscription.broker.consensus;
 
+import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.rpc.subscription.payload.poll.RegionProgress;
 import org.apache.iotdb.rpc.subscription.payload.poll.WriterId;
 import org.apache.iotdb.rpc.subscription.payload.poll.WriterProgress;
 
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.lang.reflect.Constructor;
 import java.nio.ByteBuffer;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -34,9 +41,12 @@ import java.util.Map;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 public class ConsensusSubscriptionCommitStateTest {
+
+  @Rule public final TemporaryFolder temporaryFolder = new TemporaryFolder();
 
   @Test
   public void testCommitAdvancesContiguousWriterProgress() {
@@ -167,5 +177,98 @@ public class ConsensusSubscriptionCommitStateTest {
     assertNotEquals(
         ConsensusSubscriptionCommitManager.buildBroadcastKey(baseKey, writerA),
         ConsensusSubscriptionCommitManager.buildBroadcastKey(baseKey, writerB));
+  }
+
+  @Test
+  public void testPersistGroupedTopicProgressAndRecoverAllRegions() throws Exception {
+    final String originalSystemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
+    final File systemDir = temporaryFolder.newFolder("system");
+    try {
+      final ConsensusSubscriptionCommitManager manager = newCommitManager(systemDir);
+      final DataRegionId region1 = new DataRegionId(1);
+      final DataRegionId region2 = new DataRegionId(2);
+      final String region1Id = region1.toString();
+      final String region2Id = region2.toString();
+      final WriterId writer1 = new WriterId(region1Id, 7);
+      final WriterId writer2 = new WriterId(region2Id, 8);
+      final WriterProgress progress1 = new WriterProgress(100L, 1L);
+      final WriterProgress progress2 = new WriterProgress(200L, 2L);
+
+      manager.receiveProgressBroadcast("cg", "topic", region1Id, writer1, progress1);
+      manager.receiveProgressBroadcast("cg", "topic", region2Id, writer2, progress2);
+
+      final File progressDir = new File(systemDir, "subscription/consensus_progress");
+      final File[] metaFiles = progressDir.listFiles((dir, name) -> name.endsWith(".meta"));
+      final File[] indexFiles = progressDir.listFiles((dir, name) -> name.endsWith(".meta.index"));
+      assertNotNull(metaFiles);
+      assertNotNull(indexFiles);
+      assertEquals(1, metaFiles.length);
+      assertEquals(0, indexFiles.length);
+      assertTrue(manager.hasPersistedState("cg", "topic", region1));
+      assertTrue(manager.hasPersistedState("cg", "topic", region2));
+
+      final ConsensusSubscriptionCommitManager recoveredManager = newCommitManager(systemDir);
+      final Map<String, ByteBuffer> collectedProgress =
+          recoveredManager.collectAllRegionProgress(11);
+
+      assertEquals(
+          progress1,
+          RegionProgress.deserialize(collectedProgress.get("cg##topic##" + region1Id + "##11"))
+              .getWriterPositions()
+              .get(writer1));
+      assertEquals(
+          progress2,
+          RegionProgress.deserialize(collectedProgress.get("cg##topic##" + region2Id + "##11"))
+              .getWriterPositions()
+              .get(writer2));
+    } finally {
+      IoTDBDescriptor.getInstance().getConfig().setSystemDir(originalSystemDir);
+    }
+  }
+
+  @Test
+  public void testRecoverAllSkipsMalformedTopicProgressFile() throws Exception {
+    final String originalSystemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
+    final File systemDir = temporaryFolder.newFolder("systemWithMalformedProgress");
+    try {
+      final ConsensusSubscriptionCommitManager manager = newCommitManager(systemDir);
+      final DataRegionId region = new DataRegionId(3);
+      final String regionId = region.toString();
+      final WriterId writerId = new WriterId(regionId, 9);
+      final WriterProgress progress = new WriterProgress(300L, 3L);
+
+      manager.receiveProgressBroadcast("cg", "goodTopic", regionId, writerId, progress);
+      writeMalformedTopicProgressFile(systemDir);
+
+      final ConsensusSubscriptionCommitManager recoveredManager = newCommitManager(systemDir);
+      final Map<String, ByteBuffer> collectedProgress =
+          recoveredManager.collectAllRegionProgress(12);
+
+      assertEquals(
+          progress,
+          RegionProgress.deserialize(collectedProgress.get("cg##goodTopic##" + regionId + "##12"))
+              .getWriterPositions()
+              .get(writerId));
+    } finally {
+      IoTDBDescriptor.getInstance().getConfig().setSystemDir(originalSystemDir);
+    }
+  }
+
+  private static void writeMalformedTopicProgressFile(final File systemDir) throws Exception {
+    final File progressDir = new File(systemDir, "subscription/consensus_progress");
+    final File malformedFile =
+        new File(progressDir, "consensus_subscription_progress_" + "Y2c##YmFkVG9waWM" + ".meta");
+    try (final FileOutputStream outputStream = new FileOutputStream(malformedFile)) {
+      outputStream.write(new byte[] {0, 0, 0, 1, 0});
+    }
+  }
+
+  private static ConsensusSubscriptionCommitManager newCommitManager(final File systemDir)
+      throws Exception {
+    IoTDBDescriptor.getInstance().getConfig().setSystemDir(systemDir.getAbsolutePath());
+    final Constructor<ConsensusSubscriptionCommitManager> constructor =
+        ConsensusSubscriptionCommitManager.class.getDeclaredConstructor();
+    constructor.setAccessible(true);
+    return constructor.newInstance();
   }
 }

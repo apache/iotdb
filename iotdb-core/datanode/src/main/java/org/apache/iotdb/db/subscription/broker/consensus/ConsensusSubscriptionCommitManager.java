@@ -43,16 +43,22 @@ import org.apache.iotdb.rpc.subscription.payload.poll.WriterId;
 import org.apache.iotdb.rpc.subscription.payload.poll.WriterProgress;
 
 import org.apache.thrift.TException;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.AtomicMoveNotSupportedException;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
+import java.util.Base64;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -60,6 +66,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -90,7 +97,10 @@ public class ConsensusSubscriptionCommitManager {
       LoggerFactory.getLogger(ConsensusSubscriptionCommitManager.class);
 
   private static final String PROGRESS_FILE_PREFIX = "consensus_subscription_progress_";
-  private static final String PROGRESS_FILE_SUFFIX = ".dat";
+  private static final String PROGRESS_META_FILE_SUFFIX = ".meta";
+  private static final String LEGACY_PROGRESS_INDEX_FILE_SUFFIX = ".meta.index";
+  private static final String PROGRESS_TMP_FILE_SUFFIX = ".tmp";
+  private static final int TOPIC_PROGRESS_FILE_VERSION = 1;
 
   private static final IClientManager<ConfigRegionId, ConfigNodeClient> CONFIG_NODE_CLIENT_MANAGER =
       ConfigNodeClientManager.getInstance();
@@ -121,6 +131,17 @@ public class ConsensusSubscriptionCommitManager {
   private final Map<String, ConsensusSubscriptionCommitState> commitStates =
       new ConcurrentHashMap<>();
 
+  private final Map<String, CommitStateKey> commitStateKeys = new ConcurrentHashMap<>();
+
+  private final Set<String> recoveredTopicKeys = ConcurrentHashMap.newKeySet();
+
+  private final Map<String, Object> topicPersistLocks = new ConcurrentHashMap<>();
+
+  // Runtime random-write index. The on-disk .meta file is the only source of truth; this map is
+  // rebuilt from .meta during recovery and is never persisted separately.
+  private final Map<String, Map<String, ProgressIndexEntry>> topicProgressIndexes =
+      new ConcurrentHashMap<>();
+
   private final String persistDir;
 
   private ConsensusSubscriptionCommitManager() {
@@ -146,16 +167,20 @@ public class ConsensusSubscriptionCommitManager {
    */
   public ConsensusSubscriptionCommitState getOrCreateState(
       final String consumerGroupId, final String topicName, final ConsensusGroupId regionId) {
-    final String key = generateKey(consumerGroupId, topicName, regionId);
     final String regionIdString = regionId.toString();
+    final CommitStateKey stateKey = getCommitStateKey(consumerGroupId, topicName, regionIdString);
+    final ConsensusSubscriptionCommitState existing = commitStates.get(stateKey.stateKey);
+    if (Objects.nonNull(existing)) {
+      return existing;
+    }
+    recoverTopicStatesIfNeeded(stateKey);
+    final ConsensusSubscriptionCommitState recovered = commitStates.get(stateKey.stateKey);
+    if (Objects.nonNull(recovered)) {
+      return recovered;
+    }
     return commitStates.computeIfAbsent(
-        key,
+        stateKey.stateKey,
         k -> {
-          // Try to recover from persisted local state
-          final ConsensusSubscriptionCommitState recovered = tryRecover(key, regionIdString);
-          if (recovered != null) {
-            return recovered;
-          }
           final ConsensusSubscriptionCommitState recoveredFromConfigNode =
               queryCommitProgressStateFromConfigNode(consumerGroupId, topicName, regionId);
           if (Objects.nonNull(recoveredFromConfigNode)) {
@@ -168,7 +193,12 @@ public class ConsensusSubscriptionCommitManager {
 
   public boolean hasPersistedState(
       final String consumerGroupId, final String topicName, final ConsensusGroupId regionId) {
-    return getProgressFile(generateKey(consumerGroupId, topicName, regionId)).exists();
+    final CommitStateKey stateKey =
+        getCommitStateKey(consumerGroupId, topicName, regionId.toString());
+    recoverTopicStatesIfNeeded(stateKey);
+    return topicProgressIndexes
+        .getOrDefault(stateKey.topicFileKey, Collections.emptyMap())
+        .containsKey(stateKey.regionIdStr);
   }
 
   public void recordMapping(
@@ -188,8 +218,9 @@ public class ConsensusSubscriptionCommitManager {
       final ConsensusGroupId regionId,
       final WriterId writerId,
       final WriterProgress writerProgress) {
-    final String key = generateKey(consumerGroupId, topicName, regionId);
-    final ConsensusSubscriptionCommitState state = commitStates.get(key);
+    final CommitStateKey stateKey =
+        getCommitStateKey(consumerGroupId, topicName, regionId.toString());
+    final ConsensusSubscriptionCommitState state = commitStates.get(stateKey.stateKey);
     if (state == null) {
       LOGGER.warn(
           "ConsensusSubscriptionCommitManager: Cannot commit for unknown state, "
@@ -204,10 +235,10 @@ public class ConsensusSubscriptionCommitManager {
     final CommitOperationResult result = state.commitAndGetResult(writerId, writerProgress);
     if (result.isHandled()) {
       // Periodically persist progress
-      persistProgressIfNeeded(key, state);
+      persistProgressIfNeeded(stateKey, state);
       if (result.hasAdvancedWriter()) {
         maybeBroadcast(
-            key,
+            stateKey.stateKey,
             consumerGroupId,
             topicName,
             regionId,
@@ -224,8 +255,9 @@ public class ConsensusSubscriptionCommitManager {
       final ConsensusGroupId regionId,
       final WriterId writerId,
       final WriterProgress writerProgress) {
-    final String key = generateKey(consumerGroupId, topicName, regionId);
-    final ConsensusSubscriptionCommitState state = commitStates.get(key);
+    final CommitStateKey stateKey =
+        getCommitStateKey(consumerGroupId, topicName, regionId.toString());
+    final ConsensusSubscriptionCommitState state = commitStates.get(stateKey.stateKey);
     if (state == null) {
       LOGGER.warn(
           "ConsensusSubscriptionCommitManager: Cannot direct-commit for unknown state, "
@@ -240,10 +272,10 @@ public class ConsensusSubscriptionCommitManager {
     final CommitOperationResult result =
         state.commitWithoutOutstandingAndGetResult(writerId, writerProgress);
     if (result.isHandled()) {
-      persistProgressIfNeeded(key, state);
+      persistProgressIfNeeded(stateKey, state);
       if (result.hasAdvancedWriter()) {
         maybeBroadcast(
-            key,
+            stateKey.stateKey,
             consumerGroupId,
             topicName,
             regionId,
@@ -308,13 +340,12 @@ public class ConsensusSubscriptionCommitManager {
    */
   public void removeState(
       final String consumerGroupId, final String topicName, final ConsensusGroupId regionId) {
-    final String key = generateKey(consumerGroupId, topicName, regionId);
-    commitStates.remove(key);
-    // Clean up persisted file
-    final File file = getProgressFile(key);
-    if (file.exists()) {
-      file.delete();
-    }
+    final CommitStateKey stateKey =
+        getCommitStateKey(consumerGroupId, topicName, regionId.toString());
+    recoverTopicStatesIfNeeded(stateKey);
+    commitStates.remove(stateKey.stateKey);
+    commitStateKeys.remove(stateKey.stateKey);
+    rewriteTopicProgressFiles(stateKey);
   }
 
   /**
@@ -325,18 +356,20 @@ public class ConsensusSubscriptionCommitManager {
    * @param topicName the topic name
    */
   public void removeAllStatesForTopic(final String consumerGroupId, final String topicName) {
-    final String prefix = consumerGroupId + KEY_SEPARATOR + topicName + KEY_SEPARATOR;
-    final Iterator<Map.Entry<String, ConsensusSubscriptionCommitState>> it =
-        commitStates.entrySet().iterator();
-    while (it.hasNext()) {
-      final Map.Entry<String, ConsensusSubscriptionCommitState> entry = it.next();
-      if (entry.getKey().startsWith(prefix)) {
-        it.remove();
-        final File file = getProgressFile(entry.getKey());
-        if (file.exists()) {
-          file.delete();
-        }
+    final String topicFileKey = generateTopicFileKey(consumerGroupId, topicName);
+    final Iterator<Map.Entry<String, CommitStateKey>> keyIterator =
+        commitStateKeys.entrySet().iterator();
+    while (keyIterator.hasNext()) {
+      final Map.Entry<String, CommitStateKey> entry = keyIterator.next();
+      if (entry.getValue().sameTopic(consumerGroupId, topicName)) {
+        commitStates.remove(entry.getKey());
+        keyIterator.remove();
       }
+    }
+    synchronized (getTopicPersistLock(topicFileKey)) {
+      deleteTopicProgressFiles(topicFileKey);
+      topicProgressIndexes.remove(topicFileKey);
+      recoveredTopicKeys.remove(topicFileKey);
     }
   }
 
@@ -357,18 +390,27 @@ public class ConsensusSubscriptionCommitManager {
       return;
     }
     state.resetForSeek(regionProgress);
-    persistProgress(key, state);
+    persistRegionProgress(
+        getCommitStateKey(consumerGroupId, topicName, regionId.toString()), state);
   }
 
   /** Persists all states. Should be called during graceful shutdown. */
   public void persistAll() {
+    final Map<String, CommitStateKey> topicKeys = new LinkedHashMap<>();
     for (final Map.Entry<String, ConsensusSubscriptionCommitState> entry :
         commitStates.entrySet()) {
-      persistProgress(entry.getKey(), entry.getValue());
+      final CommitStateKey stateKey = commitStateKeys.get(entry.getKey());
+      if (Objects.nonNull(stateKey)) {
+        topicKeys.putIfAbsent(stateKey.topicFileKey, stateKey);
+      }
+    }
+    for (final CommitStateKey stateKey : topicKeys.values()) {
+      rewriteTopicProgressFiles(stateKey);
     }
   }
 
   public Map<String, ByteBuffer> collectAllRegionProgress(final int dataNodeId) {
+    recoverAllTopicStatesIfNeeded();
     final Map<String, ByteBuffer> result = new ConcurrentHashMap<>();
     final String suffix = KEY_SEPARATOR + dataNodeId;
     for (final Map.Entry<String, ConsensusSubscriptionCommitState> entry :
@@ -500,12 +542,13 @@ public class ConsensusSubscriptionCommitManager {
           writerProgress);
       return;
     }
-    final String key = consumerGroupId + KEY_SEPARATOR + topicName + KEY_SEPARATOR + regionIdStr;
-    final ConsensusSubscriptionCommitState state = commitStates.get(key);
+    final CommitStateKey stateKey = getCommitStateKey(consumerGroupId, topicName, regionIdStr);
+    recoverTopicStatesIfNeeded(stateKey);
+    final ConsensusSubscriptionCommitState state = commitStates.get(stateKey.stateKey);
     if (state != null) {
       // Update only if broadcast is ahead
       state.updateFromBroadcast(writerId, writerProgress);
-      persistProgressIfNeeded(key, state);
+      persistProgressIfNeeded(stateKey, state);
     } else {
       // Create a new state from the broadcast progress
       final ConsensusSubscriptionCommitState newState =
@@ -514,8 +557,8 @@ public class ConsensusSubscriptionCommitManager {
               new SubscriptionConsensusProgress(
                   new RegionProgress(Collections.singletonMap(writerId, writerProgress)), 0L));
       newState.updateFromBroadcast(writerId, writerProgress);
-      commitStates.putIfAbsent(key, newState);
-      persistProgress(key, commitStates.get(key));
+      commitStates.putIfAbsent(stateKey.stateKey, newState);
+      persistRegionProgress(stateKey, commitStates.get(stateKey.stateKey));
     }
     LOGGER.debug(
         "Received subscription progress broadcast: consumerGroupId={}, topicName={}, "
@@ -529,32 +572,209 @@ public class ConsensusSubscriptionCommitManager {
 
   // ======================== Helper Methods ========================
 
-  // Use a separator that cannot appear in consumerGroupId, topicName, or regionId
-  // to prevent key collisions (e.g., "a_b" + "c" vs "a" + "b_c").
+  // Kept as the in-memory and ConfigNode sync key separator for the existing progress protocol.
   private static final String KEY_SEPARATOR = "##";
 
   private String generateKey(
       final String consumerGroupId, final String topicName, final ConsensusGroupId regionId) {
-    return consumerGroupId + KEY_SEPARATOR + topicName + KEY_SEPARATOR + regionId.toString();
+    return generateKey(consumerGroupId, topicName, regionId.toString());
   }
 
-  private File getProgressFile(final String key) {
-    return new File(persistDir, PROGRESS_FILE_PREFIX + key + PROGRESS_FILE_SUFFIX);
+  private String generateKey(
+      final String consumerGroupId, final String topicName, final String regionIdStr) {
+    return consumerGroupId + KEY_SEPARATOR + topicName + KEY_SEPARATOR + regionIdStr;
   }
 
-  private ConsensusSubscriptionCommitState tryRecover(final String key, final String regionIdStr) {
-    final File file = getProgressFile(key);
-    if (!file.exists()) {
+  private CommitStateKey getCommitStateKey(
+      final String consumerGroupId, final String topicName, final String regionIdStr) {
+    final String stateKey = generateKey(consumerGroupId, topicName, regionIdStr);
+    return commitStateKeys.computeIfAbsent(
+        stateKey,
+        ignored ->
+            new CommitStateKey(
+                consumerGroupId,
+                topicName,
+                regionIdStr,
+                stateKey,
+                generateTopicFileKey(consumerGroupId, topicName)));
+  }
+
+  private String generateTopicFileKey(final String consumerGroupId, final String topicName) {
+    return encodeFileNameComponent(consumerGroupId)
+        + KEY_SEPARATOR
+        + encodeFileNameComponent(topicName);
+  }
+
+  private static String encodeFileNameComponent(final String value) {
+    return Base64.getUrlEncoder()
+        .withoutPadding()
+        .encodeToString(String.valueOf(value).getBytes(StandardCharsets.UTF_8));
+  }
+
+  private static String decodeFileNameComponent(final String value) {
+    switch (value.length() & 3) {
+      case 0:
+        return new String(Base64.getUrlDecoder().decode(value), StandardCharsets.UTF_8);
+      case 2:
+        return new String(Base64.getUrlDecoder().decode(value + "=="), StandardCharsets.UTF_8);
+      case 3:
+        return new String(Base64.getUrlDecoder().decode(value + "="), StandardCharsets.UTF_8);
+      default:
+        throw new IllegalArgumentException("Invalid base64 url component length");
+    }
+  }
+
+  private static String[] decodeTopicFileKey(final String topicFileKey) {
+    final int separatorIndex = topicFileKey.indexOf(KEY_SEPARATOR);
+    if (separatorIndex < 0) {
       return null;
     }
-    try (final FileInputStream fis = new FileInputStream(file)) {
-      final byte[] bytes = new byte[(int) file.length()];
-      fis.read(bytes);
-      final ByteBuffer buffer = ByteBuffer.wrap(bytes);
-      return ConsensusSubscriptionCommitState.deserialize(regionIdStr, buffer);
-    } catch (final IOException e) {
-      LOGGER.warn("Failed to recover consensus subscription progress from {}", file, e);
+    try {
+      return new String[] {
+        decodeFileNameComponent(topicFileKey.substring(0, separatorIndex)),
+        decodeFileNameComponent(topicFileKey.substring(separatorIndex + KEY_SEPARATOR.length()))
+      };
+    } catch (final IllegalArgumentException e) {
       return null;
+    }
+  }
+
+  private Object getTopicPersistLock(final String topicFileKey) {
+    return topicPersistLocks.computeIfAbsent(topicFileKey, ignored -> new Object());
+  }
+
+  private File getMetaFile(final String topicFileKey) {
+    return new File(persistDir, PROGRESS_FILE_PREFIX + topicFileKey + PROGRESS_META_FILE_SUFFIX);
+  }
+
+  private File getLegacyIndexFile(final String topicFileKey) {
+    return new File(
+        persistDir, PROGRESS_FILE_PREFIX + topicFileKey + LEGACY_PROGRESS_INDEX_FILE_SUFFIX);
+  }
+
+  private void recoverAllTopicStatesIfNeeded() {
+    final File dir = new File(persistDir);
+    final File[] metaFiles =
+        dir.listFiles(
+            (ignored, name) ->
+                name.startsWith(PROGRESS_FILE_PREFIX) && name.endsWith(PROGRESS_META_FILE_SUFFIX));
+    if (Objects.isNull(metaFiles)) {
+      return;
+    }
+    for (final File metaFile : metaFiles) {
+      final String topicFileKey = extractTopicFileKey(metaFile.getName());
+      if (Objects.isNull(topicFileKey) || recoveredTopicKeys.contains(topicFileKey)) {
+        continue;
+      }
+      final String[] decodedTopicKey = decodeTopicFileKey(topicFileKey);
+      if (Objects.isNull(decodedTopicKey)) {
+        LOGGER.warn(
+            "Skip malformed consensus subscription progress file name {}", metaFile.getName());
+        continue;
+      }
+      recoverTopicStatesIfNeeded(topicFileKey, decodedTopicKey[0], decodedTopicKey[1]);
+    }
+  }
+
+  private String extractTopicFileKey(final String metaFileName) {
+    if (!metaFileName.startsWith(PROGRESS_FILE_PREFIX)
+        || !metaFileName.endsWith(PROGRESS_META_FILE_SUFFIX)) {
+      return null;
+    }
+    return metaFileName.substring(
+        PROGRESS_FILE_PREFIX.length(), metaFileName.length() - PROGRESS_META_FILE_SUFFIX.length());
+  }
+
+  private void recoverTopicStatesIfNeeded(final CommitStateKey stateKey) {
+    recoverTopicStatesIfNeeded(stateKey.topicFileKey, stateKey.consumerGroupId, stateKey.topicName);
+  }
+
+  private void recoverTopicStatesIfNeeded(
+      final String topicFileKey, final String consumerGroupId, final String topicName) {
+    if (recoveredTopicKeys.contains(topicFileKey)) {
+      return;
+    }
+    synchronized (getTopicPersistLock(topicFileKey)) {
+      if (recoveredTopicKeys.contains(topicFileKey)) {
+        return;
+      }
+      try {
+        final TopicProgressSnapshot snapshot = readTopicProgressSnapshot(topicFileKey);
+        for (final Map.Entry<String, ConsensusSubscriptionCommitState> entry :
+            snapshot.states.entrySet()) {
+          final CommitStateKey recoveredStateKey =
+              getCommitStateKey(consumerGroupId, topicName, entry.getKey());
+          commitStates.putIfAbsent(recoveredStateKey.stateKey, entry.getValue());
+        }
+        topicProgressIndexes.put(topicFileKey, snapshot.indexEntries);
+      } catch (final IOException e) {
+        LOGGER.warn(
+            "Failed to recover consensus subscription progress for consumerGroupId={}, "
+                + "topicName={}",
+            consumerGroupId,
+            topicName,
+            e);
+        topicProgressIndexes.put(topicFileKey, Collections.emptyMap());
+      } finally {
+        recoveredTopicKeys.add(topicFileKey);
+      }
+    }
+  }
+
+  // Recovery reads .meta sequentially and rebuilds the runtime offset index.
+  private TopicProgressSnapshot readTopicProgressSnapshot(final String topicFileKey)
+      throws IOException {
+    final File metaFile = getMetaFile(topicFileKey);
+    if (!metaFile.exists()) {
+      return TopicProgressSnapshot.empty();
+    }
+    try {
+      final ByteBuffer buffer = ByteBuffer.wrap(Files.readAllBytes(metaFile.toPath()));
+      final int version = ReadWriteIOUtils.readInt(buffer);
+      if (version != TOPIC_PROGRESS_FILE_VERSION) {
+        throw new IOException(
+            "Unsupported consensus subscription progress file version " + version);
+      }
+      final int regionCount = ReadWriteIOUtils.readInt(buffer);
+      if (regionCount < 0) {
+        throw new IOException(
+            "Invalid consensus subscription progress region count " + regionCount);
+      }
+      final Map<String, ConsensusSubscriptionCommitState> states = new LinkedHashMap<>();
+      final Map<String, ProgressIndexEntry> indexEntries = new LinkedHashMap<>();
+      for (int i = 0; i < regionCount; i++) {
+        final String regionId = ReadWriteIOUtils.readString(buffer);
+        final int payloadLength = ReadWriteIOUtils.readInt(buffer);
+        if (payloadLength < 0 || payloadLength > buffer.remaining()) {
+          throw new IOException(
+              "Invalid consensus subscription progress payload length " + payloadLength);
+        }
+        final long payloadOffset = buffer.position();
+        final byte[] payload = new byte[payloadLength];
+        buffer.get(payload);
+        states.put(
+            regionId,
+            ConsensusSubscriptionCommitState.deserialize(regionId, ByteBuffer.wrap(payload)));
+        indexEntries.put(regionId, new ProgressIndexEntry(payloadOffset, payloadLength));
+      }
+      return new TopicProgressSnapshot(states, indexEntries);
+    } catch (final RuntimeException e) {
+      throw new IOException("Malformed consensus subscription progress file " + metaFile, e);
+    }
+  }
+
+  private void deleteTopicProgressFiles(final String topicFileKey) {
+    deleteFileIfExists(getMetaFile(topicFileKey));
+    deleteFileIfExists(getLegacyIndexFile(topicFileKey));
+    deleteFileIfExists(
+        new File(getMetaFile(topicFileKey).getAbsolutePath() + PROGRESS_TMP_FILE_SUFFIX));
+    deleteFileIfExists(
+        new File(getLegacyIndexFile(topicFileKey).getAbsolutePath() + PROGRESS_TMP_FILE_SUFFIX));
+  }
+
+  private static void deleteFileIfExists(final File file) {
+    if (file.exists() && !file.delete()) {
+      LOGGER.warn("Failed to delete consensus subscription progress file {}", file);
     }
   }
 
@@ -564,6 +784,160 @@ public class ConsensusSubscriptionCommitManager {
 
   static String buildBroadcastKey(final String key, final WriterId writerId) {
     return key + KEY_SEPARATOR + (Objects.nonNull(writerId) ? writerId.getNodeId() : -1);
+  }
+
+  private byte[] serializeCommitState(final ConsensusSubscriptionCommitState state)
+      throws IOException {
+    try (final ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        final DataOutputStream dos = new DataOutputStream(baos)) {
+      state.serialize(dos);
+      dos.flush();
+      return baos.toByteArray();
+    }
+  }
+
+  private void persistProgressIfNeeded(
+      final CommitStateKey stateKey, final ConsensusSubscriptionCommitState state) {
+    final int interval =
+        SubscriptionConfig.getInstance().getSubscriptionConsensusCommitPersistInterval();
+    if (interval > 0 && state.getProgress().getCommitIndex() % interval == 0) {
+      persistRegionProgress(stateKey, state);
+    }
+  }
+
+  private void persistRegionProgress(
+      final CommitStateKey stateKey, final ConsensusSubscriptionCommitState state) {
+    recoverTopicStatesIfNeeded(stateKey);
+    synchronized (getTopicPersistLock(stateKey.topicFileKey)) {
+      try {
+        final byte[] payload = serializeCommitState(state);
+        final Map<String, ProgressIndexEntry> indexEntries =
+            topicProgressIndexes.getOrDefault(stateKey.topicFileKey, Collections.emptyMap());
+        final ProgressIndexEntry indexEntry = indexEntries.get(stateKey.regionIdStr);
+        final File metaFile = getMetaFile(stateKey.topicFileKey);
+        if (Objects.nonNull(indexEntry)
+            && indexEntry.payloadLength == payload.length
+            && metaFile.exists()
+            && metaFile.length() >= indexEntry.payloadOffset + indexEntry.payloadLength) {
+          overwriteRegionPayload(metaFile, indexEntry.payloadOffset, payload);
+          return;
+        }
+        rewriteTopicProgressFilesUnderLock(stateKey);
+      } catch (final IOException e) {
+        LOGGER.warn(
+            "Failed to persist consensus subscription progress for consumerGroupId={}, "
+                + "topicName={}, regionId={}",
+            stateKey.consumerGroupId,
+            stateKey.topicName,
+            stateKey.regionIdStr,
+            e);
+      }
+    }
+  }
+
+  private void overwriteRegionPayload(
+      final File metaFile, final long payloadOffset, final byte[] payload) throws IOException {
+    try (final RandomAccessFile randomAccessFile = new RandomAccessFile(metaFile, "rw")) {
+      randomAccessFile.seek(payloadOffset);
+      randomAccessFile.write(payload);
+      if (SubscriptionConfig.getInstance().isSubscriptionConsensusCommitFsyncEnabled()) {
+        randomAccessFile.getFD().sync();
+      }
+    }
+  }
+
+  private void rewriteTopicProgressFiles(final CommitStateKey stateKey) {
+    synchronized (getTopicPersistLock(stateKey.topicFileKey)) {
+      try {
+        rewriteTopicProgressFilesUnderLock(stateKey);
+      } catch (final IOException e) {
+        LOGGER.warn(
+            "Failed to rewrite consensus subscription progress for consumerGroupId={}, "
+                + "topicName={}",
+            stateKey.consumerGroupId,
+            stateKey.topicName,
+            e);
+      }
+    }
+  }
+
+  private void rewriteTopicProgressFilesUnderLock(final CommitStateKey stateKey)
+      throws IOException {
+    final Map<String, ConsensusSubscriptionCommitState> topicStates =
+        collectTopicStates(stateKey.topicFileKey);
+    if (topicStates.isEmpty()) {
+      deleteTopicProgressFiles(stateKey.topicFileKey);
+      topicProgressIndexes.remove(stateKey.topicFileKey);
+      return;
+    }
+
+    final ByteArrayOutputStream metaBytes = new ByteArrayOutputStream();
+    final Map<String, ProgressIndexEntry> indexEntries = new LinkedHashMap<>();
+    try (final DataOutputStream metaStream = new DataOutputStream(metaBytes)) {
+      ReadWriteIOUtils.write(TOPIC_PROGRESS_FILE_VERSION, metaStream);
+      ReadWriteIOUtils.write(topicStates.size(), metaStream);
+      for (final Map.Entry<String, ConsensusSubscriptionCommitState> entry :
+          topicStates.entrySet()) {
+        final byte[] payload = serializeCommitState(entry.getValue());
+        ReadWriteIOUtils.write(entry.getKey(), metaStream);
+        ReadWriteIOUtils.write(payload.length, metaStream);
+        final long payloadOffset = metaBytes.size();
+        metaStream.write(payload);
+        final ProgressIndexEntry indexEntry = new ProgressIndexEntry(payloadOffset, payload.length);
+        indexEntries.put(entry.getKey(), indexEntry);
+      }
+    }
+    writeFileAtomically(getMetaFile(stateKey.topicFileKey), metaBytes.toByteArray());
+    topicProgressIndexes.put(stateKey.topicFileKey, indexEntries);
+    recoveredTopicKeys.add(stateKey.topicFileKey);
+  }
+
+  private Map<String, ConsensusSubscriptionCommitState> collectTopicStates(
+      final String topicFileKey) {
+    final Map<String, ConsensusSubscriptionCommitState> topicStates = new TreeMap<>();
+    for (final Map.Entry<String, CommitStateKey> entry : commitStateKeys.entrySet()) {
+      final CommitStateKey candidate = entry.getValue();
+      if (!candidate.topicFileKey.equals(topicFileKey)) {
+        continue;
+      }
+      final ConsensusSubscriptionCommitState state = commitStates.get(entry.getKey());
+      if (Objects.nonNull(state)) {
+        topicStates.put(candidate.regionIdStr, state);
+      }
+    }
+    return topicStates;
+  }
+
+  private void writeFileAtomically(final File targetFile, final byte[] bytes) throws IOException {
+    final File parent = targetFile.getParentFile();
+    if (Objects.nonNull(parent) && !parent.exists()) {
+      parent.mkdirs();
+    }
+    final File tmpFile = new File(targetFile.getAbsolutePath() + PROGRESS_TMP_FILE_SUFFIX);
+    try (final FileOutputStream fos = new FileOutputStream(tmpFile)) {
+      fos.write(bytes);
+      fos.flush();
+      if (SubscriptionConfig.getInstance().isSubscriptionConsensusCommitFsyncEnabled()) {
+        fos.getFD().sync();
+      }
+    }
+    try {
+      Files.move(
+          tmpFile.toPath(),
+          targetFile.toPath(),
+          StandardCopyOption.REPLACE_EXISTING,
+          StandardCopyOption.ATOMIC_MOVE);
+    } catch (final AtomicMoveNotSupportedException e) {
+      try {
+        Files.move(tmpFile.toPath(), targetFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+      } catch (final IOException fallbackException) {
+        deleteFileIfExists(tmpFile);
+        throw fallbackException;
+      }
+    } catch (final IOException e) {
+      deleteFileIfExists(tmpFile);
+      throw e;
+    }
   }
 
   private ConsensusSubscriptionCommitState queryCommitProgressStateFromConfigNode(
@@ -636,26 +1010,64 @@ public class ConsensusSubscriptionCommitManager {
     return RegionProgress.deserialize(duplicate);
   }
 
-  private void persistProgressIfNeeded(
-      final String key, final ConsensusSubscriptionCommitState state) {
-    final int interval =
-        SubscriptionConfig.getInstance().getSubscriptionConsensusCommitPersistInterval();
-    if (interval > 0 && state.getProgress().getCommitIndex() % interval == 0) {
-      persistProgress(key, state);
+  private static final class CommitStateKey {
+
+    private final String consumerGroupId;
+
+    private final String topicName;
+
+    private final String regionIdStr;
+
+    private final String stateKey;
+
+    private final String topicFileKey;
+
+    private CommitStateKey(
+        final String consumerGroupId,
+        final String topicName,
+        final String regionIdStr,
+        final String stateKey,
+        final String topicFileKey) {
+      this.consumerGroupId = consumerGroupId;
+      this.topicName = topicName;
+      this.regionIdStr = regionIdStr;
+      this.stateKey = stateKey;
+      this.topicFileKey = topicFileKey;
+    }
+
+    private boolean sameTopic(final String consumerGroupId, final String topicName) {
+      return Objects.equals(this.consumerGroupId, consumerGroupId)
+          && Objects.equals(this.topicName, topicName);
     }
   }
 
-  private void persistProgress(final String key, final ConsensusSubscriptionCommitState state) {
-    final File file = getProgressFile(key);
-    try (final FileOutputStream fos = new FileOutputStream(file);
-        final DataOutputStream dos = new DataOutputStream(fos)) {
-      state.serialize(dos);
-      dos.flush();
-      if (SubscriptionConfig.getInstance().isSubscriptionConsensusCommitFsyncEnabled()) {
-        fos.getFD().sync();
-      }
-    } catch (final IOException e) {
-      LOGGER.warn("Failed to persist consensus subscription progress to {}", file, e);
+  private static final class TopicProgressSnapshot {
+
+    private final Map<String, ConsensusSubscriptionCommitState> states;
+
+    private final Map<String, ProgressIndexEntry> indexEntries;
+
+    private TopicProgressSnapshot(
+        final Map<String, ConsensusSubscriptionCommitState> states,
+        final Map<String, ProgressIndexEntry> indexEntries) {
+      this.states = states;
+      this.indexEntries = indexEntries;
+    }
+
+    private static TopicProgressSnapshot empty() {
+      return new TopicProgressSnapshot(Collections.emptyMap(), Collections.emptyMap());
+    }
+  }
+
+  private static final class ProgressIndexEntry {
+
+    private final long payloadOffset;
+
+    private final int payloadLength;
+
+    private ProgressIndexEntry(final long payloadOffset, final int payloadLength) {
+      this.payloadOffset = payloadOffset;
+      this.payloadLength = payloadLength;
     }
   }
 
