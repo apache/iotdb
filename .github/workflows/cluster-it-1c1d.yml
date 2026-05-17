@@ -108,8 +108,10 @@ jobs:
           SHARD=${{ matrix.shard }}
           TOTAL=3
           mkdir -p integration-test
-          find integration-test/src/test/java -name '*IT.java' -print0 \
-            | xargs -0 grep -lE '\bLocalStandaloneIT\b' \
+          # Use a single grep -rl call instead of `find | xargs grep`: on Windows Git Bash,
+          # ARG_MAX is small so xargs batches the file list, and any batch with no matches
+          # makes grep exit 1, which makes xargs exit 123 and trips `set -o pipefail`.
+          grep -rlE --include='*IT.java' '\bLocalStandaloneIT\b' integration-test/src/test/java \
             | awk -F'/' '{print $NF}' | sed 's/\.java$//' \
             | sort \
             | awk -v s=$SHARD -v t=$TOTAL 'NR%t==s' \
