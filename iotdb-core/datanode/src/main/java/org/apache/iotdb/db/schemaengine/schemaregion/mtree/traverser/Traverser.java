@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.path.fa.IFAState;
 import org.apache.iotdb.commons.path.fa.IFATransition;
+import org.apache.iotdb.commons.path.fa.match.IStateMatchInfo;
 import org.apache.iotdb.commons.schema.node.IMNode;
 import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
@@ -32,18 +33,22 @@ import org.apache.iotdb.commons.schema.node.utils.IMNodeIterator;
 import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.commons.schema.tree.AbstractTreeVisitor;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.IMTreeStore;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.IMemMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.iterator.MNodeIterator;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.ReentrantReadOnlyCachedMTreeStore;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memory.ReleaseFlushMonitor;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.MNodeUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
+import java.util.Set;
 
 import static org.apache.iotdb.commons.schema.SchemaConstant.NON_TEMPLATE;
 
@@ -247,7 +252,107 @@ public abstract class Traverser<R, N extends IMNode<N>> extends AbstractTreeVisi
     if (parent.isAboveDatabase()) {
       return new MNodeIterator<>(parent.getChildren().values().iterator());
     } else {
+      final Iterator<N> optimizedIterator =
+          shouldUseLeafDeviceMeasurementOptimization()
+              ? getOptimizedChildrenIterator(parent)
+              : null;
+      if (optimizedIterator != null) {
+        return optimizedIterator;
+      }
       return store.getTraverserIterator(parent, templateMap, skipPreDeletedSchema);
+    }
+  }
+
+  protected boolean shouldUseLeafDeviceMeasurementOptimization() {
+    return false;
+  }
+
+  @SuppressWarnings("unchecked")
+  private Iterator<N> getOptimizedChildrenIterator(final N parent) throws MetadataException {
+    if (!parent.isDevice()) {
+      return null;
+    }
+
+    if (parent instanceof IMemMNode) {
+      if (((IMemMNode) parent).hasDeviceDescendant()) {
+        return null;
+      }
+    } else if (parent instanceof ICachedMNode) {
+      if (hasDeviceDescendant((ICachedMNode) parent)) {
+        return null;
+      }
+    } else {
+      return null;
+    }
+
+    final IStateMatchInfo stateMatchInfo = getCurrentStateMatchInfo();
+    final Set<String> candidateNames = new LinkedHashSet<>();
+
+    for (int i = 0; i < stateMatchInfo.getMatchedStateSize(); i++) {
+      final IFAState matchedState = stateMatchInfo.getMatchedState(i);
+
+      for (final IFATransition transition :
+          patternFA.getPreciseMatchTransition(matchedState).values()) {
+        if (patternFA.getNextState(matchedState, transition).isFinal()) {
+          candidateNames.add(transition.getAcceptEvent());
+        }
+      }
+
+      final Iterator<IFATransition> fuzzyTransitionIterator =
+          patternFA.getFuzzyMatchTransitionIterator(matchedState);
+      while (fuzzyTransitionIterator.hasNext()) {
+        if (patternFA.getNextState(matchedState, fuzzyTransitionIterator.next()).isFinal()) {
+          return null;
+        }
+      }
+    }
+
+    if (candidateNames.isEmpty()) {
+      return null;
+    }
+
+    // For leaf devices, `**.measurement` does not need to enumerate every measurement child.
+    try {
+      return getChildrenIterator(parent, candidateNames.iterator());
+    } catch (final MetadataException e) {
+      throw e;
+    } catch (final Exception e) {
+      throw new MetadataException(e.getMessage(), e);
+    }
+  }
+
+  @SuppressWarnings("unchecked")
+  private boolean hasDeviceDescendant(final ICachedMNode node) throws MetadataException {
+    if (node.isMeasurement()) {
+      node.setHasDeviceDescendant(false);
+      node.setDeviceDescendantComputed(true);
+      return false;
+    }
+    if (!node.isDeviceDescendantComputed()) {
+      node.setHasDeviceDescendant(hasDeviceDescendantInChildren(node));
+      node.setDeviceDescendantComputed(true);
+    }
+    return node.hasDeviceDescendant();
+  }
+
+  @SuppressWarnings("unchecked")
+  private boolean hasDeviceDescendantInChildren(final ICachedMNode node) throws MetadataException {
+    final IMTreeStore<ICachedMNode> cachedStore = (IMTreeStore<ICachedMNode>) store;
+    final IMNodeIterator<ICachedMNode> iterator = cachedStore.getChildrenIterator(node);
+    try {
+      while (iterator.hasNext()) {
+        final ICachedMNode child = iterator.next();
+        try {
+          if (child.isDevice() || hasDeviceDescendant(child)) {
+            return true;
+          }
+        } finally {
+          cachedStore.unPin(child);
+        }
+      }
+      return false;
+    } finally {
+      iterator.close();
     }
   }
 

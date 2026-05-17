@@ -29,4 +29,12 @@ public interface IMemMNode extends IMNode<IMemMNode> {
   long getSubtreeMeasurementCount();
 
   void setSubtreeMeasurementCount(long subtreeMeasurementCount);
+
+  /**
+   * Whether there is any device node in the subtree rooted at this node, excluding the node itself.
+   * This flag is maintained in memory only.
+   */
+  boolean hasDeviceDescendant();
+
+  void setHasDeviceDescendant(boolean hasDeviceDescendant);
 }
