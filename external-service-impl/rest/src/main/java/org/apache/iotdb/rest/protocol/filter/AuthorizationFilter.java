@@ -59,10 +59,13 @@ public class AuthorizationFilter implements ContainerRequestFilter, ContainerRes
   @Override
   public void filter(ContainerRequestContext containerRequestContext) throws IOException {
 
+    final String requestPath = containerRequestContext.getUriInfo().getPath();
     if ("OPTIONS".equals(containerRequestContext.getMethod())
-        || "ping".equals(containerRequestContext.getUriInfo().getPath())
-        || (config.isEnableSwagger()
-            && "swagger.json".equals(containerRequestContext.getUriInfo().getPath()))) {
+        || "ping".equals(requestPath)
+        || (config.isEnableSwagger() && "swagger.json".equals(requestPath))
+        // OTLP receivers are typically run without credentials; the receiver logs in on behalf
+        // of clients as the otlp_username configured in iotdb-system.properties.
+        || requestPath.startsWith("rest/v1/otlp/")) {
       return;
     } else if (!config.isEnableSwagger()
         && "swagger.json".equals(containerRequestContext.getUriInfo().getPath())) {

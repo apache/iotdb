@@ -112,6 +112,8 @@ public class IoTDBRestServiceDescriptor {
         Integer.parseInt(
             trimProperties.getProperty(
                 "idle_timeout_in_seconds", Integer.toString(conf.getIdleTimeoutInSeconds()))));
+    conf.setOtlpUsername(trimProperties.getProperty("otlp_username", conf.getOtlpUsername()));
+    conf.setOtlpPassword(trimProperties.getProperty("otlp_password", conf.getOtlpPassword()));
   }
 
   /**
