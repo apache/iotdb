@@ -19,11 +19,27 @@
 
 package org.apache.iotdb.rpc.subscription.payload.request;
 
+import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeReq;
 
+import org.apache.tsfile.utils.PublicBAOS;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
+
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 
 public class PipeSubscribeHeartbeatReq extends TPipeSubscribeReq {
+
+  private transient List<SubscriptionCommitContext> processorBufferedCommitContexts =
+      new ArrayList<>();
+
+  public List<SubscriptionCommitContext> getProcessorBufferedCommitContexts() {
+    return processorBufferedCommitContexts;
+  }
 
   /////////////////////////////// Thrift ///////////////////////////////
 
@@ -40,10 +56,42 @@ public class PipeSubscribeHeartbeatReq extends TPipeSubscribeReq {
     return req;
   }
 
+  /**
+   * Serialize the incoming parameters into `PipeSubscribeHeartbeatReq`, called by the subscription
+   * client.
+   */
+  public static PipeSubscribeHeartbeatReq toTPipeSubscribeReq(
+      final List<SubscriptionCommitContext> processorBufferedCommitContexts) throws IOException {
+    final PipeSubscribeHeartbeatReq req = toTPipeSubscribeReq();
+    req.processorBufferedCommitContexts =
+        Objects.nonNull(processorBufferedCommitContexts)
+            ? processorBufferedCommitContexts
+            : new ArrayList<>();
+
+    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+        final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+      ReadWriteIOUtils.write(req.processorBufferedCommitContexts.size(), outputStream);
+      for (final SubscriptionCommitContext commitContext : req.processorBufferedCommitContexts) {
+        commitContext.serialize(outputStream);
+      }
+      req.body = ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+    }
+
+    return req;
+  }
+
   /** Deserialize `TPipeSubscribeReq` to obtain parameters, called by the subscription server. */
   public static PipeSubscribeHeartbeatReq fromTPipeSubscribeReq(
       final TPipeSubscribeReq heartbeatReq) {
     final PipeSubscribeHeartbeatReq req = new PipeSubscribeHeartbeatReq();
+
+    if (Objects.nonNull(heartbeatReq.body) && heartbeatReq.body.hasRemaining()) {
+      final int size = ReadWriteIOUtils.readInt(heartbeatReq.body);
+      for (int i = 0; i < size; ++i) {
+        req.processorBufferedCommitContexts.add(
+            SubscriptionCommitContext.deserialize(heartbeatReq.body));
+      }
+    }
 
     req.version = heartbeatReq.version;
     req.type = heartbeatReq.type;
@@ -63,13 +111,15 @@ public class PipeSubscribeHeartbeatReq extends TPipeSubscribeReq {
       return false;
     }
     final PipeSubscribeHeartbeatReq that = (PipeSubscribeHeartbeatReq) obj;
-    return this.version == that.version
+    return Objects.equals(
+            this.processorBufferedCommitContexts, that.processorBufferedCommitContexts)
+        && this.version == that.version
         && this.type == that.type
         && Objects.equals(this.body, that.body);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(version, type, body);
+    return Objects.hash(processorBufferedCommitContexts, version, type, body);
   }
 }

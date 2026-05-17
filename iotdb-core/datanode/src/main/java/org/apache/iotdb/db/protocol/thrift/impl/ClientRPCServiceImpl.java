@@ -269,6 +269,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
 
   public static final String ERROR_CODE = DataNodeMiscMessages.ERROR_CODE;
+  private static final String USE_ENCRYPTED_PASSWORD_KEY = "use_encrypted_password";
 
   private static final TSProtocolVersion CURRENT_RPC_VERSION =
       TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3;
@@ -1636,7 +1637,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
             req.zoneId,
             req.client_protocol,
             clientVersion,
-            sqlDialect);
+            sqlDialect,
+            parseUseEncryptedPassword(req));
     TSStatus tsStatus = RpcUtils.getStatus(openSessionResp.getCode(), openSessionResp.getMessage());
 
     if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode() && database.isPresent()) {
@@ -1676,6 +1678,12 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   private Optional<String> parseDatabase(TSOpenSessionReq req) {
     Map<String, String> configuration = req.configuration;
     return configuration == null ? Optional.empty() : Optional.ofNullable(configuration.get("db"));
+  }
+
+  private boolean parseUseEncryptedPassword(TSOpenSessionReq req) {
+    Map<String, String> configuration = req.configuration;
+    return configuration != null
+        && Boolean.parseBoolean(configuration.get(USE_ENCRYPTED_PASSWORD_KEY));
   }
 
   @Override

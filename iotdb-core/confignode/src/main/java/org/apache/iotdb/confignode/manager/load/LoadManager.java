@@ -88,6 +88,8 @@ public class LoadManager {
     this.topologyService = new TopologyService(configManager, loadCache::updateTopology);
     this.eventService = new EventService(loadCache);
     this.eventService.register(configManager.getPipeManager().getPipeRuntimeCoordinator());
+    this.eventService.register(
+        configManager.getSubscriptionManager().getSubscriptionLeaderChangeHandler());
     this.eventService.register(routeBalancer);
     this.eventService.register(topologyService);
   }
