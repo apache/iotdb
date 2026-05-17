@@ -223,7 +223,9 @@ public class CreateSubscriptionProcedure extends AbstractOperateSubscriptionAndP
             String.format(
                 ProcedureMessages
                     .FAILED_TO_CREATE_PIPES_WHEN_CREATING_SUBSCRIPTION_WITH_REQUEST_DETAILS,
-                pipeNames, subscribeReq, exceptionMessage));
+                pipeNames,
+                subscribeReq,
+                exceptionMessage));
       }
     }
   }
