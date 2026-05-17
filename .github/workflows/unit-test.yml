@@ -62,7 +62,14 @@ jobs:
       - name: Test Datanode Module with Maven
         shell: bash
         if: ${{ matrix.it_task == 'datanode'}}
-        run: mvn clean integration-test -Dtest.port.closed=true -pl iotdb-core/datanode -am -DskipTests -Diotdb.test.only=true
+        # forkCount=3 runs up to 3 surefire JVMs in parallel. reuseForks=false
+        # is left on (set in iotdb-core/datanode/pom.xml) so each test class
+        # still gets a fresh JVM — only cross-fork parallelism changes.
+        # The pom already wires <workingDirectory>...fork_${surefire.forkNumber}
+        # for filesystem isolation; datanode UTs do no socket binding (grep'd:
+        # zero ServerSocket / bind() / TServer.serve() calls in tests), so
+        # cross-fork resource conflicts are not a concern.
+        run: mvn clean integration-test -Dtest.port.closed=true -pl iotdb-core/datanode -am -DskipTests -Diotdb.test.only=true -DforkCount=3
       - name: Test Other Modules with Maven
         shell: bash
         if: ${{ matrix.it_task == 'others'}}
