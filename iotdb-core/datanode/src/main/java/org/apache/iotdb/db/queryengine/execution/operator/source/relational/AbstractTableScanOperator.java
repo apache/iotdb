@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.source.AbstractSeriesScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.AlignedSeriesScanUtil;
@@ -164,7 +165,7 @@ public abstract class AbstractTableScanOperator extends AbstractSeriesScanOperat
       }
 
     } catch (IOException e) {
-      throw new RuntimeException("Error happened while scanning the file", e);
+      throw new RuntimeException(DataNodeQueryMessages.ERROR_HAPPENED_WHILE_SCANNING_THE_FILE, e);
     }
 
     // get all measurement column data and time column data

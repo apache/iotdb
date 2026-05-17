@@ -31,13 +31,52 @@ env:
   DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
 
 jobs:
-  Simple:
+  # Ubuntu runs all ITs in a single job (already fast at ~39 min)
+  Ubuntu:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+      - name: Set up JDK
+        uses: actions/setup-java@v5
+        with:
+          distribution: corretto
+          java-version: 17
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Cache Maven packages
+        uses: actions/cache@v5
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2-
+      - name: Adjust Linux kernel somaxconn
+        shell: bash
+        run: sudo sysctl -w net.core.somaxconn=65535
+      - name: IT/UT Test
+        shell: bash
+        run: |
+          mvn clean verify \
+          -P with-integration-tests \
+          -DskipUTs \
+          -DintegrationTest.forkCount=2 -DDataNodeMaxHeapSize=1024 \
+          -pl integration-test \
+          -am -PTableSimpleIT
+      - name: Upload Artifact
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: table-standalone-log-Linux
+          path: integration-test/target/cluster-logs
+          retention-days: 1
+
+  # Windows is ~67% slower than Ubuntu, so split into 3 shards to parallelize
+  Windows:
     strategy:
       fail-fast: false
-      max-parallel: 15
       matrix:
-        os: [ubuntu-latest, windows-latest]
-    runs-on: ${{ matrix.os }}
+        shard: [0, 1, 2]
+    runs-on: windows-latest
 
     steps:
       - uses: actions/checkout@v5
@@ -55,36 +94,47 @@ jobs:
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2-
       - name: Adjust network dynamic TCP ports range
-        if: ${{ runner.os == 'Windows' }}
         shell: pwsh
         run: |
           netsh int ipv4 set dynamicport tcp start=32768 num=32768
           netsh int ipv4 set dynamicport udp start=32768 num=32768
           netsh int ipv6 set dynamicport tcp start=32768 num=32768
           netsh int ipv6 set dynamicport udp start=32768 num=32768
-      - name: Adjust Linux kernel somaxconn
-        if: ${{ runner.os == 'Linux' }}
+      - name: Build IT shard list
         shell: bash
-        run: sudo sysctl -w net.core.somaxconn=65535
-      #      - name: Adjust Mac kernel somaxconn
-      #        if: ${{ runner.os == 'macOS' }}
-      #        shell: bash
-      #        run: sudo sysctl -w kern.ipc.somaxconn=65535
+        # Distribute TableLocalStandaloneIT test classes across 3 shards using hash-mod assignment.
+        # The list is written to a file so failsafe.includesFile can read it without command-line length limits.
+        run: |
+          set -euo pipefail
+          SHARD=${{ matrix.shard }}
+          TOTAL=3
+          # Write outside the repo so Apache RAT (license check) doesn't flag the file.
+          # Using a single grep -rl call instead of `find | xargs grep`: on Windows Git Bash,
+          # ARG_MAX is small so xargs batches the file list, and any batch with no matches
+          # makes grep exit 1, which makes xargs exit 123 and trips `set -o pipefail`.
+          grep -rl --include='*IT.java' 'TableLocalStandaloneIT' integration-test/src/test/java \
+            | awk -F'/' '{print $NF}' | sed 's/\.java$//' \
+            | sort \
+            | awk -v s=$SHARD -v t=$TOTAL 'NR%t==s' \
+            > "$RUNNER_TEMP/it-shard.txt"
+          echo "Shard $SHARD/$TOTAL contains $(wc -l < "$RUNNER_TEMP/it-shard.txt") test classes"
+          head -5 "$RUNNER_TEMP/it-shard.txt"
       - name: IT/UT Test
         shell: bash
-        # we do not compile client-cpp for saving time, it is tested in client.yml
-        # we can skip influxdb-protocol because it has been tested separately in influxdb-protocol.yml
         run: |
           mvn clean verify \
           -P with-integration-tests \
           -DskipUTs \
           -DintegrationTest.forkCount=2 -DDataNodeMaxHeapSize=1024 \
+          -Dfailsafe.includesFile="$RUNNER_TEMP/it-shard.txt" \
+          -DfailIfNoTests=false \
+          -Dfailsafe.failIfNoSpecifiedTests=false \
           -pl integration-test \
           -am -PTableSimpleIT
       - name: Upload Artifact
         if: failure()
         uses: actions/upload-artifact@v6
         with:
-          name: table-standalone-log-java${{ matrix.java }}-${{ runner.os }}
+          name: table-standalone-log-Windows-shard${{ matrix.shard }}
           path: integration-test/target/cluster-logs
           retention-days: 1

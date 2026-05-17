@@ -35,6 +35,8 @@ import org.apache.iotdb.commons.schema.table.Audit;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.AlterPipePlanV2;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.manager.pipe.coordinator.PipeManager;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.impl.pipe.AbstractOperatePipeProcedureV2;
@@ -99,7 +101,8 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   @Override
   public boolean executeFromValidateTask(final ConfigNodeProcedureEnv env) throws PipeException {
     LOGGER.info(
-        "AlterPipeProcedureV2: executeFromValidateTask({})", alterPipeRequest.getPipeName());
+        ProcedureMessages.ALTERPIPEPROCEDUREV2_EXECUTEFROMVALIDATETASK,
+        alterPipeRequest.getPipeName());
 
     // We should execute checkBeforeAlterPipe before checking the pipe plugin. This method will
     // update the alterPipeRequest based on the alterPipeRequest and existing pipe metadata.
@@ -148,7 +151,7 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   @Override
   public void executeFromCalculateInfoForTask(final ConfigNodeProcedureEnv env) {
     LOGGER.info(
-        "AlterPipeProcedureV2: executeFromCalculateInfoForTask({})",
+        ProcedureMessages.ALTERPIPEPROCEDUREV2_EXECUTEFROMCALCULATEINFOFORTASK,
         alterPipeRequest.getPipeName());
 
     final PipeMeta currentPipeMeta =
@@ -259,7 +262,7 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   public void executeFromWriteConfigNodeConsensus(final ConfigNodeProcedureEnv env)
       throws PipeException {
     LOGGER.info(
-        "AlterPipeProcedureV2: executeFromWriteConfigNodeConsensus({})",
+        ProcedureMessages.ALTERPIPEPROCEDUREV2_EXECUTEFROMWRITECONFIGNODECONSENSUS,
         alterPipeRequest.getPipeName());
 
     TSStatus response;
@@ -269,7 +272,7 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
               .getConsensusManager()
               .write(new AlterPipePlanV2(updatedPipeStaticMeta, updatedPipeRuntimeMeta));
     } catch (final ConsensusException e) {
-      LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
+      LOGGER.warn(ConfigNodeMessages.FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
       response = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       response.setMessage(e.getMessage());
     }
@@ -281,7 +284,7 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   @Override
   public void executeFromOperateOnDataNodes(final ConfigNodeProcedureEnv env) throws IOException {
     final String pipeName = alterPipeRequest.getPipeName();
-    LOGGER.info("AlterPipeProcedureV2: executeFromOperateOnDataNodes({})", pipeName);
+    LOGGER.info(ProcedureMessages.ALTERPIPEPROCEDUREV2_EXECUTEFROMOPERATEONDATANODES, pipeName);
 
     final String exceptionMessage =
         parsePushPipeMetaExceptionForPipe(
@@ -292,7 +295,7 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
                 : pushSinglePipeMetaToDataNodes(pipeName, env));
     if (!exceptionMessage.isEmpty()) {
       LOGGER.warn(
-          "Failed to alter pipe {}, details: {}, metadata will be synchronized later.",
+          ProcedureMessages.FAILED_TO_ALTER_PIPE_DETAILS_METADATA_WILL_BE_SYNCHRONIZED_LATER,
           alterPipeRequest.getPipeName(),
           exceptionMessage);
     }
@@ -301,14 +304,15 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   @Override
   public void rollbackFromValidateTask(final ConfigNodeProcedureEnv env) {
     LOGGER.info(
-        "AlterPipeProcedureV2: rollbackFromValidateTask({})", alterPipeRequest.getPipeName());
+        ProcedureMessages.ALTERPIPEPROCEDUREV2_ROLLBACKFROMVALIDATETASK,
+        alterPipeRequest.getPipeName());
     // Do nothing
   }
 
   @Override
   public void rollbackFromCalculateInfoForTask(final ConfigNodeProcedureEnv env) {
     LOGGER.info(
-        "AlterPipeProcedureV2: rollbackFromCalculateInfoForTask({})",
+        ProcedureMessages.ALTERPIPEPROCEDUREV2_ROLLBACKFROMCALCULATEINFOFORTASK,
         alterPipeRequest.getPipeName());
     // Do nothing
   }
@@ -316,7 +320,7 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   @Override
   public void rollbackFromWriteConfigNodeConsensus(final ConfigNodeProcedureEnv env) {
     LOGGER.info(
-        "AlterPipeProcedureV2: rollbackFromWriteConfigNodeConsensus({})",
+        ProcedureMessages.ALTERPIPEPROCEDUREV2_ROLLBACKFROMWRITECONFIGNODECONSENSUS,
         alterPipeRequest.getPipeName());
     TSStatus response;
     try {
@@ -325,7 +329,7 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
               .getConsensusManager()
               .write(new AlterPipePlanV2(currentPipeStaticMeta, currentPipeRuntimeMeta));
     } catch (final ConsensusException e) {
-      LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
+      LOGGER.warn(ConfigNodeMessages.FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
       response = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       response.setMessage(e.getMessage());
     }
@@ -337,7 +341,8 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   @Override
   public void rollbackFromOperateOnDataNodes(final ConfigNodeProcedureEnv env) throws IOException {
     LOGGER.info(
-        "AlterPipeProcedureV2: rollbackFromOperateOnDataNodes({})", alterPipeRequest.getPipeName());
+        ProcedureMessages.ALTERPIPEPROCEDUREV2_ROLLBACKFROMOPERATEONDATANODES,
+        alterPipeRequest.getPipeName());
 
     // Push all pipe metas to datanode, may be time-consuming
     final String exceptionMessage =
@@ -345,7 +350,7 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
             alterPipeRequest.getPipeName(), pushPipeMetaToDataNodes(env));
     if (!exceptionMessage.isEmpty()) {
       LOGGER.warn(
-          "Failed to rollback alter pipe {}, details: {}, metadata will be synchronized later.",
+          ProcedureMessages.FAILED_TO_ROLLBACK_ALTER_PIPE_DETAILS_METADATA_WILL_BE_SYNCHRONIZED,
           alterPipeRequest.getPipeName(),
           exceptionMessage);
     }

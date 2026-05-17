@@ -30,6 +30,9 @@ import org.apache.iotdb.consensus.common.request.BatchIndexedConsensusRequest;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IoTConsensusRequest;
 import org.apache.iotdb.consensus.exception.ConsensusGroupModifyPeerException;
+import org.apache.iotdb.consensus.i18n.ConsensusMessages;
+import org.apache.iotdb.consensus.i18n.IoTConsensusMessages;
+import org.apache.iotdb.consensus.i18n.IoTConsensusV2Messages;
 import org.apache.iotdb.consensus.iot.IoTConsensus;
 import org.apache.iotdb.consensus.iot.IoTConsensusServerImpl;
 import org.apache.iotdb.consensus.iot.thrift.IoTConsensusIService;
@@ -84,15 +87,16 @@ public class IoTConsensusRPCServiceProcessor implements IoTConsensusIService.Ifa
     if (impl == null) {
       String message =
           String.format(
-              "unexpected consensusGroupId %s for TSyncLogEntriesReq which size is %s",
-              groupId, req.getLogEntries().size());
+              ConsensusMessages.UNEXPECTED_CONSENSUS_GROUP_ID_FOR_SYNC_LOG,
+              groupId,
+              req.getLogEntries().size());
       LOGGER.error(message);
       TSStatus status = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
       status.setMessage(message);
       return new TSyncLogEntriesRes(Collections.singletonList(status));
     }
     if (impl.isReadOnly()) {
-      String message = "fail to sync logEntries because system is read-only.";
+      String message = ConsensusMessages.SYNC_LOG_SYSTEM_READ_ONLY;
       LOGGER.error(message);
       TSStatus status = new TSStatus(TSStatusCode.SYSTEM_READ_ONLY.getStatusCode());
       status.setMessage(message);
@@ -101,8 +105,7 @@ public class IoTConsensusRPCServiceProcessor implements IoTConsensusIService.Ifa
     if (!impl.isActive()) {
       String message =
           String.format(
-              "Peer is inactive and not ready to receive sync log request, %s, DataNode Id: %s",
-              groupId, impl.getThisNode().getNodeId());
+              ConsensusMessages.PEER_INACTIVE_NOT_READY, groupId, impl.getThisNode().getNodeId());
       TSStatus status = new TSStatus(TSStatusCode.WRITE_PROCESS_REJECT.getStatusCode());
       status.setMessage(message);
       return new TSyncLogEntriesRes(Collections.singletonList(status));
@@ -134,9 +137,7 @@ public class IoTConsensusRPCServiceProcessor implements IoTConsensusIService.Ifa
     TSStatus writeStatus =
         impl.syncLog(logEntriesInThisBatch.getSourcePeerId(), deserializedRequest);
     LOGGER.debug(
-        "execute TSyncLogEntriesReq for {} with result {}",
-        req.consensusGroupId,
-        writeStatus.subStatus);
+        IoTConsensusMessages.EXECUTE_SYNC_LOG_ENTRIES, req.consensusGroupId, writeStatus.subStatus);
     return new TSyncLogEntriesRes(writeStatus.subStatus)
         .setReceiverMemSize(deserializedRequest.getMemorySize());
   }
@@ -171,7 +172,10 @@ public class IoTConsensusRPCServiceProcessor implements IoTConsensusIService.Ifa
 
     if (impl == null) {
       String message =
-          String.format("unexpected consensusGroupId %s for inactivatePeer request", groupId);
+          String.format(
+              ConsensusMessages.UNEXPECTED_CONSENSUS_GROUP_ID_FOR_REQUEST,
+              groupId,
+              "inactivatePeer");
       LOGGER.error(message);
       TSStatus status = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
       status.setMessage(message);
@@ -191,7 +195,10 @@ public class IoTConsensusRPCServiceProcessor implements IoTConsensusIService.Ifa
     IoTConsensusServerImpl impl = consensus.getImpl(groupId);
     if (impl == null) {
       String message =
-          String.format("unexpected consensusGroupId %s for inactivatePeer request", groupId);
+          String.format(
+              ConsensusMessages.UNEXPECTED_CONSENSUS_GROUP_ID_FOR_REQUEST,
+              groupId,
+              "inactivatePeer");
       LOGGER.error(message);
       TSStatus status = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
       status.setMessage(message);
@@ -210,7 +217,10 @@ public class IoTConsensusRPCServiceProcessor implements IoTConsensusIService.Ifa
     IoTConsensusServerImpl impl = consensus.getImpl(groupId);
     if (impl == null) {
       String message =
-          String.format("unexpected consensusGroupId %s for buildSyncLogChannel request", groupId);
+          String.format(
+              ConsensusMessages.UNEXPECTED_CONSENSUS_GROUP_ID_FOR_REQUEST,
+              groupId,
+              "buildSyncLogChannel");
       LOGGER.error(message);
       TSStatus status = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
       status.setMessage(message);
@@ -230,7 +240,10 @@ public class IoTConsensusRPCServiceProcessor implements IoTConsensusIService.Ifa
     IoTConsensusServerImpl impl = consensus.getImpl(groupId);
     if (impl == null) {
       String message =
-          String.format("unexpected consensusGroupId %s for buildSyncLogChannel request", groupId);
+          String.format(
+              ConsensusMessages.UNEXPECTED_CONSENSUS_GROUP_ID_FOR_REQUEST,
+              groupId,
+              "buildSyncLogChannel");
       LOGGER.error(message);
       TSStatus status = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
       status.setMessage(message);
@@ -241,7 +254,7 @@ public class IoTConsensusRPCServiceProcessor implements IoTConsensusIService.Ifa
       responseStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } else {
       responseStatus = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
-      responseStatus.setMessage("remove sync log channel failed");
+      responseStatus.setMessage(ConsensusMessages.REMOVE_SYNC_LOG_CHANNEL_FAILED);
     }
     return new TRemoveSyncLogChannelRes(responseStatus);
   }
@@ -254,7 +267,10 @@ public class IoTConsensusRPCServiceProcessor implements IoTConsensusIService.Ifa
     IoTConsensusServerImpl impl = consensus.getImpl(groupId);
     if (impl == null) {
       String message =
-          String.format("unexpected consensusGroupId %s for waitSyncLogComplete request", groupId);
+          String.format(
+              ConsensusMessages.UNEXPECTED_CONSENSUS_GROUP_ID_FOR_REQUEST,
+              groupId,
+              "waitSyncLogComplete");
       LOGGER.error(message);
       return new TWaitSyncLogCompleteRes(true, 0, 0);
     }
@@ -270,10 +286,7 @@ public class IoTConsensusRPCServiceProcessor implements IoTConsensusIService.Ifa
         ConsensusGroupId.Factory.createFromTConsensusGroupId(req.getConsensusGroupId());
     IoTConsensusServerImpl impl = consensus.getImpl(groupId);
     if (impl == null) {
-      String message =
-          String.format(
-              "unexpected consensusGroupId %s for TWaitReleaseAllRegionRelatedResourceRes request",
-              groupId);
+      String message = String.format(IoTConsensusV2Messages.UNEXPECTED_GROUP_WAIT_RELEASE, groupId);
       LOGGER.error(message);
       return new TWaitReleaseAllRegionRelatedResourceRes(true);
     }
@@ -289,7 +302,10 @@ public class IoTConsensusRPCServiceProcessor implements IoTConsensusIService.Ifa
     IoTConsensusServerImpl impl = consensus.getImpl(groupId);
     if (impl == null) {
       String message =
-          String.format("unexpected consensusGroupId %s for buildSyncLogChannel request", groupId);
+          String.format(
+              ConsensusMessages.UNEXPECTED_CONSENSUS_GROUP_ID_FOR_REQUEST,
+              groupId,
+              "buildSyncLogChannel");
       LOGGER.error(message);
       TSStatus status = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
       status.setMessage(message);
@@ -314,7 +330,10 @@ public class IoTConsensusRPCServiceProcessor implements IoTConsensusIService.Ifa
     IoTConsensusServerImpl impl = consensus.getImpl(groupId);
     if (impl == null) {
       String message =
-          String.format("unexpected consensusGroupId %s for buildSyncLogChannel request", groupId);
+          String.format(
+              ConsensusMessages.UNEXPECTED_CONSENSUS_GROUP_ID_FOR_REQUEST,
+              groupId,
+              "buildSyncLogChannel");
       LOGGER.error(message);
       TSStatus status = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
       status.setMessage(message);
@@ -333,7 +352,10 @@ public class IoTConsensusRPCServiceProcessor implements IoTConsensusIService.Ifa
     IoTConsensusServerImpl impl = consensus.getImpl(groupId);
     if (impl == null) {
       String message =
-          String.format("unexpected consensusGroupId %s for buildSyncLogChannel request", groupId);
+          String.format(
+              ConsensusMessages.UNEXPECTED_CONSENSUS_GROUP_ID_FOR_REQUEST,
+              groupId,
+              "buildSyncLogChannel");
       LOGGER.error(message);
       TSStatus status = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
       status.setMessage(message);
@@ -344,7 +366,7 @@ public class IoTConsensusRPCServiceProcessor implements IoTConsensusIService.Ifa
       impl.cleanupSnapshot(req.snapshotId);
       responseStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (ConsensusGroupModifyPeerException e) {
-      LOGGER.error("failed to cleanup transferred snapshot {}", req.snapshotId, e);
+      LOGGER.error(ConsensusMessages.FAILED_TO_CLEANUP_TRANSFERRED_SNAPSHOT, req.snapshotId, e);
       responseStatus = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
       responseStatus.setMessage(e.getMessage());
     }

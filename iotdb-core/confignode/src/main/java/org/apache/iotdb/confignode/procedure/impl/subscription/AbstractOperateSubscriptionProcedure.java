@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.procedure.impl.subscription;
 
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.persistence.subscription.SubscriptionInfo;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
@@ -80,12 +81,12 @@ public abstract class AbstractOperateSubscriptionProcedure
 
   @Override
   protected ProcedureLockState acquireLock(ConfigNodeProcedureEnv configNodeProcedureEnv) {
-    LOGGER.info("ProcedureId {} try to acquire subscription lock.", getProcId());
+    LOGGER.info(ProcedureMessages.PROCEDUREID_TRY_TO_ACQUIRE_SUBSCRIPTION_LOCK, getProcId());
     subscriptionInfo = acquireLockInternal(configNodeProcedureEnv);
     if (subscriptionInfo == null) {
-      LOGGER.warn("ProcedureId {} failed to acquire subscription lock.", getProcId());
+      LOGGER.warn(ProcedureMessages.PROCEDUREID_FAILED_TO_ACQUIRE_SUBSCRIPTION_LOCK, getProcId());
     } else {
-      LOGGER.info("ProcedureId {} acquired subscription lock.", getProcId());
+      LOGGER.info(ProcedureMessages.PROCEDUREID_ACQUIRED_SUBSCRIPTION_LOCK, getProcId());
     }
 
     final ProcedureLockState procedureLockState = super.acquireLock(configNodeProcedureEnv);
@@ -93,21 +94,25 @@ public abstract class AbstractOperateSubscriptionProcedure
       case LOCK_ACQUIRED:
         if (subscriptionInfo == null) {
           LOGGER.warn(
-              "ProcedureId {}: LOCK_ACQUIRED. The following procedure should not be executed without subscription lock.",
+              ProcedureMessages
+                  .PROCEDUREID_LOCK_ACQUIRED_THE_FOLLOWING_PROCEDURE_SHOULD_NOT_BE_EXECUTED_2,
               getProcId());
         } else {
           LOGGER.info(
-              "ProcedureId {}: LOCK_ACQUIRED. The following procedure should be executed with subscription lock.",
+              ProcedureMessages
+                  .PROCEDUREID_LOCK_ACQUIRED_THE_FOLLOWING_PROCEDURE_SHOULD_BE_EXECUTED_WITH_3,
               getProcId());
         }
         break;
       case LOCK_EVENT_WAIT:
         if (subscriptionInfo == null) {
           LOGGER.warn(
-              "ProcedureId {}: LOCK_EVENT_WAIT. Without acquiring subscription lock.", getProcId());
+              ProcedureMessages.PROCEDUREID_LOCK_EVENT_WAIT_WITHOUT_ACQUIRING_SUBSCRIPTION_LOCK,
+              getProcId());
         } else {
           LOGGER.info(
-              "ProcedureId {}: LOCK_EVENT_WAIT. Subscription lock will be released.", getProcId());
+              ProcedureMessages.PROCEDUREID_LOCK_EVENT_WAIT_SUBSCRIPTION_LOCK_WILL_BE_RELEASED,
+              getProcId());
           configNodeProcedureEnv
               .getConfigManager()
               .getSubscriptionManager()
@@ -119,12 +124,12 @@ public abstract class AbstractOperateSubscriptionProcedure
       default:
         if (subscriptionInfo == null) {
           LOGGER.error(
-              "ProcedureId {}: {}. Invalid lock state. Without acquiring subscription lock.",
+              ProcedureMessages.PROCEDUREID_INVALID_LOCK_STATE_WITHOUT_ACQUIRING_SUBSCRIPTION_LOCK,
               getProcId(),
               procedureLockState);
         } else {
           LOGGER.error(
-              "ProcedureId {}: {}. Invalid lock state. Subscription lock will be released.",
+              ProcedureMessages.PROCEDUREID_INVALID_LOCK_STATE_SUBSCRIPTION_LOCK_WILL_BE_RELEASED,
               getProcId(),
               procedureLockState);
           configNodeProcedureEnv
@@ -145,12 +150,16 @@ public abstract class AbstractOperateSubscriptionProcedure
 
     if (subscriptionInfo == null) {
       LOGGER.warn(
-          "ProcedureId {} release lock. No need to release subscription lock.", getProcId());
+          ProcedureMessages.PROCEDUREID_RELEASE_LOCK_NO_NEED_TO_RELEASE_SUBSCRIPTION_LOCK,
+          getProcId());
     } else {
-      LOGGER.info("ProcedureId {} release lock. Subscription lock will be released.", getProcId());
+      LOGGER.info(
+          ProcedureMessages.PROCEDUREID_RELEASE_LOCK_SUBSCRIPTION_LOCK_WILL_BE_RELEASED,
+          getProcId());
       if (this instanceof TopicMetaSyncProcedure
           || this instanceof ConsumerGroupMetaSyncProcedure) {
-        LOGGER.info("Subscription meta sync procedure finished, updating last sync version.");
+        LOGGER.info(
+            ProcedureMessages.SUBSCRIPTION_META_SYNC_PROCEDURE_FINISHED_UPDATING_LAST_SYNC_VERSION);
         configNodeProcedureEnv
             .getConfigManager()
             .getSubscriptionManager()
@@ -182,7 +191,8 @@ public abstract class AbstractOperateSubscriptionProcedure
       throws InterruptedException {
     if (subscriptionInfo == null) {
       LOGGER.warn(
-          "ProcedureId {}: Subscription lock is not acquired, executeFromState({})'s execution will be skipped.",
+          ProcedureMessages
+              .PROCEDUREID_SUBSCRIPTION_LOCK_IS_NOT_ACQUIRED_EXECUTEFROMSTATE_S_EXECUTION_WILL,
           getProcId(),
           state);
       return Flow.NO_MORE_STATE;
@@ -192,7 +202,8 @@ public abstract class AbstractOperateSubscriptionProcedure
       switch (state) {
         case VALIDATE:
           if (!executeFromValidate(env)) {
-            LOGGER.info("ProcedureId {}: {}", getProcId(), SKIP_SUBSCRIPTION_PROCEDURE_MESSAGE);
+            LOGGER.info(
+                ProcedureMessages.PROCEDUREID, getProcId(), SKIP_SUBSCRIPTION_PROCEDURE_MESSAGE);
             // On client side, the message returned after the successful execution of the
             // subscription command corresponding to this procedure is "Msg: The statement is
             // executed successfully."
@@ -211,13 +222,14 @@ public abstract class AbstractOperateSubscriptionProcedure
         default:
           throw new UnsupportedOperationException(
               String.format(
-                  "Unknown state during executing operateSubscriptionProcedure, %s", state));
+                  ProcedureMessages.UNKNOWN_STATE_DURING_EXECUTING_OPERATESUBSCRIPTIONPROCEDURE,
+                  state));
       }
     } catch (Exception e) {
       // Retry before rollback
       if (getCycles() < RETRY_THRESHOLD) {
         LOGGER.warn(
-            "ProcedureId {}: Encountered error when trying to {} at state [{}], retry [{}/{}]",
+            ProcedureMessages.PROCEDUREID_ENCOUNTERED_ERROR_WHEN_TRYING_TO_AT_STATE_RETRY,
             getProcId(),
             getOperation(),
             state,
@@ -229,7 +241,7 @@ public abstract class AbstractOperateSubscriptionProcedure
         TimeUnit.MILLISECONDS.sleep(3000L);
       } else {
         LOGGER.warn(
-            "ProcedureId {}: All {} retries failed when trying to {} at state [{}], will rollback...",
+            ProcedureMessages.PROCEDUREID_ALL_RETRIES_FAILED_WHEN_TRYING_TO_AT_STATE_WILL,
             getProcId(),
             RETRY_THRESHOLD,
             getOperation(),
@@ -238,8 +250,10 @@ public abstract class AbstractOperateSubscriptionProcedure
         setFailure(
             new ProcedureException(
                 String.format(
-                    "ProcedureId %s: Fail to %s because %s",
-                    getProcId(), getOperation().name(), e.getMessage())));
+                    ProcedureMessages.PROCEDUREID_FAIL_TO_BECAUSE,
+                    getProcId(),
+                    getOperation().name(),
+                    e.getMessage())));
         return Flow.NO_MORE_STATE;
       }
     }
@@ -252,7 +266,8 @@ public abstract class AbstractOperateSubscriptionProcedure
       throws IOException, InterruptedException, ProcedureException {
     if (subscriptionInfo == null) {
       LOGGER.warn(
-          "ProcedureId {}: Subscription lock is not acquired, rollbackState({})'s execution will be skipped.",
+          ProcedureMessages
+              .PROCEDUREID_SUBSCRIPTION_LOCK_IS_NOT_ACQUIRED_ROLLBACKSTATE_S_EXECUTION_WILL,
           getProcId(),
           state);
       return;
@@ -266,7 +281,7 @@ public abstract class AbstractOperateSubscriptionProcedure
             isRollbackFromValidateSuccessful = true;
           } catch (Exception e) {
             LOGGER.warn(
-                "ProcedureId {}: Failed to rollback from state [{}], because {}",
+                ProcedureMessages.PROCEDUREID_FAILED_TO_ROLLBACK_FROM_STATE_BECAUSE,
                 getProcId(),
                 state,
                 e.getMessage(),
@@ -281,7 +296,7 @@ public abstract class AbstractOperateSubscriptionProcedure
           }
         } catch (Exception e) {
           LOGGER.warn(
-              "ProcedureId {}: Failed to rollback from state [{}], because {}",
+              ProcedureMessages.PROCEDUREID_FAILED_TO_ROLLBACK_FROM_STATE_BECAUSE,
               getProcId(),
               state,
               e.getMessage(),
@@ -295,7 +310,7 @@ public abstract class AbstractOperateSubscriptionProcedure
           isRollbackFromOperateOnDataNodesSuccessful = true;
         } catch (Exception e) {
           LOGGER.warn(
-              "ProcedureId {}: Failed to rollback from state [{}], because {}",
+              ProcedureMessages.PROCEDUREID_FAILED_TO_ROLLBACK_FROM_STATE_BECAUSE,
               getProcId(),
               state,
               e.getMessage(),
@@ -304,7 +319,9 @@ public abstract class AbstractOperateSubscriptionProcedure
         break;
       default:
         throw new UnsupportedOperationException(
-            String.format("Unknown state during rollback operateSubscriptionProcedure, %s", state));
+            String.format(
+                ProcedureMessages.UNKNOWN_STATE_DURING_ROLLBACK_OPERATESUBSCRIPTIONPROCEDURE,
+                state));
     }
   }
 

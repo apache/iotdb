@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.sink.util.builder;
 
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.apache.tsfile.enums.ColumnCategory;
@@ -72,7 +73,7 @@ public class PipeTableModelTsFileBuilder extends PipeTsFileBuilder {
   @Override
   public void bufferTreeModelTablet(Tablet tablet, Boolean isAligned) {
     throw new UnsupportedOperationException(
-        "PipeTableModeTsFileBuilder does not support tree model tablet to build TSFile");
+        DataNodePipeMessages.PIPETABLEMODETSFILEBUILDER_DOES_NOT_SUPPORT_TREE_MODEL_TABLET);
   }
 
   @Override
@@ -155,7 +156,7 @@ public class PipeTableModelTsFileBuilder extends PipeTsFileBuilder {
         tryBestToWriteTabletsIntoOneFile(device2TabletsLinkedList);
       } catch (final Exception e) {
         LOGGER.warn(
-            "Batch id = {}: Failed to write tablets into tsfile, because {}",
+            DataNodePipeMessages.BATCH_ID_FAILED_TO_WRITE_TABLETS_INTO,
             currentBatchId.get(),
             e.getMessage(),
             e);
@@ -165,7 +166,7 @@ public class PipeTableModelTsFileBuilder extends PipeTsFileBuilder {
           fileWriter.close();
         } catch (final Exception closeException) {
           LOGGER.warn(
-              "Batch id = {}: Failed to close the tsfile {} after failed to write tablets into, because {}",
+              DataNodePipeMessages.BATCH_ID_FAILED_TO_CLOSE_THE_TSFILE,
               currentBatchId.get(),
               file.getPath(),
               closeException.getMessage(),
@@ -178,7 +179,7 @@ public class PipeTableModelTsFileBuilder extends PipeTsFileBuilder {
         for (final Pair<String, File> sealedFile : sealedFiles) {
           final boolean deleteSuccess = FileUtils.deleteQuietly(sealedFile.right);
           LOGGER.warn(
-              "Batch id = {}: {} delete the tsfile {} after failed to write tablets into {}. {}",
+              DataNodePipeMessages.BATCH_ID_DELETE_THE_TSFILE_AFTER_FAILED,
               currentBatchId.get(),
               deleteSuccess ? "Successfully" : "Failed to",
               sealedFile.right.getPath(),
@@ -196,7 +197,7 @@ public class PipeTableModelTsFileBuilder extends PipeTsFileBuilder {
       fileWriter.close();
       if (LOGGER.isDebugEnabled()) {
         LOGGER.debug(
-            "Batch id = {}: Seal tsfile {} successfully.",
+            DataNodePipeMessages.BATCH_ID_SEAL_TSFILE_SUCCESSFULLY,
             currentBatchId.get(),
             sealedFile.getPath());
       }
@@ -337,11 +338,8 @@ public class PipeTableModelTsFileBuilder extends PipeTsFileBuilder {
           fileWriter.writeTable(tablet, pair.right);
         } catch (WriteProcessException e) {
           LOGGER.warn(
-              "Batch id = {}: Failed to build the table model TSFile. Please check whether the written Tablet has time overlap and whether the Table Schema is correct.",
-              currentBatchId.get(),
-              e);
-          throw new PipeException(
-              "The written Tablet time may overlap or the Schema may be incorrect");
+              DataNodePipeMessages.BATCH_ID_FAILED_TO_BUILD_THE_TABLE, currentBatchId.get(), e);
+          throw new PipeException(DataNodePipeMessages.THE_WRITTEN_TABLET_TIME_MAY_OVERLAP_OR);
         }
       }
     }

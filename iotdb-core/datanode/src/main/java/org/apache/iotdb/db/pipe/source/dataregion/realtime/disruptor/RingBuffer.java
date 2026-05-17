@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.pipe.source.dataregion.realtime.disruptor;
 
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
+
 /**
  * Left-hand side padding for cache line alignment
  *
@@ -58,10 +60,10 @@ abstract class RingBufferFields<E> extends RingBufferPad {
     this.bufferSize = sequencer.getBufferSize();
 
     if (bufferSize < 1) {
-      throw new IllegalArgumentException("bufferSize must not be less than 1");
+      throw new IllegalArgumentException(DataNodePipeMessages.BUFFERSIZE_MUST_NOT_BE_LESS_THAN_1);
     }
     if (Integer.bitCount(bufferSize) != 1) {
-      throw new IllegalArgumentException("bufferSize must be a power of 2");
+      throw new IllegalArgumentException(DataNodePipeMessages.BUFFERSIZE_MUST_BE_A_POWER_OF_2);
     }
 
     this.indexMask = bufferSize - 1;

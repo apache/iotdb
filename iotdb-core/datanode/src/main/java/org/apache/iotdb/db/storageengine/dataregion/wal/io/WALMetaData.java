@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.wal.io;
 
 import org.apache.iotdb.consensus.iot.log.ConsensusReqReader;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.BrokenWALFileException;
 import org.apache.iotdb.db.utils.SerializedSize;
 
@@ -384,7 +385,7 @@ public class WALMetaData implements SerializedSize {
     } catch (IOException e) {
       throw e;
     } catch (Exception e) {
-      throw new IOException("Unexpected exception", e);
+      throw new IOException(StorageEngineMessages.UNEXPECTED_EXCEPTION, e);
     }
     return metaData;
   }

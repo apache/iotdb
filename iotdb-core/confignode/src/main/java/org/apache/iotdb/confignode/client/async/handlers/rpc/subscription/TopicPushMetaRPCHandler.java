@@ -22,6 +22,7 @@ package org.apache.iotdb.confignode.client.async.handlers.rpc.subscription;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.DataNodeAsyncRequestRPCHandler;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.mpp.rpc.thrift.TPushTopicMetaResp;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -51,10 +52,11 @@ public class TopicPushMetaRPCHandler extends DataNodeAsyncRequestRPCHandler<TPus
     responseMap.put(requestId, response);
 
     if (response.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      LOGGER.debug("Successfully {} on DataNode: {}", requestType, formattedTargetLocation);
+      LOGGER.debug(
+          ConfigNodeMessages.SUCCESSFULLY_ON_DATANODE, requestType, formattedTargetLocation);
     } else {
       LOGGER.warn(
-          "Failed to {} on DataNode: {}, response: {}",
+          ConfigNodeMessages.FAILED_TO_ON_DATANODE_RESPONSE,
           requestType,
           formattedTargetLocation,
           response);

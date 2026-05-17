@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.file;
 
 import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.i18n.CommonMessages;
 import org.apache.iotdb.commons.utils.FileUtils;
 
 import org.apache.ratis.util.AutoCloseableLock;
@@ -170,7 +171,7 @@ public abstract class SystemPropertiesHandler {
       replaceFormalFile();
       return;
     }
-    throw new UnsupportedOperationException("Should never touch here");
+    throw new UnsupportedOperationException(CommonMessages.SHOULD_NEVER_TOUCH_HERE);
   }
 
   private void replaceFormalFile() throws IOException {

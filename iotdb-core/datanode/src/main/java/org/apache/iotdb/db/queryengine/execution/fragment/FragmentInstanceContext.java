@@ -36,6 +36,7 @@ import org.apache.iotdb.commons.queryengine.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.DeviceContext;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
@@ -527,7 +528,7 @@ public class FragmentInstanceContext extends QueryContext {
         status = new TSStatus(DATE_OUT_OF_RANGE.getStatusCode());
         status.setMessage(failure.getMessage());
       } else {
-        LOGGER.warn("[Unknown exception]: ", failure);
+        LOGGER.warn(DataNodeQueryMessages.UNKNOWN_EXCEPTION, failure);
       }
     }
 
@@ -921,7 +922,7 @@ public class FragmentInstanceContext extends QueryContext {
     }
     long duration = System.nanoTime() - startTime;
     if (duration >= LONG_WAIT_DURATION) {
-      LOGGER.warn("Wait {}ms for all Drivers closed", duration / 1_000_000);
+      LOGGER.warn(DataNodeQueryMessages.WAIT_MS_FOR_ALL_DRIVERS_CLOSED, duration / 1_000_000);
     }
     releaseResource();
   }

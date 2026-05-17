@@ -22,6 +22,7 @@ package org.apache.iotdb.session.util;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.UrlUtils;
+import org.apache.iotdb.session.i18n.SessionMessages;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.encoding.encoder.Encoder;
@@ -476,7 +477,7 @@ public class SessionUtils {
 
   public static List<TEndPoint> parseSeedNodeUrls(List<String> nodeUrls) {
     if (nodeUrls == null) {
-      throw new NumberFormatException("nodeUrls is null");
+      throw new NumberFormatException(SessionMessages.NODE_URLS_IS_NULL);
     }
     List<TEndPoint> endPointsList = new ArrayList<>();
     for (String nodeUrl : nodeUrls) {

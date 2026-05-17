@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.MergeException;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionSourceFileDeletedException;
@@ -217,7 +218,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
           split.seqFiles.stream().map(c -> c.resource).collect(Collectors.toList());
 
       if (!split.atLeastOneSeqFileSelected) {
-        LOGGER.debug("Unseq file {} does not overlap with any seq files.", unseqFile);
+        LOGGER.debug(StorageEngineMessages.UNSEQ_FILE_NO_OVERLAP_WITH_SEQ, unseqFile);
         TsFileResourceCandidate latestSealedSeqFile =
             getLatestSealedSeqFile(candidate.getSeqFileCandidates());
         if (latestSealedSeqFile == null) {
@@ -425,7 +426,10 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
       if (!tsFileManager.isAllowCompaction()) {
         return Collections.emptyList();
       }
-      LOGGER.error("{} cannot select file for cross space compaction", logicalStorageGroupName, e);
+      LOGGER.error(
+          StorageEngineMessages.CANNOT_SELECT_FILE_FOR_CROSS_COMPACTION,
+          logicalStorageGroupName,
+          e);
     }
     return Collections.emptyList();
   }

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.subscription.agent;
 
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMetaKeeper;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.subscription.broker.consensus.ConsensusSubscriptionSetupHandler;
 import org.apache.iotdb.mpp.rpc.thrift.TPushConsumerGroupMetaRespExceptionMessage;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
@@ -207,7 +208,7 @@ public class SubscriptionConsumerAgent {
       handleDropConsumerGroupInternal(consumerGroupId);
       return null;
     } catch (final Exception e) {
-      LOGGER.warn("Exception occurred when dropping consumer group {}", consumerGroupId, e);
+      LOGGER.warn(DataNodeMiscMessages.EXCEPTION_DROPPING_CONSUMER_GROUP, consumerGroupId, e);
       final String exceptionMessage =
           String.format(
               "Subscription: Failed to drop consumer group %s, because %s", consumerGroupId, e);

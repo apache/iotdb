@@ -21,6 +21,7 @@ package org.apache.iotdb.db.subscription.event;
 
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.subscription.broker.SubscriptionPrefetchingQueue;
 import org.apache.iotdb.db.subscription.event.batch.SubscriptionPipeTabletEventBatch;
 import org.apache.iotdb.db.subscription.event.cache.CachedSubscriptionPollResponse;
@@ -245,7 +246,7 @@ public class SubscriptionEvent implements Comparable<SubscriptionEvent> {
 
     // record nack count
     if (nackCount.getAndIncrement() > NACK_COUNT_REPORT_THRESHOLD) {
-      LOGGER.warn("{} has been nacked {} times", this, nackCount);
+      LOGGER.warn(DataNodeMiscMessages.EVENT_NACKED_TIMES, this, nackCount);
     }
   }
 

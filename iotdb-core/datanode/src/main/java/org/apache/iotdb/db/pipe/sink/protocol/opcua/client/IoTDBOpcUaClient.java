@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.sink.protocol.opcua.client;
 
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.sink.protocol.opcua.OpcUaSink;
 import org.apache.iotdb.db.pipe.sink.protocol.opcua.server.OpcUaNameSpace;
 import org.apache.iotdb.pipe.api.exception.PipeException;
@@ -143,7 +144,7 @@ public class IoTDBOpcUaClient {
       if (Objects.nonNull(sink.getQualityName()) && sink.getQualityName().equals(name)) {
         if (!type.equals(TSDataType.BOOLEAN)) {
           throw new UnsupportedOperationException(
-              "The quality value only supports boolean type, while true == GOOD and false == BAD.");
+              DataNodePipeMessages.THE_QUALITY_VALUE_ONLY_SUPPORTS_BOOLEAN_TYPE);
         }
         currentQuality = values.get(i) == Boolean.TRUE ? StatusCode.GOOD : StatusCode.BAD;
         continue;
@@ -203,7 +204,7 @@ public class IoTDBOpcUaClient {
         if (!result.getStatusCode().equals(StatusCode.GOOD)
             && !(result.getStatusCode().getValue() == StatusCodes.Bad_NodeIdExists)) {
           throw new PipeException(
-              "Failed to create nodes after transfer data value, creation status: "
+              DataNodePipeMessages.FAILED_TO_CREATE_NODES_AFTER_TRANSFER_DATA
                   + addStatus
                   + getErrorString(segments, name, opcDataType, value, writeStatus));
         }
@@ -211,12 +212,12 @@ public class IoTDBOpcUaClient {
       writeStatus = client.writeValue(nodeId, dataValue).get();
       if (writeStatus.getValue() != StatusCode.GOOD.getValue()) {
         throw new PipeException(
-            "Failed to transfer dataValue after successfully created nodes"
+            DataNodePipeMessages.FAILED_TO_TRANSFER_DATAVALUE_AFTER_SUCCESSFULLY_CREATED
                 + getErrorString(segments, name, opcDataType, value, writeStatus));
       }
     } else if (writeStatus.getValue() != StatusCode.GOOD.getValue()) {
       throw new PipeException(
-          "Failed to transfer dataValue"
+          DataNodePipeMessages.FAILED_TO_TRANSFER_DATAVALUE
               + getErrorString(segments, name, opcDataType, value, writeStatus));
     }
   }

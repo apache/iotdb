@@ -30,6 +30,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListResp;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
@@ -93,7 +94,7 @@ class PipeAgentLauncher {
         PipeDataNodeAgent.plugin().markPluginLoadFailure(meta, e);
         // Ignore a single broken plugin and continue startup.
         LOGGER.warn(
-            "Failure when register pipe plugin {}. Skip this plugin and continue startup.",
+            DataNodePipeMessages.FAILURE_WHEN_REGISTER_PIPE_PLUGIN_SKIP_THIS,
             meta.getPluginName(),
             e);
       }
@@ -145,7 +146,7 @@ class PipeAgentLauncher {
       final TGetJarInListResp resp =
           configNodeClient.getPipePluginJar(new TGetJarInListReq(jarNameList));
       if (resp.getStatus().getCode() == TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()) {
-        throw new StartupException("Failed to get pipe plugin jar from config node.");
+        throw new StartupException(DataNodePipeMessages.FAILED_TO_GET_PIPE_PLUGIN_JAR_FROM);
       }
       final List<ByteBuffer> jarList = resp.getJarList();
       for (int i = 0; i < pipePluginMetaList.size(); i++) {
@@ -165,7 +166,7 @@ class PipeAgentLauncher {
         ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       final TGetAllPipeInfoResp getAllPipeInfoResp = configNodeClient.getAllPipeInfo();
       if (getAllPipeInfoResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        LOGGER.warn("Failed to get pipe metas, will be synced by configNode later...");
+        LOGGER.warn(DataNodePipeMessages.FAILED_TO_GET_PIPE_METAS_WILL_BE);
       }
 
       PipeDataNodeAgent.task()
@@ -175,7 +176,8 @@ class PipeAgentLauncher {
                       byteBuffer -> {
                         final PipeMeta pipeMeta = PipeMeta.deserialize4TaskAgent(byteBuffer);
                         LOGGER.info(
-                            "Pulled pipe meta from config node: {}, recovering ...", pipeMeta);
+                            DataNodePipeMessages.PULLED_PIPE_META_FROM_CONFIG_NODE_RECOVERING,
+                            pipeMeta);
                         return pipeMeta;
                       })
                   .collect(Collectors.toList()));

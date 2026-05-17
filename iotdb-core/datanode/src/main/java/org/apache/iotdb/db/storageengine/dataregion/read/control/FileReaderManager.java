@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.read.control;
 
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.EncryptDBUtils;
@@ -143,7 +144,7 @@ public class FileReaderManager {
       int currentOpenedReaderCount = readerMap.size();
       if (currentOpenedReaderCount >= MAX_CACHED_FILE_SIZE
           && (currentOpenedReaderCount % PRINT_INTERVAL == 0)) {
-        logger.warn("Query has opened {} files !", readerMap.size());
+        logger.warn(StorageEngineMessages.QUERY_OPENED_FILES, readerMap.size());
       }
 
       TsFileSequenceReader tsFileReader = null;
@@ -222,7 +223,8 @@ public class FileReaderManager {
         try {
           reader.close();
         } catch (IOException e) {
-          logger.error("Can not close TsFileSequenceReader {} !", reader.getFileName(), e);
+          logger.error(
+              StorageEngineMessages.CANNOT_CLOSE_TSFILE_SEQUENCE_READER, reader.getFileName(), e);
         }
       }
       readerMap.remove(tsFileID);

@@ -27,6 +27,7 @@ import org.apache.iotdb.consensus.iot.IoTConsensusServerImpl;
 import org.apache.iotdb.consensus.iot.SubscriptionWalRetentionPolicy;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.subscription.broker.ConsensusSubscriptionBroker;
 import org.apache.iotdb.db.subscription.broker.SubscriptionBroker;
 import org.apache.iotdb.db.subscription.broker.consensus.ConsensusLogToTabletConverter;
@@ -542,7 +543,7 @@ public class SubscriptionBrokerAgent {
 
   public void createBrokerIfNotExist(final String consumerGroupId) {
     consumerGroupIdToPipeBroker.computeIfAbsent(consumerGroupId, SubscriptionBroker::new);
-    LOGGER.info("Subscription: create pipe broker bound to consumer group [{}]", consumerGroupId);
+    LOGGER.info(DataNodeMiscMessages.SUBSCRIPTION_CREATE_BROKER, consumerGroupId);
   }
 
   /**
@@ -566,9 +567,8 @@ public class SubscriptionBrokerAgent {
             return broker;
           }
           dropped.set(true);
-          LOGGER.info(
-              "Subscription: drop pipe broker bound to consumer group [{}]", consumerGroupId);
-          return null;
+          LOGGER.info(DataNodeMiscMessages.SUBSCRIPTION_DROP_BROKER, consumerGroupId);
+          return null; // remove this entry
         });
 
     // Drop consensus broker

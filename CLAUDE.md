@@ -45,6 +45,9 @@ mvn clean test -pl iotdb-core/datanode -Dtest=ClassName
 # Run a single test method
 mvn clean test -pl iotdb-core/datanode -Dtest=ClassName#methodName
 
+# Build with Chinese log & error messages
+mvn clean package -pl distribution -am -DskipTests -P with-zh-locale
+
 # Format code (requires JDK 17+; auto-skipped on JDK <17)
 mvn spotless:apply
 
@@ -170,9 +173,14 @@ Generated source directories that need to be on the source path:
 - **Missing Thrift compiler**: The local machine may not have the `thrift` binary installed. Running `mvn clean package -pl <module> -am -DskipTests` will fail at the `iotdb-thrift` module. **Workaround**: To verify your changes compile, use `mvn compile -pl <module>` (without `-am` or `clean`) to leverage existing target caches.
 - **Pre-existing compilation errors in unrelated modules**: The datanode module may have pre-existing compile errors in other subsystems (e.g., pipe, copyto) that cause `mvn clean test -pl iotdb-core/datanode -Dtest=XxxTest` to fail during compilation. **Workaround**: First run `mvn compile -pl iotdb-core/datanode` to confirm your changed files compile successfully. If the errors are in files you did not modify, they are pre-existing and do not affect your changes.
 
+### i18n (Chinese Messages)
+
+The project uses compile-time i18n via the `build-helper-maven-plugin`. The property `i18n.locale` (default: `en`) controls which source directory is added: `src/main/i18n/${i18n.locale}`. Activating `-P with-zh-locale` sets `i18n.locale=zh`, swapping English message constant classes for Chinese ones. Each module that participates has both `src/main/i18n/en/` and `src/main/i18n/zh/` directories containing Java classes with identical structure but different string literals.
+
 ### Code Style
 
 - **Always run `mvn spotless:apply` after editing Java files**: Spotless runs `spotless:check` automatically during the `compile` phase. Format violations cause an immediate BUILD FAILURE. Make it a habit to run `mvn spotless:apply -pl <module>` right after editing, not at the end. For files under `integration-test/`, add `-P with-integration-tests`.
+- **Always run `black` and `isort` after editing Python files under `iotdb-core/ainode/`**: The AINode Code Style Check CI runs `black --check .` and `isort --check-only --profile black .` on that directory. Run `cd iotdb-core/ainode && black . && isort --profile black .` before committing. Requires `pip install black==25.1.0 isort==6.0.1`.
 - **Gson version compatibility**: `JsonObject.isEmpty()` / `JsonArray.isEmpty()` may not be available in the Gson version used by this project. Use `size() > 0` instead and add a comment explaining why.
 
 ## Git Commit

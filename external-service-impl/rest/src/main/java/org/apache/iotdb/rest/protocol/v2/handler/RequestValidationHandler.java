@@ -17,6 +17,7 @@
 
 package org.apache.iotdb.rest.protocol.v2.handler;
 
+import org.apache.iotdb.rest.i18n.RestMessages;
 import org.apache.iotdb.rest.protocol.v2.model.ExpressionRequest;
 import org.apache.iotdb.rest.protocol.v2.model.InsertRecordsRequest;
 import org.apache.iotdb.rest.protocol.v2.model.InsertTabletRequest;
@@ -44,7 +45,7 @@ public class RequestValidationHandler {
   public static void validatePrefixPaths(PrefixPathList prefixPathList) {
     Objects.requireNonNull(prefixPathList.getPrefixPaths(), "prefix_paths should not be null");
     if (prefixPathList.getPrefixPaths().isEmpty()) {
-      throw new IllegalArgumentException("prefix_paths should not be empty");
+      throw new IllegalArgumentException(RestMessages.PREFIX_PATHS_EMPTY);
     }
   }
 

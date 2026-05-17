@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.repair;
 
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionLastTimeCheckFailedException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionStatisticsCheckFailedException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
@@ -182,7 +183,7 @@ public class RepairDataFileScanUtil {
       if (!resource.tsFileExists()) {
         return;
       }
-      logger.warn("Meet error when read tsfile {}", tsfile.getAbsolutePath(), e);
+      logger.warn(StorageEngineMessages.MEET_ERROR_WHEN_READ_TSFILE, tsfile.getAbsolutePath(), e);
       isBrokenFile = true;
     }
   }

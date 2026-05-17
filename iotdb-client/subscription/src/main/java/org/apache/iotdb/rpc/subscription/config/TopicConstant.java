@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.rpc.subscription.config;
 
+import org.apache.iotdb.rpc.subscription.i18n.SubscriptionMessages;
+
 public class TopicConstant {
 
   public static final String PATH_KEY = "path";
@@ -71,6 +73,6 @@ public class TopicConstant {
   public static final String STRICT_DEFAULT_VALUE = "true";
 
   private TopicConstant() {
-    throw new IllegalStateException("Utility class");
+    throw new IllegalStateException(SubscriptionMessages.UTILITY_CLASS);
   }
 }

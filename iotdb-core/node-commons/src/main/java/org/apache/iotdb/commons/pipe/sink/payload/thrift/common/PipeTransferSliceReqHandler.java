@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.pipe.sink.payload.thrift.common;
 
+import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.IoTDBSinkRequestVersion;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferSliceReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
@@ -60,7 +61,7 @@ public class PipeTransferSliceReqHandler {
         sliceCount = req.getSliceCount();
       } else {
         LOGGER.warn(
-            "Invalid state: orderId={}, originReqType={}, originBodySize={}, sliceCount={}, sliceBodies.size={}",
+            PipeMessages.INVALID_STATE_SLICE,
             orderId,
             originReqType,
             originBodySize,
@@ -72,7 +73,7 @@ public class PipeTransferSliceReqHandler {
     }
 
     if (orderId != req.getOrderId()) {
-      LOGGER.warn("Order ID mismatch: expected {}, actual {}", orderId, req.getOrderId());
+      LOGGER.warn(PipeMessages.ORDER_ID_MISMATCH, orderId, req.getOrderId());
       clear();
       return false;
     }
@@ -93,7 +94,7 @@ public class PipeTransferSliceReqHandler {
       return false;
     }
     if (sliceCount != req.getSliceCount()) {
-      LOGGER.warn("Slice count mismatch: expected {}, actual {}", sliceCount, req.getSliceCount());
+      LOGGER.warn(PipeMessages.SLICE_COUNT_MISMATCH, sliceCount, req.getSliceCount());
       clear();
       return false;
     }

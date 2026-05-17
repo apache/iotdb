@@ -54,6 +54,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SimpleCaseEx
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SubqueryExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Trim;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.WhenClause;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ScopeAware;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 
@@ -366,7 +367,8 @@ class AggregationAnalyzer {
           column = "'" + field.getName().get() + "'";
         }
 
-        throw new SemanticException(String.format("Column %s not in GROUP BY clause", column));
+        throw new SemanticException(
+            String.format(DataNodeQueryMessages.COLUMN_NOT_IN_GROUP_BY_CLAUSE, column));
       }
       return inGroup;
     }

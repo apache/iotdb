@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.pipe.datastructure.queue.listening.AbstractPipeL
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.SerializableEvent;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionSnapshotEvent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaSerializableEventType;
@@ -97,7 +98,7 @@ public class SchemaRegionListeningQueue extends AbstractPipeListeningQueue {
       ((EnrichedEvent) result).increaseReferenceCount(SchemaRegionListeningQueue.class.getName());
       return result;
     } catch (final IOException e) {
-      LOGGER.error("Failed to load snapshot from byteBuffer {}.", byteBuffer);
+      LOGGER.error(DataNodePipeMessages.FAILED_TO_LOAD_SNAPSHOT_FROM_BYTEBUFFER, byteBuffer);
     }
     return null;
   }
@@ -108,7 +109,7 @@ public class SchemaRegionListeningQueue extends AbstractPipeListeningQueue {
     try {
       return super.serializeToFile(new File(snapshotDir, SNAPSHOT_FILE_NAME));
     } catch (final Exception e) {
-      LOGGER.warn("Take snapshot error: {}", e.getMessage());
+      LOGGER.warn(DataNodePipeMessages.TAKE_SNAPSHOT_ERROR, e.getMessage());
       return false;
     }
   }
@@ -117,7 +118,7 @@ public class SchemaRegionListeningQueue extends AbstractPipeListeningQueue {
     try {
       super.deserializeFromFile(new File(snapshotDir, SNAPSHOT_FILE_NAME));
     } catch (final Exception e) {
-      LOGGER.error("Failed to load snapshot {}", e.getMessage());
+      LOGGER.error(DataNodePipeMessages.FAILED_TO_LOAD_SNAPSHOT, e.getMessage());
     }
   }
 }

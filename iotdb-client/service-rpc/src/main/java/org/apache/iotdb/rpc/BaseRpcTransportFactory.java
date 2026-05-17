@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.rpc;
 
+import org.apache.iotdb.rpc.i18n.RpcMessages;
+
 import org.apache.thrift.transport.TMemoryInputTransport;
 import org.apache.thrift.transport.TSSLTransportFactory;
 import org.apache.thrift.transport.TSocket;
@@ -103,7 +105,7 @@ public class BaseRpcTransportFactory extends TTransportFactory {
       params.setTrustStore(trustStore, trustStorePwd);
       params.setKeyStore(keyStore, keyStorePwd);
     } else {
-      throw new TTransportException(new IOException("Could not load keystore or truststore file"));
+      throw new TTransportException(new IOException(RpcMessages.COULD_NOT_LOAD_KEYSTORE));
     }
     TTransport transport = TSSLTransportFactory.getClientSocket(ip, port, timeout, params);
     return inner.getTransport(transport);

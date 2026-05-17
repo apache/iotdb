@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.agent.task.connection.PipeEventCollector;
 import org.apache.iotdb.db.pipe.agent.task.execution.PipeSubtaskExecutorManager;
@@ -227,7 +228,7 @@ public abstract class SubscriptionPrefetchingQueue {
             },
             SubscriptionAgent.receiver().remainingMs());
       } catch (final Exception e) {
-        LOGGER.warn("Exception {} occurred when {} execute receiver subtask", this, e, e);
+        LOGGER.warn(DataNodeMiscMessages.EXCEPTION_EXECUTE_RECEIVER_SUBTASK, this, e, e);
       }
     }
 
@@ -400,7 +401,7 @@ public abstract class SubscriptionPrefetchingQueue {
     if (System.currentTimeMillis() - lastStateReportTimestamp
         > SubscriptionConfig.getInstance().getSubscriptionLogManagerBaseIntervalMs()
             * SubscriptionAgent.broker().getPrefetchingQueueCount()) {
-      LOGGER.info("Subscription: SubscriptionPrefetchingQueue state {}", this);
+      LOGGER.info(DataNodeMiscMessages.SUBSCRIPTION_PREFETCHING_QUEUE_STATE, this);
       lastStateReportTimestamp = System.currentTimeMillis();
     }
   }
@@ -670,7 +671,7 @@ public abstract class SubscriptionPrefetchingQueue {
           new SubscriptionTsFileToTabletIterator(
               (PipeTsFileInsertionEvent) event, tabletInsertionEventsIterator);
     } catch (final PipeException e) {
-      LOGGER.warn("Exception {} occurred when {} construct ToTabletIterator", this, e, e);
+      LOGGER.warn(DataNodeMiscMessages.EXCEPTION_CONSTRUCT_TABLET_ITERATOR, this, e, e);
       currentTsFileInsertionEvent = event;
     }
   }

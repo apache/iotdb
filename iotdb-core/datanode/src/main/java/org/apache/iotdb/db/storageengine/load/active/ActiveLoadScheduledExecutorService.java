@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.concurrent.WrappedRunnable;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
@@ -64,7 +65,7 @@ public abstract class ActiveLoadScheduledExecutorService {
                 try {
                   runnable.run();
                 } catch (Exception e) {
-                  LOGGER.warn("Error occurred when executing active load periodical job.", e);
+                  LOGGER.warn(StorageEngineMessages.ERROR_EXECUTING_ACTIVE_LOAD_JOB, e);
                 }
               }
             },
@@ -80,7 +81,7 @@ public abstract class ActiveLoadScheduledExecutorService {
               MIN_EXECUTION_INTERVAL_SECONDS,
               MIN_EXECUTION_INTERVAL_SECONDS,
               TimeUnit.SECONDS);
-      LOGGER.info("Active load periodical jobs executor is started successfully.");
+      LOGGER.info(StorageEngineMessages.ACTIVE_LOAD_EXECUTOR_STARTED);
     }
   }
 
@@ -94,7 +95,7 @@ public abstract class ActiveLoadScheduledExecutorService {
     if (future != null) {
       future.cancel(false);
       future = null;
-      LOGGER.info("Active load periodical jobs executor is stopped successfully.");
+      LOGGER.info(StorageEngineMessages.ACTIVE_LOAD_EXECUTOR_STOPPED);
     }
   }
 }

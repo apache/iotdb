@@ -30,6 +30,7 @@ import org.apache.iotdb.rpc.subscription.exception.SubscriptionPollTimeoutExcept
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionRuntimeCriticalException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionRuntimeNonCriticalException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionTimeoutException;
+import org.apache.iotdb.rpc.subscription.i18n.SubscriptionMessages;
 import org.apache.iotdb.rpc.subscription.payload.poll.ErrorPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.FileInitPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.FilePiecePayload;
@@ -805,7 +806,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
           for (final SubscriptionPollResponse response : currentResponses) {
             final short responseType = response.getResponseType();
             if (!SubscriptionPollResponseType.isValidatedResponseType(responseType)) {
-              LOGGER.warn("unexpected response type: {}", responseType);
+              LOGGER.warn(SubscriptionMessages.UNEXPECTED_RESPONSE_TYPE_WARN, responseType);
               continue;
             }
             try {
@@ -813,7 +814,8 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
                   .getOrDefault(
                       SubscriptionPollResponseType.valueOf(responseType),
                       (resp, ignored) -> {
-                        LOGGER.warn("unexpected response type: {}", responseType);
+                        LOGGER.warn(
+                            SubscriptionMessages.UNEXPECTED_RESPONSE_TYPE_WARN, responseType);
                         return Optional.empty();
                       })
                   // TODO: reuse previous timer?
@@ -1508,14 +1510,14 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
               if (isClosed()) {
                 if (Objects.nonNull(future[0])) {
                   future[0].cancel(false);
-                  LOGGER.info("SubscriptionConsumer {} cancel heartbeat worker", this);
+                  LOGGER.info(SubscriptionMessages.CONSUMER_CANCEL_HEARTBEAT_WORKER, this);
                 }
                 return;
               }
               providers.heartbeat(this);
             },
             heartbeatIntervalMs);
-    LOGGER.info("SubscriptionConsumer {} submit heartbeat worker", this);
+    LOGGER.info(SubscriptionMessages.CONSUMER_SUBMIT_HEARTBEAT_WORKER, this);
   }
 
   /////////////////////////////// sync endpoints ///////////////////////////////
@@ -1528,14 +1530,14 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
               if (isClosed()) {
                 if (Objects.nonNull(future[0])) {
                   future[0].cancel(false);
-                  LOGGER.info("SubscriptionConsumer {} cancel endpoints syncer", this);
+                  LOGGER.info(SubscriptionMessages.CONSUMER_CANCEL_ENDPOINTS_SYNCER, this);
                 }
                 return;
               }
               providers.sync(this);
             },
             endpointsSyncIntervalMs);
-    LOGGER.info("SubscriptionConsumer {} submit endpoints syncer", this);
+    LOGGER.info(SubscriptionMessages.CONSUMER_SUBMIT_ENDPOINTS_SYNCER, this);
   }
 
   /////////////////////////////// commit async ///////////////////////////////

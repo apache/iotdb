@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.sink.protocol.airgap;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.sink.limiter.TsFileSendRateLimiter;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.deletion.PipeDeleteDataNodeEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
@@ -124,14 +125,15 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
     // PipeProcessor can change the type of tsFileInsertionEvent
     if (!(tsFileInsertionEvent instanceof PipeTsFileInsertionEvent)) {
       LOGGER.warn(
-          "IoTDBDataRegionAirGapConnector only support PipeTsFileInsertionEvent. Ignore {}.",
+          DataNodePipeMessages
+              .IOTDBDATAREGIONAIRGAPCONNECTOR_ONLY_SUPPORT_PIPETSFILEINSERTIONEVENT_IGNORE,
           tsFileInsertionEvent);
       return;
     }
 
     if (!((PipeTsFileInsertionEvent) tsFileInsertionEvent).waitForTsFileClose()) {
       LOGGER.warn(
-          "Pipe skipping temporary TsFile which shouldn't be transferred: {}",
+          DataNodePipeMessages.PIPE_SKIPPING_TEMPORARY_TSFILE_WHICH_SHOULDN_T,
           ((PipeTsFileInsertionEvent) tsFileInsertionEvent).getTsFile());
       return;
     }
@@ -163,7 +165,8 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
         doTransferWrapper(socket, (PipeDeleteDataNodeEvent) event);
       } else if (!(event instanceof PipeHeartbeatEvent || event instanceof PipeTerminateEvent)) {
         LOGGER.warn(
-            "IoTDBDataRegionAirGapConnector does not support transferring generic event: {}.",
+            DataNodePipeMessages
+                .IOTDBDATAREGIONAIRGAPCONNECTOR_DOES_NOT_SUPPORT_TRANSFERRING_GENERIC_EVENT,
             event);
       }
     } catch (final IOException e) {
@@ -341,14 +344,14 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
               tsFile.length(),
               pipeTsFileInsertionEvent.isTableModelEvent()
                   ? pipeTsFileInsertionEvent.getTableModelDatabaseName()
-                  : null))) {
+                  : pipeTsFileInsertionEvent.getTreeModelDatabaseName()))) {
         receiverStatusHandler.handle(
             new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
                 .setMessage(errorMessage),
             errorMessage,
             pipeTsFileInsertionEvent.toString());
       } else {
-        LOGGER.info("Successfully transferred file {}.", tsFile);
+        LOGGER.info(DataNodePipeMessages.SUCCESSFULLY_TRANSFERRED_FILE, tsFile);
       }
     } else {
       transferFilePieces(pipeName, creationTime, tsFile, socket, false);
@@ -362,14 +365,14 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
               tsFile.length(),
               pipeTsFileInsertionEvent.isTableModelEvent()
                   ? pipeTsFileInsertionEvent.getTableModelDatabaseName()
-                  : null))) {
+                  : pipeTsFileInsertionEvent.getTreeModelDatabaseName()))) {
         receiverStatusHandler.handle(
             new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
                 .setMessage(errorMessage),
             errorMessage,
             pipeTsFileInsertionEvent.toString());
       } else {
-        LOGGER.info("Successfully transferred file {}.", tsFile);
+        LOGGER.info(DataNodePipeMessages.SUCCESSFULLY_TRANSFERRED_FILE, tsFile);
       }
     }
   }

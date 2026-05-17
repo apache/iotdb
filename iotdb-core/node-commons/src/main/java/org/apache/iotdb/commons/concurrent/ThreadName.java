@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.commons.concurrent;
 
+import org.apache.iotdb.commons.i18n.CommonMessages;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -505,7 +507,7 @@ public enum ThreadName {
         }
       }
     }
-    LOGGER.debug("Unknown thread name: {}", givenThreadName);
+    LOGGER.debug(CommonMessages.UNKNOWN_THREAD_NAME, givenThreadName);
     return ThreadName.UNKNOWN;
   }
 }

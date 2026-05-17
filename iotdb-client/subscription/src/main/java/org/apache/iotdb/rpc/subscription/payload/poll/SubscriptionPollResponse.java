@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.rpc.subscription.payload.poll;
 
+import org.apache.iotdb.rpc.subscription.i18n.SubscriptionMessages;
+
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
@@ -104,11 +106,11 @@ public class SubscriptionPollResponse {
           payload = new WatermarkPayload().deserialize(buffer);
           break;
         default:
-          LOGGER.warn("unexpected response type: {}, payload will be null", responseType);
+          LOGGER.warn(SubscriptionMessages.UNEXPECTED_RESPONSE_TYPE, responseType);
           break;
       }
     } else {
-      LOGGER.warn("unexpected response type: {}, payload will be null", responseType);
+      LOGGER.warn(SubscriptionMessages.UNEXPECTED_RESPONSE_TYPE, responseType);
     }
 
     final SubscriptionCommitContext commitContext = SubscriptionCommitContext.deserialize(buffer);

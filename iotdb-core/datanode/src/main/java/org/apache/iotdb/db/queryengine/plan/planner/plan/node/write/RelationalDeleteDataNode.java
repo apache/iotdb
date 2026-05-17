@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.IPlanVisitor;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
@@ -232,7 +233,7 @@ public class RelationalDeleteDataNode extends AbstractDeleteDataNode {
         modEntry.serialize(buffer);
       }
     } catch (IOException e) {
-      LOGGER.error("Failed to serialize modEntry to WAL", e);
+      LOGGER.error(DataNodeQueryMessages.FAILED_TO_SERIALIZE_MODENTRY_TO_WAL, e);
     }
   }
 
@@ -323,7 +324,7 @@ public class RelationalDeleteDataNode extends AbstractDeleteDataNode {
                 this.getDatabaseName() != null
                     && !this.getDatabaseName()
                         .equals(relationalDeleteDataNode.getDatabaseName()))) {
-      throw new IllegalArgumentException("All database name need to be same");
+      throw new IllegalArgumentException(DataNodeQueryMessages.ALL_DATABASE_NAME_NEED_TO_BE_SAME);
     }
     List<TableDeletionEntry> allTableDeletionEntries =
         relationalDeleteDataNodeList.stream()

@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.config.RatisConfig;
+import org.apache.iotdb.consensus.i18n.ConsensusMessages;
 import org.apache.iotdb.rpc.AutoScalingBufferWriteTransport;
 
 import org.apache.ratis.client.RaftClientConfigKeys;
@@ -397,11 +398,11 @@ public class Utils {
             new NoHostnameVerificationTrustManager((X509TrustManager) originalTrustManager);
         GrpcConfigKeys.TLS.setConf(parameters, new GrpcTlsConfig(keyManager, trustManager, true));
       } catch (AccessDeniedException e) {
-        LOGGER.error("Failed or truststore to load keystore file");
+        LOGGER.error(ConsensusMessages.FAILED_TO_LOAD_KEYSTORE);
       } catch (FileNotFoundException e) {
-        LOGGER.error("keystore or truststore file not found");
+        LOGGER.error(ConsensusMessages.KEYSTORE_FILE_NOT_FOUND);
       } catch (Exception e) {
-        LOGGER.error("Failed to read key store or trust store.", e);
+        LOGGER.error(ConsensusMessages.FAILED_TO_READ_KEYSTORE, e);
       }
     }
     return parameters;

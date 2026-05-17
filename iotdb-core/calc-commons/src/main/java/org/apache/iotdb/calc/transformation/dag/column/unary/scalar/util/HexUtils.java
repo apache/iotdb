@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.calc.transformation.dag.column.unary.scalar.util;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
+
 import org.apache.tsfile.common.conf.TSFileConfig;
 
 public final class HexUtils {
@@ -27,7 +29,8 @@ public final class HexUtils {
       "0123456789abcdef".getBytes(TSFileConfig.STRING_CHARSET);
 
   private HexUtils() {
-    throw new UnsupportedOperationException("This is a utility class and cannot be instantiated");
+    throw new UnsupportedOperationException(
+        CalcMessages.THIS_IS_A_UTILITY_CLASS_AND_CANNOT_BE_INSTANTIATED);
   }
 
   /**

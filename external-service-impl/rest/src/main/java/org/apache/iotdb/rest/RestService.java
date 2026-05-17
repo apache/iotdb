@@ -19,6 +19,7 @@ package org.apache.iotdb.rest;
 import org.apache.iotdb.db.conf.rest.IoTDBRestServiceConfig;
 import org.apache.iotdb.db.conf.rest.IoTDBRestServiceDescriptor;
 import org.apache.iotdb.externalservice.api.IExternalService;
+import org.apache.iotdb.rest.i18n.RestMessages;
 import org.apache.iotdb.rest.protocol.filter.ApiOriginFilter;
 
 import org.eclipse.jetty.http.HttpVersion;
@@ -108,10 +109,10 @@ public class RestService implements IExternalService {
     try {
       server.start();
     } catch (Exception e) {
-      LOGGER.warn("RestService failed to start: {}", e.getMessage());
+      LOGGER.warn(RestMessages.REST_SERVICE_START_FAILED, e.getMessage());
       server.destroy();
     }
-    LOGGER.info("start RestService successfully");
+    LOGGER.info(RestMessages.REST_SERVICE_START_SUCCESS);
   }
 
   @Override
@@ -136,7 +137,7 @@ public class RestService implements IExternalService {
     try {
       server.stop();
     } catch (Exception e) {
-      LOGGER.warn("RestService failed to stop: {}", e.getMessage());
+      LOGGER.warn(RestMessages.REST_SERVICE_STOP_FAILED, e.getMessage());
     } finally {
       server.destroy();
     }

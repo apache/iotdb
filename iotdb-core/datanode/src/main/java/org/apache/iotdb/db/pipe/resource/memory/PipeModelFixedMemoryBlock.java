@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.resource.memory;
 
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.resource.memory.strategy.DynamicMemoryAllocationStrategy;
 
 import java.util.Collections;
@@ -83,7 +84,7 @@ public class PipeModelFixedMemoryBlock extends PipeFixedMemoryBlock {
 
   synchronized void dynamicallyAdjustMemory(final PipeDynamicMemoryBlock block) {
     if (this.isReleased() || block.isReleased() || !memoryBlocks.contains(block)) {
-      throw new IllegalStateException("The memory block has been released");
+      throw new IllegalStateException(DataNodePipeMessages.THE_MEMORY_BLOCK_HAS_BEEN_RELEASED);
     }
     allocationStrategy.dynamicallyAdjustMemory(block);
   }
@@ -91,7 +92,7 @@ public class PipeModelFixedMemoryBlock extends PipeFixedMemoryBlock {
   synchronized void resetMemoryBlockSize(
       final PipeDynamicMemoryBlock block, final long memorySizeInBytes) {
     if (this.isReleased() || block.isReleased() || !memoryBlocks.contains(block)) {
-      throw new IllegalStateException("The memory block has been released");
+      throw new IllegalStateException(DataNodePipeMessages.THE_MEMORY_BLOCK_HAS_BEEN_RELEASED);
     }
 
     final long diff = memorySizeInBytes - block.getMemoryUsageInBytes();
@@ -112,7 +113,7 @@ public class PipeModelFixedMemoryBlock extends PipeFixedMemoryBlock {
 
   Stream<PipeDynamicMemoryBlock> getMemoryBlocksStream() {
     if (isReleased()) {
-      throw new IllegalStateException("The memory block has been released");
+      throw new IllegalStateException(DataNodePipeMessages.THE_MEMORY_BLOCK_HAS_BEEN_RELEASED);
     }
     return memoryBlocks.stream();
   }

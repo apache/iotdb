@@ -25,6 +25,7 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.exception.runtime.ThriftSerDeException;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.env.RemoveDataNodeHandler;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
@@ -146,7 +147,7 @@ public class RemoveDataNodesProcedure extends AbstractNodeProcedure<RemoveDataNo
       }
     } catch (Exception e) {
       if (isRollbackSupported(state)) {
-        setFailure(new ProcedureException("Remove Data Node failed " + state));
+        setFailure(new ProcedureException(ProcedureMessages.REMOVE_DATA_NODE_FAILED + state));
       } else {
         LOG.error(
             "Retrievable error trying to remove data node {}, state {}",
@@ -154,7 +155,7 @@ public class RemoveDataNodesProcedure extends AbstractNodeProcedure<RemoveDataNo
             state,
             e);
         if (getCycles() > RETRY_THRESHOLD) {
-          setFailure(new ProcedureException("State stuck at " + state));
+          setFailure(new ProcedureException(ProcedureMessages.STATE_STUCK_AT + state));
         }
       }
     }
@@ -328,7 +329,7 @@ public class RemoveDataNodesProcedure extends AbstractNodeProcedure<RemoveDataNo
         nodeStatusMap.put(dataNodeId, nodeStatus);
       }
     } catch (ThriftSerDeException e) {
-      LOG.error("Error in deserialize RemoveConfigNodeProcedure", e);
+      LOG.error(ProcedureMessages.ERROR_IN_DESERIALIZE_REMOVECONFIGNODEPROCEDURE, e);
     }
   }
 

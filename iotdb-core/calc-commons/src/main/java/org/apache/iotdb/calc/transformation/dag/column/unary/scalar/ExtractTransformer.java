@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.calc.transformation.dag.column.unary.scalar;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.calc.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.calc.transformation.dag.column.unary.UnaryColumnTransformer;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Extract;
@@ -78,7 +79,7 @@ public class ExtractTransformer extends UnaryColumnTransformer {
       case NS:
         return getExtractTimestampNsPartFunction();
       default:
-        throw new UnsupportedOperationException("Unexpected extract field: " + field);
+        throw new UnsupportedOperationException(CalcMessages.UNEXPECTED_EXTRACT_FIELD + field);
     }
   }
 

@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.rpc.subscription.payload.poll;
 
+import org.apache.iotdb.rpc.subscription.i18n.SubscriptionMessages;
+
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
@@ -128,11 +130,11 @@ public class SubscriptionPollRequest {
           payload = new PollTabletsPayload().deserialize(buffer);
           break;
         default:
-          LOGGER.warn("unexpected request type: {}, payload will be null", requestType);
+          LOGGER.warn(SubscriptionMessages.UNEXPECTED_REQUEST_TYPE, requestType);
           break;
       }
     } else {
-      LOGGER.warn("unexpected request type: {}, payload will be null", requestType);
+      LOGGER.warn(SubscriptionMessages.UNEXPECTED_REQUEST_TYPE, requestType);
     }
 
     final long timeoutMs = ReadWriteIOUtils.readLong(buffer);

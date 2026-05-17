@@ -61,6 +61,7 @@ import org.apache.iotdb.db.audit.DNAuditLogger;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.protocol.basic.BasicOpenSessionResp;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
@@ -267,7 +268,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
 
-  public static final String ERROR_CODE = "error code: ";
+  public static final String ERROR_CODE = DataNodeMiscMessages.ERROR_CODE;
   private static final String USE_ENCRYPTED_PASSWORD_KEY = "use_encrypted_password";
 
   private static final TSProtocolVersion CURRENT_RPC_VERSION =
@@ -649,7 +650,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
     @Override
     public Statement getTreeStatement(ZoneId zoneId) {
-      throw new UnsupportedOperationException("PreparedStatement is not supported for Tree model");
+      throw new UnsupportedOperationException(
+          DataNodeMiscMessages.PREPARED_STMT_NOT_SUPPORTED_FOR_TREE);
     }
 
     @Override
@@ -721,7 +723,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           String hexStr = "X'" + PreparedParameterSerde.bytesToHex(bytes) + "'";
           return new Pair<>(new BinaryLiteral(bytes), hexStr);
         default:
-          throw new IllegalArgumentException("Unknown parameter type: " + param.type);
+          throw new IllegalArgumentException(
+              DataNodeMiscMessages.UNKNOWN_PARAMETER_TYPE + param.type);
       }
     }
   }
@@ -1450,7 +1453,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         finished = true;
-        throw new RuntimeException("error code: " + result.status);
+        throw new RuntimeException(DataNodeMiscMessages.ERROR_CODE + result.status);
       }
 
       IQueryExecution queryExecution = COORDINATOR.getQueryExecution(queryId);
@@ -1665,7 +1668,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       } else if ("table".equalsIgnoreCase(sqlDialect)) {
         return SqlDialect.TABLE;
       } else {
-        throw new IllegalArgumentException("Unknown sql_dialect: " + sqlDialect);
+        throw new IllegalArgumentException(DataNodeMiscMessages.UNKNOWN_SQL_DIALECT + sqlDialect);
       }
     } else {
       return SqlDialect.TREE;
@@ -1811,7 +1814,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     properties.setVersion(IoTDBConstant.VERSION);
     properties.setLogo(IoTDBConstant.LOGO);
     properties.setBuildInfo(IoTDBConstant.BUILD_INFO);
-    LOGGER.info("IoTDB server version: {}", IoTDBConstant.VERSION_WITH_BUILD);
+    LOGGER.info(DataNodeMiscMessages.IOTDB_SERVER_VERSION, IoTDBConstant.VERSION_WITH_BUILD);
     properties.setSupportedTimeAggregationOperations(new ArrayList<>());
     properties.getSupportedTimeAggregationOperations().add(IoTDBConstant.MAX_TIME);
     properties.getSupportedTimeAggregationOperations().add(IoTDBConstant.MIN_TIME);
@@ -2254,7 +2257,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
           results.add(result.status);
         } catch (Exception e) {
-          LOGGER.warn("Error occurred when executing executeBatchStatement: ", e);
+          LOGGER.warn(DataNodeMiscMessages.ERROR_EXECUTING_BATCH_STATEMENT, e);
           TSStatus status =
               onQueryException(
                   e, "\"" + statement + "\". " + OperationType.EXECUTE_BATCH_STATEMENT);
@@ -2857,43 +2860,43 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   @Override
   public TSStatus testInsertTablet(TSInsertTabletReq req) {
-    LOGGER.debug("Test insert batch request receive.");
+    LOGGER.debug(DataNodeMiscMessages.TEST_INSERT_BATCH_RECEIVE);
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
   @Override
   public TSStatus testInsertTablets(TSInsertTabletsReq req) {
-    LOGGER.debug("Test insert batch request receive.");
+    LOGGER.debug(DataNodeMiscMessages.TEST_INSERT_BATCH_RECEIVE);
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
   @Override
   public TSStatus testInsertRecord(TSInsertRecordReq req) {
-    LOGGER.debug("Test insert row request receive.");
+    LOGGER.debug(DataNodeMiscMessages.TEST_INSERT_ROW_RECEIVE);
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
   @Override
   public TSStatus testInsertStringRecord(TSInsertStringRecordReq req) {
-    LOGGER.debug("Test insert string record request receive.");
+    LOGGER.debug(DataNodeMiscMessages.TEST_INSERT_STRING_RECORD_RECEIVE);
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
   @Override
   public TSStatus testInsertRecords(TSInsertRecordsReq req) {
-    LOGGER.debug("Test insert row in batch request receive.");
+    LOGGER.debug(DataNodeMiscMessages.TEST_INSERT_ROW_IN_BATCH_RECEIVE);
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
   @Override
   public TSStatus testInsertRecordsOfOneDevice(TSInsertRecordsOfOneDeviceReq req) {
-    LOGGER.debug("Test insert rows in batch request receive.");
+    LOGGER.debug(DataNodeMiscMessages.TEST_INSERT_ROWS_IN_BATCH_RECEIVE);
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
   @Override
   public TSStatus testInsertStringRecords(TSInsertStringRecordsReq req) {
-    LOGGER.debug("Test insert string records request receive.");
+    LOGGER.debug(DataNodeMiscMessages.TEST_INSERT_STRING_RECORDS_RECEIVE);
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
@@ -3188,7 +3191,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           try {
             tsBlock = queryExecution.getBatchResult();
           } catch (IoTDBException e) {
-            throw new RuntimeException("Fetch Schema failed. ", e);
+            throw new RuntimeException(DataNodeMiscMessages.FETCH_SCHEMA_FAILED, e);
           }
           if (!tsBlock.isPresent() || tsBlock.get().isEmpty()) {
             break;
@@ -3546,7 +3549,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
                 AuditEventType.LOGOUT,
                 AuditLogOperation.CONTROL,
                 true),
-            () -> String.format("Session-%s is closing", session));
+            () -> String.format(DataNodeMiscMessages.SESSION_CLOSING, session));
       }
       closeSession(req);
     }
@@ -3582,19 +3585,13 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     final int totalSubStatements = subStatements.size();
     boolean debug = statement.isDebug();
 
-    LOGGER.info(
-        "Start batch executing {} sub-statement(s) in tree model, queryId: {}",
-        totalSubStatements,
-        queryId);
+    LOGGER.info(DataNodeMiscMessages.START_BATCH_EXECUTING_TREE, totalSubStatements, queryId);
 
     for (int i = 0; i < totalSubStatements; i++) {
       final Statement subStatement = subStatements.get(i);
 
       LOGGER.info(
-          "Executing sub-statement {}/{} in tree model, queryId: {}",
-          i + 1,
-          totalSubStatements,
-          queryId);
+          DataNodeMiscMessages.EXECUTING_SUB_STATEMENT_TREE, i + 1, totalSubStatements, queryId);
 
       result =
           COORDINATOR.executeForTreeModel(
@@ -3615,7 +3612,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         final int remaining = totalSubStatements - completed;
         final double percentage = (completed * 100.0) / totalSubStatements;
         LOGGER.warn(
-            "Failed to execute sub-statement {}/{} in tree model, queryId: {}, completed: {}, remaining: {}, progress: {}%, error: {}",
+            DataNodeMiscMessages.FAILED_EXECUTE_SUB_STATEMENT_TREE,
             i + 1,
             totalSubStatements,
             queryId,
@@ -3627,17 +3624,14 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       }
 
       LOGGER.info(
-          "Successfully executed sub-statement {}/{} in tree model, queryId: {}",
+          DataNodeMiscMessages.SUCCESSFULLY_EXECUTED_SUB_STATEMENT_TREE,
           i + 1,
           totalSubStatements,
           queryId);
     }
 
     if (result != null && result.status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      LOGGER.info(
-          "Completed batch executing all {} sub-statement(s) in tree model, queryId: {}",
-          totalSubStatements,
-          queryId);
+      LOGGER.info(DataNodeMiscMessages.COMPLETED_BATCH_EXECUTING_TREE, totalSubStatements, queryId);
     }
 
     return result;
@@ -3671,20 +3665,14 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     List<? extends org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement>
         subStatements = statement.getSubStatements();
     int totalSubStatements = subStatements.size();
-    LOGGER.info(
-        "Start batch executing {} sub-statement(s) in table model, queryId: {}",
-        totalSubStatements,
-        queryId);
+    LOGGER.info(DataNodeMiscMessages.START_BATCH_EXECUTING_TABLE, totalSubStatements, queryId);
 
     for (int i = 0; i < totalSubStatements; i++) {
       final org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Statement subStatement =
           subStatements.get(i);
 
       LOGGER.info(
-          "Executing sub-statement {}/{} in table model, queryId: {}",
-          i + 1,
-          totalSubStatements,
-          queryId);
+          DataNodeMiscMessages.EXECUTING_SUB_STATEMENT_TABLE, i + 1, totalSubStatements, queryId);
 
       result =
           COORDINATOR.executeForTableModel(
@@ -3706,7 +3694,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         final int remaining = totalSubStatements - completed;
         final double percentage = (completed * 100.0) / totalSubStatements;
         LOGGER.warn(
-            "Failed to execute sub-statement {}/{} in table model, queryId: {}, completed: {}, remaining: {}, progress: {}%, error: {}",
+            DataNodeMiscMessages.FAILED_EXECUTE_SUB_STATEMENT_TABLE,
             i + 1,
             totalSubStatements,
             queryId,
@@ -3718,7 +3706,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       }
 
       LOGGER.info(
-          "Successfully executed sub-statement {}/{} in table model, queryId: {}",
+          DataNodeMiscMessages.SUCCESSFULLY_EXECUTED_SUB_STATEMENT_TABLE,
           i + 1,
           totalSubStatements,
           queryId);
@@ -3726,9 +3714,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
     if (result != null && result.status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.info(
-          "Completed batch executing all {} sub-statement(s) in table model, queryId: {}",
-          totalSubStatements,
-          queryId);
+          DataNodeMiscMessages.COMPLETED_BATCH_EXECUTING_TABLE, totalSubStatements, queryId);
     }
 
     return result;

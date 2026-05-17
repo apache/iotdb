@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.memory.MemoryBlockType;
 import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.service.metrics.memory.StorageEngineMemoryMetrics;
 import org.apache.iotdb.db.utils.datastructure.TVListSortAlgorithm;
 
@@ -92,7 +93,8 @@ public class PrimitiveArrayManager {
   }
 
   private static void init() {
-    LOGGER.info("BufferedArraySizeThreshold is {}", POOLED_ARRAYS_MEMORY_THRESHOLD);
+    LOGGER.info(
+        StorageEngineMessages.BUFFERED_ARRAY_SIZE_THRESHOLD, POOLED_ARRAYS_MEMORY_THRESHOLD);
 
     // POOLED_ARRAYS_MEMORY_THRESHOLD = ∑(datatype[i].getDataTypeSize() * ARRAY_SIZE * LIMITS[i])
     // we init all LIMITS[i] with the same value, so we have

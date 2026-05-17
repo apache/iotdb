@@ -30,6 +30,7 @@ import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.common.request.DeserializedBatchIndexedConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IoTConsensusRequest;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -119,8 +120,9 @@ public class IoTConsensusDataRegionStateMachine extends DataRegionStateMachine {
     } else if (request instanceof PlanNode) {
       node = (PlanNode) request;
     } else {
-      LOGGER.error("Unexpected IConsensusRequest : {}", request);
-      throw new IllegalArgumentException("Unexpected IConsensusRequest!");
+      LOGGER.error(DataNodeMiscMessages.UNEXPECTED_CONSENSUS_REQUEST, request);
+      throw new IllegalArgumentException(
+          DataNodeMiscMessages.UNEXPECTED_CONSENSUS_REQUEST_EXCEPTION);
     }
     return node;
   }

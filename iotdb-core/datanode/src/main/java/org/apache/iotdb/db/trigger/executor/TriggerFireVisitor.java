@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.trigger.TriggerTable;
 import org.apache.iotdb.commons.trigger.exception.TriggerExecutionException;
 import org.apache.iotdb.confignode.rpc.thrift.TTriggerState;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
@@ -370,7 +371,7 @@ public class TriggerFireVisitor implements PlanVisitor<TriggerFireResult, Trigge
           // update TDataNodeLocation of stateful trigger through config node
           updateLocationOfStatefulTrigger(triggerName, tDataNodeLocation.getDataNodeId());
         } catch (InterruptedException e) {
-          LOGGER.warn("{} interrupted when sleep", triggerName);
+          LOGGER.warn(DataNodeMiscMessages.TRIGGER_INTERRUPTED_SLEEP, triggerName);
           Thread.currentThread().interrupt();
         } catch (Exception e) {
           LOGGER.warn(

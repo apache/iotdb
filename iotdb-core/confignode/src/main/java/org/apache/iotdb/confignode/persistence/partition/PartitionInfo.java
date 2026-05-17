@@ -62,6 +62,7 @@ import org.apache.iotdb.confignode.consensus.response.partition.RegionInfoListRe
 import org.apache.iotdb.confignode.consensus.response.partition.SchemaNodeManagementResp;
 import org.apache.iotdb.confignode.consensus.response.partition.SchemaPartitionResp;
 import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionMaintainTask;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
@@ -198,7 +199,8 @@ public class PartitionInfo implements SnapshotProcessor {
             (database, regionReplicaSets) -> {
               if (isDatabasePreDeleted(database)) {
                 LOGGER.warn(
-                    "[CreateRegionGroups] Database {} has been deleted, corresponding RegionGroups will not be created.",
+                    ConfigNodeMessages
+                        .CREATEREGIONGROUPS_DATABASE_HAS_BEEN_DELETED_CORRESPONDING_REGIONGROUPS,
                     database);
                 return;
               }
@@ -982,7 +984,7 @@ public class PartitionInfo implements SnapshotProcessor {
     File snapshotFile = new File(snapshotDir, SNAPSHOT_FILENAME);
     if (snapshotFile.exists() && snapshotFile.isFile()) {
       LOGGER.error(
-          "Failed to take snapshot, because snapshot file [{}] is already exist.",
+          ConfigNodeMessages.FAILED_TO_TAKE_SNAPSHOT_BECAUSE_SNAPSHOT_FILE_IS_ALREADY_EXIST,
           snapshotFile.getAbsolutePath());
       return false;
     }
@@ -1030,7 +1032,8 @@ public class PartitionInfo implements SnapshotProcessor {
           break;
         } else {
           LOGGER.warn(
-              "Can't delete temporary snapshot file: {}, retrying...", tmpFile.getAbsolutePath());
+              ConfigNodeMessages.CAN_T_DELETE_TEMPORARY_SNAPSHOT_FILE_RETRYING,
+              tmpFile.getAbsolutePath());
         }
       }
     }
@@ -1041,7 +1044,7 @@ public class PartitionInfo implements SnapshotProcessor {
     final File snapshotFile = new File(snapshotDir, SNAPSHOT_FILENAME);
     if (!snapshotFile.exists() || !snapshotFile.isFile()) {
       LOGGER.error(
-          "Failed to load snapshot,snapshot file [{}] is not exist.",
+          ConfigNodeMessages.FAILED_TO_LOAD_SNAPSHOT_SNAPSHOT_FILE_IS_NOT_EXIST_2,
           snapshotFile.getAbsolutePath());
       return;
     }
@@ -1062,7 +1065,8 @@ public class PartitionInfo implements SnapshotProcessor {
       for (int i = 0; i < length; i++) {
         final String database = ReadWriteIOUtils.readString(fileInputStream);
         if (database == null) {
-          throw new IOException("Failed to load snapshot because get null database name");
+          throw new IOException(
+              ConfigNodeMessages.FAILED_TO_LOAD_SNAPSHOT_BECAUSE_GET_NULL_DATABASE_NAME);
         }
         final DatabasePartitionTable databasePartitionTable = new DatabasePartitionTable(database);
         databasePartitionTable.deserialize(fileInputStream, protocol);

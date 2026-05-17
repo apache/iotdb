@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.schema.node.role.IInternalMNode;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeContainer;
 import org.apache.iotdb.commons.schema.node.visitor.MNodeVisitor;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.IMemMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.container.MemMNodeContainer;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.info.BasicMNodeInfo;
@@ -205,22 +206,22 @@ public class BasicMNode implements IMemMNode {
 
   @Override
   public IDatabaseMNode<IMemMNode> getAsDatabaseMNode() {
-    throw new UnsupportedOperationException("Wrong MNode Type");
+    throw new UnsupportedOperationException(DataNodeSchemaMessages.WRONG_MNODE_TYPE);
   }
 
   @Override
   public IDeviceMNode<IMemMNode> getAsDeviceMNode() {
-    throw new UnsupportedOperationException("Wrong MNode Type");
+    throw new UnsupportedOperationException(DataNodeSchemaMessages.WRONG_MNODE_TYPE);
   }
 
   @Override
   public IInternalMNode<IMemMNode> getAsInternalMNode() {
-    throw new UnsupportedOperationException("Wrong MNode Type");
+    throw new UnsupportedOperationException(DataNodeSchemaMessages.WRONG_MNODE_TYPE);
   }
 
   @Override
   public IMeasurementMNode<IMemMNode> getAsMeasurementMNode() {
-    throw new UnsupportedOperationException("Wrong MNode Type");
+    throw new UnsupportedOperationException(DataNodeSchemaMessages.WRONG_MNODE_TYPE);
   }
 
   @Override

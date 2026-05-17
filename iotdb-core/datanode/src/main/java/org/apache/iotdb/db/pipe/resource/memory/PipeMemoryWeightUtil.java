@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.resource.memory;
 
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.row.PipeRow;
 import org.apache.iotdb.db.utils.MemUtils;
 
@@ -316,7 +317,7 @@ public class PipeMemoryWeightUtil {
    */
   private static int roundUpToMultiple(int num, int n) {
     if (n == 0) {
-      throw new IllegalArgumentException("The multiple n must be greater than 0");
+      throw new IllegalArgumentException(DataNodePipeMessages.THE_MULTIPLE_N_MUST_BE_GREATER_THAN);
     }
     // Calculate the rounded up value to the nearest multiple of n
     return ((num + n - 1) / n) * n;

@@ -20,6 +20,7 @@
 package org.apache.iotdb.jdbc;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.jdbc.i18n.JdbcMessages;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -69,7 +70,7 @@ import java.util.Map;
 public class IoTDBTablePreparedStatement extends IoTDBStatement implements PreparedStatement {
 
   private static final Logger logger = LoggerFactory.getLogger(IoTDBTablePreparedStatement.class);
-  private static final String METHOD_NOT_SUPPORTED_STRING = "Method not supported";
+  private static final String METHOD_NOT_SUPPORTED_STRING = JdbcMessages.METHOD_NOT_SUPPORTED;
 
   private final String sql;
   private final String preparedStatementName;
@@ -114,7 +115,7 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
           parameterTypes[i] = Types.NULL;
         }
       } catch (TException | StatementExecutionException e) {
-        throw new SQLException("Failed to prepare statement: " + e.getMessage(), e);
+        throw new SQLException(JdbcMessages.FAILED_TO_PREPARE_STATEMENT + e.getMessage(), e);
       }
     } else {
       // For non-query statements, only keep text parameters for client-side substitution.
@@ -188,7 +189,7 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
       if (parameterTypes[i] == Types.NULL
           && parameterValues[i] == null
           && !parameters.containsKey(i + 1)) {
-        throw new SQLException("Parameter #" + (i + 1) + " is unset");
+        throw new SQLException(String.format(JdbcMessages.PARAMETER_UNSET, i + 1));
       }
     }
 
@@ -207,7 +208,7 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
       RpcUtils.verifySuccess(resp.getStatus());
       return resp;
     } catch (TException | StatementExecutionException e) {
-      throw new SQLException("Failed to execute prepared statement: " + e.getMessage(), e);
+      throw new SQLException(JdbcMessages.FAILED_TO_EXECUTE_PREPARED_STATEMENT + e.getMessage(), e);
     }
   }
 
@@ -245,10 +246,10 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
       try {
         TSStatus status = client.deallocatePreparedStatement(req);
         if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          logger.warn("Failed to deallocate prepared statement: {}", status.getMessage());
+          logger.warn(JdbcMessages.FAILED_TO_DEALLOCATE_PREPARED_STATEMENT, status.getMessage());
         }
       } catch (TException e) {
-        logger.warn("Error deallocating prepared statement", e);
+        logger.warn(JdbcMessages.ERROR_DEALLOCATING_PREPARED_STATEMENT, e);
       }
     }
     super.close();
@@ -433,7 +434,7 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
       setPreparedParameterValue(parameterIndex, time, Types.BIGINT);
       this.parameters.put(parameterIndex, Long.toString(time));
     } catch (TException e) {
-      throw new SQLException("Failed to get time precision: " + e.getMessage(), e);
+      throw new SQLException(JdbcMessages.FAILED_TO_GET_TIME_PRECISION + e.getMessage(), e);
     }
   }
 
@@ -557,7 +558,7 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
       byte[] bytes = ReadWriteIOUtils.readBytes(x, length);
       setBytes(parameterIndex, bytes);
     } catch (IOException e) {
-      throw new SQLException("Failed to read binary stream: " + e.getMessage(), e);
+      throw new SQLException(JdbcMessages.FAILED_TO_READ_BINARY_STREAM + e.getMessage(), e);
     }
   }
 
@@ -689,7 +690,7 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
     StringBuilder newSql = new StringBuilder(parts.get(0));
     for (int i = 1; i < parts.size(); i++) {
       if (!parameters.containsKey(i)) {
-        throw new SQLException("Parameter #" + i + " is unset");
+        throw new SQLException(String.format(JdbcMessages.PARAMETER_UNSET, i));
       }
       newSql.append(parameters.get(i));
       newSql.append(parts.get(i));

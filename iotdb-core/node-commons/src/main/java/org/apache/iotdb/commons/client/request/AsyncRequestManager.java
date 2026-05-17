@@ -22,6 +22,7 @@ package org.apache.iotdb.commons.client.request;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
+import org.apache.iotdb.commons.i18n.ClientMessages;
 import org.apache.iotdb.commons.utils.function.CheckedTriConsumer;
 
 import com.google.common.collect.ImmutableMap;
@@ -149,11 +150,11 @@ public abstract class AsyncRequestManager<RequestType, NodeLocation, Client> {
           requestContext.getCountDownLatch().await();
         } else {
           if (!requestContext.getCountDownLatch().await(timeoutInMs, TimeUnit.MILLISECONDS)) {
-            LOGGER.warn("Timeout during {}. Retry: {}/{}", requestType, retry, retryNum);
+            LOGGER.warn(ClientMessages.ASYNC_REQUEST_TIMEOUT, requestType, retry, retryNum);
           }
         }
       } catch (final InterruptedException e) {
-        LOGGER.error("Interrupted during {}. Retry: {}/{}", requestType, retry, retryNum);
+        LOGGER.error(ClientMessages.ASYNC_REQUEST_INTERRUPTED, requestType, retry, retryNum);
         Thread.currentThread().interrupt();
       }
 
@@ -165,7 +166,7 @@ public abstract class AsyncRequestManager<RequestType, NodeLocation, Client> {
 
     if (!requestContext.getRequestIndices().isEmpty() && !keepSilent) {
       LOGGER.warn(
-          "Failed to {} after {} retries, requestIndices: {}",
+          ClientMessages.ASYNC_REQUEST_FAILED_AFTER_RETRIES,
           requestType,
           retryNum,
           requestContext.getRequestIndices());
@@ -193,7 +194,7 @@ public abstract class AsyncRequestManager<RequestType, NodeLocation, Client> {
           .accept(req, client, handler);
     } catch (Exception e) {
       LOGGER.warn(
-          "{} failed on Node {}, because {}, retrying {}...",
+          ClientMessages.ASYNC_REQUEST_FAILED_ON_NODE,
           requestContext.getRequestType(),
           nodeLocationToEndPoint(targetNode),
           e.getMessage(),
