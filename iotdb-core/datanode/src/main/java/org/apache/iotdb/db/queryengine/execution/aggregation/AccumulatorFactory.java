@@ -22,10 +22,14 @@ package org.apache.iotdb.db.queryengine.execution.aggregation;
 import org.apache.iotdb.calc.execution.aggregation.Accumulator;
 import org.apache.iotdb.calc.execution.aggregation.BinaryModeAccumulator;
 import org.apache.iotdb.calc.execution.aggregation.BooleanModeAccumulator;
+import org.apache.iotdb.calc.execution.aggregation.CentralMomentAccumulator;
+import org.apache.iotdb.calc.execution.aggregation.CorrelationAccumulator;
+import org.apache.iotdb.calc.execution.aggregation.CovarianceAccumulator;
 import org.apache.iotdb.calc.execution.aggregation.DoubleModeAccumulator;
 import org.apache.iotdb.calc.execution.aggregation.FloatModeAccumulator;
 import org.apache.iotdb.calc.execution.aggregation.IntModeAccumulator;
 import org.apache.iotdb.calc.execution.aggregation.LongModeAccumulator;
+import org.apache.iotdb.calc.execution.aggregation.RegressionAccumulator;
 import org.apache.iotdb.calc.execution.aggregation.VarianceAccumulator;
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -78,6 +82,11 @@ public class AccumulatorFactory {
     switch (aggregationType) {
       case MAX_BY:
       case MIN_BY:
+      case CORR:
+      case COVAR_POP:
+      case COVAR_SAMP:
+      case REGR_SLOPE:
+      case REGR_INTERCEPT:
         return true;
       default:
         return false;
@@ -93,6 +102,31 @@ public class AccumulatorFactory {
       case MIN_BY:
         checkState(inputDataTypes.size() == 2, "Wrong inputDataTypes size.");
         return new MinByAccumulator(inputDataTypes.get(0), inputDataTypes.get(1));
+      case CORR:
+        checkState(inputDataTypes.size() == 2, "Wrong inputDataTypes size.");
+        return new CorrelationAccumulator(
+            new TSDataType[] {inputDataTypes.get(0), inputDataTypes.get(1)},
+            CorrelationAccumulator.CorrelationType.CORR);
+      case COVAR_POP:
+        checkState(inputDataTypes.size() == 2, "Wrong inputDataTypes size.");
+        return new CovarianceAccumulator(
+            new TSDataType[] {inputDataTypes.get(0), inputDataTypes.get(1)},
+            CovarianceAccumulator.CovarianceType.COVAR_POP);
+      case COVAR_SAMP:
+        checkState(inputDataTypes.size() == 2, "Wrong inputDataTypes size.");
+        return new CovarianceAccumulator(
+            new TSDataType[] {inputDataTypes.get(0), inputDataTypes.get(1)},
+            CovarianceAccumulator.CovarianceType.COVAR_SAMP);
+      case REGR_SLOPE:
+        checkState(inputDataTypes.size() == 2, "Wrong inputDataTypes size.");
+        return new RegressionAccumulator(
+            new TSDataType[] {inputDataTypes.get(0), inputDataTypes.get(1)},
+            RegressionAccumulator.RegressionType.REGR_SLOPE);
+      case REGR_INTERCEPT:
+        checkState(inputDataTypes.size() == 2, "Wrong inputDataTypes size.");
+        return new RegressionAccumulator(
+            new TSDataType[] {inputDataTypes.get(0), inputDataTypes.get(1)},
+            RegressionAccumulator.RegressionType.REGR_INTERCEPT);
       default:
         throw new IllegalArgumentException(
             DataNodeQueryMessages.INVALID_AGGREGATION_FUNCTION + aggregationType);
@@ -150,6 +184,12 @@ public class AccumulatorFactory {
         return new VarianceAccumulator(tsDataType, VarianceAccumulator.VarianceType.VAR_SAMP);
       case VAR_POP:
         return new VarianceAccumulator(tsDataType, VarianceAccumulator.VarianceType.VAR_POP);
+      case SKEWNESS:
+        return new CentralMomentAccumulator(
+            tsDataType, CentralMomentAccumulator.MomentType.SKEWNESS);
+      case KURTOSIS:
+        return new CentralMomentAccumulator(
+            tsDataType, CentralMomentAccumulator.MomentType.KURTOSIS);
       default:
         throw new IllegalArgumentException(
             DataNodeQueryMessages.INVALID_AGGREGATION_FUNCTION + aggregationType);

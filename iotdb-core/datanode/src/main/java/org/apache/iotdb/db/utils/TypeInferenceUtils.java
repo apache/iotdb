@@ -155,6 +155,13 @@ public class TypeInferenceUtils {
       case SqlConstant.VARIANCE:
       case SqlConstant.VAR_POP:
       case SqlConstant.VAR_SAMP:
+      case SqlConstant.CORR:
+      case SqlConstant.COVAR_POP:
+      case SqlConstant.COVAR_SAMP:
+      case SqlConstant.REGR_SLOPE:
+      case SqlConstant.REGR_INTERCEPT:
+      case SqlConstant.SKEWNESS:
+      case SqlConstant.KURTOSIS:
         return TSDataType.DOUBLE;
       default:
         throw new IllegalArgumentException(
@@ -191,7 +198,27 @@ public class TypeInferenceUtils {
           return;
         }
         throw new SemanticException(
-            "Aggregate functions [AVG, SUM, EXTREME, STDDEV, STDDEV_POP, STDDEV_SAMP, VARIANCE, VAR_POP, VAR_SAMP] only support numeric data types [INT32, INT64, FLOAT, DOUBLE]");
+            "Aggregate functions [AVG, SUM, EXTREME, STDDEV, STDDEV_POP, STDDEV_SAMP, "
+                + "VARIANCE, VAR_POP, VAR_SAMP] only support "
+                + "numeric data types [INT32, INT64, FLOAT, DOUBLE]");
+      case SqlConstant.SKEWNESS:
+      case SqlConstant.KURTOSIS:
+        if (dataType.isNumeric() || TSDataType.TIMESTAMP.equals(dataType)) {
+          return;
+        }
+        throw new SemanticException(
+            "Aggregate functions [SKEWNESS, KURTOSIS] only support "
+                + "numeric data types [INT32, INT64, FLOAT, DOUBLE, TIMESTAMP]");
+      /**
+       * For the two-argument aggregation functions CORR, COVAR_POP, COVAR_SAMP, REGR_SLOPE, and
+       * REGR_INTERCEPT, type validation is performed in
+       * verifyIsAggregationDataTypeMatchedForBothInputs.
+       */
+      case SqlConstant.CORR:
+      case SqlConstant.COVAR_POP:
+      case SqlConstant.COVAR_SAMP:
+      case SqlConstant.REGR_SLOPE:
+      case SqlConstant.REGR_INTERCEPT:
       case SqlConstant.COUNT:
       case SqlConstant.COUNT_TIME:
       case SqlConstant.MIN_TIME:
@@ -214,6 +241,30 @@ public class TypeInferenceUtils {
       default:
         throw new IllegalArgumentException(
             DataNodeMiscMessages.INVALID_AGGREGATION_FUNCTION + aggrFuncName);
+    }
+  }
+
+  public static void verifyIsAggregationDataTypeMatchedForBothInputs(
+      String aggrFuncName, TSDataType firstDataType, TSDataType secondDataType) {
+    switch (aggrFuncName.toLowerCase()) {
+      case SqlConstant.CORR:
+      case SqlConstant.COVAR_POP:
+      case SqlConstant.COVAR_SAMP:
+      case SqlConstant.REGR_SLOPE:
+      case SqlConstant.REGR_INTERCEPT:
+        if ((firstDataType != null
+                && !firstDataType.isNumeric()
+                && !TSDataType.TIMESTAMP.equals(firstDataType))
+            || (secondDataType != null
+                && !secondDataType.isNumeric()
+                && !TSDataType.TIMESTAMP.equals(secondDataType))) {
+          throw new SemanticException(
+              "Aggregate functions [CORR, COVAR_POP, COVAR_SAMP, REGR_SLOPE, REGR_INTERCEPT] only support "
+                  + "numeric data types [INT32, INT64, FLOAT, DOUBLE, TIMESTAMP]");
+        }
+        return;
+      default:
+        break;
     }
   }
 
@@ -247,6 +298,13 @@ public class TypeInferenceUtils {
       case SqlConstant.VARIANCE:
       case SqlConstant.VAR_POP:
       case SqlConstant.VAR_SAMP:
+      case SqlConstant.CORR:
+      case SqlConstant.COVAR_POP:
+      case SqlConstant.COVAR_SAMP:
+      case SqlConstant.REGR_SLOPE:
+      case SqlConstant.REGR_INTERCEPT:
+      case SqlConstant.SKEWNESS:
+      case SqlConstant.KURTOSIS:
       case SqlConstant.MAX_BY:
       case SqlConstant.MIN_BY:
         return;
