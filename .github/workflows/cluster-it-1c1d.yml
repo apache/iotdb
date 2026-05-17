@@ -29,6 +29,9 @@ env:
   MAVEN_ARGS: --batch-mode --no-transfer-progress
   DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
 
+permissions:
+  contents: read
+
 jobs:
   # Ubuntu runs all ITs in a single job (already fast at ~49 min)
   Ubuntu:
