@@ -39,6 +39,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.StringLitera
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
@@ -170,7 +171,8 @@ public class AnalyzeUtils {
       }
       return computeDataPartitionParams(timePartitionSlotMap, getDatabaseName(statement, context));
     }
-    throw new UnsupportedOperationException("computeDataPartitionParams for " + statement);
+    throw new UnsupportedOperationException(
+        DataNodeQueryMessages.COMPUTEDATAPARTITIONPARAMS_FOR + statement);
   }
 
   public static List<DataPartitionQueryParam> computeTreeDataPartitionParams(
@@ -207,7 +209,8 @@ public class AnalyzeUtils {
       return computeDataPartitionParams(
           dataPartitionQueryParamMap, getDatabaseName(statement, context));
     }
-    throw new UnsupportedOperationException("computeDataPartitionParams for " + statement);
+    throw new UnsupportedOperationException(
+        DataNodeQueryMessages.COMPUTEDATAPARTITIONPARAMS_FOR + statement);
   }
 
   private static DataPartitionQueryParam getTreeDataPartitionQueryParam(
@@ -400,7 +403,8 @@ public class AnalyzeUtils {
       }
       return results;
     } else {
-      throw new SemanticException("Unsupported operator: " + logicalExpression.getOperator());
+      throw new SemanticException(
+          DataNodeQueryMessages.UNSUPPORTED_OPERATOR + logicalExpression.getOperator());
     }
   }
 
@@ -450,7 +454,8 @@ public class AnalyzeUtils {
       } else if (currExp instanceof IsNullPredicate) {
         tagPredicate = parseIsNull((IsNullPredicate) currExp, tagPredicate, table);
       } else {
-        throw new SemanticException("Unsupported expression: " + currExp + " in " + expression);
+        throw new SemanticException(
+            DataNodeQueryMessages.UNSUPPORTED_EXPRESSION + currExp + " in " + expression);
       }
     }
     if (tagPredicate != null) {
@@ -469,7 +474,7 @@ public class AnalyzeUtils {
   private static void parseAndPredicate(
       LogicalExpression expression, Queue<Expression> expressionQueue) {
     if (expression.getOperator() != Operator.AND) {
-      throw new SemanticException("Only support AND operator in deletion");
+      throw new SemanticException(DataNodeQueryMessages.ONLY_SUPPORT_AND_OPERATOR_IN_DELETION);
     }
     expressionQueue.addAll(expression.getTerms());
   }
@@ -478,7 +483,8 @@ public class AnalyzeUtils {
       IsNullPredicate isNullPredicate, IDPredicate oldPredicate, TsTable table) {
     Expression leftHandExp = isNullPredicate.getValue();
     if (!(leftHandExp instanceof Identifier)) {
-      throw new SemanticException("Left hand expression is not an identifier: " + leftHandExp);
+      throw new SemanticException(
+          DataNodeQueryMessages.LEFT_HAND_EXPRESSION_IS_NOT_AN_IDENTIFIER + leftHandExp);
     }
     String columnName = ((Identifier) leftHandExp).getValue();
     int tagColumnOrdinal = table.getTagColumnOrdinal(columnName);
@@ -511,7 +517,8 @@ public class AnalyzeUtils {
     Expression left = comparisonExpression.getLeft();
     Expression right = comparisonExpression.getRight();
     if (!(left instanceof Identifier)) {
-      throw new SemanticException("The left hand value must be an identifier: " + left);
+      throw new SemanticException(
+          DataNodeQueryMessages.THE_LEFT_HAND_VALUE_MUST_BE_AN_IDENTIFIER + left);
     }
     Identifier identifier = (Identifier) left;
     // time predicate
@@ -565,7 +572,8 @@ public class AnalyzeUtils {
   private static IDPredicate getTagPredicate(
       ComparisonExpression comparisonExpression, Expression right, int tagColumnOrdinal) {
     if (comparisonExpression.getOperator() != ComparisonExpression.Operator.EQUAL) {
-      throw new SemanticException("The operator of tag predicate must be '=' for " + right);
+      throw new SemanticException(
+          DataNodeQueryMessages.THE_OPERATOR_OF_TAG_PREDICATE_MUST_BE_FOR + right);
     }
 
     String rightHandValue;

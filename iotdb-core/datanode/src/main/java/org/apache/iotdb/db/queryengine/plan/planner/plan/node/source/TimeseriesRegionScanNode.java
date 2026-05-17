@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.TimeseriesContext;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 
@@ -96,7 +97,8 @@ public class TimeseriesRegionScanNode extends RegionScanNode {
 
   @Override
   public void addChild(PlanNode child) {
-    throw new UnsupportedOperationException("TimeseriesRegionScanNode does not support addChild");
+    throw new UnsupportedOperationException(
+        DataNodeQueryMessages.TIMESERIESREGIONSCANNODE_DOES_NOT_SUPPORT_ADDCHILD);
   }
 
   @Override

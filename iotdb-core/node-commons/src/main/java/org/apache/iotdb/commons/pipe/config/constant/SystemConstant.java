@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.pipe.config.constant;
 
+import org.apache.iotdb.commons.i18n.PipeMessages;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
 import java.util.HashMap;
@@ -60,6 +61,6 @@ public class SystemConstant {
   /////////////////////////////////// Private Constructor ///////////////////////////////////
 
   private SystemConstant() {
-    throw new IllegalStateException("Utility class");
+    throw new IllegalStateException(PipeMessages.UTILITY_CLASS);
   }
 }

@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeContainer;
 import org.apache.iotdb.commons.schema.node.visitor.MNodeVisitor;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateOrUpdateDevice;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterTimeSeriesStatement;
@@ -317,7 +318,7 @@ public class SRStatementGenerator implements Iterator<Object>, Iterable<Object> 
         }
         break;
       default:
-        throw new IOException("Unrecognized MNode type" + type);
+        throw new IOException(DataNodeMiscMessages.UNRECOGNIZED_MNODE_TYPE + type);
     }
 
     regionStatistics.requestMemory(node.estimateSize());
@@ -423,7 +424,7 @@ public class SRStatementGenerator implements Iterator<Object>, Iterable<Object> 
             }
           } catch (final IOException ioException) {
             lastExcept = ioException;
-            LOGGER.warn("Error when parser tag and attributes files", ioException);
+            LOGGER.warn(DataNodeMiscMessages.ERROR_PARSER_TAG_ATTRIBUTES, ioException);
           }
           node.setOffset(0);
         }
@@ -522,7 +523,7 @@ public class SRStatementGenerator implements Iterator<Object>, Iterable<Object> 
           new Pair<>(ReadWriteIOUtils.readMap(byteBuffer), ReadWriteIOUtils.readMap(byteBuffer));
       return tagsAndAttributes;
     } else {
-      LOGGER.warn("Measurement has set attributes or tags, but not find snapshot files");
+      LOGGER.warn(DataNodeMiscMessages.MEASUREMENT_ATTRIBUTES_NO_SNAPSHOT);
     }
     return null;
   }

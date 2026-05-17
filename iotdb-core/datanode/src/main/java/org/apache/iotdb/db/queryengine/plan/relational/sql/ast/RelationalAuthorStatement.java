@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.schema.table.InformationSchema;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.db.auth.AuthorityChecker;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.relational.type.AuthorRType;
 import org.apache.iotdb.db.utils.DataNodeAuthUtils;
@@ -296,7 +297,8 @@ public class RelationalAuthorStatement extends Statement {
       case LIST_USER_PRIV:
         return QueryType.READ;
       default:
-        throw new IllegalArgumentException("Unknown authorType:" + this.authorType);
+        throw new IllegalArgumentException(
+            DataNodeQueryMessages.UNKNOWN_AUTHORTYPE_2 + this.authorType);
     }
   }
 

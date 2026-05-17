@@ -35,6 +35,7 @@ import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.pipe.resource.memory.InsertNodeMemoryEstimator;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.schematree.IMeasurementSchemaInfo;
@@ -946,7 +947,8 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
           bitMaps,
           rowSize);
     } catch (final Exception e) {
-      throw new MetadataException("Failed to convert InsertTabletStatement to Tablet", e);
+      throw new MetadataException(
+          DataNodeQueryMessages.FAILED_TO_CONVERT_INSERTTABLETSTATEMENT_TO_TABLET, e);
     }
   }
 

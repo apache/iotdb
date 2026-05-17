@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.service.metric.cpu;
 
+import org.apache.iotdb.commons.i18n.ServiceMessages;
 import org.apache.iotdb.commons.service.metric.JvmGcMonitorMetrics;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
@@ -235,7 +236,7 @@ public class CpuUsageMetrics implements IMetricSet {
     lastThreadUserTime.putAll(currentThreadUserTime);
     long timeCost = System.nanoTime() - startTime;
     updateCount.incrementAndGet();
-    logger.debug("Time for update cpu usage is {} ns", timeCost);
+    logger.debug(ServiceMessages.CPU_USAGE_UPDATE_TIME, timeCost);
   }
 
   private boolean checkCpuMonitorEnable() {

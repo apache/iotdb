@@ -199,7 +199,7 @@ public class SharedStorageCompactionTask extends AbstractCompactionTask {
     for (TsFileResource resource : resources) {
       RemoteStorageBlock remoteStorageBlock = resource.getRemoteStorageBlock();
       if (remoteStorageBlock == null) {
-        LOGGER.info("Cannot get the remote storage block of tsfile {}.", resource);
+        LOGGER.info(TimechoServerMessages.CANNOT_GET_REMOTE_STORAGE_BLOCK_OF_TSFILE, resource);
         return null;
       }
       remotePath2Files.put(remoteStorageBlock.getPath(), resource);
@@ -240,7 +240,7 @@ public class SharedStorageCompactionTask extends AbstractCompactionTask {
     try {
       SharedStorageCompactionUtils.deleteRemoteTmpFiles(workDir);
     } catch (IOException e) {
-      LOGGER.warn("Fail to delete remote tmp files in the dir {}", workDir, e);
+      LOGGER.warn(TimechoServerMessages.FAIL_TO_DELETE_REMOTE_TMP_FILES_IN_DIR, workDir, e);
     }
   }
 
@@ -292,7 +292,7 @@ public class SharedStorageCompactionTask extends AbstractCompactionTask {
       try {
         SharedStorageCompactionUtils.removeLocalReplica(resource);
       } catch (IOException e) {
-        LOGGER.error("TsFileResource {} cannot be deleted:", resource, e);
+        LOGGER.error(TimechoServerMessages.TSFILE_RESOURCE_CANNOT_BE_DELETED, resource, e);
       }
     }
   }

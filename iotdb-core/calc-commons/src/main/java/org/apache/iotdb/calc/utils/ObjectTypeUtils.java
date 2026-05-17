@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.calc.utils;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -63,12 +64,12 @@ public class ObjectTypeUtils {
         ServiceLoader.load(IObjectFileServiceProvider.class);
     for (IObjectFileServiceProvider provider : loader) {
       if (objectFileService != null) {
-        throw new IllegalStateException("Multiple IObjectFileServiceProvider found");
+        throw new IllegalStateException(CalcMessages.MULTIPLE_I_OBJECT_FILE_SERVICE_PROVIDER_FOUND);
       }
       objectFileService = provider.getObjectFileService();
     }
     if (objectFileService == null) {
-      throw new IllegalStateException("No IObjectFileServiceProvider found");
+      throw new IllegalStateException(CalcMessages.NO_I_OBJECT_FILE_SERVICE_PROVIDER_FOUND);
     }
     return objectFileService;
   }
@@ -163,7 +164,7 @@ public class ObjectTypeUtils {
 
   public static int getActualReadSize(String filePath, long fileSize, long offset, long length) {
     if (offset < 0) {
-      throw new SemanticException(String.format("offset %d is less than 0.", offset));
+      throw new SemanticException(String.format(CalcMessages.OFFSET_LESS_THAN_ZERO, offset));
     }
     if (offset >= fileSize) {
       throw new SemanticException(

@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.load.splitter;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 
 import org.apache.tsfile.exception.write.PageException;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -46,7 +47,8 @@ public interface TsFileData {
       case OBJECT_FILE_PAYLOAD:
         return LoadTsFileObjectFileBatch.deserialize(stream);
       default:
-        throw new UnsupportedOperationException("Unknown TsFileData type: " + type);
+        throw new UnsupportedOperationException(
+            StorageEngineMessages.UNKNOWN_TSFILE_DATA_TYPE + type);
     }
   }
 }

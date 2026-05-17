@@ -25,6 +25,7 @@ import org.apache.iotdb.ainode.rpc.thrift.TForecastReq;
 import org.apache.iotdb.ainode.rpc.thrift.TForecastResp;
 import org.apache.iotdb.common.rpc.thrift.FunctionType;
 import org.apache.iotdb.common.rpc.thrift.Model;
+import org.apache.iotdb.commons.i18n.QueryMessages;
 import org.apache.iotdb.commons.queryengine.plan.relational.function.ITableFunctionAINodeService;
 import org.apache.iotdb.commons.queryengine.plan.relational.function.ITableFunctionAINodeServiceProvider;
 import org.apache.iotdb.commons.udf.UDFInformation;
@@ -63,7 +64,7 @@ public class TableUDFUtils {
         ServiceLoader.load(ITableFunctionAINodeServiceProvider.class);
     for (ITableFunctionAINodeServiceProvider provider : loader) {
       if (aiNodeService != null) {
-        throw new IllegalStateException("Multiple ITableFunctionAINodeServiceProvider found");
+        throw new IllegalStateException(QueryMessages.MULTIPLE_TABLE_FUNCTION_AI_NODE_PROVIDER);
       }
       aiNodeService = provider.getTableFunctionAINodeService();
     }

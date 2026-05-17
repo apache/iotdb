@@ -436,6 +436,7 @@
                         <configuration>
                             <sources>
                                 <source>${project.build.directory}/generated-sources/freemarker</source>
+                                <source>${project.basedir}/src/main/i18n/${i18n.locale}</source>
                             </sources>
                         </configuration>
                     </execution>

@@ -504,7 +504,7 @@
                                 <descriptor>src/assembly/external-service-impl.xml</descriptor>
                                 <descriptor>src/assembly/library-pipe.xml</descriptor>
                             </descriptors>
-                            <finalName>timechodb-${project.version}</finalName>
+                            <finalName>timechodb-${project.version}${locale.suffix}</finalName>
                         </configuration>
                     </execution>
                     <execution>
@@ -517,7 +517,7 @@
                             <descriptors>
                                 <descriptor>src/assembly/security-file.xml</descriptor>
                             </descriptors>
-                            <finalName>timechodb-${project.version}</finalName>
+                            <finalName>timechodb-${project.version}${locale.suffix}</finalName>
                         </configuration>
                     </execution>
                 </executions>
@@ -544,16 +544,16 @@
                                 <fileSet>
                                     <directory>${project.build.directory}</directory>
                                     <includes>
-                                        <include>timechodb-${project.version}-bin.zip</include>
-                                        <include>timechodb-${project.version}-external-service-impl-bin.zip</include>
-                                        <include>timechodb-${project.version}-library-pipe-bin.zip</include>
+                                        <include>timechodb-${project.version}${locale.suffix}-bin.zip</include>
+                                        <include>timechodb-${project.version}${locale.suffix}-external-service-impl-bin.zip</include>
+                                        <include>timechodb-${project.version}${locale.suffix}-library-pipe-bin.zip</include>
                                     </includes>
                                 </fileSet>
                                 <!--security-file-->
                                 <fileSet>
                                     <directory>${project.build.directory}</directory>
                                     <includes>
-                                        <include>timechodb-${project.version}-security-file.zip</include>
+                                        <include>timechodb-${project.version}${locale.suffix}-security-file.zip</include>
                                     </includes>
                                 </fileSet>
                             </fileSets>
@@ -662,7 +662,7 @@
                                     <fileSets>
                                         <fileSet>
                                             <includes combine.children="append">
-                                                <include>timechodb-${project.version}-ainode-bin.zip</include>
+                                                <include>timechodb-${project.version}${locale.suffix}-ainode-bin.zip</include>
                                             </includes>
                                         </fileSet>
                                     </fileSets>

@@ -96,7 +96,7 @@ public abstract class MigrationTask implements Runnable {
       MIGRATION_METRICS.recordMigrationCause(cause);
       migrate();
     } catch (Throwable t) {
-      logger.warn("migrate task error", t);
+      logger.warn(TimechoServerMessages.MIGRATE_TASK_ERROR, t);
       return;
     } finally {
       // try to set the final status to NORMAL to avoid migrate failure

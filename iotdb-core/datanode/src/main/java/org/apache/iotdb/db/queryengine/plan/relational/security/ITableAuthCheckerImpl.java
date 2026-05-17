@@ -31,6 +31,7 @@ import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.auth.BasicAuthorityCache;
 import org.apache.iotdb.db.auth.ClusterAuthorityFetcher;
 import org.apache.iotdb.db.auth.IAuthorityFetcher;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.ratis.util.MemoizedSupplier;
@@ -72,7 +73,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
       if (hasAuditPrivilege) {
         return;
       }
-      throw new AccessDeniedException("DATABASE " + databaseName);
+      throw new AccessDeniedException(DataNodeQueryMessages.DATABASE + databaseName);
     }
 
     if (AuthorityChecker.checkSystemPermission(userName, PrivilegeType.SYSTEM)) {
@@ -92,7 +93,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
               .setPrivilegeType(PrivilegeType.SELECT)
               .setResult(false),
           () -> databaseName);
-      throw new AccessDeniedException("DATABASE " + databaseName);
+      throw new AccessDeniedException(DataNodeQueryMessages.DATABASE + databaseName);
     }
     AUDIT_LOGGER.recordObjectAuthenticationAuditLog(
         auditEntity
@@ -347,7 +348,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
       if (hasAuditPrivilege) {
         return;
       }
-      throw new AccessDeniedException("TABLE " + tableName);
+      throw new AccessDeniedException(DataNodeQueryMessages.TABLE_2 + tableName);
     }
 
     if (AuthorityChecker.checkSystemPermission(userName, PrivilegeType.SYSTEM)) {
@@ -368,7 +369,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
               .setPrivilegeType(PrivilegeType.SELECT)
               .setResult(false),
           tableName::getObjectName);
-      throw new AccessDeniedException("TABLE " + tableName);
+      throw new AccessDeniedException(DataNodeQueryMessages.TABLE_2 + tableName);
     }
     // Record any privilege for specified table, same as the authentication process
     AUDIT_LOGGER.recordObjectAuthenticationAuditLog(

@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.SemanticException;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
@@ -89,7 +90,8 @@ public class TableDeviceSchemaValidator {
         validateDeviceSchemaInCache(
             schemaValidation, deviceIdList, attributeKeyList, attributeValueList);
     if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("{} devices are missing", validateResult.missingDeviceIndexList.size());
+      LOGGER.debug(
+          DataNodeQueryMessages.DEVICES_ARE_MISSING, validateResult.missingDeviceIndexList.size());
     }
 
     if (!validateResult.missingDeviceIndexList.isEmpty()) {

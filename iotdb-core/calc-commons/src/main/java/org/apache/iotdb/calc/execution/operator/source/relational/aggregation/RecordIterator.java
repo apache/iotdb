@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.calc.execution.operator.source.relational.aggregation;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.calc.utils.ObjectTypeUtils;
 import org.apache.iotdb.commons.exception.ObjectFileNotExist;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
@@ -160,7 +161,7 @@ public class RecordIterator implements Iterator<Record> {
     @Override
     public Optional<File> getObjectFile(int columnIndex) {
       if (getDataType(columnIndex) != Type.OBJECT) {
-        throw new UnsupportedOperationException("current column is not object column");
+        throw new UnsupportedOperationException(CalcMessages.CURRENT_COLUMN_IS_NOT_OBJECT_COLUMN);
       }
       return ObjectTypeUtils.getObjectPathFromBinary(getBinarySafely(columnIndex));
     }
@@ -168,7 +169,7 @@ public class RecordIterator implements Iterator<Record> {
     @Override
     public long objectLength(int columnIndex) {
       if (getDataType(columnIndex) != Type.OBJECT) {
-        throw new UnsupportedOperationException("current column is not object column");
+        throw new UnsupportedOperationException(CalcMessages.CURRENT_COLUMN_IS_NOT_OBJECT_COLUMN);
       }
       Binary binary = getBinarySafely(columnIndex);
       return ObjectTypeUtils.getObjectLength(binary);

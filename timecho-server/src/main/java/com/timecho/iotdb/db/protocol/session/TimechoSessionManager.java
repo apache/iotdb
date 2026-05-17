@@ -106,7 +106,10 @@ public class TimechoSessionManager extends SessionManager {
           try {
             session.disconnect();
           } catch (IOException e) {
-            LOGGER.error("Cannot disconnect expired session {}", session.getClientAddress(), e);
+            LOGGER.error(
+                TimechoServerMessages.CANNOT_DISCONNECT_EXPIRED_SESSION,
+                session.getClientAddress(),
+                e);
           }
         }
       }

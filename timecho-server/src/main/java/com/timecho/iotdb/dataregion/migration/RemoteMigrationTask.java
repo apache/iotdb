@@ -69,7 +69,8 @@ public class RemoteMigrationTask extends MigrationTask {
           new RemoteStorageBlock(FSUtils.getFSType(destTsFile), destTsFile.getAbsolutePath()));
       tsFileResource.serialize();
     } catch (Exception e) {
-      logger.error("Fail to serialize remote storage info into file {}", srcFile, e);
+      logger.error(
+          TimechoServerMessages.FAIL_TO_SERIALIZE_REMOTE_STORAGE_INFO_INTO_FILE, srcFile, e);
       cleanup();
       return;
     } finally {
@@ -85,7 +86,11 @@ public class RemoteMigrationTask extends MigrationTask {
       migrateFile(srcResourceFile, destResourceFile);
     } catch (Exception e) {
       if (!tsFileResource.isDeleted()) {
-        logger.error("Fail to migrate resource from local {} to remote {}", srcFile, destTsFile, e);
+        logger.error(
+            TimechoServerMessages.FAIL_TO_MIGRATE_RESOURCE_FROM_LOCAL_TO_REMOTE,
+            srcFile,
+            destTsFile,
+            e);
       }
       cleanup();
       throw e;
@@ -106,7 +111,7 @@ public class RemoteMigrationTask extends MigrationTask {
       tsFileResource.setStatus(TsFileResourceStatus.NORMAL_ON_REMOTE);
     } catch (Exception e) {
       if (!tsFileResource.isDeleted()) {
-        logger.error("Fail to delete local TsFile {}", srcFile, e);
+        logger.error(TimechoServerMessages.FAIL_TO_DELETE_LOCAL_TSFILE, srcFile, e);
       }
     } finally {
       tsFileResource.writeUnlock();

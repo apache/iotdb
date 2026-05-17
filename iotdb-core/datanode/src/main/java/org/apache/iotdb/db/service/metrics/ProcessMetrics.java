@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.service.metrics;
 
 import org.apache.iotdb.commons.service.metric.enums.Tag;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.MetricConstant;
 import org.apache.iotdb.metrics.config.MetricConfig;
@@ -252,7 +253,7 @@ public class ProcessMetrics implements IMetricSet {
           return 0L;
       }
     } catch (Exception e) {
-      LOGGER.debug("Failed to get process resident memory for pid {}", CONFIG.getPid(), e);
+      LOGGER.debug(DataNodeMiscMessages.FAILED_GET_PROCESS_RESIDENT_MEMORY, CONFIG.getPid(), e);
       return 0L;
     }
   }

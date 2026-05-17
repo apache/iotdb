@@ -37,6 +37,7 @@ import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.table.Audit;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.TemplatedInfo;
@@ -156,7 +157,8 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
     if (analysis.isDeviceViewSpecialProcess()) {
       List<PlanNode> rewroteChildren = rewrite(node.getChild(), context);
       if (rewroteChildren.size() != 1) {
-        throw new IllegalStateException("SingleDeviceViewNode have only one child");
+        throw new IllegalStateException(
+            DataNodeQueryMessages.SINGLEDEVICEVIEWNODE_HAVE_ONLY_ONE_CHILD);
       }
       node.setChild(rewroteChildren.get(0));
       return Collections.singletonList(node);

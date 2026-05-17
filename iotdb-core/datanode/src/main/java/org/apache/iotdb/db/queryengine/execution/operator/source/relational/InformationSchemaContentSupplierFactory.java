@@ -73,6 +73,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TTableInfo;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeSinglePipeMetrics;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
@@ -239,7 +240,7 @@ public class InformationSchemaContentSupplierFactory {
         case InformationSchema.SERVICES:
           return new ServicesSupplier(dataTypes, userEntity);
         default:
-          throw new UnsupportedOperationException("Unknown table: " + tableName);
+          throw new UnsupportedOperationException(DataNodeQueryMessages.UNKNOWN_TABLE + tableName);
       }
     } catch (final Exception e) {
       throw new IoTDBRuntimeException(e, TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
@@ -1554,7 +1555,7 @@ public class InformationSchemaContentSupplierFactory {
         currentDataRegionCacheReader.close();
         currentDataRegionCacheReader = null;
       } catch (IOException e) {
-        LOGGER.error("Failed to close reader in TableDiskUsageSupplier", e);
+        LOGGER.error(DataNodeQueryMessages.FAILED_TO_CLOSE_READER_IN_TABLEDISKUSAGESUPPLIER, e);
       }
     }
   }

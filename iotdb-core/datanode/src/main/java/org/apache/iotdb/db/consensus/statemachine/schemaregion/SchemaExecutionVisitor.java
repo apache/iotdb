@@ -32,6 +32,7 @@ import org.apache.iotdb.commons.utils.MetadataUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.metadata.MeasurementAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.template.TemplateIsInUseException;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.source.schemaregion.SchemaRegionListeningQueue;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
@@ -405,7 +406,7 @@ public class SchemaExecutionVisitor implements PlanVisitor<TSStatus, ISchemaRegi
         }
 
       } catch (final MetadataException e) {
-        logger.warn("{}: MetaData error: ", e.getMessage(), e);
+        logger.warn(DataNodeMiscMessages.METADATA_ERROR, e.getMessage(), e);
         failingStatus.add(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
         shouldRetry = false;
       }
@@ -461,7 +462,7 @@ public class SchemaExecutionVisitor implements PlanVisitor<TSStatus, ISchemaRegi
       logMetaDataException(String.format("%s: MetaData error: ", IoTDBConstant.GLOBAL_DB_NAME), e);
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     } catch (IOException e) {
-      logger.error("{}: IO error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
+      logger.error(DataNodeMiscMessages.IO_ERROR, IoTDBConstant.GLOBAL_DB_NAME, e);
       return RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
     }
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute successfully");
@@ -657,7 +658,7 @@ public class SchemaExecutionVisitor implements PlanVisitor<TSStatus, ISchemaRegi
             SchemaRegionWritePlanFactory.getCreateLogicalViewPlan(
                 entry.getKey(), entry.getValue()));
       } catch (final MetadataException e) {
-        logger.error("{}: MetaData error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
+        logger.error(DataNodeMiscMessages.METADATA_ERROR, IoTDBConstant.GLOBAL_DB_NAME, e);
         failingStatus.add(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
       }
     }
@@ -677,7 +678,7 @@ public class SchemaExecutionVisitor implements PlanVisitor<TSStatus, ISchemaRegi
         schemaRegion.alterLogicalView(
             SchemaRegionWritePlanFactory.getAlterLogicalViewPlan(entry.getKey(), entry.getValue()));
       } catch (final MetadataException e) {
-        logger.warn("{}: MetaData error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
+        logger.warn(DataNodeMiscMessages.METADATA_ERROR, IoTDBConstant.GLOBAL_DB_NAME, e);
         failingStatus.add(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
       }
     }
@@ -854,10 +855,10 @@ public class SchemaExecutionVisitor implements PlanVisitor<TSStatus, ISchemaRegi
     final SchemaRegionId id = schemaRegion.getSchemaRegionId();
     final SchemaRegionListeningQueue queue = PipeDataNodeAgent.runtime().schemaListener(id);
     if (node.isOpen() && !queue.isOpened()) {
-      logger.info("Opened pipe listening queue on schema region {}", id);
+      logger.info(DataNodeMiscMessages.OPENED_PIPE_LISTENING_QUEUE, id);
       queue.open();
     } else if (!node.isOpen() && queue.isOpened()) {
-      logger.info("Closed pipe listening queue on schema region {}", id);
+      logger.info(DataNodeMiscMessages.CLOSED_PIPE_LISTENING_QUEUE, id);
       queue.close();
     }
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());

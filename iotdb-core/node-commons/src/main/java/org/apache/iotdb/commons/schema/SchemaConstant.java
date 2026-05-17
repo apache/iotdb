@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.schema;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.i18n.SchemaMessages;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.path.fa.dfa.PatternDFA;
@@ -128,7 +129,7 @@ public class SchemaConstant {
       case TABLE_MNODE_TYPE:
         return TABLE_MNODE_TYPE_NAME;
       default:
-        throw new RuntimeException("Undefined MNode type " + type);
+        throw new RuntimeException(SchemaMessages.UNDEFINED_MNODE_TYPE + type);
     }
   }
 

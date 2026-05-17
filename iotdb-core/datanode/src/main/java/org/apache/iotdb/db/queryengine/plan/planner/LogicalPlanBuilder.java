@@ -33,6 +33,7 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.process.Multi
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.template.Template;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.DeviceContext;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.TimeseriesContext;
@@ -222,7 +223,7 @@ public class LogicalPlanBuilder {
                     null,
                     lastLevelUseWildcard)));
       } else {
-        throw new IllegalArgumentException("Unexpected path type");
+        throw new IllegalArgumentException(DataNodeQueryMessages.UNEXPECTED_PATH_TYPE_2);
       }
     }
 

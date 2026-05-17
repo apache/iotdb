@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
@@ -191,7 +192,7 @@ public class ObjectNode extends SearchNode implements WALEntryValue {
     if (searchNodes.size() == 1) {
       return searchNodes.get(0);
     }
-    throw new UnsupportedOperationException("Merge is not supported");
+    throw new UnsupportedOperationException(DataNodeQueryMessages.MERGE_IS_NOT_SUPPORTED);
   }
 
   @Override
@@ -297,7 +298,8 @@ public class ObjectNode extends SearchNode implements WALEntryValue {
         }
       }
       if (!readSuccess && LOGGER.isDebugEnabled()) {
-        LOGGER.debug("Error when read object file {}.", filePath.toString(), ioException);
+        LOGGER.debug(
+            DataNodeQueryMessages.ERROR_WHEN_READ_OBJECT_FILE, filePath.toString(), ioException);
       }
       ReadWriteIOUtils.write(readSuccess && isEOF, stream);
       ReadWriteIOUtils.write(offset, stream);

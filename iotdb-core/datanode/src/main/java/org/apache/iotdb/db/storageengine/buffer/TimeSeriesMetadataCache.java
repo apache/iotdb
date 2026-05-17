@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.metric.TimeSeriesMetadataCacheMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
@@ -156,8 +157,9 @@ public class TimeSeriesMetadataCache {
 
       if (timeseriesMetadata == null) {
         if (debug) {
-          DEBUG_LOGGER.info("Cache miss: {}.{} in file: {}", key.device, key.measurement, filePath);
-          DEBUG_LOGGER.info("Device: {}, all sensors: {}", key.device, allSensors);
+          DEBUG_LOGGER.info(
+              StorageEngineMessages.CACHE_MISS_IN_FILE, key.device, key.measurement, filePath);
+          DEBUG_LOGGER.info(StorageEngineMessages.DEVICE_ALL_SENSORS, key.device, allSensors);
         }
         String deviceStringFormat = key.device.toString();
         // allow for the parallelism of different devices
@@ -185,7 +187,7 @@ public class TimeSeriesMetadataCache {
                 && !bloomFilter.contains(
                     deviceStringFormat + TsFileConstant.PATH_SEPARATOR + key.measurement)) {
               if (debug) {
-                DEBUG_LOGGER.info("TimeSeries meta data {} is filter by bloomFilter!", key);
+                DEBUG_LOGGER.info(StorageEngineMessages.TS_METADATA_FILTERED_BY_BLOOM_FILTER, key);
               }
               loadBloomFilterTime = System.nanoTime() - loadBloomFilterStartTime;
               return null;
@@ -219,7 +221,7 @@ public class TimeSeriesMetadataCache {
       }
       if (timeseriesMetadata == null) {
         if (debug) {
-          DEBUG_LOGGER.info("The file doesn't have this time series {}.", key);
+          DEBUG_LOGGER.info(StorageEngineMessages.FILE_NO_SUCH_TIME_SERIES, key);
         }
         return null;
       } else {

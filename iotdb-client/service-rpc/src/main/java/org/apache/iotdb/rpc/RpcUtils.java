@@ -21,6 +21,7 @@ package org.apache.iotdb.rpc;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.rpc.i18n.RpcMessages;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 import org.apache.iotdb.service.rpc.thrift.TSFetchResultsResp;
@@ -473,7 +474,7 @@ public class RpcUtils {
           case NANOSECOND:
             return 1_000_000_000;
           default:
-            throw new IllegalArgumentException("Unknown time precision: " + precision);
+            throw new IllegalArgumentException(RpcMessages.UNKNOWN_TIME_PRECISION + precision);
         }
       }
     }
@@ -489,7 +490,7 @@ public class RpcUtils {
       case 1_000_000_000:
         return NANOSECOND;
       default:
-        throw new IllegalArgumentException("Unknown time factor: " + timeFactor);
+        throw new IllegalArgumentException(RpcMessages.UNKNOWN_TIME_FACTOR + timeFactor);
     }
   }
 

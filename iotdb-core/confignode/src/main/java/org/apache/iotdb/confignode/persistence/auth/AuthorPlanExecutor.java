@@ -38,6 +38,7 @@ import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorRelationalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.consensus.response.auth.PermissionInfoResp;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.procedure.impl.schema.SchemaUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
@@ -102,7 +103,8 @@ public class AuthorPlanExecutor implements IAuthorPlanExecutor {
     } catch (AuthException e) {
       loginMessage = e.getMessage();
       tsStatus.setCode(e.getCode().getStatusCode());
-      tsStatus.setMessage(loginMessage != null ? loginMessage : "Authentication failed.");
+      tsStatus.setMessage(
+          loginMessage != null ? loginMessage : ConfigNodeMessages.AUTHENTICATION_FAILED);
       result.setStatus(tsStatus);
     }
     return result;
@@ -580,7 +582,7 @@ public class AuthorPlanExecutor implements IAuthorPlanExecutor {
           }
           break;
         default:
-          throw new AuthException(TSStatusCode.ILLEGAL_PARAMETER, "not support");
+          throw new AuthException(TSStatusCode.ILLEGAL_PARAMETER, ConfigNodeMessages.NOT_SUPPORT);
       }
     } catch (AuthException e) {
       return RpcUtils.getStatus(e.getCode(), e.getMessage());

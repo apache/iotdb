@@ -48,7 +48,7 @@ public class IPFilter {
   static Set<String> allowListPatterns;
 
   private IPFilter() {
-    throw new UnsupportedOperationException("Cannot instantiate this class");
+    throw new UnsupportedOperationException(TimechoServerMessages.CANNOT_INSTANTIATE_THIS_CLASS);
   }
 
   static PatternList whitePattern;
@@ -57,7 +57,7 @@ public class IPFilter {
   static ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
 
   static {
-    logger.info("Initializing white/black list update call back");
+    logger.info(TimechoServerMessages.INITIALIZING_WHITE_BLACK_LIST_UPDATE_CALLBACK);
 
     Runnable updateSessionCallback =
         () -> {

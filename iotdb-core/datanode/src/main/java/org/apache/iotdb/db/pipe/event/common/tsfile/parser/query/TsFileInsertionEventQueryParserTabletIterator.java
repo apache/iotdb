@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.event.common.tsfile.parser.query;
 
 import org.apache.iotdb.commons.path.PatternTreeMap;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.util.ModsOperationUtil;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
@@ -117,7 +118,7 @@ public class TsFileInsertionEventQueryParserTabletIterator implements Iterator<T
     try {
       return queryDataSet.hasNext();
     } catch (final IOException e) {
-      throw new PipeException("Failed to check next", e);
+      throw new PipeException(DataNodePipeMessages.FAILED_TO_CHECK_NEXT, e);
     }
   }
 
@@ -130,7 +131,7 @@ public class TsFileInsertionEventQueryParserTabletIterator implements Iterator<T
     try {
       return buildNextTablet();
     } catch (final IOException e) {
-      throw new PipeException("Failed to build tablet", e);
+      throw new PipeException(DataNodePipeMessages.FAILED_TO_BUILD_TABLET, e);
     }
   }
 

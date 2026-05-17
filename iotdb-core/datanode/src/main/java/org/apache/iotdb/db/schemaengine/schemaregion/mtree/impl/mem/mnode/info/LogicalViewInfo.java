@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpressionType;
 import org.apache.iotdb.commons.schema.view.viewExpression.leaf.TimeSeriesViewOperand;
+import org.apache.iotdb.db.i18n.DataNodeSchemaMessages;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
@@ -118,7 +119,7 @@ public class LogicalViewInfo implements IMeasurementInfo {
   @Override
   public void setAlias(String alias) {
     // can not set alias for a logical view
-    throw new UnsupportedOperationException("View doesn't support alias");
+    throw new UnsupportedOperationException(DataNodeSchemaMessages.VIEW_DOES_NOT_SUPPORT_ALIAS);
   }
 
   @Override
@@ -166,7 +167,7 @@ public class LogicalViewInfo implements IMeasurementInfo {
     }
     throw new SchemaExecutionException(
         new IllegalArgumentException(
-            "Type of newMNode is not LogicalViewMNode! It's "
+            DataNodeSchemaMessages.LOGICAL_VIEW_NODE_TYPE_ERROR
                 + newMNode.getMNodeType().toString()));
   }
 

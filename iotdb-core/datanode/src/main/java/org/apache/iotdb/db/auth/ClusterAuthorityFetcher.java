@@ -52,6 +52,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRoleResp;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
@@ -797,7 +798,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
     try {
       user.loadTreePrivilegeInfo(privilegeList);
     } catch (MetadataException e) {
-      LOGGER.error("cache user's path privileges error", e);
+      LOGGER.error(DataNodeMiscMessages.CACHE_USER_PATH_PRIVILEGES_ERROR, e);
     }
     if (tPermissionInfoResp.isSetRoleInfo()) {
       for (String roleName : tPermissionInfoResp.getRoleInfo().keySet()) {
@@ -820,7 +821,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
     try {
       role.loadTreePrivilegeInfo(resp.getPrivilegeList());
     } catch (MetadataException e) {
-      LOGGER.error("cache role's path privileges error", e);
+      LOGGER.error(DataNodeMiscMessages.CACHE_ROLE_PATH_PRIVILEGES_ERROR, e);
     }
     return role;
   }

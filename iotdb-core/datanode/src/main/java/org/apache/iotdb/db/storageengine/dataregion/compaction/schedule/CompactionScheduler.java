@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.AbstractCompactionTask;
@@ -120,7 +121,7 @@ public class CompactionScheduler {
     } catch (InterruptedException e) {
       throw e;
     } catch (Throwable e) {
-      LOGGER.error("Meet error in compaction schedule.", e);
+      LOGGER.error(StorageEngineMessages.MEET_ERROR_IN_COMPACTION_SCHEDULE, e);
     }
   }
 

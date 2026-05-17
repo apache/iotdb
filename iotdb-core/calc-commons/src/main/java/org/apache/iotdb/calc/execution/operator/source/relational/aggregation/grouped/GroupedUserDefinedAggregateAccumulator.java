@@ -23,6 +23,7 @@ import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.Ag
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.MaskedRecordIterator;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.RecordIterator;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.array.ObjectBigArray;
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.udf.api.State;
 import org.apache.iotdb.udf.api.relational.AggregateFunction;
 import org.apache.iotdb.udf.api.utils.ResultValue;
@@ -126,7 +127,8 @@ public class GroupedUserDefinedAggregateAccumulator implements GroupedAccumulato
         columnBuilder instanceof BinaryColumnBuilder,
         "intermediate input and output of UDAF should be BinaryColumn");
     if (stateArray.get(groupId) == null) {
-      throw new IllegalStateException(String.format("State for group %d is not found", groupId));
+      throw new IllegalStateException(
+          String.format(CalcMessages.STATE_FOR_GROUP_NOT_FOUND, groupId));
     }
     byte[] bytes = stateArray.get(groupId).serialize();
     columnBuilder.writeBinary(new Binary(bytes));

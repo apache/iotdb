@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.load.converter;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
+import org.apache.iotdb.db.i18n.StorageEngineMessages;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.table.TsFileInsertionEventTableParser;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTabletRawReqV2;
@@ -73,7 +74,7 @@ public class LoadTableStatementDataTypeConvertExecutionVisitor
           new TSStatus(TSStatusCode.SEMANTIC_ERROR.getStatusCode()).setMessage(errorMsg));
     }
 
-    LOGGER.info("Start data type conversion for LoadTsFileStatement: {}.", loadTsFileStatement);
+    LOGGER.info(StorageEngineMessages.START_DATA_TYPE_CONVERSION_DOT, loadTsFileStatement);
 
     // TODO: Use batch insert after Table model supports insertMultiTablets
     for (final File file : loadTsFileStatement.getTsFiles()) {

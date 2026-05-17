@@ -26,6 +26,7 @@ import org.apache.iotdb.calc.execution.operator.Operator;
 import org.apache.iotdb.calc.execution.operator.SimpleTsBlockWithPositionComparator;
 import org.apache.iotdb.calc.execution.operator.TsBlockWithPositionComparator;
 import org.apache.iotdb.calc.execution.operator.process.ProcessOperator;
+import org.apache.iotdb.calc.i18n.CalcMessages;
 import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.commons.queryengine.execution.operator.source.relational.aggregation.grouped.UpdateMemory;
 import org.apache.iotdb.commons.queryengine.execution.operator.source.relational.aggregation.grouped.hash.GroupByHash;
@@ -162,10 +163,10 @@ public class TopKRankingOperator implements ProcessOperator {
     //    }
 
     if (rankingType == TopKRankingNode.RankingType.DENSE_RANK) {
-      throw new UnsupportedOperationException("DENSE_RANK not yet implemented");
+      throw new UnsupportedOperationException(CalcMessages.DENSE_RANK_NOT_YET_IMPLEMENTED);
     }
 
-    throw new IllegalArgumentException("Unknown ranking type: " + rankingType);
+    throw new IllegalArgumentException(CalcMessages.UNKNOWN_RANKING_TYPE + rankingType);
   }
 
   @Override

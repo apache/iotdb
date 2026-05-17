@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.audit.AuditLogOperation;
 import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.db.audit.DNAuditLogger;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -75,7 +76,7 @@ public class LoginLockManager {
     // Set and validate failedLoginAttempts (IP level)
     if (failedLoginAttempts <= 0) {
       this.failedLoginAttempts = -1; // Completely disable IP-level restrictions
-      LOGGER.info("IP-level login attempts disabled (set to {})", failedLoginAttempts);
+      LOGGER.info(DataNodeMiscMessages.IP_LOGIN_ATTEMPTS_DISABLED, failedLoginAttempts);
     } else {
       this.failedLoginAttempts = failedLoginAttempts;
     }
@@ -83,7 +84,7 @@ public class LoginLockManager {
     // Set and validate failedLoginAttemptsPerUser (user level)
     if (failedLoginAttemptsPerUser <= 0) {
       this.failedLoginAttemptsPerUser = -1; // Disable user-level restrictions
-      LOGGER.info("User-level login attempts disabled (set to {})", failedLoginAttemptsPerUser);
+      LOGGER.info(DataNodeMiscMessages.USER_LOGIN_ATTEMPTS_DISABLED, failedLoginAttemptsPerUser);
 
       // Additional check: if IP-level is enabled (>1), enable user-level with default 1000
       if (this.failedLoginAttempts > 1) {
@@ -404,7 +405,7 @@ public class LoginLockManager {
     }
 
     if (usersForIp.size() > 50) {
-      LOGGER.warn("IP '{}' locked by {} different users → potential attack", ip, usersForIp.size());
+      LOGGER.warn(DataNodeMiscMessages.IP_LOCKED_MULTIPLE_USERS, ip, usersForIp.size());
     }
 
     // Check if user has many IP locks
@@ -419,7 +420,7 @@ public class LoginLockManager {
     }
 
     if (ipsForUser.size() > 100) {
-      LOGGER.warn("User ID '{}' has {} IP locks → potential attack", userId, ipsForUser.size());
+      LOGGER.warn(DataNodeMiscMessages.USER_MULTIPLE_IP_LOCKS, userId, ipsForUser.size());
     }
   }
 
@@ -468,7 +469,7 @@ public class LoginLockManager {
         }
       }
     } catch (Exception e) {
-      LOGGER.warn("Failed to check if IP address={} is up", ip, e);
+      LOGGER.warn(DataNodeMiscMessages.FAILED_CHECK_IP_UP, ip, e);
       return false; // In case of error, assume non-local
     }
     return false;

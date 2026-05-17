@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -439,7 +440,7 @@ public class PipeTsFileResourceManager {
               try {
                 return resource.getFileSize();
               } catch (Exception e) {
-                LOGGER.warn("failed to get file size of linked TsFile {}: ", resource, e);
+                LOGGER.warn(DataNodePipeMessages.FAILED_TO_GET_FILE_SIZE_OF_LINKED, resource, e);
                 return 0;
               }
             })

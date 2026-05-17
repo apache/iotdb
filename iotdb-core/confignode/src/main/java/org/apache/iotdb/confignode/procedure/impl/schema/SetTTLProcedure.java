@@ -30,6 +30,8 @@ import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestCon
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
+import org.apache.iotdb.confignode.i18n.ConfigNodeMessages;
+import org.apache.iotdb.confignode.i18n.ProcedureMessages;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
@@ -79,7 +81,8 @@ public class SetTTLProcedure extends StateMachineProcedure<ConfigNodeProcedureEn
           return Flow.NO_MORE_STATE;
       }
     } finally {
-      LOGGER.info("SetTTL-[{}] costs {}ms", state, (System.currentTimeMillis() - startTime));
+      LOGGER.info(
+          ProcedureMessages.SETTTL_COSTS_MS, state, (System.currentTimeMillis() - startTime));
     }
   }
 
@@ -91,12 +94,12 @@ public class SetTTLProcedure extends StateMachineProcedure<ConfigNodeProcedureEn
               .getConsensusManager()
               .write(isGeneratedByPipe ? new PipeEnrichedPlan(this.plan) : this.plan);
     } catch (ConsensusException e) {
-      LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
+      LOGGER.warn(ConfigNodeMessages.FAILED_IN_THE_WRITE_API_EXECUTING_THE_CONSENSUS_LAYER_DUE, e);
       res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());
     }
     if (res.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      LOGGER.info("Failed to execute plan {} because {}", plan, res.message);
+      LOGGER.info(ProcedureMessages.FAILED_TO_EXECUTE_PLAN_BECAUSE, plan, res.message);
       setFailure(new ProcedureException(new IoTDBException(res)));
     } else {
       setNextState(SetTTLState.UPDATE_DATANODE_CACHE);
@@ -119,9 +122,10 @@ public class SetTTLProcedure extends StateMachineProcedure<ConfigNodeProcedureEn
     for (TSStatus status : statusMap.values()) {
       // all dataNodes must clear the related schemaengine cache
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        LOGGER.error("Failed to update ttl cache of dataNode.");
+        LOGGER.error(ProcedureMessages.FAILED_TO_UPDATE_TTL_CACHE_OF_DATANODE);
         setFailure(
-            new ProcedureException(new MetadataException("Update dataNode ttl cache failed")));
+            new ProcedureException(
+                new MetadataException(ProcedureMessages.UPDATE_DATANODE_TTL_CACHE_FAILED)));
         return;
       }
     }
@@ -164,7 +168,7 @@ public class SetTTLProcedure extends StateMachineProcedure<ConfigNodeProcedureEn
       ReadWriteIOUtils.readInt(byteBuffer);
       this.plan = (SetTTLPlan) ConfigPhysicalPlan.Factory.create(byteBuffer);
     } catch (IOException e) {
-      LOGGER.error("IO error when deserialize setTTL plan.", e);
+      LOGGER.error(ProcedureMessages.IO_ERROR_WHEN_DESERIALIZE_SETTTL_PLAN, e);
     }
   }
 

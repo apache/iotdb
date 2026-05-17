@@ -22,6 +22,7 @@ package org.apache.iotdb.commons.client;
 import org.apache.iotdb.commons.client.exception.BorrowNullClientManagerException;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.factory.AsyncThriftClientFactory;
+import org.apache.iotdb.commons.i18n.ClientMessages;
 import org.apache.iotdb.commons.utils.TestOnly;
 
 import org.apache.commons.pool2.impl.GenericKeyedObjectPool;
@@ -69,7 +70,7 @@ public class ClientManager<K, V> implements IClientManager<K, V> {
       try {
         pool.returnObject(node, client);
       } catch (Exception e) {
-        LOGGER.warn("Return client {} for node {} to pool failed.", client, node, e);
+        LOGGER.warn(ClientMessages.RETURN_CLIENT_TO_POOL_FAILED, client, node, e);
       }
     } else if (client instanceof ThriftClient) {
       ((ThriftClient) client).invalidateAll();
@@ -92,7 +93,7 @@ public class ClientManager<K, V> implements IClientManager<K, V> {
         pool.returnObject(node, client);
       } catch (Exception e) {
         if (!Boolean.TRUE.equals(ignoreError.apply(e))) {
-          LOGGER.warn("Return client {} for node {} to pool failed.", client, node, e);
+          LOGGER.warn(ClientMessages.RETURN_CLIENT_TO_POOL_FAILED, client, node, e);
         }
       }
     } else if (client instanceof ThriftClient) {
@@ -112,7 +113,7 @@ public class ClientManager<K, V> implements IClientManager<K, V> {
               try {
                 pool.clear(node);
               } catch (Exception e) {
-                LOGGER.warn("Clear all client in pool for node {} failed.", node, e);
+                LOGGER.warn(ClientMessages.CLEAR_CLIENT_POOL_FAILED, node, e);
               }
             });
   }

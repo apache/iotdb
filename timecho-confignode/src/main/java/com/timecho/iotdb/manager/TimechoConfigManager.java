@@ -162,12 +162,12 @@ public class TimechoConfigManager extends org.apache.iotdb.confignode.manager.Co
       regulateManager.cliActivateCheckLicenseContentAvailable(licenseList);
       cliActivateCheckSystemInfo(licenseList, locations, clientManager);
       cliActivateDistributeLicense(licenseList, locations, clientManager);
-      LOGGER.info("[CLI activation] Successfully updated all ConfigNodes' license");
+      LOGGER.info(TimechoConfigNodeMessages.CLI_ACTIVATION_SUCCESS);
       // wait licenses loaded for a few seconds
       Thread.sleep(3 * ConfigNodeDescriptor.getInstance().getConf().getHeartbeatIntervalInMs());
       return showActivation();
     } catch (Exception e) {
-      LOGGER.warn("[CLI activation]", e);
+      LOGGER.warn(TimechoConfigNodeMessages.CLI_ACTIVATION_PREFIX, e);
       return new TShowActivationResp(
           new TSStatus(TSStatusCode.LICENSE_ERROR.getStatusCode()).setMessage(e.getMessage()));
     }

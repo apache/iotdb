@@ -20,6 +20,7 @@ package org.apache.iotdb.mqtt;
 
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.mqtt.i18n.MqttMessages;
 
 import com.google.common.base.Preconditions;
 import org.apache.tsfile.external.commons.io.FileUtils;
@@ -54,13 +55,13 @@ public class PayloadFormatManager {
 
   private static void init() {
     mqttDir = IoTDBDescriptor.getInstance().getConfig().getMqttDir();
-    logger.info("mqttDir: {}", mqttDir);
+    logger.info(MqttMessages.MQTT_DIR, mqttDir);
 
     try {
       makeMqttPluginDir();
       buildMqttPluginMap();
     } catch (IOException e) {
-      logger.error("MQTT PayloadFormatManager init() error.", e);
+      logger.error(MqttMessages.PAYLOAD_FORMAT_MANAGER_INIT_ERROR, e);
     }
   }
 
@@ -83,17 +84,17 @@ public class PayloadFormatManager {
         ServiceLoader.load(PayloadFormatter.class, PayloadFormatManager.class.getClassLoader());
     for (PayloadFormatter formatter : payloadFormatters) {
       if (formatter == null) {
-        logger.error("PayloadFormatManager(), formatter is null.");
+        logger.error(MqttMessages.FORMATTER_IS_NULL);
         continue;
       }
 
       String pluginName = formatter.getName();
       mqttPayloadPluginMap.put(pluginName, formatter);
-      logger.info("PayloadFormatManager(), find MQTT Payload Plugin {}.", pluginName);
+      logger.info(MqttMessages.FIND_MQTT_PLUGIN, pluginName);
     }
 
     URL[] jarURLs = getPluginJarURLs(mqttDir);
-    logger.debug("MQTT Plugin jarURLs: {}", Arrays.toString(jarURLs));
+    logger.debug(MqttMessages.MQTT_PLUGIN_JAR_URLS, Arrays.toString(jarURLs));
 
     for (URL jarUrl : jarURLs) {
       ClassLoader classLoader = new URLClassLoader(new URL[] {jarUrl});
@@ -104,7 +105,7 @@ public class PayloadFormatManager {
 
       for (PayloadFormatter formatter : payloadFormatters2) {
         if (formatter == null) {
-          logger.error("PayloadFormatManager(), formatter is null.");
+          logger.error(MqttMessages.FORMATTER_IS_NULL);
           continue;
         }
 
@@ -113,7 +114,7 @@ public class PayloadFormatManager {
           continue;
         }
         mqttPayloadPluginMap.put(pluginName, formatter);
-        logger.info("PayloadFormatManager(), find MQTT Payload Plugin {}.", pluginName);
+        logger.info(MqttMessages.FIND_MQTT_PLUGIN, pluginName);
       }
     }
   }

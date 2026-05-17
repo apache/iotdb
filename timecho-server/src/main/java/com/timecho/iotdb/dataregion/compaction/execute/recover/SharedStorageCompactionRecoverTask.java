@@ -58,12 +58,12 @@ public class SharedStorageCompactionRecoverTask extends SettleCompactionTask {
           dataRegionId,
           this,
           e);
-      LOGGER.error("stop compaction because of exception during recovering");
+      LOGGER.error(TimechoServerMessages.STOP_COMPACTION_BECAUSE_OF_EXCEPTION_DURING_RECOVERING);
     } finally {
       try {
         Files.deleteIfExists(logFile.toPath());
       } catch (IOException e) {
-        LOGGER.error("Fail to delete old log file {}", logFile, e);
+        LOGGER.error(TimechoServerMessages.FAIL_TO_DELETE_OLD_LOG_FILE, logFile, e);
       }
     }
   }
@@ -145,7 +145,7 @@ public class SharedStorageCompactionRecoverTask extends SettleCompactionTask {
       try {
         SharedStorageCompactionUtils.removeLocalReplica(resource);
       } catch (IOException e) {
-        LOGGER.error("TsFileResource {} cannot be deleted:", resource, e);
+        LOGGER.error(TimechoServerMessages.TSFILE_RESOURCE_CANNOT_BE_DELETED, resource, e);
       }
     }
   }

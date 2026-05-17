@@ -45,6 +45,7 @@ import org.apache.iotdb.db.exception.load.LoadReadOnlyException;
 import org.apache.iotdb.db.exception.load.ObjectFileCorruptedException;
 import org.apache.iotdb.db.exception.load.RegionReplicaSetChangedException;
 import org.apache.iotdb.db.exception.mpp.FragmentInstanceDispatchException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
@@ -205,7 +206,7 @@ public class LoadTsFileScheduler implements IScheduler {
           final long startTimeMs = System.currentTimeMillis();
 
           if (node.isTsFileEmpty()) {
-            LOGGER.info("Load skip TsFile {}, because it has no data.", filePath);
+            LOGGER.info(DataNodeQueryMessages.LOAD_SKIP_TSFILE_BECAUSE_IT_HAS_NO_DATA, filePath);
           } else if (!node.needDecodeTsFile(
               slotList ->
                   partitionFetcher.queryDataPartition(
@@ -405,7 +406,7 @@ public class LoadTsFileScheduler implements IScheduler {
       if (e instanceof InterruptedException) {
         Thread.currentThread().interrupt();
       }
-      LOGGER.warn("Interrupt or Execution error.", e);
+      LOGGER.warn(DataNodeQueryMessages.INTERRUPT_OR_EXECUTION_ERROR, e);
       return false;
     } catch (TimeoutException e) {
       dispatchResultFuture.cancel(true);
@@ -503,7 +504,7 @@ public class LoadTsFileScheduler implements IScheduler {
 
   private boolean secondPhase(
       boolean isFirstPhaseSuccess, String uuid, TsFileResource tsFileResource) {
-    LOGGER.info("Start dispatching Load command for uuid {}", uuid);
+    LOGGER.info(DataNodeQueryMessages.START_DISPATCHING_LOAD_COMMAND_FOR_UUID, uuid);
     final File tsFile = tsFileResource.getTsFile();
     final TLoadCommandReq loadCommandReq =
         new TLoadCommandReq(
@@ -555,10 +556,13 @@ public class LoadTsFileScheduler implements IScheduler {
       if (e instanceof InterruptedException) {
         Thread.currentThread().interrupt();
       }
-      LOGGER.warn("Interrupt or Execution error.", e);
+      LOGGER.warn(DataNodeQueryMessages.INTERRUPT_OR_EXECUTION_ERROR, e);
       return false;
     } catch (Exception e) {
-      LOGGER.warn("Exception occurred during second phase of loading TsFile {}.", tsFile, e);
+      LOGGER.warn(
+          DataNodeQueryMessages.EXCEPTION_OCCURRED_DURING_SECOND_PHASE_OF_LOADING_TSFILE,
+          tsFile,
+          e);
       return false;
     }
     return true;
@@ -575,7 +579,9 @@ public class LoadTsFileScheduler implements IScheduler {
   }
 
   private boolean loadLocally(LoadSingleTsFileNode node) throws IoTDBException {
-    LOGGER.info("Start load TsFile {} locally.", node.getTsFileResource().getTsFile().getPath());
+    LOGGER.info(
+        DataNodeQueryMessages.START_LOAD_TSFILE_LOCALLY,
+        node.getTsFileResource().getTsFile().getPath());
 
     if (CommonDescriptor.getInstance().getConfig().isReadOnly()) {
       throw new LoadReadOnlyException();
@@ -733,7 +739,7 @@ public class LoadTsFileScheduler implements IScheduler {
     // If all failed TsFiles are converted into tablets and inserted,
     // we can consider the load process as successful.
     if (failedTsFileNodeIndexes.isEmpty()) {
-      LOGGER.info("Load: all failed TsFiles are converted to tablets and inserted.");
+      LOGGER.info(DataNodeQueryMessages.LOAD_ALL_FAILED_TSFILES_ARE_CONVERTED_TO_TABLETS);
       stateMachine.transitionToFinished();
     } else {
       final String skippedConversionTsFiles =

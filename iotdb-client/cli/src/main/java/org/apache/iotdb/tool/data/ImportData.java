@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.tool.data;
 
+import org.apache.iotdb.cli.i18n.CliMessages;
 import org.apache.iotdb.cli.utils.IoTPrinter;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
@@ -384,29 +385,29 @@ public class ImportData extends AbstractDataTool {
 
   private static void applyTypeInferArgs(String key, String value) throws ArgsErrorException {
     if (!Constants.TYPE_INFER_KEY_DICT.containsKey(key)) {
-      throw new ArgsErrorException("Unknown type infer key: " + key);
+      throw new ArgsErrorException(String.format(CliMessages.UNKNOWN_TYPE_INFER_KEY, key));
     }
     if (!Constants.TYPE_INFER_VALUE_DICT.containsKey(value)) {
-      throw new ArgsErrorException("Unknown type infer value: " + value);
+      throw new ArgsErrorException(String.format(CliMessages.UNKNOWN_TYPE_INFER_VALUE, value));
     }
     if (key.equals(Constants.DATATYPE_NAN)
         && !(value.equals(Constants.DATATYPE_FLOAT)
             || value.equals(Constants.DATATYPE_DOUBLE)
             || value.equals(Constants.DATATYPE_TEXT)
             || value.equals(Constants.DATATYPE_STRING))) {
-      throw new ArgsErrorException("NaN can not convert to " + value);
+      throw new ArgsErrorException(String.format(CliMessages.NAN_CANNOT_CONVERT, value));
     }
     if (key.equals(Constants.DATATYPE_BOOLEAN)
         && !(value.equals(Constants.DATATYPE_BOOLEAN)
             || value.equals(Constants.DATATYPE_TEXT)
             || value.equals(Constants.DATATYPE_STRING))) {
-      throw new ArgsErrorException("Boolean can not convert to " + value);
+      throw new ArgsErrorException(String.format(CliMessages.BOOLEAN_CANNOT_CONVERT, value));
     }
     if (key.equals(Constants.DATATYPE_DATE)
         && !(value.equals(Constants.DATATYPE_DATE)
             || value.equals(Constants.DATATYPE_TEXT)
             || value.equals(Constants.DATATYPE_STRING))) {
-      throw new ArgsErrorException("Date can not convert to " + value);
+      throw new ArgsErrorException(String.format(CliMessages.DATE_CANNOT_CONVERT, value));
     }
     if (key.equals(Constants.DATATYPE_TIMESTAMP)
         && !(value.equals(Constants.DATATYPE_TIMESTAMP)
@@ -414,15 +415,15 @@ public class ImportData extends AbstractDataTool {
             || value.equals(Constants.DATATYPE_STRING)
             || value.equals(Constants.DATATYPE_DOUBLE)
             || value.equals(Constants.DATATYPE_LONG))) {
-      throw new ArgsErrorException("Timestamp can not convert to " + value);
+      throw new ArgsErrorException(String.format(CliMessages.TIMESTAMP_CANNOT_CONVERT, value));
     }
     if (key.equals(Constants.DATATYPE_BLOB) && !(value.equals(Constants.DATATYPE_BLOB))) {
-      throw new ArgsErrorException("Blob can not convert to " + value);
+      throw new ArgsErrorException(String.format(CliMessages.BLOB_CANNOT_CONVERT, value));
     }
     final TSDataType srcType = Constants.TYPE_INFER_VALUE_DICT.get(key);
     final TSDataType dstType = Constants.TYPE_INFER_VALUE_DICT.get(value);
     if (dstType.getType() < srcType.getType()) {
-      throw new ArgsErrorException(key + " can not convert to " + value);
+      throw new ArgsErrorException(String.format(CliMessages.CANNOT_CONVERT, key, value));
     }
     Constants.TYPE_INFER_KEY_DICT.put(key, Constants.TYPE_INFER_VALUE_DICT.get(value));
   }

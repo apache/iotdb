@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.pipe.IoTConsensusV2;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.consensus.ReplicateProgressDataNodeManager;
 import org.apache.iotdb.db.pipe.consensus.deletion.persist.DeletionBuffer;
 import org.apache.iotdb.db.pipe.consensus.deletion.persist.PageCacheDeletionBuffer;
@@ -89,7 +90,8 @@ public class DeletionResourceManager implements AutoCloseable {
       if (!storageDir.exists()) {
         // Init
         if (!storageDir.mkdirs()) {
-          LOGGER.warn("Unable to create iotConsensusV2 deletion dir at {}", storageDir);
+          LOGGER.warn(
+              DataNodePipeMessages.UNABLE_TO_CREATE_IOTCONSENSUSV2_DELETION_DIR_AT, storageDir);
           throw new IOException(
               String.format("Unable to create iotConsensusV2 deletion dir at %s", storageDir));
         }
@@ -112,7 +114,7 @@ public class DeletionResourceManager implements AutoCloseable {
                             deletion.getDeleteDataNode(), key -> deletion));
           } catch (IOException e) {
             LOGGER.warn(
-                "Detect file corrupted when recover DAL-{}, discard all subsequent DALs...",
+                DataNodePipeMessages.DETECT_FILE_CORRUPTED_WHEN_RECOVER_DAL_DISCARD,
                 path.getFileName());
             break;
           }
@@ -127,10 +129,11 @@ public class DeletionResourceManager implements AutoCloseable {
 
   @Override
   public void close() {
-    LOGGER.info("Closing deletion resource manager for {}...", dataRegionId);
+    LOGGER.info(DataNodePipeMessages.CLOSING_DELETION_RESOURCE_MANAGER_FOR, dataRegionId);
     this.deleteNode2ResourcesMap.clear();
     this.deletionBuffer.close();
-    LOGGER.info("Deletion resource manager for {} has been successfully closed!", dataRegionId);
+    LOGGER.info(
+        DataNodePipeMessages.DELETION_RESOURCE_MANAGER_FOR_HAS_BEEN_SUCCESSFULLY, dataRegionId);
   }
 
   public DeletionResource registerDeletionResource(AbstractDeleteDataNode deleteDataNode) {
@@ -158,7 +161,7 @@ public class DeletionResourceManager implements AutoCloseable {
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       LOGGER.warn(
-          "DeletionManager-{}: current waiting is interrupted. May because current application is down. ",
+          DataNodePipeMessages.DELETIONMANAGER_CURRENT_WAITING_IS_INTERRUPTED_MAY_BECAUSE,
           dataRegionId,
           e);
       return deleteNode2ResourcesMap.values().stream().collect(ImmutableList.toImmutableList());
@@ -171,12 +174,12 @@ public class DeletionResourceManager implements AutoCloseable {
     if (storageDir.exists()) {
       FileUtils.deleteFileOrDirectory(storageDir);
       LOGGER.info(
-          "DeletionManager-{}: current DAL dir {} is deleted successfully",
+          DataNodePipeMessages.DELETIONMANAGER_CURRENT_DAL_DIR_IS_DELETED_SUCCESSFULLY,
           dataRegionId,
           storageDir);
     } else {
       LOGGER.info(
-          "DeletionManager-{}: current DAL dir {} is not initialized, no need to delete.",
+          DataNodePipeMessages.DELETIONMANAGER_CURRENT_DAL_DIR_IS_NOT_INITIALIZED,
           dataRegionId,
           storageDir);
     }
@@ -214,11 +217,13 @@ public class DeletionResourceManager implements AutoCloseable {
         File fileToDelete = deletionPaths[i].toFile();
         FileUtils.deleteFileOrDirectory(fileToDelete);
         LOGGER.info(
-            "DeletionManager-{} delete deletion file in {} dir...", dataRegionId, fileToDelete);
+            DataNodePipeMessages.DELETIONMANAGER_DELETE_DELETION_FILE_IN_DIR,
+            dataRegionId,
+            fileToDelete);
       }
     } catch (IOException e) {
       LOGGER.warn(
-          "DeletionManager-{} failed to delete file in {} dir, please manually check!",
+          DataNodePipeMessages.DELETIONMANAGER_FAILED_TO_DELETE_FILE_IN_DIR,
           dataRegionId,
           storageDir);
     }
@@ -291,7 +296,7 @@ public class DeletionResourceManager implements AutoCloseable {
           try {
             return new DeletionResourceManager(groupId);
           } catch (IOException e) {
-            LOGGER.error("Failed to initialize DeletionResourceManager", e);
+            LOGGER.error(DataNodePipeMessages.FAILED_TO_INITIALIZE_DELETIONRESOURCEMANAGER, e);
             throw new RuntimeException(e);
           }
         });
@@ -340,7 +345,7 @@ public class DeletionResourceManager implements AutoCloseable {
         }
       }
     } catch (IOException e) {
-      LOGGER.error("Failed to recover DeletionResourceManager", e);
+      LOGGER.error(DataNodePipeMessages.FAILED_TO_RECOVER_DELETIONRESOURCEMANAGER, e);
     }
   }
 }

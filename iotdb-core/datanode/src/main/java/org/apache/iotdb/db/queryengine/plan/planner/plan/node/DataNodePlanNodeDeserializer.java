@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan.node;
 
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.CommonPlanNodeDeserializer;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileObjectPieceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
@@ -180,7 +181,7 @@ public class DataNodePlanNodeDeserializer extends CommonPlanNodeDeserializer {
       case 2004:
         return ObjectNode.deserializeFromWAL(stream);
       default:
-        throw new IllegalArgumentException("Invalid node type: " + nodeType);
+        throw new IllegalArgumentException(DataNodeQueryMessages.INVALID_NODE_TYPE + nodeType);
     }
   }
 
@@ -209,7 +210,7 @@ public class DataNodePlanNodeDeserializer extends CommonPlanNodeDeserializer {
       case 2004:
         return ObjectNode.deserialize(buffer);
       default:
-        throw new IllegalArgumentException("Invalid node type: " + nodeType);
+        throw new IllegalArgumentException(DataNodeQueryMessages.INVALID_NODE_TYPE + nodeType);
     }
   }
 
@@ -308,7 +309,8 @@ public class DataNodePlanNodeDeserializer extends CommonPlanNodeDeserializer {
         return DeleteTimeSeriesNode.deserialize(buffer);
       case 46:
       case 47:
-        throw new UnsupportedOperationException("This LastQueryScanNode is deprecated");
+        throw new UnsupportedOperationException(
+            DataNodeQueryMessages.THIS_LASTQUERYSCANNODE_IS_DEPRECATED);
       case 48:
         return LastQueryNode.deserialize(buffer);
       case 49:
@@ -395,7 +397,8 @@ public class DataNodePlanNodeDeserializer extends CommonPlanNodeDeserializer {
       case 89:
         return AggregationMergeSortNode.deserialize(buffer);
       case 90:
-        throw new UnsupportedOperationException("ExplainAnalyzeNode should not be serialized");
+        throw new UnsupportedOperationException(
+            DataNodeQueryMessages.EXPLAINANALYZENODE_SHOULD_NOT_BE_SERIALIZED);
       case 91:
         return PipeOperateSchemaQueueNode.deserialize(buffer);
       case 92:
@@ -470,7 +473,8 @@ public class DataNodePlanNodeDeserializer extends CommonPlanNodeDeserializer {
         return org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode
             .deserialize(buffer);
       case 1019:
-        throw new UnsupportedOperationException("ExplainAnalyzeNode should not be deserialized");
+        throw new UnsupportedOperationException(
+            DataNodeQueryMessages.EXPLAINANALYZENODE_SHOULD_NOT_BE_DESERIALIZED);
       case 1021:
         return InformationSchemaTableScanNode.deserialize(buffer);
       case 1022:

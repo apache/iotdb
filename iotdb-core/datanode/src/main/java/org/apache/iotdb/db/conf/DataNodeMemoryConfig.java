@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
 import org.apache.iotdb.commons.conf.TrimProperties;
 import org.apache.iotdb.commons.memory.MemoryConfig;
 import org.apache.iotdb.commons.memory.MemoryManager;
+import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.AbstractCompactionEstimator;
 import org.apache.iotdb.db.utils.MemUtils;
 
@@ -422,7 +423,7 @@ public class DataNodeMemoryConfig {
                       "enable_query_memory_estimation"))));
 
     } catch (Exception e) {
-      LOGGER.error(String.format("Fail to reload configuration because %s", e));
+      LOGGER.error(String.format(DataNodeMiscMessages.FAIL_RELOAD_CONFIGURATION_FMT, e));
     }
 
     String queryMemoryAllocateProportion =

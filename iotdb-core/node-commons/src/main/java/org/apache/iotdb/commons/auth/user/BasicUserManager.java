@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.auth.role.BasicRoleManager;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.i18n.AuthMessages;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -54,7 +55,7 @@ public abstract class BasicUserManager extends BasicRoleManager {
 
   @Override
   protected String getNoSuchEntityError() {
-    return "No such user %s";
+    return AuthMessages.NO_SUCH_USER_FMT;
   }
 
   protected long nextUserId = INTERNAL_USER_END_ID;
@@ -106,12 +107,12 @@ public abstract class BasicUserManager extends BasicRoleManager {
       admin.getPathPrivilegeList().add(pathPri);
     } catch (IllegalPathException e) {
       LOGGER.warn(
-          "Got a wrong path for {} to init",
+          AuthMessages.WRONG_PATH_INIT,
           CommonDescriptor.getInstance().getConfig().getDefaultAdminName(),
           e);
     }
     LOGGER.info(
-        "Internal user {} initialized",
+        AuthMessages.INTERNAL_USER_INITIALIZED,
         CommonDescriptor.getInstance().getConfig().getDefaultAdminName());
   }
 
@@ -169,7 +170,7 @@ public abstract class BasicUserManager extends BasicRoleManager {
       long maxUserId = this.accessor.loadUserId();
       nextUserId = Math.max(maxUserId, INTERNAL_USER_END_ID);
     } catch (IOException e) {
-      LOGGER.warn("meet error in load max userId.", e);
+      LOGGER.warn(AuthMessages.LOAD_MAX_USER_ID_ERROR, e);
       throw new RuntimeException(e);
     }
   }
@@ -193,7 +194,7 @@ public abstract class BasicUserManager extends BasicRoleManager {
     User user = this.getEntity(username);
     if (user == null) {
       throw new AuthException(
-          TSStatusCode.USER_NOT_EXIST, String.format("User %s does not exist", username));
+          TSStatusCode.USER_NOT_EXIST, String.format(AuthMessages.USER_DOES_NOT_EXIST, username));
     }
     return user.getUserId();
   }
@@ -240,7 +241,7 @@ public abstract class BasicUserManager extends BasicRoleManager {
     User user = this.getEntity(username);
     if (user != null) {
       throw new AuthException(
-          TSStatusCode.USER_ALREADY_EXIST, "Builtin username of admin is already in use");
+          TSStatusCode.USER_ALREADY_EXIST, AuthMessages.BUILTIN_USERNAME_IN_USE);
     }
     lock.writeLock(username);
     try {
@@ -260,7 +261,7 @@ public abstract class BasicUserManager extends BasicRoleManager {
       if (username.equals(password)
           && CommonDescriptor.getInstance().getConfig().isEnforceStrongPassword()) {
         throw new AuthException(
-            TSStatusCode.ILLEGAL_PASSWORD, "Password cannot be the same as user name");
+            TSStatusCode.ILLEGAL_PASSWORD, AuthMessages.PASSWORD_SAME_AS_USERNAME);
       }
       AuthUtils.validateNewUserUsername(username);
       if (enableEncrypt) {
@@ -275,7 +276,7 @@ public abstract class BasicUserManager extends BasicRoleManager {
       if (username.equals(password)
           && CommonDescriptor.getInstance().getConfig().isEnforceStrongPassword()) {
         throw new AuthException(
-            TSStatusCode.ILLEGAL_PASSWORD, "Password cannot be the same as user name");
+            TSStatusCode.ILLEGAL_PASSWORD, AuthMessages.PASSWORD_SAME_AS_USERNAME);
       }
       AuthUtils.validateInternalBuiltinUsername(username, userId);
       if (enableEncrypt) {
@@ -290,7 +291,7 @@ public abstract class BasicUserManager extends BasicRoleManager {
       if (CommonDescriptor.getInstance().getConfig().isEnforceStrongPassword()
           && username.equals(newPassword)) {
         throw new AuthException(
-            TSStatusCode.ILLEGAL_PASSWORD, "Password cannot be the same as user name");
+            TSStatusCode.ILLEGAL_PASSWORD, AuthMessages.PASSWORD_SAME_AS_USERNAME);
       }
       AuthUtils.validatePassword(newPassword);
     }
@@ -320,9 +321,7 @@ public abstract class BasicUserManager extends BasicRoleManager {
     if (tmpUser != null) {
       throw new AuthException(
           TSStatusCode.USER_ALREADY_EXIST,
-          String.format(
-              "Cannot rename user %s to %s, because the target username is already existed.",
-              username, newUsername));
+          String.format(AuthMessages.RENAME_USER_TARGET_EXISTS, username, newUsername));
     }
     lock.writeLock(username);
     try {
@@ -433,7 +432,7 @@ public abstract class BasicUserManager extends BasicRoleManager {
         }
         entityMap.put(user.getName(), user);
       } catch (IOException e) {
-        LOGGER.warn("Get exception when load user {}", userId);
+        LOGGER.warn(AuthMessages.LOAD_USER_EXCEPTION, userId);
         throw new AuthException(TSStatusCode.AUTH_IO_EXCEPTION, e);
       }
     }

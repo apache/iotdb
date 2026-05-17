@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
 import org.apache.iotdb.commons.pipe.metric.PipeEventCounter;
 import org.apache.iotdb.commons.utils.PathUtils;
+import org.apache.iotdb.db.i18n.DataNodePipeMessages;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResource;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResourceManager;
 import org.apache.iotdb.db.pipe.event.common.deletion.PipeDeleteDataNodeEvent;
@@ -94,8 +95,7 @@ public class PipeDataRegionAssigner implements Closeable {
 
   public void publishToAssign(final PipeRealtimeEvent event) {
     if (!event.increaseReferenceCount(PipeDataRegionAssigner.class.getName())) {
-      LOGGER.warn(
-          "The reference count of the realtime event {} cannot be increased, skipping it.", event);
+      LOGGER.warn(DataNodePipeMessages.THE_REFERENCE_COUNT_OF_THE_REALTIME_EVENT, event);
       return;
     }
 
@@ -152,8 +152,7 @@ public class PipeDataRegionAssigner implements Closeable {
                 reportEvent.bindProgressIndex(event.getProgressIndex());
                 if (!reportEvent.increaseReferenceCount(PipeDataRegionAssigner.class.getName())) {
                   LOGGER.warn(
-                      "The reference count of the event {} cannot be increased, skipping it.",
-                      reportEvent);
+                      DataNodePipeMessages.THE_REFERENCE_COUNT_OF_THE_EVENT_CANNOT, reportEvent);
                   return;
                 }
                 source.extract(PipeRealtimeEventFactory.createRealtimeEvent(reportEvent));
@@ -211,8 +210,7 @@ public class PipeDataRegionAssigner implements Closeable {
 
               if (!copiedEvent.increaseReferenceCount(PipeDataRegionAssigner.class.getName())) {
                 LOGGER.warn(
-                    "The reference count of the event {} cannot be increased, skipping it.",
-                    copiedEvent);
+                    DataNodePipeMessages.THE_REFERENCE_COUNT_OF_THE_EVENT_CANNOT, copiedEvent);
                 return;
               }
               source.extract(copiedEvent);
@@ -235,8 +233,7 @@ public class PipeDataRegionAssigner implements Closeable {
                 reportEvent.bindProgressIndex(event.getProgressIndex());
                 if (!reportEvent.increaseReferenceCount(PipeDataRegionAssigner.class.getName())) {
                   LOGGER.warn(
-                      "The reference count of the event {} cannot be increased, skipping it.",
-                      reportEvent);
+                      DataNodePipeMessages.THE_REFERENCE_COUNT_OF_THE_EVENT_CANNOT, reportEvent);
                   return;
                 }
                 source.extract(PipeRealtimeEventFactory.createRealtimeEvent(reportEvent));
@@ -274,7 +271,7 @@ public class PipeDataRegionAssigner implements Closeable {
     disruptor.shutdown();
     matcher.clear();
     LOGGER.info(
-        "Pipe: Assigner on data region {} shutdown internal disruptor within {} ms",
+        DataNodePipeMessages.PIPE_ASSIGNER_ON_DATA_REGION_SHUTDOWN_INTERNAL,
         dataRegionId,
         System.currentTimeMillis() - startTime);
   }

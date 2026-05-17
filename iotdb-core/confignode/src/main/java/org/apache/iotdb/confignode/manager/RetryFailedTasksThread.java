@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.i18n.ManagerMessages;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -83,7 +84,7 @@ public class RetryFailedTasksThread {
                 0,
                 HEARTBEAT_INTERVAL,
                 TimeUnit.MILLISECONDS);
-        LOGGER.info("RetryFailMissions service is started successfully.");
+        LOGGER.info(ManagerMessages.RETRYFAILMISSIONS_SERVICE_IS_STARTED_SUCCESSFULLY);
       }
     }
   }
@@ -94,7 +95,7 @@ public class RetryFailedTasksThread {
       if (currentFailedTasksRetryThreadFuture != null) {
         currentFailedTasksRetryThreadFuture.cancel(false);
         currentFailedTasksRetryThreadFuture = null;
-        LOGGER.info("RetryFailMissions service is stopped successfully.");
+        LOGGER.info(ManagerMessages.RETRYFAILMISSIONS_SERVICE_IS_STOPPED_SUCCESSFULLY);
       }
     }
   }

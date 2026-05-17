@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.jdbc;
 
+import org.apache.iotdb.jdbc.i18n.JdbcMessages;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -55,7 +57,7 @@ public class StringUtils {
     try {
       toPlainStringMethod = BigDecimal.class.getMethod("toPlainString");
     } catch (NoSuchMethodException nsme) {
-      LOGGER.warn("To plain String method Error:", nsme);
+      LOGGER.warn(JdbcMessages.TO_PLAIN_STRING_ERROR, nsme);
     }
   }
 
@@ -67,7 +69,7 @@ public class StringUtils {
       try {
         return (String) toPlainStringMethod.invoke(decimal, null);
       } catch (InvocationTargetException | IllegalAccessException e) {
-        LOGGER.warn("consistent to String Error:", e);
+        LOGGER.warn(JdbcMessages.CONSISTENT_TO_STRING_ERROR, e);
       }
     }
     return decimal.toString();

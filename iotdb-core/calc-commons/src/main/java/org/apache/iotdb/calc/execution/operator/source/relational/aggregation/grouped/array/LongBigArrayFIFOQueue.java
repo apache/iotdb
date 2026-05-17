@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.calc.execution.operator.source.relational.aggregation.grouped.array;
 
+import org.apache.iotdb.calc.i18n.CalcMessages;
+
 import java.util.NoSuchElementException;
 
 import static java.lang.Math.toIntExact;
@@ -52,7 +54,8 @@ public class LongBigArrayFIFOQueue {
    */
   public LongBigArrayFIFOQueue(final long capacity) {
     if (capacity < 0) {
-      throw new IllegalArgumentException("Initial capacity (" + capacity + ") is negative");
+      throw new IllegalArgumentException(
+          String.format(CalcMessages.INITIAL_CAPACITY_IS_NEGATIVE, capacity));
     }
     array = new LongBigArray();
     length =

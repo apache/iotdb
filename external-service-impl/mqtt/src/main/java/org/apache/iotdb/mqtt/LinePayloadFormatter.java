@@ -18,6 +18,8 @@
 
 package org.apache.iotdb.mqtt;
 
+import org.apache.iotdb.mqtt.i18n.MqttMessages;
+
 import io.netty.buffer.ByteBuf;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.external.commons.lang3.NotImplementedException;
@@ -83,7 +85,7 @@ public class LinePayloadFormatter implements PayloadFormatter {
       try {
         Matcher matcher = pattern.matcher(line.trim());
         if (!matcher.matches()) {
-          log.warn("Invalid line protocol format ,line is {}", line);
+          log.warn(MqttMessages.INVALID_LINE_PROTOCOL, line);
           continue;
         }
 
@@ -95,25 +97,25 @@ public class LinePayloadFormatter implements PayloadFormatter {
 
         // Parsing Tags
         if (!setTags(matcher, message)) {
-          log.warn("The tags is error , line is {}", line);
+          log.warn(MqttMessages.TAGS_ERROR, line);
           continue;
         }
 
         // Parsing Attributes
         if (!setAttributes(matcher, message)) {
-          log.warn("The attributes is error , line is {}", line);
+          log.warn(MqttMessages.ATTRIBUTES_ERROR, line);
           continue;
         }
 
         // Parsing Fields
         if (!setFields(matcher, message)) {
-          log.warn("The fields is error , line is {}", line);
+          log.warn(MqttMessages.FIELDS_ERROR, line);
           continue;
         }
 
         // Parsing timestamp
         if (!setTimestamp(matcher, message)) {
-          log.warn("The timestamp is error , line is {}", line);
+          log.warn(MqttMessages.TIMESTAMP_ERROR, line);
           continue;
         }
 

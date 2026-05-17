@@ -419,7 +419,7 @@ public class StrictAccessControlImpl extends AccessControlImpl {
         }
         break;
       default:
-        throw new SemanticException("Unsupported authorType: " + type);
+        throw new SemanticException(TimechoServerMessages.UNSUPPORTED_AUTHOR_TYPE + type);
     }
   }
 
@@ -460,7 +460,8 @@ public class StrictAccessControlImpl extends AccessControlImpl {
                   .setPrivilegeType(privilege)
                   .setResult(false),
               () -> AuthorityChecker.ANY_SCOPE);
-      throw new AccessDeniedException("Only the builtin admin can grant/revoke admin permissions");
+      throw new AccessDeniedException(
+          TimechoServerMessages.ONLY_BUILTIN_ADMIN_CAN_GRANT_REVOKE_ADMIN);
     }
     DNAuditLogger.getInstance()
         .recordObjectAuthenticationAuditLog(

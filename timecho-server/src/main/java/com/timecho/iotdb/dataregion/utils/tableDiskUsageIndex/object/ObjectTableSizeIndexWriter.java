@@ -261,7 +261,8 @@ public class ObjectTableSizeIndexWriter extends AbstractTableSizeIndexWriter {
     try {
       reader.loadObjectFileTableSize(context, System.nanoTime(), Long.MAX_VALUE);
     } catch (IOException e) {
-      logger.error("Failed to execute compaction for obejct table size index file", e);
+      logger.error(
+          TimechoServerMessages.FAILED_TO_EXECUTE_COMPACTION_FOR_OBJECT_TABLE_SIZE_INDEX_FILE, e);
       return;
     } finally {
       reader.close();
@@ -278,7 +279,8 @@ public class ObjectTableSizeIndexWriter extends AbstractTableSizeIndexWriter {
           targetFileWriter.getFile().toPath(),
           generateFile(currentFileVersion + 1, false).toPath());
     } catch (IOException e) {
-      logger.error("Failed to execute compaction for object table size index file", e);
+      logger.error(
+          TimechoServerMessages.FAILED_TO_EXECUTE_COMPACTION_FOR_OBJECT_TABLE_SIZE_INDEX_FILE, e);
     } finally {
       if (targetFileWriter != null) {
         targetFileWriter.close();
@@ -319,7 +321,7 @@ public class ObjectTableSizeIndexWriter extends AbstractTableSizeIndexWriter {
     try {
       writer.flush();
     } catch (IOException e) {
-      logger.warn("Failed to sync object table size index file {}", getFile(), e);
+      logger.warn(TimechoServerMessages.FAILED_TO_SYNC_OBJECT_TABLE_SIZE_INDEX_FILE, getFile(), e);
     }
   }
 
@@ -328,7 +330,7 @@ public class ObjectTableSizeIndexWriter extends AbstractTableSizeIndexWriter {
     try {
       writer.sync();
     } catch (IOException e) {
-      logger.warn("Failed to sync object table size index file {}", getFile(), e);
+      logger.warn(TimechoServerMessages.FAILED_TO_SYNC_OBJECT_TABLE_SIZE_INDEX_FILE, getFile(), e);
     }
   }
 

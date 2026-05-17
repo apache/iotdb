@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.schema.view.viewExpression.leaf.TimeSeriesViewOperand;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 
 import org.apache.tsfile.exception.NotImplementedException;
@@ -115,7 +116,8 @@ public class AlterLogicalViewNode extends PlanNode {
   @Override
   public PlanNode clone() {
     // TODO: CRTODO, complete this method
-    throw new NotImplementedException("Clone of AlterLogicalNode is not implemented");
+    throw new NotImplementedException(
+        DataNodeQueryMessages.CLONE_OF_ALTERLOGICALNODE_IS_NOT_IMPLEMENTED);
   }
 
   @Override

@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.schema.table.Audit;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.db.auth.AuthorityChecker;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.statement.AuthorType;
 import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
@@ -124,7 +125,7 @@ public class AuthorStatement extends Statement implements IConfigStatement {
         this.setType(StatementType.ACCOUNT_UNLOCK);
         break;
       default:
-        throw new IllegalArgumentException("Unknown authorType: " + authorType);
+        throw new IllegalArgumentException(DataNodeQueryMessages.UNKNOWN_AUTHORTYPE + authorType);
     }
   }
 
@@ -275,7 +276,7 @@ public class AuthorStatement extends Statement implements IConfigStatement {
         queryType = QueryType.READ;
         break;
       default:
-        throw new IllegalArgumentException("Unknown authorType: " + authorType);
+        throw new IllegalArgumentException(DataNodeQueryMessages.UNKNOWN_AUTHORTYPE + authorType);
     }
     return queryType;
   }

@@ -34,6 +34,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.exception.DataTypeInconsistentException;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
@@ -216,7 +217,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
 
   @Override
   public PlanNode clone() {
-    throw new NotImplementedException("clone of Insert is not implemented");
+    throw new NotImplementedException(DataNodeQueryMessages.CLONE_OF_INSERT_IS_NOT_IMPLEMENTED);
   }
 
   @Override
@@ -739,7 +740,8 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     try {
       targetPath = readTargetPath(buffer);
     } catch (IllegalPathException e) {
-      throw new IllegalArgumentException("Cannot deserialize InsertTabletNode", e);
+      throw new IllegalArgumentException(
+          DataNodeQueryMessages.CANNOT_DESERIALIZE_INSERTTABLETNODE, e);
     }
 
     int measurementSize = buffer.getInt();
@@ -1016,7 +1018,8 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     try {
       targetPath = readTargetPath(stream);
     } catch (IllegalPathException e) {
-      throw new IllegalArgumentException("Cannot deserialize InsertTabletNode", e);
+      throw new IllegalArgumentException(
+          DataNodeQueryMessages.CANNOT_DESERIALIZE_INSERTTABLETNODE, e);
     }
 
     int measurementSize = stream.readInt();
@@ -1051,7 +1054,8 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     try {
       targetPath = readTargetPath(buffer);
     } catch (IllegalPathException e) {
-      throw new IllegalArgumentException("Cannot deserialize InsertTabletNode", e);
+      throw new IllegalArgumentException(
+          DataNodeQueryMessages.CANNOT_DESERIALIZE_INSERTTABLETNODE, e);
     }
 
     int measurementSize = buffer.getInt();
