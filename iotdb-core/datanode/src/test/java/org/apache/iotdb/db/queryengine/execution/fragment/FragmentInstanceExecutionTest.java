@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.execution.fragment;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -49,6 +50,7 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.reader.IPointReader;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.Test;
 import org.mockito.Mockito;
@@ -57,8 +59,11 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 
@@ -238,6 +243,70 @@ public class FragmentInstanceExecutionTest {
     }
   }
 
+  @Test
+  public void testAlignedTVListPartialColumnClone() {
+    IoTDBDescriptor.getInstance().getConfig().setDataNodeId(1);
+    ExecutorService instanceNotificationExecutor =
+        IoTDBThreadPoolFactory.newFixedThreadPool(2, "test-aligned-partial-clone");
+
+    try {
+      // Create MemTable with AlignedPath
+      List<IMeasurementSchema> schemaList = new ArrayList<>();
+      for (int i = 0; i < 5; i++) {
+        schemaList.add(new MeasurementSchema("sensor_" + i, TSDataType.INT64));
+      }
+      String deviceId = "d1";
+      IMemTable memTable = createMemTable(deviceId, schemaList);
+
+      // Verify we have unsorted AlignedTVList
+      assertEquals(1, memTable.getMemTableMap().size());
+      IWritableMemChunkGroup memChunkGroup = memTable.getMemTableMap().values().iterator().next();
+      assertEquals(1, memChunkGroup.getMemChunkMap().size());
+      IWritableMemChunk memChunk = memChunkGroup.getMemChunkMap().values().iterator().next();
+      TVList tvList = memChunk.getWorkingTVList();
+      assertFalse(tvList.isSorted());
+      assertEquals(6424, tvList.calculateRamSize().getRamSize());
+      assertEquals(100, tvList.rowCount());
+
+      // FragmentInstance Context
+      FragmentInstanceId id1 = new FragmentInstanceId(new PlanFragmentId(MOCK_QUERY_ID, 1), "1");
+      FragmentInstanceStateMachine stateMachine1 =
+          new FragmentInstanceStateMachine(id1, instanceNotificationExecutor);
+      FragmentInstanceContext context1 = createFragmentInstanceContext(id1, stateMachine1);
+
+      FragmentInstanceId id2 = new FragmentInstanceId(new PlanFragmentId(MOCK_QUERY_ID, 2), "2");
+      FragmentInstanceStateMachine stateMachine2 =
+          new FragmentInstanceStateMachine(id2, instanceNotificationExecutor);
+      FragmentInstanceContext context2 = createFragmentInstanceContext(id2, stateMachine2);
+
+      // Query 1: sensor_2 and sensor_0
+      List<String> measurements1 = Arrays.asList("sensor_2", "sensor_0");
+      List<IMeasurementSchema> schemas1 = Arrays.asList(schemaList.get(2), schemaList.get(0));
+      AlignedPath fullPath1 = new AlignedPath(deviceId, measurements1, schemas1);
+
+      ReadOnlyMemChunk readOnlyMemChunk1 =
+          memTable.query(context1, fullPath1, Long.MIN_VALUE, null, null);
+      Set<Integer> accessedColumnsForQuery1 = context1.getAccessedAlignedColumns(tvList);
+      assertEquals(new HashSet<>(Arrays.asList(0, 2)), accessedColumnsForQuery1);
+
+      // Query 2: sensor_1 and sensor_3
+      List<String> measurements2 = Arrays.asList("sensor_1", "sensor_3");
+      List<IMeasurementSchema> schemas2 = Arrays.asList(schemaList.get(1), schemaList.get(3));
+      AlignedPath fullPath2 = new AlignedPath(deviceId, measurements2, schemas2);
+      ReadOnlyMemChunk readOnlyMemChunk2 =
+          memTable.query(context2, fullPath2, Long.MIN_VALUE, null, null);
+
+      // Only cloned sensor_2 and sensor_0 exist
+      assertEquals(3352, tvList.calculateRamSize().getRamSize());
+      assertEquals(100, tvList.rowCount());
+
+    } catch (Exception e) {
+      fail(e.getMessage());
+    } finally {
+      instanceNotificationExecutor.shutdown();
+    }
+  }
+
   private FragmentInstanceExecution createFragmentInstanceExecution(int id, Executor executor)
       throws CpuNotEnoughException {
     IDriverScheduler scheduler = Mockito.mock(IDriverScheduler.class);
@@ -295,6 +364,26 @@ public class FragmentInstanceExecutionTest {
               new MeasurementSchema(measurementId, TSDataType.INT32, TSEncoding.PLAIN)),
           rows - i - 1,
           new Object[] {i + 10});
+    }
+    return memTable;
+  }
+
+  private IMemTable createMemTable(String deviceId, List<IMeasurementSchema> schemaList)
+      throws IllegalPathException {
+    PrimitiveMemTable memTable = new PrimitiveMemTable("root.test", "1");
+
+    // Insert data in reverse order to make it unsorted
+    int rows = 100;
+    for (int i = rows - 1; i >= 0; i--) {
+      Object[] values = new Object[5];
+      for (int j = 0; j < 5; j++) {
+        values[j] = (long) i * 100 + j;
+      }
+      memTable.writeAlignedRow(
+          DeviceIDFactory.getInstance().getDeviceID(new PartialPath(deviceId)),
+          schemaList,
+          i,
+          values);
     }
     return memTable;
   }

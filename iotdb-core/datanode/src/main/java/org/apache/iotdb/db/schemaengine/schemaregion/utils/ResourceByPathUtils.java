@@ -38,6 +38,7 @@ import org.apache.iotdb.db.storageengine.dataregion.memtable.ReadOnlyMemChunk;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.ModificationUtils;
+import org.apache.iotdb.db.utils.datastructure.AlignedTVList;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -63,9 +64,11 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.apache.iotdb.commons.path.AlignedPath.VECTOR_PLACEHOLDER;
 
@@ -121,7 +124,8 @@ public abstract class ResourceByPathUtils {
       QueryContext context,
       IWritableMemChunk memChunk,
       boolean isWorkMemTable,
-      Filter globalTimeFilter) {
+      Filter globalTimeFilter,
+      List<Integer> columnIndexList) {
     // should copy globalTimeFilter because GroupByMonthFilter is stateful
     Filter copyTimeFilter = null;
     if (globalTimeFilter != null) {
@@ -149,7 +153,12 @@ public abstract class ResourceByPathUtils {
     // mutable tvlist
     TVList list = memChunk.getWorkingTVList();
     TVList cloneList = null;
-    TVList.RamInfo listRamInfo = list.calculateRamSize();
+    Set<Integer> columnsToClone = getAccessedColumnsForQuery(list);
+    TVList.RamInfo listRamInfo =
+        (columnsToClone == null)
+            ? list.calculateRamSize()
+            : ((AlignedTVList) list).calculateRamSize(columnsToClone);
+
     list.lockQueryList();
     try {
       if (copyTimeFilter != null
@@ -163,6 +172,11 @@ public abstract class ResourceByPathUtils {
         list.getQueryContextSet().add(context);
         tvListQueryMap.put(list, list.rowCount());
       } else {
+        // columnIndexList is to track column-level access for AlignedTVList.
+        // For TVList (primitive time series), it remains null and column tracking is not needed.
+        if (columnIndexList != null && context instanceof FragmentInstanceContext) {
+          ((FragmentInstanceContext) context).putAccessedColumns(list, columnIndexList);
+        }
         if (list.isSorted() || list.getQueryContextSet().isEmpty()) {
           LOGGER.debug(
               "Working MemTable - add current query context to mutable TVList's query list when it's sorted or no other query on it");
@@ -196,7 +210,11 @@ public abstract class ResourceByPathUtils {
           list.setOwnerQuery(firstQuery);
 
           // clone TVList
-          cloneList = list.clone();
+          cloneList =
+              (columnsToClone == null)
+                  ? list.clone()
+                  : ((AlignedTVList) list).clone(columnsToClone);
+
           cloneList.getQueryContextSet().add(context);
           tvListQueryMap.put(cloneList, cloneList.rowCount());
         }
@@ -217,6 +235,10 @@ public abstract class ResourceByPathUtils {
       memChunk.setWorkingTVList(cloneList);
     }
     return tvListQueryMap;
+  }
+
+  protected Set<Integer> getAccessedColumnsForQuery(TVList tvList) {
+    return null;
   }
 }
 
@@ -364,14 +386,14 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
       return null;
     }
 
-    // prepare AlignedTVList for query. It should clone TVList if necessary.
-    Map<TVList, Integer> alignedTvListQueryMap =
-        prepareTvListMapForQuery(
-            context, alignedMemChunk, modsToMemtable == null, globalTimeFilter);
-
     // column index list for the query
     List<Integer> columnIndexList =
         alignedMemChunk.buildColumnIndexList(partialPath.getSchemaList());
+
+    // prepare AlignedTVList for query. It should clone TVList if necessary.
+    Map<TVList, Integer> alignedTvListQueryMap =
+        prepareTvListMapForQuery(
+            context, alignedMemChunk, modsToMemtable == null, globalTimeFilter, columnIndexList);
 
     List<List<TimeRange>> deletionList = null;
     if (modsToMemtable != null) {
@@ -381,6 +403,27 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
     }
     return new AlignedReadOnlyMemChunk(
         context, columnIndexList, getMeasurementSchema(), alignedTvListQueryMap, deletionList);
+  }
+
+  /**
+   * @param tvList the TVList to get accessed columns for
+   * @return set of accessed column indices, or empty set if no columns are tracked
+   */
+  @Override
+  protected Set<Integer> getAccessedColumnsForQuery(TVList tvList) {
+    Set<Integer> accessedColumns = new HashSet<>();
+    tvList.lockQueryList();
+    try {
+      for (QueryContext queryContext : tvList.getQueryContextSet()) {
+        if (queryContext instanceof FragmentInstanceContext) {
+          accessedColumns.addAll(
+              ((FragmentInstanceContext) queryContext).getAccessedAlignedColumns(tvList));
+        }
+      }
+    } finally {
+      tvList.unlockQueryList();
+    }
+    return accessedColumns;
   }
 
   public VectorMeasurementSchema getMeasurementSchema() {
@@ -535,7 +578,7 @@ class MeasurementResourceByPathUtils extends ResourceByPathUtils {
         memTableMap.get(deviceID).getMemChunkMap().get(partialPath.getMeasurement());
     // prepare TVList for query. It should clone TVList if necessary.
     Map<TVList, Integer> tvListQueryMap =
-        prepareTvListMapForQuery(context, memChunk, modsToMemtable == null, globalTimeFilter);
+        prepareTvListMapForQuery(context, memChunk, modsToMemtable == null, globalTimeFilter, null);
     List<TimeRange> deletionList = null;
     if (modsToMemtable != null) {
       deletionList =
