@@ -110,60 +110,24 @@ class Cursor(object):
         else:
             sql = operation % parameters
 
-        time_index = []
-        time_names = []
-        if self.__sqlalchemy_mode:
-            sql_seqs = []
-            seqs = sql.split("\n")
-            for seq in seqs:
-                if seq.find("FROM Time Index") >= 0:
-                    time_index = [
-                        int(index)
-                        for index in seq.replace("FROM Time Index", "").split()
-                    ]
-                elif seq.find("FROM Time Name") >= 0:
-                    time_names = [
-                        name for name in seq.replace("FROM Time Name", "").split()
-                    ]
-                else:
-                    sql_seqs.append(seq)
-            sql = "\n".join(sql_seqs)
+        data_set = self.__session.execute_statement(sql)
+        col_names = None
+        col_types = None
+        rows = []
 
-        try:
-            data_set = self.__session.execute_statement(sql)
-            col_names = None
-            col_types = None
-            rows = []
+        if data_set:
+            data = data_set.todf()
+            col_names = data.columns.tolist()
+            col_types = data_set.get_column_types()
+            rows = data.values.tolist()
+            data_set.close_operation_handle()
 
-            if data_set:
-                data = data_set.todf()
-
-                if self.__sqlalchemy_mode and time_index:
-                    time_column = data.columns[0]
-                    time_column_value = data.Time
-                    del data[time_column]
-                    for i in range(len(time_index)):
-                        data.insert(time_index[i], time_names[i], time_column_value)
-
-                col_names = data.columns.tolist()
-                col_types = data_set.get_column_types()
-                rows = data.values.tolist()
-                data_set.close_operation_handle()
-
-            self.__result = {
-                "col_names": col_names,
-                "col_types": col_types,
-                "rows": rows,
-                "row_count": len(rows),
-            }
-        except Exception:
-            logger.error("failed to execute statement:{}".format(sql))
-            self.__result = {
-                "col_names": None,
-                "col_types": None,
-                "rows": [],
-                "row_count": -1,
-            }
+        self.__result = {
+            "col_names": col_names,
+            "col_types": col_types,
+            "rows": rows,
+            "row_count": len(rows),
+        }
         self.__rows = iter(self.__result["rows"])
 
     def executemany(self, operation, seq_of_parameters=None):

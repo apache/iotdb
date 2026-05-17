@@ -29,31 +29,29 @@
 [![IoTDB Website](https://img.shields.io/website-up-down-green-red/https/shields.io.svg?label=iotdb-website)](https://iotdb.apache.org/)
 
 
-Apache IoTDB (Database for Internet of Things) is an IoT native database with high performance for 
-data management and analysis, deployable on the edge and the cloud. Due to its light-weight 
-architecture, high performance and rich feature set together with its deep integration with 
-Apache Hadoop, Spark and Flink, Apache IoTDB can meet the requirements of massive data storage, 
-high-speed data ingestion and complex data analysis in the IoT industrial fields.
+Apache IoTDB（物联网数据库）是一款物联网原生数据库，具有高性能的数据管理和分析能力，可部署在边缘和云端。
+凭借其轻量级架构、高性能和丰富的功能集，以及与 Apache Hadoop、Spark 和 Flink 的深度集成，
+Apache IoTDB 能够满足物联网工业领域中海量数据存储、高速数据写入和复杂数据分析的需求。
 
-## Python Native API
+## Python 原生 API
 
-### Requirements
+### 环境要求
 
-You have to install thrift (>=0.14.1) before using the package.
+使用本包之前，需要先安装 thrift (>=0.14.1)。
 
 
 
-### How to use (Example)
+### 使用方法（示例）
 
-First, download the latest package: `pip3 install apache-iotdb`
+首先，安装最新的包：`pip3 install apache-iotdb`
 
-You can get an example of using the package to read and write data at here: [Example](https://github.com/apache/iotdb/blob/master/iotdb-client/client-py/SessionExample.py)
+读写数据的使用示例请参考：[示例](https://github.com/apache/iotdb/blob/master/iotdb-client/client-py/SessionExample.py)
 
-An example of aligned timeseries: [Aligned Timeseries Session Example](https://github.com/apache/iotdb/blob/master/iotdb-client/client-py/SessionAlignedTimeseriesExample.py)
+对齐时间序列的示例：[对齐时间序列 Session 示例](https://github.com/apache/iotdb/blob/master/iotdb-client/client-py/SessionAlignedTimeseriesExample.py)
 
-(you need to add `import iotdb` in the head of the file)
+（需要在文件开头添加 `import iotdb`）
 
-Or:
+或者：
 
 ```python
 from iotdb.Session import Session
@@ -68,47 +66,47 @@ zone = session.get_time_zone()
 session.close()
 ```
 
-### Initialization
+### 初始化
 
-* Initialize a Session
+* 初始化 Session
 
 ```python
 session = Session(ip, port_, username_, password_, fetch_size=1024, zone_id="Asia/Shanghai")
 ```
 
-* Open a session, with a parameter to specify whether to enable RPC compression
+* 打开 Session，可通过参数指定是否启用 RPC 压缩
 
 ```python
 session.open(enable_rpc_compression=False)
 ```
 
-Notice: this RPC compression status of client must comply with that of IoTDB server
+注意：客户端的 RPC 压缩状态必须与 IoTDB 服务器一致。
 
-* Close a Session
+* 关闭 Session
 
 ```python
 session.close()
 ```
 
-### Data Definition Interface (DDL Interface)
+### 数据定义接口（DDL 接口）
 
-#### DATABASE Management
+#### 数据库管理
 
-* CREATE DATABASE
+* 创建数据库
 
 ```python
 session.set_storage_group(group_name)
 ```
 
-* Delete one or several databases
+* 删除一个或多个数据库
 
 ```python
 session.delete_storage_group(group_name)
 session.delete_storage_groups(group_name_lst)
 ```
-#### Timeseries Management
+#### 时间序列管理
 
-* Create one or multiple timeseries
+* 创建一个或多个时间序列
 
 ```python
 session.create_time_series(ts_path, data_type, encoding, compressor,
@@ -120,7 +118,7 @@ session.create_multi_time_series(
 )
 ```
 
-* Create aligned timeseries
+* 创建对齐时间序列
 
 ```python
 session.create_aligned_time_series(
@@ -128,34 +126,35 @@ session.create_aligned_time_series(
 )
 ```
 
-Attention: Alias of measurements are **not supported** currently.
+注意：目前**不支持**度量（measurement）的别名。
 
-* Delete one or several timeseries
+* 删除一个或多个时间序列
 
 ```python
 session.delete_time_series(paths_list)
 ```
 
-* Check whether the specific timeseries exists
+* 检查指定的时间序列是否存在
 
 ```python
 session.check_time_series_exists(path)
 ```
 
-### Data Manipulation Interface (DML Interface)
+### 数据操作接口（DML 接口）
 
-#### Insert
+#### 写入
 
-It is recommended to use insertTablet to help improve write efficiency.
+建议使用 insertTablet 以提高写入效率。
 
-* Insert a Tablet，which is multiple rows of a device, each row has the same measurements
-    * **Better Write Performance**
-    * **Support null values**: fill the null value with any value, and then mark the null value via BitMap (from v0.13)
+* 插入一个 Tablet，即一个设备的多行数据，每行具有相同的度量
+
+    * **更好的写入性能**
+    * **支持空值**：用任意值填充空值位置，然后通过 BitMap 标记空值（v0.13 起支持）
 
 
-We have two implementations of Tablet in Python API.
+Python API 中有两种 Tablet 实现。
 
-* Normal Tablet
+* 普通 Tablet
 
 ```python
 values_ = [
@@ -184,13 +183,12 @@ session.insert_tablet(tablet_)
 ```
 * Numpy Tablet
 
-Comparing with Tablet, Numpy Tablet is using [numpy.ndarray](https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html) to record data.
-With less memory footprint and time cost of serialization, the insert performance will be better.
+与普通 Tablet 相比，Numpy Tablet 使用 [numpy.ndarray](https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html) 来存储数据。
+由于内存占用更少且序列化开销更低，写入性能更好。
 
-**Notice**
-1. time and value columns in Tablet are ndarray.
-2. recommended to use the specific dtypes to each ndarray, see the example below 
-(if not, the default dtypes are also ok).
+**注意**
+1. Tablet 中的时间列和值列均为 ndarray。
+2. 建议为每个 ndarray 使用特定的 dtype，参见下方示例（使用默认 dtype 也可以）。
 
 ```python
 import numpy as np
@@ -216,7 +214,7 @@ np_tablet_ = NumpyTablet(
 )
 session.insert_tablet(np_tablet_)
 
-# insert one numpy tablet with none into the database.
+# 插入一个包含空值的 numpy tablet
 np_values_ = [
     np.array([False, True, False, True], TSDataType.BOOLEAN.np_dtype()),
     np.array([10, 100, 100, 0], TSDataType.INT32.np_dtype()),
@@ -240,19 +238,19 @@ np_tablet_with_none = NumpyTablet(
 session.insert_tablet(np_tablet_with_none)
 ```
 
-* Insert multiple Tablets
+* 插入多个 Tablet
 
 ```python
 session.insert_tablets(tablet_lst)
 ```
 
-* Insert a Record
+* 插入一条记录
 
 ```python
 session.insert_record(device_id, timestamp, measurements_, data_types_, values_)
 ```
 
-* Insert multiple Records
+* 插入多条记录
 
 ```python
 session.insert_records(
@@ -260,27 +258,27 @@ session.insert_records(
 )
 ```
 
-* Insert multiple Records that belong to the same device.
-  With type info the server has no need to do type inference, which leads a better performance
+* 插入属于同一设备的多条记录。
+  提供类型信息后，服务器无需进行类型推断，可获得更好的性能。
 
 
 ```python
 session.insert_records_of_one_device(device_id, time_list, measurements_list, data_types_list, values_list)
 ```
 
-#### Insert with type inference
+#### 带类型推断的写入
 
-When the data is of String type, we can use the following interface to perform type inference based on the value of the value itself. For example, if value is "true" , it can be automatically inferred to be a boolean type. If value is "3.2" , it can be automatically inferred as a flout type. Without type information, server has to do type inference, which may cost some time.
+当数据为 String 类型时，可以使用以下接口根据值本身进行类型推断。例如，值为 "true" 时会自动推断为布尔类型，值为 "3.2" 时会自动推断为浮点类型。不提供类型信息时，服务器需要进行类型推断，这可能会消耗一定时间。
 
-* Insert a Record, which contains multiple measurement value of a device at a timestamp
+* 插入一条记录，包含一个设备在某个时间戳的多个度量值
 
 ```python
 session.insert_str_record(device_id, timestamp, measurements, string_values)
 ```
 
-#### Insert of Aligned Timeseries
+#### 对齐时间序列的写入
 
-The Insert of aligned timeseries uses interfaces like insert_aligned_XXX, and others are similar to the above interfaces:
+对齐时间序列的写入使用 insert_aligned_XXX 系列接口，其余与上述接口类似：
 
 * insert_aligned_record
 * insert_aligned_records
@@ -289,21 +287,21 @@ The Insert of aligned timeseries uses interfaces like insert_aligned_XXX, and ot
 * insert_aligned_tablets
 
 
-### IoTDB-SQL Interface
+### IoTDB-SQL 接口
 
-* Execute query statement
+* 执行查询语句
 
 ```python
 session.execute_query_statement(sql)
 ```
 
-* Execute non query statement
+* 执行非查询语句
 
 ```python
 session.execute_non_query_statement(sql)
 ```
 
-* Execute statement
+* 执行语句
 
 ```python
 session.execute_statement(sql)
@@ -311,12 +309,12 @@ session.execute_statement(sql)
 
 
 
-### Pandas Support
+### Pandas 支持
 
-To easily transform a query result to a [Pandas Dataframe](https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.html)
-the SessionDataSet has a method `.todf()` which consumes the dataset and transforms it to a pandas dataframe.
+为了方便地将查询结果转换为 [Pandas DataFrame](https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.html)，
+SessionDataSet 提供了 `.todf()` 方法，可以消费数据集并将其转换为 Pandas DataFrame。
 
-Example:
+示例：
 
 ```python
 from iotdb.Session import Session
@@ -329,21 +327,21 @@ session = Session(ip, port_, username_, password_)
 session.open(False)
 result = session.execute_query_statement("SELECT * FROM root.*")
 
-# Transform to Pandas Dataset
+# 转换为 Pandas DataFrame
 df = result.todf()
 
 session.close()
 
-# Now you can work with the dataframe
+# 现在可以操作 DataFrame
 df = ...
 ```
 
 
-### IoTDB Testcontainer
+### IoTDB 测试容器
 
-The Test Support is based on the lib `testcontainers` (https://testcontainers-python.readthedocs.io/en/latest/index.html) which you need to install in your project if you want to use the feature.
+测试支持基于 `testcontainers` 库 (https://testcontainers-python.readthedocs.io/en/latest/index.html)，如果需要使用该功能，需要在项目中安装此库。
 
-To start (and stop) an IoTDB Database in a Docker container simply do:
+在 Docker 容器中启动（和停止）IoTDB 数据库：
 ```python
 class MyTestCase(unittest.TestCase):
 
@@ -356,18 +354,17 @@ class MyTestCase(unittest.TestCase):
             session.close()
 ```
 
-by default it will load the image `apache/iotdb:latest`, if you want a specific version just pass it like e.g. `IoTDBContainer("apache/iotdb:0.12.0")` to get version `0.12.0` running.
+默认会加载 `apache/iotdb:latest` 镜像，如果需要特定版本，可以传入版本号，如 `IoTDBContainer("apache/iotdb:0.12.0")`。
 
 
 ### IoTDB DBAPI
 
-IoTDB DBAPI implements the Python DB API 2.0 specification (https://peps.python.org/pep-0249/), which defines a common
-interface for accessing databases in Python.
+IoTDB DBAPI 实现了 Python DB API 2.0 规范 (https://peps.python.org/pep-0249/)，定义了 Python 中访问数据库的通用接口。
 
-#### Examples
-+ Initialization
+#### 示例
++ 初始化
 
-The initialized parameters are consistent with the session part (except for the sqlalchemy_mode).
+初始化参数与 Session 部分一致（sqlalchemy_mode 除外）。
 ```python
 from iotdb.dbapi import connect
 
@@ -378,23 +375,23 @@ password_ = "root"
 conn = connect(ip, port_, username_, password_,fetch_size=1024,zone_id="Asia/Shanghai",sqlalchemy_mode=False)
 cursor = conn.cursor()
 ```
-+ simple SQL statement execution
++ 简单 SQL 语句执行
 ```python
 cursor.execute("SELECT * FROM root.*")
 for row in cursor.fetchall():
     print(row)
 ```
 
-+ execute SQL with parameter
++ 带参数执行 SQL
 
-IoTDB DBAPI supports pyformat style parameters
+IoTDB DBAPI 支持 pyformat 风格的参数
 ```python
 cursor.execute("SELECT * FROM root.* WHERE time < %(time)s",{"time":"2017-11-01T00:08:00.000"})
 for row in cursor.fetchall():
     print(row)
 ```
 
-+ execute SQL with parameter sequences
++ 批量执行 SQL
 ```python
 seq_of_parameters = [
     {"timestamp": 1, "temperature": 1},
@@ -407,31 +404,32 @@ sql = "insert into root.cursor(timestamp,temperature) values(%(timestamp)s,%(tem
 cursor.executemany(sql,seq_of_parameters)
 ```
 
-+ close the connection and cursor
++ 关闭连接和游标
 ```python
 cursor.close()
 conn.close()
 ```
 
-### IoTDB SQLAlchemy Dialect
+### IoTDB SQLAlchemy 方言
 
-The IoTDB SQLAlchemy dialect provides a standard SQLAlchemy interface for IoTDB's **table model** (IoTDB 2.0+).
-It supports DDL (CREATE/DROP TABLE), DML (INSERT/SELECT/DELETE), and schema reflection.
-A complete runnable example is available at: [SQLAlchemy Example](https://github.com/apache/iotdb/blob/master/iotdb-client/client-py/sqlalchemy_example.py)
+IoTDB SQLAlchemy 方言为 IoTDB 的**表模型**（IoTDB 2.0+）提供了标准的 SQLAlchemy 接口，
+支持 DDL（CREATE/DROP TABLE）、DML（INSERT/SELECT/DELETE）和 Schema 反射。
 
-#### Prerequisites
+完整可运行示例请参考：[SQLAlchemy 示例](https://github.com/apache/iotdb/blob/master/iotdb-client/client-py/sqlalchemy_example.py)
+
+#### 环境要求
 
 ```bash
 pip install apache-iotdb sqlalchemy
 ```
 
-#### Connection URL
+#### 连接 URL
 
 ```
 iotdb://username:password@host:port/database
 ```
 
-The `/database` part is optional. If omitted, you can specify the database using `schema=` on tables or via `USE` statements.
+`/database` 部分是可选的。如果省略，可以通过在表上指定 `schema=` 或使用 `USE` 语句来指定数据库。
 
 ```python
 from sqlalchemy import create_engine
@@ -439,26 +437,26 @@ from sqlalchemy import create_engine
 engine = create_engine("iotdb://root:root@127.0.0.1:6667")
 ```
 
-#### Metadata Mapping
+#### 元数据映射
 
-| SQLAlchemy | IoTDB    |
-|------------|----------|
-| Schema     | Database |
-| Table      | Table    |
-| Column     | Column   |
+| SQLAlchemy | IoTDB  |
+|------------|--------|
+| Schema     | 数据库  |
+| Table      | 表     |
+| Column     | 列     |
 
-#### Column Categories
+#### 列类别
 
-IoTDB table model columns have categories that must be specified via the `iotdb_category` dialect option:
+IoTDB 表模型的列具有类别属性，需要通过 `iotdb_category` 方言选项指定：
 
-| Category    | Description                                          |
-|-------------|------------------------------------------------------|
-| `TIME`      | Timestamp column (auto-generated if not specified)   |
-| `TAG`       | Identifier/indexing columns (e.g., region, device)   |
-| `ATTRIBUTE` | Descriptive columns (e.g., model, firmware version)  |
-| `FIELD`     | Measurement/metric columns (e.g., temperature)       |
+| 类别         | 描述                                        |
+|-------------|---------------------------------------------|
+| `TIME`      | 时间戳列（未指定时自动生成）                    |
+| `TAG`       | 标识/索引列（如区域、设备 ID）                  |
+| `ATTRIBUTE` | 描述性列（如型号、固件版本）                    |
+| `FIELD`     | 度量/指标列（如温度、湿度）                     |
 
-#### Data Type Mapping
+#### 数据类型映射
 
 | IoTDB     | SQLAlchemy   |
 |-----------|--------------|
@@ -473,9 +471,9 @@ IoTDB table model columns have categories that must be specified via the `iotdb_
 | TIMESTAMP | DateTime     |
 | DATE      | Date         |
 
-#### DDL — Create Table
+#### DDL — 创建表
 
-Use `iotdb_category` on each column and `iotdb_ttl` on the table:
+在每个列上使用 `iotdb_category`，在表上使用 `iotdb_ttl`：
 
 ```python
 from sqlalchemy import Table, Column, Float, String, Boolean, MetaData
@@ -491,13 +489,13 @@ sensors = Table(
     Column("humidity", Float, iotdb_category="FIELD"),
     Column("status", Boolean, iotdb_category="FIELD"),
     schema="my_database",
-    iotdb_ttl=86400000,  # TTL in milliseconds (1 day)
+    iotdb_ttl=86400000,  # TTL 单位为毫秒（1 天）
 )
 
 metadata.create_all(engine)
 ```
 
-To define an explicit TIME column instead of using the auto-generated one:
+如需显式定义 TIME 列而非使用自动生成的时间列：
 
 ```python
 from sqlalchemy import BigInteger
@@ -512,23 +510,23 @@ events = Table(
 )
 ```
 
-#### DML — Insert, Query, Delete
+#### DML — 插入、查询、删除
 
 ```python
 with engine.connect() as conn:
-    # Insert
+    # 插入
     conn.execute(
         sensors.insert().values(
             region="asia", device_id="d001", temperature=25.5, humidity=60.0, status=True,
         )
     )
 
-    # Select all
+    # 查询全部
     result = conn.execute(sensors.select())
     for row in result:
         print(row)
 
-    # Select with WHERE, ORDER BY, LIMIT
+    # 带 WHERE、ORDER BY、LIMIT 的查询
     result = conn.execute(
         sensors.select()
         .where(sensors.c.region == "asia")
@@ -536,30 +534,30 @@ with engine.connect() as conn:
         .limit(10)
     )
 
-    # Delete
+    # 删除
     conn.execute(sensors.delete().where(sensors.c.device_id == "d001"))
 ```
 
-#### Schema Reflection
+#### Schema 反射
 
 ```python
 from sqlalchemy import inspect
 
 insp = inspect(engine)
 
-# List databases
+# 列出所有数据库
 schemas = insp.get_schema_names()
 
-# List tables in a database
+# 列出数据库中的表
 tables = insp.get_table_names(schema="my_database")
 
-# Get column details
+# 获取列详情
 columns = insp.get_columns(table_name="sensors", schema="my_database")
 for col in columns:
     print(col["name"], col["type"], col.get("iotdb_category"))
 ```
 
-#### Raw SQL
+#### 原生 SQL
 
 ```python
 from sqlalchemy.sql import text
@@ -571,49 +569,49 @@ with engine.connect() as conn:
 ```
 
 
-## Developers
+## 开发者指南
 
-### Introduction
+### 简介
 
-This is an example of how to connect to IoTDB with python, using the thrift rpc interfaces. Things are almost the same on Windows or Linux, but pay attention to the difference like path separator.
+这是一个使用 Thrift RPC 接口连接 IoTDB 的 Python 示例。Windows 和 Linux 上的操作基本相同，但请注意路径分隔符等差异。
 
 
 
-### Prerequisites
+### 前提条件
 
-Python3.6 or later is preferred.
+推荐使用 Python 3.6 或更高版本。
 
-You have to install Thrift (0.14.1 or later) to compile our thrift file into python code. Below is the official tutorial of installation, eventually, you should have a thrift executable.
+需要安装 Thrift（0.14.1 或更高版本）来将 Thrift 文件编译为 Python 代码。以下是官方安装教程，最终你需要有一个 thrift 可执行文件。
 
 ```
 http://thrift.apache.org/docs/install/
 ```
 
-Before starting you need to install `requirements_dev.txt` in your python environment, e.g. by calling
+开始之前，需要在 Python 环境中安装 `requirements_dev.txt`，例如：
 ```shell
 pip install -r requirements_dev.txt
 ```
 
 
 
-### Compile the thrift library and Debug
+### 编译 Thrift 库和调试
 
-In the root of IoTDB's source code folder,  run `mvn clean generate-sources -pl client-py -am`.
+在 IoTDB 源代码根目录下，运行 `mvn clean generate-sources -pl client-py -am`。
 
-This will automatically delete and repopulate the folder `iotdb/thrift` with the generated thrift files.
-This folder is ignored from git and should **never be pushed to git!**
+这将自动删除并重新生成 `iotdb/thrift` 目录中的 Thrift 文件。
+该目录已被 git 忽略，**不应推送到 git！**
 
-**Notice** Do not upload `iotdb/thrift` to the git repo.
-
-
+**注意** 不要将 `iotdb/thrift` 上传到 git 仓库。
 
 
-### Session Client & Example
-
-We packed up the Thrift interface in `client-py/src/iotdb/Session.py` (similar with its Java counterpart), also provided an example file `client-py/src/SessionExample.py` of how to use the session module. please read it carefully.
 
 
-Or, another simple example:
+### Session 客户端和示例
+
+我们将 Thrift 接口封装在 `client-py/src/iotdb/Session.py` 中（类似于 Java 版本），并提供了示例文件 `client-py/src/SessionExample.py`，展示如何使用 Session 模块，请仔细阅读。
+
+
+或者，一个简单的示例：
 
 ```python
 from iotdb.Session import Session
@@ -630,49 +628,44 @@ session.close()
 
 
 
-### Tests
+### 测试
 
-Please add your custom tests in `tests` folder.
+请将自定义测试添加到 `tests` 目录中。
 
-To run all defined tests just type `pytest .` in the root folder.
+在根目录下运行 `pytest .` 即可执行所有已定义的测试。
 
-**Notice** Some tests need docker to be started on your system as a test instance is started in a docker container using [testcontainers](https://testcontainers-python.readthedocs.io/en/latest/index.html).
-
-
-
-### Futher Tools
-
-[black](https://pypi.org/project/black/) and [flake8](https://pypi.org/project/flake8/) are installed for autoformatting and linting.
-Both can be run by `black .` or `flake8 .` respectively.
+**注意** 部分测试需要系统上运行 Docker，因为会使用 [testcontainers](https://testcontainers-python.readthedocs.io/en/latest/index.html) 在 Docker 容器中启动测试实例。
 
 
 
-## Releasing
+### 其他工具
 
-To do a release just ensure that you have the right set of generated thrift files.
-Then run linting and auto-formatting.
-Then, ensure that all tests work (via `pytest .`).
-Then you are good to go to do a release!
+[black](https://pypi.org/project/black/) 和 [flake8](https://pypi.org/project/flake8/) 已安装，分别用于自动格式化和代码检查。
+可以分别通过 `black .` 或 `flake8 .` 运行。
 
 
 
-### Preparing your environment
+## 发布
 
-First, install all necessary dev dependencies via `pip install -r requirements_dev.txt`.
-
-
-
-### Doing the Release
-
-There is a convenient script `release.sh` to do all steps for a release.
-Namely, these are
-
-* Remove all transient directories from last release (if exists)
-* (Re-)generate all generated sources via mvn
-* Run Tests via pytest (optional)
-* Build
-* Release to pypi
+发布前，请确保拥有正确的 Thrift 生成文件。
+然后运行代码检查和自动格式化。
+确保所有测试通过（通过 `pytest .`）。
+然后即可进行发布！
 
 
 
+### 准备环境
 
+首先，通过 `pip install -r requirements_dev.txt` 安装所有必要的开发依赖。
+
+
+
+### 执行发布
+
+提供了一个便捷脚本 `release.sh` 来执行发布的所有步骤，包括：
+
+* 删除上次发布的临时目录（如果存在）
+* 通过 mvn（重新）生成所有源文件
+* 通过 pytest 运行测试（可选）
+* 构建
+* 发布到 PyPI
