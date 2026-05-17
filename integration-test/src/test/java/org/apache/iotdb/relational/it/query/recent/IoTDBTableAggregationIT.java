@@ -5670,6 +5670,54 @@ public class IoTDBTableAggregationIT {
   }
 
   @Test
+  public void statFunctionsWindowFrameTest() {
+    String[] expectedHeader =
+        new String[] {
+          "device_id", "time", "corr_v", "covar_pop_v", "covar_samp_v", "slope_v", "intercept_v"
+        };
+    String[] retArray =
+        new String[] {
+          "d1,1970-01-01T00:00:00.001Z,1.0,0.25,0.5,1.0,0.0,",
+          "d1,1970-01-01T00:00:00.002Z,0.8660254037844386,0.3333333333333333,0.49999999999999994,1.5,-0.5,",
+          "d1,1970-01-01T00:00:00.003Z,-0.8660254037844385,-0.3333333333333333,-0.5,-1.4999999999999998,5.5,",
+          "d1,1970-01-01T00:00:00.004Z,-0.8660254037844385,-0.3333333333333333,-0.49999999999999994,-1.4999999999999998,6.0,",
+          "d1,1970-01-01T00:00:00.005Z,null,0.0,0.0,null,null,",
+        };
+    tableResultSetEqualTest(
+        "select device_id, time, "
+            + "corr(s1, s2) over (partition by device_id order by time rows between 1 preceding and 1 following) as corr_v, "
+            + "covar_pop(s1, s2) over (partition by device_id order by time rows between 1 preceding and 1 following) as covar_pop_v, "
+            + "covar_samp(s1, s2) over (partition by device_id order by time rows between 1 preceding and 1 following) as covar_samp_v, "
+            + "regr_slope(s1, s2) over (partition by device_id order by time rows between 1 preceding and 1 following) as slope_v, "
+            + "regr_intercept(s1, s2) over (partition by device_id order by time rows between 1 preceding and 1 following) as intercept_v "
+            + "from stat_table where device_id = 'd1' order by device_id, time",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void statMomentsWindowFrameTest() {
+    String[] expectedHeader = new String[] {"device_id", "time", "skew_v", "kurt_v"};
+    String[] retArray =
+        new String[] {
+          "d1,1970-01-01T00:00:00.001Z,null,null,",
+          "d1,1970-01-01T00:00:00.002Z,null,null,",
+          "d1,1970-01-01T00:00:00.003Z,0.0,null,",
+          "d1,1970-01-01T00:00:00.004Z,0.0,-1.200000000000001,",
+          "d1,1970-01-01T00:00:00.005Z,0.0,-1.200000000000001,",
+        };
+    tableResultSetEqualTest(
+        "select device_id, time, "
+            + "skewness(s1) over (partition by device_id order by time rows between 3 preceding and current row) as skew_v, "
+            + "kurtosis(s1) over (partition by device_id order by time rows between 3 preceding and current row) as kurt_v "
+            + "from stat_table where device_id = 'd1' order by device_id, time",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
   public void statFunctionsErrorTest() {
     String typeError = "only support numeric data types [INT32, INT64, FLOAT, DOUBLE, TIMESTAMP]";
     String argError = "Error size of input expressions";

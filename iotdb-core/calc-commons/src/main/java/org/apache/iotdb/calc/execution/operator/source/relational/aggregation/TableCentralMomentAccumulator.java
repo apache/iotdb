@@ -36,6 +36,7 @@ public class TableCentralMomentAccumulator implements TableAccumulator {
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(TableCentralMomentAccumulator.class);
   private static final int INTERMEDIATE_SIZE = Long.BYTES + 4 * Double.BYTES;
+  private static final double EPSILON = 1e-12;
 
   private final TSDataType seriesDataType;
   private final CentralMomentAccumulator.MomentType momentType;
@@ -229,7 +230,45 @@ public class TableCentralMomentAccumulator implements TableAccumulator {
 
   @Override
   public void removeInput(Column[] arguments) {
-    throw new UnsupportedOperationException();
+    checkArgument(arguments.length == 1, "Input of CentralMoment should be 1");
+    if (count == 0 || arguments[0].isNull(0)) {
+      return;
+    }
+
+    double value = getDoubleValue(arguments[0], 0);
+    if (count == 1) {
+      reset();
+      return;
+    }
+
+    long nTotal = count;
+    long nA = nTotal - 1;
+
+    double meanA = (nTotal * mean - value) / nA;
+
+    double delta = value - meanA;
+    double delta2 = delta * delta;
+    double delta3 = delta * delta2;
+    double delta4 = delta2 * delta2;
+
+    double m2A = m2 - delta2 * nA / nTotal;
+    double m3A =
+        m3 - delta3 * nA * (nA - 1) / ((double) nTotal * nTotal) + 3.0 * delta * m2A / nTotal;
+    double m4A =
+        m4
+            - delta4 * nA * ((double) nA * nA - nA + 1) / ((double) nTotal * nTotal * nTotal)
+            - 6.0 * delta2 * m2A / ((double) nTotal * nTotal)
+            + 4.0 * delta * m3A / nTotal;
+
+    count = nA;
+    mean = meanA;
+    m2 = normalizeZero(m2A);
+    m3 = normalizeZero(m3A);
+    m4 = normalizeZero(m4A);
+  }
+
+  private double normalizeZero(double value) {
+    return Math.abs(value) < EPSILON ? 0 : value;
   }
 
   @Override
@@ -253,6 +292,6 @@ public class TableCentralMomentAccumulator implements TableAccumulator {
 
   @Override
   public boolean removable() {
-    return false;
+    return true;
   }
 }

@@ -36,6 +36,7 @@ public class TableRegressionAccumulator implements TableAccumulator {
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(TableRegressionAccumulator.class);
   private static final int INTERMEDIATE_SIZE = Long.BYTES + 4 * Double.BYTES;
+  private static final double EPSILON = 1e-12;
 
   private final TSDataType yDataType;
   private final TSDataType xDataType;
@@ -220,7 +221,40 @@ public class TableRegressionAccumulator implements TableAccumulator {
 
   @Override
   public void removeInput(Column[] arguments) {
-    throw new UnsupportedOperationException();
+    checkArgument(arguments.length == 2, "Input of Regression should be 2");
+    if (count == 0 || arguments[0].isNull(0) || arguments[1].isNull(0)) {
+      return;
+    }
+
+    double otherY = getDoubleValue(arguments[0], 0, yDataType);
+    double otherX = getDoubleValue(arguments[1], 0, xDataType);
+
+    if (count == 1) {
+      reset();
+      return;
+    }
+
+    long totalCount = count;
+    long newCount = totalCount - 1;
+
+    double newMeanX = (totalCount * meanX - otherX) / newCount;
+    double newMeanY = (totalCount * meanY - otherY) / newCount;
+
+    double deltaX = otherX - newMeanX;
+    double deltaY = otherY - newMeanY;
+    double correction = (double) newCount / totalCount;
+
+    c2 = c2 - deltaX * deltaY * correction;
+    m2X = m2X - deltaX * deltaX * correction;
+    meanX = newMeanX;
+    meanY = newMeanY;
+    c2 = normalizeZero(c2);
+    m2X = normalizeZero(m2X);
+    count = newCount;
+  }
+
+  private double normalizeZero(double value) {
+    return Math.abs(value) < EPSILON ? 0 : value;
   }
 
   @Override
@@ -244,6 +278,6 @@ public class TableRegressionAccumulator implements TableAccumulator {
 
   @Override
   public boolean removable() {
-    return false;
+    return true;
   }
 }

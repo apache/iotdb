@@ -36,6 +36,7 @@ public class TableCorrelationAccumulator implements TableAccumulator {
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(TableCorrelationAccumulator.class);
   private static final int INTERMEDIATE_SIZE = Long.BYTES + 5 * Double.BYTES;
+  private static final double EPSILON = 1e-12;
   private final TSDataType xDataType;
   private final TSDataType yDataType;
   private final CorrelationAccumulator.CorrelationType correlationType;
@@ -126,7 +127,42 @@ public class TableCorrelationAccumulator implements TableAccumulator {
 
   @Override
   public void removeInput(Column[] arguments) {
-    throw new UnsupportedOperationException("Remove not implemented for Correlation Accumulator");
+    checkArgument(arguments.length == 2, "Input of Correlation should be 2");
+    if (count == 0 || arguments[0].isNull(0) || arguments[1].isNull(0)) {
+      return;
+    }
+
+    double otherX = getDoubleValue(arguments[0], 0, xDataType);
+    double otherY = getDoubleValue(arguments[1], 0, yDataType);
+
+    if (count == 1) {
+      reset();
+      return;
+    }
+
+    long totalCount = count;
+    long newCount = totalCount - 1;
+
+    double newMeanX = (totalCount * meanX - otherX) / newCount;
+    double newMeanY = (totalCount * meanY - otherY) / newCount;
+
+    double deltaX = otherX - newMeanX;
+    double deltaY = otherY - newMeanY;
+    double correction = (double) newCount / totalCount;
+
+    c2 = c2 - deltaX * deltaY * correction;
+    m2X = m2X - deltaX * deltaX * correction;
+    m2Y = m2Y - deltaY * deltaY * correction;
+    meanX = newMeanX;
+    meanY = newMeanY;
+    c2 = normalizeZero(c2);
+    m2X = normalizeZero(m2X);
+    m2Y = normalizeZero(m2Y);
+    count = newCount;
+  }
+
+  private double normalizeZero(double value) {
+    return Math.abs(value) < EPSILON ? 0 : value;
   }
 
   @Override
@@ -247,6 +283,6 @@ public class TableCorrelationAccumulator implements TableAccumulator {
 
   @Override
   public boolean removable() {
-    return false;
+    return true;
   }
 }
