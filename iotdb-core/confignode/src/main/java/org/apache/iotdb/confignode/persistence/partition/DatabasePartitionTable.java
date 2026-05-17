@@ -632,7 +632,7 @@ public class DatabasePartitionTable {
    */
   public void autoCleanPartitionTable(long TTL, TTimePartitionSlot currentTimeSlot) {
     long[] removedTimePartitionSlots =
-        dataPartitionTable.autoCleanPartitionTable(TTL, currentTimeSlot).stream()
+        dataPartitionTable.autoCleanPartitionTable(TTL, currentTimeSlot, databaseName).stream()
             .map(TTimePartitionSlot::getStartTime)
             .collect(Collectors.toList())
             .stream()

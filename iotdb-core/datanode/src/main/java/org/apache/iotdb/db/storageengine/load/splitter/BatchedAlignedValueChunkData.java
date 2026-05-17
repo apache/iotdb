@@ -60,12 +60,13 @@ public class BatchedAlignedValueChunkData extends AlignedChunkData {
   }
 
   @Override
-  public void writeDecodeValuePage(long[] times, TsPrimitiveType[] values, TSDataType dataType)
+  public void writeDecodeValuePage(
+      long[] times, TsPrimitiveType[] values, TSDataType dataType, String database)
       throws IOException {
     pageNumbers.set(pageNumbers.size() - 1, pageNumbers.get(pageNumbers.size() - 1) + 1);
     final long startTime = timePartitionSlot.getStartTime();
     // beware of overflow
-    long endTime = startTime + TimePartitionUtils.getTimePartitionInterval() - 1;
+    long endTime = startTime + TimePartitionUtils.getTimePartitionInterval(database) - 1;
     if (endTime <= startTime) {
       endTime = Long.MAX_VALUE;
     }

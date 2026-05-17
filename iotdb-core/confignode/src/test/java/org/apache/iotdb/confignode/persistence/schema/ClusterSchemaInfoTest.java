@@ -22,12 +22,15 @@ package org.apache.iotdb.confignode.persistence.schema;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.template.Template;
+import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.read.database.GetDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetPathsSetTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetTemplateSetInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
+import org.apache.iotdb.confignode.consensus.request.write.database.SetTimePartitionIntervalPlan;
+import org.apache.iotdb.confignode.consensus.request.write.database.SetTimePartitionOriginPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.PreSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.SetSchemaTemplatePlan;
@@ -68,6 +71,7 @@ public class ClusterSchemaInfoTest {
 
   @Before
   public void setup() throws IOException {
+    TimePartitionUtils.clearDatabaseTimePartitionConfigCache();
     clusterSchemaInfo = new ClusterSchemaInfo();
     if (!snapshotDir.exists()) {
       snapshotDir.mkdirs();
@@ -77,6 +81,7 @@ public class ClusterSchemaInfoTest {
   @After
   public void cleanup() throws IOException {
     clusterSchemaInfo.clear();
+    TimePartitionUtils.clearDatabaseTimePartitionConfigCache();
     if (snapshotDir.exists()) {
       FileUtils.deleteDirectory(snapshotDir);
     }
@@ -91,12 +96,13 @@ public class ClusterSchemaInfoTest {
     storageGroupPathList.add("root.a.a.a.b.sg");
 
     Map<String, TDatabaseSchema> testMap = new TreeMap<>();
-    int i = 0;
+    int i = 1;
     for (String path : storageGroupPathList) {
       TDatabaseSchema tDatabaseSchema = new TDatabaseSchema();
       tDatabaseSchema.setName(path);
       tDatabaseSchema.setDataReplicationFactor(i);
       tDatabaseSchema.setSchemaReplicationFactor(i);
+      tDatabaseSchema.setTimePartitionOrigin(i * 100L);
       tDatabaseSchema.setTimePartitionInterval(i);
       testMap.put(path, tDatabaseSchema);
       clusterSchemaInfo.createDatabase(
@@ -120,6 +126,31 @@ public class ClusterSchemaInfoTest {
     Map<String, TDatabaseSchema> reloadResult =
         clusterSchemaInfo.getMatchedDatabaseSchemas(getStorageGroupReq).getSchemaMap();
     Assert.assertEquals(testMap, reloadResult);
+    testMap.forEach(
+        (database, schema) -> {
+          Assert.assertEquals(
+              schema.getTimePartitionOrigin(), TimePartitionUtils.getTimePartitionOrigin(database));
+          Assert.assertEquals(
+              schema.getTimePartitionInterval(),
+              TimePartitionUtils.getTimePartitionInterval(database));
+        });
+  }
+
+  @Test
+  public void testTimePartitionConfigCacheConsistency() {
+    final TDatabaseSchema databaseSchema =
+        new TDatabaseSchema("root.sg").setTimePartitionOrigin(100L).setTimePartitionInterval(200L);
+    clusterSchemaInfo.createDatabase(
+        new DatabaseSchemaPlan(ConfigPhysicalPlanType.CreateDatabase, databaseSchema));
+
+    Assert.assertEquals(100L, TimePartitionUtils.getTimePartitionOrigin("root.sg"));
+    Assert.assertEquals(200L, TimePartitionUtils.getTimePartitionInterval("root.sg"));
+
+    clusterSchemaInfo.setTimePartitionOrigin(new SetTimePartitionOriginPlan("root.sg", 300L));
+    clusterSchemaInfo.setTimePartitionInterval(new SetTimePartitionIntervalPlan("root.sg", 400L));
+
+    Assert.assertEquals(300L, TimePartitionUtils.getTimePartitionOrigin("root.sg"));
+    Assert.assertEquals(400L, TimePartitionUtils.getTimePartitionInterval("root.sg"));
   }
 
   @Test

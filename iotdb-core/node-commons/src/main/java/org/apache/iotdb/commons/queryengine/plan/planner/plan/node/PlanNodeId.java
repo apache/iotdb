@@ -38,6 +38,10 @@ public class PlanNodeId implements Accountable {
     this.id = id;
   }
 
+  public PlanNodeId(String id, String database) {
+    this.id = database != null ? database + "_" + id : id;
+  }
+
   public String getId() {
     return this.id;
   }
@@ -66,6 +70,10 @@ public class PlanNodeId implements Accountable {
 
   public static PlanNodeId deserialize(InputStream stream) throws IOException {
     return new PlanNodeId(ReadWriteIOUtils.readString(stream));
+  }
+
+  public static PlanNodeId deserialize(InputStream stream, String database) throws IOException {
+    return new PlanNodeId(ReadWriteIOUtils.readString(stream), database);
   }
 
   public void serialize(ByteBuffer byteBuffer) {

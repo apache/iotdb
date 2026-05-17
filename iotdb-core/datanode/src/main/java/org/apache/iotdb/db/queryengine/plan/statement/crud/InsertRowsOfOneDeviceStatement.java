@@ -92,7 +92,8 @@ public class InsertRowsOfOneDeviceStatement extends InsertBaseStatement {
     Set<TTimePartitionSlot> timePartitionSlotSet = new HashSet<>();
     for (InsertRowStatement insertRowStatement : insertRowStatementList) {
       timePartitionSlotSet.add(
-          TimePartitionUtils.getTimePartitionSlot(insertRowStatement.getTime()));
+          TimePartitionUtils.getTimePartitionSlot(
+              insertRowStatement.getTime(), getDatabaseName(insertRowStatement)));
     }
     return new ArrayList<>(timePartitionSlotSet);
   }
@@ -221,5 +222,12 @@ public class InsertRowsOfOneDeviceStatement extends InsertBaseStatement {
   @Override
   protected void subRemoveAttributeColumns(List<Integer> columnsToKeep) {
     insertRowStatementList.forEach(InsertRowStatement::removeAttributeColumns);
+  }
+
+  public static String getDatabaseName(final InsertBaseStatement statement) {
+    if (statement.getDatabaseName().isPresent()) {
+      return statement.getDatabaseName().get();
+    }
+    return null;
   }
 }

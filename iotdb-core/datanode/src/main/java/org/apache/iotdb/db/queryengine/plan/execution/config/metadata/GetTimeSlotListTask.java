@@ -58,11 +58,13 @@ public class GetTimeSlotListTask implements IConfigTask {
     return configTaskExecutor.getTimeSlotList(getTimeSlotListStatement);
   }
 
-  public static void buildTSBlockRow(TsBlockBuilder builder, TTimePartitionSlot timePartitionSlot) {
+  public static void buildTSBlockRow(
+      TsBlockBuilder builder, TTimePartitionSlot timePartitionSlot, String database) {
     builder.getTimeColumnBuilder().writeLong(0L);
     builder
         .getColumnBuilder(0)
-        .writeLong(TimePartitionUtils.getTimePartitionId(timePartitionSlot.getStartTime()));
+        .writeLong(
+            TimePartitionUtils.getTimePartitionId(timePartitionSlot.getStartTime(), database));
     builder
         .getColumnBuilder(1)
         .writeBinary(
@@ -73,14 +75,16 @@ public class GetTimeSlotListTask implements IConfigTask {
   }
 
   public static void buildTSBlock(
-      TGetTimeSlotListResp getTimeSlotListResp, SettableFuture<ConfigTaskResult> future) {
+      TGetTimeSlotListResp getTimeSlotListResp,
+      SettableFuture<ConfigTaskResult> future,
+      String database) {
     List<TSDataType> outputDataTypes =
         ColumnHeaderConstant.getTimeSlotListColumnHeaders.stream()
             .map(ColumnHeader::getColumnType)
             .collect(Collectors.toList());
     TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
 
-    getTimeSlotListResp.getTimeSlotList().forEach(e -> buildTSBlockRow(builder, e));
+    getTimeSlotListResp.getTimeSlotList().forEach(e -> buildTSBlockRow(builder, e, database));
 
     DatasetHeader datasetHeader = DatasetHeaderFactory.getGetTimeSlotListHeader();
     future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));

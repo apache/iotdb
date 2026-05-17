@@ -254,10 +254,10 @@ public class SeriesPartitionTable {
    * @param currentTimeSlot The current TimeSlot
    */
   public List<TTimePartitionSlot> autoCleanPartitionTable(
-      long TTL, TTimePartitionSlot currentTimeSlot) {
+      long TTL, TTimePartitionSlot currentTimeSlot, String database) {
     final long timePartitionInterval =
         CommonDateTimeUtils.convertMilliTimeWithPrecision(
-            TimePartitionUtils.getTimePartitionInterval(),
+            TimePartitionUtils.getTimePartitionInterval(database),
             CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
     List<TTimePartitionSlot> removedTimePartitions = new ArrayList<>();
     Iterator<Map.Entry<TTimePartitionSlot, List<TConsensusGroupId>>> iterator =

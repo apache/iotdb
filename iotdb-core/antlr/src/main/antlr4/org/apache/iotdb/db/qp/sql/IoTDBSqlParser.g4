@@ -119,6 +119,7 @@ databaseAttributeClause
 databaseAttributeKey
     : TTL
     | TIME_PARTITION_INTERVAL
+    | TIME_PARTITION_ORIGIN
     | SCHEMA_REGION_GROUP_NUM
     | DATA_REGION_GROUP_NUM
     ;

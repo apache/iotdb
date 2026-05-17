@@ -109,7 +109,7 @@ public class TableModelReadChunkCompactionPerformerTest extends AbstractCompacti
         new InnerSpaceCompactionTask(
             0, tsFileManager, seqResources, true, new ReadChunkCompactionPerformer(), 0);
     Assert.assertTrue(task.start());
-    TsFileResource targetResource = tsFileManager.getTsFileList(true).get(0);
+    TsFileResource targetResource = tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).get(0);
     try (TsFileSequenceReader reader =
         new TsFileSequenceReader(targetResource.getTsFile().getAbsolutePath())) {
       TableSchema tableSchema = reader.getTableSchemaMap().get("t1");
@@ -152,7 +152,7 @@ public class TableModelReadChunkCompactionPerformerTest extends AbstractCompacti
         new InnerSpaceCompactionTask(
             0, tsFileManager, seqResources, true, new ReadChunkCompactionPerformer(), 0);
     Assert.assertTrue(task.start());
-    TsFileResource targetResource = tsFileManager.getTsFileList(true).get(0);
+    TsFileResource targetResource = tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).get(0);
     try (TsFileSequenceReader reader =
         new TsFileSequenceReader(targetResource.getTsFile().getAbsolutePath())) {
       Assert.assertTrue(reader.getTableSchemaMap().isEmpty());
@@ -199,7 +199,7 @@ public class TableModelReadChunkCompactionPerformerTest extends AbstractCompacti
         new InnerSpaceCompactionTask(
             0, tsFileManager, seqResources, true, new ReadChunkCompactionPerformer(), 0);
     Assert.assertTrue(task.start());
-    TsFileResource targetResource = tsFileManager.getTsFileList(true).get(0);
+    TsFileResource targetResource = tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).get(0);
     try (TsFileSequenceReader reader =
         new TsFileSequenceReader(targetResource.getTsFile().getAbsolutePath())) {
       Assert.assertEquals(1, reader.getTableSchemaMap().size());
@@ -257,7 +257,7 @@ public class TableModelReadChunkCompactionPerformerTest extends AbstractCompacti
         new InnerSpaceCompactionTask(
             0, tsFileManager, seqResources, true, new ReadChunkCompactionPerformer(), 0);
     Assert.assertTrue(task.start());
-    TsFileResource targetResource = tsFileManager.getTsFileList(true).get(0);
+    TsFileResource targetResource = tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).get(0);
     Assert.assertEquals(1, targetResource.getDevices().size());
     try (TsFileSequenceReader reader =
         new TsFileSequenceReader(targetResource.getTsFile().getAbsolutePath())) {
@@ -330,7 +330,11 @@ public class TableModelReadChunkCompactionPerformerTest extends AbstractCompacti
     Assert.assertTrue(task.start());
     try (TsFileSequenceReader reader =
         new TsFileSequenceReader(
-            tsFileManager.getTsFileList(true).get(0).getTsFile().getAbsolutePath())) {
+            tsFileManager
+                .getTsFileList(true, COMPACTION_TEST_SG)
+                .get(0)
+                .getTsFile()
+                .getAbsolutePath())) {
       Assert.assertEquals(1, reader.getTableSchemaMap().size());
     }
   }

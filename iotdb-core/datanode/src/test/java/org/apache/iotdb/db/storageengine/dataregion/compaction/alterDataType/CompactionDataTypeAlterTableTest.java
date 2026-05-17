@@ -102,7 +102,7 @@ public class CompactionDataTypeAlterTableTest extends AbstractCompactionAlterDat
         new InnerSpaceCompactionTask(
             0, tsFileManager, seqResources, true, getPerformer(performerType), 0);
     Assert.assertTrue(task.start());
-    TsFileResource target = tsFileManager.getTsFileList(true).get(0);
+    TsFileResource target = tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).get(0);
 
     TimeseriesMetadata timeseriesMetadata = getTimeseriesMetadata(target, tableDevice, "s1");
     Assert.assertEquals(1L, timeseriesMetadata.getStatistics().getStartTime());
@@ -116,7 +116,7 @@ public class CompactionDataTypeAlterTableTest extends AbstractCompactionAlterDat
         new InnerSpaceCompactionTask(
             0, tsFileManager, seqResources, true, getPerformer(performerType), 0);
     Assert.assertTrue(task.start());
-    TsFileResource target = tsFileManager.getTsFileList(true).get(0);
+    TsFileResource target = tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).get(0);
     TimeseriesMetadata timeseriesMetadata = getTimeseriesMetadata(target, tableDevice, "s1");
     if (!reverse) {
       Assert.assertEquals(1L, timeseriesMetadata.getStatistics().getStartTime());

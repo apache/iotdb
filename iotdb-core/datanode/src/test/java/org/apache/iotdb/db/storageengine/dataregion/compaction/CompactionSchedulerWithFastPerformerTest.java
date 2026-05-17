@@ -185,7 +185,7 @@ public class CompactionSchedulerWithFastPerformerTest {
 
       long totalWaitingTime = 0;
 
-      while (tsFileManager.getTsFileList(true).size() > 1) {
+      while (tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size() > 1) {
         try {
           Thread.sleep(100);
           totalWaitingTime += 100;
@@ -201,7 +201,7 @@ public class CompactionSchedulerWithFastPerformerTest {
 
       totalWaitingTime = 0;
 
-      while (tsFileManager.getTsFileList(false).size() > 1) {
+      while (tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).size() > 1) {
         try {
           Thread.sleep(100);
           totalWaitingTime += 100;
@@ -217,7 +217,7 @@ public class CompactionSchedulerWithFastPerformerTest {
       CompactionScheduler.scheduleCompaction(tsFileManager, 0);
       totalWaitingTime = 0;
 
-      while (tsFileManager.getTsFileList(false).size() > 0) {
+      while (tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).size() > 0) {
         try {
           Thread.sleep(100);
           totalWaitingTime += 100;
@@ -310,7 +310,7 @@ public class CompactionSchedulerWithFastPerformerTest {
 
         CompactionScheduler.scheduleCompaction(tsFileManager, 0);
         long totalWaitingTime = 0;
-        while (tsFileManager.getTsFileList(false).size() > 1) {
+        while (tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).size() > 1) {
           try {
             Thread.sleep(100);
             totalWaitingTime += 100;
@@ -325,7 +325,7 @@ public class CompactionSchedulerWithFastPerformerTest {
         }
         CompactionScheduler.scheduleCompaction(tsFileManager, 0);
         totalWaitingTime = 0;
-        while (tsFileManager.getTsFileList(false).size() > 0) {
+        while (tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).size() > 0) {
           try {
             Thread.sleep(10);
             totalWaitingTime += 10;
@@ -336,8 +336,8 @@ public class CompactionSchedulerWithFastPerformerTest {
             if (totalWaitingTime % 10_000 == 0) {
               logger.warn(
                   "sequence file num is {}, unsequence file num is {}",
-                  tsFileManager.getTsFileList(true).size(),
-                  tsFileManager.getTsFileList(false).size());
+                  tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size(),
+                  tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).size());
             }
             if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
               logger.warn("Has waited for {} s, Schedule again", totalWaitingTime / 1000);
@@ -347,7 +347,7 @@ public class CompactionSchedulerWithFastPerformerTest {
             e.printStackTrace();
           }
         }
-        //      assertEquals(100, tsFileManager.getTsFileList(true).size());
+        //      assertEquals(100, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size());
         tsFileManager.setAllowCompaction(false);
         stopCompactionTaskManager();
       } finally {
@@ -420,7 +420,7 @@ public class CompactionSchedulerWithFastPerformerTest {
       }
 
       long totalWaitingTime = 0;
-      while (tsFileManager.getTsFileList(true).size() > 1) {
+      while (tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size() > 1) {
         try {
           Thread.sleep(100);
           totalWaitingTime += 100;
@@ -435,7 +435,7 @@ public class CompactionSchedulerWithFastPerformerTest {
         }
       }
       totalWaitingTime = 0;
-      while (tsFileManager.getTsFileList(false).size() > 0) {
+      while (tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).size() > 0) {
         try {
           Thread.sleep(100);
           totalWaitingTime += 100;
@@ -445,7 +445,7 @@ public class CompactionSchedulerWithFastPerformerTest {
           e.printStackTrace();
         }
       }
-      assertEquals(1, tsFileManager.getTsFileList(true).size());
+      assertEquals(1, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size());
       tsFileManager.setAllowCompaction(false);
       stopCompactionTaskManager();
     } finally {
@@ -517,7 +517,7 @@ public class CompactionSchedulerWithFastPerformerTest {
         tsFileManager.add(tsFileResource, false);
       }
       long totalWaitingTime = 0;
-      while (tsFileManager.getTsFileList(false).size() > 0) {
+      while (tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).size() > 0) {
         try {
           Thread.sleep(100);
           totalWaitingTime += 100;
@@ -531,7 +531,7 @@ public class CompactionSchedulerWithFastPerformerTest {
           e.printStackTrace();
         }
       }
-      assertEquals(100, tsFileManager.getTsFileList(true).size());
+      assertEquals(100, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size());
       tsFileManager.setAllowCompaction(false);
       stopCompactionTaskManager();
     } finally {
@@ -602,7 +602,7 @@ public class CompactionSchedulerWithFastPerformerTest {
       }
 
       long totalWaitingTime = 0;
-      while (tsFileManager.getTsFileList(true).size() > 1) {
+      while (tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size() > 1) {
         try {
           Thread.sleep(100);
           totalWaitingTime += 100;
@@ -617,7 +617,7 @@ public class CompactionSchedulerWithFastPerformerTest {
         }
       }
       totalWaitingTime = 0;
-      while (tsFileManager.getTsFileList(false).size() > 1) {
+      while (tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).size() > 1) {
         try {
           Thread.sleep(100);
           totalWaitingTime += 100;
@@ -633,7 +633,7 @@ public class CompactionSchedulerWithFastPerformerTest {
       }
 
       totalWaitingTime = 0;
-      while (tsFileManager.getTsFileList(false).size() > 0) {
+      while (tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).size() > 0) {
         try {
           Thread.sleep(100);
           totalWaitingTime += 100;
@@ -716,12 +716,12 @@ public class CompactionSchedulerWithFastPerformerTest {
         tsFileManager.add(tsFileResource, false);
       }
 
-      assertEquals(100, tsFileManager.getTsFileList(true).size());
+      assertEquals(100, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size());
       CompactionScheduler.scheduleCompaction(tsFileManager, 0);
 
       long totalWaitingTime = 0;
-      while (tsFileManager.getTsFileList(false).size() > 1) {
-        assertEquals(100, tsFileManager.getTsFileList(true).size());
+      while (tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).size() > 1) {
+        assertEquals(100, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size());
         try {
           Thread.sleep(100);
           totalWaitingTime += 100;
@@ -738,8 +738,8 @@ public class CompactionSchedulerWithFastPerformerTest {
       CompactionScheduler.scheduleCompaction(tsFileManager, 0);
 
       totalWaitingTime = 0;
-      while (tsFileManager.getTsFileList(false).size() > 0) {
-        assertEquals(100, tsFileManager.getTsFileList(true).size());
+      while (tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).size() > 0) {
+        assertEquals(100, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size());
         try {
           Thread.sleep(100);
           totalWaitingTime += 100;
@@ -753,7 +753,7 @@ public class CompactionSchedulerWithFastPerformerTest {
           e.printStackTrace();
         }
       }
-      assertEquals(100, tsFileManager.getTsFileList(true).size());
+      assertEquals(100, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size());
       tsFileManager.setAllowCompaction(false);
       stopCompactionTaskManager();
     } finally {
@@ -825,7 +825,7 @@ public class CompactionSchedulerWithFastPerformerTest {
       CompactionScheduler.scheduleCompaction(tsFileManager, 0);
 
       long totalWaitingTime = 0;
-      while (tsFileManager.getTsFileList(true).size() > 1) {
+      while (tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size() > 1) {
         try {
           Thread.sleep(100);
           totalWaitingTime += 100;
@@ -842,7 +842,7 @@ public class CompactionSchedulerWithFastPerformerTest {
       CompactionScheduler.scheduleCompaction(tsFileManager, 0);
 
       totalWaitingTime = 0;
-      while (tsFileManager.getTsFileList(false).size() > 0) {
+      while (tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).size() > 0) {
         try {
           Thread.sleep(100);
           totalWaitingTime += 100;
@@ -929,7 +929,7 @@ public class CompactionSchedulerWithFastPerformerTest {
       CompactionScheduler.scheduleCompaction(tsFileManager, 0);
 
       long totalWaitingTime = 0;
-      while (tsFileManager.getTsFileList(false).size() > 0) {
+      while (tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).size() > 0) {
         try {
           Thread.sleep(100);
           totalWaitingTime += 100;
@@ -943,7 +943,7 @@ public class CompactionSchedulerWithFastPerformerTest {
           e.printStackTrace();
         }
       }
-      assertEquals(100, tsFileManager.getTsFileList(true).size());
+      assertEquals(100, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size());
       tsFileManager.setAllowCompaction(false);
       stopCompactionTaskManager();
     } finally {
@@ -1017,7 +1017,7 @@ public class CompactionSchedulerWithFastPerformerTest {
       CompactionScheduler.scheduleCompaction(tsFileManager, 0);
 
       long totalWaitingTime = 0;
-      while (tsFileManager.getTsFileList(true).size() > 50) {
+      while (tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size() > 50) {
         try {
           Thread.sleep(100);
           totalWaitingTime += 100;
@@ -1034,7 +1034,7 @@ public class CompactionSchedulerWithFastPerformerTest {
       CompactionScheduler.scheduleCompaction(tsFileManager, 0);
 
       totalWaitingTime = 0;
-      while (tsFileManager.getTsFileList(true).size() > 25) {
+      while (tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size() > 25) {
         Thread.sleep(100);
         totalWaitingTime += 100;
         CompactionScheduler.scheduleCompaction(tsFileManager, 0);
@@ -1043,7 +1043,7 @@ public class CompactionSchedulerWithFastPerformerTest {
           fail();
         }
       }
-      assertTrue(tsFileManager.getTsFileList(true).size() <= 25);
+      assertTrue(tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size() <= 25);
       tsFileManager.setAllowCompaction(false);
       stopCompactionTaskManager();
     } finally {
@@ -1121,7 +1121,7 @@ public class CompactionSchedulerWithFastPerformerTest {
       CompactionScheduler.scheduleCompaction(tsFileManager, 0);
 
       long totalWaitingTime = 0;
-      while (tsFileManager.getTsFileList(false).size() > 50) {
+      while (tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).size() > 50) {
         try {
           Thread.sleep(100);
           totalWaitingTime += 100;
@@ -1135,11 +1135,11 @@ public class CompactionSchedulerWithFastPerformerTest {
           e.printStackTrace();
         }
       }
-      assertEquals(100, tsFileManager.getTsFileList(true).size());
+      assertEquals(100, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size());
       CompactionScheduler.scheduleCompaction(tsFileManager, 0);
 
       totalWaitingTime = 0;
-      while (tsFileManager.getTsFileList(false).size() > 25) {
+      while (tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).size() > 25) {
         try {
           Thread.sleep(100);
           totalWaitingTime += 100;
@@ -1229,7 +1229,7 @@ public class CompactionSchedulerWithFastPerformerTest {
       CompactionScheduler.scheduleCompaction(tsFileManager, 0);
 
       long totalWaitingTime = 0;
-      while (tsFileManager.getTsFileList(true).size() > 50) {
+      while (tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size() > 50) {
         try {
           Thread.sleep(100);
           totalWaitingTime += 100;
@@ -1246,7 +1246,7 @@ public class CompactionSchedulerWithFastPerformerTest {
       CompactionScheduler.scheduleCompaction(tsFileManager, 0);
 
       totalWaitingTime = 0;
-      while (tsFileManager.getTsFileList(true).size() > 25) {
+      while (tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size() > 25) {
         try {
           Thread.sleep(100);
           totalWaitingTime += 100;
@@ -1333,7 +1333,7 @@ public class CompactionSchedulerWithFastPerformerTest {
       CompactionScheduler.scheduleCompaction(tsFileManager, 0);
 
       long totalWaitingTime = 0;
-      while (tsFileManager.getTsFileList(false).size() > 98) {
+      while (tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).size() > 98) {
         try {
           Thread.sleep(100);
           totalWaitingTime += 100;
@@ -1347,11 +1347,11 @@ public class CompactionSchedulerWithFastPerformerTest {
           e.printStackTrace();
         }
       }
-      assertEquals(100, tsFileManager.getTsFileList(true).size());
+      assertEquals(100, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size());
       CompactionScheduler.scheduleCompaction(tsFileManager, 0);
 
       totalWaitingTime = 0;
-      while (tsFileManager.getTsFileList(false).size() > 96) {
+      while (tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).size() > 96) {
         try {
           Thread.sleep(100);
           totalWaitingTime += 100;
@@ -1365,7 +1365,7 @@ public class CompactionSchedulerWithFastPerformerTest {
           e.printStackTrace();
         }
       }
-      assertEquals(100, tsFileManager.getTsFileList(true).size());
+      assertEquals(100, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size());
       tsFileManager.setAllowCompaction(false);
       stopCompactionTaskManager();
     } finally {
@@ -1436,16 +1436,16 @@ public class CompactionSchedulerWithFastPerformerTest {
         tsFileManager.add(tsFileResource, false);
       }
 
-      assertEquals(100, tsFileManager.getTsFileList(true).size());
+      assertEquals(100, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size());
       CompactionScheduler.scheduleCompaction(tsFileManager, 0);
 
-      assertEquals(100, tsFileManager.getTsFileList(true).size());
+      assertEquals(100, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size());
       long totalWaitingTime = 0;
-      while (tsFileManager.getTsFileList(false).size() > 99) {
+      while (tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).size() > 99) {
         try {
           Thread.sleep(100);
           totalWaitingTime += 100;
-          assertEquals(100, tsFileManager.getTsFileList(true).size());
+          assertEquals(100, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size());
           CompactionScheduler.scheduleCompaction(tsFileManager, 0);
 
           if (totalWaitingTime > MAX_WAITING_TIME) {
@@ -1456,14 +1456,14 @@ public class CompactionSchedulerWithFastPerformerTest {
           e.printStackTrace();
         }
       }
-      assertEquals(100, tsFileManager.getTsFileList(true).size());
+      assertEquals(100, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size());
       CompactionScheduler.scheduleCompaction(tsFileManager, 0);
 
       totalWaitingTime = 0;
-      while (tsFileManager.getTsFileList(false).size() > 98) {
+      while (tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).size() > 98) {
         try {
           Thread.sleep(100);
-          assertEquals(100, tsFileManager.getTsFileList(true).size());
+          assertEquals(100, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size());
           totalWaitingTime += 100;
           CompactionScheduler.scheduleCompaction(tsFileManager, 0);
 
@@ -1475,7 +1475,7 @@ public class CompactionSchedulerWithFastPerformerTest {
           e.printStackTrace();
         }
       }
-      assertEquals(100, tsFileManager.getTsFileList(true).size());
+      assertEquals(100, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size());
       tsFileManager.setAllowCompaction(false);
       stopCompactionTaskManager();
     } finally {
@@ -1549,7 +1549,7 @@ public class CompactionSchedulerWithFastPerformerTest {
       CompactionScheduler.scheduleCompaction(tsFileManager, 0);
 
       long totalWaitingTime = 0;
-      while (tsFileManager.getTsFileList(true).size() > 99) {
+      while (tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size() > 99) {
         try {
           Thread.sleep(100);
           totalWaitingTime += 100;
@@ -1566,7 +1566,7 @@ public class CompactionSchedulerWithFastPerformerTest {
       CompactionScheduler.scheduleCompaction(tsFileManager, 0);
 
       totalWaitingTime = 0;
-      while (tsFileManager.getTsFileList(true).size() > 98) {
+      while (tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size() > 98) {
         try {
           Thread.sleep(100);
           totalWaitingTime += 100;
@@ -1580,7 +1580,7 @@ public class CompactionSchedulerWithFastPerformerTest {
           e.printStackTrace();
         }
       }
-      while (tsFileManager.getTsFileList(false).size() > 0) {
+      while (tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).size() > 0) {
         try {
           Thread.sleep(100);
           totalWaitingTime += 100;
@@ -1666,7 +1666,7 @@ public class CompactionSchedulerWithFastPerformerTest {
       CompactionScheduler.scheduleCompaction(tsFileManager, 0);
 
       long totalWaitingTime = 0;
-      while (tsFileManager.getTsFileList(false).size() > 98) {
+      while (tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).size() > 98) {
         try {
           Thread.sleep(100);
           totalWaitingTime += 100;
@@ -1680,11 +1680,11 @@ public class CompactionSchedulerWithFastPerformerTest {
           e.printStackTrace();
         }
       }
-      assertEquals(100, tsFileManager.getTsFileList(true).size());
+      assertEquals(100, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size());
       CompactionScheduler.scheduleCompaction(tsFileManager, 0);
 
       totalWaitingTime = 0;
-      while (tsFileManager.getTsFileList(false).size() > 96) {
+      while (tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).size() > 96) {
         try {
           Thread.sleep(100);
           totalWaitingTime += 100;
@@ -1698,7 +1698,7 @@ public class CompactionSchedulerWithFastPerformerTest {
           e.printStackTrace();
         }
       }
-      assertEquals(100, tsFileManager.getTsFileList(true).size());
+      assertEquals(100, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size());
       tsFileManager.setAllowCompaction(false);
       stopCompactionTaskManager();
     } finally {
@@ -1798,10 +1798,10 @@ public class CompactionSchedulerWithFastPerformerTest {
       CompactionScheduler.scheduleCompaction(tsFileManager, 0);
       Thread.sleep(100);
       long sleepTime = 0;
-      while (tsFileManager.getTsFileList(true).size() >= 2) {
+      while (tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size() >= 2) {
         CompactionScheduler.scheduleCompaction(tsFileManager, 0);
         tsFileManager.readLock();
-        List<TsFileResource> resources = tsFileManager.getTsFileList(true);
+        List<TsFileResource> resources = tsFileManager.getTsFileList(true, COMPACTION_TEST_SG);
         int previousFileLevel =
             TsFileNameGenerator.getTsFileName(resources.get(0).getTsFile().getName())
                 .getInnerCompactionCnt();

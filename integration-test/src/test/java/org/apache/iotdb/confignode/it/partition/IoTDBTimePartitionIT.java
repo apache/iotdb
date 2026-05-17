@@ -142,7 +142,7 @@ public class IoTDBTimePartitionIT {
       }
       timestatmps.forEach(
           t -> {
-            long timePartitionId = TimePartitionUtils.getTimePartitionId(t);
+            long timePartitionId = TimePartitionUtils.getTimePartitionId(t, "root.sg1");
             assertTrue(timePartitions.contains(timePartitionId));
           });
     }

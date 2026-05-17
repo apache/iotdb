@@ -173,7 +173,8 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
         CompactionScheduler.tryToSubmitInsertionCompactionTask(tsFileManager, 0, phaser, context);
     Assert.assertEquals(0, submitTaskNum);
     Assert.assertTrue(
-        TsFileResourceUtils.validateTsFileResourcesHasNoOverlap(tsFileManager.getTsFileList(true)));
+        TsFileResourceUtils.validateTsFileResourcesHasNoOverlap(
+            tsFileManager.getTsFileList(true, COMPACTION_TEST_SG)));
   }
 
   @Test
@@ -1090,23 +1091,28 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
     InsertionCrossCompactionTaskResource taskResource;
 
     int i = 1;
-    while (tsFileManager.getTsFileList(false).size() > 0) {
+    while (tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).size() > 0) {
       taskResource =
           selector.selectOneInsertionTask(
               new CrossSpaceCompactionCandidate(
-                  tsFileManager.getTsFileList(true), tsFileManager.getTsFileList(false)));
+                  tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
+                  tsFileManager.getTsFileList(false, COMPACTION_TEST_SG)));
       Assert.assertTrue(taskResource.isValid());
       Assert.assertEquals(
-          tsFileManager.getTsFileList(false).get(0), taskResource.firstUnSeqFileInParitition);
+          tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).get(0),
+          taskResource.firstUnSeqFileInParitition);
       Assert.assertEquals(
-          tsFileManager.getTsFileList(false).get(0), taskResource.toInsertUnSeqFile);
+          tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).get(0),
+          taskResource.toInsertUnSeqFile);
       Assert.assertEquals(null, taskResource.nextSeqFile);
       if (i == 1) {
         Assert.assertEquals(null, taskResource.prevSeqFile);
       } else if (i == 2) {
-        Assert.assertEquals(tsFileManager.getTsFileList(true).get(0), taskResource.prevSeqFile);
+        Assert.assertEquals(
+            tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).get(0), taskResource.prevSeqFile);
       } else {
-        Assert.assertEquals(tsFileManager.getTsFileList(true).get(1), taskResource.prevSeqFile);
+        Assert.assertEquals(
+            tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).get(1), taskResource.prevSeqFile);
       }
       InsertionCrossSpaceCompactionTask task =
           new InsertionCrossSpaceCompactionTask(
@@ -1118,8 +1124,8 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
       task.start();
       i++;
     }
-    Assert.assertEquals(3, tsFileManager.getTsFileList(true).size());
-    Assert.assertEquals(0, tsFileManager.getTsFileList(false).size());
+    Assert.assertEquals(3, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size());
+    Assert.assertEquals(0, tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).size());
   }
 
   @Test
@@ -1304,10 +1310,15 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
     InsertionCrossCompactionTaskResource task =
         selector.selectOneInsertionTask(
             new CrossSpaceCompactionCandidate(seqResources, unseqResources));
-    Assert.assertEquals(tsFileManager.getTsFileList(false).get(0), task.toInsertUnSeqFile);
-    Assert.assertEquals(tsFileManager.getTsFileList(true).get(1), task.prevSeqFile);
-    Assert.assertEquals(tsFileManager.getTsFileList(true).get(2), task.nextSeqFile);
-    Assert.assertEquals(tsFileManager.getTsFileList(false).get(0), task.firstUnSeqFileInParitition);
+    Assert.assertEquals(
+        tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).get(0), task.toInsertUnSeqFile);
+    Assert.assertEquals(
+        tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).get(1), task.prevSeqFile);
+    Assert.assertEquals(
+        tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).get(2), task.nextSeqFile);
+    Assert.assertEquals(
+        tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).get(0),
+        task.firstUnSeqFileInParitition);
 
     // seq file 1 ~ 3 is compaction candidate
     for (int i = 0; i < 3; i++) {
@@ -1316,10 +1327,15 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
     task =
         selector.selectOneInsertionTask(
             new CrossSpaceCompactionCandidate(seqResources, unseqResources));
-    Assert.assertEquals(tsFileManager.getTsFileList(false).get(0), task.toInsertUnSeqFile);
-    Assert.assertEquals(tsFileManager.getTsFileList(true).get(3), task.prevSeqFile);
-    Assert.assertEquals(tsFileManager.getTsFileList(true).get(4), task.nextSeqFile);
-    Assert.assertEquals(tsFileManager.getTsFileList(false).get(0), task.firstUnSeqFileInParitition);
+    Assert.assertEquals(
+        tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).get(0), task.toInsertUnSeqFile);
+    Assert.assertEquals(
+        tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).get(3), task.prevSeqFile);
+    Assert.assertEquals(
+        tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).get(4), task.nextSeqFile);
+    Assert.assertEquals(
+        tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).get(0),
+        task.firstUnSeqFileInParitition);
 
     // all seq file are compacting
     for (TsFileResource resource : seqResources) {
@@ -1579,23 +1595,28 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
     InsertionCrossCompactionTaskResource taskResource;
 
     int i = 1;
-    while (tsFileManager.getTsFileList(false).size() > 0) {
+    while (tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).size() > 0) {
       taskResource =
           selector.selectOneInsertionTask(
               new CrossSpaceCompactionCandidate(
-                  tsFileManager.getTsFileList(true), tsFileManager.getTsFileList(false)));
+                  tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
+                  tsFileManager.getTsFileList(false, COMPACTION_TEST_SG)));
       Assert.assertTrue(taskResource.isValid());
       Assert.assertEquals(
-          tsFileManager.getTsFileList(false).get(0), taskResource.firstUnSeqFileInParitition);
+          tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).get(0),
+          taskResource.firstUnSeqFileInParitition);
       Assert.assertEquals(
-          tsFileManager.getTsFileList(false).get(0), taskResource.toInsertUnSeqFile);
+          tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).get(0),
+          taskResource.toInsertUnSeqFile);
       Assert.assertEquals(null, taskResource.nextSeqFile);
       if (i == 1) {
         Assert.assertEquals(null, taskResource.prevSeqFile);
       } else if (i == 2) {
-        Assert.assertEquals(tsFileManager.getTsFileList(true).get(0), taskResource.prevSeqFile);
+        Assert.assertEquals(
+            tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).get(0), taskResource.prevSeqFile);
       } else {
-        Assert.assertEquals(tsFileManager.getTsFileList(true).get(1), taskResource.prevSeqFile);
+        Assert.assertEquals(
+            tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).get(1), taskResource.prevSeqFile);
       }
       InsertionCrossSpaceCompactionTask task =
           new InsertionCrossSpaceCompactionTask(
@@ -1607,8 +1628,8 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
       task.start();
       i++;
     }
-    Assert.assertEquals(3, tsFileManager.getTsFileList(true).size());
-    Assert.assertEquals(0, tsFileManager.getTsFileList(false).size());
+    Assert.assertEquals(3, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size());
+    Assert.assertEquals(0, tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).size());
   }
 
   @Test
@@ -1812,10 +1833,15 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
     InsertionCrossCompactionTaskResource task =
         selector.selectOneInsertionTask(
             new CrossSpaceCompactionCandidate(seqResources, unseqResources));
-    Assert.assertEquals(tsFileManager.getTsFileList(false).get(0), task.toInsertUnSeqFile);
-    Assert.assertEquals(tsFileManager.getTsFileList(true).get(1), task.prevSeqFile);
-    Assert.assertEquals(tsFileManager.getTsFileList(true).get(2), task.nextSeqFile);
-    Assert.assertEquals(tsFileManager.getTsFileList(false).get(0), task.firstUnSeqFileInParitition);
+    Assert.assertEquals(
+        tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).get(0), task.toInsertUnSeqFile);
+    Assert.assertEquals(
+        tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).get(1), task.prevSeqFile);
+    Assert.assertEquals(
+        tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).get(2), task.nextSeqFile);
+    Assert.assertEquals(
+        tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).get(0),
+        task.firstUnSeqFileInParitition);
 
     // seq file 1 ~ 3 is compaction candidate
     for (int i = 0; i < 3; i++) {
@@ -1824,10 +1850,15 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
     task =
         selector.selectOneInsertionTask(
             new CrossSpaceCompactionCandidate(seqResources, unseqResources));
-    Assert.assertEquals(tsFileManager.getTsFileList(false).get(0), task.toInsertUnSeqFile);
-    Assert.assertEquals(tsFileManager.getTsFileList(true).get(3), task.prevSeqFile);
-    Assert.assertEquals(tsFileManager.getTsFileList(true).get(4), task.nextSeqFile);
-    Assert.assertEquals(tsFileManager.getTsFileList(false).get(0), task.firstUnSeqFileInParitition);
+    Assert.assertEquals(
+        tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).get(0), task.toInsertUnSeqFile);
+    Assert.assertEquals(
+        tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).get(3), task.prevSeqFile);
+    Assert.assertEquals(
+        tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).get(4), task.nextSeqFile);
+    Assert.assertEquals(
+        tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).get(0),
+        task.firstUnSeqFileInParitition);
 
     // all seq file are compacting
     for (TsFileResource resource : seqResources) {

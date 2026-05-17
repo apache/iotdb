@@ -556,7 +556,7 @@ public class AbstractCompactionTest {
   protected void validateSeqFiles(boolean isSeq) {
     TsFileValidationTool.clearMap(true);
     List<File> files = new ArrayList<>();
-    for (TsFileResource resource : tsFileManager.getTsFileList(isSeq)) {
+    for (TsFileResource resource : tsFileManager.getTsFileList(isSeq, COMPACTION_TEST_SG)) {
       files.add(resource.getTsFile());
     }
     TsFileValidationTool.findIncorrectFiles(files);
@@ -574,8 +574,8 @@ public class AbstractCompactionTest {
               path,
               FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                   EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
-              tsFileManager.getTsFileList(true),
-              tsFileManager.getTsFileList(false),
+              tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
+              tsFileManager.getTsFileList(false, COMPACTION_TEST_SG),
               true);
       while (tsBlockReader.hasNextBatch()) {
         TsBlock block = tsBlockReader.nextBatch();
@@ -601,8 +601,8 @@ public class AbstractCompactionTest {
               entry.getKey(),
               FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                   EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
-              tsFileManager.getTsFileList(true),
-              tsFileManager.getTsFileList(false),
+              tsFileManager.getTsFileList(true, COMPACTION_TEST_SG),
+              tsFileManager.getTsFileList(false, COMPACTION_TEST_SG),
               true);
       List<TimeValuePair> timeseriesData = entry.getValue();
       tmpSourceDatas.put(entry.getKey(), new ArrayList<>(timeseriesData));

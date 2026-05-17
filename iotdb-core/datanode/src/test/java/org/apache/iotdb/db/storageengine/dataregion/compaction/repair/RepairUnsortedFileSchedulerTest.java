@@ -127,8 +127,8 @@ public class RepairUnsortedFileSchedulerTest extends AbstractRepairDataTest {
         new UnsortedFileRepairTaskScheduler(
             Collections.singletonList(mockDataRegion), false, tempDir);
     scheduler.run();
-    Assert.assertEquals(1, tsFileManager.getTsFileList(true).size());
-    Assert.assertEquals(1, tsFileManager.getTsFileList(false).size());
+    Assert.assertEquals(1, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size());
+    Assert.assertEquals(1, tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).size());
   }
 
   @Test
@@ -196,7 +196,7 @@ public class RepairUnsortedFileSchedulerTest extends AbstractRepairDataTest {
         new UnsortedFileRepairTaskScheduler(
             Collections.singletonList(mockDataRegion), true, tempDir);
     scheduler.run();
-    Assert.assertEquals(3, tsFileManager.getTsFileList(true).size());
+    Assert.assertEquals(3, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size());
     // check whether the repair status is marked correctly
     Assert.assertTrue(seqResource3.getTsFileRepairStatus().isRepairCompactionCandidate());
   }
@@ -256,8 +256,8 @@ public class RepairUnsortedFileSchedulerTest extends AbstractRepairDataTest {
         new UnsortedFileRepairTaskScheduler(
             Collections.singletonList(mockDataRegion), false, tempDir);
     scheduler.run();
-    Assert.assertEquals(1, tsFileManager.getTsFileList(true).size());
-    Assert.assertEquals(2, tsFileManager.getTsFileList(false).size());
+    Assert.assertEquals(1, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size());
+    Assert.assertEquals(2, tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).size());
   }
 
   @Test
@@ -303,8 +303,8 @@ public class RepairUnsortedFileSchedulerTest extends AbstractRepairDataTest {
         new UnsortedFileRepairTaskScheduler(
             Collections.singletonList(mockDataRegion), false, tempDir);
     scheduler.run();
-    Assert.assertEquals(1, tsFileManager.getTsFileList(true).size());
-    Assert.assertEquals(1, tsFileManager.getTsFileList(false).size());
+    Assert.assertEquals(1, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size());
+    Assert.assertEquals(1, tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).size());
   }
 
   @Test
@@ -379,6 +379,6 @@ public class RepairUnsortedFileSchedulerTest extends AbstractRepairDataTest {
         new UnsortedFileRepairTaskScheduler(
             Collections.singletonList(mockDataRegion), true, tempDir);
     scheduler.run();
-    Assert.assertEquals(2, tsFileManager.getTsFileList(true).size());
+    Assert.assertEquals(2, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size());
   }
 }

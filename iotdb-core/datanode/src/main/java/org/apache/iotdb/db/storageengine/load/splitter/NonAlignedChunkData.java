@@ -161,12 +161,13 @@ public class NonAlignedChunkData implements ChunkData {
   }
 
   @Override
-  public void writeDecodePage(final long[] times, final Object[] values, final int satisfiedLength)
+  public void writeDecodePage(
+      final long[] times, final Object[] values, final int satisfiedLength, String database)
       throws IOException {
     pageNumber += 1;
     final long startTime = timePartitionSlot.getStartTime();
     // beware of overflow
-    long endTime = startTime + TimePartitionUtils.getTimePartitionInterval() - 1;
+    long endTime = startTime + TimePartitionUtils.getTimePartitionInterval(database) - 1;
     if (endTime <= startTime) {
       endTime = Long.MAX_VALUE;
     }
@@ -284,7 +285,7 @@ public class NonAlignedChunkData implements ChunkData {
   public static NonAlignedChunkData deserialize(final InputStream stream)
       throws IOException, PageException {
     final TTimePartitionSlot timePartitionSlot =
-        TimePartitionUtils.getTimePartitionSlot(ReadWriteIOUtils.readLong(stream));
+        new TTimePartitionSlot(ReadWriteIOUtils.readLong(stream));
     final boolean isStringArrayDeviceID = ReadWriteIOUtils.readBool(stream);
     final IDeviceID device =
         isStringArrayDeviceID

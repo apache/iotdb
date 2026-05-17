@@ -470,6 +470,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         }
 
       } else {
+        TimePartitionUtils.updateDatabaseTimePartitionConfig(databaseSchema.getName(), databaseSchema);
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
     } catch (final ClientManagerException | TException e) {
@@ -3377,9 +3378,11 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         tGetRegionIdReq.setDatabase(getRegionIdStatement.getDatabase());
       }
       tGetRegionIdReq.setStartTimeSlot(
-          TimePartitionUtils.getTimePartitionSlot(getRegionIdStatement.getStartTimeStamp()));
+          TimePartitionUtils.getTimePartitionSlot(
+              getRegionIdStatement.getStartTimeStamp(), getRegionIdStatement.getDatabase()));
       tGetRegionIdReq.setEndTimeSlot(
-          TimePartitionUtils.getTimePartitionSlot(getRegionIdStatement.getEndTimeStamp()));
+          TimePartitionUtils.getTimePartitionSlot(
+              getRegionIdStatement.getEndTimeStamp(), getRegionIdStatement.getDatabase()));
       resp = configNodeClient.getRegionId(tGetRegionIdReq);
       if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         future.setException(new IoTDBException(resp.getStatus()));
@@ -3446,7 +3449,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     } catch (final Exception e) {
       future.setException(e);
     }
-    GetTimeSlotListTask.buildTSBlock(resp, future);
+    GetTimeSlotListTask.buildTSBlock(resp, future, getTimeSlotListStatement.getDatabase());
     return future;
   }
 
@@ -4242,6 +4245,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       final TSStatus tsStatus = configNodeClient.setDatabase(databaseSchema);
 
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()) {
+        TimePartitionUtils.updateDatabaseTimePartitionConfig(databaseSchema.getName(), databaseSchema);
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       } else if (TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode() == tsStatus.getCode()) {
         if (ifExists) {

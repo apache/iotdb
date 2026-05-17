@@ -566,7 +566,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
           startIndex);
 
       final Map<TsFileResource, Set<String>> sequenceTsFileResources2TableNames =
-          tsFileManager.getTsFileList(true).stream()
+          tsFileManager.getTsFileList(true, dataRegion.getDatabaseName()).stream()
               .peek(originalResourceList::add)
               .filter(
                   resource ->
@@ -599,7 +599,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
       filteredTsFileResources2TableNames.putAll(sequenceTsFileResources2TableNames);
 
       final Map<TsFileResource, Set<String>> unSequenceTsFileResources2TableNames =
-          tsFileManager.getTsFileList(false).stream()
+          tsFileManager.getTsFileList(false, dataRegion.getDatabaseName()).stream()
               .peek(originalResourceList::add)
               .filter(
                   resource ->

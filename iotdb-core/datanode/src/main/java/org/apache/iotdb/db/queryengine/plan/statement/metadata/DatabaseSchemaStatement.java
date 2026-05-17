@@ -36,6 +36,7 @@ public class DatabaseSchemaStatement extends Statement implements IConfigStateme
   private PartialPath databasePath;
   private Long ttl = null;
   private Long timePartitionInterval = null;
+  private Long timePartitionOrigin = null;
   private Integer schemaRegionGroupNum = null;
   private Integer dataRegionGroupNum = null;
   private boolean enablePrintExceptionLog = true;
@@ -92,6 +93,14 @@ public class DatabaseSchemaStatement extends Statement implements IConfigStateme
 
   public void setTimePartitionInterval(final Long timePartitionInterval) {
     this.timePartitionInterval = timePartitionInterval;
+  }
+
+  public Long getTimePartitionOrigin() {
+    return timePartitionOrigin;
+  }
+
+  public void setTimePartitionOrigin(Long timePartitionOrigin) {
+    this.timePartitionOrigin = timePartitionOrigin;
   }
 
   public Integer getSchemaRegionGroupNum() {
@@ -152,6 +161,8 @@ public class DatabaseSchemaStatement extends Statement implements IConfigStateme
         + dataReplicationFactor
         + ", timePartitionInterval="
         + timePartitionInterval
+        + ", timePartitionOrigin="
+        + timePartitionOrigin
         + ", schemaRegionGroupNum="
         + schemaRegionGroupNum
         + ", dataRegionGroupNum="

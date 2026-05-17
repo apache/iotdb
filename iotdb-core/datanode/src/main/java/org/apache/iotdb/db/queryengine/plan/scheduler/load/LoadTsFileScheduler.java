@@ -317,7 +317,7 @@ public class LoadTsFileScheduler implements IScheduler {
     try {
       new TsFileSplitter(
               node.getTsFileResource().getTsFile(), tsFileDataManager::addOrSendTsFileData)
-          .splitTsFileByDataPartition();
+          .splitTsFileByDataPartition(node.getDatabase());
       if (!tsFileDataManager.sendAllTsFileData()) {
         return false;
       }

@@ -123,8 +123,8 @@ public class SettleCompactionRecoverTest extends AbstractCompactionTest {
       Assert.assertFalse(resource.getCompactionModFile().exists());
     }
 
-    Assert.assertEquals(3, tsFileManager.getTsFileList(false).size());
-    Assert.assertEquals(6, tsFileManager.getTsFileList(true).size());
+    Assert.assertEquals(3, tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).size());
+    Assert.assertEquals(6, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size());
   }
 
   @Test
@@ -178,8 +178,8 @@ public class SettleCompactionRecoverTest extends AbstractCompactionTest {
       Assert.assertFalse(resource.getCompactionModFile().exists());
     }
 
-    Assert.assertEquals(3, tsFileManager.getTsFileList(false).size());
-    Assert.assertEquals(6, tsFileManager.getTsFileList(true).size());
+    Assert.assertEquals(3, tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).size());
+    Assert.assertEquals(6, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size());
   }
 
   @Test
@@ -254,12 +254,12 @@ public class SettleCompactionRecoverTest extends AbstractCompactionTest {
       Assert.assertFalse(resource.getCompactionModFile().exists());
     }
 
-    Assert.assertEquals(3, tsFileManager.getTsFileList(false).size());
-    Assert.assertEquals(6, tsFileManager.getTsFileList(true).size());
+    Assert.assertEquals(3, tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).size());
+    Assert.assertEquals(6, tsFileManager.getTsFileList(true, COMPACTION_TEST_SG).size());
     Assert.assertTrue(!tsFileManager.contains(targetResource, false));
     Assert.assertTrue(!tsFileManager.contains(targetResource, true));
     // resource file exist
-    for (TsFileResource resource : tsFileManager.getTsFileList(false)) {
+    for (TsFileResource resource : tsFileManager.getTsFileList(false, COMPACTION_TEST_SG)) {
       Assert.assertTrue(resource.tsFileExists());
       Assert.assertTrue(resource.anyModFileExists());
       Assert.assertTrue(resource.resourceFileExists());
@@ -357,8 +357,8 @@ public class SettleCompactionRecoverTest extends AbstractCompactionTest {
     Assert.assertTrue(targetResource.tsFileExists());
     Assert.assertTrue(targetResource.anyModFileExists());
 
-    Assert.assertEquals(1, tsFileManager.getTsFileList(false).size());
-    for (TsFileResource resource : tsFileManager.getTsFileList(false)) {
+    Assert.assertEquals(1, tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).size());
+    for (TsFileResource resource : tsFileManager.getTsFileList(false, COMPACTION_TEST_SG)) {
       Assert.assertTrue(resource.tsFileExists());
       Assert.assertTrue(resource.anyModFileExists());
       Assert.assertTrue(resource.resourceFileExists());
@@ -455,7 +455,7 @@ public class SettleCompactionRecoverTest extends AbstractCompactionTest {
     Assert.assertFalse(targetResource.anyModFileExists());
     Assert.assertFalse(targetResource.getCompactionModFile().exists());
 
-    Assert.assertEquals(0, tsFileManager.getTsFileList(false).size());
+    Assert.assertEquals(0, tsFileManager.getTsFileList(false, COMPACTION_TEST_SG).size());
   }
 
   @Test

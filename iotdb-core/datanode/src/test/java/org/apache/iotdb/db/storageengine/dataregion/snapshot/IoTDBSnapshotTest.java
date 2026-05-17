@@ -198,7 +198,8 @@ public class IoTDBSnapshotTest {
             new SnapshotLoader(snapshotDir.getAbsolutePath(), testSgName, "0")
                 .loadSnapshotForStateMachine();
         Assert.assertNotNull(dataRegion);
-        List<TsFileResource> resource = dataRegion.getTsFileManager().getTsFileList(true);
+        List<TsFileResource> resource =
+            dataRegion.getTsFileManager().getTsFileList(true, testSgName);
         Assert.assertEquals(100, resource.size());
         Assert.assertEquals(
             new Pair<>(100L, 100L),
