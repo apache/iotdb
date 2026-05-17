@@ -109,6 +109,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
+/** Represents a client session for connecting to and interacting with the IoTDB server. */
 @SuppressWarnings({"java:S107", "java:S1135"}) // need enough parameters, ignore todos
 public class Session implements ISession {
 
@@ -223,6 +224,12 @@ public class Session implements ISession {
       TSFileDescriptor.getInstance().getConfig().getCompressor();
   public Map<TSDataType, TSEncoding> columnEncodersMap = Collections.emptyMap();
 
+  /**
+   * Creates a Session to connect to a single node.
+   *
+   * @param host IP address or hostname of the node
+   * @param rpcPort RPC port of the node
+   */
   public Session(String host, int rpcPort) {
     this(
         host,
@@ -237,6 +244,14 @@ public class Session implements ISession {
         SessionConfig.DEFAULT_VERSION);
   }
 
+  /**
+   * Creates a Session to connect to a single node with username and password.
+   *
+   * @param host IP address or hostname of the node
+   * @param rpcPort RPC port of the node (as String)
+   * @param username Database user
+   * @param password Database password
+   */
   public Session(String host, String rpcPort, String username, String password) {
     this(
         host,
@@ -251,6 +266,14 @@ public class Session implements ISession {
         SessionConfig.DEFAULT_VERSION);
   }
 
+  /**
+   * Creates a Session to connect to a single node with username and password.
+   *
+   * @param host IP address or hostname of the node
+   * @param rpcPort RPC port of the node
+   * @param username Database user
+   * @param password Database password
+   */
   public Session(String host, int rpcPort, String username, String password) {
     this(
         host,
@@ -265,6 +288,15 @@ public class Session implements ISession {
         SessionConfig.DEFAULT_VERSION);
   }
 
+  /**
+   * Creates a Session to connect to a single node.
+   *
+   * @param host IP address or hostname of the node
+   * @param rpcPort RPC port of the node
+   * @param username Database user
+   * @param password Database password
+   * @param fetchSize Number of rows fetched per query by default
+   */
   public Session(String host, int rpcPort, String username, String password, int fetchSize) {
     this(
         host,
@@ -279,6 +311,16 @@ public class Session implements ISession {
         SessionConfig.DEFAULT_VERSION);
   }
 
+  /**
+   * Creates a Session to connect to a single node.
+   *
+   * @param host IP address or hostname of the node
+   * @param rpcPort RPC port of the node
+   * @param username Database user
+   * @param password Database password
+   * @param fetchSize Number of rows fetched per query by default
+   * @param queryTimeoutInMs Timeout for queries in milliseconds
+   */
   public Session(
       String host,
       int rpcPort,
@@ -300,6 +342,15 @@ public class Session implements ISession {
     this.queryTimeoutInMs = queryTimeoutInMs;
   }
 
+  /**
+   * Creates a Session to connect to a single node.
+   *
+   * @param host IP address or hostname of the node
+   * @param rpcPort RPC port of the node
+   * @param username Database user
+   * @param password Database password
+   * @param zoneId Timezone used by this session
+   */
   public Session(String host, int rpcPort, String username, String password, ZoneId zoneId) {
     this(
         host,
@@ -314,6 +365,15 @@ public class Session implements ISession {
         SessionConfig.DEFAULT_VERSION);
   }
 
+  /**
+   * Creates a Session to connect to a single node.
+   *
+   * @param host IP address or hostname of the node
+   * @param rpcPort RPC port of the node
+   * @param username Database user
+   * @param password Database password
+   * @param enableRedirection Automatically redirect write requests to the correct node
+   */
   public Session(
       String host, int rpcPort, String username, String password, boolean enableRedirection) {
     this(
@@ -329,6 +389,17 @@ public class Session implements ISession {
         SessionConfig.DEFAULT_VERSION);
   }
 
+  /**
+   * Creates a Session to connect to a single node.
+   *
+   * @param host IP address or hostname of the node
+   * @param rpcPort RPC port of the node
+   * @param username Database user
+   * @param password Database password
+   * @param fetchSize Number of rows fetched per query by default
+   * @param zoneId Timezone used by this session
+   * @param enableRedirection Automatically redirect write requests to the correct node
+   */
   public Session(
       String host,
       int rpcPort,
@@ -350,6 +421,20 @@ public class Session implements ISession {
         SessionConfig.DEFAULT_VERSION);
   }
 
+  /**
+   * Creates a Session to connect to a single node with all connection parameters configurable.
+   *
+   * @param host IP address or hostname of the node
+   * @param rpcPort RPC port of the node
+   * @param username Database user
+   * @param password Database password
+   * @param fetchSize Number of rows fetched per query by default
+   * @param zoneId Timezone used by this session
+   * @param thriftDefaultBufferSize Default buffer size for Thrift RPC
+   * @param thriftMaxFrameSize Max frame size for Thrift RPC
+   * @param enableRedirection Automatically redirect write requests to the correct node
+   * @param version Protocol version
+   */
   @SuppressWarnings("squid:S107")
   public Session(
       String host,
@@ -373,6 +458,13 @@ public class Session implements ISession {
     this.version = version;
   }
 
+  /**
+   * Creates a Session to connect to a cluster. If one node fails, it tries the next one.
+   *
+   * @param nodeUrls List of node endpoints (e.g., ["127.0.0.1:6667"])
+   * @param username Database user
+   * @param password Database password
+   */
   public Session(List<String> nodeUrls, String username, String password) {
     this(
         nodeUrls,
@@ -387,9 +479,12 @@ public class Session implements ISession {
   }
 
   /**
-   * Multiple nodeUrl,If one node down, connect to the next one
+   * Creates a Session to connect to a cluster. If one node fails, it tries the next one.
    *
-   * @param nodeUrls List<String> Multiple ip:rpcPort eg.127.0.0.1:9001
+   * @param nodeUrls List of node endpoints (e.g., ["127.0.0.1:6667"])
+   * @param username Database user
+   * @param password Database password
+   * @param fetchSize Number of rows fetched per query by default
    */
   public Session(List<String> nodeUrls, String username, String password, int fetchSize) {
     this(
@@ -404,6 +499,14 @@ public class Session implements ISession {
         SessionConfig.DEFAULT_VERSION);
   }
 
+  /**
+   * Creates a Session to connect to a cluster. If one node fails, it tries the next one.
+   *
+   * @param nodeUrls List of node endpoints (e.g., ["127.0.0.1:6667"])
+   * @param username Database user
+   * @param password Database password
+   * @param zoneId Timezone used by this session
+   */
   public Session(List<String> nodeUrls, String username, String password, ZoneId zoneId) {
     this(
         nodeUrls,
@@ -417,6 +520,19 @@ public class Session implements ISession {
         SessionConfig.DEFAULT_VERSION);
   }
 
+  /**
+   * Creates a Session to connect to a cluster. If one node fails, it tries the next one.
+   *
+   * @param nodeUrls List of node endpoints (e.g., ["127.0.0.1:6667"])
+   * @param username Database user
+   * @param password Database password
+   * @param fetchSize Number of rows fetched per query by default
+   * @param zoneId Timezone used by this session
+   * @param thriftDefaultBufferSize Default buffer size for Thrift RPC
+   * @param thriftMaxFrameSize Max frame size for Thrift RPC
+   * @param enableRedirection Automatically redirect write requests to the correct node
+   * @param version Protocol version
+   */
   public Session(
       List<String> nodeUrls,
       String username,
@@ -442,6 +558,11 @@ public class Session implements ISession {
     this.version = version;
   }
 
+  /**
+   * Creates a Session from a builder object.
+   *
+   * @param builder System builder with custom configurations
+   */
   public Session(AbstractSessionBuilder builder) {
     if (builder.nodeUrls != null) {
       if (builder.nodeUrls.isEmpty()) {
@@ -480,36 +601,74 @@ public class Session implements ISession {
     this.database = builder.database;
   }
 
+  /**
+   * Sets the default number of rows fetched per query.
+   *
+   * @param fetchSize Number of rows to fetch
+   */
   @Override
   public void setFetchSize(int fetchSize) {
     this.fetchSize = fetchSize;
   }
 
+  /**
+   * Gets the default number of rows fetched per query.
+   *
+   * @return Number of rows
+   */
   @Override
   public int getFetchSize() {
     return this.fetchSize;
   }
 
+  /**
+   * Gets the protocol version of this session.
+   *
+   * @return Protocol version
+   */
   @Override
   public Version getVersion() {
     return version;
   }
 
+  /**
+   * Sets the protocol version for this session.
+   *
+   * @param version Protocol version
+   */
   @Override
   public void setVersion(Version version) {
     this.version = version;
   }
 
+  /**
+   * Opens the session connection.
+   *
+   * @throws IoTDBConnectionException If connection fails
+   */
   @Override
   public synchronized void open() throws IoTDBConnectionException {
     open(false, SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS);
   }
 
+  /**
+   * Opens the session connection with RPC compression option.
+   *
+   * @param enableRPCCompaction True to enable RPC compression
+   * @throws IoTDBConnectionException If connection fails
+   */
   @Override
   public synchronized void open(boolean enableRPCCompaction) throws IoTDBConnectionException {
     open(enableRPCCompaction, SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS);
   }
 
+  /**
+   * Opens the session connection with RPC compression and specific timeout.
+   *
+   * @param enableRPCCompaction True to enable RPC compression
+   * @param connectionTimeoutInMs Timeout for connection in milliseconds
+   * @throws IoTDBConnectionException If connection fails
+   */
   @Override
   public synchronized void open(boolean enableRPCCompaction, int connectionTimeoutInMs)
       throws IoTDBConnectionException {
@@ -559,6 +718,7 @@ public class Session implements ISession {
     }
   }
 
+  /** Initializes a background thread pool to periodically update the list of data nodes. */
   private void initThreadPool() {
     this.executorService =
         Executors.newSingleThreadScheduledExecutor(
@@ -576,6 +736,12 @@ public class Session implements ISession {
             });
   }
 
+  /**
+   * Shuffles the provided list of node endpoints to help load balance initial connections.
+   *
+   * @param endPoints List of node URLs
+   * @return A shuffled list of node URLs
+   */
   private static List<String> shuffleNodeUrls(List<String> endPoints) {
     try {
       Collections.shuffle(endPoints);
@@ -586,6 +752,12 @@ public class Session implements ISession {
     return endPoints;
   }
 
+  /**
+   * Retrieves the target node endpoints, either parsing the configured cluster URLs or using the
+   * single default endpoint.
+   *
+   * @return List of parsed endpoints
+   */
   private List<TEndPoint> getNodeUrls() {
     if (defaultEndPoint != null) {
       return Collections.singletonList(defaultEndPoint);
@@ -594,6 +766,15 @@ public class Session implements ISession {
     }
   }
 
+  /**
+   * Opens the session connection with compression, timeout, and redirection configurations.
+   *
+   * @param enableThriftRpcCompaction True to enable Thrift RPC compression
+   * @param connectionTimeoutInMs Connection timeout in milliseconds
+   * @param deviceIdToEndpoint Mapping of device IDs to endpoints
+   * @param nodesSupplier Supplier of cluster nodes
+   * @throws IoTDBConnectionException If connection fails
+   */
   @Override
   public synchronized void open(
       boolean enableThriftRpcCompaction,
@@ -619,6 +800,17 @@ public class Session implements ISession {
     }
   }
 
+  /**
+   * Opens the session connection with compression, timeout, and table model redirection
+   * configurations.
+   *
+   * @param enableThriftRpcCompaction True to enable Thrift RPC compression
+   * @param connectionTimeoutInMs Connection timeout in milliseconds
+   * @param deviceIdToEndpoint Mapping of device IDs to endpoints
+   * @param tableModelDeviceIdToEndpoint Mapping of table model device IDs to endpoints
+   * @param nodesSupplier Supplier of cluster nodes
+   * @throws IoTDBConnectionException If connection fails
+   */
   @Override
   public synchronized void open(
       boolean enableThriftRpcCompaction,
@@ -645,6 +837,11 @@ public class Session implements ISession {
     }
   }
 
+  /**
+   * Closes the session connection and releases resources.
+   *
+   * @throws IoTDBConnectionException If an error occurs during close
+   */
   @Override
   public synchronized void close() throws IoTDBConnectionException {
     try {
@@ -672,6 +869,15 @@ public class Session implements ISession {
     }
   }
 
+  /**
+   * Constructs a new SessionConnection to a specific endpoint.
+   *
+   * @param session The parent session
+   * @param endpoint The target endpoint to connect to
+   * @param zoneId Timezone ID
+   * @return The created session connection
+   * @throws IoTDBConnectionException If connection fails
+   */
   public SessionConnection constructSessionConnection(
       Session session, TEndPoint endpoint, ZoneId zoneId) throws IoTDBConnectionException {
     if (endpoint == null) {
@@ -694,6 +900,13 @@ public class Session implements ISession {
     return getDefaultSessionConnection().getTimeZone();
   }
 
+  /**
+   * Sets the timezone of the session.
+   *
+   * @param zoneId Timezone ID
+   * @throws StatementExecutionException If execution fails
+   * @throws IoTDBConnectionException If connection fails
+   */
   @Override
   public synchronized void setTimeZone(String zoneId)
       throws StatementExecutionException, IoTDBConnectionException {
@@ -708,6 +921,13 @@ public class Session implements ISession {
     this.zoneId = ZoneId.of(zoneId);
   }
 
+  /**
+   * Sets the storage group.
+   *
+   * @param storageGroup Name of the storage group
+   * @throws IoTDBConnectionException If connection fails
+   * @throws StatementExecutionException If execution fails
+   */
   @Override
   public void setStorageGroup(String storageGroup)
       throws IoTDBConnectionException, StatementExecutionException {
@@ -726,6 +946,13 @@ public class Session implements ISession {
     getDefaultSessionConnection().deleteStorageGroups(storageGroups);
   }
 
+  /**
+   * Creates a database (storage group).
+   *
+   * @param database Name of the database
+   * @throws IoTDBConnectionException If connection fails
+   * @throws StatementExecutionException If execution fails
+   */
   @Override
   public void createDatabase(String database)
       throws IoTDBConnectionException, StatementExecutionException {
@@ -744,6 +971,16 @@ public class Session implements ISession {
     getDefaultSessionConnection().deleteStorageGroups(databases);
   }
 
+  /**
+   * Creates a single timeseries with basic properties.
+   *
+   * @param path The path of the timeseries
+   * @param dataType Data type of the timeseries
+   * @param encoding Encoding method
+   * @param compressor Compression method
+   * @throws IoTDBConnectionException If connection fails
+   * @throws StatementExecutionException If execution fails
+   */
   @Override
   public void createTimeseries(
       String path, TSDataType dataType, TSEncoding encoding, CompressionType compressor)
@@ -753,6 +990,20 @@ public class Session implements ISession {
     getDefaultSessionConnection().createTimeseries(request);
   }
 
+  /**
+   * Creates a single timeseries with advanced properties.
+   *
+   * @param path The path of the timeseries
+   * @param dataType Data type of the timeseries
+   * @param encoding Encoding method
+   * @param compressor Compression method
+   * @param props Properties of the timeseries
+   * @param tags Tags of the timeseries
+   * @param attributes Attributes of the timeseries
+   * @param measurementAlias Measurement alias
+   * @throws IoTDBConnectionException If connection fails
+   * @throws StatementExecutionException If execution fails
+   */
   @Override
   public void createTimeseries(
       String path,
@@ -964,21 +1215,33 @@ public class Session implements ISession {
     return getDefaultSessionConnection().checkTimeseriesExists(path, queryTimeoutInMs);
   }
 
+  /**
+   * Sets the timeout for queries. A negative value uses server default.
+   *
+   * @param timeoutInMs Timeout in milliseconds
+   */
   @Override
   public void setQueryTimeout(long timeoutInMs) {
     this.queryTimeoutInMs = timeoutInMs;
   }
 
+  /**
+   * Gets the timeout for queries.
+   *
+   * @return Timeout in milliseconds
+   */
   @Override
   public long getQueryTimeout() {
     return queryTimeoutInMs;
   }
 
   /**
-   * execute query sql
+   * Executes a query statement.
    *
-   * @param sql query statement
-   * @return result set
+   * @param sql The SQL query statement
+   * @return SessionDataSet containing the query result
+   * @throws StatementExecutionException If execution fails
+   * @throws IoTDBConnectionException If connection fails
    */
   @Override
   public SessionDataSet executeQueryStatement(String sql)
@@ -987,11 +1250,13 @@ public class Session implements ISession {
   }
 
   /**
-   * execute query sql with explicit timeout
+   * Executes a query statement with a specific timeout.
    *
-   * @param sql query statement
-   * @param timeoutInMs the timeout of this query, in milliseconds
-   * @return result set
+   * @param sql The SQL query statement
+   * @param timeoutInMs Query timeout in milliseconds
+   * @return SessionDataSet containing the query result
+   * @throws StatementExecutionException If execution fails
+   * @throws IoTDBConnectionException If connection fails
    */
   @Override
   public SessionDataSet executeQueryStatement(String sql, long timeoutInMs)
@@ -1000,7 +1265,7 @@ public class Session implements ISession {
   }
 
   /**
-   * execute the query, may redirect query to other node.
+   * Executes a query and handles possible redirection.
    *
    * @param sql the query statement
    * @param timeoutInMs time in ms
@@ -1049,9 +1314,11 @@ public class Session implements ISession {
   }
 
   /**
-   * execute non query statement
+   * Executes a non-query statement (like INSERT or CREATE).
    *
-   * @param sql non query statement
+   * @param sql The non-query statement
+   * @throws StatementExecutionException If execution fails
+   * @throws IoTDBConnectionException If connection fails
    */
   @Override
   public void executeNonQueryStatement(String sql)
@@ -1088,6 +1355,17 @@ public class Session implements ISession {
    * @return data set
    * @throws StatementExecutionException statement is not right
    * @throws IoTDBConnectionException the network is not good
+   */
+  /**
+   * Executes a raw data query for a list of paths within a time range.
+   *
+   * @param paths List of time series paths to query
+   * @param startTime Start time (inclusive)
+   * @param endTime End time (exclusive)
+   * @param timeOut Timeout in milliseconds
+   * @return SessionDataSet containing the query result
+   * @throws StatementExecutionException If execution fails
+   * @throws IoTDBConnectionException If connection fails
    */
   @Override
   public SessionDataSet executeRawDataQuery(
@@ -1307,11 +1585,16 @@ public class Session implements ISession {
   }
 
   /**
-   * insert data in one row, if you want to improve your performance, please use insertRecords
-   * method or insertTablet method
+   * Inserts data in one row/record for a single device. For better performance, batch methods like
+   * insertRecords or insertTablet are recommended.
    *
-   * @see Session#insertRecords(List, List, List, List, List)
-   * @see Session#insertTablet(Tablet)
+   * @param deviceId Device ID to insert into
+   * @param time Timestamp of the record
+   * @param measurements List of measurements
+   * @param types Data types for the measurements
+   * @param values Values array
+   * @see Session#insertRecords
+   * @see Session#insertTablet
    */
   @Override
   public void insertRecord(
@@ -1452,6 +1735,12 @@ public class Session implements ISession {
     }
   }
 
+  /**
+   * Handles write request redirection by updating the local route cache.
+   *
+   * @param deviceId The target device ID
+   * @param endpoint The redirected endpoint
+   */
   private void handleRedirection(String deviceId, TEndPoint endpoint) {
     if (enableRedirection) {
       // no need to redirection
@@ -1478,6 +1767,12 @@ public class Session implements ISession {
     }
   }
 
+  /**
+   * Handles write request redirection by updating the local route cache (table model).
+   *
+   * @param deviceId The target device ID
+   * @param endpoint The redirected endpoint
+   */
   private void handleRedirection(IDeviceID deviceId, TEndPoint endpoint) {
     if (enableRedirection) {
       // no need to redirection
@@ -1504,6 +1799,12 @@ public class Session implements ISession {
     }
   }
 
+  /**
+   * Handles query request redirection by establishing a connection to the correct endpoint.
+   *
+   * @param endPoint The redirected endpoint
+   * @throws IoTDBConnectionException If the new connection fails
+   */
   private void handleQueryRedirection(TEndPoint endPoint) throws IoTDBConnectionException {
     if (enableQueryRedirection) {
       AtomicReference<IoTDBConnectionException> exceptionReference = new AtomicReference<>();
@@ -1529,11 +1830,16 @@ public class Session implements ISession {
   }
 
   /**
-   * insert data in one row, if you want improve your performance, please use insertRecords method
-   * or insertTablet method
+   * Inserts data in one row/record for a single device. For better performance, batch methods like
+   * insertRecords or insertTablet are recommended.
    *
-   * @see Session#insertRecords(List, List, List, List, List)
-   * @see Session#insertTablet(Tablet)
+   * @param deviceId Device ID to insert into
+   * @param time Timestamp of the record
+   * @param measurements List of measurements
+   * @param types Data types for the measurements
+   * @param values Values list
+   * @see Session#insertRecords
+   * @see Session#insertTablet
    */
   @Override
   public void insertRecord(
@@ -1620,11 +1926,15 @@ public class Session implements ISession {
   }
 
   /**
-   * insert data in one row, if you want improve your performance, please use insertRecords method
-   * or insertTablet method
+   * Inserts data in one row/record for a single device (using String values). For better
+   * performance, batch methods like insertRecords or insertTablet are recommended.
    *
-   * @see Session#insertRecords(List, List, List, List, List)
-   * @see Session#insertTablet(Tablet)
+   * @param deviceId Device ID to insert into
+   * @param time Timestamp of the record
+   * @param measurements List of measurements
+   * @param values String values list
+   * @see Session#insertRecords
+   * @see Session#insertTablet
    */
   @Override
   public void insertRecord(
@@ -1695,13 +2005,15 @@ public class Session implements ISession {
   }
 
   /**
-   * Insert multiple rows, which can reduce the overhead of network. This method is just like jdbc
-   * executeBatch, we pack some insert request in batch and send them to server. If you want improve
-   * your performance, please see insertTablet method
+   * Inserts multiple rows of data, which reduces network overhead. Each row can have a different
+   * deviceId, time, and number of measurements. For better performance, consider using
+   * insertTablet.
    *
-   * <p>Each row is independent, which could have different deviceId, time, number of measurements
-   *
-   * @see Session#insertTablet(Tablet)
+   * @param deviceIds List of device IDs
+   * @param times List of timestamps
+   * @param measurementsList List of measurement lists for each row
+   * @param valuesList List of value lists (as Strings) for each row
+   * @see Session#insertTablet
    */
   @Override
   public void insertRecords(
@@ -1760,7 +2072,7 @@ public class Session implements ISession {
     }
   }
 
-  /** Filter the null value of list。 */
+  /** Filters out null values and their corresponding measurements for a single device. */
   private void filterNullValueAndMeasurementOfOneDevice(
       String deviceId,
       List<Long> times,
@@ -1785,7 +2097,7 @@ public class Session implements ISession {
     }
   }
 
-  /** Filter the null value of list。 */
+  /** Filters out null string values and their corresponding measurements for a single device. */
   private void filterNullValueAndMeasurementWithStringTypeOfOneDevice(
       List<Long> times,
       String deviceId,
@@ -1808,9 +2120,9 @@ public class Session implements ISession {
   }
 
   /**
-   * Filter the null object of list。
+   * Filters out null objects from the list.
    *
-   * @return true:all value is null;false:not all null value is null.
+   * @return True if all values are null; false otherwise.
    */
   private boolean filterNullValueAndMeasurement(
       String deviceId,
@@ -1835,7 +2147,7 @@ public class Session implements ISession {
     return false;
   }
 
-  /** Filter the null object of list。 */
+  /** Filters out null string objects from the list. */
   private void filterNullValueAndMeasurementWithStringType(
       List<String> prefixPaths,
       List<Long> times,
@@ -1882,6 +2194,12 @@ public class Session implements ISession {
     return false;
   }
 
+  /**
+   * Checks if the value list contains any null elements.
+   *
+   * @param valuesList List of values to check
+   * @return True if there is at least one null value; false otherwise
+   */
   private boolean hasNull(List valuesList) {
     boolean haveNull = false;
     for (int i1 = 0; i1 < valuesList.size(); i1++) {
@@ -1903,14 +2221,15 @@ public class Session implements ISession {
   }
 
   /**
-   * Insert aligned multiple rows, which can reduce the overhead of network. This method is just
-   * like jdbc executeBatch, we pack some insert request in batch and send them to server. If you
-   * want improve your performance, please see insertTablet method
+   * Inserts aligned multiple rows, which reduces network overhead. Each row can have a different
+   * deviceId, time, and number of measurements. For better performance, consider using
+   * insertTablet.
    *
-   * <p>Each row is independent, which could have different prefixPath, time, number of
-   * subMeasurements
-   *
-   * @see Session#insertTablet(Tablet)
+   * @param deviceIds List of device IDs
+   * @param times List of timestamps
+   * @param measurementsList List of measurement lists for each row
+   * @param valuesList List of value lists (as Strings) for each row
+   * @see Session#insertTablet
    */
   @Override
   public void insertAlignedRecords(
@@ -2078,13 +2397,16 @@ public class Session implements ISession {
   }
 
   /**
-   * Insert multiple rows, which can reduce the overhead of network. This method is just like jdbc
-   * executeBatch, we pack some insert request in batch and send them to server. If you want improve
-   * your performance, please see insertTablet method
+   * Inserts multiple rows of data, which reduces network overhead. Each row can have a different
+   * deviceId, time, and number of measurements. For better performance, consider using
+   * insertTablet.
    *
-   * <p>Each row is independent, which could have different deviceId, time, number of measurements
-   *
-   * @see Session#insertTablet(Tablet)
+   * @param deviceIds List of device IDs
+   * @param times List of timestamps
+   * @param measurementsList List of measurement lists for each row
+   * @param typesList List of data type lists for each row
+   * @param valuesList List of value lists for each row
+   * @see Session#insertTablet
    */
   @Override
   public void insertRecords(
@@ -2184,13 +2506,16 @@ public class Session implements ISession {
   }
 
   /**
-   * Insert multiple rows, which can reduce the overhead of network. This method is just like jdbc
-   * executeBatch, we pack some insert request in batch and send them to server. If you want improve
-   * your performance, please see insertTablet method
+   * Inserts multiple rows of data for a single device, which reduces network overhead. Each row can
+   * have a different time and number of measurements. For better performance, consider using
+   * insertTablet.
    *
-   * <p>Each row could have same deviceId but different time, number of measurements
-   *
-   * @see Session#insertTablet(Tablet)
+   * @param deviceId Device ID
+   * @param times List of timestamps
+   * @param measurementsList List of measurement lists for each row
+   * @param typesList List of data type lists for each row
+   * @param valuesList List of value lists for each row
+   * @see Session#insertTablet
    */
   @Override
   public void insertRecordsOfOneDevice(
@@ -2204,14 +2529,17 @@ public class Session implements ISession {
   }
 
   /**
-   * Insert multiple rows, which can reduce the overhead of network. This method is just like jdbc
-   * executeBatch, we pack some insert request in batch and send them to server. If you want improve
-   * your performance, please see insertTablet method
+   * Inserts multiple rows of data for a single device, which reduces network overhead. Each row can
+   * have a different time and number of measurements. For better performance, consider using
+   * insertTablet.
    *
-   * <p>Each row could have same deviceId but different time, number of measurements
-   *
-   * @param haveSorted deprecated, whether the times have been sorted
-   * @see Session#insertTablet(Tablet)
+   * @param deviceId Device ID
+   * @param times List of timestamps
+   * @param measurementsList List of measurement lists for each row
+   * @param typesList List of data type lists for each row
+   * @param valuesList List of value lists for each row
+   * @param haveSorted Whether the times list is already sorted
+   * @see Session#insertTablet
    */
   @Override
   public void insertRecordsOfOneDevice(
@@ -4136,6 +4464,8 @@ public class Session implements ISession {
 
   /**
    * Create timeseries represented by device template under given device paths.
+   *
+   * <p>/** Creates timeseries using a predefined schema template.
    *
    * @param devicePathList the target device paths used for timeseries creation
    */
