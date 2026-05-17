@@ -42,6 +42,11 @@ jobs:
         java: [17]
         os: [ubuntu-latest, windows-latest]
         it_task: ["others", "datanode"]
+        # Windows datanode is the ~47min bottleneck; it's sharded in a
+        # separate job below (`unit-test-windows-datanode`).
+        exclude:
+          - os: windows-latest
+            it_task: "datanode"
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -69,3 +74,75 @@ jobs:
         run: |
           mvn clean install -DskipTests
           mvn -P get-jar-with-dependencies,with-integration-tests clean test -Dtest.port.closed=true -Diotdb.test.skip=true
+
+  # Windows datanode unit-test is the slowest cell in the matrix above (~47 min
+  # vs ~38 min on Ubuntu) because datanode has 597 UT classes and
+  # reuseForks=false spawns a new JVM per class — Windows process startup and
+  # NTFS IO are much slower than Linux. Split it into 3 parallel shards using
+  # the same hash-mod assignment trick as PR #17692 (Cluster IT - 1C1D), but
+  # with surefire.includesFile instead of failsafe.includesFile.
+  unit-test-windows-datanode:
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v5
+      - name: Set up JDK
+        uses: actions/setup-java@v5
+        with:
+          distribution: corretto
+          java-version: 17
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Cache Maven packages
+        uses: actions/cache@v5
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2-
+      - name: Adjust network dynamic TCP ports range
+        shell: pwsh
+        # 597 UT classes × reuseForks=false will burn through the default
+        # Windows ephemeral port pool. Same tweak applied in cluster-it-1c1d.yml.
+        run: |
+          netsh int ipv4 set dynamicport tcp start=32768 num=32768
+          netsh int ipv4 set dynamicport udp start=32768 num=32768
+          netsh int ipv6 set dynamicport tcp start=32768 num=32768
+          netsh int ipv6 set dynamicport udp start=32768 num=32768
+      - name: Build unit-test shard list
+        shell: bash
+        # Distribute datanode *Test.java classes across 3 shards using hash-mod
+        # assignment. The list is written to $RUNNER_TEMP (outside the repo) so
+        # apache-rat-plugin can never flag it as an unapproved-license file,
+        # and so it survives `mvn clean`. `find ... | awk` (no xargs) sidesteps
+        # the Windows ARG_MAX trap fixed in a343cf50e3.
+        run: |
+          set -euo pipefail
+          SHARD=${{ matrix.shard }}
+          TOTAL=3
+          SHARD_FILE="${RUNNER_TEMP}/unit-shard.txt"
+          find iotdb-core/datanode/src/test/java -type f -name '*Test.java' \
+            | awk -F'/' '{print $NF}' | sed 's/\.java$//' \
+            | sort \
+            | awk -v s=$SHARD -v t=$TOTAL 'NR%t==(s-1)' \
+            > "$SHARD_FILE"
+          echo "Shard $SHARD/$TOTAL contains $(wc -l < "$SHARD_FILE") test classes"
+          head -5 "$SHARD_FILE"
+      - name: Test Datanode Module with Maven (shard ${{ matrix.shard }})
+        shell: bash
+        # Only shard 1 runs the lone IT (EnvScriptIT); shards 2 and 3 skip
+        # failsafe entirely with -DskipITs.
+        run: |
+          SKIP_IT=""
+          if [ "${{ matrix.shard }}" != "1" ]; then SKIP_IT="-DskipITs"; fi
+          mvn clean integration-test \
+            -Dtest.port.closed=true \
+            -pl iotdb-core/datanode -am \
+            -DskipTests -Diotdb.test.only=true \
+            -Dsurefire.includesFile="${RUNNER_TEMP}/unit-shard.txt" \
+            -DfailIfNoTests=false \
+            -Dsurefire.failIfNoSpecifiedTests=false \
+            $SKIP_IT
