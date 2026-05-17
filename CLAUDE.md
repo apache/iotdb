@@ -180,6 +180,7 @@ The project uses compile-time i18n via the `build-helper-maven-plugin`. The prop
 ### Code Style
 
 - **Always run `mvn spotless:apply` after editing Java files**: Spotless runs `spotless:check` automatically during the `compile` phase. Format violations cause an immediate BUILD FAILURE. Make it a habit to run `mvn spotless:apply -pl <module>` right after editing, not at the end. For files under `integration-test/`, add `-P with-integration-tests`.
+- **Always run `black` and `isort` after editing Python files under `iotdb-core/ainode/`**: The AINode Code Style Check CI runs `black --check .` and `isort --check-only --profile black .` on that directory. Run `cd iotdb-core/ainode && black . && isort --profile black .` before committing. Requires `pip install black==25.1.0 isort==6.0.1`.
 - **Gson version compatibility**: `JsonObject.isEmpty()` / `JsonArray.isEmpty()` may not be available in the Gson version used by this project. Use `size() > 0` instead and add a comment explaining why.
 
 ## Git Commit
