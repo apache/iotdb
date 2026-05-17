@@ -21,6 +21,7 @@ package org.apache.iotdb.pipe.it.single;
 
 import org.apache.iotdb.it.env.MultiEnvFactory;
 import org.apache.iotdb.itbase.env.BaseEnv;
+import org.apache.iotdb.pipe.it.PipeEnvReuseManager;
 
 import org.junit.After;
 import org.junit.Before;
@@ -44,6 +45,6 @@ abstract class AbstractPipeSingleIT {
 
   @After
   public final void tearDown() {
-    env.cleanClusterEnvironment();
+    PipeEnvReuseManager.prepareForNextTest(env);
   }
 }

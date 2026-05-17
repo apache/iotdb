@@ -25,6 +25,7 @@ import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.MultiEnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.itbase.env.BaseEnv;
+import org.apache.iotdb.pipe.it.PipeEnvReuseManager;
 
 import org.awaitility.Awaitility;
 import org.junit.After;
@@ -79,8 +80,7 @@ public abstract class AbstractPipeDualTreeModelAutoIT {
 
   @After
   public final void tearDown() {
-    senderEnv.cleanClusterEnvironment();
-    receiverEnv.cleanClusterEnvironment();
+    PipeEnvReuseManager.prepareForNextTest(senderEnv, receiverEnv);
   }
 
   protected static void awaitUntilFlush(BaseEnv env) {

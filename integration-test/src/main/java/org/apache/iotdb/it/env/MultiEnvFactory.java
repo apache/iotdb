@@ -33,9 +33,18 @@ public class MultiEnvFactory {
   private static final List<BaseEnv> envList = new ArrayList<>();
   private static final Logger logger = IoTDBTestLogger.logger;
   private static String currentMethodName;
+  private static String currentTestClassName;
 
   private MultiEnvFactory() {
     // Empty constructor
+  }
+
+  static {
+    Runtime.getRuntime()
+        .addShutdownHook(
+            new Thread(
+                MultiEnvFactory::cleanupEnvs,
+                MultiEnvFactory.class.getSimpleName() + "-ShutdownHook"));
   }
 
   public static void setTestMethodName(final String testMethodName) {
@@ -49,8 +58,15 @@ public class MultiEnvFactory {
   }
 
   /** Create several environments according to the specific number. */
-  public static void createEnv(final int num) {
-    // Not judge EnvType for individual test convenience
+  public static synchronized void createEnv(final int num) {
+    final String requestedTestClassName = detectCurrentTestClassName();
+    if (requestedTestClassName.equals(currentTestClassName) && envList.size() == num) {
+      return;
+    }
+
+    cleanupEnvs();
+
+    currentTestClassName = requestedTestClassName;
     final long startTime = System.currentTimeMillis();
     for (int i = 0; i < num; ++i) {
       try {
@@ -61,5 +77,31 @@ public class MultiEnvFactory {
         System.exit(-1);
       }
     }
+  }
+
+  public static synchronized void cleanupEnvs() {
+    for (final BaseEnv baseEnv : envList) {
+      try {
+        baseEnv.cleanClusterEnvironment();
+      } catch (final Exception e) {
+        logger.warn("Cleanup env error", e);
+      }
+    }
+    envList.clear();
+    currentTestClassName = null;
+  }
+
+  private static String detectCurrentTestClassName() {
+    final StackTraceElement[] stack = Thread.currentThread().getStackTrace();
+    for (final StackTraceElement stackTraceElement : stack) {
+      final String className = stackTraceElement.getClassName();
+      if (className.endsWith("IT")) {
+        final String simpleClassName = className.substring(className.lastIndexOf('.') + 1);
+        if (!simpleClassName.startsWith("Abstract")) {
+          return className;
+        }
+      }
+    }
+    return "UNKNOWN-IT";
   }
 }

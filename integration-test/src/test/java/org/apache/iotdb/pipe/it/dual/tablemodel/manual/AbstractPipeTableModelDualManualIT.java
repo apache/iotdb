@@ -22,6 +22,7 @@ package org.apache.iotdb.pipe.it.dual.tablemodel.manual;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.it.env.MultiEnvFactory;
 import org.apache.iotdb.itbase.env.BaseEnv;
+import org.apache.iotdb.pipe.it.PipeEnvReuseManager;
 
 import org.junit.After;
 import org.junit.Before;
@@ -72,7 +73,6 @@ public abstract class AbstractPipeTableModelDualManualIT {
 
   @After
   public final void tearDown() {
-    senderEnv.cleanClusterEnvironment();
-    receiverEnv.cleanClusterEnvironment();
+    PipeEnvReuseManager.prepareForNextTest(senderEnv, receiverEnv);
   }
 }
