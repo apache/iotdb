@@ -548,6 +548,8 @@ jobs:
           name: cluster-log-subscription-table-arch-verification-java${{ matrix.java }}-${{ runner.os }}-${{ matrix.cluster1 }}-${{ matrix.cluster2 }}
           path: integration-test/target/cluster-logs
           retention-days: 30
+  # 72 IT classes split across 3 parallel shards to cut the longest-pole job
+  # from ~30-45 min to ~12-18 min. See cluster-it-1c1d.yml for the prior art.
   subscription-tree-regression-consumer:
     strategy:
       fail-fast: false
@@ -558,6 +560,7 @@ jobs:
         cluster1: [ScalableSingleNodeMode]
         cluster2: [ScalableSingleNodeMode]
         os: [ubuntu-latest]
+        shard: [0, 1, 2]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v5
@@ -577,6 +580,29 @@ jobs:
       - name: Sleep for a random duration between 0 and 10000 milliseconds
         run: |
           sleep  $(( $(( RANDOM % 10000 + 1 )) / 1000))
+      - name: Build IT shard list
+        shell: bash
+        # Distribute MultiClusterIT2SubscriptionTreeRegressionConsumer test classes
+        # across 3 shards using hash-mod assignment. The list is written under
+        # $RUNNER_TEMP (outside the repo) so Apache RAT's license check does not
+        # flag it - see cluster-it-1c1d.yml, which uses the same path for the
+        # same reason. Each runner has its own $RUNNER_TEMP, so this workflow
+        # and the 1C1D one writing to the same filename never collide.
+        # We emit paths relative to src/test/java/ (not bare class names like
+        # cluster-it-1c1d.yml does) because this suite has 6 pairs of duplicate
+        # simple names across pushconsumer/multi/ and pullconsumer/multi/ - bare
+        # names would cause those classes to run twice across shards.
+        run: |
+          set -euo pipefail
+          SHARD=${{ matrix.shard }}
+          TOTAL=3
+          grep -rlE --include='*IT.java' '\bMultiClusterIT2SubscriptionTreeRegressionConsumer\b' integration-test/src/test/java \
+            | sed 's|.*/src/test/java/||' \
+            | sort \
+            | awk -v s=$SHARD -v t=$TOTAL 'NR%t==s' \
+            > "$RUNNER_TEMP/it-shard.txt"
+          echo "Shard $SHARD/$TOTAL contains $(wc -l < "$RUNNER_TEMP/it-shard.txt") test classes"
+          head -5 "$RUNNER_TEMP/it-shard.txt"
       - name: IT Test
         shell: bash
         # we do not compile client-cpp for saving time, it is tested in client.yml
@@ -594,12 +620,15 @@ jobs:
               -DskipUTs \
               -DintegrationTest.forkCount=1 -DConfigNodeMaxHeapSize=256 -DDataNodeMaxHeapSize=1024 -DDataNodeMaxDirectMemorySize=768 \
               -DClusterConfigurations=${{ matrix.cluster1 }},${{ matrix.cluster2 }} \
+              -Dfailsafe.includesFile="$RUNNER_TEMP/it-shard.txt" \
+              -DfailIfNoTests=false \
+              -Dfailsafe.failIfNoSpecifiedTests=false \
               -pl integration-test \
               -am -PMultiClusterIT2SubscriptionTreeRegressionConsumer \
               -ntp >> ~/run-tests-$attempt.log && return 0
-              test_output=$(cat ~/run-tests-$attempt.log) 
+              test_output=$(cat ~/run-tests-$attempt.log)
 
-              echo "==================== BEGIN: ~/run-tests-$attempt.log ===================="          
+              echo "==================== BEGIN: ~/run-tests-$attempt.log ===================="
               echo "$test_output"
               echo "==================== END: ~/run-tests-$attempt.log ======================"
 
@@ -631,7 +660,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v6
         with:
-          name: cluster-log-subscription-tree-regression-consumer-java${{ matrix.java }}-${{ runner.os }}-${{ matrix.cluster1 }}-${{ matrix.cluster2 }}
+          name: cluster-log-subscription-tree-regression-consumer-shard${{ matrix.shard }}-java${{ matrix.java }}-${{ runner.os }}-${{ matrix.cluster1 }}-${{ matrix.cluster2 }}
           path: integration-test/target/cluster-logs
           retention-days: 30
   subscription-tree-regression-misc:
